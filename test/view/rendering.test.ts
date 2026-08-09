@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 // @ts-expect-error — a build script, deliberately outside tsconfig's `src/**` include.
-import { assembleStyles } from '../../styles-assemble.mjs';
+import { assembleStyles } from '../../scripts/styles-assemble.mjs';
 import { FakeVault } from '../helpers/vault';
 import { ALL_TYPES, EXTRA_TYPES, MARKER_TYPES } from '../../src/domain/settings';
 import { Menu, Notice } from '../helpers/obsidian-mock';
@@ -102,6 +102,16 @@ describe('rendering', () => {
 		expect(badge('A spike')?.classList.contains('pbl-lvl-unknown')).toBe(true);
 	});
 
+	it('renders a Deliverable with its own badge icon and colour', () => {
+		const vault = new FakeVault();
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10 } });
+		const { containerEl } = makeView(vault);
+
+		const badge = rowByTitle(containerEl, 'D').querySelector('.pbl-badge');
+		expect(badge?.classList.contains('pbl-lvl-deliverable')).toBe(true);
+		expect(badge?.querySelector<HTMLElement>('.pbl-badge-icon')?.dataset.icon).toBe('package');
+	});
+
 	it('withholds every create affordance on a row that can hold nothing', () => {
 		// Absent, not empty. `addLabel` builds its text from `childTypes[0]`, so an empty
 		// list renders "New undefined" and opens a modal with no type to pick — the same
@@ -120,6 +130,29 @@ describe('rendering', () => {
 		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
 		expect(titles.filter((t) => t.startsWith('New '))).toEqual([]);
 		expect(titles.some((t) => t.includes('undefined'))).toBe(false);
+	});
+
+	it("reserves the add button's width on a row that can hold nothing", () => {
+		// Everything after `.pbl-row-spacer` is anchored to the row's END, so an element
+		// missing from a row's trailing strip does not leave a gap where it was — it shifts
+		// every column on that row right by its own width. A marker holds nothing and so
+		// renders no add button, which is what displaced a milestone's whole set of columns
+		// from the rows above it.
+		const vault = new FakeVault();
+		vault.addFile('An epic.md', { frontmatter: { type: 'Epic', status: 'Todo' } });
+		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', status: 'Todo' } });
+		const { containerEl } = makeView(vault, { stateProperty: 'note.status' });
+
+		const trailing = (title: string): string[] => {
+			const kids = [...rowByTitle(containerEl, title).children];
+			return kids.slice(kids.findIndex((el) => el.classList.contains('pbl-row-spacer'))).map(() => 'box');
+		};
+		expect(trailing('Ship 1.0')).toEqual(trailing('An epic'));
+
+		// Reserved, never shown — `visibility`, because the row hover reveals anything
+		// that is merely transparent.
+		expect(rowByTitle(containerEl, 'Ship 1.0').lastElementChild?.className).toContain('pbl-add-spacer');
+		expect(ruleAt('.pbl-add-spacer', 'visibility: hidden;')).toBeGreaterThan(-1);
 	});
 
 	it('mutes a done row without striking its title through', () => {

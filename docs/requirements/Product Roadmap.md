@@ -1,9 +1,11 @@
 ---
 type: Epic
-order: 50
+order: 20
 status: Open
 created: 2026-08-01
 source: user request
+horizon: Next
+area: product
 ---
 
 # Product Roadmap

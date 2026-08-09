@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { settingsWith } from '../helpers/settings';
 import {
 	adoptableProperties,
 	ALL_TYPES,
@@ -15,8 +16,6 @@ import {
 	optionalKeyFor,
 	optionalProperty,
 	resolveSettings,
-	STATE_COLOR_SLOTS,
-	stateColorSlot,
 	stateMenuValues,
 } from '../../src/domain/settings';
 
@@ -188,7 +187,7 @@ describe('resolveSettings progress options', () => {
 describe('configProblems', () => {
 	it('reports properties sharing a frontmatter key', () => {
 		expect(configProblems(defaultSettings())).toEqual([]);
-		const clash = configProblems({ ...defaultSettings(), orderKey: 'parent' });
+		const clash = configProblems(settingsWith({ orderKey: 'parent' }));
 		expect(clash).toHaveLength(1);
 		expect(clash[0]).toContain('parent and order');
 	});
@@ -203,7 +202,7 @@ describe('configProblems', () => {
 	});
 
 	it('refuses an axis key colliding with a key the plugin owns', () => {
-		const clash = configProblems({ ...defaultSettings(), horizonKey: 'parent' });
+		const clash = configProblems(settingsWith({ horizonKey: 'parent' }));
 		expect(clash).toHaveLength(1);
 		expect(clash[0]).toContain('parent and horizon');
 	});
@@ -211,11 +210,11 @@ describe('configProblems', () => {
 	it('refuses axis keys colliding with each other — start and target cannot share', () => {
 		// One key cannot store a span, and a horizon sharing either is two semantics
 		// on one field.
-		const span = configProblems({ ...defaultSettings(), startKey: 'when', targetKey: 'when' });
+		const span = configProblems(settingsWith({ startKey: 'when', targetKey: 'when' }));
 		expect(span).toHaveLength(1);
 		expect(span[0]).toContain('start and target');
 
-		const mixed = configProblems({ ...defaultSettings(), horizonKey: 'plan', startKey: 'plan' });
+		const mixed = configProblems(settingsWith({ horizonKey: 'plan', startKey: 'plan' }));
 		expect(mixed[0]).toContain('horizon and start');
 	});
 
@@ -287,7 +286,7 @@ describe('resolveSettings display options', () => {
 
 describe('stateMenuValues', () => {
 	it('prefers the configured states verbatim', () => {
-		const settings = { ...defaultSettings(), states: ['New', 'Active', 'Done'] };
+		const settings = settingsWith({ states: ['New', 'Active', 'Done'] });
 		expect(stateMenuValues(settings, ['Blocked'])).toEqual(['New', 'Active', 'Done']);
 	});
 
@@ -303,40 +302,8 @@ describe('stateMenuValues', () => {
 	});
 });
 
-describe('stateColorSlot', () => {
-	it('gives no slot to an item with no state', () => {
-		const settings = { ...defaultSettings(), states: ['New', 'Active', 'Done'] };
-		expect(stateColorSlot(settings, [], null)).toBeNull();
-	});
-
-	it('gives no slot to a value outside the vocabulary', () => {
-		const settings = { ...defaultSettings(), states: ['New', 'Active', 'Done'] };
-		expect(stateColorSlot(settings, [], 'Blocked')).toBeNull();
-	});
-
-	it('is the value\'s index in stateMenuValues, case-insensitively', () => {
-		const settings = { ...defaultSettings(), states: ['New', 'Active', 'Done'] };
-		expect(stateColorSlot(settings, [], 'new')).toBe(0);
-		expect(stateColorSlot(settings, [], 'Active')).toBe(1);
-		expect(stateColorSlot(settings, [], 'DONE')).toBe(2);
-	});
-
-	it('agrees with the board and the Set state menu: same vocabulary, observed included', () => {
-		const settings = defaultSettings();
-		expect(stateColorSlot(settings, ['Active'], 'Active')).toBe(0);
-		expect(stateColorSlot(settings, ['Active'], 'Done')).toBe(1);
-	});
-
-	it('wraps modulo the slot count for a vocabulary longer than the palette', () => {
-		const states = Array.from({ length: STATE_COLOR_SLOTS + 2 }, (_, i) => `State ${i}`);
-		const settings = { ...defaultSettings(), states };
-		expect(stateColorSlot(settings, [], `State ${STATE_COLOR_SLOTS}`)).toBe(0);
-		expect(stateColorSlot(settings, [], `State ${STATE_COLOR_SLOTS + 1}`)).toBe(1);
-	});
-});
-
 describe('horizonMenuValues', () => {
-	const withHorizons = (values: string[]) => ({ ...defaultSettings(), horizonKey: 'horizon', horizonValues: values });
+	const withHorizons = (values: string[]) => (settingsWith({ horizonKey: 'horizon', horizonValues: values }));
 
 	it('offers the declared vocabulary first, in declared order', () => {
 		expect(horizonMenuValues(withHorizons(['Now', 'Next', 'Later']), [])).toEqual(['Now', 'Next', 'Later']);
@@ -364,16 +331,16 @@ describe('horizonMenuValues', () => {
 
 describe('optionalKeyFor', () => {
 	it('maps each field to the property it is stored under', () => {
-		const settings = {
-			...defaultSettings(),
-			stateKey: 'status',
+		const settings = settingsWith({ stateKey: 'status',
 			startedDateKey: 'started',
 			finishedDateKey: 'finished',
 			horizonKey: 'horizon',
 			startKey: 'start',
 			targetKey: 'due',
+			riskKey: 'risk',
+			deliverableStateKey: 'deliverableStatus',
 			dependsOnKey: 'dependsOn',
-		};
+		});
 		// Every field of the table, so a switch that fell through would be caught here
 		// rather than by whichever feature happened to read the wrong key.
 		expect(OPTIONAL_FIELDS.map((field) => optionalKeyFor(settings, field))).toEqual([
@@ -383,10 +350,14 @@ describe('optionalKeyFor', () => {
 			'horizon',
 			'start',
 			'due',
+			'risk',
+			'deliverableStatus',
 			'dependsOn',
 		]);
 		// Unconfigured is '', which every caller reads as "no key to write".
 		expect(OPTIONAL_FIELDS.map((field) => optionalKeyFor(defaultSettings(), field))).toEqual([
+			'',
+			'',
 			'',
 			'',
 			'',
@@ -409,6 +380,8 @@ describe('the optional-property table', () => {
 			'horizon',
 			'start',
 			'target',
+			'risk',
+			'deliverableState',
 			'dependsOn',
 		]);
 		expect(OPTIONAL_FIELDS.map(optionalProperty)).toEqual(OPTIONAL_PROPERTIES);
@@ -419,6 +392,12 @@ describe('adoptableProperties', () => {
 	it('offers the shipped key for every optional property nobody has named', () => {
 		const config = fakeConfig({});
 
+		// Eight, not nine: `deliverableState` suggests the SAME key `state` does
+		// ('status'), and `state` is declared first, so its own adoption claims
+		// 'status' before the loop ever reaches `deliverableState` — the existing
+		// "don't suggest an already-taken key" guard (below) skips it, leaving the
+		// Deliverable workflow to fall back to the shared `stateKey` rather than
+		// binding a second, explicit property to the same value.
 		expect(adoptableProperties(config, resolveSettings(config)).map((p) => p.suggested)).toEqual([
 			'status',
 			'started',
@@ -426,6 +405,7 @@ describe('adoptableProperties', () => {
 			'horizon',
 			'start',
 			'due',
+			'risk',
 			'dependsOn',
 		]);
 	});

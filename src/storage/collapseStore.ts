@@ -18,17 +18,26 @@ import { App, FileView } from 'obsidian';
 /** One vault-scoped entry holds every Product Backlog view's collapse state. */
 const STORE_KEY = 'product-backlog:collapse';
 /**
- * Backstop on how many paths a single view may remember. A real backlog is a few
- * hundred rows, so this is far above normal use and exists only so a pathological
- * vault cannot grow the entry without bound. Collapsed paths are kept first: an
- * expanded entry only suppresses the default, while a collapsed one is visible state.
+ * Backstop on how many KEYS a single view may remember. A real backlog is a few hundred
+ * rows, so this is far above normal use and exists only so a pathological vault cannot
+ * grow the entry without bound. Collapsed keys are kept first: an expanded entry only
+ * suppresses the default, while a collapsed one is visible state.
+ *
+ * A key is a note path under one scope, and a parent settles under both (the tree's and
+ * the dated axis's — see `view/collapseState.ts`), so this is twice the note count it
+ * bounds. It was doubled with the second scope for exactly that reason: leaving it at
+ * 4000 would have halved the headroom in NOTES this has always promised, and the first
+ * thing lost at saturation is the expanded keys, which read back as rows the user opened
+ * and found shut again.
  */
-const MAX_PATHS = 4000;
+const MAX_PATHS = 8000;
 
 /** The value the `mode` field holds while the view is a board. */
 export const BOARD_MODE = 'board';
 /** The value the `mode` field holds while the view is a roadmap. */
 export const ROADMAP_MODE = 'roadmap';
+/** The value the `mode` field holds while the view is the Deliverables board. */
+export const DELIVERABLES_MODE = 'deliverables';
 /**
  * The values the `axis` field may hold — which roadmap axis this saved view shows
  * when both are configured. Mirrors `RoadmapAxis` in `domain/roadmap.ts`; spelled
@@ -60,7 +69,7 @@ const SHELF_SORT_VALUES = ['tree', 'title', 'modified'];
 export interface CollapseSnapshot {
 	collapsed: Set<string>;
 	expanded: Set<string>;
-	/** `BOARD_MODE` or `ROADMAP_MODE`; null or absent means the tree. */
+	/** `BOARD_MODE`, `ROADMAP_MODE` or `DELIVERABLES_MODE`; null or absent means the tree. */
 	mode?: string | null;
 	/** The retained roadmap-axis pick; null or absent means the user never picked. */
 	axis?: string | null;
@@ -403,7 +412,7 @@ function readEntry(value: unknown): StoredEntry | null {
 	const base = record.base;
 	if (typeof base !== 'string' || base.length === 0) return null;
 	const entry: StoredEntry = { base, collapsed: readPaths(record.collapsed), expanded: readPaths(record.expanded) };
-	const mode = readEnum(record.mode, [BOARD_MODE, ROADMAP_MODE]);
+	const mode = readEnum(record.mode, [BOARD_MODE, ROADMAP_MODE, DELIVERABLES_MODE]);
 	if (mode !== undefined) entry.mode = mode;
 	const axis = readEnum(record.axis, AXIS_VALUES);
 	if (axis !== undefined) entry.axis = axis;

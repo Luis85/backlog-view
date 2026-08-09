@@ -7,7 +7,7 @@ priority: P1
 created: 2026-08-05
 closed: 2026-08-05
 files:
-  - harness.mjs
+  - scripts/harness.mjs
   - test/harness/mount.ts
   - test/harness/page.ts
   - test/harness/chrome.ts

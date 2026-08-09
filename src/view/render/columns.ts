@@ -3,9 +3,10 @@ import { BacklogViewHost, ChipProp } from '../host';
 import { DragDropController } from '../interactions/dragDrop';
 import { showHorizonMenu, showStateMenu, showTagMenu } from '../interactions/menu';
 import { removeTag } from '../interactions/tags';
+import { hasStateColumn, ownWorkflowReading, stateKeyFor } from '../../domain/board';
 import { BacklogItem } from '../../domain/model';
 import { hasHorizonAxis, SHELF_LABEL } from '../../domain/roadmap';
-import { BacklogSettings } from '../../domain/settings';
+import { BacklogSettings, resolvedDeliverableStateKey } from '../../domain/settings';
 
 /**
  * State shared by one render pass. Config lookups live here so per-row work stays
@@ -86,7 +87,10 @@ function columnFit(
 	depth: number,
 	width: number,
 ): { hideProps: boolean; hideMeta: boolean; hideHorizon: boolean; hideState: boolean } {
-	const state = settings.stateKey ? STATE_COL_WIDTH : 0;
+	// Either workflow's key earns the column, so a Deliverable-only vault budgets for
+	// the chip its rows actually draw. The rollup beside it stays the requirements
+	// workflow's own (`subtreeDone`), so its term keeps asking about `stateKey` alone.
+	const state = hasStateColumn(settings) ? STATE_COL_WIDTH : 0;
 	const horizon = hasHorizonAxis(settings) ? HORIZON_COL_WIDTH : 0;
 	const meta = settings.stateKey || settings.showCounts ? META_COL_WIDTH : 0;
 	const props = settings.showChips ? settings.propColumnWidth * chipCount : 0;
@@ -138,8 +142,17 @@ export function syncColumnFit(ctx: RowContext, viewEl: HTMLElement, treeEl: HTML
  * model: `ctx.rows` holds exactly what was rendered, so this cannot disagree with
  * the tree the user is looking at, and a collapse shrinks it the same pass it
  * happens in.
+ *
+ * Zero off the tree: a board card is never indented, so the term this measures does
+ * not exist on either board-shaped projection — and `.depth` is not safe to read for
+ * one anyway. `BacklogModel.deliverableResults` (`domain/model.ts`) is built from the
+ * whole, unfocused tree, so under an active focus it can hold items on two different
+ * depth SCALES at once: one re-rooted by `assignVisualDepth` (inside the focused
+ * subtree) and one still carrying its real hierarchy depth (outside it). Reading
+ * either would be answering a question this projection does not ask.
  */
 function renderedDepth(ctx: RowContext): number {
+	if (ctx.host.projection !== 'tree') return 0;
 	let max = 0;
 	for (const path of ctx.rows.keys()) {
 		const depth = ctx.host.model?.byPath.get(path)?.depth ?? 0;
@@ -167,13 +180,37 @@ export function chipProps(host: BacklogViewHost): ChipProp[] {
 		`note.${host.settings.orderKey}`,
 		`note.${host.settings.typeKey}`,
 	]);
-	// The interactive chips already show these two properties.
+	// The interactive chips already show these properties. The Deliverable state key
+	// joins them now that the chip reads it on a Deliverable row: found by review —
+	// with its own key configured AND named in the Base's property order, the value
+	// rendered twice on such a row, once editable and once not, which is exactly what
+	// this skip list exists to prevent. Resolved, so the fallback case is the same key
+	// `stateKey` already removed rather than a second entry for it. Skipped for EVERY
+	// row, like `stateKey` itself: the column set is one decision per render pass, and
+	// the property describes a Deliverable anyway (`missingKeyStubs` refuses to stub it
+	// on anything else), so no other row loses a column it had a reason to carry.
 	if (host.settings.stateKey) skip.add(`note.${host.settings.stateKey}`);
+	const deliverableKey = resolvedDeliverableStateKey(host.settings);
+	if (deliverableKey) skip.add(`note.${deliverableKey}`);
 	if (hasHorizonAxis(host.settings)) skip.add(`note.${host.settings.horizonKey}`);
 	const tagsId = host.settings.tagsKey ? `note.${host.settings.tagsKey}` : '';
 	return props
 		.filter((prop) => !skip.has(prop))
 		.map((prop) => ({ prop, label: chipLabel(host, prop), tags: prop === tagsId }));
+}
+
+/**
+ * What the state column is called. One column, and with two workflows configured on
+ * DISTINCT keys it holds two properties — a Deliverable row shows one, every other row
+ * the other — so naming it after either would misidentify the property half the rows
+ * below it are showing. It takes the generic word there, and the configured property's
+ * own display name whenever only one key is in play (including the fallback, where the
+ * two keys ARE one key and there is nothing generic about the answer).
+ */
+function stateColumnLabel(host: BacklogViewHost): string {
+	const { stateKey, deliverableStateKey } = host.settings;
+	if (stateKey && deliverableStateKey && stateKey !== deliverableStateKey) return 'State';
+	return chipLabel(host, `note.${stateKey || deliverableStateKey}`);
 }
 
 function chipLabel(host: BacklogViewHost, prop: BasesPropertyId): string {
@@ -207,8 +244,8 @@ export function renderColumnHeader(ctx: RowContext, containerEl: HTMLElement): v
 			text: chipLabel(ctx.host, `note.${settings.horizonKey}`),
 		});
 	}
-	if (settings.stateKey) {
-		header.createDiv({ cls: 'pbl-state-col pbl-col-label', text: chipLabel(ctx.host, `note.${settings.stateKey}`) });
+	if (hasStateColumn(settings)) {
+		header.createDiv({ cls: 'pbl-state-col pbl-col-label', text: stateColumnLabel(ctx.host) });
 	}
 	if (settings.stateKey || settings.showCounts) {
 		header.createDiv({
@@ -216,8 +253,22 @@ export function renderColumnHeader(ctx: RowContext, containerEl: HTMLElement): v
 			text: settings.stateKey ? 'Progress' : 'Items',
 		});
 	}
-	// Reserves exactly the width of a row's add button, so the last column lines up.
-	setIcon(header.createDiv({ cls: 'pbl-add clickable-icon' }), 'plus');
+	renderAddSpacer(header);
+}
+
+/**
+ * The width a row's add button takes, where there is no button to take it: the header,
+ * which is not a row, and a row that can hold nothing (`renderRowTrailing`).
+ *
+ * Not cosmetic. Everything after `.pbl-row-spacer` is anchored to the row's END, so an
+ * absent trailing element is not a control missing — it is every column on that row
+ * displaced by its width, which is exactly how a milestone's columns came to sit clear
+ * of the backlog above it. Built from the same `clickable-icon` box around the same
+ * icon rather than from a width restating Obsidian's padding, so the reservation cannot
+ * drift from the thing it reserves for.
+ */
+export function renderAddSpacer(containerEl: HTMLElement): void {
+	setIcon(containerEl.createDiv({ cls: 'pbl-add-spacer clickable-icon', attr: { 'aria-hidden': 'true' } }), 'plus');
 }
 
 /**
@@ -232,7 +283,10 @@ export function renderRowColumns(ctx: RowContext, row: HTMLElement, item: Backlo
 	if (hasHorizonAxis(ctx.host.settings)) {
 		renderHorizonChip(ctx.host, row.createDiv({ cls: 'pbl-horizon-col' }), item);
 	}
-	if (ctx.host.settings.stateKey) renderStateChip(ctx.host, row.createDiv({ cls: 'pbl-state-col' }), item);
+	// The CELL follows the base's configuration and the CHIP inside it follows the
+	// row's own workflow, so a column that exists for Deliverables alone leaves an empty
+	// cell on every other row rather than shifting the columns after it.
+	if (hasStateColumn(ctx.host.settings)) renderStateChip(ctx.host, row.createDiv({ cls: 'pbl-state-col' }), item);
 	renderRollup(ctx.host, row, item);
 }
 
@@ -355,10 +409,29 @@ export function renderRollup(host: BacklogViewHost, row: HTMLElement, item: Back
 	}
 }
 
-/** Clickable state chip — the inline write surface for the workflow state. */
+/**
+ * Clickable state chip — the inline write surface for the workflow state.
+ *
+ * WHOSE state is the item's type's question, the same one `Set state` asks in
+ * `interactions/menu.ts`: a Deliverable shows and edits the Deliverable workflow's
+ * value, so the chip and the menu it opens can never name different states. A
+ * Deliverable under the fallback (no Deliverable state property configured) reads the
+ * shared key, so this is the identical value either way.
+ *
+ * The CELL is the base's question (`hasStateColumn` — either workflow having a key) and
+ * the CHIP is the row's own (`stateKeyFor` — the key ITS workflow writes). The two are
+ * different tests because they answer different things: a vault that configures only
+ * the Deliverable property still has a state column, and every non-Deliverable row in
+ * it draws an empty cell rather than a "State" button whose picks would be dropped by
+ * `applyWrites`' "never write to an empty key" rule. Empty rather than absent, because
+ * a column that skipped a row would shift every column after it on that row alone.
+ * `stateKeyFor` is the same function `buildItemMenu` gates Set state on, so the chip
+ * and the menu can never disagree about which key this row writes.
+ */
 function renderStateChip(host: BacklogViewHost, col: HTMLElement, item: BacklogItem): void {
-	const value = item.stateValue;
-	const cls = 'pbl-state-chip' + (item.done ? ' pbl-state-done' : '') + (value === null ? ' pbl-state-unset' : '');
+	if (!stateKeyFor(host.settings, item)) return;
+	const { value, done } = ownWorkflowReading(item);
+	const cls = 'pbl-state-chip' + (done ? ' pbl-state-done' : '') + (value === null ? ' pbl-state-unset' : '');
 
 	// A note the Base excluded is context: show the state it has, never offer to
 	// write it. An unset one renders nothing at all rather than a "State" button
@@ -366,7 +439,7 @@ function renderStateChip(host: BacklogViewHost, col: HTMLElement, item: BacklogI
 	if (item.outsideFilter) {
 		if (value === null) return;
 		const chip = col.createDiv({ cls: `${cls} pbl-state-static` });
-		fillStateChip(chip, item, value);
+		fillStateChip(chip, done, value);
 		setTooltip(chip, "Not in this base's filter — state can't be changed here");
 		return;
 	}
@@ -382,13 +455,13 @@ function renderStateChip(host: BacklogViewHost, col: HTMLElement, item: BacklogI
 			'aria-label': value === null ? 'Set state' : `Change state (currently ${value})`,
 		},
 	});
-	fillStateChip(chip, item, value);
+	fillStateChip(chip, done, value);
 	setTooltip(chip, 'Change state');
 	chip.addEventListener('click', (evt) => showStateMenu(host, evt, item));
 }
 
-function fillStateChip(chip: HTMLElement, item: BacklogItem, value: string | null): void {
-	const icon = item.done ? 'circle-check' : value !== null ? 'circle' : 'circle-dashed';
+function fillStateChip(chip: HTMLElement, done: boolean, value: string | null): void {
+	const icon = done ? 'circle-check' : value !== null ? 'circle' : 'circle-dashed';
 	setIcon(chip.createSpan({ cls: 'pbl-state-icon' }), icon);
 	chip.createSpan({ cls: 'pbl-state-text', text: value ?? 'State' });
 }

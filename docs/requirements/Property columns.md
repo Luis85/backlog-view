@@ -38,6 +38,10 @@ the whole reason to put values in columns rather than after the title.
 - **1b — the tags column has dropped for width.** The menu still offers it, with the
   item's tags checked. No command is withheld for lack of space, and on a narrow pane the
   menu is the only way left to edit.
+- **2a — a row renders no add button.** Its width is reserved anyway. The rule in step 2
+  is about the whole end-anchored strip and not only about the columns: a row that can
+  hold nothing withholds the control, and skipping the element it sat in slides every
+  column on that row right by its width.
 - **3a — the pane is too narrow.** Columns **drop whole**, in order: properties, then the
   meta column, then the state chip. Shrinking one would put it out from under its header,
   which is worse than not showing it. The threshold is derived from the *configured* width

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { boardVault, cardByTitle, makeBoard } from '../helpers/board';
-import { refresh, titlesOf, useViewHarness } from '../helpers/view';
+import { refresh, rowByTitle, titlesOf, useViewHarness } from '../helpers/view';
 import { FakeVault } from '../helpers/vault';
 import { childrenLabel, listedChildren } from '../../src/view/childrenList';
 import { Menu } from '../helpers/obsidian-mock';
@@ -133,6 +133,34 @@ describe('children on the card', () => {
 		expect(done.map((el) => el.querySelector('.pbl-card-kid-title')?.textContent)).toEqual([
 			'Feature B1',
 		]);
+	});
+
+	it('styles a done child by ITS OWN workflow, not the requirements one', () => {
+		// A Deliverable is offered as a child under an Epic, a Feature and a PBI, and it is
+		// tracked by its own workflow everywhere else — the board it has, the chip, the
+		// menu, the timeline bar. Asking `child.done` here dims one whose requirements
+		// state happens to read done and leaves a finished one undimmed, which is the same
+		// type-dispatch rule failing at one more surface.
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active' } });
+		vault.addFile('Shipped.md', {
+			frontmatter: { type: 'Deliverable', order: 10, status: 'New', docStatus: 'Published' },
+			parentLink: 'Epic',
+		});
+		vault.addFile('Open.md', {
+			frontmatter: { type: 'Deliverable', order: 20, status: 'Done', docStatus: 'Draft' },
+			parentLink: 'Epic',
+		});
+		const { containerEl } = makeBoard(vault, {
+			deliverableStateProperty: 'note.docStatus',
+			deliverableStateValues: 'Draft, Published',
+			deliverableDoneValues: 'Published',
+		});
+		const card = cardByTitle(containerEl, 'Epic');
+		disclosure(card)?.click();
+
+		const done = Array.from(card.querySelectorAll<HTMLElement>('.pbl-card-kid.pbl-done'));
+		expect(done.map((el) => el.querySelector('.pbl-card-kid-title')?.textContent)).toEqual(['Shipped']);
 	});
 
 	it('opens the child, not the card, on a primary click', () => {
@@ -352,6 +380,21 @@ describe('children on the card', () => {
 
 		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
 		expect(titles.some((t) => t.startsWith('Open child'))).toBe(false);
+	});
+
+	it('keeps a shelf card’s disclosure with the AXIS, not with the tree', () => {
+		// The scope is the PROJECTION's, not the control's: everything on the dated axis
+		// — its rows and the shelf beside them — is one working position, kept apart from
+		// the backlog's. A shelf card is on that screen, so its disclosure goes with it.
+		const { containerEl, view } = makeRoadmap(datedVault(), DATED_AXIS);
+		disclosure(cardByTitle(containerEl, 'Feature X'))?.click();
+		expect(kidTitles(cardByTitle(containerEl, 'Feature X'))).toEqual(['Task X1']);
+
+		view.setProjection('tree');
+		// Opened one level by hand, so what is asked is the FEATURE's own bit: the shelf
+		// card's expand must not have opened the same node in the backlog.
+		rowByTitle(containerEl, 'Dated epic').querySelector<HTMLElement>('.pbl-chevron')?.click();
+		expect(titlesOf(containerEl)).toEqual(['Dated epic', 'Feature X']);
 	});
 
 	it('still offers them on a shelf card in the same projection', () => {

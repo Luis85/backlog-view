@@ -96,8 +96,11 @@ one undo.
 Built. The plan is `computeHorizonWrites` in `src/domain/writePlan.ts` — shared with
 [[Horizon and dates from the row]], which arrived at the same property from the row
 while this was being built, and whose shape won: one general `ItemWrite.axis` carrying
-every placement key, applied and captured through one `axisEntries` list in
-`src/storage/frontmatter.ts`, the only module that may write and the one that captures
+every placement key, applied and captured through one `axisEntries` list — now in
+`src/storage/writeKeys.ts`, which answers *which keys a write touches* for every optional
+property, beside `touchedKeys` and `stubKeys` that read it. It moved out of
+`src/storage/frontmatter.ts` when that file hit its 400-line budget; that file is still
+the only module that may write and the one that captures
 the removal's inverse as it lands. A null there REMOVES the key rather than blanking
 it, joining `removeStateKey` and `removeParentKey`. The batch goes through the same
 `applySafely`, reached via `performHorizonMove` in `src/view/cardMoves.ts`

@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { BacklogItem, buildModel } from '../../src/domain/model';
 import { computeHorizonWrites, computeInitWrites, computeScheduleWrites } from '../../src/domain/writePlan';
 import { PlacementEnd } from '../../src/domain/itemTypes';
-import { BacklogSettings, defaultSettings } from '../../src/domain/settings';
+import { BacklogSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
+import { settingsWith } from '../helpers/settings';
 
 /**
  * The roadmap's placement writes, planned: what setting a horizon, scheduling and
@@ -12,12 +13,9 @@ import { FakeVault } from '../helpers/vault';
  */
 
 /** Both axes configured, the way a roadmap view would have them. */
-const AXES: BacklogSettings = {
-	...defaultSettings(),
-	horizonKey: 'horizon',
+const AXES: BacklogSettings = settingsWith({ horizonKey: 'horizon',
 	startKey: 'start',
-	targetKey: 'due',
-};
+	targetKey: 'due', });
 
 function build(files: Record<string, Record<string, unknown>>, settings = AXES) {
 	const vault = new FakeVault();
@@ -208,7 +206,7 @@ describe('computeInitWrites and the optional keys', () => {
 	});
 
 	it('never writes a key no property names', () => {
-		const settings = { ...defaultSettings(), horizonKey: 'horizon' };
+		const settings = settingsWith({ horizonKey: 'horizon' });
 		const { model } = build({ 'A.md': { type: 'Epic', order: 10 } }, settings);
 
 		expect(computeInitWrites(model, settings)[0].stubs).toEqual(['horizon']);

@@ -7,6 +7,7 @@ import {
 	DEFAULT_HOME_FOLDER,
 	DEFAULT_HORIZON_VALUES,
 	DEFAULT_PROP_COLUMN_WIDTH,
+	DEFAULT_RISK_VALUES,
 	defaultSettings,
 	defaultTypeFolder,
 	MAX_PROP_COLUMN_WIDTH,
@@ -65,7 +66,9 @@ export function getViewOptions(config?: BasesViewConfig): BasesAllOptions[] {
 	return [
 		hierarchyGroup(),
 		progressGroup(settings),
+		deliverablesGroup(),
 		roadmapGroup(),
+		riskGroup(),
 		newItemsGroup(settings.homeFolder),
 		displayGroup(),
 	];
@@ -198,6 +201,34 @@ function progressGroup(settings: BacklogSettings): BasesAllOptions {
 }
 
 /**
+ * The Deliverable workflow's own group — columns and a workflow only, per Scope: no
+ * WIP-limit or policy boxes, unlike `progressGroup`'s requirements workflow.
+ */
+function deliverablesGroup(): BasesAllOptions {
+	return {
+		type: 'group',
+		displayName: 'Deliverables',
+		items: [
+			optionalPropertyOption('deliverableState', 'Deliverable state property'),
+			{
+				type: 'text',
+				key: 'deliverableStateValues',
+				displayName: 'Deliverable workflow states (in order)',
+				default: '',
+				placeholder: 'Concept, Draft, Review, Published',
+			},
+			{
+				type: 'text',
+				key: 'deliverableDoneValues',
+				displayName: 'Deliverable states that count as done',
+				default: DEFAULT_DONE_VALUES.join(', '),
+				placeholder: DEFAULT_DONE_VALUES.join(', '),
+			},
+		],
+	};
+}
+
+/**
  * The roadmap's axis, declared rather than detected: a horizon property with its
  * ordered values makes the bucket axis, a start and a target property make the
  * timeline, and nothing is ever picked by name-matching. The placeholders suggest
@@ -225,6 +256,30 @@ function roadmapGroup(): BasesAllOptions {
 			optionalPropertyOption('start', 'Start date property'),
 			optionalPropertyOption('target', 'Target date property'),
 			optionalPropertyOption('dependsOn', 'Depends-on property'),
+		],
+	};
+}
+
+/**
+ * How risky an item is, read off a property and chosen from a declared list. Both
+ * halves are needed before anything can be set: a property with no levels has nothing
+ * to offer, and levels with no property have nowhere to go — `hasRiskLevels` is that
+ * pair asked once. The default list is spelled as the text the box shows, so the
+ * shipped default and the parsed one cannot drift: `defaultSettings` parses this list.
+ */
+function riskGroup(): BasesAllOptions {
+	return {
+		type: 'group',
+		displayName: 'Risk management',
+		items: [
+			optionalPropertyOption('risk', 'Risk property'),
+			{
+				type: 'text',
+				key: 'riskValues',
+				displayName: 'Risk levels (in order)',
+				default: DEFAULT_RISK_VALUES.join(', '),
+				placeholder: DEFAULT_RISK_VALUES.join(', '),
+			},
 		],
 	};
 }

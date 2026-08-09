@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ProductBacklogView } from '../../src/view/backlogView';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
 import { Menu, Notice } from '../helpers/obsidian-mock';
@@ -135,6 +135,122 @@ describe('write safety with context rows, across the board’s entry points', ()
 		// It opened the child, and the whole interaction wrote nothing.
 		expect(vault.opened.map((o) => o.path)).toEqual(['Task.md']);
 		expect(vault.writeLog).toEqual([]);
+	});
+});
+
+describe('write safety with context rows, across the Deliverables board’s entry points', () => {
+	/**
+	 * A context Deliverable — `outsideFilter`, and, under PBI focus, an `extraFocused`
+	 * root (`collectFocusRoots`) exactly as the context PBI above is on the requirements
+	 * board: `EXTRA_TYPE_RANK === focusIdx` at PBI admits every extra type as a focus
+	 * root regardless of subtree position. It needs a child in the filter (Task.md) to
+	 * be loaded as an ANCESTOR at all — `RawItem.outsideFilter`'s own doc says such a
+	 * row exists only "to keep the hierarchy above a match intact," so a context row
+	 * with nothing beneath it in the filter is never loaded, not merely hidden.
+	 *
+	 * `renderDeliverablesBoard` (`board.ts`) reads `model.results` UNCONDITIONALLY,
+	 * never `model.roots` — unlike the requirements board above, which switches to
+	 * `model.roots` under focus. `model.results` already drops every `outsideFilter`
+	 * item (`model.ts`'s `shown()`), so this context Deliverable cannot become a card
+	 * on this board at all, regardless of focus. D1 is a genuine, in-filter Deliverable
+	 * sibling so the board draws real columns instead of "no deliverables yet" guidance
+	 * — without it, "no card renders for Ctx" would be true for the wrong reason.
+	 */
+	function deliverablesStressView() {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('D1.md', {
+			frontmatter: { type: 'Deliverable', order: 10, deliverableStatus: 'Draft' },
+			parentLink: 'Epic',
+		});
+		// Context: excluded from the Base's own results, loaded only because Task.md
+		// below it is a result and needs its ancestor.
+		vault.addFile('Ctx.md', {
+			frontmatter: { type: 'Deliverable', order: 20, deliverableStatus: 'Draft' },
+			parentLink: 'Epic',
+		});
+		vault.addFile('Task.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'Ctx' });
+		const containerEl = document.body.createDiv();
+		const view = new ProductBacklogView({} as never, containerEl);
+		const anyView = view as unknown as Record<string, unknown>;
+		anyView.app = vault.app;
+		anyView.config = new FakeViewConfig({ deliverableStateProperty: 'note.deliverableStatus' });
+		anyView.data = { data: vault.entries().filter((e) => e.file.path !== 'Ctx.md') };
+		view.onDataUpdated();
+		// Focus is working position, not a base setting: set through the view.
+		view.setFocusLevel('PBI');
+		view.setProjection('deliverables');
+		return { view, containerEl, vault };
+	}
+
+	it('never draws a card for the context row, whatever candidates the board considers', () => {
+		const { view, containerEl } = deliverablesStressView();
+		const ctx = view.model?.byPath.get('Ctx.md');
+		expect(ctx?.outsideFilter).toBe(true);
+		// It IS a focus root here — a board that read `model.roots` (the requirements
+		// board's own shape) would draw it as a context card, exactly like the PBI
+		// context card in the block above.
+		expect(view.model?.roots.some((i) => i.file.path === 'Ctx.md')).toBe(true);
+		// This board never reads `roots`, so no card for it exists — not merely one
+		// that refuses to be dragged, but one that was never rendered to drag.
+		expect(cardByTitle(containerEl, 'D1')).not.toBeNull();
+		expect(containerEl.querySelectorAll('.pbl-card').length).toBe(1);
+	});
+
+	it('never writes to a context card from the keyboard or the menu either', async () => {
+		const { view, containerEl, vault } = deliverablesStressView();
+		const ctx = view.model?.byPath.get('Ctx.md');
+		expect(ctx?.outsideFilter).toBe(true);
+		const tree = treeOf(containerEl);
+		// `applySafely`'s own structural refusal would catch a stray write regardless, so
+		// a spy on the host method is what actually proves the keyboard path never even
+		// ATTEMPTS one — confirmed by deliberately breaking both the render exclusion and
+		// `handleBoardMoveKey`'s `outsideFilter` guard and watching this spy get called.
+		const spy = vi.spyOn(view, 'performDeliverablesBoardMove');
+
+		// Selected at the MODEL level — `selectItem` sets `selectedPath` unconditionally,
+		// with no card of its own to check against. What keeps Alt+arrow from reaching it
+		// is `boardPosition` (`interactions/keyboard.ts`): it resolves a position only by
+		// finding the path among `snapshot.board.columns[*].cards`, and the test above
+		// already established Ctx is never among them — there is no fallback to the
+		// model that a keyboard-only path could exploit to reach what the drag cannot.
+		view.selectItem(ctx as never);
+		key(tree, 'ArrowRight', { altKey: true });
+		key(tree, 'ArrowLeft', { altKey: true });
+		await flush();
+
+		expect(spy).not.toHaveBeenCalled();
+
+		// And the menu, the one path that works everywhere: it withholds every entry
+		// that would edit this note — Set state included, which on the Deliverables
+		// board is the drag's equal and so must be withheld exactly as the drag is. Not
+		// vacuous: `deliverableStateProperty` is configured, D1 is a real result and
+		// gets a Set state entry of its own (asserted in test/view/menu.test.ts, 'offers
+		// Set state on a Deliverables-board card when only the Deliverable key is
+		// configured') — the withholding here is `editable`'s (`!item.outsideFilter`),
+		// not the key being unconfigured.
+		view.showContextMenuFor(ctx as never);
+		expect(Menu.lastShown?.item('Set state')).toBeUndefined();
+		expect(Menu.lastShown?.item('Set type')).toBeUndefined();
+		expect(vault.writeLog).toEqual([]);
+	});
+
+	it('refuses the whole batch if a Deliverables board write ever names a context item', async () => {
+		const { view, vault } = deliverablesStressView();
+		const ctx = view.model?.byPath.get('Ctx.md');
+		expect(ctx?.outsideFilter).toBe(true);
+
+		// No UI produces this — that is the point: the last line of defence is
+		// structural, so a future entry point cannot reopen the hole by omission. No
+		// card exists to drag or to land the keyboard's board position on, and the menu
+		// withholds Set state outright (the two tests above); the structural backstop is
+		// exercised directly, exactly as the board and roadmap blocks above exercise
+		// `performBoardMove`/`performHorizonMove`.
+		const applied = await view.performDeliverablesBoardMove(ctx as never, 'Review');
+
+		expect(applied).toBe(false);
+		expect(vault.writeLog).toEqual([]);
+		expect(Notice.messages.some((m) => m.includes('outside this base’s filter'))).toBe(true);
 	});
 });
 

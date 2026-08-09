@@ -97,6 +97,85 @@ export function renderBoardNoWorkflowState(host: BacklogViewHost, treeEl: HTMLEl
 }
 
 /**
+ * The Deliverables board without its own workflow configured — the same "no lie about
+ * a workflow that does not exist" rule `renderBoardNoWorkflowState` states, for the
+ * second workflow.
+ */
+export function renderDeliverablesBoardNoWorkflowState(host: BacklogViewHost, treeEl: HTMLElement): void {
+	const empty = guidanceShell(
+		treeEl,
+		'square-kanban',
+		'No workflow to show',
+		'The Deliverables board projects a workflow, and this view has neither state ' +
+			'property set. Set "Deliverable state property" in the view options to give ' +
+			'Deliverables a workflow of their own, or set "State property" and they share ' +
+			'the requirements one. Either draws a column per state, and "Deliverable ' +
+			'workflow states (in order)" names them.',
+	);
+	// BOTH fields fix this frame, which is `resolvedDeliverableStateKey`'s own rule as a
+	// list: this board resolves through its own key when one is set and through the
+	// requirements `stateKey` when it is not. Naming only the Deliverable field hid the
+	// button on the case that matters most — a fresh view, where `adoptableProperties`
+	// gives `status` to `state` first and drops `deliverableState` as a duplicate
+	// suggestion, so nothing here was adoptable and the guidance named an option while
+	// withholding the press that would have set it. A CLEARED `state` is still a
+	// decision and still hides the button: `adoptableProperties` asks the config, not
+	// the settings.
+	//
+	// The HINT above names both properties for the same reason, and that is not
+	// tidiness: on a fresh view this button binds `status` to the requirements `State
+	// property`, so a hint naming only the Deliverable one would send the user looking
+	// for a setting the press they just made did not touch. What the guidance says the
+	// way out is and what the button beside it actually does have to be one answer.
+	renderSetupCta(host, empty, ['deliverableState', 'state']);
+}
+
+/**
+ * The requirements board under a focus it cannot honour. `Deliverable` is the one type
+ * that board excludes by construction, so focusing it leaves every focus root filtered
+ * out and the board empty — a state the ordinary empty guidance describes wrongly twice
+ * over: it reports the count as "all done and hidden", and it offers to create another
+ * item of the focused type, which is the one type this board would not show either.
+ *
+ * The way out is the focus, so that is the button — not a creation CTA. Switching to the
+ * Deliverables board is the other way, named in the prose because the mode toggle is
+ * already on screen beside this pane.
+ */
+export function renderBoardExcludedFocusState(host: BacklogViewHost, treeEl: HTMLElement): void {
+	const empty = guidanceShell(
+		treeEl,
+		'square-kanban',
+		'Nothing to show under this focus',
+		'The focus level is "Deliverable", and Deliverables are managed on their own board — ' +
+			'this one never shows them. Clear the focus to see the rest of the backlog, or ' +
+			'switch to the Deliverables board.',
+	);
+	const btn = empty.createEl('button', { cls: 'mod-cta', text: 'Show all types' });
+	btn.addEventListener('click', () => host.setFocusLevel(''));
+}
+
+/**
+ * A configured Deliverable workflow with no Deliverable-typed results in the base —
+ * distinct from "everything is done and hidden", which this board has no concept of
+ * (Scope): a base full of other work is never reported as complete.
+ *
+ * No focus-dependent wording: the Deliverables board's population
+ * (`BacklogModel.deliverableResults`) is never narrowed by the focus level, so unlike
+ * `renderEmptyState`/`emptyHint`'s tree guidance there is no "elsewhere in the base, if
+ * you clear focus" case to describe here — either the base has a Deliverable somewhere,
+ * in which case it is already a card, or it does not.
+ */
+export function renderNoDeliverablesState(treeEl: HTMLElement): void {
+	guidanceShell(
+		treeEl,
+		'package',
+		'No deliverables yet',
+		'Nothing in this base is typed "Deliverable". Create one from the toolbar\'s New ' +
+			'button, or type an existing note as a Deliverable from its Set type menu.',
+	);
+}
+
+/**
  * Roadmap mode with no axis configured: guidance naming both ways to get one and
  * where each is set. The one roadmap case with no frame — a frame here would be
  * a lie about an axis that does not exist — and when a horizon property is set

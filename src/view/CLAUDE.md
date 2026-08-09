@@ -99,6 +99,15 @@ free of runtime code so imports stay cycle-free.
   key). Menu values = `stateMenuValues` (configured list, else observed ∪ a done
   value) plus the item's own unlisted value, so the current state can always render
   checked.
+- **Set risk is the state menu's shape without a chip or a projection**: rendered inside
+  `buildItemMenu`'s `editable` guard on `hasRiskLevels` — a property AND a levels list, so
+  a submenu never opens onto nothing — offering the declared list plus the item's own
+  unlisted value, checked from `computeRiskWrites` rather than from a comparison beside it,
+  with a `Clear risk` foot gated on `item.ownKeys.risk`. It lives in `interactions/menu.ts`
+  beside Set state rather than in `interactions/plan.ts`: risk is an attribute of the item,
+  not a position on an axis. One input, so there is no `performRiskMove` — the rule is that
+  a SECOND input calls the first one's method, and a lone menu path has nothing to disagree
+  with.
 - **The horizon chip is that same shape over the placement** (`renderHorizonChip`,
   beside the state chip in `render/columns.ts`): rendered on `hasHorizonAxis` — the one
   definition of a configured bucket axis, never a second opinion — static for a context
@@ -107,7 +116,9 @@ free of runtime code so imports stay cycle-free.
   or disagree about which is checked. A property with an interactive chip is skipped by
   `chipProps`, so the row never draws it twice with only one of them editable.
 - The tree opens collapsed for a parent nobody has ruled on — `collapseNewParents`
-  collapses each one the first time it is seen, tracked in `settled` so a data update
+  collapses each one the first time it is seen, in BOTH scopes from that one pass (it runs
+  on a data update, not per projection, so the scope off screen would otherwise be
+  unsettled and open a whole backlog the first time it was shown), tracked in `settled` so a data update
   never undoes what the user expanded, and a restored session is not re-collapsed by the
   very pass meant to honour it. An explicit `setCollapsed` also settles the path, so a
   row expanded to reveal a drop or a new child is not collapsed again by the refresh that
@@ -123,7 +134,11 @@ free of runtime code so imports stay cycle-free.
   fixed-width, so values line
   up across rows regardless of title length and indent. Every configured column renders
   on every row — an empty property cell, a leaf's empty `.pbl-meta-col` — or the columns
-  after it would shift per row. Widths live on the tree element as `--pbl-prop-col` /
+  after it would shift per row. **That holds for the whole end-anchored strip, not only
+  for the columns**: the add button is last in it, and a row that can hold nothing
+  withholds the control but reserves its width (`renderAddSpacer`, which the header uses
+  for the same reason), because an element skipped from an end-anchored strip does not
+  leave a gap where it was — everything before it slides into its width. Widths live on the tree element as `--pbl-prop-col` /
   `--pbl-prop-count` (one set per render pass, inherited by targeted subtree refreshes),
   and `.pbl-cols` is the presentational (`aria-hidden`) header naming the columns; row
   cells carry the property name in their tooltip and `aria-label` instead of repeating
@@ -403,6 +418,38 @@ free of runtime code so imports stay cycle-free.
   cannot look different per projection. Timeline rows reuse the card SHELL (selection,
   context styling) with a row layout — `.pbl-card.pbl-timeline-row` overrides the
   card's column geometry in CSS.
+- **A timeline row's chevron folds ROWS, and a card's disclosure lists children on its
+  face; they are two bits and one register.** Both go through `isCollapsed`/`setCollapsed`,
+  and `collapseKey` is the ONE place that decides which bit those land on: the dated axis
+  keys under `TIMELINE_SCOPE`, everything else under the path. Add a caller, not a choice —
+  a surface that picks its own scope is how the two drift, and the shelf and context cards
+  beside the grid take the axis's scope with it deliberately, since the working position
+  being kept is the SCREEN's rather than the control's. The quick filter still overrides
+  whichever is being asked. The register is `RowContext.cardKids` — "what drew a disclosure this pass",
+  never "which projection is this" — which is what makes the toolbar's bulk controls and
+  the row menu's section serve both without either asking what it is looking at.
+  **Which element says "expanded" is decided by the ROW's role, not by preference**: a
+  `treeitem` carries `aria-expanded` itself, so the tree's chevron is a plain div, while
+  a card row is `role="option"` — which does not support that state — so the timeline's
+  is a real `tabindex="-1"` button carrying it, the card disclosure's own answer to the
+  same problem, and `button.pbl-chevron` in `styles/tree.css` strips the Obsidian chrome
+  that arrives with it. `renderChevron` takes a label exactly to make that choice. **The
+  button is the better placement and not a settled one**: `option` also has
+  presentational children, so a user agent may flatten it and drop the role and state
+  with it. What holds either way is the row's content-derived NAME — which the label
+  joins and flips — and the row menu's identical entry as the action's path. Claim that
+  and no more; the two redesigns that would settle it are in
+  `docs/issues/A disclosure nested in an option role.md`. And because that toggle
+  rebuilds the projection, the shelf controls' focus rule applies to it too: the pressed
+  button is gone with the frame, so `renderChevron` reports whether it HELD focus and the
+  caller puts focus on the PANE — never on the replacement control, which would look
+  right and silently kill the arrow keys.
+  `domain/bars.ts`'s `timelineRows` decides which rows survive and which keep a chevron,
+  and it is asked of the bars derived BEFORE any were hidden: computed from what is
+  left, a collapsed row would have no children to have and would lose the very control
+  that reopens it. Unlike the tree's, this toggle takes the whole `render()` — the
+  window, the gridlines and every full-height mark are derived from the row set it
+  changes.
 - A bucket's New button runs the ordinary gated creation flow with the bucket's value as
   a `CreatePlacement`, written inside the same `createBacklogItem` call as the type and
   the rank. One write, so no note ever exists in a bucket its frontmatter does not claim.

@@ -4,6 +4,7 @@ import { ProductBacklogView } from '../../src/view/backlogView';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
 import { Menu } from '../helpers/obsidian-mock';
 import { expandAll, fixture, flush, key, makeView, rowByTitle, treeOf, useViewHarness } from '../helpers/view';
+import { cardByTitle } from '../helpers/board';
 
 useViewHarness();
 
@@ -69,6 +70,8 @@ describe('context menu', () => {
 			'Task',
 			'Issue',
 			'Bug',
+			'Idea',
+			'Deliverable',
 			'Milestone',
 		]);
 		expect(submenu.item('Epic')?.checked).toBe(true);
@@ -256,5 +259,114 @@ describe('move commands that do not rank', () => {
 
 		expect(vault.writeLog.map((w) => w.path)).toEqual(['Feature B.md']);
 		expect(vault.fm('Feature B.md').parent).toBe('[[Feature A]]');
+	});
+});
+
+describe('the Deliverables board’s card menu', () => {
+	it('offers Set state on a Deliverables-board card when only the Deliverable key is configured', () => {
+		const vault = new FakeVault();
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, deliverableStatus: 'Draft' } });
+		const harness = makeView(vault, {
+			deliverableStateProperty: 'note.deliverableStatus',
+			deliverableStateValues: 'Draft, Review',
+		});
+		harness.view.setProjection('deliverables');
+		const { containerEl } = harness;
+
+		cardByTitle(containerEl, 'D').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const setState = Menu.lastShown?.item('Set state');
+		expect(setState).toBeDefined();
+		const submenu = setState?.submenu;
+		expect(submenu?.items.map((i) => i.titleText)).toContain('Review');
+	});
+
+	it('checks the entry against deliverableStateValue, and writing it touches only that key', async () => {
+		const vault = new FakeVault();
+		vault.addFile('D.md', {
+			frontmatter: { type: 'Deliverable', order: 10, status: 'Untouched', deliverableStatus: 'Draft' },
+		});
+		const harness = makeView(vault, {
+			stateProperty: 'note.status',
+			deliverableStateProperty: 'note.deliverableStatus',
+			deliverableStateValues: 'Draft, Review',
+		});
+		harness.view.setProjection('deliverables');
+		const { containerEl } = harness;
+
+		cardByTitle(containerEl, 'D').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const submenu = Menu.lastShown?.item('Set state')?.submenu;
+		expect(submenu?.item('Draft')?.checked).toBe(true);
+
+		submenu?.item('Review')?.click();
+		await flush();
+		expect(vault.fm('D.md')['deliverableStatus']).toBe('Review');
+		expect(vault.fm('D.md')['status']).toBe('Untouched');
+	});
+
+	it('keeps a filtered match under a Deliverable card reachable through the card menu', () => {
+		const vault = new FakeVault();
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, deliverableStatus: 'Draft' } });
+		vault.addFile('T.md', { frontmatter: { type: 'Task', order: 10, deliverableStatus: 'irrelevant' }, parentLink: 'D' });
+		const harness = makeView(vault, { deliverableStateProperty: 'note.deliverableStatus' });
+		harness.view.setProjection('deliverables');
+		const { containerEl } = harness;
+		harness.view.setFilter('T');
+
+		cardByTitle(containerEl, 'D').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		// A direct child the disclosure lists is offered as a child, not a second time as
+		// a match — `undisclosedMatches`. Either entry is the keyboard path this test is
+		// about: the match must be reachable without a pointer.
+		expect(Menu.lastShown?.item('Open child "T"')).toBeDefined();
+		expect(Menu.lastShown?.item('Open match "T"')).toBeUndefined();
+	});
+
+	it('gates the tree’s Set state on each item’s OWN workflow key', () => {
+		const vault = new FakeVault();
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, deliverableStatus: 'Draft' } });
+		vault.addFile('P.md', { frontmatter: { type: 'PBI', order: 20 } });
+		// deliverableStateKey configured, requirements stateKey left unset. Which key a
+		// menu promises to write is the ITEM's question, not the projection's: the
+		// Deliverable's resolves to a real key, so Set state is offered and a pick lands
+		// bytes; the PBI's resolves to '', so it must not appear promising a write to an
+		// empty key that `applyWrites` would silently drop.
+		const { containerEl } = makeView(vault, { deliverableStateProperty: 'note.deliverableStatus' });
+
+		rowByTitle(containerEl, 'D').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		expect(Menu.lastShown?.item('Set state')).toBeDefined();
+
+		rowByTitle(containerEl, 'P').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		expect(Menu.lastShown?.item('Set state')).toBeUndefined();
+	});
+
+	it('offers Set state on a Deliverables-board card when only the shared (requirements) key is configured', () => {
+		// Deliverables don't need their own dedicated status property — with no
+		// Deliverable state property configured, the board falls back to the shared one.
+		const vault = new FakeVault();
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, status: 'Draft' } });
+		const harness = makeView(vault, { stateProperty: 'note.status', stateValues: 'Draft, Review' });
+		harness.view.setProjection('deliverables');
+		const { containerEl } = harness;
+
+		cardByTitle(containerEl, 'D').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const setState = Menu.lastShown?.item('Set state');
+		expect(setState).toBeDefined();
+		const submenu = setState?.submenu;
+		expect(submenu?.items.map((i) => i.titleText)).toContain('Review');
+	});
+
+	it('checks the fallback entry against the shared key, and writing it touches only that key', async () => {
+		const vault = new FakeVault();
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, status: 'Draft' } });
+		const harness = makeView(vault, { stateProperty: 'note.status', stateValues: 'Draft, Review' });
+		harness.view.setProjection('deliverables');
+		const { containerEl } = harness;
+
+		cardByTitle(containerEl, 'D').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const submenu = Menu.lastShown?.item('Set state')?.submenu;
+		expect(submenu?.item('Draft')?.checked).toBe(true);
+
+		submenu?.item('Review')?.click();
+		await flush();
+		expect(vault.fm('D.md')['status']).toBe('Review');
 	});
 });

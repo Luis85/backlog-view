@@ -52,13 +52,23 @@ describe('toolbar backfill', () => {
 			horizonProperty: 'note.horizon',
 			startProperty: 'note.start',
 			targetProperty: 'note.due',
+			riskProperty: 'note.risk',
 			dependsOnProperty: 'note.dependsOn',
 		});
+		// deliverableStateProperty is NOT bound: it now suggests the same key `status`
+		// does, `state` is declared first and claims it, and adoptableProperties'
+		// existing "don't suggest an already-taken key" guard skips the second
+		// suggestion of one already spoken for — leaving the Deliverable workflow to
+		// share `status` through its own fallback (`resolvedDeliverableStateKey`)
+		// rather than this action writing the same explicit key to both options.
+		expect(config.values.deliverableStateProperty).toBeUndefined();
+		expect(view.settings.deliverableStateKey).toBe('');
 		// Every one of them on the note, empty: the features are usable and nothing was
-		// decided for the user — no state, no horizon, no dates.
+		// decided for the user — no state, no horizon, no dates. Not deliverableStatus:
+		// that stub is scoped to Deliverable-typed items, and this note is an Epic.
 		//
-		// Every one EXCEPT the prerequisite list, which is bound above and deliberately
-		// absent here. An empty state is a slot on this note to fill; an empty
+		// Nor the prerequisite list, which is bound above and deliberately absent here for
+		// a different reason. An empty state is a slot on this note to fill; an empty
 		// prerequisite list is a claim about a relationship that does not exist, made on
 		// every note at once — and it is the exact state a removal is required never to
 		// leave behind, so backfilling one would have this button create what
@@ -72,10 +82,13 @@ describe('toolbar backfill', () => {
 			horizon: '',
 			start: '',
 			due: '',
+			risk: '',
 		});
 		expect(view.settings.stateKey).toBe('status');
 		expect(
-			Notice.messages.some((m) => m.includes('set up status, started, finished, horizon, start, due, dependsOn')),
+			Notice.messages.some((m) =>
+				m.includes('set up status, started, finished, horizon, start, due, risk, dependsOn'),
+			),
 		).toBe(true);
 	});
 
@@ -126,6 +139,7 @@ describe('toolbar backfill', () => {
 			horizonProperty: 'note.horizon',
 			startProperty: 'note.start',
 			targetProperty: 'note.due',
+			riskProperty: 'note.risk',
 		});
 
 		initButton(containerEl)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -201,6 +215,8 @@ describe('toolbar controls', () => {
 			'New Task',
 			'New Issue',
 			'New Bug',
+			'New Idea',
+			'New Deliverable',
 			'New Milestone',
 		]);
 
@@ -515,3 +531,7 @@ describe('toolbar count breakdown', () => {
 		expect(count?.getAttribute('aria-live')).toBe('polite');
 	});
 });
+
+// The Deliverables board's own toolbar behavior (its toggle, its count scoping, its
+// New button and its reduced focus control) lives in deliverablesToolbar.test.ts —
+// split out to keep this file under its line budget, and because it is one subject.

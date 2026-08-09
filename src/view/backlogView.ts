@@ -1,6 +1,6 @@
 import { BasesView, Keymap, Menu, QueryController, setIcon } from 'obsidian';
-import { CollapseState } from './collapseState';
-import { FilterState } from './filterState';
+import { CollapseState, TIMELINE_SCOPE } from './collapseState';
+import { FilterScope, FilterState } from './filterState';
 import {
 	BacklogViewHost,
 	BoardSnapshot,
@@ -24,7 +24,7 @@ import { ItemWrite, SchedulePlan } from '../domain/writePlan';
 import { ScaleId } from '../domain/timeline';
 import { forgetBacklogView, rememberBacklogView } from './registry';
 import { ResizePolicy } from './resize';
-import { rowHidden } from './rowVisibility';
+import { rowHidden, VisibilityRule } from './rowVisibility';
 import { SelectionController } from './selection';
 import { UiStateController } from './uiState';
 import {
@@ -287,7 +287,13 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// disagree about what is on screen.
 		this.chips = chipProps(this);
 		this.groupingIgnored = detectIgnoredGrouping(this.data);
-		this.collapse.collapseNewParents(this.model.items);
+		// Both populations, never `items` alone: `deliverableResults` is read off the WHOLE
+		// unfocused tree so a focus set elsewhere can never hide a Deliverable, which makes
+		// it the one set a focus cannot narrow — and a Deliverable arriving outside the
+		// active focus subtree was therefore never ruled on, its card opening expanded
+		// against the collapsed-by-default rule every other projection keeps. The same
+		// split `collapsiblePopulation` states for the buttons, at the other end of it.
+		this.collapse.collapseNewParents([...this.model.items, ...this.model.deliverableResults]);
 		this.filter.recompute(this.model);
 		this.render();
 	}
@@ -334,15 +340,46 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	}
 
 	isRowHidden(item: BacklogItem): boolean {
-		return rowHidden(item, this.filter, this.settings, true);
+		return rowHidden(item, this.visibility(true));
 	}
 
 	isRowHiddenUnfiltered(item: BacklogItem): boolean {
-		return rowHidden(item, this.filter, this.settings, false);
+		return rowHidden(item, this.visibility(false));
+	}
+
+	/**
+	 * The one visibility rule, assembled once. `hideCompleted` is where the Deliverables
+	 * board's exception lives — that board has no completion concept of its own, so the
+	 * toggle describing the requirements rollup must not reach it. Stated here rather than
+	 * offered as a second method for call sites to remember: three surfaces asked the
+	 * narrower question and the fourth asked the ordinary one, which is how a Deliverable
+	 * card's child list came to be emptied by a setting from another projection.
+	 */
+	private visibility(applyFilter: boolean): VisibilityRule {
+		return {
+			filter: this.filter,
+			settings: this.settings,
+			applyFilter,
+			scope: this.filterScope,
+			hideCompleted: this.projection !== 'deliverables',
+		};
 	}
 
 	isFilterMatch(item: BacklogItem): boolean {
-		return this.filter.matched(item.file.path);
+		return this.filter.matched(item.file.path, this.filterScope);
+	}
+
+	/**
+	 * Which of the filter's indexes this projection's questions are answered from —
+	 * decided ONCE here rather than at each of the three call sites, because getting it
+	 * wrong at one of them is invisible until someone types into the box on that exact
+	 * projection. The Deliverables board renders `model.deliverableResults`, built from
+	 * the whole unfocused tree; every other projection renders out of `model.roots`,
+	 * which a focus narrows. See `FilterScope`, which states why one index cannot serve
+	 * both and what it cost to learn that.
+	 */
+	private get filterScope(): FilterScope {
+		return this.projection === 'deliverables' ? 'whole' : 'focused';
 	}
 
 	isFiltering(): boolean {
@@ -353,11 +390,31 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 
 	isCollapsed(path: string): boolean {
 		// While filtering, everything on a path to a match renders expanded.
-		return !this.filter.active && this.collapse.isCollapsed(path);
+		return !this.filter.active && this.collapse.isCollapsed(this.collapseKey(path));
 	}
 
 	setCollapsed(path: string, collapsed: boolean): boolean {
-		return this.collapse.set(path, collapsed);
+		return this.collapse.set(this.collapseKey(path), collapsed);
+	}
+
+	/**
+	 * Which scope a collapse question is asked in: the dated axis is reading a PLAN, and
+	 * every other projection is reading the backlog, so the two keep separate bits
+	 * ({@link TIMELINE_SCOPE}). Every collapse call in the view routes through the two
+	 * methods above and therefore through here, so the chevron, the row menu, the keyboard
+	 * and the toolbar's bulk controls all follow the projection without any of them asking
+	 * what they are looking at.
+	 *
+	 * The PROJECTION and not the control, which is a decision and not an oversight: the
+	 * shelf and context cards drawn beside the grid take the axis's scope too, because
+	 * they are on that screen and the working position being kept is the screen's. Scoping
+	 * the row chevron alone would leave a card beside it writing the tree's bit, and then
+	 * the toolbar's Collapse all — which settles items no surface drew — would have no
+	 * single answer for the ones it cannot see.
+	 */
+	private collapseKey(path: string): string {
+		const dated = this.projection === 'roadmap' && activeAxis(this.settings, this.axisPick) === 'dates';
+		return dated ? TIMELINE_SCOPE + path : path;
 	}
 
 
@@ -460,7 +517,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		const model = this.model;
 		if (!model) return;
 		const projection = this.projection;
-		this.viewEl.toggleClass('pbl-board-mode', projection === 'board');
+		this.viewEl.toggleClass('pbl-board-mode', projection === 'board' || projection === 'deliverables');
 		this.viewEl.toggleClass('pbl-roadmap-mode', projection === 'roadmap');
 		this.viewEl.toggleClass(
 			'pbl-roadmap-dates',
@@ -516,7 +573,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// changes what the key must say. Above the early return below, because that return
 		// is the tree's and this is the roadmap's.
 		const drawn = this.roadmap?.drawn ?? { done: false, milestone: false, accent: false };
-		renderLegend(this, this.legendEl, model.observedStates, drawn);
+		renderLegend(this, this.legendEl, this.roadmap?.palettes ?? [], drawn);
 		if (projection !== 'tree') return;
 		// Measured against the tree that now exists, scrollbar and all. A changed
 		// verdict means a column came or went, which only the rows can show — one
@@ -541,12 +598,16 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	/**
 	 * The card-move plumbing (planning, applying and announcing a board, horizon or
 	 * schedule move) lives in `CardMoveController` — see `src/view/cardMoves.ts` for
-	 * why. These four stay here as one-line delegations, the same shape `applySafely`
+	 * why. These stay here as one-line delegations, the same shape `applySafely`
 	 * /`canUndo`/`undoLast` already use for the write gate, so `BacklogViewHost` still
 	 * resolves to this one class and nothing that calls them has to change.
 	 */
 	performBoardMove(item: BacklogItem, state: string | null): Promise<boolean> {
 		return this.cardMoves.performBoardMove(item, state);
+	}
+
+	performDeliverablesBoardMove(item: BacklogItem, state: string | null): Promise<boolean> {
+		return this.cardMoves.performDeliverablesBoardMove(item, state);
 	}
 
 	performHorizonMove(item: BacklogItem, horizon: string | null): Promise<boolean> {

@@ -124,12 +124,15 @@ describe('context rows are read-only', () => {
 	});
 
 	it('withholds every frontmatter command from the context menu', () => {
-		const { containerEl } = readOnlyView();
+		// Risk configured too, so its entry is withheld for being a context row rather
+		// than for being unconfigured — the two look identical from the menu.
+		const { containerEl } = readOnlyView({ stateProperty: 'note.status', riskProperty: 'note.risk' });
 
 		rowByTitle(containerEl, 'Epic').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
 		expect(titles).not.toContain('Set type');
 		expect(titles).not.toContain('Set state');
+		expect(titles).not.toContain('Set risk');
 		expect(titles).not.toContain('Clear parent link');
 		// Creating a child writes a new note, not this one — still offered
 		expect(titles).toContain('New Feature');

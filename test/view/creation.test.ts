@@ -29,11 +29,11 @@ describe('item creation', () => {
 			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		const modal = Modal.lastOpened;
 		if (!modal) throw new Error('prompt not opened');
-		// An Epic can hold a Feature, an Issue or a Bug, so the modal asks which — and
+		// An Epic can hold a Feature or any of the extra types, so the modal asks which — and
 		// the heading cannot name the type it is in the middle of asking about.
 		expect(modal.titleEl.textContent).toBe('New item');
 		const typePicker = modal.contentEl.querySelector('select');
-		expect([...(typePicker?.options ?? [])].map((o) => o.value)).toEqual(['Feature', 'Issue', 'Bug']);
+		expect([...(typePicker?.options ?? [])].map((o) => o.value)).toEqual(['Feature', 'Issue', 'Bug', 'Idea', 'Deliverable']);
 		expect(typePicker?.value).toBe('Feature');
 		// The prompt says where the item will land before anything is written
 		expect(modal.contentEl.querySelector('.pbl-modal-detail')?.textContent).toBe(

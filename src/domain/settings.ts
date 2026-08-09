@@ -103,6 +103,22 @@ export interface BacklogSettings {
 	startKey: string;
 	/** Frontmatter key holding the planned target date, or '' when unset. */
 	targetKey: string;
+	/** Frontmatter key holding the Deliverable workflow's own state, or '' when unset. */
+	deliverableStateKey: string;
+	/** Deliverable workflow states offered by its board, in order; [] falls back to observed. */
+	deliverableStates: string[];
+	/** State values (case-insensitive) that count as done, for the Deliverable workflow. */
+	deliverableDoneValues: string[];
+	/** Frontmatter key holding the item's risk, or '' when no risk property is named. */
+	riskKey: string;
+	/**
+	 * Declared risk levels, in the order the menu offers them. Ships prefilled with the
+	 * numbered High/Normal/Low triple — a default vocabulary, not a fixed one — and
+	 * clearing it withdraws the Set risk menu, which is the only thing the list feeds.
+	 * The property stays backfillable either way: unlike the horizon's, a named risk
+	 * property with no levels is still a property worth creating on a note.
+	 */
+	riskValues: string[];
 }
 
 /**
@@ -115,7 +131,11 @@ export interface BacklogSettings {
  * `LEVELS` is the ladder, top to bottom; `EXTRA_TYPES` sit beside it (see `itemTypes.ts`).
  */
 export const LEVELS = ['Epic', 'Feature', 'PBI', 'Task'];
-export const EXTRA_TYPES = ['Issue', 'Bug'];
+/** The Deliverable workflow's own type name, named once so `EXTRA_TYPES` and every
+ * `isDeliverableType` call site read the identical string rather than two spellings
+ * that can drift. */
+export const DELIVERABLE_TYPE = 'Deliverable';
+export const EXTRA_TYPES = ['Issue', 'Bug', 'Idea', DELIVERABLE_TYPE];
 /**
  * The third category: a declared **marker**. It occupies no rung, holds nothing, and
  * hangs from nothing — the opposite of an extra type on all three counts, which is why
@@ -144,6 +164,8 @@ const DEFAULT_TYPE_SUBFOLDERS: Record<string, string> = Object.assign(Object.cre
 	task: 'tasks',
 	issue: 'issues',
 	bug: 'bugs',
+	idea: 'ideas',
+	deliverable: 'deliverables',
 	milestone: 'milestones',
 });
 
@@ -236,6 +258,12 @@ export const DEFAULT_DONE_VALUES = ['Done', 'Closed', 'Completed', 'Removed'];
  * placements, exactly as the workflow states are.
  */
 export const DEFAULT_HORIZON_VALUES = ['Now', 'Next', 'Later'];
+/**
+ * The shipped risk vocabulary. Numbered because risk is read as a ranking far more
+ * often than as a label, and a list that sorts the way it reads costs nothing to
+ * write down. A default the user edits freely, never a fixed list.
+ */
+export const DEFAULT_RISK_VALUES = ['1 - High', '2 - Normal', '3 - Low'];
 /** Property columns are fixed-width so values line up across rows; this is that width. */
 export const DEFAULT_PROP_COLUMN_WIDTH = 132;
 export const MIN_PROP_COLUMN_WIDTH = 80;
@@ -271,6 +299,11 @@ export function defaultSettings(): BacklogSettings {
 		dependsOnKey: '',
 		startKey: '',
 		targetKey: '',
+		deliverableStateKey: '',
+		deliverableStates: [],
+		deliverableDoneValues: [...DEFAULT_DONE_VALUES],
+		riskKey: '',
+		riskValues: [...DEFAULT_RISK_VALUES],
 	};
 }
 
@@ -292,7 +325,9 @@ export type OptionalField =
 	| 'horizon'
 	| 'start'
 	| 'target'
-	| 'dependsOn';
+	| 'dependsOn'
+	| 'risk'
+	| 'deliverableState';
 
 /**
  * The `BacklogSettings` field one optional property's key lands in. Spelled as a union
@@ -306,7 +341,9 @@ type OptionalSettingsKey =
 	| 'horizonKey'
 	| 'startKey'
 	| 'targetKey'
-	| 'dependsOnKey';
+	| 'dependsOnKey'
+	| 'riskKey'
+	| 'deliverableStateKey';
 
 /**
  * One such property: the option that names it, the key it adopts when nothing does,
@@ -344,6 +381,24 @@ const PROPERTY_TABLE: Record<OptionalField, Omit<OptionalProperty, 'field'>> = {
 	horizon: { option: 'horizonProperty', suggested: 'horizon', label: 'horizon', settingsKey: 'horizonKey' },
 	start: { option: 'startProperty', suggested: 'start', label: 'start', settingsKey: 'startKey' },
 	target: { option: 'targetProperty', suggested: 'due', label: 'target', settingsKey: 'targetKey' },
+	risk: { option: 'riskProperty', suggested: 'risk', label: 'risk', settingsKey: 'riskKey' },
+	deliverableState: {
+		option: 'deliverableStateProperty',
+		// Same suggestion as `state` itself: Deliverables sharing the requirements
+		// workflow's own property is a legitimate, explicitly requested configuration
+		// (see `configProblems`' exemption below and `resolvedDeliverableStateKey`'s
+		// fallback), so the setup action should reach for the one key both workflows
+		// already agree to share rather than inventing a second, disused property.
+		// `adoptableProperties`'s own "don't suggest an already-taken key" guard is
+		// what actually delivers that: `state` is declared first and claims `status`
+		// first, so a first-run setup leaves THIS key unbound and the Deliverable
+		// workflow falls back to `stateKey` — sharing the property through the
+		// fallback this codebase already trusts, never by writing the same explicit
+		// key to both options in one pass.
+		suggested: 'status',
+		label: 'deliverable state',
+		settingsKey: 'deliverableStateKey',
+	},
 	// Prerequisites, suggested by the name the Tasks plugin already uses for the same
 	// idea — offered as a placeholder, never matched by name.
 	dependsOn: { option: 'dependsOnProperty', suggested: 'dependsOn', label: 'depends on', settingsKey: 'dependsOnKey' },
@@ -373,6 +428,29 @@ export const AXIS_FIELDS: AxisField[] = ['horizon', 'start', 'target'];
  */
 export function optionalKeyFor(settings: BacklogSettings, field: OptionalField): string {
 	return settings[PROPERTY_TABLE[field].settingsKey];
+}
+
+/**
+ * The Deliverable workflow's own state key, or the requirements workflow's shared one
+ * when the Deliverable one is unset — "Deliverables don't need their own dedicated
+ * status property; they can use the same one". This is the single statement of that
+ * fallback: every reader and writer of the Deliverable workflow's state — the model's
+ * own read (`model.ts`), the write path (`storage/frontmatter.ts`), the row menu's
+ * routing and the board's "no workflow" guidance — calls this rather than
+ * `settings.deliverableStateKey` directly, so a card that looks movable on screen
+ * cannot resolve to a key nothing actually writes.
+ *
+ * Deliberately NOT folded into `optionalKeyFor`: `configProblems` (via
+ * `ownedProperties`) and `adoptableProperties` read `deliverableStateKey` RAW through
+ * that function, because sharing a key by FALLBACK is intended while sharing one by
+ * explicit configuration is the collision they already report. Applying this fallback
+ * inside `optionalKeyFor` would make every fallback-configured board collide with the
+ * very workflow it is deliberately reusing — the `''` a cleared/unset key resolves to
+ * there is what lets `ownedProperties` skip it.
+ */
+
+export function resolvedDeliverableStateKey(settings: BacklogSettings): string {
+	return settings.deliverableStateKey || settings.stateKey;
 }
 
 /** The property id a frontmatter key is named by in the view options. */
@@ -407,23 +485,33 @@ export function adoptableProperties(config: BasesViewConfig, settings: BacklogSe
 }
 
 /**
+ * The values a workflow's menus offer: the configured list when set, else the observed
+ * values — with a done value appended so marking something done is always one click
+ * away. The pure rule behind `stateMenuValues`, extracted so a second workflow
+ * (the Deliverables board's) can share it without reading `BacklogSettings` directly.
+ */
+export function menuValues(configured: string[], doneValues: string[], observed: string[]): string[] {
+	if (configured.length > 0) return configured;
+	const done = new Set(doneValues.map((v) => v.toLowerCase()));
+	if (observed.some((v) => done.has(v.toLowerCase()))) return observed;
+	return doneValues.length > 0 ? [...observed, doneValues[0]] : observed;
+}
+
+/**
  * The states offered by the state menus: the configured list when set, else the
  * values observed in the backlog — with a done state appended so marking an item
  * done is always one click away. Menus append the item's own unlisted value on
  * top of this, so the current state can always render checked.
  */
 export function stateMenuValues(settings: BacklogSettings, observedStates: string[]): string[] {
-	if (settings.states.length > 0) return settings.states;
-	const done = new Set(settings.doneValues.map((v) => v.toLowerCase()));
-	if (observedStates.some((v) => done.has(v.toLowerCase()))) return observedStates;
-	return [...observedStates, settings.doneValues[0]];
+	return menuValues(settings.states, settings.doneValues, observedStates);
 }
 
 /**
  * Palette slots the roadmap's dated axis rotates a state's bar colour through — see
- * `stateColorSlot`. Four, not eight, because FOUR palette colours already mean
- * something fixed on this grid and a slot that repeated one would key two things at
- * once: red is the today line's, cyan the milestone line's and green the done rule's
+ * `paletteSlot` (`domain/board.ts`). Four, not eight, because FOUR palette colours
+ * already mean something fixed on this grid and a slot that repeated one would key two
+ * things at once: red is the today line's, cyan the milestone line's, green the done rule's
  * (`styles/timeline.css`), and PURPLE is Obsidian's default `--interactive-accent` —
  * what `.pbl-bar` falls back to for an item with no slot and what `.pbl-legend-other`
  * keys as `Other`. Purple was a slot until the legend drew it twice in one strip.
@@ -434,21 +522,6 @@ export function stateMenuValues(settings: BacklogSettings, observedStates: strin
  * DEFAULT install has, which is the only one a constant here can reach.
  */
 export const STATE_COLOR_SLOTS = 4;
-
-/**
- * Which palette slot a state value's bar takes on the roadmap's dated axis: its index
- * in `stateMenuValues` — the same vocabulary the board's columns and the Set state
- * menu use, so a bar and a menu entry can never disagree about a state's colour —
- * wrapped modulo `STATE_COLOR_SLOTS` so a vocabulary longer than the palette repeats
- * rather than running out. No state, or a value outside the vocabulary (an item's own
- * unlisted value, most often), gets no slot: null, which is the bar's plain accent
- * colour rather than a guess.
- */
-export function stateColorSlot(settings: BacklogSettings, observedStates: string[], state: string | null): number | null {
-	if (state === null) return null;
-	const index = stateMenuValues(settings, observedStates).findIndex((value) => value.toLowerCase() === state.toLowerCase());
-	return index === -1 ? null : index % STATE_COLOR_SLOTS;
-}
 
 /**
  * Whether a state value counts as done, by the same case-insensitive match the model
@@ -485,6 +558,21 @@ export function horizonMenuValues(settings: BacklogSettings, observedHorizons: s
 }
 
 /**
+ * Whether risk is configured enough to be SET from the view: a property to write and a
+ * vocabulary to offer. One predicate, so the menu and the options cannot drift — the
+ * shape `hasHorizonAxis` has, in this layer rather than the roadmap's because risk feeds
+ * no projection.
+ *
+ * It deliberately does NOT gate the backfill. An unconfigured bucket axis skips its stub
+ * because writing that key would be the one write on an axis nothing else acknowledges;
+ * risk has no axis to be incoherent with, so a named property with no declared levels is
+ * still a property worth creating on a note — which is what the ✨ button is for.
+ */
+export function hasRiskLevels(settings: BacklogSettings): boolean {
+	return settings.riskKey !== '' && settings.riskValues.length > 0;
+}
+
+/**
  * Every frontmatter key this view owns, labelled, in the order a collision names
  * them. One statement, because two readers depend on it and they must agree: the
  * collision report below, and the adoption above, which may not suggest a key that
@@ -518,6 +606,21 @@ function ownedProperties(settings: BacklogSettings): { label: string; key: strin
 }
 
 /**
+ * The one pair `configProblems` lets share a key: the requirements state and the
+ * Deliverable state, explicitly configured to the same property. Sharing by FALLBACK is
+ * already legitimate and never reaches this map (`ownedProperties` reads
+ * `deliverableStateKey` RAW, so an unset one resolves to ''); this is the same
+ * "Deliverables can use the same status property" idea asked for explicitly. The two
+ * workflows keep independent vocabularies either way, so the usual reason a shared key is
+ * a mistake — one property silently overwriting the other's meaning — never applies here.
+ *
+ * Scoped to EXACTLY this pair, not to "an entry named state or deliverable state": one
+ * more label on the key (order, tags, an axis key) reports as a collision again, these
+ * two named in it like any other clash.
+ */
+const STATE_KEY_SHARING_EXEMPT: [string, string] = ['state', 'deliverable state'];
+
+/**
  * Configuration mistakes that would corrupt writes (e.g. parent and order stored
  * under the same frontmatter key). The view surfaces these instead of guessing.
  */
@@ -531,6 +634,9 @@ export function configProblems(settings: BacklogSettings): string[] {
 		keys.set(key, users);
 	}
 	for (const [key, users] of keys) {
+		if (users.length === STATE_KEY_SHARING_EXEMPT.length && STATE_KEY_SHARING_EXEMPT.every((l) => users.includes(l))) {
+			continue;
+		}
 		if (users.length > 1) {
 			problems.push(`The ${users.join(' and ')} properties share the key "${key}".`);
 		}
@@ -583,6 +689,71 @@ function resolveFolders(
 				vaultFolder(str(typeFolderKey(type))),
 			) || null,
 		),
+	};
+}
+
+/**
+ * The Deliverable workflow's three resolved fields, lifted out of `resolveSettings`.
+ *
+ * Extracted when merging `Idea` and `Deliverable` into one vocabulary pushed that function
+ * past its 100-line budget. The seam is the honest one: these three are the only fields
+ * whose value depends on ANOTHER of their own group — the key's fallback decides what the
+ * two lists fall back to — so they are a unit wherever they are computed, and the budget
+ * only made that visible.
+ */
+interface DeliverableWorkflowInputs {
+	propKey: (key: string, def: string) => string;
+	list: (key: string) => string[];
+	dedupe: (values: string[]) => string[];
+	fallback: BacklogSettings;
+	/** The requirements workflow's own resolved vocabulary, which the two lists may fall back to. */
+	states: string[];
+	effectiveDoneValues: string[];
+}
+
+function resolveDeliverableWorkflow(
+	inputs: DeliverableWorkflowInputs,
+): { deliverableStateKey: string; deliverableStates: string[]; deliverableDoneValues: string[] } {
+	const { propKey, list, dedupe, fallback, states, effectiveDoneValues } = inputs;
+	// The KEY's own fallback condition, named ONCE and consulted by every Deliverable-
+	// workflow field below: the returned `deliverableStateKey` directly, and
+	// `deliverableStates`/`deliverableDoneValues` as the gate BEHIND each list's own
+	// emptiness check — a populated list wins first, and this only picks WHICH fallback
+	// an empty one takes — not three expressions that happen to agree today. Resolved
+	// here, before either list, because both need it. See `resolvedDeliverableStateKey`,
+	// which states the identical condition (`settings.deliverableStateKey === ''`) for
+	// every READER outside this function; this is that condition's one computation
+	// inside it — `deliverableStateKeyOwn` IS what becomes `settings.deliverableStateKey`
+	// below, so the two cannot drift into asking different questions.
+	const deliverableStateKeyOwn = propKey('deliverableStateProperty', fallback.deliverableStateKey);
+	const deliverableKeyFallsBack = deliverableStateKeyOwn === '';
+	// Falls back to the requirements workflow's own EFFECTIVE done values ONLY when the
+	// KEY is also falling back: "Deliverables don't need their own dedicated status
+	// property; they can use the same one" applies here too, so a vault that customized
+	// `doneValues` must not have that customization ignored while the Deliverable
+	// workflow shares its property. An OWN, distinct key with no done values of its own
+	// is a genuinely independent workflow and gets the shipped default
+	// (`fallback.deliverableDoneValues`) instead — never an unrelated property's
+	// customized list, exactly as before this workflow could share anything. Unlike the
+	// state KEY (`resolvedDeliverableStateKey`), a value list carries no collision risk,
+	// so there is no reason for every reader to re-resolve this fallback; both this and
+	// `deliverableStates` below are baked in HERE, eagerly, gated on the SAME condition.
+	const deliverableDoneValuesRaw = list('deliverableDoneValues');
+	const effectiveDeliverableDoneValues = deliverableDoneValuesRaw.length > 0
+		? deliverableDoneValuesRaw
+		: deliverableKeyFallsBack ? effectiveDoneValues : fallback.deliverableDoneValues;
+	// Same rule, over the declared vocabulary rather than the done values: falls back to
+	// the shared workflow's OWN declared states ONLY when the KEY is also falling back —
+	// a Deliverable state property configured on its OWN distinct key, with no declared
+	// states of its own yet, must not borrow a vocabulary that belongs to a DIFFERENT
+	// property. Own key configured: this list still falls through to ITS OWN observed
+	// values (`menuValues`) when left empty, exactly as `states` does for the
+	// requirements workflow — never to `states`, which is not read through that key.
+	const deliverableStatesRaw = dedupe(list('deliverableStateValues'));
+	return {
+		deliverableStateKey: deliverableStateKeyOwn,
+		deliverableStates: deliverableKeyFallsBack && deliverableStatesRaw.length === 0 ? states : deliverableStatesRaw,
+		deliverableDoneValues: effectiveDeliverableDoneValues,
 	};
 }
 
@@ -661,6 +832,7 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 	// says it cannot have.
 	const effectiveDoneValues = doneValues.length > 0 ? doneValues : fallback.doneValues;
 	const states = dedupe(list('stateValues'));
+	const deliverable = resolveDeliverableWorkflow({ propKey, list, dedupe, fallback, states, effectiveDoneValues });
 	const doneSet = new Set(effectiveDoneValues.map((v) => v.toLowerCase()));
 	// Limits are refused for done states HERE rather than only in the schema, so a key
 	// left in the `.base` by re-marking a state as done cannot revive its limit.
@@ -708,5 +880,11 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		startKey: propKey('startProperty', fallback.startKey),
 		targetKey: propKey('targetProperty', fallback.targetKey),
 		dependsOnKey: propKey('dependsOnProperty', fallback.dependsOnKey),
+		...deliverable,
+		riskKey: propKey('riskProperty', fallback.riskKey),
+		// Clearable for the horizon values' reason: a real default that has to be
+		// switchable off, and an emptied list means "no levels" rather than the three
+		// this plugin shipped.
+		riskValues: clearable('riskValues', fallback.riskValues, () => dedupe(list('riskValues'))),
 	};
 }

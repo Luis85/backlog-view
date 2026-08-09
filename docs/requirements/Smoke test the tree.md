@@ -1,6 +1,6 @@
 ---
 type: Feature
-parent: "[[Feature Test]]"
+parent: "[[Plugin Features Smoke Test]]"
 order: 10
 status: Open
 created: 2026-08-02
@@ -31,3 +31,7 @@ visible rather than assumed.
 - [[Tree quick filter and Show completed items]] — the filter highlighting matches, and
   Show completed items hiding a done subtree.
 - [[Tree undo]] — undo taking a whole batch back.
+- [[Parent links Obsidian parsed, and ones it did not]] — which of `resolveParent`'s two
+  paths a real cache actually takes, and whether the hand-rolled bracket stripper behind
+  the second one is reachable at all. **Never checked**, and it decides whether that code
+  is deleted or kept.

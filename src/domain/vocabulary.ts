@@ -1,3 +1,4 @@
+import { isDeliverableType } from './itemTypes';
 import { FieldReading, tagKey } from './noteFields';
 import { BacklogSettings } from './settings';
 
@@ -20,6 +21,8 @@ interface VocabularySource {
 	stateValue: string | null;
 	tags: string[];
 	horizon: FieldReading<string>;
+	typeName: string | null;
+	deliverableStateValue: string | null;
 }
 
 /**
@@ -45,16 +48,24 @@ function firstSeen(
 }
 
 /**
+ * The sort every workflow's state menu shares: alphabetical, then open states before
+ * the workflow's own done values — so a second (or third) workflow calls this with its
+ * own done list instead of copying the sort-and-partition beside it.
+ */
+function sortOpenThenDone(values: string[], doneValues: string[]): string[] {
+	const done = new Set(doneValues.map((v) => v.toLowerCase()));
+	const sorted = values.sort((a, b) => a.localeCompare(b));
+	return [...sorted.filter((v) => !done.has(v.toLowerCase())), ...sorted.filter((v) => done.has(v.toLowerCase()))];
+}
+
+/**
  * First occurrence of every state value, sorted for the state menus: open states
  * alphabetically, done states after them. Deduped case-insensitively, keeping
  * the casing seen first.
  */
 export function collectObservedStates(all: VocabularySource[], settings: BacklogSettings): string[] {
-	const done = new Set(settings.doneValues.map((v) => v.toLowerCase()));
-	const values = firstSeen(all, (item) => (item.stateValue === null ? [] : [item.stateValue])).sort((a, b) =>
-		a.localeCompare(b),
-	);
-	return [...values.filter((v) => !done.has(v.toLowerCase())), ...values.filter((v) => done.has(v.toLowerCase()))];
+	const values = firstSeen(all, (item) => (item.stateValue === null ? [] : [item.stateValue]));
+	return sortOpenThenDone(values, settings.doneValues);
 }
 
 /** Every tag the results carry, alphabetical and deduped case-insensitively. */
@@ -80,4 +91,19 @@ export function collectObservedTags(all: VocabularySource[]): string[] {
  */
 export function collectObservedHorizons(all: VocabularySource[]): string[] {
 	return firstSeen(all, (item) => (item.horizon.value === null ? [] : [item.horizon.value]));
+}
+
+/**
+ * First occurrence of every Deliverable workflow state value, sorted the same way
+ * `collectObservedStates` sorts its own: open states alphabetically, then done ones.
+ * Scoped to `Deliverable`-typed items BEFORE the first-seen walk — not a blind copy of
+ * `collectObservedStates`, which would mint a stray column from a non-Deliverable
+ * item's coincidental value in the same key.
+ */
+export function collectObservedDeliverableStates(all: VocabularySource[], settings: BacklogSettings): string[] {
+	const deliverables = all.filter((item) => isDeliverableType(item.typeName));
+	const values = firstSeen(deliverables, (item) =>
+		item.deliverableStateValue === null ? [] : [item.deliverableStateValue],
+	);
+	return sortOpenThenDone(values, settings.deliverableDoneValues);
 }

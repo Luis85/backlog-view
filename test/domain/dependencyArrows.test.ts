@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { DatedAxis, deriveBars } from '../../src/domain/bars';
 import { dependencyArrows } from '../../src/domain/dependencies';
 import { buildModel } from '../../src/domain/model';
-import { defaultSettings } from '../../src/domain/settings';
+import { settingsWith } from '../helpers/settings';
 import { FakeVault } from '../helpers/vault';
 
 /**
@@ -14,7 +14,7 @@ import { FakeVault } from '../helpers/vault';
  * about `dependencyArrows` in isolation.
  */
 
-const settings = { ...defaultSettings(), dependsOnKey: 'dependsOn', startKey: 'start', targetKey: 'target' };
+const settings = settingsWith({ dependsOnKey: 'dependsOn', startKey: 'start', targetKey: 'target' });
 
 function datedAxis(vault: FakeVault): DatedAxis {
 	const model = buildModel(vault.app, vault.entries(), settings);

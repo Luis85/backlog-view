@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { buildModel } from '../../src/domain/model';
 import { buildRoadmap, horizonSource, placementLabel, SHELF_LABEL } from '../../src/domain/roadmap';
-import { BacklogSettings, defaultSettings } from '../../src/domain/settings';
+import { BacklogSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
+import { settingsWith } from '../helpers/settings';
 
 /** A view whose configured keys are all names `Object.prototype` already owns. */
 function axisSettings(overrides: Partial<BacklogSettings> = {}): BacklogSettings {
-	return { ...defaultSettings(), horizonKey: 'toString', startKey: '', targetKey: '', ...overrides };
+	return settingsWith({ horizonKey: 'toString', startKey: '', targetKey: '', ...overrides });
 }
 
 function names(items: { title: string }[]): string[] {
@@ -74,7 +75,7 @@ describe('a parent property named off Object.prototype', () => {
 	 * with no type and no parent to the hierarchy, and suppresses folder inference.
 	 */
 	it('does not enrol every note in the vault as a pinned root', () => {
-		const settings = { ...defaultSettings(), parentKey: 'toString' };
+		const settings = settingsWith({ parentKey: 'toString' });
 		const vault = new FakeVault();
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
 		vault.addFile('Meeting.md', { frontmatter: { topic: 'standup' } });
@@ -86,7 +87,7 @@ describe('a parent property named off Object.prototype', () => {
 	});
 
 	it('still reads a note that genuinely owns the key', () => {
-		const settings = { ...defaultSettings(), parentKey: 'toString' };
+		const settings = settingsWith({ parentKey: 'toString' });
 		const vault = new FakeVault();
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
 		vault.addFile('Child.md', { frontmatter: { type: 'Feature', order: 10, toString: '[[Epic]]' } });

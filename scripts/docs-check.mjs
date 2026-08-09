@@ -1,6 +1,7 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
+import { collapsed, containerAt, headings, localLinks, markers, prose, proseWithSpans, sectionBody, tablesWith, wikilinks } from "./docs-markdown.mjs";
 
 /**
  * Validate `docs/` — the backlog register and the ADRs — against itself and against the
@@ -19,16 +20,41 @@ import process from "node:process";
 
 const DOCS = "docs";
 const ADRS = path.join(DOCS, "adrs");
-const LEGAL_CHILDREN = {
-	Epic: new Set(["Feature", "Issue", "Bug"]),
-	Feature: new Set(["PBI", "Issue", "Bug"]),
-	PBI: new Set(["Task", "Issue", "Bug"]),
+/**
+ * The plugin's OWN rule, applied to the register that documents it — so this table has to
+ * track `childTypeChoices` (`src/domain/itemTypes.ts`), which answers
+ * `[ladderChild, ...EXTRA_TYPES]` for any parent on the ladder. The four extra types are
+ * therefore one set repeated at each rung, and each of them takes Tasks: an extra type's
+ * rank is pinned at `EXTRA_TYPE_RANK`, the rung whose children are the deepest level.
+ *
+ * `Deliverable` was missing here for the whole of the increment that introduced it, which
+ * is why the register could not hold the very type the plugin had just started shipping.
+ * `Idea` arrived on main while `Deliverable` was being built on this branch, neither
+ * knowing about the other. Adding a type to `EXTRA_TYPES` means adding it here too.
+ */
+const EXTRA = ["Issue", "Bug", "Idea", "Deliverable"];
+/**
+ * NULL-PROTOTYPE, because every key read against it is user data — a `type:` a note
+ * declares, or a type name written into the README's hierarchy table. A plain object
+ * literal answers `LEGAL_CHILDREN["toString"]` with an inherited FUNCTION, which is
+ * truthy: a note typed `toString` sailed past the `unknown type` check for as long as this
+ * table has existed.
+ *
+ * Kept through the merge deliberately — main's copy of this table is still a plain object
+ * literal, because the fix landed on this branch after main forked.
+ */
+const LEGAL_CHILDREN = Object.assign(Object.create(null), {
+	Epic: new Set(["Feature", ...EXTRA]),
+	Feature: new Set(["PBI", ...EXTRA]),
+	PBI: new Set(["Task", ...EXTRA]),
 	Task: new Set(),
 	Issue: new Set(["Task"]),
 	Bug: new Set(["Task"]),
+	Idea: new Set(["Task"]),
+	Deliverable: new Set(["Task"]),
 	// A marker holds nothing and hangs from nothing: no children, and a root of its own.
 	Milestone: new Set(),
-};
+});
 /**
  * The types that legitimately have no parent. An `Epic` is a root by POSITION — the top
  * of the ladder — and a `Milestone` is a root by NATURE: a release date is owned by the
@@ -107,10 +133,9 @@ const adrNumber = (raw) => (raw !== null && /^\d+$/.test(raw.trim()) ? Number(ra
  * versions eventually, and the checker is what has to notice.
  */
 function checkSections(file, text, sections, what) {
-	const prose = withoutCode(text);
 	const found = [];
 	for (const section of sections) {
-		const hits = sectionHits(prose, section);
+		const hits = sectionHits(text, section);
 		if (hits.length !== 1) fail(file, countProblem(what, section, hits.length));
 		// The first index is what the order walk needs, and it is recorded even when the
 		// count was wrong: a note reported for saying `## Use case` twice should not also
@@ -121,17 +146,19 @@ function checkSections(file, text, sections, what) {
 }
 
 /**
- * Every occurrence of one section marker, in document order.
+ * Every occurrence of one section marker, in document order — `{ index }` either way, so
+ * the order walk reads both kinds the same.
  *
- * Bounded at both ends. A line-start anchor alone is a prefix match, so `## Contextual`
- * satisfied `## Context` — the same prefix hole as `showCounts` vouching for `showCount`,
- * in the third place it has turned up. A `##` heading is a whole line and is anchored as
- * one; a `**Bold**` marker opens a sentence and is bounded by its own closing `**`, so it
- * needs only to not run straight into more word.
+ * The two kinds are genuinely different documents' furniture. A `## Heading` is STRUCTURE,
+ * so it is asked of the parser (`headings`) and compared whole: the prefix hole that let
+ * `## Contextual` satisfy `## Context` — three times, in three places — cannot occur when
+ * the comparison is between two parsed strings rather than between a pattern and the start
+ * of a line. A `**Bold**` marker is not structure at all; it opens a sentence, so it stays
+ * a pattern, bounded so it does not run into more word, over a document with code blanked.
  */
-function sectionHits(prose, section) {
-	const bound = section.startsWith("#") ? String.raw`\s*$` : String.raw`(?=\s|$)`;
-	return [...prose.matchAll(new RegExp(`^${escapeRe(section)}${bound}`, "gm"))];
+function sectionHits(text, section) {
+	if (section.startsWith("##")) return headings(text).filter((h) => h.text === section.slice(3));
+	return [...prose(text).matchAll(new RegExp(`^${escapeRe(section)}(?=\\s|$)`, "gm"))];
 }
 
 /** Missing and duplicated are one question — "how many" — so they are one message. */
@@ -157,42 +184,7 @@ function between(text, start, end) {
 /**
  * Fenced blocks removed. Both fence characters: CommonMark fences with ``` or ~~~, and
  * stripping only the first left every structural question in this file — headings,
- * sections, index entries — readable inside a tilde fence, where nothing renders and
- * nothing is real.
- *
- * Split out from `withoutCode` for the one question that needs a document's structure and
- * its code spans at once: `sectionBody` locates a heading and then reads the PATHS under
- * it, and this register writes every path in backticks, so stripping spans would leave the
- * section empty of the only thing being looked for. Fences are what protect a heading from
- * an example anyway — a `## Decision` inside a code span cannot open a line to begin with,
- * so `sectionHits`' line anchor already refuses it.
- */
-const withoutFences = (text) => text.replace(/```[\s\S]*?```/g, "").replace(/~~~[\s\S]*?~~~/g, "");
 
-/** Wikilinks and paths inside code spans are examples, not references. */
-function withoutCode(text) {
-	return withoutFences(text).replace(/`[^`\n]*`/g, "");
-}
-
-/**
- * What one section says: from its heading to the next `## `, or to the end of the note —
- * `## Where it lives` is a use case's last section, so running to the end is the ordinary
- * case here rather than the edge one. A `###` subheading is inside the section, not after
- * it.
- *
- * The heading is found by `sectionHits`, so a section is the same thing here as everywhere
- * else in this file: a line of its own, never a phrase in a sentence. A duplicated heading
- * is already reported by `checkSections`; the first one is read, which is the half a
- * reader meets first.
- */
-function sectionBody(text, section) {
-	const prose = withoutFences(text);
-	const [hit] = sectionHits(prose, section);
-	if (!hit) return "";
-	const after = prose.slice(hit.index + hit[0].length);
-	const next = /^## /m.exec(after);
-	return next ? after.slice(0, next.index) : after;
-}
 
 /**
  * `field` reads a **value**, `has` reads a **key**, and the difference is load-bearing: a
@@ -386,36 +378,199 @@ for (const [name, note] of notes) {
 const historical = [];
 for (const file of files) {
 	const text = texts.get(file);
-	// Known limitation: `[^\]|#]` admits `\n`, so a `[[link]]` that Markdown hard-wraps
-	// across two lines is captured whole (with the newline inside it) and fails the stem
-	// lookup below. The workaround is to reword so the link never wraps; there is no
-	// detection for it, so a contributor who hits this sees only "unresolved wikilink".
-	for (const [, target] of withoutCode(text).matchAll(/\[\[([^\]|#]+)/g)) {
-		if (!stems.has(target.trim())) fail(file, `unresolved wikilink [[${target.trim()}]]`);
+	// A link the 100-column wrap breaks across two lines used to be captured with the
+	// newline inside it, fail the stem lookup, and report as unresolved — a documented
+	// limitation with no detection, so the contributor saw only a false "unresolved
+	// wikilink". `wikilinks` flattens the wrap, so that link resolves now.
+	for (const target of wikilinks(text)) {
+		if (!stems.has(target)) fail(file, `unresolved wikilink [[${target}]]`);
 	}
 	const living = isLiving(file);
-	for (const [, referenced] of text.matchAll(/`((?:src|test)\/[\w./-]+\.ts)`/g)) {
+	// `proseWithSpans`, not raw text: the path lives in a code span so spans must survive,
+	// but an HTML COMMENT must not — a path parked inside one renders nowhere and is not a
+	// reference, the same rule the citation scan follows one section down.
+	for (const [, referenced] of proseWithSpans(text).matchAll(/`((?:src|test)\/[\w./-]+\.ts)`/g)) {
 		if (await exists(referenced)) continue;
 		if (living) fail(file, `names ${referenced}, which does not exist`);
 		else historical.push(`${file} -> ${referenced}`);
 	}
 	// Every relative markdown link, of any shape — not just the `NNNN-slug.md` between
 	// ADRs. A link to `assets/diagram.svg` breaks exactly as loudly as a link to a note.
-	// Code spans are skipped for the same reason wikilinks are: inside backticks nothing
-	// renders as a link, so it is an example being quoted, not a reference being made.
-	// `<...>` is Markdown's way of putting a space in a destination, and this register is
-	// full of filenames with spaces — so the bracketed form is read whole, before the
-	// whitespace-delimited one. Capturing `[^)\s>]+` for both stopped at the first space and
-	// resolved `[x](<The quick filter on the board.md>)` as a file called `The`: a valid link
-	// **failed**. Every other hole in this file has been a false pass; this one blocks a
-	// legitimate note, which is the more expensive direction to get wrong.
-	for (const [, bracketed, bare] of withoutCode(text).matchAll(/\]\(\s*(?:<([^>]*)>|([^)\s]+))[^)]*\)/g)) {
-		const target = bracketed ?? bare;
-		if (/^[a-z][a-z0-9+.-]*:/i.test(target) || target.startsWith("#")) continue;
-		const [linkPath] = target.split("#");
-		if (!linkPath) continue; // a bare anchor into this same file
-		const resolved = path.join(path.dirname(file), decodeURIComponent(linkPath));
-		if (!(await exists(resolved))) fail(file, `links ${target}, which does not exist`);
+	// Which destinations are LOCAL, and how each form spells its target, is the parser's
+	// question now (`localLinks`): the hand-written matcher had to encode `<...>` for a
+	// destination with a space ahead of the whitespace-delimited form, and getting that
+	// order wrong resolved `[x](<The quick filter on the board.md>)` as a file called
+	// `The` — a legal link **failed**, which is the more expensive direction here.
+	for (const { href, target } of localLinks(text)) {
+		if (!(await exists(path.join(path.dirname(file), target)))) fail(file, `links ${href}, which does not exist`);
+	}
+}
+
+// ------------------------------------------------------------------- checked claims
+/**
+ * A behavioural claim may name the check that holds it, and this verifies the CITATION
+ * resolves: the file is there, and the test name is still inside it. It does not verify
+ * the claim — nothing in a markdown validator can, and `docs/issues/A claim in four notes
+ * and nothing to check it.md` argues at length why the candidates that try are all worse
+ * than the problem. This is not one of them: it compares a citation against a file, which
+ * is the same thing the wikilink and source-path rules above already do.
+ *
+ * What it buys is the step where the author OPENS the check. The claim it was built for
+ * — "the Deliverable key, states and done values fall back as one unit" — was written the
+ * same day a test asserting its opposite landed in this repository, and `npm run check`
+ * was green on both sides of it. It then spread to five notes before a reviewer read one
+ * of them. Nothing here would have caught the wrong sentence; the author going to fetch
+ * the test name would have.
+ *
+ * Two things it does that the source-path rule above cannot. It holds in a CLOSED note
+ * too — that rule lets a historical path slide for anything outside `requirements/` and
+ * `adrs/`, which is right for prose naming a file and wrong for a citation, since a
+ * citation claims the check is live. And it covers the root `README.md`, which is not in
+ * the register at all and is where the sentence this rule exists for was read by users.
+ *
+ * OPT-IN, deliberately: an unmarked claim is not checked. That is the by-name weakness
+ * this file spent fifteen rounds removing, taken back on purpose — the alternative is a
+ * gate with an opinion about every sentence in the register, which is the thing already
+ * refused. So the honest statement of what this delivers is narrow: **a citation that
+ * has rotted fails the build; a claim nobody cited is exactly as unchecked as before.**
+ *
+ * The MARKER is a parsed `strong` node (`markers`), never a pattern over the source, and
+ * that is what makes a document showing the convention different from one using it — in a
+ * code span, in an HTML comment, behind a backslash escape, all at once. The CITATION
+ * after it is read from `proseWithSpans`, because its path lives in a code span by design
+ * and blanking spans would blind the rule to every real one, while a citation inside a
+ * FENCE is an example (`docs/README.md` has one) and must not resolve. Offsets survive
+ * the blanking, so a marker's offset addresses that string directly.
+ *
+ * A citation is bounded by its BLOCK **and by the next marker**, so a malformed one cannot
+ * reach forward and adopt a path and a quoted phrase belonging to something else. The
+ * block half was a blank-line scan once, then a paragraph — which a marker in a GFM table
+ * cell does not have, so the scan ran to the end of the file from the most natural place
+ * to write a claim. `containerAt` answers it for any block that can hold one. The marker
+ * half was missing, and the register found it immediately:
+ * "one marker, one citation" put two of them in ONE paragraph, so mangling the first was
+ * not reported — its scan ran on to the second and resolved that instead, leaving the
+ * first claim reading as covered. Two citations in a row is the ordinary shape of the
+ * convention, so the ordinary shape was the blind spot.
+ *
+ * An unparseable marker is a failure of its own, not a skip. The one-regex first version
+ * excluded `\n` from the test name to stay bounded, so the first real citation written
+ * into the register — which Markdown had wrapped across two lines — matched nothing and
+ * went unchecked while `npm run docs` stayed green. A rule that quietly does nothing on
+ * input it cannot parse is worse than no rule, because it reads as a check.
+ */
+const MARKER = "Checked by";
+/**
+ * A CHECK, never an implementation. The first version reused the source-path rule's
+ * `(?:src|test)` alternation without asking whether it meant anything here, so
+ * ``**Checked by** `src/domain/settings.ts` — "resolveSettings"`` resolved: the file
+ * exists and contains that string, and a citation to the code a claim describes is the
+ * claim restated, not evidence for it. `eslint.config.mjs` is admitted beside `test/`
+ * because this repository's own answer to a category invariant is a lint rule rather than
+ * a test — "checked at the forbidden thing", in the root `CLAUDE.md` — so refusing it
+ * would make the convention unusable for exactly the checks it most wants cited.
+ *
+ * `.test.ts` and not any `.ts` under `test/`, because that directory holds the doubles and
+ * the fixture builders too: `test/helpers/register.ts` — "useCase" resolved, the file being
+ * there and the exported name being in it, and a citation nobody could open a test case
+ * from is the by-name weakness this rule exists to close. The suffix is not a convention
+ * borrowed from the file names either — `vitest.config.mts` runs `test/**\/*.test.ts`, so
+ * the spelling this admits is exactly the set of files that get executed.
+ */
+const CITATION = /^[^`]*`(test\/[\w./-]+\.test\.ts|eslint\.config\.mjs)`[^`"“]*(?:"([^"]+)"|“([^”]+)”)/;
+/**
+ * The WRAP only — a line break and the indentation after it — never every run of
+ * whitespace. Both halves of that were learned the hard way, one commit apart and in
+ * opposite directions. Flattening the SOURCE too let `it("the  thing works")` be named by
+ * a citation saying `the thing works`, a false pass in a rule about exactness. Flattening
+ * every run in the CITATION is the inverse: a name whose doubled space is deliberate,
+ * reproduced faithfully, was collapsed before the comparison and reported as stale.
+ *
+ * So: the citation is normalized for the one thing Markdown did to it and nothing else,
+ * and the source is not normalized at all, because nothing was done to it.
+ */
+const flat = (s) => s.replace(/\n[ \t]*/g, " ");
+for (const file of [...files, "README.md"]) {
+	// The root README is reached by name rather than by the walk, so its absence is a
+	// real possibility here in a way no `docs/` file's is — and a gate that CRASHED on a
+	// tree without one would take every other rule down with it, reporting nothing. The
+	// planted trees in `test/docs/` are exactly such a tree.
+	const text = texts.get(file) ?? ((await exists(file)) ? await readText(file) : "");
+	const spans = proseWithSpans(text);
+	// The markers are the PARSER's bold nodes, not a pattern over the source. Three
+	// constructs reached a text scan and each cost a patch — a code span naming the
+	// marker, an HTML comment parking a citation, a backslash escape showing it
+	// literally — and every one produced a failure on a correct document. A `strong`
+	// node is none of them by construction.
+	const found = markers(text, MARKER);
+	for (const marker of found) {
+		const owner = containerAt(text, marker.start);
+		const from = marker.end;
+		const next = found.map((m) => m.start).find((at) => at > marker.start);
+		// No container at all means the marker is somewhere this rule cannot bound — report
+		// it rather than scanning to the end of the file, which is how a malformed marker
+		// would reach forward and adopt the next citation's path and name.
+		const blockEnd = owner ? owner.end : from;
+		const cited = CITATION.exec(spans.slice(from, Math.min(next ?? blockEnd, blockEnd)));
+		if (!cited) {
+			fail(file, "has a **Checked by** with no `path.test.ts` and \"test name\" after it");
+			continue;
+		}
+		// Two delimiter pairs, each admitting the other inside it: a test name may CONTAIN a
+		// quote — `test/view/board.test.ts` has one naming a state `"constructor"` — and a
+		// single character class for both ends stopped at the inner one, captured a prefix,
+		// and reported a correct citation as stale.
+		const [, target, straight, curly] = cited;
+		const name = straight ?? curly;
+		// A path that climbs out of `test/` is not a test. `test/../src/domain/settings.ts`
+		// matched the pattern above — `[\w./-]+` admits `..` — and then resolved to the
+		// implementation, so quoting a function name off it passed as evidence. The pattern
+		// says which SPELLINGS it accepts; this says where the path may actually land, and
+		// only the second question can be asked of a normalized path.
+		if (path.posix.normalize(target) !== target) {
+			fail(file, `cites ${target}, which climbs out of the directory it names`);
+			continue;
+		}
+		if (!(await exists(target))) {
+			fail(file, `cites ${target}, which does not exist`);
+			continue;
+		}
+		// An EMPTY normalized name resolves against every file, because `includes("")` is
+		// always true — so `— "   "` read as a citation that checks out. The one false PASS
+		// this rule has had, and the shape is worth naming: a check whose comparison has a
+		// vacuous case reports success loudest exactly where it knows least.
+		const wanted = flat(name).trim();
+		if (wanted === "") {
+			fail(file, `cites ${target} with an empty test name`);
+			continue;
+		}
+		// A WHOLE quoted string in the target, not a substring of it anywhere. Free-text
+		// `includes` matched an identifier and a comment as readily as a name — `"resolveSettings"`
+		// resolved against the import — and, worse, survived the rename it exists to catch:
+		// extending a title past the cited phrase left the citation reading as live.
+		//
+		// The delimiter is what makes it whole, and that is as far as this goes: it is NOT a
+		// check that the string is an `it()` title, deliberately. This repository's citations
+		// name table-driven case labels (`runRejections`, whose titles are `reports %s`) and a
+		// lint message in `eslint.config.mjs`, neither of which is a test title anywhere in its
+		// file — a rule that demanded one would refuse correct citations, which is the direction
+		// held more expensive here. So a `describe` name or a case label passes, and a phrase
+		// that is nobody's quoted string does not.
+		// Compared against BOTH spellings, because a name is written in prose and read out of
+		// source: a citation of `doesn't retry` is looking for `it('doesn\'t retry', …)`, where
+		// the delimiter forced an escape the register has no reason to carry. Checking only
+		// the literal form fails a citation that is exactly right — the false-failure
+		// direction, and one nobody would suspect the CHECK of.
+		// The CITATION is flattened, the SOURCE is not, and the asymmetry is the point: a
+		// citation wraps because Markdown wrapped it, and a quoted string in source means
+		// exactly the whitespace it holds. Flattening both let a file's `it("the  thing
+		// works")` be named by a citation saying `the thing works` — a false pass in a rule
+		// whose whole job is telling a live name from a renamed one.
+		const source = await readText(target);
+		const escaped = (q) => wanted.replaceAll("\\", "\\\\").replaceAll(q, "\\" + q);
+		if (!["'", '"', "`"].some((q) => source.includes(q + wanted + q) || source.includes(q + escaped(q) + q))) {
+			fail(file, `cites "${wanted}", which ${target} does not name`);
+		}
 	}
 }
 
@@ -426,7 +581,7 @@ for (const [, note] of notes) {
 	// itself; `between` did not, so a `## Use case` quoted in an example would bound the
 	// block at the wrong place and every answer drawn from that slice would be about the
 	// wrong region — a false failure rather than a false pass, and just as wrong.
-	const text = withoutCode(texts.get(note.file));
+	const text = collapsed(texts.get(note.file));
 	checkSections(note.file, text, USE_CASE_SECTIONS, "use case");
 	// The whole opening sentence, not just its first word. `**As**` alone would accept a
 	// note that never says what the actor wants or why — the two halves that make it a use
@@ -516,7 +671,7 @@ for (const [, note] of notes) {
 	// Whole-line, via the same matcher every other section rule uses: `## How to check,
 	// properly` heads an investigation into a CI gate that never ran, and a prefix match
 	// sweeps it into a checklist of things a person is supposed to do in a live vault.
-	const swept = sectionHits(withoutCode(text), "## How to check").length > 0;
+	const swept = sectionHits(text, "## How to check").length > 0;
 	const cadence = frontmatter(text)?.field("cadence");
 	if (swept && cadence === null) {
 		fail(note.file, "carries `## How to check` but no `cadence:` — the release sweep cannot place it");
@@ -655,7 +810,7 @@ for (const link of chains) {
 }
 // Code stripped: the index's job is to *link* every record, and a filename quoted inside
 // backticks is an example being shown, not a row pointing anywhere.
-const adrIndex = withoutCode(texts.get(path.join(DOCS, "adrs", "README.md")) ?? "");
+const adrIndex = prose(texts.get(path.join(DOCS, "adrs", "README.md")) ?? "");
 for (const file of adrFiles) {
 	if (!adrIndex.includes(`(${path.basename(file)})`)) fail("docs/adrs/README.md", `does not list ${path.basename(file)}`);
 }
@@ -712,8 +867,8 @@ const sources = await collectTs("src", (n) => n.endsWith(".ts"));
  */
 const specified = new Set(
 	[
-		...[...notes.values()].filter((n) => n.type === "PBI").map((n) => sectionBody(texts.get(n.file), "## Where it lives")),
-		...adrFiles.map((f) => sectionBody(texts.get(f), "## Decision")),
+		...[...notes.values()].filter((n) => n.type === "PBI").map((n) => sectionBody(texts.get(n.file), "Where it lives")),
+		...adrFiles.map((f) => sectionBody(texts.get(f), "Decision")),
 	]
 		.flatMap((body) => body.match(/[\w./-]+/g) ?? [])
 		.map((token) => token.replace(/[.-]+$/, ""))
@@ -723,6 +878,103 @@ for (const file of sources) {
 	// Notes write `/`; `collectTs` returns the platform separator. The old substring check
 	// had the same split and nobody had run this on Windows to find out.
 	if (!specified.has(file.split(path.sep).join("/"))) fail("docs", `no use case or ADR specifies ${file}`);
+}
+
+// ------------------------------------------------- the documented hierarchy IS the gate's
+/**
+ * `docs/README.md`'s hierarchy table against `LEGAL_CHILDREN`, in both directions.
+ *
+ * The README calls that table the authoritative statement of every legal pair and says
+ * this script enforces it — and until now it enforced the register against
+ * `LEGAL_CHILDREN` while nothing held `LEGAL_CHILDREN` to the table. So `Deliverable`
+ * reached the plugin, then reached this gate, and reached the table only when a reviewer
+ * read both: three surfaces, each complete on its own. The rule was written as prose
+ * saying "add it in all three places", which is the shape this register keeps proving does
+ * not hold — a comment stating a rule is not a check.
+ *
+ * Now it is one. A type in the table and not in the gate fails; a type in the gate and not
+ * in the table fails; a children list that differs either way fails. The table's PARENT
+ * column is checked as the inverse of the same map, because a contributor reads that
+ * column first and an inverse nobody derives is a second place to be wrong.
+ */
+const HIERARCHY_HEADINGS = ["Type", "Parent may be", "Children may be"];
+const readme = await readFile(path.join(DOCS, "README.md"), "utf8");
+const hierarchies = tablesWith(readme, HIERARCHY_HEADINGS);
+if (hierarchies.length === 0) {
+	fail("docs/README.md", `no table headed ${HIERARCHY_HEADINGS.join(" | ")} — the hierarchy is documented nowhere`);
+} else if (hierarchies.length > 1) {
+	// Checking the first would validate one document while a reader sees two — the
+	// duplicate-ROW defect one level up, found in the same review.
+	fail("docs/README.md", `${hierarchies.length} tables headed ${HIERARCHY_HEADINGS.join(" | ")} — the hierarchy is documented twice`);
+} else {
+	const hierarchy = hierarchies[0];
+	// A row may name several types at once (`Issue` / `Bug` / `Deliverable` share one), so
+	// the table is flattened to the same type → children shape the gate holds.
+	const documented = new Map();
+	const documentedParents = new Map();
+	for (const [index, cells] of hierarchy.entries()) {
+		const [types, parents, children] = cells;
+		// A short row does NOT get padded — mdast reports the cells that are there — so the
+		// destructuring above binds `undefined` and the read below threw a TypeError, taking
+		// the whole gate down with no report at all. Measured: `| \`Feature\` | \`Epic\` |`
+		// crashed `npm run docs` rather than failing it, which is the shape
+		// `docs/issues/A gate that did not run looks like one that passed.md` is about. The
+		// row is reported and then ABANDONED, because everything after this reads three cells.
+		if (cells.length !== HIERARCHY_HEADINGS.length) {
+			fail("docs/README.md", `hierarchy table row ${index + 1} has ${cells.length} cells, not ${HIERARCHY_HEADINGS.length}`);
+			continue;
+		}
+		for (const [column, cell] of cells.entries()) {
+			// A name written WITHOUT backticks disappears: `code` reports the spans a cell holds,
+			// so a loop over them never sees it and the cell reads as agreeing with the gate.
+			// `| Spike | Epic | *(nothing)* |` left the table advertising a type the gate refuses,
+			// and `` `Feature`, …, Spike `` did the same one column over. Both measured against the
+			// real register before being fixed; both passed.
+			//
+			// CAPITALISATION is the rule, which is as far as this goes without reading English:
+			// every type is a capitalised word and the prose here is lowercase connective tissue.
+			// A type spelled in all-lowercase prose still slips through, and so does a name hidden
+			// in markup — struck through, wrapped in `<del>`, quoted in a blockquote. Those were
+			// each closed and then deliberately REMOVED: they defend against a maintainer
+			// obfuscating the register rather than mistyping it, which is not what this table is
+			// for, and the tighter rules would have false-alarmed on the first legitimate sentence
+			// anyone added to it. `docs/issues/A rule chased past the mistakes it prevents.md`.
+			const loose = cell.text.match(/\p{Lu}[\p{L}\p{M}]*/gu);
+			if (loose) {
+				fail("docs/README.md", `hierarchy table row ${index + 1} column ${column + 1} has ${loose.join(", ")} outside a code span`);
+			}
+		}
+		// Distinct from the rule above, and not covered by it: a cell holding no name at all.
+		if (types.code.length === 0) fail("docs/README.md", `hierarchy table row ${index + 1} names no type in code`);
+		for (const type of types.code) {
+			// A second row for a type is not a merge, it is a contradiction — and flattening
+			// with `set` would keep the last one and call the table consistent. Found in
+			// review: a stale `Deliverable` row left above the grouped
+			// `Issue` / `Bug` / `Deliverable` row would have passed this check silently,
+			// which is the false pass this whole rule exists to remove.
+			if (documented.has(type)) fail("docs/README.md", `the hierarchy table gives ${type} more than one row`);
+			documented.set(type, new Set(children.code));
+			documentedParents.set(type, new Set(parents.code));
+		}
+	}
+	const named = (set) => [...set].sort().join(", ") || "(nothing)";
+	for (const type of new Set([...documented.keys(), ...Object.keys(LEGAL_CHILDREN)])) {
+		const table = documented.get(type);
+		const gate = LEGAL_CHILDREN[type];
+		if (!table) fail("docs/README.md", `the hierarchy table omits ${type}, which LEGAL_CHILDREN allows`);
+		else if (!gate) fail("docs/README.md", `the hierarchy table names ${type}, which LEGAL_CHILDREN does not allow at all`);
+		else if (named(table) !== named(gate)) {
+			fail("docs/README.md", `${type} may hold ${named(gate)}, and the hierarchy table says ${named(table)}`);
+		}
+	}
+	// The inverse: X may parent Y exactly when Y is one of X's legal children.
+	for (const [type, parents] of documentedParents) {
+		if (!LEGAL_CHILDREN[type]) continue;
+		const real = new Set(Object.keys(LEGAL_CHILDREN).filter((p) => LEGAL_CHILDREN[p].has(type)));
+		if (named(parents) !== named(real)) {
+			fail("docs/README.md", `${type} may hang from ${named(real)}, and the hierarchy table says ${named(parents)}`);
+		}
+	}
 }
 
 // --------------------------------------------------------------------------- report

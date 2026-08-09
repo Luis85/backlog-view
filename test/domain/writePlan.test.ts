@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { BacklogItem } from '../../src/domain/model';
 import { buildModel } from '../../src/domain/model';
-import { computeDropWrites, computeInitWrites, computeTypeChanges, DropTarget, ORDER_SPACING } from '../../src/domain/writePlan';
+import {
+	computeDropWrites,
+	computeInitWrites,
+	computeTypeChanges,
+	DropTarget,
+	ORDER_SPACING,
+} from '../../src/domain/writePlan';
 import { defaultSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
 

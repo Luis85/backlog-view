@@ -33,9 +33,9 @@ a node test that did would be measuring the runner.
   is resolved) → `BacklogItem` (+ levels, depth, `focusRoot`, rollups). A field exists
   only once the phase that owns it has run, so a signature states which fields are real
   and the compiler enforces it — this used to be ten placeholder values in `addItem` and
-  a request that readers remember. Only `BacklogItem` leaves this module, and it still
-  carries all 28 fields, so nothing downstream knows the difference. **Adding a field
-  means choosing its phase**, which is the question that was easy to skip before.
+  a request that readers remember. Only `BacklogItem` leaves this module, so nothing
+  downstream knows the difference. **Adding a field means choosing its phase**, which is
+  the question that was easy to skip before.
   Promotion is an in-place assertion in `linkAll` and `assignAll`, each followed
   immediately by the loop that fills every field it claims: the graph is cyclic, so a
   phase cannot rebuild its items without rebuilding every reference to them. Those two
@@ -108,7 +108,7 @@ a node test that did would be measuring the runner.
   deletes all of that, and every level rule now has exactly one list to hold for. A note
   typed something else is still handled — it keeps its name and carries the ladder through,
   the `Bugfix` case below.
-- **Extra types** (`EXTRA_TYPES`, `Issue` and `Bug`) are declared types that are
+- **Extra types** (`EXTRA_TYPES` — `Issue`, `Bug` and `Idea`) are declared types that are
   NOT rungs — `itemTypes.ts` owns them. The ladder cannot express "a Bug holds Tasks
   wherever it hangs", because every ladder rule is "one rung below the parent", so an
   extra type's rank is a property of the TYPE: `EXTRA_TYPE_RANK` (the rung whose children

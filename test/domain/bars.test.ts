@@ -3,7 +3,7 @@ import { FakeVault } from '../helpers/vault';
 import { buildModel } from '../../src/domain/model';
 import { resolveSettings } from '../../src/domain/settings';
 import { FakeViewConfig } from '../helpers/vault';
-import { barHolds, placeItem, statedEnds, withoutEnds } from '../../src/domain/bars';
+import { barHolds, deriveBars, placeItem, statedEnds, timelineRows, withoutEnds } from '../../src/domain/bars';
 
 const DATE_AXIS = { startProperty: 'note.start', targetProperty: 'note.target' };
 
@@ -77,6 +77,79 @@ describe('placeItem', () => {
 			kind: 'shelf',
 			reason: 'Target date precedes the start date',
 		});
+	});
+});
+
+describe('timelineRows', () => {
+	/** The bars of a whole vault, in row order, with the named paths shut. */
+	function rowsOf(vault: FakeVault, collapsed: string[] = []) {
+		const built = model(vault);
+		const bars = deriveBars([...built.model.results]).bars;
+		return timelineRows(bars, (path) => collapsed.includes(path));
+	}
+
+	function nested(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, start: '2026-08-01', target: '2026-12-01' } });
+		vault.addFile('Feature.md', {
+			frontmatter: { type: 'Feature', order: 10, start: '2026-08-05', target: '2026-09-01' },
+			parentLink: 'Epic',
+		});
+		vault.addFile('PBI.md', {
+			frontmatter: { type: 'PBI', order: 10, start: '2026-08-06', target: '2026-08-20' },
+			parentLink: 'Feature',
+		});
+		return vault;
+	}
+
+	it('marks the rows that have a bar below them and leaves the rest leaves', () => {
+		const rows = rowsOf(nested());
+
+		expect(rows.map((row) => [row.bar.item.title, row.hasChildren])).toEqual([
+			['Epic', true],
+			['Feature', true],
+			['PBI', false],
+		]);
+	});
+
+	it('hides a collapsed row’s WHOLE subtree, not only its children', () => {
+		const rows = rowsOf(nested(), ['Epic.md']);
+
+		expect(rows.map((row) => row.bar.item.title)).toEqual(['Epic']);
+		// The grandchild goes with the child: hiding is by ancestry, so a level with no
+		// bar of its own between them cannot let one back through.
+		expect(rows[0].collapsed).toBe(true);
+	});
+
+	it('keeps the chevron on the row that is collapsed', () => {
+		// Asked of the bars derived BEFORE any were hidden. Computed from what is left,
+		// a collapsed row would have no children to have and its own chevron would
+		// vanish the moment it was used — nothing left to open it with.
+		const rows = rowsOf(nested(), ['Feature.md']);
+
+		expect(rows.map((row) => [row.bar.item.title, row.hasChildren, row.collapsed])).toEqual([
+			['Epic', true, false],
+			['Feature', true, true],
+		]);
+	});
+
+	it('reaches through a parent the grid did not draw', () => {
+		// The Feature states no dates and none of its children's evidence reaches it
+		// (its own child is a marker, which is never evidence), so it shelves — and the
+		// Epic above it still owns the milestone row below it.
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, start: '2026-08-01', target: '2026-12-01' } });
+		vault.addFile('Feature.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
+		vault.addFile('Ship.md', {
+			frontmatter: { type: 'Milestone', order: 10, target: '2026-09-30' },
+			parentLink: 'Feature',
+		});
+
+		expect(rowsOf(vault).map((row) => [row.bar.item.title, row.hasChildren])).toEqual([
+			['Epic', true],
+			['Ship', false],
+		]);
+		expect(rowsOf(vault, ['Epic.md']).map((row) => row.bar.item.title)).toEqual(['Epic']);
 	});
 });
 

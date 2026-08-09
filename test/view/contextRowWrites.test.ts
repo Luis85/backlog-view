@@ -178,8 +178,13 @@ describe('write safety with context rows, across every entry point', () => {
 
 	function stressView() {
 		const vault = new FakeVault();
-		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active', tags: ['ctx'] } });
-		vault.addFile('Feature A.md', { frontmatter: { type: 'Feature', order: 10, tags: ['ctx'] }, parentLink: 'Epic' });
+		vault.addFile('Epic.md', {
+			frontmatter: { type: 'Epic', order: 10, status: 'Active', tags: ['ctx'], risk: '1 - High' },
+		});
+		vault.addFile('Feature A.md', {
+			frontmatter: { type: 'Feature', order: 10, tags: ['ctx'], risk: '3 - Low' },
+			parentLink: 'Epic',
+		});
 		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: 20, tags: ['a'] }, parentLink: 'Epic' });
 		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', status: 'New' }, parentLink: 'Feature A' });
 		// The context row in the middle is done and the result below it is not, so
@@ -187,7 +192,7 @@ describe('write safety with context rows, across every entry point', () => {
 		vault.addFile('Mid.md', {
 			// It also DECLARES a prerequisite: an excluded note may be named and may not
 			// do the naming, so this list must produce no edge and no mark at all.
-			frontmatter: { type: 'PBI', order: 10, status: 'Done', tags: ['ctx'], dependsOn: 'Task' },
+			frontmatter: { type: 'PBI', order: 10, status: 'Done', tags: ['ctx'], risk: '2 - Normal', dependsOn: 'Task' },
 			parentLink: 'Feature B',
 		});
 		// And a result naming a context row, which is the allowed direction.
@@ -207,6 +212,10 @@ describe('write safety with context rows, across every entry point', () => {
 			horizonProperty: 'note.horizon',
 			startProperty: 'note.start',
 			targetProperty: 'note.due',
+			// Risk is a write surface too, so Set risk and Clear risk are entry points
+			// this sweep drives. The context rows each hold a level, so the removal is
+			// offered on them and not merely withheld for having nothing to remove.
+			riskProperty: 'note.risk',
 			dependsOnProperty: 'note.dependsOn',
 		});
 		// The tag column is a write surface too — drive it like every other one.

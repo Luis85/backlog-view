@@ -16,6 +16,7 @@ import {
 	BacklogSettings,
 	isDoneValue,
 	optionalKeyFor,
+	resolvedDeliverableStateKey,
 	vaultFolder,
 } from '../domain/settings';
 import { DateSpan, daysBetween, reversedSpan } from '../domain/timeline';
@@ -203,8 +204,16 @@ function applyInto(
 	// The stateKey may be unset (progress tracking off) — never write to an empty key.
 	if (write.removeStateKey && settings.stateKey) delete fm[settings.stateKey];
 	else if (write.state !== undefined && settings.stateKey) setOwn(fm, settings.stateKey, write.state);
+	// The RESOLVED key — falls back to the requirements workflow's own `stateKey` when
+	// the Deliverable one is unset, so a card that looks movable on the Deliverables
+	// board (the model read through the same fallback, `model.ts`) actually lands bytes
+	// somewhere rather than resolving to the empty key `optionalKeyFor` would give here.
+	const deliverableStateKey = resolvedDeliverableStateKey(settings);
+	if (write.removeDeliverableStateKey && deliverableStateKey) delete fm[deliverableStateKey];
+	else if (write.deliverableState !== undefined && deliverableStateKey) setOwn(fm, deliverableStateKey, write.deliverableState);
 	applyStamps(fm, settings, write, leaving);
 	applyAxis(fm, settings, write);
+	applyRisk(fm, settings, write);
 	// Stubs last, and only where the LIVE note still has no such key. Presence is asked
 	// here rather than trusted from the plan for the reason the tag delta and the start
 	// stamp are: the row that planned this can be a refresh behind the note, and a value
@@ -268,6 +277,24 @@ function applyAxis(fm: Record<string, unknown>, settings: BacklogSettings, write
 		if (!live.invalid && live.value !== null && sameCivil(live.value, readDate(value).value)) continue;
 		setOwn(fm, key, mergeDate(ownValue(fm, key), value));
 	}
+}
+
+/**
+ * The item's risk level — the THIRD shape of this module's two standing rules: never a
+ * key no property names, and a null REMOVES rather than blanks, because a note nobody has
+ * judged carries no risk key at all.
+ *
+ * It is a statement of those rules rather than a call to a shared helper, and
+ * deliberately so: the state key guards inline, the axis keys go through `axisEntries`,
+ * and a helper general enough to cover all three would have to carry the axis's civil-date
+ * equality and datetime merge past the two properties that must not have them. Three
+ * short statements are cheaper to read than one parameterised one. The root `CLAUDE.md`
+ * names this trade-off; it changes with any fourth property that makes extraction pay.
+ */
+function applyRisk(fm: Record<string, unknown>, settings: BacklogSettings, write: ItemWrite): void {
+	if (write.risk === undefined || !settings.riskKey) return;
+	if (write.risk === null) delete fm[settings.riskKey];
+	else setOwn(fm, settings.riskKey, write.risk);
 }
 
 /**
@@ -640,7 +667,6 @@ export async function createBacklogItem(app: App, settings: BacklogSettings, spe
 function wikilinkTo(app: App, target: TFile, sourcePath: string): string {
 	return '[[' + app.metadataCache.fileToLinktext(target, sourcePath) + ']]';
 }
-
 
 function sanitizeTitle(title: string): string {
 	const cleaned = title

@@ -139,6 +139,45 @@ export default defineConfig({
 			// branches moved at all, and it rounds down to the 93.9 already recorded, so
 			// none of the four move.
 			//
+			// The timeline-disclosure increment (`timelineRows` in the domain, the row's
+			// chevron and its menu path, and the two dated-axis stylesheet fixes) measured
+			// 98.21/93.99/99.46/99.37. Only statements rounds down to a new decimal (98.2);
+			// the other three round down to the figures already recorded above and stay put.
+			// Branches is worth a note: mid-increment it measured 94.0038, and taking the
+			// 94.0 that rounds down from would have failed the very next run — sharing the
+			// tree's chevron with the new timeline row deleted six branches along with the
+			// duplicate, which is a smaller denominator and a better codebase. The figure to
+			// record is the one the finished increment measures.
+			//
+			// The risk-management increment (the risk row in the optional-property table,
+			// its plan, its writer, and the Set risk menu) measured 98.22/94.05/99.47/99.38
+			// against a 98.21/94.00/99.46/99.37 baseline at the commit before it. Three of
+			// the four round down to figures already recorded above; branches rounds down to
+			// a new decimal (94.0, up from 93.9). Two things are worth knowing about that
+			// one. The BASELINE was already 94.0000 exactly — the increment before this left
+			// its threshold at 93.9 — so what this move records is a floor that had already
+			// been earned, plus 0.05 of genuinely new margin. And 0.05 of 3180 branches is
+			// under two branches, which is the thinnest margin this file has taken since the
+			// 94.0038 the note above refuses; it is taken because the rule here is that
+			// thresholds only ever go up, and left at 93.9 the floor would go on describing
+			// a tree two increments behind. The next increment to add an undriven branch
+			// will fail on it, which is what a floor is for.
+			//
+			// It did, immediately, and the record is worth keeping because the floor worked
+			// exactly as that paragraph said it would. The `Idea` increment measured
+			// 98.23/93.99/99.47/99.38 on merging the branch above: 93.99 against a 94.0
+			// floor, failing in CI while passing locally, because the branch had been cut
+			// before the floor moved. The two branches responsible were both DEAD, and both
+			// were this increment's own — `andList`'s short-list arm, whose only callers
+			// passed a three-name list, and `parentsOf`'s "not a root" arm, which became
+			// unreachable the moment `childTypeChoices(null)` started returning the whole
+			// vocabulary. Neither was covered by a test; both were removed, one by giving
+			// the arm a real caller (`MARKER_TYPES`, one name) and one by deleting a
+			// condition that could no longer be false. That is 94.05 on a denominator two
+			// smaller, and every threshold stays: all four round down to the figures already
+			// recorded. The point for whoever reads this next is the shape, not the numbers
+			// — a coverage failure on this repository is first a question about which branch
+			// nothing can take, and only then a question about a missing test.
 			// The arrows-between-bars increment (`dependencyAnchor` beside `barGeometry`,
 			// and the arrow layer drawn over the bars a placement pass already produced)
 			// measured 98.27/93.97/99.48/99.41 (5007/5095, 3122/3322, 1168/1174, 4218/4243)
@@ -156,7 +195,7 @@ export default defineConfig({
 			// above, so only branches moves.
 			thresholds: {
 				statements: 98.2,
-				branches: 94,
+				branches: 94.0,
 				functions: 99.4,
 				lines: 99.4,
 			},

@@ -1,19 +1,37 @@
 filters:
   and:
-    - "file.inFolder(\"docs\")"
+    - file.inFolder("docs")
     - file.ext == "md"
 views:
   - type: product-backlog
     name: Backlog
-    homeFolder: "docs"
+    order:
+      - status
+      - priority
+      - area
+      - tags
+    homeFolder: docs
     stateProperty: note.status
-    stateValues: "Open, Active, Done"
-    doneValues: "Done, Dropped"
+    stateValues: Open, Active, Done
+    doneValues: Done, Dropped
     targetProperty: note.due
     startProperty: note.start
     horizonProperty: note.horizon
+    deliverableStateValues: Open, Active, Done
+    startedDateProperty: note.started
+    finishedDateProperty: note.finished
+    showCompleted: true
+  - type: table
+    name: Data Quality
+    groupBy:
+      property: type
+      direction: ASC
     order:
-      - note.status
-      - note.priority
-      - note.area
-      - note.tags
+      - type
+      - parent
+      - file.name
+      - status
+      - area
+      - tags
+    columnSize:
+      note.area: 152

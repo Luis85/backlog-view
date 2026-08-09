@@ -96,6 +96,35 @@
 	background-image: linear-gradient(var(--pbl-row-tint), var(--pbl-row-tint));
 }
 
+/* The row separator belongs to the CELLS, not to the row. A row sets no `position`, so a
+   border on it paints below the today line (z-index 1) and the milestone lines (0) — and
+   the sticky lead (z-index 2) hides those lines only where its own background paints, not
+   in the 1px band between one lead and the next. That band was the ROW's border, so every
+   full-height line struck a dash through the sticky column at each row boundary. Drawn by
+   the lead itself it is covered like everything else that column hides. Row height is
+   unchanged: a stretched flex item fills the line with its outer size, so the border moves
+   from around the cells to inside them. */
+.pbl-timeline-row > .pbl-timeline-lead,
+.pbl-timeline-row > .pbl-timeline-track {
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+/* Selection, drawn by those same cells. `.pbl-card.pbl-selected`'s ring is a box-shadow
+   OUTSIDE the row's border box and in the row's own non-positioned layer, so its bottom
+   edge falls in the next row's band — where that row's sticky lead paints over it and the
+   ring reads as cut off along the lead column. The cells draw it in the layers that were
+   doing the covering: the bottom edge is the separator above turning accent, the top edge
+   an inset shadow, so nothing moves. Specificity, not order. */
+.pbl-card.pbl-timeline-row.pbl-selected {
+	box-shadow: none;
+}
+
+.pbl-timeline-row.pbl-selected > .pbl-timeline-lead,
+.pbl-timeline-row.pbl-selected > .pbl-timeline-track {
+	border-bottom-color: var(--interactive-accent);
+	box-shadow: inset 0 1px 0 var(--interactive-accent);
+}
+
 /* max-width + 2×padding = LABEL_RESERVE_PX in render/timeline.ts — the reserve the
    side flip is decided against. Change them together. */
 .pbl-bar-label {

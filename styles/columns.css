@@ -124,9 +124,19 @@
 	opacity: 1;
 }
 
-.pbl-add .svg-icon {
+.pbl-add .svg-icon,
+.pbl-add-spacer .svg-icon {
 	width: var(--icon-s);
 	height: var(--icon-s);
+}
+
+/* The header, and a row that can hold nothing, reserve the add button's width without
+   drawing one (`renderAddSpacer`) — the columns are anchored to the row's end, so the
+   width is what keeps them aligned across rows. `visibility`, not `opacity`: the row
+   hover above reveals anything merely transparent, and a plus that appears on a row
+   which cannot create is worse than a misaligned column. */
+.pbl-add-spacer {
+	visibility: hidden;
 }
 
 /* A touch user can produce neither the hover above nor a tab stop (these buttons are

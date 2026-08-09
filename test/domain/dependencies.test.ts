@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { dependentsClosure } from '../../src/domain/dependencies';
 import { BacklogItem, buildModel } from '../../src/domain/model';
 import { defaultSettings } from '../../src/domain/settings';
+import { settingsWith } from '../helpers/settings';
 import { FakeVault } from '../helpers/vault';
 
 /**
@@ -13,7 +14,7 @@ import { FakeVault } from '../helpers/vault';
  * asked of the resolver at all.
  */
 
-const settings = { ...defaultSettings(), dependsOnKey: 'dependsOn' };
+const settings = settingsWith({ dependsOnKey: 'dependsOn' });
 
 /** Prerequisite titles for one path, so a test reads as the sentence it is checking. */
 function waitsFor(model: { byPath: Map<string, BacklogItem> }, path: string): string[] {

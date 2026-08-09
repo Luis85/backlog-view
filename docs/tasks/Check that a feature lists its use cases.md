@@ -9,7 +9,7 @@ closed: 2026-08-01
 created: 2026-08-01
 source: drift found while syncing PR #27 against main
 files:
-  - docs-check.mjs
+  - scripts/docs-check.mjs
   - docs/README.md
 ---
 

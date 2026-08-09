@@ -1,19 +1,26 @@
 import { setTooltip } from 'obsidian';
 import { RowContext } from './columns';
 import { createCard, wireCardActivation } from './board';
-import { renderBadge, renderTitleText } from './rows';
+import { renderBadge, renderChevron, renderTitleText } from './rows';
+import { dependencyNote, NO_CONFLICTS, renderDependencyArrows } from './timelineArrows';
 import { CardDragController } from '../interactions/cardDrag';
 import { effectiveLeadWidth, renderLeadResize } from '../interactions/timelineLeadResize';
-import { DrawnColors } from '../host';
+import { BacklogViewHost, DrawnColors } from '../host';
 import { BacklogItem } from '../../domain/model';
-import { barHolds, ShelfCard, TimelineBar } from '../../domain/bars';
-import { DependencyArrow, dependencyArrows } from '../../domain/dependencies';
+import { barHolds, ShelfCard, TimelineBar, TimelineRow } from '../../domain/bars';
+import { dependencyArrows } from '../../domain/dependencies';
 import { isMarkerType } from '../../domain/itemTypes';
-import { stateColorSlot } from '../../domain/settings';
+import {
+	ownWorkflowReading,
+	paletteFor,
+	paletteSlot,
+	stateKeyFor,
+	StatePalette,
+	WorkflowReading,
+} from '../../domain/board';
 import {
 	BarGeometry,
 	barGeometry,
-	dependencyAnchor,
 	daysBetween,
 	formatCivil,
 	MIN_BAR_PX,
@@ -68,7 +75,6 @@ const OUTSIDE_MARK_PX = 10;
  * [[Arrows between bars]]): two ends with almost no room to route still draw, and a
  * length rounded to zero would report nothing.
  */
-const MIN_ARROW_PX = 4;
 
 /** What the timeline pass hands back: the rows, where today sits, and what scrolls. */
 export interface TimelineRender {
@@ -116,12 +122,12 @@ export interface TimelineDrawing {
 	/** The controller every bar's grips are wired through — the same one the shelf uses. */
 	dnd: CardDragController;
 	/**
-	 * The vocabulary `stateColorSlot` indexes a bar's colour into — passed down by
+	 * The vocabularies `paletteSlot` indexes a bar's colour into — passed down by
 	 * `renderRoadmap`, which already holds the non-null model this axis draws from,
 	 * rather than re-read here off `ctx.host.model`: a bar exists only because a model
 	 * did, so a second null check here would guard nothing reachable.
 	 */
-	observedStates: string[];
+	palettes: StatePalette[];
 	/**
 	 * The pane's own measured width, in pixels — `renderRoadmap`'s `treeEl.clientWidth`,
 	 * the same element and the same property `backlogView.ts`'s `ResizeObserver` branch
@@ -148,10 +154,13 @@ export interface TimelineDrawing {
 export function renderTimeline(
 	ctx: RowContext,
 	containerEl: HTMLElement,
-	bars: TimelineBar[],
+	rows: TimelineRow[],
 	drawing: TimelineDrawing,
 ): TimelineRender {
-	const { today, scale, dnd, observedStates, available, shelf } = drawing;
+	const { today, scale, dnd, palettes, available, shelf } = drawing;
+	// What a collapsed row hides, it hides from the whole grid: the window is the drawn
+	// spans, exactly as it already is for the spans hiding completed work removes.
+	const bars = rows.map((row) => row.bar);
 	const window = timelineWindow(bars.map((bar) => bar.span), today);
 	// Resolved ONCE, here, and threaded everywhere `TIMELINE_LEAD_PX` used to be read
 	// directly: the CSS width below and the TS arithmetic that places the today line,
@@ -217,12 +226,12 @@ export function renderTimeline(
 		scroller: grid,
 		dnd,
 		tracks,
-		observedStates,
+		palettes,
 		conflictedPrereqs: dependencies.conflicts,
 	};
 	const drawn: DrawnColors = { done: false, milestone: milestoneLines, accent: false };
-	bars.forEach((bar, index) => {
-		const { row, colors } = renderBarRow(ctx, mounts, window, bar, scale);
+	rows.forEach((entry, index) => {
+		const { row, colors } = renderBarRow(ctx, mounts, window, entry, scale);
 		if (colors.done) drawn.done = true;
 		if (colors.milestone) drawn.milestone = true;
 		if (colors.accent) drawn.accent = true;
@@ -370,124 +379,6 @@ function renderMilestoneLines(
 }
 
 /**
- * One arrow per drawable dependency edge, from the prerequisite's end to the
- * dependent's start — `Arrows between bars`' main flow. `dependencyArrows` has
- * already decided WHICH pairs have two bars to draw between (1a-1d); this asks only
- * where, and only of the edges its own window can still see — `dependencyAnchor`
- * returns null for an edge lying wholly outside the drawn window (1a's other half,
- * a render-time fact the domain layer never asked), and that edge draws nothing.
- *
- * The X axis is the grid's own day arithmetic, the established idiom. The Y axis is
- * not: two different items' rows have no day-based answer, so it is read off the ROWS
- * THEMSELVES once they exist, in the same coordinate space `content` positions
- * everything else in — a guessed row height is exactly the kind of baseline
- * `test/CLAUDE.md`'s card-children episode warns against, and jsdom cannot check
- * either one (every `getBoundingClientRect` here is zeros; a real vault is what
- * confirms the picture, `docs/requirements/Smoke test the roadmap.md`).
- *
- * One element per edge (4a), never one per pair of rows the window happens to draw —
- * asked once, over `dependencyArrows`' own list, never a walk of `bars` squared.
- * Nothing here is focusable and nothing is written. The arrow's OWN conflict styling
- * is asked of `.conflict` exactly as `dependencyArrows` computed it, never re-derived
- * here — but the dependent's ROW is no longer marked from this loop: `renderBarRow`
- * marks it from `conflictedPrereqs`, the same map this function's own `arrows` came
- * from, so the row states the conflict whether or not this loop found room to draw
- * it (concern 2 of `Arrows between bars`' Task 3 — a mark this loop applied only
- * survived the window; the row's own class must not).
- */
-function renderDependencyArrows(
-	mounts: { content: HTMLElement; tracks: Map<string, HTMLElement> },
-	window: TimelineWindow,
-	arrows: DependencyArrow[],
-	ruler: { scale: TimelineScale; leadWidth: number },
-): void {
-	if (arrows.length === 0) return;
-	const { content, tracks } = mounts;
-	const { scale, leadWidth } = ruler;
-	const contentTop = content.getBoundingClientRect().top;
-	// Every rect this layer needs is read here, before any arrow element exists — the
-	// write pass below only creates elements, never reads a rect, so the browser never
-	// has to recalculate style+layout mid-loop for a DOM this same loop just mutated.
-	const specs: { conflict: boolean; anchor: { fromDay: number; toDay: number }; fromRect: DOMRect; toRect: DOMRect }[] =
-		[];
-	for (const arrow of arrows) {
-		const anchor = dependencyAnchor(window, arrow.from.span, arrow.to.span);
-		const fromRow = tracks.get(arrow.from.item.file.path)?.parentElement;
-		const toRow = tracks.get(arrow.to.item.file.path)?.parentElement;
-		if (!anchor || !fromRow || !toRow) continue;
-		specs.push({
-			conflict: arrow.conflict,
-			anchor,
-			fromRect: fromRow.getBoundingClientRect(),
-			toRect: toRow.getBoundingClientRect(),
-		});
-	}
-	for (const spec of specs) {
-		drawArrow(content, spec.conflict, { scale, leadWidth, contentTop }, spec.anchor, [spec.fromRect, spec.toRect]);
-	}
-}
-
-/** Shared by every row with no conflicting prerequisite, so `renderBarRow` allocates nothing for the common case. */
-const NO_CONFLICTS: ReadonlySet<string> = new Set();
-
-/**
- * Every RENDERED dependent's row states what it waits for, whether or not an arrow was
- * drawn — `Arrows between bars` main flow step 3, extensions 1a/1b/1d/2b. Shared
- * verbatim by a dated row (`renderRowFacts`, below) and a shelved card
- * (`render/shelf.ts`'s `renderShelfCard`), which 1b names as the same kind of row: one
- * function is what keeps the two from drifting into different phrasings of one fact.
- *
- * Two lists, both read straight off the model rather than anything an arrow layer drew:
- * `item.prerequisites`, marking the conflicting ones from `conflicted` (1a — a
- * prerequisite with no bar at all is still named here, simply never a member of
- * `conflicted`, because nothing was derived for it to compare — main flow step 2's own
- * rule, read from the other side), and `item.brokenPrerequisites` (1d — an entry that
- * never became an edge at all, so its raw text is its only identity, the same text
- * `Remove dependency…` matches on; deduped the way that menu already groups repeats of
- * one line). '' where the item waits for nothing at all, so callers can skip the span
- * (and the marker's aria-label join) with a plain truthiness check.
- */
-export function dependencyNote(item: BacklogItem, conflicted: ReadonlySet<string>): string {
-	const named = item.prerequisites.map((p) => (conflicted.has(p.file.path) ? `${p.title} (conflict)` : p.title));
-	const broken = [...new Set(item.brokenPrerequisites)].map((raw) => `${raw} (broken)`);
-	const all = [...named, ...broken];
-	return all.length === 0 ? '' : `Waits for ${all.join(', ')}`;
-}
-
-/**
- * One arrow element, positioned from the day axis and the two rows' own rects — the
- * rects are already read (by `renderDependencyArrows`, before any arrow exists) rather
- * than taken from the rows here, so this function is pure write: no `getBoundingClientRect`
- * call of its own to interleave with the elements the loop around it is creating.
- */
-function drawArrow(
-	content: HTMLElement,
-	conflict: boolean,
-	ruler: { scale: TimelineScale; leadWidth: number; contentTop: number },
-	anchor: { fromDay: number; toDay: number },
-	rects: [DOMRect, DOMRect],
-): void {
-	const { scale, leadWidth, contentTop } = ruler;
-	const [fromRect, toRect] = rects;
-	const fromX = leadWidth + anchor.fromDay * scale.dayPx;
-	const toX = leadWidth + anchor.toDay * scale.dayPx;
-	const fromY = fromRect.top - contentTop + fromRect.height / 2;
-	const toY = toRect.top - contentTop + toRect.height / 2;
-	const length = Math.max(Math.hypot(toX - fromX, toY - fromY), MIN_ARROW_PX);
-	const angle = (Math.atan2(toY - fromY, toX - fromX) * 180) / Math.PI;
-	const el = content.createDiv({
-		cls: `pbl-dependency-arrow${conflict ? ' pbl-dependency-arrow-conflict' : ''}`,
-		attr: { 'aria-hidden': 'true' },
-	});
-	el.setCssProps({
-		'--pbl-arrow-left': `${fromX}px`,
-		'--pbl-arrow-top': `${fromY}px`,
-		'--pbl-arrow-width': `${length}px`,
-		'--pbl-arrow-angle': `${angle}deg`,
-	});
-}
-
-/**
  * The header's cell boundaries, extended down the grid body — decoration only,
  * drawn before the milestone lines so a boundary never paints over a mark that
  * means something. No line at day 0: that boundary is the lead column's border.
@@ -510,30 +401,41 @@ interface BarRowMounts {
 	dnd: CardDragController;
 	/** Filled as each row draws, so a move's preview can be mounted in its own row. */
 	tracks: Map<string, HTMLElement>;
-	/** See `TimelineDrawing.observedStates`. */
-	observedStates: string[];
 	/** Which of a dependent's prerequisites conflict, by the dependent's path — see `DependencyArrows.conflicts`. */
 	conflictedPrereqs: ReadonlyMap<string, ReadonlySet<string>>;
+	/** See `TimelineDrawing.palettes`. */
+	palettes: StatePalette[];
 }
 
 function renderBarRow(
 	ctx: RowContext,
 	mounts: BarRowMounts,
 	window: TimelineWindow,
-	bar: TimelineBar,
+	entry: TimelineRow,
 	scale: TimelineScale,
 ): { row: HTMLElement; colors: DrawnColors } {
+	const bar = entry.bar;
+	// The item's OWN workflow, read ONCE and threaded through the three things on this row
+	// that key a colour or say one in words: the slot class, the hidden state words, and
+	// the `drawn` report the legend is built from. (`pbl-done` is the fourth and is no
+	// longer passed — `createCard` asks the same question itself now, for every projection
+	// that draws a card.) Reading `item.done` / `item.stateValue` here keyed a Deliverable
+	// into the REQUIREMENTS workflow — a colour naming a state it does not hold, and
+	// changing the state that IS its own moved nothing on the grid.
+	const own = ownWorkflowReading(bar.item);
 	const row = createCard(ctx, mounts.content, bar.item);
 	row.addClass('pbl-timeline-row');
-	// The bar's colour, by the item's own state — never computed here: `stateColorSlot`
-	// is the one place that decides a slot, so a bar and the Set state menu cannot name
-	// a state a different colour. No slot (no state, or a value the vocabulary does not
-	// carry) adds no class, and the bar keeps its plain accent — `styles/timeline.css`
-	// owns what a slot actually paints, mirroring the level badge's TS-adds-the-class,
-	// CSS-owns-the-colour split.
-	const slot = stateColorSlot(ctx.host.settings, mounts.observedStates, bar.item.stateValue);
+	// Which vocabulary indexes that value is the same type decision, made by `paletteFor`.
+	// No slot (no state, or a value its own vocabulary does not carry) adds no class and
+	// the bar keeps its plain accent — `styles/timeline.css` owns what a slot paints, the
+	// level badge's TS-adds-the-class, CSS-owns-the-colour split.
+	// Undefined where no workflow has a key at all — no vocabulary, so no slot, which is
+	// the same answer `paletteSlot` gives a state outside one: the plain accent.
+	const palette = paletteFor(mounts.palettes, bar.item);
+	const slot = palette ? paletteSlot(palette, own.value) : null;
 	if (slot !== null) row.addClass(`pbl-state-${slot}`);
 	const lead = row.createDiv({ cls: 'pbl-timeline-lead' });
+	renderRowChevron(ctx, lead, entry);
 	renderBadge(ctx.host, lead, bar.item);
 	const title = lead.createDiv({ cls: 'pbl-card-title' });
 	renderTitleText(ctx.host, title, bar.item.title);
@@ -562,7 +464,7 @@ function renderBarRow(
 		mounts.dnd.wireCard(grip, bar.item, hold, () => mounts.scroller.scrollLeft);
 	}
 	renderBarLabel(track, bar, geometry, scale, window);
-	renderRowFacts(row, ctx, bar, dates, mounts.conflictedPrereqs);
+	renderRowFacts(row, ctx, bar, { dates, own, conflictedPrereqs: mounts.conflictedPrereqs });
 	wireCardActivation(ctx, row, bar.item);
 	// The same three overrides `styles/timeline.css` gives a bar, asked in the same
 	// order: done wins outright (the row class overrides regardless of geometry), then
@@ -574,9 +476,9 @@ function renderBarRow(
 	// it"), so this is asked of the geometry alone, never narrowed to marker items.
 	const milestoneDrawn = geometry.milestone && !geometry.outside;
 	const colors: DrawnColors = {
-		done: bar.item.done,
-		milestone: !bar.item.done && milestoneDrawn,
-		accent: !bar.item.done && slot === null && !milestoneDrawn,
+		done: own.done,
+		milestone: !own.done && milestoneDrawn,
+		accent: !own.done && slot === null && !milestoneDrawn,
 	};
 	return { row, colors };
 }
@@ -602,12 +504,12 @@ function renderRowFacts(
 	row: HTMLElement,
 	ctx: RowContext,
 	bar: TimelineBar,
-	dates: string,
-	conflictedPrereqs: ReadonlyMap<string, ReadonlySet<string>>,
+	said: { dates: string; own: WorkflowReading; conflictedPrereqs: ReadonlyMap<string, ReadonlySet<string>> },
 ): void {
 	// Said in words on the row itself, because on this axis the state is otherwise a
 	// bar COLOUR and nothing else — see `stateNote`.
-	const state = stateNote(ctx.host.settings.stateKey, bar.item);
+	const { dates, own, conflictedPrereqs } = said;
+	const state = stateNote(stateKeyFor(ctx.host.settings, bar.item), own);
 	if (state) row.createSpan({ cls: 'pbl-sr-only', text: state });
 	// What this row waits for, which of those conflicts, and which is broken (1d) —
 	// `dependencyNote`, read from `conflictedPrereqs` (window-independent, see
@@ -627,6 +529,51 @@ function renderRowFacts(
 }
 
 /**
+ * The row's disclosure — the tree's own chevron (`renderChevron`), in the lead column,
+ * folding the ROWS below this bar rather than listing anything on its face. A row with
+ * nothing below it on the grid draws that function's leaf placeholder instead.
+ *
+ * What is decided here is the two things the shared control cannot know: that a collapse
+ * on this axis re-renders the whole projection, since the window, the gridlines and every
+ * full-height mark are derived from the row set it changes; and that the path joins
+ * `ctx.cardKids`, the register of what actually drew a disclosure this pass, which is
+ * what makes the toolbar's bulk controls live and puts the same toggle in the row menu
+ * for a reader with no pointer.
+ */
+function renderRowChevron(ctx: RowContext, lead: HTMLElement, entry: TimelineRow): void {
+	// Annotated so fallow can see which host members this file uses — see the root
+	// CLAUDE.md on interface members resolved through a property access.
+	const host: BacklogViewHost = ctx.host;
+	const item = entry.bar.item;
+	if (entry.hasChildren) ctx.cardKids.add(item.file.path);
+	// A LABEL is passed, which is what makes this the button form — see `renderChevron`,
+	// which also states what that does and does not buy on a `role="option"` row. Worded
+	// exactly as the row menu's own entry, because the row's NAME is the part a screen
+	// reader gets either way and the two surfaces must not describe one act differently.
+	const label = entry.collapsed ? 'Show children' : 'Hide children';
+	renderChevron(host, lead, item, { ...entry, label }, (heldFocus) => {
+		host.render();
+		if (heldFocus) refocusPane(host);
+	});
+}
+
+/**
+ * Focus after a fold, for the one case that loses it: the button that was pressed is gone
+ * with the frame it was drawn in, and a browser drops focus to the body — where the
+ * pane's arrows and menu keys do nothing until the reader finds their own way back.
+ *
+ * The PANE, never the replacement chevron, which is `render/shelfControls.ts`'s rule for
+ * the same situation and not a preference: `handleRoadmapKeydown` returns on any event
+ * whose target is not the pane itself, so focusing a `tabindex="-1"` control inside the
+ * composite would look right and silently kill the arrow keys. Read off the snapshot the
+ * render just published, because every element this function could have closed over
+ * belongs to the frame that was just thrown away.
+ */
+function refocusPane(host: BacklogViewHost): void {
+	host.roadmap?.scroller?.closest<HTMLElement>('.pbl-tree')?.focus();
+}
+
+/**
  * The row's workflow state in words, or '' where there is none to say.
  *
  * This axis draws state as a bar COLOUR and nothing else: `renderStateChip`'s only call
@@ -643,11 +590,10 @@ function renderRowFacts(
  * out of the visible row on purpose: the layout is a lead column and a track, and a
  * sixth thing in the lead is what the colour was chosen to avoid.
  */
-function stateNote(stateKey: string, item: BacklogItem): string {
+function stateNote(stateKey: string, reading: WorkflowReading): string {
 	if (!stateKey) return '';
-	const value = item.stateValue;
-	if (item.done) return value === null ? 'Done' : `${value} — done`;
-	return value ?? '';
+	if (reading.done) return reading.value === null ? 'Done' : `${reading.value} — done`;
+	return reading.value ?? '';
 }
 
 /**

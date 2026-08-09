@@ -233,6 +233,14 @@ question, since a shelved dependent has no bar to carry it, read off
 `card.item.plannedStart` directly rather than through `bars.ts`, which would close an
 import cycle back through `model.ts`.
 
+The layer that DRAWS them is `renderDependencyArrows` in
+`src/view/render/timelineArrows.ts` — beside `render/timeline.ts` rather than inside it,
+because that file reached its 400-line budget and this is the seam that costs nothing to
+cross: everything in the new module is about ONE edge, where it lands and how it reads,
+while everything left behind is about the grid the edges are drawn over. `dependencyNote`
+travels with them for the reason it exists at all — it is shared verbatim with the shelf
+card, which draws no grid, so it never belonged to the grid's module in the first place.
+
 The geometry of one edge is `dependencyAnchor`, beside `barGeometry` in
 `src/domain/timeline.ts`: the prerequisite's end day and the dependent's start day, both
 read off `barGeometry`'s own clamping rather than restated, so a clipped, open or

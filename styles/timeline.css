@@ -177,7 +177,6 @@
 	border: none;
 	border-radius: 0;
 	background-color: transparent;
-	border-bottom: 1px solid var(--background-modifier-border);
 }
 
 .pbl-timeline-row .pbl-timeline-track {
@@ -194,16 +193,16 @@
 	border-radius: var(--radius-s);
 	/* One color for solid/open bars: states override the variable, never the background.
 	   `--pbl-state-color` is set below by whichever `pbl-state-N` class the row carries
-	   (`stateColorSlot`, domain/settings.ts) and inherits down unset when it does not, so
+	   (`paletteSlot`, domain/board.ts) and inherits down unset when it does not, so
 	   the fallback is what an item with no slot still draws: the plain accent it always had. */
 	--pbl-bar-color: var(--pbl-state-color, var(--interactive-accent));
 	background-color: var(--pbl-bar-color);
 }
 .pbl-bar-holdable { cursor: grab; } /* only where barHolds registers the body hold — barClasses, timeline.ts */
 
-/* Per-state bar colour: `pbl-state-N` — N is the state's index in `stateMenuValues`,
-   wrapped modulo `STATE_COLOR_SLOTS` palette slots by `stateColorSlot`
-   (domain/settings.ts) — mirrors badges.css: TS adds the index class, this file owns
+/* Per-state bar colour: `pbl-state-N` — N is the state's index in its own workflow's
+   vocabulary, offset past any earlier workflow's and wrapped modulo `STATE_COLOR_SLOTS`
+   palette slots by `paletteSlot` (domain/board.ts) — mirrors badges.css: TS adds the index class, this file owns
    the colour. `--pbl-state-color` is declared here on the class itself, not on
    `.pbl-bar`, so both consumers read the same token off the same class: the bar above
    inherits it into `--pbl-bar-color` (falling back to the accent where no slot class is
@@ -221,7 +220,7 @@
 
 /* Done outranks a slot colour: green is a meaning the user already relies on, a slot
    colour is only positional — an item can carry both classes at once (a done state
-   still occupies a slot, per `stateColorSlot`), and this is the rule for what happens
+   still occupies a slot, per `paletteSlot`), and this is the rule for what happens
    when it does. Explicit by SPECIFICITY, not by being declared last: this selector
    names `.pbl-bar` directly (three classes) rather than through the inherited
    `--pbl-state-color` token the base `.pbl-bar` rule above merely falls back to, so it
