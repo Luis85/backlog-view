@@ -186,6 +186,18 @@ describe('a value no version of this plugin declared', () => {
 		expect(settings.openIn).toBe('active');
 	});
 
+	/**
+	 * `constructor` is a value of every object, so `raw in offered` — and
+	 * `offered[raw]` — would accept it and hand back a string the type says cannot
+	 * exist. Same rule, same bug, as the type table `byName` was written for.
+	 */
+	it('falls back on a name inherited from Object.prototype', () => {
+		const settings = resolveSettings(config({ clickAction: 'constructor', openIn: 'toString' }));
+
+		expect(settings.clickAction).toBe('open');
+		expect(settings.openIn).toBe('active');
+	});
+
 	it('reads the declared values back', () => {
 		const settings = resolveSettings(config({ clickAction: 'fold', openIn: 'split' }));
 

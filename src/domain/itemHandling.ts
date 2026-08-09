@@ -36,12 +36,19 @@ export function defaultItemHandling(): ItemHandling {
  * `.base` can hold any string at all — so the offered vocabulary is what decides, not
  * the presence of one. Anything else falls back rather than reaching a branch that has
  * no arm for it.
+ *
+ * Membership is asked with `hasOwnProperty`, never `in` and never `offered[raw]`: the
+ * value is user data, and every object inherits `constructor` and `toString`, so both
+ * of those spellings would accept `constructor` as an offered value and hand back a
+ * string this type says cannot exist. That is `byName`'s rule in `settings.ts` and the
+ * bug it was written for (`docs/bugs/A user-named type read off Object.prototype.md`),
+ * met again by a second table keyed on something a user can type.
  */
 export function resolveItemHandling(config: BasesViewConfig): ItemHandling {
 	const fallback = defaultItemHandling();
 	const pick = <T extends string>(key: string, offered: Record<T, string>, def: T): T => {
 		const raw = config.get(key);
-		return typeof raw === 'string' && raw in offered ? (raw as T) : def;
+		return typeof raw === 'string' && Object.prototype.hasOwnProperty.call(offered, raw) ? (raw as T) : def;
 	};
 	return {
 		clickAction: pick('clickAction', CLICK_ACTIONS, fallback.clickAction),
