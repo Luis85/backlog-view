@@ -71,8 +71,7 @@ above can state them.
 
 ## Features
 
-- [[A catalog of tests]] — the two types, their badge, and the template a case is written
-  from.
+- [[A catalog of tests]] — the two types, their badge, and how a case gets written.
 - [[Test coverage]] — the property that names what a test checks, and the gap it makes
   visible.
 - [[The test catalog projection]] — where the tests are shown, and how the plan stays free

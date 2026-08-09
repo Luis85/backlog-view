@@ -11,10 +11,15 @@ source: user request
 
 `Test suite` and `Test case` join the declared vocabulary as a two-rung ladder of their
 own: a suite is a root by nature, a case hangs from a suite, and a case holds `Task`s the
-way every other non-rung type does. They file into their own folders, they are created
-from the same **+** every other type is created from, and a case is written from a
-template that gives it the shape a test needs — preconditions, numbered steps, expected
-result — rather than an empty note and a good intention.
+way every other non-rung type does. They file into their own folders and they are created
+from the same **+** every other type is created from, scoped to the projection that can
+show them.
+
+A new case also **opens**, alone among created items, because its body is the item and a
+case whose steps are never written is not a test. Once [[Item Templates]] is built — it is
+design today, `status: Open` — it opens onto the skeleton a test needs, preconditions,
+numbered steps and expected result. Until then it opens empty, which is the smaller half
+and the half worth having first.
 
 **Outcome** — A vault can hold a test catalog that the view understands as a hierarchy:
 suites in an order somebody chose, cases in an order somebody chose, and each case a
@@ -26,8 +31,8 @@ document a stranger could execute.
   their roots, and what a move may and may not do to them.
 - [[A badge when the palette is full]] — the tenth and eleventh types on an eight-hue
   palette that nine types already share, and the second axis that answers it.
-- [[A template for a test case]] — the instruction skeleton, from the templates machinery
-  that already exists.
+- [[A template for a test case]] — the note that opens ready to write, and the instruction
+  skeleton that arrives with [[Item Templates]] once that feature is built.
 
 ## Why this is a ladder and not two extra types
 
