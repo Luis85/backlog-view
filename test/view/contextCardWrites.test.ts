@@ -3,10 +3,11 @@ import { describe, expect, it, vi } from 'vitest';
 import { ProductBacklogView } from '../../src/view/backlogView';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
 import { Menu, Notice } from '../helpers/obsidian-mock';
-import { flush, key, treeOf, useViewHarness } from '../helpers/view';
+import { flush, key, makeView, treeOf, useViewHarness } from '../helpers/view';
 import { cardDrag } from '../helpers/dnd';
 import { cardByTitle } from '../helpers/board';
 import { bucketNames, rowFor, shelfTitles } from '../helpers/roadmap';
+import { legalTargetPaths } from '../../src/view/interactions/dependencies';
 
 /**
  * The context-row rule, driven against every entry point the CARD projections have.
@@ -444,5 +445,83 @@ describe('write safety with context rows, across the timeline’s entry points',
 
 		expect(Menu.lastShown?.item('Schedule')).toBeUndefined();
 		expect(Menu.lastShown?.item('Unschedule')).toBeUndefined();
+	});
+});
+
+describe('write safety with context rows, at the dependency connector', () => {
+	/** A dated axis where the excluded parent would draw a bar if it were a result. */
+	function linkStressVault() {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, start: '2026-08-01', due: '2026-09-30' } });
+		vault.addFile('Kid.md', {
+			frontmatter: { type: 'PBI', order: 10, start: '2026-08-04', due: '2026-08-10' },
+			parentLink: 'Epic',
+		});
+		vault.addFile('Other.md', { frontmatter: { type: 'PBI', order: 20, start: '2026-08-20', due: '2026-08-28' } });
+		return vault;
+	}
+
+	function linkStressView(vault: FakeVault) {
+		const harness = makeView(
+			vault,
+			{ startProperty: 'note.start', targetProperty: 'note.due', dependsOnProperty: 'note.dependsOn' },
+			// A context row only reaches the dated axis at all through a focus level whose
+			// rung IT sits on (`roadmapRows` reads `model.results`, dropping every
+			// `outsideFilter` row, unless focused) — the same reason `timelineStressView`
+			// above focuses on Mid's own rung. Epic is the excluded PARENT here, so the
+			// rung to focus is Epic's own, not Kid and Other's.
+			{ collapsed: true, only: ['Kid.md', 'Other.md'], focus: 'Epic' },
+		);
+		harness.view.setProjection('roadmap');
+		harness.view.setAxisPick('dates');
+		return harness;
+	}
+
+	it('draws no connector on a context row, which has no bar to hang one on', () => {
+		const { containerEl } = linkStressView(linkStressVault());
+		// A context row draws no bar at all — `deriveBars` routes it to
+		// `RoadmapModel.context` before a span is ever computed, and `renderContextStrip`
+		// draws that list as ordinary cards beside the shelf, not as `.pbl-timeline-row`s
+		// (`rowFor` finds nothing here, the same absence the timeline block above asserts
+		// of Mid via `cardByTitle` rather than `rowFor`). `createCard` marks the card
+		// `pbl-card-context pbl-outside`.
+		const context = cardByTitle(containerEl, 'Epic');
+		expect(context.classList.contains('pbl-outside')).toBe(true);
+		expect(context.querySelector('.pbl-bar-connector')).toBeNull();
+	});
+
+	it('never offers a context row as a legal TARGET, which a drag could otherwise reach', () => {
+		// The half a drag cannot demonstrate: the row draws no bar, so nothing could be
+		// dropped on it — but `legalTargetPaths` is what the drop re-asks, and it is the
+		// answer that has to exclude it.
+		const vault = linkStressVault();
+		const { view } = linkStressView(vault);
+		const model = view.model;
+		if (!model) throw new Error('no model');
+		const source = model.byPath.get('Kid.md');
+		if (!source) throw new Error('no source');
+		// Not vacuous: Epic is a genuine ancestor context row (`outsideFilter: true`),
+		// not simply absent from the model — a note excluded from `only` with nothing
+		// loading it as someone's ancestor would pass this same assertion for the wrong
+		// reason, by never being a candidate `legalTargetPaths` walks at all.
+		expect(model.byPath.get('Epic.md')?.outsideFilter).toBe(true);
+		expect([...legalTargetPaths(view.app, model, source)]).not.toContain('Epic.md');
+	});
+
+	it('refuses the whole batch structurally if a write for one ever reaches the gate', async () => {
+		// The backstop the two above stand in front of, driven where a gesture cannot
+		// reach — the shape that holds for an entry point not yet written.
+		const vault = linkStressVault();
+		const { view } = linkStressView(vault);
+		const context = view.model?.byPath.get('Epic.md');
+		const other = view.model?.byPath.get('Other.md');
+		if (!context || !other) throw new Error('fixture not as expected');
+		expect(context.outsideFilter).toBe(true);
+		await view.applySafely([{ file: context.file, dependsOn: { add: other.file } }]);
+
+		expect(vault.fm('Epic.md')['dependsOn']).toBeUndefined();
+		// The exact wording `writeGate.ts` uses — note the curly apostrophe, which every
+		// other block in this file already matches on.
+		expect(Notice.messages.some((m) => m.includes('outside this base’s filter'))).toBe(true);
 	});
 });
