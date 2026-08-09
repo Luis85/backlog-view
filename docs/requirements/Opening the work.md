@@ -23,7 +23,7 @@ found. Every row is a real note; the view is a lens on it, not a replacement for
 **Main flow**
 
 1. The user clicks a row.
-2. The note opens in the current tab.
+2. The note opens where the view is configured to put it — the current tab by default.
 3. `Enter` on the keyboard selection does the same, so the tree's navigation ends where it
    should.
 
@@ -31,7 +31,19 @@ found. Every row is a real note; the view is a lens on it, not a replacement for
 
 - **1a — the click carries the platform's modifier** (`Ctrl`/`Cmd`, per Obsidian's own
   rule). It opens in a new tab, exactly as a link in a note would. Following the platform
-  convention rather than reimplementing it is the point.
+  convention rather than reimplementing it is the point — which is also why the modifier
+  outranks the configured target rather than being redirected by it.
+- **1e — clicking an item is configured to fold it** (`clickAction`). The row's body then
+  means what its chevron means, and the note is reached from the row menu, from `Enter`,
+  or with the modifier above. A row with nothing under it folds nothing and does not open
+  either: one gesture cannot mean "fold" on a parent and "open" on a leaf without being
+  unpredictable on both. A filtered tree refuses the flip exactly as the chevron does.
+- **2b — the note is configured to open in a new tab or to the side** (`openIn`). To the
+  side additionally **pins the backlog's own leaf**: the default target replaces the
+  current tab, and a view whose point is to stay put while notes come and go must not be
+  what a note lands on. The side pane is made once and reused while it is open —
+  `getLeaf('split')` splits whatever is active, and the backlog is active on every click,
+  so a split per click would fill the window by the fourth item.
 - **1b — the middle mouse button.** Also a new tab, the browser habit.
 - **1c — the click landed on a control** — the chevron, the **+**, the state chip, a tag
   pill. That control acts and the note does not open: each stops the click from reaching
@@ -53,11 +65,21 @@ found. Every row is a real note; the view is a lens on it, not a replacement for
 - **Open in new tab** and **Open to the right** are in the context menu, so both are
   reachable without a pointer.
 - Opening a note writes nothing.
+- With `clickAction` set to fold, a click folds the row and opens nothing — and the
+  modifier, `Enter` and the menu still open the note.
+- With `openIn` set to the side, the backlog's own leaf is pinned and a second open
+  reuses the pane the first one made.
+- A `clickAction` or `openIn` value no version of this plugin declared falls back to the
+  default rather than reaching a branch that has no arm for it.
 
 ## Where it lives
 
-`src/view/backlogView.ts` (`openItem`, `openItemInNewTab`, `openItemToSide`) ·
-`src/view/render/rows.ts` (the click and auxclick handlers) ·
-`src/view/interactions/keyboard.ts` (`Enter`) · `src/view/interactions/menu.ts`.
+`src/view/openTarget.ts` (which leaf a note opens in, the pin, and the side pane made
+once and reused) · `src/view/backlogView.ts` (`openItem`, `openItemInNewTab`,
+`openItemToSide`, each delegating to it) · `src/view/render/rows.ts` (the click and
+auxclick handlers, and `foldOnClick`) · `src/view/interactions/keyboard.ts` (`Enter`) ·
+`src/view/interactions/menu.ts` · `src/domain/itemHandling.ts` (the two settings, their
+offered vocabulary and the defensive read of a hand-edited value) ·
+`src/domain/viewOptions.ts` (the **Handling items** group: `clickAction`, `openIn`).
 Tests: `test/view/rendering.test.ts`, `test/view/keyboard.test.ts`,
-`test/view/menu.test.ts` — asserted through `vault.opened`.
+`test/view/menu.test.ts`, `test/view/opening.test.ts` — asserted through `vault.opened`.

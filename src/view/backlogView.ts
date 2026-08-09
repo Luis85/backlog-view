@@ -1,4 +1,4 @@
-import { BasesView, Keymap, Menu, QueryController, setIcon } from 'obsidian';
+import { BasesView, Menu, QueryController, setIcon } from 'obsidian';
 import { CollapseState, TIMELINE_SCOPE } from './collapseState';
 import { FilterScope, FilterState } from './filterState';
 import {
@@ -9,6 +9,7 @@ import {
 	Projection,
 	RoadmapSnapshot,
 } from './host';
+import { OpenContext, OpenController } from './openTarget';
 import { WriteGate } from './writeGate';
 import { CardMoveController } from './cardMoves';
 import { CardDragController } from './interactions/cardDrag';
@@ -77,6 +78,8 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	private scroll: ScrollAnchor = { content: '', todayTrackLeft: null, scale: null, offsets: {}, leadingDate: null };
 	/** Selection state and its DOM bookkeeping, for both projections. */
 	private readonly selection: SelectionController;
+	/** Where a note opens, and the side pane it reuses (`view/openTarget.ts`). */
+	private readonly opens = new OpenController();
 
 	settings: BacklogSettings = defaultSettings();
 	model: BacklogModel | null = null;
@@ -452,15 +455,20 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	}
 
 	openItem(item: BacklogItem, evt: MouseEvent | KeyboardEvent): void {
-		void this.app.workspace.getLeaf(Keymap.isModEvent(evt)).openFile(item.file);
+		this.opens.open(this.openContext(), item, evt);
 	}
 
 	openItemInNewTab(item: BacklogItem): void {
-		void this.app.workspace.getLeaf('tab').openFile(item.file);
+		this.opens.inNewTab(this.openContext(), item);
 	}
 
 	openItemToSide(item: BacklogItem): void {
-		void this.app.workspace.getLeaf('split').openFile(item.file);
+		this.opens.toSide(this.openContext(), item);
+	}
+
+	/** Read fresh per open: `app` arrives after construction and settings per update. */
+	private openContext(): OpenContext {
+		return { app: this.app, viewEl: this.viewEl, openIn: this.settings.openIn };
 	}
 
 	showContextMenuFor(item: BacklogItem): void {

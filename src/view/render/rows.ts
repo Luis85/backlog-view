@@ -1,4 +1,4 @@
-import { setIcon, setTooltip } from 'obsidian';
+import { Keymap, setIcon, setTooltip } from 'obsidian';
 import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
 import { promptCreateItem } from '../interactions/create';
 import { offerableTypes, showItemMenu } from '../interactions/menu';
@@ -393,9 +393,31 @@ function addLabel(childTypes: string[]): string {
 	return childTypes.length > 1 ? 'New child item' : `New ${childTypes[0]}`;
 }
 
+/**
+ * "Clicking an item" set to fold: the row's body means what its chevron means, and the
+ * note is reached from the menu, from `Enter`, or with the platform's modifier — which
+ * is why a modified click is not this option's to take and falls through to opening.
+ *
+ * Returns true whenever the click was SPENT here, which includes the two cases that
+ * fold nothing: a row with nothing under it has no fold to do, and a filtered tree
+ * refuses the flip exactly as the chevron does (`isCollapsed` reports false while a
+ * filter runs, so the write would look inert and then take effect once it cleared).
+ * Falling through to `openItem` in either case would make the same gesture open a note
+ * in one row and fold in the next.
+ */
+function foldOnClick(ctx: RowContext, item: BacklogItem, evt: MouseEvent): boolean {
+	const host = ctx.host;
+	if (host.settings.clickAction !== 'fold' || Keymap.isModEvent(evt)) return false;
+	if (host.isFiltering() || !item.children.some((child) => !host.isRowHidden(child))) return true;
+	host.setCollapsed(item.file.path, !host.isCollapsed(item.file.path));
+	host.refreshSubtree(item);
+	return true;
+}
+
 function wireRowEvents(ctx: RowContext, row: HTMLElement, item: BacklogItem, childTypes: string[]): void {
 	row.addEventListener('click', (evt) => {
 		ctx.host.selectItem(item, false);
+		if (foldOnClick(ctx, item, evt)) return;
 		ctx.host.openItem(item, evt);
 	});
 	row.addEventListener('auxclick', (evt) => {
