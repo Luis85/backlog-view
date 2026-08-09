@@ -51,6 +51,12 @@ base settings are saved on the view, working position on the device.
    beside the first and would disagree with it about a `Task`. The operation is not new:
    `collectFocusRoots` already re-roots the rendered tree at the topmost items of a level,
    and this is the same re-rooting under a different predicate.
+   Those roots are **not the renderer's private input**. Every consumer that walks the tree
+   from its roots to decide what the user sees or acts on takes them: the quick filter's
+   match index, the keyboard's visible-row walk, the drop targets, the indent/outdent
+   sibling lists, and the rank a new root is given. A consumer left on `model.roots` does
+   not fail visibly — it disagrees with the screen, which is the failure this whole rule
+   exists to prevent, arriving one surface at a time.
 3. Collapse, the quick filter and every write path behave as they do in the backlog tree,
    over this population — including the toolbar's count label, which counts **what this
    projection draws**: the tests, and the `Task`s beneath them, which are catalog members
@@ -64,8 +70,25 @@ base settings are saved on the view, working position on the device.
 
 **Extensions**
 
-- **2a — the base returned no test items.** The projection draws its empty state, and the
-  empty state's job is to say what a test catalog is and offer to create the first suite —
+- **2b — the quick filter matches a row this projection does not draw.** `FilterState`
+  indexes `model.roots` and `model.realRoots`, so a needle matching a hidden `PBI` marks
+  its whole subtree as matching, and a `Test case` beneath it stays on screen while nothing
+  in the catalog matched at all. The inverse happens in the plan. The index is built from
+  the **same forest the projection draws**, which is the roots rule reaching one more
+  consumer rather than a rule of its own — and it is the consumer where being wrong looks
+  most like a working feature, since rows do appear and one of them did match something.
+- **2c — the user arrows or tabs to a promoted row.** `visibleItems` walks from
+  `model.roots` and stops at hidden parents, so a row promoted to a catalog root is drawn
+  and unreachable by keyboard. It walks the projection's roots for the same reason the
+  renderer does. This is an accessibility floor, not a nicety: a row that exists only to
+  the mouse is a row half this plugin's users cannot act on.
+- **2a — this projection draws nothing.** The projection shows its empty state, and the
+  test is the **population**, not whether a test type appeared among the raw results. A
+  base returning a `Task` whose `Test case` parent was excluded still has a catalog to
+  draw: the case comes in as a context row, the Task is a catalog member under it, and an
+  empty state there would be the view claiming there are no tests on a screen that has one
+  on it. Keyed to what the projection draws, like every other population statement here.
+  The empty state's job is to say what a test catalog is and offer to create the first suite —
   the shape [[Board empty states]] established for a projection nobody has data for yet. It
   does **not** offer to configure anything: unlike the board and the roadmap, this
   projection needs no key bound to exist, so there is nothing for a ✨ to do here.
@@ -103,7 +126,13 @@ base settings are saved on the view, working position on the device.
   picking the new one draws the test ladder from the same model, with no note written and
   no `.base` setting changed.
 - The projection is reachable whether or not the base returns tests, and its empty state
-  offers creation rather than configuration.
+  offers creation rather than configuration. It is keyed to what the projection draws: a
+  base whose only catalog member is a `Task` under an excluded `Test case` draws that Task,
+  not the empty state.
+- The quick filter and the keyboard walk the same forest the renderer draws. Both are
+  asserted on a promoted row — a test under a `PBI` — because both are wrong in the
+  direction that still looks like a working screen: the filter leaves a non-matching row
+  visible, and the keyboard leaves a visible row unreachable.
 - Collapse state is stored per projection, so collapsing a suite does not collapse an Epic.
 - The catalog's count label counts this projection's own population — the tests **and** the
   `Task`s beneath them — and its completed toggle is not rendered. Both consumers of that
@@ -138,13 +167,38 @@ base settings are saved on the view, working position on the device.
 same tree renderer over a different population, which is what makes this projection cheap
 and is the reason it is a tree rather than a third kind of drawing.
 
-**The roots are the one thing the renderer cannot be handed unchanged.** `renderTree` takes
+**The roots are the one thing no consumer can be handed unchanged.** `renderTree` takes
 `model.roots` and `renderForest` filters siblings without descending through the ones it
 drops, so a projection that only hides rows loses everything under a hidden parent. What
 this projection needs is a root set of its own, computed by the rule in step 2 — which
 belongs beside `collectFocusRoots` in `src/domain/model.ts`, the function that already
 answers "what does the rendered tree root at when it is not the model's own roots", rather
 than as a second re-rooting written inside the renderer.
+
+**Which consumers take it is a category question, and `grep model.roots` answers it.**
+Eight call sites outside the model read those roots, and they divide cleanly by what they
+are asking:
+
+| Takes the projection's roots — asks what is on screen | Keeps the whole tree — asks about the vault |
+| --- | --- |
+| `src/view/render/rows.ts` (the forest, and the "any row at all" check) | `src/view/interactions/create.ts` — `hasItems` and `inferFolder`, which say so in a comment: *judge existence and infer folders from the FULL tree* |
+| `src/view/filterState.ts` — the match index | `src/domain/writePlan.ts` — the ✨ backfill, which writes to every note |
+| `src/view/interactions/keyboard.ts` — `visibleItems` | |
+| `src/domain/dropTargets.ts` — the root sibling list a drop ranks against | |
+| `src/view/interactions/structure.ts` — indent and outdent's root list | |
+| `src/view/interactions/create.ts` — `endOfSiblingsOrder` for a new root, so a suite ranks after the last suite rather than after the last Epic | |
+
+The line is *what is this asking about* — the screen, or the vault — and both sides already
+have their reasons written down beside them. The left column's mistake is invisible (a
+number or a target that disagrees with the rows); the right column's would be loud (a
+backfill that skipped notes).
+
+**This is a category invariant, so it wants a check at the forbidden thing rather than six
+tests.** `no-restricted-syntax` already forbids `processFrontMatter` outside `storage/`;
+the same shape — `model.roots` and `model.realRoots` readable only inside the module that
+computes projection roots, with the two vault-wide consumers exempted by name — would hold
+for a seventh consumer nobody has written yet. Six tests hold for the six that exist, which
+is exactly the guarantee this PBI has now had to widen three times.
 
 Which items belong to this population is a domain question and lives with the type
 vocabulary in `src/domain/itemTypes.ts`, beside the answer [[Tests stay out of the plan]]
