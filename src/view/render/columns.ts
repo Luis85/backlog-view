@@ -97,13 +97,7 @@ function columnFit(
 	const lead = ROW_LEAD_WIDTH + TREE_PADDING + depth * INDENT_PER_DEPTH;
 	const room = width - lead - meta;
 	const fitting = Math.max(0, Math.floor(room / settings.propColumnWidth));
-	// `showChips` is the `showProperties` option, and this is the ONLY thing still
-	// reading it: `resolveColumns` stopped, because the properties menu is the off
-	// switch now. So with the option off the columns render and this budgets nothing
-	// for them, which means they can never drop — inert in one direction and wrong in
-	// the other. Deleting the option (its resolver line, its default and this term) is
-	// what ends it, in the task after this one.
-	const shown = Math.min(columnCount, settings.showChips ? fitting : columnCount);
+	const shown = Math.min(columnCount, fitting);
 	// Nothing below this: what is left is the row's own lead, and the title truncates
 	// from there.
 	return { shown, hideMeta: shown === 0 && width < lead + meta };

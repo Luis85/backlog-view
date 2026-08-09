@@ -22,7 +22,6 @@ export interface BacklogSettings extends ItemHandling {
 	/** Parent notes are inferred from folder notes when no explicit parent link is set. */
 	folderHierarchy: boolean;
 	autoType: boolean;
-	showChips: boolean;
 	showCounts: boolean;
 	/**
 	 * Where new items go when their type has no folder of its own — the one general
@@ -279,7 +278,6 @@ export function defaultSettings(): BacklogSettings {
 		showOutsideParents: true,
 		folderHierarchy: false,
 		autoType: false,
-		showChips: true,
 		showCounts: true,
 		homeFolder: DEFAULT_HOME_FOLDER,
 		typeFolders: nameTable(ALL_TYPES, (t) => defaultTypeFolder(t) || null),
@@ -859,7 +857,6 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		showOutsideParents: bool('showOutsideParents', fallback.showOutsideParents),
 		folderHierarchy: bool('inferFolderHierarchy', fallback.folderHierarchy),
 		autoType: bool('autoAssignType', fallback.autoType),
-		showChips: bool('showProperties', fallback.showChips),
 		showCounts: bool('showCounts', fallback.showCounts),
 		...folders,
 		// UI state, not configuration: the view overwrites this with the stored pick.

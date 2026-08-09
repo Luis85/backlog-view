@@ -12,7 +12,7 @@ import { ProductBacklogView } from '../../src/view/backlogView';
 import { drawChrome } from './chrome';
 import { drawIcons } from './icons';
 import { installObsidianDom } from '../helpers/dom';
-import { demoOptions, demoResults, demoVault, edgeCaseVault } from '../helpers/fixtures';
+import { demoOptions, demoOrder, demoResults, demoVault, edgeCaseVault } from '../helpers/fixtures';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
 import { FileView } from '../helpers/obsidian-mock';
 
@@ -60,7 +60,7 @@ export function mountHarness(root: HTMLElement, fixture: HarnessFixture = 'demo'
 	const config = new FakeViewConfig(demoOptions());
 	// The Bases properties menu is what puts a column on a row, chips included, so the
 	// page has to declare a visible order or it draws a strip with nothing in it.
-	config.order = ['note.status', 'note.horizon', 'note.risk'];
+	config.order = demoOrder();
 	anyView.config = config;
 	anyView.data = { data: demoResults(vault) };
 

@@ -57,13 +57,11 @@ describe('resolveSettings', () => {
 		const settings = resolveSettings(
 			fakeConfig({
 				autoAssignType: true,
-				showProperties: false,
 				showCounts: false,
 				homeFolder: '/Backlog/Items/',
 			}),
 		);
 		expect(settings.autoType).toBe(true);
-		expect(settings.showChips).toBe(false);
 		expect(settings.showCounts).toBe(false);
 		expect(settings.homeFolder).toBe('Backlog/Items');
 	});

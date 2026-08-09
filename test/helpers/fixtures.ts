@@ -59,6 +59,16 @@ export function demoOptions(): Record<string, unknown> {
 }
 
 /**
+ * What the harness's Bases properties menu shows, in its order. It has to be stated
+ * now: the columns ARE this list, so a harness with an empty order draws a bare tree
+ * and answers nothing about the layout. A chip is deliberately not first and not last —
+ * the point of the page is that a chip sits wherever the menu puts it.
+ */
+export function demoOrder(): string[] {
+	return ['note.status', 'note.horizon', 'note.risk', 'note.tags'];
+}
+
+/**
  * The notes. Two live epics with real subtrees, one epic outside the filter parenting a
  * feature that is inside it, a scattering of items with no state, no horizon and no
  * dates (which is what puts cards on the shelf and in the no-state column), and one

@@ -40,7 +40,6 @@ describe('getViewOptions', () => {
 				'stateProperty',
 				'doneValues',
 				'homeFolder',
-				'showProperties',
 				'showCounts',
 			]),
 		);
