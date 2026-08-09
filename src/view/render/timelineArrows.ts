@@ -99,9 +99,21 @@ export const NO_CONFLICTS: ReadonlySet<string> = new Set();
  * `Remove dependency…` matches on; deduped the way that menu already groups repeats of
  * one line). '' where the item waits for nothing at all, so callers can skip the span
  * (and the marker's aria-label join) with a plain truthiness check.
+ *
+ * A title is a basename, so two prerequisites in different folders can share one — and
+ * "Waits for A (conflict), A" says which sentence it is but not which note. Where the
+ * titles collide the PATH is named instead, which is the same answer the add and remove
+ * pickers already give (`ItemSuggestModal`'s detail line, for exactly this reason).
+ * Collision only: a path on every row would spend a column of text saying what the
+ * folder layout mostly makes unnecessary.
  */
 export function dependencyNote(item: BacklogItem, conflicted: ReadonlySet<string>): string {
-	const named = item.prerequisites.map((p) => (conflicted.has(p.file.path) ? `${p.title} (conflict)` : p.title));
+	const titles = new Map<string, number>();
+	for (const p of item.prerequisites) titles.set(p.title, (titles.get(p.title) ?? 0) + 1);
+	const named = item.prerequisites.map((p) => {
+		const name = (titles.get(p.title) ?? 0) > 1 ? p.file.path : p.title;
+		return conflicted.has(p.file.path) ? `${name} (conflict)` : name;
+	});
 	const broken = [...new Set(item.brokenPrerequisites)].map((raw) => `${raw} (broken)`);
 	const all = [...named, ...broken];
 	return all.length === 0 ? '' : `Waits for ${all.join(', ')}`;

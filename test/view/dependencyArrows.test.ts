@@ -167,6 +167,27 @@ describe("the row's accessible name states what it waits for", () => {
 		expect(row.hasClass('pbl-row-conflict')).toBe(true);
 	});
 
+	it('names the PATH where two prerequisites share a title, so the conflict says which note', () => {
+		const vault = new FakeVault();
+		vault.addFile('Work/A.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-07-01', due: '2026-07-05' } });
+		vault.addFile('Play/A.md', { frontmatter: { type: 'PBI', order: 20, start: '2026-08-01', due: '2026-08-20' } });
+		vault.addFile('Waiter.md', {
+			frontmatter: {
+				type: 'PBI',
+				order: 30,
+				dependsOn: ['Work/A', 'Play/A'],
+				start: '2026-08-10',
+				due: '2026-08-25',
+			},
+		});
+		const { containerEl } = roadmapView(vault, { ...DATES });
+
+		// A title is a basename. "Waits for A (conflict), A" names the sentence and not
+		// the note, so the row cannot say which of the two contradicts its dates — the
+		// pickers answer the same ambiguity with the path, and so does this.
+		expect(waitsFor(rowFor(containerEl, 'Waiter')!)).toBe('Waits for Work/A.md, Play/A.md (conflict)');
+	});
+
 	it('still states the dependency when the prerequisite has no bar at all (1a) — no arrow, no comparison, just the name', () => {
 		const vault = new FakeVault();
 		vault.addFile('Undated.md', { frontmatter: { type: 'PBI', order: 10 } }); // shelved: no bar

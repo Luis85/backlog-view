@@ -180,7 +180,10 @@ against one would report a date no note carries — a red mark on a fact that do
 - Every dependency of a rendered dependent is stated by its row whether or not an arrow was
   drawn, and a conflict is stated there **against the prerequisite it concerns** — so a row
   waiting on several things names which of them contradicts the dates, not merely that one
-  does. No fact about an ordering is available only by looking at, or hovering, the arrow
+  does. Two prerequisites can share a TITLE, since a title is a basename and two folders
+  can hold one each — so where they collide the row names them by path, a name that cannot
+  tell them apart being the same rounding-down in a different disguise. No fact about an
+  ordering is available only by looking at, or hovering, the arrow
   layer, and none is available at a coarser resolution there than in the picture. A
   dependent the reader's controls have hidden is outside this criterion: it has no row, and
   restoring the control restores both.
