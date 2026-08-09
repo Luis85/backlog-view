@@ -43,7 +43,15 @@ a node test that did would be measuring the runner.
   the alternative is that same unsafety spread across ten fields and every reader.
 - The two dependency fields answer that question this way: the raw entries a note
   declares (`dependsOnEntries`) belong to `RawItem`, because they are what one note says
-  about itself and because `addItem` holds the one cache read here; what they MEAN —
+  about itself and because `addItem` holds the one cache read here — gated on the same
+  `entry === null` test `outsideFilter` is made of, so a CONTEXT row carries an empty list
+  rather than one the derivation discards. That rule (an excluded note may be named and
+  may never do the naming) was kept downstream first, by `declaredEdges` skipping the
+  item: true, but it left the list parsed and every entry resolved through the metadata
+  cache on every rebuild, and left a test whose comment said "not read at all" while
+  checking only that no edge came out. Both guards stay — the reader's states the rule
+  where the reading happens, the derivation's states it over its own generic input, which
+  is not always this model's. What they MEAN —
   `prerequisites` and `brokenPrerequisites` — belongs to `BacklogItem`, assigned by
   `assignDependencies` after `assignAll`. Later than the promotion rather than inside it,
   and the reason is the scope prune: an entry may only resolve against the set the model

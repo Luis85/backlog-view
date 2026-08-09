@@ -137,9 +137,14 @@ describe('what becomes an edge, and what is marked', () => {
 		const model = buildModel(vault.app, entries, settings);
 
 		// It renders and it parents. Its prerequisites are not this base's facts, so the
-		// entry produces neither an edge nor a mark — it is not read at all.
+		// entry produces neither an edge nor a mark.
 		expect(waitsFor(model, 'Epic.md')).toEqual([]);
 		expect(broken(model, 'Epic.md')).toEqual([]);
+		// And "not read at all" is asserted rather than implied. The two lines above were
+		// the whole of this test while the reader still parsed and resolved the list and
+		// the derivation discarded it afterwards — true effects, a comment claiming more
+		// than they check, and a link lookup per entry on every rebuild.
+		expect(model.byPath.get('Epic.md')?.dependsOnEntries).toEqual([]);
 	});
 
 	it('marks an item that names itself', () => {

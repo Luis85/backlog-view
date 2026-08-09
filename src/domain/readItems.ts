@@ -193,7 +193,14 @@ function addItem(
 		plannedTarget: readGated(settings.targetKey, fm, readDate),
 		riskValue: settings.riskKey ? readString(ownValue(fm, settings.riskKey)) : null,
 		ownKeys: readOwnKeys(fm, settings),
-		dependsOnEntries: readLinkList(app, file, cache, settings.dependsOnKey),
+		// NOT read for a context row, which is the same test `outsideFilter` is made of
+		// two lines up. An excluded note may be NAMED by a result and may never do the
+		// naming, and until now that rule was kept only downstream, by `declaredEdges`
+		// skipping the item — so the list was read, resolved link by link through the
+		// metadata cache on every model rebuild, and then thrown away. Stating it here
+		// puts the rule at the forbidden thing rather than at one of the places that
+		// would otherwise have to remember it, and takes the work with it.
+		dependsOnEntries: entry === null ? [] : readLinkList(app, file, cache, settings.dependsOnKey),
 	};
 	store.byPath.set(file.path, item);
 	store.all.push(item);
