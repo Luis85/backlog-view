@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { mountHarness } from './mount';
 import { installObsidianDom } from '../helpers/dom';
 import { projectionButton, submitPrompt } from '../helpers/view';
+import { barFor, gripNames } from '../helpers/roadmap';
 
 /** The rendered row for a title — the tree accessors take a container, and so do these. */
 function rowFor(containerEl: HTMLElement, title: string): HTMLElement {
@@ -104,16 +105,25 @@ describe('the harness draws the cases the dependency connector has to survive', 
 		view.setAxisPick('dates');
 		containerEl.querySelector<HTMLButtonElement>('.pbl-collapse-ctl')?.click();
 
-		// A bar one day wide keeps both its end grip and its connector rather than
-		// trading one for the other.
-		const oneDay = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-bar')).filter((b) =>
-			b.classList.contains('pbl-bar-milestone'),
-		);
-		expect(oneDay.length).toBeGreaterThan(0);
-		// An inferred bar has no grip and still offers a connector.
-		const inferred = containerEl.querySelector<HTMLElement>('.pbl-bar-inferred');
-		expect(inferred).not.toBeNull();
-		expect(inferred?.querySelector('.pbl-bar-connector')).not.toBeNull();
+		// `Cut the release branch` is a one-day PBI — start and target the same date — so
+		// its diamond comes from GEOMETRY, not from being a Milestone. Addressed by name:
+		// `Ship 1.0` (an actual Milestone) already carries `.pbl-bar-milestone` on every
+		// render of this fixture, so a bare class selector would pass whether or not this
+		// note drew anything — extension 1d is that the bar keeps BOTH its resize grip and
+		// its connector rather than trading one for the other, so both are asserted by name.
+		const oneDay = barFor(containerEl, 'Cut the release branch');
+		expect(oneDay.classList.contains('pbl-bar-milestone')).toBe(true);
+		expect(gripNames(containerEl, 'Cut the release branch')).toContain('end');
+		expect(oneDay.querySelector('.pbl-bar-connector')).not.toBeNull();
+
+		// An inferred bar has no grip and still offers a connector. `Welcome tour` is the
+		// one note in this fixture with no dates of its own whose span comes from a child —
+		// addressed by name so a class rename or a deleted note fails here rather than on
+		// whichever bar happens to inherit the class next.
+		const inferred = barFor(containerEl, 'Welcome tour');
+		expect(inferred.classList.contains('pbl-bar-inferred')).toBe(true);
+		expect(gripNames(containerEl, 'Welcome tour')).toEqual([]);
+		expect(inferred.querySelector('.pbl-bar-connector')).not.toBeNull();
 	});
 
 	it('draws a clipped bar in the edge-case fixture, where it distorts nothing', () => {
@@ -129,11 +139,16 @@ describe('the harness draws the cases the dependency connector has to survive', 
 		// migration` itself, the note the fixture's own comment describes as clipped.
 		containerEl.querySelector<HTMLButtonElement>('.pbl-collapse-ctl')?.click();
 
-		const clipped = containerEl.querySelector<HTMLElement>('.pbl-bar-clipped-end');
-		expect(clipped, 'the edge fixture exists to draw a clipped bar').not.toBeNull();
+		// Addressed by name, and by name alone: `Platform`'s inferred rollup ALSO carries
+		// `.pbl-bar-clipped-end` and sits earlier in DOM order, so a bare class selector
+		// would keep passing even if `The long migration` itself stopped drawing one.
+		const clipped = barFor(containerEl, 'The long migration');
+		expect(clipped.classList.contains('pbl-bar-clipped-end'), 'the edge fixture exists to draw a clipped bar').toBe(
+			true,
+		);
 		// The connector comes INSIDE the clamped edge; the class is what the stylesheet
 		// keys that on, so its presence is the checkable half.
-		expect(clipped?.querySelector('.pbl-bar-connector')).not.toBeNull();
+		expect(clipped.querySelector('.pbl-bar-connector')).not.toBeNull();
 	});
 });
 
