@@ -96,6 +96,34 @@ describe('the manual dialog', () => {
 		expect(badge?.hasClass('pbl-lvl-0')).toBe(true);
 		expect(badge?.textContent).toBe('Epic');
 	});
+
+	// The pane's own `<h3>` names the SECTION and changes as the sidebar is used, so a
+	// title that only matched on a single-section test would look right for the wrong
+	// reason — the point of this test is the second assertion, after a switch.
+	it('gives the dialog a stable accessible name that does not change when the section does', () => {
+		openManual({} as never, SECTIONS, 'one');
+		const titleEl = Modal.lastOpened?.titleEl;
+		expect(titleEl?.textContent).toBe('Product Backlog manual');
+
+		const second = Array.from(content().querySelectorAll<HTMLElement>('.vertical-tab-nav-item'))[1];
+		second.click();
+		expect(content().querySelector('.pbl-manual-pane h3')?.textContent).toBe('Second');
+		expect(titleEl?.textContent).toBe('Product Backlog manual');
+	});
+
+	it('resets the pane to the top when the section changes, so a scrolled reader is not stranded mid-section', () => {
+		openManual({} as never, SECTIONS, 'one');
+		const pane = content().querySelector<HTMLElement>('.pbl-manual-pane');
+		if (!pane) throw new Error('no pane');
+		// jsdom does no layout, so nothing here produces a real scroll — setting the
+		// property directly is enough to prove `show` resets it, which a render that
+		// never touched `scrollTop` would fail.
+		pane.scrollTop = 500;
+
+		const second = Array.from(content().querySelectorAll<HTMLElement>('.vertical-tab-nav-item'))[1];
+		second.click();
+		expect(pane.scrollTop).toBe(0);
+	});
 });
 
 /**
@@ -116,5 +144,12 @@ describe("the manual's stylesheet", () => {
 	it('gives the sidebar item its own focus-visible ring, since it strips the one Obsidian would draw', () => {
 		const rule = /\.pbl-manual-nav \.vertical-tab-nav-item:focus-visible\s*\{[^}]*outline:\s*1px solid var\(--interactive-accent\)/;
 		expect(styles).toMatch(rule);
+	});
+
+	// Existence only, same limit as above: jsdom evaluates neither media queries nor
+	// the `.is-phone` class Obsidian's real app shell would add, so this cannot prove
+	// the phone case actually stacks on screen — only that the rule is in the sheet.
+	it('stacks the sidebar above the pane on a real phone, gated the way Obsidian itself gates phone layout', () => {
+		expect(styles).toMatch(/\.is-phone \.pbl-manual-split\s*\{[^}]*flex-direction:\s*column/);
 	});
 });

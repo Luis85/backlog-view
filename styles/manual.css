@@ -18,6 +18,33 @@
 	padding: var(--size-4-3) 0;
 }
 
+/* Gated on `.is-phone`, the class Obsidian's own app shell adds for a real phone —
+   never a viewport-width media query — because that is how EVERY phone rule in the
+   vendored sheet does it (`.is-phone .modal.mod-sidebar-layout`,
+   `.is-phone .modal.mod-settings .vertical-tab-header-group-items`,
+   `test/harness/obsidian.css`), so this follows the same convention instead of
+   inventing a breakpoint of its own. Obsidian's real mobile settings UI swaps the nav
+   list and the content pane one at a time — a JS-driven master/detail this dialog has
+   no state machine to replicate — so stacking is the CSS-only degree of correctness
+   available here: it gives up the two-column layout rather than trying to fake the
+   swap. Flipping the split's axis needs no width rule of its own to add — the SAME
+   `flex: 0 0 190px` above now caps the nav's HEIGHT instead of its width once the axis
+   is vertical, and `align-items: stretch` (flexbox's own default) is what gives the
+   pane the full width, which is the whole fix for the prose column this was opened
+   for. `overflow-y` guards the height cap now doing double duty as a real limit rather
+   than a generous one; the border swap corrects `.modal-sidebar-inner`'s own
+   `border-inline-end` (Obsidian's, for the two-column case), which would otherwise
+   survive as a stray vertical line down the right edge of a now full-width block. */
+.is-phone .pbl-manual-split {
+	flex-direction: column;
+}
+
+.is-phone .pbl-manual-nav {
+	overflow-y: auto;
+	border-inline-end: none;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
 .pbl-manual-navhead {
 	padding: 0 var(--size-4-3) var(--size-4-2);
 	font-size: var(--font-ui-smaller);

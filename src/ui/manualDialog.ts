@@ -42,6 +42,12 @@ class ManualDialog extends Modal {
 
 	onOpen(): void {
 		const { contentEl } = this;
+		// The dialog's own accessible name — every other `Modal` in `src/ui/prompts.ts`
+		// sets `titleEl` the same way. The pane's own `<h3>` (in `show`, below) names the
+		// SECTION currently open and changes as the sidebar is used, so it cannot stand
+		// in for this: a screen reader announcing the dialog needs one name that does not
+		// move under it while its content does.
+		this.titleEl.setText('Product Backlog manual');
 		contentEl.empty();
 		contentEl.addClass('pbl-manual');
 		// Both classes go on the MODAL, not on `contentEl`, and both are needed: Obsidian
@@ -103,6 +109,12 @@ class ManualDialog extends Modal {
 	 * replaced in git history for the guard it used to need. */
 	private show(pane: HTMLElement, section: ManualSection): void {
 		pane.empty();
+		// `empty()` clears the CONTENT, not the scroll position — `scrollTop` is the
+		// pane's own property and survives a refill untouched, so without this a reader
+		// scrolled to the bottom of one section who picks another lands partway down the
+		// new one, its heading already off the top of the viewport. Reset here, not only
+		// in the sidebar's click handler, so it holds for every path that calls `show`.
+		pane.scrollTop = 0;
 		pane.createEl('h3', { text: section.title });
 		if (section.intro) pane.createDiv({ cls: 'pbl-manual-intro', text: section.intro });
 
