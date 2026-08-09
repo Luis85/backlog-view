@@ -217,9 +217,18 @@ export default defineConfig({
 			// goes up, so the merge takes the HIGHER of each rather than either side's set:
 			// branches and functions from the toolbar work, statements and lines equal. The
 			// merged tree was measured against these before this line was written.
+			//
+			// Collapsing the dependency-undo identity rule (five accumulated conditions in
+			// `restoreDependsOn` replaced by one predicate and one two-pass matcher, plus the
+			// two watched-failing tests the rename-then-delete and delete-then-restore cells
+			// needed) measured 98.31/94.57/99.56/99.47 (5617/5713, 3541/3744, 1358/1364,
+			// 4706/4731). Statements and branches round down to new decimals (98.3, 94.5);
+			// functions and lines round down to the figures already recorded above and stay.
+			// Worth naming because the rise is mostly SUBTRACTION — the branches that went
+			// were cases the rule makes unnecessary, not cases a test started driving.
 			thresholds: {
-				statements: 98.2,
-				branches: 94.4,
+				statements: 98.3,
+				branches: 94.5,
 				functions: 99.5,
 				lines: 99.4,
 			},

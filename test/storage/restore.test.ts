@@ -395,6 +395,45 @@ describe('dependency inverses', () => {
 		expect(vault.fm('Item.md')['dependsOn']).toBeUndefined();
 	});
 
+	it('takes back an added link whose prerequisite was RENAMED and then DELETED', async () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', {});
+		const item = vault.addFile('Item.md', {});
+
+		const target = vault.files.get('A.md') as never;
+		const inverses = await writeCapturing(vault, [{ file: item, dependsOn: { add: target } }], linked);
+		expect(vault.fm('Item.md')['dependsOn']).toEqual(['[[A]]']);
+		// Renamed — Obsidian rewrites the plugin's line to match — and then deleted. The
+		// captured text names nothing, the live text names nothing, and the captured file
+		// is at no path. What still connects them is the file's LAST path, which is what
+		// the live line was rewritten to say.
+		vault.renameFile('A.md', 'B.md');
+		vault.fm('Item.md')['dependsOn'] = ['[[B]]'];
+		vault.files.delete('B.md');
+
+		await applyRestores(vault.app, inverses);
+
+		expect(vault.fm('Item.md')['dependsOn']).toBeUndefined();
+	});
+
+	it('restores a removed dependency whose note was DELETED, as the broken line it now is', async () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', {});
+		const item = vault.addFile('Item.md', { frontmatter: { dependsOn: '[[A]]' } });
+
+		const inverses = await writeCapturing(vault, [{ file: item, dependsOn: { removePath: 'A.md' } }], linked);
+		expect(vault.fm('Item.md')['dependsOn']).toBeUndefined();
+		// Deleted while the line was OFF the note, and nothing took the name.
+		vault.files.delete('A.md');
+
+		await applyRestores(vault.app, inverses);
+
+		// The line goes back as it was. It names nothing now — which is exactly what the
+		// note would be saying had the removal never happened, and is the same judgement
+		// the remove arm already makes about a broken line it wrote itself.
+		expect(vault.fm('Item.md')['dependsOn']).toEqual(['[[A]]']);
+	});
+
 	it('leaves the user their own obsolete spelling when the target was RENAMED', async () => {
 		const vault = new FakeVault();
 		vault.addFile('A.md', {});

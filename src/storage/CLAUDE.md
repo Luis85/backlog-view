@@ -114,58 +114,71 @@ can be checked by reading one directory.
   could fail in between and leave a note in a bucket its frontmatter does not claim,
   which is the same argument the hierarchy properties were already there for.
 
+## Undoing a prerequisite: one identity rule
+
+The dependency inverse is the one restore whose target can be RENAMED, DELETED or
+REPLACED between the write and the undo, and it took six review rounds discovering those
+cases one at a time — each fix a new condition beside the last, each new condition the
+source of the next finding. What follows is the rule they were all approximations of.
+It is written as the rule rather than as a list of cases on purpose: the cases are how
+this went wrong, and a seventh case is a question to ask of the rule, not a seventh
+branch to add.
+
 **A captured inverse holds a FILE, never a name.** `DependsOnRestore` carries each line
 as `{ text, file }`: the text is what gets written back, the file is what says which note
 the line was about. Text alone cannot survive a rename — Obsidian mutates the one `TFile`
 and rewrites the links that named it, so a captured `[[A]]` resolves to nothing while the
 live entry reads `[[B]]`, and an undo matching on text or on a captured PATH finds no line
-and silently does nothing. Reading `file.path` at replay time follows the rename to where
-the live entry now points. Null file means the line named nothing when it was captured — a
-broken entry has no note to be renamed, so its own trimmed text is the whole of its
-identity, on both sides of the comparison.
+and silently does nothing.
 
-The captured TEXT is what goes back — it carries the user's padding and their choice of
-`A` over `[[A]]` — with one exception, and the exception is invisible from the text
-itself: while a line is OFF the note, the note it named can move. Obsidian rewrites the
-links that EXIST on a rename, and a removed line is not there to be rewritten, so an undo
-replaying the captured spelling restores `[[A]]` for a note now called B. `restoredLine`
-asks two questions before writing: is the captured file still the vault's file at its own
-path (if not it was deleted, possibly with a DIFFERENT note created under the old name, so
-nothing is written rather than a dependency the user never picked), and does the captured
-text still name it (if not, the link is regenerated from where the file is now). A line
-that resolved to nothing when captured has no file to ask, and goes back exactly as it
-was. Following a rename replaces the link's TARGET only: the `#heading` and the `|alias`
-say what the user meant by the link and are none of a rename's business, and rebuilding
-the whole thing from the file resolved correctly while silently dropping both.
+**Which live line is a captured line is ONE question** (`namesCaptured`): does it name
+the note the capture held. Everything the replay decides is that question asked of a
+different pair — never a comparison of spellings, never a special case for a deletion.
+What makes it answerable is a single fact about Obsidian, which the rule leans on in two
+directions at once: **a rename mutates the one `TFile` in place and rewrites the links
+that exist.** So `entry.file.path` is always the note's LAST path, and a live line the
+plugin wrote says that same last path, whatever happened in between.
 
-Resolving to NOTHING is not resolving to somebody else — but it has two causes, and they
-are opposites. The exact-spelling preference is conditional: a captured spelling is only
-still this undo's own line while it names the captured note. **DELETED** leaves that line
-sitting there broken and claimed by nobody, so the preference holds; declining it there
-left an added `[[A]]` on the note after A was deleted, because the fallback then compares
-a broken line's own text (its whole identity) against the captured file's path, which
-never match. **RENAMED** is the opposite: the file is alive under a new name and Obsidian
-rewrote the plugin's line to match, so the old spelling is merely obsolete — and a user
-who typed that old name themselves owns THAT line, which preferring it would delete while
-leaving the plugin's behind. `vault.getFileByPath(entry.file.path) !== entry.file` is what
-tells them apart, because a rename mutates the file in place and a deletion does not. A
-spelling that now names a DIFFERENT note is somebody else's in either case.
+| the captured entry | the live line | is it the same line |
+| --- | --- | --- |
+| named nothing (`file` is null) | anything | same trimmed TEXT, and nothing else — a broken line has no note to share, so only its own spelling can be it |
+| holds a file | resolves | iff it resolves to that FILE — never merely to a file at that path, since a note recreated under the old name is a different object and somebody else's dependency |
+| holds a file | resolves to nothing | iff it names the file's LAST path (`namesPath`) — nothing else can be claiming an unresolved spelling |
+
+The third row is what a text-or-path comparison could see neither half of. It covers a
+prerequisite DELETED (its line sits there broken, and the undo owns it) and one RENAMED
+and then deleted (Obsidian rewrote the line to `[[B]]` before the note went, so neither
+the captured text nor any resolution finds it, and only the last path connects them).
 
 **A live line satisfies the captured line it IS before one it merely resembles**
-(`stillOwed`). The replay counts what is already back twice — by exact text and by
-resolved note — and claims the exact matches first. Removing `[A, [[A]]]` and
-hand-restoring only `[[A]]` otherwise has the by-note count satisfy captured `A`, leaving
-captured `[[A]]` to be appended: two `[[A]]` on the note, and the spelling the user
-actually lost still missing.
+(`claimLines`): two passes over all the captured lines, the first claiming an identical
+spelling and the second letting what is left claim any line naming the same note. Claims
+are exclusive, so this is a MULTISET match — `[A, A]` is one dependency and two lines,
+and each captured copy must find its own or be restored. Per-entry ordering breaks it:
+removing `[A, [[A]]]` and hand-restoring only `[[A]]` had captured `A` claim it by note,
+leaving captured `[[A]]` to be appended — two `[[A]]` on the note and the spelling the
+user lost still missing. The exact pass compares RAW text to RAW text, padding included;
+counting it off the trimmed reading made `" A "` an exact match for a captured `"A"`.
 
-**The line it IS means the same TEXT naming the same NOTE**, which is one condition
-(`ownsExactText`) that both arms of `restoreDependsOn` ask, because a spelling is only
-this undo's own line while it still resolves where the capture pointed. A rename moves the
-note out from under the text and a different note created at the old name takes that
-spelling over: the captured `[[A]]` is now a dependency on somebody else's note. Trusting
-the text regardless broke the preference in both directions — undoing an add deleted the
-user's own `[[A]]` and left the plugin's `[[B]]` behind, and undoing a removal read the
-user's `[[A]]` as the captured line already back and restored nothing at all.
+The exact pass is still subject to `namesCaptured`, which is what used to be a separate
+conditional preference and is now nothing at all: an identical spelling that has come to
+name somebody else's note is not this line, and falls out of the one rule rather than
+needing to be excluded by a second.
+
+**What goes back is the captured TEXT**, carrying the user's padding and their choice of
+`A` over `[[A]]` — `restoredLine` changes it only because, while a line is OFF the note,
+the note it named can move and no rewrite reaches a line that is not there. One question
+again: is the captured file still the vault's file at its own path? **Alive** — the line
+must name it, so the captured text goes back if it still does and is retargeted to the
+current name if not. **Gone** — there is nothing to name, and the line is restorable only
+as the broken line it now is, which is exactly what the note would say had the removal
+never happened. The single refusal left is the captured text resolving to SOMETHING: a
+different note has taken that name, and writing it would silently make the user depend on
+a note they never picked.
+
+Following a rename replaces the link's TARGET only: the `#heading` and the `|alias` say
+what the user meant by the link and are none of a rename's business, and rebuilding the
+whole thing from the file resolved correctly while silently dropping both.
 
 ## Collapse state, and the view mode beside it
 

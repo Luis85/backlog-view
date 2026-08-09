@@ -122,6 +122,23 @@ a different control.
   that answer rather than reopening it.
 - **3b — the user takes it back.** One undo, because it was one batch. A dependency write
   has no peers: it renumbers nothing, cascades to nothing, and touches exactly one note.
+- **3c — the prerequisite moves between the write and the undo.** 2e's three answers
+  again, now on the replay side, and the promise is the same one stated from the other
+  end: **undo acts on the line it wrote, identified by the NOTE that line was about.**
+  A rename is that note wearing a new path, so the undo follows it — the live line
+  Obsidian rewrote is the one taken back, and a user who typed the *old* name themselves
+  keeps theirs. A replacement is a different note wearing the old name, so the undo
+  declines: it neither takes a line naming the replacement nor writes one, because a
+  dependency nobody picked is worse than an undo that reports doing nothing. A deletion
+  leaves the line broken and claimed by nobody, so it is still this write's — taken back
+  when it added one, and put back as the broken line it now is when it removed one, which
+  is what the note would be saying had the removal never happened.
+  What makes those three decidable at all is that Obsidian mutates a note's one file
+  object on a rename and rewrites the links that exist, so the file's own path is always
+  current on both sides. The mechanism is `src/storage/CLAUDE.md`'s **Undoing a
+  prerequisite**; what belongs here is that the three answers are a consequence of one
+  rule and not three behaviours. They were built as three, over six review rounds, each
+  fix the source of the next finding.
 - **4a — the last prerequisite is removed.** The key is removed, not emptied. Absence is a
   value here as it is for every optional property, and an empty list left on disk is a
   value the reader would then have to be taught to ignore.

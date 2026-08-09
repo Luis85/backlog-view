@@ -71,14 +71,6 @@ function writeEntries(fm: Record<string, unknown>, key: string, next: unknown[])
 	else delete fm[key];
 }
 
-/** Count occurrences of each string, for MULTISET matching — a duplicate line is two
- *  entries to restore, not one, and a plain membership test cannot tell them apart. */
-function countOf(texts: string[]): Map<string, number> {
-	const counts = new Map<string, number>();
-	for (const text of texts) counts.set(text, (counts.get(text) ?? 0) + 1);
-	return counts;
-}
-
 /**
  * The note a dependency LINE names, exactly as the reader resolves one — shared by the
  * forward writer's own duplicate guard (`applyDependsOnDelta`'s `dropText`/`already`) and
@@ -176,6 +168,106 @@ function applyDependsOnDelta(
 }
 
 /**
+ * **Does this live line name the note the captured line was written for?** One question,
+ * and every matching decision in the replay below is it — there is no second rule about
+ * spellings, no third about deletions.
+ *
+ * A captured entry that named NOTHING has no note to share, so its own trimmed text is
+ * the whole of its identity and only that spelling can be it.
+ *
+ * Otherwise the captured entry holds the `TFile`, and what makes that answerable is that
+ * Obsidian keeps the file's own name up to date in two directions at once: a rename
+ * mutates the one object (so `entry.file.path` is always the note's LAST path) and
+ * rewrites the links that exist (so a live line the plugin wrote says that same last
+ * path). The two therefore agree whatever happened in between, which is why this asks
+ * the vault rather than comparing strings:
+ *
+ * - the live line RESOLVES → it is this line iff it resolves to the captured file
+ *   itself. Not to a file at the captured path: a note deleted and recreated under the
+ *   same name is a different object and somebody else's dependency.
+ * - the live line resolves to NOTHING → nothing else can be claiming that spelling, so
+ *   it is this line iff it names the captured file's last path (`namesPath`). That
+ *   covers a deleted prerequisite, whose line sits there broken, and a renamed-then-
+ *   deleted one, whose line Obsidian rewrote before the note went — the case a
+ *   text-or-path comparison could see neither half of.
+ */
+function namesCaptured(app: App, file: TFile, text: string, entry: DependsOnEntry): boolean {
+	if (entry.file === null) return text.trim() === entry.text.trim();
+	const now = resolvedFileOf(app, file, text);
+	return now === null ? namesPath(text, entry.file.path) : now === entry.file;
+}
+
+/**
+ * Whether an UNRESOLVED link text names a path — the comparison `getFirstLinkpathDest`
+ * would have made had the note still been there, against one known path rather than
+ * against the vault. Obsidian writes the shortest unambiguous form, so the bare name is
+ * the spelling to expect and the fuller ones are what a user may have typed.
+ *
+ * Deliberately exact rather than case-insensitive, though link resolution is not: this
+ * predicate only ever decides whether an undo may TAKE a line, so being stricter than
+ * Obsidian declines the doubtful case instead of consuming somebody else's.
+ */
+function namesPath(text: string, path: string): boolean {
+	const linkpath = linkpathFromRawValue(text);
+	if (linkpath.length === 0) return false;
+	const withoutExtension = path.replace(/\.md$/, '');
+	const segments = withoutExtension.split('/');
+	return linkpath === path || linkpath === withoutExtension || linkpath === segments[segments.length - 1];
+}
+
+/**
+ * Which live line each captured line claims, or null for one with nothing to claim.
+ *
+ * Both arms of the replay ask this, which is what makes "the same line" mean one thing
+ * whichever direction is writing: the `remove` arm takes what it claims back off the
+ * note, the `add` arm reads a claim as "already back" and writes nothing.
+ *
+ * A claim is exclusive, so this is a MULTISET match rather than a membership test — a
+ * removal can capture the same raw text more than once (`[A, A]` is one dependency and
+ * two lines), and each captured copy must find its own live line or be restored.
+ *
+ * **A live line satisfies the captured line it IS before one it merely resembles**,
+ * which is why this is two passes over all the captured lines rather than one pass
+ * asking both questions per line. The first claims an identical spelling — the line
+ * this write actually put there, not merely one naming the same note — and the second
+ * lets what is left claim any line naming that note, which is what a hand-respelling
+ * (`A` rewritten `[[A]]`) or an Obsidian rename needs. Per-entry ordering breaks it:
+ * removing `[A, [[A]]]` and hand-restoring only `[[A]]` had captured `A` claim it by
+ * note, leaving captured `[[A]]` to be appended — two `[[A]]` on the note, and the
+ * spelling the user actually lost still missing.
+ *
+ * The exact pass compares the RAW live value against the RAW captured text, padding and
+ * all: counting it off the trimmed reading made `" A "` an exact match for a captured
+ * `"A"`, so the wrong captured entry was consumed and a second padded copy appended.
+ * Eligibility is still `namesCaptured`, so an identical spelling that has come to name
+ * somebody else's note is not this line — which is the whole of what used to be a
+ * separate conditional preference.
+ */
+function claimLines(
+	live: unknown[],
+	captured: DependsOnEntry[],
+	names: (text: string, entry: DependsOnEntry) => boolean,
+): (number | null)[] {
+	const claimed = live.map(() => false);
+	const found = captured.map<number | null>(() => null);
+	const eligible = (index: number, entry: DependsOnEntry): boolean => {
+		if (claimed[index]) return false;
+		const text = textOf(live[index]);
+		return text !== null && names(text, entry);
+	};
+	const claim = (n: number, index: number): void => {
+		if (index === -1) return;
+		claimed[index] = true;
+		found[n] = index;
+	};
+	captured.forEach((entry, n) => claim(n, live.findIndex((value, i) => eligible(i, entry) && value === entry.text)));
+	captured.forEach((entry, n) => {
+		if (found[n] === null) claim(n, live.findIndex((_, i) => eligible(i, entry)));
+	});
+	return found;
+}
+
+/**
  * Replay one captured prerequisite inverse against the LIVE list, returning the REDO —
  * only what THIS replay actually changed, read backwards — or null when it changed
  * nothing.
@@ -186,42 +278,10 @@ function applyDependsOnDelta(
  * actually did rather than what it was told to do. Skipping that check is exactly how a
  * redo comes to re-add a dependency the user deliberately removed themselves.
  *
- * Both arms are also MULTISETS, not membership tests, because a removal can have
- * captured the same raw text more than once (`[A, A]` is one dependency and two lines):
- * `toRemove`/`already` count each text rather than asking yes-or-no, so undoing a
- * duplicate-line removal restores every copy instead of the first. The guard this
- * replaces a plain "already present" check for is the same one `applyDependsOnDelta`'s
- * `add` keeps: an entry already on the note — because the user put it back by hand, or
- * because an earlier partial replay already restored it — satisfies one occurrence of
- * what this replay would add, so only the copies genuinely missing get written. A count
- * of zero live copies is the ordinary case and restores the full multiplicity untouched.
- *
- * Both multisets are counted by RESOLVED NOTE (`resolvedPathOf`), not by exact text — the
- * same reason `applyDependsOnDelta`'s own `add` guard resolves rather than compares raw
- * strings: a line surviving between capture and replay may have been hand-edited to a
- * different spelling of the same note (`A` respelled `[[A]]`), and a text-only compare
- * would not recognise it as already there. Text is still the identity for an entry that
- * resolves to nothing — a broken line has no note to share, so it can only satisfy its
- * own exact spelling — which is what keeps this a strict generalisation of the old
- * behaviour rather than a looser one. The counted KEY changed; the counted QUANTITY (one
- * per captured line, multiplicity and all) did not.
- *
- * The `remove` arm additionally prefers an EXACT-TEXT occurrence over a resolved-path
- * one: an undo owns the exact line ITS OWN write put there, not merely a live entry that
- * happens to name the same note. Without that preference, a user who hand-adds their own
- * spelling of a note the plugin already depends on (`[[A]]` written by a prior add, `A`
- * inserted by hand alongside it) can have their own line consumed by an undo that was
- * only ever entitled to the plugin's — resolved-path matching is correct only as the
- * FALLBACK for an entry genuinely respelled since the write, which is the case the
- * multiset paragraph above describes and which stays intact.
- *
- * That preference is CONDITIONAL (`ownsExactText`), and both arms ask the condition: the
- * spelling is only this undo's own line while it still names the note the capture held.
- * A rename moves the note out from under the text — Obsidian rewrote the live line to
- * `[[B]]` and the captured `[[A]]` was not there to be rewritten — and a different note
- * created at the old name makes that spelling somebody else's dependency. Preferring it
- * regardless deleted the user's `[[A]]` and left the plugin's `[[B]]` on the note, which
- * is the exact harm the preference exists to prevent, arriving from the other side.
+ * What "the same line" means is `namesCaptured`, and what a claim on one means is
+ * `claimLines`; both arms ask both, so this function decides nothing about identity of
+ * its own. The `remove` arm takes the lines it claims off the note; the `add` arm treats
+ * a claim as the line already being back and writes only what is left over.
  *
  * **Known limitation, deliberate:** a restored entry is appended, never reinserted at
  * the position it was removed from, so undoing a removal from `[B, A]` hands back
@@ -238,165 +298,66 @@ export function restoreDependsOn(
 	fm: Record<string, unknown>,
 	restore: DependsOnRestore,
 ): DependsOnRestore | null {
-	// TRIMMED for the unresolved fallback, because that is the identity the live side is
-	// already counted under: every live entry reaches this through `textOf`, which trims.
-	// Captured text does not — a removal records the ORIGINAL value, padding and all, so
-	// that an undo can put the exact line back. Comparing the two untrimmed would have
-	// `" Ghost "` fail to recognise a hand-restored `Ghost` and append a duplicate. Only
-	// the comparison KEY is trimmed; what gets written is still the captured spelling.
-	// One identity for both sides. A LIVE entry is asked of the vault, so a rename it
-	// already followed resolves to the note's current path. A CAPTURED entry is asked of
-	// the file it held, whose `.path` the same rename moved — never of its text, which a
-	// rename strands. Text is the fallback on both sides, for the line that names nothing.
-	const identityOf = (text: string): string => resolvedPathOf(app, file, text) ?? text.trim();
-	const capturedIdentity = (entry: DependsOnEntry): string => entry.file?.path ?? entry.text.trim();
-	// Whether a captured entry's own spelling is still ITS OWN line — see the doc comment.
-	// A captured entry that named nothing has no note to be renamed out from under it, so
-	// its text is its identity outright, whatever that text may resolve to today.
-	const ownsExactText = (entry: DependsOnEntry): boolean => {
-		if (entry.file === null) return true;
-		const now = resolvedFileOf(app, file, entry.text.trim());
-		if (now === entry.file) return true;
-		// Names a DIFFERENT note: somebody else's dependency, whatever it used to be.
-		if (now !== null) return false;
-		// Unresolved, and the two ways to get here are opposites. DELETED: the line the
-		// plugin wrote is still sitting there, broken and claimed by nobody, so the undo
-		// owns it — refusing here left an added `[[A]]` on the note after A was deleted,
-		// because the fallback then compared a broken line's own text (its whole
-		// identity) against the captured file's path, which never match. RENAMED: the
-		// file is alive under a new name and Obsidian rewrote the plugin's line to match
-		// it, so this spelling is merely obsolete — and a user who typed the old name
-		// themselves owns THAT line, which preferring it here would delete while leaving
-		// the plugin's behind. The file's own presence is what tells them apart.
-		return app.vault.getFileByPath(entry.file.path) !== entry.file;
-	};
+	const names = (text: string, entry: DependsOnEntry): boolean => namesCaptured(app, file, text, entry);
 	const live = liveEntries(fm, restore.key);
-	const consumed = new Array<boolean>(live.length).fill(false);
-	const removed: DependsOnEntry[] = [];
-	for (const wanted of restore.remove) {
-		// Prefer the exact line this entry captured — an undo owns the line its own
-		// write put there, not merely a live entry naming the same note — but only
-		// while that spelling still names the captured note.
-		let index = ownsExactText(wanted)
-			? live.findIndex((value, i) => !consumed[i] && value === wanted.text)
-			: -1;
-		if (index === -1) {
-			// Fallback: no exact spelling survives, so match by resolved note instead —
-			// the case a genuine hand-respelling (`A` rewritten `[[A]]`) needs.
-			const wantedKey = capturedIdentity(wanted);
-			index = live.findIndex((value, i) => {
-				if (consumed[i]) return false;
-				const text = textOf(value);
-				return text !== null && identityOf(text) === wantedKey;
-			});
-		}
-		if (index === -1) continue; // already gone — nothing left for this entry to take
-		consumed[index] = true;
-		// Captured for the redo as the ORIGINAL `value` — the same split
-		// `applyDependsOnDelta`'s own capture keeps above, and for the same reason:
-		// restoring `value` itself rather than the matched text is what carries a
-		// hand-added respelling (padding, or any other edit) into the redo instead of
-		// normalizing it away.
+	// A captured line with no claim is already gone — nothing left for it to take.
+	const taken = claimLines(live, restore.remove, names);
+	const held = new Set(taken.filter((index): index is number => index !== null));
+	// Captured for the redo as the ORIGINAL live value — the same split
+	// `applyDependsOnDelta`'s own capture keeps above, and for the same reason: recording
+	// the line as written rather than as matched is what carries a hand-added respelling
+	// (padding, or any other edit) into the redo instead of normalizing it away.
+	const removed: DependsOnEntry[] = [...held].map((index) => {
 		const text = live[index] as string;
-		removed.push({ text, file: resolvedFileOf(app, file, text.trim()) });
-	}
-	const next: unknown[] = live.filter((_, i) => !consumed[i]);
-	const pending = stillOwed(next, restore.add, identityOf, ownsExactText);
+		return { text, file: resolvedFileOf(app, file, text.trim()) };
+	});
+	const next: unknown[] = live.filter((_, i) => !held.has(i));
+	const back = claimLines(next, restore.add, names);
 	const added: DependsOnEntry[] = [];
-	for (const entry of pending.owed) {
-		const key = capturedIdentity(entry);
-		const have = pending.already.get(key) ?? 0;
-		if (have > 0) {
-			pending.already.set(key, have - 1);
-			continue;
-		}
+	restore.add.forEach((entry, n) => {
+		if (back[n] !== null) return; // already on the note, by hand or by an earlier partial replay
 		const line = restoredLine(app, file, entry);
-		// Null means the note this line was captured FOR is not in the vault any more, so
-		// there is no spelling that would name it. Skipping is the `remove` arm's own
-		// "already gone" answer read from the other side, and `added` states what was
-		// actually written, so the redo stays accurate.
-		if (line === null) continue;
+		// Null means there is no spelling that would say what this line said, so nothing
+		// is written; `added` states what actually landed, so the redo stays accurate.
+		if (line === null) return;
 		next.push(line);
 		added.push({ text: line, file: entry.file });
-	}
+	});
 	if (added.length === 0 && removed.length === 0) return null;
 	writeEntries(fm, restore.key, next);
 	return { key: restore.key, add: removed, remove: added };
 }
 
 /**
- * Which captured lines are still owed, and what is already back to count them against.
- *
- * Two counts, because one captured line can be satisfied by an exact spelling of itself
- * or by any live entry naming the same note — and which of the two applies decides which
- * captured entry gets consumed. **A live line satisfies the captured line it IS before
- * one it merely resembles**, so the exact matches are claimed here, first. Removing
- * `[A, [[A]]]` and hand-restoring only `[[A]]` otherwise had the by-note count satisfy
- * captured `A`, leaving captured `[[A]]` to be appended: two `[[A]]` on the note, and the
- * spelling the user actually lost still missing.
- *
- * The line it IS means the same TEXT naming the same NOTE (`ownsExactText`, asked by the
- * caller because only it can resolve): a captured `[[A]]` whose note was renamed to B and
- * whose old name a different note now occupies is not back merely because `[[A]]` is on
- * the note. Counting it as back left the dependency on B unrestored and the undo silent.
- *
- * Its own function because `restoreDependsOn` is at its complexity budget, and because
- * the two passes are one question asked twice rather than two steps of the replay.
- */
-function stillOwed(
-	live: unknown[],
-	captured: DependsOnEntry[],
-	identityOf: (text: string) => string,
-	ownsExactText: (entry: DependsOnEntry) => boolean,
-): { owed: DependsOnEntry[]; already: Map<string, number> } {
-	// The exact count is built from the line AS WRITTEN, the identity count from its
-	// trimmed reading. Counting both off the trimmed text made `" A "` on the note an
-	// exact match for a captured `"A"`, so undo consumed the wrong captured entry and
-	// appended a second padded copy — the very confusion the exact pass exists to end.
-	const lines = live
-		.map((value) => ({ raw: value as string, trimmed: textOf(value) }))
-		.filter((line): line is { raw: string; trimmed: string } => line.trimmed !== null);
-	const exact = countOf(lines.map((line) => line.raw));
-	const already = countOf(lines.map((line) => identityOf(line.trimmed)));
-	const owed: DependsOnEntry[] = [];
-	for (const entry of captured) {
-		const have = ownsExactText(entry) ? (exact.get(entry.text) ?? 0) : 0;
-		if (have === 0) {
-			owed.push(entry);
-			continue;
-		}
-		exact.set(entry.text, have - 1);
-		const key = identityOf(entry.text);
-		already.set(key, Math.max(0, (already.get(key) ?? 0) - 1));
-	}
-	return { owed, already };
-}
-
-/**
  * The exact text to write back for one captured line, or null when there is none to
  * write.
  *
- * The captured spelling is preferred and is usually what goes back — that is what
- * carries the user's own padding and their choice of `A` over `[[A]]`. It is only wrong
- * in one situation, and the situation is invisible from the text: while the line was
- * OFF the note, the note it named moved. Obsidian rewrites links on a rename, but only
- * the ones that exist, and a removed line is not there to be rewritten — so an undo that
- * put the captured text back would restore `[[A]]` for a note now called B, which is a
- * broken dependency the user never had.
+ * The captured spelling is what goes back — it carries the user's own padding and their
+ * choice of `A` over `[[A]]` — and the only reason to write anything else is that while
+ * the line was OFF the note, the note it named moved. Obsidian rewrites the links that
+ * EXIST on a rename and a removed line is not there to be rewritten, so replaying the
+ * captured text verbatim would restore `[[A]]` for a note now called B.
  *
- * Two questions, in order. Is the captured file still the vault's file at its own path?
- * If not it was deleted — possibly with a DIFFERENT note created under the old name, in
- * which case writing the captured text would silently make the user depend on a note
- * they never picked, so nothing is written at all. Otherwise: does the captured text
- * still name that file? If yes it is returned untouched, padding and all. If no, the
- * file moved, and the link is regenerated from where it is now.
+ * So: is the captured file still the vault's file at its own path?
  *
- * A line that resolved to nothing when it was captured has no file to ask either
- * question of, and its text is its whole identity, so it always goes back as it was.
+ * - **Yes** — it is alive, wherever it now lives, and the line must name it. The captured
+ *   text goes back if it still does, and is retargeted to the note's current name if a
+ *   rename moved it out from under the spelling.
+ * - **No** — the note is gone, and there is nothing to name. Its line is restorable only
+ *   as the broken line it now is, which is exactly what the note would be saying had the
+ *   removal never happened — the same judgement the `remove` arm makes when it claims a
+ *   broken line it wrote itself. The one refusal left is the captured text resolving to
+ *   SOMETHING: a different note has taken that name, and writing it would silently make
+ *   the user depend on a note they never picked.
+ *
+ * A line that resolved to nothing when it was captured has no file to ask, and its text
+ * is its whole identity, so it always goes back as it was.
  */
 function restoredLine(app: App, file: TFile, entry: DependsOnEntry): string | null {
 	if (entry.file === null) return entry.text;
-	if (app.vault.getFileByPath(entry.file.path) !== entry.file) return null;
+	if (app.vault.getFileByPath(entry.file.path) !== entry.file) {
+		return resolvedFileOf(app, file, entry.text.trim()) === null ? entry.text : null;
+	}
 	if (resolvedPathOf(app, file, entry.text.trim()) === entry.file.path) return entry.text;
 	return retarget(entry.text, app.metadataCache.fileToLinktext(entry.file, file.path));
 }
