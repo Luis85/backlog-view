@@ -304,6 +304,26 @@ button.pbl-bar-connector {
 
 /* The bar under the pointer. The board's columns and the roadmap's buckets say this with
    a region highlight; a bar is not a region, so it says it with its own outline. */
+/* Where the drag STARTED, which is a third thing on this grid and not a second: a legal
+   target is unmarked, an illegal one is dimmed, and the source is neither — it refuses
+   its own drop, so leaving it unmarked made the one bar that cannot be dropped on look
+   exactly like every bar that can.
+
+   It does NOT take the illegal dimming, which is why `begin` excludes it rather than
+   folding it into that set. The dimming applies to the BAR, and the source's bar holds
+   the connector the preview line comes out of; greying the anchor of the gesture to a
+   quarter while the line is live reads as the drag having gone wrong. An outline marks
+   it without touching what it contains.
+
+   Dashed and 1px against `.pbl-drop-over`'s solid 2px below, so the origin and the
+   target under the pointer are never one look — the two rules tie on specificity and
+   cannot co-occur anyway (`accepts` refuses the source), so the distinction is the dash
+   and the weight, not the cascade. */
+.pbl-linking .pbl-link-source .pbl-bar {
+	outline: 1px dashed var(--interactive-accent);
+	outline-offset: 2px;
+}
+
 .pbl-linking .pbl-bar.pbl-drop-over {
 	outline: 2px solid var(--interactive-accent);
 	outline-offset: 2px;

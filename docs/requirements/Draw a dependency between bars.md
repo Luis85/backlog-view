@@ -134,6 +134,15 @@ mistaken for the resize grip it sits beside.
   focused element. Without it the handle is invisible for the whole keyboard path — which
   is not an operability failure, since 3b's answer is the row menu's **Depends on…**, but
   it does mean the affordance advertises itself to a mouse and to nobody else.
+- The SOURCE bar carries a mark of its own, and it is a third state rather than a second:
+  a legal target is unmarked, an illegal one is dimmed, and the source is neither — it
+  refuses its own drop, so unmarked made the one bar that cannot be dropped on look
+  exactly like every bar that can. It does not take the illegal dimming: that applies to
+  the bar, and this bar holds the connector the preview line comes out of, so greying the
+  anchor of a live gesture reads as the drag having gone wrong. An outline instead, dashed
+  and lighter than the drop target's, so the origin and the bar under the pointer are
+  never one look. `pbl-link-source` shipped as a class nothing drew — set by `src/` and
+  asserted by `test/`, neither of which can see whether a stylesheet answers it.
 - Legality is shown during the drag: an illegal target is visibly illegal before release,
   and releasing on one writes nothing. Every legal target would change something — a bar
   already waiting for the source is illegal, decided from the **target's** prerequisites,

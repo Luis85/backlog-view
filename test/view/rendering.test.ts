@@ -223,6 +223,23 @@ describe('rendering', () => {
 		expect(ruleAt('.pbl-timeline-row.pbl-selected .pbl-bar-connector', 'opacity: 1;')).toBeGreaterThan(-1);
 	});
 
+	it('gives the link drag’s source row a mark of its own, so the class is not decoration', () => {
+		// `begin` marks the source row with `pbl-link-source` and EXCLUDES it from the
+		// illegal dimming — deliberately, since the preview line comes out of that bar and
+		// its connector is the drag's anchor. But the class had no rule anywhere in
+		// `styles/`, so the one bar that refuses its own drop was the only refusal on the
+		// grid that looked exactly like a legal target. Measured mid-drag in a browser:
+		// source `opacity: 1, filter: none`, an illegal row `0.25` and `grayscale(1)`.
+		//
+		// The class is set by `src/` and asserted by `test/view/linkDrag.test.ts`, and
+		// neither of those can see whether anything DRAWS it — which is the whole reason
+		// this check is here and reads the stylesheet instead. What it cannot say is that
+		// the mark is legible, or that it is distinguishable from `.pbl-drop-over`'s: that
+		// is a look, and the two are told apart by dash and weight rather than by anything
+		// assertable here.
+		expect(ruleAt('.pbl-linking .pbl-link-source .pbl-bar', 'outline:')).toBeGreaterThan(-1);
+	});
+
 	it('beats the double-clipped gradient on specificity, not on source order', () => {
 		// .pbl-bar-open-start.pbl-bar-open-end is a two-class compound selector —
 		// specificity (0,2,0) — which outranks the single-class .pbl-bar-inferred
