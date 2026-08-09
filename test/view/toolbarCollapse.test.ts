@@ -84,6 +84,36 @@ describe('the bulk collapse controls leave a card’s own disclosure alone', () 
 		// moment "Show completed items" (or a new child) revealed one.
 		expect(view.isCollapsed('Epic C.md')).toBe(true);
 	});
+
+	// The same principle, one level up: a card whose OWN whole subtree is done is
+	// hidden by "Hide completed items" too, so it is absent from `host.roadmap` (and
+	// `host.board`) entirely — `cardOnlyPaths` cannot name a card it never got handed —
+	// and `isRowHiddenUnfiltered` has to catch it directly rather than through the
+	// board/roadmap's own card lists.
+	it('leaves a fully-done card untouched even while it is itself hidden, not merely its children', () => {
+		const vault = new FakeVault();
+		vault.addFile('Dated epic.md', {
+			frontmatter: { type: 'Epic', order: 10, start: '2026-08-01', due: '2026-12-01' },
+		});
+		vault.addFile('Dated feature.md', {
+			frontmatter: { type: 'Feature', order: 10, start: '2026-09-01', due: '2026-10-01' },
+			parentLink: 'Dated epic',
+		});
+		// A whole done subtree: hidden entirely, so it draws no bar and no shelf card.
+		vault.addFile('Done item.md', { frontmatter: { type: 'Epic', order: 20, status: 'Done' } });
+		vault.addFile('Done child.md', {
+			frontmatter: { type: 'Feature', order: 10, status: 'Done' },
+			parentLink: 'Done item',
+		});
+		const { containerEl, view } = makeRoadmap(vault, { ...DATED_AXIS, stateProperty: 'note.status', showCompleted: false });
+		expect(timelineTitles(containerEl)).toEqual(['Dated epic']);
+		expect(shelfTitles(containerEl)).toEqual([]);
+		expect(view.isCollapsed('Done item.md')).toBe(true);
+
+		expandAll(view);
+
+		expect(view.isCollapsed('Done item.md')).toBe(true);
+	});
 });
 
 describe('the bulk collapse controls disable where nothing but a card would answer', () => {

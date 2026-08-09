@@ -279,6 +279,15 @@ function renderTimelineControls(host: BacklogViewHost, zone: HTMLElement, barEl:
  * folded away, or none loaded yet) would stay reachable and reopen later, the moment a
  * hidden child resurfaces, from a write nobody watching that card ever asked for.
  *
+ * The same reasoning reaches a card whose OWN whole subtree is done: hidden by "Hide
+ * completed items", such a card is absent from `host.board`/`host.roadmap` entirely, so
+ * `cardOnlyPaths` cannot name it either — `host.isRowHiddenUnfiltered` (the quick filter
+ * lifted, `hideCompleted` still asked, exactly as `countedPopulation` already asks it)
+ * catches that one directly. Scoped off the tree deliberately: the tree already writes
+ * through a hidden subtree's collapse bit for the same reason it always has — the row is
+ * this projection's own, not a card borrowed from another one — and nothing here is
+ * asking that question to be reopened.
+ *
  * Every Deliverable is a card of its own — there is nothing else in that projection's
  * population — so it is excluded outright rather than asked to name its cards one at a
  * time; this replaces the earlier `model.deliverableResults` special case, which existed
@@ -287,8 +296,9 @@ function renderTimelineControls(host: BacklogViewHost, zone: HTMLElement, barEl:
  */
 function collapsiblePopulation(host: BacklogViewHost, model: BacklogModel): BacklogItem[] {
 	if (host.projection === 'deliverables') return [];
+	if (host.projection === 'tree') return model.items;
 	const excluded = cardOnlyPaths(host);
-	return model.items.filter((item) => !excluded.has(item.file.path));
+	return model.items.filter((item) => !excluded.has(item.file.path) && !host.isRowHiddenUnfiltered(item));
 }
 
 /**
