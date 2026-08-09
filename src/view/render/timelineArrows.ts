@@ -148,11 +148,17 @@ function drawArrow(
 		const turn = toX - ENTER_PX;
 		route.push(`H ${turn}`, `V ${toY}`, `H ${toX}`);
 	} else {
-		// The lane is BETWEEN the rows — halfway to the dependent, and a fixed drop when
-		// the two share one row, which is the only way `toY === fromY` can happen here
-		// and the one case a midpoint would route straight back through the bar it
-		// came from.
-		const lane = toY === fromY ? fromY + LANE_DROP_PX : Math.round((fromY + toY) / 2);
+		// A real row BOUNDARY, never a midpoint between the two centres. With exactly one
+		// row between the ends, an average lands on THAT row's own centre, so the run
+		// crossed its bar — and because this layer paints behind the bars, the arrow read
+		// as broken rather than as routed. The edge of the prerequisite's own row is
+		// between two rows whatever the distance, and a bar is centred in its row, so
+		// nothing sits on it. Same row is the one case with no boundary to use, and the
+		// only way `toY === fromY` can happen here.
+		const lane =
+			toY === fromY
+				? fromY + LANE_DROP_PX
+				: Math.round((toY > fromY ? fromRect.bottom : fromRect.top) - contentTop);
 		route.push(`H ${fromX + ELBOW_PX}`, `V ${lane}`, `H ${toX - ENTER_PX}`, `V ${toY}`, `H ${toX}`);
 	}
 	route.push(`M ${toX} ${toY}`, `l -${HEAD_PX} -${HEAD_PX * 0.7}`, `M ${toX} ${toY}`, `l -${HEAD_PX} ${HEAD_PX * 0.7}`);

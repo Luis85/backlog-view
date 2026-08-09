@@ -1,11 +1,15 @@
 /* The dependency arrow layer on the dated axis — `renderDependencyArrows` in
-   `src/view/render/timelineArrows.ts`. One element per SEGMENT of an edge's route,
-   plus one head; `--pbl-seg-*` are TypeScript's, this file only draws what they say.
+   `src/view/render/timelineArrows.ts`. An `<svg>` holding one `<path>` per edge, whose
+   `d` carries the whole route AND its head; the geometry is TypeScript's, this file
+   only says what the stroke looks like.
 
    The layer is an element the render creates BEFORE the rows and fills after, which is
    what puts every arrow behind the bars — the milestone line's own answer to the same
    question. A bar is positioned with no z-index of its own, so document order is what
-   decides; a layer appended after the rows drew a line across every bar it crossed. */
+   decides; a layer appended after the rows drew a line across every bar it crossed.
+   That choice is also what makes the route's own lane load-bearing: anything the layer
+   draws under a bar is invisible, so a run doubling back has to cross a row BOUNDARY
+   rather than a row. */
 .pbl-dependency-layer {
 	position: absolute;
 	inset: 0;

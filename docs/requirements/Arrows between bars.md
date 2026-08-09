@@ -248,8 +248,13 @@ diagonal** — and which of the two routes applies is a fact about the dates rat
 style choice. With room between the prerequisite's finish and the dependent's start there
 is one turn: out along the finish's row, across at a column just short of the start, then
 in. Without it — the overlap that IS the conflict, and the only reason a backward link
-exists — the run doubles back, crossing the lane BETWEEN the two rows rather than through
-either of them. Both end with a short horizontal run into the start carrying the head, so
+exists — the run doubles back, crossing a row BOUNDARY rather than a row — the edge of the
+prerequisite's own row, never a midpoint between the two centres, because with one row
+between the ends an average lands on THAT row's centre and the run disappears under its
+bar. Drawing behind the bars is what makes the lane load-bearing rather than cosmetic:
+anything this layer puts under a bar is simply not there.
+
+Both routes end with a short horizontal run into the start carrying the head, so
 an arrow always ARRIVES pointing right whichever direction it travelled, and the head
 needs no rotation to say so. One edge is one `<path>` — route and head in a single `d`,
 the head two stroked strokes back along the run rather than a shape of its own — which is

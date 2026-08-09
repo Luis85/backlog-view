@@ -52,6 +52,23 @@ function shelfWaitsFor(containerEl: HTMLElement, title: string): string | null {
 	return shelfCardFor(containerEl, title)?.querySelector<HTMLElement>('.pbl-shelf-dependency')?.textContent ?? null;
 }
 
+
+/**
+ * Give every timeline row a real, distinct rect, in DOM order — jsdom measures nothing,
+ * so without this every row shares y=0 and the routing branch that depends on where the
+ * two rows actually landed is never taken. Installed on the PROTOTYPE before the view is
+ * built, because the arrow layer reads these during the render it is filled by.
+ */
+function stackRows(height = 30): void {
+	const real = Element.prototype.getBoundingClientRect;
+	Element.prototype.getBoundingClientRect = function (this: Element): DOMRect {
+		if (!this.classList.contains('pbl-timeline-row')) return real.call(this);
+		const rows = Array.from(this.parentElement?.querySelectorAll('.pbl-timeline-row') ?? []);
+		const top = rows.indexOf(this) * height;
+		return { top, bottom: top + height, height, left: 0, right: 100, width: 100, x: 0, y: top, toJSON: () => ({}) } as DOMRect;
+	};
+}
+
 describe('one element per edge', () => {
 	it('draws exactly the edges dependencyArrows returns, not one per pair of rows', () => {
 		const vault = new FakeVault();
@@ -420,5 +437,33 @@ describe('nothing about the layer is focusable or written', () => {
 		roadmapView(vault, { ...DATES });
 
 		expect(vault.writeLog).toEqual([]);
+	});
+});
+
+describe('a doubling-back route crosses a row boundary, never a row', () => {
+	it('puts the lane on an edge between rows even with one row in between', () => {
+		stackRows();
+		const vault = new FakeVault();
+		// A ends 08-15; C starts 08-10, so the link is backward and takes the doubling
+		// route. B sits between them and is what an averaged lane would run through.
+		vault.addFile('A.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-01', due: '2026-08-15' } });
+		vault.addFile('B.md', { frontmatter: { type: 'PBI', order: 20, start: '2026-08-01', due: '2026-08-20' } });
+		vault.addFile('C.md', {
+			frontmatter: { type: 'PBI', order: 30, dependsOn: 'A', start: '2026-08-10', due: '2026-08-25' },
+		});
+		const { containerEl } = roadmapView(vault, { ...DATES });
+
+		const d = arrows(containerEl)[0]?.getAttribute('d') ?? '';
+		const verticals = [...d.matchAll(/V (-?\d+)/g)].map((m) => Number(m[1]));
+		const centres = timelineRows(containerEl).map((_row, i) => i * 30 + 15);
+		// Two of them, and they are different claims. The FIRST is the lane the run
+		// doubles back along, and a row's own centre is exactly what it must not be: the
+		// layer paints behind the bars, so a run there is hidden by the very bar it was
+		// routed around. The LAST is the arrival, which must be the dependent's centre —
+		// that is where its bar is, and an arrow that stopped short of it would point at
+		// nothing.
+		expect(verticals).toHaveLength(2);
+		expect(centres).not.toContain(verticals[0]);
+		expect(verticals[1]).toBe(centres[centres.length - 1]);
 	});
 });
