@@ -1928,9 +1928,15 @@ failure it produces is exactly the one the reservation exists to prevent:
    `syncBusy` deliberately re-renders nothing, so a box that grew with the count would
    move the row on ticks nothing re-measures. The WIDTH is set per batch by `syncBusy` —
    see there for why it cannot be a constant. The row's end-anchored strip already keeps
-   this rule for the add button (`renderAddSpacer`). */
+   this rule for the add button (`renderAddSpacer`).
+
+   `tabular-nums` is load-bearing, not typography: it is what makes the digits equal-width,
+   and therefore what makes "the label with the most digits is the widest label" true.
+   Without it `Updating 88 of 111…` can draw wider than the `Updating 111 of 111…` that
+   `reserveBusyLabel` measures, and the reservation stops being a bound. */
 .pbl-busy-label {
 	display: inline-block;
+	font-variant-numeric: tabular-nums;
 }
 ```
 
@@ -1939,16 +1945,30 @@ transition only:
 
 ```ts
 /**
- * Reserve the box the longest label of THIS batch will need — by rendering that label
- * and reading what it actually took, not by counting its characters.
+ * Reserve the box the widest label of THIS batch will need — by rendering that label and
+ * reading what it actually took, not by counting its characters.
  *
- * `total` is fixed for the life of a batch and `done` only climbs toward it, so the
- * widest form is known at the first tick: `Updating {total} of {total}…`. What is NOT
- * knowable arithmetically is how wide that string draws. `ch` is the advance of a "0" in
- * the current font, which bounds neither the letters nor — in a proportional theme face —
- * the other digits, so a character count can under-reserve and let the box grow on a tick
- * that deliberately does not re-measure. The theme owns the font, so the only instrument
- * that can answer is the element.
+ * Two things have to be true for this to be a bound, and only one of them is arithmetic.
+ *
+ * **The longest VALUE is `total`**: it is fixed for the life of a batch while `done` only
+ * climbs toward it, so `Updating {total} of {total}…` has the most characters any tick can
+ * show. That much is free.
+ *
+ * **The longest value is not automatically the WIDEST**, and that is the trap this has
+ * fallen into twice. Counting `ch` was wrong because `ch` is the advance of a "0" and
+ * bounds neither the letters nor the other digits. Measuring the longest value is wrong
+ * for a subtler reason: in a proportional face `Updating 88 of 111…` can draw wider than
+ * `Updating 111 of 111…`, because 8 is wider than 1 — same digit count, more pixels. So
+ * the measurement needs the digits to be equal-width before it means anything, which is
+ * what `font-variant-numeric: tabular-nums` on `.pbl-busy-label` buys: with tabular
+ * figures every digit has one advance, the widest label really is the one with the most
+ * digits, and measuring it bounds every tick.
+ *
+ * The residual, stated rather than papered over: a theme font with no tabular figures
+ * makes that property a no-op, and the reservation can then be a few pixels short of some
+ * intermediate value. What that costs is a few clipped pixels at the extreme right of a
+ * near-threshold row, mid-batch, until the batch ends — which is why it is accepted here
+ * rather than answered by measuring all ten digits and composing a bound.
  *
  * One forced layout read, once per batch, on the transition that already re-runs the
  * ladder — not once per file, which is the cost this whole mechanism exists to avoid.

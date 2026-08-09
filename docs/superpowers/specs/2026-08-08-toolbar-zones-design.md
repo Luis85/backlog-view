@@ -178,13 +178,23 @@ ever show is `Updating {total} of {total}…`, known at the first tick. So the r
 set from that string when the indicator appears and cleared when it goes — once per batch,
 at the transition that already re-runs the ladder, never per file.
 
-**And it is measured, not counted.** Reserving `N` `ch` for an `N`-character string is
-wrong for the same reason a stylesheet constant was: `ch` is the advance of a "0" in the
-current font and bounds neither the letters nor, in a proportional theme face, the other
-digits — so the box can still grow on a tick that deliberately does not re-measure. The
-theme owns the font, which makes the element the only instrument that can answer. The
-label is therefore rendered at its longest form once, its width read, and that pixel value
-reserved. One forced layout, at the transition that was already re-measuring.
+**And it is measured, not counted — over digits that have been made equal-width first.**
+Two wrong answers preceded this one, and both are worth keeping because the second is not
+obvious. Reserving `N` `ch` for an `N`-character string fails because `ch` is the advance
+of a "0" and bounds neither the letters nor the other digits. Measuring the longest VALUE
+fails for a subtler reason: in a proportional face `Updating 88 of 111…` draws wider than
+`Updating 111 of 111…`, so the longest value is not the widest label and one measurement
+proves nothing about the rest. `font-variant-numeric: tabular-nums` on the label is what
+repairs the premise — with equal-width figures the label with the most digits really is the
+widest, and `total` has the most digits any tick can show. So: set that property, render
+`Updating {total} of {total}…` once, read its width, reserve those pixels. One forced
+layout, at the transition that was already re-measuring.
+
+The residual is stated rather than papered over: a theme font without tabular figures makes
+the property a no-op, and the reservation can then fall a few pixels short of some
+intermediate count. The cost is a few clipped pixels at the extreme right of a
+near-threshold row until the batch ends, which is why it is accepted here instead of
+measuring all ten digits and composing a bound.
 
 **The `/` shortcut has to keep working at a step that hides the input.** `focusFilter()`
 is what `/` in the tree and the no-match empty state both call, and it does
