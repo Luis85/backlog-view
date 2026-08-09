@@ -563,6 +563,8 @@ The claims found wrong so far, so you do not rediscover them:
 | Excluded notes are never written to | True of **forward** batches only. `undoLast` deliberately has no replay-time check: its authorization came at capture time, and the write being undone may be what moved the note out of the filter | `applySafely` / `undoLast`, `src/view/writeGate.ts` |
 | Undo takes the batch back | Compare-and-swap per key: a hand-edited key is **kept** and counted; a note deleted since is skipped whole; history is **one batch, per view, per session** | `applyRestores`, `src/storage/frontmatter.ts` |
 | A Task holds nothing below it | `childLevelIndex` clamps, so a Task's `+` offers another Task | extension 3a of `A help button for the item types` |
+| The quick filter narrows to matching titles | It keeps the match **path** — the match, all its ancestors and its **whole subtree** — and overrides collapse state while active. Most of what stays on screen did not match | `src/view/filterState.ts`, and its own header comment |
+| Extra types sit beside the rung they hang from | They may HANG from Epic, Feature or PBI, but their RANK is pinned to `EXTRA_TYPE_RANK` — the PBI rung — whatever the parent. That pin is why focusing PBI promotes them and focusing Epic or Feature does not | `EXTRA_TYPE_RANK`, `src/domain/settings.ts` |
 
 **A note for whoever implements Task 2.** While verifying the first row above, a dead
 branch surfaced in `childTypeChoices`: `if (!parent) return ALL_TYPES;` guards at
