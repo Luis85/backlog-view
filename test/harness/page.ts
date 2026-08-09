@@ -2,7 +2,9 @@
 import { mountHarness } from './mount';
 import { drawSchemeToggle } from './theme';
 
-const { view } = mountHarness(document.body);
+/** `?fixture=edges` mounts the awkward cases instead of the everyday backlog. */
+const fixture = new URLSearchParams(window.location.search).get('fixture') === 'edges' ? 'edges' : 'demo';
+const { view } = mountHarness(document.body, fixture);
 
 // After the mount: the toggle is the harness's own furniture and is appended to the
 // body, which `mountHarness` empties.

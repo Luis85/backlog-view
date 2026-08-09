@@ -71,7 +71,10 @@ export function demoVault(): FakeVault {
 	add('Provider handshake', { type: 'Task', order: 10, status: 'Active' }, 'Single sign-on');
 	add('Token refresh', { type: 'Task', order: 20 }, 'Single sign-on');
 	add('Welcome tour', { type: 'Feature', order: 20, status: 'Ready', horizon: 'Next' }, 'Onboarding');
-	add('Highlight the sidebar', { type: 'PBI', order: 10, status: 'New', horizon: 'Next' }, 'Welcome tour');
+	// Dated while its parent is not, so `Welcome tour` draws an INFERRED bar: outlined,
+	// no grips at all, and still a connector — a link claims no date, so it needs no
+	// baseline the way a grip does.
+	add('Highlight the sidebar', { type: 'PBI', order: 10, status: 'New', horizon: 'Next', start: '2026-08-24', due: '2026-09-05' }, 'Welcome tour');
 	add('Skip and resume', { type: 'PBI', order: 20 }, 'Welcome tour');
 	// An extra type at the SHALLOWEST legal parent, and the one place the pinned rank is
 	// visible rather than merely true: it sits among Features and its child is a Task, the
@@ -80,6 +83,16 @@ export function demoVault(): FakeVault {
 	// arrow, and the marker on this row.
 	add('Offline-first sync', { type: 'Idea', order: 30, status: 'Active', horizon: 'Next', start: '2026-08-10', due: '2026-10-15', dependsOn: '[[Single sign-on]]' }, 'Onboarding');
 	add('Survey the storage APIs', { type: 'Task', order: 10, status: 'Active' }, 'Offline-first sync');
+	// A bar exactly one day wide — start and target on the same date, an ordinary PBI
+	// rather than a Milestone, so it draws the diamond from its GEOMETRY. The case where
+	// a bar is narrower than its own handles, and both the end grip and the connector
+	// still have to be reachable.
+	add('Cut the release branch', { type: 'PBI', order: 40, status: 'Ready', start: '2026-09-14', due: '2026-09-14' }, 'Sign-up flow');
+	// The second hop of a chain: this waits for `Offline-first sync`, which waits for
+	// `Single sign-on`. Dragging from here, `Single sign-on` must be refused THROUGH the
+	// chain and not merely as a direct neighbour — the transitive half of the rule, in
+	// the picture rather than only in a unit test.
+	add('Sync conflict UX', { type: 'PBI', order: 50, status: 'New', start: '2026-10-20', due: '2026-11-30', dependsOn: '[[Offline-first sync]]' }, 'Onboarding');
 
 	// Waits for `Sign-up flow`, which ends 08-20 — well before this starts. The ORDINARY
 	// arrow, so the picture has one of each rather than only the loud one.
@@ -130,4 +143,30 @@ export function demoVault(): FakeVault {
  */
 export function demoResults(vault: FakeVault): ReturnType<FakeVault['entries']> {
 	return vault.entries().filter((entry) => entry.file.path !== OUTSIDE);
+}
+
+/**
+ * The cases that cannot live in `demoVault()` without wrecking it.
+ *
+ * A clipped bar needs the window to exceed `MAX_TIMELINE_DAYS`, which clamps the grid to
+ * 1830 days around today — every other bar in the demo becomes a sliver. So the everyday
+ * fixture keeps its job and this one takes the awkward cases, the same split the harness
+ * already makes between projections with `?view=`.
+ *
+ * Deliberately small: it is a set of cases, not a second backlog.
+ */
+export function edgeCaseVault(): FakeVault {
+	const vault = new FakeVault();
+	const add = (title: string, frontmatter: Record<string, unknown>, parent?: string) =>
+		vault.addFile(`${title}.md`, { frontmatter, parentLink: parent });
+
+	add('Platform', { type: 'Epic', order: 10, status: 'Active' });
+	// Clipped at BOTH edges regardless of what today is, so this fixture does not rot
+	// with the calendar: an eight-year span always exceeds the 1830-day budget.
+	add('The long migration', { type: 'PBI', order: 10, status: 'Active', start: '2022-01-01', due: '2030-12-31' }, 'Platform');
+	// Ordinary, inside the clamped window, so the clipped bar has something to be
+	// compared against and something legal to be dragged onto.
+	add('Nearby work', { type: 'PBI', order: 20, status: 'New', start: '2026-08-04', due: '2026-08-28' }, 'Platform');
+	add('One day only', { type: 'PBI', order: 30, status: 'Ready', start: '2026-08-12', due: '2026-08-12' }, 'Platform');
+	return vault;
 }

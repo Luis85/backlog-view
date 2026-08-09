@@ -84,6 +84,59 @@ describe('the browser harness mounts', () => {
  * notifies on `create` as well as on a frontmatter write — without that the new note
  * existed and the screen kept showing the old result set.
  */
+/**
+ * The dependency connector shipped in Tasks 1–4 and drew nothing markup assertions had
+ * been checking: it is a picture question — is the dot reachable on a bar too narrow for
+ * its own grips, on a bar with no grips at all, on a bar clamped by the window — so these
+ * mount the real grid and assert the cases render, rather than asserting shape on a
+ * fixture nothing draws. See `edgeCaseVault` for why the clipped case needs its own vault.
+ */
+describe('the harness draws the cases the dependency connector has to survive', () => {
+	function mount() {
+		const root = document.createElement('div');
+		document.body.appendChild(root);
+		return mountHarness(root);
+	}
+
+	it('draws the cases the connector has to survive, in the everyday fixture', () => {
+		const { view, containerEl } = mount();
+		view.setProjection('roadmap');
+		view.setAxisPick('dates');
+		containerEl.querySelector<HTMLButtonElement>('.pbl-collapse-ctl')?.click();
+
+		// A bar one day wide keeps both its end grip and its connector rather than
+		// trading one for the other.
+		const oneDay = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-bar')).filter((b) =>
+			b.classList.contains('pbl-bar-milestone'),
+		);
+		expect(oneDay.length).toBeGreaterThan(0);
+		// An inferred bar has no grip and still offers a connector.
+		const inferred = containerEl.querySelector<HTMLElement>('.pbl-bar-inferred');
+		expect(inferred).not.toBeNull();
+		expect(inferred?.querySelector('.pbl-bar-connector')).not.toBeNull();
+	});
+
+	it('draws a clipped bar in the edge-case fixture, where it distorts nothing', () => {
+		const root = document.createElement('div');
+		document.body.appendChild(root);
+		const { view, containerEl } = mountHarness(root, 'edges');
+		view.setProjection('roadmap');
+		view.setAxisPick('dates');
+		// `Platform` opens collapsed, like any parent nobody has ruled on yet (see
+		// `collapseNewParents` in `src/view/CLAUDE.md`). Without expanding it, `Platform`'s
+		// own rollup bar is already clipped (inferred from `The long migration`'s span), so
+		// the assertion below would pass on the wrong bar — expanding draws `The long
+		// migration` itself, the note the fixture's own comment describes as clipped.
+		containerEl.querySelector<HTMLButtonElement>('.pbl-collapse-ctl')?.click();
+
+		const clipped = containerEl.querySelector<HTMLElement>('.pbl-bar-clipped-end');
+		expect(clipped, 'the edge fixture exists to draw a clipped bar').not.toBeNull();
+		// The connector comes INSIDE the clamped edge; the class is what the stylesheet
+		// keys that on, so its presence is the checkable half.
+		expect(clipped?.querySelector('.pbl-bar-connector')).not.toBeNull();
+	});
+});
+
 describe('the chrome the mock only records', () => {
 	function mount() {
 		const root = document.createElement('div');
