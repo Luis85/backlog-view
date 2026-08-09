@@ -216,9 +216,21 @@ free of runtime code so imports stay cycle-free.
   `tagsColumnVisible` is `columns.some((c) => c.kind === 'tags')`. Deriving it twice is how
   the tag menu came to offer editing for a column the renderer had skipped.
 - Tag editing follows the *column*, not the setting: `tagsColumnVisible` asks whether
-  the tags property is one of the resolved columns, because the pills the user removes
-  are the ones the column renders — a context menu that edited an invisible property
-  would write things nothing on screen shows. That
+  the tags property is one of the resolved columns, because for tags the menu IS the
+  column — Edit tags writes a *delta* against exactly the pills the cell renders and
+  reports the item's current tags as its checkmarks, so with no column it would be the
+  only place those tags appear at all and the set it calls current would be one nothing
+  on screen shows. **That is a rule about the tags column, and it stops there.** Its
+  three siblings in `addEditableSections` gate on the settings predicates instead —
+  `stateKeyFor`, `hasRiskLevels`, `hasHorizonAxis` — so Set state, Set risk and Set
+  horizon stay offered on a property the properties menu is hiding, and those three DO
+  write something the row is not showing. Deliberate, not four cases waiting to be
+  smoothed into one: the plugin cannot write the visible order back (ADR 0023's
+  first-run gap), so withholding the write with the column would leave a base whose only
+  remaining route to the property is opening the note. Do not generalise the tags rule
+  to reach them — the honest statement is that state still shows through the rollup and
+  `pbl-done` while risk and horizon show nowhere else in the tree, and the asymmetry is
+  recorded in ADR 0023's Consequences rather than argued into a rule. That
   is a question about the Base's configuration, not about the pane: narrowing is a space
   decision — the pane draws fewer of the resolved columns (`host.columnFit`) and the
   rollup keeps its class — and no command is withheld for it (the state chip's column

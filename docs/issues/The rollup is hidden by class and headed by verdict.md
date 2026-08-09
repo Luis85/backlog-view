@@ -61,9 +61,17 @@ Two candidates, and choosing between them is the work this note is asking for:
   one".
 - **Give the rows the verdict too.** Have `renderRollup` take the same
   `columnFit.rollupDropped` the header reads and render nothing rather than a hidden box,
-  deleting the class. Small, and it makes the rule uniform — but it costs the one thing
-  the class buys, which is that a card projection can turn the rollup back on by clearing
-  a class rather than by carrying a tree verdict onto a frame that has none.
+  deleting the class. Small, and it makes the rule uniform.
+  **It is cheaper than this note first priced it.** The cost claimed here was that a card
+  projection would lose its way of turning the rollup back on — clearing a class rather
+  than carrying a tree verdict onto a frame that has none. That does not hold:
+  `src/view/backlogView.ts` already calls `setColumnFit(null)` on entering any non-tree
+  projection, and it does so BEFORE the content renders, so a card frame reads
+  `host.columnFit?.rollupDropped` as `undefined` and a verdict-reading `renderRollup`
+  draws. The card side needs nothing added; what the change actually costs is the
+  `pbl-hide-meta` line in `styles/propertyColumns.css` and the `removeClass` beside that
+  reset. Which of the two candidates to take is still open — this corrects the price, not
+  the choice.
 
 ## Acceptance criteria
 

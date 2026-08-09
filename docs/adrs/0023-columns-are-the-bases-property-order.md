@@ -93,6 +93,21 @@ answered twice:
   identical on screen. "My state chip vanished" is either an unconfigured `stateKey` or a
   property hidden in the properties menu, and only the second is a thing the user did to
   themselves recently. The view says nothing to tell them apart.
+- **The row menu is no longer gated the same way the columns are, and two of its entries
+  now answer different questions.** Before this change, "is the property configured" and
+  "is it a column" were the same question, so `addEditableSections`
+  (`src/view/interactions/menu.ts`) could gate Set state, Set risk and Set horizon on
+  settings predicates and Edit tags on `tagsColumnVisible` and mean one thing by it. They
+  have come apart: hiding `note.status` in the properties menu removes the chip, and the
+  row menu still offers Set state. **That is the intended outcome, not a hole to close.**
+  The properties menu is the user's, the plugin cannot write it back (see the first
+  consequence above), and gating the writes with the columns would leave a base whose
+  only route to a hidden property is opening the note — while the rollup and `pbl-done`
+  keep saying what a hidden state column would have said. Tags is the one that follows
+  its column, because there the menu IS the column: it writes a delta against the pills
+  the cell renders and reports the item's tags as its own checkmarks. No general rule is
+  claimed over the four — risk and horizon show nowhere else in the tree, and their
+  entries stay offered anyway.
 - One asymmetry was left rather than smoothed over, and is recorded as an open question
   in [[The rollup is hidden by class and headed by verdict]]: the rows still draw
   `.pbl-meta-col` from the configuration and let `pbl-hide-meta` hide it, while the
