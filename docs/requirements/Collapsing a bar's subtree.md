@@ -12,6 +12,8 @@ files:
   - src/view/render/timeline.ts
   - src/view/render/rows.ts
   - src/view/render/roadmap.ts
+  - src/view/render/toolbar.ts
+  - src/view/render/toolbarControls.ts
   - src/view/interactions/menu.ts
   - styles/tree.css
   - styles/timelineFurniture.css
@@ -190,6 +192,19 @@ Driven in `test/domain/bars.test.ts` (the four rules, each watched failing again
 implementation broken back) and `test/view/timelineCollapse.test.ts` (the chevron, the
 menu, the filter's override, the marks that go with a hidden row), with
 `test/view/toolbarCollapse.test.ts` asking the bulk controls both ways.
+
+The toolbar's own two bulk actions this feeds — `expandAll`, `collapseAll`, the
+`collapseButton` that wires them and the `collapseCtlsDisabled` question behind their
+`disabled` flag — moved out of `src/view/render/toolbar.ts` into
+`src/view/render/toolbarControls.ts` ahead of the toolbar-zones work (2026-08-08), a
+pure extraction with no behaviour change: `render/toolbar.ts` still decides what
+appears where and calls the moved functions unchanged, driven by the same
+`test/view/toolbarCollapse.test.ts` above. The module also carries the toolbar's shared
+button primitive (`iconButton`) and its keyed focus-restore pair
+(`capturedFocusKey`/`refocusByKey`) — used by every control on the bar, not only these
+two — for the same reason `capturedFocusKey` and `refocusByKey` had to move together:
+a mechanism built on one shared attribute is one edit from disagreeing with itself if
+its two halves live apart.
 
 **Not built: indentation.** The rows are still a flat list with a chevron in it — the
 badge names the level and nothing draws the ancestry. Showing that on the roadmap is
