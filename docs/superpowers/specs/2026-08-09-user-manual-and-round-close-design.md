@@ -17,9 +17,13 @@ vocabulary a coloured badge cannot teach. And the register already stated why te
 matters more here than in a validating tool: **the rules are advisory**, so the view
 cannot teach by rejection. What it offers is the whole lesson.
 
-Two smaller things ride along because they are the round's own housekeeping and nobody
-else will do them: the 0.4.0 review has no closing paragraph, so a third round has nothing
-to open against; and the checks CI cannot run have a cadence but no runs.
+Two smaller things ride along because nobody else will do them: `vitest.config.mts` has
+accumulated a 185-line coverage ledger where a rule belongs, and the checks CI cannot run
+have a cadence but no runs.
+
+A third was planned and is deliberately **not** done — writing the 0.4.0 round's closing
+paragraph. Its own note forbids it while nine findings are open, which they are. See
+**The coverage ledger — and the round that is NOT closed here**.
 
 ## Not in scope
 
@@ -137,6 +141,32 @@ whose use is never urgent.
 **No command-palette entry.** `⋯` already covers the clipped case, and a command id costs
 a register edit in `test/docs/surfaces.test.ts` for a second door into the same room.
 
+### Four contextual entry points, and one opener
+
+The `?` is the general door. Three of the six use cases require **point-of-need** doors as
+acceptance criteria, not merely as triggers, and a manual reachable only from the toolbar
+would leave them unmet while looking complete:
+
+| Surface | Opens on | Required by |
+| --- | --- | --- |
+| The new-item modal | Creating and filing | *"creating an item is the moment the folder question is asked, so the manual opens on this section from there"* |
+| An empty state with nothing to show | Finding work | its trigger — an empty state is the moment "where is my work" is asked |
+| The write-in-flight indicator | Safe writes and undo | *"reachable from the busy indicator and from the config warning"* |
+| The `Check view options` warning | Safe writes and undo | the same criterion |
+
+All five doors go through **one opener**:
+
+```ts
+openManual(app: App, sectionId: string, returnFocusTo: HTMLElement | null): void
+```
+
+`sectionId` selects the section the dialog opens on — the same mechanism the sidebar uses,
+so a deep link is not a second way to reach a section. `returnFocusTo` is the control that
+opened it, because "focus returns to the **?**" is only correct when the **?** is what was
+pressed; from the busy indicator, focus must return to the busy indicator. One opener, five
+call sites, and no surface plans its own dialog — the same shape this codebase already
+requires of a card move.
+
 ### What this does to Multilang
 
 The manual is the largest single addition of inline English this plugin will ever make —
@@ -146,14 +176,27 @@ above: 60 strings in two pure-data modules is one sweep for a catalog to lift wh
 The same 60 spelled inline across six render functions would not be. Recorded here so the
 trade is visible rather than discovered later.
 
-## Closing the 0.4.0 round
+## The coverage ledger — and the round that is NOT closed here
 
-[[Finding 16 — nothing in this round closes it]] asks for a step, not a work item: a dated
-paragraph beside the existing ones in [[Codebase health]] saying what the round bought and
-what it left. Both earlier paragraphs stay as written. The nine findings still open are
-**named** in it rather than silently carried.
+This pass was going to write the round's closing paragraph. It must not, and the reason is
+in the note that asks for it. [[Finding 16 — nothing in this round closes it]] says the
+paragraph goes beside the others ***when the last finding closes***. Nine are open, and
+this pass closes none of them — styling, the bundle budget and `Multilang` are all
+explicitly out of scope above.
 
-Alongside it, `vitest.config.mts` loses its coverage ledger. The comment there has grown
+Writing it now would destroy the thing it exists to be. A boundary drawn while nine
+findings are still open is not a boundary; it is a paragraph claiming a round ended that
+did not, and it would spend the sentinel that is supposed to mark the real ending. So
+**Finding 16 stays `Open`, and no paragraph is written.**
+
+What that leaves genuinely unaddressed is the concern underneath it — that the epic
+accumulates rounds with no boundary, and a third has nothing to open against. This review
+*is* effectively a third round, and its record is this spec and its pull request rather
+than a paragraph in the epic. That is a weaker answer than Finding 16 wants and it is the
+honest one available while its own precondition is unmet.
+
+What does happen here is independent of all of that: `vitest.config.mts` loses its
+coverage ledger. The comment there has grown
 to roughly 185 lines of per-increment history — an append-only record of which decimal
 moved when. What is worth keeping is the **rule** it states (thresholds only ever rise) and
 the two episodes that teach rather than record: the 94.0038 that was refused because a
@@ -207,8 +250,13 @@ visible without causing it.
 - Every key `getViewOptions()` declares is claimed by exactly one setup entry, asserted
   against the schema rather than a list. `test/docs/surfaces.test.ts` already imports
   `getViewOptions()` for the neighbouring rule, so this needs no new instrument.
-- The dialog is jsdom: it opens on the first section, the sidebar switches the pane, Escape
-  closes it and focus returns to the **?**.
+- The dialog is jsdom: it opens on the section it was asked for, the sidebar switches the
+  pane, and closing it returns focus **to the control that opened it** — asserted from the
+  busy indicator as well as the **?**, since a single-opener test passes either way and
+  only the second one can fail when `returnFocusTo` is ignored.
+- Each of the four contextual entry points opens the manual on its own section, driven at
+  the surface rather than by calling `openManual` directly — a test that calls the opener
+  proves the opener, not the wiring.
 - The toolbar button is a real `<button>` in the tab-stop zone, sheds at the expected rung,
   and appears in `⋯` when shed.
 - **Nothing writes.** Asserted at the boundary rather than by listing paths: opening,
@@ -218,8 +266,16 @@ visible without causing it.
 
 `npm run check` green, with coverage thresholds raised to what the increment measures and
 no threshold lowered. Sentence-case UI text, `setCssProps` over inline styles, no global
-`app`. `test/harness/mock.ts` not committed. Six PBIs under [[User manual]] move to `Done`;
-[[Finding 16 — nothing in this round closes it]] closes.
+`app`. `test/harness/mock.ts` not committed.
+
+Six PBIs under [[User manual]] move to `Done` — and that is a claim about their acceptance
+criteria, not about their sections existing. Three of them are met only once their
+contextual entry point is wired and tested, which is why **Four contextual entry points**
+above is not an extra: without it, three of the six would be marked `Done` while their own
+criteria went unmet.
+
+[[Finding 16 — nothing in this round closes it]] **stays `Open`** and no round-closing
+paragraph is written, for the reason given in its own section above.
 
 What is **not** done and is owed: the live-vault look. jsdom cannot answer whether
 Obsidian's real modal sizing makes a 190px sidebar sensible on a phone, and the harness
