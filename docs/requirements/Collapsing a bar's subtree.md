@@ -120,9 +120,13 @@ reading the plan move the reader's place in the tree (2026-08-08).
 - A row nobody has ruled on opens collapsed on the grid too: the two scopes are settled
   from one pass over the model, so the projection not on screen is never left unsettled
   and then opened whole the first time it is shown.
-- The scope is the PROJECTION's, so the shelf and context cards drawn beside the grid keep
-  their disclosures with the axis as its rows do — one working position per screen, rather
-  than one per control.
+- The scope is the ROW's own, not every disclosure the projection draws: a timeline row's
+  chevron is the dated axis's alone (`TIMELINE_SCOPE`), while the shelf and context cards
+  drawn beside the grid are cards like any other card projection and keep the `CARD_SCOPE`
+  every one of them shares ([[Children on the card]]) — reversed from the shared-per-screen
+  design this criterion first shipped with, because a card's own disclosure is now one
+  working position regardless of which screen draws it, and only the row's own fold is the
+  projection's (2026-08-09).
 - An entry stored before the split holds one bit per note, and it is the bit both
   projections were reading, so it is COPIED into the new scope on the first restore that
   finds no scoped key. The upgrade leaves a reader's plan where they left it instead of
@@ -150,20 +154,26 @@ collapse state itself is never read there: the predicate is passed in, so
 of it comes for free.
 
 WHICH bit that predicate lands on is `collapseKey` in `src/view/backlogView.ts`, the one
-place the scope is decided: on the dated axis the path is prefixed with `TIMELINE_SCOPE`
-(`src/view/collapseState.ts`), and everywhere else it is the path itself. Both host
-methods route through it, so the chevron, the row menu, the keyboard and the toolbar's
-bulk controls follow the projection without any of them asking what they are looking at —
-a second pair of host methods would have made every one of those callers choose, and the
-next caller choose again. `CollapseState` therefore holds KEYS rather than paths:
-`notePath` strips the scope back off for the two operations that are about the note rather
-than about the question — pruning a key whose file is gone, and following a rename — and
-`collapseNewParents` settles both scopes in one pass over the model, since it runs on a
-data update rather than per projection and an unsettled scope would open a whole backlog
-the first time it was shown. `seedTimelineScope` is the upgrade: on a restore that finds
-no scoped key it mirrors the stored bits into the new scope, because a pre-split entry's
-one bit per note is the bit both projections were reading — and its own copy is what
-keeps it from firing twice.
+place the ROW's OWN scope is decided: on the dated axis the path is prefixed with
+`TIMELINE_SCOPE` (`src/view/collapseState.ts`), and everywhere else it is the path
+itself. `isCollapsed`/`setCollapsed` both route through it, so the chevron, the row menu,
+the keyboard and the toolbar's bulk controls follow the projection without any of them
+asking what they are looking at. A card's own disclosure — the shelf's, a context card's,
+any card projection's — never reaches `collapseKey` at all: it answers a different
+question and is `CARD_SCOPE` unconditionally, through the second host pair
+`isCardCollapsed`/`setCardCollapsed` ([[Children on the card]]). That second pair is what
+let the toolbar's bulk controls stop filtering cards out of their own population
+(2026-08-09, `src/view/render/toolbarControls.ts`): a card's bit is a scope those buttons'
+`host.setCollapsed` cannot reach by construction, not a set of paths they have to remember
+to skip. `CollapseState` therefore holds KEYS rather than paths: `notePath` strips the
+scope back off for the two operations that are about the note rather than about the
+question — pruning a key whose file is gone, and following a rename — and
+`collapseNewParents` settles all three scopes in one pass over the model, since it runs on
+a data update rather than per projection and an unsettled scope would open a whole backlog
+the first time it was shown. `seedTimelineScope` and `seedCardScope` are the upgrade: on a
+restore that finds no scoped key, each mirrors the stored bits into its own new scope,
+because a pre-split entry's one bit per note is the bit every projection was reading — and
+each one's own copy is what keeps it from firing twice.
 
 The control itself is the tree's, extracted rather than copied: `renderChevron` in
 `src/view/render/rows.ts` is now the one statement of what a chevron is — the icon, the
