@@ -22,8 +22,9 @@
 	display: none;
 }
 
-/* The same scroller the tree uses, scrolling sideways instead: columns never
-   shrink or drop — a workflow stage exists whether or not the pane is narrow. */
+/* The same scroller the tree uses, scrolling sideways instead: columns never drop and
+   never shrink past their floor — a workflow stage exists whether or not the pane is
+   narrow, so a pane too narrow for all of them scrolls rather than compressing them. */
 .pbl-board-mode .pbl-tree {
 	overflow-x: auto;
 	/* Nothing is pinned to the board's top edge, so the gap can live on the scroller */
@@ -38,11 +39,16 @@
 	height: 100%;
 }
 
+/* Columns share the row's full width equally, down to a floor of 260px — the width they
+   used to be fixed at, so nothing is ever narrower than before, only wider. The explicit
+   min-width is load-bearing: flex-basis is not a floor once shrinking is enabled, and the
+   shrink would otherwise go all the way to 0. Past that floor the row falls back to
+   `.pbl-tree`'s existing horizontal scroll — the same shape `.pbl-bucket` takes. */
 .pbl-board-col {
-	flex: 0 0 260px;
+	flex: 1 1 260px;
+	min-width: 260px;
 	display: flex;
 	flex-direction: column;
-	min-width: 0;
 	max-height: 100%;
 	border: 1px solid var(--background-modifier-border);
 	border-radius: var(--radius-m);
@@ -128,6 +134,8 @@
    drag stays possible without a permanently empty column taking a column's room. */
 .pbl-board-strip {
 	flex: 0 0 44px;
+	/* Undoes the growing column's floor: the strip is the one column that must stay narrow. */
+	min-width: 0;
 	background-color: transparent;
 	border-style: dashed;
 }
