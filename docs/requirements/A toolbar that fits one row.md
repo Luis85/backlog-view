@@ -85,10 +85,22 @@ today's icon size, add up to.
   collapsed while focused. The flag that keeps it open is set at the one place focus
   *arrives* — not at each of the four places that could otherwise take it away, which
   is how this shipped broken four times before the rule moved there.
-- **4b — the pane keeps narrowing past the last rung.** The switcher, the `⋯`, New and
-  whatever the active projection owns are never shed by any rung — below roughly 420px
-  the row keeps exactly those and clips everything else, because nothing past that point
-  has a cheaper form left to fall back to.
+- **4b — the pane keeps narrowing past the last rung.** The row clips rather than
+  wrapping, so one row still holds. What it holds is the set no rung sheds — the
+  switcher, the focus picker, the completed toggle, the filter's reveal button, the `⋯`,
+  undo, New, and whatever the active projection owns — and **New is last of them in
+  source order, so the clip takes New first.** That is the honest statement and not an
+  oversight to be fixed by more rungs: a rung buys one control's width and the overflow
+  resumes eating from the right, so no arrangement of rungs makes a trailing button
+  survive a row its leading controls already fill. What the ladder does guarantee is
+  narrower and is kept by construction — *no readout* ever costs New its place, every
+  one being either shed by rungs 4 and 5 or shrinkable at the last (see the acceptance
+  criteria). A clipped New is a real capability loss and not a rung's shed control: the
+  `⋯` mirrors only what a rung took, so New has no entry there, and the palette
+  (`src/commands/`) registers the readme and the scaffold, not creation — the row's own
+  add buttons are the way in. Creating from a pane that narrow means widening it. No
+  pixel figure is given because none has been measured that holds: the width moves with
+  the projection and with the theme's icon size.
 - **5a — the app's theme or font changes, or a pane resizes.** Both re-run the ladder:
   a `css-change` event and the tree's `ResizeObserver` are the only two triggers besides
   the render passes below, because a measured ladder is only as good as its last
@@ -108,6 +120,12 @@ today's icon size, add up to.
   module owns that number.
 - Every control a rung removes from the row remains operable through the `⋯`, with the
   same enabled and pressed state as the button it stands in for.
+- No readout ever costs the primary action its place. That is the guarantee the ladder
+  can keep and it is kept by construction rather than by arrangement: every readout is
+  either shed by the advisory and count rungs or shrinkable at the last one, and the
+  status zone's divider is shed with the readouts it divides. What still presses on New
+  below the last rung is controls, which is extension 4b and not a defect this list can
+  promise away.
 - A rung never fires while the removed control holds focus without handing focus
   somewhere still usable: the `⋯` when the control was reachable through it, and never
   the filter, which the ladder treats as unshedable while focused.
