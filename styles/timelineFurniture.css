@@ -158,6 +158,16 @@
 	visibility: hidden;
 }
 
+/* The same declutter for a link drag — kept as its own rule rather than joined to the one
+   above with a comma: `timelineBoxing.test.ts`'s "the furniture declarations whose
+   comments call them load-bearing" reads `.pbl-dragging .pbl-bar-label {` as a literal
+   selector, and a combined selector list would stop it finding either rule's body. Not
+   reused as one class either way — `.pbl-dragging` also reveals the root strip, and a
+   link drag can reparent nothing. */
+.pbl-linking .pbl-bar-label {
+	visibility: hidden;
+}
+
 /* Compact rows: the 14px bar still fits a 24px row. Outranks timeline.css's
    min-height and the lead's padding by specificity. */
 .pbl-density-compact .pbl-timeline-row .pbl-timeline-track {
@@ -232,4 +242,47 @@
 .pbl-bar-milestone .pbl-bar-connector {
 	left: 100%;
 	transform: translate(9px, -50%);
+}
+
+/* The live link gesture — `interactions/linkDrag.ts`. Filed here rather than in
+   `timeline.css`, which the brief for this task named and which is at its own 400-line
+   cap: every selector below is new, none an override, so — like this file's other
+   rules — position relative to `timeline.css` is not load-bearing, only specificity is.
+
+   Held drag: only refusal is marked. Marking the LEGAL targets marked four of six rows
+   in the browser harness and read as a multi-select — most bars are legal, so the
+   scarce thing is the one worth a mark. Three classes deep, which is what makes this
+   outrank every single- and double-class `.pbl-bar-*` rule in `timeline.css` regardless
+   of which file loads last. */
+.pbl-linking .pbl-link-illegal .pbl-bar {
+	opacity: 0.25;
+	filter: grayscale(1);
+}
+
+/* The bar under the pointer. The board's columns and the roadmap's buckets say this with
+   a region highlight; a bar is not a region, so it says it with its own outline. */
+.pbl-linking .pbl-bar.pbl-drop-over {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 2px;
+}
+
+/* The line follows the pointer, so it is addressed in the content box's own pixels and
+   must not be clipped to the element's computed size — the arrow layer's own reason.
+   Above the bars, unlike the arrow layer, because it is a live gesture rather than a
+   drawn fact. */
+.pbl-link-preview {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	pointer-events: none;
+	overflow: visible;
+	z-index: 3;
+}
+
+.pbl-link-preview-line {
+	fill: none;
+	stroke: var(--interactive-accent);
+	stroke-width: 2;
+	stroke-dasharray: 4 3;
 }

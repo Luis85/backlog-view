@@ -354,10 +354,6 @@ function promptRemoveDependency(host: BacklogViewHost, model: BacklogModel, item
  * one move, two inputs, one place the batch is made. Adding a third input means calling
  * this, never writing a second plan next to it.
  *
- * @expected-unused `linkDrag.ts` does not exist yet — this lands in a later task of the
- * same sequence. Fallow will report this tag as a stale suppression once that caller
- * lands, which is the signal to remove it.
- *
  * Rechecks the SOURCE — the item the menu was opened on, not the candidate `onChoose`
  * already re-asks `candidates` about — against `host.model` read fresh here, not the
  * `model` closed over when the menu opened: a suggester left open is exactly the window

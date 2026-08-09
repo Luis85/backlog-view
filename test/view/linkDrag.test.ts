@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { FakeVault } from '../helpers/vault';
-import { makeView, useViewHarness } from '../helpers/view';
-import { barFor, gripNames } from '../helpers/roadmap';
+import { flush, makeView, useViewHarness } from '../helpers/view';
+import { barFor, gripNames, rowFor, shelfOf } from '../helpers/roadmap';
+import { cardDrag, gridDrag, overlayOf, pannedGrid } from '../helpers/dnd';
 import { legalTargetPaths } from '../../src/view/interactions/dependencies';
 import { BacklogItem, BacklogModel } from '../../src/domain/model';
 
@@ -150,5 +151,178 @@ describe('the connector on a drawn bar', () => {
 		const bar = barFor(containerEl, 'Ancient');
 		expect(bar.classList.contains('pbl-bar-outside')).toBe(true);
 		expect(bar.querySelector('.pbl-bar-connector')).toBeNull();
+	});
+});
+
+/** The whole gesture: pick the connector up, cross a bar, release on it. */
+function linkDrag(connector: HTMLElement, targetBar: HTMLElement): void {
+	cardDrag(connector, targetBar);
+}
+
+describe('drawing a dependency from one bar to another', () => {
+	it('writes to the bar dropped ONTO, which is the one that waits', async () => {
+		const vault = barVault();
+		const { containerEl } = datedLinkView(vault);
+		linkDrag(connectorFor(containerEl, 'Alpha') as HTMLElement, barFor(containerEl, 'Beta'));
+		await flush();
+
+		expect(vault.fm('Beta.md')['dependsOn']).toEqual(['[[Alpha]]']);
+		expect(vault.fm('Alpha.md')['dependsOn']).toBeUndefined();
+	});
+
+	it('changes no date, on either note', async () => {
+		const vault = barVault();
+		const { containerEl } = datedLinkView(vault);
+		linkDrag(connectorFor(containerEl, 'Alpha') as HTMLElement, barFor(containerEl, 'Beta'));
+		await flush();
+
+		expect(vault.fm('Beta.md')['start']).toBe('2026-08-20');
+		expect(vault.fm('Beta.md')['due']).toBe('2026-08-28');
+		expect(vault.fm('Alpha.md')['start']).toBe('2026-08-04');
+		expect(vault.fm('Alpha.md')['due']).toBe('2026-08-10');
+	});
+
+	it('writes nothing when released on an illegal target', async () => {
+		// Beta already waits for Alpha, so Alpha onto Beta would write the line on disk.
+		const vault = barVault();
+		vault.fm('Beta.md')['dependsOn'] = ['[[Alpha]]'];
+		const { containerEl } = datedLinkView(vault);
+		const before = JSON.stringify(vault.fm('Beta.md'));
+		linkDrag(connectorFor(containerEl, 'Alpha') as HTMLElement, barFor(containerEl, 'Beta'));
+		await flush();
+
+		expect(JSON.stringify(vault.fm('Beta.md'))).toBe(before);
+	});
+
+	it('writes nothing when released on its own bar', async () => {
+		const vault = barVault();
+		const { containerEl } = datedLinkView(vault);
+		linkDrag(connectorFor(containerEl, 'Alpha') as HTMLElement, barFor(containerEl, 'Alpha'));
+		await flush();
+
+		expect(vault.fm('Alpha.md')['dependsOn']).toBeUndefined();
+	});
+
+	it('marks the illegal targets while the drag is held, and clears them when it ends', () => {
+		const vault = barVault();
+		vault.fm('Beta.md')['dependsOn'] = ['[[Alpha]]'];
+		const { containerEl } = datedLinkView(vault);
+		const gesture = gridDrag.start(connectorFor(containerEl, 'Alpha') as HTMLElement);
+
+		expect(rowFor(containerEl, 'Beta')?.classList.contains('pbl-link-illegal')).toBe(true);
+		expect(rowFor(containerEl, 'Alpha')?.classList.contains('pbl-link-source')).toBe(true);
+
+		gesture.cancel();
+		expect(rowFor(containerEl, 'Beta')?.classList.contains('pbl-link-illegal')).toBe(false);
+	});
+
+	it('sweeps legality ONCE per drag, not once per frame', () => {
+		const vault = barVault();
+		const { containerEl, view } = datedLinkView(vault);
+		const model = view.model;
+		if (!model) throw new Error('no model');
+		// The sweep walks `byPath` once for itself and once per target inside
+		// `candidates`; what matters is that crossing more bars adds none of that.
+		const spy = vi.spyOn(model.byPath, 'values');
+		const gesture = gridDrag.start(connectorFor(containerEl, 'Alpha') as HTMLElement);
+		const afterStart = spy.mock.calls.length;
+		expect(afterStart).toBeGreaterThan(0);
+
+		gesture.over(barFor(containerEl, 'Beta'), { clientX: 40 });
+		gesture.over(barFor(containerEl, 'Beta'), { clientX: 60 });
+		gesture.over(barFor(containerEl, 'Beta'), { clientX: 80 });
+
+		expect(spy.mock.calls.length).toBe(afterStart);
+		gesture.cancel();
+	});
+
+	it('draws the preview line while the pointer moves, minting it once and moving it after', async () => {
+		// `wireLinkPointer`'s own `onDrag` rides the library's per-frame throttle
+		// (`raf-schd`), unlike `onDragEnter`, so this is the one interaction in the suite
+		// that needs a REAL animation frame rather than a synthetic event alone — and
+		// letting one elapse also ticks the scroller's own auto-scroll loop
+		// (`wireScroller`, registered on every timeline render), which polls a jsdom API
+		// this harness deliberately never stubs (`dnd.ts`'s own comment on `cancel()`).
+		// Stubbed locally and restored after, rather than in the shared harness: every
+		// other test in the suite ends its gesture before a real frame ever elapses, so
+		// nothing else needs it, and a global stub would hide that from them too.
+		const original = (document as { elementsFromPoint?: (x: number, y: number) => Element[] }).elementsFromPoint;
+		(document as { elementsFromPoint?: (x: number, y: number) => Element[] }).elementsFromPoint = () => [];
+		try {
+			const vault = barVault();
+			const { containerEl } = datedLinkView(vault);
+			const content = containerEl.querySelector<HTMLElement>('.pbl-timeline-content');
+			if (!content) throw new Error('no content box');
+			const gesture = gridDrag.start(connectorFor(containerEl, 'Alpha') as HTMLElement);
+
+			gesture.over(barFor(containerEl, 'Beta'), { clientX: 40 });
+			await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+			const line = content.querySelector('.pbl-link-preview-line');
+			expect(line).not.toBeNull();
+			expect(content.querySelectorAll('.pbl-link-preview').length).toBe(1);
+
+			gesture.over(barFor(containerEl, 'Beta'), { clientX: 80 });
+			await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+			// The SAME layer and path, moved rather than replaced — one node per drag,
+			// not one per frame.
+			expect(content.querySelectorAll('.pbl-link-preview').length).toBe(1);
+			expect(content.querySelector('.pbl-link-preview-line')).toBe(line);
+			expect(line?.getAttribute('d')).toContain('80');
+
+			gesture.cancel();
+		} finally {
+			(document as { elementsFromPoint?: (x: number, y: number) => Element[] }).elementsFromPoint = original;
+		}
+	});
+
+	it('re-checks legality against the CURRENT model, not the snapshot taken at drag start', async () => {
+		// The model object itself is mutated in place rather than driven through a
+		// re-render: a re-render rewires every target from scratch (a fresh `dnd`
+		// registration per row, same as any other render pass), which would tear down
+		// the very gesture this test is mid-way through holding — the graph changing
+		// underneath a LIVE registration, which a re-render can never exercise, is
+		// exactly the case `drop`'s own comment is about.
+		const vault = barVault();
+		const { containerEl, view } = datedLinkView(vault);
+		const model = view.model;
+		const alpha = model?.byPath.get('Alpha.md');
+		const beta = model?.byPath.get('Beta.md');
+		if (!model || !alpha || !beta) throw new Error('missing items');
+
+		const gesture = gridDrag.start(connectorFor(containerEl, 'Alpha') as HTMLElement);
+		// Beta comes to already wait for Alpha while the gesture is held — closing the
+		// very loop this drop would otherwise ask for.
+		beta.prerequisites = [alpha];
+		gesture.over(barFor(containerEl, 'Beta'), { clientX: 10 });
+		gesture.drop(barFor(containerEl, 'Beta'), { clientX: 10 });
+		await flush();
+
+		expect(vault.fm('Beta.md')['dependsOn']).toBeUndefined();
+	});
+});
+
+describe('a link drag is refused by every target that means a move', () => {
+	it('writes no date when released on the timeline grid', async () => {
+		const vault = barVault();
+		const { containerEl } = datedLinkView(vault);
+		const at = pannedGrid(containerEl, { rectLeft: 320, scrollLeft: 90 });
+		gridDrag(connectorFor(containerEl, 'Alpha') as HTMLElement, overlayOf(containerEl), { clientX: at(400) });
+		await flush();
+
+		expect(vault.fm('Alpha.md')['start']).toBe('2026-08-04');
+		expect(vault.fm('Alpha.md')['due']).toBe('2026-08-10');
+	});
+
+	it('does not unschedule when released on the dated shelf', async () => {
+		const vault = barVault();
+		const { containerEl, view } = datedLinkView(vault);
+		view.setShelfCollapsed(false);
+		const shelf = shelfOf(containerEl);
+		if (!shelf) throw new Error('no shelf');
+		cardDrag(connectorFor(containerEl, 'Alpha') as HTMLElement, shelf);
+		await flush();
+
+		expect(vault.fm('Alpha.md')['start']).toBe('2026-08-04');
+		expect(vault.fm('Alpha.md')['due']).toBe('2026-08-10');
 	});
 });

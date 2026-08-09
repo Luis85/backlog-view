@@ -1,4 +1,4 @@
-import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
+import { draggable, dropTargetForElements, monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { DragLocationHistory } from '@atlaskit/pragmatic-drag-and-drop/types';
 import { autoScrollForElements } from '@atlaskit/pragmatic-drag-and-drop-auto-scroll/element';
 import { announce, cleanup as liveRegionCleanup } from '@atlaskit/pragmatic-drag-and-drop-live-region';
@@ -17,6 +17,23 @@ import { DateChange } from '../../storage/frontmatter';
  * drop signal any of them gives, so it is one decision rather than three.
  */
 const DROP_OVER = 'pbl-drop-over';
+
+/**
+ * What a payload IS, so a target can refuse a gesture that means something else.
+ *
+ * There are two kinds and they are not interchangeable: a card MOVE asks a region to
+ * write a placement, a LINK drag asks a bar to record an ordering. Every target that
+ * means "move this" must refuse a link, and the check is here rather than at each of
+ * them — the timeline grid would otherwise take a link drop and write a DATE, and the
+ * dated shelf would unschedule. A guard per call site holds only for the call sites
+ * somebody thought of; this one holds for targets not yet written.
+ */
+const LINK_KIND = 'link';
+type DragKind = 'move' | 'link';
+
+function kindOf(data: Record<string, unknown>): DragKind {
+	return data.kind === LINK_KIND ? 'link' : 'move';
+}
 
 /**
  * Say what a move changed, to assistive technology, from the polite live region
@@ -146,6 +163,11 @@ export class CardDragController {
 		this.viewEl = viewEl;
 	}
 
+	/** This view's drag, and this KIND of it. Every `canDrop` here goes through it. */
+	private mine(data: Record<string, unknown>, kind: DragKind): boolean {
+		return data.view === this.token && kindOf(data) === kind;
+	}
+
 	/** The projection is about to be rebuilt; unhook everything wired to the old DOM. */
 	onRenderStart(): void {
 		for (const cleanup of this.cleanups) cleanup();
@@ -250,7 +272,7 @@ export class CardDragController {
 				// the strip never highlights for a drag it would not act on, the same
 				// reason a foreign view's card is refused instead of dropped silently.
 				canDrop: ({ source }) => {
-					if (source.data.view !== this.token) return false;
+					if (!this.mine(source.data, 'move')) return false;
 					const resolved = this.resolve(source.data);
 					return resolved !== null && (!hooks.accepts || hooks.accepts(resolved));
 				},
@@ -303,7 +325,7 @@ export class CardDragController {
 		this.cleanups.push(
 			dropTargetForElements({
 				element: el,
-				canDrop: ({ source }) => source.data.view === this.token,
+				canDrop: ({ source }) => this.mine(source.data, 'move'),
 				// `onDragEnter` fires SYNCHRONOUSLY (a hierarchy change), so the preview
 				// paints on the very first frame a drag crosses onto the overlay — the
 				// adapter's own `onDrag` is throttled to one animation frame, which would
@@ -316,6 +338,94 @@ export class CardDragController {
 					const resolved = this.resolve(source.data);
 					if (resolved) handlers.onDrop(resolved, location.current.input.clientX, location.initial.input.clientX);
 				},
+			}),
+		);
+	}
+
+	/**
+	 * A bar's connector as a drag source. Carries no hold, no span and no ends: a link
+	 * claims no date, so there is nothing for a relative gesture to measure against.
+	 *
+	 * `onStart` is where the legal-target sweep happens — once, at drag start — and it is
+	 * wired to `onGenerateDragPreview`, not `onDragStart`. The library dispatches the two
+	 * differently: `onGenerateDragPreview` fires SYNCHRONOUSLY as part of `dispatch.start`,
+	 * while `onDragStart` is scheduled a frame later and only flushed early by a drop
+	 * target's OWN hierarchy change — which cannot happen here, because every target's
+	 * `canDrop` reads the very state `onStart` is about to set. Waiting for `onDragStart`
+	 * therefore deadlocks: no target ever looks legal, so the hierarchy never changes, so
+	 * the frame that would have set legality never flushes early, and the sweep runs only
+	 * at the drop that already missed it. `onEnd` fires from `onDrop`, however the drag
+	 * ends, dropped or cancelled, so the marking it put on the grid can never outlive the
+	 * gesture.
+	 *
+	 * No `outsideFilter` guard, unlike {@link wireCard}: `renderConnector`'s own comment
+	 * states why one is unneeded there, and it is this function's caller — `deriveBars`
+	 * routes a context row away before a bar ever exists to hang a connector on, so this
+	 * is never reached with one.
+	 */
+	wireLinkSource(el: HTMLElement, item: BacklogItem, hooks: { onStart: () => void; onEnd: () => void }): void {
+		this.cleanups.push(
+			draggable({
+				element: el,
+				getInitialData: () => ({ path: item.file.path, kind: LINK_KIND, view: this.token }),
+				onGenerateDragPreview: () => {
+					el.addClass('is-active');
+					hooks.onStart();
+				},
+				onDrop: () => {
+					el.removeClass('is-active');
+					hooks.onEnd();
+				},
+			}),
+		);
+	}
+
+	/**
+	 * A bar as the target of a link. `accepts` refuses rather than ignores, so an illegal
+	 * bar never highlights for a drop it would not take — the same contract every region
+	 * target keeps, and what makes "refused before release" true rather than a promise.
+	 */
+	wireLinkTarget(el: HTMLElement, plan: (source: CardSource) => void, hooks: DropHooks = {}): void {
+		this.cleanups.push(
+			dropTargetForElements({
+				element: el,
+				canDrop: ({ source }) => {
+					if (!this.mine(source.data, 'link')) return false;
+					const resolved = this.resolve(source.data);
+					return resolved !== null && (!hooks.accepts || hooks.accepts(resolved));
+				},
+				onDragEnter: ({ source }) => {
+					el.addClass(DROP_OVER);
+					const resolved = this.resolve(source.data);
+					if (resolved) hooks.onEnter?.(resolved);
+				},
+				onDragLeave: () => {
+					el.removeClass(DROP_OVER);
+					hooks.onLeave?.();
+				},
+				onDrop: ({ source }) => {
+					el.removeClass(DROP_OVER);
+					hooks.onLeave?.();
+					const resolved = this.resolve(source.data);
+					if (resolved) plan(resolved);
+				},
+			}),
+		);
+	}
+
+	/**
+	 * Where the pointer IS during a link drag, wherever it is — the gap between two bars
+	 * included, which is most of the grid and exactly where a preview line has to keep
+	 * drawing. A monitor rather than a target: there is no region here whose meaning is
+	 * being asked about, only a coordinate. Gated on the same private token, so a drag in
+	 * a split pane over the same notes never draws a line in this one.
+	 */
+	wireLinkPointer(handlers: { onDrag: (clientX: number, clientY: number) => void; onEnd: () => void }): void {
+		this.cleanups.push(
+			monitorForElements({
+				canMonitor: ({ source }) => this.mine(source.data, 'link'),
+				onDrag: ({ location }) => handlers.onDrag(location.current.input.clientX, location.current.input.clientY),
+				onDrop: () => handlers.onEnd(),
 			}),
 		);
 	}

@@ -4,6 +4,7 @@ import { createCard, wireCardActivation } from './board';
 import { renderBadge, renderChevron, renderTitleText } from './rows';
 import { dependencyNote, NO_CONFLICTS, renderDependencyArrows } from './timelineArrows';
 import { CardDragController } from '../interactions/cardDrag';
+import { wireBarLink, wireLinkPreview } from '../interactions/linkDrag';
 import { effectiveLeadWidth, renderLeadResize } from '../interactions/timelineLeadResize';
 import { BacklogViewHost, DrawnColors } from '../host';
 import { BacklogItem } from '../../domain/model';
@@ -229,6 +230,7 @@ export function renderTimeline(
 	// an edge's Y comes from where the two rows actually landed — so the element and
 	// its contents are deliberately separated in time.
 	const arrowLayer = content.createSvg('svg', { cls: 'pbl-dependency-layer', attr: { 'aria-hidden': 'true' } });
+	wireLinkPreview(dnd, content);
 	const mounts: BarRowMounts = {
 		content,
 		scroller: grid,
@@ -433,6 +435,9 @@ function renderBarRow(
 	const own = ownWorkflowReading(bar.item);
 	const row = createCard(ctx, mounts.content, bar.item);
 	row.addClass('pbl-timeline-row');
+	// The marking loop reads this rather than matching titles: a title is not unique and
+	// is not an identity, and `begin` runs over every row on the grid.
+	row.dataset.pblPath = bar.item.file.path;
 	// Which vocabulary indexes that value is the same type decision, made by `paletteFor`.
 	// No slot (no state, or a value its own vocabulary does not carry) adds no class and
 	// the bar keeps its plain accent — `styles/timeline.css` owns what a slot paints, the
@@ -471,7 +476,7 @@ function renderBarRow(
 		// measures — see `CardSource.scrollLeft` and `interactions/timelineDrag.ts`.
 		mounts.dnd.wireCard(grip, bar.item, hold, () => mounts.scroller.scrollLeft);
 	}
-	renderConnector(ctx, el, bar, geometry);
+	renderConnector(ctx, mounts, { row, barEl: el, geometry }, bar);
 	renderBarLabel(track, bar, geometry, scale, window);
 	renderRowFacts(row, ctx, bar, { dates, own, conflictedPrereqs: mounts.conflictedPrereqs, lead });
 	wireCardActivation(ctx, row, bar.item);
@@ -648,6 +653,14 @@ function markWidth(geometry: BarGeometry, scale: TimelineScale): number {
 	return Math.max(geometry.spanDays * scale.dayPx, MIN_BAR_PX);
 }
 
+/** Where this row's connector is drawn, and what it is drawn against. Grouped rather
+ *  than passed flat: `max-params` is 5 and this would be the sixth. */
+interface ConnectorPlace {
+	row: HTMLElement;
+	barEl: HTMLElement;
+	geometry: BarGeometry;
+}
+
 /**
  * The dependency connector — a HANDLE, not a grip, and the distinction decides both of
  * its rules. `barHolds` withholds a grip wherever no end is the note's own, because a
@@ -656,22 +669,28 @@ function markWidth(geometry: BarGeometry, scale: TimelineScale): number {
  * clamped edge. A handle can sit at a boundary without asserting anything is there,
  * which is what a diamond cannot do.
  *
- * Two refusals, and only two. The key unconfigured is a feature this view does not have
- * ([[Draw a dependency between bars]] 1c), and a bar wholly outside the window has no
- * on-screen end (`geometry.outside`). An `outsideFilter` row needs no guard: `deriveBars`
- * routes it to context before any span is computed, so it never has a bar to hang one on
- * — the same reason [[Arrows between bars]] 1c needs none.
+ * Two refusals, and only two, and both decide only whether the DOT is drawn: the key
+ * unconfigured is a feature this view does not have ([[Draw a dependency between bars]]
+ * 1c), and a bar wholly outside the window has no on-screen end (`geometry.outside`). The
+ * TARGET half is wired regardless of either — a bar with no connector of its own is still
+ * something another bar's link may legitimately point at. An `outsideFilter` row needs no
+ * guard: `deriveBars` routes it to context before any span is computed, so it never has a
+ * bar to hang one on — the same reason [[Arrows between bars]] 1c needs none.
  *
  * `tabindex="-1"` like every other per-row control: the pane is one tab stop and the
  * arrows move the selection. The context menu's Depends on… is the keyboard path, which
  * is what SC 2.5.7 requires of a gesture and is why it shipped first.
  */
-function renderConnector(ctx: RowContext, el: HTMLElement, bar: TimelineBar, geometry: BarGeometry): void {
-	if (ctx.host.settings.dependsOnKey === '' || geometry.outside) return;
-	el.createEl('button', {
-		cls: 'pbl-bar-connector',
-		attr: { 'aria-label': `Draw a dependency from ${bar.item.title}`, tabindex: '-1' },
-	});
+function renderConnector(ctx: RowContext, mounts: BarRowMounts, place: ConnectorPlace, bar: TimelineBar): void {
+	const { row, barEl, geometry } = place;
+	const dot =
+		ctx.host.settings.dependsOnKey === '' || geometry.outside
+			? null
+			: barEl.createEl('button', {
+					cls: 'pbl-bar-connector',
+					attr: { 'aria-label': `Draw a dependency from ${bar.item.title}`, tabindex: '-1' },
+				});
+	wireBarLink(ctx, { dnd: mounts.dnd, content: mounts.content, row, barEl, connector: dot, item: bar.item });
 }
 
 /**

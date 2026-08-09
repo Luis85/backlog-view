@@ -127,12 +127,47 @@ mistaken for the resize grip it sits beside.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The connector and its drag join the bar gestures in
-`src/view/interactions/timelineDrag.ts`, which already owns the pointer session, the day
-grid and the preview for moving and resizing a bar; the preview line and the legality
-marking are the drop-indicator vocabulary in `styles/dragDrop.css` and `styles/timeline.css`
-rather than a new one. The connector's own reveal and the `(hover: none)` block that undoes
-it are a pair in `styles/timeline.css` and deliberately not in `styles/touch.css`, which
-says why for the two controls that already do this. Legality itself is asked of `src/domain/dropTargets.ts` — the module
-that already answers "would this drop be refused" for the tree — and the write is the
-method [[Linking two items]] puts on `src/view/host.ts`, called and not re-planned.
+**Built.** The connector and its drag turned out to want their OWN module rather than
+joining `src/view/interactions/timelineDrag.ts`: a link claims no date, so it shares none of
+that module's px↔date arithmetic, and `src/view/interactions/linkDrag.ts`'s `wireBarLink`
+wires a bar's two roles instead — the connector as a source (skipped where none was drawn)
+and the bar itself as a target (wired regardless, since a bar with no connector of its own
+is still something another bar's link may legitimately point at). `begin` sweeps legality
+ONCE, at drag start, from `legalTargetPaths` (below), marks every row that fails it with
+`pbl-link-illegal` and the source row with `pbl-link-source`, and `end` — reached however
+the gesture ends, dropped or cancelled — clears both; `wireLinkPreview` draws the pointer's
+line into one SVG path minted on the first frame and moved, never rebuilt, on every one
+after. `drop` re-asks legality of the CURRENT model rather than the drag-start snapshot,
+matching a picker's own re-check, and calls `applyDependencyWrite` — the same function the
+menu's `promptAddDependency` calls (`src/view/interactions/dependencies.ts`) — so the batch,
+its refusals, its announcement and its undo are the menu's, unchanged.
+
+Legality is asked of `legalTargetPaths`, in `src/view/interactions/dependencies.ts` beside
+it — not `src/domain/dropTargets.ts`, which turned out to answer a different question (the
+tree's reparent legality). `legalTargetPaths` is `candidates` asked from the other end: a
+drop of S onto T writes to T, so T is legal exactly when S is a legal prerequisite FOR T —
+three of its four exclusions (self, already declared, would close a loop) are `candidates`
+restated rather than re-derived, and the fourth (`outsideFilter`) is a guard on the TARGET
+that `candidates` alone cannot give, since that function only filters the *candidate* side.
+
+The payload-kind refusal — extension 3b's "no drop of this gesture changes a date," and the
+guarantee that a link drag is refused by the timeline grid's positional target and the dated
+shelf alike — is on `CardDragController` itself
+(`src/view/interactions/cardDrag.ts`): every payload carries a `kind` ('move' or 'link'),
+and every `canDrop` goes through one private `mine(data, kind)` gate rather than a check
+repeated at each target, so a target written later inherits the refusal by construction.
+`wireLinkSource`, `wireLinkTarget` and `wireLinkPointer` are that controller's three new
+registrations — a draggable connector, a bar as a link's drop target, and a monitor for
+wherever the pointer is, gated on the same private token so a split pane never draws
+another view's line.
+
+The connector itself is drawn by `renderConnector` in `src/view/render/timeline.ts`, which
+also gives every `pbl-timeline-row` its `data-pbl-path` — what the legality sweep marks
+rows by, since a title is not an identity. Its own reveal and the `(hover: none)` block that
+undoes it, from extension 1e above, are in `styles/timelineFurniture.css`
+— not `styles/timeline.css`, which reached its 400-line cap building the grid this note
+draws on — and the drag-state rules (the illegal dimming, the drop-over outline, the
+preview line) are filed there beside it for the same reason, overriding by specificity
+rather than position. The declutter that hides bar labels while a gesture is aimed is
+`.pbl-linking`, never `.pbl-dragging`: that class also reveals the tree's root strip for a
+card move, which a link can never use, since it reparents nothing.
