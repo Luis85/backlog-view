@@ -1558,11 +1558,14 @@ describe('the toolbar fit ladder', () => {
 		syncBusy(bar, { done: 1, total: 340 }, false);
 		expect(bar.getAttribute('data-pbl-fit')).toBe('1');
 
-		// The reservation is this batch's own longest label, not a constant: 340 files
-		// means "Updating 340 of 340…", and `writes.length` has no ceiling for a figure
-		// in the stylesheet to have been written against.
+		// The reservation is MEASURED from this batch's own longest label, not counted
+		// from it: `ch` is the advance of a "0" and bounds neither the letters nor the
+		// other digits in a proportional theme font. jsdom measures everything as 0, so
+		// what this can assert is that a pixel reservation was taken from the element
+		// rather than computed from the string — the width being *right* is a vault
+		// check, and it is on the checklist in Task 6.
 		const label = bar.querySelector<HTMLElement>('.pbl-busy-label');
-		expect(label?.style.minWidth).toBe(`${'Updating 340 of 340…'.length}ch`);
+		expect(label?.style.minWidth).toMatch(/px$/);
 
 		// A tick. Even if the row claimed it had grown, nothing re-measures — which is
 		// only safe BECAUSE of the reservation above.
@@ -1936,14 +1939,27 @@ transition only:
 
 ```ts
 /**
- * The longest label this batch can ever show. `total` is fixed for the life of a batch
- * and `done` only climbs toward it, so the widest form is known at the first tick — which
- * is what makes an exact reservation possible where a constant could not be right.
- * Measured in `ch`, the width of a "0": an over-estimate for a proportional font, which
- * is the safe direction for a box whose whole job is not to grow.
+ * Reserve the box the longest label of THIS batch will need — by rendering that label
+ * and reading what it actually took, not by counting its characters.
+ *
+ * `total` is fixed for the life of a batch and `done` only climbs toward it, so the
+ * widest form is known at the first tick: `Updating {total} of {total}…`. What is NOT
+ * knowable arithmetically is how wide that string draws. `ch` is the advance of a "0" in
+ * the current font, which bounds neither the letters nor — in a proportional theme face —
+ * the other digits, so a character count can under-reserve and let the box grow on a tick
+ * that deliberately does not re-measure. The theme owns the font, so the only instrument
+ * that can answer is the element.
+ *
+ * One forced layout read, once per batch, on the transition that already re-runs the
+ * ladder — not once per file, which is the cost this whole mechanism exists to avoid.
  */
-function busyReservation(total: number): string {
-	return `${total > 1 ? `Updating ${total} of ${total}…` : 'Updating…'}`.length + 'ch';
+function reserveBusyLabel(labelEl: HTMLElement, total: number): void {
+	const longest = total > 1 ? `Updating ${total} of ${total}…` : 'Updating…';
+	labelEl.setCssProps({ 'min-width': '0' });
+	labelEl.setText(longest);
+	// `Math.ceil`, because a fractional advance rounds down into a box one pixel short.
+	const px = Math.ceil(labelEl.getBoundingClientRect().width);
+	labelEl.setCssProps({ 'min-width': `${px}px` });
 }
 
 export function syncBusy(barEl: HTMLElement, busy: BusyState | null, canUndo: boolean): void {
@@ -1958,11 +1974,14 @@ export function syncBusy(barEl: HTMLElement, busy: BusyState | null, canUndo: bo
 		el.toggleClass('pbl-busy-on', busy !== null);
 		const label = busy && busy.total > 1 ? `Updating ${busy.done} of ${busy.total}…` : 'Updating…';
 		const labelEl = el.querySelector<HTMLElement>('.pbl-busy-label');
+		const changed = wasOn !== (busy !== null);
+		// Reserve BEFORE writing the tick's own text: `reserveBusyLabel` renders the
+		// longest form to measure it, so the real text has to be set afterwards or the
+		// measurement is what the user reads.
+		if (changed && busy && labelEl) reserveBusyLabel(labelEl, busy.total);
 		labelEl?.setText(busy ? label : '');
-		if (wasOn !== (busy !== null)) {
-			// Sized from THIS batch's total, once, at the transition — never from a
-			// figure in the stylesheet, which `writes.length` can always exceed.
-			labelEl?.setCssProps({ 'min-width': busy ? busyReservation(busy.total) : '0' });
+		if (changed) {
+			if (!busy) labelEl?.setCssProps({ 'min-width': '0' });
 			syncToolbarFit(barEl);
 		}
 	}

@@ -178,6 +178,14 @@ ever show is `Updating {total} of {total}…`, known at the first tick. So the r
 set from that string when the indicator appears and cleared when it goes — once per batch,
 at the transition that already re-runs the ladder, never per file.
 
+**And it is measured, not counted.** Reserving `N` `ch` for an `N`-character string is
+wrong for the same reason a stylesheet constant was: `ch` is the advance of a "0" in the
+current font and bounds neither the letters nor, in a proportional theme face, the other
+digits — so the box can still grow on a tick that deliberately does not re-measure. The
+theme owns the font, which makes the element the only instrument that can answer. The
+label is therefore rendered at its longest form once, its width read, and that pixel value
+reserved. One forced layout, at the transition that was already re-measuring.
+
 **The `/` shortcut has to keep working at a step that hides the input.** `focusFilter()`
 is what `/` in the tree and the no-match empty state both call, and it does
 `querySelector('.pbl-filter-input')?.focus()` — against a `display: none` input that call
