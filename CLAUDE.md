@@ -339,7 +339,10 @@ change that was fixing the previous instance.
 - Release tags must equal `manifest.json` version with NO `v` prefix — `.npmrc` sets
   `tag-version-prefix=""`; the release workflow rejects mismatches. See `RELEASING.md`.
 - Dependencies are noticed by Dependabot and verified by `npm run check` — ADR 0019, which
-  also says why `npm audit` is deliberately NOT a sixth step. Two upgrades are refused on
+  also says why `npm audit` is not a sixth step — and ADR 0022, which keeps it out of
+  `check` for that reason while running `npm audit --omit=dev --audit-level=critical`
+  as its own CI job, because "no patched version exists" is a hazard that scales with
+  how much of the tree is audited and what ships is three packages. Two upgrades are refused on
   purpose, with the reason in `.github/dependabot.yml`: **TypeScript is held at `~6.0.3`**
   (`typescript-eslint` 8 declares `typescript <6.1.0`, so 6.0.x is permitted and 7 is
   refused outright with ERESOLVE, and lint is what would be lost — the tilde IS that peer
