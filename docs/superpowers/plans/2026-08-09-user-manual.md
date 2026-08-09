@@ -819,8 +819,15 @@ Expected: PASS.
 
 `Help for moving and ranking` names this explicitly. In `README.md`, find the sentence saying a move "re-types the whole moved subtree" and replace it with wording that matches the cascade's actual behaviour — it skips untyped and custom-typed descendants, preserves the pinned rank of the types beside the ladder, and stops at an excluded row.
 
-Run: `grep -n "whole moved subtree" README.md`
-Expected: no matches.
+Verify with an instrument that can see the whole set. `grep -n "whole moved subtree"`
+is NOT one: the phrase wraps across a line break in this README, so the words are never
+adjacent on a line and the grep returns nothing while the text is still there. It gave a
+false negative on the first attempt at this step.
+
+Use `grep -Pzo 'whole\s+moved\s+subtree' README.md`, or search the distinctive fragment
+`moved subtree` alone, or read the section. Whichever you pick, confirm the instrument
+can find a known instance before trusting its silence — this project's rule is to test
+the instrument first.
 
 - [ ] **Step 8: Satisfy register rule 7 for all five**
 
