@@ -61,7 +61,8 @@ The skeleton, which a vault holds in its own template note rather than in this p
 2. The note is created with `type`, `parent` and `order` as any item is
    ([[New item flow]]), and the body of the vault's `Test case` template if one is
    configured ([[Creating an item from a template]]).
-3. The note is **opened** for editing, unlike every other created item.
+3. The note is **opened** for editing, unlike every other created item — after the write
+   resolves, never beside it, since the file being opened is the write's own result.
 4. The user writes the preconditions, the steps and the expected result, and never returns
    to the view unless they want to.
 
@@ -88,6 +89,9 @@ The skeleton, which a vault holds in its own template note rather than in this p
 - Creating a `Test case` opens the created note; creating an `Epic`, `Feature`, `PBI`,
   `Task`, `Test suite` or any extra type does not. Both halves are asserted — the second
   is what stops this from becoming "creation opens notes now".
+- A **failed** creation opens nothing. `createBacklogItem` can throw, and the existing path
+  catches and reports it; the opening sits inside the success branch, so a vault that
+  refused the write leaves the user where they were rather than in an empty tab.
 - The opening happens whether or not a template applied, and whether or not
   `templatesFolder` is configured — which is what makes it deliverable before
   [[Item Templates]] exists, and is the criterion that would be untestable if this PBI
@@ -100,8 +104,16 @@ The skeleton, which a vault holds in its own template note rather than in this p
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The creation path is `src/ui/prompts.ts` and the
-host method behind it; the one branch this PBI adds belongs where the note is created and
-the decision not to open it is currently taken, so that the exception sits beside the rule
-it excepts rather than in a caller. Nothing in `src/domain/` is involved: whether a note
-opens is not a fact about the backlog.
+**Nothing yet — this note is design.** The branch belongs in `createFromPrompt`
+(`src/view/interactions/create.ts`), **immediately after its awaited `createBacklogItem`**,
+which is the only place the created `TFile` exists. `src/ui/prompts.ts` is the wrong
+address and an earlier draft of this note gave it: `TitlePromptModal` collects input and
+hands it back through `onSubmit`, so a branch written there would have no file to open and
+would run before the write it depends on had succeeded — opening nothing, or opening on a
+creation that then failed.
+
+The distinction is worth keeping in mind for anything else added here: the prompt owns
+*what the user asked for*, and `createFromPrompt` owns *what happened*. Only the second can
+answer a question about the note.
+
+Nothing in `src/domain/` is involved: whether a note opens is not a fact about the backlog.

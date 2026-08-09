@@ -57,8 +57,18 @@ and must not be closed as one.
 
 **Main flow**
 
-1. The badge table gains `testSuite` and `testCase` entries — an icon each, and a class
-   each.
+1. The badge table gains an entry per test type — an icon each, and a class each — keyed
+   **`'test suite'` and `'test case'`**: lowercase, with the space kept. `renderBadge` looks
+   the style up through `byName`, which lowercases the type name and then requires an exact
+   key, so a camel-cased `testSuite` is simply never found. Nothing catches that:
+   `Record<string, …>` accepts any key, and the miss surfaces as a badge with no icon and
+   no colour rather than as an error.
+   These are the **first multi-word type names** in the vocabulary — every existing one is a
+   single word — so this is the first time that lookup convention is exercised with a space
+   in it, and the same is true of every other key derived from a type name (`typeFolderKey`
+   produces `typeFolder.test suite`). Whether a generated view-option key holding a space is
+   acceptable to Bases is a live-vault question, not one this repository can answer; it is
+   named here rather than assumed, and belongs on the smoke-test checklist with the badge.
 2. Both take one borrowed hue and the **test axis**: a variant treatment stated once in
    `styles/badges.css`, applied to both, that says *this is a test* before the icon says
    which kind. Which hue they borrow is a decision to record beside the Idea/Task pairing
@@ -115,7 +125,13 @@ and must not be closed as one.
   Palette Rule** holds, so the badges still track the user's theme.
 - `Test suite` and `Test case` are distinguishable from each other and from all nine
   existing types, and the test asserting the badge table covers the whole vocabulary
-  covers both.
+  covers both. That test is what catches the **key** as well as the palette: a style
+  looked up by a name the table does not hold produces a badge with no icon and no colour,
+  which no colour assertion would report as a lookup failure.
+- Every key derived from a type name survives the space in `Test suite` — the badge style,
+  the folder option, and anything else `grep`ping for `typeName.toLowerCase()` turns up.
+  Asserted rather than reasoned about, since these are the first type names that are not
+  one word.
 - The distinction between the two test types does not rest on colour alone, and the
   distinction between a test and a non-test does not rest on icon alone.
 - No legend or key is added anywhere for the axis, and the roadmap legend is untouched —
