@@ -159,8 +159,9 @@ export interface BacklogViewHost {
 	/**
 	 * How many of {@link columns} the last measurement said this pane can hold — null
 	 * before anything has been measured, and on every card projection, where the ladder
-	 * does not apply. Written by `syncColumnFit` alone and read by `rowContext`, which
-	 * slices the list the renderers draw.
+	 * does not apply. Two writers and no more: `syncColumnFit` sets the measured count, and
+	 * the view clears it to null when a card projection renders. Read by `rowContext`,
+	 * which slices the list the renderers draw.
 	 */
 	readonly columnsShown: number | null;
 	setColumnsShown(shown: number | null): void;

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
+import { cardByTitle } from '../helpers/board';
 import { clickExpandAll, fixture, makeView, rowByTitle, treeOf, useViewHarness } from '../helpers/view';
 import { rowContext, syncColumnFit } from '../../src/view/render/columns';
 
@@ -134,6 +135,33 @@ describe('property columns', () => {
 		expect(row.querySelectorAll('.pbl-prop').length).toBe(1);
 		expect(row.querySelector('input')).toBeNull();
 		expect(row.querySelector('.pbl-state-chip')).toBeNull();
+	});
+
+	it('hands a card projection the whole column list, whatever the tree last measured', () => {
+		// The count is the TREE's. A card is never indented and never drops a column for
+		// room, so a verdict carried out of a narrow tree would strip cells off cards —
+		// and the rollup class beside it would hide theirs.
+		const vault = fixture();
+		const { containerEl, config, view } = makeView(vault, {
+			propertyColumnWidth: 280,
+			stateProperty: 'note.status',
+			stateValues: 'New, Active, Done',
+		});
+		config.order = ['note.points', 'note.owner'];
+		const tree = treeOf(containerEl);
+		const viewEl = containerEl.querySelector('.pbl-view');
+		Object.defineProperty(tree, 'clientWidth', { value: 300, configurable: true });
+		view.onDataUpdated();
+
+		// The narrowest verdict there is: no column fits and the rollup has gone too.
+		expect(view.columnsShown).toBe(0);
+		expect(viewEl?.classList.contains('pbl-hide-meta')).toBe(true);
+
+		view.setProjection('board');
+		expect(view.columnsShown).toBeNull();
+		expect(viewEl?.classList.contains('pbl-hide-meta')).toBe(false);
+		// Both plain properties, so the card draws every column that exists.
+		expect(cardByTitle(containerEl, 'Epic A').querySelectorAll('.pbl-prop').length).toBe(view.columns.length);
 	});
 
 	it('does not buy a second render pass on a pane whose verdict has not moved', () => {

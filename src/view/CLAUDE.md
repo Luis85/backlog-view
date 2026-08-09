@@ -18,7 +18,7 @@ free of runtime code so imports stay cycle-free.
   drag cleanup. That spy is a regression guard for the paths that exist; the lint rule is
   the statement of the invariant, because it holds for paths not yet written. And the
   per-render config lookups (`getOrder`, `getDisplayName`) are resolved once per data
-  update by `chipProps` onto `host.chips`, which `RowContext` carries as a snapshot,
+  update by `resolveColumns` onto `host.columns`, which `RowContext` carries as a snapshot,
   never in the per-row path. `refreshRowChildren` must prune the subtree it removes
   from `rowEls`, and anything captured at wire time (drag handlers) must read expansion
   state live, because a targeted refresh leaves surrounding rows in place. Data updates
@@ -111,11 +111,11 @@ free of runtime code so imports stay cycle-free.
 - **The risk chip is the state chip a third time** (`renderRiskChip`, beside the other two
   in `render/columns.ts`), on `hasRiskLevels` — the same pair Set risk is gated on, so a
   chip whose menu could set nothing is not a state either side can reach alone — opening
-  `addRiskItems` through `showRiskMenu`, and skipped by `chipProps` like the other two so
-  the row never draws the value twice with one of them inert. It differs from the horizon's
-  in one place: an unjudged note draws a dashed *Risk* chip rather than nothing, because
-  absence here is an invitation and not a placement the shelf already names. Its column
-  drops after the properties and before the rollup.
+  `addRiskItems` through `showRiskMenu`, and drawn as the risk property's OWN cell like the
+  other two, so the row never draws the value twice with one of them inert. It differs from
+  the horizon's in one place: an unjudged note draws a dashed *Risk* chip rather than
+  nothing, because absence here is an invitation and not a placement the shelf already
+  names. Its column drops where the properties menu put it, like every other column.
 - **The four per-row menus are one function**: `chipMenu` in `interactions/menu.ts`, with
   `showStateMenu` / `showHorizonMenu` / `showRiskMenu` / `showTagMenu` as one-line exports
   over it. It is what stops a control from also activating the row it sits on — the reason
@@ -125,8 +125,9 @@ free of runtime code so imports stay cycle-free.
   definition of a configured bucket axis, never a second opinion — static for a context
   row, and opening `showHorizonMenu`, which is `addHorizonItems`, which is what the row
   menu's Set horizon is. Two surfaces, one builder: they cannot offer different values
-  or disagree about which is checked. A property with an interactive chip is skipped by
-  `chipProps`, so the row never draws it twice with only one of them editable.
+  or disagree about which is checked. The chip IS that property's cell (`renderCell`
+  dispatches on the column's kind), so the row never draws it twice with only one of them
+  editable.
 - The tree opens collapsed for a parent nobody has ruled on — `collapseNewParents`
   collapses each one the first time it is seen, in BOTH scopes from that one pass (it runs
   on a data update, not per projection, so the scope off screen would otherwise be
@@ -142,8 +143,8 @@ free of runtime code so imports stay cycle-free.
 ## Controls
 
 - Row layout is columnar: `.pbl-row-spacer` is the flexible middle, and everything after
-  it (`.pbl-props` → `.pbl-risk-col` → `.pbl-horizon-col` → `.pbl-state-col` →
-  `.pbl-meta-col`) is fixed-width, so values line
+  it (`.pbl-props`, one `.pbl-prop` cell per drawn column, then `.pbl-meta-col`) is
+  fixed-width, so values line
   up across rows regardless of title length and indent. Every configured column renders
   on every row — an empty property cell, a leaf's empty `.pbl-meta-col` — or the columns
   after it would shift per row. **That holds for the whole end-anchored strip, not only
@@ -206,9 +207,10 @@ free of runtime code so imports stay cycle-free.
   the tags property is one of the resolved columns, because the pills the user removes
   are the ones the column renders — a context menu that edited an invisible property
   would write things nothing on screen shows. That
-  is a question about the Base's configuration, not about the pane: the responsive
-  `pbl-hide-*` classes are a space decision, and no command is withheld for them (the
-  state chip drops the same way and Set state stays). On a pane too narrow for the
+  is a question about the Base's configuration, not about the pane: narrowing is a space
+  decision — the pane draws fewer of the resolved columns (`host.columnsShown`) and the
+  rollup keeps its class — and no command is withheld for it (the state chip's column
+  drops the same way and Set state stays). On a pane too narrow for the
   column the menu is the only way left to edit tags, and it shows the item's tags
   checked, so nothing is edited unseen.
   `applyWrites` drops `ItemWrite.tags` without a `tagsKey` (same rule as state). The
