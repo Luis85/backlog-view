@@ -20,6 +20,28 @@ const stubWidths = (bar: HTMLElement, pane: number, needs: Record<string, number
 	});
 };
 
+/**
+ * The same instrument with the browser's own floor on it: `scrollWidth` is never reported
+ * SMALLER than the client box, whatever the content actually needs. Every other case here
+ * feeds a hand-picked pair, which is what made a comparison against `clientWidth - padding`
+ * invisible to the whole suite while it pinned the real toolbar at its last rung.
+ *
+ * The inline padding is half the instrument and not decoration. jsdom computes no
+ * stylesheet, so `getComputedStyle(bar).paddingLeft` is empty for a bar the real
+ * stylesheet pads — which means a subtraction that reads it is a subtraction of ZERO here,
+ * and the floored stub alone would have watched the reverted code pass. Written as an
+ * inline style because that is the one thing jsdom's computed style does reflect.
+ */
+const stubFlooredWidths = (bar: HTMLElement, pane: number, content: number) => {
+	bar.style.paddingLeft = '8px';
+	bar.style.paddingRight = '8px';
+	Object.defineProperty(bar, 'clientWidth', { value: pane, configurable: true });
+	Object.defineProperty(bar, 'scrollWidth', {
+		get: () => Math.max(content, pane),
+		configurable: true,
+	});
+};
+
 const toolbarOf = (containerEl: HTMLElement) => {
 	const bar = containerEl.querySelector<HTMLElement>('.pbl-toolbar');
 	if (!bar) throw new Error('toolbar not rendered');
@@ -56,6 +78,33 @@ describe('the toolbar fit ladder', () => {
 		syncToolbarFit(bar);
 
 		expect(bar.getAttribute('data-pbl-fit')).toBe('5');
+	});
+
+	/**
+	 * The regression this exists for, and the reason it is stubbed differently from every
+	 * other case in this file. A row that fits with room to spare must settle at step 0 —
+	 * but a browser floors `scrollWidth` at `clientWidth`, so it reports "exactly full"
+	 * rather than "300px of slack", and any comparison that subtracts from the client box
+	 * reads that as overflow at EVERY width and climbs to the last rung. That shipped:
+	 * `clientWidth - padding` pinned the toolbar at `data-pbl-fit="5"` from 1200px down,
+	 * shedding the count and both advisories where they fit easily (2026-08-08).
+	 *
+	 * Driving the ladder against a floored stub is what makes the arithmetic checkable
+	 * here at all: with both numbers hand-picked, subtracting one from the other changes
+	 * nothing a hand-picked pair can show. `stubFlooredWidths` also gives the bar real
+	 * padding, because jsdom computes none from the stylesheet and a correction reading a
+	 * padding of zero subtracts nothing. The floor and the padding are ONE instrument: the
+	 * floored stub WITHOUT the padding was watched passing against the reverted code, which
+	 * is how the pairing was found rather than assumed.
+	 */
+	it('settles at step 0 when the row fits, against a scrollWidth floored the way a browser floors it', () => {
+		const { containerEl } = makeView(fixture());
+		const bar = toolbarOf(containerEl);
+		stubFlooredWidths(bar, 1000, 700);
+
+		syncToolbarFit(bar);
+
+		expect(bar.hasAttribute('data-pbl-fit')).toBe(false);
 	});
 
 	it('writes no attribute at all when everything fits', () => {

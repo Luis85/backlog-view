@@ -32,44 +32,44 @@ const FIT_ATTR = 'data-pbl-fit';
 const LAST_STEP = 5;
 
 /**
- * The pane's CONTENT box. `clientWidth` includes the bar's own left and right padding
- * while a flex container's scrollable overflow does not reliably include the trailing
- * one, so comparing `scrollWidth` against `clientWidth` under-tightens the ladder by
- * roughly one padding — measured as ~8px each side here, which is most of a rung's
- * margin at a narrow pane.
- *
- * Physical left/right rather than the logical pair this stylesheet otherwise prefers:
- * only the SUM is used, and start+end sums to the same number in either direction.
- *
- * Not reachable by the jsdom suite, and said here rather than left implied: no stylesheet
- * is applied there, so both paddings compute to nothing and this subtracts zero. What
- * `test/view/toolbarFit.test.ts` drives is the ladder over a stubbed pane; that the pane
- * is the content box is a browser-only guarantee, on Task 6's vault list with the rest of
- * the measurements jsdom cannot take.
- */
-function paneWidth(barEl: HTMLElement): number {
-	const style = getComputedStyle(barEl);
-	const padding = (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0);
-	return barEl.clientWidth - padding;
-}
-
-/**
  * Measure the row and write the step it needs. Returns true when the step CHANGED, so a
  * caller that has something to redo can tell — nothing does today, because every rung is
  * CSS over markup that is already rendered.
  *
  * Always re-measured from step 0, never from the step in place: a widened pane has to be
  * able to relax the ladder, and starting from the current rung could only ever tighten it.
+ *
+ * ## The one comparison, and the correction that was tried and refused
+ *
+ * `scrollWidth > clientWidth` is asymmetric, and the asymmetry is real: `clientWidth` is
+ * the padding box, so it INCLUDES the bar's own left and right padding, while a flex
+ * container's scrollable overflow does not reliably include the trailing one. The ladder
+ * can therefore shed about one padding later than it strictly should — a few pixels of
+ * late shedding right at a threshold.
+ *
+ * Subtracting the padding is the obvious correction and it is WRONG, which is why this
+ * paragraph exists instead of the fix. `scrollWidth` is **floored at `clientWidth`**: a
+ * browser never reports a scroll width smaller than the client box, so a row with 100px
+ * to spare in a 1000px pane still reports `scrollWidth === clientWidth === 1000`. Compare
+ * that against `1000 - 16` and the condition is true for every row at every width, the
+ * loop climbs to `LAST_STEP` unconditionally, and the ladder pins at its last rung —
+ * measured exactly that way at 1200px, where the count and both advisories were shed with
+ * room to spare (2026-08-08). A few pixels of late shedding is strictly better than
+ * shedding everything always.
+ *
+ * The jsdom suite could not see it: `stubWidths` defines both widths as synthetic numbers,
+ * so any arithmetic between them is invisible there. `test/view/toolbarFit.test.ts` now
+ * carries one case whose stub FLOORS `scrollWidth` at the stubbed `clientWidth` the way a
+ * browser does, which is what makes subtracting from the client box fail a test rather
+ * than a vault.
  */
 export function syncToolbarFit(barEl: HTMLElement): boolean {
 	const before = barEl.getAttribute(FIT_ATTR);
+	const width = barEl.clientWidth;
 	// Zero while detached or before the first layout — `syncColumnFit`'s rule, for the
 	// same reason: every row overflows a pane of no width, so deciding here would put
 	// every toolbar on the last rung and leave it there until something re-measured.
-	// Asked of `clientWidth` rather than of the content box below, because a pane
-	// narrower than its own padding is a laid-out pane, not an unmeasured one.
-	if (barEl.clientWidth === 0) return false;
-	const width = paneWidth(barEl);
+	if (width === 0) return false;
 	barEl.removeAttribute(FIT_ATTR);
 	let step = 0;
 	while (step < LAST_STEP && barEl.scrollWidth > width) {
