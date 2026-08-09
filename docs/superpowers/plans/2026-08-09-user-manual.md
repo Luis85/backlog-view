@@ -899,7 +899,14 @@ In `src/view/render/toolbar.ts`, in zone 4 (the "what is shown" group), **after*
 	const helpBtn = iconButton(barEl, 'help-circle', 'Open the manual', 'help');
 	helpBtn.addClass('pbl-help-btn');
 	helpBtn.addEventListener('click', () => {
-		openManual(host.app, manualSections(), 'types', () => helpBtn.focus());
+		// Resolved at CLOSE time, not captured. `renderToolbar` empties the bar on any
+		// full render — a Bases data refresh while the manual is open is enough — and
+		// `helpBtn` is then a detached node that `focus()` silently does nothing with.
+		// Same reason the overflow entry queries rather than captures; `focusInBar`
+		// handles the replacement being hidden at the current rung.
+		openManual(host.app, manualSections(), 'types', () =>
+			focusInBar(barEl, barEl.querySelector<HTMLElement>('.pbl-help-btn')),
+		);
 	});
 ```
 
@@ -1102,9 +1109,15 @@ export function manualLink(
 	sections: ManualSection[],
 	sectionId: string,
 	label: string,
+	onClosed?: () => void,
 ): HTMLButtonElement {
 	const link = parent.createEl('button', { cls: 'pbl-help-link', text: label, attr: { type: 'button' } });
-	link.addEventListener('click', () => openManual(app, sections, sectionId, link));
+	// Default: the link focuses itself back. `onClosed` overrides that for the caller
+	// whose link CANNOT be the answer — the busy indicator's, which `styles/busy.css`
+	// hides the moment the batch finishes, so by close time the link is unfocusable and
+	// `focus()` on it is a silent no-op landing on the document. Without this parameter
+	// the busy door has no way to say so, which is what an earlier draft got wrong.
+	link.addEventListener('click', () => openManual(app, sections, sectionId, onClosed ?? (() => link.focus())));
 	return link;
 }
 ```
@@ -1115,7 +1128,7 @@ Style it in `styles/manual.css` as a link-looking button — `background: none; 
 
 - **All three** empty-state renderers in `src/view/render/emptyStates.ts` — `renderEmptyState`, `renderFilterEmptyState` and `renderAllDoneState` — each → `manualLink(el, host.app, manualSections(), 'finding', 'What shows here?')`. Three separate renderers, and the last two (a filter matching nothing, a backlog whose visible work is all done) are the sharpest moments the question is asked. Wiring only the generic one leaves the two best doors missing.
 - the config warning in `src/view/render/toolbar.ts` (~line 136, beside `Check view options`) → section `'setup'`, label `'What to fix'`. It was claimed by two use cases; the register settled it on the configuration section, because the reader's question at a warning is what to fix. **`docs/requirements/Help for safe writes and undo.md` must be amended in this same commit**: strike the config warning from its **Trigger** row and from the criterion naming it, leave the **?** and the busy indicator, and add one line recording that the warning was reassigned to `Help for setting up the view` and why. Amend the note — do not leave a criterion standing and call a cross-link good enough.
-- `renderBusyIndicator` in the same file → section `'writes'`, label `'What is happening'`
+- `renderBusyIndicator` in the same file → section `'writes'`, label `'What is happening'`, and it MUST pass the sixth argument: `() => focusInBar(barEl, barEl.querySelector<HTMLElement>('.pbl-help-btn'))`. Its own link is inside `.pbl-busy`, which is hidden as soon as the batch ends, so the default self-focus is exactly the case that fails. This is the one caller that overrides.
 - the new-item prompt: give `NewItemPromptOptions` an optional `help?: (parent: HTMLElement) => void`, call it under the detail line in `src/ui/prompts.ts`, and pass it from `promptCreateItem` in `src/view/interactions/create.ts` as `(el) => manualLink(el, app, manualSections(), 'creating', 'Where will this go?')`
 
 The prompt takes a **callback** rather than the sections themselves: `prompts.ts` is `ui/`, and handing it `manualSections()` would be `view/` content arriving through a `ui/` signature — legal but pointless, since the caller can build the link.
