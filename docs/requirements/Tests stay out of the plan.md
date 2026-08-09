@@ -101,7 +101,15 @@ context row when a visible descendant needs a parent to hang from.
   So membership is **one rule with two clauses**, and `Task` is the whole reason it needs
   two: a `Task` takes the projection of its parent **when that parent is in the model**,
   and every other type — and every `Task` whose parent is not — takes the projection of its
-  own type. That is not an exception carved out for this note — it is
+  own type.
+  **Its own type as the view shows it**, which is the `type` frontmatter only when there is
+  one. A child of a `Test suite` with no `type` at all *is* a `Test case`
+  ([[Test suite and test case as a ladder of their own]] 4c): `typeName` is null, the
+  effective type is not, and a predicate reading the raw field puts a note that draws as a
+  test case into the plan and leaves it out of the catalog until ✨ happens to run. The
+  membership predicate asks the effective type — the same identity
+  [[Coverage as a property]]'s reader asks, for the same reason, since the two must agree
+  about every row or a test can declare coverage from a projection that does not contain it. That is not an exception carved out for this note — it is
   what a `Task` already is here, the one type that means nothing on its own and everything
   by what it hangs from. Written as a single "work items go to the plan" rule it
   contradicts itself the moment a task hangs from a test, which is the legal, expected
@@ -197,6 +205,11 @@ context row when a visible descendant needs a parent to hang from.
 
 - A result set with no test items renders identically in every projection, before and
   after this feature.
+- A **typeless** child of a `Test suite` is a catalog member: drawn in the catalog, absent
+  from the plan, counted by neither the plan's numbers nor its vocabularies. Asserted in
+  **both** projections on a note with no `type` in its frontmatter — the row where the raw
+  field and the effective type disagree, and the one a predicate written as
+  `isTestType(item.typeName)` gets backwards while passing every other fixture.
 - A result set of **only** test items shows the plan's ordinary empty state in the tree and
   on the roadmap — not "All N items are done and hidden", and no button offering to reveal
   them. Asserted on that result set specifically: it is the one where the two arrays those

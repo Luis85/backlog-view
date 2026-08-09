@@ -100,7 +100,10 @@ something the dependency picker did not need to know.
   if covered, over a result set holding a marker, a catalog `Task` and a plan `Task` — the
   three rows where "eligible" and "in the plan" come apart.
 - A pick writes to the test and to nothing else, as one batch through the gate, undone by
-  one undo.
+  one undo. Asserted as a **round trip against frontmatter** — pick, read the property back
+  off disk, undo, read it gone — rather than against the planned batch, since the plan is
+  correct in both the working case and the two broken ones (a key `applyInto` never writes,
+  and a key `touchedKeys` never captures).
 - Removing the last entry removes the key, leaving no empty list behind — the state
   [[Coverage as a property]]'s stub exemption exists so that ✨ never creates.
 - A test that is a context row offers neither entry.
@@ -111,7 +114,22 @@ something the dependency picker did not need to know.
 
 **Nothing yet — this note is design.** The menu is `src/view/interactions/menu.ts`, the
 suggester `src/ui/valueSuggest.ts` with the item picker beside the dependency one, the
-batch `src/domain/writePlan.ts` and the gate `src/view/writeGate.ts`. The type test that
+batch `src/domain/writePlan.ts` and the gate `src/view/writeGate.ts`.
+
+**A planned write is not a written one, and a written one is not an undoable one.**
+`writePlan.ts` can only *describe* an `ItemWrite`; two more places have to know the key
+exists, and neither is reached by following the plan:
+
+- `applyInto` (`src/storage/frontmatter.ts`) is what actually puts the value in
+  frontmatter. A key it does not handle is planned, gated, announced and never written.
+- `touchedKeys` (`src/storage/writeKeys.ts`) is what undo captures the inverse from, and it
+  enumerates per field. Its own comment states the consequence of omitting one: *applying
+  and capturing read the SAME list — a key written but not captured would be a change no
+  undo could reach, which is exactly how a hole gets in.*
+
+So the round trip is the thing to test, not the plan: pick a coverage target, confirm the
+property on disk, undo, confirm it is gone. A test that asserts the planned batch passes
+while both of these are missing. The type test that
 decides whether the entries appear belongs in `src/domain/itemTypes.ts`, where every other
 "what may this type do" question is already answered, rather than as a comparison written
 inside the menu.
