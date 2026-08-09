@@ -1,0 +1,92 @@
+/* The dependency arrow layer on the dated axis — `renderDependencyArrows` in
+   `src/view/render/timelineArrows.ts`. An `<svg>` holding one `<path>` per edge, whose
+   `d` carries the whole route AND its head; the geometry is TypeScript's, this file
+   only says what the stroke looks like.
+
+   The layer is an element the render creates BEFORE the rows and fills after, which is
+   what puts every arrow behind the bars — the milestone line's own answer to the same
+   question. A bar is positioned with no z-index of its own, so document order is what
+   decides; a layer appended after the rows drew a line across every bar it crossed.
+   That choice is also what makes the route's own lane load-bearing: anything the layer
+   draws under a bar is invisible, so a run doubling back has to cross a row BOUNDARY
+   rather than a row. */
+.pbl-dependency-layer {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	pointer-events: none;
+	/* The routes are addressed in the content box's own pixels, and a path that reaches
+	   the far edge of it must not be clipped to the element's computed size. */
+	overflow: visible;
+}
+
+/* One path per edge: the whole route AND its head, so the two cannot end up different
+   colours and an edge cannot cost more than one node. `fill: none` because every
+   subpath here is a stroke — the head included, which is why it is two short strokes
+   back along the run rather than a filled triangle. */
+.pbl-dep-edge {
+	fill: none;
+	stroke: var(--text-faint);
+	stroke-width: 1.5;
+	stroke-linecap: square;
+}
+
+.pbl-dep-edge.pbl-dep-conflict {
+	stroke: var(--color-red);
+}
+
+/* The dependent's own row, marked so the contradiction is findable without hunting
+   the grid for the arrow that caused it — `Arrows between bars` main flow step 2.
+   The mark is set on the LEAD cell, never the row: `.pbl-timeline-lead` is
+   `position: sticky; left: 0` with its own OPAQUE background (`timeline.css`), which
+   paints directly over an inset shadow drawn on the row itself — the row's own
+   background is transparent, so the shadow would sit a layer the lead cell always
+   covers at the row's left edge. A shadow on the lead paints on top of that cell's
+   own background instead, which is what makes it visible at all.
+   This also happens to be why it never competes with `.pbl-card.pbl-selected`'s ring
+   (`cards.css`): that ring is OUTSET, on the whole row, unaffected by the same sticky
+   child; this one is INSET, on the lead cell alone. Two different boxes, so a
+   selected AND conflicting row shows both marks rather than one silently winning —
+   the tree's own `.pbl-row.pbl-selected` inset idiom does not transfer here
+   unchanged, precisely because a tree row has no sticky opaque child at its edge.
+   2px is `styles/tree.css`'s own selection accent, not a number picked here. This
+   shipped at 3px on the argument that it matched the house idiom, which it did not —
+   it was half again as thick as the one rule it was claiming kinship with. */
+.pbl-timeline-row.pbl-row-conflict .pbl-timeline-lead {
+	box-shadow: inset 2px 0 0 var(--color-red);
+}
+
+/* The dependent row's own dependency-trouble glyph — `renderRowFacts` in
+   `src/view/render/timeline.ts`, drawn for a conflict OR a broken entry. It exists
+   because the conflict accent above is a COLOUR, and a broken entry draws no arrow at
+   all: without a glyph, 1d's "the row carries the broken marker" would be true only for
+   a screen reader.
+
+   Pinned to the lead's RIGHT edge (`margin-left: auto`) rather than left to flow after
+   the title, which is what stops it costing the title its width — a flagged row read
+   `Offline-first s… ⚠` while an unflagged one at the same lead width did not truncate
+   at all, so the mark was quietly narrowing the column it sits in. Against the right
+   edge it also lands in one x across every flagged row, which is what makes a column
+   of them scannable. `margin-right` clears `.pbl-timeline-lead-grip`, which is absolute
+   at `right: -3px` and would otherwise sit under the pointer target. */
+.pbl-timeline-dependency-flag {
+	display: inline-flex;
+	align-items: center;
+	flex: 0 0 auto;
+	margin-left: auto;
+	margin-right: var(--size-4-1);
+	color: var(--text-warning);
+}
+
+.pbl-timeline-dependency-flag .svg-icon {
+	width: var(--icon-s);
+	height: var(--icon-s);
+}
+
+/* A conflict is the stronger statement of the two, so it takes the accent colour the
+   arrow layer already uses for one. A row that is broken AND conflicting reads as
+   conflicting, which is the same precedence the arrow itself draws. */
+.pbl-timeline-row.pbl-row-conflict .pbl-timeline-dependency-flag {
+	color: var(--color-red);
+}

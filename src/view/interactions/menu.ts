@@ -2,7 +2,7 @@ import { Menu, MenuItem } from 'obsidian';
 import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
 import { inferFolderParent } from '../../domain/folderNotes';
 import { isDeliverableType } from '../../domain/itemTypes';
-import { BacklogItem } from '../../domain/model';
+import { BacklogItem, BacklogModel } from '../../domain/model';
 import { sameValue, todayStamp } from '../../domain/noteFields';
 import { hasHorizonAxis } from '../../domain/roadmap';
 import { computeDeliverableStateWrites, computeRiskWrites, computeStateWrites, computeTypeChanges, ItemWrite } from '../../domain/writePlan';
@@ -15,6 +15,7 @@ import { promptCreateItem } from './create';
 import { ALL_TYPES } from '../../domain/settings';
 import { addHorizonItems, canSchedule, carriesDates, promptSchedule, unschedule } from './plan';
 import { addTagItems, tagsColumnVisible } from './tags';
+import { addDependencyItems, dependenciesAvailable } from './dependencies';
 import { listedChildren, undisclosedMatches } from '../childrenList';
 
 /**
@@ -106,33 +107,7 @@ export function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childTyp
 				.onClick(() => promptCreateItem(host, [type], item)),
 		);
 	}
-	if (editable) {
-		addSetTypeMenu(host, menu, item);
-		// Which key gates visibility has to be the SAME key `stateChoices`/`chooseState`
-		// will actually use for this ITEM — not an OR of both keys. An OR would show Set
-		// state the moment only `deliverableStateKey` is configured, while the rest of
-		// the menu still read the (unconfigured) requirements `stateKey`: a menu offering
-		// picks that write to an empty key, silently dropped by `applyWrites`' "never
-		// write to an empty key" rule. For a Deliverable this is the RESOLVED key —
-		// falling back to the shared `stateKey` exactly as the write path and the model's
-		// own read do — so the menu offers Set state whenever a move would actually write.
-		// `stateKeyFor` is the same function the row's state chip gates on
-		// (`render/columns.ts`), so a chip drawn where this menu offers nothing — or the
-		// reverse — is not a mistake either side can make alone.
-		if (stateKeyFor(host.settings, item)) addSetStateMenu(host, menu, item);
-		// Both halves or nothing: a property with no levels has nothing to offer and
-		// levels with no property have nowhere to go, so the entry is absent rather
-		// than inert — the state chip's rule, and the horizon's above.
-		if (hasRiskLevels(host.settings)) addSetRiskMenu(host, menu, item);
-		// Per axis, and absent rather than inert when one is not configured — the state
-		// chip's own rule.
-		if (hasHorizonAxis(host.settings)) addSetHorizonMenu(host, menu, item);
-		// `canSchedule` rather than `hasDateAxis`: the two agree for work and diverge for
-		// a milestone on a start-only vault, where the narrowed entry would open asking
-		// for nothing at all.
-		if (canSchedule(host.settings, item)) addScheduleItems(host, menu, item);
-		if (tagsColumnVisible(host)) addEditTagsMenu(host, menu, item);
-	}
+	if (editable) addEditableSections(host, model, menu, item);
 	menu.addSeparator();
 
 	// The move section is tree shape: every entry in it is defined by the row's
@@ -159,6 +134,48 @@ export function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childTyp
 
 	host.app.workspace.trigger('file-menu', menu, item.file, PRODUCT_BACKLOG_VIEW_TYPE);
 	return menu;
+}
+
+/**
+ * Everything that edits the row's OWN frontmatter, gathered because they share one
+ * precondition and because `buildItemMenu` is at its cognitive-complexity budget —
+ * each entry here is a guard of its own, and seven of them in the caller was what
+ * pushed it over.
+ *
+ * The precondition is the context-row rule: a row the Base excluded renders and
+ * parents, and that is all. `New <child>` stays behind in the caller for exactly that
+ * reason — it writes a DIFFERENT note, the one mutation still fair game on an ancestor
+ * the filter cut.
+ */
+function addEditableSections(host: BacklogViewHost, model: BacklogModel, menu: Menu, item: BacklogItem): void {
+	addSetTypeMenu(host, menu, item);
+	// Which key gates visibility has to be the SAME key `stateChoices`/`chooseState`
+	// will actually use for this ITEM — not an OR of both keys. An OR would show Set
+	// state the moment only `deliverableStateKey` is configured, while the rest of
+	// the menu still read the (unconfigured) requirements `stateKey`: a menu offering
+	// picks that write to an empty key, silently dropped by `applyWrites`' "never
+	// write to an empty key" rule. For a Deliverable this is the RESOLVED key —
+	// falling back to the shared `stateKey` exactly as the write path and the model's
+	// own read do — so the menu offers Set state whenever a move would actually write.
+	// `stateKeyFor` is the same function the row's state chip gates on
+	// (`render/columns.ts`), so a chip drawn where this menu offers nothing — or the
+	// reverse — is not a mistake either side can make alone.
+	if (stateKeyFor(host.settings, item)) addSetStateMenu(host, menu, item);
+	// Both halves or nothing: a property with no levels has nothing to offer and
+	// levels with no property have nowhere to go, so the entry is absent rather
+	// than inert — the state chip's rule, and the horizon's above.
+	if (hasRiskLevels(host.settings)) addSetRiskMenu(host, menu, item);
+	// Per axis, and absent rather than inert when one is not configured — the state
+	// chip's own rule.
+	if (hasHorizonAxis(host.settings)) addSetHorizonMenu(host, menu, item);
+	// `canSchedule` rather than `hasDateAxis`: the two agree for work and diverge for
+	// a milestone on a start-only vault, where the narrowed entry would open asking
+	// for nothing at all.
+	if (canSchedule(host.settings, item)) addScheduleItems(host, menu, item);
+	if (tagsColumnVisible(host)) addEditTagsMenu(host, menu, item);
+	// A prerequisite is a property of the note rather than of a projection, so the
+	// entries are offered wherever an item renders — not only where one is drawn.
+	if (dependenciesAvailable(host)) addDependencyItems(host, model, menu, item);
 }
 
 function addParentLinkSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {

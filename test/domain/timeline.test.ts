@@ -7,6 +7,7 @@ import {
 	dayAt,
 	daysBetween,
 	DEFAULT_SCALE_ID,
+	dependencyAnchor,
 	earliest,
 	formatCivil,
 	latest,
@@ -134,6 +135,47 @@ describe('bar geometry', () => {
 		const inside = barGeometry(window, { start: d(2026, 8, 15), target: d(2026, 8, 15) });
 		expect(inside.outside).toBe(false);
 		expect(inside.milestone).toBe(true);
+	});
+});
+
+describe('dependency arrow anchors', () => {
+	const window = timelineWindow([], d(2026, 8, 15)); // Jul 1 … Sep 30
+
+	it('anchors an ordinary span at its stated start and the day AFTER its stated end', () => {
+		const anchor = dependencyAnchor(window, { start: d(2026, 8, 1), target: d(2026, 8, 10) }, { start: d(2026, 8, 15), target: d(2026, 8, 20) });
+		expect(anchor).not.toBeNull();
+		// startDay for Aug 1 is 31 (Jul has 31 days); the prerequisite's own bar is drawn
+		// [31, 41), so its end anchor is the day AFTER its last day, 41 — not 40, which
+		// would sit ON the last day rather than at its right edge.
+		expect(anchor?.fromDay).toBe(41);
+		expect(anchor?.toDay).toBe(45); // Aug 15's startDay
+	});
+
+	it('meets a milestone at its own date — its end equals its start, a point has no width', () => {
+		const anchor = dependencyAnchor(window, { start: d(2026, 8, 10), target: d(2026, 8, 10) }, { start: d(2026, 8, 20), target: null });
+		expect(anchor?.fromDay).toBe(barGeometry(window, { start: d(2026, 8, 10), target: d(2026, 8, 10) }).startDay);
+	});
+
+	it('anchors an open end at the right edge of the one-day bar its borrowed date draws', () => {
+		// The prerequisite states only a start; barGeometry borrows it for both ends, so
+		// the bar is one day wide — the SAME ordinary "start + span" formula that
+		// anchors a full span already lands on that bar's own right edge, with no
+		// special case needed for the end being open.
+		const openEnd = barGeometry(window, { start: d(2026, 8, 1), target: null });
+		expect(openEnd.spanDays).toBe(1);
+		const anchor = dependencyAnchor(window, { start: d(2026, 8, 1), target: null }, { start: d(2026, 8, 20), target: null });
+		expect(anchor?.fromDay).toBe(openEnd.startDay + openEnd.spanDays);
+	});
+
+	it('anchors a clipped end at the clipped edge, inside the grid', () => {
+		const anchor = dependencyAnchor(window, { start: d(2026, 6, 1), target: d(2026, 12, 1) }, { start: d(2026, 8, 1), target: null });
+		expect(anchor?.fromDay).toBe(window.days); // the far right edge, never past it
+	});
+
+	it('anchors nothing when either end lies wholly outside the window', () => {
+		const far = d(2200, 1, 1);
+		expect(dependencyAnchor(window, { start: far, target: far }, { start: d(2026, 8, 1), target: null })).toBeNull();
+		expect(dependencyAnchor(window, { start: d(2026, 8, 1), target: null }, { start: far, target: far })).toBeNull();
 	});
 });
 

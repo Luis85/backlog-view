@@ -118,6 +118,36 @@
 	height: 12px;
 }
 
+/* 1b/1d: no bar exists here for any arrow to reach, so this card is where a shelved
+   dependent's own dependencies are stated — muted by default, like the group header
+   above. `.pbl-shelf-conflict` reddens it when the text names an actual contradiction
+   (2b: the card's own stated start runs past a dated prerequisite), the same red as
+   `.pbl-dependency-arrow-conflict` and `.pbl-row-conflict` on the dated axis proper —
+   one colour for one meaning, kept apart from `.pbl-shelf-reason`'s warning amber,
+   which is a different fact (an unreadable or reversed date) that can be true of the
+   same card at once. */
+.pbl-shelf-dependency {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+.pbl-shelf-dependency.pbl-shelf-conflict {
+	color: var(--color-red);
+}
+
+.pbl-shelf-dependency-icon {
+	display: flex;
+	align-items: center;
+}
+
+.pbl-shelf-dependency-icon .svg-icon {
+	width: 12px;
+	height: 12px;
+}
+
 /* The shelf's own controls, in its own header. The disclosure carries the icon, the
    name and the count, so it is a text-bearing button rather than the lone glyph
    `clickable-icon` sizes for — the padding and the auto width are what stop it

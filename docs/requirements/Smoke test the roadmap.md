@@ -106,3 +106,26 @@ and each stays open until they are, so a stale check is visible rather than assu
   "Hide children" from the row's name, is the button reachable and activatable at all,
   and does the row menu's identical entry read as the same act? **Never checked**, and
   the same question applies to the card disclosure on the board.
+- The dependency arrow layer ([[Arrows between bars]]): each arrow actually reaches the
+  two rows it names — jsdom draws no layout, so `renderDependencyArrows`'s Y is read off
+  real row rects only in a real vault, never in the suite — the angle points the right
+  way (backward when a conflict overlaps in time), the arrowhead sits at the dependent's
+  end, a conflict's red reads as distinct from the today line's red and the state
+  colours, and the row's own conflict mark (a left accent) is visible without hovering
+  the arrow. Beside it, the shelf card's own dependency statement (1b, 2b): the
+  "Waits for …" block sits legibly under the shelf reason rather than crowding it, a
+  long or multi-name list wraps inside the card's own width instead of overflowing it,
+  and the conflict styling on a shelved card reads as the same red the arrow layer uses.
+  **Seen in the harness 2026-08-09, in both schemes, at 1360px** — the demo fixture now
+  carries four `dependsOn` shapes on purpose (an ordinary arrow, a conflict, a broken
+  entry, and a shelved 2b conflict), so the picture is reachable from `npm run harness`
+  with the dated axis picked and the rows expanded. What that answered: both arrows draw
+  and clip to the grid, the conflict arrow is red and points backward as it should, the
+  row accent and the glyph both read, the glyph is red for a conflict and amber for a
+  broken entry, and the shelf card states its shelf reason and its conflict as two
+  separate lines. What it did NOT answer, and what a vault still owes: the colours (a
+  theme replaces exactly these), whether the faint arrow survives a light theme with a
+  busier palette, and how a screen reader reads the row. Two things the picture showed
+  that no assertion had: a flagged row's title truncates to make room for the glyph
+  (`Offline-first s… ⚠`), and an arrow crossing a long bar is drawn OVER it rather than
+  behind it, unlike the milestone line.

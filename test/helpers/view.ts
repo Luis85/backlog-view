@@ -56,7 +56,8 @@ export function makeView(
 		base,
 		viewName,
 		focus,
-	}: { collapsed?: boolean; base?: string; viewName?: string; focus?: string } = {},
+		only,
+	}: { collapsed?: boolean; base?: string; viewName?: string; focus?: string; only?: string[] } = {},
 ): Harness {
 	// Bases mounts the view inside the leaf showing the .base file; that leaf is how
 	// the view identifies which base it is, so persistence tests need the real nesting.
@@ -69,7 +70,9 @@ export function makeView(
 	const anyView = view as unknown as Record<string, unknown>;
 	anyView.app = vault.app;
 	anyView.config = config;
-	anyView.data = { data: vault.entries() };
+	// `only` narrows what the BASE returns, so everything else in the vault loads as a
+	// context row — the shape a filtered base has, without hand-building a view for it.
+	anyView.data = { data: only ? vault.entries().filter((e) => only.includes(e.file.path)) : vault.entries() };
 	view.onDataUpdated();
 	if (focus) view.setFocusLevel(focus);
 	if (!collapsed) clickExpandAll(containerEl);

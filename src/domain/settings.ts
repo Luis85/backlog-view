@@ -93,6 +93,12 @@ export interface BacklogSettings {
 	 * the bucket axis: a horizon axis with no values is a board without stages.
 	 */
 	horizonValues: string[];
+	/**
+	 * Frontmatter key holding the prerequisites this note waits for, or '' when the
+	 * feature is unconfigured. A LIST key, unlike every other optional property here,
+	 * which is why the read and the write both have their own shape.
+	 */
+	dependsOnKey: string;
 	/** Frontmatter key holding the planned start date, or '' when unset. */
 	startKey: string;
 	/** Frontmatter key holding the planned target date, or '' when unset. */
@@ -290,6 +296,7 @@ export function defaultSettings(): BacklogSettings {
 		showCompleted: true,
 		horizonKey: '',
 		horizonValues: [...DEFAULT_HORIZON_VALUES],
+		dependsOnKey: '',
 		startKey: '',
 		targetKey: '',
 		deliverableStateKey: '',
@@ -318,6 +325,7 @@ export type OptionalField =
 	| 'horizon'
 	| 'start'
 	| 'target'
+	| 'dependsOn'
 	| 'risk'
 	| 'deliverableState';
 
@@ -333,6 +341,7 @@ type OptionalSettingsKey =
 	| 'horizonKey'
 	| 'startKey'
 	| 'targetKey'
+	| 'dependsOnKey'
 	| 'riskKey'
 	| 'deliverableStateKey';
 
@@ -390,6 +399,9 @@ const PROPERTY_TABLE: Record<OptionalField, Omit<OptionalProperty, 'field'>> = {
 		label: 'deliverable state',
 		settingsKey: 'deliverableStateKey',
 	},
+	// Prerequisites, suggested by the name the Tasks plugin already uses for the same
+	// idea — offered as a placeholder, never matched by name.
+	dependsOn: { option: 'dependsOnProperty', suggested: 'dependsOn', label: 'depends on', settingsKey: 'dependsOnKey' },
 };
 
 /** The declaration for one field, for the callers that hold a field rather than a row. */
@@ -867,6 +879,7 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		horizonValues: clearable('horizonValues', fallback.horizonValues, () => dedupe(list('horizonValues'))),
 		startKey: propKey('startProperty', fallback.startKey),
 		targetKey: propKey('targetProperty', fallback.targetKey),
+		dependsOnKey: propKey('dependsOnProperty', fallback.dependsOnKey),
 		...deliverable,
 		riskKey: propKey('riskProperty', fallback.riskKey),
 		// Clearable for the horizon values' reason: a real default that has to be

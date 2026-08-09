@@ -67,6 +67,10 @@ export function renderRoadmap(
 	let scale: TimelineScale | null = null;
 	let leadWidth: number | null = null;
 	let drawn: DrawnColors = { done: false, milestone: false, accent: false };
+	// The dated axis's own dependency conflicts (see `TimelineRender.dependencyConflicts`)
+	// — empty on the horizon axis, where a shelved dependent's stated START has no
+	// meaning at all.
+	let dependencyConflicts: ReadonlyMap<string, ReadonlySet<string>> = new Map();
 	// Built once, drawn from by the bars and then carried out on the snapshot for the
 	// legend — see `RoadmapSnapshot.palettes`. Empty on the horizon axis, which draws no bar.
 	let palettes: StatePalette[] = [];
@@ -88,6 +92,7 @@ export function renderRoadmap(
 			today,
 			scale: activeScale,
 			dnd,
+			shelf: roadmap.shelf,
 			palettes,
 			// The PANE's width, not the frame's or the not-yet-built scroller's: this is
 			// the element `backlogView.ts`'s `ResizeObserver` watches, so a render here and
@@ -103,6 +108,7 @@ export function renderRoadmap(
 		scale = activeScale;
 		leadWidth = timeline.leadWidth;
 		drawn = timeline.drawn;
+		dependencyConflicts = timeline.dependencyConflicts;
 		wireTimelineDrag(ctx, dnd, {
 			overlay: timeline.overlay,
 			scroller: timeline.scroller,
@@ -119,7 +125,7 @@ export function renderRoadmap(
 	// a bucket, which no domain-model counter answers on its own.
 	const axisCardCount = cards.length;
 	const removal = shelfRemoval(host, axis);
-	const shelf = renderShelf(ctx, frameEl, roadmap.shelf, dnd, removal);
+	const shelf = renderShelf(ctx, frameEl, { cards: roadmap.shelf, conflicts: dependencyConflicts, axis }, dnd, removal);
 	cards.push(...shelf.cards);
 	const context = renderContextStrip(ctx, frameEl, roadmap.context);
 	cards.push(...context.cards);

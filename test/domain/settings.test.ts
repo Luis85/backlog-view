@@ -339,6 +339,7 @@ describe('optionalKeyFor', () => {
 			targetKey: 'due',
 			riskKey: 'risk',
 			deliverableStateKey: 'deliverableStatus',
+			dependsOnKey: 'dependsOn',
 		});
 		// Every field of the table, so a switch that fell through would be caught here
 		// rather than by whichever feature happened to read the wrong key.
@@ -351,6 +352,7 @@ describe('optionalKeyFor', () => {
 			'due',
 			'risk',
 			'deliverableStatus',
+			'dependsOn',
 		]);
 		// Unconfigured is '', which every caller reads as "no key to write".
 		expect(OPTIONAL_FIELDS.map((field) => optionalKeyFor(defaultSettings(), field))).toEqual([
@@ -361,8 +363,9 @@ describe('optionalKeyFor', () => {
 			'',
 			'',
 			'',
-					'',
-]);
+			'',
+			'',
+		]);
 	});
 });
 
@@ -379,6 +382,7 @@ describe('the optional-property table', () => {
 			'target',
 			'risk',
 			'deliverableState',
+			'dependsOn',
 		]);
 		expect(OPTIONAL_FIELDS.map(optionalProperty)).toEqual(OPTIONAL_PROPERTIES);
 	});
@@ -388,7 +392,7 @@ describe('adoptableProperties', () => {
 	it('offers the shipped key for every optional property nobody has named', () => {
 		const config = fakeConfig({});
 
-		// Six, not seven: `deliverableState` now suggests the SAME key `state` does
+		// Eight, not nine: `deliverableState` suggests the SAME key `state` does
 		// ('status'), and `state` is declared first, so its own adoption claims
 		// 'status' before the loop ever reaches `deliverableState` — the existing
 		// "don't suggest an already-taken key" guard (below) skips it, leaving the
@@ -402,6 +406,7 @@ describe('adoptableProperties', () => {
 			'start',
 			'due',
 			'risk',
+			'dependsOn',
 		]);
 	});
 

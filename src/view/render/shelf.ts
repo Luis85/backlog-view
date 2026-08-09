@@ -3,6 +3,7 @@ import { createCard, renderCardBody, wireCardActivation } from './board';
 import { RowContext } from './columns';
 import { renderShelfControls } from './shelfControls';
 import { spanText } from './timeline';
+import { dependencyNote } from './timelineArrows';
 import { BacklogViewHost } from '../host';
 import { CardDragController, CardSource } from '../interactions/cardDrag';
 import { canSchedule, unschedulePlan } from '../interactions/plan';
@@ -13,6 +14,23 @@ import { RoadmapAxis, SHELF_LABEL } from '../../domain/roadmap';
 import { organizeShelf, ShelfGroup } from '../../domain/shelf';
 
 /** What dropping a card on the shelf MEANS, the words that promise it, and its preview. */
+/**
+ * The shelf to render, which of each card's prerequisites are in dependency conflict
+ * (2b), and which axis is drawing — grouped into one param so `renderShelf` stays
+ * under the five-parameter budget. `conflicts` is keyed by dependent path, empty on
+ * the horizon axis, where this conflict has no meaning — see `dependencyArrows`'s own
+ * `conflicts` (`TimelineRender.dependencyConflicts` on the dated axis). `axis` is what
+ * gates the dependency statement itself (below): `Arrows between bars`' Preconditions
+ * scope the whole feature — statement included — to "Roadmap mode is on with the
+ * dated axis", so a shelf card drawn on the horizon axis must say nothing about what
+ * it waits for, not merely leave the conflict half unmarked.
+ */
+export interface ShelfInput {
+	cards: ShelfCard[];
+	conflicts: ReadonlyMap<string, ReadonlySet<string>>;
+	axis: RoadmapAxis;
+}
+
 export interface ShelfRemoval {
 	plan: (source: CardSource) => void;
 	tooltip: string;
@@ -117,19 +135,23 @@ function removalOutcome(item: BacklogItem): string {
 export function renderShelf(
 	ctx: RowContext,
 	frameEl: HTMLElement,
-	shelf: ShelfCard[],
+	shelf: ShelfInput,
 	dnd: CardDragController,
 	removal: ShelfRemoval,
 ): { cards: BacklogItem[]; el: HTMLElement } {
 	const host = ctx.host;
-	const empty = shelf.length === 0;
+	const shelfCards = shelf.cards;
+	const empty = shelfCards.length === 0;
 	const collapsed = !empty && host.shelfCollapsed;
 	const shelfEl = frameEl.createDiv({
 		cls: 'pbl-shelf' + (empty ? ' pbl-shelf-empty' : '') + (collapsed ? ' pbl-shelf-collapsed' : ''),
-		attr: { role: 'group', 'aria-label': `${SHELF_LABEL}, ${shelf.length} item${shelf.length === 1 ? '' : 's'}` },
+		attr: {
+			role: 'group',
+			'aria-label': `${SHELF_LABEL}, ${shelfCards.length} item${shelfCards.length === 1 ? '' : 's'}`,
+		},
 	});
 	const header = shelfEl.createDiv({ cls: 'pbl-shelf-header' });
-	renderShelfControls(host, header, shelf);
+	renderShelfControls(host, header, shelfCards);
 	// The outcome line is only where a removal has one to say — the horizon axis's
 	// drop always un-places, so it has nothing to distinguish before the release.
 	const outcomeEl = removal.outcome ? header.createDiv({ cls: 'pbl-shelf-outcome' }) : null;
@@ -147,32 +169,44 @@ export function renderShelf(
 	});
 	if (empty || collapsed) return { cards: [], el: shelfEl };
 
+	// `dnd` and `removal` travel together to every card below, and now so does which
+	// of them is in conflict (2b) and which axis is drawing — grouped once here rather
+	// than threading a fourth and fifth argument through both `renderShelfGroup` and
+	// `renderShelfCard`.
+	const wiring: ShelfWiring = { dnd, removal, conflicts: shelf.conflicts, axis: shelf.axis };
 	const cards: BacklogItem[] = [];
-	for (const group of organizeShelf(shelf, host.shelfSort, host.shelfHiddenTypes)) {
-		cards.push(...renderShelfGroup(ctx, shelfEl, group, dnd, removal));
+	for (const group of organizeShelf(shelfCards, host.shelfSort, host.shelfHiddenTypes)) {
+		cards.push(...renderShelfGroup(ctx, shelfEl, group, wiring));
 	}
 	return { cards, el: shelfEl };
 }
 
+/** What every card in the expanded shelf needs beyond its own data — see `renderShelf`. */
+interface ShelfWiring {
+	dnd: CardDragController;
+	removal: ShelfRemoval;
+	/** Which of each dependent's prerequisites are in conflict (2b) — see `ShelfInput`. */
+	conflicts: ReadonlyMap<string, ReadonlySet<string>>;
+	/** Which axis is drawing — see `ShelfInput`. */
+	axis: RoadmapAxis;
+}
+
+/** Shared by every card with no conflicting prerequisite, so nothing is allocated for the common case. */
+const NO_CONFLICTS: ReadonlySet<string> = new Set();
+
 /** One type group inside the expanded shelf: its header, then its cards in sort order. */
-function renderShelfGroup(
-	ctx: RowContext,
-	shelfEl: HTMLElement,
-	group: ShelfGroup,
-	dnd: CardDragController,
-	removal: ShelfRemoval,
-): BacklogItem[] {
+function renderShelfGroup(ctx: RowContext, shelfEl: HTMLElement, group: ShelfGroup, wiring: ShelfWiring): BacklogItem[] {
 	const groupEl = shelfEl.createDiv({ cls: 'pbl-shelf-group' });
 	const header = groupEl.createDiv({ cls: 'pbl-shelf-group-header' });
 	header.createSpan({ cls: 'pbl-shelf-group-name', text: group.type });
 	header.createSpan({ cls: 'pbl-shelf-group-count', text: String(group.cards.length) });
 	const cardsEl = groupEl.createDiv({ cls: 'pbl-shelf-cards' });
-	for (const entry of group.cards) renderShelfCard(ctx, cardsEl, entry, dnd, removal);
+	for (const entry of group.cards) renderShelfCard(ctx, cardsEl, entry, wiring);
 	return group.cards.map((entry) => entry.item);
 }
 
-/** One shelved card: its body, its shelving reason if it has one, and its drag source. */
-function renderShelfCard(ctx: RowContext, cardsEl: HTMLElement, entry: ShelfCard, dnd: CardDragController, removal: ShelfRemoval): void {
+/** One shelved card: its body, its shelving reason, what it waits for, and its drag source. */
+function renderShelfCard(ctx: RowContext, cardsEl: HTMLElement, entry: ShelfCard, wiring: ShelfWiring): void {
 	const card = createCard(ctx, cardsEl, entry.item);
 	renderCardBody(ctx, card, entry.item);
 	// Unreadable is unplaced, and the card says why rather than rendering
@@ -182,13 +216,32 @@ function renderShelfCard(ctx: RowContext, cardsEl: HTMLElement, entry: ShelfCard
 		setIcon(reason.createSpan({ cls: 'pbl-shelf-reason-icon' }), 'alert-triangle');
 		reason.createSpan({ text: entry.reason });
 	}
+	// 1b: no bar exists here for any arrow to reach — the shelf card IS this
+	// dependent's row, so what it waits for (and which of that runs past this card's
+	// own stated start, 2b, or never resolved at all, 1d) has to be stated here or it
+	// is stated nowhere — but only on the DATED axis: `Arrows between bars`'
+	// Preconditions scope the whole feature to "Roadmap mode is on with the dated
+	// axis", and `Dependencies`' "It marks damage in one place" refuses this exact
+	// promise on the other three surfaces a prerequisite can be set from. Gated on the
+	// axis itself, not on `conflicting` being empty — that would also silence a
+	// dated card with no conflict, which is the bug the previous round fixed. Same
+	// string `dependencyNote` builds for a dated row, so a reader gets one phrasing of
+	// one fact wherever it does show. Visible content, like the reason above it, so it
+	// reaches the card's accessible name the same content-derived way.
+	const conflicting = wiring.conflicts.get(entry.item.file.path) ?? NO_CONFLICTS;
+	const waits = wiring.axis === 'dates' ? dependencyNote(entry.item, conflicting) : '';
+	if (waits) {
+		const dep = card.createDiv({ cls: 'pbl-shelf-dependency' + (conflicting.size > 0 ? ' pbl-shelf-conflict' : '') });
+		setIcon(dep.createSpan({ cls: 'pbl-shelf-dependency-icon' }), conflicting.size > 0 ? 'alert-triangle' : 'link');
+		dep.createSpan({ text: waits });
+	}
 	wireCardActivation(ctx, card, entry.item);
 	// A gesture whose only possible batch is empty must not begin: `removal.canDrag`
 	// is `canSchedule` on the dated axis, the same gate the row's own Schedule entry
 	// uses (`interactions/plan.ts`) — a marker with no writable end offers no grip at
 	// all. A shelf card is always wired with `hold: null`, which is exactly what each
 	// axis's `removal.accepts` refuses on its own strip.
-	if (removal.canDrag(entry.item)) dnd.wireCard(card, entry.item);
+	if (wiring.removal.canDrag(entry.item)) wiring.dnd.wireCard(card, entry.item);
 }
 
 /**

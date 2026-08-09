@@ -59,6 +59,10 @@
 @import "./roadmap.css";
 @import "./timeline.css";
 @import "./timelineFurniture.css";
+/* Position NOT load-bearing: every selector here is new (`.pbl-dependency-arrow*`,
+   `.pbl-timeline-row.pbl-row-conflict`) rather than overriding one `timeline.css` or
+   `timelineFurniture.css` already declare. */
+@import "./dependencyArrows.css";
 @import "./shelf.css";
 /* Position NOT load-bearing: `legend.css` only ever reads `--pbl-state-color` (a custom
    property, resolved by value regardless of which partial's rule set it) and defines no

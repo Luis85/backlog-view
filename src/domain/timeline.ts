@@ -234,6 +234,34 @@ export function barGeometry(window: TimelineWindow, span: DateSpan): BarGeometry
 	};
 }
 
+/**
+ * Where one dependency edge's arrow anchors, in days from the window's start — the
+ * prerequisite's END day and the dependent's START day, both read off `barGeometry`
+ * rather than restated: an anchor at a clipped end lands on the clipped edge because
+ * `startDay`/`spanDays` are already clamped there, an anchor at an open end lands on
+ * the day the borrowed date already draws the bar at because `barGeometry` borrows it
+ * before this ever runs, and a milestone's end equals its start because a point has
+ * no width to add — [[Arrows between bars]] 1e, 1g and 1h, none of them a case this
+ * function writes, all of them `barGeometry`'s own rule read from the far side.
+ *
+ * Null when either end has nothing of its own bar in the window at all (`outside`):
+ * an arrow needs two ends and the window has one — 1a's other half, the one no
+ * domain edge list can see, because window clipping is a render-time fact
+ * `dependencyArrows` never asked.
+ */
+export interface DependencyAnchor {
+	fromDay: number;
+	toDay: number;
+}
+
+export function dependencyAnchor(window: TimelineWindow, from: DateSpan, to: DateSpan): DependencyAnchor | null {
+	const fromGeometry = barGeometry(window, from);
+	const toGeometry = barGeometry(window, to);
+	if (fromGeometry.outside || toGeometry.outside) return null;
+	const fromDay = fromGeometry.milestone ? fromGeometry.startDay : fromGeometry.startDay + fromGeometry.spanDays;
+	return { fromDay, toDay: toGeometry.startDay };
+}
+
 /** Whole-day civil arithmetic — the step every slide and resize is made of. */
 export function addDays(date: CivilDate, count: number): CivilDate {
 	const moved = new Date(utc(date) + count * 86_400_000);

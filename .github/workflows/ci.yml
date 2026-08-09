@@ -44,3 +44,30 @@ jobs:
 
       - name: Validate the docs register and ADRs
         run: npm run docs
+
+  # Its own job, never a step in `verify`, and that separation is the decision rather
+  # than a layout preference — see ADR 0022. `npm run check` is the offline definition
+  # of done and every step in it can be satisfied by the commit being written; an
+  # advisory can be published with no patched version, which is a red nobody can clear.
+  # Keeping it here means a merge waits on it while a local `check` never does, and the
+  # two failures read differently because they are different.
+  #
+  # One platform, because an advisory is a fact about the dependency tree and the
+  # lockfile is the same on both. `--omit=dev` scopes it to what actually reaches a
+  # vault: the audit that prompted ADR 0019 was six dev SERVERS, none of them in
+  # `main.js`.
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Audit what ships
+        run: npm run audit

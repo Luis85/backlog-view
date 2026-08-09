@@ -198,9 +198,37 @@ export default defineConfig({
 			// ladder's own — the zero-width refusal, the reveal versus the rebuild, the
 			// blur's two answers and the theme change — each driven rather than
 			// accommodated.
+			// The arrows-between-bars increment (`dependencyAnchor` beside `barGeometry`,
+			// and the arrow layer drawn over the bars a placement pass already produced)
+			// measured 98.27/93.97/99.48/99.41 (5007/5095, 3122/3322, 1168/1174, 4218/4243)
+			// — statements and lines round down to new decimals (98.2, up from 98.1; 99.4,
+			// up from 99.3), branches and functions round down to the figures already
+			// recorded above (93.9, 99.4), so only two of the four move.
+			//
+			// The row-and-card-state-the-dependency increment (Task 3 of
+			// `Arrows between bars`: the timeline row's accessible name states what it
+			// waits for and marks the specific conflicting prerequisite, independent of
+			// the drawn window; the shelf card states a 2b conflict with no arrow to
+			// carry it) measured 98.2685/94.0036/99.4928/99.4161 (5051/5140, 3151/3352,
+			// 1177/1183, 4257/4282) — only branches rounds down to a new decimal (94.0,
+			// up from 93.9), the other three round down to the figures already recorded
+			// above, so only branches moves.
+			// Both branches raised what their own increment earned, and a floor only ever
+			// goes up, so the merge takes the HIGHER of each rather than either side's set:
+			// branches and functions from the toolbar work, statements and lines equal. The
+			// merged tree was measured against these before this line was written.
+			//
+			// Collapsing the dependency-undo identity rule (five accumulated conditions in
+			// `restoreDependsOn` replaced by one predicate and one two-pass matcher, plus the
+			// two watched-failing tests the rename-then-delete and delete-then-restore cells
+			// needed) measured 98.31/94.57/99.56/99.47 (5617/5713, 3541/3744, 1358/1364,
+			// 4706/4731). Statements and branches round down to new decimals (98.3, 94.5);
+			// functions and lines round down to the figures already recorded above and stay.
+			// Worth naming because the rise is mostly SUBTRACTION — the branches that went
+			// were cases the rule makes unnecessary, not cases a test started driving.
 			thresholds: {
-				statements: 98.2,
-				branches: 94.4,
+				statements: 98.3,
+				branches: 94.5,
 				functions: 99.5,
 				lines: 99.4,
 			},
