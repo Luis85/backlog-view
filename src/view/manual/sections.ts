@@ -91,7 +91,9 @@ const CREATING: ManualSection = {
 			text:
 				'Offers the same new-item choices as the +, plus structural actions with no drag ' +
 				'gesture of their own — move to top, move to bottom, outdent — and whatever else that ' +
-				"row's projection can do.",
+				"row's projection can do. It is also the +'s only keyboard route: the + itself carries " +
+				'no tab stop, so with a row selected, the keyboard\'s Menu key (or Shift+F10 without ' +
+				'one) opens this same menu.',
 		},
 		{
 			term: 'Where the note lands',
@@ -160,8 +162,13 @@ const FINDING: ManualSection = {
 		{
 			term: 'Nothing showing at all',
 			text:
-				'Either the Base returned nothing, or nothing it returned belongs to the hierarchy. ' +
-				'The toolbar says how many notes were skipped, which tells the two apart.',
+				'Four different causes render an empty tree, and each has its own one-press way out. ' +
+				'Either the Base returned nothing (point its filter at your backlog folder, or create ' +
+				'the first item), or it returned notes that do not belong to the hierarchy (create one, ' +
+				'or turn off Ignore notes outside the hierarchy) — the toolbar\'s skipped-notes count ' +
+				'tells these two apart. With items present, a quick filter can be matching none of ' +
+				"them (Clear filter), or every subtree can be done with Show completed items off " +
+				'(the same toggle, offered right there).',
 		},
 	],
 };
@@ -220,6 +227,23 @@ const SETUP: ManualSection = {
 		'The fast way: run Product Backlog: Create backlog. It writes a folder, a configured ' +
 		'base, and opens the view.',
 	entries: [
+		{
+			term: 'The toolbar\'s ✨ Assign missing properties',
+			text:
+				'The fast way to configure an EXISTING backlog, as Create backlog is for a new one. ' +
+				'It runs the same config gate as every other write first, then does two things in one ' +
+				'press: binds this view\'s suggested key to every optional property you have not named ' +
+				'— e.g. state, the date stamps, risk, the roadmap\'s horizon and dates — never one you ' +
+				'have set, and never one you have deliberately cleared, since Bases can tell ' +
+				'"untouched" from "set to nothing". It then backfills type and order onto notes ' +
+				'missing them, and — for the properties that describe a slot rather than a ' +
+				'relationship — an empty value for each newly-bound key onto every note that lacks ' +
+				'it, without overwriting anything already there. It never writes to a note the Base ' +
+				'excluded, and it never guesses a type for an item whose parent link does not resolve ' +
+				'to a loaded item — that item\'s real level is unknowable, so it is left alone rather ' +
+				'than typed from a false top-level position. The board and the roadmap offer the same ' +
+				'action, worded "Add the default properties", from their own unconfigured empty states.',
+		},
 		{
 			term: 'What the tree is',
 			text:
