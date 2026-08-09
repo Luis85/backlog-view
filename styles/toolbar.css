@@ -38,6 +38,7 @@
 /* Toolbar icon controls are <button>s so they sit in the tab order; the shared
    reset below drops the default button chrome clickable-icon does not cover */
 .pbl-icon-btn,
+.pbl-menu-btn,
 .pbl-filter-clear,
 .pbl-focus-clear,
 .pbl-add {
@@ -322,9 +323,16 @@
 	gap: 0;
 }
 
+/* `gap` and not a margin on the label: at the rung that sheds `.pbl-btn-label` the span
+   is `display: none` and a gap between one remaining child collapses to nothing, while a
+   margin on a hidden element is still a margin nobody can see the reason for. The
+   segmented group's own square corners stay — the border-radius the shared
+   `clickable-icon` supplies is wrong inside a bordered strip. */
 .pbl-mode-btn {
 	border-radius: 0;
 	margin: 0;
+	gap: var(--size-2-2);
+	font-size: var(--font-ui-small);
 }
 
 .pbl-mode-btn + .pbl-mode-btn {

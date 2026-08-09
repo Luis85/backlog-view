@@ -46,19 +46,39 @@
 	white-space: nowrap;
 }
 
-/* Step 1 — a labelled CONTROL loses its words and keeps its icon and chevron. The
-   accessible name is on the button, never in this span, so nothing loses its name here.
+/* Step 1 — the SWITCHER loses its words, and only the switcher. Its four labels are one
+   control's worth of chrome and 205px of it (measured in the harness: the group is 314px
+   labelled and 109px not), which is more than every other label in the row put together —
+   and they are the labels that say least. Each of the other four names a current VALUE
+   an icon cannot express: which axis, which zoom, which focus level, which type New
+   creates. The switcher's four name POSITIONS, which its icons already draw, which its
+   active marker already picks out, and which its tooltips already spell.
 
-   Only the controls: the advisories and the count are words with no `.pbl-btn-label`
-   around them and they survive this rung untouched, which is what steps 4 and 5 below
-   are for. This sentence used to read "the words go", which was wider than the rung and
-   was how a note about skipped files came to outlive the New button. */
-.pbl-toolbar[data-pbl-fit] .pbl-btn-label {
+   That is why this rung is not "labels go". Written that way, adding the switcher's words
+   made the whole row's words cost 205px more, and the ladder answered by shedding all of
+   them one step sooner: at a 1000px pane the roadmap lost "Timeline" and "Quarters" to
+   pay for words nobody needed to read twice.
+
+   The accessible name is on the button, never in this span, so nothing loses its name at
+   this rung or the next. */
+.pbl-toolbar[data-pbl-fit] .pbl-mode-btn .pbl-btn-label {
 	display: none;
 }
 
-/* Step 2 — the filter collapses to its own button, and the dated axis's two singles go
-   to the `⋯`. */
+/* Step 2 — the remaining words, the filter collapsing to its own button, and the dated
+   axis's two singles going to the `⋯`.
+
+   The words here are the value-naming four, and they go together rather than in some
+   order of usefulness among themselves: they are comparable in width and in worth, and a
+   rung per label would be four rungs buying a few dozen pixels each. The advisories and
+   the count are words with no `.pbl-btn-label` around them and survive both rungs
+   untouched, which is what steps 4 and 5 below are for — this used to be stated at step 1
+   as "the words go", which was wider than the rung and was how a note about skipped files
+   came to outlive the New button. */
+.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']) .pbl-btn-label {
+	display: none;
+}
+
 .pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']) .pbl-filter-input,
 .pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']) .pbl-filter-icon,
 .pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']) .pbl-density-toggle,

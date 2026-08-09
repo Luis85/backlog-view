@@ -35,7 +35,7 @@ today's icon size, add up to.
 | **Actor** | Backlog owner |
 | **Trigger** | Opening a saved view, resizing the pane, narrowing a split, switching projection, or a batch write starting or finishing |
 | **Preconditions** | A `product-backlog` view is open |
-| **Guarantee** | The row never wraps to a second line. Below the width that holds everything, controls are shed in a fixed order — always into the `⋯`, never into nothing — and the last four survivors (the switcher, the `⋯`, New, and whatever the active projection itself owns) are never among them. |
+| **Guarantee** | The row never wraps to a second line. Below the width that holds everything, controls are shed in a fixed order — always into the `⋯`, never into nothing — and no readout is ever what costs the primary action its place. What no rung sheds is listed in extension 4b, which is also where the limit of this guarantee is stated. |
 
 **Main flow**
 
@@ -45,11 +45,18 @@ today's icon size, add up to.
 2. After the row is in the DOM, `syncToolbarFit` measures it: while `scrollWidth` exceeds
    `clientWidth` it advances a step, up to five, and writes the step as `data-pbl-fit` on
    the toolbar element.
-3. `styles/toolbarFit.css` reads that attribute. Each step hides more of the row —
-   control labels first, then the filter and the dated axis's two singles, then the
-   backfill and bulk-collapse buttons, then the two advisory notes, then the count with
-   the divider that led its zone — and `overflow: clip` on the bar means anything a step
-   has not caught simply clips rather than wrapping.
+3. `styles/toolbarFit.css` reads that attribute. Each step hides more of the row — the
+   switcher's four words first, then the remaining labels together with the filter and
+   the dated axis's two singles, then the backfill and bulk-collapse buttons, then the
+   two advisory notes, then the count with the divider that led its zone — and
+   `overflow: clip` on the bar means anything a step has not caught simply clips rather
+   than wrapping.
+
+   The switcher leads that order because its words are the most expensive and the least
+   informative: 205px of the row against every other label put together, naming positions
+   its icons draw, its active marker picks out and its tooltips spell, where each of the
+   others names a current value — which axis, which zoom, which focus level, which type
+   New creates — that no icon can carry.
 4. Every control a step removes from the layout is still reachable: from step 2 onward
    the `⋯` is on screen, and its menu carries every entry a rung has shed, reading each
    one's `disabled` and pressed state off the very button it mirrors.
