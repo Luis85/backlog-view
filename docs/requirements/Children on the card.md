@@ -139,7 +139,10 @@ the only renderer that calls the card pair; a dated-axis timeline row's own chev
 entry and picks the matching pair — the one place a caller still has to ask, because it is
 the one place the same gate covers two different kinds of disclosure. `collapseNewParents`
 settles a newly-seen item's card bit in the same pass as the tree's and the dated axis's,
-and `seedCardScope` carries a pre-split installation's shared bit into the new scope once,
-on first restore, mirroring `seedTimelineScope`.
+and `seedCardScope` carries a pre-split installation's card state into the new scope once,
+on first restore — from a note's dated-axis key when it has one, since that is where its
+card's disclosure was actually answering from there before this split (`collapseKey`
+routed every card through `TIMELINE_SCOPE` too, on that axis), and from the bare path
+otherwise. Idempotent for the same reason `seedTimelineScope` is.
 Driven in `test/view/cardChildren.test.ts`, and against context cards in
 `test/view/contextCardWrites.test.ts`.

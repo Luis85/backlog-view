@@ -4,8 +4,9 @@ import { boardVault, BOARD_WORKFLOW, cardByTitle, makeBoard } from '../helpers/b
 import { makeView, refresh, rowByTitle, titlesOf, useViewHarness } from '../helpers/view';
 import { FakeVault } from '../helpers/vault';
 import { childrenLabel, listedChildren } from '../../src/view/childrenList';
+import { TIMELINE_SCOPE } from '../../src/view/collapseState';
 import { Menu } from '../helpers/obsidian-mock';
-import { makeRoadmap, rowFor } from '../helpers/roadmap';
+import { makeRoadmap, roadmapView, rowFor } from '../helpers/roadmap';
 
 useViewHarness();
 
@@ -247,6 +248,33 @@ describe('children on the card', () => {
 		view.setProjection('board');
 
 		expect(kidTitles(cardByTitle(containerEl, 'Epic B'))).toEqual(['Feature B1', 'Feature B2']);
+	});
+
+	// Before this split, a card's disclosure on the DATED axis routed through the same
+	// key as the row's own chevron (`TIMELINE_SCOPE`), never the bare path — so an
+	// installation that used the dated roadmap has a note with BOTH keys stored: the
+	// bare one (whatever its tree row happened to be, here untouched at the collapsed
+	// default) and the timeline one (the card's real, expanded state). Taking the bare
+	// key regardless would silently re-close a card the reader had left open.
+	it('prefers the dated-axis key over the bare one, since that is where a card’s own state lived there before this split', () => {
+		const vault = new FakeVault();
+		vault.addFile('Shelf item.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Shelf child.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Shelf item' });
+		vault.localStorage.set('product-backlog:collapse', {
+			'Backlog.base#Backlog': {
+				base: 'Backlog.base',
+				collapsed: [],
+				expanded: [`${TIMELINE_SCOPE}Shelf item.md`],
+			},
+		});
+
+		const { containerEl } = roadmapView(
+			vault,
+			{ startProperty: 'note.start', targetProperty: 'note.due', horizonProperty: '' },
+			{ base: 'Backlog.base' },
+		);
+
+		expect(kidTitles(cardByTitle(containerEl, 'Shelf item'))).toEqual(['Shelf child']);
 	});
 
 	it('disables the toggle while the quick filter runs, and lists anyway', () => {

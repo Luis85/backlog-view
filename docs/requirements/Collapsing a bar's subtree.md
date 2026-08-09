@@ -171,9 +171,14 @@ question — pruning a key whose file is gone, and following a rename — and
 `collapseNewParents` settles all three scopes in one pass over the model, since it runs on
 a data update rather than per projection and an unsettled scope would open a whole backlog
 the first time it was shown. `seedTimelineScope` and `seedCardScope` are the upgrade: on a
-restore that finds no scoped key, each mirrors the stored bits into its own new scope,
-because a pre-split entry's one bit per note is the bit every projection was reading — and
-each one's own copy is what keeps it from firing twice.
+restore that finds no scoped key, `seedTimelineScope` mirrors the stored bare bit into
+`TIMELINE_SCOPE`, because a pre-split entry's one bit per note is the bit every
+projection was reading. `seedCardScope` runs after it and is not a plain mirror: it
+favours a note's `TIMELINE_SCOPE` key over its bare one where both exist, since a
+card's disclosure on the dated axis answered from THAT key before it had a scope of its
+own ([[Children on the card]]) — taking the bare key regardless would silently re-close
+a card the reader had left open there. Each one's own copy is what keeps it from firing
+twice.
 
 The control itself is the tree's, extracted rather than copied: `renderChevron` in
 `src/view/render/rows.ts` is now the one statement of what a chevron is — the icon, the

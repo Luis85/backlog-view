@@ -89,19 +89,26 @@ function seedTimelineScope(collapsed: Set<string>, settled: Set<string>): void {
 }
 
 /**
- * The same upgrade, for a card's own bit — copied from the TREE's bare-path bit
- * specifically, since that is what a card's disclosure used to read before it had a scope
- * of its own; never from a `TIMELINE_SCOPE` key, which was already a different question
- * before this split existed. Fires and is idempotent for the same reasons
- * {@link seedTimelineScope} is.
+ * The same upgrade, for a card's own bit — but with two possible sources rather than
+ * one, because a card's disclosure did not read one bit before it had a scope of its
+ * own: on the dated axis it read `TIMELINE_SCOPE`, sharing the row's own fold bit
+ * (`collapseKey` routed every card there too, before {@link CARD_SCOPE} split them
+ * apart), and everywhere else it read the bare path alongside the tree. The dated
+ * axis's key wins when a note carries both, since that is where THIS note's card was
+ * actually answering from; the bare key is used only where no dated-axis key exists.
+ * Taking the bare key unconditionally would silently re-close a card the reader had
+ * left open on the dated roadmap, because that key was never the one a card there wrote
+ * to. Fires and is idempotent for the same reasons {@link seedTimelineScope} is.
  */
 function seedCardScope(collapsed: Set<string>, settled: Set<string>): void {
 	const keys = [...settled];
 	if (keys.some((key) => key.startsWith(CARD_SCOPE))) return;
-	for (const key of keys) {
-		if (scopeOf(key) !== '') continue;
-		settled.add(CARD_SCOPE + key);
-		if (collapsed.has(key)) collapsed.add(CARD_SCOPE + key);
+	for (const path of new Set(keys.map(notePath))) {
+		// Every `path` here came FROM a settled key (the bare one or the timeline one),
+		// so `source` is always settled too — there is no third case to guard against.
+		const source = settled.has(TIMELINE_SCOPE + path) ? TIMELINE_SCOPE + path : path;
+		settled.add(CARD_SCOPE + path);
+		if (collapsed.has(source)) collapsed.add(CARD_SCOPE + path);
 	}
 }
 
