@@ -566,6 +566,22 @@ The claims found wrong so far, so you do not rediscover them:
 | The quick filter narrows to matching titles | It keeps the match **path** — the match, all its ancestors and its **whole subtree** — and overrides collapse state while active. Most of what stays on screen did not match | `src/view/filterState.ts`, and its own header comment |
 | Extra types sit beside the rung they hang from | They may HANG from Epic, Feature or PBI, but their RANK is pinned to `EXTRA_TYPE_RANK` — the PBI rung — whatever the parent. That pin is why focusing PBI promotes them and focusing Epic or Feature does not | `EXTRA_TYPE_RANK`, `src/domain/settings.ts` |
 
+**Carried into Task 3 from a review of Task 2 — the re-typing cascade, and where it is
+described.** The types section currently says only that `Assign item type when moving`
+is an exception to "a move does not re-type", without its effect. Extension 4a of
+`A help button for the item types` requires the effect stated, so that is a real gap.
+
+But `Help for moving and ranking` is the note that owns the cascade, and its criteria say
+to describe it **by what it SKIPS** — ladder items only, only when the parent changes,
+cascading through explicitly typed ladder descendants, skipping extra types, markers,
+untyped and custom-typed descendants, and stopping at a row the Base excluded. Read
+`computeTypeChanges` in `src/domain/writePlan.ts` before writing any of it.
+
+**Do not write that list twice.** The moving section carries the boundaries in full; the
+types section gets one sentence naming the effect and pointing at the moving section. Two
+copies of a behavioural list is the drift this register has a rule about, and the whole
+reason a Feature does not keep its own index of its use cases.
+
 **A note for whoever implements Task 2.** While verifying the first row above, a dead
 branch surfaced in `childTypeChoices`: `if (!parent) return ALL_TYPES;` guards at
 `src/domain/itemTypes.ts:118`, and an unreachable `if (!parent) return [...ALL_TYPES];`
