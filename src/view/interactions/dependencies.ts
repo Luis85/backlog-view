@@ -88,6 +88,18 @@ function declaredPrerequisitePaths(app: App, model: BacklogModel, item: BacklogI
 }
 
 /**
+ * Every item's own declared prerequisite paths, in one pass.
+ *
+ * Hoisted out of `candidates` so a sweep that asks the question of every row builds this
+ * once rather than once per row. `candidates` still defaults to building its own, so the
+ * two menu callers are unchanged and cannot fall out of step with the sweep — there is
+ * one definition of "what this note declares", not a fast one and a careful one.
+ */
+function declaredMap(app: App, model: BacklogModel): Map<string, string[]> {
+	return new Map([...model.byPath].map(([path, item]) => [path, declaredPrerequisitePaths(app, model, item)]));
+}
+
+/**
  * The notes this item may be made to wait for.
  *
  * Every exclusion here is a pick that would write nothing or refuse: itself, what it
@@ -99,10 +111,12 @@ function declaredPrerequisitePaths(app: App, model: BacklogModel, item: BacklogI
  * rather than to a row. `outsideFilter` is filtered explicitly here for exactly that
  * reason — `byPath` carries context rows that `results` never did.
  */
-function candidates(app: App, model: BacklogModel, item: BacklogItem): BacklogItem[] {
-	const declared = new Map(
-		[...model.byPath].map(([path, candidate]) => [path, declaredPrerequisitePaths(app, model, candidate)]),
-	);
+function candidates(
+	app: App,
+	model: BacklogModel,
+	item: BacklogItem,
+	declared: Map<string, string[]> = declaredMap(app, model),
+): BacklogItem[] {
 	// Asked once for the whole menu rather than once per row: naming any item that
 	// already waits on this one — at any depth, including through a broken cyclic edge —
 	// is what would close a loop.
@@ -112,6 +126,34 @@ function candidates(app: App, model: BacklogModel, item: BacklogItem): BacklogIt
 		(candidate) =>
 			!candidate.outsideFilter && !closesLoop.has(candidate.file.path) && !already.has(candidate.file.path),
 	);
+}
+
+/**
+ * Every note a link drag from `source` may be dropped ONTO.
+ *
+ * Dragging S onto T writes to T — T is the one that waits — so T is legal exactly when S
+ * is a legal prerequisite FOR T. That is `candidates` asked from the other end, and it is
+ * asked rather than restated: the four exclusions (self, already declared however spelled,
+ * would close a loop, outside the filter) have one definition, and a second formulation
+ * beside it is what drifts. Stating it as "something it already waits for" is the MENU's
+ * sentence, where the item under the cursor is the dependent; here the dependent is the
+ * one dropped onto, and the same words name the wrong end.
+ *
+ * One `declaredMap` for the whole sweep, so a target costs one closure walk rather than a
+ * rebuild plus a walk. Swept ONCE when a drag starts — never per frame; the check that
+ * says so is in `test/view/linkDrag.test.ts`.
+ *
+ * Matched on `.file`, not on the path, for the reason `applyDependencyWrite` states: a
+ * note deleted and another created at the same path satisfies a path compare while being
+ * a different note.
+ */
+export function legalTargetPaths(app: App, model: BacklogModel, source: BacklogItem): Set<string> {
+	const declared = declaredMap(app, model);
+	const legal = new Set<string>();
+	for (const target of model.byPath.values()) {
+		if (candidates(app, model, target, declared).some((c) => c.file === source.file)) legal.add(target.file.path);
+	}
+	return legal;
 }
 
 function promptAddDependency(host: BacklogViewHost, model: BacklogModel, item: BacklogItem): void {
@@ -298,10 +340,13 @@ function promptRemoveDependency(host: BacklogViewHost, model: BacklogModel, item
 /**
  * The one place a dependency write is planned and applied.
  *
- * Deliberately not exported yet. `Draw a dependency between bars` will call it rather
- * than plan beside it — one move, several inputs, one place the batch is made — but a
- * symbol exported for a caller that does not exist is dead code today, and the register
- * is where that intent is recorded until the second input arrives.
+ * Exported for `interactions/linkDrag.ts`, which CALLS it rather than planning beside it:
+ * one move, two inputs, one place the batch is made. Adding a third input means calling
+ * this, never writing a second plan next to it.
+ *
+ * @expected-unused `linkDrag.ts` does not exist yet — this lands in a later task of the
+ * same sequence. Fallow will report this tag as a stale suppression once that caller
+ * lands, which is the signal to remove it.
  *
  * Rechecks the SOURCE — the item the menu was opened on, not the candidate `onChoose`
  * already re-asks `candidates` about — against `host.model` read fresh here, not the
@@ -319,7 +364,7 @@ function promptRemoveDependency(host: BacklogViewHost, model: BacklogModel, item
  * rather than minting a new one, so the object the menu captured is the object the
  * refreshed model holds, under whatever path it now has.
  */
-function applyDependencyWrite(host: BacklogViewHost, item: BacklogItem, dependsOn: DependsOnDelta): void {
+export function applyDependencyWrite(host: BacklogViewHost, item: BacklogItem, dependsOn: DependsOnDelta): void {
 	const source = host.model?.byPath.get(item.file.path);
 	if (source === undefined || source.outsideFilter || source.file !== item.file) {
 		new Notice('That note changed while the picker was open, so nothing was written.');
