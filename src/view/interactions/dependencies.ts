@@ -1,7 +1,8 @@
-import { App, Menu, Notice } from 'obsidian';
+import { App, Menu, Notice, TFile } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { dependentsClosure } from '../../domain/dependencies';
 import { BacklogItem, BacklogModel } from '../../domain/model';
+import { isMarkerType } from '../../domain/itemTypes';
 import { linkpathFromRawValue } from '../../domain/noteFields';
 import { ItemSuggestModal, SuggestChoice } from '../../ui/itemSuggest';
 import { DependsOnDelta } from '../../domain/writePlan';
@@ -17,6 +18,12 @@ import { DependsOnDelta } from '../../domain/writePlan';
 
 /** Add the pair, in the order they read: state one, then clear one. */
 export function addDependencyItems(host: BacklogViewHost, model: BacklogModel, menu: Menu, item: BacklogItem): void {
+	// A marker waits for nothing, so neither entry belongs on one: a milestone is a point
+	// in time. Both halves go, not just the first — `Remove dependency…` would open on the
+	// empty list `readItems` now gives a marker, which is an entry that cannot act.
+	// A marker may still BE waited for, and that is expressed from the other end: its own
+	// connector stays, because dragging FROM it is how another bar comes to wait on it.
+	if (isMarkerType(item.typeName)) return;
 	menu.addItem((mi) =>
 		mi
 			.setTitle('Depends on…')
@@ -120,6 +127,10 @@ function candidates(
 	// Asked once for the whole menu rather than once per row: naming any item that
 	// already waits on this one — at any depth, including through a broken cyclic edge —
 	// is what would close a loop.
+	// A marker declares nothing (`readItems.ts` states the rule at the read), so it has
+	// no candidates — which is also what keeps it out of `legalTargetPaths`: dragging ONTO
+	// a bar writes to that bar, and a milestone is never the one that waits.
+	if (isMarkerType(item.typeName)) return [];
 	const closesLoop = dependentsClosure(item.file.path, declared);
 	const already = new Set(declared.get(item.file.path) ?? []);
 	return [...model.byPath.values()].filter(
@@ -156,12 +167,12 @@ function candidates(
  * note deleted and another created at the same path satisfies a path compare while being
  * a different note.
  */
-export function legalTargetPaths(app: App, model: BacklogModel, source: BacklogItem): Set<string> {
+export function legalTargets(app: App, model: BacklogModel, source: BacklogItem): Set<TFile> {
 	const declared = declaredMap(app, model);
-	const legal = new Set<string>();
+	const legal = new Set<TFile>();
 	for (const target of model.byPath.values()) {
 		if (target.outsideFilter) continue;
-		if (candidates(app, model, target, declared).some((c) => c.file === source.file)) legal.add(target.file.path);
+		if (candidates(app, model, target, declared).some((c) => c.file === source.file)) legal.add(target.file);
 	}
 	return legal;
 }

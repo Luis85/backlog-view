@@ -107,9 +107,21 @@ export function demoVault(): FakeVault {
 	add(vault, 'Dunning emails', { type: 'PBI', order: 20, start: '2026-08-05', due: '2026-07-01', dependsOn: '[[Sign-up flow]]' }, 'Invoicing');
 	// An extra type at the DEEPEST legal parent, drawn level with the two PBIs above it.
 	add(vault, 'Usage-based pricing', { type: 'Idea', order: 30, status: 'New', horizon: 'Later' }, 'Invoicing');
-	// Names a note this base does not have: BROKEN (1d). No arrow, and the row carries the
-	// glyph — the case that used to be visible to a screen reader and to nobody else.
-	add(vault, 'Ship 1.0', { type: 'Milestone', order: 30, due: '2026-09-30', dependsOn: 'Contract signed' }, 'Billing');
+	// A MILESTONE, and its dependency case is the one that survives the type's rule: a
+	// milestone waits for nothing, so it declares nothing — but it may be waited FOR, and
+	// `Launch checklist` below is what waits on it. Its own `dependsOn` is deliberately
+	// absent rather than present-and-ignored: the fixture draws what the view supports.
+	add(vault, 'Ship 1.0', { type: 'Milestone', order: 30, due: '2026-09-30' }, 'Billing');
+	// Waits on that milestone — the arrow INTO a diamond, which is the direction a
+	// milestone still takes part in. Also names a note this base does not have, so it
+	// carries the BROKEN case (1d) too: no arrow for that entry, and the row's glyph.
+	// That case lived on `Ship 1.0` until milestones stopped declaring anything.
+	add(
+		vault,
+		'Launch checklist',
+		{ type: 'PBI', order: 40, status: 'New', start: '2026-10-05', due: '2026-10-20', dependsOn: ['[[Ship 1.0]]', 'Contract signed'] },
+		'Billing',
+	);
 
 	// A parent the Base excludes, with a child it returns: the context row on screen.
 	vault.addFile(OUTSIDE, { frontmatter: { type: 'Epic', order: 30, status: 'Done' } });

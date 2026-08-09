@@ -7,7 +7,7 @@ import { flush, key, makeView, treeOf, useViewHarness } from '../helpers/view';
 import { cardDrag } from '../helpers/dnd';
 import { cardByTitle } from '../helpers/board';
 import { bucketNames, rowFor, shelfTitles } from '../helpers/roadmap';
-import { legalTargetPaths } from '../../src/view/interactions/dependencies';
+import { legalTargets } from '../../src/view/interactions/dependencies';
 
 /**
  * The context-row rule, driven against every entry point the CARD projections have.
@@ -492,7 +492,7 @@ describe('write safety with context rows, at the dependency connector', () => {
 
 	it('never offers a context row as a legal TARGET, which a drag could otherwise reach', () => {
 		// The half a drag cannot demonstrate: the row draws no bar, so nothing could be
-		// dropped on it — but `legalTargetPaths` is what the drop re-asks, and it is the
+		// dropped on it — but `legalTargets` is what the drop re-asks, and it is the
 		// answer that has to exclude it.
 		const vault = linkStressVault();
 		const { view } = linkStressView(vault);
@@ -503,9 +503,9 @@ describe('write safety with context rows, at the dependency connector', () => {
 		// Not vacuous: Epic is a genuine ancestor context row (`outsideFilter: true`),
 		// not simply absent from the model — a note excluded from `only` with nothing
 		// loading it as someone's ancestor would pass this same assertion for the wrong
-		// reason, by never being a candidate `legalTargetPaths` walks at all.
+		// reason, by never being a candidate `legalTargets` walks at all.
 		expect(model.byPath.get('Epic.md')?.outsideFilter).toBe(true);
-		expect([...legalTargetPaths(view.app, model, source)]).not.toContain('Epic.md');
+		expect([...legalTargets(view.app, model, source)].map((f) => f.path)).not.toContain('Epic.md');
 	});
 
 	it('refuses the whole batch structurally if a write for one ever reaches the gate', async () => {

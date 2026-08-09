@@ -22,6 +22,7 @@ import {
 	optionalKeyFor,
 	resolvedDeliverableStateKey,
 } from './settings';
+import { isMarkerType } from './itemTypes';
 
 /**
  * Phase 1 of the model build: what each NOTE says about itself, before anything knows
@@ -168,6 +169,8 @@ function addItem(
 	const deliverableStateKey = resolvedDeliverableStateKey(settings);
 	const deliverableStateValue = deliverableStateKey ? readString(ownValue(fm, deliverableStateKey)) : null;
 	const deliverableDoneValues = settings.deliverableDoneValues.map((v) => v.toLowerCase());
+	// Hoisted out of the literal below because the dependency read now asks it too.
+	const typeName = readString(ownValue(fm, settings.typeKey));
 	// Every field this note can answer for itself, and no others: the ten that used to
 	// be initialised here as placeholders now belong to the phases that compute them.
 	const item: RawItem = {
@@ -175,7 +178,7 @@ function addItem(
 		entry,
 		outsideFilter: entry === null,
 		title: file.basename,
-		typeName: readString(ownValue(fm, settings.typeKey)),
+		typeName,
 		order: readNumber(ownValue(fm, settings.orderKey)),
 		entryIndex: store.all.length,
 		parentPath: parentRef.file?.path ?? null,
@@ -200,7 +203,16 @@ function addItem(
 		// metadata cache on every model rebuild, and then thrown away. Stating it here
 		// puts the rule at the forbidden thing rather than at one of the places that
 		// would otherwise have to remember it, and takes the work with it.
-		dependsOnEntries: entry === null ? [] : readLinkList(app, file, cache, settings.dependsOnKey),
+		//
+		// NOT read for a MARKER either, and for a reason about the type rather than about
+		// the filter: a milestone is a point in time, so it waits for nothing. It may
+		// still be WAITED FOR — that is the other note's declaration and this list is not
+		// it — which is why the rule sits on the reading of a marker's own entries rather
+		// than on whether a marker may be named. Stated here so it holds for every
+		// consequence at once: no edges out, no conflict ever computed for it, nothing in
+		// `declaredMap`, and no candidate list to offer.
+		dependsOnEntries:
+			entry === null || isMarkerType(typeName) ? [] : readLinkList(app, file, cache, settings.dependsOnKey),
 	};
 	store.byPath.set(file.path, item);
 	store.all.push(item);

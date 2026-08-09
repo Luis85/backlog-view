@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { FakeVault } from '../helpers/vault';
-import { flush, makeView, refresh, useViewHarness } from '../helpers/view';
+import { Menu } from '../helpers/obsidian-mock';
+import { flush, makeView, refresh, rowByTitle, useViewHarness } from '../helpers/view';
 import { barFor, gripNames, rowFor, shelfOf } from '../helpers/roadmap';
 import { cardDrag, gridDrag, overlayOf, pannedGrid } from '../helpers/dnd';
-import { legalTargetPaths } from '../../src/view/interactions/dependencies';
+import { legalTargets } from '../../src/view/interactions/dependencies';
 import { CardDragController } from '../../src/view/interactions/cardDrag';
 import { BacklogItem, BacklogModel } from '../../src/domain/model';
 
@@ -50,7 +51,7 @@ describe('which bars a link may be dropped onto', () => {
 		const { view } = makeView(vault, DEPS, only ? { only } : {});
 		const model = view.model;
 		if (!model) throw new Error('no model');
-		return { paths: [...legalTargetPaths(view.app, model, itemFor(model, from))].sort(), model, view };
+		return { paths: [...legalTargets(view.app, model, itemFor(model, from))].map((f) => f.path).sort(), model, view };
 	}
 
 	it('refuses the source itself and anything already waiting for it', () => {
@@ -83,6 +84,78 @@ describe('which bars a link may be dropped onto', () => {
 		vault.addFile('A.md', { frontmatter: { type: 'PBI', order: 10 } });
 		vault.addFile('B.md', { frontmatter: { type: 'PBI', order: 20, dependsOn: ['A', '[[A]]'] } });
 		expect(sweep(vault, 'A.md').paths).toEqual([]);
+	});
+});
+
+describe('a milestone is a point in time, so it waits for nothing', () => {
+	/** A milestone, an ordinary PBI, and a milestone that has typed a dependency anyway. */
+	function markerVault(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Work.md', { frontmatter: { type: 'PBI', order: 10 } });
+		vault.addFile('Ship.md', { frontmatter: { type: 'Milestone', order: 20, dependsOn: '[[Work]]' } });
+		return vault;
+	}
+
+	it('ignores a dependency a milestone declares, however it got there', () => {
+		// Read at the source (`readItems`), so every consequence falls out at once rather
+		// than each surface remembering: no edge, no arrow, no conflict, nothing in the
+		// declared map. A note retyped to Milestone after the fact keeps the key on disk —
+		// this is what stops it meaning anything.
+		const { view } = makeView(markerVault(), DEPS);
+		const model = view.model;
+		if (!model) throw new Error('no model');
+
+		expect(itemFor(model, 'Ship.md').dependsOnEntries).toEqual([]);
+		expect(itemFor(model, 'Ship.md').prerequisites).toEqual([]);
+	});
+
+	it('is never a legal drop target, because dropping onto a bar is what makes it wait', () => {
+		// The direction that matters: dragging A onto B writes to B. A milestone is never
+		// the one that waits, so it is never a target — and this falls out of `candidates`
+		// returning nothing for it rather than from a second rule at the drop.
+		const { view } = makeView(markerVault(), DEPS);
+		const model = view.model;
+		if (!model) throw new Error('no model');
+
+		expect([...legalTargets(view.app, model, itemFor(model, 'Work.md'))].map((f) => f.path)).toEqual([]);
+	});
+
+	it('still takes part from the other end: another item may wait FOR it', () => {
+		// The half deliberately kept. `Work` waiting on `Ship` is Work's declaration, not
+		// the milestone's, so the milestone is offered as a target's prerequisite and the
+		// edge is real — which is why the milestone keeps its own connector to drag from.
+		const vault = new FakeVault();
+		vault.addFile('Ship.md', { frontmatter: { type: 'Milestone', order: 10 } });
+		vault.addFile('Work.md', { frontmatter: { type: 'PBI', order: 20, dependsOn: '[[Ship]]' } });
+		const { view } = makeView(vault, DEPS);
+		const model = view.model;
+		if (!model) throw new Error('no model');
+
+		expect(itemFor(model, 'Work.md').prerequisites.map((p) => p.file.path)).toEqual(['Ship.md']);
+		// And a THIRD item may still be dropped onto Work, which is unaffected by any of this.
+		vault.addFile('Other.md', { frontmatter: { type: 'PBI', order: 30 } });
+		const fresh = makeView(vault, DEPS).view.model;
+		if (!fresh) throw new Error('no model');
+		expect([...legalTargets(view.app, fresh, itemFor(fresh, 'Other.md'))].map((f) => f.path)).toContain('Work.md');
+	});
+
+	it('offers neither dependency menu entry on a milestone', () => {
+		// Both, not just `Depends on…`: `Remove dependency…` would open onto the empty list
+		// the reader now gives a marker, which is an entry that cannot act.
+		const { view, containerEl } = makeView(markerVault(), DEPS);
+		const titlesOn = (title: string): string[] => {
+			rowByTitle(containerEl, title).dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+			return (Menu.lastShown?.items ?? []).map((item) => item.titleText);
+		};
+		const marker = titlesOn('Ship');
+		const ordinary = titlesOn('Work');
+
+		expect(marker).not.toContain('Depends on…');
+		expect(marker).not.toContain('Remove dependency…');
+		// The control: the same menu on an ordinary row does offer it, so this is the type
+		// deciding rather than the fixture failing to configure the feature.
+		expect(ordinary).toContain('Depends on…');
+		expect(view.model).not.toBeNull();
 	});
 });
 

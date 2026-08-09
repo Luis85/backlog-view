@@ -50,8 +50,10 @@ mistaken for the resize grip it sits beside.
 
 **Extensions**
 
-- **1a — the row is a milestone.** Its bar is a point, so its connector is at the diamond.
-  A deadline something else waits for is the ordinary case, not a special one.
+- **1a — the row is a milestone, as the PREREQUISITE.** Its bar is a point, so its
+  connector is at the diamond. A deadline something else waits for is the ordinary case,
+  not a special one — and it is the only direction a milestone takes part in, which is
+  what its connector is for. See 1g for the direction it does not.
 - **1b — the row is outside the Base's filter.** No connector. It is never a write target,
   and a gesture that started from it would have to be refused at the end instead of never
   offered.
@@ -79,6 +81,15 @@ mistaken for the resize grip it sits beside.
   diamond it can sit at a boundary without asserting anything is there. Which is also why
   it is not suppressed: the drag writes a *dependency*, and the fact that some of the bar
   is off-screen says nothing about whether the ordering is true.
+- **1g — the row is a MILESTONE, as the dependent.** It never is one. A milestone is a
+  point in time, so it waits for nothing: it declares no prerequisites, is never a drop
+  target (dropping onto a bar is what makes that bar wait), and neither dependency menu
+  entry appears on it. A note retyped to `Milestone` while carrying a `dependsOn` key
+  keeps the key and it stops meaning anything — the rule is kept at the READ
+  (`readItems.ts`), so no arrow, no conflict and no candidate list can be derived from it
+  anywhere. The other direction is 1a's and is deliberately kept. Decided 2026-08-09; the
+  reversal it required of an existing acceptance — a marker row folding "Waits for…" into
+  its label — is recorded at the test that now asserts the opposite.
 - **2a — the pointer is over an illegal target.** The source bar itself, a context row, a
   target that would close a loop, or **a target that already waits for the source** —
   marked as illegal **while the drag is held**, not refused after release. A refusal that

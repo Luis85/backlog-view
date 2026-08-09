@@ -1,5 +1,6 @@
+import { TFile } from 'obsidian';
 import { CardDragController, CardSource } from './cardDrag';
-import { applyDependencyWrite, dependenciesAvailable, legalTargetPaths } from './dependencies';
+import { applyDependencyWrite, dependenciesAvailable, legalTargets } from './dependencies';
 import { RowContext } from '../render/columns';
 import { BacklogViewHost } from '../host';
 import { BacklogItem, BacklogModel } from '../../domain/model';
@@ -13,7 +14,7 @@ import { BacklogItem, BacklogModel } from '../../domain/model';
  * are identical either way — one move, two inputs, one place the batch is made. Adding a
  * third input means calling that same function, never writing a plan beside it.
  *
- * Legality is likewise not decided here: `legalTargetPaths` asks `candidates` from the
+ * Legality is likewise not decided here: `legalTargets` asks `candidates` from the
  * end the drop writes to. What this module owns is only WHEN that question is asked
  * (once, at drag start) and what the answer LOOKS like while the drag is held.
  */
@@ -41,7 +42,13 @@ const SOURCE = 'pbl-link-source';
  * wholesale and mints a new box, so nothing here can outlive the frame it belongs to.
  */
 interface LiveLink {
-	legal: Set<string>;
+	/**
+	 * The legal targets as FILES, never as paths. A rename mid-gesture mutates the one
+	 * `TFile` in place, so a path swept at drag start goes stale against a target that
+	 * did not change — and `accepts` would then refuse a drop that stayed valid, before
+	 * `drop` could re-ask anything. Same fact `CardDragController.resolve` leans on.
+	 */
+	legal: Set<TFile>;
 	line: SVGPathElement | null;
 	fromX: number;
 	fromY: number;
@@ -81,7 +88,7 @@ export function wireBarLink(ctx: RowContext, parts: BarLinkParts): void {
 	dnd.wireDropTarget(
 		barEl,
 		(source) => drop(host, source, item),
-		{ accepts: (source) => (live.get(content)?.legal.has(item.file.path) ?? false) && source.item.file !== item.file },
+		{ accepts: (source) => (live.get(content)?.legal.has(item.file) ?? false) && source.item.file !== item.file },
 		'link',
 	);
 }
@@ -101,7 +108,7 @@ function begin(host: BacklogViewHost, content: HTMLElement, row: HTMLElement, it
 	// gesture that starts later than the render that drew it). A second null check here
 	// would guard nothing reachable.
 	const model = host.model as BacklogModel;
-	const legal = legalTargetPaths(host.app, model, item);
+	const legal = legalTargets(host.app, model, item);
 	const box = content.getBoundingClientRect();
 	const dot = connector.getBoundingClientRect();
 	const state: LiveLink = {
@@ -113,9 +120,13 @@ function begin(host: BacklogViewHost, content: HTMLElement, row: HTMLElement, it
 	live.set(content, state);
 	content.addClass(LINKING);
 	row.addClass(SOURCE);
+	// The rows are addressed by path because that is what the DOM carries, and resolved
+	// to files through the model before asking `legal` — which is keyed by file. Safe
+	// here and nowhere later: this runs at drag START, when every rendered path is current.
 	for (const other of Array.from(content.querySelectorAll<HTMLElement>('.pbl-timeline-row'))) {
 		const path = other.dataset.pblPath;
-		if (other !== row && path !== undefined && !legal.has(path)) other.addClass(ILLEGAL);
+		const file = path === undefined ? undefined : model.byPath.get(path)?.file;
+		if (other !== row && file !== undefined && !legal.has(file)) other.addClass(ILLEGAL);
 	}
 }
 
@@ -176,6 +187,6 @@ function drop(host: BacklogViewHost, source: CardSource, target: BacklogItem): v
 	const model = host.model as BacklogModel;
 	const liveTarget = model.byPath.get(target.file.path);
 	if (liveTarget?.file !== target.file) return;
-	if (!legalTargetPaths(host.app, model, source.item).has(target.file.path)) return;
+	if (!legalTargets(host.app, model, source.item).has(target.file)) return;
 	applyDependencyWrite(host, liveTarget, { add: source.item.file });
 }
