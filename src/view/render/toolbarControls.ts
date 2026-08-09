@@ -269,16 +269,44 @@ function renderTimelineControls(host: BacklogViewHost, zone: HTMLElement, barEl:
  * What the bulk collapse controls can reach — a DIFFERENT question from
  * `countedPopulation` in `toolbar.ts`, which is why it is a second function rather than a
  * reuse: counting asks for the Base's rows, and collapsing asks for everything on screen
- * that owns a disclosure, context rows included.
+ * that owns a disclosure, context rows included, minus every path currently showing a
+ * CARD's own children disclosure — that toggle is the card's alone to press, never the
+ * toolbar's. See {@link cardDisclosurePaths} for why a dated-axis timeline row's chevron
+ * is not caught by that exclusion.
  *
  * The Deliverables board is the one projection where `model.items` is the wrong answer.
  * It draws `model.deliverableResults`, read off the WHOLE unfocused tree so a focus set
  * elsewhere can never hide a Deliverable — while `model.items` is the focused render set.
  * So with a focus active, Expand all and Collapse all reached none of the cards outside
- * that subtree, and were a complete no-op when no Deliverable was inside it.
+ * that subtree, and were a complete no-op when no Deliverable was inside it. Every
+ * Deliverable is itself a card, so this population now excludes them all — the same rule
+ * as the other card projections, stated here because there is nothing else left in it.
  */
 function collapsiblePopulation(host: BacklogViewHost, model: BacklogModel): BacklogItem[] {
-	return host.projection === 'deliverables' ? model.deliverableResults : model.items;
+	const items = host.projection === 'deliverables' ? model.deliverableResults : model.items;
+	const cardPaths = cardDisclosurePaths(host);
+	return items.filter((item) => !cardPaths.has(item.file.path));
+}
+
+/**
+ * Paths currently showing a CARD's own children disclosure — board cards, roadmap bucket
+ * and shelf cards, Deliverables cards and context cards alike — which the bulk controls
+ * must leave alone: only the card's own toggle may open or close it.
+ *
+ * `host.cardChildrenShown` also carries a dated-axis timeline row's chevron: the same
+ * register, because both are "what drew a disclosure this pass" (`RowContext.cardKids`,
+ * see `src/view/CLAUDE.md`'s roadmap section). That chevron folds ROWS below a bar rather
+ * than listing anything on a card's face, and it stays reachable by design
+ * ([[Collapsing a bar's subtree]]) — so anything named in `host.roadmap`'s own `bars` is a
+ * row, never a card, and is carved back out of the exclusion.
+ */
+function cardDisclosurePaths(host: BacklogViewHost): ReadonlySet<string> {
+	const barPaths = new Set((host.roadmap?.roadmap.bars ?? []).map((bar) => bar.item.file.path));
+	const paths = new Set<string>();
+	for (const path of host.cardChildrenShown) {
+		if (!barPaths.has(path)) paths.add(path);
+	}
+	return paths;
 }
 
 /**

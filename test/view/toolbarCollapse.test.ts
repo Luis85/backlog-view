@@ -22,18 +22,26 @@ function kidTitlesOf(card: HTMLElement): (string | null)[] {
 	return Array.from(card.querySelectorAll('.pbl-card-kid-title')).map((el) => el.textContent);
 }
 
-describe('the bulk collapse controls reach cards', () => {
-	it('offers Expand all and Collapse all on the board, driving the cards', () => {
+/** The disclosure's own toggle, so a test can press it without going through the toolbar. */
+function disclosureOf(card: HTMLElement): HTMLButtonElement | null {
+	return card.querySelector<HTMLButtonElement>('.pbl-card-kids-toggle');
+}
+
+describe('the bulk collapse controls leave a card’s own disclosure alone', () => {
+	it('offers Expand all and Collapse all on the board, without touching a card’s children', () => {
 		const { containerEl } = makeBoard(boardVault());
 		const expand = collapseCtl(containerEl, 'Expand all');
 		expect(expand?.disabled).toBe(false);
 
 		expand?.click();
 
+		expect(kidTitlesOf(cardByTitle(containerEl, 'Epic B'))).toEqual([]);
+		// Only the card's own button opens it.
+		disclosureOf(cardByTitle(containerEl, 'Epic B'))?.click();
 		expect(kidTitlesOf(cardByTitle(containerEl, 'Epic B'))).toEqual(['Feature B1', 'Feature B2']);
 	});
 
-	it('drives the roadmap’s cards too', () => {
+	it('leaves the roadmap’s cards alone too', () => {
 		// A horizon roadmap: its bucket cards and shelf cards both come through
 		// `renderCardBody`, so they carry disclosures exactly as board cards do.
 		const vault = horizonVault();
@@ -44,6 +52,8 @@ describe('the bulk collapse controls reach cards', () => {
 
 		expand?.click();
 
+		expect(kidTitlesOf(cardByTitle(containerEl, 'Now item'))).toEqual([]);
+		disclosureOf(cardByTitle(containerEl, 'Now item'))?.click();
 		expect(kidTitlesOf(cardByTitle(containerEl, 'Now item'))).toEqual(['Feature N1']);
 	});
 
