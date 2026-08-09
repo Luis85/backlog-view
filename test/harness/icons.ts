@@ -38,6 +38,7 @@ type IconNode = [string, Record<string, string>];
  * `circle-help` and `circle-question-mark` are byte-identical drawings.
  */
 const RENAMED: Record<string, string> = {
+	'alert-triangle': 'triangle-alert',
 	'check-square': 'square-check-big',
 	'circle-help': 'circle-question-mark',
 	filter: 'funnel',

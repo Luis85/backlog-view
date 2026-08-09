@@ -116,6 +116,16 @@ and each stays open until they are, so a stale check is visible rather than assu
   "Waits for …" block sits legibly under the shelf reason rather than crowding it, a
   long or multi-name list wraps inside the card's own width instead of overflowing it,
   and the conflict styling on a shelved card reads as the same red the arrow layer uses.
-  **Never checked** — `npm run harness`'s demo fixture carries no `dependsOn` data, so it
-  draws no arrow and shelves no conflicted card out of the box; a live vault needs its
-  own fixture to see any of this.
+  **Seen in the harness 2026-08-09, in both schemes, at 1360px** — the demo fixture now
+  carries four `dependsOn` shapes on purpose (an ordinary arrow, a conflict, a broken
+  entry, and a shelved 2b conflict), so the picture is reachable from `npm run harness`
+  with the dated axis picked and the rows expanded. What that answered: both arrows draw
+  and clip to the grid, the conflict arrow is red and points backward as it should, the
+  row accent and the glyph both read, the glyph is red for a conflict and amber for a
+  broken entry, and the shelf card states its shelf reason and its conflict as two
+  separate lines. What it did NOT answer, and what a vault still owes: the colours (a
+  theme replaces exactly these), whether the faint arrow survives a light theme with a
+  busier palette, and how a screen reader reads the row. Two things the picture showed
+  that no assertion had: a flagged row's title truncates to make room for the glyph
+  (`Offline-first s… ⚠`), and an arrow crossing a long bar is drawn OVER it rather than
+  behind it, unlike the milestone line.
