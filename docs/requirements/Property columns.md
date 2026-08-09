@@ -42,10 +42,18 @@ the whole reason to put values in columns rather than after the title.
   is about the whole end-anchored strip and not only about the columns: a row that can
   hold nothing withholds the control, and skipping the element it sat in slides every
   column on that row right by its width.
-- **3a — the pane is too narrow.** Columns **drop whole**, in order: properties, then the
-  meta column, then the state chip. Shrinking one would put it out from under its header,
-  which is worse than not showing it. The threshold is derived from the *configured* width
-  and count, measured after the rows render so a scrollbar is already accounted for.
+- **3a — the pane is too narrow.** Columns **drop whole**, from the END of the properties
+  menu's order — that order is the user's own statement of what matters, so a ranking of
+  the view's own beside it would be a second opinion about it — and the rollup drops after
+  all of them, since it is pinned past the end of that order rather than being in it.
+  Shrinking one would put it out from under its header, which is worse than not showing
+  it. A dropped column is **not rendered**: clipping it would leave its cell in the
+  accessibility tree, so a control inside a column the view says it dropped would stay
+  reachable and focusing it would scroll the strip out from under its header. The
+  threshold is derived from the *configured* width and count, measured after the rows
+  render so a scrollbar is already accounted for, and always against the columns that
+  EXIST rather than the ones the last verdict left — measuring the survivors would ratchet
+  the count down and never let a column come back when the pane widens.
 - **3b — the verdict changes after a render.** Exactly one more pass runs; the second
   measures the same tree, so it cannot oscillate.
 
@@ -59,7 +67,9 @@ the whole reason to put values in columns rather than after the title.
 ## Acceptance criteria
 
 - Columns are fixed-width so values line up across rows regardless of title length.
-- A pane too narrow drops whole columns rather than shrinking them out of alignment.
+- A pane too narrow drops whole columns rather than shrinking them out of alignment, from
+  the end of the user's order, and a dropped column leaves nothing a keyboard or a screen
+  reader can find.
 - Tag edits are written as a delta, never as a computed list, so two quick edits cannot
   undo each other.
 - The set of columns is derived once and read everywhere — deriving it twice is how the
@@ -71,9 +81,10 @@ the whole reason to put values in columns rather than after the title.
 
 `src/domain/viewOptions.ts` (`showProperties`, `propertyColumnWidth`, `tagsProperty`) ·
 `src/view/render/columns.ts` (`RowContext`, the header, every trailing cell, plus
-`chipProps` and the fit ladder — `columnFit` decides and `syncColumnFit` applies it,
-together, because a threshold computed in one file and applied in another is one edit
-away from the two disagreeing) ·
+`resolveColumns` and the fit — `columnFit` decides how many columns the pane holds and
+`syncColumnFit` applies that count, together, because a threshold computed in one file and
+applied in another is one edit away from the two disagreeing; `rowContext` is where the
+count becomes the slice the renderers draw) ·
 `src/view/resize.ts` (`ResizePolicy` — when to re-measure, paired with `syncColumnFit`
 above; `src/view/backlogView.ts` owns the `ResizeObserver` itself and forwards to it) ·
 `src/view/interactions/tags.ts` (vocabulary, normalization, the delta writes).

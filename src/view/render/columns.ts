@@ -33,7 +33,11 @@ export function rowContext(
 	rows: Map<string, HTMLElement>,
 	cardKids: Set<string>,
 ): RowContext {
-	return { host, dnd, rows, cardKids, columns: [...host.columns] };
+	// What this pass DRAWS. `host.columns` stays what EXISTS — `syncColumnFit` measures
+	// that one, or a narrowed pane would ratchet the count down and never let a column
+	// come back when it widens again.
+	const shown = host.columns.slice(0, host.columnsShown ?? host.columns.length);
+	return { host, dnd, rows, cardKids, columns: shown };
 }
 
 /**
@@ -66,58 +70,60 @@ export const INDENT_PER_DEPTH = 24;
 const TREE_PADDING = 16;
 
 /**
- * Which columns still fit in a pane this wide. Columns never shrink — that is what
- * keeps them aligned — so a pane too narrow for them has to drop them instead, and
- * the threshold has to come from what the rows actually need rather than a fixed
- * breakpoint: two 280px columns need more than twice the room of two 100px ones,
- * and every level of indent takes another 24px away from the deepest row's title.
- * Columns go in reverse order of usefulness — properties, then the rollup.
+ * How many of the columns fit in a pane this wide, and whether the rollup does. Columns
+ * never shrink — that is what keeps them aligned under their header — so a pane too
+ * narrow for them drops them instead, and the threshold has to come from what the rows
+ * actually need rather than a fixed breakpoint: two 280px columns need more than twice
+ * the room of two 100px ones, and every level of indent takes another 24px from the
+ * deepest row's title.
  *
- * **Its verdict is wrong as it stands, deliberately.** The chips are ordinary columns
- * inside `.pbl-props` now, so their three width terms went with the three fixed
- * columns, and nothing has replaced them: the sum under-counts what a row needs and
- * this over-reports the room. It is left that way for the one commit in which the
- * columns became a list and narrowing had not yet been rewritten as a count of how
- * many of them fit — which is the next change to this function, not a term to add back.
+ * They drop from the END of the user's order. The properties menu is where the user says
+ * what matters, so a ranking of our own beside it would be a second opinion about their
+ * own declaration. The rollup is the exception, and only because it is not in that order
+ * at all — it is pinned past the end, so "last" would always pick it first; it goes after
+ * every column instead.
  *
- * Private: the threshold and the classes it drives are one decision, applied by
- * {@link syncColumnFit} below. Exporting the calculation alone invites a second
- * caller that measures the same pane and then disagrees about what to hide.
+ * Private: the threshold and what it drives are one decision, applied by
+ * {@link syncColumnFit} below. Exporting the calculation alone invites a second caller
+ * that measures the same pane and then disagrees about what to hide.
  */
 function columnFit(
 	settings: BacklogSettings,
 	columnCount: number,
 	depth: number,
 	width: number,
-): { hideProps: boolean; hideRisk: boolean; hideMeta: boolean; hideHorizon: boolean; hideState: boolean } {
+): { shown: number; hideMeta: boolean } {
 	const meta = settings.stateKey || settings.showCounts ? META_COL_WIDTH : 0;
+	const lead = ROW_LEAD_WIDTH + TREE_PADDING + depth * INDENT_PER_DEPTH;
+	const room = width - lead - meta;
+	const fitting = Math.max(0, Math.floor(room / settings.propColumnWidth));
 	// `showChips` is the `showProperties` option, and this is the ONLY thing still
 	// reading it: `resolveColumns` stopped, because the properties menu is the off
 	// switch now. So with the option off the columns render and this budgets nothing
 	// for them, which means they can never drop — inert in one direction and wrong in
 	// the other. Deleting the option (its resolver line, its default and this term) is
-	// what ends it, in the task after the one that rewrites the verdict below.
-	const props = settings.showChips ? settings.propColumnWidth * columnCount : 0;
-	const lead = ROW_LEAD_WIDTH + TREE_PADDING + depth * INDENT_PER_DEPTH;
-	return {
-		hideProps: width < lead + meta + props,
-		hideRisk: width < lead + meta,
-		hideMeta: width < lead + meta,
-		hideHorizon: width < lead,
-		hideState: width < lead,
-	};
+	// what ends it, in the task after this one.
+	const shown = Math.min(columnCount, settings.showChips ? fitting : columnCount);
+	// Nothing below this: what is left is the row's own lead, and the title truncates
+	// from there.
+	return { shown, hideMeta: shown === 0 && width < lead + meta };
 }
 
 /**
- * Measure the pane and apply {@link columnFit} to it: drop the columns this pane
- * cannot hold, keep the ones it can. Lives with the widths and the threshold it
- * reads — a decision computed in one file and applied in another is one edit away
- * from the two disagreeing.
+ * Measure the pane and apply {@link columnFit} to it. Lives with the widths and the
+ * threshold it reads — a decision computed in one file and applied in another is one
+ * edit away from the two disagreeing.
  *
- * Measured after the rows are in place: an empty tree has no scrollbar, and its
- * width is not the width the columns will actually get. Returns true when the
- * decision CHANGED, which is exactly when what was rendered no longer matches it
- * and the caller owes the rows another pass.
+ * Measured after the rows are in place: an empty tree has no scrollbar, and its width is
+ * not the width the columns will actually get. Returns true when the decision CHANGED,
+ * which is exactly when what was rendered no longer matches it and the caller owes the
+ * rows another pass — and the next pass renders FEWER CELLS rather than hiding the ones
+ * it drew. Hiding them would leave a control inside a dropped column reachable by
+ * keyboard and by assistive tech, and scroll the strip out from under its header when
+ * one took focus.
+ *
+ * It measures `ctx.host.columns` and never `ctx.columns`: the second is the slice the
+ * last verdict produced, and measuring it would ratchet the count down for good.
  */
 export function syncColumnFit(ctx: RowContext, viewEl: HTMLElement, treeEl: HTMLElement): boolean {
 	const width = treeEl.clientWidth;
@@ -125,18 +131,13 @@ export function syncColumnFit(ctx: RowContext, viewEl: HTMLElement, treeEl: HTML
 	if (width === 0) return false;
 	// Indent is part of what a row needs, so expanding a deep branch can be what
 	// makes the columns stop fitting.
-	const fit = columnFit(ctx.host.settings, ctx.columns.length, renderedDepth(ctx), width);
-	const changed =
-		fit.hideProps !== viewEl.hasClass('pbl-hide-props') ||
-		fit.hideRisk !== viewEl.hasClass('pbl-hide-risk') ||
-		fit.hideMeta !== viewEl.hasClass('pbl-hide-meta') ||
-		fit.hideHorizon !== viewEl.hasClass('pbl-hide-horizon') ||
-		fit.hideState !== viewEl.hasClass('pbl-hide-state');
-	viewEl.toggleClass('pbl-hide-props', fit.hideProps);
-	viewEl.toggleClass('pbl-hide-risk', fit.hideRisk);
+	const fit = columnFit(ctx.host.settings, ctx.host.columns.length, renderedDepth(ctx), width);
+	// Against what this pass actually DREW rather than against the stored number, so a
+	// render that drew a different count than the verdict claims still asks for the pass
+	// that reconciles them.
+	const changed = fit.shown !== ctx.columns.length || fit.hideMeta !== viewEl.hasClass('pbl-hide-meta');
+	ctx.host.setColumnsShown(fit.shown);
 	viewEl.toggleClass('pbl-hide-meta', fit.hideMeta);
-	viewEl.toggleClass('pbl-hide-horizon', fit.hideHorizon);
-	viewEl.toggleClass('pbl-hide-state', fit.hideState);
 	return changed;
 }
 

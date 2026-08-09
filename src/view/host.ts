@@ -156,6 +156,14 @@ export interface BacklogViewHost {
 	 * tag menu from disagreeing about what the row shows.
 	 */
 	readonly columns: readonly Column[];
+	/**
+	 * How many of {@link columns} the last measurement said this pane can hold — null
+	 * before anything has been measured, and on every card projection, where the ladder
+	 * does not apply. Written by `syncColumnFit` alone and read by `rowContext`, which
+	 * slices the list the renderers draw.
+	 */
+	readonly columnsShown: number | null;
+	setColumnsShown(shown: number | null): void;
 	readonly selectedPath: string | null;
 	/** Current quick-filter text ('' when inactive). Dragging is disabled while filtering. */
 	readonly filterText: string;

@@ -222,11 +222,10 @@ button.pbl-card-match {
 	width: 100%;
 }
 
-/* The board and the roadmap never drop columns for room the way the tree does —
-   stale verdicts from tree mode must not hide a card's cells. */
-.pbl-view.pbl-board-mode .pbl-card .pbl-props,
+/* The board and the roadmap never drop the rollup for room the way the tree does — a
+   stale verdict from tree mode must not hide a card's. The columns need no such rule:
+   a card projection resets the count rather than carrying a class. */
 .pbl-view.pbl-board-mode .pbl-card .pbl-meta-col,
-.pbl-view.pbl-roadmap-mode .pbl-card .pbl-props,
 .pbl-view.pbl-roadmap-mode .pbl-card .pbl-meta-col {
 	display: flex;
 }

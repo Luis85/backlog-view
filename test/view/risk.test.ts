@@ -235,13 +235,15 @@ describe('the risk chip', () => {
 			view.onDataUpdated();
 		};
 
+		const drawn = () => rowByTitle(containerEl, 'Epic A').querySelectorAll('.pbl-prop').length;
+
 		paneWidth(700);
-		expect(viewEl?.classList.contains('pbl-hide-props')).toBe(false);
+		expect(drawn()).toBe(1);
 
 		// A column the budget did not account for would overflow instead of dropping,
 		// and this pane is too narrow only once the chip's own column is counted.
 		paneWidth(500);
-		expect(viewEl?.classList.contains('pbl-hide-props')).toBe(true);
+		expect(drawn()).toBe(0);
 		expect(viewEl?.classList.contains('pbl-hide-meta')).toBe(false);
 	});
 });

@@ -68,9 +68,9 @@ describe('property columns', () => {
 		expect(treeOf(containerEl).style.getPropertyValue('--pbl-prop-col')).toBe('132px');
 	});
 
-	it('drops the columns a pane cannot hold, measuring what they actually need', () => {
+	it('drops columns from the end of the order, keeping the rollup to the last', () => {
 		const vault = fixture();
-		const { containerEl, config, view } = makeView(vault, { propertyColumnWidth: 280, stateProperty: 'note.status' });
+		const { containerEl, config, view } = makeView(vault, { propertyColumnWidth: 280 });
 		config.order = ['note.points', 'note.owner'];
 		const tree = treeOf(containerEl);
 		const viewEl = containerEl.querySelector('.pbl-view');
@@ -78,23 +78,87 @@ describe('property columns', () => {
 			Object.defineProperty(tree, 'clientWidth', { value: px, configurable: true });
 			view.onDataUpdated();
 		};
+		const drawn = () => rowByTitle(containerEl, 'Epic A').querySelectorAll('.pbl-prop').length;
 
-		// Wider than any fixed breakpoint would be, yet two 280px columns do not fit
-		paneWidth(700);
-		expect(viewEl?.classList.contains('pbl-hide-props')).toBe(true);
+		// Wider than any fixed breakpoint would be, and two 280px columns still do not
+		// fit: the threshold is the configured width, not a guess.
+		paneWidth(1400);
+		expect(drawn()).toBe(2);
+		// The rollup column is on the row, so the class below has something to drop —
+		// without this the `pbl-hide-meta` assertions would hold over an absent column.
+		expect(rowByTitle(containerEl, 'Epic A').querySelector('.pbl-meta-col')).not.toBeNull();
+
+		paneWidth(900);
+		expect(drawn()).toBe(1);
 		expect(viewEl?.classList.contains('pbl-hide-meta')).toBe(false);
 
-		paneWidth(1400);
-		expect(viewEl?.classList.contains('pbl-hide-props')).toBe(false);
+		// No column fits, and the rollup is still worth its 84px.
+		paneWidth(500);
+		expect(drawn()).toBe(0);
+		expect(viewEl?.classList.contains('pbl-hide-meta')).toBe(false);
 
-		// Narrow enough that the rollup has to go, but the last rung still holds
-		paneWidth(420);
+		// Narrower than the row's own lead plus the rollup: nothing left to give.
+		paneWidth(300);
 		expect(viewEl?.classList.contains('pbl-hide-meta')).toBe(true);
-		expect(viewEl?.classList.contains('pbl-hide-state')).toBe(false);
 
-		// Narrower than the row's own lead: nothing left to give
-		paneWidth(340);
-		expect(viewEl?.classList.contains('pbl-hide-state')).toBe(true);
+		// And every column comes back in the order it left. This is the case a fit that
+		// measured the DRAWN columns rather than the resolved ones would fail: it would
+		// ratchet down to zero and stay there.
+		paneWidth(1400);
+		expect(drawn()).toBe(2);
+	});
+
+	it('leaves nothing of a dropped column for a keyboard or a screen reader to find', () => {
+		// Clipping would hide the cell and keep it focusable — a control inside a column
+		// the view says it dropped, and focusing it scrolls the strip out from under its
+		// header. The cell is not rendered at all.
+		const vault = fixture();
+		vault.entryValues.set('Epic A.md', {
+			'note.done': {
+				toString: () => 'true',
+				renderTo: (el: HTMLElement) => {
+					el.createEl('input', { attr: { type: 'checkbox' } });
+				},
+			},
+		});
+		const { containerEl, config, view } = makeView(vault, {
+			propertyColumnWidth: 280,
+			stateProperty: 'note.status',
+		});
+		config.order = ['note.points', 'note.done', 'note.status'];
+		const tree = treeOf(containerEl);
+		Object.defineProperty(tree, 'clientWidth', { value: 900, configurable: true });
+		view.onDataUpdated();
+
+		const row = rowByTitle(containerEl, 'Epic A');
+		expect(row.querySelectorAll('.pbl-prop').length).toBe(1);
+		expect(row.querySelector('input')).toBeNull();
+		expect(row.querySelector('.pbl-state-chip')).toBeNull();
+	});
+
+	it('does not buy a second render pass on a pane whose verdict has not moved', () => {
+		const vault = fixture();
+		const { containerEl, config, view } = makeView(vault, { propertyColumnWidth: 280 });
+		config.order = ['note.points', 'note.owner'];
+		const tree = treeOf(containerEl);
+		Object.defineProperty(tree, 'clientWidth', { value: 900, configurable: true });
+
+		let passes = 0;
+		const realEmpty = HTMLElement.prototype.empty;
+		Object.defineProperty(tree, 'empty', {
+			configurable: true,
+			value: function (this: HTMLElement): void {
+				passes += 1;
+				realEmpty.call(this);
+			},
+		});
+
+		view.onDataUpdated();
+		const settled = passes;
+		view.onDataUpdated();
+		// One pass for the refresh and no refit pass: the pane did not change, so the
+		// verdict did not either.
+		expect(passes - settled).toBe(1);
 	});
 
 	it('keeps the second pass alive after a render throws inside it', () => {
@@ -150,14 +214,14 @@ describe('property columns', () => {
 		const tree = treeOf(containerEl);
 		Object.defineProperty(tree, 'clientWidth', { value: 560, configurable: true });
 		view.onDataUpdated();
-		const viewEl = containerEl.querySelector('.pbl-view');
+		const drawn = () => rowByTitle(containerEl, 'L0').querySelectorAll('.pbl-prop').length;
 
 		// Collapsed, only the root renders: one 132px column fits beside it
-		expect(viewEl?.classList.contains('pbl-hide-props')).toBe(false);
+		expect(drawn()).toBe(1);
 
 		// Expanding the chain puts a row eight levels in — 192px of indent — on screen
 		clickExpandAll(containerEl);
-		expect(viewEl?.classList.contains('pbl-hide-props')).toBe(true);
+		expect(drawn()).toBe(0);
 	});
 
 	it('never lets a Deliverable narrow columns on the Deliverables board via a stale real-hierarchy depth', () => {
@@ -175,7 +239,11 @@ describe('property columns', () => {
 			vault.addFile(`L${i}.md`, { frontmatter: { type: 'Task', order: 10 }, parentLink: `L${i - 1}` });
 		}
 		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10 }, parentLink: 'L7' });
-		const { containerEl, view } = makeView(vault, {}, { collapsed: true, focus: 'Feature' });
+		const { containerEl, view } = makeView(
+			vault,
+			{},
+			{ collapsed: true, focus: 'Feature', order: ['note.points'] },
+		);
 		view.setProjection('deliverables');
 		const tree = treeOf(containerEl);
 		const viewEl = containerEl.querySelector('.pbl-view');
@@ -192,10 +260,12 @@ describe('property columns', () => {
 		// tree-only gating on `refit()`, so this asserts `syncColumnFit`'s own contract
 		// rather than relying on that gating to keep the two from ever meeting.
 		const rows = new Map<string, HTMLElement>([[d.file.path, document.createElement('div')]]);
-		const ctx = rowContext(view, null as never, rows);
+		const ctx = rowContext(view, null as never, rows, new Set());
 		syncColumnFit(ctx, viewEl as HTMLElement, tree);
 
-		expect(viewEl?.classList.contains('pbl-hide-props')).toBe(false);
+		// The one column fits beside a card's zero indent, and would not beside eight
+		// levels of a depth this projection does not have.
+		expect(view.columnsShown).toBe(1);
 	});
 
 	it('draws the horizon chip in the column the properties menu gives it', () => {
@@ -241,15 +311,16 @@ describe('property columns', () => {
 			Object.defineProperty(tree, 'clientWidth', { value: px, configurable: true });
 			view.onDataUpdated();
 		};
+		const drawn = () => rowByTitle(containerEl, 'Placed').querySelectorAll('.pbl-prop').length;
 
 		paneWidth(700);
-		expect(viewEl?.classList.contains('pbl-hide-props')).toBe(false);
+		expect(drawn()).toBe(1);
 
 		// A column the budget did not account for would overflow instead of dropping,
 		// and this pane is only too narrow once the chip's own column is counted: the
 		// lead and the rollup alone fit inside it with room to spare.
 		paneWidth(500);
-		expect(viewEl?.classList.contains('pbl-hide-props')).toBe(true);
+		expect(drawn()).toBe(0);
 		expect(viewEl?.classList.contains('pbl-hide-meta')).toBe(false);
 	});
 

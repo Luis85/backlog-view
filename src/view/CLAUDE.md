@@ -159,9 +159,17 @@ free of runtime code so imports stay cycle-free.
   column no longer sits under its header), so a pane too narrow for them drops them
   whole: `columnFit` derives the threshold from the *configured* width and count — a
   fixed CSS breakpoint would clip two 280px columns in a 700px pane — and
-  `syncColumnFit` beside it applies the verdict, toggling `pbl-hide-props` /
-  `pbl-hide-risk` / `pbl-hide-meta` / `pbl-hide-horizon` / `pbl-hide-state` — in that order
-  of usefulness, the state chip surviving longest because it summarizes a row on its own. Every column a
+  `syncColumnFit` beside it applies the verdict, which is a COUNT (`host.columnsShown`)
+  rather than a ladder of classes: they drop from the END of the properties menu's order,
+  because that order is the user's own statement of what matters and a ranking of ours
+  beside it would be a second opinion about it. **A dropped column is not rendered**, and
+  that is the accessibility half of the decision rather than an implementation detail:
+  clipping it in CSS would leave its cell in the accessibility tree — a Bases value can
+  render a native control, and the chips are `tabindex="-1"` buttons assistive tech
+  reaches by design — so focusing one would scroll the strip out from under its header.
+  The rollup is the one exception and keeps a class (`pbl-hide-meta`), because it is not
+  in that order at all: pinned past its end, so "last" would always pick it first, it goes
+  after every column instead. Every column a
   row can carry has to be in that budget: one drawn but not summed does not drop, it
   overflows. The two live in one file because a threshold
   computed in one place and applied in another is one edit from disagreeing; the view
@@ -185,13 +193,15 @@ free of runtime code so imports stay cycle-free.
   instead of repeating them. The terms that are Obsidian's (`--size-4-1` gaps, the tree
   padding) cannot be owned that way and stay as constants; a theme that redefines them
   moves the threshold by a few pixels, which is the accepted cost of not measuring. A term that grows without a bound, or
-  one left out of the sum, comes back as a clipped row rather than a dropped column. The
-  ladder ends at the state chip: below that only the row's lead is left, and the title
-  truncates from there.
-- Which properties become columns is resolved once per data update into `host.chips`
-  (`chipProps`), and everything else reads that: the rows render it, and
-  `tagsColumnVisible` is `chips.some((c) => c.tags)`. Deriving it twice is how the tag
-  menu came to offer editing for a column `chipProps` had skipped.
+  one left out of the sum, comes back as a clipped row rather than a dropped column. It
+  ends at the rollup: below that only the row's lead is left, and the title truncates
+  from there. `columnFit` measures `ctx.host.columns` — what EXISTS — and never
+  `ctx.columns`, which is the slice the last verdict produced: measuring that would
+  ratchet the count down and never let a column come back when the pane widens.
+- Which properties become columns is resolved once per data update into `host.columns`
+  (`resolveColumns`), and everything else reads that: the rows render it, and
+  `tagsColumnVisible` is `columns.some((c) => c.kind === 'tags')`. Deriving it twice is how
+  the tag menu came to offer editing for a column the renderer had skipped.
 - Tag editing follows the *column*, not the setting: `tagsColumnVisible` asks whether
   the tags property is one of the resolved columns, because the pills the user removes
   are the ones the column renders — a context menu that edited an invisible property
@@ -326,9 +336,9 @@ free of runtime code so imports stay cycle-free.
 ## The board projection
 
 - One scroller, two projections: board mode reuses `.pbl-tree` with its role swapped to
-  `listbox` and the keydown dispatched to `handleBoardKeydown`. The column-fit ladder
-  (`pbl-hide-*`) is the tree's — entering board mode clears its stale verdicts, or a
-  narrow-pane decision from tree mode would hide card cells.
+  `listbox` and the keydown dispatched to `handleBoardKeydown`. The column fit is the
+  tree's — entering board mode resets the count to null and clears `pbl-hide-meta`, or a
+  narrow-pane decision from tree mode would strip cells off cards.
 - The mode is `host.projection` — `'tree' | 'board' | 'roadmap'` — backed by the
   collapse store (UI state, per saved view, per device) — never `settings` and never
   the `.base`: base settings are saved on the view, working position in localStorage.
@@ -564,8 +574,9 @@ free of runtime code so imports stay cycle-free.
   previous `ScrollAnchor.content` — never on a same-content refresh, whatever
   `scrollLeft` happens to be: a data update mid-session must not yank the view back to
   now.
-- The board- and roadmap-mode CSS guards both clear the tree's stale `pbl-hide-*`
-  verdicts; the fit ladder is the tree's alone.
+- The board- and roadmap-mode CSS guards both keep the tree's stale `pbl-hide-meta` off a
+  card's rollup; the columns need no such guard, because a card projection resets the
+  count rather than carrying a class. The fit is the tree's alone either way.
 
 ## Lifecycle
 
