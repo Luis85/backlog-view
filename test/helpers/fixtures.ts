@@ -49,6 +49,9 @@ export function demoOptions(): Record<string, unknown> {
 		targetProperty: 'note.due',
 		startedDateProperty: 'note.started',
 		finishedDateProperty: 'note.finished',
+		// The levels are left at the shipped default, so the harness draws the chip against
+		// the vocabulary a vault gets by pressing ✨ rather than one invented here.
+		riskProperty: 'note.risk',
 		deliverableStateProperty: 'note.docStatus',
 		deliverableStateValues: 'Concept, Draft, In review, Published',
 		deliverableDoneValues: 'Published',
@@ -69,7 +72,10 @@ export function demoVault(): FakeVault {
 	add(vault, 'Email and password', { type: 'PBI', order: 10, status: 'Done', started: '2026-07-02', finished: '2026-07-18', horizon: 'Now' }, 'Sign-up flow');
 	add(vault, 'Validate the address', { type: 'Task', order: 10, status: 'Done' }, 'Email and password');
 	add(vault, 'Rate-limit the endpoint', { type: 'Task', order: 20, status: 'Done' }, 'Email and password');
-	add(vault, 'Single sign-on', { type: 'PBI', order: 20, status: 'Review', started: '2026-07-20', horizon: 'Now', start: '2026-07-20', due: '2026-08-15' }, 'Sign-up flow');
+	// The three risk cases the chip has to draw, on rows that sit near each other: a level
+	// from the declared list here, one the list does not name on `Offline-first sync`, and
+	// every other row unjudged — which is the dashed, inviting chip and the commonest face.
+	add(vault, 'Single sign-on', { type: 'PBI', order: 20, status: 'Review', started: '2026-07-20', horizon: 'Now', start: '2026-07-20', due: '2026-08-15', risk: '1 - High' }, 'Sign-up flow');
 	add(vault, 'Provider handshake', { type: 'Task', order: 10, status: 'Active' }, 'Single sign-on');
 	add(vault, 'Token refresh', { type: 'Task', order: 20 }, 'Single sign-on');
 	add(vault, 'Welcome tour', { type: 'Feature', order: 20, status: 'Ready', horizon: 'Next' }, 'Onboarding');
@@ -83,7 +89,7 @@ export function demoVault(): FakeVault {
 	// rung two below the Epic holding it. Dated, so an extra type draws a bar as well.
 	// Waits for `Single sign-on`, which ends 08-15 — after this one starts. A CONFLICT
 	// arrow, and the marker on this row.
-	add(vault, 'Offline-first sync', { type: 'Idea', order: 30, status: 'Active', horizon: 'Next', start: '2026-08-10', due: '2026-10-15', dependsOn: '[[Single sign-on]]' }, 'Onboarding');
+	add(vault, 'Offline-first sync', { type: 'Idea', order: 30, status: 'Active', horizon: 'Next', start: '2026-08-10', due: '2026-10-15', dependsOn: '[[Single sign-on]]', risk: 'Existential' }, 'Onboarding');
 	add(vault, 'Survey the storage APIs', { type: 'Task', order: 10, status: 'Active' }, 'Offline-first sync');
 	// A bar exactly one day wide — start and target on the same date, an ordinary PBI
 	// rather than a Milestone, so it draws the diamond from its GEOMETRY. The case where
@@ -124,7 +130,8 @@ export function demoVault(): FakeVault {
 	);
 
 	// A parent the Base excludes, with a child it returns: the context row on screen.
-	vault.addFile(OUTSIDE, { frontmatter: { type: 'Epic', order: 30, status: 'Done' } });
+	// Carries a risk too, so the context row draws the STATIC chip beside the static state.
+	vault.addFile(OUTSIDE, { frontmatter: { type: 'Epic', order: 30, status: 'Done', risk: '3 - Low' } });
 	add(vault, 'Legacy importer', { type: 'Feature', order: 10, status: 'Ready' }, 'Retired platform');
 
 	// Deliverables, on their own workflow: one per column so the fourth projection draws

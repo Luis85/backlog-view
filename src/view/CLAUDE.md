@@ -99,15 +99,27 @@ free of runtime code so imports stay cycle-free.
   key). Menu values = `stateMenuValues` (configured list, else observed ∪ a done
   value) plus the item's own unlisted value, so the current state can always render
   checked.
-- **Set risk is the state menu's shape without a chip or a projection**: rendered inside
+- **Set risk is the state menu's shape without a projection**: rendered inside
   `buildItemMenu`'s `editable` guard on `hasRiskLevels` — a property AND a levels list, so
   a submenu never opens onto nothing — offering the declared list plus the item's own
   unlisted value, checked from `computeRiskWrites` rather than from a comparison beside it,
   with a `Clear risk` foot gated on `item.ownKeys.risk`. It lives in `interactions/menu.ts`
   beside Set state rather than in `interactions/plan.ts`: risk is an attribute of the item,
-  not a position on an axis. One input, so there is no `performRiskMove` — the rule is that
-  a SECOND input calls the first one's method, and a lone menu path has nothing to disagree
-  with.
+  not a position on an axis. Two inputs now — the menu and the chip below — and still no
+  `performRiskMove`, because the second input does not plan beside the first: it opens the
+  same builder. The rule is about a second PLAN, not a second surface.
+- **The risk chip is the state chip a third time** (`renderRiskChip`, beside the other two
+  in `render/columns.ts`), on `hasRiskLevels` — the same pair Set risk is gated on, so a
+  chip whose menu could set nothing is not a state either side can reach alone — opening
+  `addRiskItems` through `showRiskMenu`, and skipped by `chipProps` like the other two so
+  the row never draws the value twice with one of them inert. It differs from the horizon's
+  in one place: an unjudged note draws a dashed *Risk* chip rather than nothing, because
+  absence here is an invitation and not a placement the shelf already names. Its column
+  drops after the properties and before the rollup.
+- **The four per-row menus are one function**: `chipMenu` in `interactions/menu.ts`, with
+  `showStateMenu` / `showHorizonMenu` / `showRiskMenu` / `showTagMenu` as one-line exports
+  over it. It is what stops a control from also activating the row it sits on — the reason
+  every one of them was five identical lines before.
 - **The horizon chip is that same shape over the placement** (`renderHorizonChip`,
   beside the state chip in `render/columns.ts`): rendered on `hasHorizonAxis` — the one
   definition of a configured bucket axis, never a second opinion — static for a context
@@ -130,8 +142,8 @@ free of runtime code so imports stay cycle-free.
 ## Controls
 
 - Row layout is columnar: `.pbl-row-spacer` is the flexible middle, and everything after
-  it (`.pbl-props` → `.pbl-horizon-col` → `.pbl-state-col` → `.pbl-meta-col`) is
-  fixed-width, so values line
+  it (`.pbl-props` → `.pbl-risk-col` → `.pbl-horizon-col` → `.pbl-state-col` →
+  `.pbl-meta-col`) is fixed-width, so values line
   up across rows regardless of title length and indent. Every configured column renders
   on every row — an empty property cell, a leaf's empty `.pbl-meta-col` — or the columns
   after it would shift per row. **That holds for the whole end-anchored strip, not only
@@ -148,8 +160,8 @@ free of runtime code so imports stay cycle-free.
   whole: `columnFit` derives the threshold from the *configured* width and count — a
   fixed CSS breakpoint would clip two 280px columns in a 700px pane — and
   `syncColumnFit` beside it applies the verdict, toggling `pbl-hide-props` /
-  `pbl-hide-meta` / `pbl-hide-horizon` / `pbl-hide-state` — in that order of usefulness,
-  the state chip surviving longest because it summarizes a row on its own. Every column a
+  `pbl-hide-risk` / `pbl-hide-meta` / `pbl-hide-horizon` / `pbl-hide-state` — in that order
+  of usefulness, the state chip surviving longest because it summarizes a row on its own. Every column a
   row can carry has to be in that budget: one drawn but not summed does not drop, it
   overflows. The two live in one file because a threshold
   computed in one place and applied in another is one edit from disagreeing; the view

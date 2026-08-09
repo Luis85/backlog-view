@@ -3,7 +3,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { mountHarness } from './mount';
 import { installObsidianDom } from '../helpers/dom';
-import { projectionButton, submitPrompt } from '../helpers/view';
+import { clickExpandAll, projectionButton, submitPrompt } from '../helpers/view';
 import { barFor, gripNames } from '../helpers/roadmap';
 
 /** The rendered row for a title — the tree accessors take a container, and so do these. */
@@ -44,6 +44,21 @@ describe('the browser harness mounts', () => {
 			(row) => row.querySelector('.pbl-title')?.textContent === 'Retired platform',
 		);
 		expect(context?.classList.contains('pbl-outside')).toBe(true);
+	});
+
+	it('draws the risk chip in each of the three faces the fixture exists to show', () => {
+		const { containerEl } = mount();
+		// The cases sit at depth, and the tree opens collapsed for a parent nobody has
+		// ruled on — so this is the toolbar control a reader would press to see them.
+		clickExpandAll(containerEl);
+		const chipOn = (title: string) => rowFor(containerEl, title).querySelector('.pbl-risk-chip');
+
+		// A declared level, a level the list does not name, and a row nobody has judged.
+		expect(chipOn('Single sign-on')?.textContent).toBe('1 - High');
+		expect(chipOn('Offline-first sync')?.textContent).toBe('Existential');
+		expect(chipOn('Token refresh')?.classList.contains('pbl-risk-unset')).toBe(true);
+		// And the context row's, which is shown but never a write target.
+		expect(chipOn('Retired platform')?.tagName).toBe('DIV');
 	});
 
 	it('draws every board column the fixture configures, with cards in them', () => {

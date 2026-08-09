@@ -40,6 +40,10 @@
 	display: none;
 }
 
+.pbl-view.pbl-hide-risk .pbl-risk-col {
+	display: none;
+}
+
 .pbl-prop {
 	display: flex;
 	align-items: center;

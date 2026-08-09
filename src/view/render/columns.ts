@@ -1,12 +1,12 @@
 import { BasesPropertyId, NullValue, setIcon, setTooltip } from 'obsidian';
 import { BacklogViewHost, ChipProp } from '../host';
 import { DragDropController } from '../interactions/dragDrop';
-import { showHorizonMenu, showStateMenu, showTagMenu } from '../interactions/menu';
+import { showHorizonMenu, showRiskMenu, showStateMenu, showTagMenu } from '../interactions/menu';
 import { removeTag } from '../interactions/tags';
 import { hasStateColumn, ownWorkflowReading, stateKeyFor } from '../../domain/board';
 import { BacklogItem } from '../../domain/model';
 import { hasHorizonAxis, SHELF_LABEL } from '../../domain/roadmap';
-import { BacklogSettings, resolvedDeliverableStateKey } from '../../domain/settings';
+import { BacklogSettings, hasRiskLevels, resolvedDeliverableStateKey } from '../../domain/settings';
 
 /**
  * State shared by one render pass. Config lookups live here so per-row work stays
@@ -45,6 +45,8 @@ export function rowContext(
 export const STATE_COL_WIDTH = 116;
 /** The horizon chip's column, sized like the state chip's — it holds the same shape. */
 export const HORIZON_COL_WIDTH = 116;
+/** The risk chip's column, the same shape again over a third declared vocabulary. */
+export const RISK_COL_WIDTH = 116;
 export const META_COL_WIDTH = 84;
 /**
  * Everything on a row that is not one of the columns, at its widest: the constant
@@ -86,17 +88,23 @@ function columnFit(
 	chipCount: number,
 	depth: number,
 	width: number,
-): { hideProps: boolean; hideMeta: boolean; hideHorizon: boolean; hideState: boolean } {
+): { hideProps: boolean; hideRisk: boolean; hideMeta: boolean; hideHorizon: boolean; hideState: boolean } {
 	// Either workflow's key earns the column, so a Deliverable-only vault budgets for
 	// the chip its rows actually draw. The rollup beside it stays the requirements
 	// workflow's own (`subtreeDone`), so its term keeps asking about `stateKey` alone.
 	const state = hasStateColumn(settings) ? STATE_COL_WIDTH : 0;
 	const horizon = hasHorizonAxis(settings) ? HORIZON_COL_WIDTH : 0;
+	const risk = hasRiskLevels(settings) ? RISK_COL_WIDTH : 0;
 	const meta = settings.stateKey || settings.showCounts ? META_COL_WIDTH : 0;
 	const props = settings.showChips ? settings.propColumnWidth * chipCount : 0;
 	const lead = ROW_LEAD_WIDTH + TREE_PADDING + depth * INDENT_PER_DEPTH;
 	return {
-		hideProps: width < lead + state + horizon + meta + props,
+		hideProps: width < lead + state + horizon + risk + meta + props,
+		// Risk goes next, before the rollup: it is a judgement about the item and the
+		// only one of these columns whose property is still readable in Obsidian's own
+		// editor — the two chips beside it are this view's only surface for theirs, and
+		// the rollup is derived from rows nothing else shows.
+		hideRisk: width < lead + state + horizon + risk + meta,
 		hideMeta: width < lead + state + horizon + meta,
 		// The placement goes before the workflow state: a row's state is the one thing
 		// that summarizes it on its own, and the roadmap is where a horizon is read.
@@ -127,10 +135,12 @@ export function syncColumnFit(ctx: RowContext, viewEl: HTMLElement, treeEl: HTML
 	const fit = columnFit(ctx.host.settings, ctx.chips.length, renderedDepth(ctx), width);
 	const changed =
 		fit.hideProps !== viewEl.hasClass('pbl-hide-props') ||
+		fit.hideRisk !== viewEl.hasClass('pbl-hide-risk') ||
 		fit.hideMeta !== viewEl.hasClass('pbl-hide-meta') ||
 		fit.hideHorizon !== viewEl.hasClass('pbl-hide-horizon') ||
 		fit.hideState !== viewEl.hasClass('pbl-hide-state');
 	viewEl.toggleClass('pbl-hide-props', fit.hideProps);
+	viewEl.toggleClass('pbl-hide-risk', fit.hideRisk);
 	viewEl.toggleClass('pbl-hide-meta', fit.hideMeta);
 	viewEl.toggleClass('pbl-hide-horizon', fit.hideHorizon);
 	viewEl.toggleClass('pbl-hide-state', fit.hideState);
@@ -193,6 +203,9 @@ export function chipProps(host: BacklogViewHost): ChipProp[] {
 	const deliverableKey = resolvedDeliverableStateKey(host.settings);
 	if (deliverableKey) skip.add(`note.${deliverableKey}`);
 	if (hasHorizonAxis(host.settings)) skip.add(`note.${host.settings.horizonKey}`);
+	// Same rule for the risk chip, on the same condition it renders: with the levels
+	// cleared there is no chip, and the property goes back to being an ordinary column.
+	if (hasRiskLevels(host.settings)) skip.add(`note.${host.settings.riskKey}`);
 	const tagsId = host.settings.tagsKey ? `note.${host.settings.tagsKey}` : '';
 	return props
 		.filter((prop) => !skip.has(prop))
@@ -238,6 +251,12 @@ export function renderColumnHeader(ctx: RowContext, containerEl: HTMLElement): v
 		const cell = props.createDiv({ cls: 'pbl-prop pbl-col-label', text: chip.label });
 		setTooltip(cell, chip.label);
 	}
+	if (hasRiskLevels(settings)) {
+		header.createDiv({
+			cls: 'pbl-risk-col pbl-col-label',
+			text: chipLabel(ctx.host, `note.${settings.riskKey}`),
+		});
+	}
 	if (hasHorizonAxis(settings)) {
 		header.createDiv({
 			cls: 'pbl-horizon-col pbl-col-label',
@@ -280,6 +299,9 @@ export function renderRowColumns(ctx: RowContext, row: HTMLElement, item: Backlo
 	// Pushes the columns to the row's end; also the click target between them.
 	row.createDiv({ cls: 'pbl-row-spacer' });
 	if (ctx.chips.length > 0) renderPropCells(ctx, row, item);
+	if (hasRiskLevels(ctx.host.settings)) {
+		renderRiskChip(ctx.host, row.createDiv({ cls: 'pbl-risk-col' }), item);
+	}
 	if (hasHorizonAxis(ctx.host.settings)) {
 		renderHorizonChip(ctx.host, row.createDiv({ cls: 'pbl-horizon-col' }), item);
 	}
@@ -505,6 +527,57 @@ function renderHorizonChip(host: BacklogViewHost, col: HTMLElement, item: Backlo
 	fillHorizonChip(chip, value);
 	setTooltip(chip, reason ?? 'Change horizon');
 	chip.addEventListener('click', (evt) => showHorizonMenu(host, evt, item));
+}
+
+/**
+ * Clickable risk chip — the state chip's shape a third time, over the level the note
+ * declares. Rendered on `hasRiskLevels`, the same pair (a named property AND a non-empty
+ * list) the row menu's Set risk is gated on, so a chip whose menu could set nothing is
+ * not a state either side can reach alone. It opens `addRiskItems` through
+ * `showRiskMenu` — the row menu's own builder, never a second list.
+ *
+ * Unjudged renders as a dashed "Risk" chip rather than as nothing, unlike the horizon's
+ * `Unplaced`: absence here is not a placement to name, it is an invitation, and the row
+ * is where the judgement is meant to be made.
+ */
+function renderRiskChip(host: BacklogViewHost, col: HTMLElement, item: BacklogItem): void {
+	const value = item.riskValue;
+	const cls = 'pbl-risk-chip' + (value === null ? ' pbl-risk-unset' : '');
+
+	// A note the Base excluded is context: show the level it claims, never offer to
+	// judge it. With nothing to show it renders nothing at all, rather than a
+	// button-shaped invitation to a write this row cannot take.
+	if (item.outsideFilter) {
+		if (value === null) return;
+		const chip = col.createDiv({ cls: `${cls} pbl-state-static` });
+		fillRiskChip(chip, value);
+		setTooltip(chip, "Not in this base's filter — risk can't be changed here");
+		return;
+	}
+
+	// A native button with no Tab stop, the state chip's bargain: reachable by
+	// assistive tech, invisible to Tab, with the context menu as the keyboard path.
+	const chip = col.createEl('button', {
+		cls,
+		attr: {
+			type: 'button',
+			tabindex: '-1',
+			'aria-label': value === null ? 'Set risk' : `Change risk (currently ${value})`,
+		},
+	});
+	fillRiskChip(chip, value);
+	setTooltip(chip, 'Change risk');
+	chip.addEventListener('click', (evt) => showRiskMenu(host, evt, item));
+}
+
+/**
+ * The risk chip's face, carrying the Set risk menu's own icon so the two read as one
+ * control. An EMPTY value — the stub the backfill leaves — is a key with no judgement in
+ * it, so it says the same thing absence does; Clear risk is still what takes the key away.
+ */
+function fillRiskChip(chip: HTMLElement, value: string | null): void {
+	setIcon(chip.createSpan({ cls: 'pbl-state-icon' }), value === null ? 'shield' : 'shield-alert');
+	chip.createSpan({ cls: 'pbl-state-text', text: value ?? 'Risk' });
 }
 
 /**

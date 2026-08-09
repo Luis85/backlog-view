@@ -22,6 +22,14 @@
 	overflow: hidden;
 }
 
+.pbl-risk-col {
+	display: flex;
+	align-items: center;
+	flex: 0 0 auto;
+	width: var(--pbl-risk-col, 116px);
+	overflow: hidden;
+}
+
 .pbl-meta-col {
 	display: flex;
 	align-items: center;
@@ -156,11 +164,11 @@
 	}
 }
 
-/* Clickable workflow-state and horizon chips (real buttons, minus the button chrome).
-   One shape for two properties: they sit in adjacent columns on the same row, and a
-   second look would read as a second kind of thing.
+/* Clickable workflow-state, horizon and risk chips (real buttons, minus the button
+   chrome). One shape for three properties: they sit in adjacent columns on the same row,
+   and a second look would read as a second kind of thing.
 
-   Both are real `<button>`s (see `renderStateChip`/`renderHorizonChip` in
+   All three are real `<button>`s (see `renderStateChip`/`renderHorizonChip`/`renderRiskChip` in
    `render/columns.ts`), which lose `color`, `background-color` AND `box-shadow` to
    Obsidian's own `button:not(.clickable-icon)` at (0,1,1) — a bare class alone is
    (0,1,0) and loses regardless of source order. Rather than a second rule restating
@@ -174,8 +182,10 @@
    at their own (0,1,0) — nothing here needs to change for it. */
 .pbl-state-chip,
 .pbl-horizon-chip,
+.pbl-risk-chip,
 button.pbl-state-chip,
-button.pbl-horizon-chip {
+button.pbl-horizon-chip,
+button.pbl-risk-chip {
 	appearance: none;
 	display: inline-flex;
 	align-items: center;
@@ -200,7 +210,8 @@ button.pbl-horizon-chip {
 }
 
 .pbl-state-chip:not(.pbl-state-static):hover,
-.pbl-horizon-chip:not(.pbl-state-static):hover {
+.pbl-horizon-chip:not(.pbl-state-static):hover,
+.pbl-risk-chip:not(.pbl-state-static):hover {
 	background-color: var(--background-modifier-hover);
 	color: var(--text-normal);
 }
@@ -214,7 +225,8 @@ button.pbl-horizon-chip {
    one side that has room — an inset ring stays inside the chip's own border box, which
    is never clipped by an ancestor the chip itself is not overflowing. */
 .pbl-state-chip:focus-visible,
-.pbl-horizon-chip:focus-visible {
+.pbl-horizon-chip:focus-visible,
+.pbl-risk-chip:focus-visible {
 	outline: 1px solid var(--interactive-accent);
 	outline-offset: -1px;
 }
@@ -226,7 +238,8 @@ button.pbl-horizon-chip {
 }
 
 .pbl-state-chip .svg-icon,
-.pbl-horizon-chip .svg-icon {
+.pbl-horizon-chip .svg-icon,
+.pbl-risk-chip .svg-icon {
 	width: var(--icon-xs);
 	height: var(--icon-xs);
 }
@@ -247,7 +260,8 @@ button.pbl-horizon-chip {
 }
 
 .pbl-state-chip.pbl-state-unset,
-.pbl-horizon-chip.pbl-horizon-unset {
+.pbl-horizon-chip.pbl-horizon-unset,
+.pbl-risk-chip.pbl-risk-unset {
 	color: var(--text-faint);
 	border-style: dashed;
 }

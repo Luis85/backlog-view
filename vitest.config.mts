@@ -232,9 +232,16 @@ export default defineConfig({
 			// figures already recorded and stay. Both sides of the merge carried the same
 			// four thresholds, so there was no higher-of to take — the rise is the merged
 			// tree's own.
+			//
+			// The risk-chip increment (a third row chip over the risk property, its column and
+			// fit term, and the four per-row chip menus collapsed onto one `chipMenu`) measures
+			// 98.34/94.70/99.57/99.49. Only branches rounds down to a new decimal (94.7); the
+			// other three repeat the figures above and stay. The rise is again partly
+			// subtraction: three near-identical menu wrappers became one function with one
+			// set of branches, and the chip's own branches arrived driven.
 			thresholds: {
 				statements: 98.3,
-				branches: 94.6,
+				branches: 94.7,
 				functions: 99.5,
 				lines: 99.4,
 			},
