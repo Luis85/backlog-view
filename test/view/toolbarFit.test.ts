@@ -44,15 +44,24 @@ const stubFlooredWidths = (bar: HTMLElement, pane: number, content: number) => {
 };
 
 /**
- * The SHIPPED rung rules, in the document, so a question about what a step hides is asked
- * of `styles/toolbarFit.css` rather than of a copy of it. jsdom applies no stylesheet of
- * its own but it does parse one it is given — `:not()` chains included — so
+ * The SHIPPED rules, in the document, so a question about what a step hides is asked of
+ * the stylesheet rather than of a copy of it. jsdom applies no stylesheet of its own but
+ * it does parse one it is given — `:not()` chains included — so
  * `getComputedStyle(el).display` becomes a real answer, which is what
  * `refocusShedControl` reads.
  *
+ * BOTH partials, in the order `styles/index.css` declares them, and that is not tidiness.
+ * The `⋯` and the filter's reveal are `display: none` by DEFAULT — that rule is in
+ * `toolbar.css` — and `toolbarFit.css` only turns them ON from step 2. Loading the fit
+ * partial alone left both reading as visible at step 0, which is precisely the state the
+ * relaxing-direction test is about, so the test would have asked its question of a
+ * document where the answer could not be wrong.
+ *
  * In `head`, once for the module: `useViewHarness` empties the BODY between tests.
  */
-document.head.createEl('style', { text: readFileSync('styles/toolbarFit.css', 'utf8') });
+for (const partial of ['styles/toolbar.css', 'styles/toolbarFit.css']) {
+	document.head.createEl('style', { text: readFileSync(partial, 'utf8') });
+}
 
 const toolbarOf = (containerEl: HTMLElement) => {
 	const bar = containerEl.querySelector<HTMLElement>('.pbl-toolbar');
@@ -412,6 +421,38 @@ describe('the toolbar fit ladder', () => {
 	 * focus here — and moving focus off a control that is still on the row is the same
 	 * defect as losing it from one that is not.
 	 */
+	/**
+	 * The other direction, and the one the first version of this got wrong. Relaxing to
+	 * step 0 hides the `⋯` itself — it renders from step 2 — so a handler that always sent
+	 * focus to the overflow button sent it to a hidden one and lost focus exactly as it
+	 * had before the fix, just on the way back out.
+	 *
+	 * What is asserted is the RULE rather than a named destination: whatever holds focus
+	 * afterwards is inside the bar and is not hidden. Naming the switcher's first button
+	 * here would pin the fallback's choice, which is a judgement, not a guarantee.
+	 */
+	it('does not park focus on the ⋯ when widening is what hid it', () => {
+		const { containerEl } = makeView(fixture());
+		const bar = toolbarOf(containerEl);
+		stubWidths(bar, 600, { '0': 980, '1': 860, '2': 690, '3': 600, '4': 540, '5': 480 });
+		syncToolbarFit(bar);
+		expect(bar.getAttribute('data-pbl-fit')).toBe('3');
+
+		const overflow = containerEl.querySelector<HTMLElement>('.pbl-overflow-btn');
+		overflow?.focus();
+		expect(document.activeElement).toBe(overflow);
+
+		// The pane widens past every rung; the `⋯` goes back to being hidden.
+		stubWidths(bar, 1200, { '0': 900, '1': 800, '2': 700, '3': 600, '4': 540, '5': 480 });
+		syncToolbarFit(bar);
+		expect(bar.hasAttribute('data-pbl-fit')).toBe(false);
+
+		const landed = document.activeElement as HTMLElement;
+		expect(bar.contains(landed)).toBe(true);
+		expect(getComputedStyle(landed).display).not.toBe('none');
+		expect(landed).not.toBe(overflow);
+	});
+
 	it('leaves focus alone when the control that has it survives the rung', () => {
 		const { containerEl } = makeView(fixture());
 		const bar = toolbarOf(containerEl);

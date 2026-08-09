@@ -73,26 +73,50 @@ const LAST_STEP = 5;
  * Fixed here, once, where the step changes, rather than per control or as five more CSS
  * exceptions — a rung added later inherits it without knowing it exists.
  *
- * The destination is the `⋯`, and it is the right one rather than a convenient one: the
- * overflow menu is exactly where a shed control's command went, so focus follows the
- * command it was on. It is rendered from step 2, which is where shedding of anything
- * FOCUSABLE begins — step 1 hides only `.pbl-btn-label` spans, which take no focus — so
- * it is always there when this fires.
+ * The rule is **focus lands on a control that is actually visible, preferring the `⋯`
+ * when it is one** — one sentence covering both directions the ladder moves, rather than
+ * a tightening path and a relaxing path that drift apart. The first version of this
+ * handled tightening only and sent focus to the `⋯` unconditionally, which is wrong in
+ * the other direction: relaxing to step 0 or 1 hides the `⋯` ITSELF (it renders from
+ * step 2), so widening the pane with focus on it — or on `.pbl-filter-reveal`, which the
+ * same relaxation hides — moved focus onto a hidden button and lost it exactly as before.
  *
- * `display` is asked of the element itself, with no list of which classes each rung
- * sheds: the stylesheet already holds that and a copy in TypeScript is the table this
- * codebase keeps having to un-write. It works because every rung targets the focusable
- * element DIRECTLY. A future rung that hid a container instead would need
- * `checkVisibility`/`offsetParent` and this comment is where that would have to change —
- * both read as hidden for everything in jsdom, which is why the cheap check is also the
- * testable one. `test/view/toolbarFit.test.ts` drives this by loading the real
- * `styles/toolbarFit.css` into the document, so what it asks is the shipped rule.
+ * The `⋯` is preferred rather than merely allowed because the overflow menu is where a
+ * shed control's command went: focus follows the command it was on. When it is hidden
+ * too, the fallback is the first visible control in the row, which is the switcher —
+ * the control that says what the rest of the row is about, and a defensible place to
+ * land.
+ *
+ * `disabled` is part of "visible enough to focus", learned the hard way: `.pbl-undo-btn`
+ * starts disabled because there is nothing to undo, and `focus()` on a disabled button
+ * is a silent no-op that drops focus to the document — the very failure this exists to
+ * prevent, reintroduced by the fix.
+ *
+ * **Not taken: sending the reveal button's focus to the filter INPUT**, which is the same
+ * control in its other form and would be the ideal destination for that one case. It does
+ * not fall out of the rule — the input precedes the reveal in the box, so neither "the
+ * `⋯`" nor "the first visible control" reaches it — and buying it costs a branch naming
+ * one control, which is what this function exists to avoid having. That case lands on the
+ * switcher with everything else.
+ *
+ * `display` is asked of each element, with no list of which classes each rung sheds: the
+ * stylesheet already holds that and a copy in TypeScript is the table this codebase keeps
+ * having to un-write. It works because every rung targets the focusable element DIRECTLY.
+ * A future rung that hid a container instead would need `checkVisibility`/`offsetParent`
+ * and this comment is where that would have to change — both read as hidden for
+ * everything in jsdom, which is why the cheap check is also the testable one.
+ * `test/view/toolbarFit.test.ts` drives this by loading the real stylesheet into the
+ * document, so what it asks is the shipped rule.
  */
 function refocusShedControl(barEl: HTMLElement): void {
 	const active = document.activeElement;
 	if (!(active instanceof HTMLElement) || !barEl.contains(active)) return;
-	if (getComputedStyle(active).display !== 'none') return;
-	barEl.querySelector<HTMLElement>('.pbl-overflow-btn')?.focus({ preventScroll: true });
+	const shown = [...barEl.querySelectorAll<HTMLElement>('button, input, [tabindex]')].filter(
+		(el) => getComputedStyle(el).display !== 'none' && !(el as HTMLButtonElement).disabled,
+	);
+	if (shown.includes(active)) return;
+	const overflow = shown.find((el) => el.hasClass('pbl-overflow-btn'));
+	(overflow ?? shown[0])?.focus({ preventScroll: true });
 }
 
 export function syncToolbarFit(barEl: HTMLElement): boolean {
