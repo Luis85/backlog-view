@@ -375,6 +375,38 @@ describe('the write', () => {
 		expect(vault.fm('B.md')['dependsOn']).toBeUndefined();
 	});
 
+	it('writes nothing when the chosen unresolvable entry is gone from the note', async () => {
+		const vault = vaultWith({ B: { dependsOn: 'Ghost' } });
+		const { containerEl, view } = makeView(vault, withKey);
+
+		click(openMenu(containerEl, 'B'), 'Remove dependency…');
+		// Removed by hand while the picker sat open. `removeRaw` matches on text, so the
+		// delta would find no line, write nothing, and close as though it had worked.
+		vault.fm('B.md')['dependsOn'] = 'Other ghost';
+		refresh(view, vault);
+		suggester().choose('Ghost');
+		await flush();
+
+		expect(vault.fm('B.md')['dependsOn']).toBe('Other ghost');
+		expect(Notice.messages.some((m) => m.includes('changed while the picker was open'))).toBe(true);
+	});
+
+	it('writes nothing when the source stopped naming the chosen prerequisite', async () => {
+		const vault = vaultWith({ B: { dependsOn: '[[A]]' } });
+		const { containerEl, view } = makeView(vault, withKey);
+
+		click(openMenu(containerEl, 'B'), 'Remove dependency…');
+		// A still exists — the earlier guard passes — but B no longer waits for it, so
+		// there is no line for this pick to take out.
+		delete vault.fm('B.md')['dependsOn'];
+		refresh(view, vault);
+		suggester().choose('A');
+		await flush();
+
+		expect(vault.fm('B.md')['dependsOn']).toBeUndefined();
+		expect(Notice.messages.some((m) => m.includes('changed while the picker was open'))).toBe(true);
+	});
+
 	it('writes nothing when the prerequisite is DELETED while the picker was open', async () => {
 		const vault = vaultWith({ B: { dependsOn: '[[A]]' } });
 		const { containerEl, view } = makeView(vault, withKey);

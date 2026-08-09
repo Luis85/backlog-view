@@ -105,6 +105,16 @@ a different control.
   and reopening the picker offers it as unresolved raw text, which does remove it.
   Silence is the thing refused here: a pick that cannot do what it says has to say so,
   or the reader is left believing a removal happened.
+
+  That last sentence is the rule; the three cases are not the whole of it. A removal was
+  built guard by guard — renamed, then replaced, then deleted — and each guard left the
+  next case silent, which is how a list of cases fails and a rule does not. What a
+  removal actually needs is one question asked of the LIVE SOURCE: does its own list
+  still hold a line this pick would match. Every way a pick goes stale is that question
+  answered no, including the two no case-by-case guard reached — an entry deleted or
+  respelled by hand, and a source that simply stopped naming the target while the target
+  itself went on existing. **Remove dependency…** asks that one question, and the three
+  cases above are consequences of it rather than clauses in it.
 - **3a — the write takes the note out of the Base's filter.** Nothing reports it, and that
   is deliberate rather than forgotten: a filter can name the very property being written,
   so the row can leave in silence. [[The outcome report was built from one sentence]]

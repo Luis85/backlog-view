@@ -14,8 +14,24 @@ import { setOwn } from './ownProperty';
  */
 export interface DependsOnRestore {
 	key: string;
-	add: string[];
-	remove: string[];
+	add: DependsOnEntry[];
+	remove: DependsOnEntry[];
+}
+
+/**
+ * One captured line: the text to write back, and the note it named WHEN IT WAS
+ * CAPTURED — held as the file object rather than as a path or a spelling, because that
+ * is the only identity a rename does not break. Obsidian mutates the one `TFile` and
+ * rewrites the links that named it, so `[[A]]` captured against a note later renamed to
+ * B is a text that resolves to nothing while the live entry reads `[[B]]`: matching by
+ * text or by captured path leaves the dependency in place and the undo does nothing at
+ * all. Reading `file.path` at REPLAY time follows the rename to where the live entry
+ * now points. Null for a line that named nothing when it was captured — a broken entry
+ * has no note to be renamed, so its own text is the whole of its identity.
+ */
+export interface DependsOnEntry {
+	text: string;
+	file: TFile | null;
 }
 
 /**
@@ -71,9 +87,15 @@ function countOf(texts: string[]): Map<string, number> {
  * has no note to share, so it can only ever match its own exact spelling.
  */
 function resolvedPathOf(app: App, file: TFile, text: string): string | null {
+	return resolvedFileOf(app, file, text)?.path ?? null;
+}
+
+/** The same lookup, kept as the FILE — what a capture stores so a later rename cannot
+ *  strand it. See `DependsOnEntry`. */
+function resolvedFileOf(app: App, file: TFile, text: string): TFile | null {
 	const linkpath = linkpathFromRawValue(text);
 	if (linkpath.length === 0) return null;
-	return app.metadataCache.getFirstLinkpathDest(linkpath, file.path)?.path ?? null;
+	return app.metadataCache.getFirstLinkpathDest(linkpath, file.path) ?? null;
 }
 
 /**
@@ -122,7 +144,7 @@ function applyDependsOnDelta(
 		if (delta.removePath !== undefined && pathOf(text) === delta.removePath) return text;
 		return null;
 	};
-	const removed: string[] = [];
+	const removed: DependsOnEntry[] = [];
 	const next: unknown[] = [];
 	for (const value of current) {
 		// Matched on the TRIMMED text (`dropText`), captured for the inverse as the
@@ -130,10 +152,11 @@ function applyDependsOnDelta(
 		// string (that is what `textOf` requires), so restoring `value` itself rather
 		// than the matched text is what puts back a line with significant surrounding
 		// whitespace exactly as it was, not trimmed.
-		if (dropText(value) !== null) removed.push(value as string);
+		const matched = dropText(value);
+		if (matched !== null) removed.push({ text: value as string, file: resolvedFileOf(app, file, matched) });
 		else next.push(value);
 	}
-	const added: string[] = [];
+	const added: DependsOnEntry[] = [];
 	if (delta.add) {
 		const wanted = delta.add.path;
 		const already = next.some((value) => {
@@ -143,7 +166,7 @@ function applyDependsOnDelta(
 		if (!already) {
 			const link = '[[' + app.metadataCache.fileToLinktext(delta.add, file.path) + ']]';
 			next.push(link);
-			added.push(link);
+			added.push({ text: link, file: delta.add });
 		}
 	}
 	if (added.length === 0 && removed.length === 0) return null;
@@ -213,18 +236,23 @@ export function restoreDependsOn(
 	// that an undo can put the exact line back. Comparing the two untrimmed would have
 	// `" Ghost "` fail to recognise a hand-restored `Ghost` and append a duplicate. Only
 	// the comparison KEY is trimmed; what gets written is still the captured spelling.
+	// One identity for both sides. A LIVE entry is asked of the vault, so a rename it
+	// already followed resolves to the note's current path. A CAPTURED entry is asked of
+	// the file it held, whose `.path` the same rename moved — never of its text, which a
+	// rename strands. Text is the fallback on both sides, for the line that names nothing.
 	const identityOf = (text: string): string => resolvedPathOf(app, file, text) ?? text.trim();
+	const capturedIdentity = (entry: DependsOnEntry): string => entry.file?.path ?? entry.text.trim();
 	const live = liveEntries(fm, restore.key);
 	const consumed = new Array<boolean>(live.length).fill(false);
-	const removed: string[] = [];
+	const removed: DependsOnEntry[] = [];
 	for (const wanted of restore.remove) {
 		// Prefer the exact line this entry captured — an undo owns the line its own
 		// write put there, not merely a live entry naming the same note.
-		let index = live.findIndex((value, i) => !consumed[i] && value === wanted);
+		let index = live.findIndex((value, i) => !consumed[i] && value === wanted.text);
 		if (index === -1) {
 			// Fallback: no exact spelling survives, so match by resolved note instead —
 			// the case a genuine hand-respelling (`A` rewritten `[[A]]`) needs.
-			const wantedKey = identityOf(textOf(wanted) ?? wanted);
+			const wantedKey = capturedIdentity(wanted);
 			index = live.findIndex((value, i) => {
 				if (consumed[i]) return false;
 				const text = textOf(value);
@@ -238,7 +266,8 @@ export function restoreDependsOn(
 		// restoring `value` itself rather than the matched text is what carries a
 		// hand-added respelling (padding, or any other edit) into the redo instead of
 		// normalizing it away.
-		removed.push(live[index] as string);
+		const text = live[index] as string;
+		removed.push({ text, file: resolvedFileOf(app, file, text.trim()) });
 	}
 	const next: unknown[] = live.filter((_, i) => !consumed[i]);
 	const already = countOf(
@@ -247,16 +276,16 @@ export function restoreDependsOn(
 			.filter((text): text is string => text !== null)
 			.map(identityOf),
 	);
-	const added: string[] = [];
-	for (const text of restore.add) {
-		const key = identityOf(text);
+	const added: DependsOnEntry[] = [];
+	for (const entry of restore.add) {
+		const key = capturedIdentity(entry);
 		const have = already.get(key) ?? 0;
 		if (have > 0) {
 			already.set(key, have - 1);
 			continue;
 		}
-		next.push(text);
-		added.push(text);
+		next.push(entry.text);
+		added.push(entry);
 	}
 	if (added.length === 0 && removed.length === 0) return null;
 	writeEntries(fm, restore.key, next);

@@ -152,28 +152,59 @@ function promptAddDependency(host: BacklogViewHost, model: BacklogModel, item: B
 }
 
 /**
- * What clearing one named prerequisite means, asked when the pick LANDS rather than
- * when the list was drawn — because between those two moments the note can move, or
- * stop existing, and `removePath` can only ever match what the reader still resolves.
+ * What clearing one prerequisite line means, asked when the pick LANDS rather than when
+ * the list was drawn.
  *
- * The choice therefore names its target by FILE and derives the path late, which
- * answers the three things that can happen to a note in one test:
+ * The question is deliberately about the SOURCE, not the target: `removePath` and
+ * `removeRaw` both match against what this note's own list currently holds, so the only
+ * thing that makes a pick effective is that the live list still holds a line it matches.
+ * Asking the live source is therefore the same question the writer will ask, one moment
+ * earlier, and it covers every way a pick goes stale in one test rather than one guard
+ * per way — the note renamed (the entry Obsidian rewrote still resolves to the same
+ * mutated file, so it still matches), the note deleted or replaced (nothing resolves to
+ * it, so nothing matches), the entry removed or respelled by hand (the raw text is gone).
  *
- * - **Renamed.** Obsidian mutates the one `TFile` and rewrites the links that named it,
- *   so the same object now carries the new path and the live entry resolves to it. A
- *   path captured when the list was drawn would match nothing and the picker would
- *   close having silently removed nothing.
- * - **Deleted.** Nothing resolves to that path any more, so there is no line this delta
- *   could take out: it returns null and the caller says so, rather than closing over a
- *   write that was always going to be a no-op. The entry is still on the note, and
- *   reopening the picker offers it as unresolved raw text — which IS removable.
- * - **Replaced by a different note under the same name.** The path matches and the file
- *   does not, which is the whole reason this compares the file: the delta would clear
- *   the user's dependency on a note they never picked.
+ * Null when nothing matches, which the caller reports. Silence is the thing refused: a
+ * pick that cannot do what it says has to say so, or the picker closes and the reader is
+ * left believing a removal happened. The alternative — letting the write go through and
+ * surfacing the writer's own no-op — is what `docs/issues/The outcome report was built
+ * from one sentence.md` refuses, and for the same reason: nothing here correlates a
+ * Bases pass with a write.
  */
-function removalOf(host: BacklogViewHost, target: BacklogItem): () => DependsOnDelta | null {
-	return () =>
-		host.model?.byPath.get(target.file.path)?.file === target.file ? { removePath: target.file.path } : null;
+function removalOf(host: BacklogViewHost, source: BacklogItem, target: BacklogItem): () => DependsOnDelta | null {
+	return () => {
+		const model = host.model;
+		const live = model && liveSource(model, source);
+		if (!model || !live) return null;
+		// `declaredPrerequisitePaths` is the same answer the picker was BUILT from, asked
+		// again of the live row — so "would this pick still match a line" is one rule
+		// rather than a second opinion of it. The path is read off the target's file here
+		// rather than captured, so a rename is followed: same object, new path, and the
+		// entry Obsidian rewrote resolves to it.
+		return declaredPrerequisitePaths(host.app, model, live).includes(target.file.path)
+			? { removePath: target.file.path }
+			: null;
+	};
+}
+
+/** The same question for an entry that resolves to nothing: its raw text is its identity,
+ *  so the live list is asked whether that exact line is still on it. */
+function removalOfRaw(host: BacklogViewHost, source: BacklogItem, raw: string): () => DependsOnDelta | null {
+	return () => {
+		const live = host.model && liveSource(host.model, source);
+		return live?.brokenPrerequisites.includes(raw) === true ? { removeRaw: raw } : null;
+	};
+}
+
+/**
+ * The item as the CURRENT model has it, or null — never the snapshot the menu closed
+ * over. By FILE rather than by path, the distinction `applyDependencyWrite` states: a
+ * rename carries the same object to a new path, a replacement puts a different object
+ * at the old one.
+ */
+function liveSource(model: BacklogModel, source: BacklogItem): BacklogItem | null {
+	const live = model.byPath.get(source.file.path);
+	return live?.file === source.file ? live : null;
 }
 
 /**
@@ -209,12 +240,12 @@ function promptRemoveDependency(host: BacklogViewHost, model: BacklogModel, item
 		...[...item.prerequisites, ...broken].map((target) => ({
 			label: target.title,
 			detail: target.file.path,
-			value: removalOf(host, target),
+			value: removalOf(host, item, target),
 		})),
 		...[...unresolved].map((raw) => ({
 			label: raw,
 			detail: 'Does not resolve in this base',
-			value: () => ({ removeRaw: raw }),
+			value: removalOfRaw(host, item, raw),
 		})),
 	];
 	if (choices.length === 0) {

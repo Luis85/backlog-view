@@ -114,6 +114,16 @@ can be checked by reading one directory.
   could fail in between and leave a note in a bucket its frontmatter does not claim,
   which is the same argument the hierarchy properties were already there for.
 
+**A captured inverse holds a FILE, never a name.** `DependsOnRestore` carries each line
+as `{ text, file }`: the text is what gets written back, the file is what says which note
+the line was about. Text alone cannot survive a rename — Obsidian mutates the one `TFile`
+and rewrites the links that named it, so a captured `[[A]]` resolves to nothing while the
+live entry reads `[[B]]`, and an undo matching on text or on a captured PATH finds no line
+and silently does nothing. Reading `file.path` at replay time follows the rename to where
+the live entry now points. Null file means the line named nothing when it was captured — a
+broken entry has no note to be renamed, so its own trimmed text is the whole of its
+identity, on both sides of the comparison.
+
 ## Collapse state, and the view mode beside it
 
 - The rule that decides where anything persists: **base settings are saved on the view

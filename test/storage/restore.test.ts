@@ -340,6 +340,25 @@ describe('dependency inverses', () => {
 		expect(vault.fm('Item.md')['dependsOn']).toBe('Ghost');
 	});
 
+	it('undoes an add whose prerequisite was RENAMED before the undo', async () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', {});
+		const item = vault.addFile('Item.md', {});
+
+		const target = vault.files.get('A.md') as never;
+		const inverses = await writeCapturing(vault, [{ file: item, dependsOn: { add: target } }], linked);
+		expect(vault.fm('Item.md')['dependsOn']).toEqual(['[[A]]']);
+		// Obsidian renames by mutating the one file object and rewriting the links that
+		// named it. The captured text `[[A]]` now resolves to nothing; only the file the
+		// capture held still says which note the line was about.
+		vault.renameFile('A.md', 'B.md');
+		vault.fm('Item.md')['dependsOn'] = ['[[B]]'];
+
+		await applyRestores(vault.app, inverses);
+
+		expect(vault.fm('Item.md')['dependsOn']).toBeUndefined();
+	});
+
 	it('recognises a hand-restored unresolvable entry that differs only in padding', async () => {
 		const vault = new FakeVault();
 		const item = vault.addFile('Item.md', { frontmatter: { dependsOn: ' Ghost ' } });
