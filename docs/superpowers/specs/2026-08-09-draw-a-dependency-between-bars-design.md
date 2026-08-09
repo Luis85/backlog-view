@@ -207,8 +207,11 @@ drawable, not that a future contributor remembered the rule.
 
 Layers are unchanged; every new piece sits in the layer that already owns its concern.
 
-- **`src/domain/dependencies.ts`** — `candidates`' `declared` map is hoisted to a
-  parameter. No new graph algorithm: legality stays one function.
+- **`src/view/interactions/dependencies.ts`** — `candidates`' `declared` map is hoisted to
+  an optional parameter, and `legalTargetPaths` sweeps it. No new graph algorithm and no
+  `domain/` change at all: `dependentsClosure` already answers the graph question, and
+  `candidates` — which lives here, beside the menu, not in `domain/` — already encodes all
+  four exclusions. Legality stays one function.
 - **`src/view/interactions/linkDrag.ts`** — new. The connector's source registration, the
   legal-target sweep taken once at drag start, the preview line, the marking, and the
   call into the write. Its own module rather than growing `interactions/dependencies.ts`,
