@@ -669,13 +669,15 @@ interface ConnectorPlace {
  * clamped edge. A handle can sit at a boundary without asserting anything is there,
  * which is what a diamond cannot do.
  *
- * Two refusals, and only two, and both decide only whether the DOT is drawn: the key
- * unconfigured is a feature this view does not have ([[Draw a dependency between bars]]
- * 1c), and a bar wholly outside the window has no on-screen end (`geometry.outside`). The
- * TARGET half is wired regardless of either — a bar with no connector of its own is still
- * something another bar's link may legitimately point at. An `outsideFilter` row needs no
- * guard: `deriveBars` routes it to context before any span is computed, so it never has a
- * bar to hang one on — the same reason [[Arrows between bars]] 1c needs none.
+ * The draw condition (`dependsOnKey !== '' && !geometry.outside`) is a strict subset of
+ * `wireBarLink`'s own gate (`dependsOnKey !== ''`): a bar can never draw a connector
+ * without a target being wired for it. The key unconfigured is a feature this view does
+ * not have ([[Draw a dependency between bars]] 1c) and refuses both; `geometry.outside`
+ * is the one case where a target is still wired for a bar with no dot — a bar wholly
+ * outside the window has no on-screen end to draw one from, but is still something
+ * another bar's link may legitimately point at. An `outsideFilter` row needs no guard:
+ * `deriveBars` routes it to context before any span is computed, so it never has a bar
+ * to hang one on — the same reason [[Arrows between bars]] 1c needs none.
  *
  * `tabindex="-1"` like every other per-row control: the pane is one tab stop and the
  * arrows move the selection. The context menu's Depends on… is the keyboard path, which
