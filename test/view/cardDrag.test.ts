@@ -4,7 +4,9 @@
 // when the note it was carrying is gone by the time it lands.
 import { describe, expect, it, vi } from 'vitest';
 import { BacklogItem } from '../../src/domain/model';
+import { BacklogViewHost } from '../../src/view/host';
 import { ProductBacklogView } from '../../src/view/backlogView';
+import { CardDragController } from '../../src/view/interactions/cardDrag';
 import { flush, makeView, refresh, useViewHarness } from '../helpers/view';
 import { announced, cardDrag, gridDrag, overlayOf, pannedGrid, startCardDrag } from '../helpers/dnd';
 import { boardVault, cardByTitle, columnByName, makeBoard } from '../helpers/board';
@@ -111,5 +113,40 @@ describe('a positional drag whose note is gone by the time the grid resolves it'
 		await flush();
 
 		expect(vault.writeLog).toHaveLength(0);
+	});
+});
+
+describe('a link-kind payload against an ordinary drop target', () => {
+	it('wireDropTarget refuses a link by construction, with no accepts filter of its own', async () => {
+		// The category guarantee this proves: a target registered the everyday way —
+		// `wireDropTarget` with no fourth argument, no `accepts` — refuses a link drag
+		// BY CONSTRUCTION, never by an incidental filter the target happens to carry.
+		// The dated shelf's own "does not unschedule" test cannot stand for this one: its
+		// `accepts: (source) => source.hold === 'body'` already refuses a link on its own
+		// (a link's `hold` is always null), so that test passes whether or not `mine()`
+		// does its job. This one wires no such filter, so only the gate can be refusing.
+		//
+		// Built directly on the controller rather than through a rendered view: a real
+		// connector and a real "ordinary" target (a board column, a horizon bucket) are
+		// never on screen together — connectors exist only on the dated axis, those
+		// targets only on the other projections — so there is no DOM path that reaches
+		// this case through the UI. `CardDragController` reads nothing off `host` except
+		// `model.byPath`, so a minimal fake host is the real controller under test, not a
+		// stand-in for one.
+		const item = { file: { path: 'Alpha.md' } } as unknown as BacklogItem;
+		const host = { model: { byPath: new Map([['Alpha.md', item]]) } } as unknown as BacklogViewHost;
+		const viewEl = document.body.createDiv();
+		const dnd = new CardDragController(host, viewEl);
+		const source = viewEl.createDiv();
+		const target = viewEl.createDiv();
+		const plan = vi.fn();
+
+		dnd.wireLinkSource(source, item, { onStart: () => {}, onEnd: () => {} });
+		dnd.wireDropTarget(target, plan);
+
+		cardDrag(source, target);
+		await flush();
+
+		expect(plan).not.toHaveBeenCalled();
 	});
 });

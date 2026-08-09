@@ -129,3 +129,15 @@ and each stays open until they are, so a stale check is visible rather than assu
   that no assertion had: a flagged row's title truncates to make room for the glyph
   (`Offline-first s… ⚠`), and an arrow crossing a long bar is drawn OVER it rather than
   behind it, unlike the milestone line.
+- [[Draw a dependency between bars]]'s gesture: the connector reveals on hover and stays
+  under `(hover: none)`, illegal rows dim while the drag is held, the target under the
+  pointer outlines, the preview line tracks the pointer smoothly, labels vanish and the
+  tree's root strip stays hidden (`.pbl-linking`, never `.pbl-dragging`), and a completed
+  or cancelled drag leaves nothing behind. Beside that, the one thing jsdom cannot answer
+  at all: `wireLinkSource`'s `onGenerateDragPreview` mutates the content box and other
+  rows' classes (dimming, the source mark), not only the dragged connector's own — which
+  is the case pragmatic-drag-and-drop's own docs caution against, since the browser can
+  snapshot the native drag preview at the end of that event. Whether Obsidian's actual
+  drag ghost looks right — the connector's small circle, undistorted by a class change
+  elsewhere on the page landing mid-snapshot — is unverifiable here and **never
+  checked**.

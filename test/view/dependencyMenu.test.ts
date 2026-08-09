@@ -324,7 +324,11 @@ describe('the write', () => {
 
 		expect(vault.fm('B.md')['dependsOn']).toBeUndefined();
 		expect(view.canUndo()).toBe(false);
-		expect(Notice.messages.some((m) => m.includes('changed while the picker was open'))).toBe(true);
+		// Caught by `applyDependencyWrite`'s own recheck, not the picker's stillLegal —
+		// the pair is still legal by that check's own question, and B is simply gone from
+		// `byPath`, which is what only the write-time recheck asks. Its Notice is worded
+		// for both callers now that the drag reaches it too.
+		expect(Notice.messages.some((m) => m.includes('changed before the write landed'))).toBe(true);
 	});
 
 	it('writes nothing when the source note leaves the Base while the "Remove dependency…" picker is open', async () => {
@@ -470,6 +474,8 @@ describe('the write', () => {
 
 		expect(vault.fm('B.md')['dependsOn']).toBeUndefined();
 		expect(view.canUndo()).toBe(false);
-		expect(Notice.messages.some((m) => m.includes('changed while the picker was open'))).toBe(true);
+		// Caught by `applyDependencyWrite`'s own file-identity recheck, worded for both
+		// callers now that the drag reaches it too — see the note above.
+		expect(Notice.messages.some((m) => m.includes('changed before the write landed'))).toBe(true);
 	});
 });

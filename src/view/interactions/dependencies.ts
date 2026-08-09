@@ -373,7 +373,10 @@ function promptRemoveDependency(host: BacklogViewHost, model: BacklogModel, item
 export function applyDependencyWrite(host: BacklogViewHost, item: BacklogItem, dependsOn: DependsOnDelta): void {
 	const source = host.model?.byPath.get(item.file.path);
 	if (source === undefined || source.outsideFilter || source.file !== item.file) {
-		new Notice('That note changed while the picker was open, so nothing was written.');
+		// Worded for both callers: the picker's own two Notices above are still true only
+		// of the picker (the window this one names is a suggester staying open), but this
+		// one is reached from the drag too, which has no picker to have stayed open.
+		new Notice('That note changed before the write landed, so nothing was written.');
 		return;
 	}
 	void host.applySafely([{ file: item.file, dependsOn }]);

@@ -150,16 +150,27 @@ three of its four exclusions (self, already declared, would close a loop) are `c
 restated rather than re-derived, and the fourth (`outsideFilter`) is a guard on the TARGET
 that `candidates` alone cannot give, since that function only filters the *candidate* side.
 
-The payload-kind refusal — extension 3b's "no drop of this gesture changes a date," and the
-guarantee that a link drag is refused by the timeline grid's positional target and the dated
-shelf alike — is on `CardDragController` itself
-(`src/view/interactions/cardDrag.ts`): every payload carries a `kind` ('move' or 'link'),
-and every `canDrop` goes through one private `mine(data, kind)` gate rather than a check
-repeated at each target, so a target written later inherits the refusal by construction.
-`wireLinkSource`, `wireLinkTarget` and `wireLinkPointer` are that controller's three new
-registrations — a draggable connector, a bar as a link's drop target, and a monitor for
-wherever the pointer is, gated on the same private token so a split pane never draws
-another view's line.
+The payload-kind refusal — extension 3b's "no drop of this gesture changes a date" — is on
+`CardDragController` itself (`src/view/interactions/cardDrag.ts`): every payload carries a
+`kind` ('move' or 'link'), and every `canDrop` goes through one private `mine(data, kind)`
+gate rather than a check repeated at each target. `wireDropTarget` — the one method every
+region target already called — took a `kind: DragKind = 'move'` parameter rather than
+gaining a `wireLinkTarget` sibling: registering a target the ordinary way, with no fourth
+argument, refuses a link by construction, which is the whole point of putting the check at
+the forbidden thing rather than at a second method somebody has to remember to reach for.
+The bar-as-link-target half of `wireBarLink` calls the same method with `kind: 'link'`.
+`wireLinkSource` and `wireLinkPointer` are the other two new registrations — a draggable
+connector and a monitor for wherever the pointer is, gated on the same private token so a
+split pane never draws another view's line.
+
+The dated shelf's own test ("does not unschedule when released on the dated shelf") does
+NOT by itself prove this guard load-bearing: the shelf's `accepts: (source) => source.hold
+=== 'body'` (`src/view/render/shelf.ts`) already refuses a link on its own, since a link's
+`CardSource.hold` is always `null` — an unrelated, incidental filter, not the `mine()` gate.
+What proves the gate is `test/view/cardDrag.test.ts`'s "a link-kind payload is refused by an
+ORDINARY drop target", which wires a bare `wireDropTarget` with no `accepts` of its own —
+the everyday shape — and drags a real link source onto it directly, no shelf or grid
+involved.
 
 The connector itself is drawn by `renderConnector` in `src/view/render/timeline.ts`, which
 also gives every `pbl-timeline-row` its `data-pbl-path` — what the legality sweep marks

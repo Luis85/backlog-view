@@ -29,7 +29,7 @@ const DROP_OVER = 'pbl-drop-over';
  * somebody thought of; this one holds for targets not yet written.
  */
 const LINK_KIND = 'link';
-type DragKind = 'move' | 'link';
+export type DragKind = 'move' | 'link';
 
 function kindOf(data: Record<string, unknown>): DragKind {
 	return data.kind === LINK_KIND ? 'link' : 'move';
@@ -251,28 +251,42 @@ export class CardDragController {
 	}
 
 	/**
-	 * A region a card can be dropped on, for as long as it renders — an empty column
-	 * and an empty shelf included. `plan` is what the drop MEANS, and it belongs to
-	 * the caller: this module knows how to resolve a dragged card, never what moving
-	 * it should write. `hooks` is optional and unused by a plain region — the dated
-	 * shelf is the first caller that needs it, to preview what its removal would leave.
+	 * A region a card OR a link can be dropped on, for as long as it renders — an empty
+	 * column and an empty shelf included, and a bar wherever another bar's link may point
+	 * at it. `plan` is what the drop MEANS, and it belongs to the caller: this module
+	 * knows how to resolve a dragged source, never what landing on it should write.
+	 * `hooks` is optional and unused by a plain region — the dated shelf is the first
+	 * caller that needed it, to preview what its removal would leave.
 	 *
 	 * `plan` takes the RESOLVED source, not just its item — the same shape `accepts`
 	 * and `onEnter` already carry. A caller that only needs the item can still ask for
 	 * one; a caller planning a relative gesture's removal (the dated shelf) needs the
 	 * shape it was captured under too, and a narrower signature would have hidden that
 	 * on the one region that turned out to need it.
+	 *
+	 * `kind` defaults to `'move'` — the shape every ordinary region target already has —
+	 * so refusing a link is what registering a target the everyday way already does,
+	 * never something a caller has to remember to ask for. This used to be a second
+	 * method, `wireLinkTarget`, identical but for the literal it passed `mine`; fallow
+	 * flagged the clone, and the duplication was the tell that the guard was a
+	 * convention rather than a structure — a target written the ordinary way inherited
+	 * nothing from it. One method with a defaulted parameter is what makes "call this
+	 * the usual way and a link is refused" true by construction rather than by a second
+	 * method somebody has to know to reach for.
+	 * `test/view/cardDrag.test.ts`'s "a link-kind payload is refused by an ordinary drop
+	 * target" drives exactly the default path, undefended by any `accepts` of its own.
 	 */
-	wireDropTarget(el: HTMLElement, plan: (source: CardSource) => void, hooks: DropHooks = {}): void {
+	wireDropTarget(el: HTMLElement, plan: (source: CardSource) => void, hooks: DropHooks = {}, kind: DragKind = 'move'): void {
 		this.cleanups.push(
 			dropTargetForElements({
 				element: el,
-				// Only this view's own drags, and — where the caller asks — only the
-				// sources this region actually honours. REFUSED rather than ignored, so
-				// the strip never highlights for a drag it would not act on, the same
-				// reason a foreign view's card is refused instead of dropped silently.
+				// Only this view's own drags of THIS kind, and — where the caller asks —
+				// only the sources this region actually honours. REFUSED rather than
+				// ignored, so the strip never highlights for a drag it would not act on,
+				// the same reason a foreign view's card is refused instead of dropped
+				// silently.
 				canDrop: ({ source }) => {
-					if (!this.mine(source.data, 'move')) return false;
+					if (!this.mine(source.data, kind)) return false;
 					const resolved = this.resolve(source.data);
 					return resolved !== null && (!hooks.accepts || hooks.accepts(resolved));
 				},
@@ -345,18 +359,37 @@ export class CardDragController {
 	/**
 	 * A bar's connector as a drag source. Carries no hold, no span and no ends: a link
 	 * claims no date, so there is nothing for a relative gesture to measure against.
+	 * The target half of a link is the ordinary `wireDropTarget`, called with
+	 * `kind: 'link'` — see that method.
 	 *
 	 * `onStart` is where the legal-target sweep happens — once, at drag start — and it is
-	 * wired to `onGenerateDragPreview`, not `onDragStart`. The library dispatches the two
-	 * differently: `onGenerateDragPreview` fires SYNCHRONOUSLY as part of `dispatch.start`,
-	 * while `onDragStart` is scheduled a frame later and only flushed early by a drop
-	 * target's OWN hierarchy change — which cannot happen here, because every target's
-	 * `canDrop` reads the very state `onStart` is about to set. Waiting for `onDragStart`
-	 * therefore deadlocks: no target ever looks legal, so the hierarchy never changes, so
-	 * the frame that would have set legality never flushes early, and the sweep runs only
-	 * at the drop that already missed it. `onEnd` fires from `onDrop`, however the drag
-	 * ends, dropped or cancelled, so the marking it put on the grid can never outlive the
-	 * gesture.
+	 * wired to `onGenerateDragPreview`, not `onDragStart`. `onGenerateDragPreview` fires
+	 * SYNCHRONOUSLY as part of `dispatch.start`; `onDragStart` is scheduled a frame later
+	 * (`dragStart.schedule`, a plain `requestAnimationFrame` under the library's own
+	 * `raf-schd`) and is flushed early only by a drop target's OWN hierarchy change. That
+	 * distinction matters here only because THIS TEST HARNESS dispatches a whole gesture —
+	 * start, enter, over, drop — synchronously, in one tick with no frame in between:
+	 * every target's `canDrop` reads the state `onStart` is about to set, so under
+	 * `onDragStart` the sweep would run a frame after a synchronous test has already
+	 * asserted, never before it. In a live browser the deferred frame still fires on its
+	 * own a few milliseconds later regardless of what the pointer does next — there is no
+	 * deadlock in the library, only an ordering this harness's synchronous dispatch cannot
+	 * observe under the later hook.
+	 *
+	 * `el.addClass('is-active')` here is the library's own documented use of
+	 * `onGenerateDragPreview` — styling the element BECOMING the preview, before the
+	 * browser captures it. `hooks.onStart` (the legality sweep, `begin` in
+	 * `linkDrag.ts`) additionally mutates OTHER elements — the content box, other rows —
+	 * which is the case pragmatic's own docs caution against inside this specific hook,
+	 * since the browser may snapshot the native drag preview at the end of it and nothing
+	 * else is guaranteed to have painted first. Whether that snapshot actually looks wrong
+	 * in Obsidian is unverifiable here: jsdom renders nothing and generates no preview
+	 * image at all. That is a live-vault check this repository owes
+	 * (`docs/requirements/Smoke test the roadmap.md`), not one this suite can discharge —
+	 * say so rather than assert it is fine.
+	 *
+	 * `onEnd` fires from `onDrop`, however the drag ends, dropped or cancelled, so the
+	 * marking it put on the grid can never outlive the gesture.
 	 *
 	 * No `outsideFilter` guard, unlike {@link wireCard}: `renderConnector`'s own comment
 	 * states why one is unneeded there, and it is this function's caller — `deriveBars`
@@ -375,39 +408,6 @@ export class CardDragController {
 				onDrop: () => {
 					el.removeClass('is-active');
 					hooks.onEnd();
-				},
-			}),
-		);
-	}
-
-	/**
-	 * A bar as the target of a link. `accepts` refuses rather than ignores, so an illegal
-	 * bar never highlights for a drop it would not take — the same contract every region
-	 * target keeps, and what makes "refused before release" true rather than a promise.
-	 */
-	wireLinkTarget(el: HTMLElement, plan: (source: CardSource) => void, hooks: DropHooks = {}): void {
-		this.cleanups.push(
-			dropTargetForElements({
-				element: el,
-				canDrop: ({ source }) => {
-					if (!this.mine(source.data, 'link')) return false;
-					const resolved = this.resolve(source.data);
-					return resolved !== null && (!hooks.accepts || hooks.accepts(resolved));
-				},
-				onDragEnter: ({ source }) => {
-					el.addClass(DROP_OVER);
-					const resolved = this.resolve(source.data);
-					if (resolved) hooks.onEnter?.(resolved);
-				},
-				onDragLeave: () => {
-					el.removeClass(DROP_OVER);
-					hooks.onLeave?.();
-				},
-				onDrop: ({ source }) => {
-					el.removeClass(DROP_OVER);
-					hooks.onLeave?.();
-					const resolved = this.resolve(source.data);
-					if (resolved) plan(resolved);
 				},
 			}),
 		);

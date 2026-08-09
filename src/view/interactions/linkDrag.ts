@@ -54,7 +54,9 @@ const live = new WeakMap<HTMLElement, LiveLink>();
  *
  * The source half is skipped where no connector was drawn — the key unbound, or no bar
  * on screen — and the TARGET half is wired regardless, because a bar with no connector of
- * its own is still something another bar's link may legitimately point at.
+ * its own is still something another bar's link may legitimately point at. The target is
+ * `wireDropTarget` called with `kind: 'link'`, not a method of its own — see that
+ * method's own comment for why the two collapsed into one.
  */
 export function wireBarLink(ctx: RowContext, parts: BarLinkParts): void {
 	const host: BacklogViewHost = ctx.host;
@@ -65,9 +67,12 @@ export function wireBarLink(ctx: RowContext, parts: BarLinkParts): void {
 			onEnd: () => end(content),
 		});
 	}
-	dnd.wireLinkTarget(barEl, (source) => drop(host, source, item), {
-		accepts: (source) => (live.get(content)?.legal.has(item.file.path) ?? false) && source.item.file !== item.file,
-	});
+	dnd.wireDropTarget(
+		barEl,
+		(source) => drop(host, source, item),
+		{ accepts: (source) => (live.get(content)?.legal.has(item.file.path) ?? false) && source.item.file !== item.file },
+		'link',
+	);
 }
 
 /**
