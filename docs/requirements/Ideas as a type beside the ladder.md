@@ -81,9 +81,14 @@ assumed rather than derived).
   with none, and a parentless `Idea` is never pruned by `hierarchyOnly`.
 - It files into its own folder (`typeFolder.idea`, shipped default `ideas` under the home
   folder), like every other declared type.
-- It renders with its own icon and badge colour, distinct from every level's and from
-  every other extra type's; the test asserting the badge table covers the whole
-  vocabulary covers it too.
+- It renders with its own icon and a badge colour distinct from every **other extra
+  type's**; the test asserting the badge table covers the whole vocabulary covers it too.
+  **Not distinct from every level's, which is what this criterion demanded until
+  2026-08-08 and what the shipped styling does not do.** `Idea` wears yellow, shared with
+  `Task`, after `Deliverable` landed on the green this note had claimed — the decision and
+  its reasoning are in `styles/badges.css` and the paragraph above. A criterion the shipped
+  code cannot satisfy is worse on a `Done` note than on an open one: it reads as a
+  contract somebody kept.
 - The generated README names the extra types in a sentence a third name does not break:
   `Issue`, `Bug` and `Idea`, not `Issue and Bug and Idea`.
 - The three rank, pruning and choice criteria above are asked of `EXTRA_TYPES` rather

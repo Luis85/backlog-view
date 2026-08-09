@@ -119,6 +119,11 @@ people edit for two different reasons.
 
 - An unbound key means the feature is absent: nothing read, nothing drawn, nothing offered
   in a menu, and no warning about a property nobody asked for.
+- A **bound** key appears in the generated README's property contract, marked optional and
+  carried by tests. That document states that *only the properties above are written*, and
+  **Covers…** writes this one ([[Linking a test to what it covers]]), so leaving it out
+  would make the README's own rule false rather than merely incomplete — which is the
+  reason `fieldRows` already documents the two keys the view stamps for itself.
 - The property is read from test types only. A work item carrying the key declares no edge
   and raises no count — asserted at the reader, since the menu that offers the write is one
   path and the rule is about all of them.
@@ -160,3 +165,10 @@ walk must not become a shared rulebook.
 
 The stub exemption is in the ✨ backfill, beside the horizon key's — `src/storage/` owns
 the write, `src/domain/settings.ts` owns which keys it is asked to write.
+
+`src/domain/backlogReadme.ts` — `fieldRows`, which is easy to miss because it is not part
+of reading or writing the property. It **enumerates** the contract by hand rather than
+deriving it from the optional-property list, one `if (settings.<key>)` per row, so a key
+added to the options, the settings and the reader still does not appear there. A property
+the view writes and the contract omits is not a documentation gap: the same document says
+only the properties it lists are written.
