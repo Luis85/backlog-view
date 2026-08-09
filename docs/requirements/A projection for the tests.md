@@ -62,9 +62,22 @@ base settings are saved on the view, working position on the device.
    projection draws**: the tests, and the `Task`s beneath them, which are catalog members
    by the membership rule ([[Tests stay out of the plan]] 2b). Not "tests and only tests" —
    a re-listed population is a second membership rule, and it disagrees with the first
-   about a `Task` every time. Its **completed toggle** is withheld, as it already is on the
-   Deliverables board: this epic gives tests no workflow, so there is no completion to
-   hide.
+   about a `Task` every time.
+   "Behave as they do in the backlog tree" is not free, and this is the sentence that has
+   to be paid for: **the catalog is tree-shaped, and "tree-shaped" is spelled
+   `projection === 'tree'` in six places today.** Every one of them is a gate this
+   projection must pass — the fitted-column ladder and its resize refit, the second
+   measuring pass, the class-clearing that undoes the ladder for card projections,
+   Expand/Collapse all, and the context menu's move section. A projection added beside
+   `'tree'` rather than *as* a tree fails each of them silently and differently: no column
+   fitting, two dead toolbar buttons, and a menu with no Move up, indent or outdent on a
+   tree whose whole point is an order somebody chose.
+   Its **completed toggle** is withheld, as it already is on the Deliverables board — this
+   epic gives tests no workflow, so there is no completion to hide — and withholding the
+   button is only half. `hideCompleted` is on for every projection except `deliverables`,
+   so the catalog joins that exception too. A toggle withheld while its filtering stays on
+   is the worst of both: a done test disappears and nothing on screen offers to bring it
+   back.
 4. Switching back restores the plan, and the catalog's own collapse state is remembered
    separately, keyed as the other projections' are.
 
@@ -134,6 +147,14 @@ base settings are saved on the view, working position on the device.
   direction that still looks like a working screen: the filter leaves a non-matching row
   visible, and the keyboard leaves a visible row unreachable.
 - Collapse state is stored per projection, so collapsing a suite does not collapse an Epic.
+- The catalog is **tree-shaped** at every gate that asks: columns fit and refit on resize,
+  the fit classes survive its render, Expand/Collapse all are live when there is something
+  to collapse, and a row's menu carries Move up/down/top/bottom and indent/outdent. Each is
+  asserted, because each fails on its own and none of them fails loudly.
+- Completed-item filtering is **off** here, not merely untoggleable: a test the state key
+  calls done is still drawn. Asserted with `Show completed items` off and a done test in
+  the results — the configuration where withholding the button and leaving the filter on
+  produces a row that is gone with no way back.
 - The catalog's count label counts this projection's own population — the tests **and** the
   `Task`s beneath them — and its completed toggle is not rendered. Both consumers of that
   population are asserted, not just the visible one, and the `Task` is asserted
@@ -199,6 +220,23 @@ the same shape — `model.roots` and `model.realRoots` readable only inside the 
 computes projection roots, with the two vault-wide consumers exempted by name — would hold
 for a seventh consumer nobody has written yet. Six tests hold for the six that exist, which
 is exactly the guarantee this PBI has now had to widen three times.
+
+**"Tree-shaped" has the same problem and the same answer.** `projection === 'tree'` appears
+in six gates — `src/view/render/columns.ts` (the fitted column count),
+`src/view/resize.ts` (refit on resize), `src/view/backlogView.ts` twice (clearing the fit
+classes for card projections, and the second measuring pass),
+`src/view/render/toolbar.ts` (Expand/Collapse all), and `src/view/interactions/menu.ts`
+(the move section) — plus `hideCompleted`, which is written as `!== 'deliverables'` and
+needs the catalog beside it. A **predicate** the gates ask, rather than seven edited
+equality checks, is what makes the seventh gate correct when someone writes it; and a lint
+rule forbidding a bare `projection === 'tree'` outside that predicate is what makes the
+predicate hold rather than merely exist.
+
+`src/view/interactions/keyboard.ts` is the one gate needing nothing, and it is worth
+naming so nobody edits it: it dispatches to the **board** keyboard for `board` and
+`deliverables`, so a new projection falls to the tree's own handler by default. It is
+correct here by construction, which is what a projection-shaped gate looks like when it is
+written the right way round.
 
 Which items belong to this population is a domain question and lives with the type
 vocabulary in `src/domain/itemTypes.ts`, beside the answer [[Tests stay out of the plan]]
