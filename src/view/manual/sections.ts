@@ -107,7 +107,7 @@ const CREATING: ManualSection = {
 			text:
 				'The type, the parent link (when there is one) and an order, in one batch — plus the ' +
 				"bucket's own placement when the note was created from a roadmap bucket. The note " +
-				'opens; nothing else moves.',
+				'does not open; a notice names it, and nothing else moves.',
 		},
 		{
 			term: 'Creating under an excluded parent',
@@ -115,6 +115,14 @@ const CREATING: ManualSection = {
 				'The parent link is written explicitly regardless, so the hierarchy stays right ' +
 				"wherever the note lands — the one exception being folder mode's beside-the-parent " +
 				"filing rule, which this same exclusion already turns off for such a parent.",
+		},
+		{
+			term: 'Whether the new note then appears',
+			text:
+				"Creating a note only decides where it is filed and how it is typed — it does not " +
+				"check the Base's own filter. A destination folder or a written property the filter " +
+				'excludes still creates the note successfully; the next refresh simply does not show ' +
+				'it, and nothing announces that this happened.',
 		},
 	],
 };
@@ -126,8 +134,13 @@ const FINDING: ManualSection = {
 		{
 			term: 'Focus level',
 			text:
-				'Picks which rung is the top of the tree. It is working position, remembered per ' +
-				'view per device, and never written to the base.',
+				'Picks which rung is the top of the tree: the first item matching from the top of ' +
+				'each branch becomes a root, so a match nested under one already found stays a ' +
+				'normal descendant rather than a second root. Focusing the rung a declared extra ' +
+				'type is pinned to (PBI, since a Bug\'s own children are always Tasks) promotes ' +
+				'every extra type (Issue, Bug, Idea, Deliverable) alongside that rung\'s own items; ' +
+				'focusing an extra type by name matches only that one type. It is working position, ' +
+				'remembered per view per device, and never written to the base.',
 		},
 		{
 			term: 'Quick filter',
@@ -160,8 +173,20 @@ const WRITES: ManualSection = {
 		{
 			term: 'A change is one batch',
 			text:
-				'A drag that renumbers six siblings is a single change, and undo takes all six back ' +
-				'— Ctrl or Cmd with Z, or the toolbar arrow.',
+				'A drag that renumbers six siblings is a single change, and Ctrl or Cmd with Z, or ' +
+				'the toolbar arrow, takes the whole batch back at once — with the limits below.',
+		},
+		{
+			term: 'What undo does not guarantee',
+			text:
+				'Undo is compare-and-swap, key by key, not a blind rewind: a key hand-edited since ' +
+				'the write it is undoing is left as it now stands, and the notice counts it — ' +
+				'"edited since and kept" — rather than silently overwriting it. A note deleted since ' +
+				'is skipped whole, and the rest of the batch still restores. There is one undo slot ' +
+				'— one batch, per view, per session, not a stack — so a second change replaces what ' +
+				'the first left undoable. Creating an item never touches this slot: undo does not ' +
+				'delete a new note, and a slot already holding an earlier change is untouched by the ' +
+				'creation that followed it — delete the note by hand to take a creation back.',
 		},
 		{
 			term: 'One at a time',
@@ -240,8 +265,8 @@ const SETUP: ManualSection = {
 				'The workflow states offered for writing, the values counted as done, the values ' +
 				'counted as started, and Show completed items — which decide the rollups, the done ' +
 				'styling and which subtrees render at all. A WIP limit and a leave-column policy are ' +
-				'offered per configured state, and per Deliverable state a parallel pair of values ' +
-				'does the same for that board.',
+				'offered per configured state, for the requirements workflow only — the Deliverables ' +
+				'board carries no equivalent, only its own done values.',
 			keys: [
 				'stateValues', 'doneValues', 'startedStates', 'showCompleted',
 				'deliverableStateValues', 'deliverableDoneValues',

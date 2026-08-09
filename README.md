@@ -33,8 +33,10 @@ Azure DevOps Boards.
 - **You never have to maintain these properties by hand.** The view assigns them:
   - Creating an item via the view writes `type`, `parent` and `order`.
   - Dragging an item writes its new `parent` and `order`. It leaves `type` alone unless
-    you turn on **Assign item type when moving**, which then re-types the whole moved
-    subtree to match where it landed.
+    you turn on **Assign item type when moving**, which then re-types the dragged item
+    and its explicitly ladder-typed descendants to match where it landed — skipping
+    untyped and custom-typed descendants, extra types and markers, and stopping at a
+    note the Base excluded.
   - Items without a `type` show a level implied from their parent's type (a child of a
     Feature reads as a PBI, wherever that Feature sits).
   - The toolbar's ✨ **Assign missing properties** button sets the whole view up in one
