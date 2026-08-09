@@ -34,4 +34,14 @@ describe('the manual', () => {
 		expect(prose).not.toContain('nothing is refused');
 		expect(prose).toContain('focus-root row has no previous sibling');
 	});
+
+	// The toolbar's New button makes exactly one type; the chevron beside it carries
+	// the vocabulary. `CREATING` previously claimed New alone "offers the whole
+	// vocabulary", which is what the primary button's own single-type prompt refuses.
+	it('splits the toolbar New button from its chevron, and claims no whole vocabulary from New alone', () => {
+		const creating = manualSections().find((s) => s.id === 'creating');
+		const prose = creating?.entries.map((e) => `${e.term} ${e.text}`).join(' ').toLowerCase() ?? '';
+		expect(prose).toContain('chevron');
+		expect(prose).not.toContain('new (no row at all) offers the whole vocabulary');
+	});
 });

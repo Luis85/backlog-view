@@ -93,8 +93,17 @@ const CREATING: ManualSection = {
 				'deepest rung: there it offers that one type alone, the same as under a declared ' +
 				'extra type (Issue, Bug, Idea, Deliverable), whose own children are always the deepest ' +
 				'level. A non-deepest ladder row offers one rung down plus the types that sit beside ' +
-				"the ladder. A Milestone's + is absent altogether — it draws no add affordance — and " +
-				"the toolbar's own New (no row at all) offers the whole vocabulary.",
+				"the ladder. A Milestone's + is absent altogether — it draws no add affordance. The " +
+				"toolbar's own New is a separate pair of controls, described below.",
+		},
+		{
+			term: 'The toolbar\'s New, and the chevron beside it',
+			text:
+				'Two controls. New itself makes exactly one type — the current focus, if this ' +
+				'projection shows it, else the ladder\'s top — with no picker. The chevron is the ' +
+				'actual vocabulary: every type this projection can create, each its own prompt. ' +
+				'Neither offers Deliverable on the requirements board; on the Deliverables board ' +
+				'New is pinned to Deliverable and the chevron is absent, nothing left to pick.',
 		},
 		{
 			term: 'The context menu',
@@ -172,32 +181,38 @@ const FINDING: ManualSection = {
 		{
 			term: 'The ignored-notes count',
 			text:
-				'A toolbar note, whenever the base returned any note with no supported type and no ' +
-				'parent — so it never became a backlog item. It shows up any time that count is ' +
-				'above zero, not only when the whole view is empty: a single pruned note reads here ' +
-				'even while the rest of the backlog renders fine, which is the first place to check ' +
-				'for one expected item that seems to have vanished. Its own tooltip names the fix — ' +
-				'turn off Ignore notes outside the hierarchy — or type or link the note in.',
+				'A toolbar note whenever any note has no supported type and no parent, so it never ' +
+				'became a backlog item — it shows any time that count is above zero, not only when ' +
+				'the whole view is empty, so a single pruned note reads here while the rest renders ' +
+				'fine: the first place to check for one missing item. Its tooltip names the fix — ' +
+				'turn off Ignore notes outside the hierarchy, or type or link the note in.',
 		},
 		{
 			term: 'The marker on a row loaded only for context',
 			text:
-				"A row the base's own filter excluded, kept on screen only so the hierarchy around a " +
-				'real result stays correct — hover it for "Not in this base\'s filter — shown to keep ' +
-				'the hierarchy". It behaves differently from an ordinary row on purpose: no state ' +
-				'chip, no Set type or Set state, no reparenting, and it can never be dragged. A row ' +
-				'that looks inert for no obvious reason is very likely this marker.',
+				"A row the base's own filter excluded, kept only so the hierarchy around a real " +
+				'result stays correct — hover for "Not in this base\'s filter — shown to keep the ' +
+				'hierarchy". No state chip, no Set type or Set state, no reparenting, never ' +
+				'draggable. A row that looks inert for no obvious reason is likely this marker.',
 		},
 		{
 			term: 'Nothing showing at all',
 			text:
-				'Four different causes render an empty tree, and each has its own one-press way out. ' +
-				'Either the Base returned nothing (point its filter at your backlog folder, or create ' +
-				'the first item), or everything it returned was ignored (create an item, or turn off ' +
-				'Ignore notes outside the hierarchy, per the ignored-notes count above). With items ' +
-				'present, a quick filter can be matching none of them (Clear filter), or every ' +
-				'subtree can be done with Show completed items off (the same toggle, offered right ' +
-				'there).',
+				'Five causes, each with its own one-press fix. Focused on a type nothing matches — ' +
+				'the rest of the backlog is untouched elsewhere (switch focus back to "All types", ' +
+				'or create one). Unfocused: the Base returned nothing (point its filter at the ' +
+				'backlog folder), or returned only ignored notes (turn off Ignore notes outside the ' +
+				'hierarchy, per the count above). With items present: a quick filter matching none ' +
+				'of them (Clear filter), or every subtree done (Show completed items).',
+		},
+		{
+			term: 'Empty differently, on the board and the roadmap',
+			text:
+				'Focusing "Deliverable" empties the requirements board with its own message, ' +
+				'since that board never shows Deliverables — clear the focus, or switch boards, ' +
+				'never create another of a type it could not display. The Deliverables board has ' +
+				'its own "no deliverables yet" state, unrelated to Show completed items: it has no ' +
+				'done-and-hidden concept to distinguish from.',
 		},
 	],
 };
@@ -332,26 +347,24 @@ const SETUP: ManualSection = {
 		{
 			term: 'The Deliverables workflow\'s own state property — an override',
 			text:
-				'Unset by default, and a first-run ✨ deliberately leaves it that way: with no key ' +
-				"of its own, the Deliverables board reads and writes State property above instead " +
-				'— sharing its property, its values below and its done values, exactly as one ' +
-				'workflow for both. Name a property here only to give Deliverables an independent ' +
-				'one; its own values and done values (below) then default to the shipped Done, ' +
-				'Closed, Completed, Removed rather than to whatever this vault customized for the ' +
-				'shared property, since an own key with nothing declared is a genuinely separate ' +
-				'workflow, not a second name for the first.',
+					'Unset by default, and a first-run ✨ deliberately leaves it that way: with no ' +
+					'key of its own, Deliverables reads and writes State property above instead — ' +
+					'sharing its property, values and done values as one workflow. Name a property ' +
+					'here only to make Deliverables independent; its own values and done values ' +
+					'(below) then default to the shipped Done, Closed, Completed, Removed rather ' +
+					'than this vault’s customized shared list — an own key with nothing declared ' +
+					'is a genuinely separate workflow.',
 			keys: ['deliverableStateProperty'],
 		},
 		{
 			term: 'What progress means',
 			text:
-				'The workflow states offered for writing, the values counted as done, the values ' +
-				'counted as started, and Show completed items — which decide the rollups, the done ' +
-				'styling and which subtrees render at all. A WIP limit and a leave-column policy are ' +
-				'offered per configured state, for the requirements workflow only — the Deliverables ' +
-				'board carries no equivalent. Its own Deliverable workflow states and done-values ' +
-				'boxes matter only once the Deliverables workflow has its own state property above; ' +
-				'left blank alongside that, they simply inherit these values too.',
+				'The workflow states offered for writing, done values, started values, and Show ' +
+				'completed items — deciding the rollups, done styling and which subtrees render. ' +
+				'A WIP limit and leave-column policy are offered per state, requirements only — ' +
+				'Deliverables carries no equivalent. Its own states/done-values boxes matter only ' +
+				'once Deliverables has its own state property above; blank alongside that, they ' +
+				'inherit these values too.',
 			keys: [
 				'stateValues', 'doneValues', 'startedStates', 'showCompleted',
 				'deliverableStateValues', 'deliverableDoneValues',
@@ -384,10 +397,9 @@ const SETUP: ManualSection = {
 		{
 			term: 'What the Base still owns',
 			text:
-				"The filter and the sort that orders unranked items are the Base's own settings, " +
-				'reached from the same toolbar. So is which properties are visible at all — this ' +
-				'view only decides whether they render as columns, and how wide, once the Base names ' +
-				'them.',
+				"The filter, the sort that orders unranked items, and which properties are " +
+				"visible at all are the Base's own settings — this view only decides whether " +
+				'those render as columns, and how wide, once the Base names them.',
 		},
 		{
 			term: "What this view ignores, and what it can't work around",
