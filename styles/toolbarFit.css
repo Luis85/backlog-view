@@ -68,14 +68,23 @@
 /* Step 2 — the remaining words, the filter collapsing to its own button, and the dated
    axis's two singles going to the `⋯`.
 
-   The words here are the value-naming four, and they go together rather than in some
-   order of usefulness among themselves: they are comparable in width and in worth, and a
-   rung per label would be four rungs buying a few dozen pixels each. The advisories and
-   the count are words with no `.pbl-btn-label` around them and survive both rungs
-   untouched, which is what steps 4 and 5 below are for — this used to be stated at step 1
-   as "the words go", which was wider than the rung and was how a note about skipped files
-   came to outlive the New button. */
-.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']) .pbl-btn-label {
+   The words here are the value-naming ones — which axis, which zoom, which focus level —
+   and they go together rather than in some order of usefulness among themselves: they are
+   comparable in width and in worth, and a rung per label would be rungs buying a few dozen
+   pixels each.
+
+   NOT New's, which is excepted here and shed at step 6. It is the same kind of label as
+   these three and it outranks them for one reason: it names the primary action, which now
+   leads the row, and a leading `+` with no word beside it is the row's most prominent
+   control saying least. That is a judgement about worth, not a mechanism — the exception
+   is one class, and if it is ever revisited, deleting `:not(.pbl-new-label)` and the step
+   6 rule is the whole of it.
+
+   The advisories and the count are words with no `.pbl-btn-label` around them and survive
+   both rungs untouched, which is what steps 4 and 5 below are for — this used to be stated
+   at step 1 as "the words go", which was wider than the rung and was how a note about
+   skipped files came to outlive the New button. */
+.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']) .pbl-btn-label:not(.pbl-new-label) {
 	display: none;
 }
 
@@ -121,26 +130,22 @@
 	display: none;
 }
 
-/* Steps 4 and 5 — the readouts, in the order they can be spared, and the rule behind
-   both: NO READOUT EVER PUSHES THE PRIMARY ACTION OFF THE ROW. Nothing above these rungs
-   sheds a readout, so the status block — which precedes New in the row — used to survive
-   a pane that had already pushed New off the right edge: an advisory about notes this
-   base skipped outliving the button that creates work.
+/* Steps 4 and 5 — the readouts, in the order they can be spared.
 
-   That sentence is narrower than the one this comment carried for two rounds, which said
-   the primary action outranks every readout FULL STOP. It does not, and no arrangement of
-   rungs can make it: New is last in the row, so whatever still overflows eats New first,
-   and a rung only ever buys one more control's width before that resumes. Measured at
-   step 5 with no batch running, `.pbl-new` was still clipped at 420px and 380px — and
-   every readout was already shed there, so the thing pushing it off was the CONTROLS. The
-   honest guarantee is therefore about readouts alone, and it is now true by construction:
-   every readout is either shed by these two rungs or shrinkable at the last one (the busy
-   indicator and the config warning, at the foot of this file), so none of them can be what
-   costs New its place. Below the width where the controls that never shed — the switcher, the focus,
-   the eye, the filter's button, the `⋯`, undo, and whatever the projection owns — fill
-   the row on their own, the row clips, and New is in that clip. No pixel figure is given
-   for that width because none has been measured; it moves with the projection and with
-   the theme's icon size.
+   These two rungs were written to keep one sentence true — no readout ever pushes the
+   primary action off the row — and that sentence has since been settled somewhere else
+   entirely. New now LEADS the row and the row clips from its right end, so no readout can
+   cost it its place whatever these rungs do. What was for two rounds a guarantee held up
+   by careful rung order is now a property of the arrangement, which is the better place
+   for it: `src/view/render/toolbar.ts` says why, and `src/view/CLAUDE.md` calls the
+   position load-bearing.
+
+   That does not make these rungs decoration. The row still has to shed SOMETHING as the
+   pane narrows, and the order here is the claim about which readouts can be spared and in
+   what order — advisories before the count, and neither before a control. Every readout is
+   still either shed by these two rungs or shrinkable at the last one (the busy indicator
+   and the config warning, at the foot of this file), so the row's readouts are bounded
+   rather than merely harmless.
 
    Step 4 is the two advisories — the grouping note and the ignored-note count, both
    `.pbl-toolbar-note`. Each is `cursor: help` text a user reads once and neither is
@@ -153,6 +158,16 @@
    that says the view is misconfigured, so shedding it makes a broken configuration
    silent at exactly the widths where the row is under most pressure. It shrinks at the
    last rung instead, with the busy indicator at the foot of this file.
+
+   The divider between the advisories and the count dies with whichever of its two
+   neighbours goes first, which is not one rung: `.pbl-count-sep-with-notes` is the class
+   the render writes when the only thing behind it is a `.pbl-toolbar-note`, and it goes
+   here at step 4 with them. Behind a CONFIG WARNING — which this rung deliberately spares
+   — the divider carries `.pbl-count-sep` alone and survives to step 5 with the count, or
+   the warning and the count would be pushed back together at exactly the widths where the
+   row is under most pressure, which is the thing the divider is for. A divider belongs to
+   the boundary it draws, and the boundary is only gone once BOTH sides of it are. Pair either one wrongly and
+   there is a rung where a line divides nothing from something.
 
    Step 5 is the count, one rung LOWER because it is the readout most worth keeping: it
    is the only thing on the row that says how much is in front of you, and it is short.
@@ -170,51 +185,74 @@
    two writers. Neither buys anything a reader loses: a divider is not what tells you a
    batch is running or that the view is misconfigured — the indicator and the warning say
    that themselves, and at the last rung they sit against the write zone without one. */
-.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']):not([data-pbl-fit='2']):not([data-pbl-fit='3']) .pbl-toolbar-note {
+.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']):not([data-pbl-fit='2']):not([data-pbl-fit='3']) .pbl-toolbar-note,
+.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']):not([data-pbl-fit='2']):not([data-pbl-fit='3'])
+	.pbl-count-sep-with-notes {
 	display: none;
 }
 
 .pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']):not([data-pbl-fit='2']):not([data-pbl-fit='3']):not([data-pbl-fit='4'])
 	.pbl-count-label,
 .pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']):not([data-pbl-fit='2']):not([data-pbl-fit='3']):not([data-pbl-fit='4'])
-	.pbl-status-sep {
+	.pbl-status-sep,
+.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']):not([data-pbl-fit='2']):not([data-pbl-fit='3']):not([data-pbl-fit='4'])
+	.pbl-count-sep {
 	display: none;
 }
 
-/* The two readouts with no rung, and neither may get one — both for the same reason, that
-   they are the only thing on the row saying the view is in a state the user has to know
-   about. The busy indicator: a batch is in flight, and half the controls beside it are
-   `disabled` BECAUSE of that batch, so hiding it turns a legible pause into a dead
-   toolbar. The config warning: a property this view needs is unnamed, and `display: none`
-   would take its `aria-label` out of the accessibility tree with the span — it has no `⋯`
-   entry and no second surface, so shedding it makes a broken configuration silent rather
-   than terse. So they truncate instead.
+/* Step 5's last member, and the one that used to be exempt. The write indicator says a
+   batch is in flight, and the argument for keeping it at every width was that a control
+   beside it is `disabled` BECAUSE of that batch — hiding the explanation turns a legible
+   pause into a dead toolbar. That argument was correct and is now outweighed: the
+   indicator carries `Updating 12 of 340` and is one of the widest things in the row, and
+   at a pane this narrow the space buys a control rather than a readout.
 
-   The indicator's text is fixed (`Updating…` for every batch, the count in a `title` —
-   see `syncBusyLabel`), so this is a small box rather than the wide reserved one the
-   earlier design needed, and the honest question became whether it needs a rule at all.
-   It does, for one reason: the rule stated at steps 4 and 5 above is that no readout ever
-   pushes the primary action off the row, and these are the readouts neither rung sheds.
-   These lines keep that sentence true by construction; without them it becomes a sentence
-   with two documented exceptions, which is the kind this file has already had to rewrite
-   twice.
+   **The cost is real and is not designed away.** Past this rung a running batch shows only
+   as a disabled undo button with nothing saying why. Undo is the one write control that
+   survives step 3, so it is exactly one control and exactly one unexplained state; that is
+   the trade, made deliberately, and it is on the vault list to look at under a real
+   backfill. */
+.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']):not([data-pbl-fit='2']):not([data-pbl-fit='3']):not([data-pbl-fit='4'])
+	.pbl-busy {
+	display: none;
+}
 
-   Truncating costs neither of them anything a reader is told: `role="status"` and
-   `aria-live` are on `.pbl-busy` itself with the count in a `title`, and the warning's
-   whole sentence is in its `aria-label` and its tooltip. What ellipsises is the visible
-   span, and both elements stay in the tree.
+/* Step 6 — the primary action's own label, and after it the row is icons.
+
+   Last because it is the most valuable word on the row: New leads, so a bare `+` is the
+   most prominent control saying least, and every other label had somewhere cheaper to go
+   first. The button keeps its own `aria-label`, so nothing loses its NAME here — the same
+   thing steps 1 and 2 say, and the reason the label was never the accessible name. */
+.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']):not([data-pbl-fit='2']):not([data-pbl-fit='3']):not([data-pbl-fit='4']):not([data-pbl-fit='5'])
+	.pbl-new-label {
+	display: none;
+}
+
+/* The one readout with no rung, and it may not get one. The config warning is the only
+   thing on the row saying the view is MISCONFIGURED, and `display: none` would take its
+   `aria-label` out of the accessibility tree with the span — it has no `⋯` entry and no
+   second surface, so shedding it makes a broken configuration silent rather than terse.
+   So it truncates instead. (The write indicator was in this block until it was given step
+   5 above; the reasoning that kept it here, and what shedding it costs, is stated there.)
+
+   Truncating costs nothing a reader is told: the warning's whole sentence is in its
+   `aria-label` and its tooltip, and what ellipsises is the visible span while the element
+   stays in the tree.
 
    Only at the LAST rung, and that scoping is the design rather than caution. A shrinkable
    flex item absorbs overflow by getting narrower instead of pushing `scrollWidth` past
    `clientWidth` — the exact defeat of the instrument this file warns about at the top,
    under the non-shrinking rule. Shrinkable at every rung, this readout would squash while
-   the labels step 1 exists to drop stayed whole, and the ladder would read "fits"
-   throughout. At the last rung the ladder has nothing left to shed, so there is no
+   the labels the earlier rungs exist to drop stayed whole, and the ladder would read
+   "fits" throughout. At the last rung the ladder has nothing left to shed, so there is no
    verdict left to corrupt: the only question there is what absorbs the overflow, and a
-   truncating readout is a better answer than a control pushed off the end. */
-.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']):not([data-pbl-fit='2']):not([data-pbl-fit='3']):not([data-pbl-fit='4'])
-	.pbl-busy,
-.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']):not([data-pbl-fit='2']):not([data-pbl-fit='3']):not([data-pbl-fit='4'])
+   truncating readout is a better answer than a control pushed off the end.
+
+   `text-overflow: ellipsis` does not apply to the children of an `inline-flex` box, so
+   what a vault will actually show here is a hard clip rather than an ellipsis. The
+   load-bearing half — the element stays in the accessibility tree with its label and its
+   visible span — holds either way, and the appearance is on the vault list. */
+.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']):not([data-pbl-fit='2']):not([data-pbl-fit='3']):not([data-pbl-fit='4']):not([data-pbl-fit='5'])
 	.pbl-config-warning {
 	flex: 0 1 auto;
 	min-width: 0;

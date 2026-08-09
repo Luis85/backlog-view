@@ -17,7 +17,12 @@ useViewHarness();
 const stubWidths = (bar: HTMLElement, pane: number, needs: Record<string, number>) => {
 	Object.defineProperty(bar, 'clientWidth', { value: pane, configurable: true });
 	Object.defineProperty(bar, 'scrollWidth', {
-		get: () => needs[bar.getAttribute('data-pbl-fit') ?? '0'],
+		// A rung the map does not describe reads as FITTING, so an under-specified map
+		// settles at its last declared step instead of climbing past it on `undefined`.
+		// Without this, adding step 6 to the ladder quietly moved every case whose map
+		// stopped at 5: `undefined > pane` is false, so the loop stopped at 6 having
+		// measured nothing, and the tests read as passing at a rung they never described.
+		get: () => needs[bar.getAttribute('data-pbl-fit') ?? '0'] ?? 0,
 		configurable: true,
 	});
 };
@@ -51,16 +56,23 @@ const stubFlooredWidths = (bar: HTMLElement, pane: number, content: number) => {
  * `getComputedStyle(el).display` becomes a real answer, which is what
  * `refocusShedControl` reads.
  *
- * BOTH partials, in the order `styles/index.css` declares them, and that is not tidiness.
+ * EVERY partial that writes a rule the questions below read, in the order
+ * `styles/index.css` declares them, and that is not tidiness.
  * The `⋯` and the filter's reveal are `display: none` by DEFAULT — that rule is in
  * `toolbar.css` — and `toolbarFit.css` only turns them ON from step 2. Loading the fit
  * partial alone left both reading as visible at step 0, which is precisely the state the
  * relaxing-direction test is about, so the test would have asked its question of a
  * document where the answer could not be wrong.
  *
+ * `busy.css` is here for the same reason, found the same way: `.pbl-busy` is
+ * `display: none` until a batch runs, that rule lives in the partial the indicator moved
+ * to at the 400-line cap, and without it the indicator read as VISIBLE at every rung — so
+ * the assertion that a rung sheds it was passing against a document where it had never
+ * been hidden by anything.
+ *
  * In `head`, once for the module: `useViewHarness` empties the BODY between tests.
  */
-for (const partial of ['styles/toolbar.css', 'styles/toolbarFit.css']) {
+for (const partial of ['styles/toolbar.css', 'styles/toolbarFit.css', 'styles/busy.css']) {
 	document.head.createEl('style', { text: readFileSync(partial, 'utf8') });
 }
 
@@ -514,6 +526,152 @@ describe('the toolbar fit ladder', () => {
 	});
 
 	/**
+	 * The divider dies with whichever of its two neighbours goes first, and that is not one
+	 * rung — which is the whole reason it carries a modifier rather than a single class.
+	 * Step 4 sheds the `.pbl-toolbar-note` advisories but deliberately SPARES the config
+	 * warning, so a divider that always shed at step 4 put the warning and the count back
+	 * against each other at exactly the widths where the row is under most pressure: the
+	 * defect the divider exists to prevent, reappearing one rung further down.
+	 *
+	 * Asked of the shipped stylesheet, and at step 4 AND step 5, because the interesting
+	 * claim is that the two cases part company at step 4 and rejoin at step 5.
+	 */
+	it('keeps the count divider through the rung that spares the warning behind it', () => {
+		const { containerEl } = makeView(fixture(), { orderProperty: 'note.parent' });
+		const bar = toolbarOf(containerEl);
+		const sep = containerEl.querySelector<HTMLElement>('.pbl-count-sep');
+		const warning = containerEl.querySelector<HTMLElement>('.pbl-config-warning');
+		if (!sep || !warning) throw new Error('the toolbar drew no warning to divide from');
+		// The modifier is what step 4 hides, so the warning case must not be wearing it.
+		expect(sep.classList.contains('pbl-count-sep-with-notes')).toBe(false);
+
+		bar.setAttribute('data-pbl-fit', '4');
+		expect(getComputedStyle(warning).display).not.toBe('none');
+		expect(getComputedStyle(sep).display).not.toBe('none');
+
+		// …and at the last rung the count goes, so the boundary is gone and so is the line.
+		bar.setAttribute('data-pbl-fit', '5');
+		expect(getComputedStyle(sep).display).toBe('none');
+	});
+
+	/**
+	 * A divider is drawn only where there is a boundary to draw, and the common case is
+	 * the one that gets this wrong: all three advisories are conditional, so an ordinary
+	 * view renders none of them and an unconditional count divider lands directly against
+	 * the status separator above it — two rules with a gap between and nothing between
+	 * them. Decided from what was DRAWN, the way the projection zone's own emptiness is.
+	 *
+	 * Both directions, because the presence case alone passes against an unconditional
+	 * divider and the absence case alone passes against never drawing one.
+	 */
+	it('draws the count divider only when an advisory precedes it', () => {
+		// The plain fixture configures its properties and skips no notes, so nothing in
+		// the status zone renders but the count itself.
+		const plain = makeView(fixture()).containerEl;
+		expect(toolbarOf(plain).querySelector('.pbl-toolbar-note')).toBeNull();
+		expect(toolbarOf(plain).querySelector('.pbl-config-warning')).toBeNull();
+		expect(toolbarOf(plain).querySelector('.pbl-count-sep')).toBeNull();
+
+		// An unresolvable order property is the cheapest advisory to provoke: it puts the
+		// config warning in the zone, which is a readout the count now has to be told
+		// apart from.
+		const warned = makeView(fixture(), { orderProperty: 'note.parent' }).containerEl;
+		expect(toolbarOf(warned).querySelector('.pbl-config-warning')).not.toBeNull();
+		expect(toolbarOf(warned).querySelector('.pbl-count-sep')).not.toBeNull();
+	});
+
+	/**
+	 * New's label is the one word the ladder keeps longest, and the claim is the ORDER
+	 * again: it is still there at the rung that takes every other label, and gone at the
+	 * last. Two rungs, because "gone at 6" alone passes against a label that never renders
+	 * and "present at 2" alone passes against one no rung ever sheds.
+	 */
+	it("keeps New's label past every other, and sheds it last", () => {
+		const { containerEl } = makeView(fixture());
+		const bar = toolbarOf(containerEl);
+		const label = containerEl.querySelector<HTMLElement>('.pbl-new-label');
+		const other = containerEl.querySelector<HTMLElement>('.pbl-focus-btn .pbl-btn-label');
+		if (!label || !other) throw new Error('the toolbar drew no labels to shed');
+
+		bar.setAttribute('data-pbl-fit', '2');
+		expect(getComputedStyle(other).display).toBe('none');
+		expect(getComputedStyle(label).display).not.toBe('none');
+
+		// Still there through every readout rung…
+		bar.setAttribute('data-pbl-fit', '5');
+		expect(getComputedStyle(label).display).not.toBe('none');
+
+		bar.setAttribute('data-pbl-fit', '6');
+		expect(getComputedStyle(label).display).toBe('none');
+	});
+
+	/**
+	 * The write indicator now has a rung, where it used to be one of two readouts that
+	 * never shed. The argument for the exemption — a batch is running and a control beside
+	 * it is disabled BECAUSE of that — was correct and was outweighed by what the readout
+	 * costs at a narrow pane once it carries a count.
+	 *
+	 * The config warning did NOT go with it and that asymmetry is the point of asserting
+	 * them together: it is the only readout saying the view is misconfigured, it has no
+	 * `⋯` entry, and `display: none` would take its `aria-label` out of the accessibility
+	 * tree with the span.
+	 */
+	it('sheds the write indicator at the readout rung and never the config warning', () => {
+		const { containerEl } = makeView(fixture(), { orderProperty: 'note.parent' });
+		const bar = toolbarOf(containerEl);
+		const busy = containerEl.querySelector<HTMLElement>('.pbl-busy');
+		const warning = containerEl.querySelector<HTMLElement>('.pbl-config-warning');
+		if (!busy || !warning) throw new Error('the toolbar drew no warning to keep');
+
+		// The indicator is `display: none` until a batch runs, so the question "does a rung
+		// shed it" can only be asked of one that is on.
+		busy.addClass('pbl-busy-on');
+		bar.setAttribute('data-pbl-fit', '4');
+		expect(getComputedStyle(busy).display).not.toBe('none');
+
+		bar.setAttribute('data-pbl-fit', '5');
+		expect(getComputedStyle(busy).display).toBe('none');
+		expect(getComputedStyle(warning).display).not.toBe('none');
+
+		bar.setAttribute('data-pbl-fit', '6');
+		expect(getComputedStyle(warning).display).not.toBe('none');
+	});
+
+	/**
+	 * Two positions in the row are load-bearing, and both are about the CLIP rather than
+	 * about looks — so they are asserted here, beside the ladder, rather than in the
+	 * toolbar's own file where they would read as layout preference.
+	 *
+	 * The row clips from its right end past the last rung. New leads it, which is what
+	 * makes "nothing costs the primary action its place" true by arrangement; a rung order
+	 * could never deliver it, because a rung buys one control's width and the overflow
+	 * resumes from the right. And the `⋯` sits at the head of the right-hand block rather
+	 * than among the write controls, because it is the only route to every shed control:
+	 * measured at 380px it was the FIRST thing cut when it sat last.
+	 *
+	 * Asserted as relative order, not as indices — an index breaks on the next separator
+	 * added and says nothing about why.
+	 */
+	it('leads with New and keeps the overflow button ahead of the clip edge', () => {
+		const { containerEl } = makeView(fixture());
+		const bar = toolbarOf(containerEl);
+		const at = (sel: string) => [...bar.children].findIndex((c) => c.matches(sel) || !!c.querySelector(sel));
+		const New = at('.pbl-new');
+		const overflow = at('.pbl-overflow-btn');
+		const undo = at('.pbl-undo-btn');
+		const count = at('.pbl-count-label');
+		expect([New, overflow, undo, count].every((i) => i >= 0)).toBe(true);
+
+		// Nothing at all before the primary action.
+		expect(New).toBe(0);
+		// The escape hatch is upstream of every control it can stand in for, so the clip
+		// reaches those first. Undo is the nearest of them and the one measured being cut.
+		expect(overflow).toBeLessThan(undo);
+		// …and the readouts are downstream of everything, which is what the rungs assume.
+		expect(count).toBeGreaterThan(undo);
+	});
+
+	/**
 	 * The switcher's words go a rung before every other label, and that ORDER is the
 	 * claim — not that each is shed somewhere. Its four labels are 205px, more than the
 	 * rest of the row's words together, and they name positions its icons already draw
@@ -529,9 +687,10 @@ describe('the toolbar fit ladder', () => {
 		const { containerEl } = makeView(fixture());
 		const bar = toolbarOf(containerEl);
 		const word = containerEl.querySelector<HTMLElement>('.pbl-mode-btn .pbl-btn-label');
-		// The New button's label names the type it creates — a value, and the one such
-		// label present in every projection.
-		const value = containerEl.querySelector<HTMLElement>('.pbl-new .pbl-btn-label');
+		// The focus picker's label names the current focus level — a value, and one drawn
+		// in every projection. NOT New's, which used to be this test's example and is now
+		// the one value label step 2 spares: it goes at step 6, which is the case below.
+		const value = containerEl.querySelector<HTMLElement>('.pbl-focus-btn .pbl-btn-label');
 		if (!word || !value) throw new Error('the toolbar drew no labels to shed');
 
 		expect(getComputedStyle(word).display).not.toBe('none');
@@ -629,38 +788,69 @@ describe('the toolbar fit ladder', () => {
 	 * are asserted here: the second half is the one that would rot silently.
 	 */
 	/**
-	 * What makes skipping the ticks safe, and it is now a property of the markup rather
-	 * than of a reservation held over it: the DRAWN text is `Updating…` for every batch of
-	 * every size, so no tick can change the row's width. The count is in the label's
-	 * `title`, which costs no layout.
+	 * What makes skipping the ticks safe. The count is visible again, so it is no longer
+	 * "the drawn text cannot change" — it is that the part which changes cannot change
+	 * WIDTH. The done number is reserved to the digit count of the TOTAL, which is fixed
+	 * for the whole batch, so 1 and 340 occupy one box.
 	 *
-	 * Also the accessibility half, which is why the count is not in the text and not in
-	 * `aria-label`: `.pbl-busy` is `role="status"` with `aria-live="polite"`, so its
-	 * CONTENT is announced on every change. Per-tick text meant a 340-file backfill
-	 * announced 340 times. Fixed content is announced once. That the announcement is
-	 * actually made once is a screen-reader fact; what this holds is the thing underneath
-	 * it — the content does not change.
+	 * jsdom lays nothing out, so this asserts the reservation rather than the width: the
+	 * `min-width` is present from the first tick, it is the total's digit count, and it
+	 * does not move as the done value gains digits. That the reservation actually HOLDS
+	 * rests on `tabular-nums` making every digit one `ch` wide, which only a browser can
+	 * show — it is on the vault list.
+	 *
+	 * The label is asserted constant beside it, because the reservation covers the
+	 * number and nothing else: a label that changed per tick would move the row with the
+	 * count sitting perfectly still.
 	 */
-	it('never changes the drawn text between ticks, and moves the count into the title', () => {
+	it('reserves the count to the total, so no tick can change the row\'s width', () => {
 		const { containerEl } = makeView(fixture());
 		const bar = toolbarOf(containerEl);
 		const label = () => bar.querySelector<HTMLElement>('.pbl-busy-label');
+		const done = () => bar.querySelector<HTMLElement>('.pbl-busy-done');
 
 		syncBusy(bar, { done: 1, total: 340 }, false);
-		expect(label()?.textContent).toBe('Updating…');
+		expect(label()?.textContent).toBe('Updating');
+		expect(done()?.textContent).toBe('1');
+		expect(done()?.style.getPropertyValue('--pbl-busy-digits')).toBe('3ch');
 		expect(label()?.getAttribute('title')).toBe('Updating 1 of 340…');
 
-		syncBusy(bar, { done: 47, total: 340 }, false);
-		expect(label()?.textContent).toBe('Updating…');
-		expect(label()?.getAttribute('title')).toBe('Updating 47 of 340…');
+		// Three digits where there was one: the number grows into the reservation rather
+		// than past it, and the label is still the same string.
+		syncBusy(bar, { done: 340, total: 340 }, false);
+		expect(label()?.textContent).toBe('Updating');
+		expect(done()?.textContent).toBe('340');
+		expect(done()?.style.getPropertyValue('--pbl-busy-digits')).toBe('3ch');
 
 		// A single-file write is over before it could be read, so it carries no count at
-		// all — the rule the visible label used to keep, now kept by the only place a
-		// count appears.
+		// all — and the label wears the ellipsis instead, which is the only thing left
+		// that distinguishes the two.
 		syncBusy(bar, null, false);
 		syncBusy(bar, { done: 1, total: 1 }, false);
 		expect(label()?.textContent).toBe('Updating…');
+		expect(done()?.textContent).toBe('');
 		expect(label()?.hasAttribute('title')).toBe(false);
+	});
+
+	/**
+	 * The counter is inside a `role="status"` region and must not be announced from
+	 * there — the whole reason the count was taken OUT of the text once already. The
+	 * mechanism is `aria-hidden` on the counter, so that is what is asserted; whether a
+	 * screen reader then stays quiet through 340 mutations is a screen-reader fact and is
+	 * on the vault list, exactly like the claim it replaces.
+	 */
+	it('keeps the visible counter out of the live region', () => {
+		const { containerEl } = makeView(fixture());
+		const bar = toolbarOf(containerEl);
+		const busy = bar.querySelector<HTMLElement>('.pbl-busy');
+		const count = bar.querySelector<HTMLElement>('.pbl-busy-count');
+
+		expect(busy?.getAttribute('role')).toBe('status');
+		expect(busy?.getAttribute('aria-live')).toBe('polite');
+		// On the COUNTER, not on the label beside it: the label is the sentence that
+		// should still be announced once when the batch starts.
+		expect(count?.getAttribute('aria-hidden')).toBe('true');
+		expect(bar.querySelector('.pbl-busy-label')?.hasAttribute('aria-hidden')).toBe(false);
 	});
 
 	/**
@@ -690,7 +880,7 @@ describe('the toolbar fit ladder', () => {
 		expect(label()?.firstChild).toBe(node);
 	});
 
-	it('re-runs when the busy indicator appears, and not on the ticks between', () => {
+	it('re-runs when the indicator appears or the count gains a digit, and not otherwise', () => {
 		const { containerEl } = makeView(fixture());
 		const bar = toolbarOf(containerEl);
 		stubWidths(bar, 700, { '0': 690, '1': 600, '2': 560, '3': 520, '4': 500, '5': 480 });
@@ -702,12 +892,26 @@ describe('the toolbar fit ladder', () => {
 		syncBusy(bar, { done: 1, total: 340 }, false);
 		expect(bar.getAttribute('data-pbl-fit')).toBe('1');
 
-		// A tick. Even if the row claimed it had grown, nothing re-measures — which is
-		// safe because the width genuinely cannot change between transitions: the visible
-		// text is fixed, which is what the test below this one holds.
+		// An ordinary tick, inside the same digit count. Nothing re-measures even though
+		// the row claims it has grown — which is safe because the counter's reservation
+		// holds every value of that width, and measuring here would be a forced layout
+		// read per file.
 		stubWidths(bar, 700, { '0': 900, '1': 880, '2': 860, '3': 840, '4': 820, '5': 800 });
 		syncBusy(bar, { done: 2, total: 340 }, false);
 		expect(bar.getAttribute('data-pbl-fit')).toBe('1');
+
+		// The tick that CROSSES a digit count is the one that can be wider than the
+		// reservation — exactly where a font without tabular figures breaks the promise —
+		// so this one does re-measure, and finds the row it was just told about.
+		stubWidths(bar, 700, { '0': 900, '1': 880, '2': 860, '3': 690, '4': 500, '5': 480, '6': 400 });
+		syncBusy(bar, { done: 10, total: 340 }, false);
+		expect(bar.getAttribute('data-pbl-fit')).toBe('3');
+
+		// …and the next tick inside the new digit count is quiet again: the row is told it
+		// shrank back and the ladder does not notice, because nothing asked it to.
+		stubWidths(bar, 700, { '0': 690, '1': 600, '2': 560, '3': 520, '4': 500, '5': 480, '6': 400 });
+		syncBusy(bar, { done: 11, total: 340 }, false);
+		expect(bar.getAttribute('data-pbl-fit')).toBe('3');
 
 		// Busy → idle: a transition again, so it re-measures.
 		stubWidths(bar, 700, { '0': 690, '1': 600, '2': 560, '3': 520, '4': 500, '5': 480 });

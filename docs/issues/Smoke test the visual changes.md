@@ -229,17 +229,17 @@ a real vault, in both light and dark:
    "Horizons" or "Timeline" beside it — a real vault has a different font and a real
    scrollbar, either of which can shift where a step trips. Confirm the row never grows a
    second line and never clips a control the ladder hasn't dropped yet.
-7. **Below ~420px.** The ladder has nothing left to shed here, so the row clips — and
-   what it clips is its right-hand end, which means **New goes first and that is the
-   specified behaviour**, not a failure (extension 4b in
-   `docs/requirements/A toolbar that fits one row.md`, which says why no arrangement of
-   rungs avoids it). This step is therefore about the manner of the clipping, not its
-   fact. Confirm: the row is still ONE row; the switcher is whole and still at the left
-   edge; nothing is scrolled sideways when a clipped control is tabbed to (the
-   `overflow: clip` decision — `hidden` made the bar a scroll container and moved the
-   switcher off the edge); and the clip cuts cleanly rather than leaving a button sliced
-   through its glyph. Note the width where New goes, since no measured figure for it
-   holds across themes and the ~420px here is the harness's.
+7. **Below ~420px.** The ladder has nothing left to shed here, so the row clips its
+   right-hand end. New now LEADS the row, so it is no longer what goes — confirm that
+   directly, since it is the thing the reordering was for: at 380px and at 320px the
+   New button, the switcher and the `⋯` should all still be whole and usable. What the
+   clip takes in the harness is undo at 380px, and the completed toggle and the filter's
+   button as well at 320px; those figures are the harness's and move with the theme's
+   icon size, so note where it actually happens rather than checking the number.
+   Confirm also: the row is still ONE row; nothing is scrolled sideways when a clipped
+   control is tabbed to (the `overflow: clip` decision — `hidden` made the bar a scroll
+   container and moved the switcher off the left edge); and the clip cuts between
+   controls rather than leaving a button sliced through its glyph.
 8. **Focus across a rung transition, both directions.** Focus a toolbar control, then
    narrow the pane until the ladder sheds that control — confirm focus lands somewhere
    still visible rather than vanishing. Then widen the pane back past the rung where the
@@ -253,11 +253,35 @@ a real vault, in both light and dark:
     while the pane is wide, then narrow it into the rung that would otherwise collapse an
     empty filter. Confirm the input stays open with its text and cursor position intact.
 11. **The busy indicator across a real backfill.** Run **Assign missing type and order
-    properties** (✨) over a few hundred notes. Confirm the visible label stays
-    `Updating…` and does not move or resize the row as the count climbs from one digit to
-    several; confirm the count itself only appears in the tooltip on hover; and — with a
-    screen reader running — confirm the busy status is announced once, not once per file
-    written.
+    properties** (✨) over a few hundred notes — enough that the total is three digits and
+    the count starts at one. Two things to watch, and they are separate:
+    - **The row must not move as the count climbs from `1` to `340`.** The done number is
+      reserved to the total's digit count with tabular figures, which is a claim about the
+      FONT: a theme whose interface font has no tabular figures, or which ignores
+      `font-variant-numeric`, makes the reservation an approximation. The ladder now
+      re-measures on each digit crossing, so the reservation being wrong costs a few
+      pixels of wobble inside a digit count rather than an overflow — watch for the
+      twitch, and note whether it is once at `9 → 10` and `99 → 100` (the refit working)
+      or continuous (tabular figures not applying).
+    - **With a screen reader running, the busy status should be announced once**, not once
+      per file, even though a number beside it is changing 340 times. The counter is
+      `aria-hidden` inside a `role="status"` region; whether that is enough is
+      implementation behaviour, and if it is not, the count has to leave the region
+      entirely rather than be hidden inside it.
+
+12. **A running batch below the last-but-one rung.** The indicator now sheds at step 5,
+    so at a very narrow pane a batch shows only as a disabled undo button with nothing
+    saying why. Narrow the pane until the count disappears, run the ✨, and judge whether
+    one unexplained disabled control reads as a pause or as a broken toolbar. This is a
+    deliberate trade — the space buys a control at that width — and it is the one item on
+    this list that is a question rather than a check.
+
+13. **The two button groups.** New and the switcher are one shared `.pbl-btn-group` now.
+    Check they read as segmented controls rather than as loose buttons — one border round
+    each set, a hairline between the segments, square corners inside and rounded outside —
+    and that neither shows Obsidian's default button chrome under a themed vault. The New
+    button and its type chevron in particular should look like two halves of one control,
+    not a button with a button stuck to it.
 
 ## Structural debt this branch is leaving behind
 

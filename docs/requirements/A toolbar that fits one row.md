@@ -35,22 +35,37 @@ today's icon size, add up to.
 | **Actor** | Backlog owner |
 | **Trigger** | Opening a saved view, resizing the pane, narrowing a split, switching projection, or a batch write starting or finishing |
 | **Preconditions** | A `product-backlog` view is open |
-| **Guarantee** | The row never wraps to a second line. Below the width that holds everything, controls are shed in a fixed order — always into the `⋯`, never into nothing — and no readout is ever what costs the primary action its place. What no rung sheds is listed in extension 4b, which is also where the limit of this guarantee is stated. |
+| **Guarantee** | The row never wraps to a second line. Below the width that holds everything, controls are shed in a fixed order — always into the `⋯`, never into nothing. Past the last rung the row clips from its right end, so what survives is New, the switcher and the `⋯`: what you are looking at, what you can add, and the way back to everything shed. Extension 4b measures where each of the rest goes, and states the floor. |
 
 **Main flow**
 
-1. `renderToolbar` draws the row in zones: the switcher, then `renderProjectionZone` for
-   whatever the current projection owns (nothing, on three of the four), a spacer, the
-   shared controls, and the primary New button anchored last.
+1. `renderToolbar` draws the row in zones: the primary New button, the switcher, then
+   `renderProjectionZone` for whatever the current projection owns (nothing, on three of
+   the four), a spacer, the `⋯`, the shared controls, and the status readouts last.
+   New and the switcher are both `.pbl-btn-group` — one segmented box, a hairline
+   between the segments — because in each of them two or more buttons are one control.
 2. After the row is in the DOM, `syncToolbarFit` measures it: while `scrollWidth` exceeds
    `clientWidth` it advances a step, up to five, and writes the step as `data-pbl-fit` on
    the toolbar element.
 3. `styles/toolbarFit.css` reads that attribute. Each step hides more of the row — the
    switcher's four words first, then the remaining labels together with the filter and
    the dated axis's two singles, then the backfill and bulk-collapse buttons, then the
-   two advisory notes, then the count with the divider that led its zone — and
-   `overflow: clip` on the bar means anything a step has not caught simply clips rather
-   than wrapping.
+   two advisory notes with the divider that separated them from the count, then the count
+   with the divider that led its zone — and `overflow: clip` on the bar means anything a
+   step has not caught simply clips rather than wrapping.
+
+   A divider dies with whichever of its two neighbours goes first, and answering that
+   takes two questions rather than one rung. At RENDER time: the three advisories are all
+   conditional, so the count's divider is drawn only when one of them actually was —
+   decided from the DOM, the way `renderProjectionZone`'s empty zone is — since on an
+   ordinary view none renders and an unconditional divider would sit straight against the
+   status separator above it. At LADDER time: step 4 sheds the two `.pbl-toolbar-note`
+   advisories but spares the config warning, so the divider behind a warning must outlive
+   step 4 and go at step 5 with the count, while a divider behind only notes goes when
+   they do. The render writes the difference as a modifier class rather than the ladder
+   guessing it. Get either question wrong and the warning and the count are pushed back
+   together at exactly the widths where the row is under most pressure — which is the
+   thing the divider is there to prevent.
 
    The switcher leads that order because its words are the most expensive and the least
    informative: 205px of the row against every other label put together, naming positions
@@ -59,7 +74,10 @@ today's icon size, add up to.
    New creates — that no icon can carry.
 4. Every control a step removes from the layout is still reachable: from step 2 onward
    the `⋯` is on screen, and its menu carries every entry a rung has shed, reading each
-   one's `disabled` and pressed state off the very button it mirrors.
+   one's `disabled` and pressed state off the very button it mirrors. It is drawn
+   immediately after the spacer, at the head of the row's right-hand block rather than
+   among the write controls, because the row clips from the RIGHT and this is the one
+   control whose loss takes every shed control with it.
 5. The pane widens, or the row's own content changes — a different projection, a new
    count, a narrower label. The measurement re-runs from step 0, never from the step in
    place, so the ladder can relax as freely as it can tighten.
@@ -93,30 +111,57 @@ today's icon size, add up to.
   *arrives* — not at each of the four places that could otherwise take it away, which
   is how this shipped broken four times before the rule moved there.
 - **4b — the pane keeps narrowing past the last rung.** The row clips rather than
-  wrapping, so one row still holds. What it holds is the set no rung sheds — the
-  switcher, the focus picker, the completed toggle, the filter's reveal button, the `⋯`,
-  undo, New, and whatever the active projection owns — and **New is last of them in
-  source order, so the clip takes New first.** That is the honest statement and not an
-  oversight to be fixed by more rungs: a rung buys one control's width and the overflow
-  resumes eating from the right, so no arrangement of rungs makes a trailing button
-  survive a row its leading controls already fill. What the ladder does guarantee is
-  narrower and is kept by construction — *no readout* ever costs New its place, every
-  one being either shed by rungs 4 and 5 or shrinkable at the last (see the acceptance
-  criteria). A clipped New is a real capability loss and not a rung's shed control: the
-  `⋯` mirrors only what a rung took, so New has no entry there, and the palette
-  (`src/commands/`) registers the readme and the scaffold, not creation — the row's own
-  add buttons are the way in. Creating from a pane that narrow means widening it. No
-  pixel figure is given because none has been measured that holds: the width moves with
-  the projection and with the theme's icon size.
+  wrapping, so one row still holds, and what it clips is its RIGHT end. Moving the
+  primary action to the head of the row is what settled this: New used to be last and
+  was therefore the first thing cut, which no arrangement of rungs could fix — a rung
+  buys one control's width and the overflow resumes eating from the right. Now the
+  order of loss runs the other way, from the least to the most consequential.
+
+  Measured in the harness, one row (47px) at every width down to 320px, on both
+  projections: at 500px nothing is clipped at all; at 420px nothing; at 380px the clip
+  reaches **undo**; at 320px the completed toggle and the filter's button go with it.
+  New, the switcher and the `⋯` survive every one of them, which is the property this
+  extension exists to state — the two controls that say what you are looking at and
+  what you can add, plus the way back to everything shed.
+
+  What is lost is lost honestly rather than silently: undo keeps its Ctrl/Cmd+Z chord,
+  so the 380px case costs a button and no capability. The 320px case does cost one —
+  the completed toggle has no `⋯` entry, because no rung sheds it and the menu mirrors
+  only what a rung took. That is the floor, and it is a floor rather than a defect to
+  be rung away: below it the row is narrower than the controls that must always be on
+  it. The pixel figures are the harness's own and move with the theme's icon size and
+  the projection.
+
 - **5a — the app's theme or font changes, or a pane resizes.** Both re-run the ladder:
   a `css-change` event and the tree's `ResizeObserver` are the only two triggers besides
   the render passes below, because a measured ladder is only as good as its last
   measurement and a theme swap invalidates it exactly as a resize does.
-- **5b — a batch write starts or finishes.** The busy indicator's appearance is the
-  only thing about it that can change the row's width — its label text is fixed
-  (`Updating…`, for every batch, of any size) precisely so nothing else about it needs
-  measuring — so the ladder re-runs on that visibility transition and deliberately not
-  on the per-file ticks between it and the next one.
+- **5b — a batch write starts or finishes.** The indicator reads `Updating 12 of 340` and
+  counts up per file. The ladder re-runs on the visibility transition and on the one or
+  two ticks where the count gains a digit, and on none of the rest. What makes the rest
+  free is a reservation: the done number is the only part that varies, and it is held to
+  the digit count of the TOTAL — fixed for the whole batch — with tabular figures, so
+  every digit is exactly the `ch` the reservation is written in and `1 of 340` and
+  `340 of 340` occupy one box. The number is published from TS as `--pbl-busy-digits` and
+  the stylesheet decides what it means, the way every other computed width in this plugin
+  reaches CSS.
+
+  The digit-count refit is what makes that safe rather than merely likely. `tabular-nums`
+  is a request the interface font can decline, and a font without tabular figures gives
+  every digit its own width — so the counter can outgrow a reservation written in `ch`,
+  and a long batch would otherwise reach the next threshold with nothing re-measuring.
+  Twice in a 340-file batch is two forced layout reads rather than three hundred, so the
+  per-tick measurement this design exists to avoid is still avoided. What survives is a
+  few pixels of wobble WITHIN a digit count on such a font, which no rung and no
+  reservation can catch and which the row clips rather than wraps.
+
+  The counter is `aria-hidden`. `.pbl-busy` is `role="status"`, so a per-file number
+  inside it is a 340-note backfill announced 340 times; hiding the counter from the
+  accessibility tree leaves the announced content the static `Updating`, said once. The
+  count stays reachable without sight through the label's `title`, which names nothing
+  above it. **Whether a screen reader is actually silent through a mutation inside an
+  `aria-hidden` descendant is a spec claim, not a measured one** — no screen reader runs
+  in this repository, and it is on the vault list with the tabular-figure width.
 
 ## Acceptance criteria
 
@@ -127,12 +172,15 @@ today's icon size, add up to.
   module owns that number.
 - Every control a rung removes from the row remains operable through the `⋯`, with the
   same enabled and pressed state as the button it stands in for.
-- No readout ever costs the primary action its place. That is the guarantee the ladder
-  can keep and it is kept by construction rather than by arrangement: every readout is
-  either shed by the advisory and count rungs or shrinkable at the last one, and the
-  status zone's divider is shed with the readouts it divides. What still presses on New
-  below the last rung is controls, which is extension 4b and not a defect this list can
-  promise away.
+- Nothing costs the primary action its place, and that is now true by ARRANGEMENT rather
+  than by rung order: New leads the row, the row clips from the right, so no readout and
+  no control can push it off. The readout half is still kept by construction underneath —
+  every readout is either shed by the advisory and count rungs or shrinkable at the last,
+  and each divider sheds with the boundary it draws — which is what keeps the shedding
+  order legible rather than merely harmless.
+- The `⋯` is never what the clip takes. It is the only route to every shed control, so it
+  is drawn at the head of the row's right-hand block rather than among the controls it
+  stands in for.
 - A rung never fires while the removed control holds focus without handing focus
   somewhere still usable: the `⋯` when the control was reachable through it, and never
   the filter, which the ladder treats as unshedable while focused.
