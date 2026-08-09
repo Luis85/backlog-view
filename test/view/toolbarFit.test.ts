@@ -514,6 +514,32 @@ describe('the toolbar fit ladder', () => {
 	});
 
 	/**
+	 * The status zone's divider is shed WITH the readouts it divides, not left behind them.
+	 * Step 4 sheds the advisories and the count stays, so the line still divides something;
+	 * step 5 takes the count and the line goes with it, or a rule stated "no readout ever
+	 * pushes the primary action off the row" is kept by shedding every readout and spending
+	 * a divider's width in front of New anyway.
+	 *
+	 * Both rungs, because one of them is the whole claim: an assertion at step 5 alone
+	 * passes just as well against a selector that hid the divider from step 1.
+	 */
+	it('sheds the status divider with the count, and not before it', () => {
+		const { containerEl } = makeView(fixture());
+		const bar = toolbarOf(containerEl);
+		const sep = containerEl.querySelector<HTMLElement>('.pbl-status-sep');
+		const count = containerEl.querySelector<HTMLElement>('.pbl-count-label');
+		if (!sep || !count) throw new Error('the toolbar drew no status zone to shed');
+
+		bar.setAttribute('data-pbl-fit', '4');
+		expect(getComputedStyle(count).display).not.toBe('none');
+		expect(getComputedStyle(sep).display).not.toBe('none');
+
+		bar.setAttribute('data-pbl-fit', '5');
+		expect(getComputedStyle(count).display).toBe('none');
+		expect(getComputedStyle(sep).display).toBe('none');
+	});
+
+	/**
 	 * The one readout the advisory rung must not take. `display: none` removes an element
 	 * from the accessibility tree with its `aria-label`, and the config warning's whole
 	 * sentence lives there and in a tooltip — it has no `⋯` entry and no second surface,

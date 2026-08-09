@@ -137,13 +137,27 @@
    Step 5 is the count, one rung LOWER because it is the readout most worth keeping: it
    is the only thing on the row that says how much is in front of you, and it is short.
    Its level breakdown is a tooltip, which goes with it — the same cost step 4 pays, for
-   the same reason: a number nothing acts on. It goes before New does. */
+   the same reason: a number nothing acts on. It goes before New does.
+
+   The status zone's leading DIVIDER goes with the count, and unconditionally. By this
+   rung the advisories and the count are shed, so on an idle, correctly configured view
+   nothing follows it until New — a rule stated "no readout ever pushes the primary
+   action off the row" is not kept by shedding every readout and leaving the line that
+   divided them, and 1px plus a gap is spent at exactly the widths where New is being
+   clipped. Unconditional because the alternative asks CSS a question it cannot ask
+   here: whether the two never-shed readouts are showing is `:has()`, which this plugin
+   does not use (`src/view/CLAUDE.md`, "Controls"), or a third toolbar-level flag with
+   two writers. Neither buys anything a reader loses: a divider is not what tells you a
+   batch is running or that the view is misconfigured — the indicator and the warning say
+   that themselves, and at the last rung they sit against the write zone without one. */
 .pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']):not([data-pbl-fit='2']):not([data-pbl-fit='3']) .pbl-toolbar-note {
 	display: none;
 }
 
 .pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']):not([data-pbl-fit='2']):not([data-pbl-fit='3']):not([data-pbl-fit='4'])
-	.pbl-count-label {
+	.pbl-count-label,
+.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']):not([data-pbl-fit='2']):not([data-pbl-fit='3']):not([data-pbl-fit='4'])
+	.pbl-status-sep {
 	display: none;
 }
 

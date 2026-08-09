@@ -89,7 +89,10 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	// time, so it can sit anywhere in it and still see every button.
 	renderOverflow(host, barEl);
 
-	barEl.createDiv({ cls: 'pbl-toolbar-sep' });
+	// Classed, unlike the other two, because the last rung sheds it: the readouts it
+	// divides are all gone by then, and a divider that divides nothing is width in front
+	// of New. See `styles/toolbarFit.css`.
+	barEl.createDiv({ cls: 'pbl-toolbar-sep pbl-status-sep' });
 
 	// 5 — status: the notes, the warning, the busy indicator, the count.
 	if (host.groupingIgnored) {

@@ -47,9 +47,9 @@ today's icon size, add up to.
    the toolbar element.
 3. `styles/toolbarFit.css` reads that attribute. Each step hides more of the row —
    control labels first, then the filter and the dated axis's two singles, then the
-   backfill and bulk-collapse buttons, then the two advisory notes, then the count — and
-   `overflow: clip` on the bar means anything a step has not caught simply clips rather
-   than wrapping.
+   backfill and bulk-collapse buttons, then the two advisory notes, then the count with
+   the divider that led its zone — and `overflow: clip` on the bar means anything a step
+   has not caught simply clips rather than wrapping.
 4. Every control a step removes from the layout is still reachable: from step 2 onward
    the `⋯` is on screen, and its menu carries every entry a rung has shed, reading each
    one's `disabled` and pressed state off the very button it mirrors.
