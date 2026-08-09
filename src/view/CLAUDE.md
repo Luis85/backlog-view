@@ -247,6 +247,36 @@ free of runtime code so imports stay cycle-free.
   the flag to guard against a click that lands on a child element and bubbles past
   `disabled`, which does not reopen the split `syncFilterUi` once caused, since a
   reader cannot disagree with the writer about what the value is.
+- **The toolbar is zones, and only one of them belongs to the projection.** The switcher
+  leads, `renderProjectionZone` draws whatever this projection owns and *nothing* when it
+  owns none — the zone and its leading separator are created together and removed
+  together, decided from what was drawn rather than from a second reading of the settings
+  — then the spacer, then the controls that are the same in every projection. Adding a
+  projection is adding a case to that switch; a control added anywhere else in the row is
+  a claim that it belongs to every projection.
+- **Two questions to ask of anything added to the toolbar.** *Does it change the row's
+  width without a render behind it?* Then it calls `syncToolbarFit` itself —
+  `renderTreeContent`'s own call at its end covers a full render and a content-only one
+  alike, and four paths call it separately because nothing routes through that render at
+  all: revealing or collapsing the filter, the busy indicator appearing or going, a pane
+  resize, and a theme or font change (`css-change`, because the ladder measures rendered
+  text and nothing else notices one changing). *Must it survive `barEl.empty()`?* Then it
+  lives on the toolbar element, not inside it — `data-pbl-fit` and `pbl-filter-open` both
+  do, while `pbl-filter-active` may stay on the box because `renderFilterBox` re-derives
+  it from the input's value. The two interact, which is the failure worth remembering:
+  state lost on a rebuild hid a control, and the focus mechanism then restored focus to
+  something invisible, silently.
+- **The row never wraps, and what it sheds it does not withhold.** `syncToolbarFit`
+  (`render/toolbarFit.ts`) measures the rendered row and writes a step as `data-pbl-fit`;
+  `styles/toolbarFit.css` says what each step drops. It MEASURES where `columnFit` sums,
+  because a control's width is its translated label and nothing owns that. Anything that
+  changes a control's own width re-runs it, not only a resize — revealing the collapsed
+  filter is a ~130px change with no render behind it, which is why the `:focus` width
+  growth the input used to have was deleted rather than accommodated. Every control a
+  step drops is in the `⋯`, and each entry is disabled exactly when the button it
+  duplicates is, read off that button's `disabled` property: `syncCollapseCtls` and
+  `syncBusy` own that flag, and a condition re-derived in the menu would be a second
+  opinion about it.
 
 ## The board projection
 

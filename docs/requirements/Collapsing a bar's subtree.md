@@ -199,12 +199,9 @@ The toolbar's own two bulk actions this feeds — `expandAll`, `collapseAll`, th
 `src/view/render/toolbarControls.ts` ahead of the toolbar-zones work (2026-08-08), a
 pure extraction with no behaviour change: `render/toolbar.ts` still decides what
 appears where and calls the moved functions unchanged, driven by the same
-`test/view/toolbarCollapse.test.ts` above. The module also carries the toolbar's shared
-button primitive (`iconButton`) and its keyed focus-restore pair
-(`capturedFocusKey`/`refocusByKey`) — used by every control on the bar, not only these
-two — for the same reason `capturedFocusKey` and `refocusByKey` had to move together:
-a mechanism built on one shared attribute is one edit from disagreeing with itself if
-its two halves live apart.
+`test/view/toolbarCollapse.test.ts` above. The rest of that module — the shared control
+vocabulary, the projection-zone dispatch and the `⋯` overflow — is
+[[A toolbar that fits one row]].
 
 **Not built: indentation.** The rows are still a flat list with a chevron in it — the
 badge names the level and nothing draws the ancestry. Showing that on the roadmap is
