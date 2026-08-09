@@ -197,11 +197,15 @@ describe('the board keyboard', () => {
 	});
 
 	/**
-	 * The pane's background click clears BOTH halves of the one selection. Clearing the
-	 * card and leaving the column stop would be a board that reads as holding nothing
-	 * and still answers Alt+arrow with a move.
+	 * Two claims in one, and the second is why the click is dispatched on the COLUMN
+	 * STRIP rather than on the pane element: the board fills its pane with containers,
+	 * so the blank space a user can actually hit belongs to one of those and never to
+	 * the scroller — a test that dispatched on the scroller would pass while the gesture
+	 * stayed unreachable. And the release is of BOTH halves of the one selection:
+	 * clearing the card while a column stop stood would be a board reading as empty and
+	 * still answering Alt+arrow with a move.
 	 */
-	it('a click on the pane itself releases a held column stop', () => {
+	it('a click on the board’s blank space releases a held column stop', () => {
 		const vault = new FakeVault();
 		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10, status: 'New' } });
 		const { containerEl, view } = board(vault);
@@ -209,10 +213,20 @@ describe('the board keyboard', () => {
 		key(tree, 'ArrowRight');
 		expect(view.selectedBoardColumn).toBe(0);
 
-		tree.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		containerEl.querySelector('.pbl-board-cols')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
 		expect(view.selectedBoardColumn).toBeNull();
 		expect(columnsOf(containerEl)[0].hasClass('pbl-col-selected')).toBe(false);
+	});
+
+	/** The card is an item, so the click that takes it must not also be a click on nothing. */
+	it('keeps the card selection when the click lands on a card', () => {
+		const vault = boardVault();
+		const { containerEl } = board(vault);
+
+		cardByTitle(containerEl, 'Epic A').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		expect(cardByTitle(containerEl, 'Epic A').hasClass('pbl-selected')).toBe(true);
 	});
 
 	it('End and reverse entry reach the LAST card of the last column', () => {

@@ -1,5 +1,13 @@
 import { BacklogItem } from '../domain/model';
 
+/**
+ * What a click inside the pane can land on and still mean something: an item in either
+ * shape, or a control that acts on its own. Everything else the pane draws is
+ * background, and a click there means "nothing" — see the listener in the constructor.
+ * A row's own controls need no entry: they sit inside `.pbl-row`, which is already here.
+ */
+const NOT_BACKGROUND = '.pbl-row, .pbl-card, button';
+
 /** Source of unique element ids for the aria attributes, shared across view instances. */
 let elementIdCounter = 0;
 
@@ -41,11 +49,16 @@ export class SelectionController {
 		// The pointer's way OUT of a selection, and the reason it is needed: `Escape`
 		// clears one, but only while the pane has focus, and opening a note hands focus
 		// to the editor — so after the gesture that selects, the key that unselects is
-		// out of reach. `evt.target === treeEl` is the whole condition: the scroller
-		// itself, which is the empty space below and beside the rows. A click on
-		// anything inside it is that thing's, and bubbles past this untouched.
+		// out of reach.
+		//
+		// Background is defined by what it is NOT, and it has to be: `evt.target ===
+		// treeEl` describes the empty strip under a tree's last row and almost nothing
+		// else, because every projection fills the pane with containers of its own —
+		// `.pbl-board-cols`, a column's card list, the roadmap's grid, a row's
+		// `.pbl-children`. A click in the blank part of any of those is a click on
+		// nothing, and the equality test called it a click on something.
 		treeEl.addEventListener('click', (evt) => {
-			if (evt.target === treeEl) this.clearSelection();
+			if (!(evt.target as Element | null)?.closest(NOT_BACKGROUND)) this.clearSelection();
 		});
 	}
 
