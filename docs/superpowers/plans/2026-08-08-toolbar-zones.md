@@ -1872,6 +1872,15 @@ miniature, firing on every focus at every step:
 }
 ```
 
+**And delete the `transition: width 120ms ease-in-out` from `.pbl-filter-input` with it.**
+It exists only to animate that `:focus` rule, so once the rule is gone it animates a width
+that can no longer change — dead declaration, and one a design linter is right to keep
+flagging, since animating `width` is a layout property and thrashes. Removing the cause
+without removing the animation of it leaves the worse half behind.
+
+Nothing else animates on this input, so nothing about the reveal at step 2 needs it: the
+input appears and disappears by `display`, which was never transitionable.
+
 and add `display: none;` to `.pbl-filter-reveal` beside `.pbl-overflow-btn`'s.
 
 Import the partial in `styles/index.css`, after `toolbar.css` — the ladder's rules have to
