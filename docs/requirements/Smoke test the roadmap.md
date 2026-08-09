@@ -129,10 +129,12 @@ and each stays open until they are, so a stale check is visible rather than assu
   that no assertion had: a flagged row's title truncates to make room for the glyph
   (`Offline-first s… ⚠`), and an arrow crossing a long bar is drawn OVER it rather than
   behind it, unlike the milestone line. That second one was then made to match the
-  milestone line, and reversed again on 2026-08-09 by the same means — looking — because
-  an arrow hidden by a third row's bar reads as two stubs rather than one connection.
-  Over is where it stands; the round trip is recorded because the argument for behind
-  (consistency with the milestone line) is real and will be made again.
+  milestone line, and the round trip after it is the part worth keeping: on 2026-08-09 a
+  `z-index` lifted the arrows over the bars again, on a reading of "arrows on top" that
+  meant on top of the date grid. One declaration cannot separate the two, since bars and
+  gridlines are told apart only by document order — so the settled rule is a SANDWICH
+  (above the grid furniture, beneath the bars) and it is met by having no z-index at all.
+  Two wrong readings of one sentence, both caught by looking rather than by the suite.
 - The dated axis's own date marks, found the same day: a milestone's diamond is centred on
   its day boundary while its full-height line was drawn FROM that boundary, so the line sat
   half its width to the right of the mark it belongs to — 1px at the default scale, plainly
