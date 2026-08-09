@@ -38,6 +38,15 @@ export class SelectionController {
 		this.treeEl = treeEl;
 		this.rows = rows;
 		this.colEls = colEls;
+		// The pointer's way OUT of a selection, and the reason it is needed: `Escape`
+		// clears one, but only while the pane has focus, and opening a note hands focus
+		// to the editor — so after the gesture that selects, the key that unselects is
+		// out of reach. `evt.target === treeEl` is the whole condition: the scroller
+		// itself, which is the empty space below and beside the rows. A click on
+		// anything inside it is that thing's, and bubbles past this untouched.
+		treeEl.addEventListener('click', (evt) => {
+			if (evt.target === treeEl) this.clearSelection();
+		});
 	}
 
 	selectItem(item: BacklogItem, scroll = true): void {
@@ -56,6 +65,9 @@ export class SelectionController {
 	}
 
 	clearSelection(): void {
+		// A held column stop is a selection too, and clearing one while leaving the
+		// other is a pane that reads as empty and still answers the move keys.
+		if (this.selectedBoardColumn !== null) this.selectBoardColumn(null);
 		this.selectedPath = null;
 		this.deselectRows();
 		this.syncActiveDescendant(null);

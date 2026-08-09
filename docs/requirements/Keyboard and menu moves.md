@@ -35,6 +35,15 @@ usable rather than merely viewable when dragging is not an option.
 **Extensions**
 
 - **2a — the user presses `/`.** Focus jumps to the quick filter ([[Quick filter]]).
+- **2c — the user wants out of the selection.** `Escape` clears it, and a click on the
+  **pane itself** — the empty space below or beside the rows, never a row and never a
+  control — does the same. The pointer answer lives beside the keyboard one because the
+  key alone was not one: `Escape` only reaches the view while the pane has focus, and the
+  commonest way to select a row is a click that opens its note, which hands focus to the
+  editor. So the selection a pointer made had no way back out except selecting something
+  else. Both clear the WHOLE selection, the board's column stop included: a pane that
+  reads as holding nothing must not still answer `Alt`+arrow with a move. Clearing is
+  the only thing this click means — it opens nothing, writes nothing and moves no focus.
 - **2b — the user presses `Ctrl`/`Cmd`+`Z`.** The last batch is taken back
   ([[Undo and redo]]) — handled before the empty-tree return, because the change being
   undone may be what emptied it.
@@ -54,11 +63,18 @@ usable rather than merely viewable when dragging is not an option.
   work is hidden.
 - Per-row controls inside the tree (**+**, the state chip) are real buttons with
   `tabindex="-1"`: reachable by assistive tech, never a `Tab` stop of their own.
+- A selection can be left without selecting something else: `Escape` clears it, and so
+  does a click on the pane's own background — which is what a pointer has after opening a
+  note has taken focus to the editor.
 
 ## Where it lives
 
 `src/view/interactions/keyboard.ts` (navigation and shortcuts) ·
 `src/view/interactions/menu.ts` (the context menu) ·
-`src/view/interactions/structure.ts` (move, indent, outdent).
+`src/view/interactions/structure.ts` (move, indent, outdent) ·
+`src/view/selection.ts` (what a selection IS, and both ways out of one: `clearSelection`,
+which releases the card and the board's column stop together, and the background-click
+listener wired where the scroller is known — `evt.target === treeEl` is the whole
+condition, so a click on anything inside it stays that thing's).
 Tests: `test/view/keyboard.test.ts`, `test/view/menu.test.ts`,
-`test/view/visibility.test.ts`.
+`test/view/visibility.test.ts`, `test/view/boardMoves.test.ts`.

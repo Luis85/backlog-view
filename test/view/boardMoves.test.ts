@@ -196,6 +196,25 @@ describe('the board keyboard', () => {
 		expect(view.selectedBoardColumn).toBeNull();
 	});
 
+	/**
+	 * The pane's background click clears BOTH halves of the one selection. Clearing the
+	 * card and leaving the column stop would be a board that reads as holding nothing
+	 * and still answers Alt+arrow with a move.
+	 */
+	it('a click on the pane itself releases a held column stop', () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10, status: 'New' } });
+		const { containerEl, view } = board(vault);
+		const tree = treeOf(containerEl);
+		key(tree, 'ArrowRight');
+		expect(view.selectedBoardColumn).toBe(0);
+
+		tree.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		expect(view.selectedBoardColumn).toBeNull();
+		expect(columnsOf(containerEl)[0].hasClass('pbl-col-selected')).toBe(false);
+	});
+
 	it('End and reverse entry reach the LAST card of the last column', () => {
 		const vault = boardVault();
 		// Two cards in the final column, so the far edge is not also the near one.

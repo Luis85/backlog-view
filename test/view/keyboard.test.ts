@@ -82,6 +82,26 @@ describe('opening and keyboard', () => {
 		expect(tree.hasAttribute('aria-activedescendant')).toBe(false);
 	});
 
+	/**
+	 * The pointer's way out, and it lives beside the key because the key alone was not
+	 * one: `Escape` needs the pane focused, and the gesture that selects a row — a click
+	 * that opens its note — hands focus to the editor. A click on the scroller itself is
+	 * the only click that means "nothing", so the guard is the target and not the class
+	 * of whatever was hit.
+	 */
+	it('clears the selection when the click lands on the pane itself', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+		const tree = treeOf(containerEl);
+		rowByTitle(containerEl, 'Epic A').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(containerEl.querySelector('.pbl-selected')).not.toBeNull();
+
+		tree.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		expect(containerEl.querySelector('.pbl-selected')).toBeNull();
+		expect(tree.hasAttribute('aria-activedescendant')).toBe(false);
+	});
+
 	it('points aria-activedescendant at the selected row across renders', () => {
 		const vault = fixture();
 		const { containerEl, view } = makeView(vault);
