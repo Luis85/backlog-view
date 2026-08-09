@@ -127,6 +127,21 @@ base settings are saved on the view, working position on the device.
 - **2b — a `Test case` has no suite**, whether created that way or dropped there. It is
   drawn as a root of its own, beside the suites. That is the honest picture and it is the
   same answer the backlog tree gives a parentless item.
+- **2d — the user tries to reorder a promoted root.** It **shares no ranking**, and the
+  precedent is two lines up in the same function: `siblingContext` already returns null for
+  a `focusRoot` and for an `outsideFilter` ancestor, because *an item whose real siblings
+  are not on screen cannot be ordered against the ones that are*. A promoted root is
+  exactly that item — drawn among the suites, actually a child of a hidden `PBI` — so Move
+  up/down/top/bottom are inert on it and no order is written. Ranking it against the suites
+  would compute an order from one sibling group and store it on a note that belongs to
+  another: a write that lands, changes nothing visible, and is wrong in the file.
+  It is not stuck. Dragging it onto a suite reparents it, which is the actual repair for a
+  mis-parented test and the gesture a user reaches for anyway. What is refused is only the
+  meaningless half — and refusing it is what the two existing nulls already do, rather than
+  a rule this projection invents.
+  So the roots rule reaches ranking with a qualification: a **genuine** catalog root — no
+  parent at all — ranks among this projection's roots, which is why `siblingContext`'s
+  `model.roots` fallback has to become the projection's; a **promoted** one ranks nowhere.
 - **2c — a test's parent is a work item** (the advisory drag of
   [[Test suite and test case as a ladder of their own]] 4a). It is drawn as a root here, by
   step 2's rule and only by it: its parent is not drawn in this projection, so the test is
@@ -161,6 +176,10 @@ base settings are saved on the view, working position on the device.
   offers creation rather than configuration. It is keyed to what the projection draws: a
   base whose only catalog member is a `Task` under an excluded `Test case` draws that Task,
   not the empty state.
+- A **promoted** root writes no order: Move up/down/top/bottom are inert on it, exactly as
+  on a focus root, and a genuine catalog root ranks among this projection's roots rather
+  than the plan's. Asserted as the pair — the second without the first is a move that
+  writes a number into the wrong sibling group and appears to do nothing.
 - The quick filter and the keyboard walk the same forest the renderer draws. Both are
   asserted on a promoted row — a test under a `PBI` — because both are wrong in the
   direction that still looks like a working screen: the filter leaves a non-matching row

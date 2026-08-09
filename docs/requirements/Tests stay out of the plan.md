@@ -35,7 +35,7 @@ context row when a visible descendant needs a parent to hang from.
 | **Actor** | Backlog owner |
 | **Trigger** | The backlog tree, the requirements board or the roadmap renders a result set that contains test items |
 | **Preconditions** | None |
-| **Guarantee** | A vault with no tests renders identically before and after this feature. A test item is never a row, a card, a bar, a shelf entry or a counted item in the plan's projections, never contributes its own state, tags or dates to any vocabulary those projections derive from the results, and **contributes nothing to any ancestor's rollup** — not its own count, not its dates, and not its subtree's. |
+| **Guarantee** | A vault with no tests renders identically before and after this feature. Nothing outside the plan's population — which is the membership rule's answer, not the list of test type names — is ever a row, a card, a bar, a shelf entry or a counted item in the plan's projections, or a source of state, tags or dates for any vocabulary those projections derive from the results; and a test **contributes nothing to any ancestor's rollup**, not its own count, not its dates, and not its subtree's. |
 
 **Main flow**
 
@@ -53,8 +53,12 @@ context row when a visible descendant needs a parent to hang from.
    toolbar's count label and its completed toggle read the projection's own population and
    subtract tests with everything else; its ignored-notes advisory is about a different
    question and is untouched (3a, 3d).
-4. The state and tag vocabularies those projections derive from the results skip tests
-   too, so a test's own `status` never becomes a column or an assignable value in the plan.
+4. The state and tag vocabularies those projections derive from the results are built from
+   the **plan's population**, so nothing the plan does not draw becomes a column or an
+   assignable value in it. The population, not the type list: `firstSeen`
+   (`src/domain/vocabulary.ts`) skips a context row and reads every other result, so a rule
+   spelled "skip test items" leaves a `Task` beneath a `Test case` — a catalog member by
+   2b — free to mint a board column out of a status nothing on the plan carries.
 5. The test catalog draws the other population ([[A projection for the tests]]), from the
    same model.
 
@@ -142,8 +146,11 @@ context row when a visible descendant needs a parent to hang from.
   after this feature.
 - No test item appears as a row, a card, a bar or a shelf entry in the backlog tree, either
   board, or either roadmap axis.
-- No test item is counted by the plan's counts, rollups or level breakdown, and none
-  contributes state, tags or dates to a vocabulary derived from the results.
+- Nothing outside the plan's population is counted by the plan's counts, rollups or level
+  breakdown, or contributes state, tags or dates to a vocabulary derived from the results.
+  Asserted with a `Task` under a `Test case` carrying a status and a tag no plan item has:
+  it is the row that satisfies a criterion written about *test types* while still adding a
+  column to the board.
 - A `Test case` parented to a `PBI` changes none of that PBI's rollup numbers — descendant
   count, done count, `subtreeDone`, `descendantStart`, `descendantTarget` — nor those of
   anything above it, and neither do its own `Task`s. Asserted on the **model**, over a tree
