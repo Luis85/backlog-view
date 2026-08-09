@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { FakeVault } from '../helpers/vault';
-import { flush, makeView, useViewHarness } from '../helpers/view';
+import { flush, makeView, refresh, useViewHarness } from '../helpers/view';
 import { barFor, gripNames, rowFor, shelfOf } from '../helpers/roadmap';
 import { cardDrag, gridDrag, overlayOf, pannedGrid } from '../helpers/dnd';
 import { legalTargetPaths } from '../../src/view/interactions/dependencies';
+import { CardDragController } from '../../src/view/interactions/cardDrag';
 import { BacklogItem, BacklogModel } from '../../src/domain/model';
 
 useViewHarness();
@@ -151,6 +152,42 @@ describe('the connector on a drawn bar', () => {
 		const bar = barFor(containerEl, 'Ancient');
 		expect(bar.classList.contains('pbl-bar-outside')).toBe(true);
 		expect(bar.querySelector('.pbl-bar-connector')).toBeNull();
+	});
+});
+
+describe('what wiring a bar costs when the dependency key is unbound', () => {
+	// A few hundred rows is the scaling limit `src/view/CLAUDE.md`'s "Cost" section
+	// states, and a `dropTargetForElements` registration per bar (plus its cleanup, every
+	// render pass) is real work for a feature the view does not have — `wireBarLink`'s own
+	// early return is what keeps this at zero rather than one per bar. Driven through
+	// `CardDragController.prototype.wireDropTarget` — the same seam
+	// `test/view/cardDrag.test.ts`'s construction test reaches the controller through —
+	// because nothing on the rendered DOM distinguishes "no target registered" from "a
+	// target registered that nothing can ever satisfy". The spy starts only after the view
+	// is fully constructed and settled, and a plain `refresh` is what is measured: setup
+	// itself (`setProjection`, `setAxisPick`) is more than one render pass, and counting
+	// across all of them would make the assertion about how many times THIS SUITE happens
+	// to render rather than about one pass's cost.
+	it('registers no link drop target on any bar', () => {
+		const vault = barVault();
+		const { view } = datedLinkView(vault, DATE_AXIS);
+		const spy = vi.spyOn(CardDragController.prototype, 'wireDropTarget');
+		refresh(view, vault);
+		const linkTargets = spy.mock.calls.filter((call) => call[3] === 'link');
+		expect(linkTargets).toHaveLength(0);
+	});
+
+	it('registers one link drop target per bar once the key is bound', () => {
+		// The gate itself is falsifiable, not only its absence: with the key bound, the
+		// two bars in `barVault()` each still get one — the count a link drag actually
+		// needs, so the test above is measuring the gate and not a helper that wires
+		// nothing regardless.
+		const vault = barVault();
+		const { view } = datedLinkView(vault);
+		const spy = vi.spyOn(CardDragController.prototype, 'wireDropTarget');
+		refresh(view, vault);
+		const linkTargets = spy.mock.calls.filter((call) => call[3] === 'link');
+		expect(linkTargets).toHaveLength(2);
 	});
 });
 
@@ -322,7 +359,49 @@ describe('drawing a dependency from one bar to another', () => {
 	});
 });
 
-describe('a link drag is refused by every target that means a move', () => {
+describe('a render mid-drag mints a box the drag state cannot reach', () => {
+	// `LiveLink`'s own comment: "A render pass rebuilds the grid wholesale and mints a
+	// new box, so nothing here can outlive the frame it belongs to." `live` is keyed by
+	// the CONTENT element, so a drop landing on the box a mid-drag refresh minted reads
+	// `live.get(newContent)`, finds nothing, and `accepts` reads `?? false` — refused,
+	// not merely stale. The mechanism is `renderTimeline` minting a fresh `.pbl-timeline-
+	// content` every pass and `CardDragController.onRenderStart` tearing down every
+	// registration wired to the old one first (`backlogView.ts`'s `cardDnd.onRenderStart()`
+	// at the top of a render). Mirrors `cardDrag.test.ts`'s "a drop whose note went away
+	// mid-drag": start a drag, force the same kind of refresh mid-gesture, and drop on
+	// what the refresh drew.
+	it('writes nothing and marks nothing on the box a mid-drag refresh mints', async () => {
+		const vault = barVault();
+		const { containerEl, view } = datedLinkView(vault);
+		const before = JSON.stringify(vault.fm('Beta.md'));
+
+		// The gesture starts on the OLD connector, which is what populates `live` keyed by
+		// the OLD content box.
+		const gesture = gridDrag.start(connectorFor(containerEl, 'Alpha') as HTMLElement);
+		// The Bases round trip a mid-drag write can trigger: the grid is torn down and
+		// redrawn from scratch, exactly as `refresh` already does for the board's columns
+		// in `cardDrag.test.ts`'s "a drop whose note went away mid-drag".
+		refresh(view, vault);
+		const newContent = containerEl.querySelector<HTMLElement>('.pbl-timeline-content');
+		if (!newContent) throw new Error('no content box after refresh');
+
+		// The SAME gesture (same payload, same view token) crossing then dropping on the
+		// bar the refresh drew — a freshly registered target with no `live` entry for the
+		// box it belongs to. `over` first, as every other gesture in this suite does: the
+		// adapter tracks eligibility from the hover events, so a bare `drop` with no
+		// preceding `dragenter`/`dragover` never reaches a target's `canDrop` at all and
+		// would pass whether or not the gate under test does its job.
+		gesture.over(barFor(containerEl, 'Beta'), { clientX: 0 });
+		gesture.drop(barFor(containerEl, 'Beta'), { clientX: 0 });
+		await flush();
+
+		expect(vault.writeLog).toHaveLength(0);
+		expect(JSON.stringify(vault.fm('Beta.md'))).toBe(before);
+		expect(newContent.classList.contains('pbl-linking')).toBe(false);
+	});
+});
+
+describe('a link drag is refused by the timeline grid and the dated shelf', () => {
 	it('writes no date when released on the timeline grid', async () => {
 		const vault = barVault();
 		const { containerEl } = datedLinkView(vault);

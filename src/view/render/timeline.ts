@@ -230,7 +230,7 @@ export function renderTimeline(
 	// an edge's Y comes from where the two rows actually landed — so the element and
 	// its contents are deliberately separated in time.
 	const arrowLayer = content.createSvg('svg', { cls: 'pbl-dependency-layer', attr: { 'aria-hidden': 'true' } });
-	wireLinkPreview(dnd, content);
+	wireLinkPreview(ctx.host, dnd, content);
 	const mounts: BarRowMounts = {
 		content,
 		scroller: grid,

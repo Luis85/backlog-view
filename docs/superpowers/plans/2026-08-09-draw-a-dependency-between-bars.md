@@ -68,6 +68,14 @@ drag-and-drop (`@atlaskit/pragmatic-drag-and-drop`), Vitest + jsdom, esbuild.
 | `docs/requirements/Draw a dependency between bars.md` (modify) | `## Where it lives`, the two corrections, status |
 | `docs/issues/A dependency write is announced to nobody.md` (create) | The registered gap |
 
+**This table said `styles/timeline.css` (modify) otherwise until the work was done.**
+`timeline.css` was already at its 400-line cap, so nothing in this feature landed there —
+every rule below, including the connector's own, is in `styles/timelineFurniture.css`
+instead. Every later step in this plan that names `styles/timeline.css` as where a rule
+was to be added is the same divergence stated again rather than a second one; the file
+that actually carries the connector, the reveal, the drag marking and the preview line is
+`timelineFurniture.css` throughout.
+
 ---
 
 ### Task 1: The legal-target sweep, and the write made callable
@@ -89,6 +97,14 @@ declares (however spelled, resolved or not), anything that would close a loop, a
 **T** — so the legal targets are exactly `{ T : S ∈ candidates(T) }`. Do not restate the
 four exclusions; ask `candidates`. Items are matched by `.file` identity, never by path: a
 note deleted and recreated at the same path is a different note wearing the same address.
+
+**This note said the legal set was exactly `{ T : S ∈ candidates(T) }` until the work was
+done.** `candidates`' fourth exclusion filters `outsideFilter` on the *candidate* side —
+what may be offered — not on the target itself, so that formula would let a context row be
+reported as a legal drop target. `legalTargetPaths` needs its own `!target.outsideFilter`
+guard on the target side, asked directly rather than inherited from `candidates`: see
+`src/view/interactions/dependencies.ts`'s own comment on `legalTargetPaths` for why the two
+sides of the same exclusion cannot share one check.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -571,6 +587,14 @@ git commit -m "Give a bar a handle that claims no date"
   - `wireLinkSource(el: HTMLElement, item: BacklogItem, hooks: { onStart: () => void; onEnd: () => void }): void`
   - `wireLinkTarget(el: HTMLElement, plan: (source: CardSource) => void, hooks?: DropHooks): void`
   - `wireLinkPointer(handlers: { onDrag: (clientX: number, clientY: number) => void; onEnd: () => void }): void`
+
+  *This note said `wireLinkTarget` otherwise until the work was done*: it was never kept
+  as its own method. It collapsed into the existing `wireDropTarget(el, plan, hooks = {},
+  kind: DragKind = 'move')`, called with `kind: 'link'` — fallow flagged the two methods as
+  a clone, and the duplication was the tell that the link/move split belonged on the one
+  shared method's signature rather than as a second entry point identical but for which
+  literal it passed `mine`. See that method's own comment in `cardDrag.ts` for why one
+  defaulted parameter is what makes the refusal structural rather than a convention.
 - Produces in `linkDrag.ts`:
   - `wireBarLink(ctx: RowContext, parts: BarLinkParts): void` where
     `interface BarLinkParts { dnd: CardDragController; content: HTMLElement; row: HTMLElement; barEl: HTMLElement; connector: HTMLElement | null; item: BacklogItem }`

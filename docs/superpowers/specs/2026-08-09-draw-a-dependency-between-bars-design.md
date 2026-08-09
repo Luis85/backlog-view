@@ -123,6 +123,18 @@ containing S — `candidates` already encodes all four, and a second formulation
 is what would drift. The legal set is therefore `{ T : S ∈ candidates(T) }`, computed
 **once at drag start**, never per frame.
 
+**This note said the legal set was exactly `{ T : S ∈ candidates(T) }` until the work was
+done.** It is not — `candidates` filters `outsideFilter` on the *candidate* side only
+(exclusion 4 above, asked of what may be offered), which constrains what `candidates(T)`
+returns and says nothing about whether `T` itself is a context row. Read literally, the
+formula would let an `outsideFilter` bar be reported as a legal drop target whenever some
+other candidate of its passed the other three checks. `legalTargetPaths` therefore carries
+its own `!target.outsideFilter` guard on the target side, which the formula above does not
+state and `candidates` cannot supply from the candidate side. The four exclusions are still
+one definition, asked from `candidates`; the fifth question — is the target itself
+excluded — is asked directly, because it is a question about `T`, not about what `T`
+offers.
+
 To keep that affordable, `candidates` is refactored to take the `declared` map it
 currently rebuilds per call, so a per-target sweep builds that map once and each target
 costs one closure walk rather than a rebuild plus a walk. Signature change only; the
@@ -224,7 +236,10 @@ Layers are unchanged; every new piece sits in the layer that already owns its co
 - **`src/view/render/timeline.ts`** — draws the connector beside the grips loop; adds
   `pbl-bar-clipped-end` in `barClasses`.
 - **`styles/timeline.css`** — the connector, its reveal, its `(hover: none)` pair, the
-  three placements, and the drag marking.
+  three placements, and the drag marking. *This note said otherwise until the work was
+  done*: `timeline.css` was already at its 400-line cap, so every one of those rules
+  landed in `styles/timelineFurniture.css` instead, beside the label gap below — one
+  partial holds the whole feature's CSS, not two.
 - **`styles/timelineFurniture.css`** — the label's left gap.
 - **`test/helpers/fixtures.ts`** — the additions above and the named variant.
 - **`test/harness/page.ts`** — `?fixture=`.

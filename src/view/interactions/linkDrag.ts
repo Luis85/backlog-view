@@ -1,5 +1,5 @@
 import { CardDragController, CardSource } from './cardDrag';
-import { applyDependencyWrite, legalTargetPaths } from './dependencies';
+import { applyDependencyWrite, dependenciesAvailable, legalTargetPaths } from './dependencies';
 import { RowContext } from '../render/columns';
 import { BacklogViewHost } from '../host';
 import { BacklogItem, BacklogModel } from '../../domain/model';
@@ -52,14 +52,25 @@ const live = new WeakMap<HTMLElement, LiveLink>();
 /**
  * Wire one bar's two roles.
  *
- * The source half is skipped where no connector was drawn — the key unbound, or no bar
- * on screen — and the TARGET half is wired regardless, because a bar with no connector of
- * its own is still something another bar's link may legitimately point at. The target is
- * `wireDropTarget` called with `kind: 'link'`, not a method of its own — see that
- * method's own comment for why the two collapsed into one.
+ * Skipped entirely where the dependency key is unbound — `dependenciesAvailable`, the
+ * same predicate the menu gates on — since with no key the drop this would register could
+ * never mint a payload for it to accept: nothing anywhere could start the drag that would
+ * land on it. Registering it anyway is not merely redundant but a real cost at the scale
+ * `src/view/CLAUDE.md`'s "Cost" section states: a `dropTargetForElements` registration and
+ * its cleanup on every one of a few hundred rows, every render pass, for a feature the
+ * view does not have.
+ *
+ * Within that, the source half is skipped where no connector was drawn — no bar on screen
+ * — and the TARGET half is wired regardless, because a bar with no connector of its own is
+ * still something another bar's link may legitimately point at. That refusal is
+ * `geometry.outside`, the one `renderConnector` itself withholds a dot for; it is not the
+ * key-unbound case, which this function now refuses before either half is reached. The
+ * target is `wireDropTarget` called with `kind: 'link'`, not a method of its own — see
+ * that method's own comment for why the two collapsed into one.
  */
 export function wireBarLink(ctx: RowContext, parts: BarLinkParts): void {
 	const host: BacklogViewHost = ctx.host;
+	if (!dependenciesAvailable(host)) return;
 	const { dnd, content, row, barEl, connector, item } = parts;
 	if (connector) {
 		dnd.wireLinkSource(connector, item, {
@@ -124,8 +135,13 @@ function end(content: HTMLElement): void {
  * The preview line, redrawn per frame by moving ONE path's `d` — the layer and the path
  * are minted on the first frame and never per frame, since a drag is many frames and a
  * node per frame is a node per frame to remove.
+ *
+ * Skipped where the dependency key is unbound, the same `dependenciesAvailable` gate
+ * `wireBarLink` uses: with no key, `renderConnector` draws no connector anywhere on the
+ * grid, so no link drag can ever start and this monitor would never see one.
  */
-export function wireLinkPreview(dnd: CardDragController, content: HTMLElement): void {
+export function wireLinkPreview(host: BacklogViewHost, dnd: CardDragController, content: HTMLElement): void {
+	if (!dependenciesAvailable(host)) return;
 	dnd.wireLinkPointer({
 		onDrag: (clientX, clientY) => {
 			const state = live.get(content);
