@@ -85,8 +85,7 @@ the surface every other section then lands in.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The button joins the toolbar in
-`src/view/render/toolbar.ts`; the vocabulary the section is generated from is
-`src/domain/itemTypes.ts` and `src/domain/settings.ts`; the dialog belongs beside
-`src/ui/prompts.ts`, which is the existing example of a modal that takes its content as a
-parameter rather than reaching for app structure.
+The dialog and its one opener are `src/ui/manualDialog.ts` — a `ui/` leaf that takes its
+sections as a parameter, because `ui/` may not reach `domain/`. Its appearance is
+`styles/manual.css`, which draws the split and lets Obsidian's own settings-modal rules
+draw everything else.

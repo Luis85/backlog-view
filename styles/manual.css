@@ -1,0 +1,73 @@
+/* The manual — `src/ui/manualDialog.ts`. Obsidian paints the modal, the sidebar surface
+   and the tab items; what is here is the split, the pane and the content shapes. */
+
+.pbl-manual {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+}
+
+.pbl-manual-split {
+	display: flex;
+	min-height: 0;
+	flex: 1 1 auto;
+}
+
+.pbl-manual-nav {
+	flex: 0 0 190px;
+	padding: var(--size-4-3) 0;
+}
+
+.pbl-manual-navhead {
+	padding: 0 var(--size-4-3) var(--size-4-2);
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-medium);
+	color: var(--text-faint);
+}
+
+/* The sidebar items are real buttons so Tab reaches them; Obsidian's own rule paints
+   `.vertical-tab-nav-item`, and its button chrome has to be stripped here the same way
+   the toolbar's is — see `docs/bugs/Obsidian's button rule outranks the plugin's
+   chrome-stripping.md`, which is why this is a declaration rather than a reset. */
+.pbl-manual-nav .vertical-tab-nav-item {
+	display: block;
+	width: 100%;
+	text-align: start;
+	background-color: transparent;
+	border: none;
+	box-shadow: none;
+}
+
+.pbl-manual-pane {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow-y: auto;
+	padding: var(--size-4-4) var(--size-4-5);
+}
+
+.pbl-manual-pane h3 {
+	margin-block-start: 0;
+}
+
+.pbl-manual-intro {
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	margin-block-end: var(--size-4-3);
+}
+
+.pbl-manual-prose {
+	display: grid;
+	grid-template-columns: max-content 1fr;
+	gap: var(--size-4-2) var(--size-4-3);
+	align-items: baseline;
+}
+
+.pbl-manual-term {
+	font-weight: var(--font-medium);
+}
+
+.pbl-manual-def {
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	line-height: 1.5;
+}
