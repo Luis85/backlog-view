@@ -302,9 +302,9 @@ describe('bar labels', () => {
 
 /**
  * A bar states its workflow state as a COLOUR: `pbl-state-N`, or green for done. No chip
- * is rendered on this projection (`renderStateChip`'s only call site is the tree, and
- * `chipProps` skips the state property), so before `stateNote` the colour was the whole
- * of it — nothing at all for a screen reader, and colour alone for a reader who cannot
+ * is rendered on this projection (`renderStateChip`'s only call site is a tree row's own
+ * column, and a timeline row draws no columns), so before `stateNote` the colour was the
+ * whole of it — nothing at all for a screen reader, and colour alone for a reader who cannot
  * separate the slots (WCAG 1.4.1). The words are hidden text in the row's own content,
  * because the row's accessible name is content-derived and an `aria-label` would replace
  * the badge and title rather than add to them.

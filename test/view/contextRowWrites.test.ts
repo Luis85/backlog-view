@@ -312,14 +312,24 @@ describe('write safety with context rows, across every entry point', () => {
 			strip?.dispatchEvent(new MouseEvent('drop', { bubbles: true }));
 			await flush();
 		}
-		// Every context-menu command, every state chip, every structural shortcut
+		// Every context-menu command, every chip, every structural shortcut
 		const tree = treeOf(containerEl);
+		// Which chip kinds the sweep actually found. A chip renders only where its
+		// property is a visible column, so a query that matched nothing would leave
+		// `?.dispatchEvent` driving nothing and every assertion below still passing —
+		// checked after the loop rather than trusted.
+		const chipsDriven = new Set<string>();
 		for (const row of allRows) {
 			await triggerEveryCommand(row);
-			row.querySelector<HTMLElement>('.pbl-state-chip')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-			for (const state of Menu.lastShown?.items ?? []) {
-				state.clickHandler?.();
-				await flush();
+			for (const chipClass of ['.pbl-state-chip', '.pbl-horizon-chip', '.pbl-risk-chip']) {
+				const chip = row.querySelector<HTMLElement>(chipClass);
+				if (!chip) continue;
+				chipsDriven.add(chipClass);
+				chip.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+				for (const entry of Menu.lastShown?.items ?? []) {
+					entry.clickHandler?.();
+					await flush();
+				}
 			}
 			// Every tag control on the row: the add menu and each remove button
 			row.querySelector<HTMLElement>('.pbl-tag-add')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -337,6 +347,7 @@ describe('write safety with context rows, across every entry point', () => {
 				await flush();
 			}
 		}
+		expect([...chipsDriven].sort()).toEqual(['.pbl-horizon-chip', '.pbl-risk-chip', '.pbl-state-chip']);
 		// And the backfill, which walks the whole real tree
 		containerEl
 			.querySelectorAll<HTMLElement>('.pbl-icon-btn')[0]

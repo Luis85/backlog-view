@@ -86,12 +86,18 @@ const TREE_PADDING = 16;
  */
 function columnFit(
 	settings: BacklogSettings,
-	chipCount: number,
+	columnCount: number,
 	depth: number,
 	width: number,
 ): { hideProps: boolean; hideRisk: boolean; hideMeta: boolean; hideHorizon: boolean; hideState: boolean } {
 	const meta = settings.stateKey || settings.showCounts ? META_COL_WIDTH : 0;
-	const props = settings.showChips ? settings.propColumnWidth * chipCount : 0;
+	// `showChips` is the `showProperties` option, and this is the ONLY thing still
+	// reading it: `resolveColumns` stopped, because the properties menu is the off
+	// switch now. So with the option off the columns render and this budgets nothing
+	// for them, which means they can never drop — inert in one direction and wrong in
+	// the other. Deleting the option (its resolver line, its default and this term) is
+	// what ends it, in the task after the one that rewrites the verdict below.
+	const props = settings.showChips ? settings.propColumnWidth * columnCount : 0;
 	const lead = ROW_LEAD_WIDTH + TREE_PADDING + depth * INDENT_PER_DEPTH;
 	return {
 		hideProps: width < lead + meta + props,
@@ -192,11 +198,23 @@ export function resolveColumns(host: BacklogViewHost): Column[] {
 }
 
 /**
- * Which rendering a visible property gets. The three chip kinds ask the SAME predicate
- * their menu is gated on — a key AND a declared vocabulary — so a chip whose menu could
- * set nothing cannot exist: with the list cleared the property falls through to `value`
- * and renders as an ordinary column, which is the behaviour the risk chip already had
- * and is now stated once for all three.
+ * Which rendering a visible property gets. Each kind asks the SAME predicate the menu
+ * behind that chip is gated on, so a chip whose menu could set nothing cannot exist —
+ * but that predicate is not one rule for all of them, and saying so would be claiming
+ * more than these five lines do:
+ *
+ * - `horizon` and `risk` are a PAIR, a key AND a declared vocabulary (`hasHorizonAxis`,
+ *   `hasRiskLevels`), because neither menu has anywhere else to get its values. With the
+ *   list cleared the property falls through to `value` and renders as an ordinary column,
+ *   which is the behaviour the risk chip already had and is now stated for both of them.
+ * - `state` is the KEY alone, deliberately: `stateMenuValues` falls back to the states
+ *   observed on the results (plus a done value), so a state property with no configured
+ *   list still has a menu with something in it. Pairing it would withhold the chip from
+ *   every vault that never declared its workflow.
+ *
+ * Only the first bullet is under a test (`test/view/columnKinds.test.ts` clears both
+ * vocabularies and asks for `value`); the second is a fact about `stateMenuValues`, which
+ * `test/view/state.test.ts` covers where it lives.
  *
  * Both state keys map to `state`. With the two workflows on distinct keys and both
  * visible, that is two columns, and `renderStateChip` draws into whichever one names
@@ -307,11 +325,11 @@ function renderCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem,
 	else renderValue(host, cell, item, column);
 }
 
-function renderValue(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem, chip: Column): void {
+function renderValue(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem, column: Column): void {
 	// An ancestor from outside the filter has no Bases row, so no property values.
 	let value = null;
 	try {
-		value = item.entry?.getValue(chip.prop) ?? null;
+		value = item.entry?.getValue(column.prop) ?? null;
 	} catch {
 		return;
 	}
@@ -339,7 +357,7 @@ function renderValue(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem
 	// The column is narrow and the header names it only once — say both here, and
 	// in the accessible name too, since the header itself is presentational (and
 	// for a purely visual rendering it is the only thing that says what the cell is).
-	const described = `${chip.label}: ${rendered || text}`;
+	const described = `${column.label}: ${rendered || text}`;
 	setTooltip(valueEl, described);
 	valueEl.setAttribute('aria-label', described);
 }
@@ -348,7 +366,7 @@ function renderValue(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem
  * Tags as pills, each removable, with a button to add one. A note the Base excluded
  * is context: its tags render, but nothing on the row offers to write them.
  */
-function renderTagCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem, chip: Column): void {
+function renderTagCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem, column: Column): void {
 	const editable = !item.outsideFilter;
 	// The pills live in their own box so that *they* clip when there are more than
 	// the column can show. The add button is a sibling of that box, not the last
@@ -373,7 +391,7 @@ function renderTagCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogIt
 			removeTag(host, item, tag);
 		});
 	}
-	if (item.tags.length > 0) setTooltip(cell, `${chip.label}: ${item.tags.map((t) => `#${t}`).join(', ')}`);
+	if (item.tags.length > 0) setTooltip(cell, `${column.label}: ${item.tags.map((t) => `#${t}`).join(', ')}`);
 	if (!editable) return;
 
 	const add = cell.createEl('button', {
@@ -417,7 +435,6 @@ export function renderRollup(host: BacklogViewHost, row: HTMLElement, item: Back
  * value, so the chip and the menu it opens can never name different states. A
  * Deliverable under the fallback (no Deliverable state property configured) reads the
  * shared key, so this is the identical value either way.
- *
  */
 function renderStateChip(
 	host: BacklogViewHost,
