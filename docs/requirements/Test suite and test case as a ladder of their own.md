@@ -37,10 +37,18 @@ design: the relationship between a test and the work it checks is
 1. The user opens the toolbar's "pick another type" menu with no row selected and picks
    `Test suite`. That menu iterates the vocabulary `offerableTypes` hands it, which is
    **scoped by projection** — the requirements board drops `Deliverable`, the Deliverables
-   board offers nothing else — so the catalog needs a branch of its own there: test types
-   in the catalog, and no test type in the plan's projections. Without it the picker would
-   offer an `Epic` from the catalog and file a note that vanishes from the screen that
-   created it, which is the failure `offerableTypes` exists to prevent.
+   board offers nothing else — so the catalog needs a branch of its own: **the test types
+   at the top level, and no test type at the plan's top level**. Without it the picker
+   would offer an `Epic` from the catalog and file a note that vanishes from the screen
+   that created it, which is the failure `offerableTypes` exists to prevent.
+   The restriction is the **top-level** creator's alone. `offerableTypes` also filters a
+   row's own **+**, where the vocabulary is `childTypeChoices(item)` rather than
+   `ALL_TYPES`, and that list is already right in both directions: a test's legal children
+   are catalog members by the membership rule ([[Tests stay out of the plan]] 2b), and a
+   plan row is never offered a test type at all (3b). A catalog branch written as a plain
+   type filter over both paths would empty the **+** on a `Test case`, whose one choice is
+   `Task` — so the branch has to know whether a parent is in hand, which `offerableTypes`
+   does not ask today.
 2. The view writes `type` and `order` — and no `parent`, a suite being a root — filing the
    note in the `Test suite` folder ([[Where new items are filed]]).
 3. The user opens the **+** on that suite. `childTypeChoices` answers `Test case` alone,
@@ -56,6 +64,13 @@ design: the relationship between a test and the work it checks is
   a creator that files a note the current projection cannot show is a button that makes
   work disappear. The types are still creatable — from the catalog, which is where they
   are visible.
+- **1c — a `Task` at the catalog's top level.** Not offered, and this is the case that
+  proves the restriction belongs to the top-level creator rather than to a type list. A
+  `Task` takes its parent's projection, so one created *under* a test is a catalog item and
+  one created with **no parent** is not — it falls back to its own type and lands in the
+  plan. Offered contextually (step 5), withheld at the top: the same type, answered
+  differently by whether a parent is in hand, which a filter over type names alone cannot
+  say.
 - **1a — the user picks `Test case` at the top level instead.** It is created with no
   `parent`, exactly as the toolbar's root creator does for every declared type, and it
   stays in the model: a recognised type is enough to belong
@@ -98,12 +113,17 @@ design: the relationship between a test and the work it checks is
 - Neither type is offered by `childTypeChoices` under an `Epic`, `Feature` or `PBI`, and
   the extra types are not offered under a suite or a case. Both directions are asserted;
   the second is the one an implementation that "adds a rung" gets wrong for free.
-- Both are offered by the toolbar's top-level creator **in the catalog and nowhere else**,
-  and no plan type is offered in the catalog — `offerableTypes` gains the branch, and both
-  directions are asserted. An earlier draft of this note claimed that creator needed no
-  change because it iterates the whole vocabulary; it iterates whatever `offerableTypes`
-  scopes for the projection, which is the function that already stops the requirements
-  board offering a `Deliverable`.
+- Both are offered by the toolbar's **top-level** creator in the catalog and nowhere else,
+  and no plan type is offered at the catalog's top level. An earlier draft of this note
+  claimed that creator needed no change because it iterates the whole vocabulary; it
+  iterates whatever `offerableTypes` scopes for the projection, the function that already
+  stops the requirements board offering a `Deliverable`.
+- **A row's own + is unaffected**, and this is asserted separately rather than assumed from
+  the criterion above: opening **+** on a `Test case` in the catalog still offers `Task`,
+  and on a `Test suite` still offers `Test case`. `offerableTypes` filters that path too,
+  so a catalog branch written as a type filter passes the first criterion and empties this
+  menu — the two have to be checked apart, because one change satisfies one and breaks the
+  other.
 - No move re-types either, at the root of a moved subtree or nested inside one — the rule
   [[Types beside the ladder]] learned twice, asked of these types at both depths.
 - A `Test case` that lands under a `PBI` keeps its type, and a `PBI` that lands under a
@@ -133,8 +153,16 @@ already answers `ALL_TYPES` in full, which is correct for a suite and wrong for 
 
 `src/view/interactions/menu.ts` — `offerableTypes` gains the catalog branch, beside the two
 projection branches it already carries. That is where "a projection offers only what it can
-show" is stated once for both toolbar creators, so the rule is kept by extending it rather
-than by a second test written beside it.
+show" is stated once, so the rule is kept by extending it rather than by a second test
+written beside it.
+
+The one thing that function cannot answer as it stands is **which creator is asking**. It
+serves both — `ALL_TYPES` from the toolbar, `childTypeChoices(item)` from a row's **+** —
+and the catalog needs opposite answers for `Task` on the two paths (1c). Whether that
+becomes a parameter, a second function, or a branch that inspects the list it was handed is
+an implementation question; what this note fixes is that a pure filter over type names
+cannot express it, so an implementation that only edits the existing branch will pass the
+top-level criterion and empty a `Test case`'s menu.
 
 `src/domain/model.ts` — `computeLevel` and `pruneOutsideHierarchy` read type membership
 rather than the four levels already, so a test belongs by being declared;
