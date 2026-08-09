@@ -23,8 +23,15 @@ useViewHarness();
 
 const DATES = { startProperty: 'note.start', targetProperty: 'note.due', dependsOnProperty: 'note.dependsOn' };
 
+/**
+ * One entry per drawn EDGE, counted by its head. An edge is several elements now — the
+ * route is axis-aligned elbows rather than one rotated line, so its segment count is a
+ * fact about the two dates — but exactly one head, on the short run into the dependent's
+ * start. Counting heads is therefore what "one element per edge" (4a) actually means
+ * here, and it stays true whichever route a pair of dates takes.
+ */
 function arrows(containerEl: HTMLElement): HTMLElement[] {
-	return Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-dependency-arrow'));
+	return Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-dep-head'));
 }
 
 /** What a row's accessible name says it waits for, or null where it says nothing. */
@@ -104,7 +111,7 @@ describe('a conflict is marked on the arrow and the dependent row, and only thos
 		const { containerEl } = roadmapView(vault, { ...DATES });
 
 		expect(arrows(containerEl)).toHaveLength(2);
-		expect(arrows(containerEl).filter((a) => a.hasClass('pbl-dependency-arrow-conflict'))).toHaveLength(1);
+		expect(arrows(containerEl).filter((a) => a.hasClass('pbl-dep-conflict'))).toHaveLength(1);
 		expect(rowFor(containerEl, 'Clear')?.hasClass('pbl-row-conflict')).toBe(false);
 		expect(rowFor(containerEl, 'Overlap')?.hasClass('pbl-row-conflict')).toBe(true);
 	});
@@ -389,8 +396,14 @@ describe('nothing about the layer is focusable or written', () => {
 		const { containerEl } = roadmapView(vault, { ...DATES });
 
 		expect(arrows(containerEl)).toHaveLength(1);
-		expect(arrows(containerEl).every((a) => !a.hasAttribute('tabindex'))).toBe(true);
-		expect(arrows(containerEl).every((a) => a.getAttribute('aria-hidden') === 'true')).toBe(true);
+		// Asked of the LAYER and of everything in it. `aria-hidden` moved to the container
+		// when the route became several elements — one attribute hides the whole subtree,
+		// and repeating it per segment would be the same claim stated N times and true
+		// only while someone remembers to add it to the N+1st.
+		const layer = containerEl.querySelector<HTMLElement>('.pbl-dependency-layer');
+		expect(layer?.getAttribute('aria-hidden')).toBe('true');
+		expect(Array.from(layer?.querySelectorAll('*') ?? []).every((el) => !el.hasAttribute('tabindex'))).toBe(true);
+		expect(layer?.querySelectorAll('[role]')).toHaveLength(0);
 		// One selection stop per row, unchanged by the arrow layer: still one id'd row
 		// per bar, nothing else added to the roving-selection surface.
 		expect(containerEl.querySelectorAll('[role="option"]')).toHaveLength(timelineRows(containerEl).length);

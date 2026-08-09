@@ -197,6 +197,27 @@ function removalOfRaw(host: BacklogViewHost, source: BacklogItem, raw: string): 
 }
 
 /**
+ * The same question for the whole-key removal, which is the arm with no line to match:
+ * what it offers to take away is the KEY, so what has to still be true is the state that
+ * produced the offer — the key present, and holding nothing the reader can name. An
+ * external edit ends that in either direction, by deleting the key or by giving it a real
+ * dependency, and both make this pick a write that changes nothing.
+ *
+ * `applyDependsOnDelta`'s own `removeKey` arm already refuses the second case at the write
+ * boundary, so nothing here prevents a bad write. What it prevents is the SILENCE: without
+ * it the picker closes on a refusal the reader never sees, which is the one outcome 2e
+ * refuses.
+ */
+function removalOfKey(host: BacklogViewHost, source: BacklogItem): () => DependsOnDelta | null {
+	return () => {
+		const live = host.model && liveSource(host.model, source);
+		if (!live?.ownKeys.dependsOn) return null;
+		const nameable = live.prerequisites.length > 0 || live.brokenPrerequisites.length > 0;
+		return nameable ? null : { removeKey: true };
+	};
+}
+
+/**
  * The item as the CURRENT model has it, or null — never the snapshot the menu closed
  * over. By FILE rather than by path, the distinction `applyDependencyWrite` states: a
  * rename carries the same object to a new path, a replacement puts a different object
@@ -249,7 +270,7 @@ function promptRemoveDependency(host: BacklogViewHost, model: BacklogModel, item
 		})),
 	];
 	if (choices.length === 0) {
-		choices.push({ label: 'Remove the empty property', value: () => ({ removeKey: true }) });
+		choices.push({ label: 'Remove the empty property', value: removalOfKey(host, item) });
 	}
 	new ItemSuggestModal(host.app, {
 		placeholder: `Stop ${item.title} waiting for…`,

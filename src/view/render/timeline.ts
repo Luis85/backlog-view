@@ -221,6 +221,14 @@ export function renderTimeline(
 	// (`TimelineRender.dependencyConflicts`, read by `renderRoadmap`) reads this exact
 	// same map rather than a second one built for it.
 	const dependencies = dependencyArrows(bars, shelf);
+	// The layer is created HERE, before a single row, and filled after they all exist.
+	// That ordering is what puts the arrows behind the bars, the milestone line's own
+	// answer to the same question: a bar is positioned with no z-index of its own, so
+	// what paints on top is decided by document order, and a layer appended after the
+	// rows would draw across every bar it crosses. Filling it later is unavoidable —
+	// an edge's Y comes from where the two rows actually landed — so the element and
+	// its contents are deliberately separated in time.
+	const arrowLayer = content.createDiv({ cls: 'pbl-dependency-layer', attr: { 'aria-hidden': 'true' } });
 	const mounts: BarRowMounts = {
 		content,
 		scroller: grid,
@@ -243,7 +251,7 @@ export function renderTimeline(
 	// prerequisite and the dependent actually drew, and its Y comes from where those
 	// rows really landed rather than a guessed row height — see `renderDependencyArrows`,
 	// which draws from the same `dependencies.arrows` list computed above.
-	renderDependencyArrows({ content, tracks }, window, dependencies.arrows, { scale, leadWidth });
+	renderDependencyArrows({ layer: arrowLayer, content, tracks }, window, dependencies.arrows, { scale, leadWidth });
 	const todayLeft = leadWidth + todayOffset(window, today, scale);
 	const line = content.createDiv({ cls: 'pbl-today', attr: { 'aria-hidden': 'true' } });
 	line.setCssProps({ '--pbl-today-left': `${todayLeft}px` });

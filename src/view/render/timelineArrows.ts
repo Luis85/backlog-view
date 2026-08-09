@@ -13,11 +13,16 @@ import { dependencyAnchor, TimelineScale, TimelineWindow } from '../../domain/ti
  * it exists at all: it is shared verbatim with the shelf card, which draws no grid.
  */
 
-/**
- * The floor a drawn arrow's length is held to, so two bars on one row (1f) or ends too
- * close to route between still leave a mark rather than a zero-width element.
- */
-const MIN_ARROW_PX = 4;
+/** The line's own thickness, and the floor every segment's length is held to — so two
+ *  bars on one row (1f) or ends too close to route between still leave a mark rather
+ *  than a zero-sized element. */
+const ARROW_LINE_PX = 1.5;
+/** How far a run leaves the prerequisite's finish before it turns. */
+const ELBOW_PX = 10;
+/** The horizontal run into the dependent's start, which carries the head. */
+const ENTER_PX = 10;
+/** Where the doubling-back lane sits when both ends are on ONE row. */
+const LANE_DROP_PX = 12;
 
 /** Shared by every row with no conflicting prerequisite, so a caller allocates nothing for the common case. */
 /**
@@ -47,13 +52,13 @@ const MIN_ARROW_PX = 4;
  * survived the window; the row's own class must not).
  */
 export function renderDependencyArrows(
-	mounts: { content: HTMLElement; tracks: Map<string, HTMLElement> },
+	mounts: { layer: HTMLElement; content: HTMLElement; tracks: Map<string, HTMLElement> },
 	window: TimelineWindow,
 	arrows: DependencyArrow[],
 	ruler: { scale: TimelineScale; leadWidth: number },
 ): void {
 	if (arrows.length === 0) return;
-	const { content, tracks } = mounts;
+	const { layer, content, tracks } = mounts;
 	const { scale, leadWidth } = ruler;
 	const contentTop = content.getBoundingClientRect().top;
 	// Every rect this layer needs is read here, before any arrow element exists — the
@@ -74,7 +79,7 @@ export function renderDependencyArrows(
 		});
 	}
 	for (const spec of specs) {
-		drawArrow(content, spec.conflict, { scale, leadWidth, contentTop }, spec.anchor, [spec.fromRect, spec.toRect]);
+		drawArrow(layer, spec.conflict, { scale, leadWidth, contentTop }, spec.anchor, [spec.fromRect, spec.toRect]);
 	}
 }
 
@@ -105,13 +110,24 @@ export function dependencyNote(item: BacklogItem, conflicted: ReadonlySet<string
 }
 
 /**
- * One arrow element, positioned from the day axis and the two rows' own rects — the
- * rects are already read (by `renderDependencyArrows`, before any arrow exists) rather
- * than taken from the rows here, so this function is pure write: no `getBoundingClientRect`
- * call of its own to interleave with the elements the loop around it is creating.
+ * One arrow per edge, routed the way a Gantt chart routes one: **axis-aligned elbows**
+ * out of the prerequisite's finish and into the dependent's start, never a diagonal.
+ * The rects are already read (by `renderDependencyArrows`, before any arrow exists)
+ * rather than taken from the rows here, so this function is pure write: no
+ * `getBoundingClientRect` call of its own to interleave with the elements it creates.
+ *
+ * Two routes, and which one applies is a fact about the dates rather than a style
+ * choice. When the dependent starts far enough after the prerequisite finishes there is
+ * room to turn once: out along the finish's row, down (or up) at a column just short of
+ * the start, then in. When it does not — the overlap that IS the conflict, and the
+ * reason a backward link exists at all — the run has to double back, so it drops out of
+ * the finish, crosses the lane BETWEEN the two rows rather than through either of them,
+ * and comes back in from the left. Both end the same way: a short horizontal run into
+ * the start with the head on it, so an arrow always ARRIVES pointing right, whichever
+ * direction it travelled.
  */
 function drawArrow(
-	content: HTMLElement,
+	layer: HTMLElement,
 	conflict: boolean,
 	ruler: { scale: TimelineScale; leadWidth: number; contentTop: number },
 	anchor: { fromDay: number; toDay: number },
@@ -121,18 +137,37 @@ function drawArrow(
 	const [fromRect, toRect] = rects;
 	const fromX = leadWidth + anchor.fromDay * scale.dayPx;
 	const toX = leadWidth + anchor.toDay * scale.dayPx;
-	const fromY = fromRect.top - contentTop + fromRect.height / 2;
-	const toY = toRect.top - contentTop + toRect.height / 2;
-	const length = Math.max(Math.hypot(toX - fromX, toY - fromY), MIN_ARROW_PX);
-	const angle = (Math.atan2(toY - fromY, toX - fromX) * 180) / Math.PI;
-	const el = content.createDiv({
-		cls: `pbl-dependency-arrow${conflict ? ' pbl-dependency-arrow-conflict' : ''}`,
-		attr: { 'aria-hidden': 'true' },
-	});
-	el.setCssProps({
-		'--pbl-arrow-left': `${fromX}px`,
-		'--pbl-arrow-top': `${fromY}px`,
-		'--pbl-arrow-width': `${length}px`,
-		'--pbl-arrow-angle': `${angle}deg`,
-	});
+	const fromY = Math.round(fromRect.top - contentTop + fromRect.height / 2);
+	const toY = Math.round(toRect.top - contentTop + toRect.height / 2);
+	const seg = (x: number, y: number, w: number, h: number): void => {
+		const el = layer.createDiv({ cls: `pbl-dep-seg${conflict ? ' pbl-dep-conflict' : ''}` });
+		el.setCssProps({
+			'--pbl-seg-left': `${Math.round(Math.min(x, x + w))}px`,
+			'--pbl-seg-top': `${Math.round(Math.min(y, y + h))}px`,
+			'--pbl-seg-width': `${Math.max(Math.abs(w), ARROW_LINE_PX)}px`,
+			'--pbl-seg-height': `${Math.max(Math.abs(h), ARROW_LINE_PX)}px`,
+		});
+	};
+	if (toX - fromX >= ELBOW_PX + ENTER_PX) {
+		// Room to turn once: out, across, in.
+		const turn = toX - ENTER_PX;
+		seg(fromX, fromY, turn - fromX, 0);
+		seg(turn, fromY, 0, toY - fromY);
+		seg(turn, toY, ENTER_PX, 0);
+	} else {
+		// The overlap case. The lane is BETWEEN the rows — halfway to the dependent, and
+		// a fixed drop when the two share one row, which is the only way `toY === fromY`
+		// can happen here and the one case a midpoint would route straight back through
+		// the bar it came from.
+		const lane = toY === fromY ? fromY + LANE_DROP_PX : Math.round((fromY + toY) / 2);
+		const out = fromX + ELBOW_PX;
+		const back = toX - ENTER_PX;
+		seg(fromX, fromY, ELBOW_PX, 0);
+		seg(out, fromY, 0, lane - fromY);
+		seg(back, lane, out - back, 0);
+		seg(back, lane, 0, toY - lane);
+		seg(back, toY, ENTER_PX, 0);
+	}
+	const head = layer.createDiv({ cls: `pbl-dep-head${conflict ? ' pbl-dep-conflict' : ''}` });
+	head.setCssProps({ '--pbl-seg-left': `${Math.round(toX)}px`, '--pbl-seg-top': `${toY}px` });
 }

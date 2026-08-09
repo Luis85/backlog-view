@@ -243,6 +243,20 @@ and satisfied nothing 4d says: a fact only assistive tech can reach is *reachabl
 1d asks for the marker to be *carried*. The glyph is also what keeps the fact off
 colour alone, which the accent on its own could not.
 
+An edge is routed the way a Gantt chart routes one — **axis-aligned elbows, never a
+diagonal** — and which of the two routes applies is a fact about the dates rather than a
+style choice. With room between the prerequisite's finish and the dependent's start there
+is one turn: out along the finish's row, across at a column just short of the start, then
+in. Without it — the overlap that IS the conflict, and the only reason a backward link
+exists — the run doubles back, crossing the lane BETWEEN the two rows rather than through
+either of them. Both end with a short horizontal run into the start carrying the head, so
+an arrow always ARRIVES pointing right whichever direction it travelled, and the head
+needs no rotation to say so. The layer is created BEFORE the rows and filled after them,
+which is what puts every arrow behind the bars: a bar is positioned with no z-index of
+its own, so document order decides, and the first version — appended after the rows —
+drew a line across every bar it crossed. That is the milestone line's own answer to the
+same question, arrived at the same way (by looking).
+
 The layer that DRAWS them is `renderDependencyArrows` in
 `src/view/render/timelineArrows.ts` — beside `render/timeline.ts` rather than inside it,
 because that file reached its 400-line budget and this is the seam that costs nothing to

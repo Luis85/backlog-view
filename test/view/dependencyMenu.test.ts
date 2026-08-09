@@ -375,6 +375,23 @@ describe('the write', () => {
 		expect(vault.fm('B.md')['dependsOn']).toBeUndefined();
 	});
 
+	it('writes nothing when the empty property gained a real dependency', async () => {
+		const vault = vaultWith({ B: { dependsOn: '' } });
+		const { containerEl, view } = makeView(vault, withKey);
+
+		click(openMenu(containerEl, 'B'), 'Remove dependency…');
+		expect(suggester().offered()).toEqual(['Remove the empty property']);
+		// The one arm with no line to match: what it offers to remove is the KEY, so what
+		// has to still hold is the state that produced the offer.
+		vault.fm('B.md')['dependsOn'] = '[[A]]';
+		refresh(view, vault);
+		suggester().choose('Remove the empty property');
+		await flush();
+
+		expect(vault.fm('B.md')['dependsOn']).toBe('[[A]]');
+		expect(Notice.messages.some((m) => m.includes('changed while the picker was open'))).toBe(true);
+	});
+
 	it('writes nothing when the chosen unresolvable entry is gone from the note', async () => {
 		const vault = vaultWith({ B: { dependsOn: 'Ghost' } });
 		const { containerEl, view } = makeView(vault, withKey);
