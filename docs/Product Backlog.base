@@ -21,6 +21,7 @@ views:
     startedDateProperty: note.started
     finishedDateProperty: note.finished
     showCompleted: true
+    openIn: split
   - type: table
     name: Data Quality
     groupBy:
