@@ -79,10 +79,11 @@ Nothing below has ever been looked at. The first roadmap increment shipped its l
 jsdom structure tests alone, and the horizon writes added a second set of things only a
 pointer can exercise. Point a Base at `docs/` and switch to the roadmap.
 
-**The three-position toggle** — tree, board, roadmap as one segmented group. Check the
-active position reads as active without the group looking like three separate buttons,
-and that the axis picker beside it appears only with both a horizon property and a date
-property configured.
+**The four-position toggle** — tree, board, roadmap, Deliverables board as one segmented
+group. Check the active position reads as active without the group looking like four
+separate buttons, and that the labelled axis-picker menu button beside it (not a
+segmented picker — a single button naming the current axis, opening a menu of the other)
+appears only with both a horizon property and a date property configured.
 
 **Bucket layout at different widths** — buckets share the row's width equally down to a
 280px floor (`flex: 1 1 280px; min-width: 280px`), reflowing cards into multiple grid
@@ -169,6 +170,103 @@ that empties it. Check the picker opens, that Enter still saves, and that the fi
 not overflow the modal at Obsidian's default width — a `type="date"` input carries the
 picker icon that a text input does not.
 
+## The toolbar overhaul (added 2026-08-09, unverified)
+
+Five zones, a measured fit ladder (`data-pbl-fit`), and a busy indicator whose visible
+label cannot change (`Updating…`, for every batch, with the count moved into a tooltip —
+the measured width reservation it replaced was deleted, not kept) shipped on the jsdom
+harness and a static browser stub
+(`npm run harness`) alone. Both are faithful about layout, spacing and hierarchy and
+say nothing about colour, real fonts, a real scrollbar or Obsidian's own lucide build —
+see `test/CLAUDE.md` and ADR 0020. Point a Base at `docs/` and work through this list in
+a real vault, in both light and dark:
+
+1. **The menu buttons' default chrome.** Open the axis picker or the zoom picker (both
+   `.pbl-menu-btn`) and look at the button itself, not the menu it opens. `.pbl-menu-btn`
+   writes no `background`, `border` or `padding` reset, so it depends entirely on
+   Obsidian's own default `<button>` styling coming out looking like the rest of the row.
+   The `⋯` overflow button is the useful reference point sitting right beside it in the
+   same row: it's `.pbl-icon-btn`, which `styles/toolbar.css` gives an explicit
+   `border: none; box-shadow: none; background-color: transparent` reset, so it's what
+   correct looks like. This is the exact shape of the 2026-08-08 episode already recorded
+   above (a card-children disclosure that looked right in the harness and wrong in a
+   vault because `test/harness/theme.css` has no baseline for a bare `<button>`): compare
+   the axis and zoom pickers against the `⋯` and the other icon buttons, and flag anything
+   boxed, bordered, or oddly padded. **Look hardest at this one.**
+2. **The `gantt-chart` glyph.** Switch the roadmap to the dated axis and look at the
+   **axis picker** — the button labelled "Timeline", not the zoom control beside it
+   (zoom uses `calendar-days` / `calendar` / `calendar-range`, never `gantt-chart`; see
+   `AXIS_LABEL` vs. `ZOOM_LABEL` in `src/view/render/toolbarControls.ts`). `gantt-chart`
+   resolves in the test harness only through a new alias to `chart-no-axes-gantt` in
+   `lucide-static` — that proves nothing about the older, bundled lucide inside
+   Obsidian's own Electron. Confirm a glyph actually draws on that button; a name that
+   release doesn't carry draws nothing at all, silently.
+3. **`overflow: clip` on the toolbar row.** `styles/toolbarFit.css` asserts in a comment
+   that this is safe on "Chrome 90+, far below the Electron behind `manifest.json`'s
+   1.10.2 floor" — nobody has checked that claim against Obsidian's actual bundled
+   Electron. Narrow the pane until the row would overflow. If `clip` isn't supported, the
+   row silently falls back to visible overflow and becomes horizontally scrollable again
+   (the toolbar should never scroll — see the comment beside the rule).
+4. **The segmented switcher's active position, under a non-default theme.** Switch to a
+   theme that redefines `--interactive-accent` and `--background-modifier-active-hover`,
+   then check the active tree/board/roadmap/Deliverables position still reads as active
+   (filled background plus an accent underline) rather than blending into the row.
+5. **The `css-change` re-fit, with the pane held still.** The fit ladder measures
+   RENDERED text, so a theme or font-size change can shift where a step trips without
+   the pane itself being resized; `backlogView.ts` wires `workspace.on('css-change', …)`
+   specifically to re-measure when that happens. Put the pane at a width right near a
+   step boundary (see item 6's measurements), then switch theme or change the app's font
+   size WITHOUT touching the pane's width. Confirm the row re-fits to the new metrics —
+   a control that should now be shed disappears, or one that now fits reappears —
+   without needing a resize to trigger it.
+6. **The fit ladder at real pane widths, in a real split.** Drag a pane from wide to
+   genuinely narrow and watch the toolbar shed controls. A browser measurement against
+   the harness stylesheet (one row, 47px, from 1400px down to 420px) found the ladder
+   stepping 0, 0, 1, 1, 2, 3, 4, 5, 5 — a real vault has a different font and a real
+   scrollbar, either of which can shift where a step trips. Confirm the row never grows a
+   second line and never clips a control the ladder hasn't dropped yet.
+7. **Below ~420px.** The ladder has nothing left to shed here, so the row clips — and
+   what it clips is its right-hand end, which means **New goes first and that is the
+   specified behaviour**, not a failure (extension 4b in
+   `docs/requirements/A toolbar that fits one row.md`, which says why no arrangement of
+   rungs avoids it). This step is therefore about the manner of the clipping, not its
+   fact. Confirm: the row is still ONE row; the switcher is whole and still at the left
+   edge; nothing is scrolled sideways when a clipped control is tabbed to (the
+   `overflow: clip` decision — `hidden` made the bar a scroll container and moved the
+   switcher off the edge); and the clip cuts cleanly rather than leaving a button sliced
+   through its glyph. Note the width where New goes, since no measured figure for it
+   holds across themes and the ~420px here is the harness's.
+8. **Focus across a rung transition, both directions.** Focus a toolbar control, then
+   narrow the pane until the ladder sheds that control — confirm focus lands somewhere
+   still visible rather than vanishing. Then widen the pane back past the rung where the
+   `⋯` overflow button itself disappears, with focus on something inside its menu, and
+   confirm the same.
+9. **`/` opens the collapsed filter at a narrow width.** Narrow the pane enough that the
+   filter collapses, then press `/`. jsdom asserts the class change and the active
+   element; only a real browser proves the input CSS just revealed is actually
+   focusable and receives the keystroke.
+10. **A filter typed at a wide width, surviving a narrowing rung.** Type into the filter
+    while the pane is wide, then narrow it into the rung that would otherwise collapse an
+    empty filter. Confirm the input stays open with its text and cursor position intact.
+11. **The busy indicator across a real backfill.** Run **Assign missing type and order
+    properties** (✨) over a few hundred notes. Confirm the visible label stays
+    `Updating…` and does not move or resize the row as the count climbs from one digit to
+    several; confirm the count itself only appears in the tooltip on hover; and — with a
+    screen reader running — confirm the busy status is announced once, not once per file
+    written.
+
+## Structural debt this branch is leaving behind
+
+`src/view/backlogView.ts` is at 395 of its 400 counted-line `max-lines` cap
+(`eslint.config.mjs`), with its import slack already spent — this branch added nothing to
+it for exactly that reason, and bought one line back by moving its `syncToolbarFit` call
+into `ResizePolicy`, where the design spec had assigned it. The next change that needs
+more than five lines here cannot have them: an extraction has to land first, or lint
+fails outright rather than warning. [[Split the view dispatch hub again]] is that task.
+Not the closed [[Split the view dispatch hub]] — that one is Done, its Outcome records
+the write-gate extraction it made, and the file has grown back since; a closed note is
+history, not a plan.
+
 ## Runs
 
 | Date | Against | Outcome |
@@ -179,6 +277,7 @@ picker icon that a text input does not.
 | — | the roadmap, both axes and the horizon writes | **Not run.** Reopened for it. |
 | — | the one-press setup: the options it writes, and the button in both empty frames | **Not run.** |
 | — | the horizon chip's column, and the native date fields in the schedule entry | **Not run.** |
+| — | the toolbar overhaul (five zones, the fit ladder, the busy indicator's fixed label, `gantt-chart`) | **Not run.** Reopened for it. |
 
 That second run is the one that mattered most, because the badge colours and the removed
 strike-through shipped in 0.3.0 on the strength of jsdom structure tests, which cannot see
@@ -230,3 +329,12 @@ in it has been looked at. Two increments of layout — the buckets, the timeline
 shelf's sticky trick — plus the horizon writes' own affordances shipped on tests that
 cannot see a pixel, which is a larger unverified surface than this note has ever carried
 at once. It closes again when someone has run it.
+
+**Reopened 2026-08-09 (the toolbar overhaul).** `npm run check` passes clean on this
+branch and `test/harness/harness.test.ts` confirms every icon name the view asks for
+resolves in `lucide-static`, including the new `gantt-chart` → `chart-no-axes-gantt`
+alias — neither of those is the live-vault check. "The toolbar overhaul" section above
+is the list, eleven items, and it also fixed two claims in this note that had gone stale
+before this branch touched anything: "the three-position toggle" is now four positions
+(the Deliverables board), and "the axis picker beside it" is a labelled menu button, not
+a segmented control. Closes again when someone has run it against a real vault.

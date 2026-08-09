@@ -42,6 +42,12 @@ const RENAMED: Record<string, string> = {
 	'circle-help': 'circle-question-mark',
 	filter: 'funnel',
 	'filter-x': 'funnel-x',
+	// lucide's chart rename. NOT `chart-gantt`, which is the trap here: that one draws
+	// an axis — `M3 3v16a2 2 0 0 0 2 2h16`, a path `chart-no-axes-gantt` does not carry,
+	// which is checkable in the installed package rather than quoted from a release this
+	// repository no longer has. Obsidian's `gantt-chart` is the bare bars, so it is the
+	// no-axes drawing that carries it forward under the longer name.
+	'gantt-chart': 'chart-no-axes-gantt',
 	'indent-decrease': 'list-indent-decrease',
 	'indent-increase': 'list-indent-increase',
 	'loader-2': 'loader-circle',

@@ -374,6 +374,18 @@ describe('long operations stay legible and non-blocking', () => {
 		return el?.classList.contains('pbl-busy-on') ? (el.querySelector('.pbl-busy-label')?.textContent ?? '') : null;
 	}
 
+	/**
+	 * The count, which is no longer the drawn text: the label reads `Updating…` for every
+	 * batch of any size so that no tick can change the row's width, and the per-file
+	 * number lives in the label's `title`. `null` when the indicator is off or the batch
+	 * carries no count. See `syncBusyLabel`.
+	 */
+	function busyCount(containerEl: HTMLElement): string | null {
+		const el = containerEl.querySelector<HTMLElement>('.pbl-busy');
+		if (!el?.classList.contains('pbl-busy-on')) return null;
+		return el.querySelector('.pbl-busy-label')?.getAttribute('title') ?? null;
+	}
+
 	it('shows a loading state until the first result set arrives', () => {
 		const containerEl = document.body.createDiv();
 		const view = new ProductBacklogView({} as never, containerEl);
@@ -394,9 +406,13 @@ describe('long operations stay legible and non-blocking', () => {
 		const vault = backfillFixture();
 		const { containerEl } = makeView(vault);
 		const seen: (string | null)[] = [];
-		onEachWrite(vault, () => seen.push(busyLabel(containerEl)));
+		const drawn = new Set<string | null>();
+		onEachWrite(vault, () => {
+			seen.push(busyCount(containerEl));
+			drawn.add(busyLabel(containerEl));
+		});
 
-		expect(busyLabel(containerEl)).toBeNull();
+		expect(busyCount(containerEl)).toBeNull();
 		runBackfill(containerEl);
 		await flush();
 
@@ -404,6 +420,9 @@ describe('long operations stay legible and non-blocking', () => {
 		// so it reads one behind: the point is that it counts up per file and that
 		// the total is known from the start.
 		expect(seen).toEqual(['Updating 0 of 4…', 'Updating 1 of 4…', 'Updating 2 of 4…', 'Updating 3 of 4…']);
+		// …while the DRAWN text never moved, which is what lets the fit ladder skip
+		// every tick between the two transitions: one value, four files.
+		expect([...drawn]).toEqual(['Updating…']);
 		// The indicator belongs to the batch, not to the view.
 		expect(busyLabel(containerEl)).toBeNull();
 	});
@@ -412,7 +431,11 @@ describe('long operations stay legible and non-blocking', () => {
 		const vault = fixture();
 		const { containerEl, view } = makeView(vault);
 		const seen: (string | null)[] = [];
-		onEachWrite(vault, () => seen.push(busyLabel(containerEl)));
+		const counts: (string | null)[] = [];
+		onEachWrite(vault, () => {
+			seen.push(busyLabel(containerEl));
+			counts.push(busyCount(containerEl));
+		});
 
 		const tree = treeOf(containerEl);
 		view.selectItem(view.model!.byPath.get('Feature B2.md')!);
@@ -420,6 +443,11 @@ describe('long operations stay legible and non-blocking', () => {
 		await flush();
 
 		expect(seen).toEqual(['Updating…']);
+		// The drawn text is `Updating…` for every batch now, so the label alone can no
+		// longer tell a single-file write from a counted one — the count's ABSENCE from
+		// the title is what says it, and asserting only the text would have gone quietly
+		// tautological when the count moved.
+		expect(counts).toEqual([null]);
 	});
 
 	it('rebuilds once after a batch, not once per file it writes', async () => {
@@ -519,6 +547,39 @@ describe('toolbar count breakdown', () => {
 		expect(count?.dataset.tooltip).toBe('2 Epic · 2 Feature');
 		// Filter changes to the count are announced to assistive tech
 		expect(count?.getAttribute('aria-live')).toBe('polite');
+	});
+
+	/**
+	 * That `aria-live` is exactly why this test exists. A live region announces on
+	 * MUTATION, not on a changed value — and `setText` assigns `textContent`, which
+	 * destroys the text node and builds a new one even when the string is identical.
+	 * `syncCountLabel` runs on every content render, so filtering to something every item
+	 * matches queued an announcement of "4 items" per keystroke.
+	 *
+	 * Node identity is the whole claim, and comparing `textContent` cannot reach it: that
+	 * assertion is true of the broken code. The tooltip is checked the same way through a
+	 * sentinel, because `setTooltip` writing the same string back is equally invisible to
+	 * a value comparison — and it is the write that carries Obsidian's hover handling and,
+	 * in some versions, an `aria-label` for this element.
+	 */
+	it('rewrites neither the text node nor the tooltip when nothing about the count changed', () => {
+		const vault = fixture();
+		const { view, containerEl } = makeView(vault);
+		const count = () => containerEl.querySelector<HTMLElement>('.pbl-count-label');
+		const label = count();
+		const node = label?.firstChild;
+		if (!label || !node) throw new Error('the count label is missing its text');
+		label.dataset.tooltip = 'untouched';
+
+		// A content-only render — the toolbar itself is not rebuilt, which is what makes
+		// the element identity below meaningful — leaving the number exactly as it was:
+		// every item in the fixture matches `e`.
+		view.setFilter('e');
+
+		expect(count()).toBe(label);
+		expect(label.textContent).toBe('4 items');
+		expect(label.firstChild).toBe(node);
+		expect(label.dataset.tooltip).toBe('untouched');
 	});
 });
 

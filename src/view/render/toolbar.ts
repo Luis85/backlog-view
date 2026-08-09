@@ -3,12 +3,24 @@ import { BacklogViewHost, BusyState, Projection } from '../host';
 import { newItemType, promptCreateItem } from '../interactions/create';
 import { offerableTypes, showMenuForClick } from '../interactions/menu';
 import { runInit } from '../interactions/structure';
+import {
+	capturedFocusKey,
+	collapseAll,
+	collapseButton,
+	collapseCtlsDisabled,
+	expandAll,
+	iconButton,
+	KEY_ATTR,
+	pickAndRefocus,
+	refocusByKey,
+	renderOverflow,
+	renderProjectionZone,
+} from './toolbarControls';
+import { syncToolbarFit } from './toolbarFit';
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { displayType, focusTarget, isDeliverableType } from '../../domain/itemTypes';
-import { activeAxis, configuredAxes, RoadmapAxis } from '../../domain/roadmap';
 import { DELIVERABLE_TYPE } from '../../domain/settings';
 import { configProblems } from '../../domain/settings';
-import { ScaleId } from '../../domain/timeline';
 
 /** Toolbar: creation buttons, backfill, expand/collapse, config warning, item count. */
 export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
@@ -23,44 +35,42 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	const refocusKey = capturedFocusKey(barEl);
 	barEl.empty();
 
-	// The Deliverables board only ever shows Deliverables, so the primary button is
-	// bound to that type unconditionally — never the focus-dependent `newItemType`,
-	// which would offer a type this board would not even display. With one sensible
-	// type there is nothing for a "New item of another type" picker to add, so it is
-	// absent rather than a chevron opening a one-entry menu.
-	const onDeliverables = host.projection === 'deliverables';
-	const newLevel = onDeliverables ? DELIVERABLE_TYPE : primaryNewType(host, model);
-	const newBtn = barEl.createEl('button', { cls: 'pbl-new-btn', attr: { [KEY_ATTR]: 'new' } });
-	setIcon(newBtn.createSpan({ cls: 'pbl-btn-icon' }), 'plus');
-	newBtn.createSpan({ text: `New ${newLevel}` });
-	newBtn.addEventListener('click', () => promptCreateItem(host, [newLevel], null));
-
-	if (!onDeliverables) {
-		const pickBtn = iconButton(barEl, 'chevron-down', 'New item of another type');
-		pickBtn.addClass('pbl-new-pick');
-		pickBtn.addEventListener('click', (evt) => {
-			const menu = new Menu();
-			// Every declared type, extras included: this menu is the one place a top-level
-			// item of any type can be made, and an Issue raised against nothing in
-			// particular is a real thing to want. Except `Deliverable` on the requirements
-			// board, which excludes Deliverables by construction — creating one there
-			// would write a note the board it was created from cannot show.
-			for (const type of offerableTypes(host)) {
-				menu.addItem((mi) =>
-					mi.setTitle(`New ${type}`).setIcon('plus').onClick(() => promptCreateItem(host, [type], null)),
-				);
-			}
-			showMenuForClick(menu, evt);
-		});
-	}
-	renderFocusPicker(host, barEl, model);
+	// 1 — where am I. The switcher leads: it is the control that says what the rest of
+	// the row is about.
 	renderModeToggle(host, barEl);
-	renderAxisPicker(host, barEl);
-	renderTimelineControls(host, barEl);
+
+	// 2 — what THIS projection owns, and nothing when it owns none. Draws its own
+	// leading separator, or neither.
+	renderProjectionZone(host, barEl);
+
+	barEl.createDiv({ cls: 'pbl-toolbar-spacer' });
+
+	// 3 — what is shown. The same controls in every projection.
+	renderFocusPicker(host, barEl, model);
+	// Expand and collapse drive the tree's rows and, since cards grew disclosures, the
+	// cards too. They are no longer gated on the projection — but they ARE gated on the
+	// screen having something to collapse: see `syncCollapseCtls`, which runs after the
+	// content render because that is what fills the set it reads.
+	collapseButton(host, barEl, {
+		icon: 'chevrons-up-down',
+		label: 'Expand all',
+		cls: 'pbl-expand-ctl',
+		mutate: () => expandAll(host),
+	});
+	collapseButton(host, barEl, {
+		icon: 'chevrons-down-up',
+		label: 'Collapse all',
+		cls: 'pbl-collapse-all-ctl',
+		mutate: () => collapseAll(host),
+	});
+	renderCompletedToggle(host, barEl, model);
+	renderFilterBox(host, barEl);
 
 	barEl.createDiv({ cls: 'pbl-toolbar-sep' });
-	// The one command that routinely writes hundreds of notes: it carries the
-	// write-control marker so it goes disabled while a batch is already in flight.
+
+	// 4 — what writes. The ✨ is the one command that routinely writes hundreds of
+	// notes: it carries the write-control marker so it goes disabled while a batch is
+	// already in flight.
 	const initBtn = iconButton(barEl, 'sparkles', 'Assign missing properties');
 	initBtn.addClass('pbl-write-ctl');
 	initBtn.addEventListener('click', () => {
@@ -74,23 +84,17 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	undoBtn.addEventListener('click', () => {
 		void host.undoLast();
 	});
-	// Expand and collapse drive the tree's rows and, since cards grew disclosures, the
-	// cards too. They are no longer gated on the projection — but they ARE gated on the
-	// screen having something to collapse: see `syncCollapseCtls`, which runs after the
-	// content render because that is what fills the set it reads.
-	collapseButton(host, barEl, 'chevrons-up-down', 'Expand all', () => {
-		for (const item of collapsiblePopulation(host, model)) host.setCollapsed(item.file.path, false);
-	});
-	collapseButton(host, barEl, 'chevrons-down-up', 'Collapse all', () => {
-		for (const item of collapsiblePopulation(host, model)) {
-			if (item.children.length > 0) host.setCollapsed(item.file.path, true);
-		}
-	});
-	renderCompletedToggle(host, barEl, model);
+	// The `⋯` — the fit ladder's escape hatch for whatever it has shed off the row.
+	// Placement here is a layout decision only: the menu reads the bar's DOM at click
+	// time, so it can sit anywhere in it and still see every button.
+	renderOverflow(host, barEl);
 
-	renderFilterBox(host, barEl);
+	// Classed, unlike the other two, because the last rung sheds it: the readouts it
+	// divides are all gone by then, and a divider that divides nothing is width in front
+	// of New. See `styles/toolbarFit.css`.
+	barEl.createDiv({ cls: 'pbl-toolbar-sep pbl-status-sep' });
 
-	barEl.createDiv({ cls: 'pbl-toolbar-spacer' });
+	// 5 — status: the notes, the warning, the busy indicator, the count.
 	if (host.groupingIgnored) {
 		const note = barEl.createDiv({ cls: 'pbl-toolbar-note pbl-grouping-note' });
 		setIcon(note.createSpan({ cls: 'pbl-toolbar-note-icon' }), 'info');
@@ -122,40 +126,69 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 		attr: { 'aria-live': 'polite' },
 	});
 	setTooltip(countEl, levelBreakdown(population));
+
+	// 6 — the primary action, anchored at the end.
+	renderNewButton(host, barEl, model);
+
 	refocusByKey(barEl, refocusKey);
 }
 
-/** Where a toolbar control carries its focus identity — see `capturedFocusKey`. */
-const KEY_ATTR = 'data-pbl-key';
-
 /**
- * The identity focus is restored by: a per-control key, written where the control is
- * created and the same string on the control the next render builds in its place.
- *
- * Not the class — `.pbl-zoom-btn` and `.pbl-axis-btn` each name several buttons — and
- * not `aria-label`, which is neither always present nor always stable. `.pbl-new-btn`
- * and `.pbl-focus-btn` are named by their text content and carry no label at all, so
- * nothing was captured for them; and the completed toggle's label flips between
- * 'Hide completed items' and 'Show completed items (3 hidden)' across the very rebuild
- * its own click causes, so the control whose press ALWAYS re-renders was the one that
- * could never be restored. A key is independent of both.
- *
- * What that guarantees is exactly what carries a key: a control created without one is
- * not restored, and nothing here can see that it was meant to be. The check under the
- * sentence is `test/view/toolbarFocus.test.ts`, which asserts every focusable element
- * the toolbar renders — across the three projections, under a focus level — carries a
- * key, and that no two share one.
+ * The primary create button and the chevron beside it. Last in the row: the zones before
+ * it answer "what am I looking at" and "what is shown", and the action that adds to it is
+ * anchored at the end where it does not push everything else sideways when the type name
+ * it carries changes length.
  */
-function capturedFocusKey(barEl: HTMLElement): string | null {
-	const active = document.activeElement;
-	if (!(active instanceof HTMLElement) || !barEl.contains(active)) return null;
-	return active.getAttribute(KEY_ATTR);
-}
-
-/** The other half of `capturedFocusKey`: find the rebuilt control wearing that key. */
-function refocusByKey(barEl: HTMLElement, key: string | null): void {
-	if (!key) return;
-	barEl.querySelector<HTMLElement>(`[${KEY_ATTR}="${key}"]`)?.focus();
+function renderNewButton(host: BacklogViewHost, barEl: HTMLElement, model: BacklogModel): void {
+	// The Deliverables board only ever shows Deliverables, so the primary button is
+	// bound to that type unconditionally — never the focus-dependent `newItemType`,
+	// which would offer a type this board would not even display. With one sensible
+	// type there is nothing for a "New item of another type" picker to add, so it is
+	// absent rather than a chevron opening a one-entry menu.
+	const onDeliverables = host.projection === 'deliverables';
+	const newLevel = onDeliverables ? DELIVERABLE_TYPE : primaryNewType(host, model);
+	// The button and its chevron are ONE control in two pieces, so they get one
+	// non-shrinking box. It was written when the row still wrapped, where a pane wide
+	// enough for the button and not the chevron put the chevron alone on the next line;
+	// `styles/toolbarFit.css` sets `flex-wrap: nowrap` now, so that case is gone and the
+	// wrapper is left doing the job it was always also doing — saying the primary action
+	// and its type picker are one thing. Which is not decoration at the last rung: the row
+	// clips there, and a clip falls between two flex items far more readily than through
+	// the middle of one.
+	const wrap = barEl.createDiv({ cls: 'pbl-new' });
+	// The name is explicit, not inherited from the text: the fit ladder hides
+	// `.pbl-btn-label` on a narrow pane, and a primary button named only by the text it
+	// just hid is an unnamed control. The key stays on the BUTTON — `refocusByKey` looks
+	// for something to focus, and a wrapper div is not it.
+	const newBtn = wrap.createEl('button', {
+		cls: 'pbl-new-btn',
+		attr: { [KEY_ATTR]: 'new', 'aria-label': `New ${newLevel}` },
+	});
+	setIcon(newBtn.createSpan({ cls: 'pbl-btn-icon' }), 'plus');
+	newBtn.createSpan({ cls: 'pbl-btn-label', text: `New ${newLevel}` });
+	newBtn.addEventListener('click', () => promptCreateItem(host, [newLevel], null));
+	if (onDeliverables) return;
+	const pickBtn = iconButton(wrap, 'chevron-down', 'New item of another type');
+	pickBtn.addClass('pbl-new-pick');
+	pickBtn.setAttribute('aria-haspopup', 'menu');
+	pickBtn.addEventListener('click', (evt) => {
+		const menu = new Menu();
+		// Every declared type, extras included: this menu is the one place a top-level
+		// item of any type can be made, and an Issue raised against nothing in
+		// particular is a real thing to want. Except `Deliverable` on the requirements
+		// board, which excludes Deliverables by construction — creating one there
+		// would write a note the board it was created from cannot show.
+		//
+		// No `pickAndRefocus` here: this entry opens the creation prompt, which takes
+		// focus deliberately. The rebuild-loses-focus problem belongs to picks that
+		// re-render behind the menu.
+		for (const type of offerableTypes(host)) {
+			menu.addItem((mi) =>
+				mi.setTitle(`New ${type}`).setIcon('plus').onClick(() => promptCreateItem(host, [type], null)),
+			);
+		}
+		showMenuForClick(menu, evt);
+	});
 }
 
 /**
@@ -170,6 +203,78 @@ function renderBusyIndicator(barEl: HTMLElement): void {
 }
 
 /**
+ * A text write that is not a DOM mutation when the text has not changed. Both callers
+ * write into a live region — `.pbl-busy` is `role="status"` and `.pbl-count-label`
+ * carries an `aria-live="polite"` of its own — and **a live region announces on
+ * MUTATION, not on a changed value**: `setText` assigns `textContent`, which destroys
+ * the text node and builds a new one even when the string is identical. So the fixed
+ * label a redesign introduced to stop a 340-file backfill announcing 340 times still
+ * announced 340 times, and the count label — which is rewritten on every content render
+ * — announced once per filter keystroke. The guard is what makes "the drawn text does
+ * not change" a fact about the DOM rather than about the string.
+ *
+ * Two call sites in one file, so a two-line local rather than a shared helper module.
+ */
+function setTextIfChanged(el: HTMLElement, text: string): void {
+	if (el.textContent !== text) el.setText(text);
+}
+
+/**
+ * The indicator's own half of `syncBusy`: the on/off flag, the fixed label, and the
+ * count. Reports whether the indicator's VISIBILITY changed, which after this design is
+ * the ONLY thing that can change the row's width — so it is the only thing worth
+ * re-measuring for, and the ladder's schedule follows from the markup rather than from a
+ * promise the markup has to be held to.
+ *
+ * **The visible text never changes while a batch runs.** It is `Updating…` for every
+ * batch, of any size, and the count lives in the label's `title` instead. That is the
+ * whole mechanism now; what it replaced was a measured pixel reservation
+ * (`reserveBusyLabel`, `--pbl-busy-w`) that existed so a per-file text change could not
+ * move the row. Five defects came out of that one readout in a row — a stylesheet
+ * constant cannot bound `writes.length`; `N` `ch` does not bound an `N`-character string;
+ * the longest value is not the widest label without tabular figures; it had no rung, so
+ * it helped push the primary action off the edge; and the reservation went stale across a
+ * `css-change` mid-batch, because it was taken once at the transition while ticks
+ * deliberately skip refits. Every one was right, and together they said the design was
+ * wrong: a measurement, a reservation, a font-feature dependency and a refit schedule,
+ * all so one advisory readout would not move. A label that cannot change cannot move.
+ *
+ * **The count is in `title`, NOT in the text and NOT in `aria-label`, and that is the
+ * non-obvious part.** `.pbl-busy` is `role="status"` with `aria-live="polite"`, so its
+ * CONTENT is announced whenever it changes — which the old per-tick label meant a
+ * three-hundred-file backfill was announced three hundred times. A per-tick `aria-label`
+ * would be the same defect wearing a different attribute. Fixed content is announced
+ * once, when the batch starts, which is the one thing worth saying — and it is fixed
+ * through `setTextIfChanged`, because a `setText` of the same string is still a
+ * `childList` mutation inside the region and a region announces on the mutation.
+ *
+ * The `title` goes on the LABEL SPAN rather than on `.pbl-busy` itself: `title` is the
+ * last-resort source for an accessible NAME, so on the status element it would make the
+ * region's own name change per file — the announcement problem again, one level up. A
+ * descendant's `title` names nothing above it.
+ *
+ * A raw `title` attribute rather than this codebase's usual `setTooltip`, deliberately:
+ * `setTooltip` attaches Obsidian's hover handling on every call and has set `aria-label`
+ * in some versions, which is the one attribute this must not touch. The native attribute
+ * is a string write, costs no layout, and shows on hover without a listener.
+ */
+function syncBusyLabel(el: HTMLElement, busy: BusyState | null): boolean {
+	// Captured before the toggle: the ladder re-runs on idle→busy and busy→idle, which
+	// happen twice per batch, and NOT on the ticks between them. `scrollWidth` is a
+	// forced layout read, so measuring per file would put back a cost of the same shape
+	// as the per-file re-render the deferred update removed.
+	const wasOn = el.hasClass('pbl-busy-on');
+	el.toggleClass('pbl-busy-on', busy !== null);
+	const labelEl = el.querySelector<HTMLElement>('.pbl-busy-label');
+	if (labelEl) setTextIfChanged(labelEl, busy ? 'Updating…' : '');
+	// A single-file write is over before it could be read, so it gets no count — the same
+	// rule the visible label used to carry, now applied to the only place a count appears.
+	if (busy && busy.total > 1) labelEl?.setAttribute('title', `Updating ${busy.done} of ${busy.total}…`);
+	else labelEl?.removeAttribute('title');
+	return wasOn !== (busy !== null);
+}
+
+/**
  * Point the toolbar at the batch currently being written, or at nothing when idle.
  * Called on every render and on every progress tick, so it only touches text and
  * flags — never structure. Controls that would be refused mid-batch go `disabled`
@@ -177,13 +282,8 @@ function renderBusyIndicator(barEl: HTMLElement): void {
  */
 export function syncBusy(barEl: HTMLElement, busy: BusyState | null, canUndo: boolean): void {
 	const el = barEl.querySelector<HTMLElement>('.pbl-busy');
-	if (el) {
-		el.toggleClass('pbl-busy-on', busy !== null);
-		// A single-file write is over before it could be read; naming a count only
-		// when there is a count to name keeps the label honest either way.
-		const label = busy && busy.total > 1 ? `Updating ${busy.done} of ${busy.total}…` : 'Updating…';
-		el.querySelector<HTMLElement>('.pbl-busy-label')?.setText(busy ? label : '');
-	}
+	// Only on the visibility transition — see `syncBusyLabel`, which is what answers it.
+	if (el && syncBusyLabel(el, busy)) syncToolbarFit(barEl);
 	barEl.querySelectorAll<HTMLButtonElement>('.pbl-write-ctl').forEach((btn) => {
 		btn.disabled = busy !== null;
 	});
@@ -204,6 +304,17 @@ export function syncFilterUi(host: BacklogViewHost, barEl: HTMLElement): void {
 	const input = barEl.querySelector<HTMLInputElement>('.pbl-filter-input');
 	if (input && input.value !== host.filterText) input.value = host.filterText;
 	input?.closest('.pbl-filter')?.classList.toggle('pbl-filter-active', host.filterText !== '');
+	// The release the focus listener in `renderFilterBox` needs. Blur alone cannot be it:
+	// blur keeps a non-empty filter open on purpose, so a filter emptied LATER from
+	// somewhere else — Escape in the tree does exactly that, with focus in the tree —
+	// would leave the flag set on a filter that is neither used nor focused, and the row
+	// would carry an empty input at every narrow width until someone clicked into it.
+	// Here rather than beside the flag's two writers because this is the function whose
+	// whole job is re-deriving this box from `host.filterText`, and it already owns the
+	// other class that answers the same question. Callers that clear and then re-open —
+	// `clear()`, the no-match empty state — run `revealFilter` AFTER `setFilter`, so they
+	// set the flag back on the far side of this.
+	if (host.filterText === '' && document.activeElement !== input) barEl.removeClass('pbl-filter-open');
 }
 
 /**
@@ -250,9 +361,17 @@ export function syncCountLabel(host: BacklogViewHost, barEl: HTMLElement): void 
 	// included, so this asks the one question rather than choosing between two.
 	const total = population.length;
 	const shown = population.filter((item) => !host.isRowHidden(item)).length;
-	if (shown === total) label.setText(`${total} item${total === 1 ? '' : 's'}`);
-	else label.setText(`${shown} of ${total}`);
-	setTooltip(label, levelBreakdown(population));
+	setTextIfChanged(label, shown === total ? `${total} item${total === 1 ? '' : 's'}` : `${shown} of ${total}`);
+	// The tooltip is guarded the same way and for a sharper reason than the text: this
+	// element is `aria-live`, and `setTooltip` attaches Obsidian's hover handling on every
+	// call and has set `aria-label` in some versions — see `syncBusyLabel`, which avoids
+	// it entirely for exactly that. The last breakdown is kept in `dataset` because
+	// nothing can read a tooltip back off an element, and a `data-` attribute is not a
+	// mutation any live region reports.
+	const breakdown = levelBreakdown(population);
+	if (label.dataset.pblBreakdown === breakdown) return;
+	label.dataset.pblBreakdown = breakdown;
+	setTooltip(label, breakdown);
 }
 
 /**
@@ -271,11 +390,14 @@ export function syncCountLabel(host: BacklogViewHost, barEl: HTMLElement): void 
  * the tree later — inert to look at and not inert in effect, which is the worst pairing.
  * The real `disabled` property, never CSS: `pointer-events: none` stops a mouse and
  * nothing else.
+ *
+ * The condition is named in `toolbarControls.ts` because the `⋯` menu reads the same
+ * rule — this function is still its only writer.
  */
 export function syncCollapseCtls(host: BacklogViewHost, barEl: HTMLElement): void {
-	const nothingToCollapse = host.projection !== 'tree' && host.cardChildrenShown.size === 0;
+	const disabled = collapseCtlsDisabled(host);
 	barEl.querySelectorAll<HTMLButtonElement>('.pbl-collapse-ctl').forEach((btn) => {
-		btn.disabled = host.isFiltering() || nothingToCollapse;
+		btn.disabled = disabled;
 	});
 }
 
@@ -329,10 +451,17 @@ function renderFilterBox(host: BacklogViewHost, barEl: HTMLElement): void {
 		attr: { type: 'text', placeholder: 'Filter items', 'aria-label': 'Filter items', [KEY_ATTR]: 'filter' },
 	});
 	input.value = host.filterText;
-	// setFilter re-renders the tree and syncs this box's active state.
+	// `setFilter` re-renders the tree and syncs this box's active state, which is what
+	// makes clearing a THIRD input to `revealFilter` rather than a focus call of its own.
+	// At a collapsing rung an input the user typed into is visible only through
+	// `pbl-filter-active`; emptying it strips that class synchronously, the rung hides the
+	// still-focused input, and the `input.focus()` that used to follow would focus a
+	// `display: none` element — no effect, no error, focus on the body. Establishing the
+	// open flag as part of clearing is also exactly what the design asks for: a cleared
+	// filter stays open until it is blurred.
 	const clear = () => {
 		host.setFilter('');
-		input.focus();
+		revealFilter(barEl);
 	};
 	filterEl.toggleClass('pbl-filter-active', input.value !== '');
 	input.addEventListener('input', () => host.setFilter(input.value));
@@ -350,6 +479,64 @@ function renderFilterBox(host: BacklogViewHost, barEl: HTMLElement): void {
 	setIcon(clearBtn, 'x');
 	setTooltip(clearBtn, 'Clear filter');
 	clearBtn.addEventListener('click', clear);
+	// Below the step that collapses it, the input is not rendered-and-hidden but
+	// display:none, so this button is the control — and it carries the name.
+	const reveal = filterEl.createEl('button', {
+		cls: 'pbl-filter-reveal clickable-icon',
+		attr: { type: 'button', 'aria-label': 'Filter items', [KEY_ATTR]: 'filter-reveal' },
+	});
+	setIcon(reveal, 'search');
+	setTooltip(reveal, 'Filter items');
+	reveal.addEventListener('click', () => revealFilter(barEl));
+	// THE rule, enforced once: a filter that has focus is never collapsed. Four bugs of
+	// one shape were fixed at four call sites before this listener existed — `/`, the
+	// clear button, Escape, and finally typing the last character back out, which reaches
+	// `setFilter` directly and so could never be fixed by anything `clear()` did. Setting
+	// the flag where focus ARRIVES means every path inherits it without knowing about it,
+	// including the next one nobody has thought of. No refit is needed here: the flag only
+	// changes what is drawn below the rung that collapses this input, and `revealFilter`
+	// is what reaches focus from there — it has already refitted before focusing.
+	input.addEventListener('focus', () => barEl.addClass('pbl-filter-open'));
+	input.addEventListener('blur', () => {
+		// A filter someone is still using is never taken away: only an EMPTY input
+		// collapses back. The flag is read and cleared on the toolbar, where
+		// `revealFilter` put it and where it survives a rebuild.
+		if (input.value !== '' || !barEl.hasClass('pbl-filter-open')) return;
+		barEl.removeClass('pbl-filter-open');
+		syncToolbarFit(barEl);
+	});
+}
+
+/**
+ * Open the collapsed filter and focus it. ONE function because there are three inputs:
+ * the reveal button's own click, the clear path (Escape and the clear button), and
+ * `focusFilter()` — which is what `/` in the tree and the no-match empty state both call.
+ * Below the step that collapses it, that method's `.pbl-filter-input` is `display: none`,
+ * and `focus()` on a display:none element does nothing at all, silently — so the
+ * documented keyboard path to the filter would die at exactly the pane widths where the
+ * filter is hardest to reach.
+ *
+ * The refit is before the focus, and it is here rather than in the click handler for the
+ * same reason the function is shared: the input takes ~130px back on a row already
+ * measured as full, and no render follows either caller.
+ */
+export function revealFilter(barEl: HTMLElement): void {
+	// On the TOOLBAR, not on the `.pbl-filter` box — the same element `data-pbl-fit`
+	// lives on, for the same reason. `renderToolbar` calls `barEl.empty()`, so a class
+	// on the box is destroyed by any full render while the fit attribute beside it
+	// survives: an empty filter revealed by `/` would come back from a data refresh
+	// with the rung still hiding it, and `refocusByKey` would then "restore" focus to a
+	// `display: none` input, which silently focuses nothing. The non-empty case is
+	// already safe without this — `renderFilterBox` re-derives `pbl-filter-active` from
+	// the input's value on every render — so this is the empty-but-revealed state
+	// alone, and it is exactly the one nothing else re-derives.
+	barEl.addClass('pbl-filter-open');
+	syncToolbarFit(barEl);
+	// `preventScroll`, because the refit above is not a promise that the input ended up
+	// on screen — a pane narrow enough still clips past the last rung, and the default
+	// focus behaviour scrolls every scrollable ancestor to reveal the target. The bar
+	// itself is `overflow: clip` and cannot scroll, so this is about what is above it.
+	barEl.querySelector<HTMLInputElement>('.pbl-filter-input')?.focus({ preventScroll: true });
 }
 
 /**
@@ -375,13 +562,16 @@ function renderFilterBox(host: BacklogViewHost, barEl: HTMLElement): void {
 function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: BacklogModel): void {
 	// Working position, not configuration: the collapse store persists it and the view
 	// rebuilds itself, because no Bases refresh follows a change it was not told about.
-	const setLevel = (level: string) => host.setFocusLevel(level);
+	// Through `pickAndRefocus` because that rebuild happens while focus is in the menu,
+	// where `capturedFocusKey` cannot see it.
+	const setLevel = (level: string) => pickAndRefocus(barEl, 'focus', () => host.setFocusLevel(level));
 
 	if (host.projection === 'deliverables') {
 		const wrap = barEl.createDiv({ cls: 'pbl-focus' });
 		const btn = wrap.createEl('button', { cls: 'pbl-focus-btn', attr: { type: 'button' } });
 		setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'filter');
-		btn.createSpan({ text: 'Deliverables' });
+		btn.setAttribute('aria-label', 'Deliverables');
+		btn.createSpan({ cls: 'pbl-btn-label', text: 'Deliverables' });
 		btn.disabled = true;
 		setTooltip(btn, 'This board always shows every Deliverable — the focus level has no effect here');
 		return;
@@ -392,9 +582,14 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 	const wrap = barEl.createDiv({ cls: 'pbl-focus' });
 	wrap.toggleClass('pbl-focus-active', active !== '');
 
-	const btn = wrap.createEl('button', { cls: 'pbl-focus-btn', attr: { [KEY_ATTR]: 'focus' } });
+	// Named explicitly, like the New button: the fit ladder hides `.pbl-btn-label`, and
+	// the text is all that named this control before.
+	const btn = wrap.createEl('button', {
+		cls: 'pbl-focus-btn',
+		attr: { [KEY_ATTR]: 'focus', 'aria-label': `Focus: ${active || 'all types'}`, 'aria-haspopup': 'menu' },
+	});
 	setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'filter');
-	btn.createSpan({ text: active || 'All types' });
+	btn.createSpan({ cls: 'pbl-btn-label', text: active || 'All types' });
 	setTooltip(btn, 'Focus — show one type as the top of the tree');
 	btn.addEventListener('click', (evt) => {
 		const menu = new Menu();
@@ -452,61 +647,6 @@ function renderModeToggle(host: BacklogViewHost, barEl: HTMLElement): void {
 }
 
 /**
- * Which axis this saved view shows — offered only on the roadmap, and only while
- * both axes are configured: with one, there is no choice to make, and the axis
- * that remains always beats guidance. The pick persists the way the mode itself
- * does, and it is retained when its axis loses its configuration, so restoring
- * the cleared property restores the saved choice with it.
- */
-function renderAxisPicker(host: BacklogViewHost, barEl: HTMLElement): void {
-	if (host.projection !== 'roadmap' || configuredAxes(host.settings).length < 2) return;
-	const active = activeAxis(host.settings, host.axisPick);
-	const wrap = barEl.createDiv({ cls: 'pbl-axis-picker', attr: { role: 'group', 'aria-label': 'Roadmap axis' } });
-	const position = (axis: RoadmapAxis, icon: string, label: string) => {
-		const btn = iconButton(wrap, icon, label);
-		btn.addClass('pbl-axis-btn');
-		btn.toggleClass('is-active', active === axis);
-		btn.setAttribute('aria-pressed', String(active === axis));
-		btn.addEventListener('click', () => host.setAxisPick(axis));
-	};
-	position('horizons', 'columns-3', 'Show horizons');
-	position('dates', 'calendar-range', 'Show timeline');
-}
-
-/**
- * The zoom picker and jump-to-today, on the dated axis alone — the horizon axis has no
- * density to choose and no today to return to. Segmented buttons like the axis picker,
- * because the zoom choice is one of three and a menu would hide two of them.
- */
-function renderTimelineControls(host: BacklogViewHost, barEl: HTMLElement): void {
-	if (host.projection !== 'roadmap' || activeAxis(host.settings, host.axisPick) !== 'dates') return;
-	const wrap = barEl.createDiv({ cls: 'pbl-zoom-picker', attr: { role: 'group', 'aria-label': 'Timeline zoom' } });
-	const position = (id: ScaleId, icon: string, label: string) => {
-		const btn = iconButton(wrap, icon, label);
-		btn.addClass('pbl-zoom-btn');
-		btn.toggleClass('is-active', host.zoom === id);
-		btn.setAttribute('aria-pressed', String(host.zoom === id));
-		btn.addEventListener('click', () => host.setZoom(id));
-	};
-	position('week', 'calendar-days', 'Zoom to weeks');
-	position('month', 'calendar', 'Zoom to months');
-	position('quarter', 'calendar-range', 'Zoom to quarters');
-	const compact = host.density === 'compact';
-	// The name is the SETTING, fixed, and aria-pressed carries its value — a toggle
-	// whose name changes to the next action announces "Comfortable rows, pressed"
-	// while compact rows are on, which states the opposite of what is true. The icon
-	// still swaps: it is the sighted affordance, and it says nothing to a reader.
-	const densityBtn = iconButton(barEl, compact ? 'rows-2' : 'rows-4', 'Compact rows');
-	densityBtn.addClass('pbl-density-toggle');
-	densityBtn.toggleClass('is-active', compact);
-	densityBtn.setAttribute('aria-pressed', String(compact));
-	densityBtn.addEventListener('click', () => host.setDensity(compact ? null : 'compact'));
-	const today = iconButton(barEl, 'locate-fixed', 'Jump to today');
-	today.addClass('pbl-today-btn');
-	today.addEventListener('click', () => host.jumpToToday());
-}
-
-/**
  * What this projection is counting — its own population, which is not the same question
  * for all four. The Deliverables board draws `model.deliverableResults`; the
  * requirements board draws every result EXCEPT a Deliverable, which it excludes by
@@ -521,23 +661,6 @@ function countedPopulation(host: BacklogViewHost, model: BacklogModel): BacklogI
 	if (host.projection === 'deliverables') return model.deliverableResults;
 	if (host.projection === 'board') return model.results.filter((item) => !isDeliverableType(item.typeName));
 	return model.results;
-}
-
-/**
- * What these two buttons can collapse — a DIFFERENT question from `countedPopulation`
- * beside it, which is why it is a second function rather than a reuse: counting asks for
- * the Base's rows, and collapsing asks for everything on screen that owns a disclosure,
- * context rows included.
- *
- * The Deliverables board is the one projection where `model.items` is the wrong answer.
- * It draws `model.deliverableResults`, read off the WHOLE unfocused tree so a focus set
- * elsewhere can never hide a Deliverable — while `model.items` is the focused render set.
- * So with a focus active, Expand all and Collapse all reached none of the cards outside
- * that subtree, and were a complete no-op when no Deliverable was inside it: two buttons
- * doing nothing, on a screen full of things to collapse.
- */
-function collapsiblePopulation(host: BacklogViewHost, model: BacklogModel): BacklogItem[] {
-	return host.projection === 'deliverables' ? model.deliverableResults : model.items;
 }
 
 /**
@@ -565,49 +688,4 @@ function levelBreakdown(items: BacklogItem[]): string {
 		byLevel.set(label, (byLevel.get(label) ?? 0) + 1);
 	}
 	return [...byLevel].map(([label, n]) => `${n} ${label}`).join(' · ');
-}
-
-/**
- * A toolbar icon control. A real `<button>`, not a div: the toolbar sits outside
- * the tree's single-tab-stop model, and these are the only way to reach the type
- * picker, the backfill and the collapse commands without a mouse.
- *
- * `key` is the focus identity (`capturedFocusKey`) and defaults to the label, which
- * is the same string on every rebuild for all of these but one: the completed toggle
- * names the next action and its count, so it passes its own.
- */
-function iconButton(parent: HTMLElement, icon: string, label: string, key: string = label): HTMLButtonElement {
-	const btn = parent.createEl('button', {
-		cls: 'clickable-icon pbl-icon-btn',
-		attr: { type: 'button', 'aria-label': label, [KEY_ATTR]: key },
-	});
-	setIcon(btn, icon);
-	setTooltip(btn, label);
-	return btn;
-}
-
-/**
- * Expand/collapse toolbar buttons. Collapse state is overridden while a filter is
- * active, so they are genuinely `disabled` then rather than only dimmed: a control
- * a keyboard user can reach has to refuse the press, not just look like it would.
- * The view re-syncs the flag after every content render (`syncCollapseCtls`).
- */
-function collapseButton(
-	host: BacklogViewHost,
-	parent: HTMLElement,
-	icon: string,
-	label: string,
-	mutate: () => void,
-): void {
-	const btn = iconButton(parent, icon, label);
-	btn.addClass('pbl-collapse-ctl');
-	btn.addEventListener('click', () => {
-		// A click on the icon `<svg>` inside a disabled button still reaches this
-		// listener (only `btn.click()` on the button itself is blocked by `disabled`),
-		// so the guard has to be read here rather than trusted from the DOM state —
-		// same shape as the card disclosure toggle in `render/cardChildren.ts`.
-		if (btn.disabled) return;
-		mutate();
-		host.render();
-	});
 }

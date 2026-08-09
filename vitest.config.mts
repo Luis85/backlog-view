@@ -178,11 +178,31 @@ export default defineConfig({
 			// recorded. The point for whoever reads this next is the shape, not the numbers
 			// — a coverage failure on this repository is first a question about which branch
 			// nothing can take, and only then a question about a missing test.
+			//
+			// The toolbar-overflow-menu increment (task 3 of the toolbar-zones plan: the
+			// `⋯` menu mirroring density, jump-to-today, the ✨ backfill and the two bulk
+			// collapse commands, with a watched-failing test for the disabled mirror)
+			// measured 98.24/94.34/99.51/99.41. Statements rounds down to the figure
+			// already recorded above and stays; branches, functions and lines round down
+			// to new decimals (94.3, 99.5, 99.4) and move.
+			//
+			// The fit-ladder increment (task 4 of the same plan: `toolbarFit.ts`, the
+			// filter's reveal and its blur, the two lower rungs, the `css-change` refit,
+			// the clip container, the never-collapse-a-focused-filter rule and the
+			// shed-control refocus) measured 98.26/94.40/99.52/99.42. Two things the
+			// review rounds REMOVED are worth knowing about, since both took covered
+			// branches with them and the figure held anyway: the padding correction (see
+			// `syncToolbarFit`) and the busy indicator's whole measured width reservation,
+			// replaced by a label that cannot change (see `syncBusyLabel`). Only branches rounds down to a new decimal and
+			// moves; the other three repeat the figures above. The branches gained are the
+			// ladder's own — the zero-width refusal, the reveal versus the rebuild, the
+			// blur's two answers and the theme change — each driven rather than
+			// accommodated.
 			thresholds: {
 				statements: 98.2,
-				branches: 94.0,
-				functions: 99.4,
-				lines: 99.3,
+				branches: 94.4,
+				functions: 99.5,
+				lines: 99.4,
 			},
 		},
 	},

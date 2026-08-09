@@ -2,12 +2,19 @@
 
 .pbl-toolbar {
 	display: flex;
-	flex-wrap: wrap;
 	align-items: center;
 	gap: var(--size-4-1);
-	row-gap: var(--size-4-1);
 	padding: var(--size-4-2) var(--size-4-2);
 	border-bottom: 1px solid var(--background-modifier-border);
+	flex: 0 0 auto;
+}
+
+/* The primary action and its type chevron are one control: they wrap or they do not,
+   never one of each, and the box never shrinks out from under them. */
+.pbl-new {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-4-1);
 	flex: 0 0 auto;
 }
 
@@ -100,12 +107,6 @@
 	width: 130px;
 	height: 24px;
 	font-size: var(--font-ui-small);
-	transition: width 120ms ease-in-out;
-}
-
-/* A little room to breathe while actually typing */
-.pbl-filter-input:focus {
-	width: 170px;
 }
 
 .pbl-filter-input::placeholder {
@@ -296,4 +297,74 @@
 .pbl-warning-icon .svg-icon {
 	width: 12px;
 	height: 12px;
+}
+
+/* A zone is a run of controls that belong together; the projection's own is the only
+   one whose contents change, and it is drawn between the switcher and the spacer. */
+.pbl-zone {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-1);
+	flex: 0 0 auto;
+}
+
+/* The switcher is a segmented group: one border around the set, dividers between the
+   positions, and the active one FILLED. Obsidian's `.clickable-icon.is-active` tint is
+   the only thing that used to mark it, which is too quiet for the control that says
+   what you are looking at. */
+.pbl-mode-toggle {
+	display: inline-flex;
+	align-items: center;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	overflow: hidden;
+	flex: 0 0 auto;
+	gap: 0;
+}
+
+.pbl-mode-btn {
+	border-radius: 0;
+	margin: 0;
+}
+
+.pbl-mode-btn + .pbl-mode-btn {
+	border-inline-start: 1px solid var(--background-modifier-border);
+}
+
+.pbl-mode-btn.is-active {
+	background-color: var(--background-modifier-active-hover);
+	color: var(--text-accent);
+	box-shadow: inset 0 -2px 0 var(--interactive-accent);
+}
+
+/* A labelled menu button — the projection zone's pickers, naming their current value. */
+.pbl-menu-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-4-1);
+	font-size: var(--font-ui-small);
+	white-space: nowrap;
+}
+
+.pbl-menu-btn .svg-icon {
+	width: var(--icon-s);
+	height: var(--icon-s);
+}
+
+.pbl-btn-chevron {
+	display: inline-flex;
+	align-items: center;
+	color: var(--text-faint);
+}
+
+.pbl-btn-chevron .svg-icon {
+	width: 12px;
+	height: 12px;
+}
+
+/* The `⋯` and the filter's reveal both exist in every frame and appear only where the
+   ladder has taken something off the row — `styles/toolbarFit.css` decides that. */
+.pbl-overflow-btn,
+.pbl-filter-reveal {
+	display: none;
 }
