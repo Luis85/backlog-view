@@ -170,15 +170,34 @@ const FINDING: ManualSection = {
 				'while it runs.',
 		},
 		{
+			term: 'The ignored-notes count',
+			text:
+				'A toolbar note, whenever the base returned any note with no supported type and no ' +
+				'parent — so it never became a backlog item. It shows up any time that count is ' +
+				'above zero, not only when the whole view is empty: a single pruned note reads here ' +
+				'even while the rest of the backlog renders fine, which is the first place to check ' +
+				'for one expected item that seems to have vanished. Its own tooltip names the fix — ' +
+				'turn off Ignore notes outside the hierarchy — or type or link the note in.',
+		},
+		{
+			term: 'The marker on a row loaded only for context',
+			text:
+				"A row the base's own filter excluded, kept on screen only so the hierarchy around a " +
+				'real result stays correct — hover it for "Not in this base\'s filter — shown to keep ' +
+				'the hierarchy". It behaves differently from an ordinary row on purpose: no state ' +
+				'chip, no Set type or Set state, no reparenting, and it can never be dragged. A row ' +
+				'that looks inert for no obvious reason is very likely this marker.',
+		},
+		{
 			term: 'Nothing showing at all',
 			text:
 				'Four different causes render an empty tree, and each has its own one-press way out. ' +
 				'Either the Base returned nothing (point its filter at your backlog folder, or create ' +
-				'the first item), or it returned notes that do not belong to the hierarchy (create one, ' +
-				'or turn off Ignore notes outside the hierarchy) — the toolbar\'s skipped-notes count ' +
-				'tells these two apart. With items present, a quick filter can be matching none of ' +
-				"them (Clear filter), or every subtree can be done with Show completed items off " +
-				'(the same toggle, offered right there).',
+				'the first item), or everything it returned was ignored (create an item, or turn off ' +
+				'Ignore notes outside the hierarchy, per the ignored-notes count above). With items ' +
+				'present, a quick filter can be matching none of them (Clear filter), or every ' +
+				'subtree can be done with Show completed items off (the same toggle, offered right ' +
+				'there).',
 		},
 	],
 };
@@ -311,8 +330,16 @@ const SETUP: ManualSection = {
 			keys: ['horizonProperty', 'horizonValues', 'startProperty', 'targetProperty', 'dependsOnProperty'],
 		},
 		{
-			term: 'The Deliverables workflow',
-			text: "The property the Deliverables board's own Set state writes.",
+			term: 'The Deliverables workflow\'s own state property — an override',
+			text:
+				'Unset by default, and a first-run ✨ deliberately leaves it that way: with no key ' +
+				"of its own, the Deliverables board reads and writes State property above instead " +
+				'— sharing its property, its values below and its done values, exactly as one ' +
+				'workflow for both. Name a property here only to give Deliverables an independent ' +
+				'one; its own values and done values (below) then default to the shipped Done, ' +
+				'Closed, Completed, Removed rather than to whatever this vault customized for the ' +
+				'shared property, since an own key with nothing declared is a genuinely separate ' +
+				'workflow, not a second name for the first.',
 			keys: ['deliverableStateProperty'],
 		},
 		{
@@ -322,7 +349,9 @@ const SETUP: ManualSection = {
 				'counted as started, and Show completed items — which decide the rollups, the done ' +
 				'styling and which subtrees render at all. A WIP limit and a leave-column policy are ' +
 				'offered per configured state, for the requirements workflow only — the Deliverables ' +
-				'board carries no equivalent, only its own done values.',
+				'board carries no equivalent. Its own Deliverable workflow states and done-values ' +
+				'boxes matter only once the Deliverables workflow has its own state property above; ' +
+				'left blank alongside that, they simply inherit these values too.',
 			keys: [
 				'stateValues', 'doneValues', 'startedStates', 'showCompleted',
 				'deliverableStateValues', 'deliverableDoneValues',
