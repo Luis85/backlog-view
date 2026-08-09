@@ -2,16 +2,18 @@
 type: Bug
 parent: "[[Move and resize a bar]]"
 order: 20
-status: Open
+status: Done
 area: view
 priority: P3
 created: 2026-08-09
+closed: 2026-08-09
 source: Found while fixing the same defect on the dependency connector — Codex review on
   PR #114 raised the connector, and the grips turned out to be the identical case one
   pixel away
 files:
   - src/view/render/timeline.ts
   - src/view/render/board.ts
+  - test/view/timelineDrag.test.ts
 ---
 
 # A bar grip click opens the note
@@ -38,15 +40,9 @@ other interactive thing inside a card carries its own `stopPropagation` — `.pb
 the chevron, the card-children toggle, the state and horizon chips, eight sites in all,
 each with the reason written beside it. The grips never got theirs.
 
-## Not fixed here on purpose
+## The fix
 
-The dependency connector had exactly this defect and was fixed in PR #114, where it was in
-scope: that PR introduced the connector. The grips are older than that PR and shipped on
-`main`, so changing them inside it would put a behaviour change reviewers of a dependency
-feature are not looking for into its diff, and would make one revert undo two unrelated
-things.
-
-The fix is two lines in `renderBar`'s hold loop, in the same idiom as the connector's:
+Two lines in `renderBar`'s hold loop, the same idiom as the connector's guard:
 
 ```ts
 if (hold !== 'body') {
@@ -60,6 +56,21 @@ hold IS the bar element (`hold === 'body' ? el : el.createDiv(...)`), so a guard
 every hold would stop a click on the BAR from opening the note — which is behaviour a
 reader depends on and nobody asked to change. Only the two edge grips are the handles that
 mean something else.
+
+That is why the tests are a PAIR rather than one, in `test/view/timelineDrag.test.ts`: the
+grips stay silent on both event routes, and the bar itself still opens its note. Written
+first and watched failing — the grip half red at four opens (two grips, two routes), the
+bar half already green, which is what proves the second test is guarding something the
+first could have broken rather than restating it.
+
+## Fixed later than found, deliberately
+
+It was raised inside PR #114 and initially left out of it: the grips shipped before that
+branch, so folding them in would have put a behaviour change reviewers of a dependency
+feature were not looking for into its diff, and made one revert undo two unrelated things.
+It went in on the same branch once the maintainer asked for it, which is the difference
+between a scope judgement and a decision — the judgement is mine to make, the decision is
+not.
 
 ## The wider question this leaves
 

@@ -600,6 +600,43 @@ describe('dropping a bar back on the shelf', () => {
 	});
 });
 
+describe('a grip is a handle, not a link', () => {
+	it('does not open the note when a grip is clicked without a drag', () => {
+		// A press that never travels far enough to become a drag still fires `click`, and
+		// the grips are divs inside the bar inside the row `wireCardActivation` wired —
+		// whose handler is unfiltered. So a resize handle did the row's action instead of
+		// its own, and a middle click reached the row's `auxclick` and opened the note in
+		// a new tab by the route a primary-click guard does not cover.
+		const vault = new FakeVault();
+		vault.addFile('Planned.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-04', target: '2026-08-10' } });
+		const { containerEl } = datedView(vault);
+
+		for (const hold of ['start', 'end'] as const) {
+			const grip = gripOf(containerEl, 'Planned', hold);
+			grip.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+			grip.dispatchEvent(new MouseEvent('auxclick', { bubbles: true, cancelable: true, button: 1 }));
+		}
+
+		expect(vault.opened).toEqual([]);
+	});
+
+	it('still opens the note when the BAR itself is clicked', () => {
+		// The half that must not move, and the reason the guard is per hold rather than
+		// on every one of them: the body hold IS the bar element
+		// (`hold === 'body' ? el : el.createDiv(...)`), so a guard applied to the whole
+		// loop would stop a click on the bar from opening its note — behaviour a reader
+		// depends on and nobody asked to change. Without this the fix above passes while
+		// having broken the thing it was careful not to.
+		const vault = new FakeVault();
+		vault.addFile('Planned.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-04', target: '2026-08-10' } });
+		const { containerEl } = datedView(vault);
+
+		gripOf(containerEl, 'Planned', 'body').dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+
+		expect(vault.opened.map((o) => o.path)).toEqual(['Planned.md']);
+	});
+});
+
 function iso(date: { year: number; month: number; day: number }): string {
 	const pad = (n: number) => String(n).padStart(2, '0');
 	return `${date.year}-${pad(date.month)}-${pad(date.day)}`;
