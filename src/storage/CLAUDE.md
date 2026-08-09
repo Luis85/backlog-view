@@ -167,14 +167,19 @@ needing to be excluded by a second.
 
 **What goes back is the captured TEXT**, carrying the user's padding and their choice of
 `A` over `[[A]]` — `restoredLine` changes it only because, while a line is OFF the note,
-the note it named can move and no rewrite reaches a line that is not there. One question
-again: is the captured file still the vault's file at its own path? **Alive** — the line
-must name it, so the captured text goes back if it still does and is retargeted to the
-current name if not. **Gone** — there is nothing to name, and the line is restorable only
-as the broken line it now is, which is exactly what the note would say had the removal
-never happened. The single refusal left is the captured text resolving to SOMETHING: a
-different note has taken that name, and writing it would silently make the user depend on
-a note they never picked.
+the note it named can move and no rewrite reaches a line that is not there. That is
+`namesCaptured` twice and no rule of its own: the captured text goes back if it still
+names the captured note, is retargeted to that note's current name if it does not, and
+whichever text that leaves is written only if it too names the captured note. The second
+ask is the one refusal — a spelling that RESOLVES to a note the capture never held would
+silently make the user depend on a note they never picked.
+
+A deleted prerequisite needs no branch there, because the table's third row already
+answers it. Deleted outright, the captured spelling still names the file's last path, so
+it goes back as the broken line the note would be showing had the removal never happened.
+Renamed and THEN deleted, it does not — so the line is retargeted to the name the note
+died under, which is what Obsidian's own rewrite would have left on the note, and what
+keeps a note later recreated under the old name from inheriting the dependency.
 
 Following a rename replaces the link's TARGET only: the `#heading` and the `|alias` say
 what the user meant by the link and are none of a rename's business, and rebuilding the

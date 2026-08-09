@@ -434,6 +434,26 @@ describe('dependency inverses', () => {
 		expect(vault.fm('Item.md')['dependsOn']).toEqual(['[[A]]']);
 	});
 
+	it('restores a removed dependency under the name its note DIED under', async () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', {});
+		const item = vault.addFile('Item.md', { frontmatter: { dependsOn: '[[A]]' } });
+
+		const inverses = await writeCapturing(vault, [{ file: item, dependsOn: { removePath: 'A.md' } }], linked);
+		expect(vault.fm('Item.md')['dependsOn']).toBeUndefined();
+		// Renamed and then deleted, both while the line was OFF the note. Had the removal
+		// never happened, Obsidian's rename would have rewritten the line to `[[B]]` and the
+		// deletion would have left it there broken — so `[[B]]` is what the note would be
+		// saying, and putting back `[[A]]` would lose the rename and could later bind the
+		// dependency to an unrelated note recreated as A.
+		vault.renameFile('A.md', 'B.md');
+		vault.files.delete('B.md');
+
+		await applyRestores(vault.app, inverses);
+
+		expect(vault.fm('Item.md')['dependsOn']).toEqual(['[[B]]']);
+	});
+
 	it('leaves the user their own obsolete spelling when the target was RENAMED', async () => {
 		const vault = new FakeVault();
 		vault.addFile('A.md', {});

@@ -338,28 +338,30 @@ export function restoreDependsOn(
  * EXIST on a rename and a removed line is not there to be rewritten, so replaying the
  * captured text verbatim would restore `[[A]]` for a note now called B.
  *
- * So: is the captured file still the vault's file at its own path?
+ * So it is `namesCaptured` twice, and no third rule: **does the captured text still name
+ * the captured note** — if it does it goes back as it was, and if it does not it is
+ * retargeted to the note's current name — and then, of the text that would actually be
+ * written, the same question again as a veto. The second ask is what refuses a live
+ * replacement: a spelling that now resolves to a note the capture never held would
+ * silently make the user depend on a note they never picked, so nothing is written.
  *
- * - **Yes** — it is alive, wherever it now lives, and the line must name it. The captured
- *   text goes back if it still does, and is retargeted to the note's current name if a
- *   rename moved it out from under the spelling.
- * - **No** — the note is gone, and there is nothing to name. Its line is restorable only
- *   as the broken line it now is, which is exactly what the note would be saying had the
- *   removal never happened — the same judgement the `remove` arm makes when it claims a
- *   broken line it wrote itself. The one refusal left is the captured text resolving to
- *   SOMETHING: a different note has taken that name, and writing it would silently make
- *   the user depend on a note they never picked.
+ * That covers a DELETED prerequisite without a branch of its own. `namesCaptured` reads
+ * an unresolved line as this line iff it names the file's LAST path, so a note deleted
+ * outright keeps the captured spelling — the broken line the note would be showing had
+ * the removal never happened — while one renamed and THEN deleted is retargeted to the
+ * name it died under, which is what Obsidian's own rewrite would have left on the note.
+ * Restoring the pre-rename spelling there would lose the rename and could later bind the
+ * dependency to an unrelated note recreated under the old name.
  *
  * A line that resolved to nothing when it was captured has no file to ask, and its text
  * is its whole identity, so it always goes back as it was.
  */
 function restoredLine(app: App, file: TFile, entry: DependsOnEntry): string | null {
 	if (entry.file === null) return entry.text;
-	if (app.vault.getFileByPath(entry.file.path) !== entry.file) {
-		return resolvedFileOf(app, file, entry.text.trim()) === null ? entry.text : null;
-	}
-	if (resolvedPathOf(app, file, entry.text.trim()) === entry.file.path) return entry.text;
-	return retarget(entry.text, app.metadataCache.fileToLinktext(entry.file, file.path));
+	const text = namesCaptured(app, file, entry.text, entry)
+		? entry.text
+		: retarget(entry.text, app.metadataCache.fileToLinktext(entry.file, file.path));
+	return namesCaptured(app, file, text, entry) ? text : null;
 }
 
 /**
