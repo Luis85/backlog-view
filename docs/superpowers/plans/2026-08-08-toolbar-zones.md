@@ -1583,13 +1583,13 @@ describe('the toolbar fit ladder', () => {
 
 Import `syncBusy` from `../../src/view/render/toolbar` at the top of the file.
 
-**What this test cannot reach:** the `min-width` that makes the reservation true is a
-stylesheet fact, and jsdom loads no CSS — `getComputedStyle` would report nothing. So the
-sentence this file checks is narrower than the rule: *the ladder re-runs on the busy
-visibility transition and not on the ticks between it*. That the reserved box is actually
-wide enough for "Updating 340 of 340…" is a harness and vault check, and belongs on the
-smoke-test note in Task 6.
-```
+**What this test cannot reach:** jsdom lays nothing out, so
+`getBoundingClientRect().width` reads 0 and `font-variant-numeric` is never applied. The
+sentences this file checks are therefore the narrow ones — *the ladder re-runs on the busy
+visibility transition and not on the ticks between it*, and *the reservation is a pixel
+value taken from the element rather than computed from the string*. That the reserved box
+is actually wide enough, and that the theme's figures are tabular so the measured label is
+the widest one, are harness and vault checks; they are on the smoke-test list in Task 6.
 
 - [ ] **Step 2: Run the test to verify it fails**
 
