@@ -134,35 +134,40 @@ k    = the largest 0..columns.length with  width >= lead + col * k + meta
        (and if no k satisfies it, k = 0 and the rollup drops too)
 ```
 
-`syncColumnFit` publishes `k` as `--pbl-cols-shown` on the tree element and keeps
-`pbl-hide-meta` for the rollup. `.pbl-props` narrows to that many column widths and its
-existing `overflow: hidden` clips the rest; because `k`
-is a whole number of fixed-width columns, cell `k+1` begins exactly at the box edge and
-is clipped entirely rather than shrunk. The header reads the same variable, so the two
-cannot fall out of alignment — the property the old four-class ladder had to maintain by
-having every column in the sum is now structural.
+**A dropped column is not rendered.** `syncColumnFit` writes `k` to
+`host.columnsShown`, `rowContext` slices the resolved list to it, and the header and the
+rows both draw the slice — so a column that does not fit produces no cell at all, and
+`pbl-hide-meta` stays as the rollup's own mechanism.
+
+Hiding it in CSS instead was the first design and is wrong. `overflow: hidden` clips a
+cell visually and leaves it in the accessibility tree: an ordinary Bases value can render
+a native control (the checkbox `test/view/columns.test.ts` already exercises), and the
+chips are `tabindex="-1"` buttons that assistive technology reaches by design. Both would
+stay reachable inside a column the view claims to have dropped, and focusing one scrolls
+the overflow box, sliding every remaining column out from under its header. The old
+four-class ladder did not have this problem — `display: none` took the whole strip out —
+so hiding by clipping would have been a regression introduced by the fix. Rendering `k`
+cells has neither failure and needs no second mechanism.
+
+It costs nothing, either: a changed verdict ALREADY buys a full rebuild, on both paths
+that measure (`renderTreeContent`'s tail, and `ResizePolicy.shouldRebuildOnResize` at
+`src/view/resize.ts:47`). The pass that would have re-toggled a class re-renders with the
+new count instead.
+
+Two consequences to build carefully:
+
+- **`columnFit` counts the FULL list, never the slice.** `ctx.columns` is what was drawn;
+  `ctx.host.columns` is what exists. Measuring the slice would ratchet the count down and
+  never let a column come back when the pane widens.
+- **The slice is the tree's alone.** `host.columnsShown` resets to null when a card
+  projection renders — the same line, in the same place, as today's `removeClass` of the
+  stale verdicts (`src/view/backlogView.ts:561`) — or a narrow-pane verdict from tree mode
+  would strip cells off cards, which is exactly what that line already exists to prevent.
 
 `syncColumnFit` still returns whether the verdict CHANGED, and the caller still owes the
 rows exactly one more pass when it did; the re-measure policy in `src/view/resize.ts` is
-unchanged.
-
-**`syncColumnFit` is the only writer of `--pbl-cols-shown`, and the render must not
-reset it.** The two variables answer different questions and both are needed: the render
-writes `--pbl-prop-count` (how many columns EXIST) as it does today, and the fit writes
-`--pbl-cols-shown` (how many this pane holds), with the CSS falling back from the second
-to the first:
-
-```css
-width: calc(var(--pbl-prop-col, 132px) * var(--pbl-cols-shown, var(--pbl-prop-count, 0)));
-```
-
-The fallback is what draws the first frame, before anything has been measured. Writing
-the full count from the render instead would destroy the previous verdict before the fit
-compares against it, so every refresh on a narrow pane would report a change and buy a
-second full render it does not need. The variable survives because `treeEl.empty()`
-empties the element's children and not its inline style; a count that shrank since the
-last fit leaves the box a column too wide for one frame, which the fit that runs after
-every render corrects.
+unchanged. `--pbl-prop-count` keeps its meaning — how many cells were drawn — so
+`.pbl-props` keeps its width rule untouched and no new custom property is introduced.
 
 `ROW_LEAD_WIDTH` is unchanged: it never carried chip terms.
 
@@ -181,9 +186,10 @@ every render corrects.
   the fit still drops by class rather than by count. The two places that exist to
   counter the ladder on cards are narrowed to that one class rather than deleted, for
   the same reason: the block in `styles/cards.css` (which keeps `.pbl-meta-col` visible
-  on a card) and the `removeClass` call in `src/view/backlogView.ts` (which clears the
-  stale verdict on entering a card projection). Their `.pbl-props` halves do go — a
-  card overrides the width the count drives.
+  on a card) and the line in `src/view/backlogView.ts` (which clears the stale verdict on
+  entering a card projection — now also where `columnsShown` resets to null). Their
+  `.pbl-props` halves go: a card projection resets the count rather than overriding a
+  class, so there is no column verdict left on it to counter.
 - `hasStateColumn` (`src/domain/board.ts`). `render/columns.ts` is its only caller, and
   the question it answers — does either workflow name a key — stops being asked once a
   column exists because the property is visible. `stateKeyFor` and `ownWorkflowReading`
