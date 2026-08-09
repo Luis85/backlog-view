@@ -447,6 +447,49 @@ describe('dependency inverses', () => {
 		expect(vault.fm('Item.md')['dependsOn']).toBeUndefined();
 	});
 
+	it('takes back its own line, not a user entry whose spelling now names a REPLACEMENT note', async () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', {});
+		const item = vault.addFile('Item.md', {});
+
+		const target = vault.files.get('A.md') as never;
+		const inverses = await writeCapturing(vault, [{ file: item, dependsOn: { add: target } }], linked);
+		expect(vault.fm('Item.md')['dependsOn']).toEqual(['[[A]]']);
+		// The prerequisite is renamed, so Obsidian rewrites the plugin's live line...
+		vault.renameFile('A.md', 'B.md');
+		// ...a DIFFERENT note is created under the old name, and the user depends on THAT.
+		vault.addFile('A.md', {});
+		vault.fm('Item.md')['dependsOn'] = ['[[B]]', '[[A]]'];
+
+		await applyRestores(vault.app, inverses);
+
+		// The captured spelling names somebody else's note now, so it is not this undo's
+		// own line to take. Preferring the text regardless removed the user's dependency
+		// and left the plugin's `[[B]]` on the note.
+		expect(vault.fm('Item.md')['dependsOn']).toEqual(['[[A]]']);
+	});
+
+	it('still owes a removed line whose captured spelling now names a REPLACEMENT note', async () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', {});
+		const item = vault.addFile('Item.md', { frontmatter: { dependsOn: '[[A]]' } });
+
+		const inverses = await writeCapturing(vault, [{ file: item, dependsOn: { removePath: 'A.md' } }], linked);
+		expect(vault.fm('Item.md')['dependsOn']).toBeUndefined();
+		// Renamed while the line was OFF the note, a different note created under the old
+		// name, and the user hand-adds a dependency on that one.
+		vault.renameFile('A.md', 'B.md');
+		vault.addFile('A.md', {});
+		vault.fm('Item.md')['dependsOn'] = ['[[A]]'];
+
+		await applyRestores(vault.app, inverses);
+
+		// The live `[[A]]` is not the captured line back — it names a different note — so
+		// the dependency is still owed, under the name its note has now. Counting the
+		// exact text as already-restored made the undo silently do nothing.
+		expect(vault.fm('Item.md')['dependsOn']).toEqual(['[[A]]', '[[B]]']);
+	});
+
 	it('recognises a hand-restored unresolvable entry that differs only in padding', async () => {
 		const vault = new FakeVault();
 		const item = vault.addFile('Item.md', { frontmatter: { dependsOn: ' Ghost ' } });

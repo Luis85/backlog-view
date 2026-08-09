@@ -145,6 +145,15 @@ hand-restoring only `[[A]]` otherwise has the by-note count satisfy captured `A`
 captured `[[A]]` to be appended: two `[[A]]` on the note, and the spelling the user
 actually lost still missing.
 
+**The line it IS means the same TEXT naming the same NOTE**, which is one condition
+(`ownsExactText`) that both arms of `restoreDependsOn` ask, because a spelling is only
+this undo's own line while it still resolves where the capture pointed. A rename moves the
+note out from under the text and a different note created at the old name takes that
+spelling over: the captured `[[A]]` is now a dependency on somebody else's note. Trusting
+the text regardless broke the preference in both directions — undoing an add deleted the
+user's own `[[A]]` and left the plugin's `[[B]]` behind, and undoing a removal read the
+user's `[[A]]` as the captured line already back and restored nothing at all.
+
 ## Collapse state, and the view mode beside it
 
 - The rule that decides where anything persists: **base settings are saved on the view

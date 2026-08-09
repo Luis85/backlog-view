@@ -215,6 +215,14 @@ function applyDependsOnDelta(
  * FALLBACK for an entry genuinely respelled since the write, which is the case the
  * multiset paragraph above describes and which stays intact.
  *
+ * That preference is CONDITIONAL (`ownsExactText`), and both arms ask the condition: the
+ * spelling is only this undo's own line while it still names the note the capture held.
+ * A rename moves the note out from under the text — Obsidian rewrote the live line to
+ * `[[B]]` and the captured `[[A]]` was not there to be rewritten — and a different note
+ * created at the old name makes that spelling somebody else's dependency. Preferring it
+ * regardless deleted the user's `[[A]]` and left the plugin's `[[B]]` on the note, which
+ * is the exact harm the preference exists to prevent, arriving from the other side.
+ *
  * **Known limitation, deliberate:** a restored entry is appended, never reinserted at
  * the position it was removed from, so undoing a removal from `[B, A]` hands back
  * `[A, B]` — the row's own text visibly reorders even though nothing about which
@@ -242,13 +250,21 @@ export function restoreDependsOn(
 	// rename strands. Text is the fallback on both sides, for the line that names nothing.
 	const identityOf = (text: string): string => resolvedPathOf(app, file, text) ?? text.trim();
 	const capturedIdentity = (entry: DependsOnEntry): string => entry.file?.path ?? entry.text.trim();
+	// Whether a captured entry's own spelling is still ITS OWN line — see the doc comment.
+	// A captured entry that named nothing has no note to be renamed out from under it, so
+	// its text is its identity outright, whatever that text may resolve to today.
+	const ownsExactText = (entry: DependsOnEntry): boolean =>
+		entry.file === null || resolvedFileOf(app, file, entry.text.trim()) === entry.file;
 	const live = liveEntries(fm, restore.key);
 	const consumed = new Array<boolean>(live.length).fill(false);
 	const removed: DependsOnEntry[] = [];
 	for (const wanted of restore.remove) {
 		// Prefer the exact line this entry captured — an undo owns the line its own
-		// write put there, not merely a live entry naming the same note.
-		let index = live.findIndex((value, i) => !consumed[i] && value === wanted.text);
+		// write put there, not merely a live entry naming the same note — but only
+		// while that spelling still names the captured note.
+		let index = ownsExactText(wanted)
+			? live.findIndex((value, i) => !consumed[i] && value === wanted.text)
+			: -1;
 		if (index === -1) {
 			// Fallback: no exact spelling survives, so match by resolved note instead —
 			// the case a genuine hand-respelling (`A` rewritten `[[A]]`) needs.
@@ -270,7 +286,7 @@ export function restoreDependsOn(
 		removed.push({ text, file: resolvedFileOf(app, file, text.trim()) });
 	}
 	const next: unknown[] = live.filter((_, i) => !consumed[i]);
-	const pending = stillOwed(next, restore.add, identityOf);
+	const pending = stillOwed(next, restore.add, identityOf, ownsExactText);
 	const added: DependsOnEntry[] = [];
 	for (const entry of pending.owed) {
 		const key = capturedIdentity(entry);
@@ -304,6 +320,11 @@ export function restoreDependsOn(
  * captured `A`, leaving captured `[[A]]` to be appended: two `[[A]]` on the note, and the
  * spelling the user actually lost still missing.
  *
+ * The line it IS means the same TEXT naming the same NOTE (`ownsExactText`, asked by the
+ * caller because only it can resolve): a captured `[[A]]` whose note was renamed to B and
+ * whose old name a different note now occupies is not back merely because `[[A]]` is on
+ * the note. Counting it as back left the dependency on B unrestored and the undo silent.
+ *
  * Its own function because `restoreDependsOn` is at its complexity budget, and because
  * the two passes are one question asked twice rather than two steps of the replay.
  */
@@ -311,6 +332,7 @@ function stillOwed(
 	live: unknown[],
 	captured: DependsOnEntry[],
 	identityOf: (text: string) => string,
+	ownsExactText: (entry: DependsOnEntry) => boolean,
 ): { owed: DependsOnEntry[]; already: Map<string, number> } {
 	// The exact count is built from the line AS WRITTEN, the identity count from its
 	// trimmed reading. Counting both off the trimmed text made `" A "` on the note an
@@ -323,7 +345,7 @@ function stillOwed(
 	const already = countOf(lines.map((line) => identityOf(line.trimmed)));
 	const owed: DependsOnEntry[] = [];
 	for (const entry of captured) {
-		const have = exact.get(entry.text) ?? 0;
+		const have = ownsExactText(entry) ? (exact.get(entry.text) ?? 0) : 0;
 		if (have === 0) {
 			owed.push(entry);
 			continue;
