@@ -200,9 +200,11 @@ base settings are saved on the view, working position on the device.
   any two of them breaks something: the **rendered** roots, genuine and promoted, which the
   renderer, the keyboard, the filter index and the collapse seed walk; the **positionable**
   roots, this projection's genuine roots, which say where a drop lands; and the **ranking**
-  group, every parentless item in the vault, which says what number it gets. The third is
-  not a projection's list at all — it is what the data means, and no projection may narrow
-  it without inventing duplicate orders.
+  group, every parentless item **the model holds**, which says what number it gets. The
+  third is not a projection's list at all — it is what the data means, as far as this view
+  can see it — and no projection may narrow it without inventing duplicate orders. It is
+  already narrower than the vault, since the Base decides what loads; that is a limit this
+  feature inherits rather than one it may widen.
   It is not stuck either way. Dragging it onto a suite reparents it, which is the actual
   repair for a mis-parented test and the gesture a user reaches for anyway.
 - **2c — a test's parent is a work item** (the advisory drag of
@@ -263,11 +265,21 @@ base settings are saved on the view, working position on the device.
   refusal above, because the two differ by drop zone rather than by row, and a rule that
   refused both would break the repair this note offers for a mis-parented test.
 - A genuine catalog root lands **where** the visible neighbours say and takes a number the
-  **whole real root group** admits: no drop or creation in either projection produces two
-  parentless notes sharing an `order`, and no renumber rewrites one projection's roots while
-  leaving the other's. Asserted on a model holding suites and Epics interleaved by order —
-  the arrangement where ranking against the visible list alone collides on the first drop,
-  and where a projection-scoped renumber collides on every one after it.
+  **loaded** real root group admits: no drop or creation in either projection produces two
+  parentless notes sharing an `order` **among the notes the model holds**, and no renumber
+  rewrites one projection's roots while leaving the other's. Asserted on a model holding
+  suites and Epics interleaved by order — the arrangement where ranking against the visible
+  list alone collides on the first drop, and where a projection-scoped renumber collides on
+  every one after it.
+  **Loaded, not every parentless note in the vault**, and the limit is not this feature's to
+  remove. `createItems` loads the Base's results and the ancestors those results name; an
+  unrelated parentless `Epic` the Base excludes entirely is in neither, so its `order` cannot
+  be seen and can be reused. Making the wider promise true would take a vault-wide read,
+  which every other reader here refuses for the same reason
+  ([[Dependencies as a property]] 3b). That collision is **already possible today** between
+  two filtered-apart Epics; what this PBI must not do is widen it, and ranking against the
+  whole loaded group rather than one projection's slice is exactly what keeps it from
+  widening.
 - **Creation** is asserted separately from the drop, on a last suite at 10 with a hidden
   plan root at 20: it is a different helper (`endOfSiblingsOrder`, a maximum rather than a
   midpoint), it fails on a different arrangement, and a criterion written about drops alone

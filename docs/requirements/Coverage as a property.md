@@ -42,9 +42,18 @@ people edit for two different reasons.
    Unbound, the property does not exist for this view: nothing is read, drawn or offered.
 2. Each **test** result's value is read tolerantly, the way every field here is read — a
    single entry or a list, a `[[wikilink]]` or a bare name, blanks and repeats collapsed.
-   The property is read from the test types and from nothing else: the direction rule is
-   the feature's, so the reader keeps it rather than leaving it to the one menu that
-   happens to offer the write.
+   The property is read from tests and from nothing else: the direction rule is the
+   feature's, so the reader keeps it rather than leaving it to the one menu that happens to
+   offer the write.
+   **From a test as the view shows it, not as its frontmatter spells it.** A child of a
+   `Test suite` with no `type` at all *is* a `Test case`
+   ([[Test suite and test case as a ladder of their own]] 4c) — it draws as one and gets
+   backfilled as one — so a gate written against the raw `typeName` would silently ignore
+   that note's coverage until ✨ happened to run, leaving a covered item reading as
+   untested for a reason nothing on screen explains. The gate asks the item's **effective**
+   type, which the model has already computed by the time this pass runs, and the
+   **Covers…** menu asks the same thing so a row the reader accepts is a row the menu
+   offers to edit.
 3. Each entry resolves against the item set the model **keeps** — the Base's results plus
    the excluded ancestors the parent walk loaded, less what the scope prune dropped —
    producing an edge from the test that named it to the item it covers.
@@ -124,9 +133,13 @@ people edit for two different reasons.
   **Covers…** writes this one ([[Linking a test to what it covers]]), so leaving it out
   would make the README's own rule false rather than merely incomplete — which is the
   reason `fieldRows` already documents the two keys the view stamps for itself.
-- The property is read from test types only. A work item carrying the key declares no edge
-  and raises no count — asserted at the reader, since the menu that offers the write is one
-  path and the rule is about all of them.
+- The property is read from tests only. A work item carrying the key declares no edge and
+  raises no count — asserted at the reader, since the menu that offers the write is one path
+  and the rule is about all of them.
+- A **typeless** child of a `Test suite` declares coverage like any other case, and its
+  **Covers…** menu opens. Asserted on a note with no `type` in its frontmatter: it is the
+  row where "a test" and "a note whose `type` says test" come apart, and the only one where
+  a reader written against raw frontmatter looks correct on every other fixture.
 - ✨ binds the key and backfills nothing, on work items and tests alike. The exemption is
   stated where the stub pass runs rather than left to follow from the property being a
   list.
