@@ -27,17 +27,11 @@ import { ResizePolicy } from './resize';
 import { rowHidden, VisibilityRule } from './rowVisibility';
 import { SelectionController } from './selection';
 import { UiStateController } from './uiState';
-import {
-	detectIgnoredGrouping,
-	renderToolbar,
-	syncBusy,
-	syncCollapseCtls,
-	syncCountLabel,
-	syncFilterUi,
-} from './render/toolbar';
+import { detectIgnoredGrouping, renderToolbar, revealFilter, syncBusy, syncCollapseCtls, syncCountLabel, syncFilterUi } from './render/toolbar';
 import { chipProps, rowContext, RowContext } from './render/columns';
 import { renderLoadingState } from './render/emptyStates';
 import { renderLegend } from './render/legend';
+import { syncToolbarFit } from './render/toolbarFit';
 import { captureScroll, centreOnToday, renderProjectionContent, restoreScroll, ScrollAnchor } from './render/projections';
 import { refreshRowChildren } from './render/rows';
 import { adoptableProperties, BacklogSettings, defaultSettings, notePropertyId, OptionalProperty, resolveSettings } from '../domain/settings';
@@ -161,6 +155,10 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// Which columns fit depends on the pane, which changes without a data update.
 		if (typeof ResizeObserver !== 'undefined') {
 			this.resizeObserver = new ResizeObserver(() => {
+				// The observer watches the TREE, whose box tracks the pane's — and also
+				// narrows when the vertical scrollbar appears, which the toolbar's does
+				// not. A needless re-measure is one comparison and no render.
+				syncToolbarFit(this.toolbarEl);
 				if (this.resize.shouldRebuildOnResize()) this.renderTreeContent();
 			});
 			// The tree, not the view: its content box is what the rows get, and it also
@@ -336,7 +334,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	}
 
 	focusFilter(): void {
-		this.toolbarEl.querySelector<HTMLInputElement>('.pbl-filter-input')?.focus();
+		revealFilter(this.toolbarEl);
 	}
 
 	isRowHidden(item: BacklogItem): boolean {
@@ -574,6 +572,11 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// is the tree's and this is the roadmap's.
 		const drawn = this.roadmap?.drawn ?? { done: false, milestone: false, accent: false };
 		renderLegend(this, this.legendEl, this.roadmap?.palettes ?? [], drawn);
+		// Every render that reaches here can have changed the row's width: the toolbar
+		// was rebuilt with a different projection zone, or the count label went from
+		// "18 items" to "3 of 18", or the primary button is naming a different type.
+		// After the content, because the count is one of the things being measured.
+		syncToolbarFit(this.toolbarEl);
 		if (projection !== 'tree') return;
 		// Measured against the tree that now exists, scrollbar and all. A changed
 		// verdict means a column came or went, which only the rows can show — one

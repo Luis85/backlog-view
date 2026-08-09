@@ -32,6 +32,9 @@
 
 /* Components, in the order the view builds them */
 @import "./toolbar.css";
+/* Load-bearing: the fit ladder's rules override the base ones they narrow — the row's
+   `flex-wrap`, the filter input's and the `⋯`'s display — at equal specificity. */
+@import "./toolbarFit.css";
 @import "./tree.css";
 @import "./columns.css";
 @import "./badges.css";

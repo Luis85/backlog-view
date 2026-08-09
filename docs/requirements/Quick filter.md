@@ -58,7 +58,18 @@ what it belongs to — which a flat list of matches cannot say.
 `src/view/filterState.ts` (the needle, the match-path walk, and the two sets it
 keeps — see [[The quick filter on the board]] for why one set cannot answer both
 questions) ·
-`src/view/render/toolbar.ts` (the input, `syncFilterUi`) ·
+`src/view/render/toolbar.ts` (the input, `syncFilterUi`, and `revealFilter` — the ONE way
+the input is opened, because the reveal button, the clear path and `focusFilter()` all
+have to reach it) ·
+`src/view/render/toolbarFit.ts` (the toolbar's fit ladder: it MEASURES the row and writes
+`data-pbl-fit`, the step `styles/toolbarFit.css` reads to shed controls as the pane
+narrows, and this input is what step 2 sheds — collapsing it to a search button unless
+the box holds text or the reveal has been used. It is specified here because the filter
+is the one control the ladder can hide out from under a keyboard user: `focus()` on a
+`display: none` element does nothing and reports nothing, which is why `revealFilter`
+refits before it focuses. The rest of the row's ladder — which control leaves at which
+step, and the `⋯` the shed ones stay reachable through — is the toolbar-zones work's
+own note) ·
 `src/view/render/rows.ts` (`renderTitleText` highlighting) ·
 `src/view/render/emptyStates.ts` (the no-match state).
 Tests: `test/view/filter.test.ts`, `test/view/toolbar.test.ts`.

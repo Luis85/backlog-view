@@ -16,6 +16,7 @@ import {
 	renderOverflow,
 	renderProjectionZone,
 } from './toolbarControls';
+import { syncToolbarFit } from './toolbarFit';
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { displayType, focusTarget, isDeliverableType } from '../../domain/itemTypes';
 import { DELIVERABLE_TYPE } from '../../domain/settings';
@@ -198,6 +199,79 @@ function renderBusyIndicator(barEl: HTMLElement): void {
 }
 
 /**
+ * Reserve the box the widest label of THIS batch will need — by rendering that label and
+ * reading what it actually took, not by counting its characters.
+ *
+ * Two things have to be true for this to be a bound, and only one of them is arithmetic.
+ *
+ * **The longest VALUE is `total`**: it is fixed for the life of a batch while `done` only
+ * climbs toward it, so `Updating {total} of {total}…` has the most characters any tick can
+ * show. That much is free.
+ *
+ * **The longest value is not automatically the WIDEST**, and that is the trap this has
+ * fallen into twice. Counting `ch` was wrong because `ch` is the advance of a "0" and
+ * bounds neither the letters nor the other digits. Measuring the longest value is wrong
+ * for a subtler reason: in a proportional face `Updating 88 of 111…` can draw wider than
+ * `Updating 111 of 111…`, because 8 is wider than 1 — same digit count, more pixels. So
+ * the measurement needs the digits to be equal-width before it means anything, which is
+ * what `font-variant-numeric: tabular-nums` on `.pbl-busy-label` buys: with tabular
+ * figures every digit has one advance, the widest label really is the one with the most
+ * digits, and measuring it bounds every tick.
+ *
+ * The residual, stated rather than papered over: a theme font with no tabular figures
+ * makes that property a no-op, and the reservation can then be a few pixels short of some
+ * intermediate value. What that costs is a few clipped pixels at the extreme right of a
+ * near-threshold row, mid-batch, until the batch ends — which is why it is accepted here
+ * rather than answered by measuring all ten digits and composing a bound.
+ *
+ * One forced layout read, once per batch, on the transition that already re-runs the
+ * ladder — not once per file, which is the cost this whole mechanism exists to avoid.
+ *
+ * Published as `--pbl-busy-w` rather than written as `min-width`, which is this
+ * codebase's idiom for a number TypeScript owns and CSS reads (`--pbl-prop-col`,
+ * `--pbl-today-left`) and what the Obsidian ruleset requires: a real property assigned
+ * from script is a style a theme cannot reach.
+ */
+function reserveBusyLabel(labelEl: HTMLElement, total: number): void {
+	const longest = total > 1 ? `Updating ${total} of ${total}…` : 'Updating…';
+	labelEl.setCssProps({ '--pbl-busy-w': '0px' });
+	labelEl.setText(longest);
+	// `Math.ceil`, because a fractional advance rounds down into a box one pixel short.
+	const px = Math.ceil(labelEl.getBoundingClientRect().width);
+	labelEl.setCssProps({ '--pbl-busy-w': `${px}px` });
+}
+
+/**
+ * The indicator's own half of `syncBusy`: the on/off flag, the tick's text, and the
+ * width reservation that keeps the ticks between two transitions from moving the row.
+ * Reports whether the indicator's VISIBILITY changed, which is the only thing the row's
+ * width depends on and so the only thing worth re-measuring for.
+ */
+function syncBusyLabel(el: HTMLElement, busy: BusyState | null): boolean {
+	// Captured before the toggle: the ladder re-runs on idle→busy and busy→idle, which
+	// happen twice per batch, and NOT on the ticks between them. `scrollWidth` is a
+	// forced layout read, so measuring per file would put back a cost of the same shape
+	// as the per-file re-render the deferred update removed. What makes that safe is the
+	// reservation taken on the SAME transition, three lines down.
+	const wasOn = el.hasClass('pbl-busy-on');
+	el.toggleClass('pbl-busy-on', busy !== null);
+	// A single-file write is over before it could be read; naming a count only
+	// when there is a count to name keeps the label honest either way.
+	const label = busy && busy.total > 1 ? `Updating ${busy.done} of ${busy.total}…` : 'Updating…';
+	const labelEl = el.querySelector<HTMLElement>('.pbl-busy-label');
+	const changed = wasOn !== (busy !== null);
+	// Reserve BEFORE writing the tick's own text: `reserveBusyLabel` renders the
+	// longest form to measure it, so the real text has to be set afterwards or the
+	// measurement is what the user reads.
+	if (changed && busy && labelEl) reserveBusyLabel(labelEl, busy.total);
+	labelEl?.setText(busy ? label : '');
+	// The row gives the reservation back when the batch ends, or the next idle toolbar
+	// is measured carrying a box for a label it is not showing.
+	if (changed && !busy) labelEl?.setCssProps({ '--pbl-busy-w': '0px' });
+	return changed;
+}
+
+/**
  * Point the toolbar at the batch currently being written, or at nothing when idle.
  * Called on every render and on every progress tick, so it only touches text and
  * flags — never structure. Controls that would be refused mid-batch go `disabled`
@@ -205,13 +279,8 @@ function renderBusyIndicator(barEl: HTMLElement): void {
  */
 export function syncBusy(barEl: HTMLElement, busy: BusyState | null, canUndo: boolean): void {
 	const el = barEl.querySelector<HTMLElement>('.pbl-busy');
-	if (el) {
-		el.toggleClass('pbl-busy-on', busy !== null);
-		// A single-file write is over before it could be read; naming a count only
-		// when there is a count to name keeps the label honest either way.
-		const label = busy && busy.total > 1 ? `Updating ${busy.done} of ${busy.total}…` : 'Updating…';
-		el.querySelector<HTMLElement>('.pbl-busy-label')?.setText(busy ? label : '');
-	}
+	// Only on the visibility transition — see `syncBusyLabel`, which is what answers it.
+	if (el && syncBusyLabel(el, busy)) syncToolbarFit(barEl);
 	barEl.querySelectorAll<HTMLButtonElement>('.pbl-write-ctl').forEach((btn) => {
 		btn.disabled = busy !== null;
 	});
@@ -360,10 +429,17 @@ function renderFilterBox(host: BacklogViewHost, barEl: HTMLElement): void {
 		attr: { type: 'text', placeholder: 'Filter items', 'aria-label': 'Filter items', [KEY_ATTR]: 'filter' },
 	});
 	input.value = host.filterText;
-	// setFilter re-renders the tree and syncs this box's active state.
+	// `setFilter` re-renders the tree and syncs this box's active state, which is what
+	// makes clearing a THIRD input to `revealFilter` rather than a focus call of its own.
+	// At a collapsing rung an input the user typed into is visible only through
+	// `pbl-filter-active`; emptying it strips that class synchronously, the rung hides the
+	// still-focused input, and the `input.focus()` that used to follow would focus a
+	// `display: none` element — no effect, no error, focus on the body. Establishing the
+	// open flag as part of clearing is also exactly what the design asks for: a cleared
+	// filter stays open until it is blurred.
 	const clear = () => {
 		host.setFilter('');
-		input.focus();
+		revealFilter(barEl);
 	};
 	filterEl.toggleClass('pbl-filter-active', input.value !== '');
 	input.addEventListener('input', () => host.setFilter(input.value));
@@ -381,6 +457,51 @@ function renderFilterBox(host: BacklogViewHost, barEl: HTMLElement): void {
 	setIcon(clearBtn, 'x');
 	setTooltip(clearBtn, 'Clear filter');
 	clearBtn.addEventListener('click', clear);
+	// Below the step that collapses it, the input is not rendered-and-hidden but
+	// display:none, so this button is the control — and it carries the name.
+	const reveal = filterEl.createEl('button', {
+		cls: 'pbl-filter-reveal clickable-icon',
+		attr: { type: 'button', 'aria-label': 'Filter items', [KEY_ATTR]: 'filter-reveal' },
+	});
+	setIcon(reveal, 'search');
+	setTooltip(reveal, 'Filter items');
+	reveal.addEventListener('click', () => revealFilter(barEl));
+	input.addEventListener('blur', () => {
+		// A filter someone is still using is never taken away: only an EMPTY input
+		// collapses back. The flag is read and cleared on the toolbar, where
+		// `revealFilter` put it and where it survives a rebuild.
+		if (input.value !== '' || !barEl.hasClass('pbl-filter-open')) return;
+		barEl.removeClass('pbl-filter-open');
+		syncToolbarFit(barEl);
+	});
+}
+
+/**
+ * Open the collapsed filter and focus it. ONE function because there are three inputs:
+ * the reveal button's own click, the clear path (Escape and the clear button), and
+ * `focusFilter()` — which is what `/` in the tree and the no-match empty state both call.
+ * Below the step that collapses it, that method's `.pbl-filter-input` is `display: none`,
+ * and `focus()` on a display:none element does nothing at all, silently — so the
+ * documented keyboard path to the filter would die at exactly the pane widths where the
+ * filter is hardest to reach.
+ *
+ * The refit is before the focus, and it is here rather than in the click handler for the
+ * same reason the function is shared: the input takes ~130px back on a row already
+ * measured as full, and no render follows either caller.
+ */
+export function revealFilter(barEl: HTMLElement): void {
+	// On the TOOLBAR, not on the `.pbl-filter` box — the same element `data-pbl-fit`
+	// lives on, for the same reason. `renderToolbar` calls `barEl.empty()`, so a class
+	// on the box is destroyed by any full render while the fit attribute beside it
+	// survives: an empty filter revealed by `/` would come back from a data refresh
+	// with the rung still hiding it, and `refocusByKey` would then "restore" focus to a
+	// `display: none` input, which silently focuses nothing. The non-empty case is
+	// already safe without this — `renderFilterBox` re-derives `pbl-filter-active` from
+	// the input's value on every render — so this is the empty-but-revealed state
+	// alone, and it is exactly the one nothing else re-derives.
+	barEl.addClass('pbl-filter-open');
+	syncToolbarFit(barEl);
+	barEl.querySelector<HTMLInputElement>('.pbl-filter-input')?.focus();
 }
 
 /**

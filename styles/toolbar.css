@@ -109,12 +109,6 @@
 	width: 130px;
 	height: 24px;
 	font-size: var(--font-ui-small);
-	transition: width 120ms ease-in-out;
-}
-
-/* A little room to breathe while actually typing */
-.pbl-filter-input:focus {
-	width: 170px;
 }
 
 .pbl-filter-input::placeholder {
@@ -223,6 +217,19 @@
 	to {
 		opacity: 1;
 	}
+}
+
+/* Reserved rather than fitted: the text changes once per file while a batch runs, and
+   `syncBusy` deliberately re-renders nothing, so a box that grew with the count would
+   move the row on ticks nothing re-measures. The WIDTH is set per batch by `syncBusy` —
+   see there for why it cannot be a constant.
+
+   `tabular-nums` is load-bearing, not typography: it is what makes the digits equal-width,
+   and therefore what makes "the label with the most digits is the widest label" true. */
+.pbl-busy-label {
+	display: inline-block;
+	min-width: var(--pbl-busy-w, 0);
+	font-variant-numeric: tabular-nums;
 }
 
 .pbl-busy-spinner,
@@ -370,8 +377,9 @@
 	height: 12px;
 }
 
-/* The `⋯` exists in every frame and appears only where the ladder has taken something
-   off the row — `styles/toolbarFit.css` is where that is decided. */
-.pbl-overflow-btn {
+/* The `⋯` and the filter's reveal both exist in every frame and appear only where the
+   ladder has taken something off the row — `styles/toolbarFit.css` decides that. */
+.pbl-overflow-btn,
+.pbl-filter-reveal {
 	display: none;
 }
