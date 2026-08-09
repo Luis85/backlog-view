@@ -395,6 +395,26 @@ describe('dependency inverses', () => {
 		expect(vault.fm('Item.md')['dependsOn']).toBeUndefined();
 	});
 
+	it('leaves the user their own obsolete spelling when the target was RENAMED', async () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', {});
+		const item = vault.addFile('Item.md', {});
+
+		const target = vault.files.get('A.md') as never;
+		const inverses = await writeCapturing(vault, [{ file: item, dependsOn: { add: target } }], linked);
+		// A is renamed, so Obsidian rewrites the plugin's line — and the user separately
+		// types the old name, which now resolves to nothing.
+		vault.renameFile('A.md', 'B.md');
+		vault.fm('Item.md')['dependsOn'] = ['[[B]]', '[[A]]'];
+
+		await applyRestores(vault.app, inverses);
+
+		// The captured `[[A]]` is unresolved now, exactly as it would be if A had been
+		// deleted — but A is alive under a new name, so that spelling is merely obsolete
+		// and the user's line is theirs. The plugin takes back its own by identity.
+		expect(vault.fm('Item.md')['dependsOn']).toEqual(['[[A]]']);
+	});
+
 	it('keeps the alias and heading the user wrote when following a rename', async () => {
 		const vault = new FakeVault();
 		vault.addFile('A.md', {});

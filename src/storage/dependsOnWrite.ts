@@ -256,15 +256,19 @@ export function restoreDependsOn(
 	const ownsExactText = (entry: DependsOnEntry): boolean => {
 		if (entry.file === null) return true;
 		const now = resolvedFileOf(app, file, entry.text.trim());
-		// Resolving to NOTHING is not the same as resolving to somebody else. A deleted
-		// note leaves the line the plugin wrote sitting there, broken, named by nobody —
-		// so no other dependency can be claiming that spelling and the undo still owns
-		// it. Refusing the preference here left an added `[[A]]` on the note after A was
-		// deleted: the exact match was declined, and the fallback compares the live
-		// entry's own text (a broken line's whole identity) against the captured file's
-		// path, which never match. Only a spelling that now names a DIFFERENT note is
-		// somebody else's.
-		return now === null || now === entry.file;
+		if (now === entry.file) return true;
+		// Names a DIFFERENT note: somebody else's dependency, whatever it used to be.
+		if (now !== null) return false;
+		// Unresolved, and the two ways to get here are opposites. DELETED: the line the
+		// plugin wrote is still sitting there, broken and claimed by nobody, so the undo
+		// owns it — refusing here left an added `[[A]]` on the note after A was deleted,
+		// because the fallback then compared a broken line's own text (its whole
+		// identity) against the captured file's path, which never match. RENAMED: the
+		// file is alive under a new name and Obsidian rewrote the plugin's line to match
+		// it, so this spelling is merely obsolete — and a user who typed the old name
+		// themselves owns THAT line, which preferring it here would delete while leaving
+		// the plugin's behind. The file's own presence is what tells them apart.
+		return app.vault.getFileByPath(entry.file.path) !== entry.file;
 	};
 	const live = liveEntries(fm, restore.key);
 	const consumed = new Array<boolean>(live.length).fill(false);

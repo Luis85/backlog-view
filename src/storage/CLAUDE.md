@@ -138,13 +138,18 @@ was. Following a rename replaces the link's TARGET only: the `#heading` and the 
 say what the user meant by the link and are none of a rename's business, and rebuilding
 the whole thing from the file resolved correctly while silently dropping both.
 
-Resolving to NOTHING is not resolving to somebody else. The exact-spelling preference is
-conditional — a captured spelling is only still this undo's own line while it names the
-captured note — but a DELETED note leaves that line sitting there broken and claimed by
-nobody, so the preference holds. Declining it there left an added `[[A]]` on the note
-after A was deleted: the exact match was refused, and the fallback compares a broken
-line's own text (its whole identity) against the captured file's path, which never match.
-Only a spelling that now names a DIFFERENT note is somebody else's.
+Resolving to NOTHING is not resolving to somebody else — but it has two causes, and they
+are opposites. The exact-spelling preference is conditional: a captured spelling is only
+still this undo's own line while it names the captured note. **DELETED** leaves that line
+sitting there broken and claimed by nobody, so the preference holds; declining it there
+left an added `[[A]]` on the note after A was deleted, because the fallback then compares
+a broken line's own text (its whole identity) against the captured file's path, which
+never match. **RENAMED** is the opposite: the file is alive under a new name and Obsidian
+rewrote the plugin's line to match, so the old spelling is merely obsolete — and a user
+who typed that old name themselves owns THAT line, which preferring it would delete while
+leaving the plugin's behind. `vault.getFileByPath(entry.file.path) !== entry.file` is what
+tells them apart, because a rename mutates the file in place and a deletion does not. A
+spelling that now names a DIFFERENT note is somebody else's in either case.
 
 **A live line satisfies the captured line it IS before one it merely resembles**
 (`stillOwed`). The replay counts what is already back twice — by exact text and by
