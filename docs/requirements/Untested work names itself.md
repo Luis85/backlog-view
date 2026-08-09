@@ -16,7 +16,9 @@ discovered by a customer.
 
 This is the backward read of [[Coverage as a property]] and the reason the epic put both
 families in one base. Every edge already exists; what this note adds is a count on the
-covered item's row, and a signal when that count is zero.
+covered item's **tree row**, and a signal when that count is zero. One surface, deliberately
+— the board card and the bucket card are named as refused in 4a rather than left to an
+implementer's discretion, which is what naming three surfaces and specifying one amounts to.
 
 It is a **read**, all of it. Nothing is written to the covered item — no `tested: true`, no
 stamp, no cached number — which is what keeps a test's existence from being a fact two
@@ -40,7 +42,7 @@ here is a question for whichever increment gives tests a lifecycle, and it is no
 | | |
 | --- | --- |
 | **Actor** | Backlog owner |
-| **Trigger** | The tree, the board or the roadmap renders a work item, with the coverage property bound |
+| **Trigger** | The backlog **tree** renders a work item, with the coverage property bound |
 | **Preconditions** | The coverage key is bound, and the base returns tests as well as work items |
 | **Guarantee** | Nothing is written. The count reports only edges declared by results, so a note the Base excluded can neither raise a count nor lower one, and no ancestor inherits a descendant's coverage. |
 
@@ -137,9 +139,21 @@ here is a question for whichever increment gives tests a lifecycle, and it is no
   is. The first would hide exactly what this note exists to show; the second would make
   every child of a covered parent read as tested.
 - **4a — the count is asked of a board card or a bucket card rather than a tree row.**
-  Same number, same rule, and whether each of the three surfaces draws it is that surface's
-  own decision. What this note fixes is the number and its meaning; a projection that shows
-  nothing is showing nothing wrong.
+  The number is the same and the rule is the same; **neither card draws it, and that is a
+  refusal rather than an omission.** The Trigger above says the tree and only the tree for
+  this reason: an earlier draft named all three surfaces and then let each decide, which is
+  a promise with nothing behind it — an implementation drawing the signal on the tree alone
+  satisfied every criterion while two named projections showed nothing.
+  [[Dependencies as a property]] 4d settled the same question the same way for the broken
+  mark, in the same words worth repeating: *what is refused here is the promise, not the
+  feature.* A badge on a board card and a bucket card is two display decisions inside the
+  notes that own those surfaces, nobody has asked for them, and this note owns the number
+  rather than every place it could appear.
+  What that costs is worth stating plainly: a reader who works from the board sees no
+  coverage gap. The epic's answer is that the gap is a property of the plan's *hierarchy* —
+  which is the tree — and a board is a workflow view of the same items. If that turns out
+  to be wrong, it is a new use case in the note that owns the card, not a wider sentence
+  here.
 
 ## Acceptance criteria
 
@@ -168,6 +182,10 @@ here is a question for whichever increment gives tests a lifecycle, and it is no
   coverage key is bound and nothing names it — the configuration where a blanket
   zero-count rule reports a release date as a coverage gap.
 - A test row carries neither, including one another test names.
+- The count and the signal are drawn on the **tree row** and on no card. Both halves
+  asserted: a criterion proving only that the tree draws them is satisfied by an
+  implementation that also badges every board card, which is a different feature nobody
+  specified.
 - Not verifiable here: whether the untested signal reads as *information* rather than as an
   error at a glance, in a register where most rows will carry it on the day the feature
   ships. That belongs in [[Smoke test the visual changes]], and it is the reason the signal
@@ -180,7 +198,9 @@ here is a question for whichever increment gives tests a lifecycle, and it is no
 model keeps rather than a second traversal — one map from covered item to the tests naming
 it, built by the same pass that resolves the entries.
 
-`src/view/render/rows.ts` draws it on a tree row; the card surfaces
-(`src/view/render/board.ts`, `src/view/render/roadmap.ts`) are where 4a is answered if
-anyone wants it there. The signal's own styling is a partial under `styles/`, and it is a
+`src/view/render/rows.ts` draws it on a tree row, and that is the whole of the drawing.
+The card surfaces (`src/view/render/board.ts`, `src/view/render/roadmap.ts`) are
+**untouched** — named here so the absence reads as this PBI's decision (4a) rather than as
+a module somebody forgot, which is the difference between a scoped feature and a
+half-built one. The signal's own styling is a partial under `styles/`, and it is a
 marker rather than a colour for the reason the last criterion gives.
