@@ -2,7 +2,7 @@ import { Menu, setIcon, setTooltip } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { cardPaths as boardCardPaths } from '../../domain/board';
 import { BacklogItem, BacklogModel } from '../../domain/model';
-import { activeAxis, configuredAxes, RoadmapAxis, RoadmapModel } from '../../domain/roadmap';
+import { activeAxis, buildRoadmap, configuredAxes, RoadmapAxis, RoadmapModel } from '../../domain/roadmap';
 import { ScaleId } from '../../domain/timeline';
 import { showMenuForClick } from '../interactions/menu';
 import { runInit } from '../interactions/structure';
@@ -278,15 +278,17 @@ function renderTimelineControls(host: BacklogViewHost, zone: HTMLElement, barEl:
  * disclosure THIS pass, so a card whose children are all currently hidden (completed work
  * folded away, or none loaded yet) would stay reachable and reopen later, the moment a
  * hidden child resurfaces, from a write nobody watching that card ever asked for.
+ * `cardOnlyPaths` answers for a card hidden WHOLESALE the same way (see there).
  *
- * The same reasoning reaches a card whose OWN whole subtree is done: hidden by "Hide
- * completed items", such a card is absent from `host.board`/`host.roadmap` entirely, so
- * `cardOnlyPaths` cannot name it either — `host.isRowHiddenUnfiltered` (the quick filter
- * lifted, `hideCompleted` still asked, exactly as `countedPopulation` already asks it)
- * catches that one directly. Scoped off the tree deliberately: the tree already writes
- * through a hidden subtree's collapse bit for the same reason it always has — the row is
- * this projection's own, not a card borrowed from another one — and nothing here is
- * asking that question to be reopened.
+ * The board has nothing else worth keeping reachable while hidden: `isRowHiddenUnfiltered`
+ * (quick filter lifted, `hideCompleted` still asked — `countedPopulation`'s own predicate)
+ * is a harmless, conservative superset there, since every disclosure on that projection
+ * belongs to a card regardless. The roadmap is not: a dated-axis timeline BAR is a row, not
+ * a card, and a hidden one must stay reachable exactly as a visible one does
+ * ([[Collapsing a bar's subtree]]) — `cardOnlyPaths` already tells a hidden bar from a
+ * hidden card on that axis, so asking `isRowHiddenUnfiltered` again here would wrongly take
+ * the bar out too. Scoped off the tree for the same kind of reason: the tree already writes
+ * through a hidden subtree's own collapse bit, and that is existing, unrelated behaviour.
  *
  * Every Deliverable is a card of its own — there is nothing else in that projection's
  * population — so it is excluded outright rather than asked to name its cards one at a
@@ -298,26 +300,40 @@ function collapsiblePopulation(host: BacklogViewHost, model: BacklogModel): Back
 	if (host.projection === 'deliverables') return [];
 	if (host.projection === 'tree') return model.items;
 	const excluded = cardOnlyPaths(host);
+	if (host.projection === 'roadmap') return model.items.filter((item) => !excluded.has(item.file.path));
 	return model.items.filter((item) => !excluded.has(item.file.path) && !host.isRowHiddenUnfiltered(item));
 }
 
 /**
- * Paths a card of its own is currently drawn for — board cards, and on the roadmap its
- * bucket, shelf and context cards alike. `domain/board.ts`'s `cardPaths` already answers
- * this for the board — and, unmodified, for the Deliverables board too: it renders through
- * the same `host.board` snapshot (`renderDeliverablesBoardContent` returns its board
- * through the field `renderBoardContent` uses — there is no second one). The roadmap has
- * no such helper, so its bucket, shelf and context lists are read directly.
+ * Paths a card of its own is drawn for, board and roadmap alike — WHETHER OR NOT "Hide
+ * completed items" currently hides it. `domain/board.ts`'s `cardPaths` already answers
+ * this for the board (and, unmodified, for the Deliverables board too: it renders through
+ * the same `host.board` snapshot — `renderDeliverablesBoardContent` returns its board
+ * through the field `renderBoardContent` uses, there is no second one) — but `host.board`
+ * is already visibility-filtered, so a fully-done board card that hideCompleted removed
+ * entirely would be invisible to it. `collapsiblePopulation` covers that gap on the board
+ * with its own `isRowHiddenUnfiltered` check instead, a conservative superset that is safe
+ * there because nothing on the board is a bar.
  *
- * A dated-axis timeline row is never in this set: `RoadmapModel.bars` is never read here,
- * so [[Collapsing a bar's subtree]]'s row folding stays reachable by the bulk controls
- * while any shelf or context card sharing that same screen does not.
+ * The roadmap cannot take that shortcut — a bar must stay reachable while hidden, a card
+ * must not — so its exclusion is built from a SECOND, independent `buildRoadmap` call, with
+ * an always-true visibility predicate rather than `host.roadmap`'s real (hideCompleted- and
+ * filter-narrowed) one. `roadmapRows` is the only place that predicate is consulted before
+ * placement runs (`domain/roadmap.ts`), so placement itself — bar or shelf, from the item's
+ * own dates — is exactly as visibility-independent as it needs to be; only the resulting
+ * arrays are filtered by it, which is precisely the filtering this bypasses. A dated-axis
+ * bar is never in the returned set either way: `RoadmapModel.bars` is never read here, so
+ * [[Collapsing a bar's subtree]]'s row folding stays reachable by the bulk controls while
+ * any shelf or context card sharing that same screen — hidden or not — does not.
  */
 function cardOnlyPaths(host: BacklogViewHost): ReadonlySet<string> {
 	if ((host.projection === 'board' || host.projection === 'deliverables') && host.board) {
 		return boardCardPaths(host.board.board);
 	}
-	if (host.projection === 'roadmap' && host.roadmap) return roadmapCardPaths(host.roadmap.roadmap);
+	if (host.projection === 'roadmap' && host.model) {
+		const axis = activeAxis(host.settings, host.axisPick);
+		if (axis) return roadmapCardPaths(buildRoadmap(host.model, host.settings, () => true, axis));
+	}
 	return new Set();
 }
 
