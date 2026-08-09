@@ -133,15 +133,24 @@ function candidates(
  *
  * Dragging S onto T writes to T — T is the one that waits — so T is legal exactly when S
  * is a legal prerequisite FOR T. That is `candidates` asked from the other end, and it is
- * asked rather than restated: the four exclusions (self, already declared however spelled,
- * would close a loop, outside the filter) have one definition, and a second formulation
- * beside it is what drifts. Stating it as "something it already waits for" is the MENU's
- * sentence, where the item under the cursor is the dependent; here the dependent is the
- * one dropped onto, and the same words name the wrong end.
+ * asked rather than restated: three of the four exclusions (self, already declared
+ * however spelled, would close a loop) have one definition here, `candidates(target)`,
+ * and a second formulation beside it is what drifts. Stating it as "something it already
+ * waits for" is the MENU's sentence, where the item under the cursor is the dependent;
+ * here the dependent is the one dropped onto, and the same words name the wrong end.
+ *
+ * The fourth — outside the filter — is NOT inherited from `candidates`, and cannot be:
+ * `candidates(target)` filters `outsideFilter` on the CANDIDATE side, which constrains
+ * what may be offered TO `target`, never whether `target` itself is a context row. The
+ * mirror formula needs that question asked of `target` directly, which is what the
+ * `!target.outsideFilter` guard below is for — dropping it would let a context row be
+ * reported as a legal drop destination, contradicting the root rule that such a row is
+ * never a write target. `applySafely`'s structural refusal is still the backstop against
+ * an actual write landing there; this guard is about the DRAG's affordance agreeing with
+ * that rule rather than offering a target the write path would refuse anyway.
  *
  * One `declaredMap` for the whole sweep, so a target costs one closure walk rather than a
- * rebuild plus a walk. Swept ONCE when a drag starts — never per frame; the check that
- * says so is in `test/view/linkDrag.test.ts`.
+ * rebuild plus a walk.
  *
  * Matched on `.file`, not on the path, for the reason `applyDependencyWrite` states: a
  * note deleted and another created at the same path satisfies a path compare while being
@@ -151,6 +160,7 @@ export function legalTargetPaths(app: App, model: BacklogModel, source: BacklogI
 	const declared = declaredMap(app, model);
 	const legal = new Set<string>();
 	for (const target of model.byPath.values()) {
+		if (target.outsideFilter) continue;
 		if (candidates(app, model, target, declared).some((c) => c.file === source.file)) legal.add(target.file.path);
 	}
 	return legal;
