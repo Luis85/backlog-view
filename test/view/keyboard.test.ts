@@ -82,6 +82,76 @@ describe('opening and keyboard', () => {
 		expect(tree.hasAttribute('aria-activedescendant')).toBe(false);
 	});
 
+	/**
+	 * The pointer's way out, and it lives beside the key because the key alone was not
+	 * one: `Escape` needs the pane focused, and the gesture that selects a row — a click
+	 * that opens its note — hands focus to the editor.
+	 */
+	it('clears the selection when the click lands on the pane itself', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+		const tree = treeOf(containerEl);
+		rowByTitle(containerEl, 'Epic A').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(containerEl.querySelector('.pbl-selected')).not.toBeNull();
+
+		tree.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		expect(containerEl.querySelector('.pbl-selected')).toBeNull();
+		expect(tree.hasAttribute('aria-activedescendant')).toBe(false);
+	});
+
+	/**
+	 * Background is what a click is NOT on, and it has to be: the scroller's own blank
+	 * strip is the area under the last row and almost nothing else, because the pane is
+	 * filled with containers — a row's child group here, the column strip on the board.
+	 * Asking `evt.target === treeEl` would leave the blank space a user can actually hit
+	 * meaning nothing at all.
+	 */
+	it('clears it from a child group’s blank space, not only the scroller', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+		rowByTitle(containerEl, 'Epic A').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		containerEl.querySelector('.pbl-children')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		expect(containerEl.querySelector('.pbl-selected')).toBeNull();
+	});
+
+	/**
+	 * The control half of the rule is a CATEGORY — a tab stop — and this is the case that
+	 * makes an enumeration insufficient: the timeline's lead-resize grip is a
+	 * `role="separator"` div, so it is neither an item nor a `button`, and a rule listing
+	 * the controls that exist would have cleared the selection under the user's hand
+	 * mid-resize. The pane itself carries `tabindex="0"` too and must stay background,
+	 * which the test above holds from the other side.
+	 */
+	it('keeps the selection when the timeline’s resize grip is clicked', () => {
+		const vault = new FakeVault();
+		vault.addFile('Item.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-04', target: '2026-08-20' } });
+		const { view, containerEl } = makeView(vault, { startProperty: 'note.start', targetProperty: 'note.target' });
+		view.setProjection('roadmap');
+		key(treeOf(containerEl), 'ArrowDown');
+		expect(containerEl.querySelector('.pbl-selected')).not.toBeNull();
+
+		containerEl
+			.querySelector('.pbl-timeline-lead-grip')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		expect(containerEl.querySelector('.pbl-selected')).not.toBeNull();
+	});
+
+	/** A control acts on its own, and acting is not a click on nothing. */
+	it('keeps the selection when a per-row control is clicked', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+		const row = rowByTitle(containerEl, 'Epic B');
+		row.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		row.querySelector<HTMLElement>('.pbl-chevron')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		expect(row.classList.contains('pbl-selected')).toBe(true);
+	});
+
 	it('points aria-activedescendant at the selected row across renders', () => {
 		const vault = fixture();
 		const { containerEl, view } = makeView(vault);

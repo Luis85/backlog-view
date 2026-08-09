@@ -196,6 +196,58 @@ describe('the board keyboard', () => {
 		expect(view.selectedBoardColumn).toBeNull();
 	});
 
+	/**
+	 * Two claims in one, and the second is why the click is dispatched on the COLUMN
+	 * STRIP rather than on the pane element: the board fills its pane with containers,
+	 * so the blank space a user can actually hit belongs to one of those and never to
+	 * the scroller — a test that dispatched on the scroller would pass while the gesture
+	 * stayed unreachable. And the release is of BOTH halves of the one selection:
+	 * clearing the card while a column stop stood would be a board reading as empty and
+	 * still answering Alt+arrow with a move.
+	 */
+	it('a click on the board’s blank space releases a held column stop', () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10, status: 'New' } });
+		const { containerEl, view } = board(vault);
+		const tree = treeOf(containerEl);
+		key(tree, 'ArrowRight');
+		expect(view.selectedBoardColumn).toBe(0);
+
+		containerEl.querySelector('.pbl-board-cols')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		expect(view.selectedBoardColumn).toBeNull();
+		expect(columnsOf(containerEl)[0].hasClass('pbl-col-selected')).toBe(false);
+	});
+
+	/**
+	 * The column's header IS the stop — the third selectable thing in this view, and the
+	 * one a rule naming rows and cards misses. Clicking it must not throw away the board
+	 * position it stands for.
+	 */
+	it('keeps a held column stop when its own header is clicked', () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10, status: 'New' } });
+		const { containerEl, view } = board(vault);
+		key(treeOf(containerEl), 'ArrowRight');
+		expect(view.selectedBoardColumn).toBe(0);
+
+		columnsOf(containerEl)[0]
+			.querySelector('.pbl-board-col-stop')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		expect(view.selectedBoardColumn).toBe(0);
+	});
+
+	/** The card is an item, so the click that takes it must not also be a click on nothing. */
+	it('keeps the card selection when the click lands on a card', () => {
+		const vault = boardVault();
+		const { containerEl } = board(vault);
+
+		cardByTitle(containerEl, 'Epic A').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		expect(cardByTitle(containerEl, 'Epic A').hasClass('pbl-selected')).toBe(true);
+	});
+
 	it('End and reverse entry reach the LAST card of the last column', () => {
 		const vault = boardVault();
 		// Two cards in the final column, so the far edge is not also the near one.

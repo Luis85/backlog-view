@@ -1,5 +1,27 @@
 import { BacklogItem } from '../domain/model';
 
+/**
+ * What a click inside the pane can land on and still mean something: something the
+ * selection can REST on, or something that can be operated. Everything else the pane
+ * draws is background, and a click there means "nothing" — see the listener in the
+ * constructor.
+ *
+ * Both halves are CATEGORIES rather than lists of the things that exist today, and each
+ * was a list first that shipped a hole. `[aria-selected]` is what selectable looks like
+ * here — a tree row, a card in either card projection, and the board column's header,
+ * which is a stop of its own precisely so an empty column stays reachable; naming
+ * `.pbl-row, .pbl-card` covered two of those three and discarded a held column position
+ * on a click on its header. `[tabindex]` is what operable looks like, since a pane
+ * control is a tab stop by construction — `-1` for the per-row buttons, `0` for the
+ * timeline's resize grip, a `role="separator"` div that no list of items and buttons
+ * caught. `button` stays beside it for the few carrying no explicit tabindex. A row's own
+ * controls need no term at all: they sit inside a row, which the first half already has.
+ *
+ * The scroller itself carries `tabindex="0"` and is caught by that same term, so the
+ * listener has to rule it back out — it is the background, not a control on it.
+ */
+const NOT_BACKGROUND = '[aria-selected], button, [tabindex]';
+
 /** Source of unique element ids for the aria attributes, shared across view instances. */
 let elementIdCounter = 0;
 
@@ -38,6 +60,21 @@ export class SelectionController {
 		this.treeEl = treeEl;
 		this.rows = rows;
 		this.colEls = colEls;
+		// The pointer's way OUT of a selection, and the reason it is needed: `Escape`
+		// clears one, but only while the pane has focus, and opening a note hands focus
+		// to the editor — so after the gesture that selects, the key that unselects is
+		// out of reach.
+		//
+		// Background is defined by what it is NOT, and it has to be: `evt.target ===
+		// treeEl` describes the empty strip under a tree's last row and almost nothing
+		// else, because every projection fills the pane with containers of its own —
+		// `.pbl-board-cols`, a column's card list, the roadmap's grid, a row's
+		// `.pbl-children`. A click in the blank part of any of those is a click on
+		// nothing, and the equality test called it a click on something.
+		treeEl.addEventListener('click', (evt) => {
+			const hit = (evt.target as Element | null)?.closest(NOT_BACKGROUND) ?? null;
+			if (hit === null || hit === treeEl) this.clearSelection();
+		});
 	}
 
 	selectItem(item: BacklogItem, scroll = true): void {
@@ -56,6 +93,9 @@ export class SelectionController {
 	}
 
 	clearSelection(): void {
+		// A held column stop is a selection too, and clearing one while leaving the
+		// other is a pane that reads as empty and still answers the move keys.
+		if (this.selectedBoardColumn !== null) this.selectBoardColumn(null);
 		this.selectedPath = null;
 		this.deselectRows();
 		this.syncActiveDescendant(null);
