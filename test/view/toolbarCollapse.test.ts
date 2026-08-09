@@ -57,6 +57,30 @@ describe('the bulk collapse controls leave a card’s own disclosure alone', () 
 		expect(kidTitlesOf(cardByTitle(containerEl, 'Now item'))).toEqual(['Feature N1']);
 	});
 
+	// The exclusion has to be asked of the board's own STRUCTURE, not of
+	// `cardChildrenShown`: that register only knows a card drew a disclosure THIS pass, so
+	// a card whose one child is hidden by "Hide completed items" draws no disclosure at all
+	// and would slip past a filter keyed on it — collapse state written now, then surfacing
+	// the moment the hidden child is revealed, from a click that never touched this card.
+	it('leaves a card alone even while its only child is hidden and it drew no disclosure at all', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic C.md', { frontmatter: { type: 'Epic', order: 30, status: 'Active' } });
+		vault.addFile('Feature C1.md', {
+			frontmatter: { type: 'Feature', order: 10, status: 'Done' },
+			parentLink: 'Epic C',
+		});
+		const { containerEl, view } = makeBoard(vault, { showCompleted: false });
+		expect(cardByTitle(containerEl, 'Epic C').querySelector('.pbl-card-kids-toggle')).toBeNull();
+		expect(view.isCollapsed('Epic C.md')).toBe(true);
+
+		collapseCtl(containerEl, 'Expand all')?.click();
+
+		// Still collapsed: a card is excluded by what it IS, not by whether it happened
+		// to draw a disclosure this pass — or the bit written here would surface the
+		// moment "Show completed items" (or a new child) revealed one.
+		expect(view.isCollapsed('Epic C.md')).toBe(true);
+	});
+
 	// Half the original gate's reason survives: on a projection that drew no disclosure
 	// these buttons change nothing on screen and still write collapse state, which then
 	// surprises the tree. Disabled, not absent, and on the property rather than in CSS.
