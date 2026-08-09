@@ -147,5 +147,18 @@ and each stays open until they are, so a stale check is visible rather than assu
   day wide; the dimming of illegal targets survives a theme that replaces the colour
   tokens, and still reads as *refused* rather than as *disabled*; and the preview line's
   accent is distinguishable from the today line's red and from a conflict arrow's.
-  **Never checked** — the harness answered layout and hierarchy only, which is exactly
-  what ADR 0020 says it can answer.
+  The harness look was performed on 2026-08-09, later than the increment that owed it —
+  it shipped claiming no browser was available, and the two defects that cost are
+  recorded below rather than smoothed over, because both were the kind ADR 0020 says
+  looking is *for*. What the picture showed that no assertion had: every connector
+  rendered as a themed button blob (Obsidian's `button:not(.clickable-icon)` fills
+  `background-color` and `box-shadow` at (0,1,1), which a bare class cannot outrank —
+  the card-children disclosure's bug, a second time), and a milestone's connector sat
+  14px below its diamond and overlapping it, because the dot is a child of a box rotated
+  45 degrees and `left: 100%` is expressed in that rotated frame. Both were found by
+  Codex review first and then MEASURED in the harness — `getBoundingClientRect` against
+  the real app.css, before and after — rather than argued from specificity alone.
+  What a vault still owes is everything above that a picture cannot settle: hittability
+  at human scale, the theme-replaced dimming, the preview line's accent against the
+  today line and a conflict arrow, and the drag-preview snapshot. **Those remain never
+  checked.**

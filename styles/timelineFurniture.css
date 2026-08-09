@@ -186,8 +186,16 @@
    the positioned `.pbl-bar`, so `left`/`right` resolve against the bar's own edges. It
    sits OUTSIDE the end rather than on it, which is what keeps `.pbl-bar-grip-end` at
    right: -3px reachable on a bar one day wide — the two would otherwise trade places at
-   the zoom where a bar is narrower than its own handles. */
-.pbl-bar-connector {
+   the zoom where a bar is narrower than its own handles.
+
+   ELEMENT-QUALIFIED, like every other bare `<button>` this plugin draws: Obsidian's
+   `button:not(.clickable-icon)` sets `background-color` and `box-shadow` at (0,1,1), so
+   the class alone loses regardless of source order and the dot renders as a themed
+   button blob rather than a hollow ring. `button.pbl-card-kids-toggle` (cardChildren.css)
+   is the precedent and carries the full reasoning; `.pbl-tag-remove` and the two chips
+   are the same rule again. Width, height, padding and border need no qualification —
+   those come from the bare `button` selector at (0,0,1), which a class already outranks. */
+button.pbl-bar-connector {
 	position: absolute;
 	top: 50%;
 	left: 100%;
@@ -195,6 +203,7 @@
 	width: 9px;
 	height: 9px;
 	padding: 0;
+	appearance: none;
 	border: 1.5px solid var(--pbl-bar-color);
 	border-radius: 50%;
 	background-color: var(--background-primary);
@@ -217,9 +226,17 @@
    and `.pbl-bucket-add` each carry exactly this block for exactly this reason, and a
    hover-revealed control that lacked one shipped unreachable on touch once. Permanent is
    the cheap direction here: what a hoverless device loses is the discretion, not the
-   gesture. */
+   gesture.
+
+   Element-qualified for a SECOND reason, and it is the one that bites: the rule it
+   undoes is `button.pbl-bar-connector` at (0,1,1), so a bare `.pbl-bar-connector` here
+   would be (0,1,0) and LOSE — no media query involved, just specificity — leaving the
+   connector permanently invisible on exactly the devices this block exists for. The
+   paragraph above says a later rule must not get between the pair; qualifying the first
+   half is that same hazard arriving from underneath. The three reveal selectors need
+   nothing: each is two classes and already outranks (0,1,1). */
 @media (hover: none) {
-	.pbl-bar-connector {
+	button.pbl-bar-connector {
 		opacity: 1;
 	}
 }
@@ -237,11 +254,26 @@
 	transform: translate(-2px, -50%);
 }
 
-/* A milestone's rule carries `translateX(-50%)`, so the diamond occupies
-   [left - 6, left + 6] and `left: 100%` would miss it by half its own width. */
+/* A milestone is a 12px square ROTATED 45 degrees (`.pbl-bar.pbl-bar-milestone` in
+   `timeline.css`), and the connector is its child — so the whole placement below is
+   expressed in the bar's own rotated frame, not in screen pixels. That is the trap: the
+   ordinary `left: 100%` + `translate(Xpx, -50%)` reads as "just past the right end" and
+   lands the dot diagonally DOWN-RIGHT of the diamond, because local +X is the screen
+   down-right diagonal once the parent has turned.
+
+   So the anchor is the local TOP-RIGHT corner (`left: 100%; top: 0`), which is the corner
+   the rotation carries to the diamond's drawn right tip, and the outward push is the
+   local diagonal `(6px, -6px)` — magnitude 8.49, which is 4px of clear air beyond the
+   tip once the dot's own 4.5px radius is taken off. The same 4px the square bars above
+   leave, arrived at through the rotation rather than in spite of it.
+
+   `rotate(-45deg)` straightens the dot's own frame. Invisible on a circle, which is why
+   it is last and not the fix: what it buys is a focus ring that is not a tilted
+   rectangle around a round control. */
 .pbl-bar-milestone .pbl-bar-connector {
+	top: 0;
 	left: 100%;
-	transform: translate(9px, -50%);
+	transform: translate(-50%, -50%) translate(6px, -6px) rotate(-45deg);
 }
 
 /* The live link gesture — `interactions/linkDrag.ts`. Filed here rather than in

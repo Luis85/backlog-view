@@ -183,10 +183,24 @@ describe('rendering', () => {
 		// SPECIFICITY (an extra pseudo-class), so unlike the hover: none reveal it wins
 		// regardless of where in the file it is written — the check is only that the
 		// rule exists, which is exactly the gap the tag buttons shipped with.
-		for (const selector of ['.pbl-add', '.pbl-bucket-add', '.pbl-tag-remove', '.pbl-tag-add', '.pbl-bar-connector']) {
+		// The pair is addressed AS WRITTEN, element qualifier and all: `.pbl-bar-connector`
+		// is a bare `<button>`, so both halves carry `button` to outrank Obsidian's
+		// `button:not(.clickable-icon)` at (0,1,1) — and qualifying only the hide would
+		// leave the reveal at (0,1,0), losing to it and hiding the control forever on the
+		// devices this whole check exists for. The `:focus-visible` reveal needs no
+		// qualifier (an extra pseudo-class already puts it at (0,2,0)), so it is asked of
+		// the class alone.
+		const focusOf = (selector: string): string => `${selector.replace(/^[a-z]+/, '')}:focus-visible`;
+		for (const selector of [
+			'.pbl-add',
+			'.pbl-bucket-add',
+			'.pbl-tag-remove',
+			'.pbl-tag-add',
+			'button.pbl-bar-connector',
+		]) {
 			const hides = ruleAt(selector, 'opacity: 0;');
 			const reveals = ruleAt(selector, 'opacity: 1;', '(hover: none)');
-			const focusReveals = ruleAt(`${selector}:focus-visible`, 'opacity: 1;');
+			const focusReveals = ruleAt(focusOf(selector), 'opacity: 1;');
 			expect(hides, `${selector} is expected to be hover-revealed`).toBeGreaterThan(-1);
 			expect(reveals, `${selector} needs a hover: none reveal`).toBeGreaterThan(-1);
 			expect(reveals, `${selector}'s reveal must come after the rule it overrides`).toBeGreaterThan(hides);
