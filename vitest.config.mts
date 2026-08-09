@@ -232,6 +232,20 @@ export default defineConfig({
 			// figures already recorded and stay. Both sides of the merge carried the same
 			// four thresholds, so there was no higher-of to take — the rise is the merged
 			// tree's own.
+			//
+			// The user-manual dialog's task-1 fix round (closing the section-intro branch
+			// review found untested, in `test/ui/manualDialog.test.ts`) measured
+			// 98.33/94.65/99.57/99.49 (5843/5942, 3686/3894, 1408/1414, 4895/4920) against
+			// the 98.33/94.69/99.57/99.48 baseline above. Statements and functions repeat
+			// exactly; lines rounds down to the figure already recorded (99.4) despite the
+			// small rise. Branches is the one worth explaining, because closing the named
+			// branch did not fully recover the figure: two of `manualDialog.ts`'s own
+			// guards stay untaken, and both are dead by construction rather than gaps this
+			// suite left — `if (opening) this.show(opening)` only takes its true arm
+			// because every real caller hands `ManualDialog` a non-empty `sections` array,
+			// and `show`'s own `if (!pane) return` only takes its false arm because
+			// `paneEl` is always set by `onOpen` before the private `show` is ever called.
+			// Both round down to the 94.6 already recorded, so the threshold stays.
 			thresholds: {
 				statements: 98.3,
 				branches: 94.6,

@@ -38,6 +38,22 @@
 	box-shadow: none;
 }
 
+/* The `box-shadow: none` above also beats Obsidian's own `button:focus-visible` ring
+   (a plain `box-shadow`) at higher specificity — two classes against one pseudo-class
+   plus the element — so without a rule of its own here, Tabbing through the sidebar
+   shows no focus indicator at all. Outline, not box-shadow, matching every other
+   control this repository fixed the same way: see `docs/bugs/Obsidian's button rule
+   outranks the plugin's chrome-stripping.md` and `docs/issues/Four other controls
+   still lose to Obsidian's button rule.md`. Inset (`outline-offset: -1px`), like the
+   tree's own and the state/horizon chips': the item is flush against the sidebar's
+   left and right edges (`width: 100%`, no horizontal padding on `.pbl-manual-nav`),
+   so an outward ring has nothing to sit in and would be clipped or would collide with
+   the pane divider beside it. */
+.pbl-manual-nav .vertical-tab-nav-item:focus-visible {
+	outline: 1px solid var(--interactive-accent);
+	outline-offset: -1px;
+}
+
 .pbl-manual-pane {
 	flex: 1 1 auto;
 	min-width: 0;
