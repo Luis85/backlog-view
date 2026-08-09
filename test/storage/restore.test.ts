@@ -377,6 +377,24 @@ describe('dependency inverses', () => {
 		expect(vault.fm('Item.md')['dependsOn']).toEqual(['[[B]]']);
 	});
 
+	it('takes back an added link whose note was DELETED before the undo', async () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', {});
+		const item = vault.addFile('Item.md', {});
+
+		const target = vault.files.get('A.md') as never;
+		const inverses = await writeCapturing(vault, [{ file: item, dependsOn: { add: target } }], linked);
+		expect(vault.fm('Item.md')['dependsOn']).toEqual(['[[A]]']);
+		// A is gone, so the line the plugin wrote is still sitting there and now names
+		// nothing. Resolving to NOTHING is not resolving to somebody else: no other
+		// dependency can be claiming that spelling, so the undo still owns it.
+		vault.files.delete('A.md');
+
+		await applyRestores(vault.app, inverses);
+
+		expect(vault.fm('Item.md')['dependsOn']).toBeUndefined();
+	});
+
 	it('keeps the alias and heading the user wrote when following a rename', async () => {
 		const vault = new FakeVault();
 		vault.addFile('A.md', {});

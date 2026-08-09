@@ -253,8 +253,19 @@ export function restoreDependsOn(
 	// Whether a captured entry's own spelling is still ITS OWN line — see the doc comment.
 	// A captured entry that named nothing has no note to be renamed out from under it, so
 	// its text is its identity outright, whatever that text may resolve to today.
-	const ownsExactText = (entry: DependsOnEntry): boolean =>
-		entry.file === null || resolvedFileOf(app, file, entry.text.trim()) === entry.file;
+	const ownsExactText = (entry: DependsOnEntry): boolean => {
+		if (entry.file === null) return true;
+		const now = resolvedFileOf(app, file, entry.text.trim());
+		// Resolving to NOTHING is not the same as resolving to somebody else. A deleted
+		// note leaves the line the plugin wrote sitting there, broken, named by nobody —
+		// so no other dependency can be claiming that spelling and the undo still owns
+		// it. Refusing the preference here left an added `[[A]]` on the note after A was
+		// deleted: the exact match was declined, and the fallback compares the live
+		// entry's own text (a broken line's whole identity) against the captured file's
+		// path, which never match. Only a spelling that now names a DIFFERENT note is
+		// somebody else's.
+		return now === null || now === entry.file;
+	};
 	const live = liveEntries(fm, restore.key);
 	const consumed = new Array<boolean>(live.length).fill(false);
 	const removed: DependsOnEntry[] = [];

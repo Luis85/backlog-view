@@ -138,6 +138,14 @@ was. Following a rename replaces the link's TARGET only: the `#heading` and the 
 say what the user meant by the link and are none of a rename's business, and rebuilding
 the whole thing from the file resolved correctly while silently dropping both.
 
+Resolving to NOTHING is not resolving to somebody else. The exact-spelling preference is
+conditional — a captured spelling is only still this undo's own line while it names the
+captured note — but a DELETED note leaves that line sitting there broken and claimed by
+nobody, so the preference holds. Declining it there left an added `[[A]]` on the note
+after A was deleted: the exact match was refused, and the fallback compares a broken
+line's own text (its whole identity) against the captured file's path, which never match.
+Only a spelling that now names a DIFFERENT note is somebody else's.
+
 **A live line satisfies the captured line it IS before one it merely resembles**
 (`stillOwed`). The replay counts what is already back twice — by exact text and by
 resolved note — and claims the exact matches first. Removing `[A, [[A]]]` and
