@@ -467,3 +467,33 @@ describe('a doubling-back route crosses a row boundary, never a row', () => {
 		expect(verticals[1]).toBe(centres[centres.length - 1]);
 	});
 });
+
+describe('a route clipped at the left edge keeps itself out of the lead column', () => {
+	it('holds every coordinate inside the grid, head included', () => {
+		// A dependent starting long before the window: `timelineWindow` clamps around
+		// today past MAX_TIMELINE_DAYS, `barGeometry` reports day 0 for its start, and
+		// the anchor lands exactly on the grid's left edge. Everything drawn to the left
+		// of that is under `.pbl-timeline-lead`, which is sticky and OPAQUE — so a head,
+		// which reaches BACK along the run it terminates, would be invisible there and
+		// the clipped edge would show a line with no direction on it.
+		const vault = new FakeVault();
+		vault.addFile('Anchor.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-01', due: '2026-08-05' } });
+		vault.addFile('Long.md', {
+			frontmatter: { type: 'PBI', order: 20, dependsOn: 'Anchor', start: '2020-01-01', due: '2026-09-01' },
+		});
+		const { containerEl } = roadmapView(vault, { ...DATES });
+
+		const content = containerEl.querySelector<HTMLElement>('.pbl-timeline-content');
+		const lead = Number((content?.style.getPropertyValue('--pbl-tl-lead') ?? '0px').replace('px', ''));
+		expect(lead).toBeGreaterThan(0);
+		const d = arrows(containerEl)[0]?.getAttribute('d') ?? '';
+		expect(d).not.toBe('');
+		// Every horizontal coordinate the route names, absolute ones only — the head's
+		// own `l` strokes are relative and are checked through the tip below.
+		const xs = [...d.matchAll(/[MH] (-?\d+)/g)].map((m) => Number(m[1]));
+		expect(xs.length).toBeGreaterThan(0);
+		for (const x of xs) expect(x).toBeGreaterThanOrEqual(lead);
+		// The tip is the last absolute x, and the head reaches 6px back from it.
+		expect(xs[xs.length - 1] - 6).toBeGreaterThanOrEqual(lead);
+	});
+});

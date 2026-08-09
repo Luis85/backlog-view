@@ -139,13 +139,21 @@ function drawArrow(
 ): void {
 	const { scale, leadWidth, contentTop } = ruler;
 	const [fromRect, toRect] = rects;
-	const fromX = Math.round(leadWidth + anchor.fromDay * scale.dayPx);
-	const toX = Math.round(leadWidth + anchor.toDay * scale.dayPx);
+	// Held inside the GRID, because `barGeometry` clamps a span that begins before the
+	// window and `dependencyAnchor` reports day 0 for it — so a dependent clipped at the
+	// left edge anchors exactly at `leadWidth`, and everything this route draws to the
+	// left of that lands under `.pbl-timeline-lead`, which is sticky and opaque. The
+	// arrival needs room for the head as well as for its own point: an arrowhead reaches
+	// BACK along the run it terminates, so a tip at the very edge hides both strokes and
+	// the clipped edge shows a line with no direction on it. A few pixels in is what the
+	// clipped BAR already does — it starts at the grid's edge rather than off it.
+	const fromX = Math.max(leadWidth, Math.round(leadWidth + anchor.fromDay * scale.dayPx));
+	const toX = Math.max(leadWidth + HEAD_PX, Math.round(leadWidth + anchor.toDay * scale.dayPx));
 	const fromY = Math.round(fromRect.top - contentTop + fromRect.height / 2);
 	const toY = Math.round(toRect.top - contentTop + toRect.height / 2);
 	const route: string[] = [`M ${fromX} ${fromY}`];
 	if (toX - fromX >= ELBOW_PX + ENTER_PX) {
-		const turn = toX - ENTER_PX;
+		const turn = Math.max(leadWidth, toX - ENTER_PX);
 		route.push(`H ${turn}`, `V ${toY}`, `H ${toX}`);
 	} else {
 		// A real row BOUNDARY, never a midpoint between the two centres. With exactly one
@@ -159,7 +167,8 @@ function drawArrow(
 			toY === fromY
 				? fromY + LANE_DROP_PX
 				: Math.round((toY > fromY ? fromRect.bottom : fromRect.top) - contentTop);
-		route.push(`H ${fromX + ELBOW_PX}`, `V ${lane}`, `H ${toX - ENTER_PX}`, `V ${toY}`, `H ${toX}`);
+		const back = Math.max(leadWidth, toX - ENTER_PX);
+		route.push(`H ${fromX + ELBOW_PX}`, `V ${lane}`, `H ${back}`, `V ${toY}`, `H ${toX}`);
 	}
 	route.push(`M ${toX} ${toY}`, `l -${HEAD_PX} -${HEAD_PX * 0.7}`, `M ${toX} ${toY}`, `l -${HEAD_PX} ${HEAD_PX * 0.7}`);
 	layer.createSvg('path', {

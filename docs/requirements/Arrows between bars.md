@@ -254,6 +254,13 @@ between the ends an average lands on THAT row's centre and the run disappears un
 bar. Drawing behind the bars is what makes the lane load-bearing rather than cosmetic:
 anything this layer puts under a bar is simply not there.
 
+Every coordinate a route names is held inside the GRID, and the arrival is held a head's
+reach inside it. A dependent whose bar begins before the window anchors at day 0, which
+is the grid's left edge exactly — and an arrowhead reaches BACK along the run it
+terminates, so a tip placed there puts both its strokes under the sticky, opaque lead
+column and the clipped edge shows a line with no direction on it. A few pixels in is what
+the clipped BAR already does.
+
 Both routes end with a short horizontal run into the start carrying the head, so
 an arrow always ARRIVES pointing right whichever direction it travelled, and the head
 needs no rotation to say so. One edge is one `<path>` — route and head in a single `d`,

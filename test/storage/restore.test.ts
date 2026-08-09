@@ -359,6 +359,41 @@ describe('dependency inverses', () => {
 		expect(vault.fm('Item.md')['dependsOn']).toBeUndefined();
 	});
 
+	it('restores a removed dependency under the name its note has NOW, after a rename', async () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', {});
+		const item = vault.addFile('Item.md', { frontmatter: { dependsOn: '[[A]]' } });
+
+		const inverses = await writeCapturing(vault, [{ file: item, dependsOn: { removePath: 'A.md' } }], linked);
+		expect(vault.fm('Item.md')['dependsOn']).toBeUndefined();
+		// Renamed while the line was OFF the note. Obsidian rewrites the links that exist,
+		// and a removed one is not there to be rewritten — so the captured `[[A]]` now
+		// names nothing, and putting it back verbatim would restore a broken dependency
+		// the user never had.
+		vault.renameFile('A.md', 'B.md');
+
+		await applyRestores(vault.app, inverses);
+
+		expect(vault.fm('Item.md')['dependsOn']).toEqual(['[[B]]']);
+	});
+
+	it('restores nothing for a dependency whose note was replaced under its own name', async () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', {});
+		const item = vault.addFile('Item.md', { frontmatter: { dependsOn: '[[A]]' } });
+
+		const inverses = await writeCapturing(vault, [{ file: item, dependsOn: { removePath: 'A.md' } }], linked);
+		// Deleted, and a DIFFERENT note created under the old name.
+		vault.files.delete('A.md');
+		vault.addFile('A.md', {});
+
+		await applyRestores(vault.app, inverses);
+
+		// `[[A]]` would resolve — to a note the user never picked. An undo that cannot
+		// name what it was undoing writes nothing rather than something plausible.
+		expect(vault.fm('Item.md')['dependsOn']).toBeUndefined();
+	});
+
 	it('recognises a hand-restored unresolvable entry that differs only in padding', async () => {
 		const vault = new FakeVault();
 		const item = vault.addFile('Item.md', { frontmatter: { dependsOn: ' Ghost ' } });

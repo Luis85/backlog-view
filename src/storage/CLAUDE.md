@@ -124,6 +124,18 @@ the live entry now points. Null file means the line named nothing when it was ca
 broken entry has no note to be renamed, so its own trimmed text is the whole of its
 identity, on both sides of the comparison.
 
+The captured TEXT is what goes back — it carries the user's padding and their choice of
+`A` over `[[A]]` — with one exception, and the exception is invisible from the text
+itself: while a line is OFF the note, the note it named can move. Obsidian rewrites the
+links that EXIST on a rename, and a removed line is not there to be rewritten, so an undo
+replaying the captured spelling restores `[[A]]` for a note now called B. `restoredLine`
+asks two questions before writing: is the captured file still the vault's file at its own
+path (if not it was deleted, possibly with a DIFFERENT note created under the old name, so
+nothing is written rather than a dependency the user never picked), and does the captured
+text still name it (if not, the link is regenerated from where the file is now). A line
+that resolved to nothing when captured has no file to ask, and goes back exactly as it
+was.
+
 ## Collapse state, and the view mode beside it
 
 - The rule that decides where anything persists: **base settings are saved on the view

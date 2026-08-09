@@ -284,12 +284,47 @@ export function restoreDependsOn(
 			already.set(key, have - 1);
 			continue;
 		}
-		next.push(entry.text);
-		added.push(entry);
+		const line = restoredLine(app, file, entry);
+		// Null means the note this line was captured FOR is not in the vault any more, so
+		// there is no spelling that would name it. Skipping is the `remove` arm's own
+		// "already gone" answer read from the other side, and `added` states what was
+		// actually written, so the redo stays accurate.
+		if (line === null) continue;
+		next.push(line);
+		added.push({ text: line, file: entry.file });
 	}
 	if (added.length === 0 && removed.length === 0) return null;
 	writeEntries(fm, restore.key, next);
 	return { key: restore.key, add: removed, remove: added };
+}
+
+/**
+ * The exact text to write back for one captured line, or null when there is none to
+ * write.
+ *
+ * The captured spelling is preferred and is usually what goes back — that is what
+ * carries the user's own padding and their choice of `A` over `[[A]]`. It is only wrong
+ * in one situation, and the situation is invisible from the text: while the line was
+ * OFF the note, the note it named moved. Obsidian rewrites links on a rename, but only
+ * the ones that exist, and a removed line is not there to be rewritten — so an undo that
+ * put the captured text back would restore `[[A]]` for a note now called B, which is a
+ * broken dependency the user never had.
+ *
+ * Two questions, in order. Is the captured file still the vault's file at its own path?
+ * If not it was deleted — possibly with a DIFFERENT note created under the old name, in
+ * which case writing the captured text would silently make the user depend on a note
+ * they never picked, so nothing is written at all. Otherwise: does the captured text
+ * still name that file? If yes it is returned untouched, padding and all. If no, the
+ * file moved, and the link is regenerated from where it is now.
+ *
+ * A line that resolved to nothing when it was captured has no file to ask either
+ * question of, and its text is its whole identity, so it always goes back as it was.
+ */
+function restoredLine(app: App, file: TFile, entry: DependsOnEntry): string | null {
+	if (entry.file === null) return entry.text;
+	if (app.vault.getFileByPath(entry.file.path) !== entry.file) return null;
+	if (resolvedPathOf(app, file, entry.text.trim()) === entry.file.path) return entry.text;
+	return '[[' + app.metadataCache.fileToLinktext(entry.file, file.path) + ']]';
 }
 
 /**
