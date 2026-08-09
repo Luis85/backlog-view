@@ -201,6 +201,10 @@ export class CardDragController {
 				element: cardEl,
 				getInitialData: () => ({
 					path: item.file.path,
+					// Both, deliberately: the path is what a refreshed model is looked up
+					// by, the file is what confirms the answer is still this note. See
+					// `resolve`.
+					file: item.file,
 					hold,
 					scrollLeft: originScroll?.() ?? null,
 					span: statedSpan(item),
@@ -224,6 +228,18 @@ export class CardDragController {
 	 * The item a payload names, resolved at DROP time — the dragged path outlives the
 	 * model it was taken from, because a refresh mid-drag can drop the note.
 	 *
+	 * Resolved by path and then CONFIRMED by file identity, which are two different
+	 * questions and both have to be asked. The path is what survives a refresh; the
+	 * file is what says the note at that path is still the note the user picked up.
+	 * A delete-and-recreate under the same name satisfies the lookup while being a
+	 * different note, so a payload that resolved on the path alone would hand the
+	 * caller somebody else's item and the write would land on it. This is the rule
+	 * `drop` in `linkDrag.ts` already keeps for the TARGET (`liveTarget?.file !==
+	 * target.file`), asked of the source, and it is asked HERE rather than there
+	 * because every drag this view has — a board move, a bucket, the shelf, a link —
+	 * comes through this one method, so a guard in any single caller would leave the
+	 * others open.
+	 *
 	 * The `typeof` is the TYPE system's, not a runtime case: pragmatic hands
 	 * `source.data` back as `Record<string, unknown>`, while `canDrop` admits only a
 	 * source carrying this controller's private token and the one place minting that
@@ -237,7 +253,7 @@ export class CardDragController {
 	private resolve(data: Record<string, unknown>): CardSource | null {
 		const path = data.path;
 		const item = typeof path === 'string' ? this.host.model?.byPath.get(path) : undefined;
-		if (!item) return null;
+		if (!item || item.file !== data.file) return null;
 		return {
 			item,
 			hold: (data.hold as BarHold | null | undefined) ?? null,
@@ -400,7 +416,7 @@ export class CardDragController {
 		this.cleanups.push(
 			draggable({
 				element: el,
-				getInitialData: () => ({ path: item.file.path, kind: LINK_KIND, view: this.token }),
+				getInitialData: () => ({ path: item.file.path, file: item.file, kind: LINK_KIND, view: this.token }),
 				onGenerateDragPreview: () => {
 					el.addClass('is-active');
 					hooks.onStart();

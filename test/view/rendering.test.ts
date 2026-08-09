@@ -208,6 +208,21 @@ describe('rendering', () => {
 		}
 	});
 
+	it('reveals the connector on the keyboard-selected row, which is the only reveal that path gets', () => {
+		// The three reveals above are a pointer's (`:hover`), a programmatic focus's
+		// (`:focus-visible`) and the drag's own (`.is-active`) — and a keyboard user on
+		// the dated axis triggers NONE of them. The pane is one tab stop with a roving
+		// `aria-activedescendant`, so focus stays on the scroller and the connector,
+		// `tabindex="-1"` like every per-row control, never takes it; nothing hovers.
+		// Measured in the browser before this was written: arrow-key down twice, the row
+		// carries `.pbl-selected` and its connector computes `opacity: 0`.
+		//
+		// Existence, not cascade order: three classes put this at (0,3,0), so it outranks
+		// the (0,1,1) hide wherever it is written — unlike the `hover: none` pair above,
+		// whose whole hazard is that they tie.
+		expect(ruleAt('.pbl-timeline-row.pbl-selected .pbl-bar-connector', 'opacity: 1;')).toBeGreaterThan(-1);
+	});
+
 	it('beats the double-clipped gradient on specificity, not on source order', () => {
 		// .pbl-bar-open-start.pbl-bar-open-end is a two-class compound selector —
 		// specificity (0,2,0) — which outranks the single-class .pbl-bar-inferred

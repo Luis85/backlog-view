@@ -97,6 +97,16 @@ mistaken for the resize grip it sits beside.
   ([[Drag from the shelf to schedule]]).
 - **3a — the drop lands while the configuration has problems.** The gate refuses the batch
   loudly, identically to the menu path, because it is the same batch.
+- **3d — a note is replaced at one of the gesture's own paths while it is held.** The
+  drag survives a refresh by carrying a PATH, which is what lets a drop still find its
+  note after the model was rebuilt underneath it — and a path is exactly what a
+  delete-and-recreate satisfies while being a different note. So both ends confirm by
+  FILE: the target at the drop (`liveTarget?.file !== target.file`) and the source when
+  its payload is resolved. The source's half lives in `CardDragController.resolve`, not
+  here, and deliberately: every drag this view has resolves through that one method, so
+  a guard written beside this gesture would have left a board move, a bucket and the
+  shelf still writing to whatever note now answers to the dragged path. Same rule as
+  [[Linking two items]] 2e, arriving from the drag side.
 - **3b — the input is touch.** The same rules the other card and bar drags already keep
   ([[Keyboard, menu and touch]]); no dependency-specific gesture, and no gesture that only
   a mouse can make. The half that is *not* shared is the affordance, which is 1e's: a
@@ -116,6 +126,14 @@ mistaken for the resize grip it sits beside.
   the rule that does it sits immediately after the `opacity: 0` it overrides — the ordering
   checked the way `test/view/rendering.test.ts` already checks it for the other two revealed
   controls, since a stylesheet cannot be asked whether a control is reachable.
+- It is VISIBLE on the keyboard-selected row, which is a fourth trigger and not a spare
+  one. The other three are a pointer's `:hover`, a programmatic `:focus-visible` and the
+  drag's own `.is-active`, and a keyboard user on this axis reaches none of them: the pane
+  is one tab stop with a roving `aria-activedescendant`, so focus stays on the scroller,
+  and the connector is `tabindex="-1"` like every per-row control, so it is never the
+  focused element. Without it the handle is invisible for the whole keyboard path — which
+  is not an operability failure, since 3b's answer is the row menu's **Depends on…**, but
+  it does mean the affordance advertises itself to a mouse and to nobody else.
 - Legality is shown during the drag: an illegal target is visibly illegal before release,
   and releasing on one writes nothing. Every legal target would change something — a bar
   already waiting for the source is illegal, decided from the **target's** prerequisites,

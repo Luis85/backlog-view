@@ -149,4 +149,51 @@ describe('a link-kind payload against an ordinary drop target', () => {
 
 		expect(plan).not.toHaveBeenCalled();
 	});
+
+	it('refuses a drop whose SOURCE note was replaced at the same path mid-gesture', async () => {
+		// The identity rule the target side already keeps (`drop` in `linkDrag.ts` compares
+		// `.file`, never the path), asked of the source. A payload names a path and
+		// `resolve` looks it up in the model that exists at DROP time, so a note deleted
+		// and another created under the same name while the gesture is held satisfies the
+		// lookup while being a different note — and the write lands on something the user
+		// never picked up.
+		//
+		// Asked of the CONTROLLER rather than of the link gesture, because `resolve` is
+		// what every drag in this view goes through: a board move, a bucket, the shelf and
+		// a link all carry the same payload shape, so a guard checked through one of them
+		// says nothing about the other three. Same minimal fake host as the test above.
+		// Fuller than the fake above, because `wireCard`'s payload reads the note's stated
+		// dates and its type at drag START (`statedSpan`, `placementEnds`) — a thinner one
+		// throws inside `getInitialData`, pragmatic never registers the drag, and the test
+		// passes having driven nothing at all. That is how the first draft of this test
+		// went green against the bug it was written for.
+		const fake = (path: string): BacklogItem =>
+			({
+				file: { path },
+				typeName: 'PBI',
+				plannedStart: { value: null, invalid: false },
+				plannedTarget: { value: null, invalid: false },
+			}) as unknown as BacklogItem;
+		const item = fake('Alpha.md');
+		const byPath = new Map([['Alpha.md', item]]);
+		const host = { model: { byPath } } as unknown as BacklogViewHost;
+		const viewEl = document.body.createDiv();
+		const dnd = new CardDragController(host, viewEl);
+		const card = viewEl.createDiv();
+		const target = viewEl.createDiv();
+		const plan = vi.fn();
+
+		dnd.wireCard(card, item);
+		dnd.wireDropTarget(target, plan);
+
+		const drop = startCardDrag(card);
+		// Same path, different file object — a delete-and-recreate, which is the one thing
+		// a path compare cannot see. Watching this test fail is also the positive control:
+		// without the guard `plan` IS called, so the gesture itself reaches the target.
+		byPath.set('Alpha.md', fake('Alpha.md'));
+		drop(target);
+		await flush();
+
+		expect(plan).not.toHaveBeenCalled();
+	});
 });

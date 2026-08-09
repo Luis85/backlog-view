@@ -213,7 +213,18 @@ button.pbl-bar-connector {
 }
 
 /* Revealed by the ROW, not by the bar: a bar six pixels wide is a poor hover target for
-   the control that reveals its own handle. */
+   the control that reveals its own handle.
+
+   Four triggers, and the SELECTED one is not a nicety: the other three are a pointer's,
+   a programmatic focus's and the drag's own, and a keyboard user on this axis reaches
+   none of them. The pane is one tab stop with a roving `aria-activedescendant`, so focus
+   stays on the scroller, and the connector is `tabindex="-1"` like every per-row control,
+   so it never takes focus to be `:focus-visible`. Without the selected row's own reveal
+   the handle is invisible for the entire keyboard path — measured in a browser, arrow
+   key twice, `opacity: 0` on the selected row's dot. It does not make the gesture
+   keyboard-operable (the row menu's Depends on… is that, and is what SC 2.5.7 asks for);
+   it makes the affordance VISIBLE to someone who can then go find it. */
+.pbl-timeline-row.pbl-selected .pbl-bar-connector,
 .pbl-timeline-row:hover .pbl-bar-connector,
 .pbl-bar-connector:focus-visible,
 .pbl-bar-connector.is-active {
