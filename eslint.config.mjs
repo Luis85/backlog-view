@@ -260,6 +260,22 @@ const VIEW = 'src/view/**/*.ts';
 // RENDER_BOARD is: carved out of VIEW, not out of RENDER, because this file sits in the
 // "rest of view/" region.
 const CARD_MOVES = 'src/view/cardMoves.ts';
+// The types section, exempt from ALL_TYPES_IMPORT alone: every other view/ file asks
+// "what can THIS projection offer", which is the question ALL_TYPES_IMPORT protects,
+// but this one asks a different question on purpose — "what does the whole vocabulary
+// contain" — and states that as its own guarantee (`typesSection`'s doc comment,
+// checked by `test/view/manualTypes.test.ts`'s "explains every type" assertion). A
+// sixth creation surface reading ALL_TYPES raw is the bug that rule exists to catch; a
+// documentation surface reading it whole is what the rule was never about.
+//
+// Named to the ONE FILE, like MENU and CARD_MOVES above, not to `src/view/manual/**` —
+// the exemption is what `typesSection.ts` itself needs, not a property of the
+// directory. `sections.ts`, `src/view/manual/`'s other module, derives its content from
+// view options, not from the type vocabulary, and has never asked to import ALL_TYPES;
+// a directory-wide carve-out would have granted it — and every later file dropped in
+// beside them — a permission neither needs, silently. Widen this to a glob only if a
+// second file in the directory earns the same exemption on its own facts.
+const TYPES_SECTION = 'src/view/manual/typesSection.ts';
 
 const syntaxRules = (selectors) => ({ 'no-restricted-syntax': ['error', ...selectors] });
 
@@ -389,13 +405,14 @@ export default defineConfig([
 		rules: syntaxRules([...SVG_CLASS_TOKENS, ...WRITE_BOUNDARY, MENU_ANCHOR, TREE_SCAN, ALL_TYPES_IMPORT, CHILD_TYPE_CHOICES_NULL]),
 	},
 	{
-		// The rest of view/ — everything under it once menu.ts, render/, create.ts and
-		// cardMoves.ts (handled above and below) are carved out. Same rules the general
-		// region has, plus ALL_TYPES_IMPORT and CHILD_TYPE_CHOICES_NULL (any of these
-		// files is a candidate sixth type-offering surface) and DELIVERABLE_FIELD_READ
-		// (any of these files is a candidate third hand-written workflow ternary).
+		// The rest of view/ — everything under it once menu.ts, render/, create.ts,
+		// cardMoves.ts and typesSection.ts (handled above and below) are carved out. Same
+		// rules the general region has, plus ALL_TYPES_IMPORT and CHILD_TYPE_CHOICES_NULL
+		// (any of these files is a candidate sixth type-offering surface) and
+		// DELIVERABLE_FIELD_READ (any of these files is a candidate third hand-written
+		// workflow ternary).
 		files: [VIEW],
-		ignores: [MENU, RENDER, ...RANKING_VIEW, CARD_MOVES],
+		ignores: [MENU, RENDER, ...RANKING_VIEW, CARD_MOVES, TYPES_SECTION],
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
@@ -403,6 +420,23 @@ export default defineConfig([
 			OVERBY,
 			TREE_SCAN,
 			ALL_TYPES_IMPORT,
+			CHILD_TYPE_CHOICES_NULL,
+			DELIVERABLE_FIELD_READ,
+		]),
+	},
+	{
+		// The types section, carved out of VIEW: see TYPES_SECTION's own comment above for
+		// why ALL_TYPES_IMPORT does not apply here, and why this is one file rather than a
+		// directory. CHILD_TYPE_CHOICES_NULL and DELIVERABLE_FIELD_READ still apply —
+		// nothing about needing the whole vocabulary excuses the other two type-offering
+		// and workflow-dispatch bugs.
+		files: [TYPES_SECTION],
+		rules: syntaxRules([
+			...SVG_CLASS_TOKENS,
+			...WRITE_BOUNDARY,
+			MENU_ANCHOR,
+			OVERBY,
+			TREE_SCAN,
 			CHILD_TYPE_CHOICES_NULL,
 			DELIVERABLE_FIELD_READ,
 		]),

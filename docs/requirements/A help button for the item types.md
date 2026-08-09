@@ -89,3 +89,7 @@ The dialog and its one opener are `src/ui/manualDialog.ts` — a `ui/` leaf that
 sections as a parameter, because `ui/` may not reach `domain/`. Its appearance is
 `styles/manual.css`, which draws the split and lets Obsidian's own settings-modal rules
 draw everything else.
+
+The types section itself is `src/view/manual/typesSection.ts`, generated from `ALL_TYPES`
+in `src/domain/settings.ts` — the composition layer, which may reach `domain/` where the
+dialog may not, and which is therefore where a badge class is resolved from a type name.
