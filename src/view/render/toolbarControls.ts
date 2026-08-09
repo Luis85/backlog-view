@@ -294,16 +294,19 @@ function collapsiblePopulation(host: BacklogViewHost, model: BacklogModel): Back
 /**
  * Paths a card of its own is currently drawn for — board cards, and on the roadmap its
  * bucket, shelf and context cards alike. `domain/board.ts`'s `cardPaths` already answers
- * this for the board (also reused, unmodified, for the Deliverables board's own workflow
- * columns while it renders — see `renderDeliverablesBoardContent`); the roadmap has no
- * such helper, so its bucket, shelf and context lists are read directly.
+ * this for the board — and, unmodified, for the Deliverables board too: it renders through
+ * the same `host.board` snapshot (`renderDeliverablesBoardContent` returns its board
+ * through the field `renderBoardContent` uses — there is no second one). The roadmap has
+ * no such helper, so its bucket, shelf and context lists are read directly.
  *
  * A dated-axis timeline row is never in this set: `RoadmapModel.bars` is never read here,
  * so [[Collapsing a bar's subtree]]'s row folding stays reachable by the bulk controls
  * while any shelf or context card sharing that same screen does not.
  */
 function cardOnlyPaths(host: BacklogViewHost): ReadonlySet<string> {
-	if (host.projection === 'board' && host.board) return boardCardPaths(host.board.board);
+	if ((host.projection === 'board' || host.projection === 'deliverables') && host.board) {
+		return boardCardPaths(host.board.board);
+	}
 	if (host.projection === 'roadmap' && host.roadmap) return roadmapCardPaths(host.roadmap.roadmap);
 	return new Set();
 }
@@ -338,13 +341,25 @@ export function collapseAll(host: BacklogViewHost): void {
 
 /**
  * When the bulk collapse controls are refused: while a quick filter overrides collapse
- * state, and on a card projection that drew no disclosure to collapse. `syncCollapseCtls`
- * is still the sole WRITER of the flag — this is the question it asks, named once so the
- * `⋯` menu is not a second opinion about the same rule.
+ * state, and when nothing they could reach is both DRAWN and not a card — a card's own
+ * disclosure is never theirs to touch (`collapsiblePopulation`'s exclusion above), so a
+ * screen where every disclosure belongs to a card (an ordinary board, the Deliverables
+ * board, a horizon roadmap) offers them nothing to do and must not sit there enabled as a
+ * live no-op. `host.cardChildrenShown` is every disclosure drawn THIS pass — cards and a
+ * dated-axis timeline row's chevron alike — so subtracting {@link cardOnlyPaths} from it
+ * asks exactly "is a genuine timeline row, not a card, currently disclosed" — the one case
+ * left where a press does something. `syncCollapseCtls` is still the sole WRITER of the
+ * flag — this is the question it asks, named once so the `⋯` menu is not a second opinion
+ * about the same rule.
  */
 export function collapseCtlsDisabled(host: BacklogViewHost): boolean {
-	const nothingToCollapse = host.projection !== 'tree' && host.cardChildrenShown.size === 0;
-	return host.isFiltering() || nothingToCollapse;
+	if (host.isFiltering()) return true;
+	if (host.projection === 'tree') return false;
+	const excluded = cardOnlyPaths(host);
+	for (const path of host.cardChildrenShown) {
+		if (!excluded.has(path)) return false;
+	}
+	return true;
 }
 
 /**

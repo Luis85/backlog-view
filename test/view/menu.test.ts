@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { ProductBacklogView } from '../../src/view/backlogView';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
 import { Menu } from '../helpers/obsidian-mock';
-import { expandAll, fixture, flush, key, makeView, rowByTitle, treeOf, useViewHarness } from '../helpers/view';
+import { clickExpandAll, fixture, flush, key, makeView, rowByTitle, treeOf, useViewHarness } from '../helpers/view';
 import { cardByTitle } from '../helpers/board';
 
 useViewHarness();
@@ -236,7 +236,7 @@ describe('move commands that do not rank', () => {
 			data: vault.entries().filter((e) => ['Feature B.md', 'PBI.md'].includes(e.file.path)),
 		};
 		view.onDataUpdated();
-		expandAll(containerEl);
+		clickExpandAll(containerEl);
 		return { view, containerEl, vault };
 	}
 

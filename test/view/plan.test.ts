@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { Menu, MenuItem, Modal } from '../helpers/obsidian-mock';
-import { expandAll, flush, makeView, rowByTitle, useViewHarness } from '../helpers/view';
+import { clickExpandAll, flush, makeView, rowByTitle, useViewHarness } from '../helpers/view';
 
 useViewHarness();
 
@@ -260,7 +260,7 @@ describe('the horizon chip on a row', () => {
 			data: vault.entries().filter((e) => e.file.path === 'Feature.md'),
 		};
 		view.onDataUpdated();
-		expandAll(containerEl);
+		clickExpandAll(containerEl);
 
 		const context = rowByTitle(containerEl, 'Epic').querySelector('.pbl-horizon-chip');
 		expect(context?.querySelector('.pbl-state-text')?.textContent).toBe('Now');

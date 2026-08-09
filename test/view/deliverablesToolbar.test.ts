@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { Modal } from '../helpers/obsidian-mock';
 import { fixture, makeView, projectionButton, refresh, useViewHarness } from '../helpers/view';
+import { collapseAll, expandAll } from '../../src/view/render/toolbarControls';
 
 useViewHarness();
 
@@ -218,13 +219,18 @@ describe('the bulk collapse controls leave the Deliverables board’s own cards 
 		return vault;
 	}
 
-	it('leaves a Deliverable card the focus level excludes untouched by Expand all', () => {
+	// Every Deliverable is a card here — nothing else is ever drawn on this board — so the
+	// buttons are disabled outright (see `toolbarCollapse.test.ts`'s disabling describe
+	// block for the general rule), and `expandAll` is driven directly rather than through
+	// a click a disabled button would refuse to fire.
+	it('disables the buttons and leaves a Deliverable card the focus level excludes untouched by Expand all', () => {
 		const { containerEl, view } = makeView(outsideTheFocus(), { ...WORKFLOW }, { collapsed: true });
 		view.setProjection('deliverables');
 		view.setFocusLevel('Feature');
 		expect(view.isCollapsed('D.md')).toBe(true);
+		expect(collapseCtl(containerEl, 'Expand all')?.disabled).toBe(true);
 
-		collapseCtl(containerEl, 'Expand all')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expandAll(view);
 
 		expect(view.isCollapsed('D.md')).toBe(true);
 		// Only the card's own toggle opens it — simulated the way its click handler does.
@@ -251,12 +257,12 @@ describe('the bulk collapse controls leave the Deliverables board’s own cards 
 	});
 
 	it('leaves it open too, so Collapse all does not fight the card’s own state', () => {
-		const { containerEl, view } = makeView(outsideTheFocus(), { ...WORKFLOW }, { collapsed: true });
+		const { view } = makeView(outsideTheFocus(), { ...WORKFLOW }, { collapsed: true });
 		view.setProjection('deliverables');
 		view.setFocusLevel('Feature');
 		view.setCollapsed('D.md', false);
 
-		collapseCtl(containerEl, 'Collapse all')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		collapseAll(view);
 
 		expect(view.isCollapsed('D.md')).toBe(false);
 	});
