@@ -92,6 +92,20 @@ describe('toolbar backfill', () => {
 		).toBe(true);
 	});
 
+	it('says where a property it just bound becomes visible', async () => {
+		// Binding a property and stubbing it onto every note still shows nothing: the
+		// columns are the Bases properties menu, and `BasesViewConfig` has no setter for
+		// it. The Notice is the only place that loop is closed.
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		const { containerEl } = makeView(vault);
+
+		initButton(containerEl)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flush();
+
+		expect(Notice.messages.some((m) => m.includes('properties menu'))).toBe(true);
+	});
+
 	it('binds nothing a second time, and nothing the user cleared', async () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
