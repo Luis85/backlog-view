@@ -212,9 +212,11 @@ export function resolveColumns(host: BacklogViewHost): Column[] {
  *   list still has a menu with something in it. Pairing it would withhold the chip from
  *   every vault that never declared its workflow.
  *
- * Only the first bullet is under a test (`test/view/columnKinds.test.ts` clears both
- * vocabularies and asks for `value`); the second is a fact about `stateMenuValues`, which
- * `test/view/state.test.ts` covers where it lives.
+ * Only the first bullet is under a test of this function (`test/view/columnKinds.test.ts`
+ * clears both vocabularies and asks for `value`); the second is a fact about
+ * `stateMenuValues`, asserted where that lives — `test/domain/settings.test.ts`, whose
+ * `stateMenuValues` block returns the observed states with an undeclared workflow and
+ * `['Done']` with nothing observed either, so the menu this chip opens is never empty.
  *
  * Both state keys map to `state`. With the two workflows on distinct keys and both
  * visible, that is two columns, and `renderStateChip` draws into whichever one names
