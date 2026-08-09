@@ -493,7 +493,26 @@ describe('a route clipped at the left edge keeps itself out of the lead column',
 		const xs = [...d.matchAll(/[MH] (-?\d+)/g)].map((m) => Number(m[1]));
 		expect(xs.length).toBeGreaterThan(0);
 		for (const x of xs) expect(x).toBeGreaterThanOrEqual(lead);
-		// The tip is the last absolute x, and the head reaches 6px back from it.
-		expect(xs[xs.length - 1] - 6).toBeGreaterThanOrEqual(lead);
+		// And the head is either drawn with room for itself or not drawn at all — never
+		// drawn into six pixels it cannot be seen in. Here the arrival IS the grid's edge:
+		// the lead sits on one side of that line and the dependent's own clipped bar
+		// starts on the other, and this layer paints behind the bars, so there is nowhere
+		// a head could go. The route says the edge exists; the row says what it means.
+		const tip = xs[xs.length - 1];
+		// The arrival is the dependent's own bar edge — never nudged inward to make room,
+		// which would point the arrow at a day the bar does not start on AND put the head
+		// under the bar, since this layer paints behind them.
+		const barLeft = lead + Number(
+			(rowFor(containerEl, 'Long')?.querySelector<HTMLElement>('.pbl-bar')?.style.getPropertyValue('--pbl-bar-left') ??
+				'0px'
+			).replace('px', ''),
+		);
+		expect(tip).toBe(barLeft);
+		// So the head is drawn only where it has room to be seen: between the grid's edge
+		// and the bar it points at. Here there is none — the bar starts at the edge — and
+		// the route is drawn without one rather than with one nothing can see.
+		const head = [...d.matchAll(/l -(\d+)/g)].map((m) => Number(m[1]));
+		if (head.length > 0) expect(tip - head[0]).toBeGreaterThanOrEqual(lead);
+		else expect(tip - lead).toBeLessThan(6);
 	});
 });

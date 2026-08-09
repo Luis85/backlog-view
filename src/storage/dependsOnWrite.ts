@@ -270,18 +270,13 @@ export function restoreDependsOn(
 		removed.push({ text, file: resolvedFileOf(app, file, text.trim()) });
 	}
 	const next: unknown[] = live.filter((_, i) => !consumed[i]);
-	const already = countOf(
-		next
-			.map((value) => textOf(value))
-			.filter((text): text is string => text !== null)
-			.map(identityOf),
-	);
+	const pending = stillOwed(next, restore.add, identityOf);
 	const added: DependsOnEntry[] = [];
-	for (const entry of restore.add) {
+	for (const entry of pending.owed) {
 		const key = capturedIdentity(entry);
-		const have = already.get(key) ?? 0;
+		const have = pending.already.get(key) ?? 0;
 		if (have > 0) {
-			already.set(key, have - 1);
+			pending.already.set(key, have - 1);
 			continue;
 		}
 		const line = restoredLine(app, file, entry);
@@ -296,6 +291,42 @@ export function restoreDependsOn(
 	if (added.length === 0 && removed.length === 0) return null;
 	writeEntries(fm, restore.key, next);
 	return { key: restore.key, add: removed, remove: added };
+}
+
+/**
+ * Which captured lines are still owed, and what is already back to count them against.
+ *
+ * Two counts, because one captured line can be satisfied by an exact spelling of itself
+ * or by any live entry naming the same note — and which of the two applies decides which
+ * captured entry gets consumed. **A live line satisfies the captured line it IS before
+ * one it merely resembles**, so the exact matches are claimed here, first. Removing
+ * `[A, [[A]]]` and hand-restoring only `[[A]]` otherwise had the by-note count satisfy
+ * captured `A`, leaving captured `[[A]]` to be appended: two `[[A]]` on the note, and the
+ * spelling the user actually lost still missing.
+ *
+ * Its own function because `restoreDependsOn` is at its complexity budget, and because
+ * the two passes are one question asked twice rather than two steps of the replay.
+ */
+function stillOwed(
+	live: unknown[],
+	captured: DependsOnEntry[],
+	identityOf: (text: string) => string,
+): { owed: DependsOnEntry[]; already: Map<string, number> } {
+	const texts = live.map((value) => textOf(value)).filter((text): text is string => text !== null);
+	const exact = countOf(texts);
+	const already = countOf(texts.map(identityOf));
+	const owed: DependsOnEntry[] = [];
+	for (const entry of captured) {
+		const have = exact.get(entry.text) ?? 0;
+		if (have === 0) {
+			owed.push(entry);
+			continue;
+		}
+		exact.set(entry.text, have - 1);
+		const key = identityOf(entry.text);
+		already.set(key, Math.max(0, (already.get(key) ?? 0) - 1));
+	}
+	return { owed, already };
 }
 
 /**
@@ -324,7 +355,22 @@ function restoredLine(app: App, file: TFile, entry: DependsOnEntry): string | nu
 	if (entry.file === null) return entry.text;
 	if (app.vault.getFileByPath(entry.file.path) !== entry.file) return null;
 	if (resolvedPathOf(app, file, entry.text.trim()) === entry.file.path) return entry.text;
-	return '[[' + app.metadataCache.fileToLinktext(entry.file, file.path) + ']]';
+	return retarget(entry.text, app.metadataCache.fileToLinktext(entry.file, file.path));
+}
+
+/**
+ * One wikilink with its TARGET replaced and everything else kept — the `#heading` and the
+ * `|alias` the user wrote, which say what they meant by the link and which a rename has
+ * no business editing. Rebuilding the whole link from the file would resolve correctly
+ * and silently drop both: `[[A#Plan|Prerequisite]]` came back as `[[B]]`.
+ *
+ * Anything that is not a bracketed link is replaced whole, because there is no target
+ * portion to isolate — a bare `A` says nothing except which note it means, so the new
+ * name is the entire content of it.
+ */
+function retarget(text: string, linktext: string): string {
+	const match = /^(\s*\[\[)([^\]|#]*)(.*?\]\]\s*)$/.exec(text);
+	return match ? `${match[1]}${linktext}${match[3]}` : `[[${linktext}]]`;
 }
 
 /**

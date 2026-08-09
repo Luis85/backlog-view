@@ -148,7 +148,17 @@ function drawArrow(
 	// the clipped edge shows a line with no direction on it. A few pixels in is what the
 	// clipped BAR already does — it starts at the grid's edge rather than off it.
 	const fromX = Math.max(leadWidth, Math.round(leadWidth + anchor.fromDay * scale.dayPx));
-	const toX = Math.max(leadWidth + HEAD_PX, Math.round(leadWidth + anchor.toDay * scale.dayPx));
+	const toX = Math.max(leadWidth, Math.round(leadWidth + anchor.toDay * scale.dayPx));
+	// A head needs somewhere to BE. It reaches back along the run it terminates, and a
+	// dependent clipped at the window's left edge anchors on `leadWidth` exactly — with
+	// the sticky opaque lead on one side of that line and its own bar, which starts
+	// there, on the other. The first attempt at this moved the tip a head's width right,
+	// which only moved the strokes from under the lead to under the bar, since the layer
+	// paints behind the bars deliberately. There is no third place: the run is drawn and
+	// the head is left off, and the register says so rather than the code pretending the
+	// arrow is complete. Direction is still readable — the run comes FROM the
+	// prerequisite — and the row states the dependency in words either way.
+	const headroom = toX - leadWidth >= HEAD_PX;
 	const fromY = Math.round(fromRect.top - contentTop + fromRect.height / 2);
 	const toY = Math.round(toRect.top - contentTop + toRect.height / 2);
 	const route: string[] = [`M ${fromX} ${fromY}`];
@@ -170,7 +180,9 @@ function drawArrow(
 		const back = Math.max(leadWidth, toX - ENTER_PX);
 		route.push(`H ${fromX + ELBOW_PX}`, `V ${lane}`, `H ${back}`, `V ${toY}`, `H ${toX}`);
 	}
-	route.push(`M ${toX} ${toY}`, `l -${HEAD_PX} -${HEAD_PX * 0.7}`, `M ${toX} ${toY}`, `l -${HEAD_PX} ${HEAD_PX * 0.7}`);
+	if (headroom) {
+		route.push(`M ${toX} ${toY}`, `l -${HEAD_PX} -${HEAD_PX * 0.7}`, `M ${toX} ${toY}`, `l -${HEAD_PX} ${HEAD_PX * 0.7}`);
+	}
 	layer.createSvg('path', {
 		cls: `pbl-dep-edge${conflict ? ' pbl-dep-conflict' : ''}`,
 		attr: { d: route.join(' ') },

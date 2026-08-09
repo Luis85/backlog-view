@@ -134,7 +134,16 @@ path (if not it was deleted, possibly with a DIFFERENT note created under the ol
 nothing is written rather than a dependency the user never picked), and does the captured
 text still name it (if not, the link is regenerated from where the file is now). A line
 that resolved to nothing when captured has no file to ask, and goes back exactly as it
-was.
+was. Following a rename replaces the link's TARGET only: the `#heading` and the `|alias`
+say what the user meant by the link and are none of a rename's business, and rebuilding
+the whole thing from the file resolved correctly while silently dropping both.
+
+**A live line satisfies the captured line it IS before one it merely resembles**
+(`stillOwed`). The replay counts what is already back twice — by exact text and by
+resolved note — and claims the exact matches first. Removing `[A, [[A]]]` and
+hand-restoring only `[[A]]` otherwise has the by-note count satisfy captured `A`, leaving
+captured `[[A]]` to be appended: two `[[A]]` on the note, and the spelling the user
+actually lost still missing.
 
 ## Collapse state, and the view mode beside it
 

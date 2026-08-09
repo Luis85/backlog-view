@@ -377,6 +377,41 @@ describe('dependency inverses', () => {
 		expect(vault.fm('Item.md')['dependsOn']).toEqual(['[[B]]']);
 	});
 
+	it('keeps the alias and heading the user wrote when following a rename', async () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', {});
+		const item = vault.addFile('Item.md', { frontmatter: { dependsOn: '[[A#Plan|Prerequisite]]' } });
+
+		const inverses = await writeCapturing(vault, [{ file: item, dependsOn: { removePath: 'A.md' } }], linked);
+		vault.renameFile('A.md', 'B.md');
+
+		await applyRestores(vault.app, inverses);
+
+		// The TARGET is what a rename moved; the heading and the alias say what the user
+		// meant by the link and are none of the rename's business. Rebuilding the whole
+		// link from the file resolved correctly and silently dropped both.
+		expect(vault.fm('Item.md')['dependsOn']).toEqual(['[[B#Plan|Prerequisite]]']);
+	});
+
+	it('gives a hand-restored spelling to the captured line it IS, not one it resembles', async () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', {});
+		// Two spellings of one dependency, so the removal captures two lines.
+		const item = vault.addFile('Item.md', { frontmatter: { dependsOn: ['A', '[[A]]'] } });
+
+		const inverses = await writeCapturing(vault, [{ file: item, dependsOn: { removePath: 'A.md' } }], linked);
+		expect(vault.fm('Item.md')['dependsOn']).toBeUndefined();
+		// Only one of the two put back by hand.
+		vault.fm('Item.md')['dependsOn'] = ['[[A]]'];
+
+		await applyRestores(vault.app, inverses);
+
+		// The live `[[A]]` satisfies the captured `[[A]]`, so what undo owes is the OTHER
+		// spelling. Counting by resolved note alone let it satisfy captured `A` instead
+		// and then append a second `[[A]]`.
+		expect(vault.fm('Item.md')['dependsOn']).toEqual(['[[A]]', 'A']);
+	});
+
 	it('restores nothing for a dependency whose note was replaced under its own name', async () => {
 		const vault = new FakeVault();
 		vault.addFile('A.md', {});
