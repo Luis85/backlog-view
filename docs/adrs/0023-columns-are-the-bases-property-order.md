@@ -47,8 +47,13 @@ answered twice:
 - **Narrowing is a count, not a ranking.** Columns drop from the END of the user's order:
   that order is the user's own statement of what matters, so a ranking of ours beside it
   is a second opinion about it. The rollup is not in the order — it is pinned past its
-  end, so "last" would always pick it first — and drops after every column instead.
+  end, so "last" would always pick it first — and drops after every column instead. Two
+  tests split that claim, and neither covers the other's half: the first counts the
+  columns down to zero as the pane narrows and the rollup outlasting them all, and the
+  second is the one that says WHICH end goes — three visible properties at a width that
+  holds one, and the survivor is the first of the three.
   **Checked by** `test/view/columns.test.ts` — "drops columns from the end of the order, keeping the rollup to the last"
+  **Checked by** `test/view/columns.test.ts` — "leaves nothing of a dropped column for a keyboard or a screen reader to find"
 - **A dropped column is not rendered**, rather than clipped. This is an accessibility
   decision, not an implementation detail: `overflow: hidden` clips a cell visually and
   leaves it in the accessibility tree, and the cells in question are exactly the ones

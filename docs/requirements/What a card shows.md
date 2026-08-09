@@ -28,7 +28,7 @@ on a board, the hierarchy has to travel on the card.
 | **Actor** | Backlog owner |
 | **Trigger** | The board renders a result |
 | **Preconditions** | Board mode is on, and the workflow has columns to render into |
-| **Guarantee** | What the tree hides, the card hides — both read one resolved column list, so a property invisible in the base is invisible in both. A card draws that list's plain cells; the chip kinds are the tree's, so a card can carry less, never something different. |
+| **Guarantee** | What the BASE hides, the card hides — both read one resolved column list, so a property invisible in the properties menu is invisible in both. A card draws that list's plain cells; the chip kinds are the tree's, so a card can carry less, never something different. Not what the PANE hides: the fit is the tree's alone. |
 
 **Main flow**
 
@@ -42,8 +42,11 @@ on a board, the hierarchy has to travel on the card.
 
 **Extensions**
 
-- **3a — a property is hidden in the tree.** It is hidden on the card. One resolved list
-  drives both, which is the reason for reading it rather than re-deriving it.
+- **3a — a property is hidden in the BASE.** It is hidden on the card too. One resolved
+  list drives both, which is the reason for reading it rather than re-deriving it. Hidden
+  by the PANE is the other question and has the other answer: a narrow tree drops columns
+  from its rows and a card keeps every one of them, because a card is never indented and
+  never competes for the row's width.
 - **3b — the property is one the tree draws as a chip** (state, horizon or risk). The
   card draws no cell for it. A board card's column already IS its state and a bucket
   already IS its horizon, so a chip inside one would repeat what its position says; risk
@@ -68,10 +71,9 @@ on a board, the hierarchy has to travel on the card.
 
 - A card renders the item's name, its type badge, the plain property cells the row would
   render, and its tag pills. Both projections read the same resolved column list
-  (`host.columns`), so a property hidden in the tree is hidden on the card. **Not checked
-  in the suite:** that a chip-kind column draws nothing on a card. `test/view/columns.test.ts`
-  drives a card against two plain properties and asserts it gets every column that exists,
-  which is the reset rule rather than this one.
+  (`host.columns`), so a property the properties menu hides is hidden on both — while a
+  column the narrow PANE drops off the tree's rows still draws on a card.
+  **Checked by** `test/view/columns.test.ts` — "draws no chip of any kind on a card, whichever ones the tree row drew"
 - The parent renders on the card as context — including a parent outside the Base's
   filter, which labels the card; outside-filter items themselves render on the board
   only in the context forms the epic names.

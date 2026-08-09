@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
-import { cardByTitle } from '../helpers/board';
+import { BOARD_WORKFLOW, boardVault, cardByTitle } from '../helpers/board';
 import { clickExpandAll, fixture, makeView, rowByTitle, treeOf, useViewHarness } from '../helpers/view';
 import { rowContext, syncColumnFit } from '../../src/view/render/columns';
 
@@ -204,6 +204,37 @@ describe('property columns', () => {
 		expect(viewEl?.classList.contains('pbl-hide-meta')).toBe(false);
 		// Both plain properties, so the card draws every column that exists.
 		expect(cardByTitle(containerEl, 'Epic A').querySelectorAll('.pbl-prop').length).toBe(view.columns.length);
+	});
+
+	it('draws no chip of any kind on a card, whichever ones the tree row drew', () => {
+		// A board card's column IS its state and a bucket IS its horizon, so a chip inside
+		// one repeats what the card's own position already says. Asserted as a DIFFERENCE
+		// rather than as an absence: the same item's tree row draws all three, so an empty
+		// fixture or an unconfigured axis cannot pass this for the filter.
+		const vault = boardVault();
+		vault.entryValues.set('Epic A.md', { 'note.points': { toString: () => '5' } });
+		const { containerEl, view } = makeView(
+			vault,
+			{ ...BOARD_WORKFLOW, horizonProperty: 'note.horizon', riskProperty: 'note.risk' },
+			{ order: ['note.points', 'note.status', 'note.horizon', 'note.risk'] },
+		);
+
+		const row = rowByTitle(containerEl, 'Epic A');
+		expect(row.querySelectorAll('.pbl-prop').length).toBe(4);
+		expect(row.querySelector('.pbl-state-chip')).not.toBeNull();
+		expect(row.querySelector('.pbl-horizon-chip')).not.toBeNull();
+		expect(row.querySelector('.pbl-risk-chip')).not.toBeNull();
+
+		view.setProjection('board');
+
+		// The plain column still draws, so this is a filter on the kind and not a card
+		// that stopped reading the list.
+		const card = cardByTitle(containerEl, 'Epic A');
+		expect(card.querySelectorAll('.pbl-prop').length).toBe(1);
+		expect(card.querySelector('.pbl-prop-value')?.textContent).toBe('5');
+		expect(card.querySelector('.pbl-state-chip')).toBeNull();
+		expect(card.querySelector('.pbl-horizon-chip')).toBeNull();
+		expect(card.querySelector('.pbl-risk-chip')).toBeNull();
 	});
 
 	it('does not buy a second render pass on a pane whose verdict has not moved', () => {

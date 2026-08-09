@@ -223,8 +223,8 @@ narrowed to one type.
   function `Set state` gates on, so a chip and a menu can never disagree about which key a
   row writes): every row fills exactly one state column and leaves the other empty —
   empty rather than absent, or the columns after it shift on that row alone. A vault
-  configuring only the Deliverable property gets one column, a chip on its Deliverables
-  and an empty cell on every other row. Each column's header is its own property's
+  SHOWING only the Deliverable property gets one column, a chip on its Deliverables and
+  an empty cell on every other row — configuring it is not what puts it there. Each column's header is its own property's
   display name, fallback included; the generic word `State` is gone with the single
   shared column that needed it, since a column now names exactly one property.
 - **Completion is deliberately NOT type-scoped.** `item.done`, `subtreeDone`, the rollup,
