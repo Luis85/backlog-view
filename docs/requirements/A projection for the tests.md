@@ -39,8 +39,8 @@ base settings are saved on the view, working position on the device.
 **Main flow**
 
 1. The user picks the test catalog on the toggle.
-2. The view draws the test items from the model it already built, as a tree rooted at the
-   suites. **The roots are computed for the projection**, not taken from `model.roots` and
+2. The view draws this projection's members from the model it already built — the tests,
+   and the `Task`s hanging from them — as a tree rooted at the suites. **The roots are computed for the projection**, not taken from `model.roots` and
    filtered: `renderTree` starts at the model's own roots and `renderForest` drops a hidden
    sibling *without descending through it*, so a filtered parent takes its whole subtree
    off the screen with it. A projection's roots are therefore **the items it draws whose
@@ -52,9 +52,13 @@ base settings are saved on the view, working position on the device.
    `collectFocusRoots` already re-roots the rendered tree at the topmost items of a level,
    and this is the same re-rooting under a different predicate.
 3. Collapse, the quick filter and every write path behave as they do in the backlog tree,
-   over this population — including the toolbar's count label, which counts tests here and
-   only tests. Its **completed toggle** is withheld, as it already is on the Deliverables
-   board: this epic gives tests no workflow, so there is no completion to hide.
+   over this population — including the toolbar's count label, which counts **what this
+   projection draws**: the tests, and the `Task`s beneath them, which are catalog members
+   by the membership rule ([[Tests stay out of the plan]] 2b). Not "tests and only tests" —
+   a re-listed population is a second membership rule, and it disagrees with the first
+   about a `Task` every time. Its **completed toggle** is withheld, as it already is on the
+   Deliverables board: this epic gives tests no workflow, so there is no completion to
+   hide.
 4. Switching back restores the plan, and the catalog's own collapse state is remembered
    separately, keyed as the other projections' are.
 
@@ -101,9 +105,11 @@ base settings are saved on the view, working position on the device.
 - The projection is reachable whether or not the base returns tests, and its empty state
   offers creation rather than configuration.
 - Collapse state is stored per projection, so collapsing a suite does not collapse an Epic.
-- The catalog's count label counts test items only, and its completed toggle is not
-  rendered — the toolbar reads this projection's population like every other, and both
-  consumers of that population are asserted, not just the visible one.
+- The catalog's count label counts this projection's own population — the tests **and** the
+  `Task`s beneath them — and its completed toggle is not rendered. Both consumers of that
+  population are asserted, not just the visible one, and the `Task` is asserted
+  specifically: it is the row that a criterion written as "counts tests" leaves visible on
+  screen and missing from the total.
 - The top-level creator offers the test types here and no plan type
   ([[Test suite and test case as a ladder of their own]] 1b), so nothing created from this
   toolbar lands outside the projection that created it.

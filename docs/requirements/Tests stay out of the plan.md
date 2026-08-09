@@ -112,7 +112,9 @@ context row when a visible descendant needs a parent to hang from.
   The **count label** ("*12 of 30 items*", with the level breakdown behind it) reports
   `countedPopulation` — already projection-scoped, since the requirements board subtracts
   `Deliverable`s from it — so the plan's projections subtract tests there too, and the
-  catalog's own label counts tests and nothing else.
+  catalog's own label counts the catalog's own members, `Task`s beneath a test included
+  (2b). Every statement of a population here says *what the projection draws* rather than
+  naming types, because the two only agree until a `Task` is involved.
   The **ignored-notes advisory** (`model.ignoredCount`) counts what the Base returned that
   is *not a work item*. A test **is** a work item, so it was never in that number and
   nothing about it changes. The earlier draft's "keeps counting raw results, tests
