@@ -128,7 +128,16 @@ and each stays open until they are, so a stale check is visible rather than assu
   busier palette, and how a screen reader reads the row. Two things the picture showed
   that no assertion had: a flagged row's title truncates to make room for the glyph
   (`Offline-first s… ⚠`), and an arrow crossing a long bar is drawn OVER it rather than
-  behind it, unlike the milestone line.
+  behind it, unlike the milestone line. That second one was then made to match the
+  milestone line, and reversed again on 2026-08-09 by the same means — looking — because
+  an arrow hidden by a third row's bar reads as two stubs rather than one connection.
+  Over is where it stands; the round trip is recorded because the argument for behind
+  (consistency with the milestone line) is real and will be made again.
+- The dated axis's own date marks, found the same day: a milestone's diamond is centred on
+  its day boundary while its full-height line was drawn FROM that boundary, so the line sat
+  half its width to the right of the mark it belongs to — 1px at the default scale, plainly
+  visible at 4× on a 12px diamond. Both full-height lines are centred now, which keeps the
+  nudge that separates a milestone from today exactly one line width.
 - [[Draw a dependency between bars]]'s gesture: the connector reveals on hover and stays
   under `(hover: none)`, illegal rows dim while the drag is held, the target under the
   pointer outlines, the preview line tracks the pointer smoothly, labels vanish and the

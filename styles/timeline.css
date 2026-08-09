@@ -340,6 +340,13 @@
 	   milestone dated today both draw inside one day instead of one erasing the other.
 	   See SCALES in `src/domain/timeline.ts`. */
 	width: var(--pbl-tl-line);
+	/* CENTRED on its date, not starting at it — the rule both full-height marks keep,
+	   and the milestone diamond is why: `placeMarker` centres that on the day boundary,
+	   so a line drawn FROM the boundary sat half its own width right of the mark it
+	   belongs to. Shifting both LINES keeps the diamond on the date it names and keeps
+	   the two lines as far apart as they were, so the nudge is still one whole line
+	   width and a milestone sharing today's cell still lands beside this, not over it. */
+	transform: translateX(-50%);
 	z-index: 1;
 	background-color: var(--color-red);
 	opacity: 0.55;
@@ -355,6 +362,9 @@
 	bottom: 0;
 	left: var(--pbl-milestone-left);
 	width: var(--pbl-tl-line);
+	/* Centred, the same shift as `.pbl-today` — what puts this through the middle of its
+	   own diamond. The LABEL is not shifted: it reads rightward from the date. */
+	transform: translateX(-50%);
 	z-index: 0;
 	background-color: var(--color-cyan);
 	opacity: 0.55;

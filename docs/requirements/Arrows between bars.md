@@ -254,16 +254,18 @@ in. Without it — the overlap that IS the conflict, and the only reason a backw
 exists — the run doubles back, crossing a row BOUNDARY rather than a row — the edge of the
 prerequisite's own row, never a midpoint between the two centres, because with one row
 between the ends an average lands on THAT row's centre and the run disappears under its
-bar. Drawing behind the bars is what makes the lane load-bearing rather than cosmetic:
-anything this layer puts under a bar is simply not there.
+bar. The lane is load-bearing rather than cosmetic either way the layer is stacked: while
+arrows drew BEHIND the bars a run there was simply not there, and now that they draw over
+them it is a line struck through the middle of an unrelated bar. The reason changed on
+2026-08-09; the requirement did not.
 
 Every coordinate a route names is held inside the GRID, and the arrival is the dependent's
 own bar edge — never nudged inward to make room. A dependent whose bar begins before the
 window anchors at day 0, which is the grid's left edge exactly, and an arrowhead reaches
 BACK along the run it terminates: a tip there puts both strokes under the sticky, opaque
-lead column. Nudging the tip a head's width right only moves them under the BAR, because
-this layer paints behind the bars on purpose, and it also points the arrow at a day the
-bar does not start on. There is no third place, so the head is simply LEFT OFF where it
+lead column. Nudging the tip a head's width right points the arrow at a day the bar does
+not start on — which is the whole objection now that the layer paints OVER the bars, and
+was only half of it before. There is no third place, so the head is simply LEFT OFF where it
 has no room, and the run is drawn without one. That is narrower than "an arrow always
 arrives pointing right", which is why it is written here: direction is still readable
 from where the run comes from, and the row states the dependency in words regardless.
@@ -276,11 +278,18 @@ what keeps 4a a literal count. It was not, for a day: the elbows shipped as four
 positioned divs and the test that holds 4a had been narrowed, in the same commit, to
 count arrowheads instead of elements. Everything passed and the bound the note states had
 stopped being true, which is why the selector that test uses is now the element the layer
-costs per edge rather than a feature of one. The layer is created BEFORE the rows and filled after them,
-which is what puts every arrow behind the bars: a bar is positioned with no z-index of
-its own, so document order decides, and the first version — appended after the rows —
-drew a line across every bar it crossed. That is the milestone line's own answer to the
-same question, arrived at the same way (by looking).
+costs per edge rather than a feature of one.
+
+**Arrows paint over the bars, and that is a `z-index` rather than a document position.**
+The layer is created BEFORE the rows and filled after them, because the routes are
+measured from the bars they run between — so document order alone put every arrow UNDER
+every bar it crossed. It shipped that way on 2026-08-08, matching the milestone line, and
+was reversed on 2026-08-09 after looking at it: an arrow is the one mark on this grid that
+is about TWO rows at once, and one hidden wherever it passes a third row's bar reads as two
+stubs rather than as a connection. `z-index: 1` on the layer clears the bars (which carry
+none) while staying under the sticky lead column (2) and the header (3), so no arrow can
+paint over a title or a date; it ties with `.pbl-today`, which is written later and
+therefore keeps its pixel — the same courtesy the milestone line already gives it.
 
 The layer that DRAWS them is `renderDependencyArrows` in
 `src/view/render/timelineArrows.ts` — beside `render/timeline.ts` rather than inside it,

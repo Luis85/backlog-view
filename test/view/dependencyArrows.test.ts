@@ -478,9 +478,11 @@ describe('a doubling-back route crosses a row boundary, never a row', () => {
 		const verticals = [...d.matchAll(/V (-?\d+)/g)].map((m) => Number(m[1]));
 		const centres = timelineRows(containerEl).map((_row, i) => i * 30 + 15);
 		// Two of them, and they are different claims. The FIRST is the lane the run
-		// doubles back along, and a row's own centre is exactly what it must not be: the
-		// layer paints behind the bars, so a run there is hidden by the very bar it was
-		// routed around. The LAST is the arrival, which must be the dependent's centre —
+		// doubles back along, and a row's own centre is exactly what it must not be: a
+		// run there is a line struck through the middle of the very bar it was routed
+		// around. (Until 2026-08-09 the layer paints behind the bars and the same run
+		// was invisible instead — the reason changed, the requirement did not.)
+		// The LAST is the arrival, which must be the dependent's centre —
 		// that is where its bar is, and an arrow that stopped short of it would point at
 		// nothing.
 		expect(verticals).toHaveLength(2);
@@ -517,12 +519,14 @@ describe('a route clipped at the left edge keeps itself out of the lead column',
 		// And the head is either drawn with room for itself or not drawn at all — never
 		// drawn into six pixels it cannot be seen in. Here the arrival IS the grid's edge:
 		// the lead sits on one side of that line and the dependent's own clipped bar
-		// starts on the other, and this layer paints behind the bars, so there is nowhere
-		// a head could go. The route says the edge exists; the row says what it means.
+		// starts on the other, so a head reaching back from the tip has nowhere to go
+		// that is not the opaque lead column. The route says the edge exists; the row
+		// says what it means.
 		const tip = xs[xs.length - 1];
 		// The arrival is the dependent's own bar edge — never nudged inward to make room,
-		// which would point the arrow at a day the bar does not start on AND put the head
-		// under the bar, since this layer paints behind them.
+		// because that points the arrow at a day the bar does not start on. That is the
+		// whole of the reason now: the layer paints over the bars since 2026-08-09, so
+		// "the head would be hidden under the bar" is no longer the second half of it.
 		const barLeft = lead + Number(
 			(rowFor(containerEl, 'Long')?.querySelector<HTMLElement>('.pbl-bar')?.style.getPropertyValue('--pbl-bar-left') ??
 				'0px'
