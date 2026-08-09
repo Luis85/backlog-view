@@ -113,15 +113,27 @@ than in schema order (so it cannot be generated), and *"coverage is measured aga
 either). What satisfies both is one optional field —
 
 ```ts
-interface ManualEntry { …; keys?: string[] }   // the view-option keys this entry explains
+interface ManualEntry { …; keys?: string[] }   // exact keys, or a `prefix.*` family
 ```
 
-— and a test asserting every key `getViewOptions()` declares is claimed by exactly one
-entry. The prose stays authored; the *completeness* is derived. This matters more than it
-looks: the schema generates a folder picker per type and a WIP limit and policy per
-workflow state, so the key count moves with the vocabulary and with the user's own
-configuration. A hand-counted section would read as complete while omitting the generated
-half — which is why this spec quotes no number for it.
+— and a test resolving every key `getViewOptions(config)` declares against those claims.
+The prose stays authored; the *completeness* is derived.
+
+**A literal key list cannot do this job, and a test built on one passes vacuously.** Two
+of the schema's families are generated from data: a folder picker per type, and a WIP
+limit and a policy per workflow *state* — and states are user data, so the key is
+`wipLimit.<whatever they typed>`. Worse, `defaultSettings()` has `states: []`, so
+`getViewOptions()` with no config emits **none** of them: a test asserting exact-once
+against the parameterless schema would go green while covering nothing a real user's base
+contains.
+
+So the claim is by **family** where the schema generates, and by exact key where it does
+not — `wipLimit.*` and `columnPolicy.*` and `typeFolder.*` are one entry's subject each,
+which is also how the section should read. The test runs against a config that **has**
+workflow states, so the generated families are non-empty when they are checked, and it
+asserts two directions: every declared key is claimed by exactly one entry or family, and
+every family claimed matches at least one declared key — the second because a family that
+matches nothing is a section explaining an option that no longer exists.
 
 Both are the invariants-as-checks rule this codebase already holds itself to, applied to
 prose.
@@ -150,9 +162,27 @@ would leave them unmet while looking complete:
 | Surface | Opens on | Required by |
 | --- | --- | --- |
 | The new-item modal | Creating and filing | *"creating an item is the moment the folder question is asked, so the manual opens on this section from there"* |
-| An empty state with nothing to show | Finding work | its trigger — an empty state is the moment "where is my work" is asked |
+| **All three** empty states | Finding work | its trigger — an empty state is the moment "where is my work" is asked |
 | The write-in-flight indicator | Safe writes and undo | *"reachable from the busy indicator and from the config warning"* |
-| The `Check view options` warning | Safe writes and undo | the same criterion |
+| The `Check view options` warning | **unsettled — see below** | claimed by two use cases |
+
+**Three empty states, not one.** `renderEmptyState`, `renderFilterEmptyState` and
+`renderAllDoneState` are separate renderers, and the last two are the sharpest moments the
+question gets asked — a filter matching nothing, and a backlog whose visible work is all
+done. Wiring only the generic one leaves the two best doors missing. The use case does not
+enumerate them (its "all three" is about the focus, filter and completed *controls*, not
+about renderers), so this is a quality decision rather than a criterion, and it is taken
+because the cost is one call per renderer.
+
+**The config warning is claimed twice, and the register has to settle it.**
+[[Help for setting up the view]] names the `Check view options` warning as a trigger for
+the *configuration* section; [[Help for safe writes and undo]] names the same warning as a
+route to the *writes* section. Both are acceptance criteria and they cannot both be the
+single destination of one link. This spec does not invent a resolution — it is a
+contradiction between two accepted notes, and picking one silently would mark a PBI `Done`
+against a criterion nobody agreed to drop. **Implementation stops at this link until the
+register says which**, and whichever loses gets its note amended rather than quietly
+reinterpreted.
 
 All five doors go through **one opener**:
 
@@ -163,9 +193,18 @@ openManual(app: App, sectionId: string, returnFocusTo: HTMLElement | null): void
 `sectionId` selects the section the dialog opens on — the same mechanism the sidebar uses,
 so a deep link is not a second way to reach a section. `returnFocusTo` is the control that
 opened it, because "focus returns to the **?**" is only correct when the **?** is what was
-pressed; from the busy indicator, focus must return to the busy indicator. One opener, five
-call sites, and no surface plans its own dialog — the same shape this codebase already
-requires of a card move.
+pressed; from the busy indicator, focus must return to the busy indicator. One opener, one
+call site per door, and no surface plans its own dialog — the same shape this codebase
+already requires of a card move.
+
+**The opener may outlive its opener.** The busy indicator is the case: `syncBusy` removes
+`pbl-busy-on` when the batch finishes, `styles/busy.css` then sets `display: none`, and
+`focus()` on a hidden element is a silent no-op that drops focus to the document — so a
+write completing while the manual is open would break the guarantee the parameter exists
+to keep. This is not a new hazard: `refocusByKey` routes through `focusInBar` for exactly
+this reason. `onClose` therefore checks that the named element is still focusable and falls
+back to the toolbar's **?** — with a test that finishes the batch **before** closing the
+dialog, since one that closes first passes either way.
 
 ### What this does to Multilang
 
