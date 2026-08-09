@@ -201,9 +201,9 @@ only name files its forward batch wrote while they were results, and the write b
 undone may itself be what moved one out of the filter (a parent marked done in a base
 that excludes done items). The rule both paths keep is *never write to a note the user
 could not act on*; `test/view/contextRowWrites.test.ts` drives undo across that
-boundary too. The UI withholds every control that would produce one: the
-state chip renders as a static `.pbl-state-static` div (and not at all when unset), and
-the context menu drops Set type, Set state and the parent-link actions. `New <child>`
+boundary too. The UI withholds every control that would produce one: every
+row chip renders as a static `.pbl-state-static` div (and not at all with nothing to
+show), and the context menu drops Set type, Set state and the parent-link actions. `New <child>`
 stays — it writes a *different* note — but it must not land that note outside the filter
 either: `inferFolder` counts only result rows, and folder mode's "children go beside the
 parent's folder note" rule is skipped for a context parent (the explicit parent link

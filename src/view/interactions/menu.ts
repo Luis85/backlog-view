@@ -280,33 +280,43 @@ export function showMenuForClick(menu: Menu, evt: MouseEvent): void {
 	menu.showAtMouseEvent(evt);
 }
 
-/** State menu for the row's state chip. */
-export function showStateMenu(host: BacklogViewHost, evt: MouseEvent, item: BacklogItem): void {
+/**
+ * A per-row control's own menu. Each of the four below opens exactly what the row menu's
+ * matching section offers — one builder per property, never a second list — so a chip and
+ * the context menu cannot disagree about what is offered or which entry is current.
+ *
+ * The click belongs to the control, not to the row it sits on: `stopPropagation` here is
+ * what keeps pressing a chip from also activating the row. (`fromRowControl` in
+ * `render/rows.ts` covers a control that forgets; this one does not have to.)
+ */
+function chipMenu(
+	host: BacklogViewHost,
+	evt: MouseEvent,
+	item: BacklogItem,
+	add: (host: BacklogViewHost, menu: Menu, item: BacklogItem) => void,
+): void {
 	evt.preventDefault();
 	evt.stopPropagation();
 	const menu = new Menu();
-	addStateItems(host, menu, item);
+	add(host, menu, item);
 	showMenuForClick(menu, evt);
 }
+
+/** State menu for the row's state chip. */
+export const showStateMenu = (host: BacklogViewHost, evt: MouseEvent, item: BacklogItem): void =>
+	chipMenu(host, evt, item, addStateItems);
 
 /** Horizon menu for the row's horizon chip — the same list the row menu's Set horizon offers. */
-export function showHorizonMenu(host: BacklogViewHost, evt: MouseEvent, item: BacklogItem): void {
-	evt.preventDefault();
-	evt.stopPropagation();
-	const menu = new Menu();
-	addHorizonItems(host, menu, item);
-	showMenuForClick(menu, evt);
-}
+export const showHorizonMenu = (host: BacklogViewHost, evt: MouseEvent, item: BacklogItem): void =>
+	chipMenu(host, evt, item, addHorizonItems);
+
+/** Risk menu for the row's risk chip — the same list the row menu's Set risk offers. */
+export const showRiskMenu = (host: BacklogViewHost, evt: MouseEvent, item: BacklogItem): void =>
+	chipMenu(host, evt, item, addRiskItems);
 
 /** Tag picker for the row's add-tag button. */
-export function showTagMenu(host: BacklogViewHost, evt: MouseEvent, item: BacklogItem): void {
-	// Like the state chip: the click belongs to the control, not to the row it sits on.
-	evt.preventDefault();
-	evt.stopPropagation();
-	const menu = new Menu();
-	addTagItems(host, menu, item);
-	showMenuForClick(menu, evt);
-}
+export const showTagMenu = (host: BacklogViewHost, evt: MouseEvent, item: BacklogItem): void =>
+	chipMenu(host, evt, item, addTagItems);
 
 /**
  * The matches hiding under this card, as menu entries.

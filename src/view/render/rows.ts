@@ -14,6 +14,7 @@ import {
 	renderAddSpacer,
 	renderColumnHeader,
 	renderRowColumns,
+	RISK_COL_WIDTH,
 	RowContext,
 	STATE_COL_WIDTH,
 } from './columns';
@@ -50,6 +51,7 @@ export function renderTree(ctx: RowContext, treeEl: HTMLElement): void {
 		'--pbl-prop-count': String(ctx.chips.length),
 		'--pbl-state-col': `${STATE_COL_WIDTH}px`,
 		'--pbl-horizon-col': `${HORIZON_COL_WIDTH}px`,
+		'--pbl-risk-col': `${RISK_COL_WIDTH}px`,
 		'--pbl-meta-col': `${META_COL_WIDTH}px`,
 		'--pbl-indent': `${INDENT_PER_DEPTH}px`,
 	});

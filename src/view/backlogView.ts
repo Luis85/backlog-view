@@ -558,7 +558,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.cardKids.clear();
 		if (projection !== 'tree') {
 			// The column-fit ladder is the tree's; its stale verdicts must not hide card cells.
-			this.viewEl.removeClass('pbl-hide-props', 'pbl-hide-meta', 'pbl-hide-horizon', 'pbl-hide-state');
+			this.viewEl.removeClass('pbl-hide-props', 'pbl-hide-risk', 'pbl-hide-meta', 'pbl-hide-horizon', 'pbl-hide-state');
 		}
 		const content = renderProjectionContent(projection, this.rowCtx(), this.treeEl, this.cardDnd);
 		this.board = content.board;
