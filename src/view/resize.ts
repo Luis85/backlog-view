@@ -1,6 +1,7 @@
 import { BacklogViewHost } from './host';
 import { RowContext, syncColumnFit } from './render/columns';
 import { TIMELINE_LEAD_PX } from './render/timeline';
+import { syncToolbarFit } from './render/toolbarFit';
 import { effectiveLeadWidth } from './interactions/timelineLeadResize';
 import { activeAxis } from '../domain/roadmap';
 
@@ -18,6 +19,7 @@ export class ResizePolicy {
 		private readonly host: BacklogViewHost,
 		private readonly viewEl: HTMLElement,
 		private readonly treeEl: HTMLElement,
+		private readonly toolbarEl: HTMLElement,
 		private readonly rowCtx: () => RowContext,
 	) {}
 
@@ -31,8 +33,17 @@ export class ResizePolicy {
 	 * went; on the dated roadmap axis, only if the lead column's EFFECTIVE width
 	 * would actually change. Never on the board or the horizon axis, whose columns
 	 * and buckets scroll rather than dropping.
+	 *
+	 * The toolbar's own ladder re-runs FIRST and unconditionally, in every projection: it
+	 * is the second thing a resize invalidates, it answers to no rebuild verdict, and a
+	 * needless re-measure is one comparison and no render. It belongs here for the reason
+	 * the rest of this class does — the observer callback is the view's wiring, and WHEN
+	 * to re-measure is this class's whole subject — while `syncToolbarFit`
+	 * (`render/toolbarFit.ts`) keeps what the measurement means, exactly as
+	 * `syncColumnFit` does above.
 	 */
 	shouldRebuildOnResize(): boolean {
+		syncToolbarFit(this.toolbarEl);
 		if (this.host.projection === 'tree') return this.refit();
 		// The COLUMN ladder is the tree's alone — board columns and the horizon axis's
 		// buckets scroll rather than dropping columns, and the shelf answers to a stored

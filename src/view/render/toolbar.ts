@@ -145,12 +145,13 @@ function renderNewButton(host: BacklogViewHost, barEl: HTMLElement, model: Backl
 	const onDeliverables = host.projection === 'deliverables';
 	const newLevel = onDeliverables ? DELIVERABLE_TYPE : primaryNewType(host, model);
 	// The button and its chevron are ONE control in two pieces, so they get one
-	// non-shrinking box. The toolbar still wraps today, and these are now the last two
-	// elements in it: a pane wide enough for the button and not the chevron would put
-	// the chevron alone on the next row, split from the action it extends. It is not
-	// scaffolding for that — once the row stops wrapping the wrapper still says the
-	// primary action and its type picker are one thing, which is why it holds them
-	// together rather than pinning them.
+	// non-shrinking box. It was written when the row still wrapped, where a pane wide
+	// enough for the button and not the chevron put the chevron alone on the next line;
+	// `styles/toolbarFit.css` sets `flex-wrap: nowrap` now, so that case is gone and the
+	// wrapper is left doing the job it was always also doing — saying the primary action
+	// and its type picker are one thing. Which is not decoration at the last rung: the row
+	// clips there, and a clip falls between two flex items far more readily than through
+	// the middle of one.
 	const wrap = barEl.createDiv({ cls: 'pbl-new' });
 	// The name is explicit, not inherited from the text: the fit ladder hides
 	// `.pbl-btn-label` on a narrow pane, and a primary button named only by the text it
@@ -199,6 +200,23 @@ function renderBusyIndicator(barEl: HTMLElement): void {
 }
 
 /**
+ * A text write that is not a DOM mutation when the text has not changed. Both callers
+ * write into a live region — `.pbl-busy` is `role="status"` and `.pbl-count-label`
+ * carries an `aria-live="polite"` of its own — and **a live region announces on
+ * MUTATION, not on a changed value**: `setText` assigns `textContent`, which destroys
+ * the text node and builds a new one even when the string is identical. So the fixed
+ * label a redesign introduced to stop a 340-file backfill announcing 340 times still
+ * announced 340 times, and the count label — which is rewritten on every content render
+ * — announced once per filter keystroke. The guard is what makes "the drawn text does
+ * not change" a fact about the DOM rather than about the string.
+ *
+ * Two call sites in one file, so a two-line local rather than a shared helper module.
+ */
+function setTextIfChanged(el: HTMLElement, text: string): void {
+	if (el.textContent !== text) el.setText(text);
+}
+
+/**
  * The indicator's own half of `syncBusy`: the on/off flag, the fixed label, and the
  * count. Reports whether the indicator's VISIBILITY changed, which after this design is
  * the ONLY thing that can change the row's width — so it is the only thing worth
@@ -223,7 +241,9 @@ function renderBusyIndicator(barEl: HTMLElement): void {
  * CONTENT is announced whenever it changes — which the old per-tick label meant a
  * three-hundred-file backfill was announced three hundred times. A per-tick `aria-label`
  * would be the same defect wearing a different attribute. Fixed content is announced
- * once, when the batch starts, which is the one thing worth saying.
+ * once, when the batch starts, which is the one thing worth saying — and it is fixed
+ * through `setTextIfChanged`, because a `setText` of the same string is still a
+ * `childList` mutation inside the region and a region announces on the mutation.
  *
  * The `title` goes on the LABEL SPAN rather than on `.pbl-busy` itself: `title` is the
  * last-resort source for an accessible NAME, so on the status element it would make the
@@ -243,7 +263,7 @@ function syncBusyLabel(el: HTMLElement, busy: BusyState | null): boolean {
 	const wasOn = el.hasClass('pbl-busy-on');
 	el.toggleClass('pbl-busy-on', busy !== null);
 	const labelEl = el.querySelector<HTMLElement>('.pbl-busy-label');
-	labelEl?.setText(busy ? 'Updating…' : '');
+	if (labelEl) setTextIfChanged(labelEl, busy ? 'Updating…' : '');
 	// A single-file write is over before it could be read, so it gets no count — the same
 	// rule the visible label used to carry, now applied to the only place a count appears.
 	if (busy && busy.total > 1) labelEl?.setAttribute('title', `Updating ${busy.done} of ${busy.total}…`);
@@ -338,9 +358,17 @@ export function syncCountLabel(host: BacklogViewHost, barEl: HTMLElement): void 
 	// included, so this asks the one question rather than choosing between two.
 	const total = population.length;
 	const shown = population.filter((item) => !host.isRowHidden(item)).length;
-	if (shown === total) label.setText(`${total} item${total === 1 ? '' : 's'}`);
-	else label.setText(`${shown} of ${total}`);
-	setTooltip(label, levelBreakdown(population));
+	setTextIfChanged(label, shown === total ? `${total} item${total === 1 ? '' : 's'}` : `${shown} of ${total}`);
+	// The tooltip is guarded the same way and for a sharper reason than the text: this
+	// element is `aria-live`, and `setTooltip` attaches Obsidian's hover handling on every
+	// call and has set `aria-label` in some versions — see `syncBusyLabel`, which avoids
+	// it entirely for exactly that. The last breakdown is kept in `dataset` because
+	// nothing can read a tooltip back off an element, and a `data-` attribute is not a
+	// mutation any live region reports.
+	const breakdown = levelBreakdown(population);
+	if (label.dataset.pblBreakdown === breakdown) return;
+	label.dataset.pblBreakdown = breakdown;
+	setTooltip(label, breakdown);
 }
 
 /**

@@ -148,18 +148,18 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 			treeEl: this.treeEl,
 			rootDropEl: this.rootDropEl,
 		});
-		this.resize = new ResizePolicy(this, this.viewEl, this.treeEl, () => this.rowCtx());
+		this.resize = new ResizePolicy(this, this.viewEl, this.treeEl, this.toolbarEl, () => this.rowCtx());
 		this.dnd.setupRootDropZone();
 		this.cardDnd = new CardDragController(this, this.viewEl);
 		this.treeEl.addEventListener('keydown', (evt) => handleProjectionKeydown(this, evt));
 		this.registerDomEvent(document, 'dragend', () => this.dnd.clearDragState());
 		// Which columns fit depends on the pane, which changes without a data update.
 		if (typeof ResizeObserver !== 'undefined') {
+			// Both ladders answer to this one notification — `ResizePolicy` re-measures the
+			// toolbar's before deciding about the tree's, since the observer watches the
+			// TREE, whose box tracks the pane's and also narrows when the vertical
+			// scrollbar appears, which the toolbar's does not.
 			this.resizeObserver = new ResizeObserver(() => {
-				// The observer watches the TREE, whose box tracks the pane's — and also
-				// narrows when the vertical scrollbar appears, which the toolbar's does
-				// not. A needless re-measure is one comparison and no render.
-				syncToolbarFit(this.toolbarEl);
 				if (this.resize.shouldRebuildOnResize()) this.renderTreeContent();
 			});
 			// The tree, not the view: its content box is what the rows get, and it also

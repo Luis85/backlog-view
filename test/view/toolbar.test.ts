@@ -548,6 +548,39 @@ describe('toolbar count breakdown', () => {
 		// Filter changes to the count are announced to assistive tech
 		expect(count?.getAttribute('aria-live')).toBe('polite');
 	});
+
+	/**
+	 * That `aria-live` is exactly why this test exists. A live region announces on
+	 * MUTATION, not on a changed value — and `setText` assigns `textContent`, which
+	 * destroys the text node and builds a new one even when the string is identical.
+	 * `syncCountLabel` runs on every content render, so filtering to something every item
+	 * matches queued an announcement of "4 items" per keystroke.
+	 *
+	 * Node identity is the whole claim, and comparing `textContent` cannot reach it: that
+	 * assertion is true of the broken code. The tooltip is checked the same way through a
+	 * sentinel, because `setTooltip` writing the same string back is equally invisible to
+	 * a value comparison — and it is the write that carries Obsidian's hover handling and,
+	 * in some versions, an `aria-label` for this element.
+	 */
+	it('rewrites neither the text node nor the tooltip when nothing about the count changed', () => {
+		const vault = fixture();
+		const { view, containerEl } = makeView(vault);
+		const count = () => containerEl.querySelector<HTMLElement>('.pbl-count-label');
+		const label = count();
+		const node = label?.firstChild;
+		if (!label || !node) throw new Error('the count label is missing its text');
+		label.dataset.tooltip = 'untouched';
+
+		// A content-only render — the toolbar itself is not rebuilt, which is what makes
+		// the element identity below meaningful — leaving the number exactly as it was:
+		// every item in the fixture matches `e`.
+		view.setFilter('e');
+
+		expect(count()).toBe(label);
+		expect(label.textContent).toBe('4 items');
+		expect(label.firstChild).toBe(node);
+		expect(label.dataset.tooltip).toBe('untouched');
+	});
 });
 
 // The Deliverables board's own toolbar behavior (its toggle, its count scoping, its

@@ -114,25 +114,31 @@
    step 5 with no batch running, `.pbl-new` was still clipped at 420px and 380px — and
    every readout was already shed there, so the thing pushing it off was the CONTROLS. The
    honest guarantee is therefore about readouts alone, and it is now true by construction:
-   every readout is either shed by these two rungs or shrinkable at the last one (see the
-   busy indicator at the foot of this file), so none of them can be what costs New its
-   place. Below the width where the controls that never shed — the switcher, the focus,
+   every readout is either shed by these two rungs or shrinkable at the last one (the busy
+   indicator and the config warning, at the foot of this file), so none of them can be what
+   costs New its place. Below the width where the controls that never shed — the switcher, the focus,
    the eye, the filter's button, the `⋯`, undo, and whatever the projection owns — fill
    the row on their own, the row clips, and New is in that clip. No pixel figure is given
    for that width because none has been measured; it moves with the projection and with
    the theme's icon size.
 
-   Step 4 is the two advisories. Both are `cursor: help` text a user reads once, both
-   carry their whole sentence in `aria-label` and a tooltip, and neither is actionable —
-   so hiding the visible span costs a glance and loses no information and no capability.
-   Unlike step 3's controls they have no `⋯` entry, which is the same judgement seen from
-   the other side: there is no action to put in a menu.
+   Step 4 is the two advisories — the grouping note and the ignored-note count, both
+   `.pbl-toolbar-note`. Each is `cursor: help` text a user reads once and neither is
+   actionable, so hiding it costs a glance and no capability. What it also costs is the
+   sentence itself: `display: none` takes an element out of the ACCESSIBILITY tree, so the
+   `aria-label` and the tooltip go with the span rather than surviving it, and neither
+   note has a `⋯` entry or any second surface to be read from. That is acceptable for
+   these two — the count they carry is an aside about notes this base skipped — and it is
+   the reason the config warning is NOT in this rule. It is the only readout on the row
+   that says the view is misconfigured, so shedding it makes a broken configuration
+   silent at exactly the widths where the row is under most pressure. It shrinks at the
+   last rung instead, with the busy indicator at the foot of this file.
 
    Step 5 is the count, one rung LOWER because it is the readout most worth keeping: it
    is the only thing on the row that says how much is in front of you, and it is short.
-   Its tooltip carries the level breakdown either way. It goes before New does. */
-.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']):not([data-pbl-fit='2']):not([data-pbl-fit='3']) .pbl-toolbar-note,
-.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']):not([data-pbl-fit='2']):not([data-pbl-fit='3']) .pbl-config-warning {
+   Its level breakdown is a tooltip, which goes with it — the same cost step 4 pays, for
+   the same reason: a number nothing acts on. It goes before New does. */
+.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']):not([data-pbl-fit='2']):not([data-pbl-fit='3']) .pbl-toolbar-note {
 	display: none;
 }
 
@@ -141,21 +147,28 @@
 	display: none;
 }
 
-/* The busy indicator is the one readout with no rung, and it must not get one: it is the
-   only thing on the row saying a batch is in flight, and half the controls beside it are
-   `disabled` BECAUSE of that batch — hiding it turns a legible pause into a dead toolbar.
-   So it truncates instead.
+/* The two readouts with no rung, and neither may get one — both for the same reason, that
+   they are the only thing on the row saying the view is in a state the user has to know
+   about. The busy indicator: a batch is in flight, and half the controls beside it are
+   `disabled` BECAUSE of that batch, so hiding it turns a legible pause into a dead
+   toolbar. The config warning: a property this view needs is unnamed, and `display: none`
+   would take its `aria-label` out of the accessibility tree with the span — it has no `⋯`
+   entry and no second surface, so shedding it makes a broken configuration silent rather
+   than terse. So they truncate instead.
 
-   Its text is fixed (`Updating…` for every batch, the count in a `title` — see
-   `syncBusyLabel`), so this is a small box rather than the wide reserved one the earlier
-   design needed, and the honest question became whether it needs a rule at all. It does,
-   for one reason: the rule stated at steps 4 and 5 above is that no readout ever pushes
-   the primary action off the row, and this is a readout that neither rung sheds. Four
-   lines keep that sentence true by construction; without them it becomes a sentence with
-   a documented exception, which is the kind this file has already had to rewrite twice.
+   The indicator's text is fixed (`Updating…` for every batch, the count in a `title` —
+   see `syncBusyLabel`), so this is a small box rather than the wide reserved one the
+   earlier design needed, and the honest question became whether it needs a rule at all.
+   It does, for one reason: the rule stated at steps 4 and 5 above is that no readout ever
+   pushes the primary action off the row, and these are the readouts neither rung sheds.
+   These lines keep that sentence true by construction; without them it becomes a sentence
+   with two documented exceptions, which is the kind this file has already had to rewrite
+   twice.
 
-   `role="status"` and `aria-live` are on the element itself and the count is in a
-   `title`, so nothing a reader is told depends on how much of this is drawn.
+   Truncating costs neither of them anything a reader is told: `role="status"` and
+   `aria-live` are on `.pbl-busy` itself with the count in a `title`, and the warning's
+   whole sentence is in its `aria-label` and its tooltip. What ellipsises is the visible
+   span, and both elements stay in the tree.
 
    Only at the LAST rung, and that scoping is the design rather than caution. A shrinkable
    flex item absorbs overflow by getting narrower instead of pushing `scrollWidth` past
@@ -166,7 +179,9 @@
    verdict left to corrupt: the only question there is what absorbs the overflow, and a
    truncating readout is a better answer than a control pushed off the end. */
 .pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']):not([data-pbl-fit='2']):not([data-pbl-fit='3']):not([data-pbl-fit='4'])
-	.pbl-busy {
+	.pbl-busy,
+.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']):not([data-pbl-fit='2']):not([data-pbl-fit='3']):not([data-pbl-fit='4'])
+	.pbl-config-warning {
 	flex: 0 1 auto;
 	min-width: 0;
 	overflow: hidden;

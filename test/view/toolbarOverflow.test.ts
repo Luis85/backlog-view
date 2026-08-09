@@ -94,6 +94,53 @@ describe('the toolbar overflow menu', () => {
 		expect(filtering.find((i) => i.titleText === 'Collapse all')?.disabled).toBe(true);
 	});
 
+	/**
+	 * `setDisabled` is a request to the `Menu`, and the only thing between a disabled
+	 * entry and a real write is that `Menu` honouring it — which nothing here can check,
+	 * because the double's `click()` calls the handler regardless. That is the point: the
+	 * button these two entries duplicate re-reads `btn.disabled` before mutating, for a
+	 * reason of its own (a click on the icon inside a disabled button reaches its
+	 * listener), and the entries had no such guard at all.
+	 *
+	 * Expand/collapse is the pair that matters. A mis-enabled ✨ is refused by the write
+	 * gate; a mis-enabled Expand all really writes collapse state a quick filter is
+	 * overriding, which the user then discovers when they clear the filter.
+	 */
+	it('refuses a disabled bulk-collapse entry even when the menu hands the click through', () => {
+		const vault = fixture();
+		const { view, containerEl } = makeView(vault, {}, { collapsed: true });
+		expect(view.isCollapsed('Epic B.md')).toBe(true);
+
+		// A running quick filter overrides collapse state, so both bulk controls refuse
+		// the press — the state the entry above asserts is mirrored into the menu.
+		view.setFilter('Epic');
+		openOverflow(containerEl)
+			.find((i) => i.titleText === 'Expand all')
+			?.click();
+
+		// Asked with the filter gone, because `isCollapsed` reports false while one is
+		// running: what is being checked is the stored state, not the overridden view of
+		// it.
+		view.setFilter('');
+		expect(view.isCollapsed('Epic B.md')).toBe(true);
+
+		// Both entries, from the state each one would visibly change: a refused Collapse
+		// all has to leave an expanded tree expanded, and one guard covering one of the
+		// pair is how the other comes to lose it.
+		openOverflow(containerEl)
+			.find((i) => i.titleText === 'Expand all')
+			?.click();
+		expect(view.isCollapsed('Epic B.md')).toBe(false);
+
+		view.setFilter('Epic');
+		openOverflow(containerEl)
+			.find((i) => i.titleText === 'Collapse all')
+			?.click();
+
+		view.setFilter('');
+		expect(view.isCollapsed('Epic B.md')).toBe(false);
+	});
+
 	it('runs the same action the button runs', () => {
 		const vault = fixture();
 		const { view, containerEl } = makeView(vault, {}, { collapsed: true });

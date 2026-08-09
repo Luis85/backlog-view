@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { Menu } from '../helpers/obsidian-mock';
 import { syncBusy } from '../../src/view/render/toolbar';
 import { syncToolbarFit } from '../../src/view/render/toolbarFit';
 import { fixture, key, makeView, refresh, treeOf, useViewHarness } from '../helpers/view';
@@ -146,7 +147,7 @@ describe('the toolbar fit ladder', () => {
 		expect(bar.getAttribute('data-pbl-fit')).toBe('3');
 
 		stubWidths(bar, 900, { '0': 980, '1': 860, '2': 690, '3': 600, '4': 540, '5': 480 });
-		expect(syncToolbarFit(bar)).toBe(true);
+		syncToolbarFit(bar);
 		expect(bar.getAttribute('data-pbl-fit')).toBe('1');
 	});
 
@@ -159,16 +160,8 @@ describe('the toolbar fit ladder', () => {
 		// Detached, or before the first layout: jsdom's own answer, and a real pane's
 		// while it is hidden. Deciding here would pick step 3 for every toolbar.
 		Object.defineProperty(bar, 'clientWidth', { value: 0, configurable: true });
-		expect(syncToolbarFit(bar)).toBe(false);
+		syncToolbarFit(bar);
 		expect(bar.getAttribute('data-pbl-fit')).toBe('2');
-	});
-
-	it('never reports a change when the step is the same', () => {
-		const { containerEl } = makeView(fixture());
-		const bar = toolbarOf(containerEl);
-		stubWidths(bar, 700, { '0': 980, '1': 860, '2': 690, '3': 600, '4': 540, '5': 480 });
-		expect(syncToolbarFit(bar)).toBe(true);
-		expect(syncToolbarFit(bar)).toBe(false);
 	});
 
 	/**
@@ -453,6 +446,48 @@ describe('the toolbar fit ladder', () => {
 		expect(landed).not.toBe(overflow);
 	});
 
+	/**
+	 * The intersection of the two cases above, each of which was fixed on its own. The
+	 * rung can change WHILE the `⋯` menu is open — a pane widened, or a `css-change` — and
+	 * while it is open focus is in Obsidian's body-mounted menu, so `refocusShedControl`
+	 * returns on its containment guard and skips the handoff even though the relaxation
+	 * just hid the `⋯` itself. Picking an entry then restores focus BY KEY to that hidden
+	 * trigger, and `focus()` on a `display: none` element is a silent no-op: focus ends up
+	 * on the document, from a menu the user was operating.
+	 *
+	 * Which is why the fix is in `refocusByKey` rather than in the overflow handler — it
+	 * is the function all four restore paths share, and every one of them can name a
+	 * control the ladder has hidden or `disabled` has taken. Driven through the real menu
+	 * item's own `run`, because the defect is in what happens after the act, not in the
+	 * act.
+	 */
+	it('lands a menu pick’s focus on a visible control when widening hid the ⋯ itself', () => {
+		const { containerEl } = makeView(fixture());
+		const bar = toolbarOf(containerEl);
+		stubWidths(bar, 600, { '0': 980, '1': 860, '2': 690, '3': 600, '4': 540, '5': 480 });
+		syncToolbarFit(bar);
+		expect(bar.getAttribute('data-pbl-fit')).toBe('3');
+
+		// Opening the menu: the `⋯` is on screen and had focus, and Obsidian mounts the
+		// menu on the body, which takes focus out of the bar.
+		const overflow = containerEl.querySelector<HTMLElement>('.pbl-overflow-btn');
+		overflow?.focus();
+		overflow?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		overflow?.blur();
+		expect(bar.contains(document.activeElement)).toBe(false);
+
+		// The pane widens under the open menu, past the step that renders the `⋯` at all.
+		stubWidths(bar, 1200, { '0': 900, '1': 800, '2': 700, '3': 600, '4': 540, '5': 480 });
+		syncToolbarFit(bar);
+		expect(bar.hasAttribute('data-pbl-fit')).toBe(false);
+
+		Menu.lastShown?.items.find((i) => i.titleText === 'Expand all')?.click();
+
+		const landed = document.activeElement as HTMLElement;
+		expect(bar.contains(landed)).toBe(true);
+		expect(getComputedStyle(landed).display).not.toBe('none');
+	});
+
 	it('leaves focus alone when the control that has it survives the rung', () => {
 		const { containerEl } = makeView(fixture());
 		const bar = toolbarOf(containerEl);
@@ -476,6 +511,35 @@ describe('the toolbar fit ladder', () => {
 		syncToolbarFit(bar);
 
 		expect(document.activeElement).toBe(outside);
+	});
+
+	/**
+	 * The one readout the advisory rung must not take. `display: none` removes an element
+	 * from the accessibility tree with its `aria-label`, and the config warning's whole
+	 * sentence lives there and in a tooltip — it has no `⋯` entry and no second surface,
+	 * so shedding it at step 4 made a misconfigured view silent for everyone at exactly
+	 * the widths where the row is under most pressure. It shrinks at the last rung with
+	 * the busy indicator instead, which is what keeps "no readout ever pushes the primary
+	 * action off the row" true without an exception.
+	 *
+	 * Asked of the shipped stylesheet in the document, like the refocus cases below: the
+	 * rung either names this class or it does not.
+	 */
+	it('keeps the config warning through the rung that sheds the advisories', () => {
+		const { containerEl } = makeView(fixture(), { orderProperty: 'note.parent' });
+		const bar = toolbarOf(containerEl);
+		const warning = containerEl.querySelector<HTMLElement>('.pbl-config-warning');
+		// The count is the control: it is the readout the LAST rung sheds, so it says the
+		// ladder really reached the bottom rather than the rules simply not matching.
+		const count = containerEl.querySelector<HTMLElement>('.pbl-count-label');
+		if (!warning || !count) throw new Error('the toolbar drew no warning to shed');
+
+		stubWidths(bar, 420, { '0': 980, '1': 900, '2': 820, '3': 588, '4': 500, '5': 415 });
+		syncToolbarFit(bar);
+
+		expect(bar.getAttribute('data-pbl-fit')).toBe('5');
+		expect(getComputedStyle(count).display).toBe('none');
+		expect(getComputedStyle(warning).display).not.toBe('none');
 	});
 
 	/**
@@ -539,6 +603,33 @@ describe('the toolbar fit ladder', () => {
 		syncBusy(bar, { done: 1, total: 1 }, false);
 		expect(label()?.textContent).toBe('Updating…');
 		expect(label()?.hasAttribute('title')).toBe(false);
+	});
+
+	/**
+	 * The half the test above cannot reach, and the defect that survived the redesign
+	 * because of it. A live region announces on MUTATION, not on a changed value:
+	 * `setText` assigns `textContent`, which destroys the text node and builds a new one
+	 * even when the string is identical, and that is a `childList` mutation inside
+	 * `role="status" aria-live="polite"`. So the fixed label still queued one
+	 * announcement per file, which is the exact thing the fixed label was for.
+	 *
+	 * `textContent` cannot see it — the assertion above is true of the broken code, which
+	 * is what makes it a tautology rather than a check. The text NODE is the instrument:
+	 * same node across two ticks means no mutation was made.
+	 */
+	it('does not rebuild the busy label’s text node between ticks', () => {
+		const { containerEl } = makeView(fixture());
+		const bar = toolbarOf(containerEl);
+		const label = () => bar.querySelector<HTMLElement>('.pbl-busy-label');
+
+		syncBusy(bar, { done: 1, total: 340 }, false);
+		const node = label()?.firstChild;
+		expect(node).not.toBeUndefined();
+
+		syncBusy(bar, { done: 2, total: 340 }, false);
+		syncBusy(bar, { done: 3, total: 340 }, false);
+
+		expect(label()?.firstChild).toBe(node);
 	});
 
 	it('re-runs when the busy indicator appears, and not on the ticks between', () => {

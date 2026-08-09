@@ -5,6 +5,7 @@ import { activeAxis, configuredAxes, RoadmapAxis } from '../../domain/roadmap';
 import { ScaleId } from '../../domain/timeline';
 import { showMenuForClick } from '../interactions/menu';
 import { runInit } from '../interactions/structure';
+import { focusInBar } from './toolbarFit';
 
 /** Where a toolbar control carries its focus identity — see `capturedFocusKey`. */
 export const KEY_ATTR = 'data-pbl-key';
@@ -41,10 +42,19 @@ export function capturedFocusKey(barEl: HTMLElement): string | null {
  * SECOND caller now — a menu pick, which is a rebuild the render-pass mechanism cannot
  * see. `capturedFocusKey` moves with it: a mechanism split across two files is one edit
  * from the halves disagreeing about the attribute they share.
+ *
+ * **The named control may not be focusable when the restore happens**, which is why this
+ * goes through `focusInBar` rather than calling `focus()` on what it finds. The fit
+ * ladder hides controls, `disabled` takes others, and `focus()` on either is a silent
+ * no-op that drops focus to the document — the failure `refocusShedControl` exists to
+ * prevent, reachable through this function instead. It is stated here as the shared
+ * hazard rather than fixed in the caller that surfaced it (the `⋯`, whose own trigger a
+ * relaxing rung can hide while its menu is open) because all four restore paths run
+ * through this one line.
  */
 export function refocusByKey(barEl: HTMLElement, key: string | null): void {
 	if (!key) return;
-	barEl.querySelector<HTMLElement>(`[${KEY_ATTR}="${key}"]`)?.focus();
+	focusInBar(barEl, barEl.querySelector<HTMLElement>(`[${KEY_ATTR}="${key}"]`));
 }
 
 /**
@@ -371,7 +381,14 @@ function overflowEntries(host: BacklogViewHost, barEl: HTMLElement): OverflowEnt
 			title: 'Expand all',
 			icon: 'chevrons-up-down',
 			cls: 'pbl-expand-ctl',
+			// The guard `collapseButton` carries, for the same reason it carries it: the
+			// entry going `setDisabled` is a request to the `Menu`, and the only thing
+			// between a disabled entry and a real collapse write is that `Menu` honouring
+			// it. The button does not trust the DOM state either — a click on the icon
+			// inside a disabled button reaches its listener — so the two bulk actions ask
+			// the one question (`collapseCtlsDisabled`) at both of their entry points.
 			run: () => {
+				if (collapseCtlsDisabled(host)) return;
 				expandAll(host);
 				host.render();
 			},
@@ -381,6 +398,7 @@ function overflowEntries(host: BacklogViewHost, barEl: HTMLElement): OverflowEnt
 			icon: 'chevrons-down-up',
 			cls: 'pbl-collapse-all-ctl',
 			run: () => {
+				if (collapseCtlsDisabled(host)) return;
 				collapseAll(host);
 				host.render();
 			},

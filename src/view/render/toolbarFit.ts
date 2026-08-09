@@ -32,9 +32,10 @@ const FIT_ATTR = 'data-pbl-fit';
 const LAST_STEP = 5;
 
 /**
- * Measure the row and write the step it needs. Returns true when the step CHANGED, so a
- * caller that has something to redo can tell — nothing does today, because every rung is
- * CSS over markup that is already rendered.
+ * Measure the row and write the step it needs. It reports nothing: every rung is CSS over
+ * markup that is already rendered, so a caller has nothing to redo, and the one thing a
+ * changed step does need — moving focus off a control the new step hides — is done here
+ * rather than handed out as a boolean six call sites discarded.
  *
  * Always re-measured from step 0, never from the step in place: a widened pane has to be
  * able to relax the ladder, and starting from the current rung could only ever tighten it.
@@ -64,14 +65,27 @@ const LAST_STEP = 5;
  * than a vault.
  */
 /**
+ * **Focus something in this row that a rung has not taken away** — `target` when the
+ * ladder currently leaves it focusable, the `⋯` when it does not, and the first visible
+ * control when the `⋯` is hidden too.
+ *
  * A rung sheds a control by taking it out of the layout, and a keyboard user may be
  * STANDING on it — narrow the pane while focus is on the density toggle, jump-to-today,
  * the ✨ or either bulk collapse control and the button under the cursor stops existing,
  * dropping focus to the document. The filter survived this only because it was given its
  * own exception, three times over; these never had one.
  *
- * Fixed here, once, where the step changes, rather than per control or as five more CSS
- * exceptions — a rung added later inherits it without knowing it exists.
+ * Fixed here, once, rather than per control or as five more CSS exceptions — a rung
+ * added later inherits it without knowing it exists. And here rather than in
+ * `refocusShedControl` alone, because a rung changing is not the only way focus is asked
+ * to land on a control the ladder has hidden: `refocusByKey` (`toolbarControls.ts`)
+ * names a destination by key from FOUR restore paths, and a bare `focus()` on a hidden
+ * or disabled element is a silent no-op that leaves focus on the document. The case that
+ * exists is the `⋯` menu — while it is open focus is in Obsidian's body-mounted menu, so
+ * `refocusShedControl` skips the handoff on its containment guard even though the rung
+ * that just fired hid the `⋯` itself; the pick then restores focus to that hidden
+ * trigger. Both halves of that intersection had been fixed separately, which is why the
+ * shared destination is now one function rather than two agreeing ones.
  *
  * The rule is **focus lands on a control that is actually visible, preferring the `⋯`
  * when it is one** — one sentence covering both directions the ladder moves, rather than
@@ -99,6 +113,10 @@ const LAST_STEP = 5;
  * one control, which is what this function exists to avoid having. That case lands on the
  * switcher with everything else.
  *
+ * `target` is checked against the same `shown` list rather than focused and hoped for:
+ * "is this element focusable right now" is the question the fallback exists to answer,
+ * and asking it twice in two ways is how the two answers come to differ.
+ *
  * `display` is asked of each element, with no list of which classes each rung sheds: the
  * stylesheet already holds that and a copy in TypeScript is the table this codebase keeps
  * having to un-write. It works because every rung targets the focusable element DIRECTLY.
@@ -108,24 +126,39 @@ const LAST_STEP = 5;
  * `test/view/toolbarFit.test.ts` drives this by loading the real stylesheet into the
  * document, so what it asks is the shipped rule.
  */
+export function focusInBar(barEl: HTMLElement, target: HTMLElement | null): void {
+	// `[tabindex]` minus `[tabindex="-1"]`: nothing in the toolbar carries -1 today, but
+	// it is this codebase's standard for a per-row control inside a single-stop pane, so
+	// the first one added to this row would otherwise become a destination the ladder
+	// hands focus to. What is wanted is what Tab can reach.
+	const shown = [...barEl.querySelectorAll<HTMLElement>('button, input, [tabindex]:not([tabindex="-1"])')].filter(
+		(el) => getComputedStyle(el).display !== 'none' && !(el as HTMLButtonElement).disabled,
+	);
+	if (target && shown.includes(target)) {
+		target.focus({ preventScroll: true });
+		return;
+	}
+	(shown.find((el) => el.hasClass('pbl-overflow-btn')) ?? shown[0])?.focus({ preventScroll: true });
+}
+
+/**
+ * The step just changed: if what held focus is inside this row, keep it somewhere the new
+ * step still shows. Focus outside the bar is left alone — it is not this ladder's to move,
+ * and the menu case that looks like an exception is `refocusByKey`'s, above.
+ */
 function refocusShedControl(barEl: HTMLElement): void {
 	const active = document.activeElement;
 	if (!(active instanceof HTMLElement) || !barEl.contains(active)) return;
-	const shown = [...barEl.querySelectorAll<HTMLElement>('button, input, [tabindex]')].filter(
-		(el) => getComputedStyle(el).display !== 'none' && !(el as HTMLButtonElement).disabled,
-	);
-	if (shown.includes(active)) return;
-	const overflow = shown.find((el) => el.hasClass('pbl-overflow-btn'));
-	(overflow ?? shown[0])?.focus({ preventScroll: true });
+	focusInBar(barEl, active);
 }
 
-export function syncToolbarFit(barEl: HTMLElement): boolean {
+export function syncToolbarFit(barEl: HTMLElement): void {
 	const before = barEl.getAttribute(FIT_ATTR);
 	const width = barEl.clientWidth;
 	// Zero while detached or before the first layout — `syncColumnFit`'s rule, for the
 	// same reason: every row overflows a pane of no width, so deciding here would put
 	// every toolbar on the last rung and leave it there until something re-measured.
-	if (width === 0) return false;
+	if (width === 0) return;
 	barEl.removeAttribute(FIT_ATTR);
 	let step = 0;
 	while (step < LAST_STEP && barEl.scrollWidth > width) {
@@ -137,5 +170,4 @@ export function syncToolbarFit(barEl: HTMLElement): boolean {
 	// no-op that walks to `document.activeElement` on every resize tick is a cost for
 	// nothing.
 	if (changed) refocusShedControl(barEl);
-	return changed;
 }

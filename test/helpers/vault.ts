@@ -162,12 +162,12 @@ export class FakeVault {
 		},
 	};
 
-	/** Rename a file and fire vault.on('rename'), as Obsidian does. */
 	/** What Obsidian fires when the theme, the appearance settings or a snippet change. */
 	changeCss(): void {
 		for (const cb of this.cssChangeHandlers) cb();
 	}
 
+	/** Rename a file and fire vault.on('rename'), as Obsidian does. */
 	renameFile(oldPath: string, newPath: string): TFile {
 		const existing = this.files.get(oldPath);
 		if (!existing) throw new Error(`no such file: ${oldPath}`);
