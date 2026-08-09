@@ -81,6 +81,14 @@ export function getViewOptions(config?: BasesViewConfig): BasesAllOptions[] {
  * are. Folding on click withdraws no way of opening a note — the menu, `Enter` and the
  * platform's modifier all still open one, and all three obey the target below — so a
  * view can be a place to read the structure without ceasing to be a way into the notes.
+ *
+ * The first option says **in the tree** because that is where it applies, and an option
+ * naming more than it does is the same defect as a comment doing it. A card is not a row
+ * with a fold: its disclosure lists children on the card's own face, a timeline row's
+ * chevron folds grid rows, and a card with nothing under it draws no disclosure at all —
+ * so one gesture would mean three things and leave the commonest card inert. Where the
+ * target below applies is the opposite and needs no such qualifier: every projection
+ * opens notes the same way.
  */
 function handlingItemsGroup(): BasesAllOptions {
 	const defaults = defaultItemHandling();
@@ -93,7 +101,7 @@ function handlingItemsGroup(): BasesAllOptions {
 			{
 				type: 'dropdown',
 				key: 'clickAction',
-				displayName: 'Clicking an item',
+				displayName: 'Clicking an item in the tree',
 				default: defaults.clickAction,
 				options: CLICK_ACTIONS,
 			},

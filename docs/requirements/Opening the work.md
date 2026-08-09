@@ -38,6 +38,13 @@ found. Every row is a real note; the view is a lens on it, not a replacement for
   or with the modifier above. A row with nothing under it folds nothing and does not open
   either: one gesture cannot mean "fold" on a parent and "open" on a leaf without being
   unpredictable on both. A filtered tree refuses the flip exactly as the chevron does.
+  **This is the TREE's option and the option says so.** A card is not a row with a fold:
+  a board card's disclosure lists children on its own face, a timeline row's chevron folds
+  grid rows, and a card with nothing under it draws no disclosure at all — so the one
+  gesture would mean three things across the projections and leave the commonest card
+  inert. Card activation keeps opening the note, which is what a card is for. Extending it
+  is a product decision nobody has taken, not an omission: it would need an answer for the
+  childless card first.
 - **2b — the note is configured to open in a new tab or to the side** (`openIn`). To the
   side additionally **pins the backlog's own leaf**: the default target replaces the
   current tab, and a view whose point is to stay put while notes come and go must not be

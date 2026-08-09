@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { Menu } from '../helpers/obsidian-mock';
 import { fixture, key, makeView, rowByTitle, titlesOf, treeOf, useViewHarness } from '../helpers/view';
+import { boardVault, cardByTitle, makeBoard } from '../helpers/board';
 import { resolveSettings } from '../../src/domain/settings';
 
 useViewHarness();
@@ -80,6 +81,21 @@ describe('what a click on an item does', () => {
 
 		expect(titlesOf(containerEl)).toContain('Feature B1');
 		expect(vault.opened).toEqual([]);
+	});
+
+	/**
+	 * The option is the TREE's, and the option says so in its own name. A card is not a
+	 * row with a fold — its disclosure lists children on the card's own face, and a card
+	 * with nothing under it draws none at all — so folding on card activation would mean
+	 * a different thing per projection and leave the commonest card inert.
+	 */
+	it('leaves card activation opening the note', () => {
+		const vault = boardVault();
+		// Epic B is a PARENT card, the one that has children to have folded.
+		const { containerEl } = makeBoard(vault, { clickAction: 'fold' });
+		click(cardByTitle(containerEl, 'Epic B'));
+
+		expect(vault.opened.map((o) => o.path)).toEqual(['Epic B.md']);
 	});
 
 	/** `Enter` is the keyboard's way to the note, and folding does not take it. */
