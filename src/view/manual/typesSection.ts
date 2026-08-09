@@ -89,9 +89,12 @@ export function typesSection(): ManualSection {
 			{
 				term: 'Type is advisory, not enforced',
 				text:
-					"The + and the menus only ever offer a type that fits, but a drag is never refused for " +
-					"what it would type something as. Other drops still are — onto an item's own descendant, " +
-					'or into a sibling group a reorder cannot reach right now — neither of which is about type.',
+					'The + narrows to what childTypeChoices names for this parent. Set type does not: in ' +
+					'the tree and the roadmap it offers the whole vocabulary, because assigning a type by ' +
+					"hand is advisory like a drag — a board's menu narrows only to what that board can show, " +
+					'a different question from what fits the ladder. No drag is ever refused for what it ' +
+					"would type something as. Other drops still are — onto an item's own descendant, or into " +
+					'a sibling group a reorder cannot reach right now — neither of which is about type.',
 			},
 		],
 	};

@@ -12,7 +12,12 @@ describe('the types section', () => {
 
 	it('gives every type entry a non-empty explanation', () => {
 		for (const entry of typesSection().entries.filter((e) => e.badge)) {
-			expect(entry.text.length, `${entry.badge?.text} has no explanation`).toBeGreaterThan(0);
+			// Assert the VALUE, not a property of it: `entry.text.length` throws before
+			// `expect` runs when `text` is undefined (a type missing from `INTENT`), so the
+			// diagnostic naming the type never has a chance to print. `toBeTruthy` reads
+			// `entry.text` itself, so a missing explanation fails with the type named
+			// rather than a TypeError and a stack trace.
+			expect(entry.text, `${entry.badge?.text} has no explanation`).toBeTruthy();
 		}
 	});
 
