@@ -44,6 +44,15 @@ found. Every row is a real note; the view is a lens on it, not a replacement for
   what a note lands on. The side pane is made once and reused while it is open —
   `getLeaf('split')` splits whatever is active, and the backlog is active on every click,
   so a split per click would fill the window by the fourth item.
+- **1f — the menu's Open to the right, while the target is not the side.** It opens
+  beside the backlog and pins **nothing**. The pin belongs to the setting, because that
+  is the target which would otherwise replace the base on every click; one deliberate
+  menu action has to leave the workspace's pins as it found them, or it would silently
+  change what an ordinary click does afterwards — `getLeaf(false)` cannot replace a
+  pinned leaf, so the default target would stop opening in the tab it names.
+  Nothing ever un-pins, either: this cannot tell its own pin from the user's, so undoing
+  one when the target changes back would be as likely to take away a pin they set
+  deliberately.
 - **1b — the middle mouse button.** Also a new tab, the browser habit.
 - **1c — the click landed on a control** — the chevron, the **+**, the state chip, a tag
   pill. That control acts and the note does not open: each stops the click from reaching
@@ -68,7 +77,8 @@ found. Every row is a real note; the view is a lens on it, not a replacement for
 - With `clickAction` set to fold, a click folds the row and opens nothing — and the
   modifier, `Enter` and the menu still open the note.
 - With `openIn` set to the side, the backlog's own leaf is pinned and a second open
-  reuses the pane the first one made.
+  reuses the pane the first one made; the menu's **Open to the right** pins nothing under
+  any other target.
 - A `clickAction` or `openIn` value no version of this plugin declared falls back to the
   default rather than reaching a branch that has no arm for it.
 

@@ -155,6 +155,22 @@ describe('where an opened note goes', () => {
 
 		expect(vault.opened).toEqual([{ path: 'Feature B1.md', mode: 'split' }]);
 	});
+
+	/**
+	 * The pin belongs to the SETTING. One deliberate menu action must leave the
+	 * workspace's pins as it found them, or it would silently change what an ordinary
+	 * click does afterwards: `getLeaf(false)` cannot replace a pinned leaf, so the
+	 * default target would stop opening in the tab it says it opens in.
+	 */
+	it('does not pin the backlog when the menu opens one note to the right', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault, {}, { base: 'Backlog.base' });
+		rowByTitle(containerEl, 'Feature B1').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		Menu.lastShown?.item('Open to the right')?.click();
+
+		expect(vault.opened).toEqual([{ path: 'Feature B1.md', mode: 'split' }]);
+		expect(vault.leaves[0].pinned).toBe(false);
+	});
 });
 
 /**
