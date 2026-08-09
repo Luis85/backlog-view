@@ -78,11 +78,30 @@ base settings are saved on the view, working position on the device.
    so the catalog joins that exception too. A toggle withheld while its filtering stays on
    is the worst of both: a done test disappears and nothing on screen offers to bring it
    back.
-4. Switching back restores the plan, and the catalog's own collapse state is remembered
-   separately, keyed as the other projections' are.
+4. Switching back restores the plan **as it was left**. Collapse needs no new key space to
+   manage that: the store holds one bit per note path, shared by every projection except
+   the dated axis — which has `TIMELINE_SCOPE` because its chevron and the tree's are *two
+   questions about one item*. The catalog asks no second question about anything, since its
+   population and the plan's are disjoint: a test's bit is only ever read here, an Epic's
+   only there. So one bit is right, and an earlier draft of this step claiming the catalog
+   keeps collapse state "separately, keyed as the other projections' are" was wrong twice —
+   the other projections do not keep separate state either.
+   What the shared set does require is that **Expand all and Collapse all touch this
+   projection's population and no other**. `collapsiblePopulation` answers `model.items` for
+   every projection but Deliverables, so left alone those two buttons would fold the plan
+   from the catalog — and, the bits being shared, the plan would still be folded on the way
+   back. It takes the catalog's forest, for the reason its own comment already gives about
+   the Deliverables board: the buttons act on what the screen has.
 
 **Extensions**
 
+- **4a — a quick filter is active when the user switches projection.** The index is
+  recomputed on the switch. `FilterState.recompute` runs on a data change and on a filter
+  edit, and `setProjection` does neither — it stores the mode and renders — so an index
+  built from one projection's forest would answer for the other until something unrelated
+  refreshed the view. That is a stale filter showing wrong rows with the right text still
+  in the box, which is the failure mode nobody reports as a bug because it looks like the
+  filter simply not matching.
 - **2b — the quick filter matches a row this projection does not draw.** `FilterState`
   indexes `model.roots` and `model.realRoots`, so a needle matching a hidden `PBI` marks
   its whole subtree as matching, and a `Test case` beneath it stays on screen while nothing
@@ -146,7 +165,12 @@ base settings are saved on the view, working position on the device.
   asserted on a promoted row — a test under a `PBI` — because both are wrong in the
   direction that still looks like a working screen: the filter leaves a non-matching row
   visible, and the keyboard leaves a visible row unreachable.
-- Collapse state is stored per projection, so collapsing a suite does not collapse an Epic.
+- Collapsing a suite does not collapse an Epic, and **Collapse all** in the catalog leaves
+  every plan row as it found it — asserted by switching back, since the collapse bits are
+  shared by path and a bulk button that overreached would show its damage only there.
+- A quick filter surviving a projection switch answers for the projection now on screen.
+  Asserted by switching with a needle in the box, not by re-typing it — re-typing is the
+  path that already recomputes, so a test that types again would pass over the defect.
 - The catalog is **tree-shaped** at every gate that asks: columns fit and refit on resize,
   the fit classes survive its render, Expand/Collapse all are live when there is something
   to collapse, and a row's menu carries Move up/down/top/bottom and indent/outdent. Each is
@@ -231,6 +255,14 @@ needs the catalog beside it. A **predicate** the gates ask, rather than seven ed
 equality checks, is what makes the seventh gate correct when someone writes it; and a lint
 rule forbidding a bare `projection === 'tree'` outside that predicate is what makes the
 predicate hold rather than merely exist.
+
+**Two lifecycle seams sit beside those gates and are not gates at all.**
+`collapsiblePopulation` (`src/view/render/toolbar.ts`) decides what a bulk collapse
+*touches* rather than whether a button is *enabled*, so the tree-shaped predicate does not
+reach it — it needs the catalog's forest by name. And `UiStateController.setProjection`
+(`src/view/uiState.ts`) stores the mode and renders without recomputing the filter index,
+which no gate anywhere would have caught: the index is correct when built and wrong when
+the thing it was built for changes underneath it.
 
 `src/view/interactions/keyboard.ts` is the one gate needing nothing, and it is worth
 naming so nobody edits it: it dispatches to the **board** keyboard for `board` and
