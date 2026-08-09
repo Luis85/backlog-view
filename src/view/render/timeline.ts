@@ -692,6 +692,23 @@ function renderConnector(ctx: RowContext, mounts: BarRowMounts, place: Connector
 					cls: 'pbl-bar-connector',
 					attr: { 'aria-label': `Draw a dependency from ${bar.item.title}`, tabindex: '-1' },
 				});
+	if (dot) {
+		// A press that never travels far enough to become a drag still fires `click`, and
+		// this button sits inside the row `wireCardActivation` wired — whose handler is
+		// unfiltered, so the one control labelled "Draw a dependency from…" opened the
+		// note instead. Worst exactly where the dot is permanently visible: on a hoverless
+		// device every interaction with it is a tap.
+		//
+		// The guard is the CONTROL's, not a filter inside the shared handler, because that
+		// is what every other control inside a card already does — `.pbl-card-kid`, the
+		// chevron, the card-children toggle, the chips. A central filter would be a better
+		// idea imposed on eight existing sites rather than a fix to this one.
+		dot.addEventListener('click', (evt) => evt.stopPropagation());
+		// Middle click never fires `click`, so stopping the primary one leaves the row's
+		// `auxclick` opening the note in a new tab — the same wrong action by the one
+		// route the first guard does not cover. `.pbl-card-kid` carries this same pair.
+		dot.addEventListener('auxclick', (evt) => evt.stopPropagation());
+	}
 	wireBarLink(ctx, { dnd: mounts.dnd, content: mounts.content, row, barEl, connector: dot, item: bar.item });
 }
 

@@ -112,6 +112,28 @@ describe('the connector on a drawn bar', () => {
 		expect(connectorFor(containerEl, 'Alpha')).not.toBeNull();
 	});
 
+	it('does not open the note when it is clicked without a drag', () => {
+		// A tap that never travels far enough to become a drag still fires `click`, and
+		// the connector sits inside the row `wireCardActivation` wired — whose handler is
+		// unfiltered and opens the note. So the one control on the bar labelled "Draw a
+		// dependency from…" did the one thing the rest of the row does, and did it most
+		// often on a hoverless device, where the dot is permanently visible and every
+		// interaction is a tap. The house answer is the control's own guard, which
+		// `.pbl-card-kid` and the chevron already carry (`stopPropagation`, per control,
+		// with the reason beside each) rather than a filter inside the shared handler.
+		const vault = barVault();
+		const { containerEl } = datedLinkView(vault);
+		const dot = connectorFor(containerEl, 'Alpha');
+
+		dot?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+		// Middle click never fires `click`, so it needs its own guard or it reaches the
+		// row's `auxclick` and opens the note in a new tab by the one route the primary
+		// guard does not cover — `.pbl-card-kid`'s own second listener, same reason.
+		dot?.dispatchEvent(new MouseEvent('auxclick', { bubbles: true, cancelable: true, button: 1 }));
+
+		expect(vault.opened).toEqual([]);
+	});
+
 	it('is absent when the dependency key is unbound — a feature this view does not have', () => {
 		const { containerEl } = datedLinkView(barVault(), DATE_AXIS);
 		expect(connectorFor(containerEl, 'Alpha')).toBeNull();
