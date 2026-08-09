@@ -49,7 +49,7 @@ export function capturedFocusKey(barEl: HTMLElement): string | null {
  * no-op that drops focus to the document — the failure `refocusShedControl` exists to
  * prevent, reachable through this function instead. It is stated here as the shared
  * hazard rather than fixed in the caller that surfaced it (the `⋯`, whose own trigger a
- * relaxing rung can hide while its menu is open) because all four restore paths run
+ * relaxing rung can hide while its menu is open) because every restore path runs
  * through this one line.
  */
 export function refocusByKey(barEl: HTMLElement, key: string | null): void {
