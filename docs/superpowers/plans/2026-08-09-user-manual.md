@@ -553,6 +553,16 @@ So the rule for every sentence you write in a manual section:
 3. **Where a guarantee has a deliberate exception, the sentence carries the exception.**
 4. If the plan's draft wording conflicts with what you read, **the code wins** and you say
    so in your report. You are not transcribing this plan.
+5. **Never write that the plugin prevents something.** This is the rule the others keep
+   turning out to be instances of, so apply it before the module-reading, not after: this
+   view's rules decide what is OFFERED and refuse almost nothing. `childTypeChoices`
+   withholding a `+` is not an enforcement — a drag still nests whatever it likes, and
+   `Set type` still assigns any type to any row, because `isInvalidParent` checks only for
+   cycles. So "a Milestone holds nothing" is false as a claim about what can happen and
+   true as a claim about what is offered, and the difference is the whole product
+   philosophy. Write offered, default, not offered — never cannot, never must, never only.
+   The genuine refusals are few and structural, and they are the drop cases in
+   `src/domain/dropTargets.ts` and the write gate; everything else is advice.
 
 The claims found wrong so far, so you do not rediscover them:
 
@@ -563,6 +573,7 @@ The claims found wrong so far, so you do not rediscover them:
 | Excluded notes are never written to | True of **forward** batches only. `undoLast` deliberately has no replay-time check: its authorization came at capture time, and the write being undone may be what moved the note out of the filter | `applySafely` / `undoLast`, `src/view/writeGate.ts` |
 | Undo takes the batch back | Compare-and-swap per key: a hand-edited key is **kept** and counted; a note deleted since is skipped whole; history is **one batch, per view, per session** | `applyRestores`, `src/storage/frontmatter.ts` |
 | A Task holds nothing below it | `childLevelIndex` clamps, so a Task's `+` offers another Task | extension 3a of `A help button for the item types` |
+| A Milestone hangs from nothing and holds nothing | Only as an OFFER. `childTypeChoices` returns `[]` so no `+` is drawn, but a drag nests one happily and `Set type` turns any row into one — `isInvalidParent` checks cycles alone | `dropTargetFor`, `isInvalidParent`, `src/domain/dropTargets.ts` |
 | The quick filter narrows to matching titles | It keeps the match **path** — the match, all its ancestors and its **whole subtree** — and overrides collapse state while active. Most of what stays on screen did not match | `src/view/filterState.ts`, and its own header comment |
 | Extra types sit beside the rung they hang from | They may HANG from Epic, Feature or PBI, but their RANK is pinned to `EXTRA_TYPE_RANK` — the PBI rung — whatever the parent. That pin is why focusing PBI promotes them and focusing Epic or Feature does not | `EXTRA_TYPE_RANK`, `src/domain/settings.ts` |
 
