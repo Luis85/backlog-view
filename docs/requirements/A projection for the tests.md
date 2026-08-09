@@ -144,8 +144,15 @@ base settings are saved on the view, working position on the device.
   navigated against the ones that are. A promoted root is that item exactly. Mark it, and
   Move up/down/top/bottom go inert, **outdent** goes inert — otherwise it reparents the
   test beside the hidden `PBI` under an `Epic`, writing a real move while the row does not
-  budge — the drop targets refuse it, and **Left Arrow** stops at it rather than selecting a
-  parent that is not on screen and leaving the keyboard with no visible current row.
+  budge — and **Left Arrow** stops at it rather than selecting a parent that is not on
+  screen and leaving the keyboard with no visible current row.
+  **Drops are refused by position, not wholesale.** `dropTargetFor` splits them already:
+  `insidePosition` never consults a parent, and only the before/after path reaches the
+  `focusRoot` rejection in `siblingPosition`. So dropping a case **into** a promoted suite
+  stays legal — it is nesting, which asks nothing about where the suite hangs — while
+  dropping one **beside** it is refused, because that is the ranking question with no
+  answer. Saying "no drop target" would have forbidden the legitimate half and contradicted
+  this extension's own repair-by-drag, so the inert rule is the sibling positions only.
   **Depth** is the same story: `renderItem` reads `item.depth` for `--pbl-depth` and for
   `aria-level`, so a test promoted from under a nested `PBI` would draw indented three
   levels with `aria-level="4"` and no levels above it — a lie to the eye and a worse one to
@@ -169,6 +176,21 @@ base settings are saved on the view, working position on the device.
   excluded a parent, and this parent was excluded by the projection, which is this view's
   own doing and not the user's filter. Conflating the two would put half the plan in the
   catalog the moment somebody mis-dragged one case.
+- **3b — a plan focus is stored when the catalog opens.** The catalog is built from the
+  **unfocused** tree, and ignoring the control is not enough to get that. `buildModel`
+  replaces `roots`, `items` **and** `results` with the focus subtree and sets
+  `focused: true`, so a stored focus of `PBI` would leave the catalog showing only the
+  tests inside that subtree — usually none — with a count to match, and
+  `rootDropTarget` refusing every drop because `model.focused` is still true.
+  The precedent is exact and one projection over: `deliverableResults` is read off the
+  whole tree *before either branch narrows anything*, precisely so a focus set elsewhere
+  can never hide a Deliverable. The catalog's forest and results come off the same
+  unfocused tree, and its effective focused state is false, while the stored plan focus is
+  untouched and waiting for the switch back (3a).
+  This is the third time on this note that **withholding a control has not disabled its
+  behaviour** — the completed toggle, the focus button, and now the model narrowing behind
+  it. The rule to carry into any fourth: a projection opting out of a feature opts out of
+  the computation, not just the button.
 - **3a — the focus level is set.** It does nothing here. The levels it names are the
   `Epic → Task` ladder's, and a two-rung ladder has no rung called `PBI`; a control that
   narrowed this projection by matching level indices across two ladders would hide suites
@@ -194,10 +216,13 @@ base settings are saved on the view, working position on the device.
   base whose only catalog member is a `Task` under an excluded `Test case` draws that Task,
   not the empty state.
 - A **promoted** root behaves as a `focusRoot` at every call site that asks: no order
-  written by Move up/down/top/bottom, no reparent by outdent, no drop target, and Left
-  Arrow stops there rather than selecting a row the projection does not draw. Asserted per
-  call site, since each is a separate function returning its own null and four of the five
-  were found one round at a time.
+  written by Move up/down/top/bottom, no reparent by outdent, no **before/after** drop, and
+  Left Arrow stops there rather than selecting a row the projection does not draw. Asserted
+  per call site, since each is a separate function returning its own null and four of the
+  five were found one round at a time.
+- Dropping a `Test case` **inside** a promoted `Test suite` still works. Asserted beside the
+  refusal above, because the two differ by drop zone rather than by row, and a rule that
+  refused both would break the repair this note offers for a mis-parented test.
 - A genuine catalog root ranks among this projection's roots rather than the plan's —
   asserted beside the promoted case, because the pair is what distinguishes "ranks
   elsewhere" from "ranks nowhere", and a move that writes a number into the wrong sibling
@@ -239,6 +264,11 @@ base settings are saved on the view, working position on the device.
   both halves asserted, since the second is the part [[A Deliverables board]] had to
   correct after shipping. The focus button offers no menu in the catalog, and offers no
   test type in the plan.
+- The catalog is built from the **unfocused** tree: with a plan focus of `PBI` stored, every
+  suite is still drawn, the count is complete, and a drop at the root level is not refused.
+  Asserted with the focus stored rather than cleared — a fixture that clears it first tests
+  nothing, since the defect is precisely what a *surviving* focus does to a projection that
+  claims to ignore it.
 - A parentless case, and a case parented to a work item, both render as roots; no work item
   appears in this projection, as a row or as a context row. The second half of that is the
   one a filter-only implementation fails, so it is asserted on a model where the test's
@@ -303,6 +333,12 @@ needs the catalog beside it. A **predicate** the gates ask, rather than seven ed
 equality checks, is what makes the seventh gate correct when someone writes it; and a lint
 rule forbidding a bare `projection === 'tree'` outside that predicate is what makes the
 predicate hold rather than merely exist.
+
+**The forest is read off the unfocused tree**, which is a `src/domain/model.ts` question
+rather than a view one: `buildModel`'s focus branch replaces `roots`, `items` and `results`
+together, so anything computed after it inherits the narrowing. `deliverableResults` is
+already computed *before* that branch for exactly this reason, and the catalog's forest
+belongs beside it — not in a later pass that would have to undo the focus.
 
 **The promoted root wants a flag, not five edits.** `focusRoot` is a field on the item,
 set by `collectFocusRoots` and read at four call sites; a projection root is the same
