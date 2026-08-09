@@ -240,9 +240,21 @@ export default defineConfig({
 			// subtraction: three near-identical menu wrappers became one function with one
 			// set of branches, and the chip's own branches arrived driven.
 			// The user-manual increment (task 1: the manual dialog, its one opener and the
-			// sidebar's accessible selected state) is measured after the merge with main
-			// above, against main's earned 94.7 floor. See the entry below once the dead
-			// guards it surfaced are removed.
+			// sidebar's accessible selected state), measured on top of the merge with main
+			// above, against main's earned 94.7 floor: 98.35/94.71/99.57/99.49
+			// (5869/5967, 3712/3919, 1414/1420, 4917/4942). Statements, functions and lines
+			// round down to the figures already recorded above and stay; branches rounds
+			// down to a new decimal (94.7) and moves. The first pass at this increment left
+			// two branches undriven and documented rather than removed them — wrong, per
+			// this file's own precedent a few entries up. Both were dead by construction:
+			// `show` took `pane` off a nullable field only `show` itself ever read, so the
+			// field became a parameter and its null check went with it; `sections[0]`
+			// types as `ManualSection`, never `| undefined` (`noUncheckedIndexedAccess` is
+			// off in `tsconfig.json`), so the `if (opening)` guard around the initial
+			// `show` call was never reachable in the first place and is now a plain call.
+			// Removing both took four branch-paths out of the denominator along with the
+			// two that were covered, which is why this is smaller subtraction again rather
+			// than a test for either.
 			thresholds: {
 				statements: 98.3,
 				branches: 94.7,

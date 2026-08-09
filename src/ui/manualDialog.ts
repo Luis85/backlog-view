@@ -32,7 +32,6 @@ class ManualDialog extends Modal {
 	private readonly sections: ManualSection[];
 	private readonly initialId: string;
 	private readonly onClosed: (() => void) | undefined;
-	private paneEl: HTMLElement | null = null;
 
 	constructor(app: App, sections: ManualSection[], initialId: string, onClosed?: () => void) {
 		super(app);
@@ -45,23 +44,32 @@ class ManualDialog extends Modal {
 		const { contentEl } = this;
 		contentEl.empty();
 		contentEl.addClass('pbl-manual');
-		// `mod-settings` goes on the MODAL, not on `contentEl`: Obsidian scopes the
-		// settings background and its whole phone layout to `.modal.mod-settings`, so
-		// putting the class on the wrong element silently loses both — including the
-		// mobile rules that stop a fixed 190px sidebar from crushing the pane.
+		// Both classes go on the MODAL, not on `contentEl`, and both are needed: Obsidian
+		// scopes the settings background to `.modal.mod-settings`, but the phone layout
+		// that keeps a fixed 190px sidebar from crushing the pane is keyed on
+		// `.mod-sidebar-layout` — `.is-phone .modal.mod-sidebar-layout` and
+		// `.is-phone .modal.mod-settings.mod-sidebar-layout` (`test/harness/obsidian.css`)
+		// both require it, and neither matches on `mod-settings` alone. Putting either
+		// class on the wrong element, or leaving either one off, silently loses the phone
+		// rules that depend on it.
 		//
-		// The jsdom mock has no `modalEl`, so NOTHING in the suite can catch this being
-		// wrong. Optional-chained for that reason, and it is on the live-vault list.
-		(this as { modalEl?: HTMLElement }).modalEl?.addClass('mod-settings');
+		// The jsdom mock has no `modalEl`, so NOTHING in the suite can catch either class
+		// being wrong or missing. Optional-chained for that reason, and it is on the
+		// live-vault list.
+		(this as { modalEl?: HTMLElement }).modalEl?.addClass('mod-settings', 'mod-sidebar-layout');
 
 		const split = contentEl.createDiv('pbl-manual-split');
 		const nav = split.createDiv('modal-sidebar-inner pbl-manual-nav');
 		nav.createDiv({ cls: 'pbl-manual-navhead', text: 'Product Backlog' });
 		const items = nav.createDiv('vertical-tab-header-group-items');
-		this.paneEl = split.createDiv('pbl-manual-pane');
+		const pane = split.createDiv('pbl-manual-pane');
 
 		// An unknown id opens the first section rather than an empty pane: a deep link
-		// that has gone stale is a worse manual, never no manual.
+		// that has gone stale is a worse manual, never no manual. `sections[0]` types as
+		// `ManualSection`, not `| undefined` — `noUncheckedIndexedAccess` is off in
+		// `tsconfig.json` — so `opening` is never `undefined` for any caller that honours
+		// the (unenforced) non-empty-array contract every real one does; there is
+		// nothing left to guard against calling `show` with.
 		const opening = this.sections.find((s) => s.id === this.initialId) ?? this.sections[0];
 
 		for (const section of this.sections) {
@@ -83,16 +91,17 @@ class ManualDialog extends Modal {
 				}
 				tab.addClass('is-active');
 				tab.setAttribute('aria-pressed', 'true');
-				this.show(section);
+				this.show(pane, section);
 			});
 		}
 
-		if (opening) this.show(opening);
+		this.show(pane, opening);
 	}
 
-	private show(section: ManualSection): void {
-		const pane = this.paneEl;
-		if (!pane) return;
+	/** `pane` is a parameter, not a field: `onOpen` always has it in hand before this
+	 * is ever called, so there is no null case to guard here — see the field this
+	 * replaced in git history for the guard it used to need. */
+	private show(pane: HTMLElement, section: ManualSection): void {
 		pane.empty();
 		pane.createEl('h3', { text: section.title });
 		if (section.intro) pane.createDiv({ cls: 'pbl-manual-intro', text: section.intro });
