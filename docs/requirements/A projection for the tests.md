@@ -164,6 +164,19 @@ base settings are saved on the view, working position on the device.
   What survives from it is the qualification, which is real — a **genuine** catalog root, no
   parent at all, ranks among this projection's roots, so `siblingContext`'s `model.roots`
   fallback still has to become the projection's; a **promoted** one ranks nowhere.
+  **A promoted root is also not in the projection's rankable roots**, which is a second
+  list rather than a second reading of the first. The `focusRoot` flag protects a promoted
+  row when something acts *on* it; the root strip never targets it — `rootDropTarget` takes
+  the root list wholesale and computes an order against it — so a promoted row sitting in
+  that list makes a drop rank against a note whose real siblings are elsewhere, and a
+  renumbering pass with no gap available would rewrite that note's own `order`.
+  Focus never had to say this because `rootDropTarget` returns null the moment
+  `model.focused` is true; the catalog is deliberately **not** focused (3b), so the guard
+  that covers the one case does not cover the other. Two lists, then: the **rendered**
+  roots, genuine and promoted, which the renderer, the keyboard, the filter index and the
+  collapse seed all walk; and the **rankable** roots, genuine only, which
+  `rootDropTarget` and `endOfSiblingsOrder` take. A single list is wrong for one of the two
+  jobs whichever way it is built.
   It is not stuck either way. Dragging it onto a suite reparents it, which is the actual
   repair for a mis-parented test and the gesture a user reaches for anyway.
 - **2c — a test's parent is a work item** (the advisory drag of
@@ -227,6 +240,11 @@ base settings are saved on the view, working position on the device.
   asserted beside the promoted case, because the pair is what distinguishes "ranks
   elsewhere" from "ranks nowhere", and a move that writes a number into the wrong sibling
   group looks identical to one that correctly did nothing.
+- A promoted root is absent from the **rankable** roots: a drop on the root strip, and a
+  new root's `endOfSiblingsOrder`, both rank against the genuine roots alone, and no
+  renumbering pass rewrites a promoted note's `order`. Asserted with a promoted row present
+  and no order gap available — the arrangement where the wrong list does not merely
+  mis-rank the dropped item but writes to a note nobody touched.
 - Every drawn row's depth is **projection-relative**: a promoted root draws at depth 0 with
   `aria-level="1"`, whatever its depth in the model. Asserted on a test promoted from
   beneath a nested `PBI`, since a shallow fixture cannot tell a re-derived depth from an
@@ -309,9 +327,9 @@ are asking:
 | `src/view/render/rows.ts` (the forest, and the "any row at all" check) | `src/view/interactions/create.ts` — `hasItems` and `inferFolder`, which say so in a comment: *judge existence and infer folders from the FULL tree* |
 | `src/view/filterState.ts` — the match index | `src/domain/writePlan.ts` — the ✨ backfill, which writes to every note |
 | `src/view/interactions/keyboard.ts` — `visibleItems` | |
-| `src/domain/dropTargets.ts` — the root sibling list a drop ranks against | |
-| `src/view/interactions/structure.ts` — indent and outdent's root list | |
-| `src/view/interactions/create.ts` — `endOfSiblingsOrder` for a new root, so a suite ranks after the last suite rather than after the last Epic | |
+| `src/domain/dropTargets.ts` — the root sibling list a drop ranks against — the **rankable** list, genuine roots only (2d) | |
+| `src/view/interactions/structure.ts` — indent and outdent's root list, likewise rankable | |
+| `src/view/interactions/create.ts` — `endOfSiblingsOrder` for a new root, rankable, so a suite ranks after the last suite rather than after the last Epic | |
 
 The line is *what is this asking about* — the screen, or the vault — and both sides already
 have their reasons written down beside them. The left column's mistake is invisible (a

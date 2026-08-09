@@ -142,6 +142,18 @@ design: the relationship between a test and the work it checks is
   acquires a parent it should not have, and still draws as a catalog root with its cases
   under it. **No legal item is ever invisible in every projection** — that is the rule 4a
   and this extension both keep, and the one to check against any future exclusion.
+- **4c — a child of a `Test suite` carries no `type` at all.** It is a `Test case`, shown
+  and written as one. This is the second ladder reaching the **implied** type, and it is
+  not one rule but every place that indexes `LEVELS` by a computed level — five of them,
+  each answering for whichever ladder the item is on: `childTypeChoices`'s `ladderChild`
+  and `displayType` (`src/domain/itemTypes.ts`), the two branches of the move cascade, and
+  `initWriteFor` (`src/domain/writePlan.ts`), which is what ✨ eventually puts on disk.
+  Left alone, a typeless child of a suite takes the first ladder's rung at the same index:
+  it **draws** as a `Feature`, and the backfill then **writes** `Feature` to it, which
+  moves the note into the plan. The display half is a wrong badge; the write half is the
+  one that matters, because it is permanent and nobody asked for it.
+  A typeless child of a `Test case` is `Task` by the same rule, which is the answer both
+  ladders already give at their deepest rung.
 - **5a — the `Test case` is deleted while its `Task`s remain.** Untouched here. A child
   whose `parent` names a note that is gone is [[Broken links still render]]'s question,
   and a test's children answer it by exactly the rule every other type's do.
@@ -184,6 +196,10 @@ design: the relationship between a test and the work it checks is
 - Each files into its own folder from the generated per-type options, with the folder
   prompt reachable when the option is cleared.
 - A parentless suite or case stays in the model and is not pruned by `hierarchyOnly`.
+- A typeless child of a `Test suite` draws as a `Test case` and is backfilled as one, never
+  as a `Feature`. Asserted at the badge **and** at the write, since they are different
+  functions reading the same wrong index and the write is the half that cannot be undone by
+  looking away.
 - A test dragged under a work item is still drawn — as a catalog root — so no legal item is
   invisible in every projection. Asserted from the rule rather than from the drag, since
   the next exclusion added anywhere is what would break it.
@@ -201,7 +217,10 @@ folder options in `src/domain/viewOptions.ts` are already generic over the vocab
 The rungs are `src/domain/itemTypes.ts`' work and the only genuinely new shape in this
 PBI: `LEVELS` is one ladder today and `childLevelIndex`/`nextLevelIndex` read it as *the*
 ladder, so a second one means those functions ask which ladder an item is on before they
-ask which rung. `childTypeChoices` gains the two branches above, and its top-level branch
+ask which rung. **Every `LEVELS[…]` index is that same question**, and there are five —
+`ladderChild` and `displayType` here, the move cascade's two branches and `initWriteFor` in
+`src/domain/writePlan.ts`. A grep for `LEVELS[` is what enumerates them; reasoning about
+which ones "look like ladder decisions" is what misses `initWriteFor`, the one that writes. `childTypeChoices` gains the two branches above, and its top-level branch
 already answers `ALL_TYPES` in full, which is correct for a suite and wrong for nothing.
 
 `src/view/interactions/menu.ts` — `offerableTypes` gains the catalog branch, beside the two
