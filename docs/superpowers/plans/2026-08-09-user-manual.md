@@ -924,11 +924,23 @@ In `src/view/render/toolbarControls.ts`, add to the `all` array in `overflowEntr
 			title: 'Open the manual',
 			icon: 'help-circle',
 			cls: 'pbl-help-btn',
-			// No `onClosed`: the carve-out below owns focus here, not this entry.
-			run: () => openManual(host.app, manualSections(), 'types'),
+			// `onClosed` is REQUIRED here, and its absence was a real hole: skipping
+			// `pickAndRefocus` (below) stops focus being yanked off the dialog as it
+			// opens, but on its own it leaves focus nowhere when the dialog CLOSES —
+			// the menu item is gone by then and the `⋯` was never refocused. Looked up
+			// at close time, not captured: the toolbar may have rebuilt, and the rung
+			// may have changed which controls exist. `focusInBar` is what handles the
+			// found element being hidden or unfocusable.
+			run: () =>
+				openManual(host.app, manualSections(), 'types', () =>
+					focusInBar(barEl, barEl.querySelector<HTMLElement>('.pbl-overflow-btn')),
+				),
 			opensModal: true,
 		},
 ```
+
+`overflowEntries` will need `barEl` in scope to build that callback — it already takes it
+as a parameter, so this is a use, not a new argument.
 
 **This entry must NOT go through `pickAndRefocus`.** That wrapper focuses the rebuilt `⋯`
 the instant `run()` returns — which here is the instant the modal opened, so it would take
