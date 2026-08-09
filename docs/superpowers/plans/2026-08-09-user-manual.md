@@ -200,6 +200,14 @@ export class ManualDialog extends Modal {
 		const { contentEl } = this;
 		contentEl.empty();
 		contentEl.addClass('pbl-manual');
+		// `mod-settings` goes on the MODAL, not on `contentEl`: Obsidian scopes the
+		// settings background and its whole phone layout to `.modal.mod-settings`, so
+		// putting the class on the wrong element silently loses both — including the
+		// mobile rules that stop a fixed 190px sidebar from crushing the pane.
+		//
+		// The jsdom mock has no `modalEl`, so NOTHING in the suite can catch this being
+		// wrong. Optional-chained for that reason, and it is on the live-vault list.
+		(this as { modalEl?: HTMLElement }).modalEl?.addClass('mod-settings');
 
 		const split = contentEl.createDiv('pbl-manual-split');
 		const nav = split.createDiv('modal-sidebar-inner pbl-manual-nav');
@@ -526,6 +534,42 @@ dialog may not, and which is therefore where a badge class is resolved from a ty
 git add src/view/manual/typesSection.ts test/view/manualTypes.test.ts "docs/requirements/A help button for the item types.md"
 git commit -m "Generate the types section from the vocabulary"
 ```
+
+---
+
+### How to write the manual's copy — read this before Tasks 2, 3 and 5
+
+**The prose in this plan is a draft, not a specification.** Fifteen review findings landed
+on it before implementation began, and almost every one was the same defect: a sentence
+about behaviour that no test could check and that turned out to be wrong. "Nothing is
+refused." "A Task holds nothing below it." "Excluded notes are never written to." Each read
+well and each contradicted the code.
+
+So the rule for every sentence you write in a manual section:
+
+1. **Open the module before writing the sentence.** The claims below name theirs.
+2. **Where the code has a fallback chain, state the whole chain or state none of it.** A
+   partial order is worse than silence — it predicts the wrong folder confidently.
+3. **Where a guarantee has a deliberate exception, the sentence carries the exception.**
+4. If the plan's draft wording conflicts with what you read, **the code wins** and you say
+   so in your report. You are not transcribing this plan.
+
+The claims found wrong so far, so you do not rediscover them:
+
+| Draft said | The code says | Read |
+| --- | --- | --- |
+| The `+` offers one rung down plus the extra types | Only a non-deepest **ladder** row gets `[ladderChild, ...EXTRA_TYPES]`. A Task or an extra type gets `[Task]` alone; a Milestone gets `[]` and has **no add affordance at all** | `childTypeChoices`, `src/domain/itemTypes.ts` |
+| Filing is type folder, else home folder | Then the dominant folder among **result** rows, then asking the user when there are none — and folder mode's beside-the-parent rule is **skipped for a context parent** | `inferFolder`, `promptCreateItem`, and `src/CLAUDE.md`'s context-row rule |
+| Excluded notes are never written to | True of **forward** batches only. `undoLast` deliberately has no replay-time check: its authorization came at capture time, and the write being undone may be what moved the note out of the filter | `applySafely` / `undoLast`, `src/view/writeGate.ts` |
+| Undo takes the batch back | Compare-and-swap per key: a hand-edited key is **kept** and counted; a note deleted since is skipped whole; history is **one batch, per view, per session** | `applyRestores`, `src/storage/frontmatter.ts` |
+| A Task holds nothing below it | `childLevelIndex` clamps, so a Task's `+` offers another Task | extension 3a of `A help button for the item types` |
+
+**A note for whoever implements Task 2.** While verifying the first row above, a dead
+branch surfaced in `childTypeChoices`: `if (!parent) return ALL_TYPES;` guards at
+`src/domain/itemTypes.ts:118`, and an unreachable `if (!parent) return [...ALL_TYPES];`
+sits at `:128`. It is a real defect in the plugin, not in this plan. **Do not fix it as
+part of your task** — it is out of scope and would muddy the diff. Report it in your
+report file so it reaches the final review.
 
 ---
 
