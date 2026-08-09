@@ -99,12 +99,31 @@ context row when a visible descendant needs a parent to hang from.
   the plan's totals while its parent is invisible there is the shape that would make a
   rollup unreadable.
   So membership is **one rule with two clauses**, and `Task` is the whole reason it needs
-  two: a `Task` takes the projection of its parent, and every other type takes the
-  projection of its own type. That is not an exception carved out for this note — it is
+  two: a `Task` takes the projection of its parent **when that parent is in the model**,
+  and every other type — and every `Task` whose parent is not — takes the projection of its
+  own type. That is not an exception carved out for this note — it is
   what a `Task` already is here, the one type that means nothing on its own and everything
   by what it hangs from. Written as a single "work items go to the plan" rule it
   contradicts itself the moment a task hangs from a test, which is the legal, expected
   shape rather than a mis-drag.
+- **2e — the `Task`'s `Test case` parent is excluded and "Show outside parents" is off.**
+  The Task is a **plan** item, drawn in the plan as the orphan root it already is. There is
+  no parent in the model to take a projection from: `createItems` skips
+  `loadOutsideParents` when the option is off, so `linkAll` finds nothing at that path,
+  marks the item `orphan` and roots it. What the model holds is that the parent is
+  **absent** — never its type.
+  **Nothing is loaded to find out.** That is the rule [[Dependencies as a property]] argued
+  at length for prerequisites, and it applies here for an extra reason: the read it would
+  take is precisely the one the user turned off. A membership question answered by a vault
+  read per orphan would reinstate `loadOutsideParents` under another name, for a note the
+  Base did not return.
+  So this is a narrowing of 2b's promise rather than a hole in it, and it is worth being
+  exact about which direction it fails: a task of a test appears on the plan, where the plan
+  already draws it as an orphan and says so. It never goes the other way — no plan item is
+  swept into the catalog by an absent parent — because the fallback is the item's own type
+  and a `Task` is a plan type. The user's own repair is the one that already exists: turn
+  the option on, and the parent loads as a context row with the membership rule reading it
+  again.
 - **2c — a `PBI`, `Feature` or `Epic` sits under a test**, which only an advisory drag can
   produce. It is drawn in the plan, as a root, by 2a. The contrast with 2b is the rule
   above working rather than a line drawn twice: a `Task` under a test is test work by
@@ -208,6 +227,10 @@ context row when a visible descendant needs a parent to hang from.
 - A test is never drawn as a context row in the plan's projections — the distinction
   between "the Base excluded it" and "this projection excludes it" is asserted, since
   reusing the context-row mechanism is the plausible implementation that breaks this note.
+- A `Task` whose `Test case` parent is **not in the model** is a plan item, and no vault
+  read is made to decide otherwise. Asserted with "Show outside parents" off — the one
+  configuration where the parent exists on disk and not in the model, and the only one where
+  the rule's two clauses disagree about the same note.
 - A `Task` under a `Test case` follows its parent into the catalog and out of the plan; a
   `PBI`, `Feature` or `Epic` under a test does not — it is drawn in the plan, as a root.
   Both are the same rule (2b): a `Task` takes its parent's projection, every other type
