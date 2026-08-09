@@ -276,11 +276,23 @@ what keeps 4a a literal count. It was not, for a day: the elbows shipped as four
 positioned divs and the test that holds 4a had been narrowed, in the same commit, to
 count arrowheads instead of elements. Everything passed and the bound the note states had
 stopped being true, which is why the selector that test uses is now the element the layer
-costs per edge rather than a feature of one. The layer is created BEFORE the rows and filled after them,
-which is what puts every arrow behind the bars: a bar is positioned with no z-index of
-its own, so document order decides, and the first version — appended after the rows —
-drew a line across every bar it crossed. That is the milestone line's own answer to the
-same question, arrived at the same way (by looking).
+costs per edge rather than a feature of one.
+
+**The layer sits between the date grid and the item bars: above `.pbl-grid-line` and
+`.pbl-milestone-line`, beneath every `.pbl-bar`.** That is the requirement, and NO
+`z-index` is how it is met. The layer is created before the rows and filled after them —
+it has to be, since the routes are measured from the bars they run between — so document
+order alone gives exactly that sandwich, the grid furniture being written earlier and the
+rows later.
+
+Recorded because it was got wrong in both directions in one day. It first shipped
+described only as "behind the bars", which is half the rule and reads as though the grid
+were above it too; a `z-index: 1` added on 2026-08-09 then lifted the arrows over the bars
+as well as over the grid, and one declaration cannot separate those two — bars and
+gridlines both carry `z-index: auto`, and only their position in the document tells them
+apart. So restoring the sandwich means removing the z-index rather than tuning it, and
+putting one back would first require giving the bars a layer of their own, which they
+cannot have without out-ranking the sticky lead column at 2.
 
 The layer that DRAWS them is `renderDependencyArrows` in
 `src/view/render/timelineArrows.ts` — beside `render/timeline.ts` rather than inside it,

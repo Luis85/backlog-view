@@ -3,13 +3,24 @@
    `d` carries the whole route AND its head; the geometry is TypeScript's, this file
    only says what the stroke looks like.
 
-   The layer is an element the render creates BEFORE the rows and fills after, which is
-   what puts every arrow behind the bars — the milestone line's own answer to the same
-   question. A bar is positioned with no z-index of its own, so document order is what
-   decides; a layer appended after the rows drew a line across every bar it crossed.
-   That choice is also what makes the route's own lane load-bearing: anything the layer
-   draws under a bar is invisible, so a run doubling back has to cross a row BOUNDARY
-   rather than a row. */
+   **Above the date grid, beneath the item bars** — the layer sits between the two, and
+   NO `z-index` is what puts it there. The layer is created before the rows and filled
+   after (it has to be: the routes are measured from the bars they run between), so
+   document order alone gives exactly that sandwich: `.pbl-grid-line` and
+   `.pbl-milestone-line` are written earlier and pass beneath, every `.pbl-bar` is
+   written later and paints over.
+
+   Stated as the rule because it was got wrong in both directions in one day. A
+   `z-index: 1` here on 2026-08-09 lifted the arrows over the bars as well as over the
+   grid — one declaration cannot separate the two, since bars and gridlines both carry
+   `z-index: auto` and are told apart only by where they sit in the document. The
+   sandwich is the requirement; the absence of a z-index is how it is met, which is why
+   adding one back needs the bars to be given a layer of their own first, and they
+   cannot have one without out-ranking the sticky lead column at 2.
+
+   That ordering is also what makes the route's own lane load-bearing rather than
+   cosmetic: anything this layer draws under a bar is simply not there, so a run doubling
+   back has to cross a row BOUNDARY rather than a row. */
 .pbl-dependency-layer {
 	position: absolute;
 	inset: 0;

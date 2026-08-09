@@ -104,6 +104,18 @@ Obsidian's.
 - `test/helpers/fixtures.ts` — the demo backlog and the view options that configure all
   four projections at once. A fourth fixture, not a replacement: the per-suite ones stay
   four notes each on purpose.
+- **A change that visibly alters the view puts its cases in a FIXTURE, not in a mock.**
+  In `demoVault()` where the case belongs in the everyday picture; in a named variant —
+  `edgeCaseVault()`, reached by `?fixture=edges` — where it would distort it, which is
+  what a clipped bar does: clipping needs the window past `MAX_TIMELINE_DAYS`, and that
+  clamp squeezes every other bar in the demo. An uncommitted `mock.ts` is for markup no
+  code produces yet; the moment code produces it, the case belongs somewhere the harness
+  can be pointed at and a test can assert exists.
+  What checks this is narrower than the rule, and the gap is the point:
+  `test/harness/harness.test.ts` asserts each fixture RENDERS the cases it exists for, so
+  a deleted note or a renamed class fails. Nothing checks that a contributor remembered
+  the rule — a register gate for it was considered and would have to guess which changes
+  are "visible".
 - `test/harness/chrome.ts` — patches the mock's `Menu` and `Modal` to appear, from the
   harness rather than in the mock, so the 68 files asserting through `lastShown` /
   `lastOpened` measure exactly what they did before.

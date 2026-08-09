@@ -1,7 +1,8 @@
-import { App, Menu, Notice } from 'obsidian';
+import { App, Menu, Notice, TFile } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { dependentsClosure } from '../../domain/dependencies';
 import { BacklogItem, BacklogModel } from '../../domain/model';
+import { isMarkerType } from '../../domain/itemTypes';
 import { linkpathFromRawValue } from '../../domain/noteFields';
 import { ItemSuggestModal, SuggestChoice } from '../../ui/itemSuggest';
 import { DependsOnDelta } from '../../domain/writePlan';
@@ -17,6 +18,12 @@ import { DependsOnDelta } from '../../domain/writePlan';
 
 /** Add the pair, in the order they read: state one, then clear one. */
 export function addDependencyItems(host: BacklogViewHost, model: BacklogModel, menu: Menu, item: BacklogItem): void {
+	// A marker waits for nothing, so neither entry belongs on one: a milestone is a point
+	// in time. Both halves go, not just the first — `Remove dependency…` would open on the
+	// empty list `readItems` now gives a marker, which is an entry that cannot act.
+	// A marker may still BE waited for, and that is expressed from the other end: its own
+	// connector stays, because dragging FROM it is how another bar comes to wait on it.
+	if (isMarkerType(item.typeName)) return;
 	menu.addItem((mi) =>
 		mi
 			.setTitle('Depends on…')
@@ -88,6 +95,18 @@ function declaredPrerequisitePaths(app: App, model: BacklogModel, item: BacklogI
 }
 
 /**
+ * Every item's own declared prerequisite paths, in one pass.
+ *
+ * Hoisted out of `candidates` so a sweep that asks the question of every row builds this
+ * once rather than once per row. `candidates` still defaults to building its own, so the
+ * two menu callers are unchanged and cannot fall out of step with the sweep — there is
+ * one definition of "what this note declares", not a fast one and a careful one.
+ */
+function declaredMap(app: App, model: BacklogModel): Map<string, string[]> {
+	return new Map([...model.byPath].map(([path, item]) => [path, declaredPrerequisitePaths(app, model, item)]));
+}
+
+/**
  * The notes this item may be made to wait for.
  *
  * Every exclusion here is a pick that would write nothing or refuse: itself, what it
@@ -99,19 +118,63 @@ function declaredPrerequisitePaths(app: App, model: BacklogModel, item: BacklogI
  * rather than to a row. `outsideFilter` is filtered explicitly here for exactly that
  * reason — `byPath` carries context rows that `results` never did.
  */
-function candidates(app: App, model: BacklogModel, item: BacklogItem): BacklogItem[] {
-	const declared = new Map(
-		[...model.byPath].map(([path, candidate]) => [path, declaredPrerequisitePaths(app, model, candidate)]),
-	);
+function candidates(
+	app: App,
+	model: BacklogModel,
+	item: BacklogItem,
+	declared: Map<string, string[]> = declaredMap(app, model),
+): BacklogItem[] {
 	// Asked once for the whole menu rather than once per row: naming any item that
 	// already waits on this one — at any depth, including through a broken cyclic edge —
 	// is what would close a loop.
+	// A marker declares nothing (`readItems.ts` states the rule at the read), so it has
+	// no candidates — which is also what keeps it out of `legalTargetPaths`: dragging ONTO
+	// a bar writes to that bar, and a milestone is never the one that waits.
+	if (isMarkerType(item.typeName)) return [];
 	const closesLoop = dependentsClosure(item.file.path, declared);
 	const already = new Set(declared.get(item.file.path) ?? []);
 	return [...model.byPath.values()].filter(
 		(candidate) =>
 			!candidate.outsideFilter && !closesLoop.has(candidate.file.path) && !already.has(candidate.file.path),
 	);
+}
+
+/**
+ * Every note a link drag from `source` may be dropped ONTO.
+ *
+ * Dragging S onto T writes to T — T is the one that waits — so T is legal exactly when S
+ * is a legal prerequisite FOR T. That is `candidates` asked from the other end, and it is
+ * asked rather than restated: three of the four exclusions (self, already declared
+ * however spelled, would close a loop) have one definition here, `candidates(target)`,
+ * and a second formulation beside it is what drifts. Stating it as "something it already
+ * waits for" is the MENU's sentence, where the item under the cursor is the dependent;
+ * here the dependent is the one dropped onto, and the same words name the wrong end.
+ *
+ * The fourth — outside the filter — is NOT inherited from `candidates`, and cannot be:
+ * `candidates(target)` filters `outsideFilter` on the CANDIDATE side, which constrains
+ * what may be offered TO `target`, never whether `target` itself is a context row. The
+ * mirror formula needs that question asked of `target` directly, which is what the
+ * `!target.outsideFilter` guard below is for — dropping it would let a context row be
+ * reported as a legal drop destination, contradicting the root rule that such a row is
+ * never a write target. `applySafely`'s structural refusal is still the backstop against
+ * an actual write landing there; this guard is about the DRAG's affordance agreeing with
+ * that rule rather than offering a target the write path would refuse anyway.
+ *
+ * One `declaredMap` for the whole sweep, so a target costs one closure walk rather than a
+ * rebuild plus a walk.
+ *
+ * Matched on `.file`, not on the path, for the reason `applyDependencyWrite` states: a
+ * note deleted and another created at the same path satisfies a path compare while being
+ * a different note.
+ */
+export function legalTargets(app: App, model: BacklogModel, source: BacklogItem): Set<TFile> {
+	const declared = declaredMap(app, model);
+	const legal = new Set<TFile>();
+	for (const target of model.byPath.values()) {
+		if (target.outsideFilter) continue;
+		if (candidates(app, model, target, declared).some((c) => c.file === source.file)) legal.add(target.file);
+	}
+	return legal;
 }
 
 function promptAddDependency(host: BacklogViewHost, model: BacklogModel, item: BacklogItem): void {
@@ -298,10 +361,9 @@ function promptRemoveDependency(host: BacklogViewHost, model: BacklogModel, item
 /**
  * The one place a dependency write is planned and applied.
  *
- * Deliberately not exported yet. `Draw a dependency between bars` will call it rather
- * than plan beside it — one move, several inputs, one place the batch is made — but a
- * symbol exported for a caller that does not exist is dead code today, and the register
- * is where that intent is recorded until the second input arrives.
+ * Exported for `interactions/linkDrag.ts`, which CALLS it rather than planning beside it:
+ * one move, two inputs, one place the batch is made. Adding a third input means calling
+ * this, never writing a second plan next to it.
  *
  * Rechecks the SOURCE — the item the menu was opened on, not the candidate `onChoose`
  * already re-asks `candidates` about — against `host.model` read fresh here, not the
@@ -319,10 +381,13 @@ function promptRemoveDependency(host: BacklogViewHost, model: BacklogModel, item
  * rather than minting a new one, so the object the menu captured is the object the
  * refreshed model holds, under whatever path it now has.
  */
-function applyDependencyWrite(host: BacklogViewHost, item: BacklogItem, dependsOn: DependsOnDelta): void {
+export function applyDependencyWrite(host: BacklogViewHost, item: BacklogItem, dependsOn: DependsOnDelta): void {
 	const source = host.model?.byPath.get(item.file.path);
 	if (source === undefined || source.outsideFilter || source.file !== item.file) {
-		new Notice('That note changed while the picker was open, so nothing was written.');
+		// Worded for both callers: the picker's own two Notices above are still true only
+		// of the picker (the window this one names is a suggester staying open), but this
+		// one is reached from the drag too, which has no picker to have stayed open.
+		new Notice('That note changed before the write landed, so nothing was written.');
 		return;
 	}
 	void host.applySafely([{ file: item.file, dependsOn }]);

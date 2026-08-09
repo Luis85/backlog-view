@@ -141,8 +141,12 @@
 	pointer-events: none;
 }
 
+/* The left gap clears the connector, which sits in exactly the space `.pbl-bar-label`'s
+   own `padding: 0 var(--size-4-2)` used to be the whole of. Seen in the browser harness
+   before it shipped: the dot landed on the first letter of the title. */
 .pbl-bar-label-after {
 	left: var(--pbl-label-left);
+	padding-left: 18px;
 }
 
 .pbl-bar-label-before {
@@ -151,6 +155,16 @@
 
 /* The grid declutters exactly while the user is aiming a drop. */
 .pbl-dragging .pbl-bar-label {
+	visibility: hidden;
+}
+
+/* The same declutter for a link drag — kept as its own rule rather than joined to the one
+   above with a comma: `timelineBoxing.test.ts`'s "the furniture declarations whose
+   comments call them load-bearing" reads `.pbl-dragging .pbl-bar-label {` as a literal
+   selector, and a combined selector list would stop it finding either rule's body. Not
+   reused as one class either way — `.pbl-dragging` also reveals the root strip, and a
+   link drag can reparent nothing. */
+.pbl-linking .pbl-bar-label {
 	visibility: hidden;
 }
 
@@ -163,4 +177,175 @@
 .pbl-density-compact .pbl-timeline-lead {
 	padding-top: 0;
 	padding-bottom: 0;
+}
+
+/* The dependency connector — `renderConnector` in `src/view/render/timeline.ts`. Filed
+   here rather than beside `.pbl-bar-grip-*` in `timeline.css` only because that partial
+   is at its 400-line cap; every selector below is new, none an override, so unlike this
+   file's other rules position relative to `timeline.css` is not load-bearing. A child of
+   the positioned `.pbl-bar`, so `left`/`right` resolve against the bar's own edges. It
+   sits OUTSIDE the end rather than on it, which is what keeps `.pbl-bar-grip-end` at
+   right: -3px reachable on a bar one day wide — the two would otherwise trade places at
+   the zoom where a bar is narrower than its own handles.
+
+   ELEMENT-QUALIFIED, like every other bare `<button>` this plugin draws: Obsidian's
+   `button:not(.clickable-icon)` sets `background-color` and `box-shadow` at (0,1,1), so
+   the class alone loses regardless of source order and the dot renders as a themed
+   button blob rather than a hollow ring. `button.pbl-card-kids-toggle` (cardChildren.css)
+   is the precedent and carries the full reasoning; `.pbl-tag-remove` and the two chips
+   are the same rule again. Width, height, padding and border need no qualification —
+   those come from the bare `button` selector at (0,0,1), which a class already outranks. */
+button.pbl-bar-connector {
+	position: absolute;
+	top: 50%;
+	left: 100%;
+	transform: translate(4px, -50%);
+	width: 9px;
+	height: 9px;
+	padding: 0;
+	appearance: none;
+	border: 1.5px solid var(--pbl-bar-color);
+	border-radius: 50%;
+	background-color: var(--background-primary);
+	box-shadow: none;
+	cursor: crosshair;
+	opacity: 0;
+}
+
+/* Revealed by the ROW, not by the bar: a bar six pixels wide is a poor hover target for
+   the control that reveals its own handle.
+
+   Four triggers, and the SELECTED one is not a nicety: the other three are a pointer's,
+   a programmatic focus's and the drag's own, and a keyboard user on this axis reaches
+   none of them. The pane is one tab stop with a roving `aria-activedescendant`, so focus
+   stays on the scroller, and the connector is `tabindex="-1"` like every per-row control,
+   so it never takes focus to be `:focus-visible`. Without the selected row's own reveal
+   the handle is invisible for the entire keyboard path — measured in a browser, arrow
+   key twice, `opacity: 0` on the selected row's dot. It does not make the gesture
+   keyboard-operable (the row menu's Depends on… is that, and is what SC 2.5.7 asks for);
+   it makes the affordance VISIBLE to someone who can then go find it. */
+.pbl-timeline-row.pbl-selected .pbl-bar-connector,
+.pbl-timeline-row:hover .pbl-bar-connector,
+.pbl-bar-connector:focus-visible,
+.pbl-bar-connector.is-active {
+	opacity: 1;
+}
+
+/* Immediately after the `opacity: 0` it undoes, and deliberately NOT in
+   `styles/touch.css`: a media query adds no specificity, so any later rule for the same
+   selector would get between the pair and this would silently reveal nothing. `.pbl-add`
+   and `.pbl-bucket-add` each carry exactly this block for exactly this reason, and a
+   hover-revealed control that lacked one shipped unreachable on touch once. Permanent is
+   the cheap direction here: what a hoverless device loses is the discretion, not the
+   gesture.
+
+   Element-qualified for a SECOND reason, and it is the one that bites: the rule it
+   undoes is `button.pbl-bar-connector` at (0,1,1), so a bare `.pbl-bar-connector` here
+   would be (0,1,0) and LOSE — no media query involved, just specificity — leaving the
+   connector permanently invisible on exactly the devices this block exists for. The
+   paragraph above says a later rule must not get between the pair; qualifying the first
+   half is that same hazard arriving from underneath. The three reveal selectors need
+   nothing: each is two classes and already outranks (0,1,1). */
+@media (hover: none) {
+	button.pbl-bar-connector {
+		opacity: 1;
+	}
+}
+
+.pbl-bar-connector.is-active {
+	background-color: var(--pbl-bar-color);
+}
+
+/* A clamped end has no on-screen end to sit beyond. Past it lands outside the scrollable
+   grid, unreachable at exactly the zoom that produced the clipping — so the handle comes
+   inside. The same answer the arrow layer gives an anchor at a clipped edge. */
+.pbl-bar-clipped-end .pbl-bar-connector {
+	left: auto;
+	right: 0;
+	transform: translate(-2px, -50%);
+}
+
+/* A milestone is a 12px square ROTATED 45 degrees (`.pbl-bar.pbl-bar-milestone` in
+   `timeline.css`), and the connector is its child — so the whole placement below is
+   expressed in the bar's own rotated frame, not in screen pixels. That is the trap: the
+   ordinary `left: 100%` + `translate(Xpx, -50%)` reads as "just past the right end" and
+   lands the dot diagonally DOWN-RIGHT of the diamond, because local +X is the screen
+   down-right diagonal once the parent has turned.
+
+   So the anchor is the local TOP-RIGHT corner (`left: 100%; top: 0`), which is the corner
+   the rotation carries to the diamond's drawn right tip, and the outward push is the
+   local diagonal `(6px, -6px)` — magnitude 8.49, which is 4px of clear air beyond the
+   tip once the dot's own 4.5px radius is taken off. The same 4px the square bars above
+   leave, arrived at through the rotation rather than in spite of it.
+
+   `rotate(-45deg)` straightens the dot's own frame. Invisible on a circle, which is why
+   it is last and not the fix: what it buys is a focus ring that is not a tilted
+   rectangle around a round control. */
+.pbl-bar-milestone .pbl-bar-connector {
+	top: 0;
+	left: 100%;
+	transform: translate(-50%, -50%) translate(6px, -6px) rotate(-45deg);
+}
+
+/* The live link gesture — `interactions/linkDrag.ts`. Filed here rather than in
+   `timeline.css`, which the brief for this task named and which is at its own 400-line
+   cap: every selector below is new, none an override, so — like this file's other
+   rules — position relative to `timeline.css` is not load-bearing, only specificity is.
+
+   Held drag: only refusal is marked. Marking the LEGAL targets marked four of six rows
+   in the browser harness and read as a multi-select — most bars are legal, so the
+   scarce thing is the one worth a mark. Three classes deep, which is what makes this
+   outrank every single- and double-class `.pbl-bar-*` rule in `timeline.css` regardless
+   of which file loads last. */
+.pbl-linking .pbl-link-illegal .pbl-bar {
+	opacity: 0.25;
+	filter: grayscale(1);
+}
+
+/* The bar under the pointer. The board's columns and the roadmap's buckets say this with
+   a region highlight; a bar is not a region, so it says it with its own outline. */
+/* Where the drag STARTED, which is a third thing on this grid and not a second: a legal
+   target is unmarked, an illegal one is dimmed, and the source is neither — it refuses
+   its own drop, so leaving it unmarked made the one bar that cannot be dropped on look
+   exactly like every bar that can.
+
+   It does NOT take the illegal dimming, which is why `begin` excludes it rather than
+   folding it into that set. The dimming applies to the BAR, and the source's bar holds
+   the connector the preview line comes out of; greying the anchor of the gesture to a
+   quarter while the line is live reads as the drag having gone wrong. An outline marks
+   it without touching what it contains.
+
+   Dashed and 1px against `.pbl-drop-over`'s solid 2px below, so the origin and the
+   target under the pointer are never one look — the two rules tie on specificity and
+   cannot co-occur anyway (`accepts` refuses the source), so the distinction is the dash
+   and the weight, not the cascade. */
+.pbl-linking .pbl-link-source .pbl-bar {
+	outline: 1px dashed var(--interactive-accent);
+	outline-offset: 2px;
+}
+
+.pbl-linking .pbl-bar.pbl-drop-over {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 2px;
+}
+
+/* The line follows the pointer, so it is addressed in the content box's own pixels and
+   must not be clipped to the element's computed size — the arrow layer's own reason.
+   Above the bars, unlike the arrow layer, because it is a live gesture rather than a
+   drawn fact. */
+.pbl-link-preview {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	pointer-events: none;
+	overflow: visible;
+	z-index: 3;
+}
+
+.pbl-link-preview-line {
+	fill: none;
+	stroke: var(--interactive-accent);
+	stroke-width: 2;
+	stroke-dasharray: 4 3;
 }

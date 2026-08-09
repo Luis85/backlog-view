@@ -128,4 +128,48 @@ and each stays open until they are, so a stale check is visible rather than assu
   busier palette, and how a screen reader reads the row. Two things the picture showed
   that no assertion had: a flagged row's title truncates to make room for the glyph
   (`Offline-first s… ⚠`), and an arrow crossing a long bar is drawn OVER it rather than
-  behind it, unlike the milestone line.
+  behind it, unlike the milestone line. That second one was then made to match the
+  milestone line, and the round trip after it is the part worth keeping: on 2026-08-09 a
+  `z-index` lifted the arrows over the bars again, on a reading of "arrows on top" that
+  meant on top of the date grid. One declaration cannot separate the two, since bars and
+  gridlines are told apart only by document order — so the settled rule is a SANDWICH
+  (above the grid furniture, beneath the bars) and it is met by having no z-index at all.
+  Two wrong readings of one sentence, both caught by looking rather than by the suite.
+- The dated axis's own date marks, found the same day: a milestone's diamond is centred on
+  its day boundary while its full-height line was drawn FROM that boundary, so the line sat
+  half its width to the right of the mark it belongs to — 1px at the default scale, plainly
+  visible at 4× on a 12px diamond. Both full-height lines are centred now, which keeps the
+  nudge that separates a milestone from today exactly one line width.
+- [[Draw a dependency between bars]]'s gesture: the connector reveals on hover and stays
+  under `(hover: none)`, illegal rows dim while the drag is held, the target under the
+  pointer outlines, the preview line tracks the pointer smoothly, labels vanish and the
+  tree's root strip stays hidden (`.pbl-linking`, never `.pbl-dragging`), and a completed
+  or cancelled drag leaves nothing behind. Beside that, what a vault still owes, none of
+  it answerable here: `wireLinkSource`'s `onGenerateDragPreview` mutates the content box
+  and other rows' classes (dimming, the source mark), not only the dragged connector's
+  own — which is the case pragmatic-drag-and-drop's own docs caution against, since the
+  browser can snapshot the native drag preview at the end of that event, so whether
+  Obsidian's actual drag ghost looks right — the connector's small circle, undistorted by
+  a class change elsewhere on the page landing mid-snapshot — is unverifiable here. And
+  everything about whether the affordance works at human scale: a 9px dot is actually
+  hittable at 4px/day zoom on a trackpad and on a touch screen, where it is permanent
+  rather than revealed; the reveal reads as an affordance rather than as noise on a grid
+  of many rows; the dot does not collide with the bar label at any zoom or on a bar one
+  day wide; the dimming of illegal targets survives a theme that replaces the colour
+  tokens, and still reads as *refused* rather than as *disabled*; and the preview line's
+  accent is distinguishable from the today line's red and from a conflict arrow's.
+  The harness look was performed on 2026-08-09, later than the increment that owed it —
+  it shipped claiming no browser was available, and the two defects that cost are
+  recorded below rather than smoothed over, because both were the kind ADR 0020 says
+  looking is *for*. What the picture showed that no assertion had: every connector
+  rendered as a themed button blob (Obsidian's `button:not(.clickable-icon)` fills
+  `background-color` and `box-shadow` at (0,1,1), which a bare class cannot outrank —
+  the card-children disclosure's bug, a second time), and a milestone's connector sat
+  14px below its diamond and overlapping it, because the dot is a child of a box rotated
+  45 degrees and `left: 100%` is expressed in that rotated frame. Both were found by
+  Codex review first and then MEASURED in the harness — `getBoundingClientRect` against
+  the real app.css, before and after — rather than argued from specificity alone.
+  What a vault still owes is everything above that a picture cannot settle: hittability
+  at human scale, the theme-replaced dimming, the preview line's accent against the
+  today line and a conflict arrow, and the drag-preview snapshot. **Those remain never
+  checked.**

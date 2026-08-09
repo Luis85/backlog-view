@@ -166,6 +166,39 @@ describe('rendering', () => {
 		expect(styles).not.toContain('line-through');
 	});
 
+	it('opens the note from the row itself and from none of the controls inside it', () => {
+		// The category this replaced ten `stopPropagation` calls to hold. Every one of
+		// them was a control remembering to opt out of the row's activation, and two
+		// controls forgot — the dependency connector and the bar grips both shipped
+		// opening the note when clicked. `fromRowControl` moves the question to the
+		// receiver, so a control that forgets is covered anyway.
+		//
+		// The enumeration is deliberately NOT `ROW_CONTROL`'s own selector, which would
+		// only prove the filter agrees with itself: it adds `a` and `[tabindex="-1"]`,
+		// the two independent marks of "this is a control" in this codebase — every
+		// per-row control carries the latter by the view guide's own rule. What it cannot
+		// see is a control that is neither, which is the same gap `ROW_CONTROL` has and
+		// is why the guide requires new controls to be buttons.
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Doing', tags: ['alpha'] } });
+		vault.addFile('Child.md', { frontmatter: { type: 'Feature', order: 10, parent: 'Epic' } });
+		const { containerEl } = makeView(vault, { stateProperty: 'note.status', tagsProperty: 'note.tags' });
+		const row = rowByTitle(containerEl, 'Epic');
+
+		const controls = Array.from(row.querySelectorAll<HTMLElement>('button, a, [tabindex="-1"], .pbl-tag, .pbl-prop-value'));
+		// A fixture that rendered no controls would pass this test having proved nothing.
+		expect(controls.length).toBeGreaterThan(1);
+		for (const control of controls) {
+			control.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+			control.dispatchEvent(new MouseEvent('auxclick', { bubbles: true, cancelable: true, button: 1 }));
+		}
+		expect(vault.opened).toEqual([]);
+
+		// The other half, and the one the filter could break: the row is still a link.
+		row.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+		expect(vault.opened.map((o) => o.path)).toEqual(['Epic.md']);
+	});
+
 	it('reveals every hover-hidden control on a hoverless device, in cascade order', () => {
 		// Every one of these is hidden until hover and carries `tabindex="-1"`, so on a
 		// device with neither hover nor a tab stop the `hover: none` reveal is the ONLY
@@ -183,15 +216,61 @@ describe('rendering', () => {
 		// SPECIFICITY (an extra pseudo-class), so unlike the hover: none reveal it wins
 		// regardless of where in the file it is written — the check is only that the
 		// rule exists, which is exactly the gap the tag buttons shipped with.
-		for (const selector of ['.pbl-add', '.pbl-bucket-add', '.pbl-tag-remove', '.pbl-tag-add']) {
+		// The pair is addressed AS WRITTEN, element qualifier and all: `.pbl-bar-connector`
+		// is a bare `<button>`, so both halves carry `button` to outrank Obsidian's
+		// `button:not(.clickable-icon)` at (0,1,1) — and qualifying only the hide would
+		// leave the reveal at (0,1,0), losing to it and hiding the control forever on the
+		// devices this whole check exists for. The `:focus-visible` reveal needs no
+		// qualifier (an extra pseudo-class already puts it at (0,2,0)), so it is asked of
+		// the class alone.
+		const focusOf = (selector: string): string => `${selector.replace(/^[a-z]+/, '')}:focus-visible`;
+		for (const selector of [
+			'.pbl-add',
+			'.pbl-bucket-add',
+			'.pbl-tag-remove',
+			'.pbl-tag-add',
+			'button.pbl-bar-connector',
+		]) {
 			const hides = ruleAt(selector, 'opacity: 0;');
 			const reveals = ruleAt(selector, 'opacity: 1;', '(hover: none)');
-			const focusReveals = ruleAt(`${selector}:focus-visible`, 'opacity: 1;');
+			const focusReveals = ruleAt(focusOf(selector), 'opacity: 1;');
 			expect(hides, `${selector} is expected to be hover-revealed`).toBeGreaterThan(-1);
 			expect(reveals, `${selector} needs a hover: none reveal`).toBeGreaterThan(-1);
 			expect(reveals, `${selector}'s reveal must come after the rule it overrides`).toBeGreaterThan(hides);
 			expect(focusReveals, `${selector} needs a :focus-visible reveal`).toBeGreaterThan(-1);
 		}
+	});
+
+	it('reveals the connector on the keyboard-selected row, which is the only reveal that path gets', () => {
+		// The three reveals above are a pointer's (`:hover`), a programmatic focus's
+		// (`:focus-visible`) and the drag's own (`.is-active`) — and a keyboard user on
+		// the dated axis triggers NONE of them. The pane is one tab stop with a roving
+		// `aria-activedescendant`, so focus stays on the scroller and the connector,
+		// `tabindex="-1"` like every per-row control, never takes it; nothing hovers.
+		// Measured in the browser before this was written: arrow-key down twice, the row
+		// carries `.pbl-selected` and its connector computes `opacity: 0`.
+		//
+		// Existence, not cascade order: three classes put this at (0,3,0), so it outranks
+		// the (0,1,1) hide wherever it is written — unlike the `hover: none` pair above,
+		// whose whole hazard is that they tie.
+		expect(ruleAt('.pbl-timeline-row.pbl-selected .pbl-bar-connector', 'opacity: 1;')).toBeGreaterThan(-1);
+	});
+
+	it('gives the link drag’s source row a mark of its own, so the class is not decoration', () => {
+		// `begin` marks the source row with `pbl-link-source` and EXCLUDES it from the
+		// illegal dimming — deliberately, since the preview line comes out of that bar and
+		// its connector is the drag's anchor. But the class had no rule anywhere in
+		// `styles/`, so the one bar that refuses its own drop was the only refusal on the
+		// grid that looked exactly like a legal target. Measured mid-drag in a browser:
+		// source `opacity: 1, filter: none`, an illegal row `0.25` and `grayscale(1)`.
+		//
+		// The class is set by `src/` and asserted by `test/view/linkDrag.test.ts`, and
+		// neither of those can see whether anything DRAWS it — which is the whole reason
+		// this check is here and reads the stylesheet instead. What it cannot say is that
+		// the mark is legible, or that it is distinguishable from `.pbl-drop-over`'s: that
+		// is a look, and the two are told apart by dash and weight rather than by anything
+		// assertable here.
+		expect(ruleAt('.pbl-linking .pbl-link-source .pbl-bar', 'outline:')).toBeGreaterThan(-1);
 	});
 
 	it('beats the double-clipped gradient on specificity, not on source order', () => {

@@ -141,6 +141,15 @@ a node test that did would be measuring the runner.
   autoType cascade's `stopsAt` predicate — `outsideFilter || isMarkerType`, the same shape
   for the same reason — stops at a marker exactly as it stops at a row the Base excluded, so
   the cascade descends from a rank only where one exists.
+  A fourth, added 2026-08-09 and the same shape again: **a marker DECLARES no
+  prerequisites.** A point in time waits for nothing, so `readItems` reads a marker's
+  dependency list as empty — beside the `outsideFilter` gate it already sits next to — and
+  every consequence falls out of that one reading at once: no edges out, no conflict ever
+  computed for it, nothing of its in `declaredMap`, no candidate list, and so never a legal
+  drop target, since dropping ONTO a bar is what makes that bar wait. What is deliberately
+  NOT symmetric is the other direction: a marker may still be waited FOR, because that is
+  the other note's declaration and this rule is about a marker's own. Which is why a marker
+  keeps its connector — dragging FROM it is how another bar comes to wait on it.
 - Each type's folder is **its own option** (`typeFolder.<lowercased type>`), one per type
   in the fixed vocabulary, so a folder is picked rather than spelled into a mapping.
   `typeFolderKey` is shared by the schema and the resolver, because a persisted key

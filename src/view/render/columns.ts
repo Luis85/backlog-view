@@ -298,13 +298,6 @@ export function renderPropCells(ctx: RowContext, row: HTMLElement, item: Backlog
 		if (chip.tags) renderTagCell(ctx.host, cell, item, chip);
 		else renderValue(ctx.host, cell, item, chip);
 	}
-	// Cells may render note links or tag buttons that must not also open the row's
-	// own note; the empty space around them stays part of the row's click target.
-	props.addEventListener('click', (evt) => {
-		if (evt.target instanceof Element && evt.target.closest('.pbl-prop-value, .pbl-tag')) {
-			evt.stopPropagation();
-		}
-	});
 }
 
 function renderValue(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem, chip: ChipProp): void {
@@ -368,8 +361,9 @@ function renderTagCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogIt
 		setIcon(remove, 'x');
 		setTooltip(remove, `Remove #${tag}`);
 		remove.addEventListener('click', (evt) => {
+			// `preventDefault` only: a tag pill is a link-shaped control, and the row's own
+			// handler already ignores it (`fromRowControl`).
 			evt.preventDefault();
-			evt.stopPropagation();
 			removeTag(host, item, tag);
 		});
 	}

@@ -12,7 +12,7 @@ import { ProductBacklogView } from '../../src/view/backlogView';
 import { drawChrome } from './chrome';
 import { drawIcons } from './icons';
 import { installObsidianDom } from '../helpers/dom';
-import { demoOptions, demoResults, demoVault } from '../helpers/fixtures';
+import { demoOptions, demoResults, demoVault, edgeCaseVault } from '../helpers/fixtures';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
 import { FileView } from '../helpers/obsidian-mock';
 
@@ -33,20 +33,23 @@ export interface MountedHarness {
 	containerEl: HTMLElement;
 }
 
+/** Which backlog to mount. See `edgeCaseVault` for why there is more than one. */
+export type HarnessFixture = 'demo' | 'edges';
+
 /**
- * Build the view into `root` against the demo fixture and return the pieces, so a test
- * can drive the same mount a browser gets. The Bases leaf is real nesting on purpose:
- * the view identifies its base through the leaf showing the `.base` file, and without it
+ * Build the view into `root` against a fixture and return the pieces, so a test can
+ * drive the same mount a browser gets. The Bases leaf is real nesting on purpose: the
+ * view identifies its base through the leaf showing the `.base` file, and without it
  * the collapse store — projection, expanded rows, shelf state — has no identity to key
  * on and nothing survives a reload.
  */
-export function mountHarness(root: HTMLElement): MountedHarness {
+export function mountHarness(root: HTMLElement, fixture: HarnessFixture = 'demo'): MountedHarness {
 	installObsidianDom();
 	drawChrome();
 	drawIcons();
 	root.empty();
 
-	const vault = demoVault();
+	const vault = fixture === 'edges' ? edgeCaseVault() : demoVault();
 	const leafEl = root.createDiv('pbl-harness-leaf');
 	const containerEl = leafEl.createDiv();
 	vault.addLeaf(new FileView(vault.addFile('Demo.base'), leafEl));

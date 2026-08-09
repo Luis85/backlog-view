@@ -202,15 +202,25 @@ describe("the row's accessible name states what it waits for", () => {
 		expect(row.hasClass('pbl-row-conflict')).toBe(false);
 	});
 
-	it('folds the dependency into a marker row, whose explicit label replaces its content', () => {
+	it('says nothing about dependencies on a marker row, because a milestone declares none', () => {
+		// A deliberate REVERSAL. This test asserted the opposite until 2026-08-09 — a
+		// marker's row folding "Waits for A (conflict)" into its explicit label — and the
+		// product rule changed under it: a milestone is a point in time, so it waits for
+		// nothing. The frontmatter here is exactly what the old test used, kept so the
+		// case being reversed is the case being read: a marker whose note still SAYS
+		// `dependsOn: A`, and a prerequisite whose span would have conflicted with it.
+		//
+		// Nothing about the label's mechanism changed; there is simply nothing to fold in
+		// now, because `readItems` gives a marker no entries to derive from.
 		const vault = new FakeVault();
 		vault.addFile('A.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-01', due: '2026-08-20' } });
 		vault.addFile('Ship.md', { frontmatter: { type: 'Milestone', order: 20, dependsOn: 'A', due: '2026-08-05' } });
 		const { containerEl } = roadmapView(vault, { ...DATES });
 
-		expect(rowFor(containerEl, 'Ship')?.getAttribute('aria-label')).toBe(
-			'Ship — Milestone 2026-08-05 — Waits for A (conflict)',
-		);
+		expect(rowFor(containerEl, 'Ship')?.getAttribute('aria-label')).toBe('Ship — Milestone 2026-08-05');
+		expect(rowFor(containerEl, 'Ship')?.hasClass('pbl-row-conflict')).toBe(false);
+		// And no arrow, from either end: the declaration is gone, not merely unspoken.
+		expect(arrows(containerEl)).toHaveLength(0);
 	});
 
 	it('says nothing where the row waits for nothing', () => {

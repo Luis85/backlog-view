@@ -1,7 +1,8 @@
-import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
+import { draggable, dropTargetForElements, monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { DragLocationHistory } from '@atlaskit/pragmatic-drag-and-drop/types';
 import { autoScrollForElements } from '@atlaskit/pragmatic-drag-and-drop-auto-scroll/element';
 import { announce, cleanup as liveRegionCleanup } from '@atlaskit/pragmatic-drag-and-drop-live-region';
+import { TFile } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { BoardModel, columnLabelFor } from '../../domain/board';
 import { BacklogItem } from '../../domain/model';
@@ -17,6 +18,23 @@ import { DateChange } from '../../storage/frontmatter';
  * drop signal any of them gives, so it is one decision rather than three.
  */
 const DROP_OVER = 'pbl-drop-over';
+
+/**
+ * What a payload IS, so a target can refuse a gesture that means something else.
+ *
+ * There are two kinds and they are not interchangeable: a card MOVE asks a region to
+ * write a placement, a LINK drag asks a bar to record an ordering. Every target that
+ * means "move this" must refuse a link, and the check is here rather than at each of
+ * them — the timeline grid would otherwise take a link drop and write a DATE, and the
+ * dated shelf would unschedule. A guard per call site holds only for the call sites
+ * somebody thought of; this one holds for targets not yet written.
+ */
+const LINK_KIND = 'link';
+export type DragKind = 'move' | 'link';
+
+function kindOf(data: Record<string, unknown>): DragKind {
+	return data.kind === LINK_KIND ? 'link' : 'move';
+}
 
 /**
  * Say what a move changed, to assistive technology, from the polite live region
@@ -146,6 +164,11 @@ export class CardDragController {
 		this.viewEl = viewEl;
 	}
 
+	/** This view's drag, and this KIND of it. Every `canDrop` here goes through it. */
+	private mine(data: Record<string, unknown>, kind: DragKind): boolean {
+		return data.view === this.token && kindOf(data) === kind;
+	}
+
 	/** The projection is about to be rebuilt; unhook everything wired to the old DOM. */
 	onRenderStart(): void {
 		for (const cleanup of this.cleanups) cleanup();
@@ -178,7 +201,10 @@ export class CardDragController {
 			draggable({
 				element: cardEl,
 				getInitialData: () => ({
-					path: item.file.path,
+					// The file alone: its `path` is the lookup key AND the file is the
+					// confirmation, because a rename mutates this object in place. A path
+					// captured here beside it would be the one that goes stale. See `resolve`.
+					file: item.file,
 					hold,
 					scrollLeft: originScroll?.() ?? null,
 					span: statedSpan(item),
@@ -199,23 +225,46 @@ export class CardDragController {
 	}
 
 	/**
-	 * The item a payload names, resolved at DROP time — the dragged path outlives the
-	 * model it was taken from, because a refresh mid-drag can drop the note.
+	 * The item a payload names, resolved at DROP time — the payload outlives the model it
+	 * was taken from, because a refresh mid-drag can drop the note, move it, or replace it.
+	 *
+	 * **The payload carries the FILE, and the file answers both questions.** Its `.path`
+	 * is the lookup key and the file itself is the confirmation, and one fact makes that
+	 * one field enough: Obsidian renames by mutating the one `TFile` in place, so
+	 * `file.path` is always the note's CURRENT path, while a deletion leaves the object
+	 * detached and mints a different one for anything created at the same name. The same
+	 * fact `src/storage/CLAUDE.md` leans on for the dependency undo, used here for the
+	 * other direction.
+	 *
+	 * Both halves are needed and they fail oppositely, which is why neither alone was
+	 * right. A path captured at drag START goes stale the moment the note is renamed —
+	 * the lookup then finds nothing and cancels a drop that was entirely valid. A path
+	 * trusted without the identity check accepts a delete-and-recreate under the same
+	 * name — the lookup succeeds and hands the caller somebody else's note. Reading the
+	 * path OFF the captured file gets the rename for free and leaves the comparison to
+	 * catch the replacement.
+	 *
+	 * This is the rule `drop` in `linkDrag.ts` already keeps for the TARGET
+	 * (`liveTarget?.file !== target.file`), asked of the source, and it is asked HERE
+	 * rather than there because every drag this view has — a board move, a bucket, the
+	 * shelf, a link — comes through this one method, so a guard in any single caller
+	 * would leave the others open.
 	 *
 	 * The `typeof` is the TYPE system's, not a runtime case: pragmatic hands
 	 * `source.data` back as `Record<string, unknown>`, while `canDrop` admits only a
-	 * source carrying this controller's private token and the one place minting that
-	 * token pairs it with `item.file.path`, a string, always. Its false arm is
-	 * therefore unreachable by construction and undeletable by typing, so it is left
+	 * source carrying this controller's private token and both places minting that
+	 * token pair it with `item.file`, whose `path` is a string, always. Its false arm
+	 * is therefore unreachable by construction and undeletable by typing, so it is left
 	 * uncovered on purpose and the reason is written here — the same reasoning
 	 * `.fallowrc.json` uses for a member only a framework calls, though that file is
 	 * read by a tool and this paragraph by a person. Reaching the branch would take a
 	 * faked adapter payload.
 	 */
 	private resolve(data: Record<string, unknown>): CardSource | null {
-		const path = data.path;
+		const file = data.file as TFile | undefined;
+		const path = file?.path;
 		const item = typeof path === 'string' ? this.host.model?.byPath.get(path) : undefined;
-		if (!item) return null;
+		if (!item || item.file !== file) return null;
 		return {
 			item,
 			hold: (data.hold as BarHold | null | undefined) ?? null,
@@ -229,28 +278,42 @@ export class CardDragController {
 	}
 
 	/**
-	 * A region a card can be dropped on, for as long as it renders — an empty column
-	 * and an empty shelf included. `plan` is what the drop MEANS, and it belongs to
-	 * the caller: this module knows how to resolve a dragged card, never what moving
-	 * it should write. `hooks` is optional and unused by a plain region — the dated
-	 * shelf is the first caller that needs it, to preview what its removal would leave.
+	 * A region a card OR a link can be dropped on, for as long as it renders — an empty
+	 * column and an empty shelf included, and a bar wherever another bar's link may point
+	 * at it. `plan` is what the drop MEANS, and it belongs to the caller: this module
+	 * knows how to resolve a dragged source, never what landing on it should write.
+	 * `hooks` is optional and unused by a plain region — the dated shelf is the first
+	 * caller that needed it, to preview what its removal would leave.
 	 *
 	 * `plan` takes the RESOLVED source, not just its item — the same shape `accepts`
 	 * and `onEnter` already carry. A caller that only needs the item can still ask for
 	 * one; a caller planning a relative gesture's removal (the dated shelf) needs the
 	 * shape it was captured under too, and a narrower signature would have hidden that
 	 * on the one region that turned out to need it.
+	 *
+	 * `kind` defaults to `'move'` — the shape every ordinary region target already has —
+	 * so refusing a link is what registering a target the everyday way already does,
+	 * never something a caller has to remember to ask for. This used to be a second
+	 * method, `wireLinkTarget`, identical but for the literal it passed `mine`; fallow
+	 * flagged the clone, and the duplication was the tell that the guard was a
+	 * convention rather than a structure — a target written the ordinary way inherited
+	 * nothing from it. One method with a defaulted parameter is what makes "call this
+	 * the usual way and a link is refused" true by construction rather than by a second
+	 * method somebody has to know to reach for.
+	 * `test/view/cardDrag.test.ts`'s "a link-kind payload is refused by an ordinary drop
+	 * target" drives exactly the default path, undefended by any `accepts` of its own.
 	 */
-	wireDropTarget(el: HTMLElement, plan: (source: CardSource) => void, hooks: DropHooks = {}): void {
+	wireDropTarget(el: HTMLElement, plan: (source: CardSource) => void, hooks: DropHooks = {}, kind: DragKind = 'move'): void {
 		this.cleanups.push(
 			dropTargetForElements({
 				element: el,
-				// Only this view's own drags, and — where the caller asks — only the
-				// sources this region actually honours. REFUSED rather than ignored, so
-				// the strip never highlights for a drag it would not act on, the same
-				// reason a foreign view's card is refused instead of dropped silently.
+				// Only this view's own drags of THIS kind, and — where the caller asks —
+				// only the sources this region actually honours. REFUSED rather than
+				// ignored, so the strip never highlights for a drag it would not act on,
+				// the same reason a foreign view's card is refused instead of dropped
+				// silently.
 				canDrop: ({ source }) => {
-					if (source.data.view !== this.token) return false;
+					if (!this.mine(source.data, kind)) return false;
 					const resolved = this.resolve(source.data);
 					return resolved !== null && (!hooks.accepts || hooks.accepts(resolved));
 				},
@@ -303,7 +366,7 @@ export class CardDragController {
 		this.cleanups.push(
 			dropTargetForElements({
 				element: el,
-				canDrop: ({ source }) => source.data.view === this.token,
+				canDrop: ({ source }) => this.mine(source.data, 'move'),
 				// `onDragEnter` fires SYNCHRONOUSLY (a hierarchy change), so the preview
 				// paints on the very first frame a drag crosses onto the overlay — the
 				// adapter's own `onDrag` is throttled to one animation frame, which would
@@ -316,6 +379,80 @@ export class CardDragController {
 					const resolved = this.resolve(source.data);
 					if (resolved) handlers.onDrop(resolved, location.current.input.clientX, location.initial.input.clientX);
 				},
+			}),
+		);
+	}
+
+	/**
+	 * A bar's connector as a drag source. Carries no hold, no span and no ends: a link
+	 * claims no date, so there is nothing for a relative gesture to measure against.
+	 * The target half of a link is the ordinary `wireDropTarget`, called with
+	 * `kind: 'link'` — see that method.
+	 *
+	 * `onStart` is where the legal-target sweep happens — once, at drag start — and it is
+	 * wired to `onGenerateDragPreview`, not `onDragStart`. `onGenerateDragPreview` fires
+	 * SYNCHRONOUSLY as part of `dispatch.start`; `onDragStart` is scheduled a frame later
+	 * (`dragStart.schedule`, a plain `requestAnimationFrame` under the library's own
+	 * `raf-schd`) and is flushed early only by a drop target's OWN hierarchy change. That
+	 * distinction matters here only because THIS TEST HARNESS dispatches a whole gesture —
+	 * start, enter, over, drop — synchronously, in one tick with no frame in between:
+	 * every target's `canDrop` reads the state `onStart` is about to set, so under
+	 * `onDragStart` the sweep would run a frame after a synchronous test has already
+	 * asserted, never before it. In a live browser the deferred frame still fires on its
+	 * own a few milliseconds later regardless of what the pointer does next — there is no
+	 * deadlock in the library, only an ordering this harness's synchronous dispatch cannot
+	 * observe under the later hook.
+	 *
+	 * `el.addClass('is-active')` here is the library's own documented use of
+	 * `onGenerateDragPreview` — styling the element BECOMING the preview, before the
+	 * browser captures it. `hooks.onStart` (the legality sweep, `begin` in
+	 * `linkDrag.ts`) additionally mutates OTHER elements — the content box, other rows —
+	 * which is the case pragmatic's own docs caution against inside this specific hook,
+	 * since the browser may snapshot the native drag preview at the end of it and nothing
+	 * else is guaranteed to have painted first. Whether that snapshot actually looks wrong
+	 * in Obsidian is unverifiable here: jsdom renders nothing and generates no preview
+	 * image at all. That is a live-vault check this repository owes
+	 * (`docs/requirements/Smoke test the roadmap.md`), not one this suite can discharge —
+	 * say so rather than assert it is fine.
+	 *
+	 * `onEnd` fires from `onDrop`, however the drag ends, dropped or cancelled, so the
+	 * marking it put on the grid can never outlive the gesture.
+	 *
+	 * No `outsideFilter` guard, unlike {@link wireCard}: `renderConnector`'s own comment
+	 * states why one is unneeded there, and it is this function's caller — `deriveBars`
+	 * routes a context row away before a bar ever exists to hang a connector on, so this
+	 * is never reached with one.
+	 */
+	wireLinkSource(el: HTMLElement, item: BacklogItem, hooks: { onStart: () => void; onEnd: () => void }): void {
+		this.cleanups.push(
+			draggable({
+				element: el,
+				getInitialData: () => ({ file: item.file, kind: LINK_KIND, view: this.token }),
+				onGenerateDragPreview: () => {
+					el.addClass('is-active');
+					hooks.onStart();
+				},
+				onDrop: () => {
+					el.removeClass('is-active');
+					hooks.onEnd();
+				},
+			}),
+		);
+	}
+
+	/**
+	 * Where the pointer IS during a link drag, wherever it is — the gap between two bars
+	 * included, which is most of the grid and exactly where a preview line has to keep
+	 * drawing. A monitor rather than a target: there is no region here whose meaning is
+	 * being asked about, only a coordinate. Gated on the same private token, so a drag in
+	 * a split pane over the same notes never draws a line in this one.
+	 */
+	wireLinkPointer(handlers: { onDrag: (clientX: number, clientY: number) => void; onEnd: () => void }): void {
+		this.cleanups.push(
+			monitorForElements({
+				canMonitor: ({ source }) => this.mine(source.data, 'link'),
+				onDrag: ({ location }) => handlers.onDrag(location.current.input.clientX, location.current.input.clientY),
+				onDrop: () => handlers.onEnd(),
 			}),
 		);
 	}

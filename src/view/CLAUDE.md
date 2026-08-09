@@ -202,6 +202,19 @@ free of runtime code so imports stay cycle-free.
   `:has()` selector on a container invalidates whenever its subtree changes, and this
   one rebuilds on every data update. Obsidian's plugin review flags `:has` for the same
   reason. State CSS depends on belongs on the element, put there where the state changes.
+- **A row's activation asks whether the event began on the ROW, not on a control it
+  contains** — `fromRowControl` in `render/rows.ts`, asked by both wirings
+  (`wireRowEvents` for the tree, `wireCardActivation` for cards and timeline rows). It
+  replaced ten per-control `stopPropagation` calls, and the reason is the failure they
+  produced twice: opting out was the control's job to remember, and the dependency
+  connector and the bar grips both forgot, shipping handles that opened the note. Moving
+  the question to the receiver covers a control that forgets. `ROW_CONTROL` is `button`
+  plus three documented non-buttons (the tree's div chevron, `.pbl-bar-grip`, and a
+  property cell's `.pbl-prop-value` / `.pbl-tag`), which is what keeps it a rule rather
+  than a list of remembered places: the tab-stop rule below already requires every new
+  per-row control to be a real `<button>`, so one written tomorrow is covered without
+  editing the selector. `auxclick` asks separately because a middle click never fires
+  `click` — the reason every one of those per-control guards came in pairs.
 - Two tab-stop zones, and a control's element type follows from which one it is in.
   The **toolbar** is ordinary UI: every activatable control is a real `<button>`
   (`iconButton`, both clear buttons), so Tab reaches all of them. The **tree** is one
@@ -323,6 +336,16 @@ free of runtime code so imports stay cycle-free.
   takes what a drop MEANS as a callback — a column writes a state, a bucket writes a
   horizon, the shelf removes one — so the controller resolves the dragged card and never
   decides a write. Every target wears one drop-over class (`pbl-drop-over`).
+  **A payload names its note by the `TFile`, never by a path string**, and `resolve` is
+  the one place that matters because every drag — board, bucket, shelf, link — comes
+  through it. One field answers both questions a mid-drag refresh raises, because a
+  rename mutates the file in place while a deletion does not: `file.path` is therefore
+  always the CURRENT path and is the lookup key, and the file itself is then compared to
+  what that lookup returned. Both halves are load-bearing and they fail oppositely — a
+  path captured at drag start cancels a valid drop the moment the note is renamed, and a
+  lookup trusted without the comparison accepts a delete-and-recreate under the same name
+  and writes to a note nobody picked up. Same fact `src/storage/CLAUDE.md` leans on for
+  the dependency undo, used here for the other direction.
 - The whole column is the drop target and the highlight is the only drop signal —
   within-column order is derived from the Base's sort, so there is no between-cards
   edge, no hitbox package, and deliberately no Alt+Up/Down rank shortcut.
@@ -358,10 +381,8 @@ free of runtime code so imports stay cycle-free.
   impossible to get to. The links are `tabindex="-1"` buttons like every other per-row
   control, so the card MENU carries the same matches — that is their keyboard path, the
   same answer the tree gives for the add button and the state chip, and without it the
-  links would be pointer-only and the feature would fail at its own purpose. Each link
-  stops both its click AND its `auxclick` from reaching the card beneath: a middle click
-  never fires `click`, so stopping the primary one alone still opened the parent in a
-  new tab.
+  links would be pointer-only and the feature would fail at its own purpose. They need
+  no guard of their own against the card beneath — see the row-activation filter below.
 - The board is one tab stop and its shortcuts are invisible, so it carries hidden
   instructions (`.pbl-sr-only`, attached with `aria-describedby`). The id is minted by
   `uniqueElementId` because that attribute resolves across the whole document and two
