@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { syncBusy } from '../../src/view/render/toolbar';
 import { syncToolbarFit } from '../../src/view/render/toolbarFit';
@@ -41,6 +42,17 @@ const stubFlooredWidths = (bar: HTMLElement, pane: number, content: number) => {
 		configurable: true,
 	});
 };
+
+/**
+ * The SHIPPED rung rules, in the document, so a question about what a step hides is asked
+ * of `styles/toolbarFit.css` rather than of a copy of it. jsdom applies no stylesheet of
+ * its own but it does parse one it is given — `:not()` chains included — so
+ * `getComputedStyle(el).display` becomes a real answer, which is what
+ * `refocusShedControl` reads.
+ *
+ * In `head`, once for the module: `useViewHarness` empties the BODY between tests.
+ */
+document.head.createEl('style', { text: readFileSync('styles/toolbarFit.css', 'utf8') });
 
 const toolbarOf = (containerEl: HTMLElement) => {
 	const bar = containerEl.querySelector<HTMLElement>('.pbl-toolbar');
@@ -370,6 +382,62 @@ describe('the toolbar fit ladder', () => {
 	});
 
 	/**
+	 * A rung takes a control out of the layout, and the user may be standing on it. Before
+	 * this, narrowing the pane with focus on the ✨ dropped focus to the document and a
+	 * keyboard user had to start the row again — the filter escaped it only because it was
+	 * given three exceptions of its own across three rounds.
+	 *
+	 * Driven against the real stylesheet (see the `<style>` at the top of this file), so
+	 * "hidden" means what `styles/toolbarFit.css` says rather than what a list here says.
+	 */
+	it('moves focus to the ⋯ when the rung sheds the control that had it', () => {
+		const { containerEl } = makeView(fixture());
+		const bar = toolbarOf(containerEl);
+		const backfill = containerEl.querySelector<HTMLElement>('.pbl-write-ctl');
+		backfill?.focus();
+		expect(document.activeElement).toBe(backfill);
+
+		// Past the rung that sheds `.pbl-write-ctl`.
+		stubWidths(bar, 500, { '0': 980, '1': 860, '2': 690, '3': 600, '4': 540, '5': 480 });
+		syncToolbarFit(bar);
+
+		expect(bar.getAttribute('data-pbl-fit')).toBe('5');
+		expect(document.activeElement).toBe(containerEl.querySelector('.pbl-overflow-btn'));
+	});
+
+	/**
+	 * The other arm, and the focus picker is the case worth using for it: step 1 hides the
+	 * WORDS inside that button while the button itself survives every rung. A check that
+	 * looked at what had changed inside a control, rather than at the control, would move
+	 * focus here — and moving focus off a control that is still on the row is the same
+	 * defect as losing it from one that is not.
+	 */
+	it('leaves focus alone when the control that has it survives the rung', () => {
+		const { containerEl } = makeView(fixture());
+		const bar = toolbarOf(containerEl);
+		const focusBtn = containerEl.querySelector<HTMLElement>('.pbl-focus-btn');
+		focusBtn?.focus();
+		expect(document.activeElement).toBe(focusBtn);
+
+		stubWidths(bar, 500, { '0': 980, '1': 860, '2': 690, '3': 600, '4': 540, '5': 480 });
+		syncToolbarFit(bar);
+
+		expect(document.activeElement).toBe(focusBtn);
+	});
+
+	it('never reaches for focus that was outside this toolbar', () => {
+		const { containerEl } = makeView(fixture());
+		const bar = toolbarOf(containerEl);
+		const outside = treeOf(containerEl);
+		outside.focus();
+
+		stubWidths(bar, 500, { '0': 980, '1': 860, '2': 690, '3': 600, '4': 540, '5': 480 });
+		syncToolbarFit(bar);
+
+		expect(document.activeElement).toBe(outside);
+	});
+
+	/**
 	 * The busy indicator is the one readout with no rung: at the last rung it stays and
 	 * SHRINKS instead, because it is the only thing on the row saying a batch is running
 	 * while half the controls beside it are disabled because of that batch.
@@ -397,6 +465,41 @@ describe('the toolbar fit ladder', () => {
 	 * therefore "on the visibility transition, and on nothing between", and both halves
 	 * are asserted here: the second half is the one that would rot silently.
 	 */
+	/**
+	 * What makes skipping the ticks safe, and it is now a property of the markup rather
+	 * than of a reservation held over it: the DRAWN text is `Updating…` for every batch of
+	 * every size, so no tick can change the row's width. The count is in the label's
+	 * `title`, which costs no layout.
+	 *
+	 * Also the accessibility half, which is why the count is not in the text and not in
+	 * `aria-label`: `.pbl-busy` is `role="status"` with `aria-live="polite"`, so its
+	 * CONTENT is announced on every change. Per-tick text meant a 340-file backfill
+	 * announced 340 times. Fixed content is announced once. That the announcement is
+	 * actually made once is a screen-reader fact; what this holds is the thing underneath
+	 * it — the content does not change.
+	 */
+	it('never changes the drawn text between ticks, and moves the count into the title', () => {
+		const { containerEl } = makeView(fixture());
+		const bar = toolbarOf(containerEl);
+		const label = () => bar.querySelector<HTMLElement>('.pbl-busy-label');
+
+		syncBusy(bar, { done: 1, total: 340 }, false);
+		expect(label()?.textContent).toBe('Updating…');
+		expect(label()?.getAttribute('title')).toBe('Updating 1 of 340…');
+
+		syncBusy(bar, { done: 47, total: 340 }, false);
+		expect(label()?.textContent).toBe('Updating…');
+		expect(label()?.getAttribute('title')).toBe('Updating 47 of 340…');
+
+		// A single-file write is over before it could be read, so it carries no count at
+		// all — the rule the visible label used to keep, now kept by the only place a
+		// count appears.
+		syncBusy(bar, null, false);
+		syncBusy(bar, { done: 1, total: 1 }, false);
+		expect(label()?.textContent).toBe('Updating…');
+		expect(label()?.hasAttribute('title')).toBe(false);
+	});
+
 	it('re-runs when the busy indicator appears, and not on the ticks between', () => {
 		const { containerEl } = makeView(fixture());
 		const bar = toolbarOf(containerEl);
@@ -409,17 +512,9 @@ describe('the toolbar fit ladder', () => {
 		syncBusy(bar, { done: 1, total: 340 }, false);
 		expect(bar.getAttribute('data-pbl-fit')).toBe('1');
 
-		// The reservation is MEASURED from this batch's own longest label, not counted
-		// from it: `ch` is the advance of a "0" and bounds neither the letters nor the
-		// other digits in a proportional theme font. jsdom measures everything as 0, so
-		// what this can assert is that a pixel reservation was taken from the element
-		// rather than computed from the string — the width being *right* is a vault
-		// check, and it is on the checklist in Task 6.
-		const label = bar.querySelector<HTMLElement>('.pbl-busy-label');
-		expect(label?.style.getPropertyValue('--pbl-busy-w')).toMatch(/^\d+px$/);
-
 		// A tick. Even if the row claimed it had grown, nothing re-measures — which is
-		// only safe BECAUSE of the reservation above.
+		// safe because the width genuinely cannot change between transitions: the visible
+		// text is fixed, which is what the test below this one holds.
 		stubWidths(bar, 700, { '0': 900, '1': 880, '2': 860, '3': 840, '4': 820, '5': 800 });
 		syncBusy(bar, { done: 2, total: 340 }, false);
 		expect(bar.getAttribute('data-pbl-fit')).toBe('1');

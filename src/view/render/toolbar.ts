@@ -199,76 +199,56 @@ function renderBusyIndicator(barEl: HTMLElement): void {
 }
 
 /**
- * Reserve the box the widest label of THIS batch will need — by rendering that label and
- * reading what it actually took, not by counting its characters.
+ * The indicator's own half of `syncBusy`: the on/off flag, the fixed label, and the
+ * count. Reports whether the indicator's VISIBILITY changed, which after this design is
+ * the ONLY thing that can change the row's width — so it is the only thing worth
+ * re-measuring for, and the ladder's schedule follows from the markup rather than from a
+ * promise the markup has to be held to.
  *
- * Two things have to be true for this to be a bound, and only one of them is arithmetic.
+ * **The visible text never changes while a batch runs.** It is `Updating…` for every
+ * batch, of any size, and the count lives in the label's `title` instead. That is the
+ * whole mechanism now; what it replaced was a measured pixel reservation
+ * (`reserveBusyLabel`, `--pbl-busy-w`) that existed so a per-file text change could not
+ * move the row. Five defects came out of that one readout in a row — a stylesheet
+ * constant cannot bound `writes.length`; `N` `ch` does not bound an `N`-character string;
+ * the longest value is not the widest label without tabular figures; it had no rung, so
+ * it helped push the primary action off the edge; and the reservation went stale across a
+ * `css-change` mid-batch, because it was taken once at the transition while ticks
+ * deliberately skip refits. Every one was right, and together they said the design was
+ * wrong: a measurement, a reservation, a font-feature dependency and a refit schedule,
+ * all so one advisory readout would not move. A label that cannot change cannot move.
  *
- * **The longest VALUE is `total`**: it is fixed for the life of a batch while `done` only
- * climbs toward it, so `Updating {total} of {total}…` has the most characters any tick can
- * show. That much is free.
+ * **The count is in `title`, NOT in the text and NOT in `aria-label`, and that is the
+ * non-obvious part.** `.pbl-busy` is `role="status"` with `aria-live="polite"`, so its
+ * CONTENT is announced whenever it changes — which the old per-tick label meant a
+ * three-hundred-file backfill was announced three hundred times. A per-tick `aria-label`
+ * would be the same defect wearing a different attribute. Fixed content is announced
+ * once, when the batch starts, which is the one thing worth saying.
  *
- * **The longest value is not automatically the WIDEST**, and that is the trap this has
- * fallen into twice. Counting `ch` was wrong because `ch` is the advance of a "0" and
- * bounds neither the letters nor the other digits. Measuring the longest value is wrong
- * for a subtler reason: in a proportional face `Updating 88 of 111…` can draw wider than
- * `Updating 111 of 111…`, because 8 is wider than 1 — same digit count, more pixels. So
- * the measurement needs the digits to be equal-width before it means anything, which is
- * what `font-variant-numeric: tabular-nums` on `.pbl-busy-label` buys: with tabular
- * figures every digit has one advance, the widest label really is the one with the most
- * digits, and measuring it bounds every tick.
+ * The `title` goes on the LABEL SPAN rather than on `.pbl-busy` itself: `title` is the
+ * last-resort source for an accessible NAME, so on the status element it would make the
+ * region's own name change per file — the announcement problem again, one level up. A
+ * descendant's `title` names nothing above it.
  *
- * The residual, stated rather than papered over: a theme font with no tabular figures
- * makes that property a no-op, and the reservation can then be a few pixels short of some
- * intermediate value. What that costs is a few clipped pixels at the extreme right of a
- * near-threshold row, mid-batch, until the batch ends — which is why it is accepted here
- * rather than answered by measuring all ten digits and composing a bound.
- *
- * One forced layout read, once per batch, on the transition that already re-runs the
- * ladder — not once per file, which is the cost this whole mechanism exists to avoid.
- *
- * Published as `--pbl-busy-w` rather than written as `min-width`, which is this
- * codebase's idiom for a number TypeScript owns and CSS reads (`--pbl-prop-col`,
- * `--pbl-today-left`) and what the Obsidian ruleset requires: a real property assigned
- * from script is a style a theme cannot reach.
- */
-function reserveBusyLabel(labelEl: HTMLElement, total: number): void {
-	const longest = total > 1 ? `Updating ${total} of ${total}…` : 'Updating…';
-	labelEl.setCssProps({ '--pbl-busy-w': '0px' });
-	labelEl.setText(longest);
-	// `Math.ceil`, because a fractional advance rounds down into a box one pixel short.
-	const px = Math.ceil(labelEl.getBoundingClientRect().width);
-	labelEl.setCssProps({ '--pbl-busy-w': `${px}px` });
-}
-
-/**
- * The indicator's own half of `syncBusy`: the on/off flag, the tick's text, and the
- * width reservation that keeps the ticks between two transitions from moving the row.
- * Reports whether the indicator's VISIBILITY changed, which is the only thing the row's
- * width depends on and so the only thing worth re-measuring for.
+ * A raw `title` attribute rather than this codebase's usual `setTooltip`, deliberately:
+ * `setTooltip` attaches Obsidian's hover handling on every call and has set `aria-label`
+ * in some versions, which is the one attribute this must not touch. The native attribute
+ * is a string write, costs no layout, and shows on hover without a listener.
  */
 function syncBusyLabel(el: HTMLElement, busy: BusyState | null): boolean {
 	// Captured before the toggle: the ladder re-runs on idle→busy and busy→idle, which
 	// happen twice per batch, and NOT on the ticks between them. `scrollWidth` is a
 	// forced layout read, so measuring per file would put back a cost of the same shape
-	// as the per-file re-render the deferred update removed. What makes that safe is the
-	// reservation taken on the SAME transition, three lines down.
+	// as the per-file re-render the deferred update removed.
 	const wasOn = el.hasClass('pbl-busy-on');
 	el.toggleClass('pbl-busy-on', busy !== null);
-	// A single-file write is over before it could be read; naming a count only
-	// when there is a count to name keeps the label honest either way.
-	const label = busy && busy.total > 1 ? `Updating ${busy.done} of ${busy.total}…` : 'Updating…';
 	const labelEl = el.querySelector<HTMLElement>('.pbl-busy-label');
-	const changed = wasOn !== (busy !== null);
-	// Reserve BEFORE writing the tick's own text: `reserveBusyLabel` renders the
-	// longest form to measure it, so the real text has to be set afterwards or the
-	// measurement is what the user reads.
-	if (changed && busy && labelEl) reserveBusyLabel(labelEl, busy.total);
-	labelEl?.setText(busy ? label : '');
-	// The row gives the reservation back when the batch ends, or the next idle toolbar
-	// is measured carrying a box for a label it is not showing.
-	if (changed && !busy) labelEl?.setCssProps({ '--pbl-busy-w': '0px' });
-	return changed;
+	labelEl?.setText(busy ? 'Updating…' : '');
+	// A single-file write is over before it could be read, so it gets no count — the same
+	// rule the visible label used to carry, now applied to the only place a count appears.
+	if (busy && busy.total > 1) labelEl?.setAttribute('title', `Updating ${busy.done} of ${busy.total}…`);
+	else labelEl?.removeAttribute('title');
+	return wasOn !== (busy !== null);
 }
 
 /**

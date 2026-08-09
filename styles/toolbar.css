@@ -217,19 +217,6 @@
 	}
 }
 
-/* Reserved rather than fitted: the text changes once per file while a batch runs, and
-   `syncBusy` deliberately re-renders nothing, so a box that grew with the count would
-   move the row on ticks nothing re-measures. The WIDTH is set per batch by `syncBusy` —
-   see there for why it cannot be a constant.
-
-   `tabular-nums` is load-bearing, not typography: it is what makes the digits equal-width,
-   and therefore what makes "the label with the most digits is the widest label" true. */
-.pbl-busy-label {
-	display: inline-block;
-	min-width: var(--pbl-busy-w, 0);
-	font-variant-numeric: tabular-nums;
-}
-
 .pbl-busy-spinner,
 .pbl-loading-spinner {
 	display: inline-flex;

@@ -63,6 +63,38 @@ const LAST_STEP = 5;
  * browser does, which is what makes subtracting from the client box fail a test rather
  * than a vault.
  */
+/**
+ * A rung sheds a control by taking it out of the layout, and a keyboard user may be
+ * STANDING on it — narrow the pane while focus is on the density toggle, jump-to-today,
+ * the ✨ or either bulk collapse control and the button under the cursor stops existing,
+ * dropping focus to the document. The filter survived this only because it was given its
+ * own exception, three times over; these never had one.
+ *
+ * Fixed here, once, where the step changes, rather than per control or as five more CSS
+ * exceptions — a rung added later inherits it without knowing it exists.
+ *
+ * The destination is the `⋯`, and it is the right one rather than a convenient one: the
+ * overflow menu is exactly where a shed control's command went, so focus follows the
+ * command it was on. It is rendered from step 2, which is where shedding of anything
+ * FOCUSABLE begins — step 1 hides only `.pbl-btn-label` spans, which take no focus — so
+ * it is always there when this fires.
+ *
+ * `display` is asked of the element itself, with no list of which classes each rung
+ * sheds: the stylesheet already holds that and a copy in TypeScript is the table this
+ * codebase keeps having to un-write. It works because every rung targets the focusable
+ * element DIRECTLY. A future rung that hid a container instead would need
+ * `checkVisibility`/`offsetParent` and this comment is where that would have to change —
+ * both read as hidden for everything in jsdom, which is why the cheap check is also the
+ * testable one. `test/view/toolbarFit.test.ts` drives this by loading the real
+ * `styles/toolbarFit.css` into the document, so what it asks is the shipped rule.
+ */
+function refocusShedControl(barEl: HTMLElement): void {
+	const active = document.activeElement;
+	if (!(active instanceof HTMLElement) || !barEl.contains(active)) return;
+	if (getComputedStyle(active).display !== 'none') return;
+	barEl.querySelector<HTMLElement>('.pbl-overflow-btn')?.focus({ preventScroll: true });
+}
+
 export function syncToolbarFit(barEl: HTMLElement): boolean {
 	const before = barEl.getAttribute(FIT_ATTR);
 	const width = barEl.clientWidth;
@@ -76,5 +108,10 @@ export function syncToolbarFit(barEl: HTMLElement): boolean {
 		step += 1;
 		barEl.setAttribute(FIT_ATTR, String(step));
 	}
-	return barEl.getAttribute(FIT_ATTR) !== before;
+	const changed = barEl.getAttribute(FIT_ATTR) !== before;
+	// Only on a change: nothing newly disappeared when the step stayed put, and a
+	// no-op that walks to `document.activeElement` on every resize tick is a cost for
+	// nothing.
+	if (changed) refocusShedControl(barEl);
+	return changed;
 }

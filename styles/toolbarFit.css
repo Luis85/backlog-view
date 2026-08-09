@@ -144,35 +144,31 @@
 /* The busy indicator is the one readout with no rung, and it must not get one: it is the
    only thing on the row saying a batch is in flight, and half the controls beside it are
    `disabled` BECAUSE of that batch — hiding it turns a legible pause into a dead toolbar.
-   So it truncates instead. `role="status"` and `aria-live` are on the element itself, so
-   what a screen reader is told is the full text either way; what shrinks is only what is
-   drawn, and `Updating 12 of…` still says the true thing.
+   So it truncates instead.
 
-   Only at the LAST rung, and that scoping is the whole design rather than caution. A
-   shrinkable flex item absorbs overflow by getting narrower instead of pushing
-   `scrollWidth` past `clientWidth` — the exact defeat of the instrument this file warns
-   about at the top, under the non-shrinking rule. Shrinkable at every rung, this readout
-   would squash to nothing at 900px while the labels that step 1 exists to drop stayed
-   whole, and the ladder would read "fits" throughout. At the last rung the ladder has
-   nothing left to shed, so there is no verdict left to corrupt: the only question there
-   is what absorbs the overflow, and a truncating readout is a better answer than a
-   control pushed off the end.
+   Its text is fixed (`Updating…` for every batch, the count in a `title` — see
+   `syncBusyLabel`), so this is a small box rather than the wide reserved one the earlier
+   design needed, and the honest question became whether it needs a rule at all. It does,
+   for one reason: the rule stated at steps 4 and 5 above is that no readout ever pushes
+   the primary action off the row, and this is a readout that neither rung sheds. Four
+   lines keep that sentence true by construction; without them it becomes a sentence with
+   a documented exception, which is the kind this file has already had to rewrite twice.
 
-   `min-width: 0` twice, and the second one is not redundant. The first is the flex rule
-   (an item will not shrink below its content unless told); the second releases
-   `--pbl-busy-w`, the per-batch reservation `syncBusy` measures and writes onto the
-   label. That reservation exists to stop the row moving on ticks nothing re-measures —
-   a stability the last rung has already lost to clipping — and left in place it would
-   floor the shrink and make this rule a no-op. */
+   `role="status"` and `aria-live` are on the element itself and the count is in a
+   `title`, so nothing a reader is told depends on how much of this is drawn.
+
+   Only at the LAST rung, and that scoping is the design rather than caution. A shrinkable
+   flex item absorbs overflow by getting narrower instead of pushing `scrollWidth` past
+   `clientWidth` — the exact defeat of the instrument this file warns about at the top,
+   under the non-shrinking rule. Shrinkable at every rung, this readout would squash while
+   the labels step 1 exists to drop stayed whole, and the ladder would read "fits"
+   throughout. At the last rung the ladder has nothing left to shed, so there is no
+   verdict left to corrupt: the only question there is what absorbs the overflow, and a
+   truncating readout is a better answer than a control pushed off the end. */
 .pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']):not([data-pbl-fit='2']):not([data-pbl-fit='3']):not([data-pbl-fit='4'])
 	.pbl-busy {
 	flex: 0 1 auto;
 	min-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
-}
-
-.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']):not([data-pbl-fit='2']):not([data-pbl-fit='3']):not([data-pbl-fit='4'])
-	.pbl-busy-label {
-	min-width: 0;
 }

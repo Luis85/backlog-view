@@ -187,12 +187,13 @@ export default defineConfig({
 			// to new decimals (94.3, 99.5, 99.4) and move.
 			//
 			// The fit-ladder increment (task 4 of the same plan: `toolbarFit.ts`, the
-			// filter's reveal and its blur, the busy indicator's measured width
-			// reservation, plus the review rounds' two lower rungs, the `css-change` refit
-			// and the clip container — the padding correction the first round added was
-			// reverted by the second, see `syncToolbarFit`; the third moved the
-			// never-collapse-a-focused-filter rule to one focus listener and one release in
-			// `syncFilterUi`) measured 98.26/94.41/99.52/99.42. Only branches rounds down to a new decimal and
+			// filter's reveal and its blur, the two lower rungs, the `css-change` refit,
+			// the clip container, the never-collapse-a-focused-filter rule and the
+			// shed-control refocus) measured 98.26/94.40/99.52/99.42. Two things the
+			// review rounds REMOVED are worth knowing about, since both took covered
+			// branches with them and the figure held anyway: the padding correction (see
+			// `syncToolbarFit`) and the busy indicator's whole measured width reservation,
+			// replaced by a label that cannot change (see `syncBusyLabel`). Only branches rounds down to a new decimal and
 			// moves; the other three repeat the figures above. The branches gained are the
 			// ladder's own — the zero-width refusal, the reveal versus the rebuild, the
 			// blur's two answers and the theme change — each driven rather than
