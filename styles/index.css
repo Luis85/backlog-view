@@ -22,7 +22,7 @@
 
    `@keyframes` are global and `pbl-`-prefixed, so nothing collides wherever they are
    defined. They stay with their first user (`pbl-busy-in` and `pbl-spin` in
-   `toolbar.css`, `pbl-pending-pulse` in `tree.css`, `pbl-expand-nudge` in
+   `busy.css`, `pbl-pending-pulse` in `tree.css`, `pbl-expand-nudge` in
    `dragDrop.css`) rather than being hoisted into a partial of their own: a keyframes
    file would be one more place to look for four rules and would still not tell you
    who animates with them.
@@ -38,6 +38,9 @@
    overridden here, which made a rule that stated the opposite of the guarantee correct
    only by import order, so it was deleted rather than beaten. */
 @import "./toolbarFit.css";
+/* Position NOT load-bearing — see the partial's own header. It came out of `toolbar.css`
+   at the 400-line cap and sits here because that is where its rules were. */
+@import "./busy.css";
 @import "./tree.css";
 @import "./columns.css";
 @import "./badges.css";

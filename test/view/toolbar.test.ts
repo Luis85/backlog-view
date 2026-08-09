@@ -375,7 +375,8 @@ describe('long operations stay legible and non-blocking', () => {
 	}
 
 	/**
-	 * The count, which is no longer the drawn text: the label reads `Updating…` for every
+	 * The count as the TITLE carries it — the visible counter is `aria-hidden`, so this is
+	 * the form a screen reader can still reach. The label reads one of two words for every
 	 * batch of any size so that no tick can change the row's width, and the per-file
 	 * number lives in the label's `title`. `null` when the indicator is off or the batch
 	 * carries no count. See `syncBusyLabel`.
@@ -420,9 +421,12 @@ describe('long operations stay legible and non-blocking', () => {
 		// so it reads one behind: the point is that it counts up per file and that
 		// the total is known from the start.
 		expect(seen).toEqual(['Updating 0 of 4…', 'Updating 1 of 4…', 'Updating 2 of 4…', 'Updating 3 of 4…']);
-		// …while the DRAWN text never moved, which is what lets the fit ladder skip
-		// every tick between the two transitions: one value, four files.
-		expect([...drawn]).toEqual(['Updating…']);
+		// …while the LABEL never moved. The count beside it does move — that is the
+		// point of it — and what stops a moving count moving the ROW is the reservation
+		// asserted in `toolbarFit.test.ts`, not this line. What this holds is that the
+		// constant part is constant: the label is chosen from the batch's SIZE, which no
+		// tick changes.
+		expect([...drawn]).toEqual(['Updating']);
 		// The indicator belongs to the batch, not to the view.
 		expect(busyLabel(containerEl)).toBeNull();
 	});
@@ -442,11 +446,11 @@ describe('long operations stay legible and non-blocking', () => {
 		key(tree, 'ArrowUp', { altKey: true });
 		await flush();
 
+		// A single-file write keeps the ellipsis, because nothing follows it to read as
+		// the continuation — which is also the one thing the label alone can say about
+		// batch size. The count's ABSENCE is the check that matters, though: it is what
+		// stays true if that styling choice is ever revisited.
 		expect(seen).toEqual(['Updating…']);
-		// The drawn text is `Updating…` for every batch now, so the label alone can no
-		// longer tell a single-file write from a counted one — the count's ABSENCE from
-		// the title is what says it, and asserting only the text would have gone quietly
-		// tautological when the count moved.
 		expect(counts).toEqual([null]);
 	});
 

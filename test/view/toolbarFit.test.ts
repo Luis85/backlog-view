@@ -514,6 +514,40 @@ describe('the toolbar fit ladder', () => {
 	});
 
 	/**
+	 * Two positions in the row are load-bearing, and both are about the CLIP rather than
+	 * about looks — so they are asserted here, beside the ladder, rather than in the
+	 * toolbar's own file where they would read as layout preference.
+	 *
+	 * The row clips from its right end past the last rung. New leads it, which is what
+	 * makes "nothing costs the primary action its place" true by arrangement; a rung order
+	 * could never deliver it, because a rung buys one control's width and the overflow
+	 * resumes from the right. And the `⋯` sits at the head of the right-hand block rather
+	 * than among the write controls, because it is the only route to every shed control:
+	 * measured at 380px it was the FIRST thing cut when it sat last.
+	 *
+	 * Asserted as relative order, not as indices — an index breaks on the next separator
+	 * added and says nothing about why.
+	 */
+	it('leads with New and keeps the overflow button ahead of the clip edge', () => {
+		const { containerEl } = makeView(fixture());
+		const bar = toolbarOf(containerEl);
+		const at = (sel: string) => [...bar.children].findIndex((c) => c.matches(sel) || !!c.querySelector(sel));
+		const New = at('.pbl-new');
+		const overflow = at('.pbl-overflow-btn');
+		const undo = at('.pbl-undo-btn');
+		const count = at('.pbl-count-label');
+		expect([New, overflow, undo, count].every((i) => i >= 0)).toBe(true);
+
+		// Nothing at all before the primary action.
+		expect(New).toBe(0);
+		// The escape hatch is upstream of every control it can stand in for, so the clip
+		// reaches those first. Undo is the nearest of them and the one measured being cut.
+		expect(overflow).toBeLessThan(undo);
+		// …and the readouts are downstream of everything, which is what the rungs assume.
+		expect(count).toBeGreaterThan(undo);
+	});
+
+	/**
 	 * The switcher's words go a rung before every other label, and that ORDER is the
 	 * claim — not that each is shed somewhere. Its four labels are 205px, more than the
 	 * rest of the row's words together, and they name positions its icons already draw
@@ -629,38 +663,69 @@ describe('the toolbar fit ladder', () => {
 	 * are asserted here: the second half is the one that would rot silently.
 	 */
 	/**
-	 * What makes skipping the ticks safe, and it is now a property of the markup rather
-	 * than of a reservation held over it: the DRAWN text is `Updating…` for every batch of
-	 * every size, so no tick can change the row's width. The count is in the label's
-	 * `title`, which costs no layout.
+	 * What makes skipping the ticks safe. The count is visible again, so it is no longer
+	 * "the drawn text cannot change" — it is that the part which changes cannot change
+	 * WIDTH. The done number is reserved to the digit count of the TOTAL, which is fixed
+	 * for the whole batch, so 1 and 340 occupy one box.
 	 *
-	 * Also the accessibility half, which is why the count is not in the text and not in
-	 * `aria-label`: `.pbl-busy` is `role="status"` with `aria-live="polite"`, so its
-	 * CONTENT is announced on every change. Per-tick text meant a 340-file backfill
-	 * announced 340 times. Fixed content is announced once. That the announcement is
-	 * actually made once is a screen-reader fact; what this holds is the thing underneath
-	 * it — the content does not change.
+	 * jsdom lays nothing out, so this asserts the reservation rather than the width: the
+	 * `min-width` is present from the first tick, it is the total's digit count, and it
+	 * does not move as the done value gains digits. That the reservation actually HOLDS
+	 * rests on `tabular-nums` making every digit one `ch` wide, which only a browser can
+	 * show — it is on the vault list.
+	 *
+	 * The label is asserted constant beside it, because the reservation covers the
+	 * number and nothing else: a label that changed per tick would move the row with the
+	 * count sitting perfectly still.
 	 */
-	it('never changes the drawn text between ticks, and moves the count into the title', () => {
+	it('reserves the count to the total, so no tick can change the row\'s width', () => {
 		const { containerEl } = makeView(fixture());
 		const bar = toolbarOf(containerEl);
 		const label = () => bar.querySelector<HTMLElement>('.pbl-busy-label');
+		const done = () => bar.querySelector<HTMLElement>('.pbl-busy-done');
 
 		syncBusy(bar, { done: 1, total: 340 }, false);
-		expect(label()?.textContent).toBe('Updating…');
+		expect(label()?.textContent).toBe('Updating');
+		expect(done()?.textContent).toBe('1');
+		expect(done()?.style.getPropertyValue('--pbl-busy-digits')).toBe('3ch');
 		expect(label()?.getAttribute('title')).toBe('Updating 1 of 340…');
 
-		syncBusy(bar, { done: 47, total: 340 }, false);
-		expect(label()?.textContent).toBe('Updating…');
-		expect(label()?.getAttribute('title')).toBe('Updating 47 of 340…');
+		// Three digits where there was one: the number grows into the reservation rather
+		// than past it, and the label is still the same string.
+		syncBusy(bar, { done: 340, total: 340 }, false);
+		expect(label()?.textContent).toBe('Updating');
+		expect(done()?.textContent).toBe('340');
+		expect(done()?.style.getPropertyValue('--pbl-busy-digits')).toBe('3ch');
 
 		// A single-file write is over before it could be read, so it carries no count at
-		// all — the rule the visible label used to keep, now kept by the only place a
-		// count appears.
+		// all — and the label wears the ellipsis instead, which is the only thing left
+		// that distinguishes the two.
 		syncBusy(bar, null, false);
 		syncBusy(bar, { done: 1, total: 1 }, false);
 		expect(label()?.textContent).toBe('Updating…');
+		expect(done()?.textContent).toBe('');
 		expect(label()?.hasAttribute('title')).toBe(false);
+	});
+
+	/**
+	 * The counter is inside a `role="status"` region and must not be announced from
+	 * there — the whole reason the count was taken OUT of the text once already. The
+	 * mechanism is `aria-hidden` on the counter, so that is what is asserted; whether a
+	 * screen reader then stays quiet through 340 mutations is a screen-reader fact and is
+	 * on the vault list, exactly like the claim it replaces.
+	 */
+	it('keeps the visible counter out of the live region', () => {
+		const { containerEl } = makeView(fixture());
+		const bar = toolbarOf(containerEl);
+		const busy = bar.querySelector<HTMLElement>('.pbl-busy');
+		const count = bar.querySelector<HTMLElement>('.pbl-busy-count');
+
+		expect(busy?.getAttribute('role')).toBe('status');
+		expect(busy?.getAttribute('aria-live')).toBe('polite');
+		// On the COUNTER, not on the label beside it: the label is the sentence that
+		// should still be announced once when the batch starts.
+		expect(count?.getAttribute('aria-hidden')).toBe('true');
+		expect(bar.querySelector('.pbl-busy-label')?.hasAttribute('aria-hidden')).toBe(false);
 	});
 
 	/**

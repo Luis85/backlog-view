@@ -1,0 +1,92 @@
+/* The write-in-flight indicator and the first-load spinner — `renderBusyIndicator` and
+   the loading state in `src/view/render/toolbar.ts`.
+
+   Its own partial because `toolbar.css` reached the 400-line cap, and of everything in
+   that file this is the one block that is about a STATE the view passes through rather
+   than about a control the row draws. The two spinners share a keyframe and a colour and
+   are drawn by one rule, which is the test of whether a split is along a real seam.
+
+   Position in `index.css` is not load-bearing: nothing here shares a selector with
+   another partial. `toolbarFit.css`'s last rung does reach `.pbl-busy`, and wins on
+   specificity (`[data-pbl-fit]` plus four `:not()`s) rather than on order.
+
+   `@keyframes` are global and `pbl-`-prefixed, so `pbl-busy-in` and `pbl-spin` travel
+   with their users exactly as `index.css` says they should. */
+
+/* Write-in-flight indicator. Held back by an animation delay so a single-file
+   write — the common case — finishes before it would ever appear, and only a
+   batch long enough to be worth reporting actually shows up. */
+.pbl-busy {
+	display: none;
+	align-items: center;
+	gap: var(--size-2-1);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	padding-inline-end: var(--size-4-1);
+}
+
+.pbl-busy.pbl-busy-on {
+	display: inline-flex;
+	animation: pbl-busy-in 120ms ease-out 250ms both;
+}
+
+@keyframes pbl-busy-in {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+/* The count is the only part of this readout that changes while a batch runs, and the
+   reservation below is what stops it changing the row's WIDTH while it does. Tabular
+   figures are what make the `ch` exact rather than approximate: `ch` is the advance of
+   "0", and with `tabular-nums` every digit has that same advance, so a `min-width` of
+   `digits(total)ch` holds for every value from 1 to the total. `inline-block` because
+   `min-width` does not apply to an inline box, and `text-align: right` so the number
+   grows leftwards into its reservation instead of pushing " of N" sideways. */
+.pbl-busy-count {
+	font-variant-numeric: tabular-nums;
+}
+
+.pbl-busy-done {
+	display: inline-block;
+	text-align: right;
+	min-width: var(--pbl-busy-digits, 0);
+}
+
+.pbl-busy-spinner,
+.pbl-loading-spinner {
+	display: inline-flex;
+	align-items: center;
+	color: var(--text-accent);
+	animation: pbl-spin 900ms linear infinite;
+}
+
+.pbl-busy-spinner .svg-icon {
+	width: 12px;
+	height: 12px;
+}
+
+@keyframes pbl-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+/* Before the first result set arrives — an empty pane reads as a broken view */
+.pbl-loading {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--size-4-2);
+	padding: var(--size-4-8) var(--size-4-4);
+	color: var(--text-faint);
+	font-size: var(--font-ui-small);
+}
+
+.pbl-loading-spinner .svg-icon {
+	width: 24px;
+	height: 24px;
+}

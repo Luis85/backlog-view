@@ -154,6 +154,13 @@
    silent at exactly the widths where the row is under most pressure. It shrinks at the
    last rung instead, with the busy indicator at the foot of this file.
 
+   The divider between the advisories and the count goes at step 4 WITH the advisories,
+   not at step 5 with the count — the opposite pairing to `.pbl-status-sep` below, and for
+   the same rule read the other way round. A divider belongs to the boundary it draws: this
+   one separates two readouts, so it dies with the first of them, while the status
+   separator introduces the whole zone and dies with the last. Pair either one wrongly and
+   there is a rung where a line divides nothing from something.
+
    Step 5 is the count, one rung LOWER because it is the readout most worth keeping: it
    is the only thing on the row that says how much is in front of you, and it is short.
    Its level breakdown is a tooltip, which goes with it — the same cost step 4 pays, for
@@ -170,7 +177,8 @@
    two writers. Neither buys anything a reader loses: a divider is not what tells you a
    batch is running or that the view is misconfigured — the indicator and the warning say
    that themselves, and at the last rung they sit against the write zone without one. */
-.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']):not([data-pbl-fit='2']):not([data-pbl-fit='3']) .pbl-toolbar-note {
+.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']):not([data-pbl-fit='2']):not([data-pbl-fit='3']) .pbl-toolbar-note,
+.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']):not([data-pbl-fit='2']):not([data-pbl-fit='3']) .pbl-count-sep {
 	display: none;
 }
 
