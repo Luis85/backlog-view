@@ -514,6 +514,32 @@ describe('the toolbar fit ladder', () => {
 	});
 
 	/**
+	 * A divider is drawn only where there is a boundary to draw, and the common case is
+	 * the one that gets this wrong: all three advisories are conditional, so an ordinary
+	 * view renders none of them and an unconditional count divider lands directly against
+	 * the status separator above it — two rules with a gap between and nothing between
+	 * them. Decided from what was DRAWN, the way the projection zone's own emptiness is.
+	 *
+	 * Both directions, because the presence case alone passes against an unconditional
+	 * divider and the absence case alone passes against never drawing one.
+	 */
+	it('draws the count divider only when an advisory precedes it', () => {
+		// The plain fixture configures its properties and skips no notes, so nothing in
+		// the status zone renders but the count itself.
+		const plain = makeView(fixture()).containerEl;
+		expect(toolbarOf(plain).querySelector('.pbl-toolbar-note')).toBeNull();
+		expect(toolbarOf(plain).querySelector('.pbl-config-warning')).toBeNull();
+		expect(toolbarOf(plain).querySelector('.pbl-count-sep')).toBeNull();
+
+		// An unresolvable order property is the cheapest advisory to provoke: it puts the
+		// config warning in the zone, which is a readout the count now has to be told
+		// apart from.
+		const warned = makeView(fixture(), { orderProperty: 'note.parent' }).containerEl;
+		expect(toolbarOf(warned).querySelector('.pbl-config-warning')).not.toBeNull();
+		expect(toolbarOf(warned).querySelector('.pbl-count-sep')).not.toBeNull();
+	});
+
+	/**
 	 * Two positions in the row are load-bearing, and both are about the CLIP rather than
 	 * about looks — so they are asserted here, beside the ladder, rather than in the
 	 * toolbar's own file where they would read as layout preference.

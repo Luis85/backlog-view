@@ -114,7 +114,13 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	// of New. See `styles/toolbarFit.css`.
 	barEl.createDiv({ cls: 'pbl-toolbar-sep pbl-status-sep' });
 
-	// 6 — status: the notes, the warning, the count.
+	// 6 — status: the notes, the warning, the count. All three advisories are
+	// CONDITIONAL, which is why the count's divider below is decided from what was drawn
+	// rather than written unconditionally: on an ordinary view none of them renders, and
+	// an unconditional divider would sit directly against the one above it — two rules
+	// with a gap between them and nothing to divide. Same rule as
+	// `renderProjectionZone`'s empty zone, asked the same way.
+	const beforeAdvisories = barEl.childElementCount;
 	if (host.groupingIgnored) {
 		const note = barEl.createDiv({ cls: 'pbl-toolbar-note pbl-grouping-note' });
 		setIcon(note.createSpan({ cls: 'pbl-toolbar-note-icon' }), 'info');
@@ -136,8 +142,11 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	// nothing between them "1 note ignored" and "28 items" read as one sentence. They are
 	// two: an aside about notes this base skipped, and the population in front of you.
 	// This divider sheds with the ADVISORIES at step 4, not with the count at step 5 —
-	// see `styles/toolbarFit.css` — so it never outlives the thing it divides from.
-	barEl.createDiv({ cls: 'pbl-toolbar-sep pbl-count-sep' });
+	// see `styles/toolbarFit.css` — so it never outlives the thing it divides from, and
+	// it is not drawn at all when there was no advisory to divide from in the first place.
+	if (barEl.childElementCount > beforeAdvisories) {
+		barEl.createDiv({ cls: 'pbl-toolbar-sep pbl-count-sep' });
+	}
 	// This projection's own population — `countedPopulation`, the same one
 	// `syncCountLabel` and `renderCompletedToggle` read — never the Base's raw results:
 	// the requirements board excludes Deliverables and the Deliverables board counts

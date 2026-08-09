@@ -57,7 +57,11 @@ today's icon size, add up to.
    Each divider sheds with the boundary it draws, which is why the two go at different
    rungs: the one between the advisories and the count dies with the advisories, the one
    introducing the whole status zone dies with the last thing in it. Pair either the other
-   way and there is a rung where a line divides nothing from something.
+   way and there is a rung where a line divides nothing from something. The advisories are
+   all conditional, so the same question is asked once more at RENDER time — the count's
+   divider is drawn only when one of them was actually drawn, decided from the DOM the way
+   `renderProjectionZone`'s empty zone is, since on an ordinary view none of them renders
+   and an unconditional divider would sit straight against the one above it.
 
    The switcher leads that order because its words are the most expensive and the least
    informative: 205px of the row against every other label put together, naming positions
