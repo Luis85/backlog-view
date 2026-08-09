@@ -23,14 +23,14 @@ const STORE_KEY = 'product-backlog:collapse';
  * grow the entry without bound. Collapsed keys are kept first: an expanded entry only
  * suppresses the default, while a collapsed one is visible state.
  *
- * A key is a note path under one scope, and a parent settles under both (the tree's and
- * the dated axis's — see `view/collapseState.ts`), so this is twice the note count it
- * bounds. It was doubled with the second scope for exactly that reason: leaving it at
- * 4000 would have halved the headroom in NOTES this has always promised, and the first
- * thing lost at saturation is the expanded keys, which read back as rows the user opened
- * and found shut again.
+ * A key is a note path under one scope, and a parent settles under every scope it has
+ * (the tree's, the dated axis's and a card's own — see `view/collapseState.ts`), so this
+ * is up to three times the note count it bounds. It has grown with each scope added for
+ * exactly that reason: leaving it at a lower multiple would quietly halve the headroom in
+ * NOTES this has always promised, and the first thing lost at saturation is the expanded
+ * keys, which read back as rows the user opened and found shut again.
  */
-const MAX_PATHS = 8000;
+const MAX_PATHS = 12000;
 
 /** The value the `mode` field holds while the view is a board. */
 export const BOARD_MODE = 'board';

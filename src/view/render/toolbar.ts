@@ -35,22 +35,41 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	const refocusKey = capturedFocusKey(barEl);
 	barEl.empty();
 
-	// 1 — where am I. The switcher leads: it is the control that says what the rest of
-	// the row is about.
+	// 1 — what you came to do. The primary action leads the row: it is the one control
+	// here that ADDS to the backlog, and reading order is where a primary action belongs.
+	// It also settles what no rung could: New is no longer last, so the clip at a very
+	// narrow pane takes a readout instead of the button — see
+	// `docs/requirements/A toolbar that fits one row.md`, extension 4b.
+	renderNewButton(host, barEl, model);
+	// Two groups side by side read as one six-segment strip without this.
+	barEl.createDiv({ cls: 'pbl-toolbar-sep' });
+
+	// 2 — where am I. The switcher says what the rest of the row is about.
 	renderModeToggle(host, barEl);
 
-	// 2 — what THIS projection owns, and nothing when it owns none. Draws its own
+	// 3 — what THIS projection owns, and nothing when it owns none. Draws its own
 	// leading separator, or neither.
 	renderProjectionZone(host, barEl);
 
 	barEl.createDiv({ cls: 'pbl-toolbar-spacer' });
 
-	// 3 — what is shown. The same controls in every projection.
+	// 4 — what is shown. The same controls in every projection.
+	//
+	// The `⋯` leads them, and that IS load-bearing now, where its old placement beside
+	// undo was explicitly not: the menu reads the bar's DOM at click time so it works
+	// from anywhere, but the row CLIPS from the right, and this is the one control whose
+	// loss takes every shed control with it. Measured at 380px it was the first thing
+	// cut when it sat last; here the clip reaches undo and the indicator first and the
+	// escape hatch is the last thing standing. It costs nothing above step 2, where the
+	// stylesheet has it `display: none`.
+	renderOverflow(host, barEl);
 	renderFocusPicker(host, barEl, model);
-	// Expand and collapse drive the tree's rows and, since cards grew disclosures, the
-	// cards too. They are no longer gated on the projection — but they ARE gated on the
-	// screen having something to collapse: see `syncCollapseCtls`, which runs after the
-	// content render because that is what fills the set it reads.
+	// Expand and collapse drive the tree's rows and a dated-axis timeline row's chevron —
+	// never a card's own children disclosure, which lives on a separate bit
+	// (`CARD_SCOPE`, `collapseState.ts`) these buttons never write to at all. They are not
+	// gated on the projection — but they ARE gated on the screen having something to
+	// collapse: see `syncCollapseCtls`, which runs after the content render because that is
+	// what fills the set it reads.
 	collapseButton(host, barEl, {
 		icon: 'chevrons-up-down',
 		label: 'Expand all',
@@ -68,7 +87,8 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 
 	barEl.createDiv({ cls: 'pbl-toolbar-sep' });
 
-	// 4 — what writes. The ✨ is the one command that routinely writes hundreds of
+	// 5 — what writes, and what says a write is happening. The ✨ is the one command that
+	// routinely writes hundreds of
 	// notes: it carries the write-control marker so it goes disabled while a batch is
 	// already in flight.
 	const initBtn = iconButton(barEl, 'sparkles', 'Assign missing properties');
@@ -84,17 +104,25 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	undoBtn.addEventListener('click', () => {
 		void host.undoLast();
 	});
-	// The `⋯` — the fit ladder's escape hatch for whatever it has shed off the row.
-	// Placement here is a layout decision only: the menu reads the bar's DOM at click
-	// time, so it can sit anywhere in it and still see every button.
-	renderOverflow(host, barEl);
+	// The indicator belongs to this zone rather than to the status block it used to sit
+	// in. The ✨ and undo above it go `disabled` BECAUSE a batch is running, and the one
+	// thing on the row that says so was four elements and a divider away — a legible
+	// pause reads as a dead toolbar when the explanation is not beside the controls it
+	// explains.
+	renderBusyIndicator(barEl);
 
 	// Classed, unlike the other two, because the last rung sheds it: the readouts it
 	// divides are all gone by then, and a divider that divides nothing is width in front
 	// of New. See `styles/toolbarFit.css`.
 	barEl.createDiv({ cls: 'pbl-toolbar-sep pbl-status-sep' });
 
-	// 5 — status: the notes, the warning, the busy indicator, the count.
+	// 6 — status: the notes, the warning, the count. All three advisories are
+	// CONDITIONAL, which is why the count's divider below is decided from what was drawn
+	// rather than written unconditionally: on an ordinary view none of them renders, and
+	// an unconditional divider would sit directly against the one above it — two rules
+	// with a gap between them and nothing to divide. Same rule as
+	// `renderProjectionZone`'s empty zone, asked the same way.
+	const beforeAdvisories = barEl.childElementCount;
 	if (host.groupingIgnored) {
 		const note = barEl.createDiv({ cls: 'pbl-toolbar-note pbl-grouping-note' });
 		setIcon(note.createSpan({ cls: 'pbl-toolbar-note-icon' }), 'info');
@@ -112,7 +140,28 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 		warn.createSpan({ text: 'Check view options' });
 		setTooltip(warn, problems.join(' '));
 	}
-	renderBusyIndicator(barEl);
+	// The advisories and the count are the same size and the same faint colour, so with
+	// nothing between them "1 note ignored" and "28 items" read as one sentence. They are
+	// two: an aside about notes this base skipped, and the population in front of you.
+	// This divider sheds with the ADVISORIES at step 4, not with the count at step 5 —
+	// see `styles/toolbarFit.css` — and it is not drawn at all when there was no advisory
+	// to divide from in the first place.
+	//
+	// WHICH rung sheds it depends on which advisory it follows, which is why it carries a
+	// modifier rather than one class. Step 4 takes the two `.pbl-toolbar-note` advisories
+	// but deliberately spares the config warning, so a divider that always shed at step 4
+	// put the warning and the count back together at exactly the widths where the row is
+	// under most pressure — the defect this divider exists to prevent, reappearing one
+	// rung down. With the warning on screen the divider outlives step 4 and goes at step 5
+	// with the count; with only notes behind it, it goes when they do.
+	//
+	// Asked of the DOM rather than of `problems.length` a few lines up: two conditions
+	// that must agree are two conditions that can disagree, and the element either got
+	// drawn or it did not.
+	if (barEl.childElementCount > beforeAdvisories) {
+		const survives = barEl.querySelector('.pbl-config-warning') !== null;
+		barEl.createDiv({ cls: `pbl-toolbar-sep pbl-count-sep${survives ? '' : ' pbl-count-sep-with-notes'}` });
+	}
 	// This projection's own population — `countedPopulation`, the same one
 	// `syncCountLabel` and `renderCompletedToggle` read — never the Base's raw results:
 	// the requirements board excludes Deliverables and the Deliverables board counts
@@ -127,17 +176,22 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	});
 	setTooltip(countEl, levelBreakdown(population));
 
-	// 6 — the primary action, anchored at the end.
-	renderNewButton(host, barEl, model);
-
 	refocusByKey(barEl, refocusKey);
 }
 
 /**
- * The primary create button and the chevron beside it. Last in the row: the zones before
- * it answer "what am I looking at" and "what is shown", and the action that adds to it is
- * anchored at the end where it does not push everything else sideways when the type name
- * it carries changes length.
+ * The primary create button and the chevron beside it, leading the row.
+ *
+ * They are ONE control in two pieces and now say so: `.pbl-btn-group` is the switcher's
+ * own segmented box, shared rather than copied, so the two groups in the row cannot come
+ * to disagree about what a group looks like. Both buttons carry `clickable-icon` for the
+ * same reason the switcher's do — the padding, the radius and the hover fill are the
+ * app's, and a bare `<button>` here wore Obsidian's default chrome: a filled, bordered
+ * box that read as a form submit rather than as one more control in a toolbar.
+ *
+ * The group also survives the last rung better than two neighbours would: the row clips
+ * there, and a clip falls between two flex items far more readily than through the
+ * middle of one.
  */
 function renderNewButton(host: BacklogViewHost, barEl: HTMLElement, model: BacklogModel): void {
 	// The Deliverables board only ever shows Deliverables, so the primary button is
@@ -147,25 +201,19 @@ function renderNewButton(host: BacklogViewHost, barEl: HTMLElement, model: Backl
 	// absent rather than a chevron opening a one-entry menu.
 	const onDeliverables = host.projection === 'deliverables';
 	const newLevel = onDeliverables ? DELIVERABLE_TYPE : primaryNewType(host, model);
-	// The button and its chevron are ONE control in two pieces, so they get one
-	// non-shrinking box. It was written when the row still wrapped, where a pane wide
-	// enough for the button and not the chevron put the chevron alone on the next line;
-	// `styles/toolbarFit.css` sets `flex-wrap: nowrap` now, so that case is gone and the
-	// wrapper is left doing the job it was always also doing — saying the primary action
-	// and its type picker are one thing. Which is not decoration at the last rung: the row
-	// clips there, and a clip falls between two flex items far more readily than through
-	// the middle of one.
-	const wrap = barEl.createDiv({ cls: 'pbl-new' });
+	const wrap = barEl.createDiv({ cls: 'pbl-new pbl-btn-group' });
 	// The name is explicit, not inherited from the text: the fit ladder hides
 	// `.pbl-btn-label` on a narrow pane, and a primary button named only by the text it
 	// just hid is an unnamed control. The key stays on the BUTTON — `refocusByKey` looks
 	// for something to focus, and a wrapper div is not it.
 	const newBtn = wrap.createEl('button', {
-		cls: 'pbl-new-btn',
+		cls: 'clickable-icon pbl-new-btn',
 		attr: { [KEY_ATTR]: 'new', 'aria-label': `New ${newLevel}` },
 	});
 	setIcon(newBtn.createSpan({ cls: 'pbl-btn-icon' }), 'plus');
-	newBtn.createSpan({ cls: 'pbl-btn-label', text: `New ${newLevel}` });
+	// Its own class beside the shared one: this is the label the ladder keeps longest,
+	// and a rung has to be able to name it. See `styles/toolbarFit.css` steps 2 and 6.
+	newBtn.createSpan({ cls: 'pbl-btn-label pbl-new-label', text: `New ${newLevel}` });
 	newBtn.addEventListener('click', () => promptCreateItem(host, [newLevel], null));
 	if (onDeliverables) return;
 	const pickBtn = iconButton(wrap, 'chevron-down', 'New item of another type');
@@ -200,6 +248,76 @@ function renderBusyIndicator(barEl: HTMLElement): void {
 	const busy = barEl.createDiv({ cls: 'pbl-busy', attr: { role: 'status', 'aria-live': 'polite' } });
 	setIcon(busy.createSpan({ cls: 'pbl-busy-spinner' }), 'loader-2');
 	busy.createSpan({ cls: 'pbl-busy-label' });
+	// Built once and only ever re-TEXTED, never rebuilt: `syncBusyLabel` runs per file and
+	// `empty()` plus two `createSpan`s three hundred times is the per-tick DOM churn the
+	// deferred update exists to avoid.
+	const count = busy.createSpan({ cls: 'pbl-busy-count', attr: { 'aria-hidden': 'true' } });
+	count.createSpan({ cls: 'pbl-busy-done' });
+	count.createSpan({ cls: 'pbl-busy-of' });
+}
+
+/**
+ * The visible progress — "12 of 340" — and the two things that make it safe to show.
+ *
+ * **`aria-hidden`, so the row can count without announcing.** `.pbl-busy` is
+ * `role="status"`, so its content is announced whenever it changes; a per-file number in
+ * it is a 340-note backfill announced 340 times, which is the defect the fixed label was
+ * introduced to fix. Hiding the counter from the accessibility tree keeps the announced
+ * content the static `Updating`, said once when the batch starts. The count is still
+ * reachable without sight — it stays in the label's `title`, which names nothing above it
+ * and so cannot make the region's own name change.
+ *
+ * That is a claim about how a live region treats a mutation inside an `aria-hidden`
+ * descendant, and it is a SPEC claim rather than a measured one: no screen reader runs
+ * here. It is on the vault list.
+ *
+ * **A width that cannot change mid-batch.** The done number is the only part that varies
+ * and it is `min-width`-reserved to the digit count of the TOTAL, which is fixed for the
+ * whole batch, with `tabular-nums` so every digit is exactly the `ch` the reservation is
+ * written in. So `1 of 340` and `340 of 340` occupy the same box and the row never
+ * re-flows between the two visibility transitions the ladder actually measures at. This
+ * is the fifth attempt at that readout and the first that is exact rather than
+ * approximate: `ch` is font-relative, so it re-resolves on a theme or font change by
+ * itself, where the pixel reservation this replaces was measured once and went stale.
+ */
+function syncBusyCount(el: HTMLElement, busy: BusyState | null): boolean {
+	const done = el.querySelector<HTMLElement>('.pbl-busy-done');
+	const of = el.querySelector<HTMLElement>('.pbl-busy-of');
+	if (!done || !of) return false;
+	// A single-file write is over before it could be read, so it gets no count at all —
+	// and the label wears the ellipsis instead, which is why that string is chosen here
+	// rather than being one fixed word.
+	const counting = busy !== null && busy.total > 1;
+	setTextIfChanged(done, counting && busy ? String(busy.done) : '');
+	setTextIfChanged(of, counting && busy ? ` of ${busy.total}` : '');
+	// Published as a custom property rather than set as `min-width` directly: every number
+	// this codebase computes in TS reaches CSS that way (`--pbl-prop-col`, `--pbl-depth`,
+	// `--pbl-today-left`), so the stylesheet holds what the reservation MEANS and this
+	// holds only how wide it is.
+	done.setCssProps({ '--pbl-busy-digits': counting && busy ? `${String(busy.total).length}ch` : '0' });
+	// …and the ladder re-measures when the DIGIT COUNT changes, which is the one tick where
+	// the reservation is certainly wrong: `digits(total)ch` cannot hold a value a digit
+	// longer, whatever the font does. Twice in a 340-file batch rather than 340 times, so
+	// it costs two forced layout reads and not three hundred — the per-tick measurement
+	// this design exists to avoid is still avoided.
+	//
+	// **It does not cover width changes WITHIN a digit count, and cannot.** Where
+	// `tabular-nums` applies there are none, because every digit is one `ch`. Where the
+	// interface font declines it, `111` and `888` are different widths and no comparison
+	// of the VALUE can see that — only measuring the element can, which is the per-tick
+	// forced layout this trades away. The residue is a few pixels at the row's right end,
+	// on a font without tabular figures, mid-batch, near a threshold; the row clips rather
+	// than wraps, so it costs the edge of a readout and not a control. Declining a
+	// rendered-width check for it is a judgement about proportion, recorded here because
+	// it was raised in review and will be again.
+	//
+	// Recorded on the counter, which is inside the `aria-hidden` subtree, rather than on
+	// `.pbl-busy` itself: an attribute write on a live region is a question this file has
+	// been wrong about once already, and one it does not need to ask.
+	const digits = counting && busy ? String(busy.done).length : 0;
+	const moved = done.dataset.pblDigits !== String(digits);
+	done.dataset.pblDigits = String(digits);
+	return moved;
 }
 
 /**
@@ -220,11 +338,10 @@ function setTextIfChanged(el: HTMLElement, text: string): void {
 }
 
 /**
- * The indicator's own half of `syncBusy`: the on/off flag, the fixed label, and the
- * count. Reports whether the indicator's VISIBILITY changed, which after this design is
- * the ONLY thing that can change the row's width — so it is the only thing worth
- * re-measuring for, and the ladder's schedule follows from the markup rather than from a
- * promise the markup has to be held to.
+ * The indicator's own half of `syncBusy`: the on/off flag, the label, and the count.
+ * Reports whether the row's WIDTH may have changed — the indicator appearing or going, or
+ * the count gaining a digit — so the ladder's schedule follows from what the markup can
+ * actually do rather than from a promise the markup has to be held to.
  *
  * **The visible text never changes while a batch runs.** It is `Updating…` for every
  * batch, of any size, and the count lives in the label's `title` instead. That is the
@@ -259,19 +376,24 @@ function setTextIfChanged(el: HTMLElement, text: string): void {
  * is a string write, costs no layout, and shows on hover without a listener.
  */
 function syncBusyLabel(el: HTMLElement, busy: BusyState | null): boolean {
-	// Captured before the toggle: the ladder re-runs on idle→busy and busy→idle, which
-	// happen twice per batch, and NOT on the ticks between them. `scrollWidth` is a
-	// forced layout read, so measuring per file would put back a cost of the same shape
-	// as the per-file re-render the deferred update removed.
+	// Captured before the toggle: the ladder re-runs on idle→busy and busy→idle, plus the
+	// one or two ticks where the count gains a digit, and NOT on the rest. `scrollWidth`
+	// is a forced layout read, so measuring per file would put back a cost of the same
+	// shape as the per-file re-render the deferred update removed.
 	const wasOn = el.hasClass('pbl-busy-on');
 	el.toggleClass('pbl-busy-on', busy !== null);
 	const labelEl = el.querySelector<HTMLElement>('.pbl-busy-label');
-	if (labelEl) setTextIfChanged(labelEl, busy ? 'Updating…' : '');
-	// A single-file write is over before it could be read, so it gets no count — the same
-	// rule the visible label used to carry, now applied to the only place a count appears.
-	if (busy && busy.total > 1) labelEl?.setAttribute('title', `Updating ${busy.done} of ${busy.total}…`);
+	// Two possible strings, and which one is chosen depends only on the batch's SIZE, so
+	// it is settled at the transition and constant across every tick between. The counted
+	// form drops the ellipsis because the count follows it and reads as the continuation.
+	const counting = busy !== null && busy.total > 1;
+	if (labelEl) setTextIfChanged(labelEl, busy ? (counting ? 'Updating' : 'Updating…') : '');
+	if (busy && counting) labelEl?.setAttribute('title', `Updating ${busy.done} of ${busy.total}…`);
 	else labelEl?.removeAttribute('title');
-	return wasOn !== (busy !== null);
+	// EITHER thing can change the row's width, so either is worth a re-measure: the
+	// indicator appearing or going, and the count gaining or losing a digit.
+	const grew = syncBusyCount(el, busy);
+	return wasOn !== (busy !== null) || grew;
 }
 
 /**
@@ -568,7 +690,7 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 
 	if (host.projection === 'deliverables') {
 		const wrap = barEl.createDiv({ cls: 'pbl-focus' });
-		const btn = wrap.createEl('button', { cls: 'pbl-focus-btn', attr: { type: 'button' } });
+		const btn = wrap.createEl('button', { cls: 'clickable-icon pbl-focus-btn', attr: { type: 'button' } });
 		setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'filter');
 		btn.setAttribute('aria-label', 'Deliverables');
 		btn.createSpan({ cls: 'pbl-btn-label', text: 'Deliverables' });
@@ -585,7 +707,7 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 	// Named explicitly, like the New button: the fit ladder hides `.pbl-btn-label`, and
 	// the text is all that named this control before.
 	const btn = wrap.createEl('button', {
-		cls: 'pbl-focus-btn',
+		cls: 'clickable-icon pbl-focus-btn',
 		attr: { [KEY_ATTR]: 'focus', 'aria-label': `Focus: ${active || 'all types'}`, 'aria-haspopup': 'menu' },
 	});
 	setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'filter');
@@ -632,18 +754,33 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
  * collapse state — per saved view, per device — and never touches the `.base`.
  */
 function renderModeToggle(host: BacklogViewHost, barEl: HTMLElement): void {
-	const wrap = barEl.createDiv({ cls: 'pbl-mode-toggle', attr: { role: 'group', 'aria-label': 'Projection' } });
-	const position = (mode: Projection, icon: string, label: string) => {
+	const wrap = barEl.createDiv({
+		cls: 'pbl-mode-toggle pbl-btn-group',
+		attr: { role: 'group', 'aria-label': 'Projection' },
+	});
+	// `word` is the visible name and `label` stays the accessible one, which is why the
+	// two are not the same string: "Tree" alone is not a purpose, and a name that read
+	// only "Tree" would leave a reader to guess what pressing it does. Each `word` is a
+	// substring of its `label`, so the visible text is inside the accessible name rather
+	// than beside it — the thing speech control needs to match what a user can see.
+	//
+	// The span is `.pbl-btn-label`, the class the fit ladder's first rung already sheds,
+	// so "if there is enough space" is answered by the same measurement that answers it
+	// for every other labelled control. Four words is the widest thing in the row, so on
+	// a narrow pane this is the first cost the ladder recovers — which is the intended
+	// order, the icons and the active marker carrying the switcher on their own.
+	const position = (mode: Projection, icon: string, label: string, word: string) => {
 		const btn = iconButton(wrap, icon, label);
 		btn.addClass('pbl-mode-btn');
+		btn.createSpan({ cls: 'pbl-btn-label', text: word });
 		btn.toggleClass('is-active', host.projection === mode);
 		btn.setAttribute('aria-pressed', String(host.projection === mode));
 		btn.addEventListener('click', () => host.setProjection(mode));
 	};
-	position('tree', 'list-tree', 'Show as backlog tree');
-	position('board', 'square-kanban', 'Show as kanban board');
-	position('roadmap', 'map', 'Show as roadmap');
-	position('deliverables', 'package', 'Show as Deliverables board');
+	position('tree', 'list-tree', 'Show as backlog tree', 'Tree');
+	position('board', 'square-kanban', 'Show as kanban board', 'Board');
+	position('roadmap', 'map', 'Show as roadmap', 'Roadmap');
+	position('deliverables', 'package', 'Show as Deliverables board', 'Deliverables');
 }
 
 /**

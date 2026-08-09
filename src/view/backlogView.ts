@@ -1,5 +1,5 @@
-import { BasesView, Keymap, Menu, QueryController, setIcon } from 'obsidian';
-import { CollapseState, TIMELINE_SCOPE } from './collapseState';
+import { BasesView, Menu, QueryController, setIcon } from 'obsidian';
+import { CARD_SCOPE, CollapseState, TIMELINE_SCOPE } from './collapseState';
 import { FilterScope, FilterState } from './filterState';
 import {
 	BacklogViewHost,
@@ -9,6 +9,7 @@ import {
 	Projection,
 	RoadmapSnapshot,
 } from './host';
+import { OpenController } from './openTarget';
 import { WriteGate } from './writeGate';
 import { CardMoveController } from './cardMoves';
 import { CardDragController } from './interactions/cardDrag';
@@ -35,6 +36,7 @@ import { syncToolbarFit } from './render/toolbarFit';
 import { captureScroll, centreOnToday, renderProjectionContent, restoreScroll, ScrollAnchor } from './render/projections';
 import { refreshRowChildren } from './render/rows';
 import { adoptableProperties, BacklogSettings, defaultSettings, notePropertyId, OptionalProperty, resolveSettings } from '../domain/settings';
+import { OpenTarget } from '../domain/itemHandling';
 import { WriteOutcome } from '../storage/frontmatter';
 
 export { PRODUCT_BACKLOG_VIEW_TYPE } from './host';
@@ -77,6 +79,8 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	private scroll: ScrollAnchor = { content: '', todayTrackLeft: null, scale: null, offsets: {}, leadingDate: null };
 	/** Selection state and its DOM bookkeeping, for both projections. */
 	private readonly selection: SelectionController;
+	/** Where a note opens, and the side pane it reuses (`view/openTarget.ts`). */
+	private readonly opens = new OpenController();
 
 	settings: BacklogSettings = defaultSettings();
 	model: BacklogModel | null = null;
@@ -409,25 +413,29 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	}
 
 	/**
-	 * Which scope a collapse question is asked in: the dated axis is reading a PLAN, and
-	 * every other projection is reading the backlog, so the two keep separate bits
-	 * ({@link TIMELINE_SCOPE}). Every collapse call in the view routes through the two
-	 * methods above and therefore through here, so the chevron, the row menu, the keyboard
-	 * and the toolbar's bulk controls all follow the projection without any of them asking
-	 * what they are looking at.
-	 *
-	 * The PROJECTION and not the control, which is a decision and not an oversight: the
-	 * shelf and context cards drawn beside the grid take the axis's scope too, because
-	 * they are on that screen and the working position being kept is the screen's. Scoping
-	 * the row chevron alone would leave a card beside it writing the tree's bit, and then
-	 * the toolbar's Collapse all — which settles items no surface drew — would have no
-	 * single answer for the ones it cannot see.
+	 * Which scope a ROW's collapse question is asked in: the dated axis folds a PLAN, and
+	 * every other row opens a node in the backlog, so the two keep separate bits
+	 * ({@link TIMELINE_SCOPE}). Every row-shaped collapse call in the view — the tree's own
+	 * chevron and the dated axis's — routes through the two methods above and therefore
+	 * through here, so the row menu, the keyboard and the toolbar's bulk controls all follow
+	 * the projection without any of them asking what they are looking at. A CARD's own
+	 * disclosure never routes through here at all: {@link isCardCollapsed} is fixed to
+	 * `CARD_SCOPE` regardless of projection or axis, because a card is the same question
+	 * about the same note wherever it happens to be drawn.
 	 */
 	private collapseKey(path: string): string {
-		const dated = this.projection === 'roadmap' && activeAxis(this.settings, this.axisPick) === 'dates';
-		return dated ? TIMELINE_SCOPE + path : path;
+		return this.projection === 'roadmap' && activeAxis(this.settings, this.axisPick) === 'dates' ? TIMELINE_SCOPE + path : path;
 	}
 
+	isCardCollapsed(path: string): boolean {
+		// While filtering, everything on a path to a match renders expanded — the same
+		// override `isCollapsed` gives a row, asked of the card's own scope.
+		return !this.filter.active && this.collapse.isCollapsed(CARD_SCOPE + path);
+	}
+
+	setCardCollapsed(path: string, collapsed: boolean): boolean {
+		return this.collapse.set(CARD_SCOPE + path, collapsed);
+	}
 
 	// -------------------------------------------------------- selection, opening
 
@@ -452,15 +460,11 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	}
 
 	openItem(item: BacklogItem, evt: MouseEvent | KeyboardEvent): void {
-		void this.app.workspace.getLeaf(Keymap.isModEvent(evt)).openFile(item.file);
+		this.opens.open(this, item, evt);
 	}
 
-	openItemInNewTab(item: BacklogItem): void {
-		void this.app.workspace.getLeaf('tab').openFile(item.file);
-	}
-
-	openItemToSide(item: BacklogItem): void {
-		void this.app.workspace.getLeaf('split').openFile(item.file);
+	openItemIn(item: BacklogItem, target: OpenTarget): void {
+		this.opens.openIn(this, item, target);
 	}
 
 	showContextMenuFor(item: BacklogItem): void {

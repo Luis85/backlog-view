@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { boardVault, cardByTitle, makeBoard } from '../helpers/board';
-import { refresh, rowByTitle, titlesOf, useViewHarness } from '../helpers/view';
+import { boardVault, BOARD_WORKFLOW, cardByTitle, makeBoard } from '../helpers/board';
+import { makeView, refresh, rowByTitle, titlesOf, useViewHarness } from '../helpers/view';
 import { FakeVault } from '../helpers/vault';
 import { childrenLabel, listedChildren } from '../../src/view/childrenList';
+import { TIMELINE_SCOPE } from '../../src/view/collapseState';
 import { Menu } from '../helpers/obsidian-mock';
-import { makeRoadmap, rowFor } from '../helpers/roadmap';
+import { makeRoadmap, roadmapView, rowFor } from '../helpers/roadmap';
 
 useViewHarness();
 
@@ -215,14 +216,85 @@ describe('children on the card', () => {
 		expect(kidTitles(cardByTitle(containerEl, 'Epic B'))).toEqual(['Feature B1', 'Feature B2']);
 	});
 
-	it('shares its bit with the tree row, because it is the same bit', () => {
+	it('keeps its own bit, independent of the tree row for the same item', () => {
 		const vault = boardVault();
 		const { containerEl, view } = makeBoard(vault);
+		expect(view.isCardCollapsed('Epic B.md')).toBe(true);
+		expect(view.isCollapsed('Epic B.md')).toBe(true);
+
 		disclosure(cardByTitle(containerEl, 'Epic B'))?.click();
 
-		view.setProjection('tree');
+		// The card opened; the tree row for the same note did not.
+		expect(view.isCardCollapsed('Epic B.md')).toBe(false);
+		expect(view.isCollapsed('Epic B.md')).toBe(true);
 
-		expect(titlesOf(containerEl)).toContain('Feature B1');
+		// And the reverse: opening the tree row neither reopens nor recloses the card.
+		view.setCollapsed('Epic B.md', false);
+		expect(view.isCollapsed('Epic B.md')).toBe(false);
+		expect(view.isCardCollapsed('Epic B.md')).toBe(false);
+	});
+
+	it('carries a pre-split entry into the card’s own scope rather than opening every card shut', () => {
+		// What an installed version stored: one bit per note, which was the bit the tree
+		// row and the card both read. Splitting them must copy it across — otherwise the
+		// first open after the upgrade finds the card's scope unsettled and applies the
+		// default to all of it, closing every card the reader had left open.
+		const vault = boardVault();
+		vault.localStorage.set('product-backlog:collapse', {
+			'Backlog.base#Backlog': { base: 'Backlog.base', collapsed: [], expanded: ['Epic B.md'] },
+		});
+
+		const { containerEl, view } = makeView(vault, { ...BOARD_WORKFLOW }, { base: 'Backlog.base' });
+		view.setProjection('board');
+
+		expect(kidTitles(cardByTitle(containerEl, 'Epic B'))).toEqual(['Feature B1', 'Feature B2']);
+	});
+
+	// Before this split, a card's disclosure on the DATED axis routed through the same
+	// key as the row's own chevron (`TIMELINE_SCOPE`), never the bare path — with no
+	// bare key stored for this note at all (it was never seen anywhere else), the
+	// card's only recorded state is that one.
+	it('carries a dated-axis card’s real expand into the new scope, with no bare key to fall back to', () => {
+		const vault = new FakeVault();
+		vault.addFile('Shelf item.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Shelf child.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Shelf item' });
+		vault.localStorage.set('product-backlog:collapse', {
+			'Backlog.base#Backlog': {
+				base: 'Backlog.base',
+				collapsed: [],
+				expanded: [`${TIMELINE_SCOPE}Shelf item.md`],
+			},
+		});
+
+		const { containerEl } = roadmapView(
+			vault,
+			{ startProperty: 'note.start', targetProperty: 'note.due', horizonProperty: '' },
+			{ base: 'Backlog.base' },
+		);
+
+		expect(kidTitles(cardByTitle(containerEl, 'Shelf item'))).toEqual(['Shelf child']);
+	});
+
+	// The other direction: `collapseNewParents` settles every parent collapsed in EVERY
+	// scope on every data update, whether or not the dated roadmap was ever opened — so
+	// a stored `TIMELINE_SCOPE` key proves nothing by merely existing, and an
+	// installation that never touched the dated axis has one, collapsed, for this note
+	// anyway. Preferring it over a genuinely expanded bare key would silently re-close a
+	// board card the reader had left open.
+	it('keeps a board card’s real expand even though its dated-axis bit is only the untouched default', () => {
+		const vault = boardVault();
+		vault.localStorage.set('product-backlog:collapse', {
+			'Backlog.base#Backlog': {
+				base: 'Backlog.base',
+				collapsed: [`${TIMELINE_SCOPE}Epic B.md`],
+				expanded: ['Epic B.md'],
+			},
+		});
+
+		const { containerEl, view } = makeView(vault, { ...BOARD_WORKFLOW }, { base: 'Backlog.base' });
+		view.setProjection('board');
+
+		expect(kidTitles(cardByTitle(containerEl, 'Epic B'))).toEqual(['Feature B1', 'Feature B2']);
 	});
 
 	it('disables the toggle while the quick filter runs, and lists anyway', () => {
@@ -237,15 +309,16 @@ describe('children on the card', () => {
 
 	// `disabled` on a <button> stops a click dispatched at the button itself, but not one
 	// that lands on a CHILD element and bubbles — the chevron and count spans are both
-	// inside the toggle. Without the guard this write is invisible on screen (`isCollapsed`
-	// reads false under the filter regardless, whatever the write set), and only shows up
-	// once the filter clears — reproducing exactly that: expand for real first (a card
-	// opens collapsed by default, so an unguarded write from THAT state could land on the
-	// same value it started at and prove nothing), then let a filtered click try to flip it.
+	// inside the toggle. Without the guard this write is invisible on screen
+	// (`isCardCollapsed` reads false under the filter regardless, whatever the write set),
+	// and only shows up once the filter clears — reproducing exactly that: expand for real
+	// first (a card opens collapsed by default, so an unguarded write from THAT state could
+	// land on the same value it started at and prove nothing), then let a filtered click
+	// try to flip it.
 	it('writes nothing when a click lands on the chevron inside a disabled toggle', () => {
 		const { containerEl, view } = makeBoard(boardVault());
 		disclosure(cardByTitle(containerEl, 'Epic B'))?.click();
-		expect(view.isCollapsed('Epic B.md')).toBe(false);
+		expect(view.isCardCollapsed('Epic B.md')).toBe(false);
 
 		// Re-fetched: `setFilter` re-renders the board, so the card handle above is
 		// now detached.
@@ -256,10 +329,10 @@ describe('children on the card', () => {
 
 		chevron?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
-		expect(view.isCollapsed('Epic B.md')).toBe(false);
+		expect(view.isCardCollapsed('Epic B.md')).toBe(false);
 		// Clearing the filter is what would surface a stray write — confirm none landed.
 		view.setFilter('');
-		expect(view.isCollapsed('Epic B.md')).toBe(false);
+		expect(view.isCardCollapsed('Epic B.md')).toBe(false);
 	});
 
 	it('offers the same children in the card menu, on a right-click', () => {
@@ -269,6 +342,21 @@ describe('children on the card', () => {
 		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
 		expect(titles).toContain('Open child "Feature B1"');
 		expect(titles).toContain('Open child "Feature B2"');
+	});
+
+	// The card menu's toggle has to write the same bit the card's own disclosure reads —
+	// `isCardCollapsed`, never `isCollapsed` — or the two would disagree about whether
+	// the card is open. `addChildrenSection` serves both a card's toggle and a dated-axis
+	// bar's from one function, so this is the case that proves it picked the card's pair.
+	it('the menu’s Show/Hide children toggle writes the card’s own bit, not the tree row’s', () => {
+		const { containerEl, view } = makeBoard(boardVault());
+		cardByTitle(containerEl, 'Epic B').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+
+		expect(Menu.lastShown?.items.map((i) => i.titleText)).toContain('Show children');
+		Menu.lastShown?.item('Show children')?.clickHandler?.();
+
+		expect(view.isCardCollapsed('Epic B.md')).toBe(false);
+		expect(view.isCollapsed('Epic B.md')).toBe(true);
 	});
 
 	// The menu key is the case the section exists for — and it reaches buildItemMenu

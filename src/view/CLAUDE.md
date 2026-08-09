@@ -271,13 +271,22 @@ free of runtime code so imports stay cycle-free.
   the flag to guard against a click that lands on a child element and bubbles past
   `disabled`, which does not reopen the split `syncFilterUi` once caused, since a
   reader cannot disagree with the writer about what the value is.
-- **The toolbar is zones, and only one of them belongs to the projection.** The switcher
-  leads, `renderProjectionZone` draws whatever this projection owns and *nothing* when it
+- **The toolbar is zones, and only one of them belongs to the projection.** The primary
+  action leads and the switcher follows it — both `.pbl-btn-group`, one shared segmented
+  box, because in each of them two or more buttons are one control. Then
+  `renderProjectionZone` draws whatever this projection owns and *nothing* when it
   owns none — the zone and its leading separator are created together and removed
   together, decided from what was drawn rather than from a second reading of the settings
-  — then the spacer, then the controls that are the same in every projection. Adding a
-  projection is adding a case to that switch; a control added anywhere else in the row is
-  a claim that it belongs to every projection.
+  — then the spacer, then the `⋯`, then the controls that are the same in every
+  projection, then the readouts. Adding a projection is adding a case to that switch; a
+  control added anywhere else in the row is a claim that it belongs to every projection.
+  **Two positions in that order are load-bearing and the rest are taste.** New is first
+  because the row CLIPS from the right past the last rung, so leading it is what makes
+  "nothing costs the primary action its place" true by arrangement rather than by a rung
+  order no arrangement of rungs could deliver. The `⋯` is directly after the spacer for
+  the same reason read once more: it is the only route to every shed control, so it must
+  be the last thing the clip reaches, not the first — which is what it was when it sat
+  beside undo.
 - **Two questions to ask of anything added to the toolbar.** *Does it change the row's
   width without a render behind it?* Then it calls `syncToolbarFit` itself —
   `renderTreeContent`'s own call at its end covers a full render and a content-only one
@@ -481,15 +490,24 @@ free of runtime code so imports stay cycle-free.
   context styling) with a row layout — `.pbl-card.pbl-timeline-row` overrides the
   card's column geometry in CSS.
 - **A timeline row's chevron folds ROWS, and a card's disclosure lists children on its
-  face; they are two bits and one register.** Both go through `isCollapsed`/`setCollapsed`,
-  and `collapseKey` is the ONE place that decides which bit those land on: the dated axis
-  keys under `TIMELINE_SCOPE`, everything else under the path. Add a caller, not a choice —
-  a surface that picks its own scope is how the two drift, and the shelf and context cards
-  beside the grid take the axis's scope with it deliberately, since the working position
-  being kept is the SCREEN's rather than the control's. The quick filter still overrides
-  whichever is being asked. The register is `RowContext.cardKids` — "what drew a disclosure this pass",
-  never "which projection is this" — which is what makes the toolbar's bulk controls and
-  the row menu's section serve both without either asking what it is looking at.
+  face; they are two bits, two host method pairs, and one register (2026-08-09).** A row
+  goes through `isCollapsed`/`setCollapsed`, and `collapseKey` is the ONE place that
+  decides which bit those land on: the dated axis keys under `TIMELINE_SCOPE`, everything
+  else under the path. A card's own disclosure never reaches `collapseKey` — it goes
+  through the second pair, `isCardCollapsed`/`setCardCollapsed`, always under `CARD_SCOPE`
+  regardless of projection ([[Children on the card]]), so the shelf and context cards
+  drawn beside the grid keep their disclosure with the ITEM rather than with the screen —
+  the opposite of the row's own rule, and deliberately so: folding a bar's subtree is a
+  statement about the plan, and a card's own disclosure is a statement about the note,
+  which [[Collapsing a bar's subtree]] used to conflate for exactly the cards drawn on
+  that axis. The one caller left choosing between the two pairs is `addChildrenSection`
+  in `interactions/menu.ts`, which serves a card's Show/Hide children and a bar row's from
+  one function and tells them apart by asking `host.roadmap`'s own `bars` whether the path
+  it is menuing is a drawn bar — every other caller is wired to one pair and never asks.
+  The quick filter still overrides whichever is being asked. The register is
+  `RowContext.cardKids` — "what drew a disclosure this pass", never "which projection is
+  this" — which is what makes the toolbar's bulk controls and the row menu's section serve
+  both without either asking what it is looking at.
   **Which element says "expanded" is decided by the ROW's role, not by preference**: a
   `treeitem` carries `aria-expanded` itself, so the tree's chevron is a plain div, while
   a card row is `role="option"` — which does not support that state — so the timeline's

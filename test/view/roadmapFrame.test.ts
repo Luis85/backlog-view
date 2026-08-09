@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { ProductBacklogView } from '../../src/view/backlogView';
 import { todayStamp } from '../../src/domain/noteFields';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
-import { expandAll, refresh, useViewHarness } from '../helpers/view';
+import { clickExpandAll, refresh, useViewHarness } from '../helpers/view';
 import {
 	barFor,
 	barOf,
@@ -155,7 +155,7 @@ describe('the dated frame', () => {
 		// The grid honours the tree's collapse state, and a parent nobody has ruled on
 		// opens shut — so the children this test is about are behind the epic's own
 		// disclosure until something opens it.
-		expandAll(containerEl);
+		clickExpandAll(containerEl);
 
 		const rows = timelineRows(containerEl);
 		// The epic is on the grid now, not the shelf, and it leads its children.

@@ -81,13 +81,15 @@ under a real parent — and that is where this PBI's one real behavioural additi
 - It files into its own folder (`typeFolder.deliverable`, shipped default
   `deliverables` under the home folder), like every other declared type.
 - It renders with its own icon and badge colour, and the test asserting the badge table
-  covers the whole vocabulary covers it too. **This criterion is now blocked**: green was
-  pencilled in for `Deliverable` in `DESIGN.md` and [[Ideas as a type beside the ladder]]
-  took it, leaving the eight declared types wearing Obsidian's eight chromatic families.
-  A `Deliverable` would be the ninth and there is no unclaimed hue for it, which the
-  Ladder Rule forbids answering with a rotation — see
-  [[The type palette has no unclaimed hue left]]. Everything else in this PBI is
-  unaffected; the colour is the one part that cannot simply be picked.
+  covers the whole vocabulary covers it too. **Met — and the way it was met is the
+  record worth keeping.** This criterion read *blocked* while both branches were in
+  flight: green was pencilled in for `Deliverable` in `DESIGN.md`,
+  [[Ideas as a type beside the ladder]] took it, and a ninth type had no unclaimed hue
+  left. It was resolved the other way round instead — `Idea` moved to **yellow**, sharing
+  with Task, and `Deliverable` kept green (`styles/badges.css`). So the Ladder Rule was
+  not satisfied here; it was spent, deliberately and with the pairing written down, which
+  is why [[The type palette has no unclaimed hue left]] stays open for the type after
+  this one.
 - A parentless Deliverable is never pruned by `hierarchyOnly`.
 - **Satisfied already, by [[Ideas as a type beside the ladder]].** `childTypeChoices(null)`
   returns `ALL_TYPES` as of that PBI, so the root marker is correct for the whole

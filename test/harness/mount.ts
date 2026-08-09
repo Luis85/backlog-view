@@ -52,7 +52,7 @@ export function mountHarness(root: HTMLElement, fixture: HarnessFixture = 'demo'
 	const vault = fixture === 'edges' ? edgeCaseVault() : demoVault();
 	const leafEl = root.createDiv('pbl-harness-leaf');
 	const containerEl = leafEl.createDiv();
-	vault.leaves.push({ view: new FileView(vault.addFile('Demo.base'), leafEl) });
+	vault.addLeaf(new FileView(vault.addFile('Demo.base'), leafEl));
 
 	const view = new ProductBacklogView({} as never, containerEl);
 	const anyView = view as unknown as Record<string, unknown>;

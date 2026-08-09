@@ -28,12 +28,12 @@
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^22.20.1",
-    "@typescript-eslint/parser": "^8.65.0",
+    "@typescript-eslint/parser": "^8.66.0",
     "@vitest/coverage-v8": "^4.1.10",
     "esbuild": "^0.28.1",
     "eslint": "^10.8.0",
     "eslint-plugin-obsidianmd": "^0.4.1",
-    "fallow": "^3.10.0",
+    "fallow": "^3.14.0",
     "jsdom": "^30.0.1",
     "lucide-static": "^1.28.0",
     "mdast-util-from-markdown": "^2.0.3",
@@ -41,14 +41,14 @@
     "micromark-extension-gfm-table": "^2.1.1",
     "obsidian": "^1.13.1",
     "typescript": "~6.0.3",
-    "typescript-eslint": "^8.65.0",
+    "typescript-eslint": "^8.66.0",
     "vitest": "^4.1.10"
   },
   "engines": {
     "node": ">=22"
   },
   "dependencies": {
-    "@atlaskit/pragmatic-drag-and-drop": "^2.0.1",
+    "@atlaskit/pragmatic-drag-and-drop": "^2.0.2",
     "@atlaskit/pragmatic-drag-and-drop-auto-scroll": "^3.0.0",
     "@atlaskit/pragmatic-drag-and-drop-live-region": "^2.0.0"
   }

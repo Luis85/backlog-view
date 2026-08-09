@@ -9,20 +9,13 @@
 	flex: 0 0 auto;
 }
 
-/* The primary action and its type chevron are one control: they wrap or they do not,
-   never one of each, and the box never shrinks out from under them. */
-.pbl-new {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--size-4-1);
-	flex: 0 0 auto;
-}
-
+/* `.pbl-new` is now only what is left after `.pbl-btn-group` says the rest: it carries no
+   layout of its own. Kept as a hook because the fit ladder, the focus restore and the
+   tests all name it, and because the group class is shared — a selector meaning "the
+   primary action" cannot be `.pbl-btn-group`, which the switcher wears too. */
 .pbl-new-btn {
 	display: inline-flex;
 	align-items: center;
-	gap: var(--size-4-1);
-	font-size: var(--font-ui-small);
 }
 
 .pbl-btn-icon {
@@ -38,6 +31,9 @@
 /* Toolbar icon controls are <button>s so they sit in the tab order; the shared
    reset below drops the default button chrome clickable-icon does not cover */
 .pbl-icon-btn,
+.pbl-menu-btn,
+.pbl-new-btn,
+.pbl-focus-btn,
 .pbl-filter-clear,
 .pbl-focus-clear,
 .pbl-add {
@@ -191,67 +187,6 @@
 	height: 24px;
 }
 
-/* Write-in-flight indicator. Held back by an animation delay so a single-file
-   write — the common case — finishes before it would ever appear, and only a
-   batch long enough to be worth reporting actually shows up. */
-.pbl-busy {
-	display: none;
-	align-items: center;
-	gap: var(--size-2-1);
-	font-size: var(--font-ui-smaller);
-	color: var(--text-muted);
-	padding-inline-end: var(--size-4-1);
-}
-
-.pbl-busy.pbl-busy-on {
-	display: inline-flex;
-	animation: pbl-busy-in 120ms ease-out 250ms both;
-}
-
-@keyframes pbl-busy-in {
-	from {
-		opacity: 0;
-	}
-	to {
-		opacity: 1;
-	}
-}
-
-.pbl-busy-spinner,
-.pbl-loading-spinner {
-	display: inline-flex;
-	align-items: center;
-	color: var(--text-accent);
-	animation: pbl-spin 900ms linear infinite;
-}
-
-.pbl-busy-spinner .svg-icon {
-	width: 12px;
-	height: 12px;
-}
-
-@keyframes pbl-spin {
-	to {
-		transform: rotate(360deg);
-	}
-}
-
-/* Before the first result set arrives — an empty pane reads as a broken view */
-.pbl-loading {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: var(--size-4-2);
-	padding: var(--size-4-8) var(--size-4-4);
-	color: var(--text-faint);
-	font-size: var(--font-ui-small);
-}
-
-.pbl-loading-spinner .svg-icon {
-	width: 24px;
-	height: 24px;
-}
-
 .pbl-count-label {
 	color: var(--text-faint);
 	font-size: var(--font-ui-smaller);
@@ -308,11 +243,17 @@
 	flex: 0 0 auto;
 }
 
-/* The switcher is a segmented group: one border around the set, dividers between the
-   positions, and the active one FILLED. Obsidian's `.clickable-icon.is-active` tint is
-   the only thing that used to mark it, which is too quiet for the control that says
-   what you are looking at. */
-.pbl-mode-toggle {
+/* Two controls drawn as one segmented strip — the switcher's four positions, and the
+   primary action with its type picker. One rule for both because they are one idea: a
+   bordered box, square corners inside it, a hairline between the segments, and no gap,
+   so the pieces read as parts of a control rather than as neighbours that happen to be
+   adjacent. `overflow: hidden` is what makes the outer radius clip the segments' own
+   corners; without it the first segment's square corner pokes through the rounded one.
+
+   The switcher additionally FILLS its active position (below): Obsidian's
+   `.clickable-icon.is-active` tint is the only thing that used to mark it, which is too
+   quiet for the control that says what you are looking at. */
+.pbl-btn-group {
 	display: inline-flex;
 	align-items: center;
 	border: 1px solid var(--background-modifier-border);
@@ -322,13 +263,26 @@
 	gap: 0;
 }
 
-.pbl-mode-btn {
-	border-radius: 0;
-	margin: 0;
+/* The hairline is stated over the group's own children rather than per group, so a third
+   group needs the class and nothing else. `+` and not a border on every segment: the
+   leading edge is the box's own border, and doubling it there is the one place this
+   reads as two lines. */
+.pbl-btn-group > * + * {
+	border-inline-start: 1px solid var(--background-modifier-border);
 }
 
-.pbl-mode-btn + .pbl-mode-btn {
-	border-inline-start: 1px solid var(--background-modifier-border);
+/* `gap` and not a margin on the label: at the rung that sheds `.pbl-btn-label` the span
+   is `display: none` and a gap between one remaining child collapses to nothing, while a
+   margin on a hidden element is still a margin nobody can see the reason for. The
+   segmented group's own square corners stay — the border-radius the shared
+   `clickable-icon` supplies is wrong inside a bordered strip. */
+.pbl-mode-btn,
+.pbl-new-btn,
+.pbl-new-pick {
+	border-radius: 0;
+	margin: 0;
+	gap: var(--size-2-2);
+	font-size: var(--font-ui-small);
 }
 
 .pbl-mode-btn.is-active {

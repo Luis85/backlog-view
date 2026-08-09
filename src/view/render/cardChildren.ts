@@ -50,8 +50,8 @@ export function renderCardChildren(ctx: RowContext, card: HTMLElement, item: Bac
 	const chevron = toggle.createSpan({ cls: 'pbl-card-kids-chevron' });
 	setIcon(chevron, 'chevron-right');
 	toggle.createSpan({ cls: 'pbl-card-kids-count', text: childrenLabel(children) });
-	// The quick filter OVERRIDES collapse state without replacing it: `isCollapsed`
-	// returns false while it runs, but `setCollapsed` still writes. A live toggle would
+	// The quick filter OVERRIDES collapse state without replacing it: `isCardCollapsed`
+	// returns false while it runs, but `setCardCollapsed` still writes. A live toggle would
 	// therefore write state that reads back as expanded, look inert, and then take
 	// effect once the filter cleared. Same real `disabled` flag the toolbar's collapse
 	// controls take, for the same reason — `pointer-events: none` stops a mouse and
@@ -69,7 +69,7 @@ export function renderCardChildren(ctx: RowContext, card: HTMLElement, item: Bac
 	const draw = (): void => {
 		// Read live, never captured at wire time: a surrounding refresh can change this
 		// under a listener that is still attached.
-		const collapsed = host.isCollapsed(item.file.path);
+		const collapsed = host.isCardCollapsed(item.file.path);
 		toggle.setAttribute('aria-expanded', String(!collapsed));
 		chevron.toggleClass('pbl-expanded', !collapsed);
 		setTooltip(toggle, (collapsed ? `Show what is under "${item.title}"` : 'Hide these') + note);
@@ -88,7 +88,7 @@ export function renderCardChildren(ctx: RowContext, card: HTMLElement, item: Bac
 		// quick filter runs would write collapse state that `isCollapsed` reports as
 		// false until the filter clears — a silent write with no visible effect.
 		if (toggle.disabled) return;
-		host.setCollapsed(item.file.path, !host.isCollapsed(item.file.path));
+		host.setCardCollapsed(item.file.path, !host.isCardCollapsed(item.file.path));
 		draw();
 	});
 	draw();
@@ -110,6 +110,6 @@ function renderChildEntry(host: BacklogViewHost, list: HTMLElement, child: Backl
 	setTooltip(entry, `Open "${child.title}"`);
 	entry.addEventListener('click', (evt) => host.openItem(child, evt));
 	entry.addEventListener('auxclick', (evt) => {
-		if (evt.button === 1) host.openItemInNewTab(child);
+		if (evt.button === 1) host.openItemIn(child, 'tab');
 	});
 }

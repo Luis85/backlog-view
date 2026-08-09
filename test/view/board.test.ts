@@ -330,11 +330,13 @@ describe('the projection toggle', () => {
 		expect(containerEl.querySelectorAll('.pbl-row').length).toBeGreaterThan(0);
 	});
 
-	it('offers the collapse controls in board mode, since Epic B has cards to collapse', () => {
+	it('renders the collapse controls in board mode, disabled — Epic B has cards, and every one of them is a card', () => {
 		const { containerEl } = boardView(boardVault());
 		const ctls = Array.from(containerEl.querySelectorAll<HTMLButtonElement>('.pbl-collapse-ctl'));
 		expect(ctls).toHaveLength(2);
-		expect(ctls.some((b) => b.disabled)).toBe(false);
+		// The board has nothing to disclose that is not a card's own children, and a
+		// card's own toggle is the only thing that may open or close it.
+		expect(ctls.every((b) => b.disabled)).toBe(true);
 		// The rest of the toolbar survives the projection: creation, undo, the filter.
 		expect(containerEl.querySelector('.pbl-new-btn')).not.toBeNull();
 		expect(containerEl.querySelector('.pbl-undo-btn')).not.toBeNull();

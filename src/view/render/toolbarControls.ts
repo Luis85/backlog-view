@@ -130,8 +130,14 @@ function menuButton(
 	key: string,
 	ariaLabel: string = label,
 ): HTMLButtonElement {
+	// `clickable-icon` for the same reason every other control in this row carries it:
+	// the padding, the radius and the hover fill are Obsidian's, and a control that
+	// styles those itself is a control that stops matching the app when the app moves.
+	// Without it this was a bare `<button>` wearing the app's default chrome — a filled,
+	// bordered box among flat icons, which is the one control in the row that looked
+	// like a form submit.
 	const btn = parent.createEl('button', {
-		cls: 'pbl-menu-btn',
+		cls: 'clickable-icon pbl-menu-btn',
 		attr: { type: 'button', 'aria-label': ariaLabel, 'aria-haspopup': 'menu', [KEY_ATTR]: key },
 	});
 	setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), icon);
@@ -265,11 +271,18 @@ function renderTimelineControls(host: BacklogViewHost, zone: HTMLElement, barEl:
  * reuse: counting asks for the Base's rows, and collapsing asks for everything on screen
  * that owns a disclosure, context rows included.
  *
+ * A card's own children disclosure is never in this population's reach, and needs no
+ * exclusion logic here to keep it that way: `expandAll`/`collapseAll` write only through
+ * `host.setCollapsed`, which lands on the tree's own bit or the dated axis's
+ * (`TIMELINE_SCOPE`) — never on a card's (`CARD_SCOPE`), which only
+ * `host.setCardCollapsed` ever touches (`collapseState.ts`). A card's own toggle is
+ * therefore the only thing that can open or close it, by CONSTRUCTION — two disjoint
+ * bits nothing here has to tell apart — rather than by a filter trying to guess, from
+ * this population, which paths are currently cards.
+ *
  * The Deliverables board is the one projection where `model.items` is the wrong answer.
  * It draws `model.deliverableResults`, read off the WHOLE unfocused tree so a focus set
  * elsewhere can never hide a Deliverable — while `model.items` is the focused render set.
- * So with a focus active, Expand all and Collapse all reached none of the cards outside
- * that subtree, and were a complete no-op when no Deliverable was inside it.
  */
 function collapsiblePopulation(host: BacklogViewHost, model: BacklogModel): BacklogItem[] {
 	return host.projection === 'deliverables' ? model.deliverableResults : model.items;
@@ -297,13 +310,26 @@ export function collapseAll(host: BacklogViewHost): void {
 
 /**
  * When the bulk collapse controls are refused: while a quick filter overrides collapse
- * state, and on a card projection that drew no disclosure to collapse. `syncCollapseCtls`
- * is still the sole WRITER of the flag — this is the question it asks, named once so the
- * `⋯` menu is not a second opinion about the same rule.
+ * state, and when nothing currently drawn is a genuine ROW disclosure — a card's own
+ * disclosure is never reachable by these buttons at all (see `collapsiblePopulation`), so
+ * a screen where every disclosure belongs to a card (an ordinary board, the Deliverables
+ * board, a horizon roadmap) offers them nothing to do and must not sit there enabled as a
+ * live no-op. The tree's own chevron always counts; the dated axis's counts exactly when a
+ * BAR currently draws one — `host.cardChildrenShown` is every disclosure drawn THIS pass,
+ * cards and a timeline bar's chevron alike, so checking it against `host.roadmap`'s own
+ * `bars` (the one register that is never a card) asks exactly "is a genuine row, not a
+ * card, currently disclosed". `syncCollapseCtls` is still the sole WRITER of the flag —
+ * this is the question it asks, named once so the `⋯` menu is not a second opinion about
+ * the same rule.
  */
 export function collapseCtlsDisabled(host: BacklogViewHost): boolean {
-	const nothingToCollapse = host.projection !== 'tree' && host.cardChildrenShown.size === 0;
-	return host.isFiltering() || nothingToCollapse;
+	if (host.isFiltering()) return true;
+	if (host.projection === 'tree') return false;
+	const barPaths = new Set((host.roadmap?.roadmap.bars ?? []).map((bar) => bar.item.file.path));
+	for (const path of host.cardChildrenShown) {
+		if (barPaths.has(path)) return false;
+	}
+	return true;
 }
 
 /**

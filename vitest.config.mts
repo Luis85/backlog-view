@@ -226,9 +226,15 @@ export default defineConfig({
 			// functions and lines round down to the figures already recorded above and stay.
 			// Worth naming because the rise is mostly SUBTRACTION — the branches that went
 			// were cases the rule makes unnecessary, not cases a test started driving.
+			// The merge with main (the fold-on-click option, `openItemIn`, the card-scope
+			// split) plus this branch's own work measures 98.33/94.69/99.57/99.48. Only
+			// branches rounds down to a new decimal (94.6); the other three repeat the
+			// figures already recorded and stay. Both sides of the merge carried the same
+			// four thresholds, so there was no higher-of to take — the rise is the merged
+			// tree's own.
 			thresholds: {
 				statements: 98.3,
-				branches: 94.5,
+				branches: 94.6,
 				functions: 99.5,
 				lines: 99.4,
 			},

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { ProductBacklogView } from '../../src/view/backlogView';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
 import { FuzzySuggestModal, Menu, Modal } from '../helpers/obsidian-mock';
-import { drag, expandAll, flush, key, rowByTitle, rows, submitPrompt, treeOf, useViewHarness } from '../helpers/view';
+import { drag, clickExpandAll, flush, key, rowByTitle, rows, submitPrompt, treeOf, useViewHarness } from '../helpers/view';
 
 /**
  * Clear every configured folder, so folder INFERENCE is what runs. Both layers have to
@@ -35,7 +35,7 @@ describe('moves in a group that holds an outside-filter row', () => {
 			data: vault.entries().filter((e) => ['Feature B.md', 'PBI.md'].includes(e.file.path)),
 		};
 		view.onDataUpdated();
-		expandAll(containerEl);
+		clickExpandAll(containerEl);
 		return { view, containerEl, vault };
 	}
 
@@ -115,7 +115,7 @@ describe('creating a child under a context parent', () => {
 		anyView.config = new FakeViewConfig({ inferFolderHierarchy: true, ...NO_TYPE_FOLDERS });
 		anyView.data = { data: vault.entries().filter((e) => e.file.path === 'Backlog/PBI.md') };
 		view.onDataUpdated();
-		expandAll(containerEl);
+		clickExpandAll(containerEl);
 		return { view, containerEl, vault };
 	}
 
@@ -225,7 +225,7 @@ describe('write safety with context rows, across every entry point', () => {
 			data: vault.entries().filter((e) => !CONTEXT_PATHS.includes(e.file.path)),
 		};
 		view.onDataUpdated();
-		expandAll(containerEl);
+		clickExpandAll(containerEl);
 		return { view, containerEl, vault };
 	}
 
@@ -367,7 +367,7 @@ describe('undo across the filter boundary', () => {
 		anyView.config = new FakeViewConfig({ stateProperty: 'note.status' });
 		anyView.data = { data: vault.entries() };
 		view.onDataUpdated();
-		expandAll(containerEl);
+		clickExpandAll(containerEl);
 
 		// Mark the parent done through its chip — an ordinary write to a result row.
 		rowByTitle(containerEl, 'Parent')
@@ -406,7 +406,7 @@ describe('toolbar figures describe the Base results', () => {
 		anyView.config = new FakeViewConfig({ stateProperty: 'note.status', showCompleted });
 		anyView.data = { data: vault.entries().filter((e) => e.file.path !== 'Epic.md') };
 		view.onDataUpdated();
-		expandAll(containerEl);
+		clickExpandAll(containerEl);
 		return { view, containerEl };
 	}
 

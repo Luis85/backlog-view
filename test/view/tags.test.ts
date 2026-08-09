@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
 import { Menu, Notice } from '../helpers/obsidian-mock';
 import { ProductBacklogView } from '../../src/view/backlogView';
-import { expandAll, flush, Harness, makeView, rowByTitle, submitPrompt, useViewHarness } from '../helpers/view';
+import { clickExpandAll, flush, Harness, makeView, rowByTitle, submitPrompt, useViewHarness } from '../helpers/view';
 
 useViewHarness();
 
@@ -211,7 +211,7 @@ describe('tag editing', () => {
 		anyView.config = config;
 		anyView.data = { data: vault.entries().filter((e) => e.file.path === 'PBI.md') };
 		view.onDataUpdated();
-		expandAll(containerEl);
+		clickExpandAll(containerEl);
 
 		const epic = rowByTitle(containerEl, 'Epic');
 		expect(tagsOf(containerEl, 'Epic')).toEqual(['#outside']);
