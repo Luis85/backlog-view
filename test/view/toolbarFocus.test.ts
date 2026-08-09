@@ -155,6 +155,16 @@ describe('focus survives the toolbar rebuilding itself', () => {
 		pickFrom('axis', 'Horizons');
 		view.setAxisPick('dates');
 		pickFrom('focus', 'Feature');
+
+		// The fourth caller, and the one that is not a menu: pressing clear is what
+		// unrenders the clear button, so `focus-clear` has no replacement to be found
+		// and the named destination is the focus button beside it.
+		const clear = containerEl.querySelector<HTMLElement>('[data-pbl-key="focus-clear"]');
+		if (!clear) throw new Error('no clear button under an active focus');
+		clear.focus();
+		clear.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(containerEl.querySelector('[data-pbl-key="focus-clear"]')).toBeNull();
+		expect(containerEl.querySelector('[data-pbl-key="focus"]')).toBe(document.activeElement);
 	});
 
 	// The rule: the ladder may hide a `.pbl-btn-label` only on a control that is named

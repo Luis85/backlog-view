@@ -91,10 +91,24 @@ describe('the projection zone', () => {
 		expect(new Set(icons).size, `duplicate glyph among ${icons.join(', ')}`).toBe(icons.length);
 	});
 
-	it('offers no axis picker when only one axis is configured', () => {
+	/**
+	 * The zone's own rule, at the only case that can tell it from a projection check:
+	 * a roadmap whose single axis is horizons draws NEITHER picker — the axis picker
+	 * returns because there is no choice, the timeline controls because the axis is not
+	 * `dates` — so the projection owns a zone and puts nothing in it. Emptiness read off
+	 * the settings a second time would have to reproduce both of those refusals; read
+	 * off `childElementCount` it cannot disagree with them. Every other case in this file
+	 * compares roadmap against tree, where `if (projection !== 'roadmap')` passes too.
+	 */
+	it('takes an EMPTY zone away on the projection that owns one', () => {
 		const vault = fixture();
 		const { view, containerEl } = makeView(vault, { horizonProperty: 'note.horizon' });
+		const bare = seps(containerEl); // tree: no zone, so no zone separator
 		view.setProjection('roadmap');
+
 		expect(containerEl.querySelector('[data-pbl-key="axis"]')).toBeNull();
+		expect(containerEl.querySelector('[data-pbl-key="zoom"]')).toBeNull();
+		expect(zone(containerEl), 'a roadmap that drew no control kept its zone').toBeNull();
+		expect(seps(containerEl), 'the empty zone left its separator behind').toBe(bare);
 	});
 });

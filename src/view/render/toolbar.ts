@@ -138,10 +138,19 @@ function renderNewButton(host: BacklogViewHost, barEl: HTMLElement, model: Backl
 	// absent rather than a chevron opening a one-entry menu.
 	const onDeliverables = host.projection === 'deliverables';
 	const newLevel = onDeliverables ? DELIVERABLE_TYPE : primaryNewType(host, model);
+	// The button and its chevron are ONE control in two pieces, so they get one
+	// non-shrinking box. The toolbar still wraps today, and these are now the last two
+	// elements in it: a pane wide enough for the button and not the chevron would put
+	// the chevron alone on the next row, split from the action it extends. It is not
+	// scaffolding for that — once the row stops wrapping the wrapper still says the
+	// primary action and its type picker are one thing, which is why it holds them
+	// together rather than pinning them.
+	const wrap = barEl.createDiv({ cls: 'pbl-new' });
 	// The name is explicit, not inherited from the text: the fit ladder hides
 	// `.pbl-btn-label` on a narrow pane, and a primary button named only by the text it
-	// just hid is an unnamed control.
-	const newBtn = barEl.createEl('button', {
+	// just hid is an unnamed control. The key stays on the BUTTON — `refocusByKey` looks
+	// for something to focus, and a wrapper div is not it.
+	const newBtn = wrap.createEl('button', {
 		cls: 'pbl-new-btn',
 		attr: { [KEY_ATTR]: 'new', 'aria-label': `New ${newLevel}` },
 	});
@@ -149,7 +158,7 @@ function renderNewButton(host: BacklogViewHost, barEl: HTMLElement, model: Backl
 	newBtn.createSpan({ cls: 'pbl-btn-label', text: `New ${newLevel}` });
 	newBtn.addEventListener('click', () => promptCreateItem(host, [newLevel], null));
 	if (onDeliverables) return;
-	const pickBtn = iconButton(barEl, 'chevron-down', 'New item of another type');
+	const pickBtn = iconButton(wrap, 'chevron-down', 'New item of another type');
 	pickBtn.addClass('pbl-new-pick');
 	pickBtn.addEventListener('click', (evt) => {
 		const menu = new Menu();

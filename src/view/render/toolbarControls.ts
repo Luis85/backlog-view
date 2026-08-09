@@ -12,10 +12,12 @@ export const KEY_ATTR = 'data-pbl-key';
  * The identity focus is restored by: a per-control key, written where the control is
  * created and the same string on the control the next render builds in its place.
  *
- * Not the class — `.pbl-zoom-btn` and `.pbl-axis-btn` each name several buttons — and
- * not `aria-label`, which is neither always present nor always stable. `.pbl-new-btn`
- * and `.pbl-focus-btn` are named by their text content and carry no label at all, so
- * nothing was captured for them; and the completed toggle's label flips between
+ * Not the class — `.pbl-mode-btn` names all four positions of the projection switcher —
+ * and not `aria-label`, which is neither always present nor always stable. `.pbl-new-btn`
+ * and `.pbl-focus-btn` were named by their text content and carried no label at all, so
+ * nothing could be captured for them — they have one now, because the fit ladder hides
+ * that text, and it is `New Epic`/`New Feature`, which moves with the focus level; and
+ * the completed toggle's label flips between
  * 'Hide completed items' and 'Show completed items (3 hidden)' across the very rebuild
  * its own click causes, so the control whose press ALWAYS re-renders was the one that
  * could never be restored. A key is independent of both.
@@ -45,23 +47,26 @@ export function refocusByKey(barEl: HTMLElement, key: string | null): void {
 }
 
 /**
- * Act on a menu pick, then put focus back on the control the menu was opened from.
+ * Act, then put focus on the control wearing `key` in the toolbar the act rebuilt —
+ * NAMING where focus should land rather than hoping the render pass can work it out.
  *
- * The render-pass mechanism above cannot cover this: `capturedFocusKey` asks whether the
- * focused element is inside the toolbar, and while a `Menu` is open it is not — Obsidian
- * attaches the menu to the body — so the pick re-renders, `barEl.empty()` destroys the
- * button that opened it, and focus lands on the document. A keyboard user loses their
- * place in the toolbar on every pick, and nothing about it is visible to whoever wrote
- * the picker.
+ * `capturedFocusKey` cannot, in either of the two cases here. A **menu pick**: while a
+ * `Menu` is open focus is on the body — Obsidian attaches the menu there — so the capture
+ * finds nothing inside the bar, `barEl.empty()` destroys the button that opened it, and
+ * focus lands on the document. A **control that removes itself**: the focus-clear button
+ * is the one that exists, and it is not a menu at all — clearing the focus is exactly
+ * what unrenders `.pbl-focus-clear`, so its own key has no replacement to be found and
+ * the named destination is the focus button beside it.
  *
- * `render/shelfControls.ts` already answers this exact path with its own `refocus`
- * callback; this is that answer, keyed rather than selector-based because the toolbar
- * already has keys. `barEl` outlives the rebuild, so the lookup finds the replacement.
+ * `render/shelfControls.ts` already answers this shape with its own `refocus` callback;
+ * this is that answer, keyed rather than selector-based because the toolbar already has
+ * keys. `barEl` outlives the rebuild, so the lookup finds the replacement.
  *
- * Every toolbar menu whose pick RE-RENDERS goes through it — the axis, the zoom, and the
- * focus picker, which predates the zone and was losing focus for the same reason. The
- * New-type chevron is the one menu that does not: its entries open the creation prompt,
- * which takes focus deliberately, so restoring focus here would fight the modal for it.
+ * Everything on this row whose activation re-renders while focus is elsewhere, or
+ * destroys the control pressed, goes through it — the axis, the zoom, and the focus
+ * picker's menu and its clear button. The New-type chevron is the one menu that does
+ * not: its entries open the creation prompt, which takes focus deliberately, so
+ * restoring focus here would fight the modal for it.
  */
 export function pickAndRefocus(barEl: HTMLElement, key: string, act: () => void): void {
 	act();
