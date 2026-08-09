@@ -16,7 +16,11 @@ import { typesSection } from './typesSection';
 const MOVING: ManualSection = {
 	id: 'moving',
 	title: 'Moving and ranking',
-	intro: 'Where a drop lands decides what it means. The drop indicator is the cue.',
+	intro:
+		'Where a drop lands decides what it means. The drop indicator is the cue. This ' +
+		"section is the tree's own hierarchy — the same Alt+Left/Right moves a card to a " +
+		'different workflow column on the board, or a different bucket on the roadmap, ' +
+		'and touches neither parent nor order.',
 	entries: [
 		{
 			term: 'Between two rows',
@@ -28,9 +32,11 @@ const MOVING: ManualSection = {
 		{
 			term: 'Without a mouse',
 			text:
-				'Alt and the arrow keys move, indent and outdent. The context menu offers move up, ' +
-				'down, to top, to bottom, indent and outdent — the same commands, for a menu that ' +
-				'cannot see which key is held.',
+				'In the tree, Alt and the arrow keys move, indent and outdent, and the context menu ' +
+				'offers the same six as move up, down, to top, to bottom, indent and outdent — for a ' +
+				'menu that cannot see which key is held. Both are tree-only: the menu\'s move section ' +
+				"is absent from a card's own menu on the board and the roadmap, since every entry in " +
+				"it is defined by a row's visible neighbours, which a card does not have.",
 		},
 		{
 			term: 'Order',
@@ -60,8 +66,12 @@ const MOVING: ManualSection = {
 				'excluded parent, or into any sibling group that itself contains an excluded row — ' +
 				'renumbering that group would silently skip a write to a note the Base excludes. The ' +
 				'same rule governs Move up, Move down, Move to top, Move to bottom and Outdent from ' +
-				'the menu or Alt+arrow. Dropping into a parent, the top-level strip and Indent stay ' +
-				'available in every one of those cases, since landing last is what they mean anyway.',
+				'the menu or Alt+arrow. Dropping into a parent stays available in every one of those ' +
+				'cases, since landing last is what it means anyway — and so do the top-level strip and ' +
+				'Indent, except throughout a focused view, where neither works at all: the top-level ' +
+				'strip refuses unconditionally while any focus is set, and a focus-root row has no ' +
+				'previous sibling for Indent to nest it under, by the same no-shared-ranking rule ' +
+				'above.',
 		},
 		{
 			term: 'While a quick filter is active',
@@ -178,10 +188,28 @@ const WRITES: ManualSection = {
 	title: 'Safe writes and undo',
 	entries: [
 		{
+			term: 'What this view writes',
+			text:
+				'Three hierarchy properties, always: parent, order and type. Beyond those, a fixed ' +
+				'set of optional ones — the workflow state (and the Deliverables board\'s own ' +
+				'state), tags, a state change\'s own started and finished date stamps, risk, the ' +
+				'roadmap\'s horizon and its start and target dates, and prerequisites (depends-on) ' +
+				'— each written only once its own property is named in the view options. An ' +
+				'unconfigured key is never written to; nothing invents one.',
+		},
+		{
 			term: 'A change is one batch',
 			text:
 				'A drag that renumbers six siblings is a single change, and Ctrl or Cmd with Z, or ' +
 				'the toolbar arrow, takes the whole batch back at once — with the limits below.',
+		},
+		{
+			term: 'A batch is not atomic',
+			text:
+				'Writes land one file at a time, in order. If a large one fails partway — a big ' +
+				'drag, a backfill — every file already written stays written; the batch stops there ' +
+				'rather than undoing them, and the view refreshes to exactly what is now on disk. ' +
+				'Undo still works on what landed: it takes back only that prefix.',
 		},
 		{
 			term: 'What undo does not guarantee',
@@ -196,10 +224,14 @@ const WRITES: ManualSection = {
 				'creation that followed it — delete the note by hand to take a creation back.',
 		},
 		{
-			term: 'One at a time',
+			term: 'One at a time — except creating an item',
 			text:
-				'A second change is refused while one is in flight, rather than queued behind it. ' +
-				'The indicator says a batch is running.',
+				'Every write that goes through the gate — a drag, a state or risk or tag or ' +
+				'horizon change, the ✨ backfill, undo — is refused while another is already in ' +
+				'flight, rather than queued behind it, and the toolbar\'s ✨ and undo go disabled ' +
+				'to say so. Creating a new item does not go through that gate at all: the New ' +
+				'button and the + stay live throughout, so a note can be created while a large ' +
+				'batch elsewhere is still running.',
 		},
 		{
 			term: 'A forward write never targets an excluded note',

@@ -32,5 +32,6 @@ describe('the manual', () => {
 		expect(prose).toContain('quick filter');
 		expect(prose).toContain('descendant');
 		expect(prose).not.toContain('nothing is refused');
+		expect(prose).toContain('focus-root row has no previous sibling');
 	});
 });
