@@ -59,9 +59,12 @@
    child; this one is INSET, on the lead cell alone. Two different boxes, so a
    selected AND conflicting row shows both marks rather than one silently winning —
    the tree's own `.pbl-row.pbl-selected` inset idiom does not transfer here
-   unchanged, precisely because a tree row has no sticky opaque child at its edge. */
+   unchanged, precisely because a tree row has no sticky opaque child at its edge.
+   2px is `styles/tree.css`'s own selection accent, not a number picked here. This
+   shipped at 3px on the argument that it matched the house idiom, which it did not —
+   it was half again as thick as the one rule it was claiming kinship with. */
 .pbl-timeline-row.pbl-row-conflict .pbl-timeline-lead {
-	box-shadow: inset 3px 0 0 var(--color-red);
+	box-shadow: inset 2px 0 0 var(--color-red);
 }
 
 /* The dependent row's own dependency-trouble glyph — `renderRowFacts` in
