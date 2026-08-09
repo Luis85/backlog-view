@@ -105,6 +105,21 @@
 	align-items: baseline;
 }
 
+/* Same convention as the split above: gated on `.is-phone`, not a breakpoint of its
+   own. `max-content` on the term column costs nothing on desktop, where the pane is
+   wide enough that even the longest term ("An untyped item still has a level") still
+   leaves most of the row for its definition — but at phone width `max-content` takes
+   whatever the term needs regardless of what that leaves, so a long term crowds the
+   definition column into wrapping every word or overflowing outright. One column
+   stacks term-or-badge directly above its own definition instead, which is also what
+   `.pbl-badge` needs no rule of its own here for: it sits in the term column of the
+   same grid (`show`, `src/ui/manualDialog.ts`), so collapsing the grid to one column
+   carries the badge along with it — `styles/badges.css` already bounds its own width
+   (58–120px) independently of this grid and needed nothing changed. */
+.is-phone .pbl-manual-prose {
+	grid-template-columns: 1fr;
+}
+
 .pbl-manual-term {
 	font-weight: var(--font-medium);
 }

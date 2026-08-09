@@ -152,4 +152,12 @@ describe("the manual's stylesheet", () => {
 	it('stacks the sidebar above the pane on a real phone, gated the way Obsidian itself gates phone layout', () => {
 		expect(styles).toMatch(/\.is-phone \.pbl-manual-split\s*\{[^}]*flex-direction:\s*column/);
 	});
+
+	// Same limit again, and a genuinely separate rule from the one above — the split
+	// stacking nav-over-pane says nothing about the two-column grid INSIDE the pane,
+	// which is the one a long term (e.g. "An untyped item still has a level") crowds at
+	// phone width regardless of whether the split itself is stacked.
+	it('collapses the term/definition grid to one column on a real phone, so a long term cannot crowd the definition out', () => {
+		expect(styles).toMatch(/\.is-phone \.pbl-manual-prose\s*\{[^}]*grid-template-columns:\s*1fr/);
+	});
 });
