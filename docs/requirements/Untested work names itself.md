@@ -27,7 +27,8 @@ returning.
 **Retiring a test is not on that list**, and the sentence said it was until this note was
 reviewed. There is no retired state to read: this epic declares no test-status vocabulary
 ([[A catalog of tests]] refuses one, since `status` already says drafted, active and done),
-so a test whose `status` someone set to `Done` still declares its coverage and still counts.
+so a test whose `status` someone set to `Done` still declares its coverage, and still counts
+wherever the base still returns it.
 The count means *a test names this item*, not *a live test names this item*, and the only
 thing that narrows it is the base's own filter — which is a real answer, since a base that
 excludes finished notes gets the narrower count for free. Writing the wider guarantee and
@@ -93,7 +94,9 @@ here is a question for whichever increment gives tests a lifecycle, and it is no
   broken entry names nothing this base can see, and counting it would make the reassuring
   number the one thing a typo can inflate.
 - **2c — the only test naming it is one the user considers finished or abandoned**, its
-  `status` set accordingly. It counts. Nothing here reads a test's status, and the count
+  `status` set accordingly. It counts, so long as the base still returns it — which is the
+  whole of the qualification and the reason it is worth one. Nothing here reads a test's
+  status, and the count
   says what it says: a test names this item. A base that filters finished notes out of its
   results narrows the count by narrowing the results, which is the ordinary mechanism and
   needs nothing added; a base that does not, reports the wider number. What is refused is
@@ -119,9 +122,14 @@ here is a question for whichever increment gives tests a lifecycle, and it is no
 - Coverage does not roll up: a parent's count is its own edges, and a test naming a child
   changes no ancestor's number.
 - A broken entry counts for nothing.
-- A test's own `status` changes no count. The number is *a test names this item*, and the
-  only thing that narrows it is the base's results — stated as a criterion because the
-  wider promise is the easy sentence to write and nothing here would fail because of it.
+- **Nothing here reads a test's `status`.** A test that stays in the results counts the
+  same whatever its status says — that is the checkable half, and it is checked on a base
+  whose filter does not mention `status`, since only there can the two effects be told
+  apart. A base that *does* filter on `status` narrows the count when a test's status
+  changes (2c), and that is the results changing rather than the counter reading a status,
+  so the criterion is about the counter and says so. The unconditional version — "a test's
+  status changes no count" — was written first and is false of exactly the vault most
+  likely to have one.
 - `Task`s are counted when covered and never marked untested when not, and the distinction
   is asserted rather than left to the reader of the render code.
 - Not verifiable here: whether the untested signal reads as *information* rather than as an
