@@ -176,6 +176,15 @@ function removalOf(host: BacklogViewHost, source: BacklogItem, target: BacklogIt
 		const model = host.model;
 		const live = model && liveSource(model, source);
 		if (!model || !live) return null;
+		// The TARGET has to still be the note that was offered, not merely something at
+		// its path. `declaredPrerequisitePaths` below answers "does the source still name
+		// this path", which a replacement satisfies — the live link resolves to it — so on
+		// its own it would clear a dependency on a note nobody picked. 2e's replacement
+		// rule, which the add path and the source check already keep, asked of the third
+		// place a pick names a note. Consolidating the stale-pick guards into one question
+		// is what dropped it: the question I kept is about the SOURCE's list, and this one
+		// is about the target's identity.
+		if (model.byPath.get(target.file.path)?.file !== target.file) return null;
 		// `declaredPrerequisitePaths` is the same answer the picker was BUILT from, asked
 		// again of the live row — so "would this pick still match a line" is one rule
 		// rather than a second opinion of it. The path is read off the target's file here

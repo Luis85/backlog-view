@@ -412,6 +412,24 @@ describe('dependency inverses', () => {
 		expect(vault.fm('Item.md')['dependsOn']).toEqual(['[[A]]', 'A']);
 	});
 
+	it('tells two spellings apart by their padding, not by what they trim to', async () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', {});
+		const item = vault.addFile('Item.md', { frontmatter: { dependsOn: [' A ', 'A'] } });
+
+		const inverses = await writeCapturing(vault, [{ file: item, dependsOn: { removePath: 'A.md' } }], linked);
+		expect(vault.fm('Item.md')['dependsOn']).toBeUndefined();
+		// Only the padded one put back by hand.
+		vault.fm('Item.md')['dependsOn'] = [' A '];
+
+		await applyRestores(vault.app, inverses);
+
+		// The live `" A "` is the captured `" A "`, so what undo owes is the bare `A`.
+		// Counting exact matches off the TRIMMED reading made it the match for `"A"`
+		// instead, and appended a second padded copy.
+		expect(vault.fm('Item.md')['dependsOn']).toEqual([' A ', 'A']);
+	});
+
 	it('restores nothing for a dependency whose note was replaced under its own name', async () => {
 		const vault = new FakeVault();
 		vault.addFile('A.md', {});

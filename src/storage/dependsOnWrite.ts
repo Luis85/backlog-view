@@ -312,9 +312,15 @@ function stillOwed(
 	captured: DependsOnEntry[],
 	identityOf: (text: string) => string,
 ): { owed: DependsOnEntry[]; already: Map<string, number> } {
-	const texts = live.map((value) => textOf(value)).filter((text): text is string => text !== null);
-	const exact = countOf(texts);
-	const already = countOf(texts.map(identityOf));
+	// The exact count is built from the line AS WRITTEN, the identity count from its
+	// trimmed reading. Counting both off the trimmed text made `" A "` on the note an
+	// exact match for a captured `"A"`, so undo consumed the wrong captured entry and
+	// appended a second padded copy — the very confusion the exact pass exists to end.
+	const lines = live
+		.map((value) => ({ raw: value as string, trimmed: textOf(value) }))
+		.filter((line): line is { raw: string; trimmed: string } => line.trimmed !== null);
+	const exact = countOf(lines.map((line) => line.raw));
+	const already = countOf(lines.map((line) => identityOf(line.trimmed)));
 	const owed: DependsOnEntry[] = [];
 	for (const entry of captured) {
 		const have = exact.get(entry.text) ?? 0;

@@ -392,6 +392,21 @@ describe('the write', () => {
 		expect(Notice.messages.some((m) => m.includes('changed while the picker was open'))).toBe(true);
 	});
 
+	it('writes nothing when the chosen prerequisite was REPLACED by another at its path', async () => {
+		const vault = vaultWith({ B: { dependsOn: '[[A]]' } });
+		const { containerEl, view } = makeView(vault, withKey);
+
+		click(openMenu(containerEl, 'B'), 'Remove dependency…');
+		// B still names that path, so the live-source question says yes — but the note at
+		// it is a different one now, and a replacement inherits no pick (2e).
+		refreshReplacingFile(view, vault, 'A.md');
+		suggester().choose('A');
+		await flush();
+
+		expect(vault.fm('B.md')['dependsOn']).toBe('[[A]]');
+		expect(Notice.messages.some((m) => m.includes('changed while the picker was open'))).toBe(true);
+	});
+
 	it('writes nothing when the chosen unresolvable entry is gone from the note', async () => {
 		const vault = vaultWith({ B: { dependsOn: 'Ghost' } });
 		const { containerEl, view } = makeView(vault, withKey);

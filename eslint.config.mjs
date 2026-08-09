@@ -64,6 +64,32 @@ const WRITE_BOUNDARY = [
  * Enter or Space on a focused button synthesizes a click at (0, 0), so anchoring a
  * menu to the pointer drops it in the viewport corner. This shipped once already.
  */
+/**
+ * Obsidian hands an SVG node's `cls` straight to `classList.add` — `addClass` lives on
+ * `HTMLElement` — so a space-separated STRING throws `InvalidCharacterError` where
+ * `createEl` would have split it happily. This shipped: a two-class arrow path threw on
+ * every conflicting edge in a vault, and because the throw aborted the render before the
+ * timeline wired its grid, dragging a bar silently did nothing.
+ *
+ * Stated HERE rather than left to the suite, because `test/helpers/dom.ts` was the reason
+ * nothing caught it — a fake kinder than the real API. That file is faithful now, so a
+ * driven path fails a test; this rule is for the path nothing drives yet.
+ */
+const SVG_CLASS_TOKENS = [
+	{
+		selector:
+			"CallExpression[callee.property.name='createSvg'] Property[key.name='cls'] Literal[value=/ /]",
+		message:
+			'createSvg passes cls to classList.add, which rejects spaces. Pass an array of class names, not one space-separated string.',
+	},
+	{
+		selector:
+			"CallExpression[callee.property.name='createSvg'] Property[key.name='cls'] TemplateElement[value.raw=/ /]",
+		message:
+			'createSvg passes cls to classList.add, which rejects spaces. Build an array of class names rather than interpolating a space-separated string.',
+	},
+];
+
 const MENU_ANCHOR = {
 	selector: "MemberExpression[property.name='showAtMouseEvent']",
 	message: 'Open menus with showMenuForClick (src/view/interactions/menu.ts) so a keyboard-activated button anchors to its own rect.',
@@ -287,13 +313,13 @@ export default defineConfig([
 		// storage/, ui/, commands/, main.ts.
 		files: ['src/**/*.ts'],
 		ignores: [STORAGE, VIEW, ...RANKING_DOMAIN],
-		rules: syntaxRules([...WRITE_BOUNDARY, MENU_ANCHOR, OVERBY, TREE_SCAN]),
+		rules: syntaxRules([...WRITE_BOUNDARY, ...SVG_CLASS_TOKENS, MENU_ANCHOR, OVERBY, TREE_SCAN]),
 	},
 	{
 		// storage/ IS the writer, so the write boundary cannot apply to it. Nothing else
 		// about it is special — the menu rule and the overBy rule still do.
 		files: [STORAGE],
-		rules: syntaxRules([MENU_ANCHOR, OVERBY, TREE_SCAN]),
+		rules: syntaxRules([...SVG_CLASS_TOKENS, MENU_ANCHOR, OVERBY, TREE_SCAN]),
 	},
 	{
 		// The menu helper is where the anchoring decision is made, so it is the one place
@@ -304,7 +330,7 @@ export default defineConfig([
 		// workflow does THIS item track — so DELIVERABLE_FIELD_READ applies here like
 		// everywhere else that is not RENDER_BOARD or CARD_MOVES.
 		files: [MENU],
-		rules: syntaxRules([...WRITE_BOUNDARY, OVERBY, TREE_SCAN, DELIVERABLE_FIELD_READ]),
+		rules: syntaxRules([...SVG_CLASS_TOKENS, ...WRITE_BOUNDARY, OVERBY, TREE_SCAN, DELIVERABLE_FIELD_READ]),
 	},
 	{
 		// Ranking code, domain half: what it writes is an order among real siblings, and
@@ -312,7 +338,7 @@ export default defineConfig([
 		// at. It plans writes, which is exactly what overBy must stay out of. No
 		// ALL_TYPES_IMPORT: this file is domain/, not view/.
 		files: RANKING_DOMAIN,
-		rules: syntaxRules([...WRITE_BOUNDARY, MENU_ANCHOR, RENDERED_ROOTS, VISUAL_DEPTH, OVERBY, TREE_SCAN]),
+		rules: syntaxRules([...WRITE_BOUNDARY, ...SVG_CLASS_TOKENS, MENU_ANCHOR, RENDERED_ROOTS, VISUAL_DEPTH, OVERBY, TREE_SCAN]),
 	},
 	{
 		// Ranking code, view half: the same rules as the domain half, plus
@@ -322,6 +348,7 @@ export default defineConfig([
 		// CARD_MOVES'.
 		files: RANKING_VIEW,
 		rules: syntaxRules([
+			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
 			MENU_ANCHOR,
 			RENDERED_ROOTS,
@@ -344,6 +371,7 @@ export default defineConfig([
 		files: [RENDER],
 		ignores: [RENDER_BOARD],
 		rules: syntaxRules([
+			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
 			MENU_ANCHOR,
 			TREE_SCAN,
@@ -358,7 +386,7 @@ export default defineConfig([
 		// cards — it is the board's workflow, not a per-item type dispatch, so
 		// DELIVERABLE_FIELD_READ does not apply here. Everything else RENDER carries does.
 		files: [RENDER_BOARD],
-		rules: syntaxRules([...WRITE_BOUNDARY, MENU_ANCHOR, TREE_SCAN, ALL_TYPES_IMPORT, CHILD_TYPE_CHOICES_NULL]),
+		rules: syntaxRules([...SVG_CLASS_TOKENS, ...WRITE_BOUNDARY, MENU_ANCHOR, TREE_SCAN, ALL_TYPES_IMPORT, CHILD_TYPE_CHOICES_NULL]),
 	},
 	{
 		// The rest of view/ — everything under it once menu.ts, render/, create.ts and
@@ -369,6 +397,7 @@ export default defineConfig([
 		files: [VIEW],
 		ignores: [MENU, RENDER, ...RANKING_VIEW, CARD_MOVES],
 		rules: syntaxRules([
+			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
 			MENU_ANCHOR,
 			OVERBY,
@@ -385,6 +414,7 @@ export default defineConfig([
 		// one dispatching on the item's type. Everything else VIEW carries does apply.
 		files: [CARD_MOVES],
 		rules: syntaxRules([
+			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
 			MENU_ANCHOR,
 			OVERBY,

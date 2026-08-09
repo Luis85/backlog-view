@@ -20,7 +20,9 @@ a watched-failing test" — stay in [`../CLAUDE.md`](../CLAUDE.md).
   before `wireTimelineDrag` ran, the timeline's grid never registered its drop target —
   so dragging a bar silently did nothing and the only way to reschedule was the menu. The
   suite and the browser harness both drew it without complaint, because both run on this
-  file. Pass an array; it is the form that works in both.
+  file. Pass an array; it is the form that works in both — and a lint rule now bans the
+  string spelling at the call (`SVG_CLASS_TOKENS` in `eslint.config.mjs`), because a
+  faithful fake only catches a path some test drives and this one was reached by none.
 - `test/helpers/vault.ts` — `FakeVault` (metadata cache, vault, `processFrontMatter`, workspace
   recorder) and `FakeViewConfig` (records `set()` calls). Assert writes via
   `vault.fm(path)` / `vault.writeLog`; assert navigation via `vault.opened`.
