@@ -63,11 +63,14 @@ export function refocusByKey(barEl: HTMLElement, key: string | null): void {
  * this is that answer, keyed rather than selector-based because the toolbar already has
  * keys. `barEl` outlives the rebuild, so the lookup finds the replacement.
  *
- * Everything on this row whose activation re-renders while focus is elsewhere, or
- * destroys the control pressed, goes through it — the axis, the zoom, and the focus
- * picker's menu and its clear button. The New-type chevron is the one menu that does
- * not: its entries open the creation prompt, which takes focus deliberately, so
- * restoring focus here would fight the modal for it.
+ * The rule, not a list of who is in it — the earlier version named "the axis, the
+ * zoom, and the focus picker's menu and its clear button" and went stale twice, once
+ * per control added after it was written: **anything on this row whose activation
+ * re-renders the toolbar while focus is elsewhere, or which destroys the control that
+ * was pressed, goes through it.** The New-type chevron is the one menu that does not:
+ * its entries open the creation prompt, which takes focus deliberately, so restoring
+ * focus here would fight the modal for it — a genuine carve-out, not an omission from
+ * the rule above.
  */
 export function pickAndRefocus(barEl: HTMLElement, key: string, act: () => void): void {
 	act();
@@ -102,11 +105,24 @@ export function iconButton(
  * A labelled menu button: an icon, the current value in words, a chevron. The text is
  * its own span so the fit ladder can hide it without touching the accessible name, which
  * stays on the button.
+ *
+ * `label` is the VISIBLE value ("Timeline"), which is not, on its own, an accessible
+ * NAME — a reader hears "Timeline, button" with no purpose attached. `ariaLabel` is
+ * "Purpose: Value" (`renderFocusPicker`'s own `Focus: ${…}` shape), defaulting to the
+ * bare label for a caller that has not been given one. Every caller opens a `Menu` on
+ * click, so `aria-haspopup="menu"` is set here once rather than at each of them —
+ * baked into the shared constructor, not swept for afterwards.
  */
-function menuButton(parent: HTMLElement, icon: string, label: string, key: string): HTMLButtonElement {
+function menuButton(
+	parent: HTMLElement,
+	icon: string,
+	label: string,
+	key: string,
+	ariaLabel: string = label,
+): HTMLButtonElement {
 	const btn = parent.createEl('button', {
 		cls: 'pbl-menu-btn',
-		attr: { type: 'button', 'aria-label': label, [KEY_ATTR]: key },
+		attr: { type: 'button', 'aria-label': ariaLabel, 'aria-haspopup': 'menu', [KEY_ATTR]: key },
 	});
 	setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), icon);
 	btn.createSpan({ cls: 'pbl-btn-label', text: label });
@@ -171,7 +187,7 @@ function renderAxisPicker(host: BacklogViewHost, zone: HTMLElement, barEl: HTMLE
 	// there is nothing to NAME, and with one there is nothing to choose between.
 	const active = activeAxis(host.settings, host.axisPick);
 	if (active === null || configuredAxes(host.settings).length < 2) return;
-	const btn = menuButton(zone, AXIS_LABEL[active].icon, AXIS_LABEL[active].text, 'axis');
+	const btn = menuButton(zone, AXIS_LABEL[active].icon, AXIS_LABEL[active].text, 'axis', `Roadmap axis: ${AXIS_LABEL[active].text}`);
 	setTooltip(btn, 'Roadmap axis');
 	btn.addEventListener('click', (evt) => {
 		const menu = new Menu();
@@ -197,7 +213,13 @@ function renderAxisPicker(host: BacklogViewHost, zone: HTMLElement, barEl: HTMLE
  */
 function renderTimelineControls(host: BacklogViewHost, zone: HTMLElement, barEl: HTMLElement): void {
 	if (activeAxis(host.settings, host.axisPick) !== 'dates') return;
-	const btn = menuButton(zone, ZOOM_LABEL[host.zoom].icon, ZOOM_LABEL[host.zoom].text, 'zoom');
+	const btn = menuButton(
+		zone,
+		ZOOM_LABEL[host.zoom].icon,
+		ZOOM_LABEL[host.zoom].text,
+		'zoom',
+		`Timeline zoom: ${ZOOM_LABEL[host.zoom].text}`,
+	);
 	setTooltip(btn, 'Timeline zoom');
 	btn.addEventListener('click', (evt) => {
 		const menu = new Menu();
@@ -375,6 +397,7 @@ function overflowEntries(host: BacklogViewHost, barEl: HTMLElement): OverflowEnt
 export function renderOverflow(host: BacklogViewHost, barEl: HTMLElement): void {
 	const btn = iconButton(barEl, 'ellipsis', 'More toolbar actions', 'overflow');
 	btn.addClass('pbl-overflow-btn');
+	btn.setAttribute('aria-haspopup', 'menu');
 	btn.addEventListener('click', (evt) => {
 		const menu = new Menu();
 		for (const entry of overflowEntries(host, barEl)) {

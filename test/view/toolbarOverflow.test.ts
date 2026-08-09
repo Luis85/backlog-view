@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { Menu } from '../helpers/obsidian-mock';
 import { FakeVault } from '../helpers/vault';
 import { flush, fixture, makeView, noOptionalProperties, useViewHarness } from '../helpers/view';
+import { TIMELINE_LEAD_PX } from '../../src/view/render/timeline';
 
 useViewHarness();
 
@@ -140,7 +141,7 @@ describe('the toolbar overflow menu', () => {
 		expect(view.density).toBe('compact');
 	});
 
-	it('jumps to today through the menu without throwing off the dated axis', () => {
+	it('jumps to today through the menu, resetting the scroller the same way the button does', () => {
 		const vault = fixture();
 		const { view, containerEl } = makeView(vault, {
 			horizonProperty: 'note.horizon',
@@ -150,11 +151,21 @@ describe('the toolbar overflow menu', () => {
 		view.setProjection('roadmap');
 		view.setAxisPick('dates');
 
-		expect(() =>
-			openOverflow(containerEl)
-				.find((i) => i.titleText === 'Jump to today')
-				?.click(),
-		).not.toThrow();
+		const scroller = containerEl.querySelector<HTMLElement>('.pbl-timeline');
+		if (!scroller) throw new Error('the scroller is missing');
+		// Scrolled away by something else — a board or tree pan, in the real view — so
+		// the click has an actual distance to close rather than a no-op zero to zero.
+		scroller.scrollLeft = 999;
+
+		openOverflow(containerEl)
+			.find((i) => i.titleText === 'Jump to today')
+			?.click();
+
+		// The same clamped math `jumpToToday` itself uses (`roadmap.test.ts`'s own
+		// `centredOnToday`): jsdom lays out nothing, so `clientWidth` is 0, narrower than
+		// the lead column — the clamped case.
+		const todayLeft = view.roadmap?.todayLeft ?? 0;
+		expect(scroller.scrollLeft).toBe(Math.max(todayLeft - TIMELINE_LEAD_PX, 0));
 	});
 
 	it('runs the same backfill the ✨ button runs', async () => {

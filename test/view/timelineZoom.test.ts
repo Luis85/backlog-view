@@ -29,10 +29,11 @@ describe('the zoom control', () => {
 		view.setProjection('roadmap');
 
 		// The button NAMES the active scale — the state is what it says, not a pressed
-		// flag on one of three positions.
-		expect(zoomButton(containerEl).getAttribute('aria-label')).toBe('Months');
+		// flag on one of three positions. "Timeline zoom: …", not the bare value: a
+		// reader hearing only "Months, button" has no purpose attached to it.
+		expect(zoomButton(containerEl).getAttribute('aria-label')).toBe('Timeline zoom: Months');
 		pickFromToolbarMenu(containerEl, 'zoom', 'Quarters');
-		expect(zoomButton(containerEl).getAttribute('aria-label')).toBe('Quarters');
+		expect(zoomButton(containerEl).getAttribute('aria-label')).toBe('Timeline zoom: Quarters');
 		expect(view.zoom).toBe('quarter');
 	});
 

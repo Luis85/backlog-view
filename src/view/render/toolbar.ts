@@ -165,6 +165,7 @@ function renderNewButton(host: BacklogViewHost, barEl: HTMLElement, model: Backl
 	if (onDeliverables) return;
 	const pickBtn = iconButton(wrap, 'chevron-down', 'New item of another type');
 	pickBtn.addClass('pbl-new-pick');
+	pickBtn.setAttribute('aria-haspopup', 'menu');
 	pickBtn.addEventListener('click', (evt) => {
 		const menu = new Menu();
 		// Every declared type, extras included: this menu is the one place a top-level
@@ -429,7 +430,7 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 	// the text is all that named this control before.
 	const btn = wrap.createEl('button', {
 		cls: 'pbl-focus-btn',
-		attr: { [KEY_ATTR]: 'focus', 'aria-label': `Focus: ${active || 'all types'}` },
+		attr: { [KEY_ATTR]: 'focus', 'aria-label': `Focus: ${active || 'all types'}`, 'aria-haspopup': 'menu' },
 	});
 	setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'filter');
 	btn.createSpan({ cls: 'pbl-btn-label', text: active || 'All types' });
