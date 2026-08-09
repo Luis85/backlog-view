@@ -35,6 +35,33 @@ usable rather than merely viewable when dragging is not an option.
 **Extensions**
 
 - **2a — the user presses `/`.** Focus jumps to the quick filter ([[Quick filter]]).
+- **2c — the user wants out of the selection.** `Escape` clears it, and so does a click on
+  the pane's **background**. The pointer answer lives beside the keyboard one because the
+  key alone was not one: `Escape` only reaches the view while the pane has focus, and the
+  commonest way to select a row is a click that opens its note, which hands focus to the
+  editor. So the selection a pointer made had no way back out except selecting something
+  else.
+  **Background is defined by what it is not** — an item (a row or a card) or a control
+  that acts on its own — and it has to be, because the scroller's own blank strip is the
+  area under the last row and almost nothing else: every projection fills the pane with
+  containers, and the blank space a user can actually hit belongs to one of those. A rule
+  written as "the pane element itself" describes a target that is rarely reachable.
+  **Both halves are categories rather than lists**, and each was a list first that shipped
+  a hole. An item is anything the selection can rest on (`aria-selected`) — a row, a card,
+  and the board column's own header, which is a stop precisely so an empty column stays
+  reachable; a rule naming rows and cards covered two of the three and threw away a held
+  column position when its header was clicked. A control is a tab stop, which is what a
+  pane control is by construction; a rule naming items and buttons missed the timeline's
+  lead-resize grip, a `role="separator"` div, and cleared the selection under the user's
+  hand mid-resize. The pane is a tab stop too, and is ruled back in as the background it
+  is.
+  Both routes clear the WHOLE selection, the board's column stop included: a pane that
+  reads as holding nothing must not still answer `Alt`+arrow with a move.
+  The click opens nothing and writes nothing. It does **take focus** — the pane is a tab
+  stop, and a browser focuses one on a pointer press before any handler runs — and that
+  is the wanted direction rather than a cost tolerated: the gesture's whole reason is that
+  focus was in the editor, so leaving it there would clear the selection and still leave
+  `Escape` and the arrows out of reach.
 - **2b — the user presses `Ctrl`/`Cmd`+`Z`.** The last batch is taken back
   ([[Undo and redo]]) — handled before the empty-tree return, because the change being
   undone may be what emptied it.
@@ -54,11 +81,21 @@ usable rather than merely viewable when dragging is not an option.
   work is hidden.
 - Per-row controls inside the tree (**+**, the state chip) are real buttons with
   `tabindex="-1"`: reachable by assistive tech, never a `Tab` stop of their own.
+- A selection can be left without selecting something else: `Escape` clears it, and so
+  does a click on the pane's background — which is what a pointer has after opening a note
+  has taken focus to the editor. Background means anything that is not an item or a
+  control, in every projection, rather than the pane element alone — with "an item" read
+  as "anything carrying `aria-selected`" and "a control" as "a tab stop", so neither a
+  fourth selectable thing nor a new control is background to anybody.
 
 ## Where it lives
 
 `src/view/interactions/keyboard.ts` (navigation and shortcuts) ·
 `src/view/interactions/menu.ts` (the context menu) ·
-`src/view/interactions/structure.ts` (move, indent, outdent).
+`src/view/interactions/structure.ts` (move, indent, outdent) ·
+`src/view/selection.ts` (what a selection IS, and both ways out of one: `clearSelection`,
+which releases the card and the board's column stop together, and the background-click
+listener wired where the scroller is known, over `NOT_BACKGROUND` — the one statement of
+what a click inside the pane can land on and still mean something).
 Tests: `test/view/keyboard.test.ts`, `test/view/menu.test.ts`,
-`test/view/visibility.test.ts`.
+`test/view/visibility.test.ts`, `test/view/boardMoves.test.ts`.

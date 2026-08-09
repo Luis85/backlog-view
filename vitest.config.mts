@@ -233,22 +233,19 @@ export default defineConfig({
 			// four thresholds, so there was no higher-of to take — the rise is the merged
 			// tree's own.
 			//
-			// The user-manual dialog's task-1 fix round (closing the section-intro branch
-			// review found untested, in `test/ui/manualDialog.test.ts`) measured
-			// 98.33/94.65/99.57/99.49 (5843/5942, 3686/3894, 1408/1414, 4895/4920) against
-			// the 98.33/94.69/99.57/99.48 baseline above. Statements and functions repeat
-			// exactly; lines rounds down to the figure already recorded (99.4) despite the
-			// small rise. Branches is the one worth explaining, because closing the named
-			// branch did not fully recover the figure: two of `manualDialog.ts`'s own
-			// guards stay untaken, and both are dead by construction rather than gaps this
-			// suite left — `if (opening) this.show(opening)` only takes its true arm
-			// because every real caller hands `ManualDialog` a non-empty `sections` array,
-			// and `show`'s own `if (!pane) return` only takes its false arm because
-			// `paneEl` is always set by `onOpen` before the private `show` is ever called.
-			// Both round down to the 94.6 already recorded, so the threshold stays.
+			// The risk-chip increment (a third row chip over the risk property, its column and
+			// fit term, and the four per-row chip menus collapsed onto one `chipMenu`) measures
+			// 98.34/94.70/99.57/99.49. Only branches rounds down to a new decimal (94.7); the
+			// other three repeat the figures above and stay. The rise is again partly
+			// subtraction: three near-identical menu wrappers became one function with one
+			// set of branches, and the chip's own branches arrived driven.
+			// The user-manual increment (task 1: the manual dialog, its one opener and the
+			// sidebar's accessible selected state) is measured after the merge with main
+			// above, against main's earned 94.7 floor. See the entry below once the dead
+			// guards it surfaced are removed.
 			thresholds: {
 				statements: 98.3,
-				branches: 94.6,
+				branches: 94.7,
 				functions: 99.5,
 				lines: 99.4,
 			},

@@ -2,7 +2,9 @@
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { Menu } from '../helpers/obsidian-mock';
-import { fixture, flush, makeView, rowByTitle, useViewHarness } from '../helpers/view';
+import { ProductBacklogView } from '../../src/view/backlogView';
+import { FakeViewConfig } from '../helpers/vault';
+import { clickExpandAll, fixture, flush, makeView, rowByTitle, treeOf, useViewHarness } from '../helpers/view';
 
 useViewHarness();
 
@@ -115,6 +117,130 @@ describe('Clear risk', () => {
 		await flush();
 
 		expect('risk' in vault.fm('Epic A.md')).toBe(false);
+	});
+});
+
+describe('the risk chip', () => {
+	/** The chip on a row, whether it is the button or a context row's static div. */
+	const chipOf = (containerEl: HTMLElement, title: string) =>
+		rowByTitle(containerEl, title).querySelector('.pbl-risk-col .pbl-risk-chip');
+
+	it('shows the level the note declares and writes the one picked from it', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, risk: '3 - Low' } });
+		const { containerEl } = makeView(vault, configured);
+
+		const chip = chipOf(containerEl, 'Epic A');
+		expect(chip?.textContent).toBe('3 - Low');
+		expect(chip?.getAttribute('aria-label')).toBe('Change risk (currently 3 - Low)');
+		// No Tab stop: the tree is one stop and the context menu is the keyboard path.
+		expect(chip?.getAttribute('tabindex')).toBe('-1');
+
+		(chip as HTMLElement).click();
+		// The chip opens the row menu's OWN list, so the two cannot offer different
+		// levels or disagree about which is current.
+		expect(Menu.lastShown?.items.map((i) => i.titleText)).toEqual(['1 - High', '2 - Normal', '3 - Low', 'Clear risk']);
+		expect(Menu.lastShown?.item('3 - Low')?.checked).toBe(true);
+
+		Menu.lastShown?.item('1 - High')?.click();
+		await flush();
+
+		expect(vault.fm('Epic A.md')['risk']).toBe('1 - High');
+	});
+
+	it('invites a judgement on a note that carries none', () => {
+		const { containerEl } = makeView(fixture(), configured);
+
+		const chip = chipOf(containerEl, 'Epic A');
+		// Absence is not a level, so nothing is named — but the chip is still there to
+		// press, which is the whole point of putting it on the row.
+		expect(chip?.textContent).toBe('Risk');
+		expect(chip?.classList.contains('pbl-risk-unset')).toBe(true);
+		expect(chip?.getAttribute('aria-label')).toBe('Set risk');
+	});
+
+	it('replaces the property cell, in a column between the properties and the horizon', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, risk: '3 - Low', horizon: 'Now' } });
+		vault.entryValues.set('Epic A.md', {
+			'note.risk': { toString: () => '3 - Low' },
+			'note.points': { toString: () => '5' },
+		});
+		const { containerEl, config, view } = makeView(vault, { ...configured, horizonProperty: 'note.horizon' });
+		// The risk property is among the visible ones — the chip stands in its place, the
+		// state chip's own rule, so the value is never drawn twice with one of them inert.
+		config.order = ['note.risk', 'note.points'];
+		view.onDataUpdated();
+
+		const header = treeOf(containerEl).querySelector('.pbl-cols');
+		expect(Array.from(header?.querySelectorAll('.pbl-col-label') ?? []).map((el) => el.textContent)).toEqual([
+			'points',
+			'risk',
+			'horizon',
+			'Items',
+		]);
+		expect(Array.from(rowByTitle(containerEl, 'Epic A').querySelectorAll('.pbl-prop-value')).length).toBe(1);
+		expect(treeOf(containerEl).style.getPropertyValue('--pbl-risk-col')).toBe('116px');
+	});
+
+	it('is absent once the levels are cleared, and the property goes back to a column', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, risk: '3 - Low' } });
+		vault.entryValues.set('Epic A.md', { 'note.risk': { toString: () => '3 - Low' } });
+		const { containerEl, config, view } = makeView(vault, { ...configured, riskValues: '' });
+		config.order = ['note.risk'];
+		view.onDataUpdated();
+
+		// A chip whose menu could set nothing is the lie an absent control avoids — and
+		// nothing else is showing the property now, so the ordinary column is right.
+		expect(containerEl.querySelector('.pbl-risk-col')).toBeNull();
+		expect(rowByTitle(containerEl, 'Epic A').querySelector('.pbl-prop-value')?.textContent).toBe('3 - Low');
+	});
+
+	it('is static on a row the base filtered out, and absent where it says nothing', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, risk: '1 - High' } });
+		vault.addFile('Feature.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature' });
+		const containerEl = document.body.createDiv();
+		const view = new ProductBacklogView({} as never, containerEl);
+		const anyView = view as unknown as Record<string, unknown>;
+		anyView.app = vault.app;
+		anyView.config = new FakeViewConfig(configured);
+		anyView.data = { data: vault.entries().filter((e) => e.file.path === 'PBI.md') };
+		view.onDataUpdated();
+		clickExpandAll(containerEl);
+
+		// It renders and it parents; it is never a write target. So: shown, not pressable.
+		const context = chipOf(containerEl, 'Epic');
+		expect(context?.tagName).toBe('DIV');
+		expect(context?.textContent).toBe('1 - High');
+		// With nothing to show it draws nothing at all, rather than a button-shaped
+		// invitation to a write this row cannot take.
+		expect(chipOf(containerEl, 'Feature')).toBeNull();
+	});
+
+	it('drops before the rollup and after the properties, and is budgeted for', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, risk: '3 - Low' } });
+		const { containerEl, view } = makeView(vault, { ...configured, stateProperty: 'note.status' });
+		const tree = treeOf(containerEl);
+		const viewEl = containerEl.querySelector('.pbl-view');
+		const paneWidth = (px: number) => {
+			Object.defineProperty(tree, 'clientWidth', { value: px, configurable: true });
+			view.onDataUpdated();
+		};
+
+		paneWidth(700);
+		expect(viewEl?.classList.contains('pbl-hide-risk')).toBe(false);
+
+		// A column the budget did not account for would overflow instead of dropping.
+		paneWidth(560);
+		expect(viewEl?.classList.contains('pbl-hide-risk')).toBe(true);
+		expect(viewEl?.classList.contains('pbl-hide-meta')).toBe(false);
+
+		paneWidth(490);
+		expect(viewEl?.classList.contains('pbl-hide-meta')).toBe(true);
 	});
 });
 
