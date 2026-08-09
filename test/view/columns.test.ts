@@ -109,6 +109,22 @@ describe('property columns', () => {
 		expect(drawn()).toBe(2);
 	});
 
+	it('gives the columns the rollup’s width back when there is no rollup', () => {
+		// The budget subtracts the rollup's 84px only when something is going to draw one.
+		// With no state property and no counts there is no `.pbl-meta-col` at all, so a
+		// pane that holds one 280px column beside a rollup holds two without it.
+		const vault = fixture();
+		const { containerEl, config, view } = makeView(vault, { propertyColumnWidth: 280, showCounts: false });
+		config.order = ['note.points', 'note.owner'];
+		const tree = treeOf(containerEl);
+		Object.defineProperty(tree, 'clientWidth', { value: 950, configurable: true });
+		view.onDataUpdated();
+
+		const row = rowByTitle(containerEl, 'Epic A');
+		expect(row.querySelector('.pbl-meta-col')).toBeNull();
+		expect(row.querySelectorAll('.pbl-prop').length).toBe(2);
+	});
+
 	it('leaves nothing of a dropped column for a keyboard or a screen reader to find', () => {
 		// Clipping would hide the cell and keep it focusable — a control inside a column
 		// the view says it dropped, and focusing it scrolls the strip out from under its

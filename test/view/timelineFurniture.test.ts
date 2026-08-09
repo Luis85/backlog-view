@@ -325,7 +325,14 @@ describe('workflow state on the dated axis', () => {
 	}
 
 	function statefulRoadmap() {
-		const harness = makeView(statefulVault(), { ...DATE_AXIS, stateProperty: 'note.status' }, { collapsed: true });
+		// The state property is VISIBLE, so a state column resolves and a chip is something
+		// this frame could draw — without that, the chip assertion below is a question
+		// nobody asked.
+		const harness = makeView(
+			statefulVault(),
+			{ ...DATE_AXIS, stateProperty: 'note.status' },
+			{ collapsed: true, order: ['note.status'] },
+		);
 		harness.view.setProjection('roadmap');
 		return harness.containerEl;
 	}
@@ -347,7 +354,9 @@ describe('workflow state on the dated axis', () => {
 		// The colour is still drawn — this adds a carrier, it does not replace one.
 		expect(row.className).toMatch(/pbl-state-\d/);
 		expect(words(row)).toBe('Active');
-		// And not as a visible chip: the row is a lead column and a track, deliberately.
+		// And not as a visible chip, though the column now exists: a timeline row is a lead
+		// column and a track, so it draws no property strip at all — the words above are
+		// the whole of what it says about state.
 		expect(row.querySelector('.pbl-state-chip')).toBeNull();
 	});
 

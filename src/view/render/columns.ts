@@ -321,13 +321,39 @@ export function renderPropCells(
 	}
 }
 
-/** Which of the five renderings this column asked for. */
+/**
+ * Which of the five renderings this column asked for.
+ *
+ * Every one of them is handed the COLUMN's own display name, because that is the only
+ * thing on the row that says which property the cell is: the header
+ * (`renderColumnHeader`) is `aria-hidden`, so a chip whose accessible name says only
+ * "Change state" is unidentifiable — and two state columns are legal now, so two such
+ * chips can be on screen at once naming different properties. The chips put the name in
+ * the accessible name and keep the TOOLTIP a plain statement of what pressing does: a
+ * pointer user has the visible header directly above the cell, and a chip only ever
+ * renders in the tree, which always draws that header when it draws a column.
+ *
+ * A context row's `.pbl-state-static` form is deliberately left out of this. It is a
+ * `div` with no role, where an `aria-label` names nothing reliably — the accessible name
+ * of a generic element is its own text, which here IS the value — so the label it would
+ * carry is the tooltip's job, and that tooltip already says why the cell cannot be
+ * written rather than what pressing it would do.
+ */
 function renderCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem, column: Column): void {
 	if (column.kind === 'tags') renderTagCell(host, cell, item, column);
-	else if (column.kind === 'state') renderStateChip(host, cell, item, column.prop);
-	else if (column.kind === 'horizon') renderHorizonChip(host, cell, item);
-	else if (column.kind === 'risk') renderRiskChip(host, cell, item);
+	else if (column.kind === 'state') renderStateChip(host, cell, item, column);
+	else if (column.kind === 'horizon') renderHorizonChip(host, cell, item, column.label);
+	else if (column.kind === 'risk') renderRiskChip(host, cell, item, column.label);
 	else renderValue(host, cell, item, column);
+}
+
+/**
+ * What a chip announces. The verb is ours and stays sentence case; the noun is the
+ * property's own display name, so the control says which key it writes rather than which
+ * KIND of thing it is.
+ */
+function chipLabel(label: string, value: string | null): string {
+	return value === null ? `Set ${label}` : `Change ${label} (currently ${value})`;
 }
 
 function renderValue(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem, column: Column): void {
@@ -441,12 +467,7 @@ export function renderRollup(host: BacklogViewHost, row: HTMLElement, item: Back
  * Deliverable under the fallback (no Deliverable state property configured) reads the
  * shared key, so this is the identical value either way.
  */
-function renderStateChip(
-	host: BacklogViewHost,
-	col: HTMLElement,
-	item: BacklogItem,
-	prop: BasesPropertyId,
-): void {
+function renderStateChip(host: BacklogViewHost, col: HTMLElement, item: BacklogItem, column: Column): void {
 	// The CELL is the properties menu's question and the CHIP is the row's own: this
 	// column names ONE key, and a row draws into it only when that is the key its
 	// workflow writes. With both workflows visible on distinct keys there are two such
@@ -455,7 +476,7 @@ function renderStateChip(
 	// `stateKeyFor` is the same function `buildItemMenu` gates Set state on, so the chip
 	// and the menu can never disagree about which key this row writes.
 	const key = stateKeyFor(host.settings, item);
-	if (!key || `note.${key}` !== prop) return;
+	if (!key || `note.${key}` !== column.prop) return;
 	const { value, done } = ownWorkflowReading(item);
 	const cls = 'pbl-state-chip' + (done ? ' pbl-state-done' : '') + (value === null ? ' pbl-state-unset' : '');
 
@@ -478,7 +499,7 @@ function renderStateChip(
 		attr: {
 			type: 'button',
 			tabindex: '-1',
-			'aria-label': value === null ? 'Set state' : `Change state (currently ${value})`,
+			'aria-label': chipLabel(column.label, value),
 		},
 	});
 	fillStateChip(chip, done, value);
@@ -504,7 +525,7 @@ function fillStateChip(chip: HTMLElement, done: boolean, value: string | null): 
  * and a chip whose menu could set nothing would be a third opinion about what
  * "configured" means.
  */
-function renderHorizonChip(host: BacklogViewHost, col: HTMLElement, item: BacklogItem): void {
+function renderHorizonChip(host: BacklogViewHost, col: HTMLElement, item: BacklogItem, label: string): void {
 	// A value the reader refuses is not a placement: the roadmap shelves such a card
 	// with the reason on its face, and the chip says the same thing — unplaced, and
 	// why — rather than showing a horizon the axis would not honor.
@@ -531,7 +552,7 @@ function renderHorizonChip(host: BacklogViewHost, col: HTMLElement, item: Backlo
 		attr: {
 			type: 'button',
 			tabindex: '-1',
-			'aria-label': unplaced ? 'Set horizon' : `Change horizon (currently ${value})`,
+			'aria-label': chipLabel(label, value),
 		},
 	});
 	fillHorizonChip(chip, value);
@@ -550,7 +571,7 @@ function renderHorizonChip(host: BacklogViewHost, col: HTMLElement, item: Backlo
  * `Unplaced`: absence here is not a placement to name, it is an invitation, and the row
  * is where the judgement is meant to be made.
  */
-function renderRiskChip(host: BacklogViewHost, col: HTMLElement, item: BacklogItem): void {
+function renderRiskChip(host: BacklogViewHost, col: HTMLElement, item: BacklogItem, label: string): void {
 	const value = item.riskValue;
 	const cls = 'pbl-risk-chip' + (value === null ? ' pbl-risk-unset' : '');
 
@@ -572,7 +593,7 @@ function renderRiskChip(host: BacklogViewHost, col: HTMLElement, item: BacklogIt
 		attr: {
 			type: 'button',
 			tabindex: '-1',
-			'aria-label': value === null ? 'Set risk' : `Change risk (currently ${value})`,
+			'aria-label': chipLabel(label, value),
 		},
 	});
 	fillRiskChip(chip, value);

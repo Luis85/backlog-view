@@ -103,6 +103,63 @@ describe('the columns are the properties menu, in its order', () => {
 		// And the other way round for an item on the requirements workflow.
 		expect(cellsOf('Epic A')[1]).toBe('');
 	});
+
+	it('gives each chip its own column’s name, so two state columns do not announce alike', () => {
+		// The header is aria-hidden, so the chip's accessible name is the only thing that
+		// says which property it writes. Both workflows hold the SAME value here, so a
+		// name built from the kind rather than from the column is two identical
+		// announcements for two different properties.
+		const vault = fixture();
+		vault.addFile('Doc.md', { frontmatter: { type: 'Deliverable', order: 10, docStatus: 'Active' } });
+		vault.addFile('Epic C.md', { frontmatter: { type: 'Epic', order: 30, status: 'Active' } });
+		const { config, containerEl, view } = makeView(vault, {
+			stateProperty: 'note.status',
+			deliverableStateProperty: 'note.docStatus',
+			deliverableStateValues: 'Active, Done',
+		});
+		config.order = ['note.status', 'note.docStatus'];
+		view.onDataUpdated();
+
+		const chipLabel = (title: string) =>
+			rowByTitle(containerEl, title).querySelector('.pbl-state-chip')?.getAttribute('aria-label');
+		expect(chipLabel('Epic C')).toBe('Change status (currently Active)');
+		expect(chipLabel('Doc')).toBe('Change docStatus (currently Active)');
+		// And the unset shape names its property too, not just the set one.
+		expect(chipLabel('Epic A')).toBe('Set status');
+	});
+
+	it('falls back to the property key when the config will not name it', () => {
+		// `getDisplayName` is Bases', so it can throw. The column still has to be named:
+		// the chip's accessible name is the only thing on the row that says which property
+		// it writes, so a nameless one would be worse than a crude one.
+		const vault = fixture();
+		vault.addFile('Epic C.md', { frontmatter: { type: 'Epic', order: 30, status: 'Active' } });
+		const { config, containerEl, view } = makeView(vault, { stateProperty: 'note.status' });
+		config.getDisplayName = () => {
+			throw new Error('no display name');
+		};
+		config.order = ['note.status'];
+		view.onDataUpdated();
+
+		expect(kinds(view)).toEqual([['note.status', 'state']]);
+		expect(
+			rowByTitle(containerEl, 'Epic C').querySelector('.pbl-state-chip')?.getAttribute('aria-label'),
+		).toBe('Change status (currently Active)');
+		expect(treeOf(containerEl).querySelector('.pbl-col-label')?.textContent).toBe('status');
+	});
+
+	it('draws no columns at all when the properties menu itself throws', () => {
+		const { config, containerEl, view } = makeView(fixture(), { stateProperty: 'note.status' });
+		config.getOrder = () => {
+			throw new Error('no order');
+		};
+		view.onDataUpdated();
+
+		expect(kinds(view)).toEqual([]);
+		// The rollup still heads and draws itself — it is not one of the columns — but
+		// there is no property cell anywhere, in the header or on a row.
+		expect(containerEl.querySelector('.pbl-prop')).toBeNull();
+	});
 });
 
 describe('the header of a strip with no columns in it', () => {
