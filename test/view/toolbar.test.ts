@@ -33,6 +33,10 @@ describe('toolbar backfill', () => {
 
 		expect(vault.fm('Untyped.md')['type']).toBe('Feature');
 		expect(Notice.messages.some((m) => m.includes('updated 1 item'))).toBe(true);
+		// Nothing was bound on this run (noOptionalProperties clears every optional
+		// property), so nothing became a new property to go find in the properties menu —
+		// the guard on that clause is what this checks, not just its presence elsewhere.
+		expect(Notice.messages.some((m) => m.includes('properties menu'))).toBe(false);
 	});
 
 	it('binds the properties nobody has named, and creates them empty on every item', async () => {
