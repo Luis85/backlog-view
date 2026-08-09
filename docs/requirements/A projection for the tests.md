@@ -118,6 +118,10 @@ base settings are saved on the view, working position on the device.
   and unreachable by keyboard. It walks the projection's roots for the same reason the
   renderer does. This is an accessibility floor, not a nicety: a row that exists only to
   the mouse is a row half this plugin's users cannot act on.
+  **`handleTreeKeydown`'s own guard runs before that walk** and asks
+  `model.items.length === 0`, which a stored plan focus can empty while this projection has
+  rows (3b) — so the traversal fix alone leaves every key inert on a full screen. Both, or
+  neither is worth having.
 - **2a — this projection draws nothing.** The projection shows its empty state, and the
   test is the **population**, not whether a test type appeared among the raw results. A
   base returning a `Task` whose `Test case` parent was excluded still has a catalog to
@@ -260,6 +264,21 @@ base settings are saved on the view, working position on the device.
 - A quick filter surviving a projection switch answers for the projection now on screen.
   Asserted by switching with a needle in the box, not by re-typing it — re-typing is the
   path that already recomputes, so a test that types again would pass over the defect.
+- The catalog announces itself as the **test catalog**, not as the product backlog.
+  `renderProjectionContent` returns `label: 'Product backlog'` from its tree fallback, so a
+  projection that becomes tree-shaped by falling through inherits the tree's *identity*
+  along with its behaviour — and a screen-reader user who switched projections would be
+  told they are still in the backlog. The label is the one thing the fallthrough must not
+  give away, and it is asserted, because nothing on screen shows it and no other criterion
+  here would fail if it were wrong.
+- Keyboard commands work whenever this projection has rows, including when a **stored plan
+  focus** matches nothing. `handleTreeKeydown` bails on `model.items.length === 0` before
+  it walks any roots, and with such a focus that list is empty while the catalog draws
+  suites off the unfocused tree — so every key would be inert on a screen full of rows. The
+  guard asks this projection's visible population instead. (Deleting it outright also works,
+  since `visible.length === 0` two lines later answers the same question correctly for every
+  projection; the one consequence is that filter keys would then be handled on an empty
+  model, which is a change worth making deliberately rather than as a side effect.)
 - The catalog is **tree-shaped** at every gate that asks: columns fit and refit on resize,
   the fit classes survive its render, Expand/Collapse all are live when there is something
   to collapse, and a row's menu carries Move up/down/top/bottom and indent/outdent. Each is
@@ -309,6 +328,12 @@ base settings are saved on the view, working position on the device.
 `src/view/render/emptyStates.ts`, and the rows themselves `src/view/render/rows.ts` — the
 same tree renderer over a different population, which is what makes this projection cheap
 and is the reason it is a tree rather than a third kind of drawing.
+
+**`renderProjectionContent` needs a branch, not a fallthrough.** Its last line renders the
+tree and returns `role: 'tree', label: 'Product backlog'`, so every projection that is not
+board, roadmap or Deliverables gets the backlog's accessible name for free. The catalog
+wants the renderer and not the name, which is one line and the sort of line a fallthrough
+is designed to make invisible.
 
 **The roots are the one thing no consumer can be handed unchanged.** `renderTree` takes
 `model.roots` and `renderForest` filters siblings without descending through the ones it
