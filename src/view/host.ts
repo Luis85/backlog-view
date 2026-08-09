@@ -8,6 +8,7 @@ import { PlacementEnd } from '../domain/itemTypes';
 import { ScaleId, TimelineScale, TimelineWindow } from '../domain/timeline';
 import { ItemWrite, SchedulePlan } from '../domain/writePlan';
 import { BacklogSettings, OptionalProperty } from '../domain/settings';
+import { OpenTarget } from '../domain/itemHandling';
 import { WriteOutcome } from '../storage/frontmatter';
 
 export const PRODUCT_BACKLOG_VIEW_TYPE = 'product-backlog';
@@ -348,11 +349,15 @@ export interface BacklogViewHost {
 
 	selectItem(item: BacklogItem, scroll?: boolean): void;
 	clearSelection(): void;
-	/** Open the item's note, honoring the mod key of the triggering event. */
+	/** Open the item's note where the view is configured to, honoring the event's mod key. */
 	openItem(item: BacklogItem, evt: MouseEvent | KeyboardEvent): void;
-	openItemInNewTab(item: BacklogItem): void;
-	/** Open the item's note in a split pane next to the current one. */
-	openItemToSide(item: BacklogItem): void;
+	/**
+	 * Open it in a NAMED target instead — a middle click, and the menu's two entries,
+	 * each of which means one placement absolutely and is not redirected by the setting.
+	 * One method taking the target rather than one per target: the vocabulary is already
+	 * `OpenTarget`, and a third entry would otherwise be a third host method.
+	 */
+	openItemIn(item: BacklogItem, target: OpenTarget): void;
 	/** Open the row context menu at the item's row — the keyboard path (Menu key / Shift+F10). */
 	showContextMenuFor(item: BacklogItem): void;
 	/**

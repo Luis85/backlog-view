@@ -18,6 +18,7 @@ import {
 	typeFolderKey,
 	wipLimitKey,
 } from './settings';
+import { CLICK_ACTIONS, defaultItemHandling, OPEN_TARGETS } from './itemHandling';
 
 /**
  * What Bases shows in the view-options menu: pure declaration, no logic. Split from
@@ -70,8 +71,49 @@ export function getViewOptions(config?: BasesViewConfig): BasesAllOptions[] {
 		roadmapGroup(),
 		riskGroup(),
 		newItemsGroup(settings.homeFolder),
+		handlingItemsGroup(),
 		displayGroup(),
 	];
+}
+
+/**
+ * What a row does when it is used: the two questions are separate because the answers
+ * are. Folding on click withdraws no way of opening a note — the menu, `Enter` and the
+ * platform's modifier all still open one, and all three obey the target below — so a
+ * view can be a place to read the structure without ceasing to be a way into the notes.
+ *
+ * The first option says **in the tree** because that is where it applies, and an option
+ * naming more than it does is the same defect as a comment doing it. A card is not a row
+ * with a fold: its disclosure lists children on the card's own face, a timeline row's
+ * chevron folds grid rows, and a card with nothing under it draws no disclosure at all —
+ * so one gesture would mean three things and leave the commonest card inert. Where the
+ * target below applies is the opposite and needs no such qualifier: every projection
+ * opens notes the same way.
+ */
+function handlingItemsGroup(): BasesAllOptions {
+	const defaults = defaultItemHandling();
+	return {
+		type: 'group',
+		displayName: 'Handling items',
+		items: [
+			// The offered vocabulary is `itemHandling.ts`'s own, which is also what reads
+			// a stored value back — so nothing can be offered that cannot be read.
+			{
+				type: 'dropdown',
+				key: 'clickAction',
+				displayName: 'Clicking an item in the tree',
+				default: defaults.clickAction,
+				options: CLICK_ACTIONS,
+			},
+			{
+				type: 'dropdown',
+				key: 'openIn',
+				displayName: 'Open the note in',
+				default: defaults.openIn,
+				options: OPEN_TARGETS,
+			},
+		],
+	};
 }
 
 function hierarchyGroup(): BasesAllOptions {

@@ -1,10 +1,11 @@
 import { BasesViewConfig, normalizePath, parsePropertyId } from 'obsidian';
+import { defaultItemHandling, ItemHandling, resolveItemHandling } from './itemHandling';
 
 /**
  * Resolved, ready-to-use configuration for one Product Backlog view.
  * All property keys are plain frontmatter keys (without the `note.` prefix).
  */
-export interface BacklogSettings {
+export interface BacklogSettings extends ItemHandling {
 	parentKey: string;
 	orderKey: string;
 	typeKey: string;
@@ -304,6 +305,7 @@ export function defaultSettings(): BacklogSettings {
 		deliverableDoneValues: [...DEFAULT_DONE_VALUES],
 		riskKey: '',
 		riskValues: [...DEFAULT_RISK_VALUES],
+		...defaultItemHandling(),
 	};
 }
 
@@ -886,5 +888,6 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		// switchable off, and an emptied list means "no levels" rather than the three
 		// this plugin shipped.
 		riskValues: clearable('riskValues', fallback.riskValues, () => dedupe(list('riskValues'))),
+		...resolveItemHandling(config),
 	};
 }

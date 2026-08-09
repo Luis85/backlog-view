@@ -123,13 +123,13 @@ export function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childTyp
 		mi
 			.setTitle('Open in new tab')
 			.setIcon('file-plus')
-			.onClick(() => host.openItemInNewTab(item)),
+			.onClick(() => host.openItemIn(item, 'tab')),
 	);
 	menu.addItem((mi) =>
 		mi
 			.setTitle('Open to the right')
 			.setIcon('separator-vertical')
-			.onClick(() => host.openItemToSide(item)),
+			.onClick(() => host.openItemIn(item, 'split')),
 	);
 
 	host.app.workspace.trigger('file-menu', menu, item.file, PRODUCT_BACKLOG_VIEW_TYPE);

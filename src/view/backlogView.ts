@@ -1,4 +1,4 @@
-import { BasesView, Keymap, Menu, QueryController, setIcon } from 'obsidian';
+import { BasesView, Menu, QueryController, setIcon } from 'obsidian';
 import { CARD_SCOPE, CollapseState, TIMELINE_SCOPE } from './collapseState';
 import { FilterScope, FilterState } from './filterState';
 import {
@@ -9,6 +9,7 @@ import {
 	Projection,
 	RoadmapSnapshot,
 } from './host';
+import { OpenController } from './openTarget';
 import { WriteGate } from './writeGate';
 import { CardMoveController } from './cardMoves';
 import { CardDragController } from './interactions/cardDrag';
@@ -35,6 +36,7 @@ import { syncToolbarFit } from './render/toolbarFit';
 import { captureScroll, centreOnToday, renderProjectionContent, restoreScroll, ScrollAnchor } from './render/projections';
 import { refreshRowChildren } from './render/rows';
 import { adoptableProperties, BacklogSettings, defaultSettings, notePropertyId, OptionalProperty, resolveSettings } from '../domain/settings';
+import { OpenTarget } from '../domain/itemHandling';
 import { WriteOutcome } from '../storage/frontmatter';
 
 export { PRODUCT_BACKLOG_VIEW_TYPE } from './host';
@@ -77,6 +79,8 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	private scroll: ScrollAnchor = { content: '', todayTrackLeft: null, scale: null, offsets: {}, leadingDate: null };
 	/** Selection state and its DOM bookkeeping, for both projections. */
 	private readonly selection: SelectionController;
+	/** Where a note opens, and the side pane it reuses (`view/openTarget.ts`). */
+	private readonly opens = new OpenController();
 
 	settings: BacklogSettings = defaultSettings();
 	model: BacklogModel | null = null;
@@ -456,15 +460,11 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	}
 
 	openItem(item: BacklogItem, evt: MouseEvent | KeyboardEvent): void {
-		void this.app.workspace.getLeaf(Keymap.isModEvent(evt)).openFile(item.file);
+		this.opens.open(this, item, evt);
 	}
 
-	openItemInNewTab(item: BacklogItem): void {
-		void this.app.workspace.getLeaf('tab').openFile(item.file);
-	}
-
-	openItemToSide(item: BacklogItem): void {
-		void this.app.workspace.getLeaf('split').openFile(item.file);
+	openItemIn(item: BacklogItem, target: OpenTarget): void {
+		this.opens.openIn(this, item, target);
 	}
 
 	showContextMenuFor(item: BacklogItem): void {

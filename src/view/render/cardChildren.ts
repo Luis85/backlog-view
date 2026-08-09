@@ -120,6 +120,6 @@ function renderChildEntry(host: BacklogViewHost, list: HTMLElement, child: Backl
 	entry.addEventListener('auxclick', (evt) => {
 		if (evt.button !== 1) return;
 		evt.stopPropagation();
-		host.openItemInNewTab(child);
+		host.openItemIn(child, 'tab');
 	});
 }

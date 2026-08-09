@@ -63,7 +63,7 @@ export function makeView(
 	// the view identifies which base it is, so persistence tests need the real nesting.
 	const leafEl = document.body.createDiv();
 	const containerEl = leafEl.createDiv();
-	if (base) vault.leaves.push({ view: new FileView(vault.addFile(base), leafEl) });
+	if (base) vault.addLeaf(new FileView(vault.addFile(base), leafEl));
 	const view = new ProductBacklogView({} as never, containerEl);
 	const config = new FakeViewConfig(configValues);
 	if (viewName) config.name = viewName;

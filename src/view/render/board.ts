@@ -416,7 +416,7 @@ export function wireCardActivation(ctx: RowContext, card: HTMLElement, item: Bac
 		ctx.host.openItem(item, evt);
 	});
 	card.addEventListener('auxclick', (evt) => {
-		if (evt.button === 1) ctx.host.openItemInNewTab(item);
+		if (evt.button === 1) ctx.host.openItemIn(item, 'tab');
 	});
 	// The menu is the non-drag path, and on touch the only one — so a card carries it
 	// exactly as a row does, whichever projection drew it. What it offers differs per
@@ -465,7 +465,7 @@ function renderCardMatches(ctx: RowContext, card: HTMLElement, item: BacklogItem
 		link.addEventListener('auxclick', (evt) => {
 			if (evt.button !== 1) return;
 			evt.stopPropagation();
-			host.openItemInNewTab(match);
+			host.openItemIn(match, 'tab');
 		});
 	}
 }

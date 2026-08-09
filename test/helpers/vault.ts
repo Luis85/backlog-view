@@ -27,6 +27,18 @@ export interface AddFileOptions {
 }
 
 /**
+ * A workspace leaf as the view sees one: something drawing a view, and something that
+ * can be pinned. Every leaf the fake hands out is walked by `iterateAllLeaves`,
+ * including the ones `getLeaf` makes — which is what lets a test tell "opened a second
+ * pane" from "reused the one it already had".
+ */
+export interface FakeLeaf {
+	view: unknown;
+	pinned: boolean;
+	setPinned: (pinned: boolean) => void;
+}
+
+/**
  * In-memory stand-in for the parts of the App surface that model.ts and ops.ts
  * touch: metadata cache, vault file tree, and frontmatter processing.
  */
@@ -43,7 +55,7 @@ export class FakeVault {
 	/** Arguments of workspace.trigger() calls (hover-link, file-menu, …). */
 	triggers: unknown[][] = [];
 	/** Leaves iterateAllLeaves walks — how the view finds the base file it belongs to. */
-	leaves: { view: unknown }[] = [];
+	leaves: FakeLeaf[] = [];
 	/** The view the workspace calls active; null unless a test focuses a leaf. */
 	activeView: unknown = null;
 	/** Vault-scoped localStorage, as Obsidian's load/saveLocalStorage present it. */
@@ -59,15 +71,19 @@ export class FakeVault {
 
 	readonly app = {
 		workspace: {
-			getLeaf: (mode: unknown) => ({
-				openFile: async (file: TFile) => {
-					this.opened.push({ path: file.path, mode });
-				},
-			}),
+			// A leaf the view made, not one it is drawn in: it carries an element of its
+			// own so the walk that looks for THIS view's leaf can rule it out, the way a
+			// real leaf's view always has one.
+			getLeaf: (mode: unknown) =>
+				Object.assign(this.addLeaf({ containerEl: document.createElement('div') }), {
+					openFile: async (file: TFile) => {
+						this.opened.push({ path: file.path, mode });
+					},
+				}),
 			trigger: (...args: unknown[]) => {
 				this.triggers.push(args);
 			},
-			iterateAllLeaves: (cb: (leaf: { view: unknown }) => unknown) => {
+			iterateAllLeaves: (cb: (leaf: FakeLeaf) => unknown) => {
 				for (const leaf of this.leaves) cb(leaf);
 			},
 			/**
@@ -172,6 +188,19 @@ export class FakeVault {
 	/** What Obsidian fires when the theme, the appearance settings or a snippet change. */
 	changeCss(): void {
 		for (const cb of this.cssChangeHandlers) cb();
+	}
+
+	/** Add a leaf the workspace walks, recording whether anything pinned it. */
+	addLeaf(view: unknown): FakeLeaf {
+		const leaf: FakeLeaf = {
+			view,
+			pinned: false,
+			setPinned: (pinned: boolean) => {
+				leaf.pinned = pinned;
+			},
+		};
+		this.leaves.push(leaf);
+		return leaf;
 	}
 
 	/** Rename a file and fire vault.on('rename'), as Obsidian does. */
