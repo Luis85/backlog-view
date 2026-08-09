@@ -5,8 +5,18 @@ import { BacklogItem } from '../domain/model';
  * shape, or a control that acts on its own. Everything else the pane draws is
  * background, and a click there means "nothing" — see the listener in the constructor.
  * A row's own controls need no entry: they sit inside `.pbl-row`, which is already here.
+ *
+ * The control half is stated as a CATEGORY, not as a list of the controls that exist:
+ * `[tabindex]` is what "a thing that can be operated" looks like in this view, since a
+ * pane control is a tab stop by construction — `tabindex="-1"` for the per-row buttons,
+ * `0` for the timeline's resize grip, which is a `role="separator"` div and matched
+ * neither `.pbl-card` nor `button`. Enumerating them is how the next one added arrives
+ * broken. `button` stays beside it for the few that carry no explicit tabindex.
+ *
+ * The scroller itself carries `tabindex="0"` and is caught by that same term, so the
+ * listener has to rule it back out — it is the background, not a control on it.
  */
-const NOT_BACKGROUND = '.pbl-row, .pbl-card, button';
+const NOT_BACKGROUND = '.pbl-row, .pbl-card, button, [tabindex]';
 
 /** Source of unique element ids for the aria attributes, shared across view instances. */
 let elementIdCounter = 0;
@@ -58,7 +68,8 @@ export class SelectionController {
 		// `.pbl-children`. A click in the blank part of any of those is a click on
 		// nothing, and the equality test called it a click on something.
 		treeEl.addEventListener('click', (evt) => {
-			if (!(evt.target as Element | null)?.closest(NOT_BACKGROUND)) this.clearSelection();
+			const hit = (evt.target as Element | null)?.closest(NOT_BACKGROUND) ?? null;
+			if (hit === null || hit === treeEl) this.clearSelection();
 		});
 	}
 
