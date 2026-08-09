@@ -199,12 +199,20 @@ describe('the toolbar fit ladder', () => {
 	});
 
 	/**
-	 * Clearing is the third input to `revealFilter`, and the path that proves it: a filter
-	 * typed at a wide width is visible at a collapsing rung only through
-	 * `pbl-filter-active`, so emptying it removes the one class holding it open while the
-	 * cursor is still in it.
+	 * Clearing is the third input to `revealFilter`, and this drives the CLEAR BUTTON
+	 * rather than Escape because the button is the half that still bites. Both run the
+	 * same closure, but pressing the button puts focus on the button — and clearing is
+	 * exactly what unrenders it, so without `revealFilter` the cursor is left on an
+	 * element that is no longer shown. Escape never moves focus off the input, so nothing
+	 * has to put it back.
+	 *
+	 * The version of this test that drove Escape went TAUTOLOGICAL when the rule moved to
+	 * the focus listener, and it was found that way rather than reasoned about: gutting
+	 * `clear()` to a bare `setFilter('')` left it passing on BOTH assertions, not the one
+	 * predicted. `input.focus()` now sets `pbl-filter-open` by itself, and Escape leaves
+	 * focus where it already was, so neither assertion depended on the closure any more.
 	 */
-	it('keeps the filter open when it is cleared at a collapsing rung', () => {
+	it('keeps the filter open and focused when the clear button empties it at a collapsing rung', () => {
 		const vault = fixture();
 		const { view, containerEl } = makeView(vault);
 		const bar = toolbarOf(containerEl);
@@ -214,13 +222,73 @@ describe('the toolbar fit ladder', () => {
 		syncToolbarFit(bar);
 		expect(bar.getAttribute('data-pbl-fit')).toBe('5');
 
-		const input = containerEl.querySelector<HTMLInputElement>('.pbl-filter-input');
-		input?.focus();
-		input?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+		// A real press focuses the button it presses; the click alone does not, in jsdom.
+		const clearBtn = containerEl.querySelector<HTMLElement>('.pbl-filter-clear');
+		clearBtn?.focus();
+		clearBtn?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
-		// The active class is gone with the text; the open flag has to have taken over.
+		// The active class is gone with the text; the open flag has to have taken over,
+		// and the cursor has to be back in the input rather than on a hidden button.
 		expect(bar.hasClass('pbl-filter-open')).toBe(true);
 		expect(document.activeElement).toBe(containerEl.querySelector('.pbl-filter-input'));
+	});
+
+	/**
+	 * The fourth variant of one bug, and the reason the rule is now enforced in one place
+	 * rather than at a fourth call site. Typing goes straight to `setFilter` — it does not
+	 * pass through the `clear` closure Escape and the clear button share — so deleting the
+	 * last character at a collapsing rung drops `pbl-filter-active` with the text, and
+	 * nothing had ever set `pbl-filter-open`, so the rung hid an input the cursor was
+	 * still in. No call-site fix could have reached this path.
+	 *
+	 * Driven through the real `input` event on an emptied value, which is what a backspace
+	 * is, rather than through `setFilter`: the bug is that the listener bypasses the
+	 * closure, so calling the closure would assert the opposite of the thing at issue.
+	 */
+	it('keeps the filter open when its last character is deleted at a collapsing rung', () => {
+		const { containerEl } = makeView(fixture());
+		const bar = toolbarOf(containerEl);
+		const input = containerEl.querySelector<HTMLInputElement>('.pbl-filter-input');
+
+		// Typed while the pane was wide: focusing to type is what arms the rule.
+		input?.focus();
+		if (input) input.value = 'Epic';
+		input?.dispatchEvent(new Event('input', { bubbles: true }));
+
+		stubWidths(bar, 500, { '0': 980, '1': 860, '2': 690, '3': 600, '4': 540, '5': 480 });
+		syncToolbarFit(bar);
+		expect(bar.getAttribute('data-pbl-fit')).toBe('5');
+
+		// Backspace over the last character. The text goes; the cursor does not.
+		if (input) input.value = '';
+		input?.dispatchEvent(new Event('input', { bubbles: true }));
+
+		expect(bar.hasClass('pbl-filter-open')).toBe(true);
+		expect(document.activeElement).toBe(containerEl.querySelector('.pbl-filter-input'));
+	});
+
+	/**
+	 * The release the rule above needs, and the path that shows blur cannot be it: Escape
+	 * in the TREE empties the filter with focus nowhere near the input, so nothing blurs.
+	 * Without `syncFilterUi` clearing the flag, a filter opened once would stay open at
+	 * every narrow width for the life of the view.
+	 */
+	it('lets go of a filter emptied from the tree, where nothing blurs', () => {
+		const { containerEl } = makeView(fixture());
+		const bar = toolbarOf(containerEl);
+		const input = containerEl.querySelector<HTMLInputElement>('.pbl-filter-input');
+
+		input?.focus();
+		if (input) input.value = 'Epic';
+		input?.dispatchEvent(new Event('input', { bubbles: true }));
+		expect(bar.hasClass('pbl-filter-open')).toBe(true);
+
+		// Focus back in the tree, then Escape — the tree's own way to drop a filter.
+		const tree = treeOf(containerEl);
+		tree.focus();
+		key(tree, 'Escape');
+
+		expect(bar.hasClass('pbl-filter-open')).toBe(false);
 	});
 
 	/**
@@ -299,6 +367,27 @@ describe('the toolbar fit ladder', () => {
 		vault.changeCss();
 
 		expect(bar.getAttribute('data-pbl-fit')).toBe('2');
+	});
+
+	/**
+	 * The busy indicator is the one readout with no rung: at the last rung it stays and
+	 * SHRINKS instead, because it is the only thing on the row saying a batch is running
+	 * while half the controls beside it are disabled because of that batch.
+	 *
+	 * What that fix rests on, and all this file can hold of it: `.pbl-busy` is a DIRECT
+	 * child of the toolbar. Both rules that reach it are flex rules on the toolbar's own
+	 * children — the `flex: 0 0 auto` that keeps every control from being squeezed, and
+	 * the last rung's `flex: 0 1 auto` that excepts this one — and a wrapper put around it
+	 * would detach both silently, leaving the indicator unshrinkable again with nothing
+	 * failing. The shrink ITSELF is a browser fact: jsdom applies no stylesheet and lays
+	 * nothing out, so whether the row truncates rather than clipping New at 420px is on
+	 * the vault list, not here.
+	 */
+	it('keeps the busy indicator a direct child of the row, which is what the flex rules reach', () => {
+		const { containerEl } = makeView(fixture());
+		const bar = toolbarOf(containerEl);
+
+		expect(bar.querySelector('.pbl-busy')?.parentElement).toBe(bar);
 	});
 
 	/**

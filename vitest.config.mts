@@ -190,8 +190,9 @@ export default defineConfig({
 			// filter's reveal and its blur, the busy indicator's measured width
 			// reservation, plus the review rounds' two lower rungs, the `css-change` refit
 			// and the clip container — the padding correction the first round added was
-			// reverted by the second, see `syncToolbarFit`) measured
-			// 98.26/94.40/99.52/99.42. Only branches rounds down to a new decimal and
+			// reverted by the second, see `syncToolbarFit`; the third moved the
+			// never-collapse-a-focused-filter rule to one focus listener and one release in
+			// `syncFilterUi`) measured 98.26/94.41/99.52/99.42. Only branches rounds down to a new decimal and
 			// moves; the other three repeat the figures above. The branches gained are the
 			// ladder's own — the zero-width refusal, the reveal versus the rebuild, the
 			// blur's two answers and the theme change — each driven rather than

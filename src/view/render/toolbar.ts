@@ -301,6 +301,17 @@ export function syncFilterUi(host: BacklogViewHost, barEl: HTMLElement): void {
 	const input = barEl.querySelector<HTMLInputElement>('.pbl-filter-input');
 	if (input && input.value !== host.filterText) input.value = host.filterText;
 	input?.closest('.pbl-filter')?.classList.toggle('pbl-filter-active', host.filterText !== '');
+	// The release the focus listener in `renderFilterBox` needs. Blur alone cannot be it:
+	// blur keeps a non-empty filter open on purpose, so a filter emptied LATER from
+	// somewhere else — Escape in the tree does exactly that, with focus in the tree —
+	// would leave the flag set on a filter that is neither used nor focused, and the row
+	// would carry an empty input at every narrow width until someone clicked into it.
+	// Here rather than beside the flag's two writers because this is the function whose
+	// whole job is re-deriving this box from `host.filterText`, and it already owns the
+	// other class that answers the same question. Callers that clear and then re-open —
+	// `clear()`, the no-match empty state — run `revealFilter` AFTER `setFilter`, so they
+	// set the flag back on the far side of this.
+	if (host.filterText === '' && document.activeElement !== input) barEl.removeClass('pbl-filter-open');
 }
 
 /**
@@ -466,6 +477,15 @@ function renderFilterBox(host: BacklogViewHost, barEl: HTMLElement): void {
 	setIcon(reveal, 'search');
 	setTooltip(reveal, 'Filter items');
 	reveal.addEventListener('click', () => revealFilter(barEl));
+	// THE rule, enforced once: a filter that has focus is never collapsed. Four bugs of
+	// one shape were fixed at four call sites before this listener existed — `/`, the
+	// clear button, Escape, and finally typing the last character back out, which reaches
+	// `setFilter` directly and so could never be fixed by anything `clear()` did. Setting
+	// the flag where focus ARRIVES means every path inherits it without knowing about it,
+	// including the next one nobody has thought of. No refit is needed here: the flag only
+	// changes what is drawn below the rung that collapses this input, and `revealFilter`
+	// is what reaches focus from there — it has already refitted before focusing.
+	input.addEventListener('focus', () => barEl.addClass('pbl-filter-open'));
 	input.addEventListener('blur', () => {
 		// A filter someone is still using is never taken away: only an EMPTY input
 		// collapses back. The flag is read and cleared on the toolbar, where
