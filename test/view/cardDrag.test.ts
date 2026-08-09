@@ -196,4 +196,47 @@ describe('a link-kind payload against an ordinary drop target', () => {
 
 		expect(plan).not.toHaveBeenCalled();
 	});
+
+	it('follows a RENAME of the dragged note mid-gesture rather than cancelling', async () => {
+		// The other half of the same rule, and the half a path-keyed payload gets wrong in
+		// the opposite direction. Obsidian renames by mutating the one `TFile` in place, so
+		// a note renamed while the gesture is held keeps its identity and changes its path
+		// — and a lookup keyed by the path captured at drag START then finds nothing and
+		// cancels a drop that was entirely valid.
+		//
+		// So the payload's file is the lookup key as well as the confirmation: its `.path`
+		// is always the note's CURRENT path, which is exactly why the captured string is
+		// not. Same fact `src/storage/CLAUDE.md` leans on for the dependency undo — a
+		// rename mutates in place, a deletion does not — used here for the other question.
+		const fake = (path: string): BacklogItem =>
+			({
+				file: { path },
+				typeName: 'PBI',
+				plannedStart: { value: null, invalid: false },
+				plannedTarget: { value: null, invalid: false },
+			}) as unknown as BacklogItem;
+		const item = fake('Alpha.md');
+		const byPath = new Map([['Alpha.md', item]]);
+		const host = { model: { byPath } } as unknown as BacklogViewHost;
+		const viewEl = document.body.createDiv();
+		const dnd = new CardDragController(host, viewEl);
+		const card = viewEl.createDiv();
+		const target = viewEl.createDiv();
+		const plan = vi.fn();
+
+		dnd.wireCard(card, item);
+		dnd.wireDropTarget(target, plan);
+
+		const drop = startCardDrag(card);
+		// The one file object, mutated — and the model rebuilt under its new key. Nothing
+		// was deleted and nothing created, so this drop still means what it meant.
+		item.file.path = 'Renamed.md';
+		byPath.delete('Alpha.md');
+		byPath.set('Renamed.md', item);
+		drop(target);
+		await flush();
+
+		expect(plan).toHaveBeenCalledTimes(1);
+		expect(plan.mock.calls[0][0].item).toBe(item);
+	});
 });

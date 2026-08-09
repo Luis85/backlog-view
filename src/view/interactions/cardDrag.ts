@@ -2,6 +2,7 @@ import { draggable, dropTargetForElements, monitorForElements } from '@atlaskit/
 import { DragLocationHistory } from '@atlaskit/pragmatic-drag-and-drop/types';
 import { autoScrollForElements } from '@atlaskit/pragmatic-drag-and-drop-auto-scroll/element';
 import { announce, cleanup as liveRegionCleanup } from '@atlaskit/pragmatic-drag-and-drop-live-region';
+import { TFile } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { BoardModel, columnLabelFor } from '../../domain/board';
 import { BacklogItem } from '../../domain/model';
@@ -200,10 +201,9 @@ export class CardDragController {
 			draggable({
 				element: cardEl,
 				getInitialData: () => ({
-					path: item.file.path,
-					// Both, deliberately: the path is what a refreshed model is looked up
-					// by, the file is what confirms the answer is still this note. See
-					// `resolve`.
+					// The file alone: its `path` is the lookup key AND the file is the
+					// confirmation, because a rename mutates this object in place. A path
+					// captured here beside it would be the one that goes stale. See `resolve`.
 					file: item.file,
 					hold,
 					scrollLeft: originScroll?.() ?? null,
@@ -225,35 +225,46 @@ export class CardDragController {
 	}
 
 	/**
-	 * The item a payload names, resolved at DROP time — the dragged path outlives the
-	 * model it was taken from, because a refresh mid-drag can drop the note.
+	 * The item a payload names, resolved at DROP time — the payload outlives the model it
+	 * was taken from, because a refresh mid-drag can drop the note, move it, or replace it.
 	 *
-	 * Resolved by path and then CONFIRMED by file identity, which are two different
-	 * questions and both have to be asked. The path is what survives a refresh; the
-	 * file is what says the note at that path is still the note the user picked up.
-	 * A delete-and-recreate under the same name satisfies the lookup while being a
-	 * different note, so a payload that resolved on the path alone would hand the
-	 * caller somebody else's item and the write would land on it. This is the rule
-	 * `drop` in `linkDrag.ts` already keeps for the TARGET (`liveTarget?.file !==
-	 * target.file`), asked of the source, and it is asked HERE rather than there
-	 * because every drag this view has — a board move, a bucket, the shelf, a link —
-	 * comes through this one method, so a guard in any single caller would leave the
-	 * others open.
+	 * **The payload carries the FILE, and the file answers both questions.** Its `.path`
+	 * is the lookup key and the file itself is the confirmation, and one fact makes that
+	 * one field enough: Obsidian renames by mutating the one `TFile` in place, so
+	 * `file.path` is always the note's CURRENT path, while a deletion leaves the object
+	 * detached and mints a different one for anything created at the same name. The same
+	 * fact `src/storage/CLAUDE.md` leans on for the dependency undo, used here for the
+	 * other direction.
+	 *
+	 * Both halves are needed and they fail oppositely, which is why neither alone was
+	 * right. A path captured at drag START goes stale the moment the note is renamed —
+	 * the lookup then finds nothing and cancels a drop that was entirely valid. A path
+	 * trusted without the identity check accepts a delete-and-recreate under the same
+	 * name — the lookup succeeds and hands the caller somebody else's note. Reading the
+	 * path OFF the captured file gets the rename for free and leaves the comparison to
+	 * catch the replacement.
+	 *
+	 * This is the rule `drop` in `linkDrag.ts` already keeps for the TARGET
+	 * (`liveTarget?.file !== target.file`), asked of the source, and it is asked HERE
+	 * rather than there because every drag this view has — a board move, a bucket, the
+	 * shelf, a link — comes through this one method, so a guard in any single caller
+	 * would leave the others open.
 	 *
 	 * The `typeof` is the TYPE system's, not a runtime case: pragmatic hands
 	 * `source.data` back as `Record<string, unknown>`, while `canDrop` admits only a
-	 * source carrying this controller's private token and the one place minting that
-	 * token pairs it with `item.file.path`, a string, always. Its false arm is
-	 * therefore unreachable by construction and undeletable by typing, so it is left
+	 * source carrying this controller's private token and both places minting that
+	 * token pair it with `item.file`, whose `path` is a string, always. Its false arm
+	 * is therefore unreachable by construction and undeletable by typing, so it is left
 	 * uncovered on purpose and the reason is written here — the same reasoning
 	 * `.fallowrc.json` uses for a member only a framework calls, though that file is
 	 * read by a tool and this paragraph by a person. Reaching the branch would take a
 	 * faked adapter payload.
 	 */
 	private resolve(data: Record<string, unknown>): CardSource | null {
-		const path = data.path;
+		const file = data.file as TFile | undefined;
+		const path = file?.path;
 		const item = typeof path === 'string' ? this.host.model?.byPath.get(path) : undefined;
-		if (!item || item.file !== data.file) return null;
+		if (!item || item.file !== file) return null;
 		return {
 			item,
 			hold: (data.hold as BarHold | null | undefined) ?? null,
@@ -416,7 +427,7 @@ export class CardDragController {
 		this.cleanups.push(
 			draggable({
 				element: el,
-				getInitialData: () => ({ path: item.file.path, file: item.file, kind: LINK_KIND, view: this.token }),
+				getInitialData: () => ({ file: item.file, kind: LINK_KIND, view: this.token }),
 				onGenerateDragPreview: () => {
 					el.addClass('is-active');
 					hooks.onStart();

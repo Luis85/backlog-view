@@ -314,6 +314,16 @@ free of runtime code so imports stay cycle-free.
   takes what a drop MEANS as a callback — a column writes a state, a bucket writes a
   horizon, the shelf removes one — so the controller resolves the dragged card and never
   decides a write. Every target wears one drop-over class (`pbl-drop-over`).
+  **A payload names its note by the `TFile`, never by a path string**, and `resolve` is
+  the one place that matters because every drag — board, bucket, shelf, link — comes
+  through it. One field answers both questions a mid-drag refresh raises, because a
+  rename mutates the file in place while a deletion does not: `file.path` is therefore
+  always the CURRENT path and is the lookup key, and the file itself is then compared to
+  what that lookup returned. Both halves are load-bearing and they fail oppositely — a
+  path captured at drag start cancels a valid drop the moment the note is renamed, and a
+  lookup trusted without the comparison accepts a delete-and-recreate under the same name
+  and writes to a note nobody picked up. Same fact `src/storage/CLAUDE.md` leans on for
+  the dependency undo, used here for the other direction.
 - The whole column is the drop target and the highlight is the only drop signal —
   within-column order is derived from the Base's sort, so there is no between-cards
   edge, no hitbox package, and deliberately no Alt+Up/Down rank shortcut.
