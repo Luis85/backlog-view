@@ -130,6 +130,20 @@ context row when a visible descendant needs a parent to hang from.
   cost for a number this epic never promised — it records no results, so a case's `done` is
   its `status` and nothing else. If a run ever becomes an item, that increment can revisit
   this; naming the cost here is what keeps it from being rediscovered as a bug.
+- **2d — the base returns catalog members and nothing else.** The plan shows its ordinary
+  **empty** state, not its all-done one. Both decisions are keyed to the plan's population,
+  and neither is today: `renderTree` tests `model.items.length` for empty and then hands
+  `model.results.length` to `renderAllDoneState` when no root renders, and
+  `renderRoadmapAdvisory` branches on `model.results.length` the same way. Both arrays hold
+  the excluded tests, so a vault whose base returns twelve test notes and no plan work would
+  be told *"All 12 items are done and hidden"* — with a **Show completed items** button that
+  reveals nothing, because nothing is completed and nothing is hidden by completion.
+  That is the third appearance of one shape on this PR: **a control offering to reveal what
+  it cannot show.** The completed toggle's count was the first, the catalog's own empty
+  state the second, and this is the same defect in the plan, arrived at from the other side.
+  The catalog's empty state was written carefully against its population
+  ([[A projection for the tests]] 2a) and the plan's was left reading a shared array — the
+  symmetry this note exists to keep, missed in the direction that had no new code in it.
 - **3a — the toolbar's two numbers.** They answer different questions and only one of them
   moves, which an earlier draft of this note got wrong in both directions by treating them
   as one "advisory".
@@ -164,6 +178,11 @@ context row when a visible descendant needs a parent to hang from.
 
 - A result set with no test items renders identically in every projection, before and
   after this feature.
+- A result set of **only** test items shows the plan's ordinary empty state in the tree and
+  on the roadmap — not "All N items are done and hidden", and no button offering to reveal
+  them. Asserted on that result set specifically: it is the one where the two arrays those
+  decisions read disagree with the population the projection draws, and every other result
+  set makes them agree.
 - No test item appears as a row, a card, a bar or a shelf entry in the backlog tree, either
   board, or either roadmap axis.
 - Nothing outside the plan's population is counted by the plan's counts, rollups or level
@@ -211,6 +230,11 @@ context row when a visible descendant needs a parent to hang from.
 **Nothing yet — this note is design.** The predicate belongs in
 `src/domain/itemTypes.ts` beside the vocabulary, and it is asked in **two** places, which
 is the correction this note needed most.
+
+**In the empty states**, which are a third kind of consumer and easy to miss because they
+are what renders when nothing else does: `renderTree`'s two branches
+(`src/view/render/rows.ts`) and `renderRoadmapAdvisory` (`src/view/render/roadmap.ts`) both
+decide from `model.items` / `model.results` and must decide from the plan's population.
 
 **In the projections**, for what is drawn: the tree in `src/view/rowVisibility.ts`, the
 boards in `src/domain/board.ts`, the roadmap in `src/domain/roadmap.ts` and
