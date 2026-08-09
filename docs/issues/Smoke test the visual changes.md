@@ -258,16 +258,25 @@ a real vault, in both light and dark:
     - **The row must not move as the count climbs from `1` to `340`.** The done number is
       reserved to the total's digit count with tabular figures, which is a claim about the
       FONT: a theme whose interface font has no tabular figures, or which ignores
-      `font-variant-numeric`, makes the reservation an approximation and the row will
-      twitch. This is the half no test here can reach, and the reason the reservation is
-      written in `ch` rather than pixels.
+      `font-variant-numeric`, makes the reservation an approximation. The ladder now
+      re-measures on each digit crossing, so the reservation being wrong costs a few
+      pixels of wobble inside a digit count rather than an overflow — watch for the
+      twitch, and note whether it is once at `9 → 10` and `99 → 100` (the refit working)
+      or continuous (tabular figures not applying).
     - **With a screen reader running, the busy status should be announced once**, not once
       per file, even though a number beside it is changing 340 times. The counter is
       `aria-hidden` inside a `role="status"` region; whether that is enough is
       implementation behaviour, and if it is not, the count has to leave the region
       entirely rather than be hidden inside it.
 
-12. **The two button groups.** New and the switcher are one shared `.pbl-btn-group` now.
+12. **A running batch below the last-but-one rung.** The indicator now sheds at step 5,
+    so at a very narrow pane a batch shows only as a disabled undo button with nothing
+    saying why. Narrow the pane until the count disappears, run the ✨, and judge whether
+    one unexplained disabled control reads as a pause or as a broken toolbar. This is a
+    deliberate trade — the space buys a control at that width — and it is the one item on
+    this list that is a question rather than a check.
+
+13. **The two button groups.** New and the switcher are one shared `.pbl-btn-group` now.
     Check they read as segmented controls rather than as loose buttons — one border round
     each set, a hairline between the segments, square corners inside and rounded outside —
     and that neither shows Obsidian's default button chrome under a themed vault. The New

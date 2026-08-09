@@ -209,7 +209,9 @@ function renderNewButton(host: BacklogViewHost, barEl: HTMLElement, model: Backl
 		attr: { [KEY_ATTR]: 'new', 'aria-label': `New ${newLevel}` },
 	});
 	setIcon(newBtn.createSpan({ cls: 'pbl-btn-icon' }), 'plus');
-	newBtn.createSpan({ cls: 'pbl-btn-label', text: `New ${newLevel}` });
+	// Its own class beside the shared one: this is the label the ladder keeps longest,
+	// and a rung has to be able to name it. See `styles/toolbarFit.css` steps 2 and 6.
+	newBtn.createSpan({ cls: 'pbl-btn-label pbl-new-label', text: `New ${newLevel}` });
 	newBtn.addEventListener('click', () => promptCreateItem(host, [newLevel], null));
 	if (onDeliverables) return;
 	const pickBtn = iconButton(wrap, 'chevron-down', 'New item of another type');
@@ -276,10 +278,10 @@ function renderBusyIndicator(barEl: HTMLElement): void {
  * approximate: `ch` is font-relative, so it re-resolves on a theme or font change by
  * itself, where the pixel reservation this replaces was measured once and went stale.
  */
-function syncBusyCount(el: HTMLElement, busy: BusyState | null): void {
+function syncBusyCount(el: HTMLElement, busy: BusyState | null): boolean {
 	const done = el.querySelector<HTMLElement>('.pbl-busy-done');
 	const of = el.querySelector<HTMLElement>('.pbl-busy-of');
-	if (!done || !of) return;
+	if (!done || !of) return false;
 	// A single-file write is over before it could be read, so it gets no count at all —
 	// and the label wears the ellipsis instead, which is why that string is chosen here
 	// rather than being one fixed word.
@@ -291,6 +293,20 @@ function syncBusyCount(el: HTMLElement, busy: BusyState | null): void {
 	// `--pbl-today-left`), so the stylesheet holds what the reservation MEANS and this
 	// holds only how wide it is.
 	done.setCssProps({ '--pbl-busy-digits': counting && busy ? `${String(busy.total).length}ch` : '0' });
+	// …and the ladder re-measures when the DIGIT COUNT changes, which is the tick where
+	// the reservation could be wrong. It is exact where `tabular-nums` holds and it is the
+	// backstop where it does not: a theme whose interface font has no tabular figures makes
+	// every digit its own width, so the counter can grow inside its reservation, and a
+	// batch would otherwise reach the next threshold with no refit behind it. Twice in a
+	// 340-file batch rather than 340 times, so it costs two forced layout reads and not
+	// three hundred — the per-tick measurement this design exists to avoid is still
+	// avoided. Recorded on the counter, which is inside the `aria-hidden` subtree, rather
+	// than on `.pbl-busy` itself: an attribute write on a live region is a question this
+	// file has been wrong about once already, and one it does not need to ask.
+	const digits = counting && busy ? String(busy.done).length : 0;
+	const moved = done.dataset.pblDigits !== String(digits);
+	done.dataset.pblDigits = String(digits);
+	return moved;
 }
 
 /**
@@ -311,11 +327,10 @@ function setTextIfChanged(el: HTMLElement, text: string): void {
 }
 
 /**
- * The indicator's own half of `syncBusy`: the on/off flag, the fixed label, and the
- * count. Reports whether the indicator's VISIBILITY changed, which after this design is
- * the ONLY thing that can change the row's width — so it is the only thing worth
- * re-measuring for, and the ladder's schedule follows from the markup rather than from a
- * promise the markup has to be held to.
+ * The indicator's own half of `syncBusy`: the on/off flag, the label, and the count.
+ * Reports whether the row's WIDTH may have changed — the indicator appearing or going, or
+ * the count gaining a digit — so the ladder's schedule follows from what the markup can
+ * actually do rather than from a promise the markup has to be held to.
  *
  * **The visible text never changes while a batch runs.** It is `Updating…` for every
  * batch, of any size, and the count lives in the label's `title` instead. That is the
@@ -350,10 +365,10 @@ function setTextIfChanged(el: HTMLElement, text: string): void {
  * is a string write, costs no layout, and shows on hover without a listener.
  */
 function syncBusyLabel(el: HTMLElement, busy: BusyState | null): boolean {
-	// Captured before the toggle: the ladder re-runs on idle→busy and busy→idle, which
-	// happen twice per batch, and NOT on the ticks between them. `scrollWidth` is a
-	// forced layout read, so measuring per file would put back a cost of the same shape
-	// as the per-file re-render the deferred update removed.
+	// Captured before the toggle: the ladder re-runs on idle→busy and busy→idle, plus the
+	// one or two ticks where the count gains a digit, and NOT on the rest. `scrollWidth`
+	// is a forced layout read, so measuring per file would put back a cost of the same
+	// shape as the per-file re-render the deferred update removed.
 	const wasOn = el.hasClass('pbl-busy-on');
 	el.toggleClass('pbl-busy-on', busy !== null);
 	const labelEl = el.querySelector<HTMLElement>('.pbl-busy-label');
@@ -364,8 +379,10 @@ function syncBusyLabel(el: HTMLElement, busy: BusyState | null): boolean {
 	if (labelEl) setTextIfChanged(labelEl, busy ? (counting ? 'Updating' : 'Updating…') : '');
 	if (busy && counting) labelEl?.setAttribute('title', `Updating ${busy.done} of ${busy.total}…`);
 	else labelEl?.removeAttribute('title');
-	syncBusyCount(el, busy);
-	return wasOn !== (busy !== null);
+	// EITHER thing can change the row's width, so either is worth a re-measure: the
+	// indicator appearing or going, and the count gaining or losing a digit.
+	const grew = syncBusyCount(el, busy);
+	return wasOn !== (busy !== null) || grew;
 }
 
 /**
@@ -662,7 +679,7 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 
 	if (host.projection === 'deliverables') {
 		const wrap = barEl.createDiv({ cls: 'pbl-focus' });
-		const btn = wrap.createEl('button', { cls: 'pbl-focus-btn', attr: { type: 'button' } });
+		const btn = wrap.createEl('button', { cls: 'clickable-icon pbl-focus-btn', attr: { type: 'button' } });
 		setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'filter');
 		btn.setAttribute('aria-label', 'Deliverables');
 		btn.createSpan({ cls: 'pbl-btn-label', text: 'Deliverables' });
@@ -679,7 +696,7 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 	// Named explicitly, like the New button: the fit ladder hides `.pbl-btn-label`, and
 	// the text is all that named this control before.
 	const btn = wrap.createEl('button', {
-		cls: 'pbl-focus-btn',
+		cls: 'clickable-icon pbl-focus-btn',
 		attr: { [KEY_ATTR]: 'focus', 'aria-label': `Focus: ${active || 'all types'}`, 'aria-haspopup': 'menu' },
 	});
 	setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'filter');

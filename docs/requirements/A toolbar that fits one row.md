@@ -136,16 +136,24 @@ today's icon size, add up to.
   a `css-change` event and the tree's `ResizeObserver` are the only two triggers besides
   the render passes below, because a measured ladder is only as good as its last
   measurement and a theme swap invalidates it exactly as a resize does.
-- **5b — a batch write starts or finishes.** The indicator reads `Updating 12 of 340`
-  and counts up per file, and its appearance is still the only thing about it that can
-  change the row's width, so the ladder re-runs on that visibility transition and
-  deliberately not on the per-file ticks between it and the next one. What makes the
-  ticks free is a reservation rather than a fixed string: the done number is the only
-  part that varies, and it is held to the digit count of the TOTAL — fixed for the whole
-  batch — with tabular figures, so every digit is exactly the `ch` the reservation is
-  written in and `1 of 340` and `340 of 340` occupy one box. The number is published from
-  TS as `--pbl-busy-digits` and the stylesheet decides what it means, the way every other
-  computed width in this plugin reaches CSS.
+- **5b — a batch write starts or finishes.** The indicator reads `Updating 12 of 340` and
+  counts up per file. The ladder re-runs on the visibility transition and on the one or
+  two ticks where the count gains a digit, and on none of the rest. What makes the rest
+  free is a reservation: the done number is the only part that varies, and it is held to
+  the digit count of the TOTAL — fixed for the whole batch — with tabular figures, so
+  every digit is exactly the `ch` the reservation is written in and `1 of 340` and
+  `340 of 340` occupy one box. The number is published from TS as `--pbl-busy-digits` and
+  the stylesheet decides what it means, the way every other computed width in this plugin
+  reaches CSS.
+
+  The digit-count refit is what makes that safe rather than merely likely. `tabular-nums`
+  is a request the interface font can decline, and a font without tabular figures gives
+  every digit its own width — so the counter can outgrow a reservation written in `ch`,
+  and a long batch would otherwise reach the next threshold with nothing re-measuring.
+  Twice in a 340-file batch is two forced layout reads rather than three hundred, so the
+  per-tick measurement this design exists to avoid is still avoided. What survives is a
+  few pixels of wobble WITHIN a digit count on such a font, which no rung and no
+  reservation can catch and which the row clips rather than wraps.
 
   The counter is `aria-hidden`. `.pbl-busy` is `role="status"`, so a per-file number
   inside it is a 340-note backfill announced 340 times; hiding the counter from the

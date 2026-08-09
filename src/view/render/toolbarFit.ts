@@ -24,12 +24,18 @@ const FIT_ATTR = 'data-pbl-fit';
  *
  * It was 3 until a browser measurement showed step 3 did not mean "fits" — at 500px the
  * row still needed 588 of a 500px pane, and what fell off the right edge was `.pbl-new`
- * while `1 note ignored` survived, because the status block precedes New in DOM order
- * and no rung shed a readout. Steps 4 and 5 are that finding: **the primary action
- * outranks every readout**, so the advisories go and then the count goes, in that order,
- * before the button that creates work does.
+ * while `1 note ignored` survived, because the status block then preceded New in DOM
+ * order and no rung shed a readout. Steps 4 and 5 are that finding, and step 6 is what
+ * was left once New moved to the head of the row and stopped being what the clip took:
+ * the readouts still go before the words, and the primary action's own label goes last of
+ * all, after which only icons remain.
+ *
+ * Raising it is free and lowering it is not: `styles/toolbarFit.css` writes each rung as
+ * "engaged, and not one of the rungs above this one", so a new rung at the bottom needs
+ * no edit above it — but a number here smaller than the rungs that file defines leaves
+ * the last of them unreachable, with nothing failing.
  */
-const LAST_STEP = 5;
+const LAST_STEP = 6;
 
 /**
  * Measure the row and write the step it needs. It reports nothing: every rung is CSS over
