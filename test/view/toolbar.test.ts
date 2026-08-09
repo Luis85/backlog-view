@@ -53,6 +53,7 @@ describe('toolbar backfill', () => {
 			startProperty: 'note.start',
 			targetProperty: 'note.due',
 			riskProperty: 'note.risk',
+			dependsOnProperty: 'note.dependsOn',
 		});
 		// deliverableStateProperty is NOT bound: it now suggests the same key `status`
 		// does, `state` is declared first and claims it, and adoptableProperties'
@@ -65,6 +66,13 @@ describe('toolbar backfill', () => {
 		// Every one of them on the note, empty: the features are usable and nothing was
 		// decided for the user — no state, no horizon, no dates. Not deliverableStatus:
 		// that stub is scoped to Deliverable-typed items, and this note is an Epic.
+		//
+		// Nor the prerequisite list, which is bound above and deliberately absent here for
+		// a different reason. An empty state is a slot on this note to fill; an empty
+		// prerequisite list is a claim about a relationship that does not exist, made on
+		// every note at once — and it is the exact state a removal is required never to
+		// leave behind, so backfilling one would have this button create what
+		// `Remove dependency…` exists to clean up.
 		expect(vault.fm('Epic.md')).toEqual({
 			type: 'Epic',
 			order: 10,
@@ -77,9 +85,11 @@ describe('toolbar backfill', () => {
 			risk: '',
 		});
 		expect(view.settings.stateKey).toBe('status');
-		expect(Notice.messages.some((m) => m.includes('set up status, started, finished, horizon, start, due, risk'))).toBe(
-			true,
-		);
+		expect(
+			Notice.messages.some((m) =>
+				m.includes('set up status, started, finished, horizon, start, due, risk, dependsOn'),
+			),
+		).toBe(true);
 	});
 
 	it('binds nothing a second time, and nothing the user cleared', async () => {

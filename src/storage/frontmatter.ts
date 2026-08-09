@@ -21,6 +21,8 @@ import {
 } from '../domain/settings';
 import { DateSpan, daysBetween, reversedSpan } from '../domain/timeline';
 import { ItemWrite, TagDelta } from '../domain/writePlan';
+import { DependsOnRestore, dependsOnRestore, restoreDependsOn } from './dependsOnWrite';
+import { setOwn } from './ownProperty';
 import { axisEntries, stubKeys, touchedKeys } from './writeKeys';
 
 /**
@@ -55,6 +57,14 @@ export interface RestoreWrite {
 	 * changes made between the write and the undo instead of clobbering them.
 	 */
 	tags?: { key: string; delta: TagDelta };
+	/**
+	 * Reverses the effective prerequisite change, in RAW TEXT both ways: `add` puts
+	 * back the exact lines a removal took out, `remove` takes out the exact line an add
+	 * put in. A delta for the tags' reason, and raw for the reader's — an entry that
+	 * resolves to nothing has no other identity, and undoing its removal has to restore
+	 * the text rather than a note it never named.
+	 */
+	dependsOn?: DependsOnRestore;
 }
 
 /** What a restore batch could not put back, for the undo notice. */
@@ -133,8 +143,8 @@ export async function applyWrites(
 			}
 			const keys = touchedKeys(settings, write);
 			const prior = keys.map((key) => rawValueOf(fm, key));
-			const tags = applyInto(app, fm, settings, write);
-			inverse = captureInverse(write.file, keys, prior, fm, tags);
+			const lists = applyInto(app, fm, settings, write);
+			inverse = captureInverse(write.file, keys, prior, fm, lists);
 			if (write.axis && (write.axis.start !== undefined || write.axis.target !== undefined)) {
 				// Narrowed to the ends the placement HAS, on both sides. A marker keeps a
 				// stale start deliberately, so an unnarrowed `before` would announce a
@@ -172,9 +182,9 @@ export async function applyWrites(
 }
 
 /**
- * Apply one planned write to the live frontmatter, returning the tag restore its
- * delta earned (null when it changed no tags). Separate from the loop above so the
- * question "what does a write DO" is answerable in one place, and so the capture
+ * Apply one planned write to the live frontmatter, returning the list restores its
+ * deltas earned (each absent when it changed nothing). Separate from the loop above so
+ * the question "what does a write DO" is answerable in one place, and so the capture
  * that surrounds it stays readable beside it.
  */
 function applyInto(
@@ -182,7 +192,7 @@ function applyInto(
 	fm: Record<string, unknown>,
 	settings: BacklogSettings,
 	write: ItemWrite,
-): RestoreWrite['tags'] | null {
+): Pick<RestoreWrite, 'tags' | 'dependsOn'> {
 	// The state this note is actually leaving, read BEFORE the write replaces it. The
 	// model's idea of it can be a refresh behind — an external edit, or a batch still
 	// landing — and the done boundary has to be judged on the truth. Through the same
@@ -214,8 +224,11 @@ function applyInto(
 	}
 	const applied =
 		write.tags !== undefined && settings.tagsKey ? applyTagDelta(fm, settings.tagsKey, write.tags) : null;
-	// The stored delta is the one that UNDOES what was applied.
-	return applied ? { key: settings.tagsKey, delta: { add: applied.remove, remove: applied.add } } : null;
+	// Each stored delta is the one that UNDOES what was applied.
+	return {
+		tags: applied ? { key: settings.tagsKey, delta: { add: applied.remove, remove: applied.add } } : undefined,
+		dependsOn: dependsOnRestore(app, fm, settings, write),
+	};
 }
 
 /** The three hierarchy properties: the parent link (or its removal), the rank, the type. */
@@ -266,21 +279,6 @@ function applyAxis(fm: Record<string, unknown>, settings: BacklogSettings, write
 	}
 }
 
-
-/**
- * The frontmatter keys this write will touch, in the order they are written.
- *
- * Deduped before it returns: the requirements state and the Deliverable state may
- * explicitly share one key (`configProblems`' `STATE_KEY_SHARING_EXEMPT`), and a
- * Deliverable item missing that key gets it named twice by `missingKeyStubs`, once for
- * each field's own gap-check. A duplicate key makes `captureInverse` record the same
- * before/after pair twice, and the second entry reads on `applyRestores` as a conflict —
- * the first has already restored the value, so the compare-and-swap on the second sees
- * something other than what the write wrote — inflating `RestoreOutcome.conflicts` for a
- * restore that fully succeeded. Ordinary (non-exempt) collisions never reach here at
- * all: `configProblems` gates every write while one is reported.
- */
-
 /**
  * The item's risk level — the THIRD shape of this module's two standing rules: never a
  * key no property names, and a null REMOVES rather than blanks, because a note nobody has
@@ -298,8 +296,6 @@ function applyRisk(fm: Record<string, unknown>, settings: BacklogSettings, write
 	if (write.risk === null) delete fm[settings.riskKey];
 	else setOwn(fm, settings.riskKey, write.risk);
 }
-
-
 
 /**
  * The date stamps of one write. Never a write of their own — they mutate the same
@@ -356,19 +352,6 @@ function movesState(leaving: string | null, state: string | undefined): boolean 
 }
 
 /**
- * Write a note's OWN property for a user-configured key.
- *
- * `fm[key] = value` is not safe when the user names the property `__proto__`: plain
- * assignment reaches `Object.prototype`'s setter instead of creating a key, which
- * SILENTLY drops a string or a number — the state changes and its date vanishes — and
- * for the tag list, which is an array, actually replaces the object's prototype. A
- * defined own property is what YAML round-trips, for every key including that one.
- */
-function setOwn(fm: Record<string, unknown>, key: string, value: unknown): void {
-	Object.defineProperty(fm, key, { value, writable: true, enumerable: true, configurable: true });
-}
-
-/**
  * Whether a frontmatter value counts as "no date yet". Absent, null and empty text —
  * and a LIST holding nothing but those, because Obsidian writes an emptied list
  * property as `[]` and the date readers already call that absence. A stricter test
@@ -421,7 +404,6 @@ function mergeDate(live: unknown, requested: string): unknown {
 function sameCivil(a: CivilDate, b: CivilDate | null): boolean {
 	return b !== null && a.year === b.year && a.month === b.month && a.day === b.day;
 }
-
 
 /** The pair the note currently states, read the same tolerant way the model reads it. */
 function axisReadings(fm: Record<string, unknown>, settings: BacklogSettings): StatedEnds {
@@ -518,15 +500,15 @@ function captureInverse(
 	keys: string[],
 	before: RawValue[],
 	fm: Record<string, unknown>,
-	tags: RestoreWrite['tags'] | null,
+	lists: Pick<RestoreWrite, 'tags' | 'dependsOn'>,
 ): RestoreWrite | null {
 	const changed: KeyRestore[] = [];
 	keys.forEach((key, i) => {
 		const written = rawValueOf(fm, key);
 		if (!sameRaw(before[i], written)) changed.push({ key, prior: before[i], written });
 	});
-	if (changed.length === 0 && !tags) return null;
-	return { file, keys: changed, tags: tags ?? undefined };
+	if (changed.length === 0 && !lists.tags && !lists.dependsOn) return null;
+	return { file, keys: changed, tags: lists.tags, dependsOn: lists.dependsOn };
 }
 
 /**
@@ -557,7 +539,7 @@ export async function applyRestores(
 		}
 		let inverse: RestoreWrite | null = null;
 		await app.fileManager.processFrontMatter(restore.file, (fm: Record<string, unknown>) => {
-			inverse = restoreInto(fm, restore, outcome);
+			inverse = restoreInto(app, fm, restore, outcome);
 		});
 		if (inverse) onInverse?.(inverse);
 		onProgress?.(++done, restores.length);
@@ -567,6 +549,7 @@ export async function applyRestores(
 
 /** Apply one file's restore into its live frontmatter; returns the redo inverse. */
 function restoreInto(
+	app: App,
 	fm: Record<string, unknown>,
 	restore: RestoreWrite,
 	outcome: RestoreOutcome,
@@ -586,8 +569,11 @@ function restoreInto(
 		const applied = applyTagDelta(fm, restore.tags.key, restore.tags.delta);
 		if (applied) tags = { key: restore.tags.key, delta: { add: applied.remove, remove: applied.add } };
 	}
-	if (changed.length === 0 && !tags) return null;
-	return { file: restore.file, keys: changed, tags };
+	const dependsOn = restore.dependsOn
+		? (restoreDependsOn(app, restore.file, fm, restore.dependsOn) ?? undefined)
+		: undefined;
+	if (changed.length === 0 && !tags && !dependsOn) return null;
+	return { file: restore.file, keys: changed, tags, dependsOn };
 }
 
 function rawValueOf(fm: Record<string, unknown>, key: string): RawValue {
@@ -681,7 +667,6 @@ export async function createBacklogItem(app: App, settings: BacklogSettings, spe
 function wikilinkTo(app: App, target: TFile, sourcePath: string): string {
 	return '[[' + app.metadataCache.fileToLinktext(target, sourcePath) + ']]';
 }
-
 
 function sanitizeTitle(title: string): string {
 	const cleaned = title

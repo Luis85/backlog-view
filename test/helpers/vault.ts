@@ -15,6 +15,13 @@ export interface AddFileOptions {
 	frontmatter?: Record<string, unknown>;
 	/** Values of the `parent` key rendered as parsed frontmatter links. */
 	parentLink?: string;
+	/**
+	 * Frontmatter LIST values Obsidian would have parsed into its link cache, keyed by
+	 * property. A list is cached per entry (`dependsOn.0`, `dependsOn.1`), which is the
+	 * shape `readLinkList` reads and the one a raw-value fallback cannot exercise — so a
+	 * test wanting the real wikilink path has to be able to build it.
+	 */
+	listLinks?: Record<string, string[]>;
 	/** `file.stat.mtime`, for tests exercising "last modified" ordering. Defaults to 0. */
 	mtime?: number;
 }
@@ -169,14 +176,17 @@ export class FakeVault {
 
 	/** Rename a file and fire vault.on('rename'), as Obsidian does. */
 	renameFile(oldPath: string, newPath: string): TFile {
-		const existing = this.files.get(oldPath);
-		if (!existing) throw new Error(`no such file: ${oldPath}`);
+		const file = this.files.get(oldPath);
+		if (!file) throw new Error(`no such file: ${oldPath}`);
+		// The old name is read BEFORE the move, because the move rewrites it: the file
+		// object is mutated in place, as Obsidian's is.
+		const oldBasename = file.basename;
 		this.files.delete(oldPath);
 		const cache = this.caches.get(oldPath);
 		const fm = this.frontmatter.get(oldPath);
 		this.caches.delete(oldPath);
 		this.frontmatter.delete(oldPath);
-		const file = new TFile(newPath);
+		file.moveTo(newPath);
 		this.files.set(newPath, file);
 		if (cache) this.caches.set(newPath, cache);
 		if (fm) this.frontmatter.set(newPath, fm);
@@ -185,7 +195,7 @@ export class FakeVault {
 		// look like a restructure rather than a rename.
 		for (const [path, cache] of this.caches) {
 			for (const link of cache.frontmatterLinks ?? []) {
-				if (link.link !== existing.basename) continue;
+				if (link.link !== oldBasename) continue;
 				link.link = file.basename;
 				link.original = `[[${file.basename}]]`;
 				const fm = this.frontmatter.get(path);
@@ -202,10 +212,10 @@ export class FakeVault {
 	 * from.
 	 */
 	renameFolder(oldPath: string, newPath: string): void {
-		for (const path of [...this.files.keys()]) {
+		for (const [path, file] of [...this.files]) {
 			if (!path.startsWith(`${oldPath}/`)) continue;
 			const moved = newPath + path.slice(oldPath.length);
-			const file = new TFile(moved);
+			file.moveTo(moved);
 			this.files.delete(path);
 			this.files.set(moved, file);
 			const cache = this.caches.get(path);
@@ -229,6 +239,17 @@ export class FakeVault {
 			fm['parent'] = `[[${options.parentLink}]]`;
 			cache.frontmatterLinks = [
 				{ key: 'parent', link: options.parentLink, original: `[[${options.parentLink}]]` },
+			];
+		}
+		for (const [key, links] of Object.entries(options.listLinks ?? {})) {
+			fm[key] = links.map((link) => `[[${link}]]`);
+			cache.frontmatterLinks = [
+				...(cache.frontmatterLinks ?? []),
+				...links.map((link, index) => ({
+					key: `${key}.${index}`,
+					link,
+					original: `[[${link}]]`,
+				})),
 			];
 		}
 		if (Object.keys(fm).length > 0) cache.frontmatter = fm;

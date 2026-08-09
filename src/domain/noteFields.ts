@@ -40,8 +40,64 @@ export function resolveParent(app: App, file: TFile, cache: CachedMetadata | nul
 	return { file: dest ?? null, hasValue: true, explicitRoot: false };
 }
 
-/** Strip wikilink brackets, aliases and heading refs from a raw parent value. */
-function linkpathFromRawValue(rawValue: string): string {
+/** One entry of a link-list property: the text the note holds, and what it resolves to. */
+export interface LinkEntry {
+	/**
+	 * Exactly what the note spells, trimmed and no more — brackets and all. This is
+	 * what a removal matches on for an entry that resolved to nothing, so it must
+	 * survive the read unmodified: normalizing it here would leave the write unable to
+	 * find the line it is being asked to take out.
+	 */
+	raw: string;
+	file: TFile | null;
+}
+
+/**
+ * A link LIST property, in every shape frontmatter spells one: a single value or a
+ * YAML list, a `[[wikilink]]` or a bare name. Blank entries are dropped.
+ *
+ * **Duplicates are preserved**, which is the one place this parts company with
+ * `resolveParent` above, and it is a requirement rather than an omission: removal has
+ * to drop every raw entry an offered line stands for, so `[A, A]` must arrive as two
+ * entries and collapse later, where collapsing is a statement about dependencies
+ * rather than about YAML.
+ *
+ * Entry order is the note's own. Nothing here writes, reorders or repairs anything.
+ */
+export function readLinkList(app: App, file: TFile, cache: CachedMetadata | null, key: string): LinkEntry[] {
+	if (!cache || key === '') return [];
+	const raw: unknown = ownValue(cache.frontmatter, key);
+	if (raw === undefined) return [];
+	// The link cache keys a list entry as `key.0`, `key.1` — the dotted form
+	// `resolveParent` already matches, indexed here so an entry can find its own link
+	// rather than the first one the property holds.
+	const linked = new Map<string, string>();
+	for (const link of cache.frontmatterLinks ?? []) {
+		if (link.key === key || link.key.startsWith(key + '.')) linked.set(link.key, link.link);
+	}
+	const values: unknown[] = Array.isArray(raw) ? raw : [raw];
+	const entries: LinkEntry[] = [];
+	values.forEach((value, index) => {
+		if (typeof value !== 'string') return;
+		const text = value.trim();
+		if (text.length === 0) return;
+		// A single value is keyed by the bare key; a list entry by its index.
+		const linkpath = linked.get(Array.isArray(raw) ? `${key}.${index}` : key) ?? linkpathFromRawValue(text);
+		const dest = linkpath.length > 0 ? app.metadataCache.getFirstLinkpathDest(linkpath, file.path) : null;
+		entries.push({ raw: text, file: dest ?? null });
+	});
+	return entries;
+}
+
+/**
+ * Strip wikilink brackets, aliases and heading refs from a raw link value.
+ *
+ * Exported because the WRITER has to ask the same question the reader does: a removal
+ * matches live entries against the note they name, and two answers to "what note does
+ * this text mean" would drop the wrong line — or none, on the spelling the other half
+ * did not consider.
+ */
+export function linkpathFromRawValue(rawValue: string): string {
 	let linkpath = rawValue.trim();
 	const wiki = linkpath.match(/^\[\[([^\]]+)\]\]$/);
 	if (wiki) linkpath = wiki[1];

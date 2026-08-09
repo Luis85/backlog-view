@@ -39,6 +39,7 @@ export function demoOptions(): Record<string, unknown> {
 		startedStates: 'Active, Review',
 		horizonProperty: 'note.horizon',
 		horizonValues: 'Now, Next, Later',
+		dependsOnProperty: 'note.dependsOn',
 		startProperty: 'note.start',
 		targetProperty: 'note.due',
 		startedDateProperty: 'note.started',
@@ -75,16 +76,25 @@ export function demoVault(): FakeVault {
 	// An extra type at the SHALLOWEST legal parent, and the one place the pinned rank is
 	// visible rather than merely true: it sits among Features and its child is a Task, the
 	// rung two below the Epic holding it. Dated, so an extra type draws a bar as well.
-	add('Offline-first sync', { type: 'Idea', order: 30, status: 'Active', horizon: 'Next', start: '2026-08-10', due: '2026-10-15' }, 'Onboarding');
+	// Waits for `Single sign-on`, which ends 08-15 — after this one starts. A CONFLICT
+	// arrow, and the marker on this row.
+	add('Offline-first sync', { type: 'Idea', order: 30, status: 'Active', horizon: 'Next', start: '2026-08-10', due: '2026-10-15', dependsOn: '[[Single sign-on]]' }, 'Onboarding');
 	add('Survey the storage APIs', { type: 'Task', order: 10, status: 'Active' }, 'Offline-first sync');
 
-	add('Billing', { type: 'Epic', order: 20, status: 'New', horizon: 'Later', start: '2026-10-01', due: '2027-01-31' });
+	// Waits for `Sign-up flow`, which ends 08-20 — well before this starts. The ORDINARY
+	// arrow, so the picture has one of each rather than only the loud one.
+	add('Billing', { type: 'Epic', order: 20, status: 'New', horizon: 'Later', start: '2026-10-01', due: '2027-01-31', dependsOn: '[[Sign-up flow]]' });
 	add('Invoicing', { type: 'Feature', order: 10, status: 'New', horizon: 'Later' }, 'Billing');
 	add('Monthly statement', { type: 'PBI', order: 10, status: 'New' }, 'Invoicing');
-	add('Dunning emails', { type: 'PBI', order: 20 }, 'Invoicing');
+	// SHELVED with a stated, readable start (its target precedes it), and its prerequisite
+	// runs past that start — `Arrows between bars` 2b: a conflict stated on the shelf card
+	// with no arrow drawn, since a shelved dependent has no bar to carry one.
+	add('Dunning emails', { type: 'PBI', order: 20, start: '2026-08-05', due: '2026-07-01', dependsOn: '[[Sign-up flow]]' }, 'Invoicing');
 	// An extra type at the DEEPEST legal parent, drawn level with the two PBIs above it.
 	add('Usage-based pricing', { type: 'Idea', order: 30, status: 'New', horizon: 'Later' }, 'Invoicing');
-	add('Ship 1.0', { type: 'Milestone', order: 30, due: '2026-09-30' }, 'Billing');
+	// Names a note this base does not have: BROKEN (1d). No arrow, and the row carries the
+	// glyph — the case that used to be visible to a screen reader and to nobody else.
+	add('Ship 1.0', { type: 'Milestone', order: 30, due: '2026-09-30', dependsOn: 'Contract signed' }, 'Billing');
 
 	// A parent the Base excludes, with a child it returns: the context row on screen.
 	vault.addFile(OUTSIDE, { frontmatter: { type: 'Epic', order: 30, status: 'Done' } });

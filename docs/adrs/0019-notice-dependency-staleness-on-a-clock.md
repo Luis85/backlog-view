@@ -59,6 +59,13 @@ five steps as any other, so an upgrade is proven the way a feature is.
 `npm audit` stays **out** of `npm run check`, and out of CI. Two reasons, and only the
 second is decisive:
 
+> **Narrowed by [ADR 0022](0022-audit-what-ships-beside-the-gate.md) (2026-08-09).** The
+> first reason still holds and keeps audit out of `check`. The second turned out to be an
+> objection to a permanently-red gate rather than to auditing at all, and its force
+> depends on scope — so `npm audit --omit=dev --audit-level=critical` now runs as its own
+> CI job over the three packages that reach `main.js`. Everything else below is unchanged
+> and still governs.
+
 - `check` is the offline definition of done. An audit needs the network to answer.
 - An advisory can be published with no patched version to move to. A gate in that state
   cannot be passed by fixing the change in hand — and ADR 0007's accepted cost was checks

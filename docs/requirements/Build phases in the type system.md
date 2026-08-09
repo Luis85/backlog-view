@@ -47,6 +47,14 @@ computes it has not produced — instead of my having to hold the build order in
 
 ## Where it lives
 
-`src/domain/model.ts` (the three phase types and the phases themselves).
+`src/domain/model.ts` (the three phase types and the phases themselves), with phase 1
+split into `src/domain/readItems.ts` when `model.ts` reached its line budget. The seam is
+the phase boundary rather than a convenient cut: `RawItem` is the one phase whose output
+holds no reference to the phases after it — no parent, no children, no level — so the
+module can own `RawItem`, `RawStore` and the read that produces them without importing
+`LinkedItem` or `BacklogItem` back. Cutting anywhere later would have made `model.ts`
+import a module that imports `BacklogItem` from it, which is the import cycle this
+repository's own dependency gate refuses. The types staying separate is what makes that
+checkable rather than a matter of care.
 Tests: `test/domain/model.test.ts`.
 Done by: [[Phase type BacklogItem]].

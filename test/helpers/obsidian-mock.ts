@@ -53,6 +53,19 @@ export class TFile {
 	stat: { mtime: number; ctime: number; size: number };
 
 	constructor(path: string, mtime = 0) {
+		this.stat = { mtime, ctime: mtime, size: 0 };
+		this.moveTo(path);
+	}
+
+	/**
+	 * Take a new path IN PLACE, which is how Obsidian renames a file: the vault mutates
+	 * the one `TFile` rather than minting a replacement, so an object captured before a
+	 * rename is still the object the vault holds afterwards. Modelled here because code
+	 * under test compares file identity to tell a rename (same object, new path) from a
+	 * delete-and-recreate (a different object at the same path) — a distinction a fake
+	 * that replaced the object on rename made invisible.
+	 */
+	moveTo(path: string): void {
 		this.path = path;
 		const slash = path.lastIndexOf('/');
 		const name = slash === -1 ? path : path.substring(slash + 1);
@@ -60,7 +73,6 @@ export class TFile {
 		this.basename = dot === -1 ? name : name.substring(0, dot);
 		this.extension = dot === -1 ? '' : name.substring(dot + 1);
 		this.parent = { path: slash === -1 ? '/' : path.substring(0, slash) };
-		this.stat = { mtime, ctime: mtime, size: 0 };
 	}
 }
 
@@ -385,6 +397,34 @@ export class Modal {
 	}
 	close(): void {
 		(this as unknown as { onClose?: () => void }).onClose?.();
+	}
+}
+
+/**
+ * A suggester opened from a menu. Records itself as the last opened modal like every
+ * other, and exposes the two things a test needs: what it OFFERED, and a way to pick
+ * one — `choose(label)` runs the same path a click would, so a test asserts on the
+ * write rather than on the modal.
+ */
+export abstract class FuzzySuggestModal<T> extends Modal {
+	placeholder = '';
+	setPlaceholder(placeholder: string): void {
+		this.placeholder = placeholder;
+	}
+	abstract getItems(): T[];
+	abstract getItemText(item: T): string;
+	abstract renderSuggestion(match: { item: T }, el: HTMLElement): void;
+	abstract onChooseItem(item: T, evt?: unknown): void;
+	/** Every offered row's text — what the picker would show. */
+	offered(): string[] {
+		return this.getItems().map((item) => this.getItemText(item));
+	}
+	/** Pick the row whose text contains `label`; throws when nothing matches. */
+	choose(label: string): void {
+		const item = this.getItems().find((candidate) => this.getItemText(candidate).includes(label));
+		if (item === undefined) throw new Error(`no suggestion matching "${label}" in [${this.offered().join(' | ')}]`);
+		this.onChooseItem(item);
+		this.close();
 	}
 }
 

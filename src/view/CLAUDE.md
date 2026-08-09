@@ -230,6 +230,17 @@ free of runtime code so imports stay cycle-free.
   focused grip moves no card selection. What nothing here can say is how a screen
   reader reads a separator in that position. That one is a live-vault item in
   `docs/requirements/Smoke test the roadmap.md`.
+- **An SVG node's `cls` is an ARRAY, never a space-separated string**, and that is a lint
+  rule (`no-restricted-syntax`) rather than a habit. `addClass` lives on `HTMLElement`, so
+  Obsidian hands `createSvg`'s `cls` straight to `classList.add`, which rejects a token
+  containing spaces. It shipped: every conflicting dependency edge threw
+  `InvalidCharacterError` in a vault, and because the throw aborted `renderTimeline`
+  before `renderRoadmap` reached `wireTimelineDrag`, the grid never registered its drop
+  target — bars picked up and had nowhere to land, so a conflict looked like it locked
+  the timeline. Neither the suite nor the browser harness could see it, because both run
+  on `test/helpers/dom.ts` and its `createSvg` split the string; that file is faithful
+  now, so a DRIVEN path fails a test, and the lint rule is the statement for a path
+  nothing drives yet.
 - Any menu opened from a `<button>` goes through `showMenuForClick`. Enter or Space
   synthesizes a click at (0, 0), and `showAtMouseEvent` would drop the menu in the
   viewport corner; the helper falls back to the button's own rect. This shipped as a bug

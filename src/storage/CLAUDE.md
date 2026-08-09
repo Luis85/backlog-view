@@ -37,7 +37,14 @@ can be checked by reading one directory.
   emits its own inverse, which is what makes undoing an undo redo. Tags restore by
   *effective* delta, never snapshot, so they compose with edits made in between —
   at the price that a scalar-shaped prior comes back as the list the writer writes
-  anyway.
+  anyway. `restoreDependsOn` pays a related price for the same reason: it appends what
+  it restores rather than reinserting at the removed position, so undoing a removal from
+  `[B, A]` can hand back `[A, B]` — a captured index would only be meaningful if nothing
+  else changed between the write and the undo, which is exactly what compare-and-swap
+  exists because it cannot assume. The list is semantically a set (resolution collapses
+  duplicates and spellings), so the only observable effect is display order — but
+  `dependencyNote` renders that order, so the row's own text visibly reorders. A known
+  limitation, not a bug: see `restoreDependsOn`'s own doc comment.
 - Parent links are written as `[[wikilinks]]` via `fileToLinktext` regardless of the
   user's link-format setting (markdown links are not parsed in frontmatter).
 - Date stamps (`startedDate`, `finish`) are FIELDS of the state write that caused them,
@@ -106,6 +113,77 @@ can be checked by reading one directory.
   order, and the horizon when it was created from a bucket. A create-then-update pair
   could fail in between and leave a note in a bucket its frontmatter does not claim,
   which is the same argument the hierarchy properties were already there for.
+
+## Undoing a prerequisite: one identity rule
+
+The dependency inverse is the one restore whose target can be RENAMED, DELETED or
+REPLACED between the write and the undo, and it took six review rounds discovering those
+cases one at a time — each fix a new condition beside the last, each new condition the
+source of the next finding. What follows is the rule they were all approximations of.
+It is written as the rule rather than as a list of cases on purpose: the cases are how
+this went wrong, and a seventh case is a question to ask of the rule, not a seventh
+branch to add.
+
+**A captured inverse holds a FILE, never a name.** `DependsOnRestore` carries each line
+as `{ text, file }`: the text is what gets written back, the file is what says which note
+the line was about. Text alone cannot survive a rename — Obsidian mutates the one `TFile`
+and rewrites the links that named it, so a captured `[[A]]` resolves to nothing while the
+live entry reads `[[B]]`, and an undo matching on text or on a captured PATH finds no line
+and silently does nothing.
+
+**Which live line is a captured line is ONE question** (`namesCaptured`): does it name
+the note the capture held. Everything the replay decides is that question asked of a
+different pair — never a comparison of spellings, never a special case for a deletion.
+What makes it answerable is a single fact about Obsidian, which the rule leans on in two
+directions at once: **a rename mutates the one `TFile` in place and rewrites the links
+that exist.** So `entry.file.path` is always the note's LAST path, and a live line the
+plugin wrote says that same last path, whatever happened in between.
+
+| the captured entry | the live line | is it the same line |
+| --- | --- | --- |
+| named nothing (`file` is null) | anything | same trimmed TEXT, and nothing else — a broken line has no note to share, so only its own spelling can be it |
+| holds a file | resolves | iff it resolves to that FILE — never merely to a file at that path, since a note recreated under the old name is a different object and somebody else's dependency |
+| holds a file | resolves to nothing | iff it names the file's LAST path (`namesPath`) — nothing else can be claiming an unresolved spelling |
+
+The third row is what a text-or-path comparison could see neither half of. It covers a
+prerequisite DELETED (its line sits there broken, and the undo owns it) and one RENAMED
+and then deleted (Obsidian rewrote the line to `[[B]]` before the note went, so neither
+the captured text nor any resolution finds it, and only the last path connects them).
+
+**A live line satisfies the captured line it IS before one it merely resembles**
+(`claimLines`): two passes over all the captured lines, the first claiming an identical
+spelling and the second letting what is left claim any line naming the same note. Claims
+are exclusive, so this is a MULTISET match — `[A, A]` is one dependency and two lines,
+and each captured copy must find its own or be restored. Per-entry ordering breaks it:
+removing `[A, [[A]]]` and hand-restoring only `[[A]]` had captured `A` claim it by note,
+leaving captured `[[A]]` to be appended — two `[[A]]` on the note and the spelling the
+user lost still missing. The exact pass compares RAW text to RAW text, padding included;
+counting it off the trimmed reading made `" A "` an exact match for a captured `"A"`.
+
+The exact pass is still subject to `namesCaptured`, which is what used to be a separate
+conditional preference and is now nothing at all: an identical spelling that has come to
+name somebody else's note is not this line, and falls out of the one rule rather than
+needing to be excluded by a second.
+
+**What goes back is the captured TEXT**, carrying the user's padding and their choice of
+`A` over `[[A]]` — `restoredLine` changes it only because, while a line is OFF the note,
+the note it named can move and no rewrite reaches a line that is not there. That is
+`namesCaptured` twice and no rule of its own: the captured text goes back if it still
+names the captured note, is retargeted to that note's current name if it does not, and
+whichever text that leaves is written only if it too names the captured note. The second
+ask is the one refusal — a spelling that RESOLVES to a note the capture never held would
+silently make the user depend on a note they never picked.
+
+A deleted prerequisite needs no branch there, because the table's third row already
+answers it. Deleted outright, the captured spelling still names the file's last path, so
+it goes back as the broken line the note would be showing had the removal never happened.
+Renamed and THEN deleted, it does not — so the line is retargeted to the name the note
+died under, which is what Obsidian's own rewrite would have left on the note, and what
+keeps a note later recreated under the old name from inheriting the dependency.
+
+Following a rename replaces the link's TARGET only: the `#heading` and the `|alias` say
+what the user meant by the link and are none of a rename's business, and rebuilding the
+whole thing from the file resolved correctly while silently dropping both.
 
 ## Collapse state, and the view mode beside it
 

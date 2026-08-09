@@ -1,12 +1,14 @@
-import { setTooltip } from 'obsidian';
+import { setIcon, setTooltip } from 'obsidian';
 import { RowContext } from './columns';
 import { createCard, wireCardActivation } from './board';
 import { renderBadge, renderChevron, renderTitleText } from './rows';
+import { dependencyNote, NO_CONFLICTS, renderDependencyArrows } from './timelineArrows';
 import { CardDragController } from '../interactions/cardDrag';
 import { effectiveLeadWidth, renderLeadResize } from '../interactions/timelineLeadResize';
 import { BacklogViewHost, DrawnColors } from '../host';
 import { BacklogItem } from '../../domain/model';
-import { barHolds, TimelineBar, TimelineRow } from '../../domain/bars';
+import { barHolds, ShelfCard, TimelineBar, TimelineRow } from '../../domain/bars';
+import { dependencyArrows } from '../../domain/dependencies';
 import { isMarkerType } from '../../domain/itemTypes';
 import {
 	ownWorkflowReading,
@@ -68,6 +70,12 @@ export const LABEL_RESERVE_PX = 160;
 const MILESTONE_MARK_PX = 12;
 const OUTSIDE_MARK_PX = 10;
 
+/**
+ * The narrowest an arrow may be drawn, in PIXELS — `MIN_BAR_PX`'s own reasoning (1f of
+ * [[Arrows between bars]]): two ends with almost no room to route still draw, and a
+ * length rounded to zero would report nothing.
+ */
+
 /** What the timeline pass hands back: the rows, where today sits, and what scrolls. */
 export interface TimelineRender {
 	cards: BacklogItem[];
@@ -96,6 +104,15 @@ export interface TimelineRender {
 	 * since it never asks what geometry the bar drew.
 	 */
 	drawn: DrawnColors;
+	/**
+	 * Which of EACH dependent's prerequisites conflict, keyed by the dependent's own
+	 * path — `dependencyArrows`' own `conflicts` map, unfiltered by anything this grid
+	 * drew. It covers a shelved dependent too (2b): nothing on this grid draws one,
+	 * since a shelved item has no bar, but the map is keyed by path either way, so
+	 * `renderRoadmap` reads this SAME map to mark the shelf card, which is that
+	 * dependent's row (1b) — one shape for both. See `dependencyArrows`.
+	 */
+	dependencyConflicts: ReadonlyMap<string, ReadonlySet<string>>;
 }
 
 /** What `renderTimeline` needs beyond the bars themselves — grouped to stay in budget. */
@@ -125,6 +142,13 @@ export interface TimelineDrawing {
 	 * too narrow. 0 or less reads as "not measured" — see `effectiveLeadWidth`.
 	 */
 	available: number;
+	/**
+	 * The dated axis's shelf, so `dependencyArrows` can judge a shelved dependent's own
+	 * stated start against a dated prerequisite (2b) — a question the drawn bars alone
+	 * cannot answer, since a shelved dependent has none. Not drawn here; `renderRoadmap`
+	 * draws the shelf itself, separately, after this pass.
+	 */
+	shelf: ShelfCard[];
 }
 
 export function renderTimeline(
@@ -133,7 +157,7 @@ export function renderTimeline(
 	rows: TimelineRow[],
 	drawing: TimelineDrawing,
 ): TimelineRender {
-	const { today, scale, dnd, palettes, available } = drawing;
+	const { today, scale, dnd, palettes, available, shelf } = drawing;
 	// What a collapsed row hides, it hides from the whole grid: the window is the drawn
 	// spans, exactly as it already is for the spans hiding completed work removes.
 	const bars = rows.map((row) => row.bar);
@@ -185,7 +209,34 @@ export function renderTimeline(
 	// that line unkeyed.
 	const milestoneLines = renderMilestoneLines({ grid: content, headerTrack }, window, bars, today, { scale, leadWidth });
 	const tracks = new Map<string, HTMLElement>();
-	const mounts: BarRowMounts = { content, scroller: grid, dnd, tracks, palettes };
+	// Computed ONCE, before any row exists, and from `bars`/`shelf` alone — never from
+	// what the arrow layer below goes on to draw. That is what makes both consumers
+	// window-independent: `dependencyArrows` never filters by the drawn window, so an
+	// edge clear across the plan from where the reader is scrolled still names its
+	// dependent's row and still marks it, exactly as one on screen does (1a/1b's "the
+	// row is where the dependency still lives" — the guarantee a window-derived mark
+	// would silently narrow). `dependencies.conflicts` covers a shelved dependent too
+	// (2b): nothing on THIS grid draws one, since a shelved item has no bar, but the
+	// map is keyed by the dependent's own path regardless, so the shelf's own card
+	// (`TimelineRender.dependencyConflicts`, read by `renderRoadmap`) reads this exact
+	// same map rather than a second one built for it.
+	const dependencies = dependencyArrows(bars, shelf);
+	// The layer is created HERE, before a single row, and filled after they all exist.
+	// That ordering is what puts the arrows behind the bars, the milestone line's own
+	// answer to the same question: a bar is positioned with no z-index of its own, so
+	// what paints on top is decided by document order, and a layer appended after the
+	// rows would draw across every bar it crosses. Filling it later is unavoidable —
+	// an edge's Y comes from where the two rows actually landed — so the element and
+	// its contents are deliberately separated in time.
+	const arrowLayer = content.createSvg('svg', { cls: 'pbl-dependency-layer', attr: { 'aria-hidden': 'true' } });
+	const mounts: BarRowMounts = {
+		content,
+		scroller: grid,
+		dnd,
+		tracks,
+		palettes,
+		conflictedPrereqs: dependencies.conflicts,
+	};
 	const drawn: DrawnColors = { done: false, milestone: milestoneLines, accent: false };
 	rows.forEach((entry, index) => {
 		const { row, colors } = renderBarRow(ctx, mounts, window, entry, scale);
@@ -196,6 +247,11 @@ export function renderTimeline(
 		// count the header, the lines and the layers interleaved in this container.
 		if (index % 2 === 1) row.addClass('pbl-row-even');
 	});
+	// After every row exists, never before: an edge's arrow anchors on the ROWS the
+	// prerequisite and the dependent actually drew, and its Y comes from where those
+	// rows really landed rather than a guessed row height — see `renderDependencyArrows`,
+	// which draws from the same `dependencies.arrows` list computed above.
+	renderDependencyArrows({ layer: arrowLayer, content, tracks }, window, dependencies.arrows, { scale, leadWidth });
 	const todayLeft = leadWidth + todayOffset(window, today, scale);
 	const line = content.createDiv({ cls: 'pbl-today', attr: { 'aria-hidden': 'true' } });
 	line.setCssProps({ '--pbl-today-left': `${todayLeft}px` });
@@ -222,6 +278,7 @@ export function renderTimeline(
 		tracks,
 		leadWidth,
 		drawn,
+		dependencyConflicts: dependencies.conflicts,
 	};
 }
 
@@ -352,6 +409,8 @@ interface BarRowMounts {
 	dnd: CardDragController;
 	/** Filled as each row draws, so a move's preview can be mounted in its own row. */
 	tracks: Map<string, HTMLElement>;
+	/** Which of a dependent's prerequisites conflict, by the dependent's path — see `DependencyArrows.conflicts`. */
+	conflictedPrereqs: ReadonlyMap<string, ReadonlySet<string>>;
 	/** See `TimelineDrawing.palettes`. */
 	palettes: StatePalette[];
 }
@@ -413,24 +472,7 @@ function renderBarRow(
 		mounts.dnd.wireCard(grip, bar.item, hold, () => mounts.scroller.scrollLeft);
 	}
 	renderBarLabel(track, bar, geometry, scale, window);
-	// Said in words on the row itself, because on this axis the state is otherwise a
-	// bar COLOUR and nothing else — see `stateNote`.
-	const state = stateNote(stateKeyFor(ctx.host.settings, bar.item), own);
-	if (state) row.createSpan({ cls: 'pbl-sr-only', text: state });
-	// The row is the timeline's one selection stop, so a MARKER'S row is where the
-	// line and the diamond's facts have to be readable (criterion 4a: neither is
-	// focusable, so nothing about a milestone may exist only under a hover). An
-	// ordinary row is left to its content-derived name — badge, title, and the bar's
-	// own `aria-label` above, which the accessible-name computation already folds
-	// in — the same reason `createCard`'s outside marker uses `aria-description`
-	// rather than `aria-label`: an explicit label REPLACES that name instead of
-	// adding to it, and would cost every dated row its type word for a fact the bar
-	// already states.
-	// A marker's explicit label REPLACES the row's content, the hidden state span
-	// above included, so the same words are folded into it rather than lost.
-	if (isMarkerType(bar.item.typeName)) {
-		row.setAttribute('aria-label', `${bar.item.title} — ${dates}${state ? ` — ${state}` : ''}`);
-	}
+	renderRowFacts(row, ctx, bar, { dates, own, conflictedPrereqs: mounts.conflictedPrereqs, lead });
 	wireCardActivation(ctx, row, bar.item);
 	// The same three overrides `styles/timeline.css` gives a bar, asked in the same
 	// order: done wins outright (the row class overrides regardless of geometry), then
@@ -447,6 +489,71 @@ function renderBarRow(
 		accent: !own.done && slot === null && !milestoneDrawn,
 	};
 	return { row, colors };
+}
+
+/**
+ * Every fact this row states beyond the bar's own colour and shape: its workflow
+ * state, what it waits for, and which of that conflicts — extracted out of
+ * `renderBarRow` to keep that function's own branching under budget, since these
+ * four guards are independent of everything else it does.
+ *
+ * The row is the timeline's one selection stop, so a MARKER'S row is where the line
+ * and the diamond's facts have to be readable (criterion 4a: neither is focusable,
+ * so nothing about a milestone may exist only under a hover). An ordinary row is
+ * left to its content-derived name — badge, title, and the bar's own `aria-label`
+ * (`dates`), which the accessible-name computation already folds in — the same
+ * reason `createCard`'s outside marker uses `aria-description` rather than
+ * `aria-label`: an explicit label REPLACES that name instead of adding to it, and
+ * would cost every dated row its type word for a fact the bar already states. A
+ * marker's explicit label therefore REPLACES the row's content, the hidden state
+ * and dependency spans included, so the same words are folded into it instead.
+ */
+function renderRowFacts(
+	row: HTMLElement,
+	ctx: RowContext,
+	bar: TimelineBar,
+	said: {
+		dates: string;
+		own: WorkflowReading;
+		conflictedPrereqs: ReadonlyMap<string, ReadonlySet<string>>;
+		lead: HTMLElement;
+	},
+): void {
+	// Said in words on the row itself, because on this axis the state is otherwise a
+	// bar COLOUR and nothing else — see `stateNote`.
+	const { dates, own, conflictedPrereqs, lead } = said;
+	const state = stateNote(stateKeyFor(ctx.host.settings, bar.item), own);
+	if (state) row.createSpan({ cls: 'pbl-sr-only', text: state });
+	// What this row waits for, which of those conflicts, and which is broken (1d) —
+	// `dependencyNote`, read from `conflictedPrereqs` (window-independent, see
+	// `renderTimeline`) rather than from anything the arrow layer drew. The class is
+	// the same fact for sighted users: both come from this one map, so neither can say
+	// something the other does not (`Arrows between bars` Task 3, concerns 1 and 2).
+	const conflicted = conflictedPrereqs.get(bar.item.file.path) ?? NO_CONFLICTS;
+	if (conflicted.size > 0) row.addClass('pbl-row-conflict');
+	const waits = dependencyNote(bar.item, conflicted);
+	if (waits) row.createSpan({ cls: 'pbl-sr-only pbl-dependency-note', text: waits });
+	// A BROKEN entry draws no arrow, so without a mark of its own it would be visible to
+	// a screen reader (the span above) and to nobody else — 1d asks the row to carry the
+	// marker, and 4d makes this the one surface where the fact is visible rather than
+	// merely reachable. The mark is a glyph rather than a second row colour: the row's
+	// conflict accent is already a colour, and a fact told only in colour is one a
+	// reader with low vision or a red-green deficit does not get. The shelf card's own
+	// marker is this same icon with this same string beside it, which is what keeps one
+	// fact reading as one fact across the two surfaces `Dependencies` allows it on.
+	if (conflicted.size > 0 || bar.item.brokenPrerequisites.length > 0) {
+		setIcon(lead.createSpan({ cls: 'pbl-timeline-dependency-flag', attr: { 'aria-hidden': 'true' } }), 'alert-triangle');
+		// The words the glyph stands for, so a pointer reader gets what the span gives a
+		// screen reader. The row's own accessible name already carries it, so the tooltip
+		// is a second route to one fact rather than the only route to a hidden one.
+		setTooltip(lead, `${bar.item.title} — ${waits}`);
+	}
+	if (isMarkerType(bar.item.typeName)) {
+		row.setAttribute(
+			'aria-label',
+			`${bar.item.title} — ${dates}${state ? ` — ${state}` : ''}${waits ? ` — ${waits}` : ''}`,
+		);
+	}
 }
 
 /**
