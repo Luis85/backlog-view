@@ -92,7 +92,8 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	private readonly ui: UiStateController;
 	/** When to re-measure the pane and re-run the column-fit ladder — see `resize.ts`. */
 	private readonly resize: ResizePolicy;
-	private watchingRenames = false;
+	/** Whether `watchApp` has run — its subscriptions are once per view, not per update. */
+	private watchedApp = false;
 	/**
 	 * Rendered rows by path. Scanning the tree for a row is fine at ten items and
 	 * wasteful at six hundred — every selection change would walk the whole DOM.
@@ -271,7 +272,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	}
 
 	private refreshFromData(): void {
-		this.watchRenames();
+		this.watchApp();
 		// Restored FIRST, not just before the collapse defaults it must not be undone by:
 		// the focus level is stored here too, and it re-roots the model built below — a
 		// restore after the build would show the whole tree until something else refreshed.
@@ -297,17 +298,29 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	}
 
 	/**
-	 * A renamed note is the same row; without this its state is left behind under the
-	 * old path and the next refresh shuts it as a parent nobody has ruled on. Wired on
-	 * the first data update rather than in the constructor — a Bases view is handed its
-	 * `app` afterwards, so there is nothing to subscribe to yet when it is built.
+	 * Everything this view subscribes to on the APP, wired on the first data update
+	 * rather than in the constructor — a Bases view is handed its `app` afterwards, so
+	 * there is nothing to subscribe to yet when it is built. Both go through
+	 * `registerEvent`, so they come off with the view.
+	 *
+	 * A renamed note is the same row; without that listener its state is left behind
+	 * under the old path and the next refresh shuts it as a parent nobody has ruled on.
+	 *
+	 * `css-change` is the toolbar's: the fit ladder measures RENDERED text, so a theme or
+	 * a font-size change invalidates its verdict — and nothing else notices one. The only
+	 * `ResizeObserver` here watches the tree, whose box need not move when the app's font
+	 * does, and no render follows a theme switch, so the row would keep a step chosen for
+	 * the old metrics until the pane happened to be resized. Observing `toolbarEl` too
+	 * would look like a fix and miss it: that catches only a font change that alters the
+	 * row's HEIGHT, and a width-only change at the same height is exactly the case.
 	 */
-	private watchRenames(): void {
-		if (this.watchingRenames) return;
-		this.watchingRenames = true;
+	private watchApp(): void {
+		if (this.watchedApp) return;
+		this.watchedApp = true;
 		this.registerEvent(
 			this.app.vault.on('rename', (file, oldPath) => this.collapse.renamePath(oldPath, file.path)),
 		);
+		this.registerEvent(this.app.workspace.on('css-change', () => syncToolbarFit(this.toolbarEl)));
 	}
 
 	adoptDefaultProperties(): OptionalProperty[] {

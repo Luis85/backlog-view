@@ -499,4 +499,4 @@ free of runtime code so imports stay cycle-free.
   `ProductBacklogView` constructor may read `this.app`. This has bitten twice — the
   collapse controller and the rename listener — and the jsdom tests catch it instantly,
   which is the argument for driving them through the real view. Register such things on
-  the first data update instead (`watchRenames`).
+  the first data update instead (`watchApp`).

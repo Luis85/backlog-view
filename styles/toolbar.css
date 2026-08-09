@@ -2,10 +2,8 @@
 
 .pbl-toolbar {
 	display: flex;
-	flex-wrap: wrap;
 	align-items: center;
 	gap: var(--size-4-1);
-	row-gap: var(--size-4-1);
 	padding: var(--size-4-2) var(--size-4-2);
 	border-bottom: 1px solid var(--background-modifier-border);
 	flex: 0 0 auto;

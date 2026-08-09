@@ -501,7 +501,11 @@ export function revealFilter(barEl: HTMLElement): void {
 	// alone, and it is exactly the one nothing else re-derives.
 	barEl.addClass('pbl-filter-open');
 	syncToolbarFit(barEl);
-	barEl.querySelector<HTMLInputElement>('.pbl-filter-input')?.focus();
+	// `preventScroll`, because the refit above is not a promise that the input ended up
+	// on screen — a pane narrow enough still clips past the last rung, and the default
+	// focus behaviour scrolls every scrollable ancestor to reveal the target. The bar
+	// itself is `overflow: clip` and cannot scroll, so this is about what is above it.
+	barEl.querySelector<HTMLInputElement>('.pbl-filter-input')?.focus({ preventScroll: true });
 }
 
 /**

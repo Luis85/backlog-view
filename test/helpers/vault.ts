@@ -47,6 +47,8 @@ export class FakeVault {
 	afterWrite: ((path: string) => void) | null = null;
 	/** Handlers registered through vault.on('rename'), fired by `renameFile`. */
 	private renameHandlers: ((file: TFile, oldPath: string) => void)[] = [];
+	/** Handlers registered through workspace.on('css-change'), fired by `changeCss`. */
+	private cssChangeHandlers: (() => void)[] = [];
 
 	readonly app = {
 		workspace: {
@@ -67,6 +69,16 @@ export class FakeVault {
 			 */
 			getActiveViewOfType: (ctor: abstract new (...args: never[]) => unknown) =>
 				this.activeView instanceof ctor ? this.activeView : null,
+			/**
+			 * Workspace events, same shape as `vault.on` above: the handler is kept so a
+			 * test can fire it. `css-change` is the one the view subscribes to — the fit
+			 * ladder measures rendered text, so a theme change has to re-run it, and
+			 * nothing else in the app reports one.
+			 */
+			on: (name: string, cb: () => void) => {
+				if (name === 'css-change') this.cssChangeHandlers.push(cb);
+				return { name };
+			},
 		},
 		loadLocalStorage: (key: string) => this.localStorage.get(key) ?? null,
 		saveLocalStorage: (key: string, data: unknown) => {
@@ -151,6 +163,11 @@ export class FakeVault {
 	};
 
 	/** Rename a file and fire vault.on('rename'), as Obsidian does. */
+	/** What Obsidian fires when the theme, the appearance settings or a snippet change. */
+	changeCss(): void {
+		for (const cb of this.cssChangeHandlers) cb();
+	}
+
 	renameFile(oldPath: string, newPath: string): TFile {
 		const existing = this.files.get(oldPath);
 		if (!existing) throw new Error(`no such file: ${oldPath}`);

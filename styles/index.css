@@ -32,8 +32,11 @@
 
 /* Components, in the order the view builds them */
 @import "./toolbar.css";
-/* Load-bearing: the fit ladder's rules override the base ones they narrow — the row's
-   `flex-wrap`, the filter input's and the `⋯`'s display — at equal specificity. */
+/* Load-bearing: the fit ladder's rules override the base ones they narrow — the filter
+   input's display, and the `⋯`'s and the filter reveal's — at equal specificity. The
+   row's `flex-wrap` is no longer in that list: `toolbar.css` used to say `wrap` and be
+   overridden here, which made a rule that stated the opposite of the guarantee correct
+   only by import order, so it was deleted rather than beaten. */
 @import "./toolbarFit.css";
 @import "./tree.css";
 @import "./columns.css";

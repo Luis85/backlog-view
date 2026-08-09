@@ -30,17 +30,38 @@ describe('the toolbar fit ladder', () => {
 	it('stops at the first step that fits', () => {
 		const { containerEl } = makeView(fixture());
 		const bar = toolbarOf(containerEl);
-		stubWidths(bar, 700, { '0': 980, '1': 860, '2': 690, '3': 600 });
+		stubWidths(bar, 700, { '0': 980, '1': 860, '2': 690, '3': 600, '4': 540, '5': 480 });
 
 		syncToolbarFit(bar);
 
 		expect(bar.getAttribute('data-pbl-fit')).toBe('2');
 	});
 
+	/**
+	 * The review finding that moved the last rung from 3 to 5. Reaching a rung is not the
+	 * same as fitting on it: at a 500px pane the row measured 588 with step 3 written, and
+	 * what fell off the clipped right edge was the New button — while `1 note ignored`,
+	 * which precedes it in the row, survived. The rule the two rungs below step 3 state is
+	 * that the primary action outranks every readout.
+	 *
+	 * What this asserts is the ladder's reach, which is the half jsdom can see. That step
+	 * 4 hides the advisories and step 5 the count is `styles/toolbarFit.css`, applied by
+	 * no stylesheet here — a browser check, on Task 6's list.
+	 */
+	it('keeps shedding past the controls, because reaching a rung is not fitting on it', () => {
+		const { containerEl } = makeView(fixture());
+		const bar = toolbarOf(containerEl);
+		stubWidths(bar, 420, { '0': 980, '1': 900, '2': 820, '3': 588, '4': 500, '5': 415 });
+
+		syncToolbarFit(bar);
+
+		expect(bar.getAttribute('data-pbl-fit')).toBe('5');
+	});
+
 	it('writes no attribute at all when everything fits', () => {
 		const { containerEl } = makeView(fixture());
 		const bar = toolbarOf(containerEl);
-		stubWidths(bar, 1200, { '0': 900, '1': 800, '2': 700, '3': 600 });
+		stubWidths(bar, 1200, { '0': 900, '1': 800, '2': 700, '3': 600, '4': 540, '5': 480 });
 
 		syncToolbarFit(bar);
 
@@ -50,11 +71,11 @@ describe('the toolbar fit ladder', () => {
 	it('relaxes when the pane widens again', () => {
 		const { containerEl } = makeView(fixture());
 		const bar = toolbarOf(containerEl);
-		stubWidths(bar, 600, { '0': 980, '1': 860, '2': 690, '3': 600 });
+		stubWidths(bar, 600, { '0': 980, '1': 860, '2': 690, '3': 600, '4': 540, '5': 480 });
 		syncToolbarFit(bar);
 		expect(bar.getAttribute('data-pbl-fit')).toBe('3');
 
-		stubWidths(bar, 900, { '0': 980, '1': 860, '2': 690, '3': 600 });
+		stubWidths(bar, 900, { '0': 980, '1': 860, '2': 690, '3': 600, '4': 540, '5': 480 });
 		expect(syncToolbarFit(bar)).toBe(true);
 		expect(bar.getAttribute('data-pbl-fit')).toBe('1');
 	});
@@ -62,7 +83,7 @@ describe('the toolbar fit ladder', () => {
 	it('holds the last verdict rather than deciding against a pane of zero width', () => {
 		const { containerEl } = makeView(fixture());
 		const bar = toolbarOf(containerEl);
-		stubWidths(bar, 700, { '0': 980, '1': 860, '2': 690, '3': 600 });
+		stubWidths(bar, 700, { '0': 980, '1': 860, '2': 690, '3': 600, '4': 540, '5': 480 });
 		syncToolbarFit(bar);
 
 		// Detached, or before the first layout: jsdom's own answer, and a real pane's
@@ -75,7 +96,7 @@ describe('the toolbar fit ladder', () => {
 	it('never reports a change when the step is the same', () => {
 		const { containerEl } = makeView(fixture());
 		const bar = toolbarOf(containerEl);
-		stubWidths(bar, 700, { '0': 980, '1': 860, '2': 690, '3': 600 });
+		stubWidths(bar, 700, { '0': 980, '1': 860, '2': 690, '3': 600, '4': 540, '5': 480 });
 		expect(syncToolbarFit(bar)).toBe(true);
 		expect(syncToolbarFit(bar)).toBe(false);
 	});
@@ -89,12 +110,12 @@ describe('the toolbar fit ladder', () => {
 	it('re-runs when the collapsed filter is revealed', () => {
 		const { containerEl } = makeView(fixture());
 		const bar = toolbarOf(containerEl);
-		stubWidths(bar, 700, { '0': 720, '1': 690, '2': 600, '3': 560 });
+		stubWidths(bar, 700, { '0': 720, '1': 690, '2': 600, '3': 560, '4': 540, '5': 480 });
 		syncToolbarFit(bar);
 		expect(bar.getAttribute('data-pbl-fit')).toBe('1');
 
 		// The reveal makes the row wider at every step; the ladder has to notice.
-		stubWidths(bar, 700, { '0': 850, '1': 820, '2': 730, '3': 690 });
+		stubWidths(bar, 700, { '0': 850, '1': 820, '2': 730, '3': 690, '4': 640, '5': 600 });
 		containerEl
 			.querySelector<HTMLElement>('.pbl-filter-reveal')
 			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -107,13 +128,20 @@ describe('the toolbar fit ladder', () => {
 	 * is where it would quietly stop working: `focus()` on a `display: none` element does
 	 * nothing and reports nothing. Driven through the KEY rather than through
 	 * `focusFilter`, so what is asserted is the path a user actually takes.
+	 *
+	 * Narrower than it reads, and the narrowing is the point. jsdom applies no stylesheet
+	 * and focuses a `display: none` element happily, so the focus assertion here would
+	 * pass with the refit AFTER the focus, or with the rung's rules absent altogether.
+	 * What this file can hold is the two SIDE EFFECTS `revealFilter` is responsible for —
+	 * the open flag is set, and the ladder has re-run — in the order the CSS needs them.
+	 * That the input is then actually visible to a browser is a vault check.
 	 */
 	it('still reaches the input from the tree when the step has collapsed it', () => {
 		const { containerEl } = makeView(fixture());
 		const bar = toolbarOf(containerEl);
-		stubWidths(bar, 500, { '0': 980, '1': 860, '2': 690, '3': 600 });
+		stubWidths(bar, 500, { '0': 980, '1': 860, '2': 690, '3': 600, '4': 540, '5': 480 });
 		syncToolbarFit(bar);
-		expect(bar.getAttribute('data-pbl-fit')).toBe('3');
+		expect(bar.getAttribute('data-pbl-fit')).toBe('5');
 
 		key(treeOf(containerEl), '/');
 
@@ -133,9 +161,9 @@ describe('the toolbar fit ladder', () => {
 		const bar = toolbarOf(containerEl);
 
 		view.setFilter('Epic'); // typed while the pane was wide
-		stubWidths(bar, 500, { '0': 980, '1': 860, '2': 690, '3': 600 });
+		stubWidths(bar, 500, { '0': 980, '1': 860, '2': 690, '3': 600, '4': 540, '5': 480 });
 		syncToolbarFit(bar);
-		expect(bar.getAttribute('data-pbl-fit')).toBe('3');
+		expect(bar.getAttribute('data-pbl-fit')).toBe('5');
 
 		const input = containerEl.querySelector<HTMLInputElement>('.pbl-filter-input');
 		input?.focus();
@@ -155,7 +183,7 @@ describe('the toolbar fit ladder', () => {
 	it('collapses an empty revealed filter on blur, and keeps one with text in it', () => {
 		const { view, containerEl } = makeView(fixture());
 		const bar = toolbarOf(containerEl);
-		stubWidths(bar, 500, { '0': 980, '1': 860, '2': 690, '3': 600 });
+		stubWidths(bar, 500, { '0': 980, '1': 860, '2': 690, '3': 600, '4': 540, '5': 480 });
 		syncToolbarFit(bar);
 
 		const input = containerEl.querySelector<HTMLInputElement>('.pbl-filter-input');
@@ -186,7 +214,7 @@ describe('the toolbar fit ladder', () => {
 		const vault = fixture();
 		const { view, containerEl } = makeView(vault);
 		const bar = toolbarOf(containerEl);
-		stubWidths(bar, 500, { '0': 980, '1': 860, '2': 690, '3': 600 });
+		stubWidths(bar, 500, { '0': 980, '1': 860, '2': 690, '3': 600, '4': 540, '5': 480 });
 		syncToolbarFit(bar);
 
 		key(treeOf(containerEl), '/');
@@ -199,6 +227,32 @@ describe('the toolbar fit ladder', () => {
 	});
 
 	/**
+	 * A theme or a font-size change moves rendered text without moving any box this view
+	 * observes: the only `ResizeObserver` here watches the TREE, and no render follows a
+	 * theme switch. Without the `css-change` subscription the row keeps a step chosen for
+	 * the old metrics until the pane happens to be resized — which may be never.
+	 *
+	 * Driven through the workspace event rather than through a method, because the
+	 * subscription is the thing that was missing. Observing `toolbarEl` instead would
+	 * catch only a font change that alters the row's HEIGHT, and this is the width-only
+	 * case at the same height, so it would look like a fix and miss the bug.
+	 */
+	it('re-runs when the app says its CSS changed', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+		const bar = toolbarOf(containerEl);
+		stubWidths(bar, 700, { '0': 690, '1': 600, '2': 560, '3': 520, '4': 500, '5': 480 });
+		syncToolbarFit(bar);
+		expect(bar.hasAttribute('data-pbl-fit')).toBe(false);
+
+		// A bigger interface font: the same boxes, wider text in them.
+		stubWidths(bar, 700, { '0': 980, '1': 860, '2': 690, '3': 600, '4': 540, '5': 480 });
+		vault.changeCss();
+
+		expect(bar.getAttribute('data-pbl-fit')).toBe('2');
+	});
+
+	/**
 	 * The write-in-flight indicator appears and disappears without a render, so the row
 	 * gets wider twice per batch — but a refit per progress TICK would be a forced layout
 	 * read per file, which is the cost the deferred update exists to avoid. The rule is
@@ -208,12 +262,12 @@ describe('the toolbar fit ladder', () => {
 	it('re-runs when the busy indicator appears, and not on the ticks between', () => {
 		const { containerEl } = makeView(fixture());
 		const bar = toolbarOf(containerEl);
-		stubWidths(bar, 700, { '0': 690, '1': 600, '2': 560, '3': 520 });
+		stubWidths(bar, 700, { '0': 690, '1': 600, '2': 560, '3': 520, '4': 500, '5': 480 });
 		syncToolbarFit(bar);
 		expect(bar.hasAttribute('data-pbl-fit')).toBe(false);
 
 		// Idle → busy: the indicator takes room the row was not measured with.
-		stubWidths(bar, 700, { '0': 780, '1': 690, '2': 600, '3': 560 });
+		stubWidths(bar, 700, { '0': 780, '1': 690, '2': 600, '3': 560, '4': 540, '5': 480 });
 		syncBusy(bar, { done: 1, total: 340 }, false);
 		expect(bar.getAttribute('data-pbl-fit')).toBe('1');
 
@@ -228,12 +282,12 @@ describe('the toolbar fit ladder', () => {
 
 		// A tick. Even if the row claimed it had grown, nothing re-measures — which is
 		// only safe BECAUSE of the reservation above.
-		stubWidths(bar, 700, { '0': 900, '1': 880, '2': 860, '3': 840 });
+		stubWidths(bar, 700, { '0': 900, '1': 880, '2': 860, '3': 840, '4': 820, '5': 800 });
 		syncBusy(bar, { done: 2, total: 340 }, false);
 		expect(bar.getAttribute('data-pbl-fit')).toBe('1');
 
 		// Busy → idle: a transition again, so it re-measures.
-		stubWidths(bar, 700, { '0': 690, '1': 600, '2': 560, '3': 520 });
+		stubWidths(bar, 700, { '0': 690, '1': 600, '2': 560, '3': 520, '4': 500, '5': 480 });
 		syncBusy(bar, null, false);
 		expect(bar.hasAttribute('data-pbl-fit')).toBe(false);
 	});

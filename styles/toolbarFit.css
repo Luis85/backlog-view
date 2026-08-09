@@ -2,12 +2,33 @@
    rung, and writes it as `data-pbl-fit` on the toolbar. Step 0 is the absence of the
    attribute, so everything here is additive as the pane narrows.
 
+   A RUNG IS CUMULATIVE: what step 2 dropped is still dropped at steps 3, 4 and 5. That is
+   written as "the ladder is engaged, and not one of the rungs ABOVE this one"
+   (`[data-pbl-fit]:not([data-pbl-fit='1'])`) rather than as a list of the rungs at or
+   below it. A list is the thing that goes stale — every rule of every earlier rung has to
+   be edited to add a sixth, and the one that is missed is a control that reappears at the
+   narrowest pane. Adding a rung to this file costs nothing above it. The chains grow one
+   `:not()` per rung, which is the whole price, and specificity is uniform inside each
+   group so the two filter exceptions below still beat the rules they except.
+
    The row no longer wraps: one row is the guarantee, and a step that still does not fit
    clips rather than growing a second line. */
 
 .pbl-toolbar {
+	/* Stated rather than inherited. `nowrap` is the initial value, so this declaration
+	   changes nothing on its own — it is here because "one row" is the guarantee this
+	   whole partial exists to keep, and a guarantee with no line of code behind it is
+	   the next contributor's `flex-wrap: wrap` waiting to happen. */
 	flex-wrap: nowrap;
-	overflow: hidden;
+	/* `clip`, NOT `hidden`. `hidden` makes this a scroll CONTAINER, and the browser
+	   scrolls a container to reveal a focused descendant — so tabbing to a control the
+	   last rung still clipped scrolled the whole row sideways (measured: `scrollLeft`
+	   0 → 88 at a 500px pane) and nothing scrolled it back, leaving the switcher off
+	   the left edge. A scroll of this bar is never meaningful: making it fit is the
+	   ladder's entire job. `clip` clips identically and creates no scroll container, so
+	   there is nothing to scroll and nothing to reset. Chrome 90+, far below the
+	   Electron behind `manifest.json`'s 1.10.2 floor. */
+	overflow: clip;
 }
 
 /* `nowrap` alone does NOT make the row measurable. A flex item keeps the default
@@ -25,23 +46,28 @@
 	white-space: nowrap;
 }
 
-/* Step 1 — the words go, the icons and chevrons stay. The accessible name is on the
-   button, never in this span, so nothing loses its name here. */
+/* Step 1 — a labelled CONTROL loses its words and keeps its icon and chevron. The
+   accessible name is on the button, never in this span, so nothing loses its name here.
+
+   Only the controls: the advisories and the count are words with no `.pbl-btn-label`
+   around them and they survive this rung untouched, which is what steps 4 and 5 below
+   are for. This sentence used to read "the words go", which was wider than the rung and
+   was how a note about skipped files came to outlive the New button. */
 .pbl-toolbar[data-pbl-fit] .pbl-btn-label {
 	display: none;
 }
 
 /* Step 2 — the filter collapses to its own button, and the dated axis's two singles go
    to the `⋯`. */
-.pbl-toolbar:is([data-pbl-fit='2'], [data-pbl-fit='3']) .pbl-filter-input,
-.pbl-toolbar:is([data-pbl-fit='2'], [data-pbl-fit='3']) .pbl-filter-icon,
-.pbl-toolbar:is([data-pbl-fit='2'], [data-pbl-fit='3']) .pbl-density-toggle,
-.pbl-toolbar:is([data-pbl-fit='2'], [data-pbl-fit='3']) .pbl-today-btn {
+.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']) .pbl-filter-input,
+.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']) .pbl-filter-icon,
+.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']) .pbl-density-toggle,
+.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']) .pbl-today-btn {
 	display: none;
 }
 
-.pbl-toolbar:is([data-pbl-fit='2'], [data-pbl-fit='3']) .pbl-filter-reveal,
-.pbl-toolbar:is([data-pbl-fit='2'], [data-pbl-fit='3']) .pbl-overflow-btn {
+.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']) .pbl-filter-reveal,
+.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']) .pbl-overflow-btn {
 	display: inline-flex;
 }
 
@@ -58,19 +84,45 @@
    render. Without it, someone who typed a filter at step 0 and then narrowed the pane
    would arrive here with a non-empty, possibly focused input and watch the rung hide
    it. What a step collapses is only ever an EMPTY filter. */
-.pbl-toolbar:is([data-pbl-fit='2'], [data-pbl-fit='3']).pbl-filter-open .pbl-filter-input,
-.pbl-toolbar:is([data-pbl-fit='2'], [data-pbl-fit='3']) .pbl-filter-active .pbl-filter-input {
+.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']).pbl-filter-open .pbl-filter-input,
+.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']) .pbl-filter-active .pbl-filter-input {
 	display: inline-block;
 }
 
-.pbl-toolbar:is([data-pbl-fit='2'], [data-pbl-fit='3']).pbl-filter-open .pbl-filter-reveal,
-.pbl-toolbar:is([data-pbl-fit='2'], [data-pbl-fit='3']) .pbl-filter-active .pbl-filter-reveal {
+.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']).pbl-filter-open .pbl-filter-reveal,
+.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']) .pbl-filter-active .pbl-filter-reveal {
 	display: none;
 }
 
 /* Step 3 — the backfill and both bulk collapse controls go to the `⋯`. Undo stays: it is
    the only control on the row that takes something back. */
-.pbl-toolbar[data-pbl-fit='3'] .pbl-write-ctl,
-.pbl-toolbar[data-pbl-fit='3'] .pbl-collapse-ctl {
+.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']):not([data-pbl-fit='2']) .pbl-write-ctl,
+.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']):not([data-pbl-fit='2']) .pbl-collapse-ctl {
+	display: none;
+}
+
+/* Steps 4 and 5 — the readouts, in the order they can be spared, and the rule behind
+   both: THE PRIMARY ACTION OUTRANKS EVERY READOUT. Nothing above these rungs sheds a
+   readout, so the status block — which precedes New in the row — used to survive a pane
+   that had already pushed New off the right edge: an advisory about notes this base
+   skipped outliving the button that creates work.
+
+   Step 4 is the two advisories. Both are `cursor: help` text a user reads once, both
+   carry their whole sentence in `aria-label` and a tooltip, and neither is actionable —
+   so hiding the visible span costs a glance and loses no information and no capability.
+   Unlike step 3's controls they have no `⋯` entry, which is the same judgement seen from
+   the other side: there is no action to put in a menu.
+
+   Step 5 is the count, one rung LOWER because it is the readout most worth keeping: it
+   is the only thing on the row that says how much is in front of you, and it is short.
+   Its tooltip carries the level breakdown either way. It goes before New does, and New
+   is what the ladder runs out of room protecting. */
+.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']):not([data-pbl-fit='2']):not([data-pbl-fit='3']) .pbl-toolbar-note,
+.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']):not([data-pbl-fit='2']):not([data-pbl-fit='3']) .pbl-config-warning {
+	display: none;
+}
+
+.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']):not([data-pbl-fit='2']):not([data-pbl-fit='3']):not([data-pbl-fit='4'])
+	.pbl-count-label {
 	display: none;
 }

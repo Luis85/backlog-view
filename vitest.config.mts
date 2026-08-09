@@ -188,10 +188,12 @@ export default defineConfig({
 			//
 			// The fit-ladder increment (task 4 of the same plan: `toolbarFit.ts`, the
 			// filter's reveal and its blur, the busy indicator's measured width
-			// reservation) measured 98.26/94.40/99.52/99.42. Only branches rounds down to
-			// a new decimal and moves; the other three repeat the figures above. The
-			// branches gained are the ladder's own — the zero-width refusal, the reveal
-			// versus the rebuild, and the blur's two answers — each driven rather than
+			// reservation, plus the review round's two lower rungs, the padding-corrected
+			// pane, the `css-change` refit and the clip container) measured
+			// 98.26/94.41/99.52/99.42. Only branches rounds down to a new decimal and
+			// moves; the other three repeat the figures above. The branches gained are the
+			// ladder's own — the zero-width refusal, the reveal versus the rebuild, the
+			// blur's two answers and the theme change — each driven rather than
 			// accommodated.
 			thresholds: {
 				statements: 98.2,
