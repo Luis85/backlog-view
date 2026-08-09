@@ -225,10 +225,17 @@ a real vault, in both light and dark:
    stepping 0, 0, 1, 1, 2, 3, 4, 5, 5 — a real vault has a different font and a real
    scrollbar, either of which can shift where a step trips. Confirm the row never grows a
    second line and never clips a control the ladder hasn't dropped yet.
-7. **Below ~420px.** The row should keep the projection switcher, the `⋯` overflow
-   button and New, and clip whatever else remains. Confirm that's what actually happens
-   rather than something worse (a button cut in half, the switcher itself clipped, New
-   disappearing).
+7. **Below ~420px.** The ladder has nothing left to shed here, so the row clips — and
+   what it clips is its right-hand end, which means **New goes first and that is the
+   specified behaviour**, not a failure (extension 4b in
+   `docs/requirements/A toolbar that fits one row.md`, which says why no arrangement of
+   rungs avoids it). This step is therefore about the manner of the clipping, not its
+   fact. Confirm: the row is still ONE row; the switcher is whole and still at the left
+   edge; nothing is scrolled sideways when a clipped control is tabbed to (the
+   `overflow: clip` decision — `hidden` made the bar a scroll container and moved the
+   switcher off the edge); and the clip cuts cleanly rather than leaving a button sliced
+   through its glyph. Note the width where New goes, since no measured figure for it
+   holds across themes and the ~420px here is the harness's.
 8. **Focus across a rung transition, both directions.** Focus a toolbar control, then
    narrow the pane until the ladder sheds that control — confirm focus lands somewhere
    still visible rather than vanishing. Then widen the pane back past the rung where the
