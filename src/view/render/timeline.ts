@@ -1,4 +1,4 @@
-import { setTooltip } from 'obsidian';
+import { setIcon, setTooltip } from 'obsidian';
 import { RowContext } from './columns';
 import { createCard, wireCardActivation } from './board';
 import { renderBadge, renderChevron, renderTitleText } from './rows';
@@ -464,7 +464,7 @@ function renderBarRow(
 		mounts.dnd.wireCard(grip, bar.item, hold, () => mounts.scroller.scrollLeft);
 	}
 	renderBarLabel(track, bar, geometry, scale, window);
-	renderRowFacts(row, ctx, bar, { dates, own, conflictedPrereqs: mounts.conflictedPrereqs });
+	renderRowFacts(row, ctx, bar, { dates, own, conflictedPrereqs: mounts.conflictedPrereqs, lead });
 	wireCardActivation(ctx, row, bar.item);
 	// The same three overrides `styles/timeline.css` gives a bar, asked in the same
 	// order: done wins outright (the row class overrides regardless of geometry), then
@@ -504,11 +504,16 @@ function renderRowFacts(
 	row: HTMLElement,
 	ctx: RowContext,
 	bar: TimelineBar,
-	said: { dates: string; own: WorkflowReading; conflictedPrereqs: ReadonlyMap<string, ReadonlySet<string>> },
+	said: {
+		dates: string;
+		own: WorkflowReading;
+		conflictedPrereqs: ReadonlyMap<string, ReadonlySet<string>>;
+		lead: HTMLElement;
+	},
 ): void {
 	// Said in words on the row itself, because on this axis the state is otherwise a
 	// bar COLOUR and nothing else — see `stateNote`.
-	const { dates, own, conflictedPrereqs } = said;
+	const { dates, own, conflictedPrereqs, lead } = said;
 	const state = stateNote(stateKeyFor(ctx.host.settings, bar.item), own);
 	if (state) row.createSpan({ cls: 'pbl-sr-only', text: state });
 	// What this row waits for, which of those conflicts, and which is broken (1d) —
@@ -520,6 +525,21 @@ function renderRowFacts(
 	if (conflicted.size > 0) row.addClass('pbl-row-conflict');
 	const waits = dependencyNote(bar.item, conflicted);
 	if (waits) row.createSpan({ cls: 'pbl-sr-only pbl-dependency-note', text: waits });
+	// A BROKEN entry draws no arrow, so without a mark of its own it would be visible to
+	// a screen reader (the span above) and to nobody else — 1d asks the row to carry the
+	// marker, and 4d makes this the one surface where the fact is visible rather than
+	// merely reachable. The mark is a glyph rather than a second row colour: the row's
+	// conflict accent is already a colour, and a fact told only in colour is one a
+	// reader with low vision or a red-green deficit does not get. The shelf card's own
+	// marker is this same icon with this same string beside it, which is what keeps one
+	// fact reading as one fact across the two surfaces `Dependencies` allows it on.
+	if (conflicted.size > 0 || bar.item.brokenPrerequisites.length > 0) {
+		setIcon(lead.createSpan({ cls: 'pbl-timeline-dependency-flag', attr: { 'aria-hidden': 'true' } }), 'alert-triangle');
+		// The words the glyph stands for, so a pointer reader gets what the span gives a
+		// screen reader. The row's own accessible name already carries it, so the tooltip
+		// is a second route to one fact rather than the only route to a hidden one.
+		setTooltip(lead, `${bar.item.title} — ${waits}`);
+	}
 	if (isMarkerType(bar.item.typeName)) {
 		row.setAttribute(
 			'aria-label',

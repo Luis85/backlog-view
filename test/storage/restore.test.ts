@@ -339,6 +339,23 @@ describe('dependency inverses', () => {
 		// still a no-op, the ordinary "already back" case, not a second unresolvable copy.
 		expect(vault.fm('Item.md')['dependsOn']).toBe('Ghost');
 	});
+
+	it('recognises a hand-restored unresolvable entry that differs only in padding', async () => {
+		const vault = new FakeVault();
+		const item = vault.addFile('Item.md', { frontmatter: { dependsOn: ' Ghost ' } });
+
+		const inverses = await writeCapturing(vault, [{ file: item, dependsOn: { removeRaw: 'Ghost' } }], linked);
+		expect(vault.fm('Item.md')['dependsOn']).toBeUndefined();
+		// Put back by hand, as the reader would type it rather than as it was stored.
+		vault.fm('Item.md')['dependsOn'] = 'Ghost';
+
+		await applyRestores(vault.app, inverses);
+
+		// One dependency, one line. The captured text kept its padding so the exact line
+		// could be restored; the live entry lost it because that is what the reader sees.
+		// Counting them under different identities is what appended a second copy.
+		expect(vault.fm('Item.md')['dependsOn']).toBe('Ghost');
+	});
 });
 
 describe('tag inverses', () => {

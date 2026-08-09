@@ -335,6 +335,23 @@ describe('a broken dependency (1d) is stated on the row, dated or shelved', () =
 		expect(waitsFor(rowFor(containerEl, 'Waiter')!)).toBe('Waits for Ghost (broken)');
 	});
 
+	it('carries a VISIBLE marker for a broken entry, not only a screen-reader one', () => {
+		const vault = new FakeVault();
+		vault.addFile('Clean.md', {
+			frontmatter: { type: 'PBI', order: 5, start: '2026-08-01', due: '2026-08-05' },
+		});
+		vault.addFile('Waiter.md', {
+			frontmatter: { type: 'PBI', order: 10, dependsOn: 'Ghost', start: '2026-08-01', due: '2026-08-05' },
+		});
+		const { containerEl } = roadmapView(vault, { ...DATES });
+
+		// 1d asks the ROW to carry the marker and 4d makes this the one surface where the
+		// fact is visible rather than merely reachable. A broken entry draws no arrow, so
+		// the sr-only sentence alone would leave a sighted reader nothing at all.
+		expect(rowFor(containerEl, 'Waiter')!.querySelector('.pbl-timeline-dependency-flag')).not.toBeNull();
+		expect(rowFor(containerEl, 'Clean')!.querySelector('.pbl-timeline-dependency-flag')).toBeNull();
+	});
+
 	it('states an unresolvable entry on a shelved card, the same row under 1b', () => {
 		const vault = new FakeVault();
 		vault.addFile('Waiter.md', { frontmatter: { type: 'PBI', order: 10, dependsOn: 'Ghost' } });

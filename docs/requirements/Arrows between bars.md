@@ -233,6 +233,16 @@ question, since a shelved dependent has no bar to carry it, read off
 `card.item.plannedStart` directly rather than through `bars.ts`, which would close an
 import cycle back through `model.ts`.
 
+The row's own marker (1d, and 4d's "visible in one surface") is two things rather than
+one, and the split is the point. A conflict tints the lead cell — an accent, the same
+red the arrow takes. A BROKEN entry draws no arrow at all, so an accent would be the
+whole of it; it gets a glyph in the lead instead, with the row's sentence on its
+tooltip, and the conflict raises that same glyph to red rather than adding a second
+one. Built as a screen-reader span alone first, which passed every test written for it
+and satisfied nothing 4d says: a fact only assistive tech can reach is *reachable*, and
+1d asks for the marker to be *carried*. The glyph is also what keeps the fact off
+colour alone, which the accent on its own could not.
+
 The layer that DRAWS them is `renderDependencyArrows` in
 `src/view/render/timelineArrows.ts` — beside `render/timeline.ts` rather than inside it,
 because that file reached its 400-line budget and this is the seam that costs nothing to

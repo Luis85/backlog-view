@@ -207,7 +207,13 @@ export function restoreDependsOn(
 	fm: Record<string, unknown>,
 	restore: DependsOnRestore,
 ): DependsOnRestore | null {
-	const identityOf = (text: string): string => resolvedPathOf(app, file, text) ?? text;
+	// TRIMMED for the unresolved fallback, because that is the identity the live side is
+	// already counted under: every live entry reaches this through `textOf`, which trims.
+	// Captured text does not — a removal records the ORIGINAL value, padding and all, so
+	// that an undo can put the exact line back. Comparing the two untrimmed would have
+	// `" Ghost "` fail to recognise a hand-restored `Ghost` and append a duplicate. Only
+	// the comparison KEY is trimmed; what gets written is still the captured spelling.
+	const identityOf = (text: string): string => resolvedPathOf(app, file, text) ?? text.trim();
 	const live = liveEntries(fm, restore.key);
 	const consumed = new Array<boolean>(live.length).fill(false);
 	const removed: string[] = [];

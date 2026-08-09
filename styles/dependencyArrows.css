@@ -57,3 +57,28 @@
 .pbl-timeline-row.pbl-row-conflict .pbl-timeline-lead {
 	box-shadow: inset 3px 0 0 var(--color-red);
 }
+
+/* The dependent row's own dependency-trouble glyph — `renderRowFacts` in
+   `src/view/render/timeline.ts`, drawn for a conflict OR a broken entry. It exists
+   because the conflict accent above is a COLOUR, and a broken entry draws no arrow at
+   all: without a glyph, 1d's "the row carries the broken marker" would be true only for
+   a screen reader. In the lead cell beside the title, the same place the row's other
+   per-row marks sit, and sized to the row rather than to the icon's own default. */
+.pbl-timeline-dependency-flag {
+	display: inline-flex;
+	align-items: center;
+	flex: 0 0 auto;
+	color: var(--text-warning);
+}
+
+.pbl-timeline-dependency-flag .svg-icon {
+	width: var(--icon-s);
+	height: var(--icon-s);
+}
+
+/* A conflict is the stronger statement of the two, so it takes the accent colour the
+   arrow layer already uses for one. A row that is broken AND conflicting reads as
+   conflicting, which is the same precedence the arrow itself draws. */
+.pbl-timeline-row.pbl-row-conflict .pbl-timeline-dependency-flag {
+	color: var(--color-red);
+}
