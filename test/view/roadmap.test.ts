@@ -2,7 +2,17 @@
 import { describe, expect, it } from 'vitest';
 import { Menu } from 'obsidian';
 import { FakeVault } from '../helpers/vault';
-import { flush, key, makeView, noOptionalProperties, projectionButton, refresh, treeOf, useViewHarness } from '../helpers/view';
+import {
+	flush,
+	key,
+	makeView,
+	noOptionalProperties,
+	pickFromToolbarMenu,
+	projectionButton,
+	refresh,
+	treeOf,
+	useViewHarness,
+} from '../helpers/view';
 import { bucketNames, bucketsOf, roadmapView, shelfTitles } from '../helpers/roadmap';
 import { TIMELINE_LEAD_PX } from '../../src/view/render/timeline';
 
@@ -155,10 +165,9 @@ describe('the axis is declared, never guessed', () => {
 
 		// Both axes configured: the picker appears, horizons render by default.
 		expect(bucketsOf(containerEl).length).toBeGreaterThan(0);
-		const toTimeline = containerEl.querySelector<HTMLButtonElement>('.pbl-axis-btn[aria-label="Show timeline"]');
-		expect(toTimeline).not.toBeNull();
+		expect(containerEl.querySelector('[data-pbl-key="axis"]')).not.toBeNull();
 
-		toTimeline?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		pickFromToolbarMenu(containerEl, 'axis', 'Timeline');
 		expect(bucketsOf(containerEl)).toHaveLength(0);
 		expect(containerEl.querySelector('.pbl-timeline')).not.toBeNull();
 		view.onunload();
@@ -180,7 +189,7 @@ describe('the axis is declared, never guessed', () => {
 
 		expect(bucketsOf(harness.containerEl).length).toBeGreaterThan(0);
 		// With one axis there is no choice to offer.
-		expect(harness.containerEl.querySelector('.pbl-axis-picker')).toBeNull();
+		expect(harness.containerEl.querySelector('[data-pbl-key="axis"]')).toBeNull();
 		// The stored pick is user data: falling back must not rewrite it.
 		harness.view.onunload();
 		const stored = (vault.localStorage.get('product-backlog:collapse') ?? {}) as Record<string, { axis?: string }>;
@@ -189,7 +198,7 @@ describe('the axis is declared, never guessed', () => {
 
 	it('offers no axis picker outside roadmap mode', () => {
 		const { containerEl } = makeView(roadmapVault(), { ...AXES }, { collapsed: true });
-		expect(containerEl.querySelector('.pbl-axis-picker')).toBeNull();
+		expect(containerEl.querySelector('[data-pbl-key="axis"]')).toBeNull();
 	});
 });
 
@@ -312,15 +321,12 @@ describe('the shared scroller across projections', () => {
 	it('resets the offset when leaving the timeline, so the horizons open at their lead', () => {
 		const vault = datedVault();
 		const { containerEl } = roadmapView(vault, { ...AXES });
-		const pick = (label: string) =>
-			containerEl
-				.querySelector<HTMLButtonElement>(`.pbl-axis-btn[aria-label="${label}"]`)
-				?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		const pick = (title: string) => pickFromToolbarMenu(containerEl, 'axis', title);
 
-		pick('Show timeline');
+		pick('Timeline');
 		expect(scroller(containerEl).scrollLeft).toBeGreaterThan(0);
 
-		pick('Show horizons');
+		pick('Horizons');
 		// A months-wide pan means nothing to the buckets: the leading horizon shows.
 		expect(bucketsOf(containerEl).length).toBeGreaterThan(0);
 		expect(scroller(containerEl).scrollLeft).toBe(0);

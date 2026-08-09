@@ -27,17 +27,11 @@ import { ResizePolicy } from './resize';
 import { rowHidden, VisibilityRule } from './rowVisibility';
 import { SelectionController } from './selection';
 import { UiStateController } from './uiState';
-import {
-	detectIgnoredGrouping,
-	renderToolbar,
-	syncBusy,
-	syncCollapseCtls,
-	syncCountLabel,
-	syncFilterUi,
-} from './render/toolbar';
+import { detectIgnoredGrouping, renderToolbar, revealFilter, syncBusy, syncCollapseCtls, syncCountLabel, syncFilterUi } from './render/toolbar';
 import { chipProps, rowContext, RowContext } from './render/columns';
 import { renderLoadingState } from './render/emptyStates';
 import { renderLegend } from './render/legend';
+import { syncToolbarFit } from './render/toolbarFit';
 import { captureScroll, centreOnToday, renderProjectionContent, restoreScroll, ScrollAnchor } from './render/projections';
 import { refreshRowChildren } from './render/rows';
 import { adoptableProperties, BacklogSettings, defaultSettings, notePropertyId, OptionalProperty, resolveSettings } from '../domain/settings';
@@ -98,7 +92,8 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	private readonly ui: UiStateController;
 	/** When to re-measure the pane and re-run the column-fit ladder — see `resize.ts`. */
 	private readonly resize: ResizePolicy;
-	private watchingRenames = false;
+	/** Whether `watchApp` has run — its subscriptions are once per view, not per update. */
+	private watchedApp = false;
 	/**
 	 * Rendered rows by path. Scanning the tree for a row is fine at ten items and
 	 * wasteful at six hundred — every selection change would walk the whole DOM.
@@ -153,13 +148,17 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 			treeEl: this.treeEl,
 			rootDropEl: this.rootDropEl,
 		});
-		this.resize = new ResizePolicy(this, this.viewEl, this.treeEl, () => this.rowCtx());
+		this.resize = new ResizePolicy(this, this.viewEl, this.treeEl, this.toolbarEl, () => this.rowCtx());
 		this.dnd.setupRootDropZone();
 		this.cardDnd = new CardDragController(this, this.viewEl);
 		this.treeEl.addEventListener('keydown', (evt) => handleProjectionKeydown(this, evt));
 		this.registerDomEvent(document, 'dragend', () => this.dnd.clearDragState());
 		// Which columns fit depends on the pane, which changes without a data update.
 		if (typeof ResizeObserver !== 'undefined') {
+			// Both ladders answer to this one notification — `ResizePolicy` re-measures the
+			// toolbar's before deciding about the tree's, since the observer watches the
+			// TREE, whose box tracks the pane's and also narrows when the vertical
+			// scrollbar appears, which the toolbar's does not.
 			this.resizeObserver = new ResizeObserver(() => {
 				if (this.resize.shouldRebuildOnResize()) this.renderTreeContent();
 			});
@@ -273,7 +272,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	}
 
 	private refreshFromData(): void {
-		this.watchRenames();
+		this.watchApp();
 		// Restored FIRST, not just before the collapse defaults it must not be undone by:
 		// the focus level is stored here too, and it re-roots the model built below — a
 		// restore after the build would show the whole tree until something else refreshed.
@@ -299,17 +298,29 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	}
 
 	/**
-	 * A renamed note is the same row; without this its state is left behind under the
-	 * old path and the next refresh shuts it as a parent nobody has ruled on. Wired on
-	 * the first data update rather than in the constructor — a Bases view is handed its
-	 * `app` afterwards, so there is nothing to subscribe to yet when it is built.
+	 * Everything this view subscribes to on the APP, wired on the first data update
+	 * rather than in the constructor — a Bases view is handed its `app` afterwards, so
+	 * there is nothing to subscribe to yet when it is built. Both go through
+	 * `registerEvent`, so they come off with the view.
+	 *
+	 * A renamed note is the same row; without that listener its state is left behind
+	 * under the old path and the next refresh shuts it as a parent nobody has ruled on.
+	 *
+	 * `css-change` is the toolbar's: the fit ladder measures RENDERED text, so a theme or
+	 * a font-size change invalidates its verdict — and nothing else notices one. The only
+	 * `ResizeObserver` here watches the tree, whose box need not move when the app's font
+	 * does, and no render follows a theme switch, so the row would keep a step chosen for
+	 * the old metrics until the pane happened to be resized. Observing `toolbarEl` too
+	 * would look like a fix and miss it: that catches only a font change that alters the
+	 * row's HEIGHT, and a width-only change at the same height is exactly the case.
 	 */
-	private watchRenames(): void {
-		if (this.watchingRenames) return;
-		this.watchingRenames = true;
+	private watchApp(): void {
+		if (this.watchedApp) return;
+		this.watchedApp = true;
 		this.registerEvent(
 			this.app.vault.on('rename', (file, oldPath) => this.collapse.renamePath(oldPath, file.path)),
 		);
+		this.registerEvent(this.app.workspace.on('css-change', () => syncToolbarFit(this.toolbarEl)));
 	}
 
 	adoptDefaultProperties(): OptionalProperty[] {
@@ -336,7 +347,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	}
 
 	focusFilter(): void {
-		this.toolbarEl.querySelector<HTMLInputElement>('.pbl-filter-input')?.focus();
+		revealFilter(this.toolbarEl);
 	}
 
 	isRowHidden(item: BacklogItem): boolean {
@@ -574,6 +585,11 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// is the tree's and this is the roadmap's.
 		const drawn = this.roadmap?.drawn ?? { done: false, milestone: false, accent: false };
 		renderLegend(this, this.legendEl, this.roadmap?.palettes ?? [], drawn);
+		// Every render that reaches here can have changed the row's width: the toolbar
+		// was rebuilt with a different projection zone, or the count label went from
+		// "18 items" to "3 of 18", or the primary button is naming a different type.
+		// After the content, because the count is one of the things being measured.
+		syncToolbarFit(this.toolbarEl);
 		if (projection !== 'tree') return;
 		// Measured against the tree that now exists, scrollbar and all. A changed
 		// verdict means a column came or went, which only the rows can show — one

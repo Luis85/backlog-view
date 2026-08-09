@@ -131,6 +131,20 @@ export function projectionButton(containerEl: HTMLElement, label: string): HTMLB
 	return btn;
 }
 
+/**
+ * Drive a keyed toolbar menu button the way a user does: open it, then run the entry
+ * with that title. The projection zone's pickers are menus rather than segmented
+ * positions, so a suite that used to click one button now takes two steps.
+ */
+export function pickFromToolbarMenu(containerEl: HTMLElement, key: string, title: string): void {
+	const btn = containerEl.querySelector<HTMLButtonElement>(`[data-pbl-key="${key}"]`);
+	if (!btn) throw new Error(`no toolbar control keyed ${key}`);
+	btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+	const item = Menu.lastShown?.item(title);
+	if (!item) throw new Error(`no entry titled ${title} in the ${key} menu`);
+	item.click();
+}
+
 /** Wait for the async frontmatter writes queued by an interaction. */
 export function flush(): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, 0));

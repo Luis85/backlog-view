@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
+import { Menu } from '../helpers/obsidian-mock';
 import { fixture, makeView, refresh, useViewHarness } from '../helpers/view';
 
 useViewHarness();
@@ -38,18 +39,23 @@ describe('focus survives the toolbar rebuilding itself', () => {
 		expect(document.activeElement).toBe(after);
 	});
 
-	it('restores the two buttons their own text names, which carry no aria-label at all', () => {
+	it('restores the two buttons their own text names, and not by that name', () => {
 		const vault = fixture();
 		const { view, containerEl } = makeView(vault);
 
 		const newBtn = control(containerEl, 'pbl-new-btn');
-		expect(newBtn.getAttribute('aria-label')).toBeNull();
+		// These two are named by their own text, which the fit ladder hides on a narrow
+		// pane — so they carry an explicit `aria-label` as well, and NEITHER name is what
+		// focus is restored by. The key is, which is the whole point of the mechanism:
+		// `New Epic` becomes `New Feature` when the focus changes, and the label with it.
+		expect(newBtn.getAttribute('aria-label')).toBe('New Epic');
+		expect(newBtn.getAttribute('data-pbl-key')).toBe('new');
 		newBtn.focus();
 		refresh(view, vault); // what creating a note comes back as
 		expect(document.activeElement).toBe(control(containerEl, 'pbl-new-btn'));
 
 		const focusBtn = control(containerEl, 'pbl-focus-btn');
-		expect(focusBtn.getAttribute('aria-label')).toBeNull();
+		expect(focusBtn.getAttribute('aria-label')).toBe('Focus: all types');
 		focusBtn.focus();
 		view.setFocusLevel('Feature'); // re-roots the model and rebuilds everything
 		expect(document.activeElement).toBe(control(containerEl, 'pbl-focus-btn'));
@@ -112,6 +118,141 @@ describe('focus survives the toolbar rebuilding itself', () => {
 		view.setAxisPick('horizons');
 		check();
 		view.setAxisPick('dates'); // adds the zoom picker, the density toggle and today
+		check();
+	});
+
+	/**
+	 * A menu pick is a rebuild the render-pass mechanism cannot see: while a `Menu` is
+	 * open, focus is on the body, so `capturedFocusKey` finds nothing inside the toolbar
+	 * and the button that opened the menu is destroyed with nothing to restore. Driven
+	 * per control, through the menu, so it asserts the path a keyboard user takes.
+	 */
+	it('puts focus back on the control whose menu was just used', () => {
+		const vault = fixture();
+		const { view, containerEl } = makeView(vault, {
+			horizonProperty: 'note.horizon',
+			startProperty: 'note.start',
+			targetProperty: 'note.due',
+		});
+		view.setProjection('roadmap');
+		view.setAxisPick('dates');
+
+		const pickFrom = (key: string, title: string) => {
+			const btn = containerEl.querySelector<HTMLElement>(`[data-pbl-key="${key}"]`);
+			if (!btn) throw new Error(`no toolbar control keyed ${key}`);
+			btn.focus();
+			btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+			// Obsidian parks focus on the menu, which lives outside the toolbar.
+			(document.activeElement as HTMLElement | null)?.blur();
+			Menu.lastShown?.item(title)?.click();
+			expect(
+				containerEl.querySelector(`[data-pbl-key="${key}"]`),
+				`${key} lost focus to the document after its own menu`,
+			).toBe(document.activeElement);
+		};
+
+		pickFrom('zoom', 'Weeks');
+		pickFrom('axis', 'Horizons');
+		view.setAxisPick('dates');
+		pickFrom('focus', 'Feature');
+		// The `⋯` picks an entry that MIRRORS another control (`pbl-expand-ctl`'s), not
+		// the mirrored control's own key — `renderOverflow`'s comment states this and had
+		// no test: a build that passed the mirrored button's class instead of `'overflow'`
+		// would still restore focus to SOMETHING and pass every other overflow test, since
+		// none of them look at `document.activeElement`.
+		pickFrom('overflow', 'Expand all');
+
+		// The one caller here that is not a menu: pressing clear is what unrenders the
+		// clear button, so `focus-clear` has no replacement to be found and the named
+		// destination is the focus button beside it.
+		const clear = containerEl.querySelector<HTMLElement>('[data-pbl-key="focus-clear"]');
+		if (!clear) throw new Error('no clear button under an active focus');
+		clear.focus();
+		clear.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(containerEl.querySelector('[data-pbl-key="focus-clear"]')).toBeNull();
+		expect(containerEl.querySelector('[data-pbl-key="focus"]')).toBe(document.activeElement);
+	});
+
+	// The rule: the ladder may hide a `.pbl-btn-label` only on a control that is named
+	// without it. Asked of every label the toolbar renders, so a control added later
+	// with a bare text name fails here rather than going quiet on a narrow pane.
+	it('never lets a hidden label be the only name a control has', () => {
+		const vault = fixture();
+		const { view, containerEl } = makeView(vault, {
+			stateProperty: 'note.status',
+			horizonProperty: 'note.horizon',
+			startProperty: 'note.start',
+			targetProperty: 'note.due',
+		});
+		const check = () => {
+			const toolbar = containerEl.querySelector<HTMLElement>('.pbl-toolbar');
+			if (!toolbar) throw new Error('toolbar not rendered');
+			const labels = Array.from(toolbar.querySelectorAll<HTMLElement>('.pbl-btn-label'));
+			expect(labels.length).toBeGreaterThan(0);
+			const unnamed = labels
+				.map((el) => el.closest('button'))
+				.filter((btn) => (btn?.getAttribute('aria-label') ?? '') === '')
+				.map((btn) => btn?.className);
+			expect(unnamed, `hiding these labels leaves the control unnamed`).toEqual([]);
+		};
+		view.setProjection('tree');
+		check();
+		view.setProjection('roadmap');
+		view.setAxisPick('dates');
+		check();
+		view.setProjection('deliverables');
+		check();
+	});
+
+	/**
+	 * `aria-haspopup="menu"` is what tells a screen reader a button leads to a menu
+	 * before it is pressed; without it the control announces as a bare button. Asked
+	 * by ACTIVATING every control the toolbar carries a key for, rather than a
+	 * hand-kept list of "the menu buttons" — a new control that opens a `Menu` and
+	 * forgets the attribute fails here, the same shape as the label sweep above,
+	 * because whether a click actually opened one is asked of `Menu.lastShown`
+	 * itself and not assumed from a class name.
+	 *
+	 * Three classes are skipped, none of which ever construct a `Menu` (read, not
+	 * assumed, from `toolbar.ts`/`toolbarControls.ts`): the projection switcher
+	 * (clicking through it here would fight the projection this sweep is itself
+	 * stepping through), the ✨ backfill (a real async write) and undo (rejects with
+	 * nothing to undo when the slot is empty) — both exercised properly elsewhere.
+	 */
+	it('marks every toolbar control that opens a menu with aria-haspopup, and no other', () => {
+		const vault = fixture();
+		const { view, containerEl } = makeView(vault, {
+			stateProperty: 'note.status',
+			horizonProperty: 'note.horizon',
+			startProperty: 'note.start',
+			targetProperty: 'note.due',
+		});
+		const SKIP = ['pbl-mode-btn', 'pbl-write-ctl', 'pbl-undo-btn'];
+		const check = () => {
+			const toolbar = containerEl.querySelector<HTMLElement>('.pbl-toolbar');
+			if (!toolbar) throw new Error('toolbar not rendered');
+			const buttons = Array.from(toolbar.querySelectorAll<HTMLButtonElement>('button[data-pbl-key]')).filter(
+				(btn) => !SKIP.some((cls) => btn.classList.contains(cls)),
+			);
+			expect(buttons.length).toBeGreaterThan(0);
+			for (const btn of buttons) {
+				const before = Menu.lastShown;
+				btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+				const openedMenu = Menu.lastShown !== before;
+				expect(
+					btn.getAttribute('aria-haspopup'),
+					`.${btn.className} ${openedMenu ? 'opened a menu without aria-haspopup' : 'declares aria-haspopup without opening one'}`,
+				).toBe(openedMenu ? 'menu' : null);
+			}
+		};
+		view.setProjection('tree');
+		check();
+		view.setProjection('roadmap');
+		view.setAxisPick('horizons');
+		check();
+		view.setAxisPick('dates');
+		check();
+		view.setProjection('deliverables');
 		check();
 	});
 });
