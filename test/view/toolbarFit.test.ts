@@ -514,6 +514,35 @@ describe('the toolbar fit ladder', () => {
 	});
 
 	/**
+	 * The divider dies with whichever of its two neighbours goes first, and that is not one
+	 * rung — which is the whole reason it carries a modifier rather than a single class.
+	 * Step 4 sheds the `.pbl-toolbar-note` advisories but deliberately SPARES the config
+	 * warning, so a divider that always shed at step 4 put the warning and the count back
+	 * against each other at exactly the widths where the row is under most pressure: the
+	 * defect the divider exists to prevent, reappearing one rung further down.
+	 *
+	 * Asked of the shipped stylesheet, and at step 4 AND step 5, because the interesting
+	 * claim is that the two cases part company at step 4 and rejoin at step 5.
+	 */
+	it('keeps the count divider through the rung that spares the warning behind it', () => {
+		const { containerEl } = makeView(fixture(), { orderProperty: 'note.parent' });
+		const bar = toolbarOf(containerEl);
+		const sep = containerEl.querySelector<HTMLElement>('.pbl-count-sep');
+		const warning = containerEl.querySelector<HTMLElement>('.pbl-config-warning');
+		if (!sep || !warning) throw new Error('the toolbar drew no warning to divide from');
+		// The modifier is what step 4 hides, so the warning case must not be wearing it.
+		expect(sep.classList.contains('pbl-count-sep-with-notes')).toBe(false);
+
+		bar.setAttribute('data-pbl-fit', '4');
+		expect(getComputedStyle(warning).display).not.toBe('none');
+		expect(getComputedStyle(sep).display).not.toBe('none');
+
+		// …and at the last rung the count goes, so the boundary is gone and so is the line.
+		bar.setAttribute('data-pbl-fit', '5');
+		expect(getComputedStyle(sep).display).toBe('none');
+	});
+
+	/**
 	 * A divider is drawn only where there is a boundary to draw, and the common case is
 	 * the one that gets this wrong: all three advisories are conditional, so an ordinary
 	 * view renders none of them and an unconditional count divider lands directly against

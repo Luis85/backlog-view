@@ -54,14 +54,18 @@ today's icon size, add up to.
    with the divider that led its zone — and `overflow: clip` on the bar means anything a
    step has not caught simply clips rather than wrapping.
 
-   Each divider sheds with the boundary it draws, which is why the two go at different
-   rungs: the one between the advisories and the count dies with the advisories, the one
-   introducing the whole status zone dies with the last thing in it. Pair either the other
-   way and there is a rung where a line divides nothing from something. The advisories are
-   all conditional, so the same question is asked once more at RENDER time — the count's
-   divider is drawn only when one of them was actually drawn, decided from the DOM the way
-   `renderProjectionZone`'s empty zone is, since on an ordinary view none of them renders
-   and an unconditional divider would sit straight against the one above it.
+   A divider dies with whichever of its two neighbours goes first, and answering that
+   takes two questions rather than one rung. At RENDER time: the three advisories are all
+   conditional, so the count's divider is drawn only when one of them actually was —
+   decided from the DOM, the way `renderProjectionZone`'s empty zone is — since on an
+   ordinary view none renders and an unconditional divider would sit straight against the
+   status separator above it. At LADDER time: step 4 sheds the two `.pbl-toolbar-note`
+   advisories but spares the config warning, so the divider behind a warning must outlive
+   step 4 and go at step 5 with the count, while a divider behind only notes goes when
+   they do. The render writes the difference as a modifier class rather than the ladder
+   guessing it. Get either question wrong and the warning and the count are pushed back
+   together at exactly the widths where the row is under most pressure — which is the
+   thing the divider is there to prevent.
 
    The switcher leads that order because its words are the most expensive and the least
    informative: 205px of the row against every other label put together, naming positions

@@ -142,10 +142,23 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	// nothing between them "1 note ignored" and "28 items" read as one sentence. They are
 	// two: an aside about notes this base skipped, and the population in front of you.
 	// This divider sheds with the ADVISORIES at step 4, not with the count at step 5 —
-	// see `styles/toolbarFit.css` — so it never outlives the thing it divides from, and
-	// it is not drawn at all when there was no advisory to divide from in the first place.
+	// see `styles/toolbarFit.css` — and it is not drawn at all when there was no advisory
+	// to divide from in the first place.
+	//
+	// WHICH rung sheds it depends on which advisory it follows, which is why it carries a
+	// modifier rather than one class. Step 4 takes the two `.pbl-toolbar-note` advisories
+	// but deliberately spares the config warning, so a divider that always shed at step 4
+	// put the warning and the count back together at exactly the widths where the row is
+	// under most pressure — the defect this divider exists to prevent, reappearing one
+	// rung down. With the warning on screen the divider outlives step 4 and goes at step 5
+	// with the count; with only notes behind it, it goes when they do.
+	//
+	// Asked of the DOM rather than of `problems.length` a few lines up: two conditions
+	// that must agree are two conditions that can disagree, and the element either got
+	// drawn or it did not.
 	if (barEl.childElementCount > beforeAdvisories) {
-		barEl.createDiv({ cls: 'pbl-toolbar-sep pbl-count-sep' });
+		const survives = barEl.querySelector('.pbl-config-warning') !== null;
+		barEl.createDiv({ cls: `pbl-toolbar-sep pbl-count-sep${survives ? '' : ' pbl-count-sep-with-notes'}` });
 	}
 	// This projection's own population — `countedPopulation`, the same one
 	// `syncCountLabel` and `renderCompletedToggle` read — never the Base's raw results:
