@@ -19,7 +19,10 @@ const INTENT: Record<string, string> = {
 	Deliverable:
 		'Something the team must produce rather than build — a design, a concept. Holds Tasks, ' +
 		'wherever it hangs.',
-	Milestone: 'A date the plan answers to. It holds nothing and counts for nothing.',
+	Milestone:
+		'A date the plan answers to. The + never offers to create one as a child, and draws no + of ' +
+		'its own — but that is what is OFFERED: nothing stops a drag from nesting one under an ' +
+		'existing row, or Set type from turning any row into one.',
 };
 
 /**
@@ -65,7 +68,9 @@ export function typesSection(): ManualSection {
 			`${LEVELS.join(' → ')} is a ladder: each level holds the next one down. ` +
 			`${EXTRA_TYPES.join(', ')} sit beside it — the + offers one under an Epic, a Feature or a ` +
 			`PBI, but its rank is pinned: its children are always ${LEVELS[LEVELS.length - 1]}s, wherever ` +
-			`it hangs. ${MARKER_TYPES.join(', ')} is neither: it hangs from nothing and holds nothing.`,
+			`it hangs. ${MARKER_TYPES.join(', ')} is neither: no + offers to create one as a child, ` +
+			`and none draws a + of its own — though nothing stops a drag or Set type from doing ` +
+			`either by hand.`,
 		entries: [
 			...ALL_TYPES.map(entryFor),
 			{
@@ -84,7 +89,9 @@ export function typesSection(): ManualSection {
 				term: 'A move does not re-type',
 				text:
 					'Dragging an item leaves its type alone, unless Assign item type when moving is on — ' +
-					'it is off by default.',
+					'it is off by default. On, it retypes the ladder levels in a moved subtree to match ' +
+					'their new position; see "Moving and ranking" → "A move does not re-type" for exactly ' +
+					'what it skips.',
 			},
 			{
 				term: 'Type is advisory, not enforced',

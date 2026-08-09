@@ -91,8 +91,9 @@ why a row you expected is not on screen.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The controls it describes are in
-`src/view/render/toolbar.ts` (the filter box, the focus picker, the completed toggle and
-the ignored-notes advisory), their model rules in `src/domain/model.ts`
-(`collectFocusRoots`, `pruneOutsideHierarchy`), and the screens it must agree with in
-`src/view/render/emptyStates.ts`.
+`src/view/manual/sections.ts` — the finding section's own entries. The controls it
+describes are in `src/view/render/toolbar.ts` (the filter box, the focus picker, the
+completed toggle and the ignored-notes advisory), their state in `src/view/filterState.ts`
+(the match path, kept separate from the matches themselves), their model rules in
+`src/domain/model.ts` (`collectFocusRoots`, `pruneOutsideHierarchy`), and the screens it
+must agree with in `src/view/render/emptyStates.ts`.

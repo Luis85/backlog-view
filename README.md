@@ -692,7 +692,7 @@ Open the view options in the Bases toolbar to configure:
 | Ignore notes outside the hierarchy | on | Only treat notes with a supported `type` or a parent as backlog items |
 | Show parents outside the filter | on | Load the ancestors the Base's filter excluded, so matches keep their place in the tree |
 | Infer hierarchy from folder notes | off | Folder mode: a folder's own note is the parent of the notes beside it, so a child needs no explicit `parent` link |
-| Assign item type when moving | off | Rewrite `type` (through the whole moved subtree) to match the level an item is dropped into |
+| Assign item type when moving | off | Rewrite `type` on the dragged item and its explicitly ladder-typed descendants to match the level dropped into — skipping untyped and custom-typed descendants, extra types and markers, and stopping at a note the Base excluded |
 | State property | *(off)* | Note property with the workflow state; enables progress bars and done styling |
 | Workflow states (in order) | *(off)* | The board's columns, in that order. Left unset, the board draws the states your notes actually carry, plus a done column even if nothing is in it yet, so marking an item done is always one click away |
 | States that count as done | `Done, Closed, Completed, Removed` | Which state values complete an item |

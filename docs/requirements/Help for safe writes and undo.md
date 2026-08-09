@@ -88,8 +88,9 @@ section that decides whether a new user trusts it.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The behaviour it describes is
-`src/storage/frontmatter.ts` (the only module that writes, and where each write's inverse
-is captured), `src/view/writeGate.ts` (`applySafely`, `undoLast` and the gate they share),
-and `src/domain/settings.ts` (`configProblems`, which is what "misconfigured" means
+`src/view/manual/sections.ts` — the writes section's own entries. The behaviour it
+describes is `src/storage/frontmatter.ts` (the only module that writes, and where each
+write's inverse is captured), `src/view/writeGate.ts` (`applySafely`, `undoLast` and the
+gate they share, including undo's deliberate lack of a replay-time filter check), and
+`src/domain/settings.ts` (`configProblems`, which is what "misconfigured" means
 concretely).

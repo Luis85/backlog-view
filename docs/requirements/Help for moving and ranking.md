@@ -84,7 +84,9 @@ lands, the three ways to make the same move, and where `order` comes from.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The behaviour it describes is
-`src/domain/dropTargets.ts` (the zones and the refusals), `src/view/interactions/dragDrop.ts`
-(the indicator), and `src/view/interactions/keyboard.ts` with
-`src/view/interactions/menu.ts` (the same moves without a mouse).
+`src/view/manual/sections.ts` — the moving section's own entries. The behaviour it
+describes is `src/domain/dropTargets.ts` (the zones and the refusals),
+`src/view/interactions/dragDrop.ts` (the indicator) and
+`src/view/interactions/keyboard.ts` with `src/view/interactions/menu.ts` (the same moves
+without a mouse), plus `src/domain/writePlan.ts` (`computeTypeChanges`, the re-typing
+cascade this section is the one place that states in full).

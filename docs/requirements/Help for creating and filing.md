@@ -90,7 +90,8 @@ appears in the view at all.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The flow it describes is
-`src/view/interactions/create.ts` with `src/ui/prompts.ts` (the modal and its folder
-line), `src/domain/folderNotes.ts` (folder mode's own rule), and
-`src/commands/scaffold.ts` (the command that makes filter and folders agree).
+`src/view/manual/sections.ts` — the creating section's own entries. The flow it describes
+is `src/view/interactions/create.ts` (`promptCreateItem`, `inferFolder`) with
+`src/ui/prompts.ts` (the modal and its folder line), `src/domain/itemTypes.ts`
+(`childTypeChoices`, what the + offers), `src/domain/folderNotes.ts` (folder mode's own
+rule), and `src/commands/scaffold.ts` (the command that makes filter and folders agree).

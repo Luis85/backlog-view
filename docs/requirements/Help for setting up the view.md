@@ -92,7 +92,9 @@ the Base's own settings still control, and the one of them this view deliberatel
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The schema it must be generated from is
-`src/domain/viewOptions.ts`; what "misconfigured" means concretely is `configProblems` in
-`src/domain/settings.ts`; the command it names first is `src/commands/scaffold.ts`; and the
-column options it groups as presentation are rendered by `src/view/render/columns.ts`.
+`src/view/manual/sections.ts` — the setup section's own entries. The schema its coverage
+is measured against is `src/domain/viewOptions.ts` (`getViewOptions`), checked by
+`test/docs/surfaces.test.ts`'s "claims every view-option key in exactly one setup entry".
+What "misconfigured" means concretely is `configProblems` in `src/domain/settings.ts`; the
+command it names first is `src/commands/scaffold.ts`; and the column options it groups as
+presentation are rendered by `src/view/render/columns.ts`.
