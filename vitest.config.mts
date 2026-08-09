@@ -178,11 +178,18 @@ export default defineConfig({
 			// recorded. The point for whoever reads this next is the shape, not the numbers
 			// — a coverage failure on this repository is first a question about which branch
 			// nothing can take, and only then a question about a missing test.
+			//
+			// The toolbar-overflow-menu increment (task 3 of the toolbar-zones plan: the
+			// `⋯` menu mirroring density, jump-to-today, the ✨ backfill and the two bulk
+			// collapse commands, with a watched-failing test for the disabled mirror)
+			// measured 98.24/94.34/99.51/99.41. Statements rounds down to the figure
+			// already recorded above and stays; branches, functions and lines round down
+			// to new decimals (94.3, 99.5, 99.4) and move.
 			thresholds: {
 				statements: 98.2,
-				branches: 94.0,
-				functions: 99.4,
-				lines: 99.3,
+				branches: 94.3,
+				functions: 99.5,
+				lines: 99.4,
 			},
 		},
 	},

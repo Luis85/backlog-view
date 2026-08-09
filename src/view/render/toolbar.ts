@@ -13,6 +13,7 @@ import {
 	KEY_ATTR,
 	pickAndRefocus,
 	refocusByKey,
+	renderOverflow,
 	renderProjectionZone,
 } from './toolbarControls';
 import { BacklogItem, BacklogModel } from '../../domain/model';
@@ -82,6 +83,10 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	undoBtn.addEventListener('click', () => {
 		void host.undoLast();
 	});
+	// The `⋯` — the fit ladder's escape hatch for whatever it has shed off the row.
+	// Placement here is a layout decision only: the menu reads the bar's DOM at click
+	// time, so it can sit anywhere in it and still see every button.
+	renderOverflow(host, barEl);
 
 	barEl.createDiv({ cls: 'pbl-toolbar-sep' });
 

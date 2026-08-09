@@ -4,6 +4,7 @@ import { BacklogItem, BacklogModel } from '../../domain/model';
 import { activeAxis, configuredAxes, RoadmapAxis } from '../../domain/roadmap';
 import { ScaleId } from '../../domain/timeline';
 import { showMenuForClick } from '../interactions/menu';
+import { runInit } from '../interactions/structure';
 
 /** Where a toolbar control carries its focus identity — see `capturedFocusKey`. */
 export const KEY_ATTR = 'data-pbl-key';
@@ -295,5 +296,107 @@ export function collapseButton(
 		if (btn.disabled) return;
 		spec.mutate();
 		host.render();
+	});
+}
+
+/** One `⋯` entry: what it says, and the button whose state it mirrors. */
+interface OverflowEntry {
+	title: string;
+	icon: string;
+	cls: string;
+	run: () => void;
+}
+
+/**
+ * Every action the fit ladder can take off the row, in row order. Fixed rather than
+ * derived from the current step — a menu whose contents tracked the verdict would be a
+ * second opinion about it, and a duplicated entry for a control still on screen is
+ * harmless and already the pattern here (the card menu carries the state chip's values
+ * while the chip is visible).
+ *
+ * An entry appears only when its BUTTON was rendered, so a projection that has no
+ * density toggle does not offer one; and it is disabled exactly when that button is,
+ * read off the button's own `disabled` property rather than re-derived. Re-deriving
+ * would put a second opinion beside `syncCollapseCtls` and `syncBusy`, which own that
+ * flag — and the one that matters is expand/collapse, which has no structural backstop:
+ * the write gate refuses a second batch on its own, so a mis-enabled ✨ is refused, while
+ * a mis-enabled Expand all would really write collapse state a filter is overriding.
+ *
+ * Read at click time, so what it sees is the frame on screen.
+ */
+function overflowEntries(host: BacklogViewHost, barEl: HTMLElement): OverflowEntry[] {
+	const compact = host.density === 'compact';
+	const all: OverflowEntry[] = [
+		{
+			title: 'Compact rows',
+			icon: compact ? 'rows-2' : 'rows-4',
+			cls: 'pbl-density-toggle',
+			run: () => host.setDensity(compact ? null : 'compact'),
+		},
+		{
+			title: 'Jump to today',
+			icon: 'locate-fixed',
+			cls: 'pbl-today-btn',
+			run: () => host.jumpToToday(),
+		},
+		{
+			title: 'Assign missing properties',
+			icon: 'sparkles',
+			cls: 'pbl-write-ctl',
+			run: () => void runInit(host),
+		},
+		{
+			title: 'Expand all',
+			icon: 'chevrons-up-down',
+			cls: 'pbl-expand-ctl',
+			run: () => {
+				expandAll(host);
+				host.render();
+			},
+		},
+		{
+			title: 'Collapse all',
+			icon: 'chevrons-down-up',
+			cls: 'pbl-collapse-all-ctl',
+			run: () => {
+				collapseAll(host);
+				host.render();
+			},
+		},
+	];
+	return all.filter((entry) => barEl.querySelector(`.${entry.cls}`) !== null);
+}
+
+/**
+ * The `⋯`. Always rendered and hidden by CSS below the step that needs it, the way the
+ * busy indicator already is: a control created on a measurement would have to be created
+ * inside the measuring pass.
+ */
+export function renderOverflow(host: BacklogViewHost, barEl: HTMLElement): void {
+	const btn = iconButton(barEl, 'ellipsis', 'More toolbar actions', 'overflow');
+	btn.addClass('pbl-overflow-btn');
+	btn.addEventListener('click', (evt) => {
+		const menu = new Menu();
+		for (const entry of overflowEntries(host, barEl)) {
+			const mirrored = barEl.querySelector<HTMLButtonElement>(`.${entry.cls}`);
+			menu.addItem((mi) =>
+				mi
+					.setTitle(entry.title)
+					.setIcon(entry.icon)
+					// Both of the button's states, not just one. `disabled` says whether
+					// the entry can be picked; `aria-pressed` says whether it is ON — and
+					// at the steps where this menu is the only copy of the density
+					// toggle, an unchecked "Compact rows" that turns compact rows OFF is
+					// the entry stating the opposite of what it does. A toggle is the one
+					// kind of entry where omitting the state inverts the meaning.
+					.setDisabled(mirrored?.disabled === true)
+					.setChecked(mirrored?.getAttribute('aria-pressed') === 'true')
+					// Every entry here re-renders, and focus is in the menu while it
+					// does — so the `⋯` gets its own key back, not the shed button's,
+					// which may not exist at the resulting step.
+					.onClick(() => pickAndRefocus(barEl, 'overflow', entry.run)),
+			);
+		}
+		showMenuForClick(menu, evt);
 	});
 }
