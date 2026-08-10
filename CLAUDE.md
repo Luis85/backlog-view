@@ -325,9 +325,11 @@ change that was fixing the previous instance.
   `ObjectValue` rather than the `Value` that `getValue()` returns, so testing for it
   is a genuine question about the value in hand. Neither gap closes at a newer
   typings version — both were checked against 1.13.1 and both still hold.
-- The `obsidian` devDependency is pinned to the FLOOR (`~1.12.3`), not to npm's newest,
-  so the compiler refuses an API `minAppVersion` does not promise. Raise the two
-  together or not at all — see `.github/dependabot.yml`.
+- The `obsidian` devDependency is pinned to the FLOOR **exactly** (`1.12.0`), not to npm's
+  newest and not to a range over it, so the compiler refuses an API `minAppVersion` does
+  not promise. Exactly, because the typings are additive within a minor line and carry
+  `@since` tags to prove it. Raise the two together or not at all — see
+  `.github/dependabot.yml`.
 - Fallow resolves an interface's members through an **explicit type annotation**, not
   through a property access: a host method reached only via `const host = ctx.host`
   reports as an unused class member even though it is called. Annotate the local

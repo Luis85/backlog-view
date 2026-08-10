@@ -56,11 +56,18 @@ updates:
       # receives a config from 1.12.0, and `^1.13.1` typings compiled it happily for
       # eleven releases.
       #
+      # The pin is EXACT (`1.12.0`, not `~1.12.3`) and the ignore starts one patch above
+      # it, because within a minor line these typings are additive and say so: 1.12.3
+      # added `Vault.appendBinary` (`@since 1.12.3`) and 1.12.2 the CLI handler types.
+      # A tilde would compile those against a manifest promising 1.12.0 — the same drift
+      # one patch smaller, which is not a difference worth a guard that only mostly holds.
+      #
       # Raise this WITH minAppVersion, in one deliberate commit, after checking what the
-      # newer app actually gives this plugin. Do not widen it to `^` to silence a bump.
+      # newer app actually gives this plugin. Do not widen it to `~` or `^` to silence a
+      # bump; the range IS the promise.
       - dependency-name: obsidian
         versions:
-          - ">=1.13"
+          - ">1.12.0"
 
   # What deliberately falls outside that group gets its own pull request: every major,
   # and — at any level, patch included — the three @atlaskit packages, since the group is

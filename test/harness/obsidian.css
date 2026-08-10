@@ -5,8 +5,8 @@ npm run test-build) actually exercises — see test/CLAUDE.md.
 Source: the full app.css vendored from a local Obsidian install, not committed here.
 Obsidian app version is not recorded inside app.css itself; the closest markers this
 repo has are manifest.json's minAppVersion (1.12.0, a floor) and the "obsidian" npm
-typings pinned in package.json (~1.12.3, which now tracks that floor deliberately and
-is still a loose correlate, not the app version).
+typings pinned in package.json (1.12.0 exactly, which now tracks that floor deliberately
+and is still a loose correlate, not the app version).
 Source size before reduction: 21673 lines, 634971 bytes.
 
 The CDP-derived core: every rule CSS.startRuleUsageTracking / takeCoverageDelta reported
