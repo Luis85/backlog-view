@@ -2098,3 +2098,89 @@ npm run check
 git add src/domain/dropTargets.ts src/view/interactions/structure.ts test/
 git commit -m "Ask one predicate whether a move would change the row's projection"
 ```
+
+### Task 19: The published contracts still promise no drop is ever refused for a type
+
+**Files:**
+- Modify: `src/view/manual/typesSection.ts` (the `Type is advisory, not enforced` entry)
+- Modify: `src/domain/backlogReadme.ts` (`rulesSection`, the "type rules are advisory" bullet)
+- Test: whichever suites already assert on those two texts — find them, do not assume
+
+**Why.** An automated reviewer on PR #123 found that this branch falsified two texts the
+plugin *publishes to users*, and both were verified by hand before this task was written:
+
+1. `src/view/manual/typesSection.ts`, entry `Type is advisory, not enforced`, ends
+   *"No drag is ever refused for what it would type something as. Other drops still are —
+   onto an item's own descendant, or into a sibling group a reorder cannot reach right now —
+   neither of which is about type."* Task 18's `keepsProjection` refuses exactly that class of
+   drop, and outdent and the parent-link actions withhold for it too. The sentence enumerates
+   the refusals and now the list is short by one.
+2. The same entry says Set type *"in the tree and the roadmap offers the whole vocabulary"*
+   and that only *"a board's menu narrows"*. `offerableTypes` (`src/view/projection.ts`)
+   applies the catalog-membership filter on the `types === ALL_TYPES` path in **every**
+   projection, which is the `retypeChoices` path Set type takes. The tree narrows now.
+3. `src/domain/backlogReadme.ts`'s `rulesSection` opens *"The type rules are advisory ...
+   nothing is refused"* — the same falsification as (1), in a file the plugin writes into
+   the user's vault.
+
+A user hitting an intentionally absent action with a manual that says it cannot be absent
+diagnoses a malfunction. That is the cost, and it is why this is worth a task rather than a
+deferred minor.
+
+- [ ] **Step 1: Verify all three claims yourself before changing a word**
+
+Read `keepsProjection` in `src/domain/itemTypes.ts` and its four call sites, and read
+`offerableTypes` lines around the `wanted` filter. Establish for yourself, and put in your
+report:
+- exactly which rows a move can be refused for (the answer is narrow — `ladderFor` chains from
+  the parent for only two inputs, a `Task` and a note with **no** `type`, so every other type
+  answers from its own name and can never change ladder by moving);
+- that in a vault carrying no test types nothing is refused at all, since every row answers
+  `LEVELS`;
+- whether Set type in the tree really does withhold `Test suite` / `Test case` on a plan row.
+
+If any of the three is wrong, say so and fix only the ones that are real. The point of this
+step is that this repo has shipped prose asserting what the code does not do more than a dozen
+times on this branch alone — do not add a fourteenth by trusting the paragraph above.
+
+- [ ] **Step 2: Grep for every other copy before editing either file**
+
+`grep -rn "nothing is refused" src/ docs/`, `grep -rn "never refused" src/ docs/`,
+`grep -rn "refused" src/view/manual/ src/domain/backlogReadme.ts`, and
+`grep -rn "whole vocabulary" src/ docs/`. Put the full output in your report. Three separate
+rounds on this branch each fixed the instances they were told about and missed one; the grep
+is what breaks that pattern.
+
+- [ ] **Step 3: Write the corrections**
+
+Say what actually holds, in the register's voice — the rule, not the mechanism:
+
+- The type rules stay advisory *within* a ladder: a `Task` under an `Epic` stays a `Task`, the
+  ladder guides and does not enforce. What is refused is narrower and structural — **a move
+  that would take a row out of the projection it is drawn on**, which only a `Task` or a
+  typeless note can do, and only by moving across the boundary between the plan and the test
+  catalog. Name the reason: a row that answered the other ladder would vanish off the screen
+  it was dragged on.
+- Set type offers what **this projection can show**, in every projection — not just a board.
+  The two boards' narrowing is one case of that rule, not the whole of it.
+
+Keep both texts sentence-case and free of the special characters the manifest rules ban.
+Do not restate the mechanism (`ladderFor`, `keepsProjection`) in user-facing prose; users have
+neither symbol.
+
+- [ ] **Step 4: Fix the tests that assert on these strings**
+
+Find them (`grep -rn "advisory" test/`, and the README snapshot/assertion suites). If a test
+asserts the old sentence, it must now assert the new one; if a test asserts only that the
+entry exists, consider whether the *claim* is worth an assertion — a manual entry stating a
+refusal the code does not make is the same defect class as an unchecked comment.
+
+- [ ] **Step 5: Run the whole check and commit**
+
+`npm run check` in the FOREGROUND, and watch the exit code rather than inferring from output.
+
+```bash
+npm run check
+git add src/view/manual/typesSection.ts src/domain/backlogReadme.ts test/ docs/
+git commit -m "Say which drops the projection boundary refuses"
+```

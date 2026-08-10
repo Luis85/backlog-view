@@ -14,8 +14,9 @@ import { ALL_TYPES } from '../domain/typeVocabulary';
  * up/down/top/bottom and no indent or outdent — on a tree whose whole point is an order
  * somebody chose. Nothing enforces that mechanically: there is no `no-restricted-syntax`
  * rule forbidding a bare `projection === 'tree'` outside this file, and the comparison
- * already appears directly at a dozen call sites (see
- * `docs/issues/The projection predicate has no lint rule behind it.md`). The predicate
+ * already appears directly across the view — the files are counted and named in
+ * `docs/issues/The projection predicate has no lint rule behind it.md`, once, because a
+ * count restated here is one an edit elsewhere falsifies. The predicate
  * holds only where a caller asks it rather than comparing the value itself.
  *
  * It is its own module rather than a pair of functions on `host.ts`, which stays free of
