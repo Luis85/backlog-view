@@ -86,10 +86,21 @@ reduced deliberately rather than by accretion.
 
 Not with code. With the question the earlier note deferred:
 
-1. Run [[Smoke test the touch paths on a phone]] first. It is `P1`, it is blocked only on
-   hardware, and its answer changes this decision more than any amount of reading — if
-   native drag does not fire from touch on a phone, the tree's mechanism is a correctness
-   problem rather than an inconsistency.
+1. **Answer whether the tree's native drag fires from touch — and note that nothing in
+   this register currently asks.** This step said "run [[Smoke test the touch paths on a
+   phone]]" when the note was filed, which was wrong, and the way it was wrong is worth
+   keeping: that note says in bold **"The drag verdict is not asked here"** and checks the
+   context-menu fallback and the hover controls instead. [[Smoke test the board in a live
+   vault]] does ask about drag on touch, but about the BOARD's — Pragmatic's element
+   adapter — and records "whether drag ships on touch or stays menu-only" for that
+   surface.
+
+   So the tree's own drag on touch is **owned by no check**, on a plugin whose
+   `manifest.json` says `isDesktopOnly: false`. That gap is a finding in its own right and
+   is the reason this step comes first: it needs a verification that owns it before this
+   decision can rest on an answer. If native drag does not fire from touch in Obsidian's
+   mobile WebView, the tree's mechanism is a correctness problem rather than an
+   inconsistency, and this whole note becomes a different and more urgent one.
 2. Only then decide migration, with the cost stated: what the diff touches, which tests
    have to be rewritten against a new mechanism, and what a user would notice. If the
    answer is "nothing a user would notice", say so and weigh it honestly.
@@ -98,7 +109,10 @@ Not with code. With the question the earlier note deferred:
 
 ## Acceptance criteria
 
-- The phone smoke test has been run and its verdict recorded.
+- A verification that actually asks whether the TREE's native drag fires from touch
+  exists, has been run, and its verdict is recorded. Satisfying this against
+  [[Smoke test the touch paths on a phone]] does not count — that note excludes the drag
+  verdict by design.
 - A decision is written down — migrate, or keep three mechanisms with the reason — and
   this note closes either way.
 - If migration happens, `domain/dropTargets.ts` stays the shared pure layer; the point of
