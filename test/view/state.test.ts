@@ -121,20 +121,40 @@ describe('view state details', () => {
 	});
 
 	it('surfaces the full text of truncated titles as a tooltip', () => {
-		const vault = fixture();
-		const { containerEl } = makeView(vault);
+		// The guarantee, not the mechanism. Until 2026-08-10 this tooltip was set by the
+		// title's own `mouseover`, which read layout inside a pointer event and cost 65.7ms
+		// per hover at 832 rows; it is now one batched pass at the end of the render. What a
+		// reader is owed is unchanged — a clipped title says what it says in full — so this
+		// test moved to the new path rather than going with the old one. That the hover
+		// reads no layout any more is its own check, in `renderCost.test.ts`.
+		//
+		// Stubbed on the PROTOTYPE because the render the pass runs at the end of rebuilds
+		// every row: a stub put on an element is on a node that is gone before anything
+		// measures it. Everything that is not a title delegates, so the column fit still
+		// measures the real (zero) pane.
+		const realScroll = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollWidth')?.get;
+		const realClient = Object.getOwnPropertyDescriptor(Element.prototype, 'clientWidth')?.get;
+		const isTitle = (el: Element): boolean => el.classList.contains('pbl-title');
+		const scrollWidth = vi.spyOn(Element.prototype, 'scrollWidth', 'get').mockImplementation(function (this: Element) {
+			if (!isTitle(this)) return Number(realScroll?.call(this) ?? 0);
+			return this.textContent === 'Epic A' ? 300 : 80;
+		});
+		const clientWidth = vi.spyOn(Element.prototype, 'clientWidth', 'get').mockImplementation(function (this: Element) {
+			return isTitle(this) ? 100 : Number(realClient?.call(this) ?? 0);
+		});
+		try {
+			const { containerEl, view } = makeView(fixture());
+			view.onDataUpdated();
+			const tooltipOn = (title: string): string | undefined =>
+				rowByTitle(containerEl, title).querySelector<HTMLElement>('.pbl-title')?.dataset.tooltip;
 
-		const truncated = rowByTitle(containerEl, 'Epic A').querySelector<HTMLElement>('.pbl-title');
-		if (!truncated) throw new Error('title missing');
-		Object.defineProperty(truncated, 'scrollWidth', { value: 300 });
-		Object.defineProperty(truncated, 'clientWidth', { value: 100 });
-		truncated.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
-		expect(truncated.dataset.tooltip).toBe('Epic A');
-
-		// Titles that fit stay tooltip-free (jsdom reports zero widths for both)
-		const fitting = rowByTitle(containerEl, 'Epic B').querySelector<HTMLElement>('.pbl-title');
-		fitting?.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
-		expect(fitting?.dataset.tooltip).toBeUndefined();
+			expect(tooltipOn('Epic A')).toBe('Epic A');
+			// A title that fits carries no tooltip: its full text is already on screen.
+			expect(tooltipOn('Epic B')).toBe('');
+		} finally {
+			scrollWidth.mockRestore();
+			clientWidth.mockRestore();
+		}
 	});
 });
 

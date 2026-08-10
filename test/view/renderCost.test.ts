@@ -100,4 +100,35 @@ describe('render cost', () => {
 		expect(one).not.toHaveBeenCalled();
 		expect(all).not.toHaveBeenCalled();
 	});
+
+	/**
+	 * The invariant is asked AT THE FORBIDDEN THING — the layout getters themselves —
+	 * rather than by asserting that this one handler looks right, so it holds for a hover
+	 * handler written tomorrow. Same reasoning as the tree-scan spy above, and the same
+	 * reason it is a spy on the call rather than a reading of the source.
+	 *
+	 * What it cost when it was false: `mouseover` on a row title read
+	 * `scrollWidth`/`clientWidth` to decide whether the title needed a tooltip, which
+	 * forces a synchronous re-layout of the whole tree — and hovering is itself what
+	 * dirties style, so the read could never reuse a clean layout. Measured in the browser
+	 * harness at 832 rows: 65.7ms per hover against 0.13ms without it.
+	 */
+	it('reads no layout while a row title is hovered', () => {
+		const { containerEl } = makeView(backlog(60));
+		const title = rowByTitle(containerEl, 'Feature 11').querySelector<HTMLElement>('.pbl-title');
+		// On the prototype, not the element: the handler could reach layout through any
+		// node it can see, and a spy on one element would miss a read of its parent.
+		const scrollWidth = vi.spyOn(Element.prototype, 'scrollWidth', 'get');
+		const clientWidth = vi.spyOn(Element.prototype, 'clientWidth', 'get');
+		try {
+			title?.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+
+			expect(scrollWidth).not.toHaveBeenCalled();
+			expect(clientWidth).not.toHaveBeenCalled();
+		} finally {
+			scrollWidth.mockRestore();
+			clientWidth.mockRestore();
+		}
+	});
+
 });

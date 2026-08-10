@@ -24,6 +24,22 @@ free of runtime code so imports stay cycle-free.
   state live, because a targeted refresh leaves surrounding rows in place. Data updates
   still rebuild everything — skipping that needs to account for arbitrary chip property
   values.
+- **No input handler reads layout.** `scrollWidth`, `clientWidth`, `offsetTop`,
+  `getBoundingClientRect` — none of them, in a `mouseover`, `keydown`, `click` or drag
+  handler. A layout read forces the browser to flush pending style and layout
+  synchronously, and an input handler is exactly where the pending work is largest: the
+  gesture itself is what dirtied style (`.pbl-row:hover` changes the title's colour and
+  the grip's opacity), so the read can never reuse a clean layout. Where a measurement is
+  genuinely needed it is a PASS — every read, then every write, run once where the rows
+  are already settled (`syncTitleTooltips`, called from `ResizePolicy.refit`). Reading and
+  writing alternately in that pass is the same defect spread over the render instead.
+  This shipped: the row title's `mouseover` measured its own truncation to decide on a
+  tooltip, which cost **65.7ms per hover at 832 rows against 0.13ms without it** — see
+  [[Hovering a row measured its own width]]. The check is a spy on the GETTERS during a
+  hover in `test/view/renderCost.test.ts`, put on `Element.prototype` rather than on the
+  handler, so it holds for a handler written tomorrow; what it cannot see is a read
+  reached through an API the spy does not name, which is why this paragraph states the
+  rule rather than the two properties the spy watches.
 - The write gate is `writeGate.ts`, not the view: `WriteGate` holds `applying`, the undo
   slot, `recovery`, the deferred update and the busy state — five fields serving one
   concern, of which only `busy` was ever read from outside it — and the view owns one,

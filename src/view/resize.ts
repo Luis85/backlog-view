@@ -1,5 +1,6 @@
 import { BacklogViewHost } from './host';
 import { RowContext, syncColumnFit } from './render/columns';
+import { syncTitleTooltips } from './render/rows';
 import { TIMELINE_LEAD_PX } from './render/timeline';
 import { syncToolbarFit } from './render/toolbarFit';
 import { effectiveLeadWidth } from './interactions/timelineLeadResize';
@@ -25,7 +26,15 @@ export class ResizePolicy {
 
 	/** Re-measure the pane and apply the column ladder to what is currently rendered. */
 	refit(): boolean {
-		return syncColumnFit(this.rowCtx(), this.viewEl, this.treeEl);
+		const ctx = this.rowCtx();
+		const changed = syncColumnFit(ctx, this.viewEl, this.treeEl);
+		// Truncation is a consequence of the same measurement, so it is applied here rather
+		// than at the call sites: a resize that changes NO column verdict still changes how
+		// much room a title has, and both callers would otherwise need their own branch for
+		// it. One batched layout, against the per-hover one this replaced — see
+		// `syncTitleTooltips`.
+		syncTitleTooltips(ctx.rows);
+		return changed;
 	}
 
 	/**
