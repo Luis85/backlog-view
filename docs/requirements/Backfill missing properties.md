@@ -67,23 +67,39 @@ frontmatter, **I want** one button that sets the properties up and writes them f
   descends **through** it, so results below one are still backfilled. Its `order` is still
   *read* for the sibling maximum, because it is on screen: a backfill that fills in blanks
   must not reorder the tree by placing an item above a row the user can see.
-- **3b — a configured property's key differs from the one this item's own workflow
-  reads.** There are three state workflows now (requirements, Deliverable, test), each
-  keyed by its own optional property, and a note follows exactly one — its type, or its
-  ladder ([[A workflow for the tests]]). `state`, `deliverableState` and `testState` are
-  each stubbed only when their own resolved key IS the key `stateKeyFor` reads for THIS
-  item — asked by key, not by re-deriving the item's category. In the ordinary
-  configuration (each workflow's key distinct, or a secondary key left unset and falling
-  back to the requirements one) that means exactly one of the three lands on a given
-  item: a `Test case` gets a `testState` stub and not a `state` one, and a `Deliverable`
-  gets a `deliverableState` stub and not a `state` one, so pressing ✨ never leaves an
-  empty, unreadable property beside the one the row actually shows. **It is not narrowed
-  by category, though** — a vault MAY point two of the three properties at the same
-  explicit key on purpose (`configProblems` allows exactly this pairing), and there every
-  field resolving to that key is stubbed together: they name one property, and creating
-  it once is what a shared key means. (`stateKeyFor` in `src/domain/board.ts` is the one
-  place that decides which key an item's workflow uses; `missingKeyStubs` asks it rather
-  than re-deriving the answer.)
+- **3b — a configured property's key is not the one this item's own workflow reads.**
+  There are three state workflows now (requirements, Deliverable, test), each keyed by
+  its own optional property, and a note follows exactly one — its type, or its ladder
+  ([[A workflow for the tests]]). `state`, `deliverableState` and `testState` are each
+  stubbed only when their own resolved key IS the key `stateKeyFor` reads for THIS item —
+  asked by key, not by re-deriving the item's category, which the three configurations
+  below tell apart (measured against one Epic, one `Test case`, one `Deliverable`):
+  - **Each workflow keyed distinctly.** Exactly one field lands per item: the Epic gets
+    `state`, the `Test case` gets `testState` and not `state`, the `Deliverable` gets
+    `deliverableState` and not `state`.
+  - **A secondary key left unset, falling back to the requirements one (the shipped
+    default).** `state` lands on all three, `Test case` and `Deliverable` included —
+    because a falling-back secondary key's own resolved key IS `settings.stateKey`, so
+    `stateKeyFor` answers exactly that for those items too. `testState` and
+    `deliverableState` themselves stay empty here, but by 5b's rule below, not this
+    one: nothing names a property of their own for `optionalKeyFor` to find.
+  - **Two or three properties pointed at the SAME explicit key on purpose**
+    (`configProblems` allows exactly this pairing). Every field resolving to that key is
+    stubbed together — the Epic, the `Test case` and the `Deliverable` each get `state`,
+    `deliverableState` AND `testState` — which is correct rather than narrowed further:
+    they name one property, and creating it once (`stubKeys`/`applyInto` write an absent
+    key once and skip it once it is there) is what a shared key means.
+
+  So pressing ✨ leaves no empty, unreadable property beside the one a row actually shows
+  in the first configuration — but in the second it stubs `state` onto a `Test case` or a
+  `Deliverable` on purpose, because that IS the only property those rows have to gain
+  while sharing the requirements key. This is also what keeps the generated README's
+  property table honest for a Deliverable sharing the key: `src/domain/backlogReadme.ts`
+  names a bound, shared state key "the Deliverable workflow's own state ... on a
+  Deliverable", and a stub that reaches every Deliverable (never a PBI or a Task) is what
+  makes that description true of every note it is printed for. (`stateKeyFor` in
+  `src/domain/board.ts` is the one place that decides which key an item's workflow uses;
+  `missingKeyStubs` asks it rather than re-deriving the answer.)
 - **4a — the item is an orphan**, its parent link resolving to nothing. `order` is written;
   `type` is not. Its real level is unknowable, so an implied one would be derived from the
   provisional top-level position the broken link put it in — a guess about a guess.

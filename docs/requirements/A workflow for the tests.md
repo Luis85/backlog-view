@@ -106,12 +106,17 @@ every other fixture.
   membership is asked of the ladder and a `Task` takes the ladder it hangs from. A rule
   written over type names would read this row as a plan item and offer it the plan's states
   in a projection that draws it under a case.
-- **5a — the backfill is asked to assign missing properties.** It stubs the test state key
+- **5a — the backfill is asked to assign missing properties.** With `testStateProperty`
+  keyed distinctly from the other two (the ordinary case), it stubs the test state key
   onto catalog members and onto nothing else, the same gate the Deliverable state stub
   already has and for the same reason: a test's state describes a test. Without it, binding
   the property and pressing the button writes an empty test-state key onto every plan item
   in the base — which is what exposing the picker makes reachable, so the gate ships with
-  the picker rather than after it.
+  the picker rather than after it. **That is narrowed by the KEY, not by category, though**
+  — pointed at the same explicit key `state` or `deliverableState` already use
+  (`configProblems` allows exactly that pairing), `testState` is stubbed onto every item
+  resolving to that key, plan items included, because it and `state` then name the very
+  same property ([[Backfill missing properties]] 3b).
 - **5b — a test's state counts as done.** Its row is styled done, by the test workflow's
   own done values and against whatever the requirements key on the same note says. Nothing
   is HIDDEN by it: the catalog withholds the completed toggle and opts out of the

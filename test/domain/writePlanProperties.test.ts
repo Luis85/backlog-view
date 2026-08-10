@@ -10,6 +10,8 @@ import {
 	computeRiskWrites,
 	computeTestStateWrites,
 } from '../../src/domain/writePlan';
+import { stubKeys } from '../../src/storage/writeKeys';
+import { applyWrites } from '../../src/storage/frontmatter';
 import { FakeVault } from '../helpers/vault';
 
 const settings = defaultSettings();
@@ -180,25 +182,30 @@ describe('computeInitWrites — the test workflow state stub', () => {
 		expect(stubsFor('Runbook.md')).toContain('state');
 	});
 
-	it('stubs every workflow-state field whose resolved key coincides, deduped at the write boundary', () => {
+	it('stubs every workflow-state field whose resolved key coincides, deduped at the write boundary', async () => {
 		// `configProblems` exempts exactly these three labels from the collision report, so
 		// a vault CAN point `state`, `deliverableState` and `testState` at one explicit key
 		// on purpose. The gate asks each field's own resolved key against `stateKeyFor`, not
-		// the item's category, so more than one field passes on the same item here — and
-		// that is not narrowed further: `stubKeys`/`applyInto` (`src/storage/frontmatter.ts`,
-		// `src/storage/writeKeys.ts`) write the shared key once and drop the rest, so a plan
-		// naming all three costs nothing extra on disk.
+		// the item's category, so more than one field passes on the same item here.
 		const vault = new FakeVault();
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
 		vault.addFile('Case.md', { frontmatter: { type: 'Test case', order: 20 } });
 		vault.addFile('Runbook.md', { frontmatter: { type: 'Deliverable', order: 30 } });
 		const settings = settingsWith({ stateKey: 'status', deliverableStateKey: 'status', testStateKey: 'status' });
 		const model = buildModel(vault.app, vault.entries(), settings);
-		const stubsFor = (path: string) =>
-			computeInitWrites(model, settings).find((w) => w.file.path === path)?.stubs ?? [];
+		const writeFor = (path: string) => computeInitWrites(model, settings).find((w) => w.file.path === path);
 		for (const path of ['Epic.md', 'Case.md', 'Runbook.md']) {
-			expect(stubsFor(path)).toEqual(expect.arrayContaining(['state', 'deliverableState', 'testState']));
+			expect(writeFor(path)?.stubs).toEqual(expect.arrayContaining(['state', 'deliverableState', 'testState']));
 		}
+		// `stubKeys` itself does NOT dedupe — it names the same raw key once per field, so
+		// three fields sharing a key still produce three entries here.
+		const epicWrite = writeFor('Epic.md');
+		expect(stubKeys(settings, epicWrite?.stubs)).toEqual(['status', 'status', 'status']);
+		// The dedupe is at the write boundary (`applyInto` in `src/storage/frontmatter.ts`):
+		// it creates a key only while it is still absent, so applying all three duplicate
+		// targets still leaves the note with the one property, set once.
+		await applyWrites(vault.app, settings, [epicWrite!]);
+		expect(vault.fm('Epic.md').status).toBe('');
 	});
 });
 
