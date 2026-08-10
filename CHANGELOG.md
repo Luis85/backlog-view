@@ -11,6 +11,22 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-08-10
+
+### Changed
+
+- **Obsidian 1.12.0 or newer is now required** (was 1.10.2). The Bases custom-view API
+  opened in 1.10.2, but a view's options callback was not handed the base's own
+  configuration until 1.12.0 — so on older versions this view's options menu showed the
+  shipped `docs/…` folders as the type-folder defaults inside any other base, and offered
+  no WIP-limit or column-policy box at all. Nothing else was affected: the tree, the board
+  and the roadmap all worked. Obsidian keeps serving 0.6.0 to vaults below the new floor.
+
+### Removed
+
+- The fallback that produced those defaults when no configuration arrived. Requiring the
+  floor is what makes the options menu describe the base it is open in, always.
+
 ## [0.6.0] - 2026-08-10
 
 Changelog tracking starts here. For what shipped in 0.1.0–0.5.2, see the
