@@ -7,6 +7,9 @@ priority: P2
 created: 2026-08-09
 files:
   - src/view/render/toolbar.ts
+  - src/view/render/toolbarBusy.ts
+  - src/view/render/toolbarStatus.ts
+  - src/view/render/toolbarFilter.ts
   - src/view/render/toolbarControls.ts
   - src/view/render/toolbarFit.ts
 ---
@@ -234,27 +237,60 @@ and they divide by whether a render follows the width change. One does: the call
 end of `renderTreeContent` (`backlogView.ts`), placed after the content because the
 count is one of the things being measured, and covering a full render and a content-only
 one alike. The other five have no render behind them — `revealFilter` and the filter
-input's blur handler (`render/toolbar.ts`), which open and collapse an input worth about
-130px; `syncBusy`, on the busy indicator's visibility transition and deliberately not on
-the per-file ticks between; `ResizePolicy.shouldRebuildOnResize` (`view/resize.ts`),
-which re-measures the row on every resize notification before deciding whether the tree
-itself needs rebuilding; and `backlogView.ts`'s `css-change` listener, because a theme or
-font swap changes the rendered text this ladder measures without moving any box the
-`ResizeObserver` watches.
+input's blur handler (`src/view/render/toolbarFilter.ts`), which open and collapse an
+input worth about 130px; `syncBusy` (`src/view/render/toolbarBusy.ts`), on the busy
+indicator's visibility transition and deliberately not on the per-file ticks between;
+`ResizePolicy.shouldRebuildOnResize` (`view/resize.ts`), which re-measures the row on
+every resize notification before deciding whether the tree itself needs rebuilding; and
+`backlogView.ts`'s `css-change` listener, because a theme or font swap changes the
+rendered text this ladder measures without moving any box the `ResizeObserver` watches.
 
-`src/view/render/toolbar.ts` keeps the render order — the zones in the sequence the
-main flow states — the four `sync*` functions that keep the toolbar in step with a
-content-only render (`syncFilterUi`, `syncCountLabel`, `syncCollapseCtls`, `syncBusy`),
-and the busy indicator's own fixed-label design: the visible text never changes while a
-batch runs, and the count lives in the label's `title` rather than in the announced
-content, so a `role="status"` region is not re-announced once per file. Two
-projection-specific notes own their own slice of this row rather than being restated
+**`src/view/render/toolbar.ts` is the orchestrator**, split by subject (2026-08-10) once
+it became the repository's top churn hotspot despite sitting well under the 400-line
+budget — the busy indicator, the status readouts and the filter each grew their own file
+so a change to one no longer means opening the other two. What stays here is
+`renderToolbar` itself (the render order, the zones in the sequence the main flow
+states) and the controls it composes directly — the New button, the mode toggle, the
+focus picker, the completed toggle — plus `syncCollapseCtls`, because the bulk collapse
+BUTTONS are drawn in `renderToolbar`'s own body rather than by a picker function of
+their own, so both stay native exports of this file. It also re-exports the five
+symbols the split moved out from under it — `syncBusy`, `syncFilterUi`, `syncCountLabel`,
+`revealFilter`, `detectIgnoredGrouping` — so `backlogView.ts` and the test suite keep one
+import path into the toolbar rather than one per subject file.
+
+`src/view/render/toolbarBusy.ts` is the write-in-flight indicator end to end:
+`renderBusyIndicator`, `syncBusy`, and the two internals only it calls —
+`syncBusyLabel` (the fixed-label design: the visible text never changes while a batch
+runs, and the count lives in the label's `title` rather than in the announced content, so
+a `role="status"` region is not re-announced once per file) and `syncBusyCount` (the
+digit-reserved width). The stranded-focus rescue on the indicator's hide transition lives
+here too, because it is the same transition `syncBusyLabel` already owns.
+
+`src/view/render/toolbarStatus.ts` holds what the row reports about the population:
+`syncCountLabel`, `renderIgnoredNote`, `detectIgnoredGrouping`, `countedPopulation` (each
+projection's own population — the Deliverables board's `deliverableResults`, the
+requirements board's results minus Deliverables, everything else's `results` whole —
+read by the count label, the completed toggle's "(N hidden)" and `renderToolbar`'s first
+paint alike, so the three cannot disagree about what they are counting) and
+`levelBreakdown` (the count's tooltip).
+
+`src/view/render/toolbarFilter.ts` holds the quick filter's toolbar half:
+`renderFilterBox`, `syncFilterUi`, `revealFilter`.
+
+`setTextIfChanged` — the live-region-safe text write both `toolbarBusy.ts` and
+`toolbarStatus.ts` need — moved to `src/view/render/toolbarControls.ts` when the split
+put its two call sites in two different files; a two-line local repeated in both would
+be the DRY violation the original "one file" version was written to avoid.
+
+Two projection-specific notes own their own slice of this row rather than being restated
 here: [[Collapsing a bar's subtree]] for the bulk collapse controls'
-`expandAll`/`collapseAll`/`collapseButton`/`collapseCtlsDisabled`, and [[Quick filter]]
-for `revealFilter` and why the filter is the one control this ladder cannot simply hide.
+`expandAll`/`collapseAll`/`collapseButton`/`collapseCtlsDisabled`
+(`toolbarControls.ts`), and [[Quick filter]] for `revealFilter` and why the filter is
+the one control this ladder cannot simply hide.
 
-Driven in `test/view/toolbar.test.ts` (the render order and the four sync functions),
-`test/view/toolbarZone.test.ts` (the projection zone's emptiness and its contents),
-`test/view/toolbarOverflow.test.ts` (the `⋯`'s membership and mirrored state) and
-`test/view/toolbarFit.test.ts` (the ladder itself: the measurement, the floor, the
-refocus rule, the filter exception, and the four re-run triggers).
+Driven in `test/view/toolbar.test.ts` (the render order and the four sync functions,
+across whichever file each now lives in), `test/view/toolbarZone.test.ts` (the
+projection zone's emptiness and its contents), `test/view/toolbarOverflow.test.ts` (the
+`⋯`'s membership and mirrored state) and `test/view/toolbarFit.test.ts` (the ladder
+itself: the measurement, the floor, the refocus rule, the filter exception, and the four
+re-run triggers).

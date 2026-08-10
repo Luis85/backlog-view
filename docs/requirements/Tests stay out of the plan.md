@@ -296,7 +296,7 @@ unfocused tree minus the catalog — unfocused, so what a menu offers never narr
 is on screen. `observedDeliverableStates` needed nothing, being already scoped to
 `Deliverable`s.
 
-`countedPopulation` (`src/view/render/toolbar.ts`) answers from the projection's own
+`countedPopulation` (`src/view/render/toolbarStatus.ts`) answers from the projection's own
 population, which its two readers — the count label and the completed toggle's *"N hidden"*
 — share, so neither can offer to reveal what the other is not counting. The ignored-notes
 advisory is untouched, and the reason is that a test is a work item: it was never in that

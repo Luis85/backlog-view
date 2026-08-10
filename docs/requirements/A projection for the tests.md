@@ -447,8 +447,9 @@ and the two narrowings compose rather than choosing.
 `src/view/render/projections.ts` gets a BRANCH rather than a fallthrough, so the catalog
 takes the tree renderer and the label `Test catalog`; `src/view/render/emptyStates.ts`
 gains `renderCatalogEmptyState`, which offers creation and never configuration;
-`src/view/render/toolbar.ts` gains the fifth toggle position, the catalog's `INERT_FOCUS`
-entry, and the catalog's own `countedPopulation`; `src/view/render/toolbarControls.ts`'s
+`src/view/render/toolbar.ts` gains the fifth toggle position and the catalog's
+`INERT_FOCUS` entry, with the catalog's own `countedPopulation` in
+`src/view/render/toolbarStatus.ts` where the toolbar split put it; `src/view/render/toolbarControls.ts`'s
 `collapsiblePopulation` takes the catalog's items by name, deliberately not behind
 `treeShaped`, since it decides what a bulk collapse TOUCHES rather than whether a button is
 enabled; and `UiStateController.setProjection` (`src/view/uiState.ts`) recomputes the

@@ -1,5 +1,5 @@
-import { BasesQueryResult, Menu, setIcon, setTooltip } from 'obsidian';
-import { BacklogViewHost, BusyState, Projection } from '../host';
+import { Menu, setIcon, setTooltip } from 'obsidian';
+import { BacklogViewHost, Projection } from '../host';
 import { newItemType, promptCreateItem } from '../interactions/create';
 import { showMenuForClick } from '../interactions/menu';
 import { runInit } from '../interactions/structure';
@@ -16,14 +16,28 @@ import {
 	renderOverflow,
 	renderProjectionZone,
 } from './toolbarControls';
-import { focusInBar, syncToolbarFit } from './toolbarFit';
-import { hidesCompleted, offerableTypes, projectionPopulation } from '../projection';
-import { BacklogItem, BacklogModel } from '../../domain/model';
-import { displayType, focusTarget, isDeliverableType } from '../../domain/itemTypes';
+import { focusInBar } from './toolbarFit';
+import { renderBusyIndicator } from './toolbarBusy';
+import { countedPopulation, levelBreakdown, renderIgnoredNote } from './toolbarStatus';
+import { renderFilterBox } from './toolbarFilter';
+import { hidesCompleted, offerableTypes } from '../projection';
+import { BacklogModel } from '../../domain/model';
+import { focusTarget } from '../../domain/itemTypes';
 import { DELIVERABLE_TYPE } from '../../domain/settings';
 import { configProblems } from '../../domain/settings';
 import { manualLink, openManual } from '../../ui/manualDialog';
 import { manualSections } from '../manual/sections';
+
+/**
+ * Re-exported so `backlogView.ts` and the test suite keep one import path into the
+ * toolbar rather than one per subject file — this module was the toolbar's address
+ * before the split into `toolbarBusy.ts` / `toolbarStatus.ts` / `toolbarFilter.ts`, and
+ * still is for anything outside `render/`. Nothing here reads these; they pass straight
+ * through.
+ */
+export { syncBusy } from './toolbarBusy';
+export { detectIgnoredGrouping, syncCountLabel } from './toolbarStatus';
+export { revealFilter, syncFilterUi } from './toolbarFilter';
 
 /** Toolbar: creation buttons, backfill, expand/collapse, config warning, item count. */
 export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
@@ -286,298 +300,6 @@ function renderNewButton(host: BacklogViewHost, barEl: HTMLElement, model: Backl
 }
 
 /**
- * The write-in-flight indicator. Always rendered and hidden by CSS rather than
- * created on demand: progress ticks once per file, and rebuilding the toolbar for
- * each of them would be its own source of jank. `syncBusy` drives it in place.
- */
-function renderBusyIndicator(barEl: HTMLElement, host: BacklogViewHost): void {
-	const busy = barEl.createDiv({ cls: 'pbl-busy', attr: { role: 'status', 'aria-live': 'polite' } });
-	setIcon(busy.createSpan({ cls: 'pbl-busy-spinner' }), 'loader-2');
-	busy.createSpan({ cls: 'pbl-busy-label' });
-	// Built once and only ever re-TEXTED, never rebuilt: `syncBusyLabel` runs per file and
-	// `empty()` plus two `createSpan`s three hundred times is the per-tick DOM churn the
-	// deferred update exists to avoid.
-	const count = busy.createSpan({ cls: 'pbl-busy-count', attr: { 'aria-hidden': 'true' } });
-	count.createSpan({ cls: 'pbl-busy-done' });
-	count.createSpan({ cls: 'pbl-busy-of' });
-	// The door into `Help for safe writes and undo`. This caller overrides `manualLink`'s
-	// default refocus rather than relying on it: `.pbl-busy` is hidden by CSS the moment
-	// the batch that opened it ends, so by closing time the default's own resolve would
-	// find a link that is connected but invisible — exactly the case that default exists
-	// to refuse. Landing on the `?` button through `focusInBar` is what the toolbar's own
-	// help button already does, resolved at close time for the same reason.
-	// Keyed like every other focusable toolbar control, even though it never survives its
-	// own rebuild via that mechanism — `syncBusy` only ever re-texts this indicator, never
-	// rebuilds it, so the key exists to satisfy the invariant `test/view/toolbarFocus.test.ts`
-	// checks over the whole row rather than to do restoring work of its own.
-	// `root: barEl` here is never actually read — the explicit `onClosed` below always
-	// wins over the default resolve it would drive — but the field is required so every
-	// caller states one rather than a caller-that-overrides being the one place the
-	// question goes unanswered.
-	manualLink(busy, host.app, manualSections(), { sectionId: 'writes', label: 'What is happening', root: barEl }, () =>
-		focusInBar(barEl, barEl.querySelector<HTMLElement>('.pbl-help-btn')),
-	).setAttribute(KEY_ATTR, 'busy-help');
-}
-
-/**
- * The visible progress — "12 of 340" — and the two things that make it safe to show.
- *
- * **`aria-hidden`, so the row can count without announcing.** `.pbl-busy` is
- * `role="status"`, so its content is announced whenever it changes; a per-file number in
- * it is a 340-note backfill announced 340 times, which is the defect the fixed label was
- * introduced to fix. Hiding the counter from the accessibility tree keeps the announced
- * content the static `Updating`, said once when the batch starts. The count is still
- * reachable without sight — it stays in the label's `title`, which names nothing above it
- * and so cannot make the region's own name change.
- *
- * That is a claim about how a live region treats a mutation inside an `aria-hidden`
- * descendant, and it is a SPEC claim rather than a measured one: no screen reader runs
- * here. It is on the vault list.
- *
- * **A width that cannot change mid-batch.** The done number is the only part that varies
- * and it is `min-width`-reserved to the digit count of the TOTAL, which is fixed for the
- * whole batch, with `tabular-nums` so every digit is exactly the `ch` the reservation is
- * written in. So `1 of 340` and `340 of 340` occupy the same box and the row never
- * re-flows between the two visibility transitions the ladder actually measures at. This
- * is the fifth attempt at that readout and the first that is exact rather than
- * approximate: `ch` is font-relative, so it re-resolves on a theme or font change by
- * itself, where the pixel reservation this replaces was measured once and went stale.
- */
-function syncBusyCount(el: HTMLElement, busy: BusyState | null): boolean {
-	const done = el.querySelector<HTMLElement>('.pbl-busy-done');
-	const of = el.querySelector<HTMLElement>('.pbl-busy-of');
-	if (!done || !of) return false;
-	// A single-file write is over before it could be read, so it gets no count at all —
-	// and the label wears the ellipsis instead, which is why that string is chosen here
-	// rather than being one fixed word.
-	const counting = busy !== null && busy.total > 1;
-	setTextIfChanged(done, counting && busy ? String(busy.done) : '');
-	setTextIfChanged(of, counting && busy ? ` of ${busy.total}` : '');
-	// Published as a custom property rather than set as `min-width` directly: every number
-	// this codebase computes in TS reaches CSS that way (`--pbl-prop-col`, `--pbl-depth`,
-	// `--pbl-today-left`), so the stylesheet holds what the reservation MEANS and this
-	// holds only how wide it is.
-	done.setCssProps({ '--pbl-busy-digits': counting && busy ? `${String(busy.total).length}ch` : '0' });
-	// …and the ladder re-measures when the DIGIT COUNT changes, which is the one tick where
-	// the reservation is certainly wrong: `digits(total)ch` cannot hold a value a digit
-	// longer, whatever the font does. Twice in a 340-file batch rather than 340 times, so
-	// it costs two forced layout reads and not three hundred — the per-tick measurement
-	// this design exists to avoid is still avoided.
-	//
-	// **It does not cover width changes WITHIN a digit count, and cannot.** Where
-	// `tabular-nums` applies there are none, because every digit is one `ch`. Where the
-	// interface font declines it, `111` and `888` are different widths and no comparison
-	// of the VALUE can see that — only measuring the element can, which is the per-tick
-	// forced layout this trades away. The residue is a few pixels at the row's right end,
-	// on a font without tabular figures, mid-batch, near a threshold; the row clips rather
-	// than wraps, so it costs the edge of a readout and not a control. Declining a
-	// rendered-width check for it is a judgement about proportion, recorded here because
-	// it was raised in review and will be again.
-	//
-	// Recorded on the counter, which is inside the `aria-hidden` subtree, rather than on
-	// `.pbl-busy` itself: an attribute write on a live region is a question this file has
-	// been wrong about once already, and one it does not need to ask.
-	const digits = counting && busy ? String(busy.done).length : 0;
-	const moved = done.dataset.pblDigits !== String(digits);
-	done.dataset.pblDigits = String(digits);
-	return moved;
-}
-
-/**
- * A text write that is not a DOM mutation when the text has not changed. Both callers
- * write into a live region — `.pbl-busy` is `role="status"` and `.pbl-count-label`
- * carries an `aria-live="polite"` of its own — and **a live region announces on
- * MUTATION, not on a changed value**: `setText` assigns `textContent`, which destroys
- * the text node and builds a new one even when the string is identical. So the fixed
- * label a redesign introduced to stop a 340-file backfill announcing 340 times still
- * announced 340 times, and the count label — which is rewritten on every content render
- * — announced once per filter keystroke. The guard is what makes "the drawn text does
- * not change" a fact about the DOM rather than about the string.
- *
- * Two call sites in one file, so a two-line local rather than a shared helper module.
- */
-function setTextIfChanged(el: HTMLElement, text: string): void {
-	if (el.textContent !== text) el.setText(text);
-}
-
-/**
- * The indicator's own half of `syncBusy`: the on/off flag, the label, and the count.
- * Reports whether the row's WIDTH may have changed — the indicator appearing or going, or
- * the count gaining a digit — so the ladder's schedule follows from what the markup can
- * actually do rather than from a promise the markup has to be held to.
- *
- * **The visible text never changes while a batch runs.** It is `Updating…` for every
- * batch, of any size, and the count lives in the label's `title` instead. That is the
- * whole mechanism now; what it replaced was a measured pixel reservation
- * (`reserveBusyLabel`, `--pbl-busy-w`) that existed so a per-file text change could not
- * move the row. Five defects came out of that one readout in a row — a stylesheet
- * constant cannot bound `writes.length`; `N` `ch` does not bound an `N`-character string;
- * the longest value is not the widest label without tabular figures; it had no rung, so
- * it helped push the primary action off the edge; and the reservation went stale across a
- * `css-change` mid-batch, because it was taken once at the transition while ticks
- * deliberately skip refits. Every one was right, and together they said the design was
- * wrong: a measurement, a reservation, a font-feature dependency and a refit schedule,
- * all so one advisory readout would not move. A label that cannot change cannot move.
- *
- * **The count is in `title`, NOT in the text and NOT in `aria-label`, and that is the
- * non-obvious part.** `.pbl-busy` is `role="status"` with `aria-live="polite"`, so its
- * CONTENT is announced whenever it changes — which the old per-tick label meant a
- * three-hundred-file backfill was announced three hundred times. A per-tick `aria-label`
- * would be the same defect wearing a different attribute. Fixed content is announced
- * once, when the batch starts, which is the one thing worth saying — and it is fixed
- * through `setTextIfChanged`, because a `setText` of the same string is still a
- * `childList` mutation inside the region and a region announces on the mutation.
- *
- * The `title` goes on the LABEL SPAN rather than on `.pbl-busy` itself: `title` is the
- * last-resort source for an accessible NAME, so on the status element it would make the
- * region's own name change per file — the announcement problem again, one level up. A
- * descendant's `title` names nothing above it.
- *
- * A raw `title` attribute rather than this codebase's usual `setTooltip`, deliberately:
- * `setTooltip` attaches Obsidian's hover handling on every call and has set `aria-label`
- * in some versions, which is the one attribute this must not touch. The native attribute
- * is a string write, costs no layout, and shows on hover without a listener.
- */
-function syncBusyLabel(el: HTMLElement, busy: BusyState | null): boolean {
-	// Captured before the toggle: the ladder re-runs on idle→busy and busy→idle, plus the
-	// one or two ticks where the count gains a digit, and NOT on the rest. `scrollWidth`
-	// is a forced layout read, so measuring per file would put back a cost of the same
-	// shape as the per-file re-render the deferred update removed.
-	const wasOn = el.hasClass('pbl-busy-on');
-	el.toggleClass('pbl-busy-on', busy !== null);
-	const labelEl = el.querySelector<HTMLElement>('.pbl-busy-label');
-	// Two possible strings, and which one is chosen depends only on the batch's SIZE, so
-	// it is settled at the transition and constant across every tick between. The counted
-	// form drops the ellipsis because the count follows it and reads as the continuation.
-	const counting = busy !== null && busy.total > 1;
-	if (labelEl) setTextIfChanged(labelEl, busy ? (counting ? 'Updating' : 'Updating…') : '');
-	if (busy && counting) labelEl?.setAttribute('title', `Updating ${busy.done} of ${busy.total}…`);
-	else labelEl?.removeAttribute('title');
-	// EITHER thing can change the row's width, so either is worth a re-measure: the
-	// indicator appearing or going, and the count gaining or losing a digit.
-	const grew = syncBusyCount(el, busy);
-	return wasOn !== (busy !== null) || grew;
-}
-
-/**
- * Point the toolbar at the batch currently being written, or at nothing when idle.
- * Called on every render and on every progress tick, so it only touches text and
- * flags — never structure. Controls that would be refused mid-batch go `disabled`
- * with it, so the busy state is something a user reads rather than discovers.
- *
- * **This is also where a focus stranded by the indicator hiding is caught.** `.pbl-busy`
- * carries the busy-help link — the first focusable element it has ever held — and
- * `syncBusyLabel` drops `pbl-busy-on` the moment a batch ends, which makes the container
- * `display: none` in `styles/busy.css`. A browser blurs a focused descendant to `<body>`
- * the instant its container is hidden that way; `manualLink`'s own tier-2 root-focus
- * fallback cannot catch it because that only runs while the DIALOG closes, and this
- * transition can land well after the dialog is long shut (open the manual from "What is
- * happening", close it, and only then does the batch that was already finishing end).
- * Caught here because this is where the transition is owned: `hadFocus` is read before
- * `syncBusyLabel` flips the class, so it asks the DOM the true "was focus in here"
- * question rather than inferring it from `busy`, and the refocus fires only on the
- * shown-to-hidden edge, onto the same `.pbl-help-btn` destination `focusInBar` already
- * uses for both toolbar doors.
- */
-export function syncBusy(barEl: HTMLElement, busy: BusyState | null, canUndo: boolean): void {
-	const el = barEl.querySelector<HTMLElement>('.pbl-busy');
-	if (el) {
-		const hadFocus = el.contains(document.activeElement);
-		// Only on the visibility transition — see `syncBusyLabel`, which is what answers it.
-		if (syncBusyLabel(el, busy)) syncToolbarFit(barEl);
-		if (hadFocus && busy === null) focusInBar(barEl, barEl.querySelector<HTMLElement>('.pbl-help-btn'));
-	}
-	barEl.querySelectorAll<HTMLButtonElement>('.pbl-write-ctl').forEach((btn) => {
-		btn.disabled = busy !== null;
-	});
-	// Undo pauses with every other write control, but comes back only when the
-	// slot holds something — which the batch that just finished usually ensures.
-	const undoBtn = barEl.querySelector<HTMLButtonElement>('.pbl-undo-btn');
-	if (undoBtn) undoBtn.disabled = busy !== null || !canUndo;
-}
-
-/**
- * The filter can be cleared from outside the toolbar (Escape in the tree, the
- * no-match state); keep the input and its clear affordance in sync. It does NOT
- * touch the collapse controls — `syncCollapseCtls` is their sole writer, called
- * after the content render along with `syncCountLabel`, and a filter change
- * reaches it the same way any other content re-render does.
- */
-export function syncFilterUi(host: BacklogViewHost, barEl: HTMLElement): void {
-	const input = barEl.querySelector<HTMLInputElement>('.pbl-filter-input');
-	if (input && input.value !== host.filterText) input.value = host.filterText;
-	input?.closest('.pbl-filter')?.classList.toggle('pbl-filter-active', host.filterText !== '');
-	// The release the focus listener in `renderFilterBox` needs. Blur alone cannot be it:
-	// blur keeps a non-empty filter open on purpose, so a filter emptied LATER from
-	// somewhere else — Escape in the tree does exactly that, with focus in the tree —
-	// would leave the flag set on a filter that is neither used nor focused, and the row
-	// would carry an empty input at every narrow width until someone clicked into it.
-	// Here rather than beside the flag's two writers because this is the function whose
-	// whole job is re-deriving this box from `host.filterText`, and it already owns the
-	// other class that answers the same question. Callers that clear and then re-open —
-	// `clear()`, the no-match empty state — run `revealFilter` AFTER `setFilter`, so they
-	// set the flag back on the far side of this.
-	if (host.filterText === '' && document.activeElement !== input) barEl.removeClass('pbl-filter-open');
-}
-
-/**
- * The hierarchy is the tree's grouping and the workflow is the board's; a group-by
- * configured on the Base has no effect, and the toolbar note above says so. This
- * detects that there is one to say it about.
- */
-export function detectIgnoredGrouping(data: BasesQueryResult | null | undefined): boolean {
-	try {
-		const groups = data?.groupedData;
-		if (!groups || groups.length === 0) return false;
-		return groups.length > 1 || groups[0].hasKey();
-	} catch {
-		return false;
-	}
-}
-
-/**
- * The toolbar survives content-only renders (the filter keeps its input focus), so
- * the count is synced imperatively per pass. The Base's own results: ancestors
- * loaded for context are not items of this base and must not inflate the number.
- * Collapsed rows still count as shown — only filtering and hiding narrow it,
- * which `isRowHidden` covers both of, in both projections. The Deliverables board is
- * scoped a third way: its population is `model.deliverableResults` — every
- * Deliverable-typed result, regardless of any active focus level, never the whole
- * base — hidden by the filter-only predicate that board itself renders with rather
- * than the "Show completed items" one, since that toggle does not apply there. Also
- * fixes the label's own tooltip, which used to be set once by `renderToolbar` at
- * full-render time and never rescoped here — so it could disagree with the text
- * sitting right next to it.
- *
- * The requirements board is scoped a FOURTH way, for the opposite reason the
- * Deliverables board is scoped at all: Deliverables are managed on their own board now
- * (`renderRequirementsBoard`), so counting one here would claim the board shows more
- * than it does. The tree and the roadmap keep every item — this scoping is the
- * `'board'` projection alone.
- */
-export function syncCountLabel(host: BacklogViewHost, barEl: HTMLElement): void {
-	const label = barEl.querySelector<HTMLElement>('.pbl-count-label');
-	const model = host.model;
-	if (!label || !model) return;
-	const population = countedPopulation(host, model);
-	// `isRowHidden` answers per projection now, the Deliverables board's own exception
-	// included, so this asks the one question rather than choosing between two.
-	const total = population.length;
-	const shown = population.filter((item) => !host.isRowHidden(item)).length;
-	setTextIfChanged(label, shown === total ? `${total} item${total === 1 ? '' : 's'}` : `${shown} of ${total}`);
-	// The tooltip is guarded the same way and for a sharper reason than the text: this
-	// element is `aria-live`, and `setTooltip` attaches Obsidian's hover handling on every
-	// call and has set `aria-label` in some versions — see `syncBusyLabel`, which avoids
-	// it entirely for exactly that. The last breakdown is kept in `dataset` because
-	// nothing can read a tooltip back off an element, and a `data-` attribute is not a
-	// mutation any live region reports.
-	const breakdown = levelBreakdown(population);
-	if (label.dataset.pblBreakdown === breakdown) return;
-	label.dataset.pblBreakdown = breakdown;
-	setTooltip(label, breakdown);
-}
-
-/**
  * The bulk collapse controls, decided from what the render actually drew. It has to run
  * AFTER the content: `renderToolbar` goes first and the cards are drawn afterwards, so a
  * verdict taken during the toolbar pass would read the previous frame's set —
@@ -602,22 +324,6 @@ export function syncCollapseCtls(host: BacklogViewHost, barEl: HTMLElement): voi
 	barEl.querySelectorAll<HTMLButtonElement>('.pbl-collapse-ctl').forEach((btn) => {
 		btn.disabled = disabled;
 	});
-}
-
-/**
- * Notes the base returned that aren't backlog items are silently skipped — say so,
- * so a missing note is never a mystery, and point at the option that brings them back.
- */
-function renderIgnoredNote(barEl: HTMLElement, model: BacklogModel): void {
-	if (model.ignoredCount === 0) return;
-	const n = model.ignoredCount;
-	const note = barEl.createDiv({ cls: 'pbl-toolbar-note pbl-ignored-note' });
-	setIcon(note.createSpan({ cls: 'pbl-toolbar-note-icon' }), 'filter-x');
-	note.createSpan({ text: `${n} note${n === 1 ? '' : 's'} ignored` });
-	setTooltip(
-		note,
-		`${n} note${n === 1 ? ' in this base is' : 's in this base are'} not backlog items — no supported type and no parent. Turn off "Ignore notes outside the hierarchy" in the view options to show them.`,
-	);
 }
 
 /**
@@ -646,104 +352,6 @@ function renderCompletedToggle(host: BacklogViewHost, barEl: HTMLElement, model:
 	btn.addClass('pbl-completed-toggle');
 	btn.toggleClass('is-active', !showing);
 	btn.addEventListener('click', () => host.config.set('showCompleted', !showing));
-}
-
-/** Type-to-filter box; matches keep their ancestors and subtrees visible. */
-function renderFilterBox(host: BacklogViewHost, barEl: HTMLElement): void {
-	const filterEl = barEl.createDiv({ cls: 'pbl-filter' });
-	setIcon(filterEl.createSpan({ cls: 'pbl-filter-icon' }), 'search');
-	setTooltip(filterEl, 'Filter items — press / in the tree');
-	const input = filterEl.createEl('input', {
-		cls: 'pbl-filter-input',
-		attr: { type: 'text', placeholder: 'Filter items', 'aria-label': 'Filter items', [KEY_ATTR]: 'filter' },
-	});
-	input.value = host.filterText;
-	// `setFilter` re-renders the tree and syncs this box's active state, which is what
-	// makes clearing a THIRD input to `revealFilter` rather than a focus call of its own.
-	// At a collapsing rung an input the user typed into is visible only through
-	// `pbl-filter-active`; emptying it strips that class synchronously, the rung hides the
-	// still-focused input, and the `input.focus()` that used to follow would focus a
-	// `display: none` element — no effect, no error, focus on the body. Establishing the
-	// open flag as part of clearing is also exactly what the design asks for: a cleared
-	// filter stays open until it is blurred.
-	const clear = () => {
-		host.setFilter('');
-		revealFilter(barEl);
-	};
-	filterEl.toggleClass('pbl-filter-active', input.value !== '');
-	input.addEventListener('input', () => host.setFilter(input.value));
-	input.addEventListener('keydown', (evt) => {
-		if (evt.key === 'Escape' && input.value !== '') {
-			evt.preventDefault();
-			evt.stopPropagation();
-			clear();
-		}
-	});
-	const clearBtn = filterEl.createEl('button', {
-		cls: 'pbl-filter-clear clickable-icon',
-		attr: { type: 'button', 'aria-label': 'Clear filter', [KEY_ATTR]: 'filter-clear' },
-	});
-	setIcon(clearBtn, 'x');
-	setTooltip(clearBtn, 'Clear filter');
-	clearBtn.addEventListener('click', clear);
-	// Below the step that collapses it, the input is not rendered-and-hidden but
-	// display:none, so this button is the control — and it carries the name.
-	const reveal = filterEl.createEl('button', {
-		cls: 'pbl-filter-reveal clickable-icon',
-		attr: { type: 'button', 'aria-label': 'Filter items', [KEY_ATTR]: 'filter-reveal' },
-	});
-	setIcon(reveal, 'search');
-	setTooltip(reveal, 'Filter items');
-	reveal.addEventListener('click', () => revealFilter(barEl));
-	// THE rule, enforced once: a filter that has focus is never collapsed. Four bugs of
-	// one shape were fixed at four call sites before this listener existed — `/`, the
-	// clear button, Escape, and finally typing the last character back out, which reaches
-	// `setFilter` directly and so could never be fixed by anything `clear()` did. Setting
-	// the flag where focus ARRIVES means every path inherits it without knowing about it,
-	// including the next one nobody has thought of. No refit is needed here: the flag only
-	// changes what is drawn below the rung that collapses this input, and `revealFilter`
-	// is what reaches focus from there — it has already refitted before focusing.
-	input.addEventListener('focus', () => barEl.addClass('pbl-filter-open'));
-	input.addEventListener('blur', () => {
-		// A filter someone is still using is never taken away: only an EMPTY input
-		// collapses back. The flag is read and cleared on the toolbar, where
-		// `revealFilter` put it and where it survives a rebuild.
-		if (input.value !== '' || !barEl.hasClass('pbl-filter-open')) return;
-		barEl.removeClass('pbl-filter-open');
-		syncToolbarFit(barEl);
-	});
-}
-
-/**
- * Open the collapsed filter and focus it. ONE function because there are three inputs:
- * the reveal button's own click, the clear path (Escape and the clear button), and
- * `focusFilter()` — which is what `/` in the tree and the no-match empty state both call.
- * Below the step that collapses it, that method's `.pbl-filter-input` is `display: none`,
- * and `focus()` on a display:none element does nothing at all, silently — so the
- * documented keyboard path to the filter would die at exactly the pane widths where the
- * filter is hardest to reach.
- *
- * The refit is before the focus, and it is here rather than in the click handler for the
- * same reason the function is shared: the input takes ~130px back on a row already
- * measured as full, and no render follows either caller.
- */
-export function revealFilter(barEl: HTMLElement): void {
-	// On the TOOLBAR, not on the `.pbl-filter` box — the same element `data-pbl-fit`
-	// lives on, for the same reason. `renderToolbar` calls `barEl.empty()`, so a class
-	// on the box is destroyed by any full render while the fit attribute beside it
-	// survives: an empty filter revealed by `/` would come back from a data refresh
-	// with the rung still hiding it, and `refocusByKey` would then "restore" focus to a
-	// `display: none` input, which silently focuses nothing. The non-empty case is
-	// already safe without this — `renderFilterBox` re-derives `pbl-filter-active` from
-	// the input's value on every render — so this is the empty-but-revealed state
-	// alone, and it is exactly the one nothing else re-derives.
-	barEl.addClass('pbl-filter-open');
-	syncToolbarFit(barEl);
-	// `preventScroll`, because the refit above is not a promise that the input ended up
-	// on screen — a pane narrow enough still clips past the last rung, and the default
-	// focus behaviour scrolls every scrollable ancestor to reveal the target. The bar
-	// itself is `overflow: clip` and cannot scroll, so this is about what is above it.
-	barEl.querySelector<HTMLInputElement>('.pbl-filter-input')?.focus({ preventScroll: true });
 }
 
 /**
@@ -899,28 +507,6 @@ function renderModeToggle(host: BacklogViewHost, barEl: HTMLElement): void {
 }
 
 /**
- * What this projection is counting — its own population, which is not the same question
- * for all four. The Deliverables board draws `model.deliverableResults`; the
- * requirements board draws every result EXCEPT a Deliverable, which it excludes by
- * construction; the tree and the roadmap draw all of them.
- *
- * One function because two toolbar readouts sit beside each other and have to agree:
- * the count label and the completed toggle's "(N hidden)". They did not — the label was
- * scoped and the toggle was not, so the requirements board could report one item while
- * offering to reveal another that pressing the button would never show.
- */
-function countedPopulation(host: BacklogViewHost, model: BacklogModel): BacklogItem[] {
-	if (host.projection === 'deliverables') return model.deliverableResults;
-	if (host.projection === 'board') return model.results.filter((item) => !isDeliverableType(item.typeName));
-	// The catalog's own RESULTS — the tests and the `Task`s beneath them, no context row.
-	// Not "tests and only tests", which is a re-listed population that disagrees with the
-	// membership rule about a `Task`; and not "what it draws" either, which sweeps in a
-	// `Test case` present only as an excluded ancestor. `model.results` is already the
-	// plan's, so the tests leave every other projection's numbers by the same split.
-	return projectionPopulation(host.projection, model).results;
-}
-
-/**
  * The type the PRIMARY New button makes — `newItemType`'s focus-following answer,
  * filtered through the very list the chevron beside it offers.
  *
@@ -935,14 +521,4 @@ function primaryNewType(host: BacklogViewHost, model: BacklogModel): string {
 	const offered = offerableTypes(host);
 	const focused = newItemType(host.settings, model);
 	return offered.includes(focused) ? focused : offered[0];
-}
-
-/** e.g. "2 Epic · 4 Feature · 9 PBI · 3 Bug" for the item-count tooltip, over whichever population is passed. */
-function levelBreakdown(items: BacklogItem[]): string {
-	const byLevel = new Map<string, number>();
-	for (const item of items) {
-		const label = displayType(item) || 'Untyped';
-		byLevel.set(label, (byLevel.get(label) ?? 0) + 1);
-	}
-	return [...byLevel].map(([label, n]) => `${n} ${label}`).join(' · ');
 }
