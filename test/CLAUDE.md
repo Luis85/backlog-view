@@ -133,7 +133,12 @@ Obsidian's.
   still draws the cases it exists for, and every icon name the view asks for across all
   four projections still resolves. `test/harness/themeStub.test.ts` is the separate
   subject: whether the two linked sheets BETWEEN them resolve every `var(--x)` the
-  partials read, per scheme, counting only the blocks a harness `<body>` matches.
+  partials read, per scheme, counting only the blocks a harness page matches — which
+  means following each value's own references rather than checking that a name is
+  declared, skipping a block under a wrapper like `@media print`, taking a `var()`
+  fallback as the one branch it is, and looking for dependency cycles per ELEMENT, since
+  a reference across `:root` and `body` is inheritance and not a dependency. Every one of
+  those four came from review on PR #125, and the first two were live defects.
 
 **What it is faithful about:** markup, the CSS the partials write for themselves, every
 interaction, and icon SHAPES — lucide's own, sized through the `.svg-icon` class the

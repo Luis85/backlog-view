@@ -26,8 +26,22 @@ import { describe, expect, it } from 'vitest';
  * `--shadow-xs` in the instrument test at the bottom.
  */
 
-/** The selectors a `<body class="theme-dark|light">` on the harness page actually matches. */
-const APPLIES = new Set([':root', 'body', '.theme-light', '.theme-dark', 'body.theme-light', 'body.theme-dark']);
+/**
+ * The selectors a harness page matches, by the ELEMENT they match — which is two
+ * elements, not one namespace. `:root` is the `<html>`; everything else here is the
+ * `<body class="theme-dark|light">` Obsidian's theme class goes on.
+ *
+ * Resolution can flatten the two, because a name a body rule does not declare is
+ * inherited from the root already computed. Cycle detection cannot: that same
+ * inheritance ENDS an edge, so `:root { --a: var(--b, red) }` beside
+ * `body { --b: var(--a) }` is valid CSS — the root takes its fallback, the body inherits
+ * the result — and a flattened graph reports `--a → --b → --a` and fails a page that
+ * works. Raised in review; the fix is that a cycle is looked for within one element's
+ * own declarations, which is less walking rather than more.
+ */
+const ROOT_SELECTORS = new Set([':root']);
+const BODY_SELECTORS = new Set(['body', '.theme-light', '.theme-dark', 'body.theme-light', 'body.theme-dark']);
+const APPLIES = new Set([...ROOT_SELECTORS, ...BODY_SELECTORS]);
 
 /**
  * A conditional wrapper this page never satisfies. `@media print` is the only one either
@@ -53,7 +67,11 @@ const NEVER_APPLIES = /\bprint\b/;
  * Later declaration wins, which is the cascade for everything here only because the two
  * sheets now AGREE; specificity is not simulated, and would have to be if they diverged.
  */
-function declarations(file: string, scheme: 'dark' | 'light'): Map<string, string> {
+function declarations(
+	file: string,
+	scheme: 'dark' | 'light',
+	scope: Set<string> = APPLIES,
+): Map<string, string> {
 	const css = readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
 	const declared = new Map<string, string>();
 	const stack: string[] = [];
@@ -68,7 +86,7 @@ function declarations(file: string, scheme: 'dark' | 'light'): Map<string, strin
 			const selector = stack.pop() ?? '';
 			const other = scheme === 'dark' ? 'light' : 'dark';
 			const vetoed = stack.some((wrapper) => wrapper.startsWith('@') && NEVER_APPLIES.test(wrapper));
-			if (!vetoed && APPLIES.has(selector) && !selector.includes(`theme-${other}`)) {
+			if (!vetoed && scope.has(selector) && !selector.includes(`theme-${other}`)) {
 				for (const match of chunk.matchAll(/(?:^|;)\s*(--[\w-]+)\s*:([^;]*)/g)) declared.set(match[1], match[2]);
 			}
 			chunk = '';
@@ -165,7 +183,20 @@ function edges(value: string): string[] {
 	return [...value.matchAll(/var\(\s*(--[\w-]+)/g)].map((match) => match[1]);
 }
 
-/** The names taking part in a dependency cycle, over the edges above. */
+/** One element's own declarations, both sheets, for the per-element cycle walk. */
+function scopeValues(scope: Set<string>, scheme: 'dark' | 'light'): Map<string, string> {
+	return new Map([
+		...declarations('test/harness/obsidian.css', scheme, scope),
+		...declarations('test/harness/theme.css', scheme, scope),
+	]);
+}
+
+/**
+ * The names taking part in a dependency cycle, over the edges above.
+ *
+ * Given ONE element's declarations: an edge to a name this element does not declare is
+ * not an edge at all, because that name arrives already computed from an ancestor.
+ */
 function cyclic(values: Map<string, string>): string[] {
 	const state = new Map<string, 'open' | 'done'>();
 	const found = new Set<string>();
@@ -324,10 +355,33 @@ describe('the harness sheets cover the stylesheet', () => {
 
 	it.each(['dark', 'light'] as const)('has no dependency cycle in %s, fallbacks counted', (scheme) => {
 		// Raised in review: `resolves` answers which branch supplies a value, and CSS asks
-		// something else first. Nothing in either sheet is cyclic today (882 and 883
-		// properties), so this is the assertion that keeps it that way rather than a fix
-		// for a live defect.
-		expect(cyclic(sheetValues(scheme))).toEqual([]);
+		// something else first. Nothing in either sheet is cyclic today, so this is the
+		// assertion that keeps it that way rather than a fix for a live defect. Asked per
+		// ELEMENT — see `ROOT_SELECTORS` — because a cross-element reference is inheritance
+		// rather than a dependency, and flattening the two invents cycles.
+		expect(cyclic(scopeValues(ROOT_SELECTORS, scheme))).toEqual([]);
+		expect(cyclic(scopeValues(BODY_SELECTORS, scheme))).toEqual([]);
+	});
+
+	it.each(['dark', 'light'] as const)('reads a cross-element reference as inheritance, in %s', (scheme) => {
+		// Both scopes are non-empty, or the test above is two walks over nothing — and
+		// app.css does declare on both: the `@supports` heading weights sit on `:root`
+		// while the palette sits on `body` and the theme classes.
+		expect(scopeValues(ROOT_SELECTORS, scheme).size).toBeGreaterThan(0);
+		expect(scopeValues(BODY_SELECTORS, scheme).size).toBeGreaterThan(0);
+
+		// The review's example, which a flattened namespace calls a cycle and CSS does not:
+		// the root takes its fallback, and the body inherits the computed result.
+		const root = new Map([['--a', 'var(--b, red)']]);
+		const body = new Map([['--b', 'var(--a)']]);
+		expect(cyclic(root)).toEqual([]);
+		expect(cyclic(body)).toEqual([]);
+		// The last line is the contrast, and the honest limit with it: flattening the two
+		// invents a cycle, and nothing in the SHEETS can tell the two walks apart, since
+		// neither is cyclic either way. What is checked is the predicate on these shapes
+		// and that both scopes are populated — not that the wiring above passes the scoped
+		// maps, which only a future cross-element reference would make falsifiable.
+		expect(cyclic(new Map([...root, ...body]))).not.toEqual([]);
 	});
 
 	it('sees a cycle that only the unused fallback branch creates', () => {
