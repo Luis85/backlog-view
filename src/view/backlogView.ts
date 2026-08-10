@@ -27,7 +27,7 @@ import { renderLoadingState } from './render/emptyStates';
 import { renderLegend } from './render/legend';
 import { syncToolbarFit } from './render/toolbarFit';
 import { captureScroll, centreOnToday, renderProjectionContent, restoreScroll, ScrollAnchor } from './render/projections';
-import { refreshRowChildren } from './render/rows';
+import { refreshRowChildren, syncTruncationTooltips } from './render/rows';
 import { BacklogSettings, defaultSettings } from '../domain/settings';
 import { adoptableProperties, notePropertyId, OptionalProperty } from '../domain/optionalProperties';
 import { resolveSettings } from '../domain/settingsResolve';
@@ -598,7 +598,11 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// "18 items" to "3 of 18", or the primary button is naming a different type.
 		// After the content, because the count is one of the things being measured.
 		syncToolbarFit(this.toolbarEl);
-		if (projection !== 'tree') return;
+		// The card projections take the tooltip pass HERE and nowhere else: `renderBadge` is
+		// theirs too, and the fit below — the tree's alone — is what runs it for the tree.
+		// Their own resize path needs none, since a card's badge cap is a fixed width that a
+		// pane cannot move. (Codex, PR #128.)
+		if (projection !== 'tree') return syncTruncationTooltips(this.rowEls);
 		// Measured against the tree that now exists, scrollbar and all. A changed
 		// verdict means a column came or went, which only the rows can show — one
 		// more pass, guarded, since the second pass measures the same tree.

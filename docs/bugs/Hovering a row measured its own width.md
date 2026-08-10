@@ -81,7 +81,15 @@ every `scrollWidth`/`clientWidth` read first, then every `setTooltip` write. Int
 them would force a layout per row and be worse than what it replaced — it would pay for
 every row rather than only hovered ones.
 
-It is called from `ResizePolicy`, which owns *when* to re-measure — from `refit`, which
+`renderBadge` is shared with the board and the roadmap, so the pass runs for **every**
+projection, not only the tree: `renderTreeContent` calls it as it returns for a card
+projection, and the tree's own column fit calls it below. That was a live regression for
+one commit — moving the implied-type explanation out of the badge's hover handler dropped
+it from every card, because the pass hung off a fit the card projections deliberately
+skip. Their resize path needs no call of its own: a card's badge cap is a fixed width that
+a pane cannot move.
+
+For the tree it is called from `ResizePolicy`, which owns *when* to re-measure — from `refit`, which
 already means *re-measure the pane and apply what that implies*, so the render's fit pass
 and the resize observer both get it without a branch each; and from `cssChanged`, because
 a theme, a snippet or a late-loading font changes rendered text without moving the tree's
@@ -105,8 +113,18 @@ the forbidden thing, not by visiting the examples the author had in mind. It was
 failing with the badge's read restored.
 
 What it cannot see is a layout read reached through an API it does not name
-(`getBoundingClientRect`, `offsetTop`). `src/view/CLAUDE.md` states the rule for all of
-them; the spy checks the two that were actually violated.
+(`getBoundingClientRect`, `offsetTop`), or one on a path it does not drive — `dragover`,
+`keydown`, the card projections.
+
+**A sweep of those found reads that are staying**, and the guide's sentence was narrowed
+to admit them rather than left promising more than the code delivers: `zoneFor` in
+`interactions/dragDrop.ts`, the timeline's `dayAt` mapping and the link drag all call
+`getBoundingClientRect` inside the gesture. A drag's geometry is a property of the POINTER
+rather than of the render, so there is no batched form of it — "where is the cursor now"
+cannot be precomputed. Whether those reads are costly at eight hundred rows is
+**unmeasured**: `dragover` fires continuously and each read follows a `pbl-drop-over` class
+change, which is the same shape as the defect this note records. Nobody has reported it,
+and this note does not claim it is fine — only that it is a different question, and open.
 
 Each feature's own test stayed where it was and moved to the new path: the title's in
 `test/view/state.test.ts` (with a second beside it for `css-change`, driving a font change

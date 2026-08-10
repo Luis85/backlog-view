@@ -520,6 +520,31 @@ describe('badges', () => {
 		}
 	});
 
+	it('explains an implied badge on a CARD too, where the column fit never runs', () => {
+		// `renderBadge` is shared with the board and the roadmap, and the pass that now sets
+		// its tooltip hangs off the tree's column fit — which those projections deliberately
+		// skip. Moving the tooltip out of the badge's own hover handler therefore dropped the
+		// explanation from every card until this ran for them as well. (Codex, PR #128.)
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { order: 10, status: 'New' } });
+		vault.addFile('Child.md', { frontmatter: { type: 'Programme Increment', order: 10 }, parentLink: 'Epic' });
+		const { containerEl, view } = makeView(vault, {
+			levels: 'Programme Increment, Epic',
+			// A workflow, or the board draws its unconfigured empty state and no card at all.
+			stateProperty: 'note.status',
+			stateValues: 'New, Done',
+		});
+
+		view.setProjection('board');
+
+		const card = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-card')).find(
+			(one) => one.querySelector('.pbl-card-title')?.textContent === 'Epic',
+		);
+		const badge = card?.querySelector<HTMLElement>('.pbl-badge');
+		expect(badge?.classList.contains('pbl-implied')).toBe(true);
+		expect(badge?.dataset.tooltip).toContain('Type property not set');
+	});
+
 	it('says only why the badge is dashed while the cap is not biting', () => {
 		// The other half, which the old hover-time check made awkward to state: an implied
 		// badge that FITS still has to explain itself, and must not have the level name

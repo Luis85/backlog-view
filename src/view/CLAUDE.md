@@ -24,13 +24,12 @@ free of runtime code so imports stay cycle-free.
   state live, because a targeted refresh leaves surrounding rows in place. Data updates
   still rebuild everything — skipping that needs to account for arbitrary chip property
   values.
-- **No input handler reads layout.** `scrollWidth`, `clientWidth`, `offsetTop`,
-  `getBoundingClientRect` — none of them, in a `mouseover`, `keydown`, `click` or drag
-  handler. A layout read forces the browser to flush pending style and layout
-  synchronously, and an input handler is exactly where the pending work is largest: the
-  gesture itself is what dirtied style (`.pbl-row:hover` changes the title's colour and
-  the grip's opacity), so the read can never reuse a clean layout. Where a measurement is
-  genuinely needed it is a PASS — every read, then every write, run once where the rows
+- **No input handler reads layout to answer a question the event did not ask.** A layout
+  read forces the browser to flush pending style and layout synchronously, and an input
+  handler is where the pending work is largest: the gesture is itself what dirtied style
+  (`.pbl-row:hover` changes the title's colour and the grip's opacity), so the read can
+  never reuse a clean layout. Where the answer is a property of the RENDER — is this text
+  clipped? — it belongs in a PASS: every read, then every write, run once where the rows
   are already settled (`syncTruncationTooltips`, called from `ResizePolicy.refit` and
   `cssChanged`). Reading and writing alternately in that pass is the same defect spread
   over the render instead.
@@ -38,12 +37,19 @@ free of runtime code so imports stay cycle-free.
   to decide on a tooltip, at **65.7ms per hover at 832 rows against 0.13ms without it**,
   and the type badge's did the identical thing — surviving the fix to the title, because
   the check that came with it hovered the title and called the category closed. See
-  [[Hovering a row measured its own width]]. The check is a spy on the GETTERS in
-  `test/view/renderCost.test.ts`, on `Element.prototype` rather than on a handler, driven
-  over EVERY descendant of a row rather than the one element someone thought of. What it
-  still cannot see is a read reached through an API the spy does not name
-  (`getBoundingClientRect`, `offsetTop`), which is why this paragraph states the rule
-  rather than the two properties the spy watches.
+  [[Hovering a row measured its own width]].
+  **The sentence is narrowed on purpose, and the exception is real**: a drag's geometry is
+  not a property of the render but of the pointer, so `zoneFor` (`interactions/dragDrop.ts`),
+  the timeline's `dayAt` mapping and the link drag all read `getBoundingClientRect` inside
+  the gesture, and there is no batched form of "where is the cursor now". Whether THAT is
+  costly at eight hundred rows is **unmeasured** — `dragover` fires continuously and each
+  read follows a `pbl-drop-over` class change, which is the same shape as the defect above.
+  Nobody has reported it and nothing here has measured it; do not read the rule as covering
+  it.
+  What IS checked: `test/view/renderCost.test.ts` spies `scrollWidth`/`clientWidth` on
+  `Element.prototype` and dispatches `mouseover` at every descendant of a row. That is
+  hover, on the tree, for two properties — narrower than the sentence, which is why the
+  sentence states the rule rather than the spy's reach.
 - The write gate is `writeGate.ts`, not the view: `WriteGate` holds `applying`, the undo
   slot, `recovery`, the deferred update and the busy state — five fields serving one
   concern, of which only `busy` was ever read from outside it — and the view owns one,
