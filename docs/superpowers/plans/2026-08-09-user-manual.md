@@ -1069,14 +1069,17 @@ describe('the manual is reachable where its questions are asked', () => {
 	// is the whole defect this covers.
 	it('opens on finding work from the nothing-to-show state', () => {
 		const { containerEl } = makeView(fixture({ empty: true }), {});
-		containerEl.querySelector<HTMLElement>('.pbl-empty-state .pbl-help-link')?.click();
+		containerEl.querySelector<HTMLElement>('.pbl-empty .pbl-help-link')?.click();
 		expect(openedOn()).toBe('Finding work');
 	});
 
 	it('opens on finding work from the no-match state', () => {
 		const { view, containerEl } = makeView(fixture(), {});
 		view.setFilter('zzzznomatch');
-		containerEl.querySelector<HTMLElement>('.pbl-empty-state .pbl-help-link')?.click();
+		// `.pbl-empty-filter`, NOT `.pbl-empty` — `renderFilterEmptyState` builds its own
+		// shell rather than going through `guidanceShell`. Confirm the class in
+		// `src/view/render/emptyStates.ts` before writing any of these selectors.
+		containerEl.querySelector<HTMLElement>('.pbl-empty-filter .pbl-help-link')?.click();
 		expect(openedOn()).toBe('Finding work');
 	});
 
@@ -1084,7 +1087,7 @@ describe('the manual is reachable where its questions are asked', () => {
 		// Every item done, with Show completed items off — check `renderAllDoneState`'s
 		// own test for the cheapest fixture that reaches it.
 		const { containerEl } = makeView(fixture({ allDone: true }), { stateProperty: 'note.status' });
-		containerEl.querySelector<HTMLElement>('.pbl-empty-state .pbl-help-link')?.click();
+		containerEl.querySelector<HTMLElement>('.pbl-empty .pbl-help-link')?.click();
 		expect(openedOn()).toBe('Finding work');
 	});
 
@@ -1092,19 +1095,27 @@ describe('the manual is reachable where its questions are asked', () => {
 		// Two options naming the same property is a config problem, which is what draws
 		// the warning — check `configProblems` for the cheapest collision to induce.
 		const { containerEl } = makeView(fixture(), { parentProperty: 'note.x', orderProperty: 'note.x' });
-		containerEl.querySelector<HTMLElement>('.pbl-toolbar-warning .pbl-help-link')?.click();
+		containerEl.querySelector<HTMLElement>('.pbl-config-warning .pbl-help-link')?.click();
 		expect(openedOn()).toBe('Setting up the view');
 	});
 
 	// The opener can vanish while the dialog is up. Finish the batch BEFORE closing —
 	// a test that closes first passes even when the fallback is missing.
 	it('falls back to the help button when the busy indicator is gone by closing time', async () => {
-		const { view, containerEl } = makeView(fixture(), {});
-		// Start a write, open the manual from the indicator, let the batch settle, close.
-		// Drive the write the way test/view/writeGate.test.ts does.
-		const indicator = containerEl.querySelector<HTMLElement>('.pbl-busy .pbl-help-link');
-		indicator?.click();
-		await view.whenIdle?.();
+		// THE HARD PART OF THIS TEST IS MAKING IT ABLE TO FAIL. An earlier draft awaited
+		// `view.whenIdle?.()` — a method that does not exist on ProductBacklogView, so the
+		// optional call resolved instantly, the dialog closed while `.pbl-busy` was still
+		// on screen, and the test passed without ever reaching the case it names.
+		//
+		// The batch must actually be IN FLIGHT when the manual opens and FINISHED before
+		// it closes. Hold and release `processFrontMatter` the way `test/view/state.test.ts`
+		// already does — copy that file's mechanism rather than inventing one — then await
+		// the normal flush before closing.
+		//
+		// Watch this one fail with the fallback removed. If it still passes, the write was
+		// never in flight and the test is measuring nothing.
+		const { containerEl } = makeView(fixture(), {});
+		// … start a held write, click `.pbl-busy .pbl-help-link`, release, await the flush …
 		Modal.lastOpened?.close();
 		expect(document.activeElement).toBe(containerEl.querySelector('.pbl-toolbar .pbl-help-btn'));
 	});
@@ -1174,7 +1185,7 @@ Style it in `styles/manual.css` as a link-looking button — `background: none; 
 
 - [ ] **Step 4: Wire the four surfaces**
 
-- **All three** empty-state renderers in `src/view/render/emptyStates.ts` — `renderEmptyState`, `renderFilterEmptyState` and `renderAllDoneState` — each → `manualLink(el, host.app, manualSections(), 'finding', 'What shows here?')`. Three separate renderers, and the last two (a filter matching nothing, a backlog whose visible work is all done) are the sharpest moments the question is asked. Wiring only the generic one leaves the two best doors missing.
+- **All three** empty-state renderers in `src/view/render/emptyStates.ts` — and note they do NOT share a shell class: `guidanceShell` emits `.pbl-empty`, `renderFilterEmptyState` emits `.pbl-empty-filter`. Read the module for the class each one actually emits rather than assuming a common prefix. — `renderEmptyState`, `renderFilterEmptyState` and `renderAllDoneState` — each → `manualLink(el, host.app, manualSections(), 'finding', 'What shows here?')`. Three separate renderers, and the last two (a filter matching nothing, a backlog whose visible work is all done) are the sharpest moments the question is asked. Wiring only the generic one leaves the two best doors missing.
 - the config warning in `src/view/render/toolbar.ts` (~line 136, beside `Check view options`) → section `'setup'`, label `'What to fix'`. It was claimed by two use cases; the register settled it on the configuration section, because the reader's question at a warning is what to fix. **`docs/requirements/Help for safe writes and undo.md` must be amended in this same commit**: strike the config warning from its **Trigger** row and from the criterion naming it, leave the **?** and the busy indicator, and add one line recording that the warning was reassigned to `Help for setting up the view` and why. Amend the note — do not leave a criterion standing and call a cross-link good enough.
 - `renderBusyIndicator` in the same file → section `'writes'`, label `'What is happening'`, and it MUST pass the sixth argument: `() => focusInBar(barEl, barEl.querySelector<HTMLElement>('.pbl-help-btn'))`. Its own link is inside `.pbl-busy`, which is hidden as soon as the batch ends, so the default self-focus is exactly the case that fails. This is the one caller that overrides.
 - the new-item prompt: give `NewItemPromptOptions` an optional `help?: (parent: HTMLElement) => void`, call it under the detail line in `src/ui/prompts.ts`, and pass it from `promptCreateItem` in `src/view/interactions/create.ts` as `(el) => manualLink(el, app, manualSections(), 'creating', 'Where will this go?')`
