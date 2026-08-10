@@ -1753,3 +1753,68 @@ npm run check
 git add src/domain/writePlan.ts test/domain/writePlanProperties.test.ts
 git commit -m "Stub the state key an item's own workflow reads"
 ```
+
+
+---
+
+### Task 15: The test catalog earns its own changelog entry
+
+**Files:**
+- Modify: `CHANGELOG.md`
+
+**Interfaces:** none.
+
+**Why:** `CHANGELOG.md`'s `[Unreleased]` section describes the assignee property (which came
+from `main`) and the two entries Task 9 added — but the feature this branch shipped BEFORE
+this plan started has no entry at all: the fifth toolbar projection, the `Test suite` and
+`Test case` types, their badge and test axis, and the rule keeping tests out of the plan's
+tree, boards and roadmap.
+
+`CLAUDE.md` states that `[Unreleased]` entries are added by the pull request that earns them,
+and `RELEASING.md` says explicitly that the release step is NOT the one to fill `[Unreleased]`
+in from scratch. So this is a debt of the earlier work on this branch, and it has to close
+before a tag — Task 9's own new bullet refers to "a test catalog row", a thing the changelog
+never introduces.
+
+- [ ] **Step 1: Establish what actually shipped**
+
+Do not write from this task's description. Read the register notes for the feature —
+`docs/requirements/A catalog of tests.md`, `The test catalog projection.md`,
+`A projection for the tests.md`, `Tests stay out of the plan.md` and
+`A badge when the palette is full.md` — and check each user-visible claim against the code
+before it becomes a bullet.
+
+The traps, all of which this plan has already produced as false prose somewhere:
+- The catalog has **no board, no rollups and no completed-items toggle.** A done test styles
+  its row and hides nothing.
+- A `Test case` is a catalog member by NAME whatever it hangs under, so it never appears in
+  the plan's tree, board or roadmap.
+- The badge's colours have been seen by NOBODY. Say nothing about how they look.
+
+- [ ] **Step 2: Write the entries under `[Unreleased]`**
+
+Add to the existing `### Added` section, above or below the current bullets as reads best —
+do not create a second `### Added`. Match the voice of the entries already there: what the
+user can now do, in their words, not the mechanism.
+
+At minimum the projection itself, the two types with their badge, and the exclusion from the
+plan's projections. Judge whether they are one bullet or three; three related bullets is
+normal in this file, and one dense bullet is also normal — read the neighbours and match.
+
+Do not touch the `### Changed` section's cyan entry; that is Task 9's and it is correct.
+
+- [ ] **Step 3: Check the section rules**
+
+Run `npx vitest run test/release/changelogVersion.test.ts` — it checks the section structure
+and heading boundaries. `[Unreleased]` must stay above the first dated `##`, and `0.6.0`
+must remain the first dated section below it.
+
+- [ ] **Step 4: Run the whole check and commit**
+
+`npm run check` in the FOREGROUND.
+
+```bash
+npm run check
+git add CHANGELOG.md
+git commit -m "Give the test catalog the changelog entry its own PR owed it"
+```
