@@ -335,6 +335,37 @@ export function paletteSlot(palette: StatePalette, state: string | null): number
 }
 
 /**
+ * The class a state's bar and its legend swatch BOTH take: the colour the user named for
+ * that state (`stateColorKey`), else the positional slot above. One function rather than
+ * two readers of `settings.stateColors`, for the reason `paletteSlot` already gives — a
+ * legend that keys a colour no bar draws is the only failure this feature has ever had.
+ *
+ * A pick applies exactly where a slot would, and null where none does: a value outside
+ * the palette's own vocabulary draws the plain accent and gets no swatch, so colouring it
+ * would put a colour on the grid nothing keys. That is why the pick is asked AFTER the
+ * slot rather than instead of it, and the order is load-bearing: the pick is per VALUE
+ * while the slot is per PALETTE, so a Deliverable whose own state shares a name with a
+ * coloured requirements state would otherwise draw a colour its own vocabulary never
+ * keyed. Checked in `test/view/stateColors.test.ts`, which is the one case that fails
+ * when these two lines are swapped.
+ *
+ * Done is not asked here and must not be: a done bar takes green by specificity in
+ * `styles/timeline.css` and its swatch is keyed `pbl-legend-done` by the caller, so the
+ * two agree without this knowing which states are finished. A pick on a done state is
+ * therefore inert — stated in `docs/requirements/A colour per state.md`, not silently.
+ */
+export function stateColorClass(
+	settings: BacklogSettings,
+	palette: StatePalette,
+	state: string | null,
+): string | null {
+	const slot = paletteSlot(palette, state);
+	if (slot === null) return null;
+	const pick = settings.stateColors[(state ?? '').toLowerCase()];
+	return pick ? `pbl-state-c-${pick}` : `pbl-state-${slot}`;
+}
+
+/**
  * Done by THIS palette's own list, never `settings.doneValues`: the Deliverable workflow
  * declares its own, so asking the requirements list would paint a finished Deliverable
  * with a slot colour while its bar took the green override — the legend disagreeing with
