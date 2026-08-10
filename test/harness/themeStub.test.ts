@@ -20,8 +20,10 @@ import {
  * file. `obsidian.css` is Obsidian's real app.css reduced, and it defines the default
  * palette outright — the base scale, the named colours, the accent — under
  * `.theme-light` / `.theme-dark`. `theme.css` is the stub, which used to be the only
- * source of those values and is now the smaller thing that remains beside the harness's
- * own chrome.
+ * source of those values and now declares none of them: what is left there is the
+ * harness's own chrome. Its copy of the palette outlived its usefulness by one review
+ * round — identical to app.css's and winning the cascade anyway, so it could only ever
+ * hold a value back, never supply one.
  *
  * The question is asked per scheme and of the VALUE, never of "the file mentions the name
  * somewhere". Five review rounds on PR #125 shaped what that means, and each one is a
@@ -133,9 +135,10 @@ describe('the harness sheets cover the stylesheet', () => {
 		expect(resolves('--used', new Map([...rootOnly, ['--body-only', 'red']]))).toBe(true);
 
 		// And why neither sheet can exercise either ordering: every root-scope value is a
-		// literal, so no root reference exists to reach a body declaration in the first place.
+		// literal, so no root reference exists to reach a body declaration in the first
+		// place. Non-vacuous by the size assertion above — the root scope is app.css's
+		// heading weights and nothing else, now that the stub declares no variables.
 		const rootValues = [...scopeValues(ROOT_SELECTORS, scheme).values()];
-		expect(rootValues.length).toBeGreaterThan(20);
 		expect(rootValues.filter((value) => value.includes('var('))).toEqual([]);
 	});
 
@@ -191,15 +194,19 @@ describe('the harness sheets cover the stylesheet', () => {
 		// The check under the "Obsidian's default appearance" claim, and the one that was
 		// missing while `.clickable-icon` sat in the stub overriding app.css's padding and
 		// hover colour: the earlier measurement compared CUSTOM PROPERTIES and could not
-		// see an ordinary declaration. Variables are exempt because the palette duplication
-		// is known, measured identical, and deliberate; `height` is the frame rule, which
-		// app.css cannot supply on a page with no `html` height.
+		// see an ordinary declaration. It briefly exempted variables in exchange — the
+		// palette copy was "known, measured identical, deliberate" — which review then read
+		// the other way round: a copy that wins the cascade is equal or wrong, never
+		// better, and the next vendored app.css is what turns identical into stale with
+		// every other check still green. The copy is gone, so the exemption is too. Only
+		// `height` remains, the frame rule app.css cannot supply on a page with no `html`
+		// height.
 		const styled = new Set(rules(readFileSync('test/harness/obsidian.css', 'utf8')).flatMap((rule) => rule.selectors));
 		const allowed = new Set(['height']);
 
 		const restated = rules(readFileSync('test/harness/theme.css', 'utf8'))
 			.filter((rule) => rule.selectors.some((selector) => styled.has(selector)))
-			.flatMap((rule) => rule.properties.filter((name) => !name.startsWith('--') && !allowed.has(name)));
+			.flatMap((rule) => rule.properties.filter((name) => !allowed.has(name)));
 
 		expect(restated).toEqual([]);
 		// Not vacuous, and pinned to the instance: app.css does style the selector the
@@ -237,14 +244,14 @@ describe('the harness sheets cover the stylesheet', () => {
 		// And the block filter bites: app.css defines this one under `.mod-macos` alone,
 		// which no harness body matches, so it is NOT something the page resolves.
 		expect(app.has('--slider-thumb-opacity-active')).toBe(false);
-		// The stub still answers for itself, so a deleted block fails here rather than
-		// silently leaning on app.css.
-		expect(stub.size).toBeGreaterThan(20);
+		// The stub declares no variable at all now, which is the shape of the whole claim:
+		// app.css is the ONLY source of the palette, so nothing here can go stale against
+		// a newer one. This says it where a re-added block fails rather than passes.
+		expect(stub.size).toBe(0);
 
-		// The union does real work: `--interactive-accent` is read by the partials, was
-		// deleted from the stub for approximating it, and resolves now only via app.css.
+		// So app.css carries every name the partials read — `--interactive-accent` being
+		// the one the stub used to approximate before that pass deleted it.
 		expect(variablesUsed('styles').has('--interactive-accent')).toBe(true);
-		expect(stub.has('--interactive-accent')).toBe(false);
 		expect(app.has('--interactive-accent')).toBe(true);
 
 		// Following the value, not the name: `--shadow-xs` is declared in both schemes and

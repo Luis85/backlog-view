@@ -1,152 +1,39 @@
 /*
- * The harness's own furniture, and a palette that is now a DUPLICATE rather than a stand-in.
+ * The harness's OWN chrome, and — since 2026-08-10 — nothing else.
  *
  * This file used to be the only source of Obsidian's variables. It is not any more:
  * `test/harness/obsidian.css` (Obsidian's real app.css, reduced, linked BEFORE this file
  * — see `harness.mjs`) defines the whole default palette itself, concretely, under
  * `.theme-light` / `.theme-dark` — the base scale, the named colours, the accent, and
- * `color-scheme` with them — that last one was a duplicate here too, deleted with the
- * `.clickable-icon` rules. Measured 2026-08-10, not assumed: of this file's variable
- * declarations, ZERO are ones app.css leaves unset, and every one that remains below
- * carries app.css's own value byte for byte. Twelve that did NOT — the accent chain,
- * `--text-on-accent`, the hover overlays, `--shadow-s`, `--icon-size`/`--icon-stroke` —
- * were deleted in that pass, because this file loads second and was therefore drawing an
- * approximation OVER a value app.css resolves correctly. That is the trap to remember:
- * anything spelled here wins, so a value that merely looks close is worse than no value.
+ * `color-scheme` with them.
  *
- * What that leaves is two different things in one file, and only the second is load-bearing:
+ * What sat here until review asked the second question was a COPY of that palette, kept
+ * as "redundant but harmless". It was neither. This file loads second and spelled the
+ * theme classes `body.theme-dark`, which outranks app.css's `.theme-dark`, so every line
+ * of the copy won twice over — and a copy that wins can only ever be equal or wrong.
+ * Twelve of them were already wrong (the accent chain, `--text-on-accent`, the hover
+ * overlays, `--shadow-s`, `--icon-size`/`--icon-stroke`) and went in the first pass; the
+ * remaining 54 were byte-identical and bought nothing, while standing ready to draw a
+ * stale colour over every value the NEXT vendored app.css brings — silently, because the
+ * coverage check below only asks whether a name resolves, and a stale duplicate resolves
+ * fine. Measured before deleting, per scheme: of this file's variable declarations, zero
+ * were ones app.css leaves unset.
  *
- *   1. The palette below — redundant with app.css and kept for now rather than deleted.
- *      Deleting it changes nothing on the page; if a future re-reduction of app.css ever
- *      drops those blocks, `themeStub.test.ts` is what fails.
- *   2. The harness's OWN chrome, further down — the leaf frame, the menu and modal widgets
- *      the module mock only records, the missing-icon marker. None of it is Obsidian's,
- *      and none of it has anywhere else to live. What is NOT in that category, and was
- *      here until review found it on 2026-08-10, is a rule restating something app.css
- *      already says for the same selector: see the note above the `body` frame rule.
+ * So the rule for this file is now the simple one, with no exemption in the check that
+ * holds it: nothing here may restate what app.css already says for the same selector,
+ * custom property or ordinary declaration alike (`themeStub.test.ts`). What is left is
+ * the harness's own furniture — the leaf frame, the menu and modal widgets the module
+ * mock only records, the missing-icon marker, the scheme switch. None of it is
+ * Obsidian's, and none of it has anywhere else to live.
  *
  * What the page now shows is therefore Obsidian's DEFAULT appearance rather than a guess
- * at one. Still not a user's: a community theme replaces exactly these values, the accent
+ * at one. Still not a user's: a community theme replaces exactly those values, the accent
  * is picked in settings, and neither is knowable from here. See ADR 0020, and keep the
  * live-vault checks.
  *
  * The coverage is checked, not remembered: `test/harness/themeStub.test.ts` scans every
  * partial for `var(--x)` and fails if the two sheets between them resolve none, per scheme.
  */
-/*
- * Scheme-independent: geometry and type. Nothing here changes between light and dark,
- * so nothing here is duplicated below.
- */
-:root {
-	/* Spacing — Obsidian's 2px and 4px steps */
-	--size-2-1: 2px;
-	--size-2-2: 4px;
-	--size-2-3: 6px;
-	--size-4-1: 4px;
-	--size-4-2: 8px;
-	--size-4-3: 12px;
-	--size-4-4: 16px;
-	--size-4-5: 20px;
-	--size-4-8: 32px;
-
-	/* Radii */
-	--radius-s: 4px;
-	--radius-m: 8px;
-	--radius-l: 12px;
-
-	/* Type */
-	--font-medium: 500;
-	--font-semibold: 600;
-	--font-ui-smaller: 12px;
-	--font-ui-small: 13px;
-	--font-ui-medium: 15px;
-
-	/* Icons and pointer */
-	--icon-xs: 14px;
-	--icon-s: 16px;
-	--cursor: default;
-}
-
-/*
- * The mappings from the base scale, restated exactly as app.css states them. Written on
- * `body`, which is where the theme class goes (Obsidian's own placement), so
- * `var(--color-base-00)` resolves against whichever of the two blocks below is active.
- */
-body {
-	--background-primary: var(--color-base-00);
-	--background-secondary: var(--color-base-20);
-	--background-modifier-border: var(--color-base-30);
-	--background-modifier-border-hover: var(--color-base-35);
-	--text-normal: var(--color-base-100);
-	--text-muted: var(--color-base-70);
-	--text-faint: var(--color-base-50);
-	--icon-color: var(--text-muted);
-	--text-error: var(--color-red);
-	--text-warning: var(--color-orange);
-}
-
-/*
- * The base scale and the named palette, per scheme — Obsidian's own default values, which
- * is why they now match app.css's `.theme-light` / `.theme-dark` exactly. A theme replaces
- * these, and most do, so the page is still not a claim about a themed vault.
- */
-body.theme-dark {
-	--color-base-00: #1c1c1c;
-	--color-base-05: #212121;
-	--color-base-10: #232323;
-	--color-base-20: #282828;
-	--color-base-25: #2e2e2e;
-	--color-base-30: #333333;
-	--color-base-35: #3f3f3f;
-	--color-base-40: #555555;
-	--color-base-50: #666666;
-	--color-base-60: #999999;
-	--color-base-70: #b3b3b3;
-	--color-base-100: #dadada;
-
-	--color-red: #fb464c;
-	--color-orange: #e9973f;
-	--color-green: #44cf6e;
-	--color-cyan: #53dfdd;
-
-	--color-red-rgb: 251, 70, 76;
-	--color-orange-rgb: 233, 151, 63;
-	--color-yellow-rgb: 224, 222, 113;
-	--color-green-rgb: 68, 207, 110;
-	--color-cyan-rgb: 83, 223, 221;
-	--color-blue-rgb: 2, 122, 255;
-	--color-purple-rgb: 168, 130, 255;
-	--color-pink-rgb: 250, 153, 205;
-}
-
-body.theme-light {
-	--color-base-00: #ffffff;
-	--color-base-05: #fcfcfc;
-	--color-base-10: #fafafa;
-	--color-base-20: #f6f6f6;
-	--color-base-25: #efefef;
-	--color-base-30: #e4e4e4;
-	--color-base-35: #dadada;
-	--color-base-40: #bdbdbd;
-	--color-base-50: #ababab;
-	--color-base-60: #707070;
-	--color-base-70: #5c5c5c;
-	--color-base-100: #222222;
-
-	--color-red: #e93147;
-	--color-orange: #ec7500;
-	--color-green: #08b94e;
-	--color-cyan: #00bfbc;
-
-	--color-red-rgb: 233, 49, 71;
-	--color-orange-rgb: 236, 117, 0;
-	--color-yellow-rgb: 224, 172, 0;
-	--color-green-rgb: 8, 185, 78;
-	--color-cyan-rgb: 0, 191, 188;
-	--color-blue-rgb: 8, 109, 221;
-	--color-purple-rgb: 120, 82, 238;
-	--color-pink-rgb: 213, 57, 132;
-}
 
 /*
  * `.svg-icon`, `.clickable-icon` and its hover state were written here when this file was

@@ -150,7 +150,7 @@ supply rather than writing itself. Two files answer that now, in order:
 `test/harness/obsidian.css` is Obsidian's REAL app.css, reduced to the rules the harness
 exercises (its header states what was kept and why), and `test/harness/theme.css` carries
 the harness's own chrome — the leaf frame, the menu and modal widgets, the missing-icon
-marker — plus a copy of the palette that is now redundant with the app sheet. Loading the real sheet first is what makes an
+marker — and, since 2026-08-10, no Obsidian value at all. Loading the real sheet first is what makes an
 element default present at all rather than approximated: a card-children disclosure whose
 toggle rendered as a centred, boxed native button shipped looking right here and wrong in
 a vault (2026-08-08), because the stub then had no `button` rule and nothing had guessed
@@ -160,7 +160,14 @@ written before it was true: `.svg-icon`, `.clickable-icon` and its hover state s
 until 2026-08-10, overriding app.css's real padding (4px vs 4px 6px) and hover colour,
 because the pass that deleted the stub's redundant COLOURS compared custom properties and
 could not see an ordinary declaration. `themeStub.test.ts` now refuses any rule here that
-restates a declaration app.css already makes for the same selector.
+restates a declaration app.css already makes for the same selector — with no exemption for
+variables, which is the second half of the same episode: that check first spared the
+palette copy as "identical and deliberate", and review pointed out that identical is the
+best case rather than the safe one. The stub loads second and spelled the theme classes
+`body.theme-dark`, outranking app.css's `.theme-dark`, so the copy won the cascade
+everywhere and the day a newer app.css is vendored in it would go on winning with stale
+values and a green suite — the coverage check asks only whether a name RESOLVES, and a
+stale duplicate resolves. All 54 remaining declarations were deleted rather than compared.
 
 This narrows the gap; it does not close it. The reduced sheet keeps only what the
 harness was driven through, so an element default that no driven state reached is still
@@ -170,7 +177,8 @@ keep. On COLOUR the claim changed shape rather than widening: the stub used to i
 base scale, and app.css turned out to define it — and the accent, the named colours and
 `color-scheme` — outright, so what the page draws is Obsidian's default appearance. That
 made twelve of the stub's declarations an approximation drawn OVER a correct value, and
-they were deleted; the measurement is in `test/harness/theme.css`'s header. What is still
+they were deleted with the rest of its palette; the measurement is in
+`test/harness/theme.css`'s header. What is still
 unanswerable is a USER's colours — a community theme replaces exactly these values, the
 accent is picked in settings — so this replaces NO live-vault
 verification, and asserting appearance from it is refused in
