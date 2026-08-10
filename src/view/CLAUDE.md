@@ -374,14 +374,25 @@ free of runtime code so imports stay cycle-free.
 - The mode is `host.projection` — five of them now — backed by the
   collapse store (UI state, per saved view, per device) — never `settings` and never
   the `.base`: base settings are saved on the view, working position in localStorage.
-  **What a projection IS is asked, never compared**: `view/projection.ts` holds
-  `treeShaped`, `hidesCompleted`, `filterScopeFor`, `projectionPopulation`,
-  `projectionMember`, `rowVocabulary` and `offerableTypes`, and a lint rule forbids a bare
-  `projection === 'tree'` outside it. That is not tidiness — "tree-shaped" was six
-  equality checks, and a projection added beside `'tree'` rather than as one fails each
-  silently and differently: no column fitting, no refit on resize, the fit classes cleared
-  as though it were a card projection, two dead toolbar buttons, and a row menu with no
-  Move up, indent or outdent on a tree whose whole point is an order somebody chose.
+  **What a projection IS is meant to be asked, never compared**: `view/projection.ts`
+  holds `treeShaped`, `hidesCompleted`, `filterScopeFor`, `projectionPopulation`,
+  `projectionMember`, `rowVocabulary` and `offerableTypes`, so that "tree-shaped" is one
+  question asked in one place rather than six equality checks scattered beside it.
+  **Nothing enforces that mechanically** — unlike the SVG-`cls` and `showAtMouseEvent`
+  bans above, there is no `no-restricted-syntax` rule forbidding a bare
+  `projection === 'tree'` outside this module, and the gap is not hypothetical: it is
+  already compared directly in `render/emptyStates.ts`, `render/projections.ts`,
+  `render/toolbarStatus.ts`, `render/toolbarControls.ts`, `render/toolbar.ts`,
+  `render/legend.ts`, `interactions/keyboard.ts`, `interactions/plan.ts`,
+  `interactions/menu.ts` and `backlogView.ts`. Some of those are legitimate dispatch —
+  `renderContent`'s switch on the projection is a switch on the projection by design —
+  and some are the drift this module exists to stop; nothing here tells them apart yet
+  (see [[The projection predicate has no lint rule behind it]]). Where a comparison IS
+  routed through the module, this is what it buys: a projection added beside `'tree'`
+  rather than as one fails silently and differently — no column fitting, no refit on
+  resize, the fit classes cleared as though it were a card projection, two dead toolbar
+  buttons, and a row menu with no Move up, indent or outdent on a tree whose whole point
+  is an order somebody chose.
   Two things stay OUT of that module deliberately: `collapsiblePopulation` takes a
   projection's items by name, because it decides what a bulk collapse TOUCHES rather than
   whether a button is enabled; and the round trip through storage is closed by TYPE rather
