@@ -93,7 +93,11 @@ export function promptCreateItem(
 		detail: askFolder ? undefined : (typeName: string) => promptDetail(parentItem, folderFor(typeName)),
 		types: choices,
 		askFolder,
-		help: (el) => manualLink(el, host.app, manualSections(), { sectionId: 'creating', label: 'Where will this go?' }),
+		// `root: el` — the prompt's own `contentEl`, which is genuinely stable here: unlike
+		// the tree and the toolbar, nothing external rebuilds a modal's content while it is
+		// open, so the shell this door is drawn into IS the container to resolve it from.
+		help: (el) =>
+			manualLink(el, host.app, manualSections(), { sectionId: 'creating', label: 'Where will this go?', root: el }),
 		onSubmit: ({ title, folder, typeName }) => {
 			void createFromPrompt(host, {
 				levelName: typeName,

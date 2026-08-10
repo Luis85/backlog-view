@@ -161,13 +161,16 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 		setTooltip(warn, problems.join(' '));
 		// The door into `Help for setting up the view` — the configuration section, not the
 		// writes section this warning also gates: the reader's question at a warning is
-		// what to fix, and that answer lives with the options. Keyed like every other
-		// focusable toolbar control (`test/view/toolbarFocus.test.ts`'s own invariant),
-		// since `barEl.empty()` destroys it on every rebuild just like the rest of the row.
-		manualLink(warn, host.app, manualSections(), { sectionId: 'setup', label: 'What to fix' }).setAttribute(
-			KEY_ATTR,
-			'config-help',
-		);
+		// what to fix, and that answer lives with the options. `root: barEl`, never `warn`
+		// itself: `barEl.empty()` destroys `warn` on every rebuild along with the rest of
+		// the row, so the default refocus has to resolve from `barEl`, which survives it —
+		// see `manualLink`'s doc comment. Keyed like every other focusable toolbar control
+		// for the same reason (`test/view/toolbarFocus.test.ts`'s own invariant).
+		manualLink(warn, host.app, manualSections(), {
+			sectionId: 'setup',
+			label: 'What to fix',
+			root: barEl,
+		}).setAttribute(KEY_ATTR, 'config-help');
 	}
 	// The advisories and the count are the same size and the same faint colour, so with
 	// nothing between them "1 note ignored" and "28 items" read as one sentence. They are
@@ -293,7 +296,11 @@ function renderBusyIndicator(barEl: HTMLElement, host: BacklogViewHost): void {
 	// own rebuild via that mechanism — `syncBusy` only ever re-texts this indicator, never
 	// rebuilds it, so the key exists to satisfy the invariant `test/view/toolbarFocus.test.ts`
 	// checks over the whole row rather than to do restoring work of its own.
-	manualLink(busy, host.app, manualSections(), { sectionId: 'writes', label: 'What is happening' }, () =>
+	// `root: barEl` here is never actually read — the explicit `onClosed` below always
+	// wins over the default resolve it would drive — but the field is required so every
+	// caller states one rather than a caller-that-overrides being the one place the
+	// question goes unanswered.
+	manualLink(busy, host.app, manualSections(), { sectionId: 'writes', label: 'What is happening', root: barEl }, () =>
 		focusInBar(barEl, barEl.querySelector<HTMLElement>('.pbl-help-btn')),
 	).setAttribute(KEY_ATTR, 'busy-help');
 }

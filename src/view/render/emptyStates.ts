@@ -49,7 +49,15 @@ export function renderLoadingState(treeEl: HTMLElement): void {
 	loading.createDiv({ text: 'Loading backlog…' });
 }
 
-export function renderEmptyState(host: BacklogViewHost, treeEl: HTMLElement): void {
+/**
+ * `root` is the STABLE container `manualLink`'s default refocus resolves from — never
+ * `treeEl` itself when a caller draws this state into an ephemeral child of the real
+ * tree element (the board and roadmap advisories both do: their own "treeEl" is a
+ * fresh `pbl-board-advisory`/roadmap frame div, torn down and rebuilt with everything
+ * else). Defaults to `treeEl`, which is correct for the plain tree — there it IS the
+ * view's one stable element, created once and only ever emptied-and-refilled.
+ */
+export function renderEmptyState(host: BacklogViewHost, treeEl: HTMLElement, root: HTMLElement = treeEl): void {
 	const model = host.model;
 	const focused = model?.focused ?? false;
 	const topLevel = focused && model ? newItemType(host.settings, model) : LEVELS[0];
@@ -63,7 +71,7 @@ export function renderEmptyState(host: BacklogViewHost, treeEl: HTMLElement): vo
 	setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'plus');
 	btn.createSpan({ text: `New ${topLevel}` });
 	btn.addEventListener('click', () => promptCreateItem(host, [topLevel], null));
-	manualLink(empty, host.app, manualSections(), { sectionId: 'finding', label: 'What shows here?' });
+	manualLink(empty, host.app, manualSections(), { sectionId: 'finding', label: 'What shows here?', root });
 }
 
 /**
@@ -224,20 +232,27 @@ function renderSetupCta(host: BacklogViewHost, empty: HTMLElement, fixes: Option
 	btn.addEventListener('click', () => void runInit(host));
 }
 
-export function renderFilterEmptyState(host: BacklogViewHost, treeEl: HTMLElement): void {
+/** `root` — see the doc comment on `renderEmptyState`, above. */
+export function renderFilterEmptyState(host: BacklogViewHost, treeEl: HTMLElement, root: HTMLElement = treeEl): void {
 	const empty = noticeShell(treeEl, 'search-x', `No items match "${host.filterText.trim()}".`);
 	const btn = empty.createEl('button', { text: 'Clear filter' });
 	btn.addEventListener('click', () => {
 		host.setFilter('');
 		host.focusFilter();
 	});
-	manualLink(empty, host.app, manualSections(), { sectionId: 'finding', label: 'What shows here?' });
+	manualLink(empty, host.app, manualSections(), { sectionId: 'finding', label: 'What shows here?', root });
 }
 
-/** Everything is done and hidden — celebrate, and offer the way back. */
-export function renderAllDoneState(host: BacklogViewHost, treeEl: HTMLElement, total: number): void {
+/** Everything is done and hidden — celebrate, and offer the way back. `root` — see
+ * `renderEmptyState`, above. */
+export function renderAllDoneState(
+	host: BacklogViewHost,
+	treeEl: HTMLElement,
+	total: number,
+	root: HTMLElement = treeEl,
+): void {
 	const empty = noticeShell(treeEl, 'circle-check', `All ${total} item${total === 1 ? ' is' : 's are'} done and hidden.`);
 	const btn = empty.createEl('button', { text: 'Show completed items' });
 	btn.addEventListener('click', () => host.config.set('showCompleted', true));
-	manualLink(empty, host.app, manualSections(), { sectionId: 'finding', label: 'What shows here?' });
+	manualLink(empty, host.app, manualSections(), { sectionId: 'finding', label: 'What shows here?', root });
 }

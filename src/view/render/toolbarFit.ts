@@ -123,22 +123,44 @@ const LAST_STEP = 6;
  * "is this element focusable right now" is the question the fallback exists to answer,
  * and asking it twice in two ways is how the two answers come to differ.
  *
- * `display` is asked of each element, with no list of which classes each rung sheds: the
- * stylesheet already holds that and a copy in TypeScript is the table this codebase keeps
- * having to un-write. It works because every rung targets the focusable element DIRECTLY.
- * A future rung that hid a container instead would need `checkVisibility`/`offsetParent`
- * and this comment is where that would have to change — both read as hidden for
- * everything in jsdom, which is why the cheap check is also the testable one.
- * `test/view/toolbarFit.test.ts` drives this by loading the real stylesheet into the
- * document, so what it asks is the shipped rule.
+ * `display` is asked of each element AND every ancestor up to `barEl`, with no list of
+ * which classes each rung — or each state — sheds: the stylesheet already holds that and
+ * a copy in TypeScript is the table this codebase keeps having to un-write. It used to
+ * ask only the element's own `display`, which is right exactly as long as every hideable
+ * thing targets the focusable element directly — true of every fit rung, false of the
+ * busy indicator: `.pbl-busy` (the CONTAINER) carries `display: none` until a batch
+ * starts, while the help link a batch is in flight draws inside it keeps whatever its own
+ * rule says regardless, so the own-element check called it visible and focused it anyway.
+ * `isVisibleInBar`, below, is the walk that closes that: it asks the same `display`
+ * question of the element and of everything between it and `barEl`.
+ *
+ * Not `offsetParent`/`checkVisibility`, on purpose, though both would also see a hidden
+ * ancestor: `offsetParent` is ALSO `null` for a `position: fixed` element regardless of
+ * visibility (nothing in this toolbar is, today, but the predicate would still be wrong
+ * on its face), and — the reason this file already leaned on `getComputedStyle`— jsdom
+ * lays nothing out, so both read `null`/hidden for every element in every test, which is
+ * what would have kept this exact gap uncaught forever rather than only until something
+ * inside a hideable container needed focus. `getComputedStyle` reflects a loaded
+ * stylesheet's rules instead, which is why walking with the same check stays testable:
+ * `test/view/toolbarFit.test.ts` drives this by loading the real partials into the
+ * document — `busy.css` among them, now for this reason too — so what it asks is the
+ * shipped rule, container and all.
  */
+function isVisibleInBar(el: HTMLElement, barEl: HTMLElement): boolean {
+	for (let node: HTMLElement | null = el; node; node = node.parentElement) {
+		if (getComputedStyle(node).display === 'none') return false;
+		if (node === barEl) break;
+	}
+	return true;
+}
+
 export function focusInBar(barEl: HTMLElement, target: HTMLElement | null): void {
 	// `[tabindex]` minus `[tabindex="-1"]`: nothing in the toolbar carries -1 today, but
 	// it is this codebase's standard for a per-row control inside a single-stop pane, so
 	// the first one added to this row would otherwise become a destination the ladder
 	// hands focus to. What is wanted is what Tab can reach.
 	const shown = [...barEl.querySelectorAll<HTMLElement>('button, input, [tabindex]:not([tabindex="-1"])')].filter(
-		(el) => getComputedStyle(el).display !== 'none' && !(el as HTMLButtonElement).disabled,
+		(el) => isVisibleInBar(el, barEl) && !(el as HTMLButtonElement).disabled,
 	);
 	if (target && shown.includes(target)) {
 		target.focus({ preventScroll: true });

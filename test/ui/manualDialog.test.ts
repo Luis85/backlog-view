@@ -134,7 +134,7 @@ describe('the point-of-need link', () => {
 
 	it('opens on its own section and carries its own label and section id', () => {
 		const parent = document.body.createDiv();
-		manualLink(parent, {} as never, SECTIONS, { sectionId: 'two', label: 'Read more' });
+		manualLink(parent, {} as never, SECTIONS, { sectionId: 'two', label: 'Read more', root: parent });
 		const link = parent.querySelector<HTMLButtonElement>('.pbl-help-link');
 		expect(link?.textContent).toBe('Read more');
 		expect(link?.getAttribute('data-pbl-section')).toBe('two');
@@ -145,7 +145,7 @@ describe('the point-of-need link', () => {
 	it('runs the caller-supplied onClosed instead of resolving a default target', () => {
 		const parent = document.body.createDiv();
 		let closed = 0;
-		manualLink(parent, {} as never, SECTIONS, { sectionId: 'one', label: 'Help' }, () => {
+		manualLink(parent, {} as never, SECTIONS, { sectionId: 'one', label: 'Help', root: parent }, () => {
 			closed += 1;
 		});
 		parent.querySelector<HTMLButtonElement>('.pbl-help-link')?.click();
@@ -159,10 +159,13 @@ describe('the point-of-need link', () => {
 	// `.pbl-busy` looks like to jsdom, which lays nothing out and so reports
 	// `offsetParent: null` for everything — the reason the busy indicator overrides this
 	// default rather than relying on it); and no link at all, because the caller's own
-	// re-render removed it.
+	// re-render removed it. `root` is `parent` in all three, which is a legal choice a
+	// caller whose own shell IS stable can make (the new-item prompt's `contentEl` is
+	// one) — the case where `root` has to be something ELSE is below, separately, since
+	// conflating the two was the defect a review round caught here.
 	it('default: refocuses the live link when it is connected and rendered visible', () => {
 		const parent = document.body.createDiv();
-		manualLink(parent, {} as never, SECTIONS, { sectionId: 'one', label: 'Help' });
+		manualLink(parent, {} as never, SECTIONS, { sectionId: 'one', label: 'Help', root: parent });
 		const link = parent.querySelector<HTMLButtonElement>('.pbl-help-link');
 		link?.click();
 		// jsdom does no layout, so a real link's `offsetParent` is always null — stubbed
@@ -174,7 +177,7 @@ describe('the point-of-need link', () => {
 
 	it('default: does nothing when the link is connected but not rendered visible', () => {
 		const parent = document.body.createDiv();
-		manualLink(parent, {} as never, SECTIONS, { sectionId: 'one', label: 'Help' });
+		manualLink(parent, {} as never, SECTIONS, { sectionId: 'one', label: 'Help', root: parent });
 		parent.querySelector<HTMLButtonElement>('.pbl-help-link')?.click();
 		// No `offsetParent` stub — jsdom's own default, which is what `.pbl-busy` looks
 		// like the moment CSS hides it.
@@ -184,10 +187,56 @@ describe('the point-of-need link', () => {
 
 	it('default: does nothing when the section it opened is gone by closing time', () => {
 		const parent = document.body.createDiv();
-		manualLink(parent, {} as never, SECTIONS, { sectionId: 'one', label: 'Help' });
+		manualLink(parent, {} as never, SECTIONS, { sectionId: 'one', label: 'Help', root: parent });
 		parent.querySelector<HTMLButtonElement>('.pbl-help-link')?.click();
 		parent.empty(); // the caller's own re-render replaced the whole row
 		expect(() => Modal.lastOpened?.close()).not.toThrow();
+		expect(document.activeElement).toBe(document.body);
+	});
+
+	/**
+	 * The regression this plan hit a fourth time: resolving from `parent` — the shell the
+	 * button was drawn into — rather than from a stable `root`. `parent` is exactly what a
+	 * real render pass throws away (`treeEl.empty()`, `barEl.empty()`); `root` is what
+	 * survives it. This constructs that shape directly: a stable `root`, and two
+	 * successive ephemeral shells inside it, the second replacing the first the way a
+	 * real re-render does. Resolving from the (now detached) first shell would find
+	 * nothing; resolving from `root` finds the new instance.
+	 */
+	it('default: resolves through the stable root, never through the ephemeral shell the link was drawn into', () => {
+		const root = document.body.createDiv();
+		const shellA = root.createDiv();
+		manualLink(shellA, {} as never, SECTIONS, { sectionId: 'one', label: 'Help', root });
+		shellA.querySelector<HTMLButtonElement>('.pbl-help-link')?.click();
+
+		// The re-render: the shell that drew the clicked link is gone, replaced by a new
+		// one holding the new instance of the same door — same section id, new element.
+		root.empty();
+		const shellB = root.createDiv();
+		manualLink(shellB, {} as never, SECTIONS, { sectionId: 'one', label: 'Help', root });
+		const rebuilt = shellB.querySelector<HTMLButtonElement>('.pbl-help-link');
+		Object.defineProperty(rebuilt, 'offsetParent', { value: document.body, configurable: true });
+
+		Modal.lastOpened?.close();
+		expect(document.activeElement).toBe(rebuilt);
+	});
+
+	/** The other half of the case above: proves resolving from `parent` really would have
+	 * found nothing, so the fix is not accidental. Same shape, but the default is built
+	 * with `root: shellA` — the stale shell — rather than the survivor. */
+	it('resolving from the stale shell instead finds nothing, which is the bug the fix closes', () => {
+		const root = document.body.createDiv();
+		const shellA = root.createDiv();
+		manualLink(shellA, {} as never, SECTIONS, { sectionId: 'one', label: 'Help', root: shellA });
+		shellA.querySelector<HTMLButtonElement>('.pbl-help-link')?.click();
+
+		root.empty(); // shellA (the resolve root this caller chose) is now detached
+		const shellB = root.createDiv();
+		const rebuilt = manualLink(shellB, {} as never, SECTIONS, { sectionId: 'one', label: 'Help', root: shellA });
+		Object.defineProperty(rebuilt, 'offsetParent', { value: document.body, configurable: true });
+
+		Modal.lastOpened?.close();
+		expect(document.activeElement).not.toBe(rebuilt);
 		expect(document.activeElement).toBe(document.body);
 	});
 });

@@ -31,7 +31,12 @@ import { undisclosedMatches } from '../childrenList';
 /** What differs between the two board-shaped projections' render passes. */
 interface BoardRenderOptions {
 	move: (item: BacklogItem, state: string | null) => void;
-	drawEmpty: (host: BacklogViewHost, aside: HTMLElement) => void;
+	// `root` is `boardEl` — the STABLE element this whole render pass was handed, never
+	// `aside` itself: `aside` is the fresh `.pbl-board-advisory` div this same pass just
+	// created, torn down and rebuilt on the next one, so `manualLink`'s default refocus
+	// must resolve from something that survives it. See `renderEmptyState`'s doc comment
+	// in `render/emptyStates.ts`.
+	drawEmpty: (host: BacklogViewHost, aside: HTMLElement, root: HTMLElement) => void;
 	/**
 	 * The view-options display name of THIS workflow's state list, named in the
 	 * stray-column tooltip (`renderColumnHeader`) so the hint points at the setting
@@ -112,7 +117,7 @@ export function renderRequirementsBoard(ctx: RowContext, boardEl: HTMLElement, d
 	return renderBoard(ctx, boardEl, dnd, board, {
 		move: (item, state) => void host.performBoardMove(item, state),
 		stateOptionLabel: 'Workflow states (in order)',
-		drawEmpty: (h, aside) => {
+		drawEmpty: (h, aside, root) => {
 			const m = h.model;
 			if (!m) return;
 			// Asked of the board's OWN population, never `m.results`: Deliverables are
@@ -125,9 +130,9 @@ export function renderRequirementsBoard(ctx: RowContext, boardEl: HTMLElement, d
 			// one would name the focused type and offer to create another — a fifth surface
 			// offering the one type this board cannot show.
 			if (m.focused && isDeliverableType(focusTarget(h.settings))) renderBoardExcludedFocusState(h, aside);
-			else if (population.length === 0) renderEmptyState(h, aside);
-			else if (h.isFiltering()) renderFilterEmptyState(h, aside);
-			else renderAllDoneState(h, aside, population.length);
+			else if (population.length === 0) renderEmptyState(h, aside, root);
+			else if (h.isFiltering()) renderFilterEmptyState(h, aside, root);
+			else renderAllDoneState(h, aside, population.length, root);
 		},
 	});
 }
@@ -157,11 +162,11 @@ export function renderDeliverablesBoard(ctx: RowContext, boardEl: HTMLElement, d
 	return renderBoard(ctx, boardEl, dnd, board, {
 		move: (item, state) => void host.performDeliverablesBoardMove(item, state),
 		stateOptionLabel: 'Deliverable workflow states (in order)',
-		drawEmpty: (h, aside) => {
+		drawEmpty: (h, aside, root) => {
 			const m = h.model;
 			if (!m) return;
 			if (m.deliverableResults.length === 0) renderNoDeliverablesState(aside);
-			else if (h.isFiltering()) renderFilterEmptyState(h, aside);
+			else if (h.isFiltering()) renderFilterEmptyState(h, aside, root);
 		},
 	});
 }
@@ -210,10 +215,10 @@ function renderBoardAdvisory(
 	ctx: RowContext,
 	boardEl: HTMLElement,
 	board: BoardModel,
-	drawEmpty: (host: BacklogViewHost, aside: HTMLElement) => void,
+	drawEmpty: (host: BacklogViewHost, aside: HTMLElement, root: HTMLElement) => void,
 ): void {
 	if (board.columns.some((col) => col.cards.length > 0)) return;
-	drawEmpty(ctx.host, boardEl.createDiv({ cls: 'pbl-board-advisory' }));
+	drawEmpty(ctx.host, boardEl.createDiv({ cls: 'pbl-board-advisory' }), boardEl);
 }
 
 function renderColumn(ctx: RowContext, colsEl: HTMLElement, col: BoardColumn, render: ColumnRenderCtx): HTMLElement {

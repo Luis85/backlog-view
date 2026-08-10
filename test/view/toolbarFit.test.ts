@@ -939,4 +939,50 @@ describe('the toolbar fit ladder', () => {
 		syncBusy(bar, null, false);
 		expect(bar.hasAttribute('data-pbl-fit')).toBe(false);
 	});
+
+	/**
+	 * `focusInBar` asked only each element's OWN `display`, never an ancestor's — correct
+	 * as long as everything that hides in this row hides the focusable element directly,
+	 * which every fit rung does and the busy indicator does not: `.pbl-busy` itself is
+	 * `display: none` outside a batch, and the help link a batch draws inside it keeps
+	 * whatever its own rule says regardless. `capturedFocusKey`/`refocusByKey` are what
+	 * make this reachable without any of that being about the ladder at all: ANY full
+	 * toolbar render captures whichever control currently holds focus by its
+	 * `data-pbl-key` and tries to restore it afterwards, so a keyboard user who reached
+	 * the busy link WHILE it was genuinely visible, and is still standing on it the
+	 * instant the batch ends, is exactly the case a render right after that has to get
+	 * right.
+	 *
+	 * jsdom does not blur an element when a CSS change hides an ancestor (a real browser
+	 * does), so `document.activeElement` stays on the link across the `syncBusy(..., null,
+	 * ...)` below by construction — that gap is what makes the case constructible here at
+	 * all, and it is also why this needed a real regression rather than trusting the
+	 * comment beside the old code.
+	 */
+	it('does not restore focus to the busy help link through its own hidden container', () => {
+		const vault = fixture();
+		const { view, containerEl } = makeView(vault);
+		const bar = toolbarOf(containerEl);
+
+		// A batch in flight: the indicator is genuinely visible (`.pbl-busy.pbl-busy-on`,
+		// from the real `busy.css` loaded above), so a keyboard user can actually reach it.
+		syncBusy(bar, { done: 1, total: 2 }, false);
+		const link = bar.querySelector<HTMLElement>('.pbl-busy .pbl-help-link');
+		link?.focus();
+		expect(document.activeElement).toBe(link);
+
+		// The batch ends: `.pbl-busy` goes back to `display: none`, the link still inside
+		// it and still focused (see the doc comment above for why jsdom leaves it there).
+		syncBusy(bar, null, false);
+
+		// The ordinary full render any data update causes — captures the focused key
+		// BEFORE emptying the bar (`capturedFocusKey`) and restores it by key afterwards
+		// (`refocusByKey`, at the end of `renderToolbar`). The rebuilt element carries the
+		// same key and is still inside the still-hidden `.pbl-busy`.
+		refresh(view, vault);
+
+		const rebuiltLink = toolbarOf(containerEl).querySelector('.pbl-busy .pbl-help-link');
+		expect(rebuiltLink).not.toBeNull();
+		expect(document.activeElement).not.toBe(rebuiltLink);
+	});
 });

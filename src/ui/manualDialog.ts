@@ -156,16 +156,16 @@ export function openManual(
  * busy indicator and the config warning — and each is an acceptance criterion of one of
  * the `Help for …` use cases rather than a convenience.
  *
- * `target` bundles `sectionId` and `label` rather than taking them as two more positional
- * strings — `max-params` caps a function at five, and `parent`, `app`, `sections` and
- * `onClosed` are the four that cannot fuse with anything else without losing a name at
- * the call site.
+ * `target` bundles `sectionId`, `label` and `root` rather than taking them as three more
+ * positional arguments — `max-params` caps a function at five, and `parent`, `app`,
+ * `sections` and `onClosed` are the four that cannot fuse with anything else without
+ * losing a name at the call site.
  */
 export function manualLink(
 	parent: HTMLElement,
 	app: App,
 	sections: ManualSection[],
-	target: { sectionId: string; label: string },
+	target: { sectionId: string; label: string; root: HTMLElement },
 	onClosed?: () => void,
 ): HTMLButtonElement {
 	const link = parent.createEl('button', { cls: 'pbl-help-link', text: target.label, attr: { type: 'button' } });
@@ -175,16 +175,27 @@ export function manualLink(
 	// lands on the document. The busy indicator is the guaranteed case rather than the
 	// only one — `styles/busy.css` hides it the moment the batch ends.
 	//
-	// So the default RESOLVES rather than captures: it looks the link up again by the
-	// section it opens, inside the container it was drawn in, and falls through
-	// `focusInBar` when the toolbar is that container. A caller whose control cannot
-	// survive at all passes its own closure naming a different destination.
+	// So the default RESOLVES rather than captures — but NOT from `parent`. `parent` is
+	// the shell the button was drawn into (`empty`, `warn`, `busy`), and that shell is
+	// exactly what a full render throws away: `treeEl.empty()` / `barEl.empty()` destroy
+	// every child and rebuild them, so by close time `parent` is itself a detached node
+	// and querying inside it finds the stale link or nothing — the same defect as
+	// capturing the link outright, one level up. `root` is the caller's OWN stable
+	// container — `treeEl` or `barEl`, created once and only ever emptied-and-refilled,
+	// never replaced — so a query against it after a rebuild reaches the new instance of
+	// this same door if the render still draws one, and finds nothing if it does not.
+	// `focusInBar` is what the toolbar's two doors resolve through beneath that, since a
+	// fit rung can also hide the target; a caller whose control cannot survive at all
+	// (or needs a different destination entirely) passes its own `onClosed` instead.
 	//
-	// This is the third place the capture-versus-resolve mistake was made in this plan.
-	// The `?` button and the overflow entry were each fixed alone; the default here was
-	// left capturing both times, which is what made it the survivor.
+	// This is the FOURTH place the capture-versus-resolve mistake was made in this plan,
+	// and the previous paragraph once made it a third time while describing the fix for
+	// the other two: it named `parent` as what this resolves from, which is the exact
+	// shell that does not survive. See `docs/issues/A comment that states a rule is not
+	// a check.md` — a comment stating a rule beside code that breaks it is not a check
+	// on that code, and this one was proof of its own thesis for one review round.
 	const refocus = () => {
-		const live = parent.querySelector<HTMLElement>(`.pbl-help-link[data-pbl-section="${target.sectionId}"]`);
+		const live = target.root.querySelector<HTMLElement>(`.pbl-help-link[data-pbl-section="${target.sectionId}"]`);
 		if (live?.isConnected && live.offsetParent !== null) live.focus();
 	};
 	link.setAttribute('data-pbl-section', target.sectionId);

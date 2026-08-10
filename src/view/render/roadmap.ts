@@ -133,7 +133,12 @@ export function renderRoadmap(
 	// from downstream — so it is also what decides whether the shelf's own controls may
 	// leave the tab order. See `syncShelfTabStops`.
 	syncShelfTabStops(shelf.el, cards.length > 0);
-	const advisoryEl = renderRoadmapAdvisory(ctx, frameEl, axisCardCount + roadmap.shelf.length + roadmap.context.length);
+	const advisoryEl = renderRoadmapAdvisory(
+		ctx,
+		frameEl,
+		axisCardCount + roadmap.shelf.length + roadmap.context.length,
+		treeEl,
+	);
 
 	// Keyed by WHICH BAND IT IS, in the order the bands render — a band that did not
 	// render (an empty shelf with nothing to un-place, no context, cards on screen) is
@@ -232,14 +237,24 @@ function renderBucketNew(ctx: RowContext, header: HTMLElement, bucket: HorizonBu
  * keyboard-reachable: a collapsed shelf legitimately contributes zero cards to that
  * walk, and an all-shelved, collapsed backlog is not empty, it is a backlog not yet
  * planned.
+ *
+ * `root` is `treeEl` — the view's one stable element — passed down from `renderRoadmap`:
+ * `frameEl` and `aside` are both created fresh every pass (`renderRoadmap`'s own first
+ * line, and this function's own second), so neither survives to be resolved from later.
+ * See `renderEmptyState`'s doc comment in `render/emptyStates.ts`.
  */
-function renderRoadmapAdvisory(ctx: RowContext, frameEl: HTMLElement, renderedCards: number): HTMLElement | null {
+function renderRoadmapAdvisory(
+	ctx: RowContext,
+	frameEl: HTMLElement,
+	renderedCards: number,
+	root: HTMLElement,
+): HTMLElement | null {
 	const host = ctx.host;
 	const model = host.model;
 	if (!model || renderedCards > 0) return null;
 	const aside = frameEl.createDiv({ cls: 'pbl-board-advisory' });
-	if (model.results.length === 0) renderEmptyState(host, aside);
-	else if (host.isFiltering()) renderFilterEmptyState(host, aside);
-	else renderAllDoneState(host, aside, model.results.length);
+	if (model.results.length === 0) renderEmptyState(host, aside, root);
+	else if (host.isFiltering()) renderFilterEmptyState(host, aside, root);
+	else renderAllDoneState(host, aside, model.results.length, root);
 	return aside;
 }
