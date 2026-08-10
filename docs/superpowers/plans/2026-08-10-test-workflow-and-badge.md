@@ -1275,3 +1275,143 @@ npm run check
 git add src/view/render/rows.ts test/view/testCatalog.test.ts
 git commit -m "Forget a detached subtree along drawn edges, not raw children"
 ```
+
+
+---
+
+### Task 11: A sibling drop's no-op is asked of the drawn order
+
+**Files:**
+- Modify: `src/domain/dropTargets.ts` (`dropTargetFor`'s no-op check, and `siblingPosition`'s comment)
+- Modify: `src/view/interactions/dragDrop.ts` (the one `dropTargetFor` call site)
+- Test: `test/view/testCatalog.test.ts`
+
+**Interfaces:**
+- Consumes: `projectionMember` from `src/view/projection.ts`, `projectionPopulation` likewise (both already exported and already used by `dragDrop.ts`).
+- Produces: `dropTargetFor(model, item, zone, dragged, member)` — one added parameter, `member: (item: BacklogItem) => boolean`.
+
+**Why:** this is the second site of the bug Task-independent commit `14be727` fixed for the
+root strip, found by an automated PR reviewer. The register already carries the general form:
+*a rule about `realRoots` is a rule about ranking, and any other question asked of it is asked
+of the wrong list.* `dropTargetFor` still asks its NO-OP question of the real sibling list.
+
+With real roots `Epic A, Test suite, Epic B` the plan draws `Epic A, Epic B`. Dragging
+`Epic A` and dropping it *before* `Epic B` changes nothing on either screen — but the real
+list puts the insert index at 1 and the dragged item's current index at 0, so the drop is
+treated as a move: it rewrites `order` and spends the undo slot. The same happens in a mixed
+child group.
+
+`siblingPosition`'s own comment states the assumption that fails — *"its position among the
+real group is the position among the visible one"* — which is only true when the two
+projections do not interleave. Correct that sentence in the same commit.
+
+- [ ] **Step 1: Write the failing test**
+
+Add to `test/view/testCatalog.test.ts`:
+
+```ts
+	it('treats a drop between visually adjacent roots as the no-op it looks like', () => {
+		// Real roots interleave: Epic A, Suite, Epic B. The plan draws A then B with nothing
+		// between them, so dropping A before B moves nothing on either screen — and must not
+		// rewrite an order or spend the undo slot to say so.
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Suite.md', { frontmatter: { type: 'Test suite', order: 20 } });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 30 } });
+		const { view } = makeView(vault);
+		const model = view.model;
+		const get = (path: string) => {
+			const item = model?.byPath.get(path);
+			if (!item) throw new Error(`no item ${path}`);
+			return item;
+		};
+		const plan = projectionMember('tree');
+		expect(dropTargetFor(model!, get('Epic B.md'), 'before', get('Epic A.md'), plan)).toBeNull();
+		// The mirror in the catalog is vacuous here (one suite), so assert the other direction
+		// of the same rule instead: a drop that DOES move the row is still offered.
+		expect(dropTargetFor(model!, get('Epic A.md'), 'before', get('Epic B.md'), plan)).not.toBeNull();
+	});
+```
+
+Import `dropTargetFor` from `../../src/domain/dropTargets` and `projectionMember` from
+`../../src/view/projection` at the top of the file.
+
+- [ ] **Step 2: Run the test and watch it fail**
+
+Run: `npx vitest run test/view/testCatalog.test.ts -t "visually adjacent roots"`
+Expected: FAIL — the first assertion returns a target instead of null.
+
+- [ ] **Step 3: Ask the no-op of the drawn sequence**
+
+In `src/domain/dropTargets.ts`, add the parameter and translate both sides of the comparison
+into drawn terms:
+
+```ts
+export function dropTargetFor(
+	model: BacklogModel,
+	item: BacklogItem,
+	zone: DropZone,
+	dragged: BacklogItem,
+	member: (item: BacklogItem) => boolean,
+): DropTarget | null {
+```
+
+and replace the no-op block with:
+
+```ts
+	// Dropping into the slot the item already occupies is a no-op — unless the
+	// drop would clear a stale parent link, which is a real change.
+	//
+	// **Asked of the DRAWN order, while the rank below is still computed from the real
+	// group.** Two questions over two lists, and the same split `rootDropTarget` already
+	// makes: a sibling group can interleave the projections (real roots `Epic A`,
+	// `Test suite`, `Epic B` draw as `Epic A`, `Epic B` in the plan), so a drop that moves
+	// the row past nothing anyone can see reads as a move on the real indices. It then
+	// rewrites `order` and spends the undo slot with both screens unchanged. With no
+	// interleaving the two readings coincide exactly, which is why this is a correction
+	// rather than a behaviour change for every existing base.
+	if (position.parent === dragged.parent && !clearsStaleLink(position.parent, dragged)) {
+		const fullList = position.parent ? position.parent.children : model.realRoots;
+		const drawnIndex = fullList.filter(member).indexOf(dragged);
+		const drawnInsert = position.siblings.slice(0, position.insertIndex).filter(member).length;
+		if (drawnInsert === drawnIndex) return null;
+	}
+```
+
+Then correct `siblingPosition`'s comment. The sentence *"The item is a real root here (a
+promoted one returned above), so its position among the real group is the position among the
+visible one, read against the neighbours that actually decide the number"* claims an
+equivalence that fails exactly when the projections interleave. Rewrite the tail to say what
+is true: the real group is what decides the NUMBER, and the drawn order is what decides
+whether the move is worth making — the caller's no-op check above asks that separately.
+
+- [ ] **Step 4: Pass the predicate at the call site**
+
+In `src/view/interactions/dragDrop.ts`, find the `dropTargetFor(` call and add
+`projectionMember(this.host.projection)` as its fifth argument. `projectionMember` is
+already imported there if `projectionPopulation` is; add it to that import otherwise.
+
+Update every other `dropTargetFor` call — including in `test/domain/dropTargets.test.ts` —
+to pass a predicate. For the existing domain tests the plan's projection is the right one:
+`projectionMember('tree')`, or `() => true` where the fixture has no catalog members and the
+test is about something else. Prefer `projectionMember('tree')` so the tests exercise the
+real predicate.
+
+- [ ] **Step 5: Run the tests and verify they pass**
+
+Run: `npx vitest run test/view/ test/domain/`
+Expected: PASS. Every pre-existing drop test must still pass unchanged in its assertions —
+if one flips, the translation is wrong, not the test.
+
+- [ ] **Step 6: Watch it fail without the fix**
+
+Revert Step 3's two lines to the original `fullList.indexOf(dragged) === position.insertIndex`,
+re-run the one test, confirm RED, restore.
+
+- [ ] **Step 7: Run the whole check and commit**
+
+```bash
+npm run check
+git add src/domain/dropTargets.ts src/view/interactions/dragDrop.ts test/
+git commit -m "Ask a sibling drop's no-op of the drawn order, not the ranking group"
+```
