@@ -28,18 +28,27 @@ interface MatchIndex {
  * once — every scope is this function applied to a different set of roots, so a change
  * to what "matching" means lands on both at the same time.
  *
- * **Descending and MATCHING are two questions, and `member` answers only the second.**
- * The walk goes everywhere `item.children` leads, because that is the real tree and a row
- * this projection draws can sit below one it does not — a `Deliverable` under a
- * `Test case` is a card on the Deliverables board, and a walk that stopped at the catalog
- * never reaches it. But a non-member's TITLE is not a match here, and nothing propagates
- * from it: a needle hitting a `Test case` under a `PBI` must not keep that PBI on the plan
- * with nothing on screen matching, and must not surface the case on a Deliverable's card,
- * where `hiddenMatches` reads this very set.
+ * **`member` answers three questions and they are separate ones**, which is what took
+ * four rounds of review to state. Descending is not one of them:
  *
- * Both halves were learned by getting them backwards in turn. Guarding the descent lost
- * the nested `Deliverable`; guarding neither exposed the nested `Test case`. Neither is a
- * special case of the other, and one predicate placed on the right line answers both.
+ * 1. **Where the walk goes** — everywhere `item.children` leads, unguarded. That is the
+ *    real tree, and a row this projection draws can sit below one it does not: a
+ *    `Deliverable` under a `Test case` is a card on the Deliverables board, and a walk
+ *    that stopped at the catalog never reaches it.
+ * 2. **What counts as a MATCH** — members only. A `Test case` under a `PBI` must not keep
+ *    that PBI on the plan with nothing on screen matching, and must not be surfaced on a
+ *    `Deliverable`'s card, where `hiddenMatches` reads this very set.
+ * 3. **Which edges a match travels UP** — the drawn ones only, which is what the guard on
+ *    the recursive call below is for. A match reaches an ancestor exactly when that
+ *    ancestor draws it as a descendant, and a non-member breaks that chain: in
+ *    `Epic → Test case → PBI`, the `PBI` is a promoted ROOT of the plan rather than a row
+ *    under that Epic, so a needle matching it says nothing about the Epic. Propagating
+ *    through the hidden case anyway drew an empty, unmatched Epic beside the real match.
+ *
+ * Each was learned by getting it backwards. Guarding the descent lost the nested
+ * `Deliverable`; guarding nothing exposed the nested `Test case`; guarding the match alone
+ * left the ancestry crossing a boundary the renderer does not. None is a special case of
+ * another, and each is one predicate on its own line.
  */
 function indexMatches(roots: BacklogItem[], needle: string, member: (item: BacklogItem) => boolean): MatchIndex {
 	const visible = new Set<string>();
@@ -55,7 +64,10 @@ function indexMatches(roots: BacklogItem[], needle: string, member: (item: Backl
 			markSubtree(item);
 		}
 		let anyMatch = selfMatch;
-		for (const child of item.children) anyMatch = visit(child) || anyMatch;
+		for (const child of item.children) {
+			// Descend regardless (1), propagate only along an edge this projection draws (3).
+			if (visit(child) && member(child)) anyMatch = true;
+		}
 		if (anyMatch) visible.add(item.file.path);
 		return anyMatch;
 	};

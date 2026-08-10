@@ -431,10 +431,26 @@ first is the shape that looks fixed.** `indexMatches` was given this projection'
 and went on walking every `item.children` beneath them, which is the real tree — so a
 needle matching a `Test case` under a `PBI` marked that PBI and its whole ancestor chain
 visible, and the plan drew three rows with nothing on screen matching and the text still in
-the box. Found by review, and it is 2e reappearing after 2e was implemented: the walk stops
-at a non-member now, which loses nothing, because a member below one is a root of this
-forest in its own right and is visited through that. The lesson for the next consumer:
-`projectionPopulation(...).roots` alone is not the forest.
+the box. That was 2e reappearing after 2e was implemented, and the fix — stop the walk at a
+non-member — was wrong in a way that took **three more rounds of review to correct**, each
+one breaking what the round before had just fixed. What the four rounds establish is that
+`member` answers **three separate questions** and only the middle one is the obvious one:
+
+1. **Where the walk GOES** — unguarded, everywhere `item.children` leads. Guarding the
+   descent lost a `Deliverable` nested under a `Test case`: it is a card on the Deliverables
+   board, and a walk that stopped at the catalog never reached it.
+2. **What counts as a MATCH** — members only. Guarding nothing put that back the other way:
+   a `Test case` under a `Deliverable` kept the card on screen and surfaced as one of its
+   `hiddenMatches`.
+3. **Which edges a match travels UP** — the drawn ones only. Guarding the match alone still
+   let ancestry cross a boundary the renderer does not: in `Epic → Test case → PBI` the
+   `PBI` is a promoted ROOT of the plan rather than a row under that Epic, so a needle
+   matching it drew an empty, unmatched Epic beside the real result.
+
+None is a special case of another, and each is one predicate on its own line in
+`src/view/filterState.ts`. The lesson for the next consumer:
+`projectionPopulation(...).roots` alone is not the forest, and neither is roots plus one use
+of the membership rule.
 
 **A projection narrowing is not one filter but however many are true of it**, which the
 same review caught in `offerableTypes`. The requirements board's `Deliverable` exclusion

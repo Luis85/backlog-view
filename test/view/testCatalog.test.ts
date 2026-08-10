@@ -392,6 +392,22 @@ describe('the catalog is tree-shaped, and the plan keeps its place', () => {
 		expect(cardTitles(containerEl)).toEqual(['Runbook']);
 	});
 
+	it('does not carry a match up through a row the projection does not draw', () => {
+		// `Epic → Test case → PBI`, both edges from the advisory drag. The PBI is a plan
+		// member and is drawn as a PROMOTED ROOT — not under that Epic — so a match on it
+		// says nothing about the Epic. Propagating through the hidden case anyway renders an
+		// empty, unmatched Epic beside the row that actually matched.
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Bridge case.md', { frontmatter: { type: 'Test case', order: 10 }, parentLink: 'Epic' });
+		vault.addFile('Deep PBI.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Bridge case' });
+		const { containerEl, view } = makeView(vault);
+		clickExpandAll(containerEl);
+		expect(titlesOf(containerEl)).toEqual(['Epic', 'Deep PBI']);
+		view.setFilter('Deep PBI');
+		expect(titlesOf(containerEl)).toEqual(['Deep PBI']);
+	});
+
 	it('never surfaces a test as a match on a board that cannot draw it', () => {
 		// The mirror of the case above, on the same index: a `Test case` nested UNDER a
 		// Deliverable. If the walk counts its title as a match, the Deliverable card stays
