@@ -87,14 +87,21 @@ export function refreshRowChildren(ctx: RowContext, item: BacklogItem, row: HTML
 }
 
 /**
- * Drop a removed subtree from the row index so stale elements can't be found — along the
- * edges this projection DRAWS, never the raw child list.
+ * Drop a removed subtree from the row index so stale elements can't be found — along
+ * this projection's MEMBERSHIP edges, never the raw child list.
  *
  * A non-member's subtree can hold a member this projection renders as a promoted ROOT,
  * whose row is somewhere else entirely and is not being detached. Walking raw children
  * deletes that row's index entry while its DOM stays on screen, and everything that reaches
  * a row by lookup then fails for it silently: selection cannot mark or announce it, and a
  * keyboard-opened menu loses its anchor.
+ *
+ * Membership is a superset of what a pass actually DRAWS — `isRowHidden` (the quick
+ * filter, the completed toggle) narrows further — so this can walk into and delete the
+ * entry for a member that rendered no row this pass. That is harmless, not a second bug:
+ * a hidden member's subtree renders no rows to leave stale, and a full render clears
+ * `rowEls` outright (`this.rowEls.clear()` in `backlogView.ts`) before rebuilding it, so
+ * no stale entry can survive past that boundary either.
  */
 function forgetSubtree(rows: Map<string, HTMLElement>, items: BacklogItem[], member: (item: BacklogItem) => boolean): void {
 	for (const item of items) {
