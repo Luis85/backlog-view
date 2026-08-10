@@ -16,6 +16,10 @@ import {
 	RowContext,
 } from './columns';
 
+/** Why an implied badge is marked, said once: the render sets the class, the pass reads it. */
+const IMPLIED_TYPE_TOOLTIP =
+	'Type property not set — level implied from position. Use "Assign missing properties" to write it.';
+
 /** Work-item icons by level position, echoing the Azure DevOps set (crown, trophy, book, check). */
 const LEVEL_ICONS = ['crown', 'award', 'book-open', 'check-square'];
 /**
@@ -341,21 +345,15 @@ export function renderBadge(host: BacklogViewHost, row: HTMLElement, item: Backl
 	} else {
 		badge.addClass('pbl-lvl-unknown');
 	}
-	const textEl = badge.createSpan({ cls: 'pbl-badge-text', text: badgeText });
-	const implied = item.impliedType
-		? 'Type property not set — level implied from position. Use "Assign missing properties" to write it.'
-		: '';
-	if (implied) {
-		badge.addClass('pbl-implied');
-		setTooltip(badge, implied);
-	}
-	// A long level name is capped so the row's lead stays bounded (columnFit budgets
-	// for it); the full name is one hover away when that cap actually bites — and an
-	// implied badge needs both, since the cap hides the very level it is explaining.
-	badge.addEventListener('mouseover', () => {
-		if (textEl.scrollWidth <= textEl.clientWidth) return;
-		setTooltip(badge, implied ? `${badgeText} · ${implied}` : badgeText);
-	});
+	badge.createSpan({ cls: 'pbl-badge-text', text: badgeText });
+	// A long level name is capped so the row's lead stays bounded (columnFit budgets for
+	// it); the full name is one hover away when that cap actually bites — and an implied
+	// badge needs both, since the cap hides the very level it is explaining. Both are
+	// decided by `syncTruncationTooltips`, which reads the class back: this handler used
+	// to measure `.pbl-badge-text` on `mouseover`, the same defect as the title's and in
+	// the same file, left behind by the fix to it.
+	if (item.impliedType) badge.addClass('pbl-implied');
+	else setTooltip(badge, '');
 }
 
 /** The fixed trailing columns, then the row's own add button. */
@@ -487,15 +485,52 @@ function wireRowEvents(ctx: RowContext, row: HTMLElement, item: BacklogItem, chi
  * is the shape that rule permits. Cards carry `.pbl-card-title` and answer null here, so
  * a card projection's rows cost the walk and nothing else.
  */
-export function syncTitleTooltips(rows: Map<string, HTMLElement>): void {
-	const titles = [...rows.values()]
-		.map((row) => row.querySelector<HTMLElement>('.pbl-title'))
-		.filter((title): title is HTMLElement => title !== null);
-	const overflowing = titles.map((title) => title.scrollWidth > title.clientWidth);
-	// The full text is the element's own: it is complete in the DOM and merely clipped by
-	// CSS, so nothing has to carry a copy of the title alongside it. `String` rather than a
-	// `??` fallback because there is no null case to fall back FROM — the node is a span
-	// this file filled with text, and one holding none could not overflow its box, so the
-	// guard would be a branch no test could ever reach.
-	titles.forEach((title, i) => setTooltip(title, overflowing[i] === true ? String(title.textContent) : ''));
+export function syncTruncationTooltips(rows: Map<string, HTMLElement>): void {
+	const clipped = [...rows.values()].flatMap(truncatablesIn);
+	// EVERY read, then EVERY write. `setTooltip` writes an attribute, which invalidates
+	// style, so a read after one forces a fresh layout: interleaving them would cost a
+	// layout per row and be worse than the per-hover read this replaced, since it would
+	// pay for every row rather than only hovered ones.
+	const overflowing = clipped.map((one) => one.measure.scrollWidth > one.measure.clientWidth);
+	clipped.forEach((one, i) => setTooltip(one.target, overflowing[i] === true ? one.full : one.plain));
+}
+
+/** What is MEASURED, what is TOOLTIPPED, and the text for each answer. */
+interface Truncatable {
+	measure: HTMLElement;
+	target: HTMLElement;
+	full: string;
+	plain: string;
+}
+
+/**
+ * The two things in a row that are capped in CSS and say so on hover: the title, and the
+ * type badge whose level name the lead's width budget caps.
+ *
+ * `querySelectorAll` rather than `querySelector` throughout — bounded to one row, which
+ * is what the no-DOM-scan rule permits, and it yields nothing rather than null where the
+ * element is absent, so neither the card projections (no `.pbl-title`) nor a badgeless
+ * row needs a guard. Each text is rebuilt from the DOM rather than carried alongside it:
+ * both elements hold their full text and are merely clipped by CSS, and the implied-type
+ * message is a constant this file owns, so the class the render sets is enough to recover
+ * what the badge should say.
+ */
+function truncatablesIn(row: HTMLElement): Truncatable[] {
+	const found: Truncatable[] = [];
+	for (const title of row.querySelectorAll<HTMLElement>('.pbl-title')) {
+		found.push({ measure: title, target: title, full: String(title.textContent), plain: '' });
+	}
+	for (const badge of row.querySelectorAll<HTMLElement>('.pbl-badge')) {
+		const implied = badge.hasClass('pbl-implied') ? IMPLIED_TYPE_TOOLTIP : '';
+		for (const text of badge.querySelectorAll<HTMLElement>('.pbl-badge-text')) {
+			const name = String(text.textContent);
+			found.push({
+				measure: text,
+				target: badge,
+				full: implied === '' ? name : `${name} · ${implied}`,
+				plain: implied,
+			});
+		}
+	}
+	return found;
 }

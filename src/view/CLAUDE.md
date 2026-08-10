@@ -31,15 +31,19 @@ free of runtime code so imports stay cycle-free.
   gesture itself is what dirtied style (`.pbl-row:hover` changes the title's colour and
   the grip's opacity), so the read can never reuse a clean layout. Where a measurement is
   genuinely needed it is a PASS — every read, then every write, run once where the rows
-  are already settled (`syncTitleTooltips`, called from `ResizePolicy.refit`). Reading and
-  writing alternately in that pass is the same defect spread over the render instead.
-  This shipped: the row title's `mouseover` measured its own truncation to decide on a
-  tooltip, which cost **65.7ms per hover at 832 rows against 0.13ms without it** — see
-  [[Hovering a row measured its own width]]. The check is a spy on the GETTERS during a
-  hover in `test/view/renderCost.test.ts`, put on `Element.prototype` rather than on the
-  handler, so it holds for a handler written tomorrow; what it cannot see is a read
-  reached through an API the spy does not name, which is why this paragraph states the
-  rule rather than the two properties the spy watches.
+  are already settled (`syncTruncationTooltips`, called from `ResizePolicy.refit` and
+  `cssChanged`). Reading and writing alternately in that pass is the same defect spread
+  over the render instead.
+  This shipped TWICE IN ONE FILE: the row title's `mouseover` measured its own truncation
+  to decide on a tooltip, at **65.7ms per hover at 832 rows against 0.13ms without it**,
+  and the type badge's did the identical thing — surviving the fix to the title, because
+  the check that came with it hovered the title and called the category closed. See
+  [[Hovering a row measured its own width]]. The check is a spy on the GETTERS in
+  `test/view/renderCost.test.ts`, on `Element.prototype` rather than on a handler, driven
+  over EVERY descendant of a row rather than the one element someone thought of. What it
+  still cannot see is a read reached through an API the spy does not name
+  (`getBoundingClientRect`, `offsetTop`), which is why this paragraph states the rule
+  rather than the two properties the spy watches.
 - The write gate is `writeGate.ts`, not the view: `WriteGate` holds `applying`, the undo
   slot, `recovery`, the deferred update and the busy state — five fields serving one
   concern, of which only `busy` was ever read from outside it — and the view owns one,

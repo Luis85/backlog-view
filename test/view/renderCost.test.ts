@@ -113,15 +113,21 @@ describe('render cost', () => {
 	 * dirties style, so the read could never reuse a clean layout. Measured in the browser
 	 * harness at 832 rows: 65.7ms per hover against 0.13ms without it.
 	 */
-	it('reads no layout while a row title is hovered', () => {
+	it('reads no layout while ANY part of a row is hovered', () => {
 		const { containerEl } = makeView(backlog(60));
-		const title = rowByTitle(containerEl, 'Feature 11').querySelector<HTMLElement>('.pbl-title');
+		const row = rowByTitle(containerEl, 'Feature 11');
 		// On the prototype, not the element: the handler could reach layout through any
 		// node it can see, and a spy on one element would miss a read of its parent.
 		const scrollWidth = vi.spyOn(Element.prototype, 'scrollWidth', 'get');
 		const clientWidth = vi.spyOn(Element.prototype, 'clientWidth', 'get');
 		try {
-			title?.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+			// EVERY descendant, not the title alone. Hovering only the title is what let the
+			// type badge keep the identical read through the fix that removed the title's —
+			// same defect, same file, missed because the check named a place instead of
+			// sweeping the category. (Codex, PR #128.)
+			for (const el of [row, ...row.querySelectorAll('*')]) {
+				el.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+			}
 
 			expect(scrollWidth).not.toHaveBeenCalled();
 			expect(clientWidth).not.toHaveBeenCalled();
@@ -130,5 +136,4 @@ describe('render cost', () => {
 			clientWidth.mockRestore();
 		}
 	});
-
 });

@@ -22,6 +22,9 @@ With every row expanded in an ~800-note vault, moving the pointer over the tree 
 laggy. The console showed `[Violation] Forced reflow while executing JavaScript took
 31376ms`.
 
+**Two handlers in one file did this**, and the second is the more instructive: the fix to
+the first shipped with a check that hovered only the element it had just fixed.
+
 `renderRowLead` wired `mouseover` on every row title, and the handler began:
 
 ```ts
@@ -33,6 +36,13 @@ for the wrong way. **A layout read inside a pointer event forces the browser to 
 pending style and layout synchronously**, and hovering is precisely what leaves style
 pending: `.pbl-row:hover` changes the title's colour and the grip's opacity, so the read
 could never reuse a clean layout. Every hover re-laid-out the whole tree.
+
+`renderBadge` wired the same event on every type badge, reading `.pbl-badge-text`'s widths
+to decide whether the level name the lead's width budget caps needed spelling out. Same
+read, same file, same cost — and it survived the title's fix untouched, because the spy
+that came with that fix dispatched one `mouseover` at one `.pbl-title`. A category rule
+checked at one of its instances is not checked. (Found by review, on the commit that
+introduced the rule.)
 
 It is `mouseover`, not `mouseenter` — it bubbles from child elements and re-fires as the
 pointer moves within one title, so a single deliberate hover is several of these.
@@ -62,7 +72,11 @@ one here.
 
 ## Fix
 
-The measurement leaves the handler and becomes one batched pass, `syncTitleTooltips`:
+Both measurements leave their handlers and become one batched pass,
+`syncTruncationTooltips`, over a small table of what a row can clip — the title, and the
+badge, which measures one element (`.pbl-badge-text`) and tooltips another (the badge, so
+the icon is hoverable too) and has a second string to say when the cap is not biting (an
+implied badge still explains itself). The pass is:
 every `scrollWidth`/`clientWidth` read first, then every `setTooltip` write. Interleaving
 them would force a layout per row and be worse than what it replaced — it would pay for
 every row rather than only hovered ones.
@@ -82,19 +96,23 @@ The handler keeps its `hover-link` trigger, which reads nothing.
 ## What is checked, and what is not
 
 `test/view/renderCost.test.ts` spies the `scrollWidth` and `clientWidth` **getters on
-`Element.prototype`** and asserts neither is touched while a title is hovered. On the
-prototype rather than on the element, and on the getters rather than on this handler, so
-it holds for a hover handler written tomorrow — the category rule from
-[[The drag cleanup scans the whole tree]], applied at the forbidden thing.
+`Element.prototype`** and asserts neither is touched while a `mouseover` is dispatched at
+**every descendant of a row**, not at the title alone. On the prototype rather than the
+element, on the getters rather than a handler, and swept over the row rather than aimed at
+a place — which is precisely what the first version of this check got wrong, and what
+[[The drag cleanup scans the whole tree]] already said: a category invariant is checked at
+the forbidden thing, not by visiting the examples the author had in mind. It was watched
+failing with the badge's read restored.
 
 What it cannot see is a layout read reached through an API it does not name
 (`getBoundingClientRect`, `offsetTop`). `src/view/CLAUDE.md` states the rule for all of
 them; the spy checks the two that were actually violated.
 
-The feature's own test stayed where it was, in `test/view/state.test.ts`, and moved to the
-new path — a truncated title still carries its full text — with a second beside it for the
-`css-change` path, driving a font change that makes a title start truncating. All three
-were watched failing against the code they check.
+Each feature's own test stayed where it was and moved to the new path: the title's in
+`test/view/state.test.ts` (with a second beside it for `css-change`, driving a font change
+that makes a title start truncating) and the badge's in `test/view/columns.test.ts`, which
+gained the case the hover-time check made awkward to state — an implied badge whose cap is
+NOT biting still explains itself and gains no level name it did not need.
 
 **Not checked here:** that the tooltip still *appears* in a vault, and that clearing one
 with `setTooltip(el, '')` actually removes it — the Obsidian typings do not say, and the

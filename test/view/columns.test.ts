@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { BOARD_WORKFLOW, boardVault, cardByTitle } from '../helpers/board';
 import { clickExpandAll, fixture, makeView, rowByTitle, treeOf, useViewHarness } from '../helpers/view';
@@ -487,25 +487,54 @@ describe('property columns', () => {
 
 describe('badges', () => {
 	it('puts the full level name in the tooltip once the cap truncates it', () => {
+		// The guarantee, not the mechanism: until 2026-08-10 the badge measured itself on
+		// `mouseover`, the same layout-read-in-a-pointer-event as the title's and in the
+		// same file. It is the batched pass now — see `syncTruncationTooltips` — so the
+		// widths are stated on the PROTOTYPE, because the render the pass runs at the end
+		// of rebuilds every row and a stub put on an element is on a node that is gone.
+		const realScroll = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollWidth')?.get;
+		const realClient = Object.getOwnPropertyDescriptor(Element.prototype, 'clientWidth')?.get;
+		const isBadge = (el: Element): boolean => el.classList.contains('pbl-badge-text');
+		const scrollWidth = vi.spyOn(Element.prototype, 'scrollWidth', 'get').mockImplementation(function (this: Element) {
+			return isBadge(this) ? 200 : Number(realScroll?.call(this) ?? 0);
+		});
+		const clientWidth = vi.spyOn(Element.prototype, 'clientWidth', 'get').mockImplementation(function (this: Element) {
+			return isBadge(this) ? 100 : Number(realClient?.call(this) ?? 0);
+		});
+		try {
+			const vault = new FakeVault();
+			// No type property: the level is implied, and the badge explains that
+			vault.addFile('Epic.md', { frontmatter: { order: 10 } });
+			vault.addFile('Child.md', { frontmatter: { type: 'Programme Increment', order: 10 }, parentLink: 'Epic' });
+			const { containerEl, view } = makeView(vault, { levels: 'Programme Increment, Epic' });
+			view.onDataUpdated();
+
+			const badge = rowByTitle(containerEl, 'Epic').querySelector<HTMLElement>('.pbl-badge');
+			expect(badge?.classList.contains('pbl-implied')).toBe(true);
+			// Both: the name the cap hid, and why the badge is dashed.
+			expect(badge?.dataset.tooltip).toContain('Epic');
+			expect(badge?.dataset.tooltip).toContain('Type property not set');
+		} finally {
+			scrollWidth.mockRestore();
+			clientWidth.mockRestore();
+		}
+	});
+
+	it('says only why the badge is dashed while the cap is not biting', () => {
+		// The other half, which the old hover-time check made awkward to state: an implied
+		// badge that FITS still has to explain itself, and must not have the level name
+		// appended to a tooltip nobody needed.
+		// The fixture above, unstubbed: jsdom reports zero for both widths, which is a badge
+		// whose cap is not biting.
 		const vault = new FakeVault();
-		// No type property: the level is implied, and the badge explains that
 		vault.addFile('Epic.md', { frontmatter: { order: 10 } });
 		vault.addFile('Child.md', { frontmatter: { type: 'Programme Increment', order: 10 }, parentLink: 'Epic' });
 		const { containerEl } = makeView(vault, { levels: 'Programme Increment, Epic' });
 
 		const badge = rowByTitle(containerEl, 'Epic').querySelector<HTMLElement>('.pbl-badge');
-		const text = badge?.querySelector<HTMLElement>('.pbl-badge-text');
-		if (!badge || !text) throw new Error('badge not rendered');
-		expect(badge.classList.contains('pbl-implied')).toBe(true);
-		expect(badge.dataset.tooltip).toContain('Type property not set');
-
-		// jsdom measures nothing, so stand in for a name wider than the 120px cap
-		Object.defineProperty(text, 'scrollWidth', { value: 200, configurable: true });
-		Object.defineProperty(text, 'clientWidth', { value: 100, configurable: true });
-		badge.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
-
-		// Both: the name the cap hid, and why the badge is dashed
-		expect(badge.dataset.tooltip).toContain('Epic');
-		expect(badge.dataset.tooltip).toContain('Type property not set');
+		expect(badge?.classList.contains('pbl-implied')).toBe(true);
+		expect(badge?.dataset.tooltip).toBe(
+			'Type property not set — level implied from position. Use "Assign missing properties" to write it.',
+		);
 	});
 });
