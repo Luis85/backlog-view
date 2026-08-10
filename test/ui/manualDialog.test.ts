@@ -142,13 +142,36 @@ describe('the point-of-need link', () => {
 		expect(content().querySelector('.pbl-manual-pane h3')?.textContent).toBe('Second');
 	});
 
-	it('runs the caller-supplied onClosed instead of resolving a default target', () => {
-		const parent = document.body.createDiv();
+	/**
+	 * `onClosed` is a TAIL, not a substitute: it runs only once resolving the live
+	 * opener AND falling back to `root` both fail. This is the exact composition round 3
+	 * fixed — the version before it ran `onClosed` unconditionally whenever a caller
+	 * supplied one, which is the boring case broken by a fix aimed entirely at the
+	 * failure modes: neither round 2's tests nor this one (before the rewrite) ever
+	 * drove a caller that supplies `onClosed` AND has an opener that survives.
+	 */
+	it('does not run onClosed when the live opener still resolves — tier 1 wins over a caller-supplied fallback', () => {
+		const root = document.body.createDiv();
 		let closed = 0;
-		manualLink(parent, {} as never, SECTIONS, { sectionId: 'one', label: 'Help', root: parent }, () => {
+		manualLink(root, {} as never, SECTIONS, { sectionId: 'one', label: 'Help', root }, () => {
 			closed += 1;
 		});
-		parent.querySelector<HTMLButtonElement>('.pbl-help-link')?.click();
+		const link = root.querySelector<HTMLButtonElement>('.pbl-help-link');
+		link?.click();
+		Modal.lastOpened?.close();
+		expect(closed).toBe(0);
+		expect(document.activeElement).toBe(link);
+	});
+
+	it('runs onClosed as the tail once both the live opener and the root fallback fail', () => {
+		const root = document.body.createDiv(); // no tabindex: tier 2 fails too
+		const wrap = root.createDiv();
+		let closed = 0;
+		manualLink(wrap, {} as never, SECTIONS, { sectionId: 'one', label: 'Help', root }, () => {
+			closed += 1;
+		});
+		wrap.querySelector<HTMLButtonElement>('.pbl-help-link')?.click();
+		root.empty(); // the opener is gone by closing time; `root` cannot take focus either
 		Modal.lastOpened?.close();
 		expect(closed).toBe(1);
 	});

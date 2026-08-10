@@ -1,9 +1,18 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Menu, Modal } from '../helpers/obsidian-mock';
 import { fixture, flush, key, makeView, treeOf, useViewHarness } from '../helpers/view';
 
 useViewHarness();
+
+// The real rule for `.pbl-busy`'s own `display: none` — needed so the busy-indicator
+// tests below can tell tier 1 (the live opener, resolved and confirmed visible)
+// genuinely failing from genuinely succeeding, the same reason `test/view/toolbarFit.
+// test.ts` loads it. Without this, jsdom's own default computed `display` (never
+// 'none' with no stylesheet loaded) would make the busy link read as visible whether
+// or not its container really is, in either direction.
+document.head.createEl('style', { text: readFileSync('styles/busy.css', 'utf8') });
 
 const help = (containerEl: HTMLElement) => {
 	const el = containerEl.querySelector<HTMLButtonElement>('.pbl-toolbar .pbl-help-btn');
@@ -125,6 +134,24 @@ describe('the manual is reachable where its questions are asked', () => {
 		expect(openedOn()).toBe('Setting up the view');
 	});
 
+	/**
+	 * The boring case, and the one round 2's own review never asked for: the config
+	 * warning stays rendered across the close (nothing fixed the configuration), so its
+	 * link is still exactly where the user left it. Focus has to return to THAT link,
+	 * not jump to `focusInBar`'s own fallback (`.pbl-help-btn`) — the composition bug
+	 * this round fixes made every caller with an `onClosed` (this door, and the busy
+	 * indicator below) skip tier 1 unconditionally, so this would have failed before
+	 * the fix regardless of whether the opener survived or not.
+	 */
+	it('returns focus to the config warning link itself when the configuration is still invalid at closing time', () => {
+		const { containerEl } = makeView(fixture(), { parentProperty: 'note.x', orderProperty: 'note.x' });
+		const link = containerEl.querySelector<HTMLElement>('.pbl-toolbar [data-pbl-section="setup"]');
+		link?.click();
+		expect(openedOn()).toBe('Setting up the view');
+		Modal.lastOpened?.close();
+		expect(document.activeElement).toBe(link);
+	});
+
 	// The opener can vanish while the dialog is up. Finish the batch BEFORE closing —
 	// a test that closes first passes even when the fallback is missing.
 	it('falls back to the help button when the busy indicator is gone by closing time', async () => {
@@ -157,6 +184,45 @@ describe('the manual is reachable where its questions are asked', () => {
 
 		Modal.lastOpened?.close();
 		expect(document.activeElement).toBe(containerEl.querySelector('.pbl-toolbar .pbl-help-btn'));
+	});
+
+	/**
+	 * The boring counterpart to the fallback test above: the batch is STILL running at
+	 * closing time, so `.pbl-busy` is still genuinely visible (`busy.css`, loaded at the
+	 * top of this file) and the link the user pressed is still exactly there. Tier 1
+	 * has to win over the `onClosed` this door also supplies — before this round's fix,
+	 * every door with an `onClosed` skipped tier 1 unconditionally, so this would have
+	 * jumped to `.pbl-help-btn` even though the opener never went anywhere.
+	 */
+	it('returns focus to the busy help link itself when its batch is still running at closing time', async () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault, {});
+		let release!: () => void;
+		const gate = new Promise<void>((resolve) => (release = resolve));
+		const fileManager = vault.app.fileManager as {
+			processFrontMatter: (file: unknown, fn: (fm: Record<string, unknown>) => void) => Promise<void>;
+		};
+		const original = fileManager.processFrontMatter.bind(fileManager);
+		fileManager.processFrontMatter = async (file, fn) => {
+			await gate;
+			return original(file, fn);
+		};
+
+		const tree = treeOf(containerEl);
+		key(tree, 'ArrowDown');
+		key(tree, 'ArrowDown', { altKey: true }); // starts a write held by the gate
+
+		const link = containerEl.querySelector<HTMLElement>('.pbl-busy .pbl-help-link');
+		link?.click();
+		expect(openedOn()).toBe('Safe writes and undo');
+
+		// Still in flight — nothing released the gate — so the busy indicator, and this
+		// link, are still on screen exactly as pressed.
+		Modal.lastOpened?.close();
+		expect(document.activeElement).toBe(link);
+
+		release();
+		await flush();
 	});
 
 	it('opens on creating and filing from the new-item prompt', () => {

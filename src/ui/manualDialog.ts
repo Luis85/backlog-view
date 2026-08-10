@@ -177,17 +177,18 @@ function isVisible(el: HTMLElement, boundary: HTMLElement): boolean {
  * busy indicator and the config warning — and each is an acceptance criterion of one of
  * the `Help for …` use cases rather than a convenience.
  *
- * **The guarantee, stated once rather than found five times as five separate
+ * **The guarantee, stated once rather than found seven times as seven separate
  * predicates:** after the manual closes, focus lands on a visible, focusable control —
  * whatever became of the control that opened it. Gone, hidden behind an ancestor,
- * detached by a rebuild, or never rendered at all, the answer is the same shape:
- * resolve the opener fresh (never a captured reference — see below); if that fails,
- * fall back to a destination that is actually guaranteed to exist.
+ * detached by a rebuild, clipped, or never rendered at all, the answer is the same
+ * shape: resolve the opener fresh (never a captured reference — see below); if that
+ * fails, fall back to a destination that is actually guaranteed to exist.
  *
- * That fallback is a two-tier default, tried in this order:
+ * The chain, tried in this order, and EVERY caller gets all three regardless of what it
+ * supplies — a caller's own fallback TERMINATES the chain, it does not pre-empt it:
  *
- * 1. **Resolve, don't capture, and check ancestors, not just the element.** `parent` —
- *    the shell the button was drawn into (`empty`, `warn`, `busy`) — is exactly what a
+ * 1. **The live opener, resolved from `root` and confirmed actually visible.** `parent`
+ *    — the shell the button was drawn into (`empty`, `warn`, `busy`) — is exactly what a
  *    full render throws away (`treeEl.empty()` / `barEl.empty()` destroy every child and
  *    rebuild them), so resolving FROM it, or focusing a captured reference to the
  *    button itself, both find a detached node by close time. `root` is the caller's own
@@ -196,22 +197,34 @@ function isVisible(el: HTMLElement, boundary: HTMLElement): boolean {
  *    render still drew one. `isVisible`, above, is what makes "reaches one" and "it is
  *    actually on screen" two different questions asked correctly, catching a hidden
  *    ANCESTOR, not only a hidden element.
- * 2. **`root` itself, but only when the caller made it a genuine focus target.** A
- *    caller whose door is not there and cannot be found still owes focus somewhere
- *    real: `root.tabIndex >= 0` is true of the tree (`treeEl`, the view's own single
- *    tab stop — `role="tree" tabindex="0"`, permanent) and false of the toolbar bar
- *    (`barEl` hosts several individually-focusable controls rather than being one
- *    itself). Focusing an element with no `tabindex` is a silent no-op in both a real
- *    browser and jsdom (confirmed empirically — neither moves focus off whatever a
- *    plain, non-tabbable `<div>` already held), so this tier is not a leap of faith.
+ * 2. **`root` itself, if it can take focus.** A caller whose door is not there and
+ *    cannot be found still owes focus somewhere real: `root.tabIndex >= 0` is true of
+ *    the tree (`treeEl`, the view's own single tab stop — `role="tree" tabindex="0"`,
+ *    permanent) and false of the toolbar bar (`barEl` hosts several
+ *    individually-focusable controls rather than being one itself). Focusing an element
+ *    with no `tabindex` is a silent no-op in both a real browser and jsdom (confirmed
+ *    empirically), so this tier is not a leap of faith.
+ * 3. **The caller's `onClosed`, if it supplied one — reached only when 1 and 2 both
+ *    fail.** `refocus`, below, tries 1 and 2 and reports whether either landed; the
+ *    click handler calls `onClosed` ONLY on a false. This is the fix for the SEVENTH
+ *    instance of this plan's missing-guarantee pattern, and the most instructive one:
+ *    the version before it composed the two halves as `onClosed ?? refocus`, which
+ *    reads as "prefer the caller's answer, otherwise resolve" but actually means "the
+ *    caller's answer REPLACES resolving, never runs beside it." Both toolbar doors
+ *    supply an `onClosed`, so neither ever reached tier 1 or 2 at all — closing the
+ *    manual with the config warning's own link still alive and visible exactly where
+ *    the user left it jumped focus to the general `?` button instead of returning it.
+ *    A fix aimed entirely at the failure modes (round 2's own tests were all of an
+ *    opener that had gone wrong) broke the ordinary case where nothing went wrong,
+ *    because nothing tested that case with a caller that also supplies a fallback.
+ *    `onClosed` is a TAIL, not a substitute — it runs after resolving fails, never
+ *    instead of trying.
  *
  * A caller whose `root` fails tier 2 — the toolbar's two doors — MUST supply its own
  * `onClosed` naming a real destination (`focusInBar`, which has its OWN further
- * fallback chain down to the first visible control in the row). That is not a gap in
- * the guarantee; it is the guarantee's other half, stated as a constraint on the
- * caller rather than as more cleverness in the default: a `root` that cannot receive
- * focus itself is a `root` whose caller has to say where focus goes instead, and the
- * two toolbar doors both do.
+ * fallback chain down to the first visible control in the row), or focus has nowhere
+ * left to go. That is not a gap in the guarantee; it is the guarantee's other half,
+ * stated as a constraint on the caller rather than as more cleverness in the default.
  *
  * **What this default deliberately does NOT attempt: clipping.** A control can be
  * connected, visible by every `display` in its ancestor chain, and still be scrolled or
@@ -228,13 +241,22 @@ function isVisible(el: HTMLElement, boundary: HTMLElement): boolean {
  * reopen exactly this question, and this paragraph is where the answer would have to
  * change.
  *
- * This plan found the same missing guarantee five times before this paragraph: the `?`
+ * **The new-item prompt's own door is the one caller that skips both explicit
+ * guarantees.** `root: el` (`view/interactions/create.ts`) is the modal's own
+ * `contentEl`, which carries no `tabindex`, so it fails tier 2 exactly as `barEl` does
+ * — and it supplies no `onClosed`, so tier 3 is empty too. It works anyway, but on an
+ * IMPLICIT assumption the other three doors do not need: that its opener cannot vanish
+ * or hide while its own modal is open, which is true today (nothing else rebuilds a
+ * modal's content) and would silently stop being true the moment something did.
+ *
+ * This plan found the same missing guarantee seven times before this paragraph: the `?`
  * button's own capture, the overflow entry's yanked-back focus, this function's own
- * captured `parent`, `focusInBar`'s single-level `display` check, and — arriving
- * together, the sixth finding — this function's missing fallback and the config
- * warning's clippable home. Every one was fixed correctly and in isolation and produced
- * the next one; this paragraph and the two-tier default above are the attempt to state
- * the guarantee once rather than find a seventh instance of it.
+ * captured `parent`, `focusInBar`'s single-level `display` check, this function's
+ * missing fallback and the config warning's clippable home (arriving together, the
+ * sixth), and now the composition that let a caller's fallback pre-empt resolving
+ * instead of terminating it. Every one was fixed correctly and in isolation and
+ * produced the next one; this paragraph and the three-tier chain above are the attempt
+ * to state the guarantee once rather than find an eighth instance of it.
  *
  * `target` bundles `sectionId`, `label` and `root` rather than taking them as three more
  * positional arguments — `max-params` caps a function at five, and `parent`, `app`,
@@ -249,15 +271,27 @@ export function manualLink(
 	onClosed?: () => void,
 ): HTMLButtonElement {
 	const link = parent.createEl('button', { cls: 'pbl-help-link', text: target.label, attr: { type: 'button' } });
-	const refocus = () => {
+	// Tiers 1 and 2. Reports whether either landed, so the click handler below can tell
+	// tier 3 (`onClosed`) apart from a substitute: a caller's fallback runs ONLY when
+	// this returns false, never unconditionally — see the doc comment's account of the
+	// composition that got this backwards.
+	const refocus = (): boolean => {
 		const live = target.root.querySelector<HTMLElement>(`.pbl-help-link[data-pbl-section="${target.sectionId}"]`);
 		if (live?.isConnected && isVisible(live, target.root)) {
 			live.focus();
-			return;
+			return true;
 		}
-		if (target.root.tabIndex >= 0) target.root.focus();
+		if (target.root.tabIndex >= 0) {
+			target.root.focus();
+			return true;
+		}
+		return false;
 	};
 	link.setAttribute('data-pbl-section', target.sectionId);
-	link.addEventListener('click', () => openManual(app, sections, target.sectionId, onClosed ?? refocus));
+	link.addEventListener('click', () =>
+		openManual(app, sections, target.sectionId, () => {
+			if (!refocus()) onClosed?.();
+		}),
+	);
 	return link;
 }
