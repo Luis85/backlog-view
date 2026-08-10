@@ -91,8 +91,15 @@ a node test that did would be measuring the runner.
   decision, which is not what the issue expected. Where it does bite is the reading:
   a Task nested straight under an Epic is retyped by the rung it occupies, not by
   the level it declares.
-- `model.roots` is the RENDERED forest (synthetic under focus); every data operation
-  (backfill, ranking parentless items, root-level outdent) must use `model.realRoots`.
+- `model.roots` is the PLAN's rendered forest (synthetic under focus, and re-rooted past
+  any catalog member); every data operation (backfill, ranking parentless items,
+  root-level outdent) must use `model.realRoots`. That rule stopped being advice the day a
+  second projection existed: an `order` is a number scoped to the notes sharing a parent,
+  and a `Test suite` and an `Epic` share the null one, so ranking against one projection's
+  slice of that group takes a midpoint a hidden root may already hold. Three lists, and
+  conflating any two breaks something — the RENDERED roots (what is on screen), the
+  POSITIONABLE roots (where a drop lands), and the RANKING group (`realRoots`, what number
+  it gets), which is not a projection's list at all and which no projection may narrow.
   Checked by lint in `writePlan.ts` and `interactions/create.ts` — the two files that
   rank. Elsewhere `model.roots` is correct and deliberate: `dropTargets.ts` and
   `structure.ts` reach it only after an earlier `focusRoot` return has ruled out the
@@ -109,13 +116,49 @@ a node test that did would be measuring the runner.
   `docs/issues/The dragged item is retyped, its descendants are not.md`. If it is ever
   decided the dragged item is genuinely special, say so **here**, rather than leaving the
   exemption to live in a predicate.
+- **There are TWO ladders**, and every rule that reads a rung asks `ladderFor` which one
+  first. `LEVELS` is the plan's and `TEST_LEVELS` is the test catalog's, and they **share
+  their deepest rung** — `Task` is a rung of both. That sharing is the load-bearing
+  choice, not a coincidence: it turns three separately-argued rules into consequences of
+  the structure. A typeless child of a `Test suite` is a `Test case` by plain
+  `childLevelIndex` clamping on the right ladder; *a `Task` takes its parent's projection
+  and every other type takes its own* IS the ladder chain, so catalog membership needs no
+  exception for one type; and a `Task` whose `Test case` parent is not in the model has no
+  parent ladder to chain from, so it falls to the plan with nothing read to find out.
+  `ladderFor` chains from the parent for exactly two inputs — `Task` and a note with no
+  `type` — and answers from the NAME for every other, including a name **neither** ladder
+  holds. That last clause is the one to keep: written as "fall through to the parent" it
+  sweeps an extra type, a marker or a custom name beneath a `Test case` into the catalog,
+  where the register says it is plan work in the wrong place. `inCatalog` is the whole
+  membership predicate, read from both directions, so the two projections cannot both
+  claim a row or both disown one — and because it asks the LADDER it asks the effective
+  type, which is what makes a typeless child of a suite a member. The cascade
+  (`computeTypeChanges`) descends ONE ladder — the one the destination hands out, or the
+  dragged item's own at the top level, since the top level is the plan's roots and the
+  catalog's at once — and crosses to neither, at the root of a moved subtree or nested
+  inside it. `keepsTypeOnMove` is the predicate the generated README derives its
+  "types a move leaves alone" sentence from; the test types are deliberately not in it,
+  because inside their own ladder they ARE retyped by position.
+- **A projection's forest is computed, never filtered** — `projectionForest`, beside
+  `collectFocusRoots`, asked twice with opposite predicates. `renderForest` drops a hidden
+  sibling *without descending through it*, so hiding rows loses everything under a hidden
+  parent: a `Test case` mis-dragged under a `PBI` is a root of the catalog and a hidden
+  child of the plan, and the `PBI` under a `Test case` is the mirror. One function both
+  ways, so the two directions cannot be argued separately and disagree. It marks a
+  promoted root `focusRoot` — the same category, so the four call sites that already
+  refuse to rank or reparent one need no edit — and it assigns depth by walking MEMBERS
+  ONLY. That last part is not a detail: both projections walk the same objects, so a walk
+  following every child has the plan's descent reach a promoted row through its excluded
+  parent and stamp the depth the catalog had just corrected. `model.catalog` is read off
+  the whole UNFOCUSED tree beside `deliverableResults`, for that field's own reason.
 - The vocabulary is **fixed**: `LEVELS` and `EXTRA_TYPES` in `settings.ts` are constants,
   not options. Making them configurable cost collision rules between the two lists, a
   "what folder does a name nobody chose get" question with no good answer, and a schema
   that had to be generated per view; what it bought was a rename. Being opinionated
-  deletes all of that, and every level rule now has exactly one list to hold for. A note
-  typed something else is still handled — it keeps its name and carries the ladder through,
-  the `Bugfix` case below.
+  deletes all of that. What it does NOT buy any more is "one list to hold for", which this
+  bullet claimed until the test catalog: there are two ladders, both fixed, and a level
+  rule holds for whichever `ladderFor` names. A note typed something else is still handled
+  — it keeps its name and carries the ladder through, the `Bugfix` case below.
 - **Extra types** (`EXTRA_TYPES` — `Issue`, `Bug` and `Idea`) are declared types that are
   NOT rungs — `itemTypes.ts` owns them. The ladder cannot express "a Bug holds Tasks
   wherever it hangs", because every ladder rule is "one rung below the parent", so an

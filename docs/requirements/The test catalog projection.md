@@ -2,7 +2,7 @@
 type: Feature
 parent: "[[Test Management]]"
 order: 30
-status: Open
+status: Done
 created: 2026-08-08
 source: user request
 ---
@@ -24,6 +24,10 @@ already exists under a different name.
 **Outcome** — The test catalog is a place you go to, not a thing that grows through the
 middle of the plan. A backlog owner who never opens it sees no difference in the tree they
 had before this epic.
+
+**Shipped.** Both PBIs are built, and the fourth projection needed exactly what this note
+predicted of it: `renderDeliverablesBoard` draws a filtered population, so a test has never
+been able to reach that screen and it took no rule.
 
 ## Use cases
 

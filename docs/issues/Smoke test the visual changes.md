@@ -366,3 +366,35 @@ is the list, eleven items, and it also fixed two claims in this note that had go
 before this branch touched anything: "the three-position toggle" is now four positions
 (the Deliverables board), and "the axis picker beside it" is a labelled menu button, not
 a segmented control. Closes again when someone has run it against a real vault.
+
+## The test catalog
+
+**Reopened 2026-08-10 (the test catalog).** A fifth toolbar position and two new badges,
+and the badge half is the kind this repository can never see. The list:
+
+1. **The test axis reads as a test at a glance**, in a real theme, light and dark. A
+   `Test suite` and a `Test case` badge carry a SOLID border in `--color-orange-rgb` where
+   every other badge's border is transparent — so they should read as *outlined* beside a
+   filled one. The `.pbl-implied` variant overrides to dashed and transparent, so a
+   typeless child of a suite should read as outlined AND implied rather than as either
+   alone. That composition is the one thing the harness cannot argue about at all.
+2. **Orange beside Epic's orange never appears together**, which is the claim the hue was
+   chosen on. Look for a screen drawing both: there should be none, since the two
+   populations are disjoint. If one exists, the choice is wrong and not merely untested.
+3. **Both icons resolve at 11px** rather than drawing a blank — `folder-check` for the
+   suite, `flask-conical` for the case, and `flask-conical` again on the toolbar's fifth
+   position. `test/harness/harness.test.ts` confirms the NAMES resolve in `lucide-static`;
+   it does not confirm what they look like at that size.
+4. **The toolbar still fits one row** with a fifth switcher position in it. The fit ladder
+   measures rendered text, and "Tests" is a fifth word in the widest control on the row.
+   Narrow the pane through every rung and check nothing wraps.
+5. **A generated view-option key holding a SPACE is acceptable to Bases.** `typeFolderKey`
+   lowercases the type name and keeps the space, so this ships
+   `typeFolder.test suite` and `typeFolder.test case` — the first option keys in this
+   plugin that are not one word. Open the view options, confirm both folder pickers appear
+   and are named legibly, set one, reopen the view and confirm it stuck. **This repository
+   cannot answer it at all**: nothing here runs Bases. If it is refused, the type-folder
+   mechanism needs a spelling rule and this increment needs a follow-up.
+6. **The catalog's empty state** draws its icon, its prose and its one button, with no
+   setup call to action beside it — unlike the board's and the roadmap's, this projection
+   needs nothing configured.

@@ -2,7 +2,7 @@
 type: Issue
 order: 70
 parent: "[[Theming and styling]]"
-status: Open
+status: Done
 priority: P3
 area: design
 created: 2026-08-08
@@ -93,11 +93,32 @@ than from one.
 
 ## Where it stands
 
-**One sharing has happened; the next is due.** The view is correct today — nine types, one
-documented pair — and nothing is blocked while the vocabulary stays at nine. The next
-declared type is where this bites, and [[A badge when the palette is full]] is the round
-that has to answer it: two test types arriving together, which is the case the second-axis
-option was written for and the case that makes taking it once cheaper than taking it twice.
+**Resolved for a same-family PAIR, and for nothing else.**
+[[A badge when the palette is full]] took the first option above: hue stays identity for
+the eight, and `Test suite` and `Test case` are told apart from every other type by a
+**second axis** — a solid border in the borrowed hue, where every other badge carries a
+transparent one, so a test reads as outlined where the rest read as filled. The hue they
+borrow is **orange**, Epic's, and the reason is the rule rather than the crowding: an
+`Epic` is a root by position in the plan and a `Test suite` is a root by nature in the
+catalog, and after [[Tests stay out of the plan]] the two populations are disjoint by
+construction, so no screen can draw both.
+
+What it cost: the arithmetic is now **eleven declared types on eight tokens**, with two
+documented sharings rather than one — Idea beside Task, and the test family beside Epic.
+Nothing was minted in `styles/`, so the Borrowed Palette Rule holds and the badges still
+track the user's theme.
+
+**This is not a general answer, and closing it must not read as one.** The axis works
+because there are TWO types arriving together and they are a family: it says *this is a
+test* before the icon says which kind, and it would hold a third test type for free. A
+twelfth type arriving ALONE belongs to no family, so it is back to the four shapes above
+and to a second sharing decision taken on its own — which is exactly the pair-by-pair
+habit that produced two greens on two branches. If that happens, reopen this rather than
+reaching for the axis.
+
+**Unverified here, as ever: appearance.** jsdom asserts classes rather than pixels, so
+whether the outline reads as a test at a glance in a real theme, light and dark, is a
+live-vault check and is on the smoke-test list rather than in the suite.
 
 What this issue asks of that round is only that the decision be **one decision**. Pair-by-
 pair is how two branches both reached for green.

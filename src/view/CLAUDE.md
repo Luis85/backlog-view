@@ -365,17 +365,42 @@ free of runtime code so imports stay cycle-free.
   `listbox` and the keydown dispatched to `handleBoardKeydown`. The column fit is the
   tree's — entering board mode resets the verdict to null and clears `pbl-hide-meta`, or a
   narrow-pane decision from tree mode would strip cells off cards.
-- The mode is `host.projection` — `'tree' | 'board' | 'roadmap'` — backed by the
+- The mode is `host.projection` — five of them now — backed by the
   collapse store (UI state, per saved view, per device) — never `settings` and never
   the `.base`: base settings are saved on the view, working position in localStorage.
+  **What a projection IS is asked, never compared**: `view/projection.ts` holds
+  `treeShaped`, `hidesCompleted`, `filterScopeFor`, `projectionPopulation`,
+  `projectionMember`, `rowVocabulary` and `offerableTypes`, and a lint rule forbids a bare
+  `projection === 'tree'` outside it. That is not tidiness — "tree-shaped" was six
+  equality checks, and a projection added beside `'tree'` rather than as one fails each
+  silently and differently: no column fitting, no refit on resize, the fit classes cleared
+  as though it were a card projection, two dead toolbar buttons, and a row menu with no
+  Move up, indent or outdent on a tree whose whole point is an order somebody chose.
+  Two things stay OUT of that module deliberately: `collapsiblePopulation` takes a
+  projection's items by name, because it decides what a bulk collapse TOUCHES rather than
+  whether a button is enabled; and the round trip through storage is closed by TYPE rather
+  than by a predicate — `PROJECTION_MODE` is a `Record<Projection, ProjectionMode | null>`,
+  so a projection mapped to a constant `readEntry` would refuse cannot compile.
   `setProjection` re-renders itself, because no config was set and no Bases refresh is
-  coming; the roadmap-axis pick (`setAxisPick`) follows the same rule. **The focus
-  level is that rule with one extra consequence**: it is stored the same way
+  coming, and it recomputes the filter index on the way — no gate anywhere would have
+  caught THAT omission, because an index is correct when built and wrong when the thing it
+  was built FOR changes underneath it. The roadmap-axis pick (`setAxisPick`) follows the
+  same re-render rule. **The focus level is that rule with one extra consequence**: it is
+  stored the same way
   (`setFocusLevel`), but it re-roots the MODEL rather than only the render, so it
   rebuilds through `refreshFromData` and the restore has to run BEFORE that build —
   which is why `refreshFromData` restores first and reads `focusLevel` off the store
   onto the settings it just resolved. Everything downstream still reads it as
-  `settings.focusLevel`; the `.base` is simply no longer where it comes from.
+  `settings.focusLevel`; the `.base` is simply no longer where it comes from. It is the
+  PLAN's control: the catalog is built from the unfocused tree and its picker is a static
+  label, and `collectFocusRoots` skips catalog members — a catalog `Task` is rung 2 of its
+  own ladder, which is `PBI`'s index on the plan's.
+- **Membership is asked once, in `rowHidden`**, beside the quick filter and the completed
+  toggle. That placement is what keeps a second projection small: the renderer, the
+  keyboard's move targets, the board's cards, the roadmap's rows and every count measured
+  over the same walk consult that one predicate already, so they inherit the exclusion
+  rather than each remembering it. It is NOT how a projection finds its ROOTS — hiding a
+  row does not lift its children (see `src/domain/CLAUDE.md` on `projectionForest`).
 - `CardDragController` (in `interactions/cardDrag.ts`) is ONE controller for both card
   projections. It collects every adapter registration's cleanup and runs them at the top
   of each render pass: the projection is rebuilt wholesale, and pragmatic listeners left

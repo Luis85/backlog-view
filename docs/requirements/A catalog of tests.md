@@ -25,6 +25,11 @@ and the half worth having first.
 suites in an order somebody chose, cases in an order somebody chose, and each case a
 document a stranger could execute.
 
+**Shipped, apart from the opening.** The two types, their rungs, their folders and their
+badge are built; [[A template for a test case]] is the one PBI still open, and it is the
+half that does not depend on [[Item Templates]] — a created case does not yet open for
+editing.
+
 ## Use cases
 
 - [[Test suite and test case as a ladder of their own]] — the two types, their rungs,
