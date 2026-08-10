@@ -5,7 +5,8 @@
  * `test/harness/obsidian.css` (Obsidian's real app.css, reduced, linked BEFORE this file
  * — see `harness.mjs`) defines the whole default palette itself, concretely, under
  * `.theme-light` / `.theme-dark` — the base scale, the named colours, the accent, and
- * `color-scheme` with them. Measured 2026-08-10, not assumed: of this file's variable
+ * `color-scheme` with them — that last one was a duplicate here too, deleted with the
+ * `.clickable-icon` rules. Measured 2026-08-10, not assumed: of this file's variable
  * declarations, ZERO are ones app.css leaves unset, and every one that remains below
  * carries app.css's own value byte for byte. Twelve that did NOT — the accent chain,
  * `--text-on-accent`, the hover overlays, `--shadow-s`, `--icon-size`/`--icon-stroke` —
@@ -18,9 +19,11 @@
  *   1. The palette below — redundant with app.css and kept for now rather than deleted.
  *      Deleting it changes nothing on the page; if a future re-reduction of app.css ever
  *      drops those blocks, `themeStub.test.ts` is what fails.
- *   2. Everything from `.svg-icon` down — the harness's OWN chrome: the leaf frame, the
- *      menu and modal widgets the module mock only records, the missing-icon marker.
- *      None of it is Obsidian's, and none of it has anywhere else to live.
+ *   2. The harness's OWN chrome, further down — the leaf frame, the menu and modal widgets
+ *      the module mock only records, the missing-icon marker. None of it is Obsidian's,
+ *      and none of it has anywhere else to live. What is NOT in that category, and was
+ *      here until review found it on 2026-08-10, is a rule restating something app.css
+ *      already says for the same selector: see the note above the `body` frame rule.
  *
  * What the page now shows is therefore Obsidian's DEFAULT appearance rather than a guess
  * at one. Still not a user's: a community theme replaces exactly these values, the accent
@@ -88,8 +91,6 @@ body {
  * these, and most do, so the page is still not a claim about a themed vault.
  */
 body.theme-dark {
-	color-scheme: dark;
-
 	--color-base-00: #1c1c1c;
 	--color-base-05: #212121;
 	--color-base-10: #232323;
@@ -119,8 +120,6 @@ body.theme-dark {
 }
 
 body.theme-light {
-	color-scheme: light;
-
 	--color-base-00: #ffffff;
 	--color-base-05: #fcfcfc;
 	--color-base-10: #fafafa;
@@ -150,41 +149,20 @@ body.theme-light {
 }
 
 /*
- * Obsidian's own baselines for the two things `setIcon` and the plugin's markup lean on
- * and neither defines. The partials size icons only where they want a size that is NOT
- * the default (`.pbl-shelf-icon .svg-icon` and its two dozen neighbours), and they say
- * `clickable-icon` on a button expecting the app to make it look like one — so without
- * these an icon-only control renders at whatever the SVG's intrinsic size is, which is
- * nothing, and the more specific plugin rules have no baseline to override.
+ * `.svg-icon`, `.clickable-icon` and its hover state were written here when this file was
+ * the only sheet — and they were still here, overriding app.css, until review caught them
+ * on 2026-08-10. app.css has all three: `svg.svg-icon` sizes an icon from the same
+ * `--icon-size` and `--icon-stroke`, and `.clickable-icon` carries the real control chrome
+ * (`padding: var(--size-2-2) var(--size-2-3)` — 4px 6px, not 4px all round), the real
+ * hover colour (`--icon-color-hover`, not `--text-normal`), plus the active, focus and
+ * disabled states this file never had. Every variable those rules read resolves here.
  *
- * The rules are this file's; the numbers in them are not — `--icon-size` and
- * `--icon-stroke` were spelled here until 2026-08-10 and now resolve from app.css, which
- * says the same 18px and 1.75px through `--icon-m`. The shapes are lucide's real ones.
- * None of it is a claim about what a THEMED vault draws.
+ * The measurement that missed them compared CUSTOM PROPERTIES only, which is why the
+ * "Obsidian's default appearance" claim was broader than the sheet for a few hours. The
+ * check that now holds it is in `test/harness/themeStub.test.ts`: a rule here may not
+ * restate a declaration for a selector app.css already styles.
  */
-.svg-icon {
-	width: var(--icon-size);
-	height: var(--icon-size);
-	stroke-width: var(--icon-stroke);
-	flex-shrink: 0;
-}
 
-.clickable-icon {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	padding: var(--size-4-1);
-	border: none;
-	border-radius: var(--radius-s);
-	background-color: transparent;
-	color: var(--icon-color);
-	cursor: var(--cursor);
-}
-
-.clickable-icon:hover {
-	background-color: var(--background-modifier-hover);
-	color: var(--text-normal);
-}
 
 /*
  * A bare `<button>`'s chrome — background, box-shadow, hover fill, padding, height,
@@ -204,12 +182,13 @@ body.theme-light {
  * harness supplies the frame the app would.
  */
 body {
-	margin: 0;
+	/*
+	 * The ONE thing app.css's own `body` rule cannot do here. It says `height: 100%`, which
+	 * needs an `html` height this page has no rule for — Obsidian's shell provides it.
+	 * Everything else that used to sit in this block (margin, background, colour, the font
+	 * family and size) is app.css's, and was being overridden by a guess until 2026-08-10.
+	 */
 	height: 100vh;
-	background-color: var(--background-primary);
-	color: var(--text-normal);
-	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-	font-size: var(--font-ui-small);
 }
 
 .pbl-harness-leaf {

@@ -9,6 +9,7 @@ import {
 	references,
 	resolves,
 	resolvesValue,
+	rules,
 	wrappers,
 } from '../helpers/cssVars';
 
@@ -184,6 +185,26 @@ describe('the harness sheets cover the stylesheet', () => {
 		expect(resolves('--killed', values)).toBe(false);
 		expect(resolves('--reader', values)).toBe(false);
 		expect(resolves('--rescued', values)).toBe(true);
+	});
+
+	it('never restates, in the stub, a declaration app.css already makes for that selector', () => {
+		// The check under the "Obsidian's default appearance" claim, and the one that was
+		// missing while `.clickable-icon` sat in the stub overriding app.css's padding and
+		// hover colour: the earlier measurement compared CUSTOM PROPERTIES and could not
+		// see an ordinary declaration. Variables are exempt because the palette duplication
+		// is known, measured identical, and deliberate; `height` is the frame rule, which
+		// app.css cannot supply on a page with no `html` height.
+		const styled = new Set(rules(readFileSync('test/harness/obsidian.css', 'utf8')).flatMap((rule) => rule.selectors));
+		const allowed = new Set(['height']);
+
+		const restated = rules(readFileSync('test/harness/theme.css', 'utf8'))
+			.filter((rule) => rule.selectors.some((selector) => styled.has(selector)))
+			.flatMap((rule) => rule.properties.filter((name) => !name.startsWith('--') && !allowed.has(name)));
+
+		expect(restated).toEqual([]);
+		// Not vacuous, and pinned to the instance: app.css does style the selector the
+		// deleted rules used, so this check would have caught them.
+		expect(styled.has('.clickable-icon')).toBe(true);
 	});
 
 	it('fails when a conditional wrapper it has never seen appears', () => {

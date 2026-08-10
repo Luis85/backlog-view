@@ -89,6 +89,12 @@ which jsdom cannot do at all, since it returns zeros from `getBoundingClientRect
   gets Obsidian's own rule rather than a guessed one. `theme.css` carries no element
   defaults at all now, `button` included: see `test/CLAUDE.md`'s "What it is faithful
   about" for why a guessed baseline beside a real one was two answers to one question.
+  **Update (2026-08-10):** "no element defaults at all" was written a day early. The stub
+  went on overriding app.css's `.svg-icon` and `.clickable-icon` — real padding, real
+  hover colour, and the active and focus states it never had — until review found them,
+  because the pass that removed its redundant colours compared custom properties only. A
+  check now refuses any rule in the stub that restates a declaration app.css makes for the
+  same selector, which is the shape this bullet's claim needed and did not have.
   The element-default gap this bullet used to describe as narrower-but-open is what that
   change closes, one Obsidian rule at a time as the reduction's coverage grows; the theme
   half above is unaffected and stays open for the reason stated.

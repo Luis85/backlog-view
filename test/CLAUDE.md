@@ -149,13 +149,18 @@ not:** a user's colours, and any layout a partial leans on an Obsidian element d
 supply rather than writing itself. Two files answer that now, in order:
 `test/harness/obsidian.css` is Obsidian's REAL app.css, reduced to the rules the harness
 exercises (its header states what was kept and why), and `test/harness/theme.css` carries
-the harness's own chrome — `.svg-icon`, `.clickable-icon`, the leaf frame, the menu and
-modal widgets — plus a copy of the palette that is now redundant with the app sheet. Loading the real sheet first is what makes an
+the harness's own chrome — the leaf frame, the menu and modal widgets, the missing-icon
+marker — plus a copy of the palette that is now redundant with the app sheet. Loading the real sheet first is what makes an
 element default present at all rather than approximated: a card-children disclosure whose
 toggle rendered as a centred, boxed native button shipped looking right here and wrong in
 a vault (2026-08-08), because the stub then had no `button` rule and nothing had guessed
 one. That episode is also why the stub no longer carries hand-written element defaults —
-a guessed baseline beside a real one is two answers to one question.
+a guessed baseline beside a real one is two answers to one question. That sentence was
+written before it was true: `.svg-icon`, `.clickable-icon` and its hover state stayed on
+until 2026-08-10, overriding app.css's real padding (4px vs 4px 6px) and hover colour,
+because the pass that deleted the stub's redundant COLOURS compared custom properties and
+could not see an ordinary declaration. `themeStub.test.ts` now refuses any rule here that
+restates a declaration app.css already makes for the same selector.
 
 This narrows the gap; it does not close it. The reduced sheet keeps only what the
 harness was driven through, so an element default that no driven state reached is still

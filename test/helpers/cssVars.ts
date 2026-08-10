@@ -118,6 +118,25 @@ export function wrappers(css: string): Set<string> {
 }
 
 /**
+ * Every ordinary rule in a sheet: the selectors it names, and the properties it sets.
+ *
+ * For asking whether one sheet restates what another already says — the question the
+ * custom-property comparison could not answer, and the one that let `.clickable-icon`
+ * sit here overriding app.css while the notes claimed the page drew Obsidian's own.
+ */
+export function rules(css: string): { selectors: string[]; properties: string[] }[] {
+	const found: { selectors: string[]; properties: string[] }[] = [];
+	eachBlock(css, (selectors, _wrappers, body) => {
+		if (selectors[0]?.startsWith('@')) return;
+		found.push({
+			selectors,
+			properties: [...body.matchAll(/(?:^|;)\s*([\w-]+)\s*:/g)].map((match) => match[1]),
+		});
+	});
+	return found;
+}
+
+/**
  * The `var()` references at the TOP level of a value — the name each reads, and the
  * fallback text after its first comma, if it has one.
  *
