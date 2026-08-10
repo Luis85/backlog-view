@@ -192,8 +192,9 @@ const FINDING: ManualSection = {
 			text:
 				"A row the base's own filter excluded, kept only so the hierarchy around a real " +
 				'result stays correct — hover for "Not in this base\'s filter — shown to keep the ' +
-				'hierarchy". No state chip, no Set type or Set state, no reparenting, never ' +
-				'draggable. A row that looks inert for no obvious reason is likely this marker.',
+				'hierarchy". Its state, if it has one, still shows, as a static chip that cannot ' +
+				'be clicked; no Set type or Set state, no reparenting, never draggable. A row that ' +
+				'looks inert for no obvious reason is likely this marker.',
 		},
 		{
 			term: 'Nothing showing at all',
@@ -272,10 +273,10 @@ const WRITES: ManualSection = {
 			text:
 				'A batch is refused whole if any write in it would touch a note the base excluded — ' +
 				'better a change fails loudly than half-applies. Such a note renders only to keep the ' +
-				'tree\'s shape: no state chip, no Set type, no reparenting. Undo is the one ' +
-				'exception — a batch being taken back was authorized when it was first written, ' +
-				'before the note (perhaps) left the filter, so undo replays it without repeating this ' +
-				'check.',
+				"tree's shape: its state chip, if it has one, is static and unclickable, and there " +
+				'is no Set type, no reparenting. Undo is the one exception — a batch being taken ' +
+				'back was authorized when it was first written, before the note (perhaps) left the ' +
+				'filter, so undo replays it without repeating this check.',
 		},
 		{
 			term: 'A misconfigured view writes nothing',
@@ -297,18 +298,14 @@ const SETUP: ManualSection = {
 			term: 'The toolbar\'s ✨ Assign missing properties',
 			text:
 				'The fast way to configure an EXISTING backlog, as Create backlog is for a new one. ' +
-				'It runs the same config gate as every other write first, then does two things in one ' +
-				'press: binds this view\'s suggested key to every optional property you have not named ' +
-				'— e.g. state, the date stamps, risk, the roadmap\'s horizon and dates — never one you ' +
-				'have set, and never one you have deliberately cleared, since Bases can tell ' +
-				'"untouched" from "set to nothing". It then backfills type and order onto notes ' +
-				'missing them, and — for the properties that describe a slot rather than a ' +
-				'relationship — an empty value for each newly-bound key onto every note that lacks ' +
-				'it, without overwriting anything already there. It never writes to a note the Base ' +
-				'excluded, and it never guesses a type for an item whose parent link does not resolve ' +
-				'to a loaded item — that item\'s real level is unknowable, so it is left alone rather ' +
-				'than typed from a false top-level position. The board and the roadmap offer the same ' +
-				'action, worded "Add the default properties", from their own unconfigured empty states.',
+				'Config gate first, then two things in one press: binds this view\'s suggested key ' +
+				'to every optional property you have not named — never one you have set or ' +
+				'deliberately cleared, since Bases tells "untouched" from "set to nothing" — then ' +
+				'backfills type, order and (for slot properties, not relationships) an empty value ' +
+				'onto notes lacking them, overwriting nothing. Never writes to an excluded note, and ' +
+				'never guesses a type for a parent link that resolves nowhere. The board and the ' +
+				'roadmap offer the same action, worded "Add the default properties", from their ' +
+				'own unconfigured empty states.',
 		},
 		{
 			term: 'What the tree is',
@@ -362,9 +359,10 @@ const SETUP: ManualSection = {
 				'The workflow states offered for writing, done values, started values, and Show ' +
 				'completed items — deciding the rollups, done styling and which subtrees render. ' +
 				'A WIP limit and leave-column policy are offered per state, requirements only — ' +
-				'Deliverables carries no equivalent. Its own states/done-values boxes matter only ' +
-				'once Deliverables has its own state property above; blank alongside that, they ' +
-				'inherit these values too.',
+				'Deliverables carries no equivalent. Its own states/done-values boxes win the ' +
+				'moment either is filled in, whatever the property above is; only an EMPTY box\'s ' +
+				'fallback depends on it — these values with a shared property, the shipped ' +
+				'defaults once Deliverables has its own.',
 			keys: [
 				'stateValues', 'doneValues', 'startedStates', 'showCompleted',
 				'deliverableStateValues', 'deliverableDoneValues',
@@ -397,9 +395,10 @@ const SETUP: ManualSection = {
 		{
 			term: 'What the Base still owns',
 			text:
-				"The filter, the sort that orders unranked items, and which properties are " +
-				"visible at all are the Base's own settings — this view only decides whether " +
-				'those render as columns, and how wide, once the Base names them.',
+				'The filter, the sort that orders unranked items, and which properties are ' +
+				"visible at all are the Base's own settings, reached from the same toolbar — " +
+				'this view only decides whether those render as columns, and how wide, once ' +
+				'the Base names them.',
 		},
 		{
 			term: "What this view ignores, and what it can't work around",
