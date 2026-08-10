@@ -20,15 +20,20 @@ import { describe, expect, it } from 'vitest';
  * accepts for its own three assertions — the instrument can see the version files agree,
  * not that either one is correct.
  *
- * Two things a looser match let through, caught by review before this test shipped: a
- * heading missing its `- <date>` (RELEASING.md's own rule, unchecked), and a version
- * heading placed ABOVE `[Unreleased]` rather than below it — both read as "first" to a
- * pattern with no date and no anchor to `[Unreleased]`'s own position. `DATED_VERSION`
- * requires the date; slicing from `[Unreleased]` onward before matching requires the
- * heading to be at or after it, which is the only place Keep a Changelog puts one.
+ * Three things a looser match let through, each caught by review before this test
+ * reached `main`: a heading missing its `- <date>` (RELEASING.md's own rule, unchecked);
+ * a version heading placed ABOVE `[Unreleased]` rather than below it; and — the one the
+ * first fix still missed — a malformed heading sitting FIRST below `[Unreleased]`, ahead
+ * of a correctly dated one further down. `DATED_VERSION.exec` used with `matchAll` finds
+ * the first heading that already happens to be well-formed, filtering before ordering
+ * decides "first" — so a malformed heading above a correct one was invisible to it. The
+ * fix picks the first heading LINE unconditionally (`HEADING`, no date required) and
+ * validates only that one against `DATED_VERSION`: a malformed heading in first place now
+ * fails on its own, rather than being skipped in favour of whatever matches further down.
  */
 const UNRELEASED = /^## \[Unreleased\]$/m;
-const DATED_VERSION = /^## \[(\d+\.\d+\.\d+)\] - \d{4}-\d{2}-\d{2}$/gm;
+const HEADING = /^## \[[^\]]+\].*$/gm;
+const DATED_VERSION = /^## \[(\d+\.\d+\.\d+)\] - \d{4}-\d{2}-\d{2}$/;
 
 describe('the changelog names the released version', () => {
 	const manifest = JSON.parse(readFileSync('manifest.json', 'utf8'));
@@ -39,8 +44,10 @@ describe('the changelog names the released version', () => {
 	});
 
 	it('names the manifest version, dated, as the first heading below [Unreleased]', () => {
-		const afterUnreleased = changelog.slice(changelog.search(UNRELEASED));
-		const [firstVersion] = [...afterUnreleased.matchAll(DATED_VERSION)].map((m) => m[1]);
-		expect(firstVersion).toBe(manifest.version);
+		const unreleased = UNRELEASED.exec(changelog);
+		const afterUnreleased = changelog.slice(unreleased.index + unreleased[0].length);
+		const [firstHeading] = [...afterUnreleased.matchAll(HEADING)].map((m) => m[0]);
+		const dated = firstHeading ? DATED_VERSION.exec(firstHeading) : null;
+		expect(dated?.[1]).toBe(manifest.version);
 	});
 });
