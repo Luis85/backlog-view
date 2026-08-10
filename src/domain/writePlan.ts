@@ -552,16 +552,7 @@ function renumberWrites(
  * roadmap is indistinguishable from a decision.
  */
 
-/**
- * The three workflow-state fields' own resolved key, by field — `state`'s is always
- * `settings.stateKey` (it has no fallback to BE one), and the other two are the same
- * fallback `stateKeyFor` itself reads. One table rather than three separate
- * `isDeliverableType`/`inCatalog` gates: those answered "whose workflow is this field
- * for" by re-deriving the item's category, which is the question `stateKeyFor` already
- * answers. Comparing each field's own resolved key against `stateKeyFor(settings, item)`
- * says the same thing through the one function that decides it — a field belongs on this
- * item exactly when its key IS the key this item's workflow actually uses.
- */
+/** Each workflow-state field's own resolved key — `state`'s never falls back to be one. */
 const WORKFLOW_STATE_KEY: Partial<Record<OptionalField, (settings: BacklogSettings) => string>> = {
 	state: (settings) => settings.stateKey,
 	deliverableState: resolvedDeliverableStateKey,
@@ -571,15 +562,15 @@ const WORKFLOW_STATE_KEY: Partial<Record<OptionalField, (settings: BacklogSettin
 function missingKeyStubs(item: BacklogItem, settings: BacklogSettings): OptionalField[] {
 	const stubs: OptionalField[] = [];
 	for (const field of OPTIONAL_FIELDS) {
-		// The requirements key and the two secondary workflow keys all belong on an item
-		// only when THIS item's own workflow is the one that reads them — not every item
-		// once a secondary workflow is on a key of its own, or a catalog row and a
-		// Deliverable would each get an empty `stateKey` stub the row never consults.
-		// `stateKeyFor` is the one place that decides which key an item's workflow uses;
-		// asking it here is the same question the chip and the menu ask rather than a
-		// fourth opinion, and shared keys are the common case that falls out correctly
-		// without a special case: when a secondary key falls back, both sides read
-		// `settings.stateKey` and the gate does nothing.
+		// A workflow-state field is stubbed only when its own resolved key IS the key
+		// `stateKeyFor` says THIS item's workflow reads — asked by KEY EQUALITY, not by
+		// re-deriving the item's category, so a secondary key left unset (falling back to
+		// `settings.stateKey`, the shipped default) still gets `state` stubbed rather than
+		// skipped. Two fields legitimately CAN resolve to one key — `configProblems` exempts
+		// exactly these three labels from its collision report — and both then pass; that is
+		// harmless rather than narrowed further, since `stubKeys`/`applyInto`
+		// (`src/storage/writeKeys.ts`, `src/storage/frontmatter.ts`) write an absent key once
+		// and drop the rest.
 		const ownKey = WORKFLOW_STATE_KEY[field];
 		if (ownKey && ownKey(settings) !== stateKeyFor(settings, item)) continue;
 		// A named horizon property with no values is an UNCONFIGURED bucket axis — the

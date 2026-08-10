@@ -131,9 +131,15 @@ describe('computeInitWrites — the test workflow state stub', () => {
 		// Both secondary workflows on keys of their own, so neither a test nor a Deliverable
 		// reads `status` — and a stub for it would be an empty property the row never uses.
 		// The Deliverable half is not new: `state` has never had a membership gate.
+		//
+		// A typeless child of `Case.md` sits beside it: a wrong `isTestType(item.typeName)`
+		// gate would pass on `Case.md` alone (it IS typed `Test case`) while missing this
+		// row, which is a catalog member only by its LADDER — the same distinction the
+		// membership rule states everywhere else in this codebase.
 		const vault = new FakeVault();
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
 		vault.addFile('Case.md', { frontmatter: { type: 'Test case', order: 20 } });
+		vault.addFile('Typeless.md', { frontmatter: { order: 10 }, parentLink: 'Case' });
 		vault.addFile('Runbook.md', { frontmatter: { type: 'Deliverable', order: 30 } });
 		const settings = settingsWith({
 			stateKey: 'status',
@@ -145,10 +151,54 @@ describe('computeInitWrites — the test workflow state stub', () => {
 			computeInitWrites(model, settings).find((w) => w.file.path === path)?.stubs ?? [];
 		expect(stubsFor('Epic.md')).toContain('state');
 		expect(stubsFor('Case.md')).not.toContain('state');
+		expect(stubsFor('Typeless.md')).not.toContain('state');
 		expect(stubsFor('Runbook.md')).not.toContain('state');
 		// And each still gets its OWN workflow's key, so this narrows nothing it should not.
 		expect(stubsFor('Case.md')).toContain('testState');
+		expect(stubsFor('Typeless.md')).toContain('testState');
 		expect(stubsFor('Runbook.md')).toContain('deliverableState');
+	});
+
+	it('stubs the requirements state on every item when the secondary keys fall back to it', () => {
+		// The narrowing above only fires while a secondary key is its OWN, distinct
+		// property. Left unset (the shipped default), both secondaries fall back to
+		// `stateKey` — so `state` belongs on a catalog member and a Deliverable too, same
+		// as on a plan item. A CATEGORY-shaped gate (skip `state` outright for a
+		// Deliverable or a catalog member, the form the two pre-existing gates used) gets
+		// this backwards: it would stop ✨ from ever creating the very key these rows read
+		// on a fresh vault.
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Case.md', { frontmatter: { type: 'Test case', order: 20 } });
+		vault.addFile('Runbook.md', { frontmatter: { type: 'Deliverable', order: 30 } });
+		const settings = settingsWith({ stateKey: 'status' });
+		const model = buildModel(vault.app, vault.entries(), settings);
+		const stubsFor = (path: string) =>
+			computeInitWrites(model, settings).find((w) => w.file.path === path)?.stubs ?? [];
+		expect(stubsFor('Epic.md')).toContain('state');
+		expect(stubsFor('Case.md')).toContain('state');
+		expect(stubsFor('Runbook.md')).toContain('state');
+	});
+
+	it('stubs every workflow-state field whose resolved key coincides, deduped at the write boundary', () => {
+		// `configProblems` exempts exactly these three labels from the collision report, so
+		// a vault CAN point `state`, `deliverableState` and `testState` at one explicit key
+		// on purpose. The gate asks each field's own resolved key against `stateKeyFor`, not
+		// the item's category, so more than one field passes on the same item here — and
+		// that is not narrowed further: `stubKeys`/`applyInto` (`src/storage/frontmatter.ts`,
+		// `src/storage/writeKeys.ts`) write the shared key once and drop the rest, so a plan
+		// naming all three costs nothing extra on disk.
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Case.md', { frontmatter: { type: 'Test case', order: 20 } });
+		vault.addFile('Runbook.md', { frontmatter: { type: 'Deliverable', order: 30 } });
+		const settings = settingsWith({ stateKey: 'status', deliverableStateKey: 'status', testStateKey: 'status' });
+		const model = buildModel(vault.app, vault.entries(), settings);
+		const stubsFor = (path: string) =>
+			computeInitWrites(model, settings).find((w) => w.file.path === path)?.stubs ?? [];
+		for (const path of ['Epic.md', 'Case.md', 'Runbook.md']) {
+			expect(stubsFor(path)).toEqual(expect.arrayContaining(['state', 'deliverableState', 'testState']));
+		}
 	});
 });
 

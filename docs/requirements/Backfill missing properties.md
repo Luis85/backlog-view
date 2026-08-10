@@ -67,18 +67,23 @@ frontmatter, **I want** one button that sets the properties up and writes them f
   descends **through** it, so results below one are still backfilled. Its `order` is still
   *read* for the sibling maximum, because it is on screen: a backfill that fills in blanks
   must not reorder the tree by placing an item above a row the user can see.
-- **3b — a configured property belongs to a workflow this item does not follow.** There
-  are three state workflows now (requirements, Deliverable, test), each keyed by its own
-  optional property, and a note follows exactly one — its type, or its ladder
-  ([[A workflow for the tests]]). The state property this item's own workflow does not
-  read is never stubbed onto it, even when it is configured: a `Test case` gets a
-  `testState` stub and not a `state` one, and a `Deliverable` gets a `deliverableState`
-  stub and not a `state` one, so pressing ✨ never leaves an empty, unreadable property
-  beside the one the row actually shows. Shared keys are unaffected — when a secondary
-  workflow's key falls back to the requirements one, both name the same property and the
-  gate does nothing (`stateKeyFor` in `src/domain/board.ts` is the one place that decides
-  which key an item's workflow uses; `missingKeyStubs` asks it rather than re-deriving the
-  answer).
+- **3b — a configured property's key differs from the one this item's own workflow
+  reads.** There are three state workflows now (requirements, Deliverable, test), each
+  keyed by its own optional property, and a note follows exactly one — its type, or its
+  ladder ([[A workflow for the tests]]). `state`, `deliverableState` and `testState` are
+  each stubbed only when their own resolved key IS the key `stateKeyFor` reads for THIS
+  item — asked by key, not by re-deriving the item's category. In the ordinary
+  configuration (each workflow's key distinct, or a secondary key left unset and falling
+  back to the requirements one) that means exactly one of the three lands on a given
+  item: a `Test case` gets a `testState` stub and not a `state` one, and a `Deliverable`
+  gets a `deliverableState` stub and not a `state` one, so pressing ✨ never leaves an
+  empty, unreadable property beside the one the row actually shows. **It is not narrowed
+  by category, though** — a vault MAY point two of the three properties at the same
+  explicit key on purpose (`configProblems` allows exactly this pairing), and there every
+  field resolving to that key is stubbed together: they name one property, and creating
+  it once is what a shared key means. (`stateKeyFor` in `src/domain/board.ts` is the one
+  place that decides which key an item's workflow uses; `missingKeyStubs` asks it rather
+  than re-deriving the answer.)
 - **4a — the item is an orphan**, its parent link resolving to nothing. `order` is written;
   `type` is not. Its real level is unknowable, so an implied one would be derived from the
   provisional top-level position the broken link put it in — a guess about a guess.
