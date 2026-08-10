@@ -373,11 +373,13 @@ a segmented control. Closes again when someone has run it against a real vault.
 and the badge half is the kind this repository can never see. The list:
 
 1. **The test axis reads as a test at a glance**, in a real theme, light and dark. A
-   `Test suite` and a `Test case` badge carry a SOLID border in `--color-orange-rgb` where
-   every other badge's border is transparent — so they should read as *outlined* beside a
-   filled one. The `.pbl-implied` variant overrides to dashed and transparent, so a
-   typeless child of a suite should read as outlined AND implied rather than as either
-   alone. That composition is the one thing the harness cannot argue about at all.
+   `Test suite` badge carries a SOLID border in `--color-orange-rgb` and a `Test case`
+   badge one in `--color-cyan-rgb` — the two used to share orange and no longer do (see
+   the colour-split check below) — where every other badge's border is transparent, so both should read
+   as *outlined* beside a filled one. The `.pbl-implied` variant overrides to dashed and
+   transparent, so a typeless child of a suite should read as outlined AND implied rather
+   than as either alone. That composition is the one thing the harness cannot argue about
+   at all.
 2. **Orange beside Epic's orange never appears together**, which is the claim the hue was
    chosen on. Look for a screen drawing both: there should be none, since the two
    populations are disjoint. If one exists, the choice is wrong and not merely untested.
@@ -398,3 +400,27 @@ and the badge half is the kind this repository can never see. The list:
 6. **The catalog's empty state** draws its icon, its prose and its one button, with no
    setup call to action beside it — unlike the board's and the roadmap's, this projection
    needs nothing configured.
+7. **The `Test management` group renders correctly in Obsidian's own view-options pane.**
+   Open the view options and find the group, named **Test management**. It should hold
+   three controls in this order: **Test state property** (a property picker — Obsidian's
+   own control, offering the base's own properties, not a text field — with the
+   placeholder/suggested value `status`), **Test workflow states (in order)** (a plain
+   text field, showing the placeholder `Draft, Ready, Approved` when empty), and
+   **Test states that count as done** (a plain text field, showing the placeholder
+   `Done, Closed, Completed, Removed` when empty). Failure is any of the three missing,
+   out of order, mislabelled, rendered as the wrong control type (a property picker
+   drawn as free text, or vice versa), or a placeholder not appearing in its field while
+   empty. Nothing here checks that a value typed into either text field actually takes —
+   only that the group and its controls draw right.
+8. **`Test suite` (orange) and `Test case` (cyan) read as two colours, and both still
+   read as tests.** Point a Base at `docs/`, or a scratch vault with a `Test suite` and a
+   `Test case` note, and get a `Test suite` badge and a `Test case` badge on screen
+   together, in both light and dark. Two separate
+   open questions, neither answerable here: **(a)** do the two badges actually read as
+   two distinguishable colours under a real theme, rather than converging toward one
+   under a theme that redefines orange and cyan close together; and **(b)** does each
+   still read as a *test* — via the shared outlined-border axis — rather than being
+   mistaken for the type it now shares its hue with, `Epic` (also orange) for the suite
+   and `Milestone` (also cyan) for the case. Failure is either badge being indistinguishable
+   from its hue-sharing sibling, or the two test badges being indistinguishable from each
+   other, in either scheme.
