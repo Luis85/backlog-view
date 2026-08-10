@@ -21,17 +21,13 @@ import { AxisWrite, ItemWrite } from '../domain/writePlan';
  */
 
 /**
- * Whether a write carries a Deliverable-state change, set or removed. Its own function
- * to keep `touchedKeys` inside the complexity budget — inlined, the pair of branches
- * puts it at 17 against a cap of 16.
+ * Whether a write carries a Deliverable-state change, set or removed. Its own function to
+ * keep `touchedKeys` inside the complexity budget — its test-workflow twin inlines fine
+ * alone (15 against the cap of 16), but inlining BOTH pairs of branches puts it at 17, so
+ * one of the two has to stay extracted and this is the one that does.
  */
 function deliverableStateWritten(write: ItemWrite): boolean {
 	return write.removeDeliverableStateKey || write.deliverableState !== undefined;
-}
-
-/** The test-workflow twin of `deliverableStateWritten`, kept out of `touchedKeys` for the same budget reason. */
-function testStateWritten(write: ItemWrite): boolean {
-	return write.removeTestStateKey || write.testState !== undefined;
 }
 /**
  * The configured keys one axis write touches, each with the value it will write.
@@ -95,7 +91,7 @@ export function touchedKeys(settings: BacklogSettings, write: ItemWrite): string
 		// Same RESOLVED keys `applyInto` just wrote: capture and apply must read the same
 		// fallback, or a key written under it would have no inverse to undo it with.
 		[deliverableStateWritten(write), resolvedDeliverableStateKey(settings)],
-		[testStateWritten(write), resolvedTestStateKey(settings)],
+		[write.removeTestStateKey || write.testState !== undefined, resolvedTestStateKey(settings)],
 		[write.startedDate !== undefined, settings.startedDateKey],
 		[write.finish !== undefined, settings.finishedDateKey],
 		[write.risk !== undefined, settings.riskKey],
