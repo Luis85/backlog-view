@@ -1,5 +1,5 @@
 import { BacklogViewHost, DrawnColors } from '../host';
-import { paletteDone, stateColorClass, StatePalette } from '../../domain/board';
+import { paletteDone, stateColorPaint, StatePalette } from '../../domain/board';
 import { activeAxis } from '../../domain/roadmap';
 
 /**
@@ -144,16 +144,21 @@ function renderPaletteSwatches(host: BacklogViewHost, section: HTMLElement, pale
 	for (const state of palette.values) {
 		const done = paletteDone(palette, state);
 		anyDone ||= done;
-		// `state` came out of `palette.values`, so the class is never null here; the guard
-		// is the compiler's, not a case.
-		const cls = done ? 'pbl-legend-done' : stateColorClass(host.settings, palette, state);
-		if (cls) addSwatch(section, cls, state);
+		// The swatch asks `stateColorPaint`, the very function the bar asks — one answer, so
+		// the strip cannot key a colour the grid does not draw, whether that colour came from
+		// a name or from the picker. `state` came out of `palette.values`, so the paint is
+		// never null here; the guard is the compiler's, not a case.
+		const paint = stateColorPaint(host.settings, palette, state);
+		if (done) addSwatch(section, 'pbl-legend-done', state);
+		else if (paint) addSwatch(section, paint.cls, state, paint.color);
 	}
 	return anyDone;
 }
 
-function addSwatch(legendEl: HTMLElement, swatchCls: string, label: string): void {
+function addSwatch(legendEl: HTMLElement, swatchCls: string, label: string, color?: string | null): void {
 	const item = legendEl.createDiv({ cls: 'pbl-legend-item' });
-	item.createSpan({ cls: `pbl-legend-swatch ${swatchCls}` });
+	const swatch = item.createSpan({ cls: `pbl-legend-swatch ${swatchCls}` });
+	// The bar's own token, set the same way on the same rule — see `renderBarRow`.
+	if (color) swatch.setCssProps({ '--pbl-state-color': color });
 	item.createSpan({ cls: 'pbl-legend-label', text: label });
 }

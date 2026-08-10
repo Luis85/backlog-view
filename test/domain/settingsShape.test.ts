@@ -86,23 +86,25 @@ describe('settingsInconsistency, and what the only producer guarantees', () => {
 	});
 
 	it('rejects a colour map the resolver would have emptied, key or value', () => {
-		// The third per-state map, and the one whose VALUE becomes a class name: a fixture
-		// holding a colour the resolver would have dropped makes `stateColorClass` emit
-		// `pbl-state-c-<anything>`, which no stylesheet paints — a test asserting a class
-		// that cannot exist. Raised in review on the change that added the map, which is the
-		// same half-a-job shape the two maps above already record twice.
+		// The third per-state map, and the one whose VALUE is painted directly: a fixture
+		// holding a colour the resolver would have dropped asserts a colour no picker could
+		// produce. Raised in review on the change that added the map, which is the same
+		// half-a-job shape the two maps above already record twice.
 		const workflow = settingsWith({ states: ['Active', 'Done'], doneValues: ['Done'] });
-		expect(settingsInconsistency({ ...workflow, stateColors: { draft: 'red' } })).toContain('stateColors names draft');
-		expect(settingsInconsistency({ ...workflow, stateColors: { active: 'rebeccapurple' } })).toContain('would discard');
-		// A capital and surrounding space are as unproducible as an unknown name: the
-		// resolver stores exactly what `stateColorName` returns.
-		expect(settingsInconsistency({ ...workflow, stateColors: { active: 'Red' } })).toContain('would discard');
+		expect(settingsInconsistency({ ...workflow, stateColors: { draft: '#ff0000' } })).toContain('stateColors names draft');
+		// Shorthand, a capital and surrounding space are all unproducible: the resolver
+		// stores exactly what `stateColor` returns, lowercased and in one of its two shapes.
+		expect(settingsInconsistency({ ...workflow, stateColors: { active: '#abc' } })).toContain('would discard');
+		expect(settingsInconsistency({ ...workflow, stateColors: { active: '#FF0000' } })).toContain('would discard');
 		expect(settingsInconsistency({ ...workflow, stateColors: { active: ' red' } })).toContain('would discard');
-		// Unlike the two maps above, a DONE state may be coloured — the pick is simply inert
-		// there — and so may a Deliverable state, since this map spans both vocabularies.
+		expect(settingsInconsistency({ ...workflow, stateColors: { active: 'rebeccapurple' } })).toContain('would discard');
+		// Unlike the two maps above, a DONE state may be coloured — the choice is simply
+		// inert — and so may a Deliverable state, since this map spans both vocabularies.
 		const both = settingsWith({ states: ['Active'], deliverableStates: ['Draft'], deliverableStateKey: 'ds' });
-		expect(settingsInconsistency({ ...workflow, stateColors: { done: 'green' } })).toBeNull();
-		expect(settingsInconsistency({ ...both, stateColors: { active: 'red', draft: 'cyan' } })).toBeNull();
+		// Both stored shapes are producible, and a done state may carry either — the dialog
+		// offers the row and the intro says it does nothing.
+		expect(settingsInconsistency({ ...workflow, stateColors: { done: '#00ff00' } })).toBeNull();
+		expect(settingsInconsistency({ ...both, stateColors: { active: '#ff0000', draft: 'cyan' } })).toBeNull();
 	});
 
 	it('treats an emptied list as the resolver does — absent, not a rejection', () => {
