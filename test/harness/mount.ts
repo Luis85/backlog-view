@@ -42,18 +42,26 @@ export type HarnessFixture = 'demo' | 'edges' | 'folders';
 
 /**
  * Build the view into `root` against a fixture and return the pieces, so a test can
- * drive the same mount a browser gets. The Bases leaf is real nesting on purpose: the
+ * drive the same mount a browser gets.
+ *
+ * `extra` grows the backlog by that many generated notes (`?notes=800`), which is what
+ * makes the page usable for asking what the view costs at a size — see `addBulk`. The
+ * edge-case fixture ignores it: it is a set of awkward cases, and a thousand more of them
+ * is not a bigger question.
+ *
+ * The Bases leaf is real nesting on purpose: the
  * view identifies its base through the leaf showing the `.base` file, and without it
  * the collapse store — projection, expanded rows, shelf state — has no identity to key
  * on and nothing survives a reload.
  */
-export function mountHarness(root: HTMLElement, fixture: HarnessFixture = 'demo'): MountedHarness {
+export function mountHarness(root: HTMLElement, fixture: HarnessFixture = 'demo', extra = 0): MountedHarness {
 	installObsidianDom();
 	drawChrome();
 	drawIcons();
 	root.empty();
 
-	const vault = fixture === 'edges' ? edgeCaseVault() : demoVault(fixture === 'folders' ? 'folders' : 'flat');
+	const vault =
+		fixture === 'edges' ? edgeCaseVault() : demoVault(fixture === 'folders' ? 'folders' : 'flat', extra);
 	const leafEl = root.createDiv('pbl-harness-leaf');
 	const containerEl = leafEl.createDiv();
 	vault.addLeaf(new FileView(vault.addFile('Demo.base'), leafEl));
