@@ -1,14 +1,7 @@
 import { BasesView, Menu, QueryController, setIcon } from 'obsidian';
 import { CARD_SCOPE, CollapseState, TIMELINE_SCOPE } from './collapseState';
 import { FilterScope, FilterState } from './filterState';
-import {
-	BacklogViewHost,
-	BoardSnapshot,
-	ChipProp,
-	PRODUCT_BACKLOG_VIEW_TYPE,
-	Projection,
-	RoadmapSnapshot,
-} from './host';
+import { BacklogViewHost, BoardSnapshot, Column, ColumnFit, PRODUCT_BACKLOG_VIEW_TYPE, Projection, RoadmapSnapshot } from './host';
 import { OpenController } from './openTarget';
 import { WriteGate } from './writeGate';
 import { CardMoveController } from './cardMoves';
@@ -29,7 +22,7 @@ import { rowHidden, VisibilityRule } from './rowVisibility';
 import { SelectionController } from './selection';
 import { UiStateController } from './uiState';
 import { detectIgnoredGrouping, renderToolbar, revealFilter, syncBusy, syncCollapseCtls, syncCountLabel, syncFilterUi } from './render/toolbar';
-import { chipProps, rowContext, RowContext } from './render/columns';
+import { resolveColumns, rowContext, RowContext } from './render/columns';
 import { renderLoadingState } from './render/emptyStates';
 import { renderLegend } from './render/legend';
 import { syncToolbarFit } from './render/toolbarFit';
@@ -105,7 +98,13 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	private rowEls = new Map<string, HTMLElement>();
 	private resizeObserver: ResizeObserver | null = null;
 	/** The Base's visible properties as columns, resolved once per data update. */
-	chips: ChipProp[] = [];
+	columns: Column[] = [];
+	/** What the pane held at the last measurement — see `BacklogViewHost`. */
+	columnFit: ColumnFit | null = null;
+
+	setColumnFit(fit: ColumnFit | null): void {
+		this.columnFit = fit;
+	}
 
 	/**
 	 * Guards the one re-render a changed column verdict may ask for, so it cannot
@@ -288,7 +287,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// Which properties become columns is a config question, so it is answered once
 		// here rather than per render — and once, so the rows and the tag menu cannot
 		// disagree about what is on screen.
-		this.chips = chipProps(this);
+		this.columns = resolveColumns(this);
 		this.groupingIgnored = detectIgnoredGrouping(this.data);
 		// Both populations, never `items` alone: `deliverableResults` is read off the WHOLE
 		// unfocused tree so a focus set elsewhere can never hide a Deliverable, which makes
@@ -557,8 +556,10 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// disclosures for a screen that is gone.
 		this.cardKids.clear();
 		if (projection !== 'tree') {
-			// The column-fit ladder is the tree's; its stale verdicts must not hide card cells.
-			this.viewEl.removeClass('pbl-hide-props', 'pbl-hide-risk', 'pbl-hide-meta', 'pbl-hide-horizon', 'pbl-hide-state');
+			// The column ladder is the tree's: a narrow-pane verdict from tree mode must
+			// not strip cells off cards, and its rollup class must not hide theirs.
+			this.setColumnFit(null);
+			this.viewEl.removeClass('pbl-hide-meta');
 		}
 		const content = renderProjectionContent(projection, this.rowCtx(), this.treeEl, this.cardDnd);
 		this.board = content.board;

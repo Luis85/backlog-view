@@ -406,7 +406,13 @@ export function renderCardBody(ctx: RowContext, card: HTMLElement, item: Backlog
 		setTooltip(parent, `Under "${item.parent.title}"`);
 	}
 
-	if (ctx.chips.length > 0) renderPropCells(ctx, card, item);
+	// A card draws the plain columns only. The chips are the tree's: a board card's
+	// column IS its state and a bucket IS its horizon, so a chip on the card would
+	// repeat what the card's own position already says. Filtered from the ONE resolved
+	// list rather than resolved a second time — two derivations of "what is on screen"
+	// is how the tag menu came to offer editing for a column the renderer had skipped.
+	const plain = ctx.columns.filter((column) => column.kind === 'value' || column.kind === 'tags');
+	if (plain.length > 0) renderPropCells(ctx, card, item, plain);
 	renderRollup(host, card, item);
 	// One call, three surfaces: board cards, roadmap bucket cards and shelf cards all
 	// come through here. Timeline rows never do — they use the card SHELL with a

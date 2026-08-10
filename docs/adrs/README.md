@@ -89,3 +89,4 @@ record itself changes. Open a record for its current status, area and any
 - [0020 — The browser harness draws, it does not assert](0020-the-browser-harness-draws-it-does-not-assert.md)
 - [0021 — Parse the register with a Markdown library, not a pile of patterns](0021-parse-the-register-with-mdast.md)
 - [0022 — Audit what ships, beside the gate rather than inside it](0022-audit-what-ships-beside-the-gate.md)
+- [0023 — Columns are the Bases property order](0023-columns-are-the-bases-property-order.md)

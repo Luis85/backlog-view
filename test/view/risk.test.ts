@@ -123,12 +123,14 @@ describe('Clear risk', () => {
 describe('the risk chip', () => {
 	/** The chip on a row, whether it is the button or a context row's static div. */
 	const chipOf = (containerEl: HTMLElement, title: string) =>
-		rowByTitle(containerEl, title).querySelector('.pbl-risk-col .pbl-risk-chip');
+		rowByTitle(containerEl, title).querySelector('.pbl-prop-risk .pbl-risk-chip');
+	/** The property order every chip test needs: a chip is drawn by a VISIBLE column. */
+	const visible = { order: ['note.risk'] };
 
 	it('shows the level the note declares and writes the one picked from it', async () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, risk: '3 - Low' } });
-		const { containerEl } = makeView(vault, configured);
+		const { containerEl } = makeView(vault, configured, visible);
 
 		const chip = chipOf(containerEl, 'Epic A');
 		expect(chip?.textContent).toBe('3 - Low');
@@ -149,7 +151,7 @@ describe('the risk chip', () => {
 	});
 
 	it('invites a judgement on a note that carries none', () => {
-		const { containerEl } = makeView(fixture(), configured);
+		const { containerEl } = makeView(fixture(), configured, visible);
 
 		const chip = chipOf(containerEl, 'Epic A');
 		// Absence is not a level, so nothing is named — but the chip is still there to
@@ -159,7 +161,7 @@ describe('the risk chip', () => {
 		expect(chip?.getAttribute('aria-label')).toBe('Set risk');
 	});
 
-	it('replaces the property cell, in a column between the properties and the horizon', () => {
+	it('is what its own column draws, so the value is never rendered twice', () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, risk: '3 - Low', horizon: 'Now' } });
 		vault.entryValues.set('Epic A.md', {
@@ -167,20 +169,20 @@ describe('the risk chip', () => {
 			'note.points': { toString: () => '5' },
 		});
 		const { containerEl, config, view } = makeView(vault, { ...configured, horizonProperty: 'note.horizon' });
-		// The risk property is among the visible ones — the chip stands in its place, the
-		// state chip's own rule, so the value is never drawn twice with one of them inert.
-		config.order = ['note.risk', 'note.points'];
+		// The risk property is among the visible ones — the chip is what its cell draws,
+		// the state chip's own rule, so the value is never drawn twice with one of them
+		// inert. And the column sits where the menu put it, not past the properties.
+		config.order = ['note.risk', 'note.points', 'note.horizon'];
 		view.onDataUpdated();
 
 		const header = treeOf(containerEl).querySelector('.pbl-cols');
 		expect(Array.from(header?.querySelectorAll('.pbl-col-label') ?? []).map((el) => el.textContent)).toEqual([
-			'points',
 			'risk',
+			'points',
 			'horizon',
 			'Items',
 		]);
 		expect(Array.from(rowByTitle(containerEl, 'Epic A').querySelectorAll('.pbl-prop-value')).length).toBe(1);
-		expect(treeOf(containerEl).style.getPropertyValue('--pbl-risk-col')).toBe('116px');
 	});
 
 	it('is absent once the levels are cleared, and the property goes back to a column', () => {
@@ -193,7 +195,7 @@ describe('the risk chip', () => {
 
 		// A chip whose menu could set nothing is the lie an absent control avoids — and
 		// nothing else is showing the property now, so the ordinary column is right.
-		expect(containerEl.querySelector('.pbl-risk-col')).toBeNull();
+		expect(containerEl.querySelector('.pbl-risk-chip')).toBeNull();
 		expect(rowByTitle(containerEl, 'Epic A').querySelector('.pbl-prop-value')?.textContent).toBe('3 - Low');
 	});
 
@@ -206,7 +208,9 @@ describe('the risk chip', () => {
 		const view = new ProductBacklogView({} as never, containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
-		anyView.config = new FakeViewConfig(configured);
+		const config = new FakeViewConfig(configured);
+		config.order = ['note.risk'];
+		anyView.config = config;
 		anyView.data = { data: vault.entries().filter((e) => e.file.path === 'PBI.md') };
 		view.onDataUpdated();
 		clickExpandAll(containerEl);
@@ -220,10 +224,10 @@ describe('the risk chip', () => {
 		expect(chipOf(containerEl, 'Feature')).toBeNull();
 	});
 
-	it('drops before the rollup and after the properties, and is budgeted for', () => {
+	it('is counted in the budget, so a pane too narrow for it drops it', () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, risk: '3 - Low' } });
-		const { containerEl, view } = makeView(vault, { ...configured, stateProperty: 'note.status' });
+		const { containerEl, view } = makeView(vault, { ...configured, stateProperty: 'note.status' }, visible);
 		const tree = treeOf(containerEl);
 		const viewEl = containerEl.querySelector('.pbl-view');
 		const paneWidth = (px: number) => {
@@ -231,16 +235,16 @@ describe('the risk chip', () => {
 			view.onDataUpdated();
 		};
 
+		const drawn = () => rowByTitle(containerEl, 'Epic A').querySelectorAll('.pbl-prop').length;
+
 		paneWidth(700);
-		expect(viewEl?.classList.contains('pbl-hide-risk')).toBe(false);
+		expect(drawn()).toBe(1);
 
-		// A column the budget did not account for would overflow instead of dropping.
-		paneWidth(560);
-		expect(viewEl?.classList.contains('pbl-hide-risk')).toBe(true);
+		// A column the budget did not account for would overflow instead of dropping,
+		// and this pane is too narrow only once the chip's own column is counted.
+		paneWidth(500);
+		expect(drawn()).toBe(0);
 		expect(viewEl?.classList.contains('pbl-hide-meta')).toBe(false);
-
-		paneWidth(490);
-		expect(viewEl?.classList.contains('pbl-hide-meta')).toBe(true);
 	});
 });
 

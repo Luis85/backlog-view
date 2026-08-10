@@ -51,17 +51,19 @@ describe('render cost', () => {
 		expect(small.rendered).toBe(20);
 		expect(large.rendered).toBe(400);
 
-		// `chipProps` resolves the columns onto `host.chips` once per data update and
-		// `RowContext` carries that snapshot, so twenty times the rows costs the same.
+		// `resolveColumns` resolves the columns onto `host.columns` once per data update
+		// and `RowContext` carries that snapshot, so twenty times the rows costs the same.
 		expect(large.order).toBe(small.order);
 		expect(large.displayName).toBe(small.displayName);
-		// `getOrder` has one call site — `chipProps`, run once per data update — so a
-		// pass makes exactly one call; the bound leaves room for a second and none for
+		// `getOrder` has one call site — `resolveColumns`, run once per data update — so
+		// a pass makes exactly one call; the bound leaves room for a second and none for
 		// a per-row one.
 		expect(large.order).toBeLessThanOrEqual(2);
-		// Bounded by the columns themselves: one label per chip, plus the fixed
-		// state/horizon/progress headers.
-		expect(large.displayName).toBeLessThanOrEqual(COLUMNS.length + 3);
+		// Bounded by the columns themselves, and by nothing else: every label is resolved
+		// in that same pass and carried on the `Column`, so the header reads it rather
+		// than asking again — which is what retired the three fixed chip headers this
+		// bound used to leave room for.
+		expect(large.displayName).toBeLessThanOrEqual(COLUMNS.length);
 	});
 
 	/**

@@ -382,8 +382,8 @@ const SETUP: ManualSection = {
 		},
 		{
 			term: 'Presentation',
-			text: 'Whether property columns render on rows, their width, and descendant counts.',
-			keys: ['showProperties', 'propertyColumnWidth', 'showCounts'],
+			text: 'The width of a property column, and whether descendant counts show.',
+			keys: ['propertyColumnWidth', 'showCounts'],
 		},
 		{
 			term: 'The state property is a prerequisite',
@@ -394,10 +394,11 @@ const SETUP: ManualSection = {
 		{
 			term: 'What the Base still owns',
 			text:
-				'The filter, the sort that orders unranked items, and which properties are ' +
-				"visible at all are the Base's own settings, reached from the same toolbar — " +
-				'this view only decides whether those render as columns, and how wide, once ' +
-				'the Base names them.',
+				'The filter, the sort that orders unranked items, and which properties show as ' +
+				"columns are the Base's own settings, reached from the same toolbar — its " +
+				'properties menu is the only switch for what a row shows, and in what order. ' +
+				'This view decides their width, and drops leading columns when the row will ' +
+				'not fit.',
 		},
 		{
 			term: "What this view ignores, and what it can't work around",

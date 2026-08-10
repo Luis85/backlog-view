@@ -1,35 +1,11 @@
-/* The fixed columns anchored to a row's end — the state chip, the horizon chip and
-   the rollup — plus the create button that shares the lead — `src/view/render/columns.ts`. */
+/* The rollup column anchored to a row's end, plus the create button that shares the
+   lead and the chips the property columns draw — `src/view/render/columns.ts`. */
 
-/* The state chip and the rollup sit in fixed columns anchored to the row's end,
-   so they line up across rows instead of trailing each item's title. */
-/* Like the property columns they never shrink: the title truncates instead (it has
+/* The rollup sits in a fixed column anchored to the row's end, so it lines up across
+   rows instead of trailing each item's title. */
+/* Like the property columns it never shrinks: the title truncates instead (it has
    an ellipsis and a tooltip), and a column that ran out of room drops out whole
    rather than sliding out from under its neighbours on rows with long titles. */
-.pbl-state-col {
-	display: flex;
-	align-items: center;
-	flex: 0 0 auto;
-	width: var(--pbl-state-col, 116px);
-	overflow: hidden;
-}
-
-.pbl-horizon-col {
-	display: flex;
-	align-items: center;
-	flex: 0 0 auto;
-	width: var(--pbl-horizon-col, 116px);
-	overflow: hidden;
-}
-
-.pbl-risk-col {
-	display: flex;
-	align-items: center;
-	flex: 0 0 auto;
-	width: var(--pbl-risk-col, 116px);
-	overflow: hidden;
-}
-
 .pbl-meta-col {
 	display: flex;
 	align-items: center;
@@ -220,8 +196,8 @@ button.pbl-risk-chip {
    (0,1,1) tie, same later-loads-last win — so the chips need their own focus indicator
    or focus becomes invisible. Outline, not box-shadow, the same trade cardChildren.css
    makes. Inset (`outline-offset: -1px`) rather than the disclosure's own `1px`: the
-   chip sits flush against `.pbl-state-col`'s/`.pbl-horizon-col`'s own `overflow:
-   hidden` on the left and vertically, so an outward ring is clipped to a sliver on the
+   chip sits flush against `.pbl-prop`'s own `overflow: hidden` on the left and
+   vertically, so an outward ring is clipped to a sliver on the
    one side that has room — an inset ring stays inside the chip's own border box, which
    is never clipped by an ancestor the chip itself is not overflowing. */
 .pbl-state-chip:focus-visible,

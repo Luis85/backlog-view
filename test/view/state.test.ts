@@ -161,7 +161,9 @@ describe('state editing', () => {
 		const epicB = rowByTitle(containerEl, 'Epic B');
 		const chip = epicB.querySelector('.pbl-state-chip');
 		expect(chip?.querySelector('.pbl-state-text')?.textContent).toBe('Active');
-		expect(epicB.querySelector('.pbl-prop')).toBeNull();
+		// The chip is what the column draws — the value is never also shown plainly.
+		expect(chip?.parentElement?.classList.contains('pbl-prop-state')).toBe(true);
+		expect(epicB.querySelector('.pbl-prop-value')).toBeNull();
 		// A native button assistive tech can activate — without joining the tab order.
 		expect(chip?.tagName).toBe('BUTTON');
 		expect(chip?.getAttribute('tabindex')).toBe('-1');
@@ -182,7 +184,7 @@ describe('state editing', () => {
 
 	it('writes the state picked from the chip menu without opening the note', async () => {
 		const vault = stateFixture();
-		const { containerEl } = makeView(vault, { stateProperty: 'note.status' });
+		const { containerEl } = makeView(vault, { stateProperty: 'note.status' }, { order: ['note.status'] });
 
 		const chip = rowByTitle(containerEl, 'Epic B').querySelector<HTMLElement>('.pbl-state-chip');
 		chip?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -220,12 +222,14 @@ describe('state editing', () => {
 
 	it('keeps chip keystrokes out of the tree keyboard handling', () => {
 		const vault = stateFixture();
-		const { containerEl } = makeView(vault, { stateProperty: 'note.status' });
+		const { containerEl } = makeView(vault, { stateProperty: 'note.status' }, { order: ['note.status'] });
 		const tree = treeOf(containerEl);
 
 		key(tree, 'ArrowDown');
-		rowByTitle(containerEl, 'Epic A').querySelector<HTMLElement>('.pbl-state-chip')
-			?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+		const chip = rowByTitle(containerEl, 'Epic A').querySelector<HTMLElement>('.pbl-state-chip');
+		// A missing chip would make every assertion below pass having driven nothing.
+		if (!chip) throw new Error('state chip not rendered');
+		chip.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
 		// Enter on the focused chip activates the chip, not the selected row.
 		expect(vault.opened).toHaveLength(0);
 
@@ -235,10 +239,11 @@ describe('state editing', () => {
 
 	it('routes state writes through the config gate', async () => {
 		const vault = stateFixture();
-		const { containerEl } = makeView(vault, {
-			stateProperty: 'note.status',
-			orderProperty: 'note.parent',
-		});
+		const { containerEl } = makeView(
+			vault,
+			{ stateProperty: 'note.status', orderProperty: 'note.parent' },
+			{ order: ['note.status'] },
+		);
 
 		rowByTitle(containerEl, 'Epic B').querySelector<HTMLElement>('.pbl-state-chip')
 			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));

@@ -204,16 +204,6 @@ export function ownWorkflowReading(item: BacklogItem): WorkflowReading {
 }
 
 /**
- * Whether this base has a state column at all: EITHER workflow having a key is enough,
- * because a vault that configures only the Deliverable one still has Deliverable rows
- * with a state to show. Rows whose own workflow has no key render an empty cell — every
- * configured column renders on every row, or the columns after it shift per row.
- */
-export function hasStateColumn(settings: BacklogSettings): boolean {
-	return settings.stateKey !== '' || settings.deliverableStateKey !== '';
-}
-
-/**
  * The Deliverables board's own workflow — no WIP limits or column policies (Scope).
  * `values`' fallback is the same rule `stateMenuValues` already states for the
  * requirements workflow, applied to the Deliverable one's own configured/observed pair.

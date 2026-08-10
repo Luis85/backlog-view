@@ -57,7 +57,15 @@ export function makeView(
 		viewName,
 		focus,
 		only,
-	}: { collapsed?: boolean; base?: string; viewName?: string; focus?: string; only?: string[] } = {},
+		order,
+	}: {
+		collapsed?: boolean;
+		base?: string;
+		viewName?: string;
+		focus?: string;
+		only?: string[];
+		order?: string[];
+	} = {},
 ): Harness {
 	// Bases mounts the view inside the leaf showing the .base file; that leaf is how
 	// the view identifies which base it is, so persistence tests need the real nesting.
@@ -67,6 +75,11 @@ export function makeView(
 	const view = new ProductBacklogView({} as never, containerEl);
 	const config = new FakeViewConfig(configValues);
 	if (viewName) config.name = viewName;
+	// The Bases properties menu decides which properties are columns, chips included, so
+	// a suite about a chip has to make its property visible. Set before the first data
+	// update, which is where the columns are resolved; a test about the RESOLUTION itself
+	// assigns `config.order` afterwards and renders again instead.
+	if (order) config.order = order;
 	const anyView = view as unknown as Record<string, unknown>;
 	anyView.app = vault.app;
 	anyView.config = config;

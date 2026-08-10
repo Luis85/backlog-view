@@ -72,8 +72,9 @@ answer two questions.
      overrides, and `test/view/rendering.test.ts` pins that cascade order because the
      bucket button shipped unreachable on touch once.
    - `.pbl-tag-add` and `.pbl-tag-remove`, by **adding a tag and removing one**. These
-     render only while the tags property is one of the view's visible columns
-     (`chipProps` skips it otherwise), so `docs/Product Backlog.base` carries
+     render only while the tags property is one of the view's visible columns — since
+     [ADR 0023](../adrs/0023-columns-are-the-bases-property-order.md) that means visible
+     in the Bases properties menu, and nothing else — so `docs/Product Backlog.base` carries
      `note.tags` in its `order` for this check — if the column is not on screen, the
      controls are absent rather than unreachable and the question has not been asked.
      They are `display: none` until row hover, so the shared `(hover: none)` block is their only

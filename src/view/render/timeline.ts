@@ -622,7 +622,7 @@ function refocusPane(host: BacklogViewHost): void {
  * The row's workflow state in words, or '' where there is none to say.
  *
  * This axis draws state as a bar COLOUR and nothing else: `renderStateChip`'s only call
- * site is the tree, and `chipProps` skips the state property, so without these words the
+ * site is a tree row's own column, so without these words the
  * slot colours are the whole of it — unreadable to a screen reader, and colour alone
  * for everyone else (WCAG 1.4.1). Done is spelt out for the same reason: `pbl-done` is a
  * class and a green bar.

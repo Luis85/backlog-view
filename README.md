@@ -100,7 +100,9 @@ the type folders follow on their own. The **Create backlog** command writes it f
 one folder it asks you for, which is the whole reason it asks.
 
 Any properties you enable under **Properties** in the Bases toolbar (the `order` list
-above) are shown as chips on each row — handy for `status`, story points, assignee, etc.
+above) get a column of their own on each row, in the order you put them — handy for
+`status`, story points, assignee, etc. That menu is the only switch: a property it does
+not show is not on the rows, and that includes the state, horizon, risk and tag chips.
 
 ## Using the view
 
@@ -117,7 +119,7 @@ above) are shown as chips on each row — handy for `status`, story points, assi
 | Focus one type | Toolbar focus button next to **New** → pick a level or an extra type (**All types** returns) |
 | Move without dragging | Right-click → Move up / down / to top / to bottom / Indent / Outdent |
 | Change an item's type | Right-click → Set type (every level, plus the extra types) |
-| Change an item's state | Click the state chip on the row, or right-click → Set state |
+| Change an item's state | Click the state chip on the row (there when the state property is a visible column), or right-click → Set state |
 | Add a tag | Click the **+** in the row's tag column, or right-click → Edit tags |
 | Remove a tag | Hover the row and click the **✕** on the tag |
 | Undo the last change | Click the **↩** toolbar button, or press <kbd>Ctrl/Cmd</kbd>+<kbd>Z</kbd> in the tree |
@@ -194,15 +196,27 @@ short Task title put their `points` in the same place. **Property column width**
 view options sets how wide one column is; a value too long for its column is truncated,
 with the full text (and the property name) in its tooltip.
 
+**The Bases properties menu decides the whole strip, chips included.** The state,
+horizon, risk and tag properties are columns like any other: each draws its clickable
+chip where you put that property in the menu, and draws nothing at all while the menu is
+hiding it — configuring a property in the view options is what makes it *editable*, not
+what puts it on a row. Configure one and see no chip, and the properties menu is the
+place to look.
+
 Columns never shrink — that is what keeps them aligned — so a long title truncates
 first, and a pane too narrow for the columns it is asked to show drops them instead of
-clipping them: the properties go first, then the progress rollup, then the state chip,
-leaving the title. The view measures this against the width you configured and the
+clipping them. They drop **from the end of that same order**, one at a time: the order
+is your statement of what matters, so nothing re-ranks it on your behalf, and the
+progress rollup outlasts every column because it is pinned past their end rather than
+being one of them. A dropped column is not rendered at all — there is nothing left of it
+for Tab or a screen reader to find — and widening the pane brings the columns back in
+the order they left. The view measures this against the width you configured and the
 depth on screen, so wide columns give way earlier than narrow ones, and expanding a
 deep branch can be what makes a column give way.
 
-Rows carry no `Property:` labels of their own — that is what the header is for. Turn the
-columns off entirely with **Show visible properties on rows**.
+Rows carry no `Property:` labels of their own — that is what the header is for. To turn
+a column off, hide its property in the Bases **Properties** menu; there is no second
+switch in the view options.
 
 #### Tags
 
@@ -230,15 +244,16 @@ Set the **State property** (e.g. `status`) in the view options and parents show 
 progress bar with a done count (e.g. `3/7`), while done items dim out. Which values count
 as done is configurable (`Done, Closed, Completed, Removed` by default, case-insensitive).
 
-The state chip and the progress rollup sit in **fixed columns at the end of each row**,
-so they line up vertically no matter how long an item's title is or how deep it sits in
-the tree — the eye can scan states down the column instead of hunting for them behind
-each title. The Base's visible properties get the same treatment, one column each,
-just before them (see [Properties on a row](#properties-on-a-row)).
+The progress rollup sits in a **fixed column at the end of each row**, after every
+property column, so it lines up vertically no matter how long an item's title is or how
+deep it sits in the tree.
 
-Each row then carries a clickable **state chip**: pick a new state from its menu (also
-available via right-click → **Set state**) and the note's frontmatter updates without
-opening it. The menu offers the **Workflow states** configured in the view options — or,
+Make the state property visible in the Bases **Properties** menu and it gets a column of
+its own there too — wherever you put it among the others (see
+[Properties on a row](#properties-on-a-row)) — and each row then carries a clickable
+**state chip** in it: pick a new state from its menu (also available via right-click →
+**Set state**, which stays offered whether or not the column is showing) and the note's
+frontmatter updates without opening it. The menu offers the **Workflow states** configured in the view options — or,
 when none are configured, the states already used in the backlog, with a done state
 appended so marking an item done is always one click away. An item whose state isn't in
 the list keeps it selectable in its own menu.
@@ -711,8 +726,7 @@ Open the view options in the Bases toolbar to configure:
 | Deliverable state property | *(off)* | Note property with the Deliverable workflow's own state. Left off, the Deliverables board falls back to the board above's own state property rather than going inert — and to its states and done values only where you have left the two rows below **empty**, since a list you fill in is this workflow's own either way |
 | Deliverable workflow states (in order) | *(off)* | The Deliverables board's columns, in that order. **Whatever you set here wins**, whether the workflow has a property of its own or shares the one above. Left empty it falls back to **Workflow states (in order)** while **Deliverable state property** is also unset; with your own property set it draws the states your Deliverables actually carry |
 | Deliverable states that count as done | `Done, Closed, Completed, Removed` | Which Deliverable state values complete a Deliverable. **Whatever you set here wins**, whether the workflow has a property of its own or shares the one above. Left empty it falls back to **States that count as done** while **Deliverable state property** is also unset; with your own property set it stays the default shown here rather than borrowing that customization |
-| Show visible properties on rows | on | Render the Base's visible properties as aligned columns |
-| Property column width | `132` px | Width of one property column |
+| Property column width | `132` px | Width of one property column. **Which** properties are columns is the Bases **Properties** menu's, not a view option — see [Properties on a row](#properties-on-a-row) |
 | Tags property | `tags` | Property whose column supports adding and removing tags inline |
 | Show descendant counts | on | Show the number of items below each parent (replaced by the progress rollup when a state property is set) |
 

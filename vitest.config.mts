@@ -35,11 +35,15 @@ export default defineConfig({
 			// denominator. Look for the dead branch before writing the test.
 			//
 			// The history of which decimal moved in which increment is in git.
+			//
+			// Merged with main after main re-accumulated ledger entries this branch had
+			// removed. The entries are not restored — git holds them — but main's
+			// THRESHOLDS are taken whole, because they are higher and a floor only rises.
 			thresholds: {
-				statements: 98.3,
-				branches: 94.7,
-				functions: 99.5,
-				lines: 99.4,
+				statements: 98.34,
+				branches: 94.73,
+				functions: 99.57,
+				lines: 99.48,
 			},
 		},
 	},

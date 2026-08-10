@@ -196,10 +196,12 @@ describe('setting a horizon from the row', () => {
 describe('the horizon chip on a row', () => {
 	const chipOf = (containerEl: HTMLElement, title: string) =>
 		rowByTitle(containerEl, title).querySelector<HTMLElement>('.pbl-horizon-chip');
+	/** The property order every chip test needs: a chip is drawn by a VISIBLE column. */
+	const visible = { order: ['note.horizon'] };
 
 	it('shows the placement and writes the one picked from its menu', async () => {
 		const vault = planVault();
-		const { containerEl } = makeView(vault, AXES);
+		const { containerEl } = makeView(vault, AXES, visible);
 
 		expect(chipOf(containerEl, 'Placed')?.querySelector('.pbl-state-text')?.textContent).toBe('Now');
 		// Unplaced is named with the roadmap's own word for it, and dashed like the
@@ -227,7 +229,7 @@ describe('the horizon chip on a row', () => {
 	it('says unplaced, with the reason, for a value the axis refuses', () => {
 		const vault = planVault();
 		vault.addFile('Garbled.md', { frontmatter: { type: 'Epic', order: 40, horizon: { nested: true } } });
-		const { containerEl } = makeView(vault, AXES);
+		const { containerEl } = makeView(vault, AXES, visible);
 
 		// The roadmap shelves such a card with the reason on its face; the chip says the
 		// same thing rather than showing a horizon the axis would not honor.
@@ -241,7 +243,7 @@ describe('the horizon chip on a row', () => {
 
 	it('offers Clear exactly where the note carries the key', () => {
 		const vault = planVault();
-		const { containerEl } = makeView(vault, AXES);
+		const { containerEl } = makeView(vault, AXES, visible);
 
 		chipOf(containerEl, 'Untriaged')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		expect(titlesOfMenu(Menu.lastShown ?? new Menu())).not.toContain('Clear horizon');
@@ -255,7 +257,7 @@ describe('the horizon chip on a row', () => {
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, horizon: 'Now' } });
 		vault.addFile('Feature.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
 		// The Epic is context: an ancestor the filter did not return.
-		const { view, containerEl } = makeView(vault, AXES);
+		const { view, containerEl } = makeView(vault, AXES, visible);
 		(view as unknown as Record<string, unknown>).data = {
 			data: vault.entries().filter((e) => e.file.path === 'Feature.md'),
 		};

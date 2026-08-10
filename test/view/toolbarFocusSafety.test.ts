@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { Modal } from '../helpers/obsidian-mock';
 import { syncBusy } from '../../src/view/render/toolbar';
-import { fixture, makeView, useViewHarness } from '../helpers/view';
+import { fixture, makeView, refresh, useViewHarness } from '../helpers/view';
 
 useViewHarness();
 
@@ -81,5 +82,37 @@ describe('focus safety when the toolbar narrows or a batch ends', () => {
 		syncBusy(bar, null, false);
 
 		expect(document.activeElement).toBe(bar.querySelector('.pbl-help-btn'));
+	});
+
+	/**
+	 * The config warning's `onClosed` (`toolbar.ts`, the door's own `focusInBar` fallback)
+	 * is tier 3 of `manualLink`'s chain — reached only once tier 1 (the live link,
+	 * resolved from `barEl` and confirmed visible) and tier 2 (`barEl` itself, which
+	 * carries no `tabindex`) both fail. The test above drives tier 1 failing by CLIPPING;
+	 * this drives it failing by the link being GONE outright — fixing the configuration
+	 * removes `.pbl-config-warning`, and this link with it, on the very next render, the
+	 * same shape the busy indicator's own fallback (`manualEntryPoints.test.ts`) covers
+	 * for a finished batch. Neither test above exercises this closure at all: the first
+	 * only reads `display`, the second belongs to the busy indicator's different
+	 * mechanism (`syncBusy`'s own stranded-focus handler, not a door's `onClosed`).
+	 */
+	it('falls back to the help button when the config warning link is gone by closing time', () => {
+		const vault = fixture();
+		const { view, config, containerEl } = makeView(vault, { parentProperty: 'note.x', orderProperty: 'note.x' });
+		const link = containerEl.querySelector<HTMLElement>('[data-pbl-section="setup"]');
+		if (!link) throw new Error('the toolbar drew no config warning link to open the manual from');
+		link.click();
+		expect(Modal.lastOpened?.contentEl.querySelector('.pbl-manual-pane h3')?.textContent).toBe(
+			'Setting up the view',
+		);
+
+		// Fixed: the collision is gone, so the warning — and this link — are gone from the
+		// very next render.
+		config.set('orderProperty', 'note.order');
+		refresh(view, vault);
+		expect(containerEl.querySelector('[data-pbl-section="setup"]')).toBeNull();
+
+		Modal.lastOpened?.close();
+		expect(document.activeElement).toBe(containerEl.querySelector('.pbl-help-btn'));
 	});
 });

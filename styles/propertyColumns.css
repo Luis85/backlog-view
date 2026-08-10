@@ -10,8 +10,10 @@
 /* One fixed-width cell per visible property, so a value sits in the same place on
    every row instead of trailing its title. Never shrinks: a squeezed column would
    put its values somewhere other than under their header, which is the whole point
-   of the layout — the title truncates instead, and the container query below drops
-   the columns entirely once the pane is too narrow to hold them. */
+   of the layout — the title truncates instead, and a column the pane cannot hold is
+   not rendered at all (`columnFit` in src/view/render/columns.ts decides how many
+   are). `--pbl-prop-count` is that drawn count, so this box is always exactly as
+   wide as the cells inside it. */
 .pbl-props {
 	display: flex;
 	align-items: center;
@@ -20,27 +22,10 @@
 	overflow: hidden;
 }
 
-/* Columns drop out in reverse order of usefulness once the pane cannot hold them:
-   first the properties, then the rollup, leaving the title and the state chip. The
-   view measures itself for this (see columnFit): the threshold depends on the
-   configured column width and count, which a media or container query cannot read. */
-.pbl-view.pbl-hide-props .pbl-props {
-	display: none;
-}
-
+/* The rollup is not in the user's order — it is pinned past the end of it — so it does
+   not drop by not being rendered the way a column does, and it drops last: only once no
+   column is shown and the pane cannot hold even this. */
 .pbl-view.pbl-hide-meta .pbl-meta-col {
-	display: none;
-}
-
-.pbl-view.pbl-hide-state .pbl-state-col {
-	display: none;
-}
-
-.pbl-view.pbl-hide-horizon .pbl-horizon-col {
-	display: none;
-}
-
-.pbl-view.pbl-hide-risk .pbl-risk-col {
 	display: none;
 }
 

@@ -1,9 +1,9 @@
 import { BasesPropertyId, NullValue, setIcon, setTooltip } from 'obsidian';
-import { BacklogViewHost, ChipProp } from '../host';
+import { BacklogViewHost, Column, ColumnFit, ColumnKind } from '../host';
 import { DragDropController } from '../interactions/dragDrop';
 import { showHorizonMenu, showRiskMenu, showStateMenu, showTagMenu } from '../interactions/menu';
 import { removeTag } from '../interactions/tags';
-import { hasStateColumn, ownWorkflowReading, stateKeyFor } from '../../domain/board';
+import { ownWorkflowReading, stateKeyFor } from '../../domain/board';
 import { BacklogItem } from '../../domain/model';
 import { hasHorizonAxis, SHELF_LABEL } from '../../domain/roadmap';
 import { BacklogSettings, hasRiskLevels, resolvedDeliverableStateKey } from '../../domain/settings';
@@ -24,7 +24,7 @@ export interface RowContext {
 	 * screen rather than re-deriving it and hoping the two agree.
 	 */
 	cardKids: Set<string>;
-	chips: ChipProp[];
+	columns: Column[];
 }
 
 export function rowContext(
@@ -33,20 +33,19 @@ export function rowContext(
 	rows: Map<string, HTMLElement>,
 	cardKids: Set<string>,
 ): RowContext {
-	return { host, dnd, rows, cardKids, chips: host.chips };
+	// What this pass DRAWS. `host.columns` stays what EXISTS — `syncColumnFit` measures
+	// that one, or a narrowed pane would ratchet the count down and never let a column
+	// come back when it widens again.
+	const shown = host.columns.slice(0, host.columnFit?.shown ?? host.columns.length);
+	return { host, dnd, rows, cardKids, columns: shown };
 }
 
 /**
- * Widths of the fixed columns. `renderTree` publishes these to CSS as custom
- * properties, so the stylesheet reads them rather than repeating them — the same
- * one-directional trick as the property column width. The fallbacks in styles.css
- * are defaults for a stylesheet loaded without a render, not a second opinion.
+ * Width of the rollup column. `renderTree` publishes it to CSS as a custom property,
+ * so the stylesheet reads it rather than repeating it — the same one-directional trick
+ * as the property column width. The fallbacks in styles.css are defaults for a
+ * stylesheet loaded without a render, not a second opinion.
  */
-export const STATE_COL_WIDTH = 116;
-/** The horizon chip's column, sized like the state chip's — it holds the same shape. */
-export const HORIZON_COL_WIDTH = 116;
-/** The risk chip's column, the same shape again over a third declared vocabulary. */
-export const RISK_COL_WIDTH = 116;
 export const META_COL_WIDTH = 84;
 /**
  * Everything on a row that is not one of the columns, at its widest: the constant
@@ -71,60 +70,54 @@ export const INDENT_PER_DEPTH = 24;
 const TREE_PADDING = 16;
 
 /**
- * Which columns still fit in a pane this wide. Columns never shrink — that is what
- * keeps them aligned — so a pane too narrow for them has to drop them instead, and
- * the threshold has to come from what the rows actually need rather than a fixed
- * breakpoint: two 280px columns need more than twice the room of two 100px ones,
- * and every level of indent takes another 24px away from the deepest row's title.
- * Columns go in reverse order of usefulness — properties, then the rollup, then the
- * state chip, which survives longest because it summarizes a row on its own.
+ * How many of the columns fit in a pane this wide, and whether the rollup does. Columns
+ * never shrink — that is what keeps them aligned under their header — so a pane too
+ * narrow for them drops them instead, and the threshold has to come from what the rows
+ * actually need rather than a fixed breakpoint: two 280px columns need more than twice
+ * the room of two 100px ones, and every level of indent takes another 24px from the
+ * deepest row's title.
  *
- * Private: the threshold and the classes it drives are one decision, applied by
- * {@link syncColumnFit} below. Exporting the calculation alone invites a second
- * caller that measures the same pane and then disagrees about what to hide.
+ * They drop from the END of the user's order. The properties menu is where the user says
+ * what matters, so a ranking of our own beside it would be a second opinion about their
+ * own declaration. The rollup is the exception, and only because it is not in that order
+ * at all — it is pinned past the end, so "last" would always pick it first; it goes after
+ * every column instead.
+ *
+ * Private: the threshold and what it drives are one decision, applied by
+ * {@link syncColumnFit} below. Exporting the calculation alone invites a second caller
+ * that measures the same pane and then disagrees about what to hide.
  */
 function columnFit(
 	settings: BacklogSettings,
-	chipCount: number,
+	columnCount: number,
 	depth: number,
 	width: number,
-): { hideProps: boolean; hideRisk: boolean; hideMeta: boolean; hideHorizon: boolean; hideState: boolean } {
-	// Either workflow's key earns the column, so a Deliverable-only vault budgets for
-	// the chip its rows actually draw. The rollup beside it stays the requirements
-	// workflow's own (`subtreeDone`), so its term keeps asking about `stateKey` alone.
-	const state = hasStateColumn(settings) ? STATE_COL_WIDTH : 0;
-	const horizon = hasHorizonAxis(settings) ? HORIZON_COL_WIDTH : 0;
-	const risk = hasRiskLevels(settings) ? RISK_COL_WIDTH : 0;
+): ColumnFit {
 	const meta = settings.stateKey || settings.showCounts ? META_COL_WIDTH : 0;
-	const props = settings.showChips ? settings.propColumnWidth * chipCount : 0;
 	const lead = ROW_LEAD_WIDTH + TREE_PADDING + depth * INDENT_PER_DEPTH;
-	return {
-		hideProps: width < lead + state + horizon + risk + meta + props,
-		// Risk goes next, before the rollup: it is a judgement about the item and the
-		// only one of these columns whose property is still readable in Obsidian's own
-		// editor — the two chips beside it are this view's only surface for theirs, and
-		// the rollup is derived from rows nothing else shows.
-		hideRisk: width < lead + state + horizon + risk + meta,
-		hideMeta: width < lead + state + horizon + meta,
-		// The placement goes before the workflow state: a row's state is the one thing
-		// that summarizes it on its own, and the roadmap is where a horizon is read.
-		hideHorizon: width < lead + state + horizon,
-		// Nothing below this: what is left is the row's own lead, and the title
-		// truncates from there.
-		hideState: width < lead + state,
-	};
+	const room = width - lead - meta;
+	const fitting = Math.max(0, Math.floor(room / settings.propColumnWidth));
+	const shown = Math.min(columnCount, fitting);
+	// Nothing below this: what is left is the row's own lead, and the title truncates
+	// from there.
+	return { shown, rollupDropped: shown === 0 && width < lead + meta };
 }
 
 /**
- * Measure the pane and apply {@link columnFit} to it: drop the columns this pane
- * cannot hold, keep the ones it can. Lives with the widths and the threshold it
- * reads — a decision computed in one file and applied in another is one edit away
- * from the two disagreeing.
+ * Measure the pane and apply {@link columnFit} to it. Lives with the widths and the
+ * threshold it reads — a decision computed in one file and applied in another is one
+ * edit away from the two disagreeing.
  *
- * Measured after the rows are in place: an empty tree has no scrollbar, and its
- * width is not the width the columns will actually get. Returns true when the
- * decision CHANGED, which is exactly when what was rendered no longer matches it
- * and the caller owes the rows another pass.
+ * Measured after the rows are in place: an empty tree has no scrollbar, and its width is
+ * not the width the columns will actually get. Returns true when the decision CHANGED,
+ * which is exactly when what was rendered no longer matches it and the caller owes the
+ * rows another pass — and the next pass renders FEWER CELLS rather than hiding the ones
+ * it drew. Hiding them would leave a control inside a dropped column reachable by
+ * keyboard and by assistive tech, and scroll the strip out from under its header when
+ * one took focus.
+ *
+ * It measures `ctx.host.columns` and never `ctx.columns`: the second is the slice the
+ * last verdict produced, and measuring it would ratchet the count down for good.
  */
 export function syncColumnFit(ctx: RowContext, viewEl: HTMLElement, treeEl: HTMLElement): boolean {
 	const width = treeEl.clientWidth;
@@ -132,18 +125,16 @@ export function syncColumnFit(ctx: RowContext, viewEl: HTMLElement, treeEl: HTML
 	if (width === 0) return false;
 	// Indent is part of what a row needs, so expanding a deep branch can be what
 	// makes the columns stop fitting.
-	const fit = columnFit(ctx.host.settings, ctx.chips.length, renderedDepth(ctx), width);
-	const changed =
-		fit.hideProps !== viewEl.hasClass('pbl-hide-props') ||
-		fit.hideRisk !== viewEl.hasClass('pbl-hide-risk') ||
-		fit.hideMeta !== viewEl.hasClass('pbl-hide-meta') ||
-		fit.hideHorizon !== viewEl.hasClass('pbl-hide-horizon') ||
-		fit.hideState !== viewEl.hasClass('pbl-hide-state');
-	viewEl.toggleClass('pbl-hide-props', fit.hideProps);
-	viewEl.toggleClass('pbl-hide-risk', fit.hideRisk);
-	viewEl.toggleClass('pbl-hide-meta', fit.hideMeta);
-	viewEl.toggleClass('pbl-hide-horizon', fit.hideHorizon);
-	viewEl.toggleClass('pbl-hide-state', fit.hideState);
+	const fit = columnFit(ctx.host.settings, ctx.host.columns.length, renderedDepth(ctx), width);
+	// Against what this pass actually DREW rather than against the stored number, so a
+	// render that drew a different count than the verdict claims still asks for the pass
+	// that reconciles them.
+	const changed = fit.shown !== ctx.columns.length || fit.rollupDropped !== viewEl.hasClass('pbl-hide-meta');
+	// The whole verdict, stored as one value: the rows slice by `shown` and the header
+	// asks about `rollupDropped`, and two members written separately are two things that
+	// can end up describing different frames.
+	ctx.host.setColumnFit(fit);
+	viewEl.toggleClass('pbl-hide-meta', fit.rollupDropped);
 	return changed;
 }
 
@@ -172,61 +163,74 @@ function renderedDepth(ctx: RowContext): number {
 }
 
 /**
- * The visible properties to render as columns, with their labels. Resolved once per
- * data update by the view (`host.chips`), because it answers two questions — what the
- * rows draw, and what the tag menu may edit — and they must not drift apart.
+ * The columns this view draws, in the order the Bases properties menu declares them.
+ * Resolved once per data update by the view (`host.columns`), because it answers two
+ * questions — what the rows draw, and what the tag menu may edit — and they must not
+ * drift apart.
+ *
+ * Nothing is subtracted for being special any more. A configured state, horizon, risk
+ * or tags property is a column when the menu shows it, where the menu puts it, and is
+ * absent when it does not: one source for what is on a row, which is what this used to
+ * have two of.
  */
-export function chipProps(host: BacklogViewHost): ChipProp[] {
+export function resolveColumns(host: BacklogViewHost): Column[] {
 	let props: BasesPropertyId[] = [];
 	try {
 		props = host.config.getOrder();
 	} catch {
 		return [];
 	}
-	if (!host.settings.showChips) return [];
+	const settings = host.settings;
+	// Not properties this view declines to show — the view ITSELF. The tree is the
+	// parent column, the badge is the type, the title is the name, and `order` is an
+	// implementation number rather than a fact about the item.
 	const skip = new Set<string>([
 		'file.name',
-		`note.${host.settings.parentKey}`,
-		`note.${host.settings.orderKey}`,
-		`note.${host.settings.typeKey}`,
+		`note.${settings.parentKey}`,
+		`note.${settings.orderKey}`,
+		`note.${settings.typeKey}`,
 	]);
-	// The interactive chips already show these properties. The Deliverable state key
-	// joins them now that the chip reads it on a Deliverable row: found by review —
-	// with its own key configured AND named in the Base's property order, the value
-	// rendered twice on such a row, once editable and once not, which is exactly what
-	// this skip list exists to prevent. Resolved, so the fallback case is the same key
-	// `stateKey` already removed rather than a second entry for it. Skipped for EVERY
-	// row, like `stateKey` itself: the column set is one decision per render pass, and
-	// the property describes a Deliverable anyway (`missingKeyStubs` refuses to stub it
-	// on anything else), so no other row loses a column it had a reason to carry.
-	if (host.settings.stateKey) skip.add(`note.${host.settings.stateKey}`);
-	const deliverableKey = resolvedDeliverableStateKey(host.settings);
-	if (deliverableKey) skip.add(`note.${deliverableKey}`);
-	if (hasHorizonAxis(host.settings)) skip.add(`note.${host.settings.horizonKey}`);
-	// Same rule for the risk chip, on the same condition it renders: with the levels
-	// cleared there is no chip, and the property goes back to being an ordinary column.
-	if (hasRiskLevels(host.settings)) skip.add(`note.${host.settings.riskKey}`);
-	const tagsId = host.settings.tagsKey ? `note.${host.settings.tagsKey}` : '';
 	return props
 		.filter((prop) => !skip.has(prop))
-		.map((prop) => ({ prop, label: chipLabel(host, prop), tags: prop === tagsId }));
+		.map((prop) => ({ prop, label: columnLabel(host, prop), kind: columnKind(settings, prop) }));
 }
 
 /**
- * What the state column is called. One column, and with two workflows configured on
- * DISTINCT keys it holds two properties — a Deliverable row shows one, every other row
- * the other — so naming it after either would misidentify the property half the rows
- * below it are showing. It takes the generic word there, and the configured property's
- * own display name whenever only one key is in play (including the fallback, where the
- * two keys ARE one key and there is nothing generic about the answer).
+ * Which rendering a visible property gets. Each kind asks the SAME predicate the menu
+ * behind that chip is gated on, so a chip whose menu could set nothing cannot exist —
+ * but that predicate is not one rule for all of them, and saying so would be claiming
+ * more than these five lines do:
+ *
+ * - `horizon` and `risk` are a PAIR, a key AND a declared vocabulary (`hasHorizonAxis`,
+ *   `hasRiskLevels`), because neither menu has anywhere else to get its values. With the
+ *   list cleared the property falls through to `value` and renders as an ordinary column,
+ *   which is the behaviour the risk chip already had and is now stated for both of them.
+ * - `state` is the KEY alone, deliberately: `stateMenuValues` falls back to the states
+ *   observed on the results (plus a done value), so a state property with no configured
+ *   list still has a menu with something in it. Pairing it would withhold the chip from
+ *   every vault that never declared its workflow.
+ *
+ * Only the first bullet is under a test of this function (`test/view/columnKinds.test.ts`
+ * clears both vocabularies and asks for `value`); the second is a fact about
+ * `stateMenuValues`, asserted where that lives — `test/domain/settings.test.ts`, whose
+ * `stateMenuValues` block returns the observed states with an undeclared workflow and
+ * `['Done']` with nothing observed either, so the menu this chip opens is never empty.
+ *
+ * Both state keys map to `state`. With the two workflows on distinct keys and both
+ * visible, that is two columns, and `renderStateChip` draws into whichever one names
+ * the key this row's own workflow writes.
  */
-function stateColumnLabel(host: BacklogViewHost): string {
-	const { stateKey, deliverableStateKey } = host.settings;
-	if (stateKey && deliverableStateKey && stateKey !== deliverableStateKey) return 'State';
-	return chipLabel(host, `note.${stateKey || deliverableStateKey}`);
+function columnKind(settings: BacklogSettings, prop: BasesPropertyId): ColumnKind {
+	const deliverableKey = resolvedDeliverableStateKey(settings);
+	if (settings.stateKey && prop === `note.${settings.stateKey}`) return 'state';
+	if (deliverableKey && prop === `note.${deliverableKey}`) return 'state';
+	if (hasHorizonAxis(settings) && prop === `note.${settings.horizonKey}`) return 'horizon';
+	if (hasRiskLevels(settings) && prop === `note.${settings.riskKey}`) return 'risk';
+	if (settings.tagsKey && prop === `note.${settings.tagsKey}`) return 'tags';
+	return 'value';
 }
 
-function chipLabel(host: BacklogViewHost, prop: BasesPropertyId): string {
+function columnLabel(host: BacklogViewHost, prop: BasesPropertyId): string {
 	try {
 		return host.config.getDisplayName(prop);
 	} catch {
@@ -240,33 +244,28 @@ function chipLabel(host: BacklogViewHost, prop: BasesPropertyId): string {
  * the names live here once, pinned to the top of the scroller.
  */
 export function renderColumnHeader(ctx: RowContext, containerEl: HTMLElement): void {
-	if (ctx.chips.length === 0) return;
 	const settings = ctx.host.settings;
+	// CONFIGURED is not DRAWN, and this asks the second: the rollup is pinned past the end
+	// of the column list rather than being one of them, so a strip narrowed to zero
+	// properties still draws it on every row — but a pane too narrow for even that drops
+	// it, and a header built from the configuration alone was then a sticky, bordered bar
+	// holding a spacer, an empty box and a label the stylesheet hides. It reads the fit
+	// the LAST pass measured, exactly as the columns above do; a verdict that has changed
+	// since buys the reconciling pass `syncColumnFit` asks for, which draws both from the
+	// same one.
+	const rollup = (settings.stateKey !== '' || settings.showCounts) && !ctx.host.columnFit?.rollupDropped;
+	// Nothing to head at all, which is not the same question as "no columns".
+	if (ctx.columns.length === 0 && !rollup) return;
 	// Presentational: every value below carries its own accessible label.
 	const header = containerEl.createDiv({ cls: 'pbl-cols', attr: { 'aria-hidden': 'true' } });
 	header.createDiv({ cls: 'pbl-row-spacer' });
 
 	const props = header.createDiv({ cls: 'pbl-props' });
-	for (const chip of ctx.chips) {
-		const cell = props.createDiv({ cls: 'pbl-prop pbl-col-label', text: chip.label });
-		setTooltip(cell, chip.label);
+	for (const column of ctx.columns) {
+		const cell = props.createDiv({ cls: 'pbl-prop pbl-col-label', text: column.label });
+		setTooltip(cell, column.label);
 	}
-	if (hasRiskLevels(settings)) {
-		header.createDiv({
-			cls: 'pbl-risk-col pbl-col-label',
-			text: chipLabel(ctx.host, `note.${settings.riskKey}`),
-		});
-	}
-	if (hasHorizonAxis(settings)) {
-		header.createDiv({
-			cls: 'pbl-horizon-col pbl-col-label',
-			text: chipLabel(ctx.host, `note.${settings.horizonKey}`),
-		});
-	}
-	if (hasStateColumn(settings)) {
-		header.createDiv({ cls: 'pbl-state-col pbl-col-label', text: stateColumnLabel(ctx.host) });
-	}
-	if (settings.stateKey || settings.showCounts) {
+	if (rollup) {
 		header.createDiv({
 			cls: 'pbl-meta-col pbl-col-label',
 			text: settings.stateKey ? 'Progress' : 'Items',
@@ -291,42 +290,77 @@ export function renderAddSpacer(containerEl: HTMLElement): void {
 }
 
 /**
- * The trailing columns of one row. Every column is fixed-width and anchored to the
- * row's end, so values line up across rows regardless of title length or indent —
- * the property values, the state chip and the rollup all read as columns.
+ * The trailing columns of one row. Every column is fixed-width and the strip is
+ * anchored to the row's end, so values line up across rows regardless of title length
+ * or indent — and the ORDER is the properties menu's, chips included.
  */
 export function renderRowColumns(ctx: RowContext, row: HTMLElement, item: BacklogItem): void {
 	// Pushes the columns to the row's end; also the click target between them.
 	row.createDiv({ cls: 'pbl-row-spacer' });
-	if (ctx.chips.length > 0) renderPropCells(ctx, row, item);
-	if (hasRiskLevels(ctx.host.settings)) {
-		renderRiskChip(ctx.host, row.createDiv({ cls: 'pbl-risk-col' }), item);
-	}
-	if (hasHorizonAxis(ctx.host.settings)) {
-		renderHorizonChip(ctx.host, row.createDiv({ cls: 'pbl-horizon-col' }), item);
-	}
-	// The CELL follows the base's configuration and the CHIP inside it follows the
-	// row's own workflow, so a column that exists for Deliverables alone leaves an empty
-	// cell on every other row rather than shifting the columns after it.
-	if (hasStateColumn(ctx.host.settings)) renderStateChip(ctx.host, row.createDiv({ cls: 'pbl-state-col' }), item);
+	if (ctx.columns.length > 0) renderPropCells(ctx, row, item, ctx.columns);
 	renderRollup(ctx.host, row, item);
 }
 
-/** Shared with the board's cards — one resolved column list drives both projections. */
-export function renderPropCells(ctx: RowContext, row: HTMLElement, item: BacklogItem): void {
+/**
+ * Shared with the cards, which pass a narrowed list — one resolved column list drives
+ * every projection, and a caller may draw fewer of them but never a different set.
+ */
+export function renderPropCells(
+	ctx: RowContext,
+	row: HTMLElement,
+	item: BacklogItem,
+	columns: Column[],
+): void {
 	const props = row.createDiv({ cls: 'pbl-props' });
-	for (const chip of ctx.chips) {
-		const cell = props.createDiv({ cls: 'pbl-prop' });
-		if (chip.tags) renderTagCell(ctx.host, cell, item, chip);
-		else renderValue(ctx.host, cell, item, chip);
+	for (const column of columns) {
+		// `value` takes no modifier: `.pbl-prop-value` is already the class of the SPAN
+		// a plain value renders into, and giving the cell the same name would make one
+		// selector mean two boxes.
+		const cls = 'pbl-prop' + (column.kind === 'value' ? '' : ` pbl-prop-${column.kind}`);
+		renderCell(ctx.host, props.createDiv({ cls }), item, column);
 	}
 }
 
-function renderValue(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem, chip: ChipProp): void {
+/**
+ * Which of the five renderings this column asked for.
+ *
+ * Every one of them is handed the COLUMN's own display name, because that is the only
+ * thing on the row that says which property the cell is: the header
+ * (`renderColumnHeader`) is `aria-hidden`, so a chip whose accessible name says only
+ * "Change state" is unidentifiable — and two state columns are legal now, so two such
+ * chips can be on screen at once naming different properties. The chips put the name in
+ * the accessible name and keep the TOOLTIP a plain statement of what pressing does: a
+ * pointer user has the visible header directly above the cell, and a chip only ever
+ * renders in the tree, which always draws that header when it draws a column.
+ *
+ * A context row's `.pbl-state-static` form is deliberately left out of this. It is a
+ * `div` with no role, where an `aria-label` names nothing reliably — the accessible name
+ * of a generic element is its own text, which here IS the value — so the label it would
+ * carry is the tooltip's job, and that tooltip already says why the cell cannot be
+ * written rather than what pressing it would do.
+ */
+function renderCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem, column: Column): void {
+	if (column.kind === 'tags') renderTagCell(host, cell, item, column);
+	else if (column.kind === 'state') renderStateChip(host, cell, item, column);
+	else if (column.kind === 'horizon') renderHorizonChip(host, cell, item, column.label);
+	else if (column.kind === 'risk') renderRiskChip(host, cell, item, column.label);
+	else renderValue(host, cell, item, column);
+}
+
+/**
+ * What a chip announces. The verb is ours and stays sentence case; the noun is the
+ * property's own display name, so the control says which key it writes rather than which
+ * KIND of thing it is.
+ */
+function chipLabel(label: string, value: string | null): string {
+	return value === null ? `Set ${label}` : `Change ${label} (currently ${value})`;
+}
+
+function renderValue(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem, column: Column): void {
 	// An ancestor from outside the filter has no Bases row, so no property values.
 	let value = null;
 	try {
-		value = item.entry?.getValue(chip.prop) ?? null;
+		value = item.entry?.getValue(column.prop) ?? null;
 	} catch {
 		return;
 	}
@@ -354,7 +388,7 @@ function renderValue(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem
 	// The column is narrow and the header names it only once — say both here, and
 	// in the accessible name too, since the header itself is presentational (and
 	// for a purely visual rendering it is the only thing that says what the cell is).
-	const described = `${chip.label}: ${rendered || text}`;
+	const described = `${column.label}: ${rendered || text}`;
 	setTooltip(valueEl, described);
 	valueEl.setAttribute('aria-label', described);
 }
@@ -363,8 +397,7 @@ function renderValue(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem
  * Tags as pills, each removable, with a button to add one. A note the Base excluded
  * is context: its tags render, but nothing on the row offers to write them.
  */
-function renderTagCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem, chip: ChipProp): void {
-	cell.addClass('pbl-prop-tags');
+function renderTagCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem, column: Column): void {
 	const editable = !item.outsideFilter;
 	// The pills live in their own box so that *they* clip when there are more than
 	// the column can show. The add button is a sibling of that box, not the last
@@ -389,7 +422,7 @@ function renderTagCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogIt
 			removeTag(host, item, tag);
 		});
 	}
-	if (item.tags.length > 0) setTooltip(cell, `${chip.label}: ${item.tags.map((t) => `#${t}`).join(', ')}`);
+	if (item.tags.length > 0) setTooltip(cell, `${column.label}: ${item.tags.map((t) => `#${t}`).join(', ')}`);
 	if (!editable) return;
 
 	const add = cell.createEl('button', {
@@ -433,19 +466,17 @@ export function renderRollup(host: BacklogViewHost, row: HTMLElement, item: Back
  * value, so the chip and the menu it opens can never name different states. A
  * Deliverable under the fallback (no Deliverable state property configured) reads the
  * shared key, so this is the identical value either way.
- *
- * The CELL is the base's question (`hasStateColumn` — either workflow having a key) and
- * the CHIP is the row's own (`stateKeyFor` — the key ITS workflow writes). The two are
- * different tests because they answer different things: a vault that configures only
- * the Deliverable property still has a state column, and every non-Deliverable row in
- * it draws an empty cell rather than a "State" button whose picks would be dropped by
- * `applyWrites`' "never write to an empty key" rule. Empty rather than absent, because
- * a column that skipped a row would shift every column after it on that row alone.
- * `stateKeyFor` is the same function `buildItemMenu` gates Set state on, so the chip
- * and the menu can never disagree about which key this row writes.
  */
-function renderStateChip(host: BacklogViewHost, col: HTMLElement, item: BacklogItem): void {
-	if (!stateKeyFor(host.settings, item)) return;
+function renderStateChip(host: BacklogViewHost, col: HTMLElement, item: BacklogItem, column: Column): void {
+	// The CELL is the properties menu's question and the CHIP is the row's own: this
+	// column names ONE key, and a row draws into it only when that is the key its
+	// workflow writes. With both workflows visible on distinct keys there are two such
+	// columns, and every row fills exactly one of them and leaves the other empty —
+	// empty rather than absent, or the columns after it would shift on that row alone.
+	// `stateKeyFor` is the same function `buildItemMenu` gates Set state on, so the chip
+	// and the menu can never disagree about which key this row writes.
+	const key = stateKeyFor(host.settings, item);
+	if (!key || `note.${key}` !== column.prop) return;
 	const { value, done } = ownWorkflowReading(item);
 	const cls = 'pbl-state-chip' + (done ? ' pbl-state-done' : '') + (value === null ? ' pbl-state-unset' : '');
 
@@ -468,7 +499,7 @@ function renderStateChip(host: BacklogViewHost, col: HTMLElement, item: BacklogI
 		attr: {
 			type: 'button',
 			tabindex: '-1',
-			'aria-label': value === null ? 'Set state' : `Change state (currently ${value})`,
+			'aria-label': chipLabel(column.label, value),
 		},
 	});
 	fillStateChip(chip, done, value);
@@ -494,7 +525,7 @@ function fillStateChip(chip: HTMLElement, done: boolean, value: string | null): 
  * and a chip whose menu could set nothing would be a third opinion about what
  * "configured" means.
  */
-function renderHorizonChip(host: BacklogViewHost, col: HTMLElement, item: BacklogItem): void {
+function renderHorizonChip(host: BacklogViewHost, col: HTMLElement, item: BacklogItem, label: string): void {
 	// A value the reader refuses is not a placement: the roadmap shelves such a card
 	// with the reason on its face, and the chip says the same thing — unplaced, and
 	// why — rather than showing a horizon the axis would not honor.
@@ -521,7 +552,7 @@ function renderHorizonChip(host: BacklogViewHost, col: HTMLElement, item: Backlo
 		attr: {
 			type: 'button',
 			tabindex: '-1',
-			'aria-label': unplaced ? 'Set horizon' : `Change horizon (currently ${value})`,
+			'aria-label': chipLabel(label, value),
 		},
 	});
 	fillHorizonChip(chip, value);
@@ -540,7 +571,7 @@ function renderHorizonChip(host: BacklogViewHost, col: HTMLElement, item: Backlo
  * `Unplaced`: absence here is not a placement to name, it is an invitation, and the row
  * is where the judgement is meant to be made.
  */
-function renderRiskChip(host: BacklogViewHost, col: HTMLElement, item: BacklogItem): void {
+function renderRiskChip(host: BacklogViewHost, col: HTMLElement, item: BacklogItem, label: string): void {
 	const value = item.riskValue;
 	const cls = 'pbl-risk-chip' + (value === null ? ' pbl-risk-unset' : '');
 
@@ -562,7 +593,7 @@ function renderRiskChip(host: BacklogViewHost, col: HTMLElement, item: BacklogIt
 		attr: {
 			type: 'button',
 			tabindex: '-1',
-			'aria-label': value === null ? 'Set risk' : `Change risk (currently ${value})`,
+			'aria-label': chipLabel(label, value),
 		},
 	});
 	fillRiskChip(chip, value);

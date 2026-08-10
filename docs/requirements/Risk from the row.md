@@ -102,8 +102,8 @@ placement, both times as a chip in a fixed column, opening the row menu's own bu
   ordinary column again.
 - An unjudged note draws a dashed chip that says what pressing it does; a row the Base
   excluded draws a static one, or none where it has nothing to say.
-- The column is in the fit budget and drops whole, after the properties and before the
-  rollup.
+- The column is in the fit budget and drops whole, by its position in the properties
+  menu's order like every other column.
 - **Not checked here:** how the chip looks in a themed vault, and whether four fixed
   columns still read as columns on a real pane. The jsdom suite asserts markup and the
   browser harness draws without asserting ([[Smoke test the tree]]).
@@ -113,12 +113,12 @@ placement, both times as a chip in a fixed column, opening the row menu's own bu
 `renderRiskChip` in `src/view/render/columns.ts`, beside `renderStateChip` and
 `renderHorizonChip` whose shape it takes, gated on `hasRiskLevels` in
 `src/domain/settings.ts` — the same predicate the row menu's **Set risk** is gated on, so
-a chip whose menu could set nothing is not a state either side can reach alone. The column
-is `RISK_COL_WIDTH` and a `hideRisk` term in the same file's `columnFit`, whose verdict
-`src/view/backlogView.ts` clears when a card projection takes over; the width is published
-to CSS by `renderTree` in `src/view/render/rows.ts`, so the stylesheet reads the number
-rather than repeating it. `chipProps` beside them adds the risk key to the properties an
-interactive chip already shows.
+a chip whose menu could set nothing is not a state either side can reach alone. It is an
+ordinary column of the configured width now — `resolveColumns` gives the risk property the
+`risk` kind and `columnFit` counts it like any other, its place in the drop order being its
+place in the properties menu; `src/view/backlogView.ts` resets that count when a card
+projection takes over. The width is published to CSS by `renderTree` in
+`src/view/render/rows.ts`, so the stylesheet reads the number rather than repeating it.
 
 The menu is `showRiskMenu` in `src/view/interactions/menu.ts` — one of four one-line
 exports over `chipMenu` there, which is what four per-row controls opening their section's
