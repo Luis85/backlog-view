@@ -267,7 +267,11 @@ function addBulk(add: ReturnType<typeof adder>, count: number): void {
 			status: states[i % states.length],
 			...(i % 7 === 0 ? {} : { horizon: horizons[i % horizons.length] }),
 			start: bulkDate(i),
-			due: bulkDate(i + 20),
+			// `i`, then twenty days on from THAT — never `bulkDate(i + 20)`, which wraps the
+			// window and lands one note in six with a target before its own start. Those
+			// read as unplaceable and go to the shelf, so a sixth of the roadmap sample
+			// would have been measuring the shelf instead of the bars. (Codex, PR #128.)
+			due: bulkDate(i, 20),
 			...(i % 11 === 0 ? { risk: '2 - Medium' } : {}),
 			...(i % 13 === 0 ? { assignee: 'Dana' } : {}),
 		};
@@ -278,9 +282,14 @@ function addBulk(add: ReturnType<typeof adder>, count: number): void {
 	}
 }
 
-/** A civil date `i` days into the fixture's window, so generated bars spread across it. */
-function bulkDate(i: number): string {
-	return new Date(Date.UTC(2026, 6, 1 + (i % 120))).toISOString().slice(0, 10);
+/**
+ * A civil date `i` days into the fixture's 120-day window, so generated bars spread
+ * across it, plus `span` days — added AFTER the wrap, which is the whole point of the
+ * second argument: a span folded into `i` comes back round to the start of the window and
+ * states a target before its own start.
+ */
+function bulkDate(i: number, span = 0): string {
+	return new Date(Date.UTC(2026, 6, 1 + (i % 120) + span)).toISOString().slice(0, 10);
 }
 
 /**

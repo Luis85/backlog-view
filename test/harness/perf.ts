@@ -58,15 +58,28 @@ function sample(el: HTMLElement, op: string, run: () => void, prepare?: () => vo
  * The four rows, given the mount's own time — which the caller has to measure, since it
  * happens once and before this module has anything to be handed.
  *
- * `render` is timed beside `update` rather than instead of it, because the difference is
- * the model build: `onDataUpdated` builds and renders, `render` only renders. That split
- * costs no seam — both are already public — which is what [[The model build states its
- * cost as a check]] asked for when it refused a counter threaded through the phases.
+ * `render` is timed beside `update` because `onDataUpdated` builds and renders while
+ * `render` only renders, so the pair BOUNDS what the non-render half of a data update can
+ * cost. It does not MEASURE it, and the difference is not the model build — a claim this
+ * file made until 2026-08-10 and which was wrong by two orders of magnitude.
+ *
+ * The two medians are sampled at different points in the run and each swings by a
+ * hundred milliseconds or more; subtracting them yields anything from ~30 ms to ~700 ms
+ * across runs, for a quantity that direct instrumentation puts at ~10 ms. A difference
+ * smaller than the noise of its own terms is not a measurement, and reading one off this
+ * panel is how the build got blamed for the render's cost — see
+ * [[The render is the whole cost of a data update]]. Time the phase itself if you want
+ * the phase.
  */
 function measure(view: ProductBacklogView, el: HTMLElement, mountMs: number): { rows: Row[]; treeRows: number } {
 	// Restored at the end rather than reset to the tree: the run drives all four, and a
 	// `?perf&view=board` page has to be left showing the board it was asked for.
 	const opened = view.projection;
+	// Switched to the tree BEFORE expanding, because `?perf` composes with `?view=board`
+	// and the expand control is disabled on a projection that drew no disclosure. Expanding
+	// there did nothing, counted zero rows, and left every later sample rendering a
+	// collapsed tree under a heading claiming an expanded one. (Codex, PR #128.)
+	view.setProjection('tree');
 	expandAll(el);
 	// Counted HERE rather than at the end, where the restored projection may be the board
 	// and the tree's row count would read as zero — the panel's own sample size, wrong.

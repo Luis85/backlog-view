@@ -126,6 +126,18 @@ describe('the size knob grows the fixture it says it grows', () => {
 		expect(vault.files.has(fixture === 'folders' ? 'Bulk epic 1/Bulk epic 1.md' : 'Bulk epic 1.md')).toBe(true);
 	});
 
+	it('gives every generated note a target after its own start', () => {
+		// A span folded into the day index wrapped the fixture's 120-day window, so one
+		// generated note in six stated a target before its start, read as unplaceable, and
+		// went to the shelf — a sixth of the roadmap sample measuring the shelf instead of
+		// the bars it exists to draw. Asserted over ALL of them rather than at the wrap,
+		// because the next arithmetic slip will not be at the same index. (Codex, PR #128.)
+		const generated = [...mount('demo', 400).vault.frontmatter].filter(([path]) => path.startsWith('Bulk '));
+		expect(generated.length).toBe(400);
+		const reversed = generated.filter(([, fm]) => String(fm['due']) < String(fm['start'])).map(([path]) => path);
+		expect(reversed).toEqual([]);
+	});
+
 	it('puts no generated note within reach of a fixture nobody asked to grow', () => {
 		// The claim that keeps every other caller — the whole suite and the plain harness
 		// URL — on the fixture they had before the knob existed. Stated as the PREFIX

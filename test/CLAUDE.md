@@ -113,17 +113,22 @@ Obsidian's.
   `?notes=` grows either backlog by that many generated notes (`addBulk`, in the same
   fixture file) and `?perf` times the mount, a data update, a render on its own and each
   projection switch — five samples each, median and worst, into a corner panel and
-  `console.table`. The build/render split is `update − render`: both calls are already
-  public, so it costs no seam, which is what [[The model build states its cost as a check]]
-  asked for. The run expands the tree first, or three of its rows would be describing
-  different sample sizes under one heading.
+  `console.table`. The run switches to the tree and expands it first, or three of its rows
+  would describe different sample sizes under one heading.
+  **Its two medians are not subtractable.** `update` minus `render only` looks like the
+  non-render half of a data update and is not: sampled at different points in one run, each
+  swinging by 100 ms+, their difference ranged over an order of magnitude across runs for a
+  quantity worth ~10 ms. That subtraction produced a filed bug note blaming the model build
+  for the render's cost, retracted the same day — see
+  [[The render is the whole cost of a data update]]. To time a phase, patch the phase.
   **Nothing here asserts, and nothing here may.** A timing check was refused twice in the
   register on the ground that it measures the runner, and this does not reopen it — what
   `harness.test.ts` checks is that the knob delivers the size it claims, because an
   instrument that quietly measured forty rows while reporting eight hundred is worse than
   none. Read the panel's own last line before quoting a number: there is no Bases pass, no
-  metadata cache, no vault I/O and no theme behind it. What it found the first time it ran
-  is [[The model build is superlinear past a few hundred notes]].
+  metadata cache, no vault I/O and no theme behind it. What it found once it was read
+  correctly is [[The render is the whole cost of a data update]]: every phase is linear, and
+  the render costs ~0.6 ms per row against the build's ~0.012 ms.
 - **A change that visibly alters the view puts its cases in a FIXTURE, not in a mock.**
   In `demoVault()` where the case belongs in the everyday picture; in a named variant —
   `edgeCaseVault()`, reached by `?fixture=edges` — where it would distort it, which is
