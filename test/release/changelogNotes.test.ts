@@ -37,4 +37,17 @@ describe('changelogNotes', () => {
 	it('throws when the version has no dated heading', () => {
 		expect(() => changelogNotes(SAMPLE, '9.9.9')).toThrow(/no dated heading/);
 	});
+
+	// Review found this one live: `indexOf('\n', …)` returns -1 with no newline after the
+	// heading, and -1 + 1 used to slice from 0 — the WHOLE file — for a heading that
+	// actually has nothing after it at all, rather than the empty body it really has.
+	it('is empty, not the whole file, when the matching heading is the last line with no trailing newline', () => {
+		const noTrailingNewline = '# Changelog\n\n## [Unreleased]\n\n## [0.6.0] - 2026-08-10';
+		expect(changelogNotes(noTrailingNewline, '0.6.0')).toBe('');
+	});
+
+	it('is empty when the matching heading is followed only by its own trailing newline', () => {
+		const headingOnly = '# Changelog\n\n## [Unreleased]\n\n## [0.6.0] - 2026-08-10\n';
+		expect(changelogNotes(headingOnly, '0.6.0')).toBe('');
+	});
 });

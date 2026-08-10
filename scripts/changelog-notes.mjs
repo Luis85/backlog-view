@@ -22,7 +22,11 @@ export function changelogNotes(changelog, version) {
 	const all = headings(changelog);
 	const at = all.findIndex((h) => dated.test(h.text));
 	if (at === -1) throw new Error(`CHANGELOG.md has no dated heading for ${version}`);
-	const from = changelog.indexOf('\n', all[at].index) + 1;
+	// A heading with no newline after it is the last line of a file that does not end in
+	// one: indexOf returns -1, and `-1 + 1` used to slice from 0 — the whole file, not the
+	// empty body that heading actually has nothing after.
+	const lineEnd = changelog.indexOf('\n', all[at].index);
+	const from = lineEnd === -1 ? changelog.length : lineEnd + 1;
 	return changelog.slice(from, all[at + 1]?.index ?? changelog.length).trim();
 }
 

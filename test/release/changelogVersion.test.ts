@@ -34,6 +34,16 @@ import { headings } from '../../scripts/docs-markdown.mjs';
  * `docs-check.mjs` already trusts for every other `## ` heading in this repository, so
  * "the first heading below `[Unreleased]`" is asked of a real CommonMark parse instead of
  * one more pattern.
+ *
+ * `headings()` is ATX-only by design, not by the gap this file's history is otherwise a
+ * catalogue of: its own comment in `docs-markdown.mjs` explains that recognising CommonMark's
+ * other level-two spelling — a line underlined with `---` — read the `---` of every note's
+ * own YAML frontmatter as a heading whose text was the whole block, across the entire
+ * register. Widening it to catch a Setext-style `## ` heading here would reopen that,
+ * repository-wide, to close a shape nobody writes a changelog heading in — an ATX `##` is
+ * the only spelling `RELEASING.md` ever asks for. Narrowing the claim rather than the
+ * parser: this test knows a real dated heading from a malformed one in every ATX spelling,
+ * and does not look for one written as a Setext underline.
  */
 const DATED_VERSION = /^\[(\d+\.\d+\.\d+)\] - \d{4}-\d{2}-\d{2}$/;
 
