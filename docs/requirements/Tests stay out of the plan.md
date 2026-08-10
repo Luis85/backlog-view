@@ -55,12 +55,13 @@ context row when a visible descendant needs a parent to hang from.
    question and is untouched (3a, 3d).
 4. The observed vocabularies are derived **per population**, and the rule is one sentence
    applied to each: *a vocabulary is scoped to the population of the projection that offers
-   it.* The count is the thing to get right — the model publishes **four**
-   (`observedStates`, `observedTags`, `observedHorizons`, `observedDeliverableStates`), and
-   an earlier draft of this step named two, which is how a `QA` horizon carried only by a
-   test would still have reached a plan row's Set horizon menu. `grep observed[A-Z]` is
-   what enumerates them; naming the ones a paragraph happens to be thinking about is what
-   misses the third.
+   it.* Which list is the thing to get right, and not by counting them: an earlier draft of
+   this step named two, which is how a `QA` horizon carried only by a test would still have
+   reached a plan row's Set horizon menu, and the number it was corrected to (four) went
+   stale the same week when `observedAssignees` arrived on `main` — the same defect one
+   level up, and the reason the criteria below state the rule rather than a total.
+   `grep observed[A-Z]` over `src/domain/model.ts` is what enumerates them; naming the ones
+   a paragraph happens to be thinking about is what misses the next.
    What the plan **draws and offers** — its board columns, and the values a plan row's Set
    state, Set horizon or tag picker offers — comes from the plan's population. The
    population, not the type list: `firstSeen` (`src/domain/vocabulary.ts`) skips a context
@@ -155,7 +156,9 @@ context row when a visible descendant needs a parent to hang from.
   done", because the one walk that computes rollups is the one told to stop at a test.
   Accepted rather than solved: a second projection-specific pass over the tree is a real
   cost for a number this epic never promised — it records no results, so a case's `done` is
-  its `status` and nothing else. If a run ever becomes an item, that increment can revisit
+  the state that case is IN and nothing else. (It later gained a workflow of its own to
+  answer that with, [[A workflow for the tests]]; the cost priced here is a ROLLUP, and a
+  per-item state is not one.) If a run ever becomes an item, that increment can revisit
   this; naming the cost here is what keeps it from being rediscovered as a bug.
   **A rollup is therefore a PLAN number, and the walk asks that of both ends.** Written as
   "stop at a test" it read as one question about the child and shipped as one: a `PBI`
@@ -200,11 +203,23 @@ context row when a visible descendant needs a parent to hang from.
   already gives one projection over: *on the requirements board a done Deliverable is not
   a hidden card, it is not a card at all, so counting it offered to reveal something
   pressing the button cannot show.* In the catalog the toggle is withheld entirely, as it
-  already is on the Deliverables board — this epic gives tests no workflow, so there is no
-  completion for it to hide.
-- **4a — a test carries a state the plan's workflow also uses.** Irrelevant: its state is
-  never read by a projection it is excluded from, so it cannot create a column, cannot fill
-  one, and cannot appear in a Set state menu.
+  already is on the Deliverables board. Tests have a workflow of their own now
+  ([[A workflow for the tests]]), and the withholding survives that on a reason it never
+  needed before: the thing the toggle hides is `subtreeDone`, which is the REQUIREMENTS
+  rollup — an item's own `done` read through the plan's state key, and a descendant count
+  the catalog never accumulates (3c). Neither half is the test workflow's, so hiding by it
+  would take a catalog row off the screen for a flag the catalog neither reads nor shows.
+- **4a — a test carries a state the plan's workflow also uses.** Which is the shipped
+  default rather than a corner case: with no test state property named, all three workflows
+  resolve to one key. Still irrelevant, and the reason is now that the workflows are
+  SEPARATE rather than that there is only one. A test is not in the plan's population, and
+  every plan surface derives from that population rather than from a list of type names —
+  the requirements board's columns come from `model.results`, which is the plan's forest;
+  a plan row's Set state offers `model.observedStates`, which is the whole tree minus the
+  catalog. So a test cannot create a plan column, cannot fill one, and cannot appear in a
+  plan row's Set state menu, whatever key its state happens to live under. The mirror holds
+  for the same reason and is the half a shared vocabulary would break: a plan row's state
+  never reaches a catalog row's menu either.
 - **5a — the user has no test items at all.** Every exclusion is a no-op and every
   projection renders exactly as it did. That is the criterion below, and it is the one
   worth asserting first because it is what almost every vault will experience.

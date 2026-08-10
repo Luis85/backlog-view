@@ -21,7 +21,10 @@ four, `Projection` being `tree | board | roadmap | deliverables` since
 have specified a control that replaces the Deliverables board rather than joining it.
 
 It is a tree and not a board or a roadmap because this epic records no results and writes
-no dates, so there is nothing to put in a column and nothing to draw on an axis.
+no dates, so there was nothing to put in a column and there is nothing to draw on an axis.
+The column half stopped being an absence when the catalog got a workflow of its own
+([[A workflow for the tests]]): it now has states a board could column, and none is built —
+which is a scope decision to argue with rather than a shape the data forbids.
 
 The position is **UI state** — vault-scoped localStorage beside the collapse state — never
 a `.base` setting, exactly as the mode, the roadmap axis and the focus level already are:
@@ -76,9 +79,14 @@ base settings are saved on the view, working position on the device.
    `'tree'` rather than *as* a tree fails each of them silently and differently: no column
    fitting, two dead toolbar buttons, and a menu with no Move up, indent or outdent on a
    tree whose whole point is an order somebody chose.
-   Its **completed toggle** is withheld, as it already is on the Deliverables board — this
-   epic gives tests no workflow, so there is no completion to hide — and withholding the
-   button is only half. `hideCompleted` is on for every projection except `deliverables`,
+   Its **completed toggle** is withheld, as it already is on the Deliverables board, and
+   withholding the button is only half. The reason is the Deliverables board's own: what the
+   toggle hides is `subtreeDone`, the REQUIREMENTS rollup — an item's `done` read through
+   the plan's state key, times a descendant count this projection never accumulates
+   ([[Tests stay out of the plan]] 3c). Neither half belongs to the workflow a test is
+   actually on ([[A workflow for the tests]]), so hiding by it would take a row off this
+   screen for a flag this screen never shows.
+   `hideCompleted` is on for every projection except `deliverables`,
    so the catalog joins that exception too. A toggle withheld while its filtering stays on
    is the worst of both: a done test disappears and nothing on screen offers to bring it
    back.

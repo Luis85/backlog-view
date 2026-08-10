@@ -139,6 +139,21 @@ a node test that did would be measuring the runner.
   inside it. `keepsTypeOnMove` is the predicate the generated README derives its
   "types a move leaves alone" sentence from; the test types are deliberately not in it,
   because inside their own ladder they ARE retyped by position.
+  **An item's workflow follows its type, or its ladder** — the rule the second ladder added
+  to the first. There are three workflows (requirements, Deliverable, test), and the two
+  secondary selectors are **disjoint by construction** rather than ordered:
+  `isDeliverableType` asks a type NAME and `inCatalog` asks the ladder, while `ladderFor`
+  answers `LEVELS` for `Deliverable` whatever it hangs under, so no item satisfies both and
+  the three-way branch needs no argument about which is tested first. `inCatalog` and not a
+  list of test type names, for the reason above: a typeless child of a `Test suite` and a
+  `Task` under a `Test case` are both members, and `isTestType(item.typeName)` gets both
+  wrong while passing every other fixture. Two things are stated ONCE, both in `board.ts`:
+  the KEY (`stateKeyFor`) and the value-and-done pair (`ownWorkflowReading`) — which is why
+  the chip, `Set state`'s offers, its checkmarks and `pbl-done` all followed the third
+  workflow without being edited. That is the whole of what "once" covers: which PLANNER a
+  pick runs is a third selection over the same two predicates, and it lives in
+  `view/interactions/menu.ts`, because each workflow's write goes through a different
+  function.
 - **A projection's forest is computed, never filtered** — `projectionForest`, beside
   `collectFocusRoots`, asked twice with opposite predicates. `renderForest` drops a hidden
   sibling *without descending through it*, so hiding rows loses everything under a hidden

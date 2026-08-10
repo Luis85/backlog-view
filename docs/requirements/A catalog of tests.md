@@ -36,6 +36,8 @@ editing.
   their roots, and what a move may and may not do to them.
 - [[A badge when the palette is full]] — the tenth and eleventh types on an eight-hue
   palette that nine types already share, and the second axis that answers it.
+- [[A workflow for the tests]] — the catalog's own per-item state: a property, a
+  vocabulary, a done list, and the fallback that makes all three optional.
 - [[A template for a test case]] — the note that opens ready to write, and the instruction
   skeleton that arrives with [[Item Templates]] once that feature is built.
 
@@ -62,8 +64,9 @@ refused, arrived at from the other end.
 
 **It will not invent a status vocabulary.** A test being drafted, ready or retired is
 exactly what `status` already says on every note in this register, and a second word for
-the same idea is a second thing to keep in sync. What a case later gained is not a new
-word but the plan's own per-item state mechanism a third time, over its own property —
-the `Test management` options group's `testStateProperty`, `testStateValues` and
-`testDoneValues` — unset by default, so a fresh vault reads `status` through the
-requirements board's property rather than a second one nobody named.
+the same idea is a second thing to keep in sync. What a case later gained
+([[A workflow for the tests]]) is not a new word but the plan's own per-item state
+mechanism a third time, over its own property — the `Test management` options group's
+`testStateProperty`, `testStateValues` and `testDoneValues` — unset by default, so a fresh
+vault reads `status` through the requirements board's property rather than a second one
+nobody named.

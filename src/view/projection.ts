@@ -46,10 +46,22 @@ export function treeShaped(projection: Projection): boolean {
 }
 
 /**
- * Whether this projection hides fully-done subtrees. Two opt out, for one reason each:
- * the Deliverables board tracks its own workflow rather than the requirements rollup, and
- * the test catalog has no workflow at all — this increment gives tests no states, so
- * there is no completion for a toggle to hide.
+ * Whether this projection hides fully-done subtrees. Two opt out, and it is now ONE reason
+ * rather than two: what this hides is `subtreeDone`, which is the REQUIREMENTS rollup —
+ * `item.done`, read through `settings.stateKey` against `settings.doneValues`, times a
+ * descendant count. Neither board nor catalog tracks its item's completion that way. The
+ * Deliverables board's cards answer through the Deliverable workflow; a catalog row answers
+ * through the test workflow (`ownWorkflowReading`), and `assignAll` counts a child only
+ * where child and parent are both plan rows, so a catalog row's rollup halves are always
+ * zero and `subtreeDone` degenerates to that row's requirements flag.
+ *
+ * Tests DO have states, and a done one styles its row `pbl-done` (`render/rows.ts`, through
+ * `ownWorkflowReading`) — so this is not "there is nothing to hide". It is that hiding here
+ * would hide by a flag this projection neither reads nor draws, which agrees with the test
+ * workflow only for as long as the two keys are the same property. Do not enable the
+ * filtering on the grounds that the states arrived; the missing thing is a subtree
+ * completion, and `docs/requirements/Tests stay out of the plan.md` 3c priced that pass and
+ * declined it.
  *
  * Both also withhold the button, and this is the other half of that rather than a
  * duplicate of it: a toggle withheld while its filtering stays on is the worst of both,

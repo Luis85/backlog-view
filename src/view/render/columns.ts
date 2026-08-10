@@ -470,11 +470,11 @@ export function renderRollup(host: BacklogViewHost, row: HTMLElement, item: Back
 /**
  * Clickable state chip — the inline write surface for the workflow state.
  *
- * WHOSE state is the item's type's question, the same one `Set state` asks in
- * `interactions/menu.ts`: a Deliverable shows and edits the Deliverable workflow's
- * value, so the chip and the menu it opens can never name different states. A
- * Deliverable under the fallback (no Deliverable state property configured) reads the
- * shared key, so this is the identical value either way.
+ * WHOSE state is the item's own question — its type, else its ladder — and the same one
+ * `Set state` asks in `interactions/menu.ts`: a Deliverable shows and edits the Deliverable
+ * workflow's value and a catalog row the test workflow's, so the chip and the menu it opens
+ * can never name different states. Either one under the fallback (no property of its own
+ * configured) reads the shared key, so this is the identical value either way.
  */
 function renderStateChip(host: BacklogViewHost, col: HTMLElement, item: BacklogItem, column: Column): void {
 	// The CELL is the properties menu's question and the CHIP is the row's own: this
