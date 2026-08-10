@@ -127,5 +127,5 @@ the single-active-view lookup this command reuses rather than duplicating) ·
 `src/view/interactions/menu.ts` (**Save as template** on the row/card menu) ·
 `src/ui/prompts.ts` (the type-and-name modal) · `src/storage/frontmatter.ts` (the
 template-note write, sharing `createBacklogItem`'s atomicity and collision handling
-rather than a second copy of it) · `src/domain/settings.ts` (`configProblems`, re-run
+rather than a second copy of it) · `src/domain/settingsConsistency.ts` (`configProblems`, re-run
 against the settings the first-use folder prompt just produced, before the write).

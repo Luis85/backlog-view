@@ -406,7 +406,7 @@ risk below is closed rather than open: a readout added in
 
 ## Where it lives
 
-`src/domain/settings.ts` — a `deliverableState` field joins `OptionalField` and
+`src/domain/optionalProperties.ts` — a `deliverableState` field joins `OptionalField` and
 `PROPERTY_TABLE` (so it gets collision-checking, adoption and backfill for free, the way
 every optional property already does), plus `deliverableStates` and
 `deliverableDoneValues` beside `states`/`doneValues`. `resolveSettings` names the key's

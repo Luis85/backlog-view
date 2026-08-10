@@ -1,4 +1,5 @@
 import { BacklogSettings } from './settings';
+import { ownedProperties } from './optionalProperties';
 import { stateColorName } from './stateColors';
 
 /**
@@ -8,7 +9,14 @@ import { stateColorName } from './stateColors';
  * that file says what the settings ARE, this one says which combinations can exist. The
  * split was forced by the 400-line budget when `Idea` and `Deliverable` merged into one
  * vocabulary, and the seam was already there — nothing in `settings.ts` reads these, and
- * their only callers are `buildModel`'s guard and the test fixture builder.
+ * their only callers were `buildModel`'s guard and the test fixture builder.
+ *
+ * `configProblems` joined them later, for the same question asked of the other producer:
+ * a fixture can express a configuration the resolver could not, and a `.base` file can
+ * express one the WRITER must refuse — two properties pointed at one key. The first is
+ * caught by a predicate over the resolved fields, the second by a report the view shows
+ * and every write path is gated on; both are "is this combination coherent", and neither
+ * is a fact about what a setting is.
  */
 
 /**
@@ -154,4 +162,43 @@ export function assertResolvedSettings(settings: BacklogSettings): void {
 		`settings that resolveSettings could not have produced: ${wrong}. Build the fixture ` +
 			'through resolveSettings (see test/domain/statePalettes.test.ts) rather than spreading defaultSettings().',
 	);
+}
+
+/**
+ * The one pair `configProblems` lets share a key: the requirements state and the
+ * Deliverable state, explicitly configured to the same property. Sharing by FALLBACK is
+ * already legitimate and never reaches this map (`ownedProperties` reads
+ * `deliverableStateKey` RAW, so an unset one resolves to ''); this is the same
+ * "Deliverables can use the same status property" idea asked for explicitly. The two
+ * workflows keep independent vocabularies either way, so the usual reason a shared key is
+ * a mistake — one property silently overwriting the other's meaning — never applies here.
+ *
+ * Scoped to EXACTLY this pair, not to "an entry named state or deliverable state": one
+ * more label on the key (order, tags, an axis key) reports as a collision again, these
+ * two named in it like any other clash.
+ */
+const STATE_KEY_SHARING_EXEMPT: [string, string] = ['state', 'deliverable state'];
+
+/**
+ * Configuration mistakes that would corrupt writes (e.g. parent and order stored
+ * under the same frontmatter key). The view surfaces these instead of guessing.
+ */
+export function configProblems(settings: BacklogSettings): string[] {
+	const problems: string[] = [];
+	const keys = new Map<string, string[]>();
+	for (const { label, key } of ownedProperties(settings)) {
+		if (!key) continue;
+		const users = keys.get(key) ?? [];
+		users.push(label);
+		keys.set(key, users);
+	}
+	for (const [key, users] of keys) {
+		if (users.length === STATE_KEY_SHARING_EXEMPT.length && STATE_KEY_SHARING_EXEMPT.every((l) => users.includes(l))) {
+			continue;
+		}
+		if (users.length > 1) {
+			problems.push(`The ${users.join(' and ')} properties share the key "${key}".`);
+		}
+	}
+	return problems;
 }

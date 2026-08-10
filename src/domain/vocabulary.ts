@@ -3,10 +3,10 @@ import { FieldReading, tagKey } from './noteFields';
 import { BacklogSettings } from './settings';
 
 /**
- * What vocabulary the RESULTS carry — the states, the tags and the horizons a menu
- * may offer, collected off the loaded items.
+ * What vocabulary the RESULTS carry — the states, the tags, the horizons and the
+ * assignees a menu may offer, collected off the loaded items.
  *
- * All three obey one rule, which is why they live together rather than beside the
+ * All of them obey one rule, which is why they live together rather than beside the
  * code that consumes each: **a note the Base excluded contributes nothing.** Its
  * value is not this base's vocabulary, and offering it would make a value assignable
  * to results because some ancestor nobody can act on happened to use it. Stated once
@@ -23,6 +23,7 @@ interface VocabularySource {
 	horizon: FieldReading<string>;
 	typeName: string | null;
 	deliverableStateValue: string | null;
+	assigneeValue: string | null;
 }
 
 /**
@@ -66,6 +67,19 @@ function sortOpenThenDone(values: string[], doneValues: string[]): string[] {
 export function collectObservedStates(all: VocabularySource[], settings: BacklogSettings): string[] {
 	const values = firstSeen(all, (item) => (item.stateValue === null ? [] : [item.stateValue]));
 	return sortOpenThenDone(values, settings.doneValues);
+}
+
+/**
+ * Every assignee the results name, alphabetical and deduped case-insensitively in the
+ * casing seen first — the tags collector's shape, for the tags collector's reason: this
+ * is the WHOLE vocabulary the menu offers, since the assignee property has no declared
+ * list behind it. A name nobody in the base carries is still reachable by typing it,
+ * which is why nothing here has to guess at one.
+ */
+export function collectObservedAssignees(all: VocabularySource[]): string[] {
+	return firstSeen(all, (item) => (item.assigneeValue === null ? [] : [item.assigneeValue])).sort((a, b) =>
+		a.localeCompare(b),
+	);
 }
 
 /** Every tag the results carry, alphabetical and deduped case-insensitively. */

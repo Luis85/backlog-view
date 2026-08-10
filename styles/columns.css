@@ -140,11 +140,11 @@
 	}
 }
 
-/* Clickable workflow-state, horizon and risk chips (real buttons, minus the button
-   chrome). One shape for three properties: they sit in adjacent columns on the same row,
-   and a second look would read as a second kind of thing.
+/* Clickable workflow-state, horizon, risk and assignee chips (real buttons, minus the
+   button chrome). One shape for four properties: they sit in adjacent columns on the same
+   row, and a second look would read as a second kind of thing.
 
-   All three are real `<button>`s (see `renderStateChip`/`renderHorizonChip`/`renderRiskChip` in
+   All of them are real `<button>`s (see `renderStateChip`/`renderHorizonChip`/`renderLabelChip` in
    `render/columns.ts`), which lose `color`, `background-color` AND `box-shadow` to
    Obsidian's own `button:not(.clickable-icon)` at (0,1,1) — a bare class alone is
    (0,1,0) and loses regardless of source order. Rather than a second rule restating
@@ -159,9 +159,11 @@
 .pbl-state-chip,
 .pbl-horizon-chip,
 .pbl-risk-chip,
+.pbl-assignee-chip,
 button.pbl-state-chip,
 button.pbl-horizon-chip,
-button.pbl-risk-chip {
+button.pbl-risk-chip,
+button.pbl-assignee-chip {
 	appearance: none;
 	display: inline-flex;
 	align-items: center;
@@ -187,7 +189,8 @@ button.pbl-risk-chip {
 
 .pbl-state-chip:not(.pbl-state-static):hover,
 .pbl-horizon-chip:not(.pbl-state-static):hover,
-.pbl-risk-chip:not(.pbl-state-static):hover {
+.pbl-risk-chip:not(.pbl-state-static):hover,
+.pbl-assignee-chip:not(.pbl-state-static):hover {
 	background-color: var(--background-modifier-hover);
 	color: var(--text-normal);
 }
@@ -202,7 +205,8 @@ button.pbl-risk-chip {
    is never clipped by an ancestor the chip itself is not overflowing. */
 .pbl-state-chip:focus-visible,
 .pbl-horizon-chip:focus-visible,
-.pbl-risk-chip:focus-visible {
+.pbl-risk-chip:focus-visible,
+.pbl-assignee-chip:focus-visible {
 	outline: 1px solid var(--interactive-accent);
 	outline-offset: -1px;
 }
@@ -215,7 +219,8 @@ button.pbl-risk-chip {
 
 .pbl-state-chip .svg-icon,
 .pbl-horizon-chip .svg-icon,
-.pbl-risk-chip .svg-icon {
+.pbl-risk-chip .svg-icon,
+.pbl-assignee-chip .svg-icon {
 	width: var(--icon-xs);
 	height: var(--icon-xs);
 }
@@ -237,7 +242,8 @@ button.pbl-risk-chip {
 
 .pbl-state-chip.pbl-state-unset,
 .pbl-horizon-chip.pbl-horizon-unset,
-.pbl-risk-chip.pbl-risk-unset {
+.pbl-risk-chip.pbl-risk-unset,
+.pbl-assignee-chip.pbl-assignee-unset {
 	color: var(--text-faint);
 	border-style: dashed;
 }

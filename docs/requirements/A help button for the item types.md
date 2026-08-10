@@ -91,7 +91,7 @@ sections as a parameter, because `ui/` may not reach `domain/`. Its appearance i
 draw everything else.
 
 The types section itself is `src/view/manual/typesSection.ts`, generated from `ALL_TYPES`
-in `src/domain/settings.ts` — the composition layer, which may reach `domain/` where the
+in `src/domain/typeVocabulary.ts` — the composition layer, which may reach `domain/` where the
 dialog may not, and which is therefore where a badge class is resolved from a type name.
 
 The **?** itself is `src/view/render/toolbar.ts` — a `.pbl-help-btn` in the toolbar's

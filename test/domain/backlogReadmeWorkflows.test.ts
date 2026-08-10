@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { backlogReadmeContent } from '../../src/domain/backlogReadme';
 import { defaultSettings } from '../../src/domain/settings';
 import { settingsWith } from '../helpers/settings';
+import { backlogReadmeContent } from '../../src/domain/backlogReadme';
 
 /**
  * What the generated README says about the TWO workflows sharing one property table.

@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { BacklogSettings } from '../../src/domain/settings';
+import { settingsWith } from '../helpers/settings';
 import { BacklogItem, buildModel } from '../../src/domain/model';
 import { computeHorizonWrites, computeInitWrites, computeScheduleWrites } from '../../src/domain/writePlan';
 import { PlacementEnd } from '../../src/domain/itemTypes';
-import { BacklogSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
-import { settingsWith } from '../helpers/settings';
 
 /**
  * The roadmap's placement writes, planned: what setting a horizon, scheduling and

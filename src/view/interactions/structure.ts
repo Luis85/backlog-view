@@ -3,7 +3,7 @@ import { reorderableGroup } from '../../domain/dropTargets';
 import { BacklogViewHost } from '../host';
 import { BacklogItem } from '../../domain/model';
 import { DropTarget } from '../../domain/dropTargets';
-import { configProblems } from '../../domain/settings';
+import { configProblems } from '../../domain/settingsConsistency';
 import { computeInitWrites } from '../../domain/writePlan';
 
 /**

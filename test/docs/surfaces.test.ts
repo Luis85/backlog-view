@@ -4,7 +4,7 @@ import { BasesViewConfig } from 'obsidian';
 import { describe, expect, it } from 'vitest';
 import ProductBacklogPlugin from '../../src/main';
 import { getViewOptions } from '../../src/domain/viewOptions';
-import { ALL_TYPES, typeFolderKey } from '../../src/domain/settings';
+import { ALL_TYPES, typeFolderKey } from '../../src/domain/typeVocabulary';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
 import { manualSections } from '../../src/view/manual/sections';
 

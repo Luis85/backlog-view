@@ -182,7 +182,7 @@ rank. It is an edge drawn beside the tree, and everything structural stays where
 
 ## Where it lives
 
-**Built.** `dependsOn` joins the optional properties in `src/domain/settings.ts` — the
+**Built.** `dependsOn` joins the optional properties in `src/domain/optionalProperties.ts` — the
 `PROPERTY_TABLE` row is the whole declaration, and the option (`dependsOnProperty`), the
 collision report, ✨'s adoption and the settings key all follow from it rather than from
 code written per feature. Its picker is one line in `src/domain/viewOptions.ts`, in the

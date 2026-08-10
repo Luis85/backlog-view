@@ -22,8 +22,8 @@ import { countedPopulation, levelBreakdown, renderIgnoredNote } from './toolbarS
 import { renderFilterBox } from './toolbarFilter';
 import { BacklogModel } from '../../domain/model';
 import { focusTarget } from '../../domain/itemTypes';
-import { DELIVERABLE_TYPE } from '../../domain/settings';
-import { configProblems } from '../../domain/settings';
+import { DELIVERABLE_TYPE } from '../../domain/typeVocabulary';
+import { configProblems } from '../../domain/settingsConsistency';
 import { manualLink, openManual } from '../../ui/manualDialog';
 import { manualSections } from '../manual/sections';
 

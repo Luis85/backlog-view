@@ -70,7 +70,8 @@ the folder most results live in → ask.
 
 ## Where it lives
 
-`src/domain/settings.ts` (`defaultTypeFolder`, `byTypeName`, folder resolution, and
+`src/domain/typeVocabulary.ts` (`defaultTypeFolder`, `byName`) ·
+`src/domain/settingsResolve.ts` (folder resolution, and
 `typeFolderKey` — which builds the persisted key and is shared with the schema, because a
 key spelled twice is a key that can differ) ·
 `src/domain/viewOptions.ts` (`homeFolder`, and one generated picker per type) ·

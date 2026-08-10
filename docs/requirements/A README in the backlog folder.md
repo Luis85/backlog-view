@@ -402,8 +402,9 @@ gate, the notices, the `checkCallback` that hides the command with no view) ·
 `getActiveViewOfType` cannot return a Bases view, which is drawn inside a leaf rather than
 being one) · `src/view/backlogView.ts` (announces itself while loaded) ·
 `src/main.ts` (registration).
-The vocabulary the document is generated from is `src/domain/settings.ts` — which is also
-where a folder setting becomes the vault's own spelling (`vaultFolder`), so the document,
+The vocabulary the document is generated from is `src/domain/typeVocabulary.ts` — and a
+folder setting becomes the vault's own spelling in `src/domain/settingsResolve.ts`
+(`vaultFolder`), so the document,
 the creation prompt and the writes in `src/storage/` name one folder — and
 `src/domain/itemTypes.ts`; the tolerant reading rules it describes are
 `src/domain/noteFields.ts`, and the ranking step is `src/domain/writePlan.ts`.

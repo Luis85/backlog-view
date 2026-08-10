@@ -1,14 +1,9 @@
 import { isDeliverableType } from './itemTypes';
 import { BacklogItem, BacklogModel } from './model';
 import { sameValue } from './noteFields';
-import {
-	BacklogSettings,
-	byName,
-	menuValues,
-	resolvedDeliverableStateKey,
-	STATE_COLOR_SLOTS,
-	stateMenuValues,
-} from './settings';
+import { BacklogSettings, menuValues, STATE_COLOR_SLOTS, stateMenuValues } from './settings';
+import { resolvedDeliverableStateKey } from './optionalProperties';
+import { byName } from './typeVocabulary';
 import { collectObservedStates } from './vocabulary';
 
 /**

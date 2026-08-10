@@ -1,6 +1,6 @@
 import { App, normalizePath, TFile } from 'obsidian';
 import { ensureFolder } from './frontmatter';
-import { vaultFolder } from '../domain/settings';
+import { vaultFolder } from '../domain/settingsResolve';
 
 /**
  * Writing the `.base` file itself — the one vault write that is not a work item.

@@ -13,10 +13,12 @@ import {
 import {
 	CivilDate,
 } from './noteFields';
-import { ALL_TYPES, BacklogSettings, LEVELS } from './settings';
+import { BacklogSettings } from './settings';
+import { ALL_TYPES, LEVELS } from './typeVocabulary';
 import { assertResolvedSettings } from './settingsConsistency';
 import { earliest, latest, reversedSpan } from './timeline';
 import {
+	collectObservedAssignees,
 	collectObservedDeliverableStates,
 	collectObservedHorizons,
 	collectObservedStates,
@@ -126,6 +128,8 @@ export interface BacklogModel {
 	observedHorizons: string[];
 	/** Distinct tags in the result set, alphabetical — the vocabulary the tag menus offer. */
 	observedTags: string[];
+	/** Distinct assignees in the result set, alphabetical — the whole list Set assignee offers. */
+	observedAssignees: string[];
 	/** Distinct Deliverable-workflow state values, scoped to Deliverable items. */
 	observedDeliverableStates: string[];
 	/** Notes the base returned that are not backlog items (see `pruneOutsideHierarchy`). */
@@ -141,6 +145,7 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	// them here keeps them off the tree walk below.
 	const observedStates = collectObservedStates(linked.all, settings);
 	const observedTags = collectObservedTags(linked.all);
+	const observedAssignees = collectObservedAssignees(linked.all);
 	const observedDeliverableStates = collectObservedDeliverableStates(linked.all, settings);
 	sortSiblingsDeep(linked.roots);
 	const { roots, byPath, items } = assignAll(linked, settings);
@@ -164,6 +169,7 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 		byPath,
 		observedStates,
 		observedTags,
+		observedAssignees,
 		observedHorizons,
 		observedDeliverableStates,
 		// Read off `items` — the whole tree `assignAll` just built, before either branch

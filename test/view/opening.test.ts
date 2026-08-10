@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { Menu } from '../helpers/obsidian-mock';
 import { fixture, key, makeView, rowByTitle, titlesOf, treeOf, useViewHarness } from '../helpers/view';
 import { boardVault, cardByTitle, makeBoard } from '../helpers/board';
-import { resolveSettings } from '../../src/domain/settings';
+import { resolveSettings } from '../../src/domain/settingsResolve';
 
 useViewHarness();
 
