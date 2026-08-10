@@ -53,11 +53,12 @@
  *
  * NINE badges, EIGHT theme tokens. Obsidian defines red, orange, yellow, green, cyan,
  * blue, purple and pink, and nothing here may invent a ninth without giving up theme
- * adaptation — so one pair has to share, and which pair is a decision rather than an
- * oversight. It used to be Idea and Deliverable, which is the worst pair available: two
- * extra types at the same rung, side by side under the same parent, told apart only by
- * their icons. That happened because `Idea` and `Deliverable` were built on branches that
- * could not see each other, and both reached for green.
+ * adaptation — so some pairs share, and which pair is a decision rather than an oversight
+ * — the rule is stated with the test types below. It used to be Idea and Deliverable,
+ * which is the worst pair available: two extra types at the same rung, side by side under
+ * the same parent, told apart only by their icons. That happened because `Idea` and
+ * `Deliverable` were built on branches that could not see each other, and both reached for
+ * green.
  *
  * Idea takes YELLOW instead, which costs the rule this comment used to state — that every
  * extra type is clear of the four levels — and buys the lightbulb the colour a lightbulb
@@ -74,33 +75,37 @@
 .pbl-lvl-deliverable { --pbl-badge-rgb: var(--color-green-rgb); }
 
 /*
- * ELEVEN badges now, still eight theme tokens — and the test types are where the
- * pair-by-pair answer stops. Idea/Task was one sharing decision taken on its own; two more
- * taken the same way is how Idea and Deliverable both reached for green on branches that
- * could not see each other. So the two arrive as a FAMILY: one borrowed hue between them,
- * and a second axis on the badge that says *this is a test* before the icon says which
- * kind — the same trick `.pbl-implied` already proves a badge can carry, and the property
- * that lets a third test type join without a third decision.
+ * ELEVEN badges, still eight theme tokens, and this is where the pair-by-pair answer had to
+ * become a rule: Idea/Task was one sharing decision taken alone, and two more taken the same
+ * way is how Idea and Deliverable both reached for green on branches that could not see each
+ * other. The rule: HUE IS IDENTITY, and where two types share one, the test axis below or
+ * the icon separates them. Which pair shares is a decision recorded here, never "whichever
+ * looked least crowded".
  *
- * ORANGE, borrowed from Epic, and the reason is not that orange looked least crowded —
- * that reasoning is what this rule exists instead of. An Epic is a root by POSITION in the
- * plan and a Test suite is a root by NATURE in the catalog, and the two populations are
- * disjoint by construction (`inCatalog`), so no screen can draw both. That is the
- * strongest available reading of "the one whose existing wearer a test is least likely to
- * sit beside".
+ * A `Test suite` takes ORANGE, Epic's. An Epic is a root by POSITION in the plan and a suite
+ * is a root by NATURE in the catalog, and the two populations are disjoint by construction
+ * (`inCatalog`), so no screen draws both.
  *
- * Nothing is minted here: the hue is Obsidian's token, so the badges still track the
+ * A `Test case` takes CYAN, Milestone's, by the same standard — the one whose existing wearer
+ * a test is least likely to sit beside. A `Milestone` is a marker: no rung, no children, no
+ * parent, drawn as a line on the timeline, and never a catalog member. The two cannot meet
+ * where a case is actually READ; they can meet in the plan tree, where a case appears only as
+ * an advisory mis-drag.
+ *
+ * Nothing is minted here: both are Obsidian's own tokens, so the badges still track the
  * user's theme.
  */
 .pbl-lvl-test-suite { --pbl-badge-rgb: var(--color-orange-rgb); }
-.pbl-lvl-test-case { --pbl-badge-rgb: var(--color-orange-rgb); }
+.pbl-lvl-test-case { --pbl-badge-rgb: var(--color-cyan-rgb); }
 
 /*
  * The test axis. Every other badge carries `border: 1px solid transparent` over a tinted
  * fill; a test fills that border in, so it keeps the fill and gains a visible EDGE — an
  * addition, not a swap, which is what it looks like beside a `Task` badge in the harness
- * (both schemes, 2026-08-10). The difference survives the hue being shared with Epic and
- * does not rest on the icon, which is what tells the suite from the case inside the axis.
+ * (both schemes, 2026-08-10). The axis is LOAD-BEARING now rather than reinforcing. While both
+ * test types shared one hue it merely backed up the icon; a `Test case` on cyan is the same
+ * hue as a `Milestone`, so the edge is what says *test* before anything else is read — which
+ * is what keeps "no two types are distinguishable by icon alone" true for both shared pairs.
  *
  * It composes with `.pbl-implied` rather than fighting it: that rule comes later in this
  * file and overrides to dashed and transparent, so an implied `Test case` reads as
