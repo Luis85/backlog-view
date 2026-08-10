@@ -99,6 +99,41 @@ export function inCatalog(item: { ladder: string[] }): boolean {
 }
 
 /**
+ * Whether placing `item` under `parent` leaves it on the ladder it is already on — so
+ * whether the projection drawing it now would still draw it after the move. `null` is
+ * the top level, which is a prospective parent like any other.
+ *
+ * **Every move that changes a row's parent asks this, and none of them decides it for
+ * itself.** `ladderFor` chains from the parent for exactly two inputs — a `Task` and a
+ * note with no `type` — so a reparent can re-answer membership for those two and for
+ * nothing else: a row that vanishes from the screen it was acted on. Extension 1c of
+ * `docs/requirements/Test suite and test case as a ladder of their own.md` decided that
+ * for the top-level CREATOR — a `Task` is offered under a test and withheld at the top,
+ * "the same type, answered differently by whether a parent is in hand". The rule was then
+ * found missing at the top-level DROP, and an automated reviewer found it missing at
+ * OUTDENT while that first patch was still the newest commit; a sibling drop beside a
+ * real root and the two parent-link actions turned out to reach it as well. Four
+ * surfaces, one condition, and enumerating them was what found the last three — which is
+ * why this is a function every reparenting target asks rather than a check each one
+ * restates.
+ *
+ * Asked of the LADDER and never of a type NAME: every other type answers from its own
+ * name and is unaffected, so this narrows exactly the rows a move would move between
+ * projections. A guard spelled `typeName === 'Task'` passes every `Task` fixture and
+ * misses the typeless note entirely.
+ *
+ * It does NOT cover a move that changes the row's TYPE rather than its parent — `Set
+ * type` asks the same question with the other variable moving, and answers it in
+ * `retypeChoices` (extension 1d).
+ */
+export function keepsProjection(
+	item: { typeName: string | null; ladder: string[] },
+	parent: { ladder: string[] } | null,
+): boolean {
+	return ladderFor(item.typeName, parent?.ladder ?? null) === item.ladder;
+}
+
+/**
  * Level index a child of `parent` should get: one below the parent's effective
  * level, clamped to the deepest level of the ladder the CHILD will be on. Top-level
  * items get level 0.

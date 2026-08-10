@@ -120,6 +120,33 @@ describe('dropTargetFor', () => {
 		// offered, so the no-op check is not simply refusing every adjacent-root drop.
 		expect(dropTargetFor(model, get('Epic A'), 'before', get('Epic B'), plan)).not.toBeNull();
 	});
+
+	it('refuses a sibling drop that would move the row to the other projection', () => {
+		// The top-level strip is not the only way to a null parent: dropping before or
+		// after a real ROOT takes the root group as the new parent, which for a `Task` or a
+		// typeless note is exactly what the strip does — `ladderFor` re-answers with the
+		// plan's ladder and the row leaves the catalog it was dragged on. One predicate,
+		// asked here too, rather than a second guard that could disagree with the first.
+		const vault = new FakeVault();
+		vault.addFile('Suite.md', { frontmatter: { type: 'Test suite', order: 10 } });
+		vault.addFile('Case.md', { frontmatter: { type: 'Test case', order: 10 }, parentLink: 'Suite' });
+		vault.addFile('Test task.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'Case' });
+		// The other input `ladderFor` chains from the parent, and the row that tells this
+		// implementation apart from `typeName === 'Task'`.
+		vault.addFile('Untyped.md', { frontmatter: { order: 20 }, parentLink: 'Case' });
+		const model = buildModel(vault.app, vault.entries(), settings);
+		const catalogMember = projectionMember('catalog');
+		const get = (path: string) => model.byPath.get(path) as BacklogItem;
+		const suite = get('Suite.md');
+
+		expect(dropTargetFor(model, suite, 'before', get('Test task.md'), catalogMember)).toBeNull();
+		expect(dropTargetFor(model, suite, 'after', get('Untyped.md'), catalogMember)).toBeNull();
+		// The mirror: a row whose own name decides its ladder still lands beside the suite.
+		expect(dropTargetFor(model, suite, 'before', get('Case.md'), catalogMember)?.parent).toBeNull();
+		// And nesting INSIDE a row of the same projection was never in question: the new
+		// parent is drawn on the same screen, so it carries the same ladder.
+		expect(dropTargetFor(model, suite, 'inside', get('Test task.md'), catalogMember)?.parent).toBe(suite);
+	});
 });
 
 describe('rootDropTarget', () => {

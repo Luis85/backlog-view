@@ -1,4 +1,4 @@
-import { ladderFor } from './itemTypes';
+import { keepsProjection } from './itemTypes';
 import { BacklogItem, BacklogModel } from './model';
 
 /** Which third of a row the pointer is over, and so what a release there means. */
@@ -68,6 +68,14 @@ export function dropTargetFor(
 	const position = zone === 'inside' ? insidePosition(item, dragged) : siblingPosition(model, item, zone, dragged);
 	if (!position) return null;
 	if (isInvalidParent(position.parent, dragged)) return null;
+	// **A drop may not change which projection draws the row** (`keepsProjection`). An
+	// `inside` drop never can — the hovered row is on this screen, so it carries this
+	// screen's ladder — but a `before`/`after` drop on a real ROOT lands in the root group,
+	// which is the top-level strip's own case reached by another gesture: a catalog `Task`
+	// dropped beside its suite answers the plan's ladder and vanishes off the screen it was
+	// dragged on. Asked once here rather than in each position function, so the two cannot
+	// answer it differently.
+	if (!keepsProjection(dragged, position.parent)) return null;
 
 	// Dropping into the slot the item already occupies is a no-op — unless the
 	// drop would clear a stale parent link, which is a real change.
@@ -154,16 +162,9 @@ export function rootDropTarget(
 	// The last root with a stale parent link still needs the drop target: the
 	// "move" is a no-op positionally but clears the unresolved parent property.
 	if (alreadyLastRoot && !clearsStaleLink(null, dragged)) return null;
-	// **A root drop may not change which projection draws the row.** `ladderFor` chains
-	// from the PARENT for a `Task` and for a typeless note, so clearing the parent
-	// re-answers it: a catalog `Task` becomes a plan `Task` and vanishes from the screen
-	// it was dragged on. Extension 1c of `Test suite and test case as a ladder of their
-	// own` already withholds this act from the top-level CREATOR for the same reason; a
-	// drop is the same act by another entry point, and the rule belongs to both.
-	//
-	// Asked of the LADDER rather than of the type name: every other type answers from its
-	// own name and is unaffected, so this narrows exactly the rows whose membership the
-	// clearing would change.
-	if (ladderFor(dragged.typeName, null) !== dragged.ladder) return null;
+	// **A root drop may not change which projection draws the row** — the top level is
+	// this target's prospective parent, and `keepsProjection` is where that rule lives for
+	// every move that has one.
+	if (!keepsProjection(dragged, null)) return null;
 	return { parent: null, siblings, insertIndex: siblings.length };
 }

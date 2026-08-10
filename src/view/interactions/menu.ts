@@ -2,7 +2,7 @@ import { Menu, MenuItem } from 'obsidian';
 import { hasRiskLevels, menuValues, stateMenuValues } from '../../domain/settings';
 import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
 import { inferFolderParent } from '../../domain/folderNotes';
-import { inCatalog, isDeliverableType } from '../../domain/itemTypes';
+import { inCatalog, isDeliverableType, keepsProjection } from '../../domain/itemTypes';
 
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { sameValue, todayStamp } from '../../domain/noteFields';
@@ -171,6 +171,21 @@ function addEditableSections(host: BacklogViewHost, model: BacklogModel, menu: M
 }
 
 function addParentLinkSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
+	// Both entries reparent without producing a `DropTarget`: deleting the key hands the
+	// note to folder inference, so in folder mode the landing place is a real parent and
+	// the rule every drop and outdent keeps applies here too — a move may not change which
+	// projection draws the row. Computed ONCE and handed to the writes below, so what was
+	// offered and what is written cannot disagree about where the note lands. Outside
+	// folder mode there is nothing to withhold: the note becomes a root, which is the
+	// ladder an unresolved orphan is already answering.
+	//
+	// The cost is deliberate: a stale link on a note inside a `Test suite`'s folder now has
+	// no menu entry to clear it, and repairing it means editing the note. The alternative
+	// is the row leaving the screen it was cleared on, which is what extension 1c of
+	// `Test suite and test case as a ladder of their own` refuses.
+	const model = host.model;
+	const landing = host.settings.folderHierarchy && model ? inferFolderParent(item, model.byPath) : null;
+	if (!keepsProjection(item, landing)) return;
 	if (!item.parent && item.hasParentValue) {
 		// Top-level item whose parent property points outside the view (or was
 		// part of a cycle): remove the stale link. In folder mode the item then
@@ -179,7 +194,7 @@ function addParentLinkSection(host: BacklogViewHost, menu: Menu, item: BacklogIt
 			mi
 				.setTitle('Clear parent link')
 				.setIcon('unlink')
-				.onClick(() => void host.applySafely(removeParentWrites(host, item))),
+				.onClick(() => void host.applySafely(removeParentWrites(host, item, landing))),
 		);
 	} else if (host.settings.folderHierarchy && (item.hasParentValue || item.explicitRoot)) {
 		// A link override or a top-level pin is hiding the folder position;
@@ -188,7 +203,7 @@ function addParentLinkSection(host: BacklogViewHost, menu: Menu, item: BacklogIt
 			mi
 				.setTitle('Use folder position')
 				.setIcon('folder')
-				.onClick(() => void host.applySafely(removeParentWrites(host, item))),
+				.onClick(() => void host.applySafely(removeParentWrites(host, item, landing))),
 		);
 	}
 }
@@ -197,12 +212,10 @@ function addParentLinkSection(host: BacklogViewHost, menu: Menu, item: BacklogIt
  * Removing the parent property re-homes the item (folder position or top
  * level); with autoType on it must retype like any other reparenting move.
  */
-function removeParentWrites(host: BacklogViewHost, item: BacklogItem): ItemWrite[] {
+function removeParentWrites(host: BacklogViewHost, item: BacklogItem, landingParent: BacklogItem | null): ItemWrite[] {
 	const writes: ItemWrite[] = [{ file: item.file, removeParentKey: true }];
-	const model = host.model;
-	if (!host.settings.autoType || !model) return writes;
+	if (!host.settings.autoType) return writes;
 
-	const landingParent = host.settings.folderHierarchy ? inferFolderParent(item, model.byPath) : null;
 	const { typeField, cascade } = computeTypeChanges(item, landingParent, host.settings, true);
 	if (typeField !== undefined) writes[0].typeName = typeField;
 	writes.push(...cascade);

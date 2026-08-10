@@ -1,5 +1,6 @@
 import { Notice } from 'obsidian';
 import { reorderableGroup } from '../../domain/dropTargets';
+import { keepsProjection } from '../../domain/itemTypes';
 import { BacklogViewHost } from '../host';
 import { BacklogItem } from '../../domain/model';
 import { DropTarget } from '../../domain/dropTargets';
@@ -86,6 +87,12 @@ export function outdentTarget(host: BacklogViewHost, item: BacklogItem): DropTar
 	// This lands the item at a position among the parent's siblings — and that group
 	// holds the context parent itself whenever the Base excluded it.
 	if (!reorderableGroup(siblings)) return null;
+	// The grandparent may be on the other ladder — `Epic → Test case → Task` is the
+	// reachable shape, since the case is drawn in the catalog as a promoted root and its
+	// task is an ordinary child. Refused at the TARGET, not at the write: this function is
+	// what the menu asks to decide whether to OFFER the command, and an offered command
+	// that does nothing is what this repo refuses ahead of a withheld one.
+	if (!keepsProjection(item, grandparent)) return null;
 	return { parent: grandparent, siblings, insertIndex: siblings.indexOf(parent) + 1 };
 }
 
