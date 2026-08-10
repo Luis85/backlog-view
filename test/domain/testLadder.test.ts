@@ -4,6 +4,7 @@ import { childTypeChoices, displayType, inCatalog, keepsTypeOnMove, ladderFor } 
 import { computeInitWrites, computeTypeChanges } from '../../src/domain/writePlan';
 import { defaultSettings } from '../../src/domain/settings';
 import { ALL_TYPES, EXTRA_TYPES, LEVELS, TEST_LEVELS } from '../../src/domain/typeVocabulary';
+import { ownWorkflowReading, stateKeyFor } from '../../src/domain/board';
 import { settingsWith } from '../helpers/settings';
 import { FakeVault } from '../helpers/vault';
 
@@ -219,5 +220,44 @@ describe('the type cascade crosses no ladder', () => {
 		// The test types are deliberately NOT here: inside their own ladder they ARE
 		// rewritten by position. What protects them from the plan is the crossing rule.
 		for (const type of TEST_LEVELS) expect(keepsTypeOnMove(type)).toBe(false);
+	});
+});
+
+describe('an item’s workflow follows its type, or its ladder', () => {
+	const configured = settingsWith({ stateKey: 'status', testStateKey: 'testStatus', testDoneValues: ['Approved'] });
+
+	function workflowFixture() {
+		const vault = new FakeVault();
+		vault.addFile('Suite.md', { frontmatter: { type: 'Test suite', order: 10 } });
+		vault.addFile('Case.md', {
+			frontmatter: { type: 'Test case', order: 10, status: 'Active', testStatus: 'Approved' },
+			parentLink: 'Suite',
+		});
+		// A typeless child of a case: a catalog member by ladder, not by its own name.
+		vault.addFile('Implied.md', { frontmatter: { order: 20, testStatus: 'Draft' }, parentLink: 'Case' });
+		// A Task under a case: a plan type NAME on a catalog member.
+		vault.addFile('Test task.md', { frontmatter: { type: 'Task', order: 30, testStatus: 'Draft' }, parentLink: 'Case' });
+		// The other secondary workflow, which must be unaffected in both directions.
+		vault.addFile('Runbook.md', { frontmatter: { type: 'Deliverable', order: 40, status: 'Active' } });
+		const model = buildModel(vault.app, vault.entries(), configured);
+		return (path: string) => {
+			const item = model.byPath.get(`${path}.md`);
+			if (!item) throw new Error(`no item ${path}`);
+			return item;
+		};
+	}
+
+	it('reads a catalog member through the test key, whatever its own type name says', () => {
+		const get = workflowFixture();
+		expect(ownWorkflowReading(get('Case'))).toEqual({ value: 'Approved', done: true });
+		expect(ownWorkflowReading(get('Implied'))).toEqual({ value: 'Draft', done: false });
+		expect(ownWorkflowReading(get('Test task'))).toEqual({ value: 'Draft', done: false });
+	});
+
+	it('leaves the plan and the Deliverable workflow on their own keys', () => {
+		const get = workflowFixture();
+		expect(stateKeyFor(configured, get('Runbook'))).toBe('status');
+		expect(stateKeyFor(configured, get('Case'))).toBe('testStatus');
+		expect(stateKeyFor(configured, get('Suite'))).toBe('testStatus');
 	});
 });
