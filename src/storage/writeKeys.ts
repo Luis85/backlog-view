@@ -40,20 +40,6 @@ export function axisEntries(
 }
 
 /**
- * Whether a write removes the prerequisite key WHOLE — the ONLY prerequisite change
- * `touchedKeys` lists. The add and the entry removals restore as a DELTA, exactly as the
- * tags do, and the tags key is absent from this module for that same reason: listing a
- * key for both would have undo put the prior value back AND replay the inverse delta over
- * it, restoring twice.
- *
- * Its own function so `touchedKeys` reads the removal condition once rather than
- * repeating the optional chain inline.
- */
-function dependsOnKeyRemoved(write: ItemWrite): boolean {
-	return write.dependsOn?.removeKey === true;
-}
-
-/**
  * The frontmatter keys this write will touch, in the order they are written.
  *
  * Deduped before it returns: the requirements state and the Deliverable state may
@@ -87,10 +73,11 @@ export function touchedKeys(settings: BacklogSettings, write: ItemWrite): string
 		[write.finish !== undefined, settings.finishedDateKey],
 		[write.risk !== undefined, settings.riskKey],
 		[write.assignee !== undefined, settings.assigneeKey],
-		// Not "carries a value": this one is listed for the whole-key REMOVAL alone —
-		// see `dependsOnKeyRemoved`. It shares the list because what the list does with
-		// its first element is exactly right, not because the predicates match.
-		[dependsOnKeyRemoved(write), settings.dependsOnKey],
+		// Not "carries a value": this is the ONLY prerequisite change listed here, for the
+		// whole-key REMOVAL alone. The add and the entry removals restore as a DELTA,
+		// exactly as the tags do — listing a key for both would have undo put the prior
+		// value back AND replay the inverse delta over it, restoring twice.
+		[write.dependsOn?.removeKey === true, settings.dependsOnKey],
 	];
 	for (const [written, key] of carried) if (written && key) keys.push(key);
 	for (const { key } of axisEntries(settings, write.axis)) keys.push(key);
