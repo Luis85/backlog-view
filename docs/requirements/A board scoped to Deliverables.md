@@ -298,7 +298,9 @@ narrowed to one type.
   toggle's "(N hidden)" sit beside each other and disagreed — the label was scoped and the
   toggle was not, so a done Deliverable made the requirements board offer to reveal a
   hidden card that board never had. "Every readout" is true of `render/toolbar.ts`, which
-  is where the readouts are and where `countedPopulation` is private: a readout added in
+  is where the readouts are. `countedPopulation` moved with them to
+`src/view/render/toolbarStatus.ts` and is exported there (2026-08-10), so the duplication
+risk below is closed rather than open: a readout added in
   another view file would have to duplicate it, and nothing stops that
   ([[Follow-ups from enforcing the Deliverables invariants]]).
 - **The requirements board's empty advisory answers for its OWN population**, never
@@ -483,7 +485,8 @@ the view's private `visibility()` assembles the one `VisibilityRule` its three p
 predicates share, which is where `hideCompleted: this.projection !== 'deliverables'` is
 stated — once, for every reader.
 `src/view/render/toolbar.ts` — the fourth toggle; `renderCompletedToggle`'s gate adds
-`&& host.projection !== 'deliverables'`; and `syncCountLabel`, which runs every render
+`&& host.projection !== 'deliverables'` · `src/view/render/toolbarStatus.ts` —
+`syncCountLabel`, which runs every render
 regardless of projection, asks the one `isRowHidden` — found by review: before the
 predicate answered per projection, a Deliverable done only in the requirements workflow
 rendered as a visible card here while the toolbar simultaneously reported the base as
