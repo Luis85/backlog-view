@@ -21,15 +21,6 @@ import { AxisWrite, ItemWrite } from '../domain/writePlan';
  */
 
 /**
- * Whether a write carries a Deliverable-state change, set or removed. Its own function to
- * keep `touchedKeys` inside the complexity budget — its test-workflow twin inlines fine
- * alone (15 against the cap of 16), but inlining BOTH pairs of branches puts it at 17, so
- * one of the two has to stay extracted and this is the one that does.
- */
-function deliverableStateWritten(write: ItemWrite): boolean {
-	return write.removeDeliverableStateKey || write.deliverableState !== undefined;
-}
-/**
  * The configured keys one axis write touches, each with the value it will write.
  * Applying and capturing read the SAME list: a key written but not captured would
  * be a change no undo could reach, which is exactly how a hole gets in.
@@ -55,8 +46,8 @@ export function axisEntries(
  * key for both would have undo put the prior value back AND replay the inverse delta over
  * it, restoring twice.
  *
- * Its own function for `deliverableStateWritten`'s reason — `touchedKeys` is at its
- * complexity cap, and an inlined optional chain is one more branch in it.
+ * Its own function so `touchedKeys` reads the removal condition once rather than
+ * repeating the optional chain inline.
  */
 function dependsOnKeyRemoved(write: ItemWrite): boolean {
 	return write.dependsOn?.removeKey === true;
@@ -90,7 +81,7 @@ export function touchedKeys(settings: BacklogSettings, write: ItemWrite): string
 	const carried: [boolean, string][] = [
 		// Same RESOLVED keys `applyInto` just wrote: capture and apply must read the same
 		// fallback, or a key written under it would have no inverse to undo it with.
-		[deliverableStateWritten(write), resolvedDeliverableStateKey(settings)],
+		[write.removeDeliverableStateKey || write.deliverableState !== undefined, resolvedDeliverableStateKey(settings)],
 		[write.removeTestStateKey || write.testState !== undefined, resolvedTestStateKey(settings)],
 		[write.startedDate !== undefined, settings.startedDateKey],
 		[write.finish !== undefined, settings.finishedDateKey],
