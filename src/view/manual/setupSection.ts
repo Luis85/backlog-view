@@ -84,12 +84,14 @@ export const SETUP: ManualSection = {
 		{
 			term: 'The test catalog\'s own workflow',
 			text:
-				'The property a `Test suite` or `Test case` row\'s state chip reads and writes, its ' +
-				'ordered states and its done values — unset by default, which is what makes a fresh ' +
-				'vault read `status` through the requirements board\'s own property rather than a ' +
-				'second one nobody named. Records no run history and draws no columns: the catalog ' +
-				'is a tree, and this is the same per-item state mechanism every other workflow here ' +
-				'already has, over its own property.',
+				'Unset by default, like the Deliverable property above: with no key of its own, a ' +
+				'`Test suite` or `Test case` row\'s state chip reads and writes State property ' +
+				'instead, sharing its property and its states while it is falling back. Name a ' +
+				'property here to make it independent; its own done values then default to the ' +
+				'shipped Done, Closed, Completed, Removed rather than this vault\'s customized ' +
+				'shared list, while its own states stay unset. Records no run history and draws no ' +
+				'columns: the catalog is a tree, and this is the same per-item state mechanism ' +
+				'every other workflow here already has, over its own property.',
 			keys: ['testStateProperty', 'testStateValues', 'testDoneValues'],
 		},
 		{

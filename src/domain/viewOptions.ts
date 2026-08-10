@@ -291,11 +291,13 @@ function deliverablesGroup(settings: BacklogSettings): BasesAllOptions {
 
 /**
  * The test workflow's own group — the Deliverables group's mirror MINUS its colour
- * section, which is a decision rather than an omission: `stateColors` is keyed by the state
- * VALUE, so a test state spelled like a requirements or Deliverable state already picks up
- * that state's colour and would be two controls over one key. What a test-ONLY state gives
- * up is the override; it takes the positional colour its place in this list earns, which is
- * what every state had before per-state colours existed.
+ * section, which is a decision rather than an omission. `stateColors` is keyed by the
+ * state VALUE, so a test state spelled like a requirements state shares that state's
+ * colour key — no second control needed. What a test-ONLY state gives up is not an
+ * override in favour of a positional slot: `statePalettes` (`board.ts`) builds only the
+ * Work and Deliverables palettes, so a value in neither is in no palette at all —
+ * `paletteSlot` returns null and it draws the plain accent. A colour box here would key a
+ * colour nothing ever paints.
  */
 function testManagementGroup(): BasesAllOptions {
 	return {
