@@ -4,8 +4,9 @@
 
 The **Release** workflow builds the plugin and creates a GitHub release with `main.js`,
 `manifest.json` and `styles.css` attached as individual assets. It runs on a tag push
-(the tag named exactly `0.5.2`, no `v` prefix) or on a manual dispatch, which reads the
-version straight out of `manifest.json` on the ref you name and creates that tag itself.
+(the tag named exactly the `manifest.json` version, no `v` prefix) or on a manual
+dispatch, which reads the version straight out of `manifest.json` on the ref you name and
+creates that tag itself.
 
 **The release workflow builds rather than gates, and REQUIRES the gate rather than
 trusting you to have run it.** Its own npm steps are `npm ci` and `npm run build`, so
