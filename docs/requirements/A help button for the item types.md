@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[User manual]]"
 order: 10
-status: Open
+status: Done
 priority: P1
 created: 2026-08-01
 source: user request
@@ -85,8 +85,16 @@ the surface every other section then lands in.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The button joins the toolbar in
-`src/view/render/toolbar.ts`; the vocabulary the section is generated from is
-`src/domain/itemTypes.ts` and `src/domain/settings.ts`; the dialog belongs beside
-`src/ui/prompts.ts`, which is the existing example of a modal that takes its content as a
-parameter rather than reaching for app structure.
+The dialog and its one opener are `src/ui/manualDialog.ts` — a `ui/` leaf that takes its
+sections as a parameter, because `ui/` may not reach `domain/`. Its appearance is
+`styles/manual.css`, which draws the split and lets Obsidian's own settings-modal rules
+draw everything else.
+
+The types section itself is `src/view/manual/typesSection.ts`, generated from `ALL_TYPES`
+in `src/domain/settings.ts` — the composition layer, which may reach `domain/` where the
+dialog may not, and which is therefore where a badge class is resolved from a type name.
+
+The **?** itself is `src/view/render/toolbar.ts` — a `.pbl-help-btn` in the toolbar's
+zone 4, shed to the `⋯` at fit step 2 — and its overflow mirror is in
+`src/view/render/toolbarControls.ts`'s `overflowEntries`, which opens the same dialog
+without going through `pickAndRefocus` (a modal takes focus deliberately).

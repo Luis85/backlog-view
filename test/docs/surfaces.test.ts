@@ -5,7 +5,8 @@ import { describe, expect, it } from 'vitest';
 import ProductBacklogPlugin from '../../src/main';
 import { getViewOptions } from '../../src/domain/viewOptions';
 import { ALL_TYPES, typeFolderKey } from '../../src/domain/settings';
-import { FakeVault } from '../helpers/vault';
+import { FakeVault, FakeViewConfig } from '../helpers/vault';
+import { manualSections } from '../../src/view/manual/sections';
 
 /**
  * Every user-facing surface must be named by a requirement.
@@ -167,5 +168,41 @@ describe('every user-facing surface is specified', () => {
 		}
 		// And the real corpus does document the name the trap was found on.
 		expect(named('showCounts')).toBe(true);
+	});
+
+	// The setup section's prose is authored — its own use case forbids schema order — but
+	// its COVERAGE is derived, because the schema generates a folder picker per type and a
+	// limit and a policy per workflow state. A hand-listed section reads as complete while
+	// omitting the generated half.
+	it('claims every view-option key in exactly one setup entry', () => {
+		// Against a config that HAS workflow states. `defaultSettings()` has `states: []`,
+		// so the parameterless schema emits no `wipLimit.*`/`columnPolicy.*` at all — and a
+		// test run against it would go green while covering none of the generated half,
+		// which is the exact failure this criterion exists to prevent.
+		// A STRING: `resolveSettings` reads `stateValues` through a comma-split, so an array
+		// resolves to no states and the generated families stay empty — the vacuum again.
+		const config = new FakeViewConfig({ stateValues: 'Todo, Doing, Done' });
+		const declared = optionKeys(config as never);
+
+		const claims = (manualSections().find((s) => s.id === 'setup')?.entries ?? []).flatMap(
+			(e) => e.keys ?? [],
+		);
+		expect(claims.length, 'no setup entry names any option key').toBeGreaterThan(0);
+
+		// A claim is an exact key, or a `prefix.*` family for the parts of the schema that
+		// are generated from the vocabulary and from the user's own states.
+		const matches = (claim: string, key: string) =>
+			claim.endsWith('.*') ? key.startsWith(claim.slice(0, -1)) : claim === key;
+
+		const unclaimed = declared.filter((key) => !claims.some((c) => matches(c, key)));
+		expect(unclaimed, 'options the manual never explains').toEqual([]);
+
+		const twice = declared.filter((key) => claims.filter((c) => matches(c, key)).length > 1);
+		expect(twice, 'options explained by two entries').toEqual([]);
+
+		// The other direction: a family matching nothing is a section explaining an option
+		// that no longer exists.
+		const empty = claims.filter((c) => !declared.some((key) => matches(c, key)));
+		expect(empty, 'claims that match no declared option').toEqual([]);
 	});
 });

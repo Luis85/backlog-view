@@ -705,6 +705,27 @@ describe('the toolbar fit ladder', () => {
 	});
 
 	/**
+	 * The manual's `?` is in the SAME step-2 selector list as the filter and the density
+	 * toggle — added to that list rather than a rule of its own, per `toolbarFit.css`'s own
+	 * header — so it has to be gone by the time the `⋯` it sheds into first renders (also
+	 * step 2), and untouched at step 1.
+	 */
+	it('sheds the help button at step 2, the same rung the ⋯ first renders at', () => {
+		const { containerEl } = makeView(fixture());
+		const bar = toolbarOf(containerEl);
+		const help = containerEl.querySelector<HTMLElement>('.pbl-help-btn');
+		if (!help) throw new Error('the toolbar drew no help button to shed');
+
+		expect(getComputedStyle(help).display).not.toBe('none');
+
+		bar.setAttribute('data-pbl-fit', '1');
+		expect(getComputedStyle(help).display).not.toBe('none');
+
+		bar.setAttribute('data-pbl-fit', '2');
+		expect(getComputedStyle(help).display).toBe('none');
+	});
+
+	/**
 	 * The status zone's divider is shed WITH the readouts it divides, not left behind them.
 	 * Step 4 sheds the advisories and the count stays, so the line still divides something;
 	 * step 5 takes the count and the line goes with it, or a rule stated "no readout ever
@@ -917,5 +938,51 @@ describe('the toolbar fit ladder', () => {
 		stubWidths(bar, 700, { '0': 690, '1': 600, '2': 560, '3': 520, '4': 500, '5': 480 });
 		syncBusy(bar, null, false);
 		expect(bar.hasAttribute('data-pbl-fit')).toBe(false);
+	});
+
+	/**
+	 * `focusInBar` asked only each element's OWN `display`, never an ancestor's — correct
+	 * as long as everything that hides in this row hides the focusable element directly,
+	 * which every fit rung does and the busy indicator does not: `.pbl-busy` itself is
+	 * `display: none` outside a batch, and the help link a batch draws inside it keeps
+	 * whatever its own rule says regardless. `capturedFocusKey`/`refocusByKey` are what
+	 * make this reachable without any of that being about the ladder at all: ANY full
+	 * toolbar render captures whichever control currently holds focus by its
+	 * `data-pbl-key` and tries to restore it afterwards, so a keyboard user who reached
+	 * the busy link WHILE it was genuinely visible, and is still standing on it the
+	 * instant the batch ends, is exactly the case a render right after that has to get
+	 * right.
+	 *
+	 * jsdom does not blur an element when a CSS change hides an ancestor (a real browser
+	 * does), so `document.activeElement` stays on the link across the `syncBusy(..., null,
+	 * ...)` below by construction — that gap is what makes the case constructible here at
+	 * all, and it is also why this needed a real regression rather than trusting the
+	 * comment beside the old code.
+	 */
+	it('does not restore focus to the busy help link through its own hidden container', () => {
+		const vault = fixture();
+		const { view, containerEl } = makeView(vault);
+		const bar = toolbarOf(containerEl);
+
+		// A batch in flight: the indicator is genuinely visible (`.pbl-busy.pbl-busy-on`,
+		// from the real `busy.css` loaded above), so a keyboard user can actually reach it.
+		syncBusy(bar, { done: 1, total: 2 }, false);
+		const link = bar.querySelector<HTMLElement>('.pbl-busy .pbl-help-link');
+		link?.focus();
+		expect(document.activeElement).toBe(link);
+
+		// The batch ends: `.pbl-busy` goes back to `display: none`, the link still inside
+		// it and still focused (see the doc comment above for why jsdom leaves it there).
+		syncBusy(bar, null, false);
+
+		// The ordinary full render any data update causes — captures the focused key
+		// BEFORE emptying the bar (`capturedFocusKey`) and restores it by key afterwards
+		// (`refocusByKey`, at the end of `renderToolbar`). The rebuilt element carries the
+		// same key and is still inside the still-hidden `.pbl-busy`.
+		refresh(view, vault);
+
+		const rebuiltLink = toolbarOf(containerEl).querySelector('.pbl-busy .pbl-help-link');
+		expect(rebuiltLink).not.toBeNull();
+		expect(document.activeElement).not.toBe(rebuiltLink);
 	});
 });

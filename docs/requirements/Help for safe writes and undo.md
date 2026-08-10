@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[User manual]]"
 order: 50
-status: Open
+status: Done
 priority: P2
 created: 2026-08-01
 files:
@@ -25,7 +25,7 @@ section that decides whether a new user trusts it.
 | | |
 | --- | --- |
 | **Actor** | Backlog owner |
-| **Trigger** | Opening the manual on the writes section, from the **?** button, from the write-in-flight indicator, or from the `Check view options` warning |
+| **Trigger** | Opening the manual on the writes section, from the **?** button or from the write-in-flight indicator |
 | **Preconditions** | A `product-backlog` view is open |
 | **Guarantee** | Every write the section describes is one the view plans and applies through its single write boundary, and every one of them is offered back through undo — with undo's own two limits stated rather than glossed. |
 
@@ -83,13 +83,20 @@ section that decides whether a new user trusts it.
 - The never-writes-outside-the-filter rule is stated of **forward batches**, with undo's
   capture-time authorization stated beside it, so the section does not contradict
   [[Help for finding work]] on what may touch a context row.
-- The section is reachable from the busy indicator and from the config warning, since both
-  are moments the user is already asking what the view is doing to their files.
+- The section is reachable from the busy indicator, the moment the user is already asking
+  what the view is doing to their files while a batch is in flight.
+- The `Check view options` warning does NOT open here. It was claimed by two use cases —
+  this one and [[Help for setting up the view]] — and the register settled it on the
+  configuration section: the reader's question at a warning is what to fix, not what the
+  view writes, so the door belongs with the options rather than with this section.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The behaviour it describes is
-`src/storage/frontmatter.ts` (the only module that writes, and where each write's inverse
-is captured), `src/view/writeGate.ts` (`applySafely`, `undoLast` and the gate they share),
-and `src/domain/settings.ts` (`configProblems`, which is what "misconfigured" means
-concretely).
+`src/view/manual/sections.ts` — the writes section's own entries. The behaviour it
+describes is `src/storage/frontmatter.ts` (the only module that writes, and where each
+write's inverse is captured), `src/view/writeGate.ts` (`applySafely`, `undoLast` and the
+gate they share, including undo's deliberate lack of a replay-time filter check),
+`src/domain/settings.ts` (`configProblems`, which is what "misconfigured" means
+concretely), and `src/view/render/toolbar.ts` (the write-in-flight indicator's own door
+into this section — the config warning's door is [[Help for setting up the view]]'s to
+describe, not this note's).

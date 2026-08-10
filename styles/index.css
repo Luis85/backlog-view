@@ -54,6 +54,7 @@
 @import "./dragDrop.css";
 @import "./emptyStates.css";
 @import "./modals.css";
+@import "./manual.css";
 
 /* The two other projections, each with its overrides after what they override */
 @import "./board.css";

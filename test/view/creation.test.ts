@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { Modal, Notice } from '../helpers/obsidian-mock';
-import { fixture, flush, makeView, rowByTitle, submitPrompt, useViewHarness } from '../helpers/view';
+import { fixture, flush, makeView, rowByTitle, submitButton, submitPrompt, useViewHarness } from '../helpers/view';
 
 /**
  * Clear every configured folder, so folder INFERENCE is what runs. Both layers have to
@@ -42,7 +42,7 @@ describe('item creation', () => {
 
 		const input = modal.contentEl.querySelector('input');
 		if (!input) throw new Error('title input missing');
-		const createBtn = modal.contentEl.querySelector('button');
+		const createBtn = submitButton(modal);
 		expect(createBtn?.disabled).toBe(true);
 		input.value = 'Login flow';
 		input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -77,7 +77,7 @@ describe('item creation', () => {
 		if (!input) throw new Error('title input missing');
 		input.value = 'Login times out';
 		input.dispatchEvent(new Event('input', { bubbles: true }));
-		modal.contentEl.querySelector('button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		submitButton(modal)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		await flush();
 
 		// The chosen type is written, not the ladder's own child.
@@ -113,7 +113,7 @@ describe('item creation', () => {
 		if (!input) throw new Error('title input missing');
 		input.value = 'Login times out';
 		input.dispatchEvent(new Event('input', { bubbles: true }));
-		modal.contentEl.querySelector('button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		submitButton(modal)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		await flush();
 
 		// Filed by type, not beside the items it was created from.

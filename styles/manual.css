@@ -1,0 +1,185 @@
+/* The manual — `src/ui/manualDialog.ts`. Obsidian paints the modal, the sidebar surface
+   and the tab items; what is here is the split, the pane and the content shapes. */
+
+.pbl-manual {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+}
+
+.pbl-manual-split {
+	display: flex;
+	min-height: 0;
+	flex: 1 1 auto;
+}
+
+.pbl-manual-nav {
+	flex: 0 0 190px;
+	padding: var(--size-4-3) 0;
+}
+
+/* Gated on `.is-phone`, the class Obsidian's own app shell adds for a real phone —
+   never a viewport-width media query — because that is how EVERY phone rule in the
+   vendored sheet does it (`.is-phone .modal.mod-sidebar-layout`,
+   `.is-phone .modal.mod-settings .vertical-tab-header-group-items`,
+   `test/harness/obsidian.css`), so this follows the same convention instead of
+   inventing a breakpoint of its own. Obsidian's real mobile settings UI swaps the nav
+   list and the content pane one at a time — a JS-driven master/detail this dialog has
+   no state machine to replicate — so stacking is the CSS-only degree of correctness
+   available here: it gives up the two-column layout rather than trying to fake the
+   swap. Flipping the split's axis needs no width rule of its own to add — the SAME
+   `flex: 0 0 190px` above now caps the nav's HEIGHT instead of its width once the axis
+   is vertical, and `align-items: stretch` (flexbox's own default) is what gives the
+   pane the full width, which is the whole fix for the prose column this was opened
+   for. `overflow-y` guards the height cap now doing double duty as a real limit rather
+   than a generous one; the border swap corrects `.modal-sidebar-inner`'s own
+   `border-inline-end` (Obsidian's, for the two-column case), which would otherwise
+   survive as a stray vertical line down the right edge of a now full-width block. */
+.is-phone .pbl-manual-split {
+	flex-direction: column;
+}
+
+.is-phone .pbl-manual-nav {
+	overflow-y: auto;
+	border-inline-end: none;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.pbl-manual-navhead {
+	padding: 0 var(--size-4-3) var(--size-4-2);
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-medium);
+	color: var(--text-faint);
+}
+
+/* The sidebar items are real buttons so Tab reaches them; Obsidian's own rule paints
+   `.vertical-tab-nav-item`, and its button chrome has to be stripped here the same way
+   the toolbar's is — see `docs/bugs/Obsidian's button rule outranks the plugin's
+   chrome-stripping.md`, which is why this is a declaration rather than a reset. */
+.pbl-manual-nav .vertical-tab-nav-item {
+	display: block;
+	width: 100%;
+	text-align: start;
+	background-color: transparent;
+	border: none;
+	box-shadow: none;
+}
+
+/* The `box-shadow: none` above also beats Obsidian's own `button:focus-visible` ring
+   (a plain `box-shadow`) at higher specificity — two classes against one pseudo-class
+   plus the element — so without a rule of its own here, Tabbing through the sidebar
+   shows no focus indicator at all. Outline, not box-shadow, matching every other
+   control this repository fixed the same way: see `docs/bugs/Obsidian's button rule
+   outranks the plugin's chrome-stripping.md` and `docs/issues/Four other controls
+   still lose to Obsidian's button rule.md`. Inset (`outline-offset: -1px`), like the
+   tree's own and the state/horizon chips': the item is flush against the sidebar's
+   left and right edges (`width: 100%`, no horizontal padding on `.pbl-manual-nav`),
+   so an outward ring has nothing to sit in and would be clipped or would collide with
+   the pane divider beside it. */
+.pbl-manual-nav .vertical-tab-nav-item:focus-visible {
+	outline: 1px solid var(--interactive-accent);
+	outline-offset: -1px;
+}
+
+.pbl-manual-pane {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow-y: auto;
+	padding: var(--size-4-4) var(--size-4-5);
+}
+
+.pbl-manual-pane h3 {
+	margin-block-start: 0;
+}
+
+.pbl-manual-intro {
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	margin-block-end: var(--size-4-3);
+}
+
+.pbl-manual-prose {
+	display: grid;
+	grid-template-columns: max-content 1fr;
+	gap: var(--size-4-2) var(--size-4-3);
+	align-items: baseline;
+}
+
+/* Same convention as the split above: gated on `.is-phone`, not a breakpoint of its
+   own. `max-content` on the term column costs nothing on desktop, where the pane is
+   wide enough that even the longest term ("An untyped item still has a level") still
+   leaves most of the row for its definition — but at phone width `max-content` takes
+   whatever the term needs regardless of what that leaves, so a long term crowds the
+   definition column into wrapping every word or overflowing outright. One column
+   stacks term-or-badge directly above its own definition instead, which is also what
+   `.pbl-badge` needs no rule of its own here for: it sits in the term column of the
+   same grid (`show`, `src/ui/manualDialog.ts`), so collapsing the grid to one column
+   carries the badge along with it — `styles/badges.css` already bounds its own width
+   (58–120px) independently of this grid and needed nothing changed. */
+.is-phone .pbl-manual-prose {
+	grid-template-columns: 1fr;
+}
+
+.pbl-manual-term {
+	font-weight: var(--font-medium);
+}
+
+.pbl-manual-def {
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	line-height: 1.5;
+}
+
+/* The point-of-need door — `manualLink` in `src/ui/manualDialog.ts` — dropped into an
+   empty state, the busy indicator, the config warning and the new-item prompt, so it
+   has to read as an inline link in all four rather than carry any one of their looks.
+   The same button-chrome stripping the sidebar items above need, for the same reason:
+   a bare `<button>` here would wear Obsidian's own box instead of reading as text.
+
+   **Element-qualified, not a bare class — the second instance of this specificity
+   defect in this plan, and the first version of this rule shipped it.** A class-only
+   `.pbl-help-link` is `(0,1,0)`; Obsidian's own `button:not(.clickable-icon)` is
+   `(0,1,1)` (`:not()` takes its argument's specificity, not zero) and sets
+   `background-color`, `color` and `box-shadow`. `(0,1,1) > (0,1,0)` regardless of
+   source order, so the bare-class reset silently did nothing in a real vault — every
+   help link rendered as Obsidian's filled, boxed default button, underneath text that
+   still read as a link. `button.pbl-help-link` ties Obsidian's rule at `(0,1,1)` and
+   then wins because the plugin's sheet loads last, the same fix
+   `docs/bugs/Obsidian's button rule outranks the plugin's chrome-stripping.md` and
+   `docs/issues/Four other controls still lose to Obsidian's button rule.md` already
+   established for five other controls. All three of Obsidian's properties are named
+   here explicitly — inheriting even one back is how a "fix" still half-works, which is
+   the second bug in the pair above (`.pbl-tag-remove`, `.pbl-state-chip`, …). */
+button.pbl-help-link {
+	background: none;
+	border: none;
+	padding: 0;
+	color: var(--text-accent);
+	text-decoration: underline;
+	cursor: pointer;
+	font: inherit;
+	box-shadow: none;
+}
+
+/* Obsidian's own `button:hover` (also `(0,1,1)`, inside `@media (hover: hover)`) paints
+   a fill on hover — a SEPARATE rule from the base one above, so the base rule winning
+   at rest says nothing about which rule wins the hover-only repaint: a browser resolves
+   the winning declaration per PROPERTY, not per rule (`docs/bugs/The disclosure's hover
+   still painted a button fill.md`). Restated explicitly rather than left to inherit the
+   win, the same shape every other control in the pair above uses. */
+button.pbl-help-link:hover {
+	background-color: transparent;
+	box-shadow: none;
+}
+
+/* The base rule's own `box-shadow: none` also beats Obsidian's `button:focus-visible`
+   ring (a plain `box-shadow`) at the same `(0,1,1)` tie, so without a rule of its own
+   here, Tabbing to a help link shows no focus indicator at all — the same trap the
+   sidebar items above were fixed against. Outline, not box-shadow, matching every
+   other control this repository fixed the same way. Outward (`outline-offset: 1px`),
+   not inset: nothing a help link sits inside clips it the way the sidebar items'
+   flush edges or the state/horizon chips' own overflow:hidden columns do. */
+button.pbl-help-link:focus-visible {
+	outline: 1px solid var(--interactive-accent);
+	outline-offset: 1px;
+}

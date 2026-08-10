@@ -90,7 +90,21 @@ appears in the view at all.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The flow it describes is
-`src/view/interactions/create.ts` with `src/ui/prompts.ts` (the modal and its folder
-line), `src/domain/folderNotes.ts` (folder mode's own rule), and
-`src/commands/scaffold.ts` (the command that makes filter and folders agree).
+`src/view/manual/sections.ts` — the creating section's own entries. The flow it describes
+is `src/view/interactions/create.ts` (`promptCreateItem`, `inferFolder`) with
+`src/ui/prompts.ts` (the modal and its folder line), `src/domain/itemTypes.ts`
+(`childTypeChoices`, what the + offers), `src/domain/folderNotes.ts` (folder mode's own
+rule), and `src/commands/scaffold.ts` (the command that makes filter and folders agree).
+
+## Review note (2026-08-10) — not moved to Done
+
+The `Backfill is described by what it will not do` criterion is unmet: the CREATING
+entries in `src/view/manual/sections.ts` (`'The + on a row'` through `'Whether the new
+note then appears'`) never mention backfill or the ✨ button at all — not `never
+overwrites`, not `never guesses a type for an item whose parent is outside the view`,
+nothing. That explanation exists, but only in the **setup** section's `'The toolbar's ✨
+Assign missing properties'` entry, which this PBI's own main flow step 6 does not point
+to — the use case says `The section` (this one) `separates backfill from creation`, and a
+section that never names backfill cannot be read as separating anything from it. Left
+`Open` rather than moved, since the section reads as if backfill is out of scope for it
+entirely, and a reader with the modal open has no path from here to that explanation.

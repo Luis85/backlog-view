@@ -6,6 +6,8 @@ import { ScaleId } from '../../domain/timeline';
 import { showMenuForClick } from '../interactions/menu';
 import { runInit } from '../interactions/structure';
 import { focusInBar } from './toolbarFit';
+import { openManual } from '../../ui/manualDialog';
+import { manualSections } from '../manual/sections';
 
 /** Where a toolbar control carries its focus identity — see `capturedFocusKey`. */
 export const KEY_ATTR = 'data-pbl-key';
@@ -77,10 +79,12 @@ export function refocusByKey(barEl: HTMLElement, key: string | null): void {
  * zoom, and the focus picker's menu and its clear button" and went stale twice, once
  * per control added after it was written: **anything on this row whose activation
  * re-renders the toolbar while focus is elsewhere, or which destroys the control that
- * was pressed, goes through it.** The New-type chevron is the one menu that does not:
- * its entries open the creation prompt, which takes focus deliberately, so restoring
- * focus here would fight the modal for it — a genuine carve-out, not an omission from
- * the rule above.
+ * was pressed, goes through it.** An entry that opens a MODAL is the carve-out, not an
+ * omission from the rule above: a modal takes focus deliberately, and `run()` returns
+ * the instant it opens rather than when it closes, so restoring focus here would pull
+ * it straight back off the dialog while it is still opening. The New-type chevron's
+ * entries (the creation prompt) and the manual entry (`openManual`) both take this
+ * shape, and both skip this function for the same reason rather than for two.
  */
 export function pickAndRefocus(barEl: HTMLElement, key: string, act: () => void): void {
 	act();
@@ -363,6 +367,10 @@ interface OverflowEntry {
 	icon: string;
 	cls: string;
 	run: () => void;
+	/** See `pickAndRefocus`'s doc comment: an entry that opens a modal takes focus
+	 * deliberately, so it must not be refocused back onto the `⋯` the instant `run()`
+	 * returns. */
+	opensModal?: boolean;
 }
 
 /**
@@ -396,6 +404,23 @@ function overflowEntries(host: BacklogViewHost, barEl: HTMLElement): OverflowEnt
 			icon: 'locate-fixed',
 			cls: 'pbl-today-btn',
 			run: () => host.jumpToToday(),
+		},
+		{
+			title: 'Open the manual',
+			icon: 'help-circle',
+			cls: 'pbl-help-btn',
+			// `onClosed` is REQUIRED here, and its absence was a real hole: skipping
+			// `pickAndRefocus` (below) stops focus being yanked off the dialog as it
+			// opens, but on its own it leaves focus nowhere when the dialog CLOSES —
+			// the menu item is gone by then and the `⋯` was never refocused. Looked up
+			// at close time, not captured: the toolbar may have rebuilt, and the rung
+			// may have changed which controls exist. `focusInBar` is what handles the
+			// found element being hidden or unfocusable.
+			run: () =>
+				openManual(host.app, manualSections(), 'types', () =>
+					focusInBar(barEl, barEl.querySelector<HTMLElement>('.pbl-overflow-btn')),
+				),
+			opensModal: true,
 		},
 		{
 			title: 'Assign missing properties',
@@ -460,8 +485,12 @@ export function renderOverflow(host: BacklogViewHost, barEl: HTMLElement): void 
 					.setChecked(mirrored?.getAttribute('aria-pressed') === 'true')
 					// Every entry here re-renders, and focus is in the menu while it
 					// does — so the `⋯` gets its own key back, not the shed button's,
-					// which may not exist at the resulting step.
-					.onClick(() => pickAndRefocus(barEl, 'overflow', entry.run)),
+					// which may not exist at the resulting step. Except a modal entry:
+					// see `pickAndRefocus`'s doc comment for why refocusing the `⋯`
+					// there would fight the dialog it just opened for focus.
+					.onClick(() =>
+						entry.opensModal ? entry.run() : pickAndRefocus(barEl, 'overflow', entry.run),
+					),
 			);
 		}
 		showMenuForClick(menu, evt);

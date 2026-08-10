@@ -35,6 +35,7 @@ describe('the toolbar overflow menu', () => {
 		expect(openOverflow(containerEl).map((i) => i.titleText)).toEqual([
 			'Compact rows',
 			'Jump to today',
+			'Open the manual',
 			'Assign missing properties',
 			'Expand all',
 			'Collapse all',
@@ -47,6 +48,7 @@ describe('the toolbar overflow menu', () => {
 		view.setProjection('tree');
 
 		expect(openOverflow(containerEl).map((i) => i.titleText)).toEqual([
+			'Open the manual',
 			'Assign missing properties',
 			'Expand all',
 			'Collapse all',

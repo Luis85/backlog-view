@@ -42,6 +42,12 @@ export interface NewItemPromptOptions {
 	types: string[];
 	/** Ask where to create the item because no folder is configured or inferable. */
 	askFolder?: boolean;
+	/**
+	 * An optional point-of-need door into the manual, drawn under the detail line. This
+	 * file is a `ui/` leaf and knows nothing of the manual's content, so the caller
+	 * builds the whole affordance and hands over only where to mount it.
+	 */
+	help?: (parent: HTMLElement) => void;
 	onSubmit: (result: NewItemPromptResult) => void;
 }
 
@@ -307,6 +313,7 @@ export class TitlePromptModal extends Modal {
 		const detailEl = this.options.detail ? this.contentEl.createDiv({ cls: 'pbl-modal-detail' }) : null;
 		const syncDetail = () => detailEl?.setText(this.options.detail?.(typeName) ?? '');
 		syncDetail();
+		this.options.help?.(this.contentEl);
 
 		const submit = () => {
 			const trimmed = title.trim();

@@ -16,11 +16,13 @@ import {
 	renderOverflow,
 	renderProjectionZone,
 } from './toolbarControls';
-import { syncToolbarFit } from './toolbarFit';
+import { focusInBar, syncToolbarFit } from './toolbarFit';
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { displayType, focusTarget, isDeliverableType } from '../../domain/itemTypes';
 import { DELIVERABLE_TYPE } from '../../domain/settings';
 import { configProblems } from '../../domain/settings';
+import { manualLink, openManual } from '../../ui/manualDialog';
+import { manualSections } from '../manual/sections';
 
 /** Toolbar: creation buttons, backfill, expand/collapse, config warning, item count. */
 export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
@@ -85,6 +87,24 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	renderCompletedToggle(host, barEl, model);
 	renderFilterBox(host, barEl);
 
+	// The general door to the manual. Zone 4 because it is the same in every projection,
+	// and last in it because the fit ladder sheds it at step 2 — of everything on this row
+	// it is the one control whose use is never urgent, and step 2 is the earliest rung at
+	// which shedding is possible at all, since that is where the `⋯` it sheds into first
+	// renders.
+	const helpBtn = iconButton(barEl, 'help-circle', 'Open the manual', 'help');
+	helpBtn.addClass('pbl-help-btn');
+	helpBtn.addEventListener('click', () => {
+		// Resolved at CLOSE time, not captured. `renderToolbar` empties the bar on any
+		// full render — a Bases data refresh while the manual is open is enough — and
+		// `helpBtn` is then a detached node that `focus()` silently does nothing with.
+		// Same reason the overflow entry queries rather than captures; `focusInBar`
+		// handles the replacement being hidden at the current rung.
+		openManual(host.app, manualSections(), 'types', () =>
+			focusInBar(barEl, barEl.querySelector<HTMLElement>('.pbl-help-btn')),
+		);
+	});
+
 	barEl.createDiv({ cls: 'pbl-toolbar-sep' });
 
 	// 5 — what writes, and what says a write is happening. The ✨ is the one command that
@@ -109,7 +129,7 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	// thing on the row that says so was four elements and a divider away — a legible
 	// pause reads as a dead toolbar when the explanation is not beside the controls it
 	// explains.
-	renderBusyIndicator(barEl);
+	renderBusyIndicator(barEl, host);
 
 	// Classed, unlike the other two, because the last rung sheds it: the readouts it
 	// divides are all gone by then, and a divider that divides nothing is width in front
@@ -139,6 +159,31 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 		setIcon(warn.createSpan({ cls: 'pbl-warning-icon' }), 'alert-triangle');
 		warn.createSpan({ text: 'Check view options' });
 		setTooltip(warn, problems.join(' '));
+		// The door into `Help for setting up the view` — deliberately NOT drawn inside
+		// `warn`. `styles/toolbarFit.css`'s last rung shrinks `.pbl-config-warning` and clips
+		// it with `overflow: hidden` rather than hiding it outright, because it is the one
+		// readout that must stay in the accessibility tree even when the row cannot show it
+		// — its `aria-label` and tooltip still carry the whole sentence. That is the right
+		// call for TEXT: a clipped span with a name is still reachable. It is the wrong call
+		// for a CONTROL: a clipped-but-tabbable button is a focus target nobody can see.
+		// Drawn as its own sibling instead: an ordinary non-shrinking toolbar child
+		// (`.pbl-toolbar > *` defaults to `flex: 0 0 auto` — `toolbarFit.css`'s own opening
+		// rule) — but being a sibling ALONE would have left it the last element on the row
+		// (everything after it already shed by step 5), and so the first thing the last
+		// rung's clip reaches: clipped alone while the DOM still claimed it was there. It
+		// carries `[data-pbl-key='config-help']` for exactly that reason — `toolbarFit.css`'s
+		// step 2 sheds it in the same rule as the help button, the filter and the density
+		// toggle, so it is gone (hidden, not clipped) four rungs before the warning's own
+		// clip ever runs. Nothing is withheld by this: `⋯ → Open the manual` survives every
+		// rung and the dialog's own sidebar is one click from `setup`; only the deep link
+		// itself is lost. `root: barEl` and an explicit `onClosed` through `focusInBar`,
+		// like the busy indicator beside it: `barEl` itself carries no `tabindex`, so
+		// `manualLink`'s own root-focus fallback cannot land on it, and a toolbar door
+		// without a real destination of its own has to name one rather than lean on a
+		// default that has nothing to reach.
+		manualLink(barEl, host.app, manualSections(), { sectionId: 'setup', label: 'What to fix', root: barEl }, () =>
+			focusInBar(barEl, barEl.querySelector<HTMLElement>('.pbl-help-btn')),
+		).setAttribute(KEY_ATTR, 'config-help');
 	}
 	// The advisories and the count are the same size and the same faint colour, so with
 	// nothing between them "1 note ignored" and "28 items" read as one sentence. They are
@@ -244,7 +289,7 @@ function renderNewButton(host: BacklogViewHost, barEl: HTMLElement, model: Backl
  * created on demand: progress ticks once per file, and rebuilding the toolbar for
  * each of them would be its own source of jank. `syncBusy` drives it in place.
  */
-function renderBusyIndicator(barEl: HTMLElement): void {
+function renderBusyIndicator(barEl: HTMLElement, host: BacklogViewHost): void {
 	const busy = barEl.createDiv({ cls: 'pbl-busy', attr: { role: 'status', 'aria-live': 'polite' } });
 	setIcon(busy.createSpan({ cls: 'pbl-busy-spinner' }), 'loader-2');
 	busy.createSpan({ cls: 'pbl-busy-label' });
@@ -254,6 +299,23 @@ function renderBusyIndicator(barEl: HTMLElement): void {
 	const count = busy.createSpan({ cls: 'pbl-busy-count', attr: { 'aria-hidden': 'true' } });
 	count.createSpan({ cls: 'pbl-busy-done' });
 	count.createSpan({ cls: 'pbl-busy-of' });
+	// The door into `Help for safe writes and undo`. This caller overrides `manualLink`'s
+	// default refocus rather than relying on it: `.pbl-busy` is hidden by CSS the moment
+	// the batch that opened it ends, so by closing time the default's own resolve would
+	// find a link that is connected but invisible — exactly the case that default exists
+	// to refuse. Landing on the `?` button through `focusInBar` is what the toolbar's own
+	// help button already does, resolved at close time for the same reason.
+	// Keyed like every other focusable toolbar control, even though it never survives its
+	// own rebuild via that mechanism — `syncBusy` only ever re-texts this indicator, never
+	// rebuilds it, so the key exists to satisfy the invariant `test/view/toolbarFocus.test.ts`
+	// checks over the whole row rather than to do restoring work of its own.
+	// `root: barEl` here is never actually read — the explicit `onClosed` below always
+	// wins over the default resolve it would drive — but the field is required so every
+	// caller states one rather than a caller-that-overrides being the one place the
+	// question goes unanswered.
+	manualLink(busy, host.app, manualSections(), { sectionId: 'writes', label: 'What is happening', root: barEl }, () =>
+		focusInBar(barEl, barEl.querySelector<HTMLElement>('.pbl-help-btn')),
+	).setAttribute(KEY_ATTR, 'busy-help');
 }
 
 /**
@@ -401,11 +463,29 @@ function syncBusyLabel(el: HTMLElement, busy: BusyState | null): boolean {
  * Called on every render and on every progress tick, so it only touches text and
  * flags — never structure. Controls that would be refused mid-batch go `disabled`
  * with it, so the busy state is something a user reads rather than discovers.
+ *
+ * **This is also where a focus stranded by the indicator hiding is caught.** `.pbl-busy`
+ * carries the busy-help link — the first focusable element it has ever held — and
+ * `syncBusyLabel` drops `pbl-busy-on` the moment a batch ends, which makes the container
+ * `display: none` in `styles/busy.css`. A browser blurs a focused descendant to `<body>`
+ * the instant its container is hidden that way; `manualLink`'s own tier-2 root-focus
+ * fallback cannot catch it because that only runs while the DIALOG closes, and this
+ * transition can land well after the dialog is long shut (open the manual from "What is
+ * happening", close it, and only then does the batch that was already finishing end).
+ * Caught here because this is where the transition is owned: `hadFocus` is read before
+ * `syncBusyLabel` flips the class, so it asks the DOM the true "was focus in here"
+ * question rather than inferring it from `busy`, and the refocus fires only on the
+ * shown-to-hidden edge, onto the same `.pbl-help-btn` destination `focusInBar` already
+ * uses for both toolbar doors.
  */
 export function syncBusy(barEl: HTMLElement, busy: BusyState | null, canUndo: boolean): void {
 	const el = barEl.querySelector<HTMLElement>('.pbl-busy');
-	// Only on the visibility transition — see `syncBusyLabel`, which is what answers it.
-	if (el && syncBusyLabel(el, busy)) syncToolbarFit(barEl);
+	if (el) {
+		const hadFocus = el.contains(document.activeElement);
+		// Only on the visibility transition — see `syncBusyLabel`, which is what answers it.
+		if (syncBusyLabel(el, busy)) syncToolbarFit(barEl);
+		if (hadFocus && busy === null) focusInBar(barEl, barEl.querySelector<HTMLElement>('.pbl-help-btn'));
+	}
 	barEl.querySelectorAll<HTMLButtonElement>('.pbl-write-ctl').forEach((btn) => {
 		btn.disabled = busy !== null;
 	});
