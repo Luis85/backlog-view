@@ -96,7 +96,16 @@ are not, and the reason each half moved is worth stating:
 - **3a — the swatch has no empty state.** An `<input type="color">` always holds a colour,
   so "no choice" cannot be expressed by the picker itself. That is the whole reason for the
   reset button beside it: without one, a state could be changed but never un-chosen, and the
-  default would be unreachable once anything was picked.
+  default would be unreachable once anything was picked. It is disabled where there is
+  nothing to reset, since an always-available reset is inert on most rows.
+- **3b — the reset has to move the swatch too, and to the DEFAULT.** A row therefore carries
+  the chosen colour and the default separately: they differ exactly when a choice exists,
+  which is the only time the reset does anything. Restoring the choice instead — which is
+  what a single `value` field produces — clears the setting while leaving the old colour on
+  screen, and then swallows the `change` event if the user immediately re-picks it, because
+  the input's value never moved. Found in review; the default is probed from the state's
+  SLOT class, never from the paint's own, since a state chosen by NAME wears that name's
+  class and probing it would answer the choice.
 - **4a — the `.base` holds a value neither shape allows.** Read as no choice. `stateColor`
   takes a name or a six-digit hex and refuses everything else — `#fff` included, deliberately:
   the picker emits one shape, this value reaches a style attribute, and expanding shorthand
@@ -114,7 +123,8 @@ are not, and the reason each half moved is worth stating:
   stored shapes: a NAME as the same class on both, a HEX as the same inline value on both.
   A state nobody chose keeps its positional slot with nothing inline.
 - Clearing a choice returns that state to its slot colour, not to the plain accent — which
-  is what keeping the slot class under an inline colour buys.
+  is what keeping the slot class under an inline colour buys — and puts that same slot
+  colour back in the swatch rather than leaving the cleared choice showing.
 - A choice is offered only for a DECLARED state, in either workflow, deduped by `sameValue`.
   An observed-only vocabulary offers nothing and says why: the resolver cannot see observed
   states, so a colour stored against one would be discarded on the next refresh.

@@ -121,6 +121,32 @@ describe('the state-colour picker', () => {
 		expect(rows().map((row) => row.label)).toEqual(['New', 'Active', 'Done', 'Draft']);
 	});
 
+	it('treats a state chosen by NAME as a choice like any other', () => {
+		// The other stored shape reaching the dialog: a name is a class rather than a value,
+		// so the row's swatch opens on what that CLASS paints while its reset restores what
+		// the SLOT paints. jsdom resolves neither (both are the grey fallback), so what is
+		// asserted here is the half that survives: the row knows it is set, so its reset is
+		// live, and using it clears the key.
+		const { view } = openPicker({ [stateColorKey('Active')]: 'orange' });
+		const active = rows()[1];
+		expect(active.reset.hasAttribute('disabled')).toBe(false);
+
+		active.reset.dispatchEvent(new MouseEvent('click'));
+
+		expect(view.config.setCalls).toEqual([{ key: stateColorKey('Active'), value: null }]);
+	});
+
+	it('offers nothing for a workflow that declares states but names no property', () => {
+		// The mirror of the case below: the vocabulary exists and there is nowhere to write
+		// it, so no palette can place any of it and a colour would decorate nothing.
+		Notice.reset();
+		const { view } = makeView(vaultWith(), { stateValues: 'New, Active' }, { collapsed: true });
+
+		expect(hasColorableStates(view)).toBe(false);
+		openStateColors(view);
+		expect(Modal.lastOpened).toBeNull();
+	});
+
 	it('offers nothing for a workflow whose states are only OBSERVED', () => {
 		// The finding this feature nearly shipped: `resolveSettings` builds the colour table
 		// from the DECLARED lists and has no model, so a colour chosen for an observed state
@@ -150,9 +176,16 @@ describe('the state-colour picker', () => {
 		expect(view.config.setCalls).toEqual([]);
 	});
 
-	it('clears a choice through the reset beside the swatch', () => {
+	it('clears a choice through the reset, and puts the DEFAULT back in the swatch', () => {
 		// The way BACK to the default, and it needs its own control: a colour input has no
 		// empty state, so without this "by position" is unreachable once anything is set.
+		//
+		// The swatch has to move too, and the value it moves to has to be the default rather
+		// than the choice just cleared. Resetting to the choice would leave the old colour on
+		// screen while the grid reverted — and, because the input's value never changed,
+		// would then swallow the `change` event if the user immediately re-picked it. The
+		// seed is the grey fallback here (jsdom paints nothing), which is what makes the two
+		// distinguishable at all under test.
 		const { view } = openPicker({ [stateColorKey('Active')]: '#ff0000' });
 		const active = rows()[1];
 		expect(active.input.value).toBe('#ff0000');
@@ -160,6 +193,31 @@ describe('the state-colour picker', () => {
 		active.reset.dispatchEvent(new MouseEvent('click'));
 
 		expect(view.config.setCalls).toEqual([{ key: stateColorKey('Active'), value: null }]);
+		expect(active.input.value).not.toBe('#ff0000');
+		expect(active.input.value).toMatch(/^#[0-9a-f]{6}$/);
+	});
+
+	it('refuses a click that reaches the disabled reset anyway', () => {
+		// `disabled` on its own is a request, not a guarantee — this codebase already records
+		// that for the collapse controls, where a click landing on a child element bubbles
+		// past it. So the handler asks the same question the attribute answers, and clicking
+		// an unchosen row's reset writes nothing rather than clearing a key nobody set.
+		const { view } = openPicker({ [stateColorKey('Active')]: '#ff0000' });
+
+		rows()[0].reset.dispatchEvent(new MouseEvent('click'));
+
+		expect(view.config.setCalls).toEqual([]);
+	});
+
+	it('offers no reset on a row with nothing to reset', () => {
+		// Every swatch holds a colour whether or not anyone chose one, so "is there a choice"
+		// is a fact the control cannot show by itself — an always-enabled reset would be
+		// available on every row and do nothing on most of them.
+		const { view: _view } = openPicker({ [stateColorKey('Active')]: '#ff0000' });
+		const [unchosen, chosen] = rows();
+
+		expect(unchosen.reset.hasAttribute('disabled')).toBe(true);
+		expect(chosen.reset.hasAttribute('disabled')).toBe(false);
 	});
 
 	it('opens each swatch on a colour, chosen or seeded', () => {

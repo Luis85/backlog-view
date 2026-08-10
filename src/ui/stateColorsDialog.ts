@@ -1,17 +1,26 @@
 import { App, ColorComponent, Modal, Setting } from 'obsidian';
 
 /**
- * One row: a state, the colour to open its swatch on, and whether that colour is a CHOICE
- * or merely what the state is currently drawn in.
+ * One row: a state, the colour to open its swatch on, the colour the reset restores, and
+ * whether there is a choice to reset at all.
  *
- * The two are separate because only one of them is a decision. `isSet` false means nobody
- * has chosen — the row is on its default, and the reset beside it has nothing to do —
- * while `value` is shown either way, so the picker opens on the colour the bar already
- * wears rather than on black. Collapsing them would make every unopened row look chosen.
+ * Three fields rather than two, and each earns its place — a `<input type="color">` always
+ * holds a colour, so none of these can be inferred from the control:
+ *
+ * - `value` is what the swatch OPENS on: the chosen colour if there is one, else what the
+ *   state is drawn in anyway, so the dialog never opens on black.
+ * - `defaultValue` is what the state would be drawn in with NO choice. It is a separate
+ *   field precisely because it differs from `value` exactly when a choice exists, which is
+ *   the only time the reset does anything: resetting to `value` would clear the setting
+ *   while leaving the old colour in the swatch, and — because the input's value never
+ *   changed — would then swallow the `change` event if the user immediately re-picked it.
+ * - `isSet` says whether there is a choice, which is what makes the reset a real control
+ *   rather than one that is sometimes inert.
  */
 export interface StateColorRow {
 	state: string;
 	value: string;
+	defaultValue: string;
 	isSet: boolean;
 }
 
@@ -63,11 +72,14 @@ class StateColorsDialog extends Modal {
 		setting.addExtraButton((btn) => {
 			btn.setIcon('rotate-ccw')
 				.setTooltip('Use the default colour')
+				// A reset with nothing to reset is a control that lies about being available.
+				.setDisabled(!row.isSet)
 				.onClick(() => {
+					if (!row.isSet) return;
 					// The swatch first, the clear second: `setValue` is not documented to leave
-					// `onChange` alone, and if it fires one it would report the seed as a
+					// `onChange` alone, and if it fires one it would report the default as a
 					// choice. Doing it in this order means the null below wins either way.
-					picker?.setValue(row.value);
+					picker?.setValue(row.defaultValue);
 					this.onChange(row.state, null);
 				});
 		});

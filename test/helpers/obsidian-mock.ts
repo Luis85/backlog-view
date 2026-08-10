@@ -323,6 +323,11 @@ export class ExtraButtonComponent {
 		this.extraSettingsEl.setAttribute('aria-label', tooltip);
 		return this;
 	}
+	/** A real `disabled`, because the thing worth checking is that the DOM says so. */
+	setDisabled(disabled: boolean): this {
+		this.extraSettingsEl.toggleAttribute('disabled', disabled);
+		return this;
+	}
 	onClick(cb: () => unknown): this {
 		this.extraSettingsEl.addEventListener('click', cb);
 		return this;

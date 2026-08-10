@@ -1,6 +1,6 @@
 import { Notice } from 'obsidian';
 import { BacklogViewHost } from '../host';
-import { stateColorPaint, statePalettes } from '../../domain/board';
+import { paletteSlot, stateColorPaint, statePalettes } from '../../domain/board';
 import { colorableStates, stateColorKey } from '../../domain/stateColors';
 import { byName } from '../../domain/typeVocabulary';
 import { openStateColorsDialog, StateColorRow } from '../../ui/stateColorsDialog';
@@ -74,20 +74,40 @@ function stateColorRows(host: BacklogViewHost): StateColorRow[] {
 	const palettes = statePalettes(model, host.settings);
 	const rows: StateColorRow[] = [];
 	for (const state of colorableStates(host.settings.states, host.settings.deliverableStates)) {
-		const paint = palettes.map((palette) => stateColorPaint(host.settings, palette, state)).find(Boolean);
-		if (!paint) continue;
+		// The palette that PLACES this state, kept rather than mapped over: the row needs
+		// its slot as well as its paint, and the slot is what the reset restores to.
+		const palette = palettes.find((candidate) => paletteSlot(candidate, state) !== null);
+		const paint = palette && stateColorPaint(host.settings, palette, state);
+		if (!palette || !paint) continue;
+		// The colour with NO choice applied — a state chosen by NAME wears that name's class,
+		// so probing the paint's own class would answer the choice rather than the default.
+		const slotCls = `pbl-state-${paletteSlot(palette, state)}`;
+		const defaultValue = paintedColor(slotCls);
 		rows.push({
 			state,
-			value: paint.color ?? paintedColor(paint.cls),
+			value: paint.color ?? (paint.cls === slotCls ? defaultValue : paintedColor(paint.cls)),
+			defaultValue,
 			isSet: byName(host.settings.stateColors, state) !== undefined,
 		});
 	}
 	return rows;
 }
 
-/** Whether this view can offer the picker at all — the gate its button renders under. */
+/**
+ * Whether this view can offer the picker at all — the gate its button renders under.
+ *
+ * It asks the same two questions `stateColorRows` does and STOPS THERE: a declared state,
+ * and a palette that can place it. It must not build the rows, because building one probes
+ * the live stylesheet (`paintedColor`), and this runs on every toolbar render — a
+ * `getComputedStyle` per state per pass, to answer a question that needs none. That is not
+ * a micro-optimisation: it timed the 400-row render-cost test out at eight seconds.
+ */
 export function hasColorableStates(host: BacklogViewHost): boolean {
-	return stateColorRows(host).length > 0;
+	if (!host.model) return false;
+	const palettes = statePalettes(host.model, host.settings);
+	return colorableStates(host.settings.states, host.settings.deliverableStates).some((state) =>
+		palettes.some((palette) => paletteSlot(palette, state) !== null),
+	);
 }
 
 /**
