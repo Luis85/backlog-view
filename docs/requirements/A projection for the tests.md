@@ -441,9 +441,10 @@ and went on walking every `item.children` beneath them, which is the real tree �
 needle matching a `Test case` under a `PBI` marked that PBI and its whole ancestor chain
 visible, and the plan drew three rows with nothing on screen matching and the text still in
 the box. That was 2e reappearing after 2e was implemented, and the fix — stop the walk at a
-non-member — was wrong in a way that took **three more rounds of review to correct**, each
-one breaking what the round before had just fixed. What the four rounds establish is that
-`member` answers **three separate questions** and only the middle one is the obvious one:
+non-member — was wrong in a way that took **four more rounds of review to correct**, each
+one breaking or half-stating what the round before had just fixed. What the five rounds
+establish is that `member` answers **four separate questions** and only the second is the
+obvious one:
 
 1. **Where the walk GOES** — unguarded, everywhere `item.children` leads. Guarding the
    descent lost a `Deliverable` nested under a `Test case`: it is a card on the Deliverables
@@ -455,9 +456,15 @@ one breaking what the round before had just fixed. What the four rounds establis
    let ancestry cross a boundary the renderer does not: in `Epic → Test case → PBI` the
    `PBI` is a promoted ROOT of the plan rather than a row under that Epic, so a needle
    matching it drew an empty, unmatched Epic beside the real result.
+4. **Which edges its subtree reaches DOWN** — the same drawn ones. Guarding the ancestry
+   left its mirror: filtering those same three notes by the *Epic* kept the promoted `PBI`
+   on screen as an unmatched root, and on the Deliverables board kept a `Deliverable`
+   nested under a test as a card, for an ancestry that board draws nowhere.
 
 None is a special case of another, and each is one predicate on its own line in
-`src/view/filterState.ts`. The lesson for the next consumer:
+`src/view/filterState.ts`. That separateness is the finding, not an accident of the fixes:
+every round that tried to state two of the four as one rule is what produced the next
+round. The lesson for the next consumer:
 `projectionPopulation(...).roots` alone is not the forest, and neither is roots plus one use
 of the membership rule.
 

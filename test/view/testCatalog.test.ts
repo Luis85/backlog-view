@@ -437,6 +437,44 @@ describe('the catalog is tree-shaped, and the plan keeps its place', () => {
 		expect(titlesOf(containerEl)).toEqual(['Deep PBI']);
 	});
 
+	it('does not carry a match DOWN through one either, which is the same edge read backwards', () => {
+		// The same three notes, filtered by the ancestor instead of the descendant. A match
+		// keeps its whole subtree, and `subtree` has to mean the one this projection DRAWS:
+		// the `Deep PBI` is a promoted root, not a row under that Epic, so keeping it for the
+		// Epic's match renders an unmatched root beside the match with no visible relation
+		// to it.
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Bridge case.md', { frontmatter: { type: 'Test case', order: 10 }, parentLink: 'Epic' });
+		vault.addFile('Deep PBI.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Bridge case' });
+		const { containerEl, view } = makeView(vault);
+		clickExpandAll(containerEl);
+		view.setFilter('Epic');
+		expect(titlesOf(containerEl)).toEqual(['Epic']);
+	});
+
+	it('keeps that subtree rule on the board too, where the card is the only thing on screen', () => {
+		// The same question asked where there is no tree to read the answer off, and the
+		// match has to be a MEMBER for it to be asked at all: `Epic → Test case → Runbook`,
+		// filtered by the Epic. The Epic matches, and an unguarded subtree walk reaches the
+		// `Runbook` through the case — so the board keeps a card for an ancestry it does not
+		// draw and the user cannot see. Its own title still finds it, which is the test above.
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Bridge case.md', { frontmatter: { type: 'Test case', order: 10 }, parentLink: 'Epic' });
+		vault.addFile('Runbook.md', {
+			frontmatter: { type: 'Deliverable', order: 10, docStatus: 'Draft' },
+			parentLink: 'Bridge case',
+		});
+		const { containerEl, view } = makeView(vault, { deliverableStateProperty: 'note.docStatus' });
+		projectionButton(containerEl, 'Show as Deliverables board').dispatchEvent(
+			new MouseEvent('click', { bubbles: true }),
+		);
+		expect(cardTitles(containerEl)).toContain('Runbook');
+		view.setFilter('Epic');
+		expect(cardTitles(containerEl)).toEqual([]);
+	});
+
 	it('never surfaces a test as a match on a board that cannot draw it', () => {
 		// The mirror of the case above, on the same index: a `Test case` nested UNDER a
 		// Deliverable. If the walk counts its title as a match, the Deliverable card stays

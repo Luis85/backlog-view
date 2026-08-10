@@ -28,8 +28,8 @@ interface MatchIndex {
  * once — every scope is this function applied to a different set of roots, so a change
  * to what "matching" means lands on both at the same time.
  *
- * **`member` answers three questions and they are separate ones**, which is what took
- * four rounds of review to state. Descending is not one of them:
+ * **`member` answers four questions and they are separate ones**, which is what took five
+ * rounds of review to state. Descending is not one of them:
  *
  * 1. **Where the walk goes** — everywhere `item.children` leads, unguarded. That is the
  *    real tree, and a row this projection draws can sit below one it does not: a
@@ -44,18 +44,27 @@ interface MatchIndex {
  *    `Epic → Test case → PBI`, the `PBI` is a promoted ROOT of the plan rather than a row
  *    under that Epic, so a needle matching it says nothing about the Epic. Propagating
  *    through the hidden case anyway drew an empty, unmatched Epic beside the real match.
+ * 4. **Which edges its subtree reaches DOWN** — the same drawn ones, and it is question 3
+ *    read backwards rather than a fourth idea: *a match keeps its subtree* has to mean the
+ *    subtree this projection DRAWS, or filtering that same `Epic` keeps the promoted `PBI`
+ *    on screen as an unmatched root with no visible relation to the row that matched.
  *
  * Each was learned by getting it backwards. Guarding the descent lost the nested
  * `Deliverable`; guarding nothing exposed the nested `Test case`; guarding the match alone
- * left the ancestry crossing a boundary the renderer does not. None is a special case of
- * another, and each is one predicate on its own line.
+ * left the ancestry crossing a boundary the renderer does not, and guarding the ancestry
+ * left its mirror crossing the same one. None is a special case of another, and each is
+ * one predicate on its own line — which is the shape to keep, because every round that
+ * tried to state two of them as one rule produced the next round.
  */
 function indexMatches(roots: BacklogItem[], needle: string, member: (item: BacklogItem) => boolean): MatchIndex {
 	const visible = new Set<string>();
 	const matches = new Set<string>();
 	const markSubtree = (item: BacklogItem): void => {
 		visible.add(item.file.path);
-		for (const child of item.children) markSubtree(child);
+		// Down the drawn edges only (4) — the same guard `projectionForest`'s depth walk uses,
+		// and for the same reason: a member below a non-member is a ROOT of this forest, not
+		// a descendant of anything above it.
+		for (const child of item.children) if (member(child)) markSubtree(child);
 	};
 	const visit = (item: BacklogItem): boolean => {
 		const selfMatch = member(item) && item.title.toLowerCase().includes(needle);
