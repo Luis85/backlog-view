@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import { defaultSettings } from '../../src/domain/settings';
+import { settingsWith } from '../helpers/settings';
 import { collectObservedDeliverableStates } from '../../src/domain/vocabulary';
 import { buildModel } from '../../src/domain/model';
-import { ALL_TYPES, defaultSettings, resolvedDeliverableStateKey } from '../../src/domain/settings';
+import { resolvedDeliverableStateKey } from '../../src/domain/optionalProperties';
+import { ALL_TYPES } from '../../src/domain/typeVocabulary';
 import { applyWrites } from '../../src/storage/frontmatter';
 import { FakeVault } from '../helpers/vault';
-import { settingsWith } from '../helpers/settings';
 
 describe('collectObservedDeliverableStates', () => {
 	it('reads only Deliverable-typed items, never a PBI carrying the same key', () => {

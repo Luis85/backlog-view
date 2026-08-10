@@ -1,4 +1,5 @@
-import { ALL_TYPES, BacklogSettings, byName, DELIVERABLE_TYPE, EXTRA_TYPES, LEVELS, MARKER_TYPES } from './settings';
+import { BacklogSettings } from './settings';
+import { ALL_TYPES, byName, DELIVERABLE_TYPE, EXTRA_TYPES, LEVELS, MARKER_TYPES } from './typeVocabulary';
 
 /**
  * The type vocabulary: the level ladder, and the types that sit beside it.

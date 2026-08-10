@@ -10,7 +10,8 @@ import {
 } from '../../src/domain/board';
 import { BacklogItem, buildModel } from '../../src/domain/model';
 import { computeStateWrites } from '../../src/domain/writePlan';
-import { BacklogSettings, resolveSettings } from '../../src/domain/settings';
+import { BacklogSettings } from '../../src/domain/settings';
+import { resolveSettings } from '../../src/domain/settingsResolve';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
 
 /**

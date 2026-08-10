@@ -1,5 +1,5 @@
 import { BacklogViewHost, DrawnColors } from '../host';
-import { paletteDone, paletteSlot, StatePalette } from '../../domain/board';
+import { paletteDone, stateColorClass, StatePalette } from '../../domain/board';
 import { activeAxis } from '../../domain/roadmap';
 
 /**
@@ -57,7 +57,7 @@ export function renderLegend(
 	// of green, the milestone swatch keying cyan while the diamond drew its state slot, and
 	// a lone Deliverable workflow headed as if a second one existed). `renderStateSwatches`
 	// holds that rule for the vocabularies; the two below hold it for the furniture.
-	renderStateSwatches(legendEl, palettes, drawn);
+	renderStateSwatches(host, legendEl, palettes, drawn);
 	addSwatch(legendEl, 'pbl-legend-today', 'Today');
 	// Milestone is likewise the render's own report (`drawn.milestone`): a base with no
 	// milestone in the window draws no cyan mark at all, and a swatch left unconditional
@@ -72,7 +72,12 @@ export function renderLegend(
  * grows with the number of workflows, and it had already taken the whole strip's
  * complexity budget with it at two.
  */
-function renderStateSwatches(legendEl: HTMLElement, palettes: StatePalette[], drawn: DrawnColors): void {
+function renderStateSwatches(
+	host: BacklogViewHost,
+	legendEl: HTMLElement,
+	palettes: StatePalette[],
+	drawn: DrawnColors,
+): void {
 	// Nothing configured, nothing keyed: `statePalettes` returns only the workflows that
 	// HAVE a key, so an empty list IS "no bar on this grid can carry a state colour" —
 	// which is the same question `renderLegend` used to ask a second time of
@@ -93,19 +98,10 @@ function renderStateSwatches(legendEl: HTMLElement, palettes: StatePalette[], dr
 		// markup it has always been.
 		const section = palette.label ? legendEl.createDiv({ cls: 'pbl-legend-section' }) : legendEl;
 		if (palette.label) section.createSpan({ cls: 'pbl-legend-group', text: palette.label });
-		// The same list, the same index, the same offset and modulo `paletteSlot` applies
-		// to a bar. Except for done, which is the one state whose bar does NOT draw its
-		// slot: a done row's bar is overridden to green in `timeline.css`, deliberately,
-		// because green for finished is a meaning the user already reads. A swatch wearing
-		// the slot class would key pink for a bar that draws green — a legend disagreeing
-		// with the only thing it exists to explain. So the swatch asks the same question
-		// the override does, against THIS palette's own done list rather than the
-		// requirements one, or a finished Deliverable would be keyed by neither.
-		for (const state of palette.values) {
-			const done = paletteDone(palette, state);
-			anyDone ||= done;
-			addSwatch(section, done ? 'pbl-legend-done' : `pbl-state-${paletteSlot(palette, state)}`, state);
-		}
+		// Written this way round on purpose: `renderPaletteSwatches(...) || anyDone` calls it
+		// first, where `anyDone || renderPaletteSwatches(...)` would stop drawing swatches
+		// the moment an earlier workflow had a done state.
+		anyDone = renderPaletteSwatches(host, section, palette) || anyDone;
 	}
 	// Done is decided by `doneValues`, INDEPENDENTLY of the menu vocabulary, so an item can
 	// be done while its value is not in any configured list: its bar goes green and the loop
@@ -125,6 +121,35 @@ function renderStateSwatches(legendEl: HTMLElement, palettes: StatePalette[], dr
 	// `barClasses`'s precedence is exactly what missed a marker outside the window drawing
 	// the accent under `.pbl-bar-outside` instead of its own cyan.
 	if (drawn.accent) addSwatch(legendEl, 'pbl-legend-other', 'Other');
+}
+
+/**
+ * One workflow's own swatches, and whether any of its states is done — which the caller
+ * needs, because the fallback green swatch exists exactly when NO vocabulary keyed one.
+ *
+ * The same list, the same index, the same offset and modulo `paletteSlot` applies to a
+ * bar — through `stateColorClass`, so a colour the user NAMED for a state replaces its
+ * slot here exactly as it does on the bar. One mapping, as it has always been.
+ *
+ * Except for done, which is the one state whose bar does NOT draw its slot: a done row's
+ * bar is overridden to green in `timeline.css`, deliberately, because green for finished
+ * is a meaning the user already reads. A swatch wearing the slot class would key pink for
+ * a bar that draws green — a legend disagreeing with the only thing it exists to explain.
+ * So the swatch asks the same question the override does, against THIS palette's own done
+ * list rather than the requirements one, or a finished Deliverable would be keyed by
+ * neither. A named colour on a done state changes nothing on either side.
+ */
+function renderPaletteSwatches(host: BacklogViewHost, section: HTMLElement, palette: StatePalette): boolean {
+	let anyDone = false;
+	for (const state of palette.values) {
+		const done = paletteDone(palette, state);
+		anyDone ||= done;
+		// `state` came out of `palette.values`, so the class is never null here; the guard
+		// is the compiler's, not a case.
+		const cls = done ? 'pbl-legend-done' : stateColorClass(host.settings, palette, state);
+		if (cls) addSwatch(section, cls, state);
+	}
+	return anyDone;
 }
 
 function addSwatch(legendEl: HTMLElement, swatchCls: string, label: string): void {

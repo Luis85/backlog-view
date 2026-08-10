@@ -1,5 +1,16 @@
-import { BasesViewConfig, normalizePath, parsePropertyId } from 'obsidian';
-import { defaultItemHandling, ItemHandling, resolveItemHandling } from './itemHandling';
+import { defaultItemHandling, ItemHandling } from './itemHandling';
+import { ALL_TYPES, DEFAULT_HOME_FOLDER, defaultTypeFolder } from './typeVocabulary';
+
+/**
+ * What a resolved configuration IS: the shape, the shipped defaults, and the few
+ * questions answered from the fields alone — is this state done, what does a menu offer.
+ *
+ * Three modules were split out from here, each for a reason worth keeping apart from
+ * this one. `typeVocabulary.ts` is below it and holds the fixed type names. Above it sit
+ * `optionalProperties.ts` — the table of write targets, the half that grows a row per
+ * feature — and `settingsResolve.ts`, the only place a `.base` file is read. This file
+ * imports neither, which is what lets it stay a shape a test can write as a literal.
+ */
 
 /**
  * Resolved, ready-to-use configuration for one Product Backlog view.
@@ -68,6 +79,14 @@ export interface BacklogSettings extends ItemHandling {
 	 */
 	columnPolicies: Record<string, string>;
 	/**
+	 * The colour a state was NAMED, keyed by LOWERCASED state value — one of
+	 * {@link STATE_COLOR_NAMES}, never a free-typed value. Absent means no pick, and the
+	 * state keeps the positional slot `paletteSlot` gives it. Both workflows share this
+	 * one table: it is keyed by the value, so two workflows spelling a state the same way
+	 * agree about its colour, which is what the reader would expect of one name.
+	 */
+	stateColors: Record<string, string>;
+	/**
 	 * Frontmatter key stamped with the date work started, or '' when start stamping
 	 * is off. History is the one thing a board cannot reconstruct later, so this
 	 * captures it as the transition happens — and captures nothing until it is named.
@@ -119,82 +138,14 @@ export interface BacklogSettings extends ItemHandling {
 	 * property with no levels is still a property worth creating on a note.
 	 */
 	riskValues: string[];
-}
-
-/**
- * The work-item vocabulary, fixed. This plugin is opinionated about it on purpose: a
- * configurable ladder means every level rule has to hold for any list a user can type,
- * and the reward was a rename. What it cost was real — collision rules between levels
- * and extra types, defaults that could not be stated for a name nobody chose, and a
- * schema that had to be generated per view.
- *
- * `LEVELS` is the ladder, top to bottom; `EXTRA_TYPES` sit beside it (see `itemTypes.ts`).
- */
-export const LEVELS = ['Epic', 'Feature', 'PBI', 'Task'];
-/** The Deliverable workflow's own type name, named once so `EXTRA_TYPES` and every
- * `isDeliverableType` call site read the identical string rather than two spellings
- * that can drift. */
-export const DELIVERABLE_TYPE = 'Deliverable';
-export const EXTRA_TYPES = ['Issue', 'Bug', 'Idea', DELIVERABLE_TYPE];
-/**
- * The third category: a declared **marker**. It occupies no rung, holds nothing, and
- * hangs from nothing — the opposite of an extra type on all three counts, which is why
- * the name is here rather than in `EXTRA_TYPES`. That list means *pinned at
- * `EXTRA_TYPE_RANK`, children are Tasks, hangs from an Epic, a Feature or a PBI*
- * (`itemTypes.ts` states it), so adding a marker to it would not extend the contract but
- * falsify it, and `isExtraType` would start meaning two things at four call sites.
- */
-export const MARKER_TYPES = ['Milestone'];
-/** Every declared type, ladder first — the whole vocabulary in one list. */
-export const ALL_TYPES = [...LEVELS, ...EXTRA_TYPES, ...MARKER_TYPES];
-/**
- * The default mapping, kept as the text the option shows so the shipped default and the
- * parsed one cannot drift: `defaultSettings` parses this very string.
- */
-export const DEFAULT_HOME_FOLDER = 'docs';
-/**
- * Where each of the DEFAULT types is filed, under the home folder. Only the shipped
- * vocabulary has an opinion — a level someone renames has no default and falls through
- * to the home folder, which is the honest answer for a name this plugin never chose.
- */
-const DEFAULT_TYPE_SUBFOLDERS: Record<string, string> = Object.assign(Object.create(null) as Record<string, string>, {
-	epic: 'requirements',
-	feature: 'requirements',
-	pbi: 'requirements',
-	task: 'tasks',
-	issue: 'issues',
-	bug: 'bugs',
-	idea: 'ideas',
-	deliverable: 'deliverables',
-	milestone: 'milestones',
-});
-
-/**
- * Look a user-supplied type name up in a table keyed by lowercased type name.
- *
- * Type names are user data, so `table[name]` is not safe: `constructor`, `toString`,
- * `valueOf` and `__proto__` all find something inherited from `Object`, and every one of
- * those hits is truthy — so a guard like `if (!found)` passes and a function ends up
- * being used as a folder path or a CSS class. This has now been shipped three times, on
- * three different tables, so it is a function rather than a rule to remember: reach for
- * this instead of a bare index whenever the key came from the user.
- *
- * It lives here rather than in `itemTypes.ts`, which is where it reads more naturally,
- * because that module imports this one and the dependency cannot run both ways.
- */
-export function byName<T>(table: Record<string, T>, name: string | null): T | undefined {
-	if (name === null) return undefined;
-	const key = name.toLowerCase();
-	return Object.prototype.hasOwnProperty.call(table, key) ? table[key] : undefined;
-}
-
-/**
- * The persisted option key for one type's folder. Shared by the schema that declares
- * these options and the resolver that reads them back, because a key spelled twice is
- * a key that can differ — and these are user data in the `.base` file.
- */
-export function typeFolderKey(typeName: string): string {
-	return `typeFolder.${typeName.toLowerCase()}`;
+	/**
+	 * Frontmatter key holding who the item is assigned to, or '' when no assignee
+	 * property is named. No companion list, unlike risk and the horizon: the names a
+	 * menu offers are the ones the RESULTS carry (`observedAssignees`) plus whatever
+	 * the user types, so there is no vocabulary to declare and nothing to clear —
+	 * which is why a named key alone is enough to draw the chip.
+	 */
+	assigneeKey: string;
 }
 
 /**
@@ -220,21 +171,9 @@ export function columnPolicyKey(state: string): string {
  * non-numeric — is no limit, because an unset limit is not a limit of zero and a
  * column pinned permanently over its limit says nothing at all.
  */
-function parseWipLimit(raw: string): number | null {
+export function parseWipLimit(raw: string): number | null {
 	const n = Number(raw.trim());
 	return Number.isInteger(n) && n >= 1 ? n : null;
-}
-
-/**
- * The shipped folder for a type, under the given home folder, or '' for a type this
- * plugin did not name. Derived from the home folder rather than fixed, so relocating a
- * backlog stays ONE setting even though each type has its own picker: the options are
- * generated per view, so the default in each box follows the home folder above it.
- */
-export function defaultTypeFolder(typeName: string, homeFolder = DEFAULT_HOME_FOLDER): string {
-	const sub = byName(DEFAULT_TYPE_SUBFOLDERS, typeName);
-	if (!sub) return '';
-	return homeFolder ? `${homeFolder}/${sub}` : sub;
 }
 
 /**
@@ -242,8 +181,12 @@ export function defaultTypeFolder(typeName: string, homeFolder = DEFAULT_HOME_FO
  * Null-prototype, because the names are user data: a type or a state called
  * `constructor` must be a plain key rather than a collision with something inherited
  * off `Object`. Read it back with {@link byName}, never with a bare index.
+ *
+ * The reader defaults to one that is never called, which is what an EMPTY table needs and
+ * all three in {@link defaultSettings} use — a fresh `() => null` per call site would put
+ * one more uncovered function in the coverage floor every time a per-state table arrived.
  */
-function nameTable<T>(names: string[], read: (name: string) => T | null): Record<string, T> {
+export function nameTable<T>(names: string[], read: (name: string) => T | null = () => null): Record<string, T> {
 	const table: Record<string, T> = Object.create(null) as Record<string, T>;
 	for (const name of names) {
 		const value = read(name);
@@ -286,8 +229,9 @@ export function defaultSettings(): BacklogSettings {
 		tagsKey: 'tags',
 		propColumnWidth: DEFAULT_PROP_COLUMN_WIDTH,
 		doneValues: [...DEFAULT_DONE_VALUES],
-		wipLimits: nameTable<number>([], () => null),
-		columnPolicies: nameTable<string>([], () => null),
+		wipLimits: nameTable<number>([]),
+		columnPolicies: nameTable<string>([]),
+		stateColors: nameTable<string>([]),
 		startedDateKey: '',
 		finishedDateKey: '',
 		startedStates: [],
@@ -303,185 +247,9 @@ export function defaultSettings(): BacklogSettings {
 		deliverableDoneValues: [...DEFAULT_DONE_VALUES],
 		riskKey: '',
 		riskValues: [...DEFAULT_RISK_VALUES],
+		assigneeKey: '',
 		...defaultItemHandling(),
 	};
-}
-
-/**
- * Every write target this view has BEYOND the three the hierarchy always needs,
- * named by FIELD rather than by key. Each one gates a feature — no state property,
- * no board; no horizon property, no bucket axis — and each is unset until something
- * names it, which is the difference between these and `parent`/`order`/`type`.
- *
- * Every layer that has to ask "which property does this live in" asks here, so the
- * mapping from a field to a configured key is stated once: the planner, the writer,
- * the model's presence test and the backfill would otherwise each spell out the same
- * switch.
- */
-export type OptionalField =
-	| 'state'
-	| 'startedDate'
-	| 'finishedDate'
-	| 'horizon'
-	| 'start'
-	| 'target'
-	| 'dependsOn'
-	| 'risk'
-	| 'deliverableState';
-
-/**
- * The `BacklogSettings` field one optional property's key lands in. Spelled as a union
- * rather than `keyof BacklogSettings` so the table below can only name a string-valued
- * key: `keyof` would let a boolean option through and `optionalKeyFor` would return one.
- */
-type OptionalSettingsKey =
-	| 'stateKey'
-	| 'startedDateKey'
-	| 'finishedDateKey'
-	| 'horizonKey'
-	| 'startKey'
-	| 'targetKey'
-	| 'dependsOnKey'
-	| 'riskKey'
-	| 'deliverableStateKey';
-
-/**
- * One such property: the option that names it, the key it adopts when nothing does,
- * and what it is called out loud. One table, four readers — the view options draw
- * their picker from it, `configProblems` reports collisions by its labels,
- * `adoptableProperties` binds its suggestions, and the backfill creates its keys —
- * because a key or an option id spelled twice is one that can differ, and both of
- * these are persisted user data.
- */
-export interface OptionalProperty {
-	field: OptionalField;
-	/** The persisted view-option key that names this property. */
-	option: string;
-	/** The frontmatter key this view suggests, and adopts when the option is untouched. */
-	suggested: string;
-	/** What the property is called wherever a collision or an adoption is reported. */
-	label: string;
-	/** The `BacklogSettings` field this property's configured key is resolved into. */
-	settingsKey: OptionalSettingsKey;
-}
-
-/**
- * The table, keyed by field so the COMPILER checks it is complete: a field added to
- * the union above and forgotten here fails to build, rather than reaching a lookup
- * that finds nothing. Declaration order is the order everything reads them in — the
- * pickers, the collision report's wording, the backfill's stubs — because these are
- * plain string keys, whose insertion order `Object.keys` preserves by definition.
- */
-const PROPERTY_TABLE: Record<OptionalField, Omit<OptionalProperty, 'field'>> = {
-	state: { option: 'stateProperty', suggested: 'status', label: 'state', settingsKey: 'stateKey' },
-	startedDate: { option: 'startedDateProperty', suggested: 'started', label: 'started date', settingsKey: 'startedDateKey' },
-	finishedDate: { option: 'finishedDateProperty', suggested: 'finished', label: 'finished date', settingsKey: 'finishedDateKey' },
-	// The roadmap's three, whose suggestions follow the ecosystem's own vocabulary
-	// (the Tasks plugin's `start` and `due`) without assuming it.
-	horizon: { option: 'horizonProperty', suggested: 'horizon', label: 'horizon', settingsKey: 'horizonKey' },
-	start: { option: 'startProperty', suggested: 'start', label: 'start', settingsKey: 'startKey' },
-	target: { option: 'targetProperty', suggested: 'due', label: 'target', settingsKey: 'targetKey' },
-	risk: { option: 'riskProperty', suggested: 'risk', label: 'risk', settingsKey: 'riskKey' },
-	deliverableState: {
-		option: 'deliverableStateProperty',
-		// Same suggestion as `state` itself: Deliverables sharing the requirements
-		// workflow's own property is a legitimate, explicitly requested configuration
-		// (see `configProblems`' exemption below and `resolvedDeliverableStateKey`'s
-		// fallback), so the setup action should reach for the one key both workflows
-		// already agree to share rather than inventing a second, disused property.
-		// `adoptableProperties`'s own "don't suggest an already-taken key" guard is
-		// what actually delivers that: `state` is declared first and claims `status`
-		// first, so a first-run setup leaves THIS key unbound and the Deliverable
-		// workflow falls back to `stateKey` — sharing the property through the
-		// fallback this codebase already trusts, never by writing the same explicit
-		// key to both options in one pass.
-		suggested: 'status',
-		label: 'deliverable state',
-		settingsKey: 'deliverableStateKey',
-	},
-	// Prerequisites, suggested by the name the Tasks plugin already uses for the same
-	// idea — offered as a placeholder, never matched by name.
-	dependsOn: { option: 'dependsOnProperty', suggested: 'dependsOn', label: 'depends on', settingsKey: 'dependsOnKey' },
-};
-
-/** The declaration for one field, for the callers that hold a field rather than a row. */
-export function optionalProperty(field: OptionalField): OptionalProperty {
-	return { field, ...PROPERTY_TABLE[field] };
-}
-
-export const OPTIONAL_FIELDS: OptionalField[] = Object.keys(PROPERTY_TABLE) as OptionalField[];
-export const OPTIONAL_PROPERTIES: OptionalProperty[] = OPTIONAL_FIELDS.map(optionalProperty);
-
-/**
- * The roadmap's three write targets — the subset of the above that the placement
- * plans and `AxisWrite` deal in. A narrower type, not a second vocabulary: it reads
- * its keys through `optionalKeyFor` like everything else.
- */
-export type AxisField = 'horizon' | 'start' | 'target';
-export const AXIS_FIELDS: AxisField[] = ['horizon', 'start', 'target'];
-
-/**
- * The frontmatter key one optional field is stored under; '' when it is unconfigured.
- * Read off `PROPERTY_TABLE`, so the field → key mapping is stated exactly once: a
- * switch beside the table was a second statement of it, and the compiler only ever
- * checked one of them for completeness.
- */
-export function optionalKeyFor(settings: BacklogSettings, field: OptionalField): string {
-	return settings[PROPERTY_TABLE[field].settingsKey];
-}
-
-/**
- * The Deliverable workflow's own state key, or the requirements workflow's shared one
- * when the Deliverable one is unset — "Deliverables don't need their own dedicated
- * status property; they can use the same one". This is the single statement of that
- * fallback: every reader and writer of the Deliverable workflow's state — the model's
- * own read (`model.ts`), the write path (`storage/frontmatter.ts`), the row menu's
- * routing and the board's "no workflow" guidance — calls this rather than
- * `settings.deliverableStateKey` directly, so a card that looks movable on screen
- * cannot resolve to a key nothing actually writes.
- *
- * Deliberately NOT folded into `optionalKeyFor`: `configProblems` (via
- * `ownedProperties`) and `adoptableProperties` read `deliverableStateKey` RAW through
- * that function, because sharing a key by FALLBACK is intended while sharing one by
- * explicit configuration is the collision they already report. Applying this fallback
- * inside `optionalKeyFor` would make every fallback-configured board collide with the
- * very workflow it is deliberately reusing — the `''` a cleared/unset key resolves to
- * there is what lets `ownedProperties` skip it.
- */
-
-export function resolvedDeliverableStateKey(settings: BacklogSettings): string {
-	return settings.deliverableStateKey || settings.stateKey;
-}
-
-/** The property id a frontmatter key is named by in the view options. */
-export function notePropertyId(key: string): string {
-	return `note.${key}`;
-}
-
-/**
- * The optional properties this view can set up for itself: the suggested key for
- * every option **nobody has ever touched**. Cleared is not untouched — turning the
- * state property off is a decision, and an action that quietly turned it back on
- * would be overruling the user rather than helping them — so this asks the same
- * "never set" question `clearable` asks, of the config rather than of the resolved
- * settings, which cannot tell the two apart.
- *
- * A suggestion whose key is already spoken for is skipped rather than adopted: it
- * would report as a collision in `configProblems` and block every write in the view,
- * which is a worse state than the unconfigured feature it was meant to enable.
- */
-export function adoptableProperties(config: BasesViewConfig, settings: BacklogSettings): OptionalProperty[] {
-	const taken = new Set(ownedProperties(settings).map((owned) => owned.key));
-	taken.delete('');
-	const adoptable: OptionalProperty[] = [];
-	for (const property of OPTIONAL_PROPERTIES) {
-		if (config.get(property.option) !== undefined || taken.has(property.suggested)) continue;
-		// Two suggestions cannot collide today, and this is what keeps that a property
-		// of the code rather than of the table's current contents.
-		taken.add(property.suggested);
-		adoptable.push(property);
-	}
-	return adoptable;
 }
 
 /**
@@ -570,321 +338,4 @@ export function horizonMenuValues(settings: BacklogSettings, observedHorizons: s
  */
 export function hasRiskLevels(settings: BacklogSettings): boolean {
 	return settings.riskKey !== '' && settings.riskValues.length > 0;
-}
-
-/**
- * Every frontmatter key this view owns, labelled, in the order a collision names
- * them. One statement, because two readers depend on it and they must agree: the
- * collision report below, and the adoption above, which may not suggest a key that
- * is already spoken for.
- *
- * The hierarchy's three come first because they are the ones always configured. The
- * optional properties follow in their declared order — a stamp must never overwrite
- * a key the plugin already owns (a date written over someone's parent link is not a
- * thing to recover from by noticing later), and the roadmap's axis keys carry one
- * rule more: start and target sharing a key cannot store a span, and a horizon
- * sharing either is two semantics on one field.
- *
- * `tagsKey` is last and is the one that yields: it cannot collide with the four core
- * properties by the time anything reads it, because `resolveSettings` turns such a
- * tags key off rather than reporting it — that would block every write in a view
- * that was working before the option existed. It does NOT yield to the newer
- * options, which have no working views to protect, so pointing one of those at the
- * tags key is a fresh mistake and gets the collision report every other pair gets.
- */
-function ownedProperties(settings: BacklogSettings): { label: string; key: string }[] {
-	return [
-		{ label: 'parent', key: settings.parentKey },
-		{ label: 'order', key: settings.orderKey },
-		{ label: 'type', key: settings.typeKey },
-		...OPTIONAL_PROPERTIES.map((property) => ({
-			label: property.label,
-			key: optionalKeyFor(settings, property.field),
-		})),
-		{ label: 'tags', key: settings.tagsKey },
-	];
-}
-
-/**
- * The one pair `configProblems` lets share a key: the requirements state and the
- * Deliverable state, explicitly configured to the same property. Sharing by FALLBACK is
- * already legitimate and never reaches this map (`ownedProperties` reads
- * `deliverableStateKey` RAW, so an unset one resolves to ''); this is the same
- * "Deliverables can use the same status property" idea asked for explicitly. The two
- * workflows keep independent vocabularies either way, so the usual reason a shared key is
- * a mistake — one property silently overwriting the other's meaning — never applies here.
- *
- * Scoped to EXACTLY this pair, not to "an entry named state or deliverable state": one
- * more label on the key (order, tags, an axis key) reports as a collision again, these
- * two named in it like any other clash.
- */
-const STATE_KEY_SHARING_EXEMPT: [string, string] = ['state', 'deliverable state'];
-
-/**
- * Configuration mistakes that would corrupt writes (e.g. parent and order stored
- * under the same frontmatter key). The view surfaces these instead of guessing.
- */
-export function configProblems(settings: BacklogSettings): string[] {
-	const problems: string[] = [];
-	const keys = new Map<string, string[]>();
-	for (const { label, key } of ownedProperties(settings)) {
-		if (!key) continue;
-		const users = keys.get(key) ?? [];
-		users.push(label);
-		keys.set(key, users);
-	}
-	for (const [key, users] of keys) {
-		if (users.length === STATE_KEY_SHARING_EXEMPT.length && STATE_KEY_SHARING_EXEMPT.every((l) => users.includes(l))) {
-			continue;
-		}
-		if (users.length > 1) {
-			problems.push(`The ${users.join(' and ')} properties share the key "${key}".`);
-		}
-	}
-	return problems;
-}
-
-/** The readers `resolveFolders` borrows, so it can be its own function without repeating them. */
-interface ConfigReaders {
-	str: (key: string) => string;
-	clearable: <T>(key: string, def: T, parse: () => T) => T;
-}
-
-/**
- * A user-typed folder path as the VAULT spells it: trimmed, stripped of the separators
- * either side, and normalized. One answer, because a folder setting is read by three
- * kinds of code that must agree — `storage/` creates the folder and puts files in it,
- * the creation prompt tells the user where a note will land, and the generated README
- * tells an editor outside Obsidian where to file one. A hand-edited or Windows-shaped
- * `work\backlog` normalized only at the write would have the document name a folder
- * this plugin never writes to.
- *
- * Both separators are stripped before the guard, since `normalizePath` answers `/` — the
- * vault root spelled as a folder that does not exist — for anything that normalizes away.
- */
-export function vaultFolder(value: string): string {
-	const trimmed = value.trim().replace(/^[\\/]+|[\\/]+$/g, '');
-	return trimmed ? normalizePath(trimmed) : '';
-}
-
-/**
- * Where new items are filed, resolved together because the two answers depend on each
- * other: every type folder defaults to a subfolder of the home folder, so moving the
- * home folder moves each one that has not been picked by hand.
- */
-function resolveFolders(
-	read: ConfigReaders,
-	types: string[],
-	fallback: BacklogSettings,
-): Pick<BacklogSettings, 'homeFolder' | 'typeFolders'> {
-	const { str, clearable } = read;
-	const homeFolder = clearable('homeFolder', fallback.homeFolder, () => vaultFolder(str('homeFolder')));
-	return {
-		homeFolder,
-		// One option per type, so a folder is picked rather than typed into a mapping,
-		// and each default sits under the resolved home folder — the value in the box is
-		// the value that applies, and moving the home folder moves every untouched one.
-		typeFolders: nameTable(types, (type) =>
-			clearable(typeFolderKey(type), defaultTypeFolder(type, homeFolder), () =>
-				vaultFolder(str(typeFolderKey(type))),
-			) || null,
-		),
-	};
-}
-
-/**
- * The Deliverable workflow's three resolved fields, lifted out of `resolveSettings`.
- *
- * Extracted when merging `Idea` and `Deliverable` into one vocabulary pushed that function
- * past its 100-line budget. The seam is the honest one: these three are the only fields
- * whose value depends on ANOTHER of their own group — the key's fallback decides what the
- * two lists fall back to — so they are a unit wherever they are computed, and the budget
- * only made that visible.
- */
-interface DeliverableWorkflowInputs {
-	propKey: (key: string, def: string) => string;
-	list: (key: string) => string[];
-	dedupe: (values: string[]) => string[];
-	fallback: BacklogSettings;
-	/** The requirements workflow's own resolved vocabulary, which the two lists may fall back to. */
-	states: string[];
-	effectiveDoneValues: string[];
-}
-
-function resolveDeliverableWorkflow(
-	inputs: DeliverableWorkflowInputs,
-): { deliverableStateKey: string; deliverableStates: string[]; deliverableDoneValues: string[] } {
-	const { propKey, list, dedupe, fallback, states, effectiveDoneValues } = inputs;
-	// The KEY's own fallback condition, named ONCE and consulted by every Deliverable-
-	// workflow field below: the returned `deliverableStateKey` directly, and
-	// `deliverableStates`/`deliverableDoneValues` as the gate BEHIND each list's own
-	// emptiness check — a populated list wins first, and this only picks WHICH fallback
-	// an empty one takes — not three expressions that happen to agree today. Resolved
-	// here, before either list, because both need it. See `resolvedDeliverableStateKey`,
-	// which states the identical condition (`settings.deliverableStateKey === ''`) for
-	// every READER outside this function; this is that condition's one computation
-	// inside it — `deliverableStateKeyOwn` IS what becomes `settings.deliverableStateKey`
-	// below, so the two cannot drift into asking different questions.
-	const deliverableStateKeyOwn = propKey('deliverableStateProperty', fallback.deliverableStateKey);
-	const deliverableKeyFallsBack = deliverableStateKeyOwn === '';
-	// Falls back to the requirements workflow's own EFFECTIVE done values ONLY when the
-	// KEY is also falling back: "Deliverables don't need their own dedicated status
-	// property; they can use the same one" applies here too, so a vault that customized
-	// `doneValues` must not have that customization ignored while the Deliverable
-	// workflow shares its property. An OWN, distinct key with no done values of its own
-	// is a genuinely independent workflow and gets the shipped default
-	// (`fallback.deliverableDoneValues`) instead — never an unrelated property's
-	// customized list, exactly as before this workflow could share anything. Unlike the
-	// state KEY (`resolvedDeliverableStateKey`), a value list carries no collision risk,
-	// so there is no reason for every reader to re-resolve this fallback; both this and
-	// `deliverableStates` below are baked in HERE, eagerly, gated on the SAME condition.
-	const deliverableDoneValuesRaw = list('deliverableDoneValues');
-	const effectiveDeliverableDoneValues = deliverableDoneValuesRaw.length > 0
-		? deliverableDoneValuesRaw
-		: deliverableKeyFallsBack ? effectiveDoneValues : fallback.deliverableDoneValues;
-	// Same rule, over the declared vocabulary rather than the done values: falls back to
-	// the shared workflow's OWN declared states ONLY when the KEY is also falling back —
-	// a Deliverable state property configured on its OWN distinct key, with no declared
-	// states of its own yet, must not borrow a vocabulary that belongs to a DIFFERENT
-	// property. Own key configured: this list still falls through to ITS OWN observed
-	// values (`menuValues`) when left empty, exactly as `states` does for the
-	// requirements workflow — never to `states`, which is not read through that key.
-	const deliverableStatesRaw = dedupe(list('deliverableStateValues'));
-	return {
-		deliverableStateKey: deliverableStateKeyOwn,
-		deliverableStates: deliverableKeyFallsBack && deliverableStatesRaw.length === 0 ? states : deliverableStatesRaw,
-		deliverableDoneValues: effectiveDeliverableDoneValues,
-	};
-}
-
-/** Read the persisted view config into a BacklogSettings, applying defaults for anything unset. */
-export function resolveSettings(config: BasesViewConfig): BacklogSettings {
-	const fallback = defaultSettings();
-
-	const propKey = (key: string, def: string): string => {
-		try {
-			const pid = config.getAsPropertyId(key);
-			if (pid) {
-				const parsed = parsePropertyId(pid);
-				if (parsed.type === 'note' && parsed.name) return parsed.name;
-			}
-		} catch {
-			// fall through to default
-		}
-		return def;
-	};
-	/**
-	 * Like `propKey`, but only for an option whose default is a real key: clearing
-	 * it in the view options has to mean "off", and only an option that was never
-	 * touched falls back. Without the distinction the tags property could never be
-	 * turned off — `getAsPropertyId` reports cleared and unset the same way.
-	 */
-	const clearablePropKey = (key: string, def: string): string => {
-		// Set to something: honor it, and treat anything unusable (cleared, or a
-		// property this view cannot write, like file.tags) as off.
-		return config.get(key) === undefined ? def : propKey(key, '');
-	};
-	/**
-	 * An option whose default is a REAL value has to tell "never set" from "cleared",
-	 * or it can never be turned off — the same distinction `clearablePropKey` draws for
-	 * property ids, and now shared by the home folder, the extra types and the type
-	 * folders rather than spelled out three times.
-	 */
-	const clearable = <T>(key: string, def: T, parse: () => T): T => (config.get(key) === undefined ? def : parse());
-	const str = (key: string): string => {
-		const v = config.get(key);
-		return typeof v === 'string' ? v : '';
-	};
-	const bool = (key: string, def: boolean): boolean => {
-		const v = config.get(key);
-		return typeof v === 'boolean' ? v : def;
-	};
-	// A slider stores a number, but a hand-edited .base file can hold anything;
-	// clamp so a stray value cannot collapse the columns to nothing.
-	const width = (key: string, def: number): number => {
-		const v = config.get(key);
-		const n = typeof v === 'number' ? v : Number.parseFloat(typeof v === 'string' ? v : '');
-		if (!Number.isFinite(n)) return def;
-		return Math.min(Math.max(Math.round(n), MIN_PROP_COLUMN_WIDTH), MAX_PROP_COLUMN_WIDTH);
-	};
-	const list = (key: string): string[] =>
-		str(key)
-			.split(',')
-			.map((s) => s.trim())
-			.filter((s) => s.length > 0);
-	// Duplicate states would render as duplicate menu entries — drop them silently.
-	const dedupe = (values: string[]): string[] => {
-		const seen = new Set<string>();
-		return values.filter((v) => {
-			const key = v.toLowerCase();
-			if (seen.has(key)) return false;
-			seen.add(key);
-			return true;
-		});
-	};
-
-	const doneValues = list('doneValues');
-	// The EFFECTIVE list, not the raw config value: `doneValues` below falls back to
-	// DEFAULT_DONE_VALUES when nobody sets it, and every other "is this state done"
-	// reader (model.ts, board.ts, backlogReadme.ts) goes through that resolved field —
-	// so the exclusion set has to be built from the same list it is returned as, or a
-	// `.base` that relies on the defaults grants `Done` a limit the rest of the app
-	// says it cannot have.
-	const effectiveDoneValues = doneValues.length > 0 ? doneValues : fallback.doneValues;
-	const states = dedupe(list('stateValues'));
-	const deliverable = resolveDeliverableWorkflow({ propKey, list, dedupe, fallback, states, effectiveDoneValues });
-	const doneSet = new Set(effectiveDoneValues.map((v) => v.toLowerCase()));
-	// Limits are refused for done states HERE rather than only in the schema, so a key
-	// left in the `.base` by re-marking a state as done cannot revive its limit.
-	const limitedStates = states.filter((s) => !doneSet.has(s.toLowerCase()));
-	const folders = resolveFolders({ str, clearable }, ALL_TYPES, fallback);
-	const tagsKey = (): string => {
-		const key = clearablePropKey('tagsProperty', fallback.tagsKey);
-		const taken = [
-			propKey('parentProperty', fallback.parentKey),
-			propKey('orderProperty', fallback.orderKey),
-			propKey('typeProperty', fallback.typeKey),
-			propKey('stateProperty', fallback.stateKey),
-		];
-		return taken.includes(key) ? '' : key;
-	};
-
-	return {
-		parentKey: propKey('parentProperty', fallback.parentKey),
-		orderKey: propKey('orderProperty', fallback.orderKey),
-		typeKey: propKey('typeProperty', fallback.typeKey),
-		hierarchyOnly: bool('hierarchyOnly', fallback.hierarchyOnly),
-		showOutsideParents: bool('showOutsideParents', fallback.showOutsideParents),
-		folderHierarchy: bool('inferFolderHierarchy', fallback.folderHierarchy),
-		autoType: bool('autoAssignType', fallback.autoType),
-		showCounts: bool('showCounts', fallback.showCounts),
-		...folders,
-		// UI state, not configuration: the view overwrites this with the stored pick.
-		focusLevel: fallback.focusLevel,
-		stateKey: propKey('stateProperty', fallback.stateKey),
-		tagsKey: tagsKey(),
-		propColumnWidth: width('propertyColumnWidth', fallback.propColumnWidth),
-		doneValues: effectiveDoneValues,
-		wipLimits: nameTable(limitedStates, (s) => parseWipLimit(str(wipLimitKey(s)))),
-		columnPolicies: nameTable(states, (s) => str(columnPolicyKey(s)).trim() || null),
-		startedDateKey: propKey('startedDateProperty', fallback.startedDateKey),
-		finishedDateKey: propKey('finishedDateProperty', fallback.finishedDateKey),
-		startedStates: dedupe(list('startedStates')),
-		states,
-		showCompleted: bool('showCompleted', fallback.showCompleted),
-		horizonKey: propKey('horizonProperty', fallback.horizonKey),
-		// A real default that must stay clearable: an emptied list means "no bucket
-		// axis", and only an option never touched falls back to Now, Next, Later.
-		horizonValues: clearable('horizonValues', fallback.horizonValues, () => dedupe(list('horizonValues'))),
-		startKey: propKey('startProperty', fallback.startKey),
-		targetKey: propKey('targetProperty', fallback.targetKey),
-		dependsOnKey: propKey('dependsOnProperty', fallback.dependsOnKey),
-		...deliverable,
-		riskKey: propKey('riskProperty', fallback.riskKey),
-		// Clearable for the horizon values' reason: a real default that has to be
-		// switchable off, and an emptied list means "no levels" rather than the three
-		// this plugin shipped.
-		riskValues: clearable('riskValues', fallback.riskValues, () => dedupe(list('riskValues'))),
-		...resolveItemHandling(config),
-	};
 }

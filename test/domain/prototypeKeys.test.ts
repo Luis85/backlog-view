@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { BacklogSettings } from '../../src/domain/settings';
+import { settingsWith } from '../helpers/settings';
 import { buildModel } from '../../src/domain/model';
 import { buildRoadmap, horizonSource, placementLabel, SHELF_LABEL } from '../../src/domain/roadmap';
-import { BacklogSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
-import { settingsWith } from '../helpers/settings';
 
 /** A view whose configured keys are all names `Object.prototype` already owns. */
 function axisSettings(overrides: Partial<BacklogSettings> = {}): BacklogSettings {

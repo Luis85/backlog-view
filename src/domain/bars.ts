@@ -1,7 +1,8 @@
 import { isMarkerType, PlacementEnd, placementEnds } from './itemTypes';
 import { BacklogItem } from './model';
 import { absentReading, CivilDate, FieldReading } from './noteFields';
-import { BacklogSettings, optionalKeyFor } from './settings';
+import { BacklogSettings } from './settings';
+import { optionalKeyFor } from './optionalProperties';
 import { DateSpan, daysBetween, reversedSpan } from './timeline';
 
 /**

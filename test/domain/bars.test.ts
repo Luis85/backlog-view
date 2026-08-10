@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { buildModel } from '../../src/domain/model';
-import { resolveSettings } from '../../src/domain/settings';
+import { resolveSettings } from '../../src/domain/settingsResolve';
 import { FakeViewConfig } from '../helpers/vault';
 import { barHolds, deriveBars, placeItem, statedEnds, timelineRows, withoutEnds } from '../../src/domain/bars';
 

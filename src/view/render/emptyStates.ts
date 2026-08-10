@@ -2,7 +2,8 @@ import { setIcon } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { newItemType, promptCreateItem } from '../interactions/create';
 import { runInit } from '../interactions/structure';
-import { adoptableProperties, LEVELS, OptionalField } from '../../domain/settings';
+import { adoptableProperties, OptionalField } from '../../domain/optionalProperties';
+import { LEVELS } from '../../domain/typeVocabulary';
 import { manualLink } from '../../ui/manualDialog';
 import { manualSections } from '../manual/sections';
 

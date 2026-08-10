@@ -1,6 +1,6 @@
 import { Menu, Notice } from 'obsidian';
 import { BacklogViewHost } from '../host';
-import { TagPromptModal } from '../../ui/prompts';
+import { ValuePromptModal } from '../../ui/prompts';
 import { BacklogItem } from '../../domain/model';
 import { hasTag, normalizeTag } from '../../domain/noteFields';
 
@@ -71,7 +71,12 @@ export function addTagItems(host: BacklogViewHost, menu: Menu, item: BacklogItem
 
 /** Free-text entry, suggesting the tags already in use so spellings stay consistent. */
 function promptNewTag(host: BacklogViewHost, item: BacklogItem): void {
-	new TagPromptModal(host.app, {
+	new ValuePromptModal(host.app, {
+		title: 'Add tag',
+		fieldName: 'Tag',
+		placeholder: 'Sprint-12',
+		ctaLabel: 'Add',
+		sigil: '#',
 		known: tagChoices(host, item).filter((tag) => !hasTag(item.tags, tag)),
 		onSubmit: (tag) => addTag(host, item, tag),
 	}).open();

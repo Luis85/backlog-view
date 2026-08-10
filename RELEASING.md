@@ -41,6 +41,16 @@ file directly, and `npm run dev` rewrites it whenever a partial changes. Each bu
 asset also gets a signed provenance attestation, verifiable with
 `gh attestation verify <file> --repo Luis85/backlog-view`.
 
+**The release body is required to carry this version's `CHANGELOG.md` entry, and that is
+automated rather than a step below to remember.** `gh release create` runs with both
+`--notes-file` — the section `scripts/changelog-notes.mjs` extracts for the tag being
+published — and `--generate-notes`, which GitHub prepends the extracted entry ahead of:
+the release body reads the curated summary first, the auto-generated merged-PR list
+underneath. See [ADR 0025](docs/adrs/0025-put-the-changelog-entry-in-the-github-release-body.md).
+The extraction throws, failing the workflow, if `manifest.json`'s version has no dated
+heading in `CHANGELOG.md` — `test/release/changelogVersion.test.ts` already keeps that
+off `main`, so in practice this only fires on a manual dispatch against an unusual ref.
+
 ### 1. Get the version bumped onto `main`
 
 Skip this step if the version files are already committed on `main` — the case for the
@@ -67,6 +77,20 @@ on `main` once the bump has landed there.
 The repo's `.npmrc` sets `tag-version-prefix=""` so `npm version` names that local tag
 `0.1.1`, not `v0.1.1` — Obsidian requires the published tag to exactly match the manifest
 version, and the release workflow refuses a mismatch as a second line of defense.
+
+**`npm version` does not touch `CHANGELOG.md`, and cannot be made to in one commit**: it
+refuses to run against a dirty working tree, and its own `version` script (`package.json`)
+stages only `manifest.json` and `versions.json` before committing — so `CHANGELOG.md`
+would either be swept in uncommitted, failing the clean-tree check, or left behind. Edit
+it as a **second commit right after**, in the same pull request: rename `## [Unreleased]`
+to `## [<version>] - <date>`, using the version `npm version` just wrote to
+`manifest.json`, and leave a fresh, empty `## [Unreleased]` above it for whatever lands
+next. `[Unreleased]` is not this step's to fill from scratch — a pull request that
+changes what the plugin does adds its own bullet there as it merges, so this edit only
+retitles and dates a section that already has content. `test/release/changelogVersion.test.ts`
+is what makes this a check rather than a habit: it reads `manifest.json` and fails
+whenever its version has no matching heading in `CHANGELOG.md`, so a pull request that
+forgot the entry fails `npm run check` before it reaches `main`.
 
 ### 2. Before the tag: the live-vault sweep
 
