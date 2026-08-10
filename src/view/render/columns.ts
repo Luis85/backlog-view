@@ -7,6 +7,7 @@ import { ownWorkflowReading, stateKeyFor } from '../../domain/board';
 import { BacklogItem } from '../../domain/model';
 import { hasHorizonAxis, SHELF_LABEL } from '../../domain/roadmap';
 import { BacklogSettings, hasRiskLevels, resolvedDeliverableStateKey } from '../../domain/settings';
+import { treeShaped } from '../projection';
 
 /**
  * State shared by one render pass. Config lookups live here so per-row work stays
@@ -153,7 +154,7 @@ export function syncColumnFit(ctx: RowContext, viewEl: HTMLElement, treeEl: HTML
  * either would be answering a question this projection does not ask.
  */
 function renderedDepth(ctx: RowContext): number {
-	if (ctx.host.projection !== 'tree') return 0;
+	if (!treeShaped(ctx.host.projection)) return 0;
 	let max = 0;
 	for (const path of ctx.rows.keys()) {
 		const depth = ctx.host.model?.byPath.get(path)?.depth ?? 0;

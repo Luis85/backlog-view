@@ -11,6 +11,7 @@ import {
 	horizonMenuValues,
 	LEVELS,
 	MARKER_TYPES,
+	TEST_LEVELS,
 	OPTIONAL_FIELDS,
 	OPTIONAL_PROPERTIES,
 	optionalKeyFor,
@@ -447,7 +448,7 @@ describe('the marker category', () => {
 		expect(MARKER_TYPES).toEqual(['Milestone']);
 		expect(LEVELS).not.toContain('Milestone');
 		expect(EXTRA_TYPES).not.toContain('Milestone');
-		expect(ALL_TYPES).toEqual([...LEVELS, ...EXTRA_TYPES, ...MARKER_TYPES]);
+		expect(ALL_TYPES).toEqual([...LEVELS, ...EXTRA_TYPES, ...MARKER_TYPES, ...TEST_LEVELS.filter((t) => t !== 'Task')]);
 	});
 
 	it('ships the marker a folder of its own under the home folder', () => {

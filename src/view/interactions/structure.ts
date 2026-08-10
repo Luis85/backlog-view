@@ -17,7 +17,11 @@ function siblingContext(host: BacklogViewHost, item: BacklogItem): { fullList: B
 	// Focus roots share no ranking; an ancestor from outside the filter has siblings
 	// the query never returned, so ordering it against the loaded ones would be a guess.
 	if (!model || item.focusRoot || item.outsideFilter) return null;
-	const fullList = item.parent ? item.parent.children : model.roots;
+	// The real root group, not the rendered forest — the same rule `siblingPosition`
+	// keeps: an `order` is scoped to the notes sharing a parent, and a `Test suite` and an
+	// `Epic` share the null one, so a move ranked against one projection's slice of it can
+	// land on a number a hidden root already holds. A promoted root returned above.
+	const fullList = item.parent ? item.parent.children : model.realRoots;
 	const idx = fullList.indexOf(item);
 	return idx === -1 ? null : { fullList, idx };
 }

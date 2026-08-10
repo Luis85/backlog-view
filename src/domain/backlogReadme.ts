@@ -4,10 +4,11 @@ import {
 	EXTRA_TYPES,
 	LEVELS,
 	MARKER_TYPES,
+	TEST_LEVELS,
 	resolvedDeliverableStateKey,
 	stateMenuValues,
 } from './settings';
-import { childTypeChoices, EXTRA_TYPE_RANK, folderForType, LadderPosition } from './itemTypes';
+import { childTypeChoices, EXTRA_TYPE_RANK, folderForType, keepsTypeOnMove, LadderPosition, ladderFor } from './itemTypes';
 import { readmeMarker } from './readmeMarker';
 import { stampRows, stampRule, startedStates } from './readmeStamps';
 import { andList, cell, code, list, yamlScalar } from './readmeText';
@@ -73,13 +74,21 @@ const SOURCE_LABEL: Record<StateSource, string> = {
 	offered: 'Offered so work can be marked done',
 };
 
-/** Where a type sits on the ladder, for the two questions the type table asks. */
+/**
+ * Where a type sits on its ladder, for the two questions the type table asks.
+ *
+ * Which ladder is asked of `ladderFor` with no parent, so a name belonging to one ladder
+ * alone answers for itself — which is every name this table has, since it iterates
+ * declared types and the one rung both ladders share (`Task`) is the deepest of each, so
+ * either answer gives it the same children.
+ */
 function position(typeName: string): LadderPosition {
-	const levelIndex = LEVELS.indexOf(typeName);
-	if (levelIndex >= 0) return { levelIndex, effectiveLevelIndex: levelIndex, typeName };
+	const ladder = ladderFor(typeName, null);
+	const levelIndex = ladder.indexOf(typeName);
+	if (levelIndex >= 0) return { levelIndex, effectiveLevelIndex: levelIndex, ladder, typeName };
 	// An extra type is pinned; a marker occupies no rung at all, and `childTypeChoices`
 	// answers it by name before any rank is consulted.
-	return { levelIndex: -1, effectiveLevelIndex: EXTRA_TYPE_RANK, typeName };
+	return { levelIndex: -1, effectiveLevelIndex: EXTRA_TYPE_RANK, ladder, typeName };
 }
 
 /**
@@ -122,7 +131,10 @@ function typeSection(settings: BacklogSettings): string[] {
 			`deepest and hold ${code(LEVELS[LEVELS.length - 1])} items wherever they hang, which ` +
 			'is why they are types rather than levels. ' +
 			`${andList(MARKER_TYPES)} is neither: a ` +
-			`marker hangs from nothing and holds nothing, and states a date rather than work.`,
+			`marker hangs from nothing and holds nothing, and states a date rather than work. ` +
+			`${TEST_LEVELS.slice(0, -1).join(' → ')} is a **second ladder**, for tests rather than ` +
+			`for work: a ${code(TEST_LEVELS[0])} hangs from nothing, and the two ladders share only ` +
+			`${code(LEVELS[LEVELS.length - 1])}, the rung at the bottom of each.`,
 		'',
 		'| Type | Parent may be | Children may be |',
 		'| --- | --- | --- |',
@@ -134,9 +146,11 @@ function typeSection(settings: BacklogSettings): string[] {
 			(settings.autoType
 				? ' With one exception, and it belongs to this view: assigning types on a move ' +
 					`rewrites what you drag into a **new parent**, a name of your own included. ` +
-					`Reordering among siblings rewrites nothing, ${andList(EXTRA_TYPES.map(code))} ` +
-					'keep their type wherever they land, and the same custom name deeper in the ' +
-					'subtree you dragged is left alone.'
+					`Reordering among siblings rewrites nothing, ` +
+					`${andList(ALL_TYPES.filter(keepsTypeOnMove).map(code))} ` +
+					'keep their type wherever they land, a move between the two ladders above rewrites ' +
+					'nothing in either direction, and the same custom name deeper in the subtree you ' +
+					'dragged is left alone.'
 				: ' Nothing rewrites it into one of these.'),
 	];
 }

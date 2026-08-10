@@ -6,9 +6,11 @@ import {
 	childLevelIndex,
 	EXTRA_TYPE_RANK,
 	focusTarget,
+	inCatalog,
 	isDeliverableType,
 	isExtraType,
 	isMarkerType,
+	ladderFor,
 } from './itemTypes';
 import {
 	CivilDate,
@@ -55,8 +57,14 @@ export interface BacklogItem extends LinkedItem {
 	children: BacklogItem[];
 	/** Visual depth in the rendered tree (0 for rendered roots, focused or not). */
 	depth: number;
-	/** Index into `LEVELS`; -1 when typeName does not name a rung. */
+	/** Index into {@link BacklogItem.ladder}; -1 when typeName does not name a rung of it. */
 	levelIndex: number;
+	/**
+	 * Which ladder this item is on — `LEVELS` or `TEST_LEVELS` (`itemTypes.ts`). It is
+	 * also this view's whole answer to which PROJECTION the item belongs to: `inCatalog`
+	 * asks nothing else, so the catalog and the plan cannot disagree about a row.
+	 */
+	ladder: string[];
 	/**
 	 * The ladder position this item occupies, chained down the parent levels.
 	 * Equals levelIndex for known types; for unknown or missing types it is one
@@ -93,6 +101,23 @@ export interface BacklogItem extends LinkedItem {
 	brokenPrerequisites: string[];
 }
 
+/**
+ * One projection's population: what it roots at, every row it draws, and the results
+ * among those. The plan publishes its three as `roots`/`items`/`results` (the names every
+ * consumer already reads); the catalog publishes them together under `catalog`.
+ */
+export interface ProjectionPopulation {
+	roots: BacklogItem[];
+	items: BacklogItem[];
+	results: BacklogItem[];
+	/** Distinct state values this population carries: open states first, then done, both alphabetical. */
+	observedStates: string[];
+	/** Distinct horizon values this population carries, in first-seen order. */
+	observedHorizons: string[];
+	/** Distinct tags this population carries, alphabetical. */
+	observedTags: string[];
+}
+
 export interface BacklogModel {
 	/** Roots of the rendered tree — synthetic focus rows when a focus level is active. */
 	roots: BacklogItem[];
@@ -118,6 +143,13 @@ export interface BacklogModel {
 	 * `outsideFilter` items, same as `results`.
 	 */
 	deliverableResults: BacklogItem[];
+	/**
+	 * The test catalog's own forest — its rendered roots, every row beneath them, and the
+	 * results among those. Computed by the same rule `roots`/`items`/`results` are, with
+	 * the opposite membership predicate, and off the whole UNFOCUSED tree so a focus level
+	 * set for the plan cannot narrow a projection that ignores it.
+	 */
+	catalog: ProjectionPopulation;
 	/** True when a focus level restricts the rendered tree. */
 	focused: boolean;
 	/** Distinct state values in the result set: open states first, then done, both alphabetical. */
@@ -137,19 +169,9 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	const linked = linkAll(createItems(app, entries, settings), settings);
 	breakCycles(linked);
 	const ignoredCount = settings.hierarchyOnly ? pruneOutsideHierarchy(linked, settings) : 0;
-	// Read off the linked phase: neither vocabulary depends on position, and taking
-	// them here keeps them off the tree walk below.
-	const observedStates = collectObservedStates(linked.all, settings);
-	const observedTags = collectObservedTags(linked.all);
-	const observedDeliverableStates = collectObservedDeliverableStates(linked.all, settings);
 	sortSiblingsDeep(linked.roots);
 	const { roots, byPath, items } = assignAll(linked, settings);
-	// The one vocabulary that is ORDERED rather than sorted, so it is taken from the
-	// finished tree instead of the load order: the roadmap mints a bucket per new
-	// value as it walks its rows, which are these items filtered — so reading them in
-	// the same sequence is what keeps the menu from naming the buckets in an order
-	// the axis then contradicts.
-	const observedHorizons = collectObservedHorizons(items);
+	const observedDeliverableStates = collectObservedDeliverableStates(items, settings);
 	assignDependencies(items);
 
 	// A focus level re-roots the rendered tree at the topmost items of that level,
@@ -162,21 +184,43 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	const rest = {
 		realRoots: roots,
 		byPath,
-		observedStates,
-		observedTags,
-		observedHorizons,
+		// The PLAN's vocabulary — the whole unfocused tree minus the catalog. Both halves
+		// matter: unfocused, so what a menu offers never narrows with what is on screen;
+		// minus the catalog, so a value only a test carries cannot reach a plan row's Set
+		// state, a plan row's Set horizon, or a board column no plan card could land in.
+		//
+		// The POPULATION, never a list of type names: `firstSeen` reads every non-context
+		// item, so a rule spelled "skip test items" would leave a `Task` beneath a
+		// `Test case` free to mint that column anyway.
+		...vocabularyOf(items.filter((item) => !inCatalog(item)), settings),
 		observedDeliverableStates,
 		// Read off `items` — the whole tree `assignAll` just built, before either branch
 		// below narrows anything to a focus subtree. See `BacklogModel.deliverableResults`.
 		deliverableResults: items.filter((item) => !item.outsideFilter && isDeliverableType(item.typeName)),
+		// Read off the WHOLE, unfocused tree for the reason `deliverableResults` already
+		// is, and the precedent matters more than the line: `buildModel`'s focus branch
+		// replaces roots, items and results together, so a catalog computed after it would
+		// show only the tests inside a focused `PBI` subtree — usually none — with a count
+		// to match and every root-level drop refused. The catalog ignores the focus control
+		// (its levels are the other ladder's), and a projection that opts out of a feature
+		// opts out of the COMPUTATION, not just the button.
+		catalog: projectionForest(roots, inCatalog, settings),
 		ignoredCount,
 	};
-	const shown = (list: BacklogItem[]) => ({ items: list, results: list.filter((i) => !i.outsideFilter) });
-	if (focusIdx >= 0 || focusExtra) {
-		const focusRoots = collectFocusRoots(roots, focusIdx, focusExtra, settings);
-		return { ...rest, ...shown(assignVisualDepth(focusRoots)), roots: focusRoots, focused: true };
-	}
-	return { ...rest, ...shown(items), roots, focused: false };
+	// The plan is a projection too, and its forest is computed by the same rule the
+	// catalog's is — a work item somebody dropped under a test is drawn in the plan, as a
+	// root. Under a focus the two compose: focus decides where the tree is re-rooted, and
+	// this decides which of those rows the plan actually draws.
+	const focused = focusIdx >= 0 || focusExtra !== '';
+	const focusRoots = focused ? collectFocusRoots(roots, focusIdx, focusExtra, settings) : roots;
+	const plan = projectionForest(focusRoots, (item) => !inCatalog(item), settings);
+	// `rest` LAST, and the order is load-bearing: both objects carry the three `observed*`
+	// lists, and the plan's must be the whole-tree-minus-catalog ones in `rest` rather than
+	// the forest's own. A forest's vocabulary is collected from what it RENDERS, which a
+	// focus level narrows — right for the catalog, which is never focused, and wrong for
+	// the plan, where it would make what a Set state or Set horizon menu can reach depend
+	// on which subtree happens to be focused.
+	return { ...plan, ...rest, focused };
 }
 
 /**
@@ -394,6 +438,23 @@ function assignAll(tree: LinkedTree, settings: BacklogSettings): BacklogTree & {
 		let target: CivilDate | null = null;
 		for (const child of item.children) {
 			const sub = assign(child, depth + 1);
+			// A TEST is the third exception here and a STRONGER one than the two below:
+			// nothing from it and nothing from beneath it. A context row and a marker each
+			// contribute nothing themselves while their subtrees still reach their ancestors
+			// — a result under an excluded parent is still this base's work — but a `Task`
+			// under a `Test case` is test work by the membership rule, so this walk takes
+			// nothing from below a test either.
+			//
+			// Stated at the walk rather than in the projections because the counts are
+			// gathered while the tree is BUILT: a predicate applied at draw time would hide
+			// the row and leave the number it had already moved, which is the failure with no
+			// evidence on screen. The subtree is still walked — every item needs its own
+			// fields — and its rollup is discarded.
+			//
+			// The stated cost: a suite shows no "3 of 5 cases done". Accepted rather than
+			// solved, since a second projection-specific pass is a real price for a number
+			// this increment never promised — it records no results at all.
+			if (inCatalog(child)) continue;
 			// Traverse *through* a context row to the results below it, but never count
 			// it: rollups describe what the Base returned, and an excluded note's own
 			// state must not skew a progress bar or keep a finished subtree on screen.
@@ -456,6 +517,83 @@ function assignVisualDepth(renderedRoots: BacklogItem[]): BacklogItem[] {
 	return items;
 }
 
+/**
+ * What a projection roots at: **every item it draws whose parent it does not draw**.
+ *
+ * A projection cannot be a filter over the rendered rows. `renderForest` drops a hidden
+ * sibling *without descending through it*, so an excluded parent takes its whole subtree
+ * off the screen with it — which is why a `Test case` mis-dragged under a `PBI` needs
+ * this to be a computation rather than a `filter`, and why the plan needs the same
+ * computation for the work item somebody dropped under a test. One function asked twice
+ * with opposite predicates, so the two directions cannot be argued separately and reach
+ * different answers.
+ *
+ * A promoted root — one this projection draws whose real parent it does not — is marked
+ * `focusRoot`, which is not "like" a focus root but the same category: *a root of the
+ * rendered forest that is not a root of the model*. The four call sites that already ask
+ * it (`siblingContext`, `outdentTarget`, `handleExpandCollapseKey`, the drop-target
+ * lookup) then refuse to rank, reparent or navigate it against neighbours that are not
+ * on screen, without one of them being edited.
+ *
+ * Depth is re-derived by `assignVisualDepth` for the same reason focus already does it:
+ * a test promoted from under a nested `PBI` would otherwise draw three levels indented
+ * with `aria-level="4"` and nothing above it — a lie to the eye and a worse one to a
+ * screen reader.
+ */
+function projectionForest(
+	roots: BacklogItem[],
+	member: (item: BacklogItem) => boolean,
+	settings: BacklogSettings,
+): ProjectionPopulation {
+	const forest: BacklogItem[] = [];
+	const collect = (list: BacklogItem[], parentDrawn: boolean) => {
+		for (const item of list) {
+			const drawn = member(item);
+			if (drawn && !parentDrawn) {
+				// Only ever SET, never cleared, so this composes with `collectFocusRoots`
+				// rather than undoing it: a focused plan runs both, and a focus root that
+				// happens to be a real root of the model is still a focus root.
+				if (item.parent !== null) item.focusRoot = true;
+				forest.push(item);
+			}
+			// Descend whether or not this item is drawn: a member can sit below a
+			// non-member at any depth, and stopping here is exactly the filter-shaped
+			// mistake this function exists instead of.
+			collect(item.children, drawn);
+		}
+	};
+	collect(roots, false);
+	const items = assignVisualDepth(forest);
+	return {
+		roots: forest,
+		items,
+		results: items.filter((item) => !item.outsideFilter),
+		...vocabularyOf(items, settings),
+	};
+}
+
+/**
+ * The three vocabularies a population carries, collected together because they are always
+ * asked together: *a vocabulary is scoped to the population of the projection that offers
+ * it*, stated once rather than three times at three call sites.
+ *
+ * The horizons are the one list that is ORDERED rather than sorted, so all three are
+ * taken from the FINISHED tree rather than the load order: the roadmap mints a bucket per
+ * new value as it walks its rows, which are these items filtered, so reading them in the
+ * same sequence is what keeps the menu from naming the buckets in an order the axis then
+ * contradicts.
+ */
+function vocabularyOf(
+	items: BacklogItem[],
+	settings: BacklogSettings,
+): Pick<ProjectionPopulation, 'observedStates' | 'observedHorizons' | 'observedTags'> {
+	return {
+		observedStates: collectObservedStates(items, settings),
+		observedHorizons: collectObservedHorizons(items),
+		observedTags: collectObservedTags(items),
+	};
+}
+
 /** The topmost items whose level matches the focus level; nested matches stay children. */
 function collectFocusRoots(
 	roots: BacklogItem[],
@@ -470,6 +608,12 @@ function collectFocusRoots(
 	// that type.
 	const extraFocused = focusIdx >= 0 && EXTRA_TYPE_RANK === focusIdx;
 	const matches = (item: BacklogItem): boolean => {
+		// Focus is the PLAN's control. Its levels are the plan ladder's, and a catalog
+		// item's `levelIndex` indexes the OTHER ladder — a `Task` under a `Test case` is
+		// rung 2 there, which a `PBI` focus would otherwise match and promote into the
+		// plan. Skipped here rather than repaired downstream, because the honest statement
+		// is that this control does not describe the catalog at all.
+		if (inCatalog(item)) return false;
 		if (focusExtra) return item.typeName?.toLowerCase() === focusExtra;
 		return item.levelIndex === focusIdx || (extraFocused && isExtraType(item.typeName));
 	};
@@ -488,11 +632,13 @@ function collectFocusRoots(
 }
 
 function computeLevel(item: BacklogItem, settings: BacklogSettings): void {
-	// The parent is processed first (pre-order), so its effective level is resolved.
-	const childSlot = childLevelIndex(item.parent);
+	// The parent is processed first (pre-order), so both its ladder and its effective
+	// level are resolved — which is what lets `ladderFor` chain rather than re-walk.
+	item.ladder = ladderFor(item.typeName, item.parent?.ladder ?? null);
+	const childSlot = childLevelIndex(item.parent, item.ladder);
 	if (item.typeName !== null) {
 		const name = item.typeName.toLowerCase();
-		const idx = LEVELS.findIndex((l) => l.toLowerCase() === name);
+		const idx = item.ladder.findIndex((l) => l.toLowerCase() === name);
 		item.levelIndex = idx;
 		// A declared extra type holds the deepest level wherever it hangs, so its rung is
 		// its own rather than one below its parent's — that pinning is what separates a

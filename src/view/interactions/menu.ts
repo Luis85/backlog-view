@@ -2,6 +2,7 @@ import { Menu, MenuItem } from 'obsidian';
 import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
 import { inferFolderParent } from '../../domain/folderNotes';
 import { isDeliverableType } from '../../domain/itemTypes';
+
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { sameValue, todayStamp } from '../../domain/noteFields';
 import { hasHorizonAxis } from '../../domain/roadmap';
@@ -12,11 +13,11 @@ import { ShelfCard } from '../../domain/bars';
 import { organizeShelf, ShelfSort } from '../../domain/shelf';
 import { canReorder, indent, moveToEdge, moveWithinSiblings, outdent, outdentTarget, visibleNeighbor } from './structure';
 import { promptCreateItem } from './create';
-import { ALL_TYPES } from '../../domain/settings';
 import { addHorizonItems, canSchedule, carriesDates, promptSchedule, unschedule } from './plan';
 import { addTagItems, tagsColumnVisible } from './tags';
 import { addDependencyItems, dependenciesAvailable } from './dependencies';
 import { listedChildren, undisclosedMatches } from '../childrenList';
+import { offerableTypes, retypeChoices, rowVocabulary, treeShaped } from '../projection';
 
 /**
  * Whichever board-shaped projection is active, or null off both — `host.board` is the
@@ -25,27 +26,6 @@ import { listedChildren, undisclosedMatches } from '../childrenList';
  */
 function activeBoard(host: BacklogViewHost): BoardModel | null {
 	return host.board?.board ?? null;
-}
-
-/**
- * Which of `types` this projection may offer, for every surface that offers one —
- * `Set type`, a row's `New <child>`, and (through this same function) the toolbar's two
- * creators.
- *
- * The rule is one sentence and it cuts BOTH ways: **a projection offers only the types
- * it can show.** The requirements board excludes Deliverables
- * (`renderRequirementsBoard`), so it withholds that one; the Deliverables board shows
- * nothing else (`renderDeliverablesBoard`), so it withholds every other — including a
- * Deliverable card's `New Task`, which would write a note that vanishes on the pass that
- * created it. Withheld, not disabled — the "absent rather than inert" rule the state
- * chip and the axis actions already follow. The tree and the roadmap show everything and
- * narrow nothing. A new surface that offers a type calls this rather than reading
- * `ALL_TYPES` or `childTypeChoices` straight.
- */
-export function offerableTypes(host: BacklogViewHost, types: string[] = ALL_TYPES): string[] {
-	if (host.projection === 'board') return types.filter((type) => !isDeliverableType(type));
-	if (host.projection === 'deliverables') return types.filter((type) => isDeliverableType(type));
-	return types;
 }
 
 /** Whether `item` already carries this type — the comparison `Set type` checks by. */
@@ -113,7 +93,7 @@ export function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childTyp
 	// The move section is tree shape: every entry in it is defined by the row's
 	// visible NEIGHBOURS, and a card has none — within-column order is derived, so
 	// there is no rank to move within and no sibling to indent under.
-	if (host.projection === 'tree') addMoveSection(host, menu, item);
+	if (treeShaped(host.projection)) addMoveSection(host, menu, item);
 	if (editable) addParentLinkSection(host, menu, item);
 	addMatchSection(host, menu, item);
 	addChildrenSection(host, menu, item);
@@ -437,7 +417,7 @@ function stateChoices(host: BacklogViewHost, item: BacklogItem): StateChoice[] {
 	const values =
 		isDeliverableType(item.typeName) && model
 			? deliverablesWorkflow(model, host.settings).values
-			: stateMenuValues(host.settings, model?.observedStates ?? []);
+			: stateMenuValues(host.settings, model ? rowVocabulary(model, item).observedStates : []);
 	const current = ownWorkflowReading(item).value;
 	const listed = current !== null && values.some((v) => sameValue(v, current));
 	const all = listed || current === null ? values : [...values, current];
@@ -690,7 +670,11 @@ function addEditTagsMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): 
 }
 
 function addSetTypeMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
-	const choices = offerableTypes(host);
+	// PER ROW, not per projection: `Set type` is the one caller whose answer depends on
+	// where the row would END UP, which is a question about its parent as well as its new
+	// type. See `offerableTypes` for the two rows a projection-wide list gets wrong in
+	// opposite directions.
+	const choices = retypeChoices(host, item);
 	// Absent rather than inert, the same rule the entries themselves follow: on the
 	// Deliverables board the only offerable type is the one every card already carries,
 	// so the submenu would hold a single entry, already checked, whose pick writes

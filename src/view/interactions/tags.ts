@@ -3,6 +3,7 @@ import { BacklogViewHost } from '../host';
 import { TagPromptModal } from '../../ui/prompts';
 import { BacklogItem } from '../../domain/model';
 import { hasTag, normalizeTag } from '../../domain/noteFields';
+import { rowVocabulary } from '../projection';
 
 /**
  * True when the tags property is one of the base's visible properties. Tag editing
@@ -17,7 +18,7 @@ export function tagsColumnVisible(host: BacklogViewHost): boolean {
 
 /** The tags this item's menu offers: the base's vocabulary plus the item's own. */
 function tagChoices(host: BacklogViewHost, item: BacklogItem): string[] {
-	const choices = [...(host.model?.observedTags ?? [])];
+	const choices = [...(host.model ? rowVocabulary(host.model, item).observedTags : [])];
 	for (const tag of item.tags) {
 		if (!hasTag(choices, tag)) choices.push(tag);
 	}

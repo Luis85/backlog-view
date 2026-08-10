@@ -1,6 +1,6 @@
 import { BasesView, Menu, QueryController, setIcon } from 'obsidian';
 import { CARD_SCOPE, CollapseState, TIMELINE_SCOPE } from './collapseState';
-import { FilterScope, FilterState } from './filterState';
+import { FilterState } from './filterState';
 import { BacklogViewHost, BoardSnapshot, Column, ColumnFit, PRODUCT_BACKLOG_VIEW_TYPE, Projection, RoadmapSnapshot } from './host';
 import { OpenController } from './openTarget';
 import { WriteGate } from './writeGate';
@@ -18,6 +18,7 @@ import { ItemWrite, SchedulePlan } from '../domain/writePlan';
 import { ScaleId } from '../domain/timeline';
 import { forgetBacklogView, rememberBacklogView } from './registry';
 import { ResizePolicy } from './resize';
+import { filterScopeFor, hidesCompleted, projectionMember, treeShaped } from './projection';
 import { rowHidden, VisibilityRule } from './rowVisibility';
 import { SelectionController } from './selection';
 import { UiStateController } from './uiState';
@@ -145,6 +146,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 			render: () => this.render(),
 			renderTreeContent: () => this.renderTreeContent(),
 			refreshFromData: () => this.refreshFromData(),
+			recomputeFilter: () => this.filter.recompute(this.model, this.projection),
 		});
 		this.dnd = new DragDropController(this, {
 			viewEl: this.viewEl,
@@ -295,8 +297,8 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// active focus subtree was therefore never ruled on, its card opening expanded
 		// against the collapsed-by-default rule every other projection keeps. The same
 		// split `collapsiblePopulation` states for the buttons, at the other end of it.
-		this.collapse.collapseNewParents([...this.model.items, ...this.model.deliverableResults]);
-		this.filter.recompute(this.model);
+		this.collapse.collapseNewParents([...this.model.items, ...this.model.deliverableResults, ...this.model.catalog.items]);
+		this.filter.recompute(this.model, this.projection);
 		this.render();
 	}
 
@@ -345,7 +347,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 
 	setFilter(text: string): void {
 		this.filter.text = text;
-		this.filter.recompute(this.model);
+		this.filter.recompute(this.model, this.projection);
 		this.renderTreeContent();
 	}
 
@@ -374,26 +376,14 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 			filter: this.filter,
 			settings: this.settings,
 			applyFilter,
-			scope: this.filterScope,
-			hideCompleted: this.projection !== 'deliverables',
+			scope: filterScopeFor(this.projection),
+			hideCompleted: hidesCompleted(this.projection),
+			inProjection: projectionMember(this.projection),
 		};
 	}
 
 	isFilterMatch(item: BacklogItem): boolean {
-		return this.filter.matched(item.file.path, this.filterScope);
-	}
-
-	/**
-	 * Which of the filter's indexes this projection's questions are answered from —
-	 * decided ONCE here rather than at each of the three call sites, because getting it
-	 * wrong at one of them is invisible until someone types into the box on that exact
-	 * projection. The Deliverables board renders `model.deliverableResults`, built from
-	 * the whole unfocused tree; every other projection renders out of `model.roots`,
-	 * which a focus narrows. See `FilterScope`, which states why one index cannot serve
-	 * both and what it cost to learn that.
-	 */
-	private get filterScope(): FilterScope {
-		return this.projection === 'deliverables' ? 'whole' : 'focused';
+		return this.filter.matched(item.file.path, filterScopeFor(this.projection));
 	}
 
 	isFiltering(): boolean {
@@ -555,7 +545,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// Same lifetime as the row index: a set that outlived its render would claim
 		// disclosures for a screen that is gone.
 		this.cardKids.clear();
-		if (projection !== 'tree') {
+		if (!treeShaped(projection)) {
 			// The column ladder is the tree's: a narrow-pane verdict from tree mode must
 			// not strip cells off cards, and its rollup class must not hide theirs.
 			this.setColumnFit(null);
@@ -595,7 +585,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// "18 items" to "3 of 18", or the primary button is naming a different type.
 		// After the content, because the count is one of the things being measured.
 		syncToolbarFit(this.toolbarEl);
-		if (projection !== 'tree') return;
+		if (!treeShaped(projection)) return;
 		// Measured against the tree that now exists, scrollbar and all. A changed
 		// verdict means a column came or went, which only the rows can show — one
 		// more pass, guarded, since the second pass measures the same tree.

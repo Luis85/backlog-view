@@ -54,9 +54,9 @@ describe('the documented hierarchy and the gate agree', () => {
 		[
 			'a parent column that is not the inverse of the children',
 			(files) => {
-				files['docs/README.md'] = hierarchyTable().replace('| `Task` | `PBI`, `Issue`, `Bug`, `Idea`, `Deliverable` |', '| `Task` | `PBI` |');
+				files['docs/README.md'] = hierarchyTable().replace('| `Task` | `PBI`, `Issue`, `Bug`, `Idea`, `Deliverable`, `Test case` |', '| `Task` | `PBI` |');
 			},
-			'Task may hang from Bug, Deliverable, Idea, Issue, PBI, and the hierarchy table says PBI',
+			'Task may hang from Bug, Deliverable, Idea, Issue, PBI, Test case, and the hierarchy table says PBI',
 		],
 		[
 			// Flattening with `set` would keep the LAST row and call a contradictory table
@@ -103,7 +103,7 @@ describe('the documented hierarchy and the gate agree', () => {
 		[
 			'a parent cell naming a type in prose beside the code-formatted ones',
 			(files) => {
-				files['docs/README.md'] = hierarchyTable().replace('| `Task` | `PBI`, `Issue`, `Bug`, `Idea`, `Deliverable` |', '| `Task` | `PBI`, `Issue`, `Bug`, `Idea`, `Deliverable`, Spike |');
+				files['docs/README.md'] = hierarchyTable().replace('| `Task` | `PBI`, `Issue`, `Bug`, `Idea`, `Deliverable`, `Test case` |', '| `Task` | `PBI`, `Issue`, `Bug`, `Idea`, `Deliverable`, Spike |');
 			},
 			'has Spike outside a code span',
 		],
@@ -140,7 +140,7 @@ describe('the documented hierarchy and the gate agree', () => {
 			// `A gate that did not run looks like one that passed` names.
 			'a hierarchy row with fewer cells than the table has columns',
 			(files) => {
-				files['docs/README.md'] = hierarchyTable().replace('| `Task` | `PBI`, `Issue`, `Bug`, `Idea`, `Deliverable` | *(nothing)* |', '| `Task` | `PBI`, `Issue`, `Bug`, `Idea`, `Deliverable` |');
+				files['docs/README.md'] = hierarchyTable().replace('| `Task` | `PBI`, `Issue`, `Bug`, `Idea`, `Deliverable`, `Test case` | *(nothing)* |', '| `Task` | `PBI`, `Issue`, `Bug`, `Idea`, `Deliverable`, `Test case` |');
 			},
 			'has 2 cells, not 3',
 		],

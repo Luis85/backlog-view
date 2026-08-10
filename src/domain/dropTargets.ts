@@ -70,7 +70,7 @@ export function dropTargetFor(
 	// Dropping into the slot the item already occupies is a no-op — unless the
 	// drop would clear a stale parent link, which is a real change.
 	if (position.parent === dragged.parent && !clearsStaleLink(position.parent, dragged)) {
-		const fullList = position.parent ? position.parent.children : model.roots;
+		const fullList = position.parent ? position.parent.children : model.realRoots;
 		if (fullList.indexOf(dragged) === position.insertIndex) return null;
 	}
 	return position;
@@ -94,7 +94,14 @@ function siblingPosition(
 	// outside the filter is the same problem: most of its siblings were never loaded.
 	if (item.focusRoot || item.outsideFilter) return null;
 	const parent = item.parent;
-	const fullList = parent ? parent.children : model.roots;
+	// `realRoots`, not the rendered forest: `order` is a number scoped to the notes
+	// sharing a parent, and a `Test suite` and an `Epic` share the null one — so ranking a
+	// suite against the catalog's roots alone would take a midpoint a hidden `Epic` may
+	// already hold, which is the one ranking limitation this plugin forbids itself from
+	// demonstrating. The item is a real root here (a promoted one returned above), so its
+	// position among the real group is the position among the visible one, read against
+	// the neighbours that actually decide the number.
+	const fullList = parent ? parent.children : model.realRoots;
 	const siblings = fullList.filter((c) => c !== dragged);
 	if (!reorderableGroup(siblings)) return null;
 	const idx = siblings.indexOf(item);
@@ -105,8 +112,14 @@ function siblingPosition(
 /** The target for the "Move to top level" strip, or null when unavailable. */
 export function rootDropTarget(model: BacklogModel, dragged: BacklogItem): DropTarget | null {
 	if (model.focused) return null;
-	const siblings = model.roots.filter((r) => r !== dragged);
-	const alreadyLastRoot = dragged.parent === null && model.roots.indexOf(dragged) === model.roots.length - 1;
+	// The real root group again, for `siblingPosition`'s reason and one more of its own:
+	// the rendered forest can hold a PROMOTED root, whose real siblings are elsewhere, and
+	// this target takes its list wholesale to compute an order against. A promoted row in
+	// it makes the drop rank against a note nobody can see, and a renumbering pass with no
+	// gap available would rewrite that note's own `order`.
+	const siblings = model.realRoots.filter((r) => r !== dragged);
+	const alreadyLastRoot =
+		dragged.parent === null && model.realRoots.indexOf(dragged) === model.realRoots.length - 1;
 	// The last root with a stale parent link still needs the drop target: the
 	// "move" is a no-op positionally but clears the unresolved parent property.
 	if (alreadyLastRoot && !clearsStaleLink(null, dragged)) return null;

@@ -5,7 +5,8 @@ import { assembleStyles } from '../../scripts/styles-assemble.mjs';
 import { FakeVault } from '../helpers/vault';
 import { ALL_TYPES, EXTRA_TYPES, MARKER_TYPES } from '../../src/domain/settings';
 import { Menu, Notice } from '../helpers/obsidian-mock';
-import { drag, fixture, flush, key, makeView, rowByTitle, rows, titlesOf, treeOf, useViewHarness } from '../helpers/view';
+import { clickExpandAll, drag, fixture, flush, key, makeView, rowByTitle, rows, titlesOf, treeOf, useViewHarness } from '../helpers/view';
+import { inCatalog, ladderFor } from '../../src/domain/itemTypes';
 
 useViewHarness();
 
@@ -48,9 +49,14 @@ function ruleAt(selector: string, decl: string, inMedia?: string): number {
 describe('rendering', () => {
 	it('styles every declared type — none falls through to bare text', () => {
 		// `renderBadge` has no fallback for a declared type, because the vocabulary is
-		// fixed and its two tables (level icons, extra-type styles) cover all of it. This
-		// is what keeps that true across BOTH tables and the stylesheet: add a type
-		// without an icon, or a colour class with no CSS rule, and this fails.
+		// fixed and its one table plus the plan's rung icons cover all of it. This is what
+		// keeps that true across the table and the stylesheet: add a type without an icon,
+		// or a colour class with no CSS rule, and this fails.
+		//
+		// It is also what catches the KEY, which no colour assertion would report: the
+		// lookup lowercases the type name and then requires an exact match, so a style
+		// filed under `testSuite` rather than `test suite` is simply never found and the
+		// badge renders with no icon and no colour rather than raising anything.
 		const vault = new FakeVault();
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic' } });
 		vault.addFile('Feature.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic' });
@@ -59,10 +65,18 @@ describe('rendering', () => {
 		for (const type of [...EXTRA_TYPES, ...MARKER_TYPES]) {
 			vault.addFile(`${type}.md`, { frontmatter: { type }, parentLink: 'Epic' });
 		}
-		const { containerEl } = makeView(vault);
+		// The test types are drawn by the CATALOG and by nothing else, so the badge for
+		// each has to be found in the projection that draws it — asking one screen for all
+		// eleven is what a plain `ALL_TYPES` loop does, and it fails on the two that are
+		// deliberately not in the plan.
+		vault.addFile('Test suite.md', { frontmatter: { type: 'Test suite' } });
+		vault.addFile('Test case.md', { frontmatter: { type: 'Test case' }, parentLink: 'Test suite' });
+		const { containerEl, view } = makeView(vault);
 
 		const seen = new Set<string>();
 		for (const type of ALL_TYPES) {
+			view.setProjection(inCatalog({ ladder: ladderFor(type, null) }) ? 'catalog' : 'tree');
+			clickExpandAll(containerEl);
 			const badge = rowByTitle(containerEl, type).querySelector<HTMLElement>('.pbl-badge');
 			expect(badge?.querySelector<HTMLElement>('.pbl-badge-icon')?.dataset.icon).toBeTruthy();
 			const colour = [...(badge?.classList ?? [])].find((c) => c.startsWith('pbl-lvl-'));
@@ -443,9 +457,13 @@ describe('rendering', () => {
 		expect(containerEl.querySelector('.pbl-focus-clear')).toBeNull();
 
 		btn?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		// Read off the vocabulary, so an eighth name is a failing test rather than an entry
-		// a saved view can hold and no user can pick.
-		expect(Menu.lastShown?.items.map((i) => i.titleText)).toEqual(['All types', ...ALL_TYPES]);
+		// Read off the vocabulary rather than hand-listed, so a name added to it is a
+		// failing test rather than an entry a saved view can hold and no user can pick —
+		// minus the test types, which this picker must never offer: focusing one narrows
+		// the PLAN to roots it excludes and leaves it empty, the same reason `Deliverable`
+		// is withheld on the requirements board.
+		const planTypes = ALL_TYPES.filter((t) => !inCatalog({ ladder: ladderFor(t, null) }));
+		expect(Menu.lastShown?.items.map((i) => i.titleText)).toEqual(['All types', ...planTypes]);
 		expect(Menu.lastShown?.item('All types')?.checked).toBe(true);
 		Menu.lastShown?.item('Feature')?.click();
 		// Working position, not configuration: the pick re-roots the tree itself, since

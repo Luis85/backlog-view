@@ -1,6 +1,7 @@
 import { Menu, setIcon, setTooltip } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { BacklogItem, BacklogModel } from '../../domain/model';
+import { projectionPopulation, treeShaped } from '../projection';
 import { activeAxis, configuredAxes, RoadmapAxis } from '../../domain/roadmap';
 import { ScaleId } from '../../domain/timeline';
 import { showMenuForClick } from '../interactions/menu';
@@ -289,7 +290,13 @@ function renderTimelineControls(host: BacklogViewHost, zone: HTMLElement, barEl:
  * elsewhere can never hide a Deliverable — while `model.items` is the focused render set.
  */
 function collapsiblePopulation(host: BacklogViewHost, model: BacklogModel): BacklogItem[] {
-	return host.projection === 'deliverables' ? model.deliverableResults : model.items;
+	if (host.projection === 'deliverables') return model.deliverableResults;
+	// The catalog's own items for the same reason, reached the other way: `model.items` is
+	// the PLAN's population now, so left alone these two buttons would fold the plan from
+	// the catalog — and the collapse bits being shared by path, the plan would still be
+	// folded on the way back. Deliberately NOT behind `treeShaped`: this decides what a
+	// bulk collapse TOUCHES rather than whether a button is enabled.
+	return projectionPopulation(host.projection, model).items;
 }
 
 /**
@@ -328,7 +335,7 @@ export function collapseAll(host: BacklogViewHost): void {
  */
 export function collapseCtlsDisabled(host: BacklogViewHost): boolean {
 	if (host.isFiltering()) return true;
-	if (host.projection === 'tree') return false;
+	if (treeShaped(host.projection)) return false;
 	const barPaths = new Set((host.roadmap?.roadmap.bars ?? []).map((bar) => bar.item.file.path));
 	for (const path of host.cardChildrenShown) {
 		if (barPaths.has(path)) return false;

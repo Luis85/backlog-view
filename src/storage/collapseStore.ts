@@ -38,6 +38,25 @@ export const BOARD_MODE = 'board';
 export const ROADMAP_MODE = 'roadmap';
 /** The value the `mode` field holds while the view is the Deliverables board. */
 export const DELIVERABLES_MODE = 'deliverables';
+/** The value the `mode` field holds while the view is the test catalog. */
+export const CATALOG_MODE = 'catalog';
+/**
+ * Every value the `mode` field may hold — the one list, consumed by `readEntry` below
+ * and by `view/collapseState.ts`'s `PROJECTION_MODE` above it.
+ *
+ * It runs storage → view and never the reverse, because `storage/` may not import
+ * `view/` and lint fails the build on it; the constants already live here, so this is the
+ * direction that works. What it buys is that the round trip stops being three
+ * independent statements. `PROJECTION_MODE` is a `Record<Projection, …>` and so cannot
+ * compile without a case for a new projection; the OTHER two directions — reading a
+ * stored value back into a projection, and deciding which stored values are trusted —
+ * were a hand-written `if` chain with an unguarded `return 'tree'` and a hand-written
+ * array literal. Both accepted a new projection silently and answered `tree`, which is
+ * not merely a lost session on reload: `setProjection` stores the constant and then
+ * renders, and the render asks which projection this is, so the toggle would do nothing
+ * the moment it was clicked.
+ */
+export const PROJECTION_MODES = [BOARD_MODE, ROADMAP_MODE, DELIVERABLES_MODE, CATALOG_MODE];
 /**
  * The values the `axis` field may hold — which roadmap axis this saved view shows
  * when both are configured. Mirrors `RoadmapAxis` in `domain/roadmap.ts`; spelled
@@ -412,7 +431,7 @@ function readEntry(value: unknown): StoredEntry | null {
 	const base = record.base;
 	if (typeof base !== 'string' || base.length === 0) return null;
 	const entry: StoredEntry = { base, collapsed: readPaths(record.collapsed), expanded: readPaths(record.expanded) };
-	const mode = readEnum(record.mode, [BOARD_MODE, ROADMAP_MODE, DELIVERABLES_MODE]);
+	const mode = readEnum(record.mode, PROJECTION_MODES);
 	if (mode !== undefined) entry.mode = mode;
 	const axis = readEnum(record.axis, AXIS_VALUES);
 	if (axis !== undefined) entry.axis = axis;

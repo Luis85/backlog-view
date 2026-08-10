@@ -152,7 +152,7 @@ const OVERBY = {
 const ALL_TYPES_IMPORT = {
 	selector: "ImportSpecifier[imported.name='ALL_TYPES']",
 	message:
-		'Route through offerableTypes (src/view/interactions/menu.ts) instead of importing ALL_TYPES — the whole type vocabulary is not what a given projection can show.',
+		'Route through offerableTypes (src/view/projection.ts) instead of importing ALL_TYPES — the whole type vocabulary is not what a given projection can show.',
 };
 
 /**
@@ -180,7 +180,7 @@ const ALL_TYPES_IMPORT = {
 const CHILD_TYPE_CHOICES_NULL = {
 	selector: "CallExpression[callee.name='childTypeChoices'][arguments.0.value=null]",
 	message:
-		'childTypeChoices(null) returns the unfiltered ALL_TYPES vocabulary. Route through offerableTypes (src/view/interactions/menu.ts) — and pass its result, not childTypeChoices(item) raw, which carries EXTRA_TYPES including Deliverable.',
+		'childTypeChoices(null) returns the unfiltered ALL_TYPES vocabulary. Route through offerableTypes (src/view/projection.ts) — and pass its result, not childTypeChoices(item) raw, which carries EXTRA_TYPES including Deliverable.',
 };
 
 /**
@@ -340,13 +340,21 @@ export default defineConfig([
 	{
 		// The menu helper is where the anchoring decision is made, so it is the one place
 		// allowed to make it. It writes nothing and plans nothing, so both other rules hold.
-		// It is also the one place allowed to read ALL_TYPES straight — offerableTypes'
-		// own default parameter — which is why it is the exemption from ALL_TYPES_IMPORT
-		// rather than a fifth place carrying it. It asks Set state's own question — which
-		// workflow does THIS item track — so DELIVERABLE_FIELD_READ applies here like
-		// everywhere else that is not RENDER_BOARD or CARD_MOVES.
+		// It asks Set state's own question — which workflow does THIS item track — so
+		// DELIVERABLE_FIELD_READ applies here like everywhere else that is not
+		// RENDER_BOARD or CARD_MOVES. ALL_TYPES_IMPORT and CHILD_TYPE_CHOICES_NULL apply
+		// too: `offerableTypes` moved to `view/projection.ts`, which is where "what can
+		// THIS projection offer" is now answered, and the exemption moved with it.
 		files: [MENU],
-		rules: syntaxRules([...SVG_CLASS_TOKENS, ...WRITE_BOUNDARY, OVERBY, TREE_SCAN, DELIVERABLE_FIELD_READ]),
+		rules: syntaxRules([
+			...SVG_CLASS_TOKENS,
+			...WRITE_BOUNDARY,
+			OVERBY,
+			TREE_SCAN,
+			DELIVERABLE_FIELD_READ,
+			ALL_TYPES_IMPORT,
+			CHILD_TYPE_CHOICES_NULL,
+		]),
 	},
 	{
 		// Ranking code, domain half: what it writes is an order among real siblings, and
@@ -423,6 +431,15 @@ export default defineConfig([
 			CHILD_TYPE_CHOICES_NULL,
 			DELIVERABLE_FIELD_READ,
 		]),
+	},
+	{
+		// `view/projection.ts` answers what a projection IS, `offerableTypes` among them —
+		// so it is the one place allowed to read ALL_TYPES straight, as that function's own
+		// default parameter, and the exemption from ALL_TYPES_IMPORT lives here rather than
+		// in a second file carrying it. It renders nothing, writes nothing and opens no
+		// menu, so every other rule holds.
+		files: ['src/view/projection.ts'],
+		rules: syntaxRules([...SVG_CLASS_TOKENS, ...WRITE_BOUNDARY, MENU_ANCHOR, OVERBY, TREE_SCAN]),
 	},
 	{
 		// The types section, carved out of VIEW: see TYPES_SECTION's own comment above for

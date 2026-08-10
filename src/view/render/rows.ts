@@ -1,11 +1,13 @@
 import { Keymap, setIcon, setTooltip } from 'obsidian';
 import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
 import { promptCreateItem } from '../interactions/create';
-import { offerableTypes, showItemMenu } from '../interactions/menu';
+import { showItemMenu } from '../interactions/menu';
+import { offerableTypes } from '../projection';
 import { renderAllDoneState, renderEmptyState, renderFilterEmptyState } from './emptyStates';
+import { projectionPopulation } from '../projection';
 import { BacklogItem } from '../../domain/model';
 import { childTypeChoices, displayType } from '../../domain/itemTypes';
-import { byName } from '../../domain/settings';
+import { byName, LEVELS } from '../../domain/settings';
 import { ownWorkflowReading } from '../../domain/board';
 import {
 	INDENT_PER_DEPTH,
@@ -19,21 +21,51 @@ import {
 /** Work-item icons by level position, echoing the Azure DevOps set (crown, trophy, book, check). */
 const LEVEL_ICONS = ['crown', 'award', 'book-open', 'check-square'];
 /**
- * Icon and badge colour per declared NON-RUNG type — the extra types and the markers,
- * keyed lowercase. The vocabulary is fixed, so this covers ALL of it: there is no
- * fallback for a declared type, because there is no declared type this file has not been
- * told about. A test renders one of each and asserts every badge got an icon and a colour
- * the stylesheet defines, which is what makes that safe to rely on rather than something
- * to remember — and is the reason a name added to the vocabulary cannot ship here
- * unnoticed, whatever the count happens to be.
+ * Icon and badge colour per declared type that is not a rung of the PLAN's ladder, keyed
+ * lowercase. The vocabulary is fixed, so this covers ALL of it: there is no fallback for
+ * a declared type, because there is no declared type this file has not been told about. A
+ * test renders one of each and asserts every badge got an icon and a colour the
+ * stylesheet defines, which is what makes that safe to rely on rather than something to
+ * remember — and is the reason a name added to the vocabulary cannot ship here unnoticed,
+ * whatever the count happens to be.
+ *
+ * The two test types are keyed **with the space kept**, because the lookup lowercases the
+ * type name and then requires an exact key: a camel-cased `testSuite` would simply never
+ * be found, and nothing would report it — `Record<string, …>` accepts any key, so the
+ * miss surfaces as a badge with no icon and no colour rather than as an error. They are
+ * the first multi-word names in the vocabulary, so this is the first time that convention
+ * is exercised with a space in it.
  */
-const NON_RUNG_STYLE: Record<string, { icon: string; badge: string }> = {
+const NAMED_TYPE_STYLE: Record<string, { icon: string; badge: string }> = {
 	issue: { icon: 'circle-alert', badge: 'pbl-lvl-issue' },
 	bug: { icon: 'bug', badge: 'pbl-lvl-bug' },
 	idea: { icon: 'lightbulb', badge: 'pbl-lvl-idea' },
 	milestone: { icon: 'diamond', badge: 'pbl-lvl-milestone' },
 	deliverable: { icon: 'package', badge: 'pbl-lvl-deliverable' },
+	'test suite': { icon: 'folder-check', badge: 'pbl-lvl-test-suite' },
+	'test case': { icon: 'flask-conical', badge: 'pbl-lvl-test-case' },
 };
+
+/**
+ * The icon and badge class for a type, asked of the name the badge SHOWS — never of
+ * `item.levelIndex`, which indexes whichever ladder the item is on: a `Task` beneath a
+ * `Test case` is rung 2 there and rung 3 of the plan's, so the index alone would draw it
+ * as a PBI in blue. The shown name answers for both ladders without either being named
+ * here, which is also what lets the two test types be ordinary entries in the table above
+ * even though they ARE rungs.
+ *
+ * Exported because the manual draws the same badges beside its own type entries, and the
+ * class spelling stopped being derivable the moment a type name held a space:
+ * `pbl-lvl-${name.toLowerCase()}` yields `pbl-lvl-test suite`, which `classList.add`
+ * rejects outright. One statement, so the manual and the rows cannot spell it differently.
+ */
+export function badgeStyleFor(typeName: string): { icon: string; badge: string } {
+	const named = byName(NAMED_TYPE_STYLE, typeName);
+	if (named) return named;
+	const rung = LEVELS.findIndex((l) => l.toLowerCase() === typeName.toLowerCase());
+	if (rung >= 0) return { icon: LEVEL_ICONS[rung], badge: `pbl-lvl-${rung}` };
+	return { icon: '', badge: 'pbl-lvl-unknown' };
+}
 
 /** Render the tree content (or the empty state) into the tree element. */
 export function renderTree(ctx: RowContext, treeEl: HTMLElement): void {
@@ -49,20 +81,26 @@ export function renderTree(ctx: RowContext, treeEl: HTMLElement): void {
 		'--pbl-meta-col': `${META_COL_WIDTH}px`,
 		'--pbl-indent': `${INDENT_PER_DEPTH}px`,
 	});
-	if (model.items.length === 0) {
+	// THIS projection's population, on all three lines. Both decisions below used to read
+	// the shared arrays, which hold every item the model kept: a base returning twelve
+	// test notes and no plan work would be told "All 12 items are done and hidden", with a
+	// Show completed items button that reveals nothing — because nothing is completed and
+	// nothing is hidden by completion. A control offering to reveal what it cannot show.
+	const population = projectionPopulation(ctx.host.projection, model);
+	if (population.items.length === 0) {
 		renderEmptyState(ctx.host, treeEl);
 		return;
 	}
 	// Whether any row will render is knowable before rendering one: renderForest draws
 	// a row per root isRowHidden lets through. Asking first keeps the header — which is
 	// not a row — from having to be built and then thrown away again.
-	if (!model.roots.some((root) => !ctx.host.isRowHidden(root))) {
+	if (!population.roots.some((root) => !ctx.host.isRowHidden(root))) {
 		if (ctx.host.isFiltering()) renderFilterEmptyState(ctx.host, treeEl);
-		else renderAllDoneState(ctx.host, treeEl, model.results.length);
+		else renderAllDoneState(ctx.host, treeEl, population.results.length);
 		return;
 	}
 	renderColumnHeader(ctx, treeEl);
-	renderForest(ctx, treeEl, model.roots);
+	renderForest(ctx, treeEl, population.roots);
 }
 
 /**
@@ -326,16 +364,15 @@ export function renderBadge(host: BacklogViewHost, row: HTMLElement, item: Backl
 	// and takes the bare-text treatment, which is the honest look for a type this view
 	// knows nothing about — it is carried through the ladder, not styled as though it were
 	// understood.
-	const style = byName(NON_RUNG_STYLE, item.typeName);
-	if (item.levelIndex >= 0) {
-		setIcon(badge.createSpan({ cls: 'pbl-badge-icon' }), LEVEL_ICONS[item.levelIndex]);
-		badge.addClass(`pbl-lvl-${item.levelIndex}`);
-	} else if (style) {
-		setIcon(badge.createSpan({ cls: 'pbl-badge-icon' }), style.icon);
-		badge.addClass(style.badge);
-	} else {
-		badge.addClass('pbl-lvl-unknown');
-	}
+	// Asked of the name the badge SHOWS, never of `item.levelIndex`, which indexes
+	// whichever ladder the item is on: a `Task` beneath a `Test case` is rung 2 there and
+	// rung 3 of the plan's, so the index alone would draw it as a PBI in blue. The shown
+	// name answers for both ladders without either being named here — which is also what
+	// lets the two test types be ordinary entries in the table above rather than a third
+	// branch, even though they ARE rungs.
+	const style = badgeStyleFor(badgeText);
+	if (style.icon) setIcon(badge.createSpan({ cls: 'pbl-badge-icon' }), style.icon);
+	badge.addClass(style.badge);
 	const textEl = badge.createSpan({ cls: 'pbl-badge-text', text: badgeText });
 	const implied = item.impliedType
 		? 'Type property not set — level implied from position. Use "Assign missing properties" to write it.'

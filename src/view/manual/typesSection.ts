@@ -1,5 +1,6 @@
 import { ManualEntry, ManualSection } from '../../ui/manualDialog';
 import { ALL_TYPES, EXTRA_TYPES, LEVELS, MARKER_TYPES } from '../../domain/settings';
+import { badgeStyleFor } from '../render/rows';
 
 /**
  * What each type is FOR. Keyed by type name and checked for completeness against
@@ -23,19 +24,26 @@ const INTENT: Record<string, string> = {
 		'A date the plan answers to. The + never offers to create one as a child, and draws no + of ' +
 		'its own — but that is what is OFFERED: nothing stops a drag from nesting one under an ' +
 		'existing row, or Set type from turning any row into one.',
+	'Test suite':
+		'A walkable group of end-to-end tests, and a root by nature — it hangs from nothing and ' +
+		'lives in the test catalog rather than in the plan. Holds Test cases.',
+	'Test case':
+		'One test somebody can execute: its preconditions, steps and expected result are the note ' +
+		'body, not properties. Holds Tasks, so the fix a failure provokes hangs where it was found.',
 };
 
 /**
- * The badge class the row renderer would give this type — `NON_RUNG_STYLE` in
- * `view/render/rows.ts`, which this mirrors rather than imports: that table also carries
- * an icon, which the manual has no use for, and duplicating the four-line spelling rule
- * (a ladder rung's index, an off-ladder type's lowercased name) is cheaper than reaching
- * across the module for it. Resolved here, not in `ui/`, because `ui/manualDialog.ts` may
- * not import `domain/` to know what a rung even is.
+ * The badge class the row renderer would give this type — taken FROM that renderer now
+ * rather than mirrored beside it. It used to be a four-line spelling rule duplicated
+ * here on the grounds that reaching across the module cost more than restating it, and
+ * `Test suite` is what ended that: `pbl-lvl-${typeName.toLowerCase()}` produces
+ * `pbl-lvl-test suite`, a token `classList.add` rejects outright, so the manual's copy
+ * became the first spelling that could disagree with the stylesheet AND throw. Resolved
+ * in `view/`, not in `ui/`, because `ui/manualDialog.ts` may not import `domain/` to know
+ * what a rung even is.
  */
 function badgeClass(typeName: string): string {
-	const rung = LEVELS.indexOf(typeName);
-	return rung >= 0 ? `pbl-lvl-${rung}` : `pbl-lvl-${typeName.toLowerCase()}`;
+	return badgeStyleFor(typeName).badge;
 }
 
 function entryFor(typeName: string): ManualEntry {

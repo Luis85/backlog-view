@@ -131,6 +131,25 @@ export interface BacklogSettings extends ItemHandling {
  * `LEVELS` is the ladder, top to bottom; `EXTRA_TYPES` sit beside it (see `itemTypes.ts`).
  */
 export const LEVELS = ['Epic', 'Feature', 'PBI', 'Task'];
+/**
+ * The TEST catalog's own ladder — a second one, rooted at a type that hangs from
+ * nothing, and the reason `LEVELS` can no longer be read as *the* ladder.
+ *
+ * It ends on `LEVELS`' own deepest rung, and that sharing is deliberate rather than a
+ * coincidence of both ladders wanting a leaf type. Three rules the register argues
+ * separately are consequences of it instead of code:
+ *
+ * - a typeless child of a `Test suite` is a `Test case`, and of a `Test case` a `Task`
+ *   — `childLevelIndex` clamping, on the right ladder;
+ * - *a `Task` takes its parent's projection, every other type takes its own* IS the
+ *   ladder chain, so catalog membership needs no second rule to except one type;
+ * - a `Task` whose `Test case` parent is not in the model has no parent ladder to chain
+ *   from, so it falls to its own type's — the plan's — with nothing read to find out.
+ *
+ * `Task` therefore names a rung of BOTH ladders, which is why `ladderFor` decides from
+ * the parent for that one name and from the name alone for every other.
+ */
+export const TEST_LEVELS = ['Test suite', 'Test case', LEVELS[LEVELS.length - 1]];
 /** The Deliverable workflow's own type name, named once so `EXTRA_TYPES` and every
  * `isDeliverableType` call site read the identical string rather than two spellings
  * that can drift. */
@@ -145,8 +164,14 @@ export const EXTRA_TYPES = ['Issue', 'Bug', 'Idea', DELIVERABLE_TYPE];
  * falsify it, and `isExtraType` would start meaning two things at four call sites.
  */
 export const MARKER_TYPES = ['Milestone'];
-/** Every declared type, ladder first — the whole vocabulary in one list. */
-export const ALL_TYPES = [...LEVELS, ...EXTRA_TYPES, ...MARKER_TYPES];
+/**
+ * Every declared type, ladder first — the whole vocabulary in one list, and now the one
+ * place the two ladders' shared rung is spent exactly once. `TEST_LEVELS` ends on
+ * `LEVELS`' deepest rung by construction, so it is filtered against what is already here
+ * rather than concatenated: a duplicated `Task` would give the type a second folder
+ * option under the same key, two entries in every creator menu, and two shelf groups.
+ */
+export const ALL_TYPES = [...LEVELS, ...EXTRA_TYPES, ...MARKER_TYPES, ...TEST_LEVELS.filter((t) => !LEVELS.includes(t))];
 /**
  * The default mapping, kept as the text the option shows so the shipped default and the
  * parsed one cannot drift: `defaultSettings` parses this very string.
@@ -167,6 +192,10 @@ const DEFAULT_TYPE_SUBFOLDERS: Record<string, string> = Object.assign(Object.cre
 	idea: 'ideas',
 	deliverable: 'deliverables',
 	milestone: 'milestones',
+	// The catalog files under one root of its own, one folder per rung — the shape
+	// `requirements/` already has for the three types that share it.
+	'test suite': 'tests/suites',
+	'test case': 'tests/cases',
 });
 
 /**

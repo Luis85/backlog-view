@@ -286,11 +286,24 @@ export function computeTypeChanges(
 	const rankOf = (item: BacklogItem, positional: number): number =>
 		isExtraType(item.typeName) ? extraRank : positional;
 
-	const newBaseIdx = rankOf(dragged, childLevelIndex(parent));
+	// The ladder the DESTINATION hands out — `LEVELS` under a plan row or no parent,
+	// `TEST_LEVELS` under a test. The cascade descends exactly one ladder, and this is it.
+	//
+	// **It crosses neither way, at the root of a moved subtree or nested inside one.** A
+	// `Test case` dropped onto a `PBI` keeps its type and a `PBI` dropped under a suite
+	// keeps its, which is the same answer the branch protecting a dragged `Bug` already
+	// gives for the same reason: this walk assigns the child type of the RUNG an item
+	// landed under, and a rung of the other ladder is not one of those. Nothing refuses the
+	// drop — the ladder has always guided rather than refused — so what the user gets is a
+	// legal item in an odd place, still drawn as a root of its own projection.
+	const destLadder = parent?.ladder ?? LEVELS;
+	if (dragged.ladder !== destLadder) return { cascade };
+
+	const newBaseIdx = rankOf(dragged, childLevelIndex(parent, destLadder));
 	let typeField: string | undefined;
 	// An extra type is never re-typed by position: dropping a Bug under an Epic leaves a Bug.
 	if (!isExtraType(dragged.typeName)) {
-		const implied = LEVELS[newBaseIdx];
+		const implied = destLadder[newBaseIdx];
 		if (dragged.typeName === null || dragged.typeName.toLowerCase() !== implied.toLowerCase()) {
 			typeField = implied;
 		}
@@ -301,16 +314,19 @@ export function computeTypeChanges(
 	// once these writes land, so the plan and the model it produces cannot disagree —
 	// and it holds under focus mode, where visual depth is re-rooted.
 	const walk = (node: BacklogItem, nodeLevel: number) => {
-		const childLevel = nextLevelIndex(nodeLevel);
+		const childLevel = nextLevelIndex(nodeLevel, destLadder);
 		for (const child of node.children) {
 			// The cascade stops at a note the Base excluded — a filter can leave one
 			// *between* two results (Epic and PBI returned, the Feature between them
 			// not) — and at a marker, which has no rung for the branch below to descend
 			// from. We may not retype either, and retyping only the levels below one
 			// would leave a worse ladder than leaving that branch as it stands.
-			if (stopsAt(child)) continue;
+			// The nested half of the no-crossing rule: a test hand-nested inside a moved plan
+			// subtree (or the reverse) is skipped WHOLE, exactly as a marker and a context
+			// row are — this walk cannot say what a rung is on a ladder it is not descending.
+			if (stopsAt(child) || child.ladder !== destLadder) continue;
 			if (child.typeName !== null && child.levelIndex !== -1) {
-				const targetLevel = LEVELS[childLevel];
+				const targetLevel = destLadder[childLevel];
 				if (child.typeName.toLowerCase() !== targetLevel.toLowerCase()) {
 					cascade.push({ file: child.file, typeName: targetLevel });
 				}
@@ -548,7 +564,12 @@ function initWriteFor(item: BacklogItem, settings: BacklogSettings, nextOrder: (
 	// write a type derived from its provisional top-level position.
 	const levelUnknown = item.parent === null && item.hasParentValue;
 	if (item.typeName === null && !levelUnknown) {
-		write.typeName = LEVELS[childLevelIndex(item.parent)];
+		// The item's OWN ladder, which for a typeless note is the one it chains from its
+		// parent. This is the half of the implied type that cannot be undone by looking
+		// away: left on `LEVELS`, a typeless child of a `Test suite` would be badged a
+		// `Feature` and then have `Feature` WRITTEN to it, moving the note out of the
+		// catalog and into the plan — permanently, and without anyone asking.
+		write.typeName = item.ladder[childLevelIndex(item.parent, item.ladder)];
 		needed = true;
 	}
 	const stubs = missingKeyStubs(item, settings);

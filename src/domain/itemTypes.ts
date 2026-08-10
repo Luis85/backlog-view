@@ -1,13 +1,28 @@
-import { ALL_TYPES, BacklogSettings, byName, DELIVERABLE_TYPE, EXTRA_TYPES, LEVELS, MARKER_TYPES } from './settings';
+import {
+	ALL_TYPES,
+	BacklogSettings,
+	byName,
+	DELIVERABLE_TYPE,
+	EXTRA_TYPES,
+	LEVELS,
+	MARKER_TYPES,
+	TEST_LEVELS,
+} from './settings';
 
 /**
- * The type vocabulary: the level ladder, and the types that sit beside it.
+ * The type vocabulary: the level ladders, and the types that sit beside them.
  *
- * `LEVELS` is a ladder — Epic → Feature → PBI → Task — and every level rule is
- * "one rung below the parent". **Extra types are the exception that the ladder cannot
- * express**: a Bug holds Tasks whether it hangs from an Epic, a Feature or a PBI, so its
- * rung is a property of the type rather than of where it sits. Two consequences follow,
- * and both are why this is a type rather than a fifth level:
+ * **There are TWO ladders** — `LEVELS` (Epic → Feature → PBI → Task) is the plan's and
+ * `TEST_LEVELS` (Test suite → Test case → Task) is the test catalog's — so every rule
+ * that reads a rung asks {@link ladderFor} which ladder first. They share their deepest
+ * rung and touch nowhere else: no drop, indent or retype moves an item between them,
+ * because the cascade only ever assigns the child of the rung an item landed under and a
+ * name that belongs to one ladder alone decides its own.
+ *
+ * Every level rule is still "one rung below the parent". **Extra types are the exception
+ * that a ladder cannot express**: a Bug holds Tasks whether it hangs from an Epic, a
+ * Feature or a PBI, so its rung is a property of the type rather than of where it sits.
+ * Two consequences follow, and both are why this is a type rather than a fifth level:
  *
  * - it ranks at `EXTRA_TYPE_RANK` no matter its parent, so its children always imply the
  *   deepest level;
@@ -25,10 +40,18 @@ import { ALL_TYPES, BacklogSettings, byName, DELIVERABLE_TYPE, EXTRA_TYPES, LEVE
 
 /** Where an item sits on the ladder — all these functions need of a parent. */
 export interface LadderPosition {
-	/** Index into `LEVELS`; -1 for an extra type, a marker, or a type off the ladder. */
+	/** Index into {@link LadderPosition.ladder}; -1 for an extra type, a marker, or a type off it. */
 	levelIndex: number;
 	/** The rung the item occupies, chained down the parent levels. */
 	effectiveLevelIndex: number;
+	/**
+	 * WHICH ladder those two index — `LEVELS` or `TEST_LEVELS`. There are two now, and
+	 * every rule that used to read `LEVELS` as *the* ladder has to ask this first.
+	 * Assigned by `computeLevel` in the same pre-order walk that resolves the parent's
+	 * rung before the child's, so a chained answer is always available by the time it
+	 * is needed.
+	 */
+	ladder: string[];
 	/**
 	 * The name on the note. A marker has no rung and therefore no position that could
 	 * distinguish it, so the only thing that tells one from the ordinary item sitting at
@@ -38,23 +61,74 @@ export interface LadderPosition {
 }
 
 /**
- * Level index a child of `parent` should get: one below the parent's effective
- * level, clamped to the deepest level. Top-level items get level 0.
+ * Which ladder a note is on, given what it calls itself and what its parent is on.
+ *
+ * A name that names a rung of exactly ONE ladder decides by itself: that is what keeps a
+ * `Test suite` dragged under an `Epic` a catalog item and a `Bug` under a `Test case` a
+ * plan one — neither ladder is entered or left by position, which is the whole of "the
+ * two ladders never merge".
+ *
+ * Exactly two cases chain from the parent instead, and they are the same case: the name
+ * says nothing that distinguishes the ladders. `Task` is a rung of BOTH, and a note with
+ * no `type` at all names no rung — so each takes the ladder it hangs from, and the plan's
+ * when it hangs from nothing.
+ *
+ * Everything else is the plan's, INCLUDING a name neither ladder holds. That last clause
+ * is load-bearing and the easy one to lose by writing this as "fall through to the
+ * parent": an extra type, a marker or an unknown custom type beneath a `Test case` would
+ * then be swept into the catalog, where the register says it is plan work in the wrong
+ * place and must stay visible in the plan. `Task` is the one type that means nothing on
+ * its own, and it is the only one that may be answered by what it hangs from.
  */
-export function childLevelIndex(parent: LadderPosition | null): number {
-	if (!parent) return 0;
-	return nextLevelIndex(parent.effectiveLevelIndex);
+export function ladderFor(typeName: string | null, parentLadder: string[] | null): string[] {
+	if (typeName === null) return parentLadder ?? LEVELS;
+	const name = typeName.toLowerCase();
+	const onTest = TEST_LEVELS.some((t) => t.toLowerCase() === name);
+	const onPlan = LEVELS.some((t) => t.toLowerCase() === name);
+	if (onTest && onPlan) return parentLadder ?? LEVELS;
+	return onTest ? TEST_LEVELS : LEVELS;
 }
 
 /**
- * One rung below `levelIndex`, clamped at the deepest level — the
+ * Whether this item belongs to the TEST CATALOG rather than to the plan — the one
+ * membership predicate, read from both directions so the two projections cannot both
+ * claim an item or both disown one.
+ *
+ * It asks the ladder, which means it asks the EFFECTIVE type: a child of a `Test suite`
+ * with no `type` at all chains onto the test ladder and is a catalog member, where a
+ * predicate reading the raw field would put a note that draws as a test case into the
+ * plan and leave it out of the catalog until the backfill happened to run. It also means
+ * `Task` is answered by what it hangs from and every other type by its own name, which is
+ * the membership rule stated in full — not an exception carved out for one type, but what
+ * a chained ladder already does.
+ */
+export function inCatalog(item: { ladder: string[] }): boolean {
+	return item.ladder === TEST_LEVELS;
+}
+
+/**
+ * Level index a child of `parent` should get: one below the parent's effective
+ * level, clamped to the deepest level of the ladder the CHILD will be on. Top-level
+ * items get level 0.
+ *
+ * The child's ladder, not the parent's, because they can differ: a `Test suite` created
+ * under nothing is rung 0 of the test ladder, and clamping it against the plan's four
+ * rungs would be arithmetic about a ladder it is not on.
+ */
+export function childLevelIndex(parent: LadderPosition | null, ladder: string[] = parent?.ladder ?? LEVELS): number {
+	if (!parent) return 0;
+	return nextLevelIndex(parent.effectiveLevelIndex, ladder);
+}
+
+/**
+ * One rung below `levelIndex`, clamped at the deepest rung of `ladder` — the
  * single statement of "what a child's level is". Exported so a walk that has a
  * level in hand rather than an item (the autoType cascade, planning types for a
  * subtree that has not been written yet) descends by the same rule the model
  * will apply afterwards, instead of re-deriving it from tree depth.
  */
-export function nextLevelIndex(levelIndex: number): number {
-	return Math.min(levelIndex + 1, LEVELS.length - 1);
+export function nextLevelIndex(levelIndex: number, ladder: string[] = LEVELS): number {
+	return Math.min(levelIndex + 1, ladder.length - 1);
 }
 
 /**
@@ -110,13 +184,6 @@ export function childTypeChoices(parent: LadderPosition | null): string[] {
 	// list is the answer, and every affordance built from it has to be ABSENT rather than
 	// empty (the add button, `New <child>`); see `renderRowTrailing`.
 	if (parent !== null && isMarkerType(parent.typeName)) return [];
-	// The toolbar's top-level creator has always offered every declared type
-	// unconditionally, with no parent (`renderToolbar`'s "pick another type" menu
-	// iterates ALL_TYPES) — this has to agree with that standing behavior rather than
-	// invent a narrower "which types make sense as roots" question nothing else in
-	// the view asks.
-	if (!parent) return ALL_TYPES;
-	const ladderChild = LEVELS[childLevelIndex(parent)];
 	// The top level is the WHOLE vocabulary, because that is what the toolbar does:
 	// `renderToolbar` iterates `ALL_TYPES` unconditionally and writes a note with no
 	// `parent` for whichever is picked. This branch used to answer `Epic` and the markers
@@ -125,13 +192,42 @@ export function childTypeChoices(parent: LadderPosition | null): string[] {
 	// README's root marker (`parentsOf`), which was therefore publishing, into the user's
 	// own vault, that an Issue must hang from a rung while the toolbar was making
 	// parentless ones. A branch describing a creation path that does not exist is worth
-	// less than one describing the path that does.
-	if (!parent) return [...ALL_TYPES];
-	const onLadder = parent.levelIndex >= 0 && parent.levelIndex < LEVELS.length - 1;
+	// less than one describing the path that does. It is also already right for a
+	// `Test suite`, which is a root by nature; WHICH of those types a given projection
+	// may offer is `offerableTypes`' question, not this one's.
+	if (!parent) return ALL_TYPES;
+	const ladder = parent.ladder;
+	const ladderChild = ladder[childLevelIndex(parent, ladder)];
+	const onLadder = parent.levelIndex >= 0 && parent.levelIndex < ladder.length - 1;
+	// The extra types belong to the plan's ladder and to nothing else: they are declared
+	// as things that hang from an Epic, a Feature or a PBI (`EXTRA_TYPE_RANK` is an index
+	// into `LEVELS`), so a rung of the test ladder offers its own child alone. Without
+	// this an implementation that merely "adds a rung" offers `New Bug` inside a test
+	// suite for free — the direction the acceptance criteria call out as the one such an
+	// implementation gets wrong without noticing.
+	if (inCatalog(parent)) return [ladderChild];
 	return onLadder ? [ladderChild, ...EXTRA_TYPES] : [ladderChild];
 }
 
 
+
+/**
+ * True when a move into a new parent leaves this type alone — the types the autoType
+ * cascade never rewrites, whatever they land under.
+ *
+ * Asked of the same two predicates `computeTypeChanges` asks, so the generated README
+ * cannot promise a contract the code does not keep. It was `EXTRA_TYPES` spelled out
+ * there, which was already wrong about a marker and was about to be wrong about two more
+ * types: a name is not what decides this, a pinned or absent RUNG is.
+ *
+ * The test types are deliberately NOT here. Inside their own ladder they are rewritten by
+ * position exactly as a plan rung is — a `Test suite` dropped under a suite becomes a
+ * `Test case`. What protects them from the plan is a different rule, stated where it
+ * applies: the cascade descends ONE ladder and crosses to neither.
+ */
+export function keepsTypeOnMove(typeName: string): boolean {
+	return isExtraType(typeName) || isMarkerType(typeName);
+}
 
 /**
  * Where a new item of this type is filed, or null when the type has no folder of its
@@ -157,9 +253,14 @@ export function focusTarget(settings: BacklogSettings): string {
 	return ALL_TYPES.find((t) => t.toLowerCase() === focus) ?? '';
 }
 
-/** The level name to show on an item's badge. */
-export function displayType(item: { levelIndex: number; typeName: string | null }): string {
-	if (item.levelIndex >= 0) return LEVELS[item.levelIndex];
+/**
+ * The level name to show on an item's badge — read off the item's OWN ladder, which is
+ * the difference a second one makes here. A `Task` beneath a `Test case` is rung 2 of the
+ * test ladder and rung 3 of the plan's; indexing `LEVELS` with the first would badge it
+ * `PBI`.
+ */
+export function displayType(item: { levelIndex: number; ladder: string[]; typeName: string | null }): string {
+	if (item.levelIndex >= 0) return item.ladder[item.levelIndex];
 	return item.typeName ?? '';
 }
 

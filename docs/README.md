@@ -15,6 +15,8 @@ demonstrating itself:
 | `bugs/` | Defects, with what was learned from them | `Bug` |
 | `deliverables/` | Things this project has to produce that are not code | `Deliverable` |
 | `milestones/` | Dates the plan is answerable to, owned by no item | `Milestone` |
+| `tests/suites/` | Walkable groups of end-to-end tests, their own list rather than a branch of the plan | `Test suite` |
+| `tests/cases/` | One executable test each — preconditions, steps, expected result, as prose | `Test case` |
 | [`adrs/`](adrs/README.md) | **How** it is built — architecture decision records | *(none — not backlog items)* |
 | `superpowers/` | Claude's own design specs and implementation plans, not the product's | *(none — not backlog items)* |
 
@@ -198,9 +200,11 @@ Every pair holds:
 | `Epic` | *(nothing — it is a root)* | `Feature`, `Issue`, `Bug`, `Idea`, `Deliverable` |
 | `Feature` | `Epic` | `PBI`, `Issue`, `Bug`, `Idea`, `Deliverable` |
 | `PBI` | `Feature` | `Task`, `Issue`, `Bug`, `Idea`, `Deliverable` |
-| `Task` | `PBI`, `Issue`, `Bug`, `Idea`, `Deliverable` | *(nothing)* |
+| `Task` | `PBI`, `Issue`, `Bug`, `Idea`, `Deliverable`, `Test case` | *(nothing)* |
 | `Issue` / `Bug` / `Idea` / `Deliverable` | `Epic`, `Feature` or `PBI` | `Task` |
 | `Milestone` | *(nothing — a root by nature)* | *(nothing)* |
+| `Test suite` | *(nothing — a root by nature)* | `Test case` |
+| `Test case` | `Test suite` | `Task` |
 
 The three EXTRA types travel together — `Issue`, `Bug` and `Deliverable` are one set
 repeated at each rung, which is what `childTypeChoices` answers as

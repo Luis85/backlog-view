@@ -208,6 +208,16 @@ export function renderProjectionContent(
 	if (projection === 'board') return renderBoardContent(ctx, treeEl, dnd);
 	if (projection === 'roadmap') return renderRoadmapContent(ctx, treeEl, dnd);
 	if (projection === 'deliverables') return renderDeliverablesBoardContent(ctx, treeEl, dnd);
+	// A BRANCH, not a fallthrough. The catalog wants the tree renderer and not the tree's
+	// identity: falling through would give it the backlog's accessible name for free, so a
+	// screen-reader user who switched projections would be told they are still in the
+	// product backlog. Nothing on screen shows that name and no other check would fail if
+	// it were wrong, which is exactly why it is the one thing the fallthrough must not give
+	// away.
+	if (projection === 'catalog') {
+		renderTree(ctx, treeEl);
+		return { board: null, roadmap: null, role: 'tree', label: 'Test catalog' };
+	}
 	renderTree(ctx, treeEl);
 	return { board: null, roadmap: null, role: 'tree', label: 'Product backlog' };
 }

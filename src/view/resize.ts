@@ -1,4 +1,5 @@
 import { BacklogViewHost } from './host';
+import { treeShaped } from './projection';
 import { RowContext, syncColumnFit } from './render/columns';
 import { TIMELINE_LEAD_PX } from './render/timeline';
 import { syncToolbarFit } from './render/toolbarFit';
@@ -44,7 +45,7 @@ export class ResizePolicy {
 	 */
 	shouldRebuildOnResize(): boolean {
 		syncToolbarFit(this.toolbarEl);
-		if (this.host.projection === 'tree') return this.refit();
+		if (treeShaped(this.host.projection)) return this.refit();
 		// The COLUMN ladder is the tree's alone — board columns and the horizon axis's
 		// buckets scroll rather than dropping columns, and the shelf answers to a stored
 		// pick rather than to a width. The dated axis is the one other case a resize can

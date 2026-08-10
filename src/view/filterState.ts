@@ -1,4 +1,6 @@
 import { BacklogItem, BacklogModel } from '../domain/model';
+import { Projection } from './host';
+import { projectionPopulation } from './projection';
 
 /**
  * The quick filter's session state: what was typed, which paths it keeps on screen,
@@ -105,14 +107,22 @@ export class FilterState {
 	 * rather than a second walk — and the scopes coincide, which is exactly right: a
 	 * distinction that only exists under a focus should cost nothing without one.
 	 */
-	recompute(model: BacklogModel | null): void {
+	recompute(model: BacklogModel | null, projection: Projection): void {
 		const needle = this.text.trim().toLowerCase();
 		if (!model || needle === '') {
 			this.focused = null;
 			this.whole = null;
 			return;
 		}
-		this.focused = indexMatches(model.roots, needle);
-		this.whole = model.roots === model.realRoots ? this.focused : indexMatches(model.realRoots, needle);
+		// The SAME forest the renderer draws, which is the projection-roots rule reaching
+		// one more consumer rather than a rule of its own — and the consumer where being
+		// wrong looks most like a working feature, since rows do appear and one of them
+		// did match something. Indexed from `model.roots` regardless, a needle matching a
+		// hidden `PBI` marks its whole subtree, so a `Test case` beneath it stays on
+		// screen in the catalog while nothing in the catalog matched at all; the inverse
+		// happens in the plan.
+		const roots = projectionPopulation(projection, model).roots;
+		this.focused = indexMatches(roots, needle);
+		this.whole = roots === model.realRoots ? this.focused : indexMatches(model.realRoots, needle);
 	}
 }

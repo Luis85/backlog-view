@@ -532,7 +532,7 @@ describe('backlogReadmeContent', () => {
 		// Not every move: only one into a NEW parent, and never an extra type.
 		expect(auto).toContain('rewrites what you drag into a **new parent**');
 		expect(auto).toContain('Reordering among siblings rewrites nothing');
-		expect(auto).toContain('`Issue`, `Bug`, `Idea` and `Deliverable` keep their type wherever they land');
+		expect(auto).toContain('`Issue`, `Bug`, `Idea`, `Deliverable` and `Milestone` keep their type wherever they land');
 		expect(auto).toContain('deeper in the subtree you dragged is left alone');
 	});
 

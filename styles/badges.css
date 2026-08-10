@@ -72,6 +72,44 @@
 /* Green, which no level uses and no extra type shares now that Idea has moved off it. */
 .pbl-lvl-deliverable { --pbl-badge-rgb: var(--color-green-rgb); }
 
+/*
+ * ELEVEN badges now, still eight theme tokens — and the test types are where the
+ * pair-by-pair answer stops. Idea/Task was one sharing decision taken on its own; two more
+ * taken the same way is how Idea and Deliverable both reached for green on branches that
+ * could not see each other. So the two arrive as a FAMILY: one borrowed hue between them,
+ * and a second axis on the badge that says *this is a test* before the icon says which
+ * kind — the same trick `.pbl-implied` already proves a badge can carry, and the property
+ * that lets a third test type join without a third decision.
+ *
+ * ORANGE, borrowed from Epic, and the reason is not that orange looked least crowded —
+ * that reasoning is what this rule exists instead of. An Epic is a root by POSITION in the
+ * plan and a Test suite is a root by NATURE in the catalog, and the two populations are
+ * disjoint by construction (`inCatalog`), so no screen can draw both. That is the
+ * strongest available reading of "the one whose existing wearer a test is least likely to
+ * sit beside".
+ *
+ * Nothing is minted here: the hue is Obsidian's token, so the badges still track the
+ * user's theme.
+ */
+.pbl-lvl-test-suite { --pbl-badge-rgb: var(--color-orange-rgb); }
+.pbl-lvl-test-case { --pbl-badge-rgb: var(--color-orange-rgb); }
+
+/*
+ * The test axis. Every other badge carries `border: 1px solid transparent` and a tinted
+ * fill; a test fills that border in instead, so it reads as OUTLINED where the rest read
+ * as filled — a difference that survives the hue being shared with Epic and does not rest
+ * on the icon, which is what tells the suite from the case inside the axis.
+ *
+ * It composes with `.pbl-implied` rather than fighting it: that rule comes later in this
+ * file and overrides to dashed and transparent, so an implied `Test case` reads as
+ * outlined AND as implied. Two orthogonal signals, which is the honest pair — the axis
+ * says what family this is, the dash says the type was inferred.
+ */
+.pbl-badge.pbl-lvl-test-suite,
+.pbl-badge.pbl-lvl-test-case {
+	border-color: rgba(var(--pbl-badge-rgb), 0.55);
+}
+
 .pbl-badge[class*='pbl-lvl-']:not(.pbl-lvl-unknown) {
 	color: rgb(var(--pbl-badge-rgb));
 	background-color: rgba(var(--pbl-badge-rgb), 0.14);

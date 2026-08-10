@@ -160,14 +160,30 @@ describe('childTypeChoices', () => {
 	it('offers the ladder then the extras for assignment by hand', () => {
 		// The marker joins as a third category, after the extras — ALL_TYPES is the
 		// whole vocabulary, not just the ladder and the pinned container.
-		expect(ALL_TYPES).toEqual(['Epic', 'Feature', 'PBI', 'Task', 'Issue', 'Bug', 'Idea', 'Deliverable', 'Milestone']);
+		expect(ALL_TYPES).toEqual([
+			'Epic',
+			'Feature',
+			'PBI',
+			'Task',
+			'Issue',
+			'Bug',
+			'Idea',
+			'Deliverable',
+			'Milestone',
+			'Test suite',
+			'Test case',
+		]);
 	});
 
 	it('is a fixed vocabulary, matched case-insensitively', () => {
 		// Not configurable on purpose: every level rule would otherwise have to hold for
 		// any list a user can type, and the reward was a rename.
 		expect(LEVELS).toEqual(['Epic', 'Feature', 'PBI', 'Task']);
-		expect(ALL_TYPES).toEqual(['Epic', 'Feature', 'PBI', 'Task', 'Issue', 'Bug', 'Idea', 'Deliverable', 'Milestone']);
+		// `Task` is a rung of BOTH ladders and appears here exactly ONCE: two entries would
+		// give it a second folder option under the same key, a duplicate in every creator
+		// menu and two shelf groups.
+		expect(ALL_TYPES.filter((t) => t === 'Task')).toEqual(['Task']);
+		expect(ALL_TYPES).toEqual([...LEVELS, ...EXTRA_TYPES, ...MARKER_TYPES, 'Test suite', 'Test case']);
 		expect(isExtraType('bug')).toBe(true);
 		expect(isExtraType('Bugfix')).toBe(false);
 		expect(isExtraType(null)).toBe(false);
