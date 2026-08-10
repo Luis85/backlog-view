@@ -53,12 +53,13 @@
  *
  * NINE badges, EIGHT theme tokens. Obsidian defines red, orange, yellow, green, cyan,
  * blue, purple and pink, and nothing here may invent a ninth without giving up theme
- * adaptation — so some pairs share, and which pair is a decision rather than an oversight
- * — the rule is stated with the test types below. It used to be Idea and Deliverable,
- * which is the worst pair available: two extra types at the same rung, side by side under
- * the same parent, told apart only by their icons. That happened because `Idea` and
- * `Deliverable` were built on branches that could not see each other, and both reached for
- * green.
+ * adaptation — so one pair has to share, and which pair is a decision rather than an
+ * oversight. Two more collisions arrive with the test types below — the same decision
+ * made twice more, stated there as a rule rather than repeated as a choice each time. It
+ * used to be Idea and Deliverable, which is the worst pair available: two extra types at
+ * the same rung, side by side under the same parent, told apart only by their icons. That
+ * happened because `Idea` and `Deliverable` were built on branches that could not see
+ * each other, and both reached for green.
  *
  * Idea takes YELLOW instead, which costs the rule this comment used to state — that every
  * extra type is clear of the four levels — and buys the lightbulb the colour a lightbulb
@@ -78,19 +79,26 @@
  * ELEVEN badges, still eight theme tokens, and this is where the pair-by-pair answer had to
  * become a rule: Idea/Task was one sharing decision taken alone, and two more taken the same
  * way is how Idea and Deliverable both reached for green on branches that could not see each
- * other. The rule: HUE IS IDENTITY, and where two types share one, the test axis below or
- * the icon separates them. Which pair shares is a decision recorded here, never "whichever
+ * other. The rule: HUE IS IDENTITY, and each pair that shares one relies on whatever else
+ * keeps it apart — the type NAME and the ladder's indentation for Idea and Task (neither
+ * wears the axis below), the test axis for the two pairs a test type is in, since
+ * `.pbl-lvl-test-suite` and `.pbl-lvl-test-case` both carry it and neither sharer does.
+ * Which pair shares, and what separates it, is a decision recorded here, never "whichever
  * looked least crowded".
  *
  * A `Test suite` takes ORANGE, Epic's. An Epic is a root by POSITION in the plan and a suite
  * is a root by NATURE in the catalog, and the two populations are disjoint by construction
- * (`inCatalog`), so no screen draws both.
+ * (`inCatalog`), so neither is ever drawn in the other's tree, board or roadmap — the one
+ * screen that draws both is the user manual's Item types list (`typesSection`, over
+ * `ALL_TYPES`), where every badge sits beside its own type name and hue is not asked to
+ * carry the identification.
  *
  * A `Test case` takes CYAN, Milestone's, by the same standard — the one whose existing wearer
  * a test is least likely to sit beside. A `Milestone` is a marker: no rung, no children, no
- * parent, drawn as a line on the timeline, and never a catalog member. The two cannot meet
- * where a case is actually READ; they can meet in the plan tree, where a case appears only as
- * an advisory mis-drag.
+ * parent, drawn as a line on the timeline, and never a catalog member. A `Test case`'s
+ * ladder is fixed by NAME (`ladderFor`, against `TEST_LEVELS`) whatever it is dragged
+ * under, so it is never a member of the plan tree either — the two cannot meet where a case
+ * is actually READ.
  *
  * Nothing is minted here: both are Obsidian's own tokens, so the badges still track the
  * user's theme.
