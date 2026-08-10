@@ -1672,6 +1672,28 @@ answers it.
 SECONDARY key belongs on this item — and this one answers whether the PRIMARY key does. Three
 gates, three rules, each stated where it holds.
 
+> **Countermanded during execution (2026-08-10).** This instruction cannot be carried out and
+> still pass `npm run check`. The implementer reported it and the reviewer verified it
+> independently: with all three gates written out, `npx fallow` reports `✗ 1 above threshold`
+> and names `missingKeyStubs` under High complexity functions; unified to one
+> `stateKeyFor`-driven lookup, `✗ 0`. The unification ships. What the paragraph above was
+> protecting — three rules, not one blurred one — survives as the reason the unified gate is
+> keyed on `stateKeyFor` alone and nothing else, so it is still one question asked once.
+>
+> Two consequences the review pinned down, recorded here because the shipped behaviour is not
+> what this task's prose predicts. The unified gate narrows by KEY EQUALITY where the deleted
+> gates narrowed by item CATEGORY, and those are not the same rule:
+> - it is key equality that makes the SHIPPED DEFAULT correct — with both secondary keys unset
+>   and falling back to `stateKey`, a category gate gives a `Deliverable` and a `Test case` no
+>   `state` stub at all, so ✨ stops creating the very key those rows read;
+> - and it widens where a secondary key is explicitly configured to the same string as another
+>   workflow's key, which `configProblems` permits (`WORKFLOW_STATE_LABELS` exempts the three
+>   workflow-state labels from the collision report). That plans a redundant stub for a key
+>   another field in the same write already names — invisible at the vault, since `stubKeys`
+>   dedupes and `applyInto` only writes an absent key.
+>
+> Both are pinned by tests rather than left to the reader.
+
 - [ ] **Step 1: Write the failing test**
 
 Add to `test/domain/writePlanProperties.test.ts`, beside the two existing stub-gate tests
