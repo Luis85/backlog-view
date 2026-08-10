@@ -168,6 +168,15 @@ context row when a visible descendant needs a parent to hang from.
   ladder", which is the symmetric shape that reads right and would hand the catalog exactly
   the rollups this extension declines, since a suite and its cases agree. It is: count a
   child only when the child and the PARENT are both plan rows.
+  **The NUMBER priced here left the COLUMN unpriced.** `renderTree`'s rollup header, its
+  per-row `.pbl-meta-col` cell and the width `columnFit` reserves for it all gated on
+  `settings.stateKey`/`settings.showCounts` alone, with no question asked of the
+  projection — so a vault with either configured drew a `Progress` header over a column
+  empty on every catalog row and spent every test title the width it reserved for
+  numbers this bullet had already declined to compute. `hasRollup`
+  (`src/view/projection.ts`) withholds the column the same way this bullet withholds the
+  rollup itself: an accepted cost restated where the UI, not the model, was the one still
+  paying it (found by an automated PR reviewer, fixed after this note was marked Done).
 - **2d — the base returns catalog members and nothing else.** The plan shows its ordinary
   **empty** state, not its all-done one. Both decisions are keyed to the plan's population,
   and neither is today: `renderTree` tests `model.items.length` for empty and then hands
