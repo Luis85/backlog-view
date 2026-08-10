@@ -2,7 +2,7 @@ import { Keymap, setIcon, setTooltip } from 'obsidian';
 import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
 import { promptCreateItem } from '../interactions/create';
 import { showItemMenu } from '../interactions/menu';
-import { offerableTypes } from '../projection';
+import { offerableTypes, projectionMember } from '../projection';
 import { renderAllDoneState, renderEmptyState, renderFilterEmptyState } from './emptyStates';
 import { projectionPopulation } from '../projection';
 import { badgeStyleFor } from './badges';
@@ -75,7 +75,7 @@ export function refreshRowChildren(ctx: RowContext, item: BacklogItem, row: HTML
 
 	const existing = row.nextElementSibling;
 	if (existing instanceof HTMLElement && existing.hasClass('pbl-children')) {
-		forgetSubtree(ctx.rows, item.children);
+		forgetSubtree(ctx.rows, item.children, projectionMember(ctx.host.projection));
 		existing.detach();
 	}
 	const parentEl = row.parentElement;
@@ -86,11 +86,21 @@ export function refreshRowChildren(ctx: RowContext, item: BacklogItem, row: HTML
 	renderForest(ctx, childrenEl, item.children);
 }
 
-/** Drop a removed subtree from the row index so stale elements can't be found. */
-function forgetSubtree(rows: Map<string, HTMLElement>, items: BacklogItem[]): void {
+/**
+ * Drop a removed subtree from the row index so stale elements can't be found — along the
+ * edges this projection DRAWS, never the raw child list.
+ *
+ * A non-member's subtree can hold a member this projection renders as a promoted ROOT,
+ * whose row is somewhere else entirely and is not being detached. Walking raw children
+ * deletes that row's index entry while its DOM stays on screen, and everything that reaches
+ * a row by lookup then fails for it silently: selection cannot mark or announce it, and a
+ * keyboard-opened menu loses its anchor.
+ */
+function forgetSubtree(rows: Map<string, HTMLElement>, items: BacklogItem[], member: (item: BacklogItem) => boolean): void {
 	for (const item of items) {
+		if (!member(item)) continue;
 		rows.delete(item.file.path);
-		forgetSubtree(rows, item.children);
+		forgetSubtree(rows, item.children, member);
 	}
 }
 
