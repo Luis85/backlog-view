@@ -30,6 +30,13 @@ and each stays open until they are, so a stale check is visible rather than assu
 - [[Roadmap legend with two workflows]] — the second state vocabulary's own section, the
   three colour pairs four slots force on it, and the two greens. Layout and structure were
   measured in Chromium; the colour is the half no harness can answer. **Never checked.**
+- A colour named for a state ([[A colour per state]]) actually arrives, on both sides:
+  the `Colour for <state>` dropdown renders its empty-string entry as a usable `By
+  position` rather than as a blank row, picking a colour repaints that state's bars and
+  its legend swatch together, and the eight offered names read as eight distinguishable
+  colours in a real theme, light and dark — including whichever ones the theme brings
+  close to the today line's red, a milestone's cyan or the accent. jsdom asserts the
+  classes; only a vault can answer any of that. **Never checked.**
 - [[Roadmap milestone appearance]] — the cyan badge, the diamond, the full-height line
   and its label, two milestones on one date, today's collision, label truncation, and a
   milestone past the window edge. **Seen once, 2026-08-02; no per-point record yet.**
