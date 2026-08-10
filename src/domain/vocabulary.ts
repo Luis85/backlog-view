@@ -27,12 +27,10 @@ interface VocabularySource {
 }
 
 /**
- * The catalog's own state collector needs `ladder` for its membership test — unlike
- * the other four, its every caller runs after `assignAll`, which is the phase that
- * puts `ladder` on an item. Narrower than `VocabularySource` rather than widening it:
- * `collectObservedDeliverableStates` deliberately runs off the LINKED phase, before
- * `ladder` exists, and a field every collector must carry would break that call site
- * for a field only one of them reads.
+ * The catalog's own state collector needs `ladder` for its membership test. Narrower
+ * than `VocabularySource` rather than widening it: `collectObservedDeliverableStates`
+ * deliberately runs off the LINKED phase, before `ladder` exists, and a field every
+ * collector must carry would break that call site for a field only one of them reads.
  */
 interface CatalogVocabularySource extends VocabularySource {
 	ladder: string[];
@@ -40,7 +38,7 @@ interface CatalogVocabularySource extends VocabularySource {
 }
 
 /**
- * The rule the three collectors below share, stated once: walk the loaded items,
+ * The rule the six collectors below share, stated once: walk the loaded items,
  * **skip every context row** — an excluded note's value is not this base's
  * vocabulary — and keep the first casing of each distinct value, in the order the
  * walk met it. `key` is how identity is decided; the tags collector passes `tagKey`

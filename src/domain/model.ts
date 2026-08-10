@@ -617,9 +617,10 @@ function vocabularyOf(
 	return {
 		// WHICH workflow, asked of the population rather than of each item: a population is
 		// homogeneous by membership, and the done list a state menu sorts by is the
-		// population's while the value read is the item's. Supplied by `projectionForest`'s
-		// two call sites, which are the two places that already know which projection they
-		// are computing.
+		// population's while the value read is the item's. Supplied by all three callers —
+		// `projectionForest`'s two call sites and the plan's own `vocabularyOf` call in
+		// `rest` — which are the three places that already know which projection they are
+		// computing.
 		observedStates: catalog ? collectObservedTestStates(items, settings) : collectObservedStates(items, settings),
 		observedHorizons: collectObservedHorizons(items),
 		observedTags: collectObservedTags(items),
