@@ -117,7 +117,7 @@ function colourProblem(settings: BacklogSettings): string | null {
  * loops rather than one.
  *
  * `list()` splits, trims and drops empties, and EVERY list goes through it. `dedupe()`
- * runs case-insensitively over the four VOCABULARIES only; the two done lists take
+ * runs case-insensitively over the five VOCABULARIES only; the three done lists take
  * `list()` alone, so a repeat there is a configuration a user can actually set and
  * rejecting it would refuse a real vault. Checking the narrower set against the wider
  * rule was this predicate's recurring mistake, so the two spans are written out.
@@ -125,8 +125,8 @@ function colourProblem(settings: BacklogSettings): string | null {
  * Its own function to keep `settingsInconsistency` inside its complexity budget.
  */
 function listProblem(settings: BacklogSettings): string | null {
-	const vocabularies = ['states', 'deliverableStates', 'startedStates', 'horizonValues'] as const;
-	for (const field of [...vocabularies, 'doneValues', 'deliverableDoneValues'] as const) {
+	const vocabularies = ['states', 'deliverableStates', 'testStates', 'startedStates', 'horizonValues'] as const;
+	for (const field of [...vocabularies, 'doneValues', 'deliverableDoneValues', 'testDoneValues'] as const) {
 		const untrimmed = settings[field].find((value) => value.trim() !== value || value === '');
 		if (untrimmed !== undefined) {
 			return `${field} holds ${JSON.stringify(untrimmed)}, which list() would have trimmed or dropped`;

@@ -205,6 +205,11 @@ describe('settingsWith reproduces what the resolver would have derived', () => {
 			fields: { stateKey: 'status', tagsKey: 'status' },
 			options: { stateProperty: 'note.status', tagsProperty: 'note.status' },
 		},
+		{
+			name: 'a test workflow of its own, so nothing is copied',
+			fields: { testStateKey: 'testStatus', testDoneValues: [] },
+			options: { testStateProperty: 'note.testStatus', testDoneValues: '' },
+		},
 	];
 
 	it.each(PAIRS)('$name', ({ fields, options }) => {

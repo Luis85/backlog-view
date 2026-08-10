@@ -80,8 +80,9 @@ function resolveFolders(
  * One SECONDARY workflow's three resolved fields — the Deliverable's, and the test
  * catalog's. Every argument in the comments below was written for the Deliverable and is
  * true of the test workflow word for word with `test` substituted, so this is one function
- * called twice rather than two copies of a fallback ladder that took a bug to get right.
- * A third secondary workflow is a call.
+ * called twice — against `DELIVERABLE_NAMES` and `TEST_NAMES` below — rather than two
+ * copies of a fallback ladder that took a bug to get right. A third secondary workflow is
+ * a third names constant and a third call.
  *
  * The seam is the honest one: these three are the only fields whose value depends on
  * ANOTHER of their own group — the key's fallback decides what the two lists fall back to
@@ -112,6 +113,28 @@ interface SecondaryWorkflow {
 	doneValues: string[];
 }
 
+/**
+ * The two workflows' option names, module-level rather than written inline at each call
+ * site — a persisted option id (`deliverableStateProperty`, `testStateProperty`) has to
+ * stay literal and greppable (`viewOptions.ts` spells these the same way), which rules out
+ * building the id from a shared prefix; naming the whole row once here is the alternative
+ * that keeps `resolveSettings` to one line per workflow.
+ */
+const DELIVERABLE_NAMES: SecondaryWorkflowNames = {
+	property: 'deliverableStateProperty',
+	stateValues: 'deliverableStateValues',
+	doneValues: 'deliverableDoneValues',
+	fallbackKey: 'deliverableStateKey',
+	fallbackDoneValues: 'deliverableDoneValues',
+};
+const TEST_NAMES: SecondaryWorkflowNames = {
+	property: 'testStateProperty',
+	stateValues: 'testStateValues',
+	doneValues: 'testDoneValues',
+	fallbackKey: 'testStateKey',
+	fallbackDoneValues: 'testDoneValues',
+};
+
 function resolveSecondaryWorkflow(inputs: SecondaryWorkflowInputs, names: SecondaryWorkflowNames): SecondaryWorkflow {
 	const { propKey, list, dedupe, fallback, states, effectiveDoneValues } = inputs;
 	// The KEY's own fallback condition, named ONCE and consulted by both lists below: as
@@ -134,32 +157,6 @@ function resolveSecondaryWorkflow(inputs: SecondaryWorkflowInputs, names: Second
 	// that belongs to a DIFFERENT property.
 	const statesRaw = dedupe(list(names.stateValues));
 	return { key: own, states: fallsBack && statesRaw.length === 0 ? states : statesRaw, doneValues };
-}
-
-/**
- * Both secondary workflows, resolved together — pulled out of `resolveSettings` itself so
- * the two `resolveSecondaryWorkflow` calls (one per workflow's option names) do not push
- * that function over its own line budget. Purely a grouping: neither workflow depends on
- * the other's result, unlike the three fields WITHIN one that `SecondaryWorkflowInputs`
- * documents.
- */
-function resolveSecondaryWorkflows(inputs: SecondaryWorkflowInputs): { deliverable: SecondaryWorkflow; test: SecondaryWorkflow } {
-	return {
-		deliverable: resolveSecondaryWorkflow(inputs, {
-			property: 'deliverableStateProperty',
-			stateValues: 'deliverableStateValues',
-			doneValues: 'deliverableDoneValues',
-			fallbackKey: 'deliverableStateKey',
-			fallbackDoneValues: 'deliverableDoneValues',
-		}),
-		test: resolveSecondaryWorkflow(inputs, {
-			property: 'testStateProperty',
-			stateValues: 'testStateValues',
-			doneValues: 'testDoneValues',
-			fallbackKey: 'testStateKey',
-			fallbackDoneValues: 'testDoneValues',
-		}),
-	};
 }
 
 /** Read the persisted view config into a BacklogSettings, applying defaults for anything unset. */
@@ -237,7 +234,9 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 	// says it cannot have.
 	const effectiveDoneValues = doneValues.length > 0 ? doneValues : fallback.doneValues;
 	const states = dedupe(list('stateValues'));
-	const { deliverable, test } = resolveSecondaryWorkflows({ propKey, list, dedupe, fallback, states, effectiveDoneValues });
+	const secondary = { propKey, list, dedupe, fallback, states, effectiveDoneValues };
+	const deliverable = resolveSecondaryWorkflow(secondary, DELIVERABLE_NAMES);
+	const test = resolveSecondaryWorkflow(secondary, TEST_NAMES);
 	const doneSet = new Set(effectiveDoneValues.map((v) => v.toLowerCase()));
 	// Limits are refused for done states HERE rather than only in the schema, so a key
 	// left in the `.base` by re-marking a state as done cannot revive its limit.
