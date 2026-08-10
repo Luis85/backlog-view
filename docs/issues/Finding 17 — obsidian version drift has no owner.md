@@ -23,7 +23,9 @@ It had already happened when this note was written, in the direction nobody was 
 
 ## Where it is tracked
 
-Half of it now has an owner. `minAppVersion` is **1.12.0** (2026-08-10) and the fallback is deleted; the `obsidian` devDependency is pinned to `~1.12.3` so the compiler refuses an API the manifest does not promise, with the reasoning in `.github/dependabot.yml` beside the `@types/node` entry it copies. That is the cheap guard for drift in the direction that bit: the plugin cannot silently start needing a newer app.
+Half of it now has an owner. `minAppVersion` is **1.12.0** (2026-08-10) and the fallback is deleted; the `obsidian` devDependency is pinned to **exactly `1.12.0`** so the compiler refuses an API the manifest does not promise, with the reasoning in `.github/dependabot.yml` beside the `@types/node` entry it copies. That is the cheap guard for drift in the direction that bit: the plugin cannot silently start needing a newer app.
+
+Exactly, and the first attempt at this guard is why the word is here. It shipped as `~1.12.3`, which resolves anything below 1.13 — and these typings are additive *within* a minor line and say so, `Vault.appendBinary` carrying `@since 1.12.3` and the CLI handler types `@since 1.12.2`. A guard whose range is wider than the promise it guards is not a guard; it is the same drift one patch smaller. This paragraph then said `~1.12.3` for one more commit after the pin was fixed, which is the defect the root `CLAUDE.md` calls writing the guarantee ahead of the check — caught in review both times, by a reader comparing the sentence against the file rather than against the previous sentence.
 
 The other direction still has none, and it is the one this note named: nothing notices when a **newer** Obsidian changes something the view rests on. The open question is unchanged — whether the sweep gains a second conditional trigger on an Obsidian upgrade, the way [[Verify base identity in a live vault]] already has one — which would cost nothing and belongs in [[A cadence for the checks CI cannot run]].
 
