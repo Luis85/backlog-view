@@ -225,7 +225,7 @@ design: the relationship between a test and the work it checks is
 ## Where it lives
 
 **Nothing yet — this note is design.** The names join `ALL_TYPES` in
-`src/domain/settings.ts`, with two entries in `DEFAULT_TYPE_SUBFOLDERS`; the per-type
+`src/domain/typeVocabulary.ts`, with two entries in `DEFAULT_TYPE_SUBFOLDERS`; the per-type
 folder options in `src/domain/viewOptions.ts` are already generic over the vocabulary.
 
 The rungs are `src/domain/itemTypes.ts`' work and the only genuinely new shape in this

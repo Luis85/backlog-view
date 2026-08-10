@@ -1,7 +1,7 @@
 import { Notice } from 'obsidian';
 import { BacklogViewHost, BusyState } from './host';
 import { ItemWrite } from '../domain/writePlan';
-import { configProblems } from '../domain/settings';
+import { configProblems } from '../domain/settingsConsistency';
 import { applyWrites, RestoreWrite, WriteOutcome } from '../storage/frontmatter';
 import { ReplayTracker, replayRun, UndoRecovery } from './interactions/undo';
 

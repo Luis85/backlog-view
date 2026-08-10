@@ -13,6 +13,13 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [0.7.0] - 2026-08-10
 
+### Added
+
+- An **assignee** property: name it in the view options (or press ✨ and let the view bind
+  and backfill `assignee`), then set it from the row's menu or its chip. The names on
+  offer are the ones the base's own results already carry — plus anything typed into
+  **New assignee...** — so there is no list to declare and nothing to keep in step.
+
 ### Changed
 
 - **Obsidian 1.12.0 or newer is now required** (was 1.10.2). The Bases custom-view API

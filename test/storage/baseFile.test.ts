@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
 import { baseFileContent, createBacklogBase } from '../../src/storage/baseFile';
-import { defaultTypeFolder } from '../../src/domain/settings';
+import { defaultTypeFolder } from '../../src/domain/typeVocabulary';
 import { installObsidianDom } from '../helpers/dom';
 import { FakeVault } from '../helpers/vault';
 import { Modal, Notice } from '../helpers/obsidian-mock';

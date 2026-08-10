@@ -1,5 +1,5 @@
 import { ManualEntry, ManualSection } from '../../ui/manualDialog';
-import { ALL_TYPES, EXTRA_TYPES, LEVELS, MARKER_TYPES } from '../../domain/settings';
+import { ALL_TYPES, EXTRA_TYPES, LEVELS, MARKER_TYPES } from '../../domain/typeVocabulary';
 
 /**
  * What each type is FOR. Keyed by type name and checked for completeness against

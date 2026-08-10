@@ -1,23 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { settingsWith } from '../helpers/settings';
-import {
-	adoptableProperties,
-	ALL_TYPES,
-	byName,
-	configProblems,
-	defaultSettings,
-	defaultTypeFolder,
-	EXTRA_TYPES,
-	horizonMenuValues,
-	LEVELS,
-	MARKER_TYPES,
-	OPTIONAL_FIELDS,
-	OPTIONAL_PROPERTIES,
-	optionalKeyFor,
-	optionalProperty,
-	resolveSettings,
-	stateMenuValues,
-} from '../../src/domain/settings';
+import { defaultSettings, horizonMenuValues, stateMenuValues } from '../../src/domain/settings';
+import { adoptableProperties, OPTIONAL_FIELDS, OPTIONAL_PROPERTIES, optionalKeyFor, optionalProperty } from '../../src/domain/optionalProperties';
+import { configProblems } from '../../src/domain/settingsConsistency';
+import { resolveSettings } from '../../src/domain/settingsResolve';
+import { ALL_TYPES, byName, defaultTypeFolder, EXTRA_TYPES, LEVELS, MARKER_TYPES } from '../../src/domain/typeVocabulary';
 
 /** Stand-in for BasesViewConfig backed by a plain object. */
 function fakeConfig(values: Record<string, unknown> = {}) {
@@ -336,6 +323,7 @@ describe('optionalKeyFor', () => {
 			startKey: 'start',
 			targetKey: 'due',
 			riskKey: 'risk',
+			assigneeKey: 'assignee',
 			deliverableStateKey: 'deliverableStatus',
 			dependsOnKey: 'dependsOn',
 		});
@@ -349,11 +337,13 @@ describe('optionalKeyFor', () => {
 			'start',
 			'due',
 			'risk',
+			'assignee',
 			'deliverableStatus',
 			'dependsOn',
 		]);
 		// Unconfigured is '', which every caller reads as "no key to write".
 		expect(OPTIONAL_FIELDS.map((field) => optionalKeyFor(defaultSettings(), field))).toEqual([
+			'',
 			'',
 			'',
 			'',
@@ -379,6 +369,7 @@ describe('the optional-property table', () => {
 			'start',
 			'target',
 			'risk',
+			'assignee',
 			'deliverableState',
 			'dependsOn',
 		]);
@@ -390,7 +381,7 @@ describe('adoptableProperties', () => {
 	it('offers the shipped key for every optional property nobody has named', () => {
 		const config = fakeConfig({});
 
-		// Eight, not nine: `deliverableState` suggests the SAME key `state` does
+		// Nine, not ten: `deliverableState` suggests the SAME key `state` does
 		// ('status'), and `state` is declared first, so its own adoption claims
 		// 'status' before the loop ever reaches `deliverableState` — the existing
 		// "don't suggest an already-taken key" guard (below) skips it, leaving the
@@ -404,6 +395,7 @@ describe('adoptableProperties', () => {
 			'start',
 			'due',
 			'risk',
+			'assignee',
 			'dependsOn',
 		]);
 	});

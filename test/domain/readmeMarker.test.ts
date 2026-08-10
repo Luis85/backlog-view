@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { backlogReadmeContent } from '../../src/domain/backlogReadme';
-import { README_MARKER_PREFIX, displaySource, joinSource, readmeMarker, readmeSource } from '../../src/domain/readmeMarker';
 import { BacklogSettings } from '../../src/domain/settings';
 import { settingsWith } from '../helpers/settings';
+import { backlogReadmeContent } from '../../src/domain/backlogReadme';
+import { README_MARKER_PREFIX, displaySource, joinSource, readmeMarker, readmeSource } from '../../src/domain/readmeMarker';
 
 /**
  * The marker is the generated README's IDENTITY, which is a different subject from what

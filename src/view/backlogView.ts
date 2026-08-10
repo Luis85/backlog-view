@@ -28,7 +28,9 @@ import { renderLegend } from './render/legend';
 import { syncToolbarFit } from './render/toolbarFit';
 import { captureScroll, centreOnToday, renderProjectionContent, restoreScroll, ScrollAnchor } from './render/projections';
 import { refreshRowChildren } from './render/rows';
-import { adoptableProperties, BacklogSettings, defaultSettings, notePropertyId, OptionalProperty, resolveSettings } from '../domain/settings';
+import { BacklogSettings, defaultSettings } from '../domain/settings';
+import { adoptableProperties, notePropertyId, OptionalProperty } from '../domain/optionalProperties';
+import { resolveSettings } from '../domain/settingsResolve';
 import { OpenTarget } from '../domain/itemHandling';
 import { WriteOutcome } from '../storage/frontmatter';
 

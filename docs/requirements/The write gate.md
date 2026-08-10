@@ -67,7 +67,7 @@ only `busy` was read from outside it. The view now owns a gate, delegates the th
 methods to it, and publishes its progress — `syncBusyUi`, because the gate reaches none
 of the view's elements ·
 `src/storage/frontmatter.ts` (`applyWrites` — the only module that writes) ·
-`src/domain/writePlan.ts` (planning) · `src/domain/settings.ts` (`configProblems`) ·
+`src/domain/writePlan.ts` (planning) · `src/domain/settingsConsistency.ts` (`configProblems`) ·
 `eslint.config.mjs` (`no-restricted-syntax` banning `processFrontMatter` and
 `vault.create` outside `storage/`).
 Tests: `test/storage/frontmatter.test.ts`, `test/view/contextRowWrites.test.ts`,

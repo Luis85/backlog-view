@@ -6,7 +6,8 @@ import { BarHold, placeItem, statedEnds, StatedEnds } from '../../domain/bars';
 import { PlacementEnd, placementEnds } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
 import { absentReading, CivilDate, FieldReading, readDate } from '../../domain/noteFields';
-import { BacklogSettings, optionalKeyFor } from '../../domain/settings';
+import { BacklogSettings } from '../../domain/settings';
+import { optionalKeyFor } from '../../domain/optionalProperties';
 import {
 	addDays,
 	barGeometry,

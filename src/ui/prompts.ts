@@ -74,62 +74,86 @@ export class FolderSuggest extends ValueSuggest<TFolder> {
 	}
 }
 
-/** Autocomplete over the tags already in use, so spellings do not drift. Exported for tests. */
-export class TagSuggest extends ValueSuggest<string> {
+/**
+ * Autocomplete over the values already in use, so spellings do not drift. Exported for
+ * tests.
+ *
+ * `sigil` is what the vocabulary WEARS and never what it stores — the tags are the one
+ * such vocabulary today, written without their `#` and read with it — so it is stripped
+ * off the query before matching and put back only when a row is drawn. A suggest with
+ * no sigil matches and renders the value as it is.
+ */
+export class KnownValueSuggest extends ValueSuggest<string> {
 	private readonly known: string[];
+	private readonly sigil: string;
 
-	constructor(app: App, textInputEl: HTMLInputElement, known: string[]) {
+	constructor(app: App, textInputEl: HTMLInputElement, known: string[], sigil = '') {
 		super(app, textInputEl);
 		this.known = known;
+		this.sigil = sigil;
 	}
 
 	protected getSuggestions(query: string): string[] {
-		const needle = query.trim().replace(/^#+/, '').toLowerCase();
-		return this.known.filter((tag) => tag.toLowerCase().includes(needle)).slice(0, 50);
+		let needle = query.trim();
+		while (this.sigil && needle.startsWith(this.sigil)) needle = needle.slice(this.sigil.length);
+		const lowered = needle.toLowerCase();
+		return this.known.filter((value) => value.toLowerCase().includes(lowered)).slice(0, 50);
 	}
 
-	renderSuggestion(tag: string, el: HTMLElement): void {
-		el.setText(`#${tag}`);
+	renderSuggestion(value: string, el: HTMLElement): void {
+		el.setText(this.sigil + value);
 	}
 
-	protected valueOf(tag: string): string {
-		return tag;
+	protected valueOf(value: string): string {
+		return value;
 	}
 }
 
-export interface TagPromptOptions {
-	/** Tags offered as suggestions — the ones this item does not already carry. */
+export interface ValuePromptOptions {
+	/** The modal's own heading, and the field label under it. */
+	title: string;
+	fieldName: string;
+	placeholder: string;
+	ctaLabel: string;
+	/** What the vocabulary wears rather than stores — `#` for tags, nothing otherwise. */
+	sigil?: string;
+	/** Values offered as suggestions — for tags, the ones this item does not already carry. */
 	known: string[];
-	onSubmit: (tag: string) => void;
+	onSubmit: (value: string) => void;
 }
 
-/** Prompt asking for a single tag to add to an item. */
-export class TagPromptModal extends Modal {
-	private readonly options: TagPromptOptions;
+/**
+ * Prompt asking for a single value from a vocabulary that is not fixed: the known ones
+ * are suggested, and anything typed is accepted. Two callers — a tag to add, and who an
+ * item is assigned to — because both ask the same question of a list this plugin does
+ * not own.
+ */
+export class ValuePromptModal extends Modal {
+	private readonly options: ValuePromptOptions;
 
-	constructor(app: App, options: TagPromptOptions) {
+	constructor(app: App, options: ValuePromptOptions) {
 		super(app);
 		this.options = options;
 	}
 
 	onOpen(): void {
-		this.titleEl.setText('Add tag');
-		let tag = '';
+		this.titleEl.setText(this.options.title);
+		let value = '';
 		const submit = () => {
-			if (tag.trim().length === 0) return;
+			if (value.trim().length === 0) return;
 			this.close();
-			this.options.onSubmit(tag);
+			this.options.onSubmit(value);
 		};
 
-		new Setting(this.contentEl).setName('Tag').addText((text) => {
-			text.setPlaceholder('Sprint-12');
-			text.onChange((v) => (tag = v));
-			new TagSuggest(this.app, text.inputEl, this.options.known);
+		new Setting(this.contentEl).setName(this.options.fieldName).addText((text) => {
+			text.setPlaceholder(this.options.placeholder);
+			text.onChange((v) => (value = v));
+			new KnownValueSuggest(this.app, text.inputEl, this.options.known, this.options.sigil);
 			submitOnEnter(text.inputEl, submit, true);
 		});
 
 		new Setting(this.contentEl).addButton((btn) => {
-			btn.setButtonText('Add').setCta().onClick(submit);
+			btn.setButtonText(this.options.ctaLabel).setCta().onClick(submit);
 		});
 	}
 

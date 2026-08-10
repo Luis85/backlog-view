@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
-import { FolderSuggest, TagPromptModal, TagSuggest, TitlePromptModal } from '../../src/ui/prompts';
+import { FolderSuggest, KnownValueSuggest, TitlePromptModal, ValuePromptModal } from '../../src/ui/prompts';
 import { installObsidianDom } from '../helpers/dom';
 import { FakeVault } from '../helpers/vault';
 import { TFolder } from '../helpers/obsidian-mock';
@@ -101,11 +101,21 @@ describe('FolderSuggest', () => {
 	});
 });
 
-describe('TagPromptModal', () => {
+describe('ValuePromptModal', () => {
 	function openTagPrompt(known: string[] = ['alpha', 'beta']) {
 		const vault = new FakeVault();
 		const added: string[] = [];
-		const modal = new TagPromptModal(vault.app as never, { known, onSubmit: (tag) => added.push(tag) });
+		// The tag prompt's own arguments: the one caller with a sigil, which is the half
+		// of this modal a plain value prompt does not exercise.
+		const modal = new ValuePromptModal(vault.app as never, {
+			title: 'Add tag',
+			fieldName: 'Tag',
+			placeholder: 'Sprint-12',
+			ctaLabel: 'Add',
+			sigil: '#',
+			known,
+			onSubmit: (tag) => added.push(tag),
+		});
 		modal.open();
 		const input = modal.contentEl.querySelector('input');
 		const addBtn = modal.contentEl.querySelector('button');
@@ -137,7 +147,7 @@ describe('TagPromptModal', () => {
 
 	it('suggests the known tags, matching with or without the hash', () => {
 		const { input } = openTagPrompt(['alpha', 'beta', 'alphabet']);
-		const suggest = new TagSuggest({} as never, input, ['alpha', 'beta', 'alphabet']);
+		const suggest = new KnownValueSuggest({} as never, input, ['alpha', 'beta', 'alphabet'], '#');
 		const matches = (suggest as unknown as { getSuggestions: (q: string) => string[] }).getSuggestions('#alph');
 		expect(matches).toEqual(['alpha', 'alphabet']);
 

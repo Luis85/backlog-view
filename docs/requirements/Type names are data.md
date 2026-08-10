@@ -99,7 +99,7 @@ requirement that pins a number goes stale the moment one is added
 **Nothing yet — this note is design.** `src/domain/itemTypes.ts` holds `displayType`, the
 existing seam between what an item *is*
 and what its badge says, plus `isExtraType` and `focusTarget` which must keep matching
-canonical names · `src/domain/settings.ts` defines the fixed vocabulary and
+canonical names · `src/domain/typeVocabulary.ts` defines the fixed vocabulary and
 `typeFolderKey` · `src/view/render/rows.ts` renders the badge ·
 `src/view/render/toolbar.ts` and `src/view/interactions/menu.ts` offer types ·
 `src/ui/prompts.ts` is the dropdown whose value and label are one argument today ·

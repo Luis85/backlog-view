@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { BacklogSettings, defaultSettings } from '../../src/domain/settings';
+import { settingsWith } from '../helpers/settings';
 import { buildModel, BacklogModel } from '../../src/domain/model';
 import {
 	activeAxis,
@@ -10,9 +12,7 @@ import {
 	targetLabel,
 } from '../../src/domain/roadmap';
 import { readPlacement } from '../../src/domain/noteFields';
-import { BacklogSettings, defaultSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
-import { settingsWith } from '../helpers/settings';
 
 /** A view with both axes configured, the way `resolveSettings` would hand it over. */
 function axisSettings(overrides: Partial<BacklogSettings> = {}): BacklogSettings {

@@ -1,14 +1,9 @@
 import { isDeliverableType } from './itemTypes';
 import { BacklogItem, BacklogModel } from './model';
 import { sameValue } from './noteFields';
-import {
-	BacklogSettings,
-	byName,
-	menuValues,
-	resolvedDeliverableStateKey,
-	STATE_COLOR_SLOTS,
-	stateMenuValues,
-} from './settings';
+import { BacklogSettings, menuValues, STATE_COLOR_SLOTS, stateMenuValues } from './settings';
+import { resolvedDeliverableStateKey } from './optionalProperties';
+import { byName } from './typeVocabulary';
 import { collectObservedStates } from './vocabulary';
 
 /**
@@ -332,6 +327,42 @@ export function paletteFor(palettes: StatePalette[], item: BacklogItem): StatePa
 export function paletteSlot(palette: StatePalette, state: string | null): number | null {
 	const index = palette.values.findIndex((value) => sameValue(value, state));
 	return index === -1 ? null : (palette.offset + index) % STATE_COLOR_SLOTS;
+}
+
+/**
+ * The class a state's bar and its legend swatch BOTH take: the colour the user named for
+ * that state (`stateColorKey`), else the positional slot above. One function rather than
+ * two readers of `settings.stateColors`, for the reason `paletteSlot` already gives — a
+ * legend that keys a colour no bar draws is the only failure this feature has ever had.
+ *
+ * A pick applies exactly where a slot would, and null where none does: a value outside
+ * the palette's own vocabulary draws the plain accent and gets no swatch, so colouring it
+ * would put a colour on the grid nothing keys. That is why the pick is asked AFTER the
+ * slot rather than instead of it, and the order is load-bearing: the pick is per VALUE
+ * while the slot is per PALETTE, so a Deliverable whose own state shares a name with a
+ * coloured requirements state would otherwise draw a colour its own vocabulary never
+ * keyed. Checked in `test/view/stateColors.test.ts`, which is the one case that fails
+ * when these two lines are swapped.
+ *
+ * Done is not asked here and must not be: a done bar takes green by specificity in
+ * `styles/timeline.css` and its swatch is keyed `pbl-legend-done` by the caller, so the
+ * two agree without this knowing which states are finished. A pick on a done state is
+ * therefore inert — stated in `docs/requirements/A colour per state.md`, not silently.
+ */
+export function stateColorClass(
+	settings: BacklogSettings,
+	palette: StatePalette,
+	state: string | null,
+): string | null {
+	const slot = paletteSlot(palette, state);
+	if (slot === null) return null;
+	// `byName`, never a bare index: the key is a state VALUE, so `constructor` and
+	// `toString` are configurations a user can have, and every one of them finds something
+	// truthy on `Object.prototype`. `nameTable` builds this map null-prototype so the
+	// resolver's own output is safe either way, but a hand-built fixture is a plain object
+	// and the class this line builds would then be a function's source text.
+	const pick = byName(settings.stateColors, state);
+	return pick ? `pbl-state-c-${pick}` : `pbl-state-${slot}`;
 }
 
 /**

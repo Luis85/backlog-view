@@ -110,8 +110,10 @@ placement, both times as a chip in a fixed column, opening the row menu's own bu
 
 ## Where it lives
 
-`renderRiskChip` in `src/view/render/columns.ts`, beside `renderStateChip` and
-`renderHorizonChip` whose shape it takes, gated on `hasRiskLevels` in
+`renderLabelChip` in `src/view/render/columns.ts`, beside `renderStateChip` and
+`renderHorizonChip` whose shape it takes — it was `renderRiskChip` until the assignee
+([[Setting the assignee on an item]]) wanted the identical renderer, and is now driven by a
+table of the two label chips — gated on `hasRiskLevels` in
 `src/domain/settings.ts` — the same predicate the row menu's **Set risk** is gated on, so
 a chip whose menu could set nothing is not a state either side can reach alone. It is an
 ordinary column of the configured width now — `resolveColumns` gives the risk property the
@@ -120,10 +122,10 @@ place in the properties menu; `src/view/backlogView.ts` resets that count when a
 projection takes over. The width is published to CSS by `renderTree` in
 `src/view/render/rows.ts`, so the stylesheet reads the number rather than repeating it.
 
-The menu is `showRiskMenu` in `src/view/interactions/menu.ts` — one of four one-line
-exports over `chipMenu` there, which is what four per-row controls opening their section's
-own builder now costs; the builder itself (`addRiskItems`) is untouched and shared with the
-row menu.
+The menu is `showRiskMenu` in `src/view/interactions/menu.ts` — one of the one-line
+exports over `chipMenu` there, which is what a per-row control opening its section's own
+builder costs; the builder itself (`addRiskItems`) is unchanged and shared with the row
+menu, having moved to `src/view/interactions/labels.ts` with the assignee's.
 
 Driven in `test/view/risk.test.ts`, whose chip block was watched failing without the
 change, and in `test/harness/harness.test.ts` against the demo fixture, which carries a

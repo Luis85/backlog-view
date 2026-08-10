@@ -9,15 +9,9 @@ import {
 	placementEnds,
 	PlacementEnd,
 } from '../../src/domain/itemTypes';
-import {
-	ALL_TYPES,
-	defaultSettings,
-	defaultTypeFolder,
-	EXTRA_TYPES,
-	LEVELS,
-	MARKER_TYPES,
-	resolveSettings,
-} from '../../src/domain/settings';
+import { defaultSettings } from '../../src/domain/settings';
+import { resolveSettings } from '../../src/domain/settingsResolve';
+import { ALL_TYPES, defaultTypeFolder, EXTRA_TYPES, LEVELS, MARKER_TYPES } from '../../src/domain/typeVocabulary';
 import { FakeVault } from '../helpers/vault';
 
 const settings = defaultSettings();

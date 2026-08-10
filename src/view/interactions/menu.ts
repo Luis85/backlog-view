@@ -1,18 +1,19 @@
 import { Menu, MenuItem } from 'obsidian';
+import { hasRiskLevels, stateMenuValues } from '../../domain/settings';
+import { ALL_TYPES } from '../../domain/typeVocabulary';
 import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
 import { inferFolderParent } from '../../domain/folderNotes';
 import { isDeliverableType } from '../../domain/itemTypes';
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { sameValue, todayStamp } from '../../domain/noteFields';
 import { hasHorizonAxis } from '../../domain/roadmap';
-import { computeDeliverableStateWrites, computeRiskWrites, computeStateWrites, computeTypeChanges, ItemWrite } from '../../domain/writePlan';
-import { hasRiskLevels, stateMenuValues } from '../../domain/settings';
+import { computeDeliverableStateWrites, computeStateWrites, computeTypeChanges, ItemWrite } from '../../domain/writePlan';
+import { addAssigneeItems, addRiskItems } from './labels';
 import { BoardModel, cardPaths, deliverablesWorkflow, ownWorkflowReading, stateKeyFor } from '../../domain/board';
 import { ShelfCard } from '../../domain/bars';
 import { organizeShelf, ShelfSort } from '../../domain/shelf';
 import { canReorder, indent, moveToEdge, moveWithinSiblings, outdent, outdentTarget, visibleNeighbor } from './structure';
 import { promptCreateItem } from './create';
-import { ALL_TYPES } from '../../domain/settings';
 import { addHorizonItems, canSchedule, carriesDates, promptSchedule, unschedule } from './plan';
 import { addTagItems, tagsColumnVisible } from './tags';
 import { addDependencyItems, dependenciesAvailable } from './dependencies';
@@ -165,6 +166,11 @@ function addEditableSections(host: BacklogViewHost, model: BacklogModel, menu: M
 	// levels with no property have nowhere to go, so the entry is absent rather
 	// than inert — the state chip's rule, and the horizon's above.
 	if (hasRiskLevels(host.settings)) addSetRiskMenu(host, menu, item);
+	// The KEY alone, unlike risk above: **New assignee...** is always in that submenu, so
+	// a named property with nobody observed still opens onto something to pick. There is
+	// no second half to be missing, which is why there is no `hasAssignees` beside
+	// `hasRiskLevels` — a predicate that could only ever answer the same thing as this.
+	if (host.settings.assigneeKey) addSetAssigneeMenu(host, menu, item);
 	// Per axis, and absent rather than inert when one is not configured — the state
 	// chip's own rule.
 	if (hasHorizonAxis(host.settings)) addSetHorizonMenu(host, menu, item);
@@ -313,6 +319,10 @@ export const showHorizonMenu = (host: BacklogViewHost, evt: MouseEvent, item: Ba
 /** Risk menu for the row's risk chip — the same list the row menu's Set risk offers. */
 export const showRiskMenu = (host: BacklogViewHost, evt: MouseEvent, item: BacklogItem): void =>
 	chipMenu(host, evt, item, addRiskItems);
+
+/** Assignee menu for the row's assignee chip — the same list Set assignee offers. */
+export const showAssigneeMenu = (host: BacklogViewHost, evt: MouseEvent, item: BacklogItem): void =>
+	chipMenu(host, evt, item, addAssigneeItems);
 
 /** Tag picker for the row's add-tag button. */
 export const showTagMenu = (host: BacklogViewHost, evt: MouseEvent, item: BacklogItem): void =>
@@ -490,55 +500,6 @@ function addStateItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): vo
 }
 
 /**
- * What Set risk offers: the DECLARED levels, plus the item's own value when that list
- * does not name it, so the current one can always render checked.
- *
- * Declared alone, deliberately — not the horizon's declared ∪ observed union. That union
- * exists because an undeclared horizon is a bucket a drag can already drop into, so a
- * menu offering less than the roadmap could reach would be the one input that goes quiet.
- * Risk feeds no projection, so it has no second surface to fall short of, and an
- * unexpected value on one note is not a vocabulary this base recommends to the rest.
- */
-function riskChoices(host: BacklogViewHost, item: BacklogItem): string[] {
-	const values = host.settings.riskValues;
-	const current = item.riskValue;
-	// The empty key the ✨ backfill leaves behind adds no nameless entry here, and that
-	// is `readString`'s doing rather than this line's: it answers null for a blank, so
-	// `riskValue` is a level or nothing and never the empty string. Guarding for `''`
-	// beside this would be a second, unreachable statement of a rule the reader already
-	// keeps — the shape `stateChoices` has, for the same reason.
-	if (current === null || values.some((v) => sameValue(v, current))) return values;
-	return [...values, current];
-}
-
-/**
- * Render Set risk's offers, checking the one the item already holds, and the way back
- * out of them.
- *
- * Checked is asked of the PLAN, for the reason `addStateItems` above gives. The Clear
- * entry appears only while the note carries the key (`ownKeys`, presence not value), so
- * no entry here can write nothing, and it removes the key rather than blanking it:
- * unjudged is a state a note returns to, and a blank value would read as a level with no
- * name.
- */
-function addRiskItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
-	for (const value of riskChoices(host, item)) {
-		menu.addItem((si) => {
-			si.setTitle(value).onClick(() => void host.applySafely(computeRiskWrites(item, value)));
-			if (computeRiskWrites(item, value).length === 0) si.setChecked(true);
-		});
-	}
-	if (!item.ownKeys.risk) return;
-	menu.addSeparator();
-	menu.addItem((si) =>
-		si
-			.setTitle('Clear risk')
-			.setIcon('eraser')
-			.onClick(() => void host.applySafely(computeRiskWrites(item, null))),
-	);
-}
-
-/**
  * `setSubmenu` is missing from the published obsidian typings, not from the app:
  * submenus predate the 1.12.0 this plugin requires, so the cast asserts what is
  * always there rather than guarding against its absence.
@@ -648,6 +609,13 @@ function addSetRiskMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): v
 	menu.addItem((mi) => {
 		mi.setTitle('Set risk').setIcon('shield-alert');
 		addRiskItems(host, submenuOf(mi), item);
+	});
+}
+
+function addSetAssigneeMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
+	menu.addItem((mi) => {
+		mi.setTitle('Set assignee').setIcon('user');
+		addAssigneeItems(host, submenuOf(mi), item);
 	});
 }
 

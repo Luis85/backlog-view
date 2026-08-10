@@ -117,7 +117,7 @@ under a real parent — and that is where this PBI's one real behavioural additi
 
 ## Where it lives
 
-`src/domain/settings.ts` — `Deliverable` joins `EXTRA_TYPES`, and
+`src/domain/typeVocabulary.ts` — `Deliverable` joins `EXTRA_TYPES`, and
 `DEFAULT_TYPE_SUBFOLDERS` gains `deliverable: 'deliverables'`; `ALL_TYPES`, the
 per-type folder options in `viewOptions.ts`, and the toolbar's top-level "pick another
 type" menu (`view/render/toolbar.ts`, `ALL_TYPES`-driven) are all already generic over
