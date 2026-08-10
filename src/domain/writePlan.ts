@@ -1,20 +1,18 @@
 import { TFile } from 'obsidian';
 import { DropTarget } from './dropTargets';
 import { BacklogItem, BacklogModel } from './model';
-import {
-	childLevelIndex,
-	EXTRA_TYPE_RANK,
-	inCatalog,
-	isDeliverableType,
-	isExtraType,
-	isMarkerType,
-	nextLevelIndex,
-	PlacementEnd,
-} from './itemTypes';
+import { childLevelIndex, EXTRA_TYPE_RANK, isExtraType, isMarkerType, nextLevelIndex, PlacementEnd } from './itemTypes';
 import { readDate, sameValue } from './noteFields';
 import { hasHorizonAxis } from './roadmap';
+import { stateKeyFor } from './board';
 import { BacklogSettings, isDoneValue, isStartedValue } from './settings';
-import { OPTIONAL_FIELDS, OptionalField, optionalKeyFor } from './optionalProperties';
+import {
+	OPTIONAL_FIELDS,
+	OptionalField,
+	optionalKeyFor,
+	resolvedDeliverableStateKey,
+	resolvedTestStateKey,
+} from './optionalProperties';
 
 /**
  * What a change to the tree *would* write, worked out without touching anything.
@@ -553,9 +551,37 @@ function renumberWrites(
  * tree. Writing a state or a placement instead would invent a plan, which on a
  * roadmap is indistinguishable from a decision.
  */
+
+/**
+ * The three workflow-state fields' own resolved key, by field — `state`'s is always
+ * `settings.stateKey` (it has no fallback to BE one), and the other two are the same
+ * fallback `stateKeyFor` itself reads. One table rather than three separate
+ * `isDeliverableType`/`inCatalog` gates: those answered "whose workflow is this field
+ * for" by re-deriving the item's category, which is the question `stateKeyFor` already
+ * answers. Comparing each field's own resolved key against `stateKeyFor(settings, item)`
+ * says the same thing through the one function that decides it — a field belongs on this
+ * item exactly when its key IS the key this item's workflow actually uses.
+ */
+const WORKFLOW_STATE_KEY: Partial<Record<OptionalField, (settings: BacklogSettings) => string>> = {
+	state: (settings) => settings.stateKey,
+	deliverableState: resolvedDeliverableStateKey,
+	testState: resolvedTestStateKey,
+};
+
 function missingKeyStubs(item: BacklogItem, settings: BacklogSettings): OptionalField[] {
 	const stubs: OptionalField[] = [];
 	for (const field of OPTIONAL_FIELDS) {
+		// The requirements key and the two secondary workflow keys all belong on an item
+		// only when THIS item's own workflow is the one that reads them — not every item
+		// once a secondary workflow is on a key of its own, or a catalog row and a
+		// Deliverable would each get an empty `stateKey` stub the row never consults.
+		// `stateKeyFor` is the one place that decides which key an item's workflow uses;
+		// asking it here is the same question the chip and the menu ask rather than a
+		// fourth opinion, and shared keys are the common case that falls out correctly
+		// without a special case: when a secondary key falls back, both sides read
+		// `settings.stateKey` and the gate does nothing.
+		const ownKey = WORKFLOW_STATE_KEY[field];
+		if (ownKey && ownKey(settings) !== stateKeyFor(settings, item)) continue;
 		// A named horizon property with no values is an UNCONFIGURED bucket axis — the
 		// axis the roadmap declines to draw and the menu declines to set. Creating its
 		// key here would be the one write left on an axis nothing else acknowledges,
@@ -570,18 +596,6 @@ function missingKeyStubs(item: BacklogItem, settings: BacklogSettings): Optional
 		// to leave behind, so backfilling one would have ✨ create what a remove must
 		// clean up.
 		if (field === 'dependsOn') continue;
-		// The Deliverable workflow's own state describes a Deliverable, never a PBI, a
-		// Task or any other type sharing the same backfill pass — the property-table row
-		// this key gets in the generated README (Task 20) says "on a Deliverable", and
-		// this is what keeps that literally true rather than aspirational.
-		if (field === 'deliverableState' && !isDeliverableType(item.typeName)) continue;
-		// The same rule as the Deliverable's above and the same reason, asked of the LADDER
-		// rather than a type name: a test's state describes a test, and a `Task` under a
-		// `Test case` is one while a `Task` under a PBI is not. Without this, binding the
-		// property and pressing Assign missing properties stubs an empty test-state key onto
-		// every plan item in the base — which is what exposing the picker makes reachable,
-		// so the gate ships with the picker rather than after it.
-		if (field === 'testState' && !inCatalog(item)) continue;
 		if (optionalKeyFor(settings, field) === '' || item.ownKeys[field]) continue;
 		stubs.push(field);
 	}

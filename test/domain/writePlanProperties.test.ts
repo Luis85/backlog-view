@@ -126,6 +126,30 @@ describe('computeInitWrites — the test workflow state stub', () => {
 		expect(stubsFor('Test task.md')).toContain('testState');
 		expect(stubsFor('Epic.md')).not.toContain('testState');
 	});
+
+	it('stubs the requirements state only on items whose workflow reads it', () => {
+		// Both secondary workflows on keys of their own, so neither a test nor a Deliverable
+		// reads `status` — and a stub for it would be an empty property the row never uses.
+		// The Deliverable half is not new: `state` has never had a membership gate.
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Case.md', { frontmatter: { type: 'Test case', order: 20 } });
+		vault.addFile('Runbook.md', { frontmatter: { type: 'Deliverable', order: 30 } });
+		const settings = settingsWith({
+			stateKey: 'status',
+			testStateKey: 'testStatus',
+			deliverableStateKey: 'docStatus',
+		});
+		const model = buildModel(vault.app, vault.entries(), settings);
+		const stubsFor = (path: string) =>
+			computeInitWrites(model, settings).find((w) => w.file.path === path)?.stubs ?? [];
+		expect(stubsFor('Epic.md')).toContain('state');
+		expect(stubsFor('Case.md')).not.toContain('state');
+		expect(stubsFor('Runbook.md')).not.toContain('state');
+		// And each still gets its OWN workflow's key, so this narrows nothing it should not.
+		expect(stubsFor('Case.md')).toContain('testState');
+		expect(stubsFor('Runbook.md')).toContain('deliverableState');
+	});
 });
 
 describe('computeRiskWrites', () => {
