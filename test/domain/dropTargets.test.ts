@@ -157,6 +157,28 @@ describe('rootDropTarget', () => {
 		expect(rootDropTarget(model, model.roots[0], true, model.roots)).toBeNull();
 		expect(rootDropTarget(model, model.roots[0], false, model.roots)).not.toBeNull();
 	});
+
+	it('refuses a root drop that would move the row to the other projection', () => {
+		// A `Task` under a `Test case` is a catalog member because its parent is; at the top
+		// level `ladderFor` answers the plan's ladder, so clearing the parent would take the
+		// row off the screen it was dragged on. Extension 1c withholds the same act from the
+		// top-level CREATOR for this reason; the drop is the same act by another entry point.
+		const vault = new FakeVault();
+		vault.addFile('Suite.md', { frontmatter: { type: 'Test suite', order: 10 } });
+		vault.addFile('Case.md', { frontmatter: { type: 'Test case', order: 10 }, parentLink: 'Suite' });
+		vault.addFile('Test task.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'Case' });
+		const model = buildModel(vault.app, vault.entries(), settings);
+		const get = (path: string) => {
+			const item = model.byPath.get(path);
+			if (!item) throw new Error(`no item ${path}`);
+			return item;
+		};
+		const catalog = model.catalog.roots;
+		expect(rootDropTarget(model, get('Test task.md'), false, catalog)).toBeNull();
+		// And the row whose ladder does NOT depend on its parent is still offered it, so this
+		// narrows exactly the case that changes projection and nothing else.
+		expect(rootDropTarget(model, get('Case.md'), false, catalog)).not.toBeNull();
+	});
 });
 
 describe('dropTargetFor with parents outside the filter', () => {

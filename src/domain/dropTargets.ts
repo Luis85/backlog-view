@@ -1,3 +1,4 @@
+import { ladderFor } from './itemTypes';
 import { BacklogItem, BacklogModel } from './model';
 
 /** Which third of a row the pointer is over, and so what a release there means. */
@@ -153,5 +154,16 @@ export function rootDropTarget(
 	// The last root with a stale parent link still needs the drop target: the
 	// "move" is a no-op positionally but clears the unresolved parent property.
 	if (alreadyLastRoot && !clearsStaleLink(null, dragged)) return null;
+	// **A root drop may not change which projection draws the row.** `ladderFor` chains
+	// from the PARENT for a `Task` and for a typeless note, so clearing the parent
+	// re-answers it: a catalog `Task` becomes a plan `Task` and vanishes from the screen
+	// it was dragged on. Extension 1c of `Test suite and test case as a ladder of their
+	// own` already withholds this act from the top-level CREATOR for the same reason; a
+	// drop is the same act by another entry point, and the rule belongs to both.
+	//
+	// Asked of the LADDER rather than of the type name: every other type answers from its
+	// own name and is unaffected, so this narrows exactly the rows whose membership the
+	// clearing would change.
+	if (ladderFor(dragged.typeName, null) !== dragged.ladder) return null;
 	return { parent: null, siblings, insertIndex: siblings.length };
 }
