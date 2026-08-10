@@ -1622,3 +1622,117 @@ npm run check
 git add src/view/projection.ts src/view/render/columns.ts test/view/
 git commit -m "Withhold the rollup column where there are no rollups"
 ```
+
+
+---
+
+### Task 14: The backfill stubs the state key an item's workflow actually uses
+
+**Files:**
+- Modify: `src/domain/writePlan.ts` (`missingKeyStubs`)
+- Test: `test/domain/writePlanProperties.test.ts`
+
+**Interfaces:**
+- Consumes: `stateKeyFor` from `src/domain/board.ts`.
+- Produces: nothing later tasks read.
+
+**Why:** found on the branch by an automated PR reviewer as the mirror of Task 6's gate, and
+it is **wider than reported**. `missingKeyStubs` gates `deliverableState` on the type and
+`testState` on the ladder, but `state` — the requirements key — is gated on nothing. So
+**Assign missing properties** stubs `settings.stateKey` onto every item, including ones whose
+workflow never reads it:
+
+- a `Test suite`, `Test case` or catalog `Task`, when `testStateProperty` names a distinct key;
+- **a `Deliverable`, when `deliverableStateProperty` names a distinct key** — which is not new
+  and predates this feature entirely. The reviewer saw only the catalog half; the Deliverable
+  half has been there since that workflow shipped.
+
+Both are the same defect: the stub is chosen by the FIELD's name rather than by whether this
+item's workflow uses that key. `stateKeyFor(settings, item)` is the function that already
+answers it.
+
+**Do not delete the two existing gates.** They answer the opposite question — whether a
+SECONDARY key belongs on this item — and this one answers whether the PRIMARY key does. Three
+gates, three rules, each stated where it holds.
+
+- [ ] **Step 1: Write the failing test**
+
+Add to `test/domain/writePlanProperties.test.ts`, beside the two existing stub-gate tests
+(read them first and match their shape):
+
+```ts
+it('stubs the requirements state only on items whose workflow reads it', () => {
+	// Both secondary workflows on keys of their own, so neither a test nor a Deliverable
+	// reads `status` — and a stub for it would be an empty property the row never uses.
+	// The Deliverable half is not new: `state` has never had a membership gate.
+	const vault = new FakeVault();
+	vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+	vault.addFile('Case.md', { frontmatter: { type: 'Test case', order: 20 } });
+	vault.addFile('Runbook.md', { frontmatter: { type: 'Deliverable', order: 30 } });
+	const settings = settingsWith({
+		stateKey: 'status',
+		testStateKey: 'testStatus',
+		deliverableStateKey: 'docStatus',
+	});
+	const model = buildModel(vault.app, vault.entries(), settings);
+	const stubsFor = (path: string) =>
+		computeInitWrites(model, settings).find((w) => w.file.path === path)?.stubs ?? [];
+	expect(stubsFor('Epic.md')).toContain('state');
+	expect(stubsFor('Case.md')).not.toContain('state');
+	expect(stubsFor('Runbook.md')).not.toContain('state');
+	// And each still gets its OWN workflow's key, so this narrows nothing it should not.
+	expect(stubsFor('Case.md')).toContain('testState');
+	expect(stubsFor('Runbook.md')).toContain('deliverableState');
+});
+```
+
+Read `settingsWith` first — if it does not accept `deliverableStateKey`/`testStateKey`
+directly, build the settings through `resolveSettings` the way the neighbouring tests do.
+
+- [ ] **Step 2: Run the test and watch it fail**
+
+Run: `npx vitest run test/domain/writePlanProperties.test.ts -t "workflow reads it"`
+Expected: FAIL on the `Case.md` assertion, and again on `Runbook.md` — two failures, which is
+the point: one of them predates this feature.
+
+- [ ] **Step 3: Gate the primary stub on the item's own workflow**
+
+In `missingKeyStubs`, before the two existing gates:
+
+```ts
+		// The requirements key belongs on an item whose workflow actually READS it, which is
+		// not every item once a secondary workflow is on a key of its own: a catalog row
+		// reads `testStateKey` and a Deliverable reads `deliverableStateKey`, so stubbing
+		// `stateKey` there creates an empty property the row never consults. `stateKeyFor` is
+		// the one place that decides which key an item's workflow uses, so asking it here is
+		// the same question the chip and the menu ask rather than a fourth opinion.
+		//
+		// Shared keys are the common case and fall out correctly without a special case:
+		// when a secondary key falls back, `stateKeyFor` returns `settings.stateKey` and this
+		// gate does nothing.
+		if (field === 'state' && stateKeyFor(settings, item) !== settings.stateKey) continue;
+```
+
+Import `stateKeyFor` from `./board`. Check the layering first — `writePlan.ts` and `board.ts`
+are both in `domain/`, so this is legal, but confirm it introduces no import cycle by running
+`npm run analyze`.
+
+- [ ] **Step 4: Run the tests and verify they pass**
+
+Run: `npx vitest run test/domain/`
+Expected: PASS. Every existing backfill test must be unchanged — if one flips, the gate is
+too wide.
+
+- [ ] **Step 5: Watch it fail without the fix**
+
+Revert Step 3, re-run the one test, confirm both assertions go red, restore.
+
+- [ ] **Step 6: Run the whole check and commit**
+
+`npm run check` in the FOREGROUND.
+
+```bash
+npm run check
+git add src/domain/writePlan.ts test/domain/writePlanProperties.test.ts
+git commit -m "Stub the state key an item's own workflow reads"
+```
