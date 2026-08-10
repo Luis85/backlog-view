@@ -64,6 +64,26 @@ The gate covers *options*. It is structurally blind to an *action* — the ✨ b
 unmentioned in the manual for two fix rounds while the coverage test stayed green — and
 blind to whether an explained option is explained *correctly*.
 
+## The same gap, found again the next day, outside the manual
+
+Splitting `toolbar.ts` moved `renderFilterBox`, `syncFilterUi`, `revealFilter`,
+`renderIgnoredNote` and `countedPopulation` into three new modules. `npm run docs` passed.
+Three current notes went on naming `src/view/render/toolbar.ts` as the home of symbols
+that had left it — [[Quick filter]], [[What counts as a work item]], and an OPEN task
+still asking for a decision the split had already made.
+
+Rule 4 checks that a path a note names **exists**. It cannot check that the symbol named
+beside it is still in that file, so a pure move passes the gate while silently falsifying
+every note that located the code. That is the same defect as the manual's stale sentence,
+one layer out: the register makes claims about the code, and only some of them are
+checked.
+
+Worth stating because it changes the scope of this note. The question is not "how do we
+keep the manual true" but **"which of the register's claims about code have checks, and
+which are prose that rots"** — rule 7's specified-somewhere, rule 4's path-exists, and
+`surfaces.test.ts`'s key coverage are the three that hold. A symbol's location is not one
+of them.
+
 ## What would help, and what would not
 
 - **A toolbar-action gate was considered and rejected**, for the reason recorded during

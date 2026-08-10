@@ -58,9 +58,9 @@ what it belongs to — which a flat list of matches cannot say.
 `src/view/filterState.ts` (the needle, the match-path walk, and the two sets it
 keeps — see [[The quick filter on the board]] for why one set cannot answer both
 questions) ·
-`src/view/render/toolbar.ts` (the input, `syncFilterUi`, and `revealFilter` — the ONE way
-the input is opened, because the reveal button, the clear path and `focusFilter()` all
-have to reach it) ·
+`src/view/render/toolbarFilter.ts` (the input, `syncFilterUi`, and `revealFilter` — the
+ONE way the input is opened, because the reveal button, the clear path and
+`focusFilter()` all have to reach it) ·
 `src/view/render/toolbarFit.ts` (`revealFilter` — specified here because the filter is
 the one control the ladder can hide out from under a keyboard user: `focus()` on a
 `display: none` element does nothing and reports nothing, which is why `revealFilter`
