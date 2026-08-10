@@ -73,12 +73,22 @@ gets today.
 | --- | --- | --- |
 | mount | the initial `onDataUpdated()` | one sample; it happens once |
 | update | `view.onDataUpdated()` | build **and** render — the cost paid after every write batch |
-| render | `view.render()` | render alone, so build is `update − render` |
+| render | `view.render()` | render alone |
 | projection | `view.setProjection(p)`, per projection | a full re-render of each of the four |
 
-The build/render split is a subtraction of two calls that are **already public** rather
-than a hook threaded into the view for the benchmark's benefit. [[The model build states
-its cost as a check]] refused exactly that: *do not build a seam to count a traversal.*
+> **Correction, 2026-08-10 — this section originally said the build is `update − render`.**
+> It is not, and following that instruction reproduces a wrong answer rather than a
+> measurement. The two medians are sampled at different points in one run and each swings
+> by 100 ms or more, so their difference ranged from ~30 ms to ~700 ms across runs for a
+> quantity direct instrumentation puts at ~10 ms. It produced a filed finding blaming the
+> model build for the render's cost, retracted the same day.
+>
+> The reasoning that led here was sound about seams and wrong about resolution: avoiding a
+> hook the view does not need was right, and concluding that two public calls could
+> therefore substitute for one was not. **To time a phase, instrument the phase** — a
+> temporary patch, read once and thrown away, which is what actually answered it. The pair
+> above still bounds a data update against its own render; it does not decompose one.
+> See [[The render is the whole cost of a data update]].
 
 Each row is sampled five times; the panel reports the median and the worst, because a
 single browser sample at 800 rows swings enough on a stray GC pause that a lone number

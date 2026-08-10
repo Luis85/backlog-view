@@ -55,8 +55,22 @@ function sample(el: HTMLElement, op: string, run: () => void, prepare?: () => vo
 }
 
 /**
- * The four rows, given the mount's own time — which the caller has to measure, since it
- * happens once and before this module has anything to be handed.
+ * What the mount cost, measured by the CALLER, because both numbers have to be taken at
+ * the mount and nothing here is reachable yet when it happens.
+ *
+ * The height is here rather than read on arrival for the reason the time always was:
+ * `page.ts` applies `?view=` before calling in, so a height read at the top of `measure`
+ * is the requested projection's, attached to a row labelled for the collapsed tree mount.
+ * Reading it "before anything is switched or expanded" was a fix for the expansion and
+ * missed the projection — the same overstatement one step along. (Codex, PR #128.)
+ */
+export interface Mount {
+	ms: number;
+	px: number;
+}
+
+/**
+ * The four rows, given what the mount cost.
  *
  * `render` is timed beside `update` because `onDataUpdated` builds and renders while
  * `render` only renders, so the pair BOUNDS what the non-render half of a data update can
@@ -71,14 +85,10 @@ function sample(el: HTMLElement, op: string, run: () => void, prepare?: () => vo
  * [[The render is the whole cost of a data update]]. Time the phase itself if you want
  * the phase.
  */
-function measure(view: ProductBacklogView, el: HTMLElement, mountMs: number): { rows: Row[]; treeRows: number } {
+function measure(view: ProductBacklogView, el: HTMLElement, mount: Mount): { rows: Row[]; treeRows: number } {
 	// Restored at the end rather than reset to the tree: the run drives all four, and a
 	// `?perf&view=board` page has to be left showing the board it was asked for.
 	const opened = view.projection;
-	// Read before anything is switched or expanded, because the row it goes on is the one
-	// labelled "collapsed, as it opens" — taken after the expansion below, the `px` field
-	// reported the expanded height and contradicted its own row. (Codex, PR #128.)
-	const mountPx = el.scrollHeight;
 	// Switched to the tree BEFORE expanding, because `?perf` composes with `?view=board`
 	// and the expand control is disabled on a projection that drew no disclosure. Expanding
 	// there did nothing, counted zero rows, and left every later sample rendering a
@@ -89,10 +99,9 @@ function measure(view: ProductBacklogView, el: HTMLElement, mountMs: number): { 
 	// and the tree's row count would read as zero — the panel's own sample size, wrong.
 	const treeRows = el.querySelectorAll('.pbl-row').length;
 	const rows: Row[] = [
-		// Both numbers predate the expansion above, because that is how the view actually
-		// opens: collapsed, drawing the roots and whatever the saved state had open.
+		// Both numbers come from the caller, taken at the mount itself — see `Mount`.
 		// Labelled so it cannot be read as a row of the same sample as the four below it.
-		{ op: 'mount (collapsed, as it opens)', median: mountMs, worst: mountMs, px: mountPx },
+		{ op: 'mount (collapsed, as it opens)', median: mount.ms, worst: mount.ms, px: mount.px },
 		sample(el, 'update (build + render)', () => view.onDataUpdated()),
 		sample(el, 'render only', () => view.render()),
 	];
@@ -143,8 +152,8 @@ export function wantedNotes(search: string): number {
  * read them, and `console.table`, so they can be pasted into a note. `.pbl-harness-*` is
  * the namespace the harness owns for its own furniture — see `test/harness/theme.css`.
  */
-export function reportPerf(view: ProductBacklogView, containerEl: HTMLElement, mountMs: number): Row[] {
-	const { rows, treeRows } = measure(view, containerEl, mountMs);
+export function reportPerf(view: ProductBacklogView, containerEl: HTMLElement, mount: Mount): Row[] {
+	const { rows, treeRows } = measure(view, containerEl, mount);
 	console.table(rows.map((r) => ({ ...r, median: +r.median.toFixed(1), worst: +r.worst.toFixed(1) })));
 
 	const panel = document.body.createDiv('pbl-harness-perf');
