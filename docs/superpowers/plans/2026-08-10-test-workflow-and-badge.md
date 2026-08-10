@@ -1931,3 +1931,80 @@ npm run check
 git add src/domain/dropTargets.ts test/domain/dropTargets.test.ts
 git commit -m "Refuse a root drop that would change which projection draws the row"
 ```
+
+
+---
+
+### Task 17: The projection-predicate lint rule does not exist
+
+**Files:**
+- Modify: `CLAUDE.md`, `src/view/CLAUDE.md`
+- Create: `docs/issues/The projection predicate has no lint rule behind it.md`
+
+**Interfaces:** none.
+
+**Why.** Both guides assert that a `no-restricted-syntax` rule forbids a bare
+`projection === 'tree'` outside `src/view/projection.ts`. **There is no such rule.**
+Verified twice: nothing in `eslint.config.mjs` matches, and a probe file containing exactly
+that comparison under `src/view/` lints clean.
+
+The claim is load-bearing, which is why it cannot just be deleted. `src/view/CLAUDE.md`
+uses it to argue that the predicate module holds "for a gate nobody has written yet rather
+than merely existing beside the ones that do" — that is the whole reason a reader trusts
+`treeShaped`/`hidesCompleted` instead of comparing names. Remove the sentence and the
+argument goes with it; leave it and the guide is lying about its own safety net.
+
+And the drift it claims to prevent has already happened. Bare `host.projection === '...'`
+comparisons live in at least: `render/emptyStates.ts`, `render/projections.ts`,
+`render/toolbarStatus.ts`, `render/toolbarControls.ts`, `render/toolbar.ts`,
+`render/legend.ts`, `interactions/keyboard.ts`, `interactions/plan.ts`,
+`interactions/menu.ts`, `backlogView.ts`. Confirm the list yourself before writing it down.
+
+**This task does NOT add the lint rule.** Adding it would fail a dozen-plus existing call
+sites, several of which are legitimate dispatch (`renderContent`'s switch is a switch on the
+projection by design). Deciding which are legitimate and which are the drift is real work
+with a real product question in it, and it is not this plan's. This task makes the guides
+honest and records the gap where the next person will find it.
+
+- [ ] **Step 1: Establish the facts yourself**
+
+Run all three, and put the outputs in your report:
+- `grep -rn "no-restricted-syntax" -A 40 eslint.config.mjs | grep -in "projection"` — expect nothing.
+- Write a throwaway file under `src/view/` containing a function that returns
+  `projection === 'tree'`, run `npx eslint` on it, confirm it passes, then delete it.
+- `grep -rn "projection === '" src/ | grep -v "src/view/projection.ts"` — the real list.
+
+If any of that contradicts what this task says, stop and report it rather than proceeding.
+
+- [ ] **Step 2: Correct both guides**
+
+In `src/view/CLAUDE.md`'s projection paragraph and in `CLAUDE.md` wherever the same claim
+appears, replace the lint-rule sentence with what is actually true. The honest version keeps
+the module's purpose and drops the false guarantee — something to the effect that the
+predicates exist so that "tree-shaped" is asked in one place rather than compared in six,
+that nothing enforces it mechanically, and that the comparisons already spread across the
+files you listed are the evidence for why it matters.
+
+Write it in the guides' own voice, and follow the root guide's own rule: *write the
+guarantee to the check, never ahead of it.* If narrowing the sentence makes it uglier, the
+ugliness is the information.
+
+- [ ] **Step 3: Record the gap as an issue note**
+
+Create `docs/issues/The projection predicate has no lint rule behind it.md`. Read
+`docs/README.md` for the frontmatter an issue note needs and two existing issue notes for
+the shape. It should state: the claim the guides made, that no rule exists, how you verified
+it, the call sites that already compare directly, and the open question — which of those are
+legitimate dispatch and which are the drift the predicate module was built to stop. Name the
+question; do not answer it.
+
+- [ ] **Step 4: Run the whole check and commit**
+
+`npm run check` in the FOREGROUND. The register gate validates the new note's frontmatter,
+its wikilinks and every source path it names.
+
+```bash
+npm run check
+git add CLAUDE.md src/view/CLAUDE.md docs/issues/
+git commit -m "Say what actually holds about the projection predicate"
+```
