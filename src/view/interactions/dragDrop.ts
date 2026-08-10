@@ -1,4 +1,5 @@
-import { dropTargetFor, rootDropTarget, zoneForRatio } from '../../domain/dropTargets';
+import { DropTarget, dropTargetFor, rootDropTarget, zoneForRatio } from '../../domain/dropTargets';
+import { effectivelyFocused } from '../projection';
 import { DropZone } from '../../domain/dropTargets';
 import { BacklogViewHost } from '../host';
 import { BacklogItem, BacklogModel } from '../../domain/model';
@@ -84,11 +85,16 @@ export class DragDropController {
 		row.addEventListener('dragend', () => this.clearDragState());
 	}
 
+	/** Where a top-level drop lands, asked with THIS projection's effective focus. */
+	private rootTarget(drag: { model: BacklogModel; dragged: BacklogItem }): DropTarget | null {
+		return rootDropTarget(drag.model, drag.dragged, effectivelyFocused(this.host.projection, drag.model));
+	}
+
 	/** Wire the persistent "Move to top level" strip and the tree background. */
 	setupRootDropZone(): void {
 		const handleOver = (evt: DragEvent, hover: (on: boolean) => void) => {
 			const drag = this.dragContext();
-			const target = drag ? rootDropTarget(drag.model, drag.dragged) : null;
+			const target = drag ? this.rootTarget(drag) : null;
 			if (!drag || !target) return null;
 			evt.preventDefault();
 			if (evt.dataTransfer) evt.dataTransfer.dropEffect = 'move';
@@ -110,7 +116,7 @@ export class DragDropController {
 		this.els.treeEl.addEventListener('dragover', (evt) => {
 			if (evt.target !== this.els.treeEl) return;
 			const drag = this.dragContext();
-			if (!drag || !rootDropTarget(drag.model, drag.dragged)) return;
+			if (!drag || !this.rootTarget(drag)) return;
 			evt.preventDefault();
 			if (evt.dataTransfer) evt.dataTransfer.dropEffect = 'move';
 		});
@@ -118,7 +124,7 @@ export class DragDropController {
 			if (evt.target !== this.els.treeEl) return;
 			evt.preventDefault();
 			const drag = this.dragContext();
-			const target = drag ? rootDropTarget(drag.model, drag.dragged) : null;
+			const target = drag ? this.rootTarget(drag) : null;
 			this.clearDragState();
 			if (drag && target) void this.host.performDrop(drag.dragged, target);
 		});

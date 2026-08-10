@@ -414,6 +414,26 @@ need no fourth mechanism — `endOfSiblingsOrder` was already handed the real gr
 in an unguarded `return 'tree'` — the direction that would have left the toggle doing
 nothing the moment it was clicked.
 
+**Withholding a control is not disabling its behaviour, and that caught this note THREE
+times** — the completed toggle, the focus button, and the model narrowing behind it. The
+third was found by review after the first two were built: `model.focused` is one flag for
+the whole model, so a plan focus left the catalog drawing its unfocused forest while the
+pane wore `pbl-focused` and `rootDropTarget` refused every drop — a mis-parented case
+unrepairable at the catalog root until the user went back to a plan projection and cleared
+a focus they never set here. `effectivelyFocused` (`src/view/projection.ts`) is the
+projection's own answer, and `rootDropTarget` takes it as a PARAMETER rather than reading
+the flag, since which projection is on screen is a view question. The rule to carry into a
+fourth is the one 3b already states and this is the evidence for: **a projection opting out
+of a feature opts out of the computation, not just the button.**
+
+**A projection narrowing is not one filter but however many are true of it**, which the
+same review caught in `offerableTypes`. The requirements board's `Deliverable` exclusion
+returned EARLY, so every whole-vocabulary caller there still offered the test types — a New
+menu creating a note that vanished into the catalog on the pass that made it, a Set type
+moving a card off the screen it was acted on, and a focus picker offering a type that
+emptied the board. The board is a PLAN projection first and a Deliverable-less one second,
+and the two narrowings compose rather than choosing.
+
 `src/view/render/projections.ts` gets a BRANCH rather than a fallthrough, so the catalog
 takes the tree renderer and the label `Test catalog`; `src/view/render/emptyStates.ts`
 gains `renderCatalogEmptyState`, which offers creation and never configuration;

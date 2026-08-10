@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { Menu, Modal } from 'obsidian';
 import { FakeVault } from '../helpers/vault';
+import { rootDropTarget } from '../../src/domain/dropTargets';
 import {
 	clickExpandAll,
 	key,
@@ -258,6 +259,23 @@ describe('what the catalog offers', () => {
 		expect(setTypeOn('Case')).not.toContain('Epic');
 	});
 
+	it('offers no test type on the requirements board either, and still no Deliverable', () => {
+		// The board is a PLAN projection, so it withholds the test types for the reason
+		// every plan projection does — and it withholds `Deliverable` for its own. Both, not
+		// either: the board's exclusion used to short-circuit the membership rule, so a
+		// board could create a note that vanished into the catalog on the pass that made
+		// it, offer a Set type that moved a card off the screen it was acted on, and focus
+		// a type that emptied it.
+		const { containerEl } = makeView(bothFamilies(), { stateProperty: 'note.status' });
+		projectionButton(containerEl, 'Show as kanban board').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		containerEl.querySelector<HTMLElement>('.pbl-new-pick')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		const offered = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
+		expect(offered).toContain('New Epic');
+		expect(offered).not.toContain('New Test suite');
+		expect(offered).not.toContain('New Test case');
+		expect(offered).not.toContain('New Deliverable');
+	});
+
 	it('offers no test type to the plan’s focus picker, and no menu at all here', () => {
 		const { containerEl } = makeView(bothFamilies());
 		containerEl.querySelector<HTMLElement>('.pbl-focus-btn')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -335,6 +353,26 @@ describe('the catalog is tree-shaped, and the plan keeps its place', () => {
 		expect(titlesOf(containerEl)).toEqual(['Stray case', 'Suite', 'Case', 'Test task']);
 		projectionButton(containerEl, 'Show as backlog tree').dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		expect(view.settings.focusLevel).toBe('PBI');
+	});
+
+	it('is not FOCUSED here either, so a root-level drop still lands', () => {
+		// Ignoring the control is not enough, and this is the half that is easy to miss:
+		// `model.focused` is one flag for the whole model, so a plan focus stored elsewhere
+		// leaves the catalog drawing its unfocused forest while `rootDropTarget` refuses
+		// every drop and the pane wears `pbl-focused`. A projection that opts out of a
+		// feature opts out of the COMPUTATION, not just the button — so a mis-parented case
+		// stays repairable at the catalog root rather than needing a trip back to the plan
+		// to clear a focus the user never set here.
+		const { containerEl, view } = makeView(bothFamilies());
+		view.setFocusLevel('PBI');
+		catalog(containerEl);
+		expect(treeOf(containerEl).parentElement?.hasClass('pbl-focused')).toBe(false);
+		const stray = view.model?.byPath.get('Stray case.md');
+		expect(stray && rootDropTarget(view.model!, stray, false)).not.toBeNull();
+		// And the plan is still focused, which is the other half: this is a projection's
+		// answer, not a repair of the flag.
+		projectionButton(containerEl, 'Show as backlog tree').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(treeOf(containerEl).parentElement?.hasClass('pbl-focused')).toBe(true);
 	});
 
 	it('never lets a focus level promote a catalog Task into the plan', () => {

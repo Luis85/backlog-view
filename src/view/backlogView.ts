@@ -18,7 +18,7 @@ import { ItemWrite, SchedulePlan } from '../domain/writePlan';
 import { ScaleId } from '../domain/timeline';
 import { forgetBacklogView, rememberBacklogView } from './registry';
 import { ResizePolicy } from './resize';
-import { filterScopeFor, hidesCompleted, projectionMember, treeShaped } from './projection';
+import { effectivelyFocused, filterScopeFor, hidesCompleted, projectionMember, treeShaped } from './projection';
 import { rowHidden, VisibilityRule } from './rowVisibility';
 import { SelectionController } from './selection';
 import { UiStateController } from './uiState';
@@ -533,7 +533,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.treeEl.removeAttribute('aria-describedby');
 		this.dnd.onRenderStart();
 		this.cardDnd.onRenderStart();
-		this.viewEl.toggleClass('pbl-focused', model.focused);
+		this.viewEl.toggleClass('pbl-focused', effectivelyFocused(projection, model));
 		// Collapse controls and drag grips are inert while a filter is active.
 		this.viewEl.toggleClass('pbl-filtering', this.isFiltering());
 

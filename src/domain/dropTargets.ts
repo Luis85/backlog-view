@@ -110,8 +110,11 @@ function siblingPosition(
 }
 
 /** The target for the "Move to top level" strip, or null when unavailable. */
-export function rootDropTarget(model: BacklogModel, dragged: BacklogItem): DropTarget | null {
-	if (model.focused) return null;
+export function rootDropTarget(model: BacklogModel, dragged: BacklogItem, focused: boolean): DropTarget | null {
+	// The caller's EFFECTIVE focus, not `model.focused`: that flag describes the plan, and
+	// a projection built from the unfocused tree is not focused however it is set. Passed
+	// in rather than read here because which projection is on screen is a view question.
+	if (focused) return null;
 	// The real root group again, for `siblingPosition`'s reason and one more of its own:
 	// the rendered forest can hold a PROMOTED root, whose real siblings are elsewhere, and
 	// this target takes its list wholesale to compute an order against. A promoted row in

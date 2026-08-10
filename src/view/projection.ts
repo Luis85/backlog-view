@@ -61,6 +61,25 @@ export function hidesCompleted(projection: Projection): boolean {
 }
 
 /**
+ * Whether THIS projection's rendered forest is a synthetic focus grouping.
+ *
+ * `model.focused` is one flag for the whole model, and the catalog is built from the
+ * UNFOCUSED tree — so a focus stored for the plan leaves that flag true while the catalog
+ * draws every suite. Anything gated on it would then be wrong here in the direction that
+ * looks like a working screen: the pane wears `pbl-focused`, and `rootDropTarget` refuses
+ * every drop, so a mis-parented case cannot be repaired at the catalog root until the user
+ * goes back to a plan projection and clears a focus they never set here.
+ *
+ * This is the third time on this feature that withholding a CONTROL did not disable its
+ * BEHAVIOUR — the completed toggle, the focus button, and now the narrowing behind it. The
+ * rule to carry into any fourth: a projection opting out of a feature opts out of the
+ * computation, not just the button.
+ */
+export function effectivelyFocused(projection: Projection, model: BacklogModel): boolean {
+	return model.focused && projection !== 'catalog';
+}
+
+/**
  * The population this projection draws — its rendered roots, every row beneath them, and
  * the results among those.
  *
@@ -143,16 +162,18 @@ export function rowVocabulary(model: BacklogModel, item: BacklogItem): Projectio
  * `ALL_TYPES` or `childTypeChoices` straight.
  */
 export function offerableTypes(host: BacklogViewHost, types: string[] = ALL_TYPES, row: BacklogItem | null = null): string[] {
-	if (host.projection === 'board') return types.filter((type) => !isDeliverableType(type));
-	if (host.projection === 'deliverables') return types.filter((type) => isDeliverableType(type));
+	// The two boards narrow by TYPE, and they do it on every path — a row's own `+`
+	// included, since an Epic card on the requirements board offering `New Deliverable` is
+	// the same broken creation this function exists to close.
+	const projected = byProjectionType(host.projection, types);
 	// A row's own `+` is already right in both directions and must not be touched: its
 	// vocabulary is `childTypeChoices(item)`, whose answers are catalog members under a
 	// test and never a test type under a plan row. Filtering it again by the rule below
 	// would EMPTY the `+` on a `Test case`, whose one choice is `Task` — a plan type by
 	// name. The two paths have to be told apart, and `types` is what tells them apart.
-	if (types !== ALL_TYPES) return types;
+	if (types !== ALL_TYPES) return projected;
 
-	// The catalog cuts both ways like the two projections above, and it is the first one
+	// The catalog cuts both ways like the two boards, and it is the first one
 	// where the answer is not a filter over type NAMES. `Task` is the whole reason: created
 	// UNDER a test it is a catalog item, created with no parent it falls back to its own
 	// type's ladder and lands in the plan — the same name, answered differently by whether
@@ -170,8 +191,23 @@ export function offerableTypes(host: BacklogViewHost, types: string[] = ALL_TYPE
 	// `Test case` under a `Test suite` is the mirror: `Task` is not a test type, so a
 	// catalog-wide list of test types would withhold it — and retyping that row leaves it
 	// in the catalog under the same suite. Offered here.
+	//
+	// It COMPOSES with the type narrowing above rather than replacing it, and that is the
+	// bug this shape was written to fix: the board's early return meant every
+	// whole-vocabulary caller there still offered `Test suite` and `Test case` — a New
+	// menu creating a note that vanished into the catalog on the pass that made it, a
+	// Set type moving a card off the screen it was acted on, and a focus picker offering
+	// a type that emptied the board. The requirements board is a PLAN projection first and
+	// a Deliverable-less one second; the two narrowings are both true of it.
 	const wanted = host.projection === 'catalog';
-	return types.filter((t) => inCatalog({ ladder: ladderFor(t, row?.parent?.ladder ?? null) }) === wanted);
+	return projected.filter((t) => inCatalog({ ladder: ladderFor(t, row?.parent?.ladder ?? null) }) === wanted);
+}
+
+/** The two boards' own narrowing: one shows no Deliverable, the other shows nothing else. */
+function byProjectionType(projection: Projection, types: string[]): string[] {
+	if (projection === 'board') return types.filter((type) => !isDeliverableType(type));
+	if (projection === 'deliverables') return types.filter((type) => isDeliverableType(type));
+	return types;
 }
 
 /**

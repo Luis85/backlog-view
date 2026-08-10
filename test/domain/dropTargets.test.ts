@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { dropTargetFor, isInvalidParent, rootDropTarget, zoneForRatio } from '../../src/domain/dropTargets';
 import { BacklogItem, buildModel } from '../../src/domain/model';
 import { defaultSettings } from '../../src/domain/settings';
+import { settingsWith } from '../helpers/settings';
 import { FakeVault } from '../helpers/vault';
 
 const settings = defaultSettings();
@@ -103,14 +104,14 @@ describe('dropTargetFor', () => {
 describe('rootDropTarget', () => {
 	it('appends after the other roots', () => {
 		const { model, get } = fixture();
-		const target = rootDropTarget(model, get('Feature B1'));
+		const target = rootDropTarget(model, get('Feature B1'), false);
 		expect(target?.parent).toBeNull();
 		expect(target?.insertIndex).toBe(2);
 	});
 
 	it('is a no-op for the item already sitting as the last root', () => {
 		const { model, get } = fixture();
-		expect(rootDropTarget(model, get('Epic B'))).toBeNull();
+		expect(rootDropTarget(model, get('Epic B'), false)).toBeNull();
 	});
 
 	it('still fires for a last root whose parent link is stale', () => {
@@ -120,13 +121,20 @@ describe('rootDropTarget', () => {
 		const model = buildModel(vault.app, vault.entries(), settings);
 		const orphan = model.roots.find((r) => r.title === 'Orphan') as BacklogItem;
 
-		expect(rootDropTarget(model, orphan)).not.toBeNull();
+		expect(rootDropTarget(model, orphan, false)).not.toBeNull();
 	});
 
-	it('is unavailable in focus mode', () => {
+	it('is unavailable while the caller is focused, and available while it is not', () => {
+		// The flag is the CALLER's, not `model.focused`, because a focus is one fact about
+		// the model and not about every projection reading it: the test catalog is built
+		// from the unfocused tree, so a plan focus must not refuse a drop at ITS root. Both
+		// answers over one focused model, which is what makes this a parameter rather than
+		// a field somebody could have read here directly.
 		const { vault } = fixture();
-		const model = buildModel(vault.app, vault.entries(), { ...settings, focusLevel: 'Feature' });
-		expect(rootDropTarget(model, model.roots[0])).toBeNull();
+		const model = buildModel(vault.app, vault.entries(), settingsWith({ focusLevel: 'Feature' }));
+		expect(model.focused).toBe(true);
+		expect(rootDropTarget(model, model.roots[0], true)).toBeNull();
+		expect(rootDropTarget(model, model.roots[0], false)).not.toBeNull();
 	});
 });
 
