@@ -97,7 +97,11 @@ are not, and the reason each half moved is worth stating:
   so "no choice" cannot be expressed by the picker itself. That is the whole reason for the
   reset button beside it: without one, a state could be changed but never un-chosen, and the
   default would be unreachable once anything was picked. It is disabled where there is
-  nothing to reset, since an always-available reset is inert on most rows.
+  nothing to reset, since an always-available reset is inert on most rows — and that
+  disabling tracks the row as the dialog is USED, not the state it opened in: a colour just
+  chosen on a default row is a setting that now exists, and a control still disabled over it
+  would strand the user until they closed and reopened. Both directions, so a reset returns
+  the row to its default and the control with it.
 - **3b — the reset has to move the swatch too, and to the DEFAULT.** A row therefore carries
   the chosen colour and the default separately: they differ exactly when a choice exists,
   which is the only time the reset does anything. Restoring the choice instead — which is

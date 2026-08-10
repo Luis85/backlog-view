@@ -197,6 +197,27 @@ describe('the state-colour picker', () => {
 		expect(active.input.value).toMatch(/^#[0-9a-f]{6}$/);
 	});
 
+	it('lets a colour just chosen be undone, without reopening', () => {
+		// `isSet` is a snapshot from the moment the dialog opened, so the reset has to track
+		// the row as it is USED: choosing on a default row makes a setting that now exists,
+		// and a control disabled over it would strand the user until they closed the dialog.
+		const { view } = openPicker();
+		const active = rows()[1];
+		expect(active.reset.hasAttribute('disabled')).toBe(true);
+
+		pick(active, '#ff0000');
+		expect(active.reset.hasAttribute('disabled')).toBe(false);
+
+		active.reset.dispatchEvent(new MouseEvent('click'));
+
+		// And back again: the row is on its default once more, so the control goes with it.
+		expect(active.reset.hasAttribute('disabled')).toBe(true);
+		expect(view.config.setCalls).toEqual([
+			{ key: stateColorKey('Active'), value: '#ff0000' },
+			{ key: stateColorKey('Active'), value: null },
+		]);
+	});
+
 	it('refuses a click that reaches the disabled reset anyway', () => {
 		// `disabled` on its own is a request, not a guarantee — this codebase already records
 		// that for the collapse controls, where a click landing on a child element bubbles

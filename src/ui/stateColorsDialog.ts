@@ -1,4 +1,4 @@
-import { App, ColorComponent, Modal, Setting } from 'obsidian';
+import { App, ColorComponent, ExtraButtonComponent, Modal, Setting } from 'obsidian';
 
 /**
  * One row: a state, the colour to open its swatch on, the colour the reset restores, and
@@ -62,24 +62,39 @@ class StateColorsDialog extends Modal {
 	private renderRow(row: StateColorRow): void {
 		const setting = new Setting(this.contentEl).setName(row.state);
 		let picker: ColorComponent | null = null;
+		let reset: ExtraButtonComponent | null = null;
+		// LIVE, not `row.isSet`: that field is a snapshot from the moment the dialog opened,
+		// and whether there is anything to reset changes as the dialog is used. Reading the
+		// snapshot left a colour just chosen on a default row impossible to undo without
+		// closing and reopening — the control disabled over a setting that now exists.
+		let isSet = row.isSet;
+		const chosen = (nowSet: boolean): void => {
+			isSet = nowSet;
+			reset?.setDisabled(!nowSet);
+		};
 		setting.addColorPicker((component) => {
 			picker = component;
-			component.setValue(row.value).onChange((value) => this.onChange(row.state, value));
+			component.setValue(row.value).onChange((value) => {
+				chosen(true);
+				this.onChange(row.state, value);
+			});
 		});
 		// The way BACK to the default, and it has to be its own control: a colour input has
 		// no empty state, so without this a state could be changed but never un-chosen, and
 		// "by position" would be unreachable once anything was picked.
 		setting.addExtraButton((btn) => {
+			reset = btn;
 			btn.setIcon('rotate-ccw')
 				.setTooltip('Use the default colour')
 				// A reset with nothing to reset is a control that lies about being available.
-				.setDisabled(!row.isSet)
+				.setDisabled(!isSet)
 				.onClick(() => {
-					if (!row.isSet) return;
+					if (!isSet) return;
 					// The swatch first, the clear second: `setValue` is not documented to leave
 					// `onChange` alone, and if it fires one it would report the default as a
 					// choice. Doing it in this order means the null below wins either way.
 					picker?.setValue(row.defaultValue);
+					chosen(false);
 					this.onChange(row.state, null);
 				});
 		});
