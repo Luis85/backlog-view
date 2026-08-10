@@ -20,19 +20,20 @@ import { describe, expect, it } from 'vitest';
  * accepts for its own three assertions — the instrument can see the version files agree,
  * not that either one is correct.
  *
- * Three things a looser match let through, each caught by review before this test
- * reached `main`: a heading missing its `- <date>` (RELEASING.md's own rule, unchecked);
- * a version heading placed ABOVE `[Unreleased]` rather than below it; and — the one the
- * first fix still missed — a malformed heading sitting FIRST below `[Unreleased]`, ahead
- * of a correctly dated one further down. `DATED_VERSION.exec` used with `matchAll` finds
- * the first heading that already happens to be well-formed, filtering before ordering
- * decides "first" — so a malformed heading above a correct one was invisible to it. The
- * fix picks the first heading LINE unconditionally (`HEADING`, no date required) and
- * validates only that one against `DATED_VERSION`: a malformed heading in first place now
- * fails on its own, rather than being skipped in favour of whatever matches further down.
+ * Four things a looser match let through, each caught by review before this test reached
+ * `main`: a heading missing its `- <date>` (RELEASING.md's own rule, unchecked); a
+ * version heading placed ABOVE `[Unreleased]` rather than below it; a malformed heading
+ * sitting FIRST below `[Unreleased]`, ahead of a correctly dated one further down,
+ * invisible to a match that filtered for well-formed headings before "first" was decided;
+ * and — the one that fix still missed — a heading with no BRACKETS at all
+ * (`## 0.8.0 - 2026-08-10`), which a `HEADING` pattern anchored on `## \[` skips exactly
+ * the same way, despite the comment beside it claiming "unconditional". `HEADING` now
+ * matches any level-2 heading, brackets or not, so nothing between `[Unreleased]` and the
+ * first real content can be skipped on the way to picking "first" — only `DATED_VERSION`,
+ * run once against whatever `HEADING` found, gets an opinion about its shape.
  */
 const UNRELEASED = /^## \[Unreleased\]$/m;
-const HEADING = /^## \[[^\]]+\].*$/gm;
+const HEADING = /^## .*$/gm;
 const DATED_VERSION = /^## \[(\d+\.\d+\.\d+)\] - \d{4}-\d{2}-\d{2}$/;
 
 describe('the changelog names the released version', () => {
