@@ -17,21 +17,32 @@ import { describe, expect, it } from 'vitest';
  * apply to this page: app.css defines `--color-base-00` a third time under
  * `.is-mobile.theme-dark`, and counting that would report a variable as resolved on a
  * page where it is not.
+ *
+ * And it is asked of the VALUE, not of the declaration. `--interactive-accent` is declared
+ * as `var(--color-accent-1)`; a reduction that kept the first and dropped the second would
+ * leave every accented rule in the plugin computing to nothing while a name check stayed
+ * green. Following the chain is what makes this the check it claims to be — raised in
+ * review on this file (PR #125), and there was already an instance in the tree: see
+ * `--shadow-xs` in the instrument test at the bottom.
  */
 
 /** The selectors a `<body class="theme-dark|light">` on the harness page actually matches. */
 const APPLIES = new Set([':root', 'body', '.theme-light', '.theme-dark', 'body.theme-light', 'body.theme-dark']);
 
 /**
- * Every custom property `file` defines for `scheme`, from applicable blocks only.
+ * Every custom property `file` declares for `scheme`, with its VALUE, from applicable
+ * blocks only. The value is what makes the check transitive: a name with a declaration
+ * whose own `var()` leads nowhere computes to nothing, and a set of names cannot say so.
  *
  * Brace-walked rather than matched with one regular expression, because both sheets nest
  * — `@supports (…) { :root { … } }` — and a flat pattern either misses the inner block or
  * swallows the wrapper's name with it. The innermost selector is the one that decides.
+ * Later declaration wins, which is the cascade for everything here only because the two
+ * sheets now AGREE; specificity is not simulated, and would have to be if they diverged.
  */
-function definitions(file: string, scheme: 'dark' | 'light'): Set<string> {
+function declarations(file: string, scheme: 'dark' | 'light'): Map<string, string> {
 	const css = readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
-	const defined = new Set<string>();
+	const declared = new Map<string, string>();
 	const stack: string[] = [];
 	let chunk = '';
 	for (const ch of css) {
@@ -44,19 +55,51 @@ function definitions(file: string, scheme: 'dark' | 'light'): Set<string> {
 			const selector = stack.pop() ?? '';
 			const other = scheme === 'dark' ? 'light' : 'dark';
 			if (APPLIES.has(selector) && !selector.includes(`theme-${other}`)) {
-				for (const match of chunk.matchAll(/(^|;)\s*(--[\w-]+)\s*:/g)) defined.add(match[2]);
+				for (const match of chunk.matchAll(/(?:^|;)\s*(--[\w-]+)\s*:([^;]*)/g)) declared.set(match[1], match[2]);
 			}
 			chunk = '';
 			continue;
 		}
 		chunk += ch;
 	}
-	return defined;
+	return declared;
 }
 
-/** What the page resolves in one scheme: both linked sheets, together. */
-function variablesDefined(scheme: 'dark' | 'light'): Set<string> {
-	return new Set([...definitions('test/harness/obsidian.css', scheme), ...definitions('test/harness/theme.css', scheme)]);
+/** Just the names — what a caller asking "is it declared at all" wants. */
+function definitions(file: string, scheme: 'dark' | 'light'): Set<string> {
+	return new Set(declarations(file, scheme).keys());
+}
+
+/** Both linked sheets as one lookup: app.css first, the stub over it, as the page links them. */
+function sheetValues(scheme: 'dark' | 'light'): Map<string, string> {
+	return new Map([
+		...declarations('test/harness/obsidian.css', scheme),
+		...declarations('test/harness/theme.css', scheme),
+	]);
+}
+
+/**
+ * Does `name` compute to something, following its value's own `var()` references?
+ *
+ * A declaration is not a value. `--shadow-xs: … var(--shadow-edges)` is declared under
+ * `.theme-dark` while `--shadow-edges` is declared only under `.theme-light`, so in dark
+ * it computes to nothing while a check for names alone calls it covered — the exact hole
+ * a review pointed at, with an instance already in the tree.
+ *
+ * A cycle answers false: CSS treats one as invalid at computed-value time, and it also
+ * stops the walk. A reference WITH a fallback answers true without recursing, because the
+ * fallback is what applies when the name is missing — no `var()` in either sheet carries
+ * one today (measured), so that branch is reasoned rather than exercised.
+ */
+function resolves(name: string, values: Map<string, string>, seen: Set<string> = new Set()): boolean {
+	if (seen.has(name)) return false;
+	const value = values.get(name);
+	if (value === undefined) return false;
+	const next = new Set([...seen, name]);
+	for (const ref of value.matchAll(/var\(\s*(--[\w-]+)\s*(,?)/g)) {
+		if (ref[2] !== ',' && !resolves(ref[1], values, next)) return false;
+	}
+	return true;
 }
 
 /** Every `var(--x)` in a directory of CSS, minus the plugin's own, which code sets. */
@@ -72,9 +115,9 @@ function variablesUsed(dir: string): Set<string> {
 
 describe('the harness sheets cover the stylesheet', () => {
 	it.each(['dark', 'light'] as const)('resolves every Obsidian variable the partials read, in %s', (scheme) => {
-		const defined = variablesDefined(scheme);
+		const values = sheetValues(scheme);
 
-		expect([...variablesUsed('styles')].filter((name) => !defined.has(name))).toEqual([]);
+		expect([...variablesUsed('styles')].filter((name) => !resolves(name, values))).toEqual([]);
 	});
 
 	/**
@@ -124,5 +167,14 @@ describe('the harness sheets cover the stylesheet', () => {
 		expect(variablesUsed('styles').has('--interactive-accent')).toBe(true);
 		expect(definitions('test/harness/theme.css', 'dark').has('--interactive-accent')).toBe(false);
 		expect(app.has('--interactive-accent')).toBe(true);
+
+		// The transitive walk, pinned to the instance already in the tree rather than to a
+		// planted one: `--shadow-xs` is DECLARED in both schemes, and in dark its value
+		// reaches `--shadow-edges`, which `.theme-light` alone declares. Name-checking
+		// calls that covered; following the value does not. No partial reads either, which
+		// is why this is the instrument's business and not the coverage test's.
+		expect(app.has('--shadow-xs')).toBe(true);
+		expect(resolves('--shadow-xs', sheetValues('dark'))).toBe(false);
+		expect(resolves('--shadow-xs', sheetValues('light'))).toBe(true);
 	});
 });
