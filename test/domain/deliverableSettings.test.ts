@@ -41,8 +41,9 @@ describe('the Deliverable workflow', () => {
 
 	it('does not report a collision when the two workflows explicitly share one key', () => {
 		// The human's own request: "I don't care if the properties are colliding as
-		// they do not share the same workflow." Explicit sharing is exempted by name
-		// (`STATE_KEY_SHARING_EXEMPT`), the same way fallback sharing already was.
+		// they do not share the same workflow." Explicit sharing is exempted whenever
+		// every label on the key is a workflow state (`WORKFLOW_STATE_LABELS`), the
+		// same way fallback sharing already was.
 		const s = resolveSettings(
 			fakeConfig({ stateProperty: 'note.status', deliverableStateProperty: 'note.status' }),
 		);
@@ -52,10 +53,11 @@ describe('the Deliverable workflow', () => {
 	});
 
 	it('does NOT widen the exemption to state sharing a key with anything else', () => {
-		// A width-guard on the exemption above: only the {state, deliverable state}
-		// PAIR is exempt. State colliding with a third property (order, here) is
-		// still exactly the mistake `configProblems` exists to catch — an exemption
-		// keyed on "an entry named state" rather than on the pair would swallow this.
+		// A width-guard on the exemption above: it is exempt only when EVERY label on
+		// the key is a workflow state. State colliding with a third property (order,
+		// here) is still exactly the mistake `configProblems` exists to catch — an
+		// exemption keyed on "an entry named state" rather than on the label set would
+		// swallow this.
 		const s = settingsWith({ stateKey: 'status', orderKey: 'status' });
 		const problems = configProblems(s);
 		expect(problems).toHaveLength(1);
@@ -63,8 +65,10 @@ describe('the Deliverable workflow', () => {
 	});
 
 	it('still reports a collision when a third property joins the exempt pair on one key', () => {
-		// Exactly the pair is exempt, not "at least the pair": a third label sharing
-		// the same key makes it a real collision again, naming all three.
+		// The exemption covers workflow-state labels only, not "any label sharing this
+		// key": a third label of a DIFFERENT kind (order, here) makes it a real
+		// collision again, naming all three — the case a "test state" third label,
+		// which stays exempt, must not be confused with.
 		const s = settingsWith({ stateKey: 'status', deliverableStateKey: 'status', orderKey: 'status' });
 		const problems = configProblems(s);
 		expect(problems).toHaveLength(1);

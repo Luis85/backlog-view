@@ -36,28 +36,6 @@ import { stateColorName } from './stateColors';
  * The list is the resolver's own guarantees, and it is the whole of what is checkable
  * here: these are relationships between VALUES, so no type can hold them.
  */
-/**
- * The two guarantees `resolveSecondaryWorkflow` gives EVERY secondary workflow (Deliverable,
- * and the test catalog's added in Task 1): its done list is never empty (falls back to the
- * requirements workflow's effective one, or to the shipped default with an own key), and its
- * states list is empty only when its key is also falling back AND the requirements workflow
- * declared none of its own to copy — the one case the resolver would have COPIED `states`
- * into rather than leaving empty. `name` prefixes the message so a report says which
- * workflow — `'deliverable'` or `'test'` — matching the field it names (`${name}DoneValues`,
- * `${name}States`).
- *
- * Its own function for `settingsInconsistency`'s complexity budget: two workflows inline
- * would be four `if`s repeating the same shape, which is exactly what pushed the caller over
- * its limit when the test workflow's pair joined the Deliverable pair already there.
- */
-function secondaryWorkflowProblem(name: string, key: string, doneValues: string[], states: string[], baseStates: string[]): string | null {
-	if (doneValues.length === 0) return `${name}DoneValues is empty`;
-	if (key === '' && states.length === 0 && baseStates.length > 0) {
-		return `${name}States is empty while the key falls back to a configured states list`;
-	}
-	return null;
-}
-
 export function settingsInconsistency(settings: BacklogSettings): string | null {
 	// `effectiveDoneValues` falls back to DEFAULT_DONE_VALUES, so it is never empty coming
 	// out of the resolver.
@@ -109,6 +87,28 @@ export function settingsInconsistency(settings: BacklogSettings): string | null 
 	if (coloured !== null) return coloured;
 	const badPolicy = Object.entries(settings.columnPolicies).find(([, text]) => text.trim() !== text || text === '');
 	if (badPolicy) return `columnPolicies sets ${badPolicy[0]} to ${JSON.stringify(badPolicy[1])}, which the resolver would trim or drop`;
+	return null;
+}
+
+/**
+ * The two guarantees `resolveSecondaryWorkflow` gives EVERY secondary workflow (Deliverable,
+ * and the test catalog's added in Task 1): its done list is never empty (falls back to the
+ * requirements workflow's effective one, or to the shipped default with an own key), and its
+ * states list is empty only when its key is also falling back AND the requirements workflow
+ * declared none of its own to copy — the one case the resolver would have COPIED `states`
+ * into rather than leaving empty. `name` prefixes the message so a report says which
+ * workflow — `'deliverable'` or `'test'` — matching the field it names (`${name}DoneValues`,
+ * `${name}States`).
+ *
+ * Its own function for `settingsInconsistency`'s complexity budget: two workflows inline
+ * would be four `if`s repeating the same shape, which is exactly what pushed the caller over
+ * its limit when the test workflow's pair joined the Deliverable pair already there.
+ */
+function secondaryWorkflowProblem(name: string, key: string, doneValues: string[], states: string[], baseStates: string[]): string | null {
+	if (doneValues.length === 0) return `${name}DoneValues is empty`;
+	if (key === '' && states.length === 0 && baseStates.length > 0) {
+		return `${name}States is empty while the key falls back to a configured states list`;
+	}
 	return null;
 }
 

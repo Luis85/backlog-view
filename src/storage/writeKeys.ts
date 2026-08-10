@@ -58,7 +58,7 @@ function dependsOnKeyRemoved(write: ItemWrite): boolean {
  * The frontmatter keys this write will touch, in the order they are written.
  *
  * Deduped before it returns: the requirements state and the Deliverable state may
- * explicitly share one key (`configProblems`' `STATE_KEY_SHARING_EXEMPT`), and a
+ * explicitly share one key (`configProblems`' `WORKFLOW_STATE_LABELS`), and a
  * Deliverable item missing that key gets it named twice by `missingKeyStubs`, once for
  * each field's own gap-check. A duplicate key makes `captureInverse` record the same
  * before/after pair twice, and the second entry reads on `applyRestores` as a conflict —
