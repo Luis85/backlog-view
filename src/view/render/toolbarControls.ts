@@ -191,7 +191,7 @@ export function renderProjectionZone(host: BacklogViewHost, barEl: HTMLElement):
 		case 'roadmap':
 			renderAxisPicker(host, zone, barEl);
 			renderTimelineControls(host, zone, barEl);
-			renderStateColorsButton(host, zone);
+			renderStateColorsButton(host, zone, barEl);
 			break;
 		default:
 			// The tree, the board and the Deliverables board own no toolbar controls of
@@ -215,11 +215,18 @@ export function renderProjectionZone(host: BacklogViewHost, barEl: HTMLElement):
  * dialog. `hasColorableStates` is asked rather than restated here, so the button and what
  * the dialog can actually show cannot drift apart.
  */
-function renderStateColorsButton(host: BacklogViewHost, zone: HTMLElement): void {
+function renderStateColorsButton(host: BacklogViewHost, zone: HTMLElement, barEl: HTMLElement): void {
 	if (activeAxis(host.settings, host.axisPick) !== 'dates' || !hasColorableStates(host)) return;
 	const btn = iconButton(zone, 'palette', 'State colours', 'state-colors');
 	btn.addClass('pbl-state-colors-btn');
-	btn.addEventListener('click', () => openStateColors(host));
+	// Focus is put back at CLOSE time and looked up then, never captured: every change the
+	// dialog makes writes the `.base`, which rebuilds this toolbar — so the button pressed
+	// is detached by the time the dialog closes, and a modal returning focus to its opener
+	// would hand it to an element no longer in the document. `⋯ → Open the manual` records
+	// the same hole; this path meets it on every use rather than never.
+	btn.addEventListener('click', () =>
+		openStateColors(host, () => focusInBar(barEl, barEl.querySelector<HTMLElement>('.pbl-state-colors-btn'))),
+	);
 }
 
 /** Axis labels, one place, so the button and its menu cannot name it differently. */

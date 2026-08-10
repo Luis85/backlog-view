@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { Modal, Notice } from '../helpers/obsidian-mock';
 import { FakeVault } from '../helpers/vault';
-import { makeView, useViewHarness } from '../helpers/view';
+import { makeView, refresh, useViewHarness } from '../helpers/view';
 import { stateColorKey } from '../../src/domain/stateColors';
 import { hasColorableStates, hexOf, openStateColors } from '../../src/view/interactions/stateColors';
 
@@ -89,6 +89,31 @@ describe('the state-colours button', () => {
 		view.setAxisPick('dates');
 
 		expect(colorButton(containerEl)).toBeNull();
+	});
+
+	it('puts focus on the REBUILT button when the dialog closes', () => {
+		// The hazard this path meets on every use: a change writes the `.base`, the view
+		// refreshes, and the toolbar is emptied — so the button that opened the dialog is
+		// detached before it closes, and a modal handing focus back to its opener would put
+		// it on an element no longer in the document. The replacement is looked up at close
+		// time, which is why the refresh below is part of the test rather than noise.
+		const vault = vaultWith({ due: '2026-08-20' });
+		const { view, containerEl } = makeView(
+			vault,
+			{ ...WORKFLOW, startProperty: 'note.start', targetProperty: 'note.due' },
+			{ collapsed: true },
+		);
+		view.setProjection('roadmap');
+		view.setAxisPick('dates');
+		const opener = colorButton(containerEl);
+		opener?.dispatchEvent(new MouseEvent('click'));
+		refresh(view, vault);
+
+		const rebuilt = colorButton(containerEl);
+		expect(rebuilt).not.toBe(opener);
+		Modal.lastOpened?.close();
+
+		expect(document.activeElement).toBe(rebuilt);
 	});
 
 	it('opens the dialog when pressed', () => {

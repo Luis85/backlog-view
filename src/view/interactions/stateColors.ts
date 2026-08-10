@@ -76,6 +76,16 @@ function stateColorRows(host: BacklogViewHost): StateColorRow[] {
 	for (const state of colorableStates(host.settings.states, host.settings.deliverableStates)) {
 		// The palette that PLACES this state, kept rather than mapped over: the row needs
 		// its slot as well as its paint, and the slot is what the reset restores to.
+		//
+		// The FIRST one that does, and where two workflows both carry a state that is a
+		// documented imprecision rather than a choice worth agonising over. Slots continue
+		// across palettes, so `Active` can be slot 1 in Work and slot 3 in Deliverables — one
+		// value, two default colours. The stored colour is right either way (the key is the
+		// VALUE and both workflows read it), so what is approximate is only what the swatch
+		// OPENS on and what the reset puts back: the requirements workflow's, which is the
+		// one the legend keys first. A row per workflow would be two controls over one key —
+		// the thing this design refuses — and one swatch cannot show two colours. Stated in
+		// `docs/requirements/A colour per state.md` rather than left to be discovered.
 		const palette = palettes.find((candidate) => paletteSlot(candidate, state) !== null);
 		const paint = palette && stateColorPaint(host.settings, palette, state);
 		if (!palette || !paint) continue;
@@ -119,11 +129,11 @@ export function hasColorableStates(host: BacklogViewHost): boolean {
  * states, where the vocabulary is whatever the notes happen to carry and a choice could
  * not be stored against it.
  */
-export function openStateColors(host: BacklogViewHost): void {
+export function openStateColors(host: BacklogViewHost, onClosed?: () => void): void {
 	const rows = stateColorRows(host);
 	if (rows.length === 0) {
 		new Notice('No workflow states to colour yet. Name a state property and list its states in the view options.');
 		return;
 	}
-	openStateColorsDialog(host.app, rows, (state, color) => host.config.set(stateColorKey(state), color));
+	openStateColorsDialog(host.app, rows, (state, color) => host.config.set(stateColorKey(state), color), onClosed);
 }

@@ -93,6 +93,14 @@ are not, and the reason each half moved is worth stating:
   keyed by the state VALUE, so a second row would be two controls over one key — and this is
   the common case, since a Deliverable workflow with no states of its own falls back to the
   requirements list entire.
+- **2c — a shared state whose two workflows DRAW it differently.** Accepted, and stated
+  because it cannot be fixed without breaking 2b. Slots continue across palettes, so a state
+  in both declared lists can be slot 1 in Work and slot 3 in Deliverables: one value, two
+  default colours. What is stored stays right — the key is the value and both workflows read
+  it — so the imprecision is confined to the SWATCH: it opens on, and resets to, the
+  requirements workflow's default, the one the legend keys first. One swatch cannot show two
+  colours, and a row per workflow would be the two-controls-one-key defect. Raised in review;
+  recorded rather than closed.
 - **3a — the swatch has no empty state.** An `<input type="color">` always holds a colour,
   so "no choice" cannot be expressed by the picker itself. That is the whole reason for the
   reset button beside it: without one, a state could be changed but never un-chosen, and the
@@ -134,6 +142,10 @@ are not, and the reason each half moved is worth stating:
   states, so a colour stored against one would be discarded on the next refresh.
 - The button renders under the legend's own gate — roadmap mode, dated axis — and nowhere
   else, and is withheld where the dialog would be empty. Both ask one predicate.
+- Closing the dialog puts focus on the button as it exists THEN, not the one that opened it:
+  every change rebuilds the toolbar, so the opener is detached before the dialog closes and
+  a modal returning focus to it would land on the document. Looked up at close time, through
+  the same `focusInBar` fallback `⋯ → Open the manual` uses.
 - A hand-edited value outside the two shapes resolves to no choice, `#fff` included, and
   `settingsInconsistency` rejects a fixture holding one — key and value alike.
 - Each choice is written as it is made, so an untouched row writes nothing and there is no

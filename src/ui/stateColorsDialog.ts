@@ -37,11 +37,18 @@ export interface StateColorRow {
 class StateColorsDialog extends Modal {
 	private readonly rows: StateColorRow[];
 	private readonly onChange: (state: string, color: string | null) => void;
+	private readonly onClosed: (() => void) | undefined;
 
-	constructor(app: App, rows: StateColorRow[], onChange: (state: string, color: string | null) => void) {
+	constructor(
+		app: App,
+		rows: StateColorRow[],
+		onChange: (state: string, color: string | null) => void,
+		onClosed?: () => void,
+	) {
 		super(app);
 		this.rows = rows;
 		this.onChange = onChange;
+		this.onClosed = onClosed;
 	}
 
 	onOpen(): void {
@@ -102,6 +109,12 @@ class StateColorsDialog extends Modal {
 
 	onClose(): void {
 		this.contentEl.empty();
+		// The caller's way to put focus back, and this dialog needs it more than most: every
+		// change it makes rebuilds the toolbar, so the control that opened it is DETACHED by
+		// the time it closes. A modal returning focus to its opener would hand it to an
+		// element no longer in the document, which lands on `body`. The caller looks the
+		// replacement up at close time for exactly that reason.
+		this.onClosed?.();
 	}
 }
 
@@ -109,6 +122,7 @@ export function openStateColorsDialog(
 	app: App,
 	rows: StateColorRow[],
 	onChange: (state: string, color: string | null) => void,
+	onClosed?: () => void,
 ): void {
-	new StateColorsDialog(app, rows, onChange).open();
+	new StateColorsDialog(app, rows, onChange, onClosed).open();
 }
