@@ -131,12 +131,27 @@ function definitions(file: string, scheme: 'dark' | 'light'): Set<string> {
 	return new Set(declarations(file, scheme).keys());
 }
 
-/** Both linked sheets as one lookup: app.css first, the stub over it, as the page links them. */
-function sheetValues(scheme: 'dark' | 'light'): Map<string, string> {
-	return new Map([
-		...declarations('test/harness/obsidian.css', scheme),
-		...declarations('test/harness/theme.css', scheme),
-	]);
+/**
+ * What a rule ON THE BODY can read, which is where every one of the plugin's own rules
+ * sits — and it is built in element order rather than merged, for the reason the cycle
+ * walk is scoped.
+ *
+ * A root value is computed against the root's OWN declarations: CSS cannot resolve a
+ * `:root` value from something a descendant declares, so `:root { --used: var(--body-only) }`
+ * is invalid however many body rules declare `--body-only`. Merging both elements' raw
+ * declarations reports it resolved — lenient, and the fifth thing review found here. What
+ * the body inherits is the RESULT, which is why an inherited name carries an edge-free
+ * placeholder: a computed value is a value, not a token stream to walk again.
+ *
+ * Nothing in either sheet exercises this today: all 32 root-scope properties are literals
+ * with no `var()` between them, which the instrument test states rather than leaves to be
+ * rediscovered.
+ */
+function pageValues(scheme: 'dark' | 'light'): Map<string, string> {
+	const root = scopeValues(ROOT_SELECTORS, scheme);
+	const inherited = new Map<string, string>();
+	for (const name of root.keys()) if (resolves(name, root)) inherited.set(name, 'computed at the root');
+	return new Map([...inherited, ...scopeValues(BODY_SELECTORS, scheme)]);
 }
 
 /**
@@ -258,7 +273,7 @@ function variablesUsed(dir: string): Set<string> {
 
 describe('the harness sheets cover the stylesheet', () => {
 	it.each(['dark', 'light'] as const)('resolves every Obsidian variable the partials read, in %s', (scheme) => {
-		const values = sheetValues(scheme);
+		const values = pageValues(scheme);
 
 		expect([...variablesUsed('styles')].filter((name) => !resolves(name, values))).toEqual([]);
 	});
@@ -317,12 +332,12 @@ describe('the harness sheets cover the stylesheet', () => {
 		// calls that covered; following the value does not. No partial reads either, which
 		// is why this is the instrument's business and not the coverage test's.
 		expect(app.has('--shadow-xs')).toBe(true);
-		expect(resolves('--shadow-xs', sheetValues('dark'))).toBe(false);
-		expect(resolves('--shadow-xs', sheetValues('light'))).toBe(true);
+		expect(resolves('--shadow-xs', pageValues('dark'))).toBe(false);
+		expect(resolves('--shadow-xs', pageValues('light'))).toBe(true);
 
 		// One reference, not two: app.css spells the nested fallback three times, and
 		// reading the inner one as top level is the strict-direction bug below.
-		const dark = sheetValues('dark');
+		const dark = pageValues('dark');
 		expect(references(dark.get('--graph-line') ?? '')).toHaveLength(1);
 
 		// The print veto, asked of the VALUE that survived: app.css declares `--font-text`
@@ -382,6 +397,18 @@ describe('the harness sheets cover the stylesheet', () => {
 		// and that both scopes are populated — not that the wiring above passes the scoped
 		// maps, which only a future cross-element reference would make falsifiable.
 		expect(cyclic(new Map([...root, ...body]))).not.toEqual([]);
+
+		// The same argument on the resolution side: a `:root` value cannot read what only a
+		// descendant declares, so flattening reports resolved what the page cannot resolve.
+		const rootOnly = new Map([['--used', 'var(--body-only)']]);
+		expect(resolves('--used', rootOnly)).toBe(false);
+		expect(resolves('--used', new Map([...rootOnly, ['--body-only', 'red']]))).toBe(true);
+
+		// And why neither sheet can exercise it: every root-scope value is a literal, so
+		// there is no root reference to reach a body declaration in the first place.
+		const rootValues = [...scopeValues(ROOT_SELECTORS, scheme).values()];
+		expect(rootValues.length).toBeGreaterThan(20);
+		expect(rootValues.filter((value) => value.includes('var('))).toEqual([]);
 	});
 
 	it('sees a cycle that only the unused fallback branch creates', () => {
