@@ -25,7 +25,11 @@ explains its own colour.
 
 Every state colour is positional, the same convention the type badge already uses
 (`pbl-lvl-N` in `styles/badges.css`): TS names a slot by the state's own index in the
-menu vocabulary, CSS alone decides what that slot paints. Nothing here writes anything —
+menu vocabulary, CSS alone decides what that slot paints. Positional is now the DEFAULT
+rather than the whole story — [[A colour per state]] lets a state be given a colour by
+name, and a named one replaces its slot class on the bar and the swatch together. What is
+unchanged is everything below: the class is still all TS decides, CSS still owns what it
+paints, and the bar and its swatch still take the same class from the same function. Nothing here writes anything —
 the legend is decoration, exactly like the milestone line it now stands beside, and the
 colour it draws is read off the same classes the bars themselves carry, so the two
 cannot name a state differently.
@@ -205,8 +209,10 @@ what got drawn.
 `STATE_COLOR_SLOTS` is `src/domain/settings.ts`, beside `stateMenuValues`. The slot
 function that indexes into a vocabulary was there too (`stateColorSlot`) until a second
 workflow existed; it is now `paletteSlot` in `src/domain/board.ts`, and
-[[A Deliverable is coloured by its own workflow]] is why. `renderBarRow` in
-`src/view/render/timeline.ts` adds the slot class to a bar's row; the same file's
+[[A Deliverable is coloured by its own workflow]] is why. Both callers now reach it
+through `stateColorClass` in the same file, which answers with a named colour where one
+was picked and with the slot otherwise ([[A colour per state]]). `renderBarRow` in
+`src/view/render/timeline.ts` adds that class to a bar's row; the same file's
 `renderCellHeader` lost the empty header band the Today pill used to mount in, now
 returning the cell track alone. The legend strip is its own module,
 `src/view/render/legend.ts`, mounted between the toolbar and the tree in

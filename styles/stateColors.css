@@ -1,0 +1,26 @@
+/* A colour the user NAMED for a state, in the view options (`stateColorKey`,
+   domain/settings.ts). `stateColorClass` (domain/board.ts) puts one of these on a bar's
+   row instead of its `pbl-state-N` slot, and the legend's swatch carries the very same
+   class — so the two still read ONE mapping, exactly as they do for the slots.
+
+   The same two rules the slots keep, for the same reasons stated in `timeline.css`:
+   the token is `--pbl-state-color`, so both consumers go on reading one property; and no
+   colour originates here, only a name for one of Obsidian's own — a picked colour tracks
+   the user's theme like every badge does.
+
+   All eight families, unlike the four slots: `STATE_COLOR_SLOTS` reserves red, cyan,
+   green and purple against the colours this plugin assigns BY ITSELF, and a pick is the
+   user choosing that collision knowingly. Green is the one that does not arrive: a done
+   bar takes it by specificity in `timeline.css` whatever class this file put on the row,
+   so picking green for a state colours only the states that are not done.
+
+   Position in `index.css` is not load-bearing — no rule here shares a selector with any
+   other partial, and a row never carries both a slot class and one of these. */
+.pbl-state-c-red { --pbl-state-color: rgb(var(--color-red-rgb)); }
+.pbl-state-c-orange { --pbl-state-color: rgb(var(--color-orange-rgb)); }
+.pbl-state-c-yellow { --pbl-state-color: rgb(var(--color-yellow-rgb)); }
+.pbl-state-c-green { --pbl-state-color: rgb(var(--color-green-rgb)); }
+.pbl-state-c-cyan { --pbl-state-color: rgb(var(--color-cyan-rgb)); }
+.pbl-state-c-blue { --pbl-state-color: rgb(var(--color-blue-rgb)); }
+.pbl-state-c-purple { --pbl-state-color: rgb(var(--color-purple-rgb)); }
+.pbl-state-c-pink { --pbl-state-color: rgb(var(--color-pink-rgb)); }

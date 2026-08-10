@@ -14,7 +14,7 @@ import { isMarkerType } from '../../domain/itemTypes';
 import {
 	ownWorkflowReading,
 	paletteFor,
-	paletteSlot,
+	stateColorClass,
 	stateKeyFor,
 	StatePalette,
 	WorkflowReading,
@@ -445,8 +445,10 @@ function renderBarRow(
 	// Undefined where no workflow has a key at all — no vocabulary, so no slot, which is
 	// the same answer `paletteSlot` gives a state outside one: the plain accent.
 	const palette = paletteFor(mounts.palettes, bar.item);
-	const slot = palette ? paletteSlot(palette, own.value) : null;
-	if (slot !== null) row.addClass(`pbl-state-${slot}`);
+	// A colour the user named for this state wins over its slot — `stateColorClass` is
+	// where that precedence lives, and the legend's swatch asks the same function.
+	const stateCls = palette ? stateColorClass(ctx.host.settings, palette, own.value) : null;
+	if (stateCls !== null) row.addClass(stateCls);
 	const lead = row.createDiv({ cls: 'pbl-timeline-lead' });
 	renderRowChevron(ctx, lead, entry);
 	renderBadge(ctx.host, lead, bar.item);
@@ -503,7 +505,9 @@ function renderBarRow(
 	const colors: DrawnColors = {
 		done: own.done,
 		milestone: !own.done && milestoneDrawn,
-		accent: !own.done && slot === null && !milestoneDrawn,
+		// `stateCls === null` IS "no slot": a named colour only ever replaces a slot the
+		// state already had, so the plain accent is still exactly the no-class case.
+		accent: !own.done && stateCls === null && !milestoneDrawn,
 	};
 	return { row, colors };
 }

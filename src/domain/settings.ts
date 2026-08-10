@@ -1,5 +1,6 @@
 import { BasesViewConfig, normalizePath, parsePropertyId } from 'obsidian';
 import { defaultItemHandling, ItemHandling, resolveItemHandling } from './itemHandling';
+import { stateColorKey, stateColorName } from './stateColors';
 
 /**
  * Resolved, ready-to-use configuration for one Product Backlog view.
@@ -67,6 +68,14 @@ export interface BacklogSettings extends ItemHandling {
 	 * limit, a done column may carry one.
 	 */
 	columnPolicies: Record<string, string>;
+	/**
+	 * The colour a state was NAMED, keyed by LOWERCASED state value — one of
+	 * {@link STATE_COLOR_NAMES}, never a free-typed value. Absent means no pick, and the
+	 * state keeps the positional slot `paletteSlot` gives it. Both workflows share this
+	 * one table: it is keyed by the value, so two workflows spelling a state the same way
+	 * agree about its colour, which is what the reader would expect of one name.
+	 */
+	stateColors: Record<string, string>;
 	/**
 	 * Frontmatter key stamped with the date work started, or '' when start stamping
 	 * is off. History is the one thing a board cannot reconstruct later, so this
@@ -250,8 +259,12 @@ export function defaultTypeFolder(typeName: string, homeFolder = DEFAULT_HOME_FO
  * Null-prototype, because the names are user data: a type or a state called
  * `constructor` must be a plain key rather than a collision with something inherited
  * off `Object`. Read it back with {@link byName}, never with a bare index.
+ *
+ * The reader defaults to one that is never called, which is what an EMPTY table needs and
+ * all three in {@link defaultSettings} use — a fresh `() => null` per call site would put
+ * one more uncovered function in the coverage floor every time a per-state table arrived.
  */
-function nameTable<T>(names: string[], read: (name: string) => T | null): Record<string, T> {
+function nameTable<T>(names: string[], read: (name: string) => T | null = () => null): Record<string, T> {
 	const table: Record<string, T> = Object.create(null) as Record<string, T>;
 	for (const name of names) {
 		const value = read(name);
@@ -294,8 +307,9 @@ export function defaultSettings(): BacklogSettings {
 		tagsKey: 'tags',
 		propColumnWidth: DEFAULT_PROP_COLUMN_WIDTH,
 		doneValues: [...DEFAULT_DONE_VALUES],
-		wipLimits: nameTable<number>([], () => null),
-		columnPolicies: nameTable<string>([], () => null),
+		wipLimits: nameTable<number>([]),
+		columnPolicies: nameTable<string>([]),
+		stateColors: nameTable<string>([]),
 		startedDateKey: '',
 		finishedDateKey: '',
 		startedStates: [],
@@ -857,9 +871,8 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 	// destination disagreed would have bound the picker to one field and read another.
 	// `deliverableStateKey` is resolved here too and then OVERWRITTEN by `...deliverable`
 	// below, which is the only optional key with a fallback of its own to apply.
-	const optionalKeys = Object.fromEntries(
-		OPTIONAL_PROPERTIES.map((property) => [property.settingsKey, propKey(property.option, fallback[property.settingsKey])]),
-	) as Pick<BacklogSettings, OptionalSettingsKey>;
+	const keyEntries = OPTIONAL_PROPERTIES.map((p) => [p.settingsKey, propKey(p.option, fallback[p.settingsKey])]);
+	const optionalKeys = Object.fromEntries(keyEntries) as Pick<BacklogSettings, OptionalSettingsKey>;
 	const tagsKey = (): string => {
 		const key = clearablePropKey('tagsProperty', fallback.tagsKey);
 		const taken = [
@@ -889,6 +902,10 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		doneValues: effectiveDoneValues,
 		wipLimits: nameTable(limitedStates, (s) => parseWipLimit(str(wipLimitKey(s)))),
 		columnPolicies: nameTable(states, (s) => str(columnPolicyKey(s)).trim() || null),
+		// Both vocabularies, one table — see `BacklogSettings.stateColors`.
+		stateColors: nameTable([...states, ...deliverable.deliverableStates], (s) => stateColorName(str(stateColorKey(s)))),
+		// The two stamp keys main resolved by hand here now arrive with every other
+		// optional key in `...optionalKeys` above, read off `PROPERTY_TABLE` itself.
 		startedStates: dedupe(list('startedStates')),
 		states,
 		showCompleted: bool('showCompleted', fallback.showCompleted),
