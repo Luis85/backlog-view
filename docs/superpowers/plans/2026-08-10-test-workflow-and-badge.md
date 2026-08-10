@@ -1415,3 +1415,105 @@ npm run check
 git add src/domain/dropTargets.ts src/view/interactions/dragDrop.ts test/
 git commit -m "Ask a sibling drop's no-op of the drawn order, not the ranking group"
 ```
+
+
+---
+
+### Task 12: The generated README documents the test workflow
+
+**Files:**
+- Modify: `src/domain/backlogReadme.ts` (`fieldRows`)
+- Test: `test/domain/backlogReadme.test.ts`
+
+**Interfaces:**
+- Consumes: `resolvedTestStateKey` (Task 1), `settings.testStateKey`.
+- Produces: nothing later tasks read.
+
+**Why:** found on the branch by an automated PR reviewer, and it is a gap in this plan
+rather than in any task's execution — no task extended the generator. **Write backlog
+readme** emits the frontmatter contract an outside editor follows. With a distinct
+`testStateProperty` configured, that contract omits the property catalog rows read and
+write, so someone editing notes by hand uses the wrong key.
+
+**Scope decision, made here so the implementer does not have to guess:** mirror the
+DELIVERABLE workflow exactly — a row in `fieldRows`, and no state table of its own.
+`stateSection` today returns early unless `settings.stateKey` is set and describes only the
+requirements vocabulary; the Deliverable workflow has a field row and no table either. Adding
+a table for the test workflow alone would make the document describe two of three workflows
+inconsistently. Matching the Deliverable is the consistent answer, and the asymmetry across
+all three is a separate question this task does not open.
+
+- [ ] **Step 1: Write the failing tests**
+
+Add to `test/domain/backlogReadme.test.ts`, beside the existing Deliverable field-row tests
+(find them with `grep -n "Deliverable" test/domain/backlogReadme.test.ts` and match their
+shape and their way of building settings):
+
+```ts
+it('documents a test state property of its own, and never twice when it is shared', () => {
+	// Shared by fallback is the DEFAULT configuration, so the row must not appear twice —
+	// the same rule `fieldRows` already keeps for the Deliverable's key, and the reason it
+	// asks the RESOLVED key rather than the raw option.
+	const shared = settingsWith({ stateKey: 'status' });
+	const sharedDoc = backlogReadme(shared, [], 0).join('\n');
+	expect(sharedDoc.match(/\| `status` \|/g)).toHaveLength(1);
+
+	// Its own key: its own row, naming what carries it.
+	const own = settingsWith({ stateKey: 'status', testStateKey: 'testStatus' });
+	const ownDoc = backlogReadme(own, [], 0).join('\n');
+	expect(ownDoc).toContain('`testStatus`');
+	expect(ownDoc).toContain('on a test');
+});
+```
+
+Read the file first: `backlogReadme`'s real signature and the settings helper the
+neighbouring tests use may differ from the sketch above — match what is actually there
+rather than the shape written here, and keep the two assertions.
+
+- [ ] **Step 2: Run the tests and watch them fail**
+
+Run: `npx vitest run test/domain/backlogReadme.test.ts -t "test state property"`
+Expected: FAIL — no `testStatus` row is emitted.
+
+- [ ] **Step 3: Add the row, mirroring the Deliverable's**
+
+In `fieldRows`, after the `deliverableKey && !sharedStateKey` block:
+
+```ts
+	// The test workflow's key, on exactly the Deliverable's terms above and for the same
+	// two reasons. The RESOLVED key, because sharing the requirements property is this
+	// workflow's DEFAULT rather than an edge case — asking the raw option would document
+	// the shipped configuration as a property nobody has. And a row of its own only where
+	// it IS its own property, because a second row for one key would have the table
+	// contradicting itself about how many properties a note carries.
+	const testKey = resolvedTestStateKey(settings);
+	if (testKey && testKey !== settings.stateKey) {
+		const relation = settings.stateKey ? " — separate from the requirements workflow's" : '';
+		rows.push(`| ${cell(testKey)} | Optional, on a test | The test workflow's own state${relation} |`);
+	}
+```
+
+The shared case needs no row of its own, but the requirements row above should say so, the
+way it already does for the Deliverable. Extend that row's `alsoDeliverable` clause to name
+whichever secondary workflows actually share the key — read the existing clause and widen it
+without changing what it says when only the Deliverable shares.
+
+Import `resolvedTestStateKey` from `./optionalProperties`, beside the existing
+`resolvedDeliverableStateKey` import.
+
+- [ ] **Step 4: Run the tests and verify they pass**
+
+Run: `npx vitest run test/domain/backlogReadme.test.ts`
+Expected: PASS. Existing Deliverable assertions must be unchanged — if one flips, the
+widened clause is wrong.
+
+- [ ] **Step 5: Run the whole check and commit**
+
+`npm run check` in the FOREGROUND. The register gate reads this generator's output, so a
+wording change can fail `docs`.
+
+```bash
+npm run check
+git add src/domain/backlogReadme.ts test/domain/backlogReadme.test.ts
+git commit -m "Document the test workflow in the generated README"
+```

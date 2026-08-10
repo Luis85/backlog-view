@@ -25,6 +25,7 @@ import {
 	collectObservedHorizons,
 	collectObservedStates,
 	collectObservedTags,
+	collectObservedTestStates,
 } from './vocabulary';
 
 /**
@@ -202,7 +203,7 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 		// The POPULATION, never a list of type names: `firstSeen` reads every non-context
 		// item, so a rule spelled "skip test items" would leave a `Task` beneath a
 		// `Test case` free to mint that column anyway.
-		...vocabularyOf(items.filter((item) => !inCatalog(item)), settings),
+		...vocabularyOf(items.filter((item) => !inCatalog(item)), settings, false),
 		observedDeliverableStates,
 		// Read off `items` — the whole tree `assignAll` just built, before either branch
 		// below narrows anything to a focus subtree. See `BacklogModel.deliverableResults`.
@@ -214,7 +215,7 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 		// to match and every root-level drop refused. The catalog ignores the focus control
 		// (its levels are the other ladder's), and a projection that opts out of a feature
 		// opts out of the COMPUTATION, not just the button.
-		catalog: projectionForest(roots, inCatalog, settings),
+		catalog: projectionForest(roots, inCatalog, settings, true),
 		ignoredCount,
 	};
 	// The plan is a projection too, and its forest is computed by the same rule the
@@ -223,7 +224,7 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	// this decides which of those rows the plan actually draws.
 	const focused = focusIdx >= 0 || focusExtra !== '';
 	const focusRoots = focused ? collectFocusRoots(roots, focusIdx, focusExtra, settings) : roots;
-	const plan = projectionForest(focusRoots, (item) => !inCatalog(item), settings);
+	const plan = projectionForest(focusRoots, (item) => !inCatalog(item), settings, false);
 	// `rest` LAST, and the order is load-bearing: both objects carry the three `observed*`
 	// lists, and the plan's must be the whole-tree-minus-catalog ones in `rest` rather than
 	// the forest's own. A forest's vocabulary is collected from what it RENDERS, which a
@@ -552,6 +553,7 @@ function projectionForest(
 	roots: BacklogItem[],
 	member: (item: BacklogItem) => boolean,
 	settings: BacklogSettings,
+	catalog: boolean,
 ): ProjectionPopulation {
 	const forest: BacklogItem[] = [];
 	const collect = (list: BacklogItem[], parentDrawn: boolean) => {
@@ -592,7 +594,7 @@ function projectionForest(
 		roots: forest,
 		items,
 		results: items.filter((item) => !item.outsideFilter),
-		...vocabularyOf(items, settings),
+		...vocabularyOf(items, settings, catalog),
 	};
 }
 
@@ -610,9 +612,15 @@ function projectionForest(
 function vocabularyOf(
 	items: BacklogItem[],
 	settings: BacklogSettings,
+	catalog: boolean,
 ): Pick<ProjectionPopulation, 'observedStates' | 'observedHorizons' | 'observedTags' | 'observedAssignees'> {
 	return {
-		observedStates: collectObservedStates(items, settings),
+		// WHICH workflow, asked of the population rather than of each item: a population is
+		// homogeneous by membership, and the done list a state menu sorts by is the
+		// population's while the value read is the item's. Supplied by `projectionForest`'s
+		// two call sites, which are the two places that already know which projection they
+		// are computing.
+		observedStates: catalog ? collectObservedTestStates(items, settings) : collectObservedStates(items, settings),
 		observedHorizons: collectObservedHorizons(items),
 		observedTags: collectObservedTags(items),
 		observedAssignees: collectObservedAssignees(items),

@@ -54,6 +54,13 @@ function assigneeOffers(containerEl: HTMLElement, title: string): string[] {
 		.filter((t): t is string => typeof t === 'string' && !t.startsWith('New assignee') && t !== 'Clear assignee');
 }
 
+/** The values `Set state` offers on one row. */
+function stateOffers(containerEl: HTMLElement, title: string): string[] {
+	rowByTitle(containerEl, title).dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+	const sub = Menu.lastShown?.item('Set state')?.submenu;
+	return (sub?.items ?? []).map((mi) => mi.titleText).filter((t): t is string => typeof t === 'string');
+}
+
 /** Switch to the catalog through the real toolbar and open everything it drew. */
 function catalog(containerEl: HTMLElement): void {
 	projectionButton(containerEl, 'Show as test catalog').dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -164,6 +171,29 @@ describe('the catalog and the plan share a model and divide it', () => {
 		expect(assigneeOffers(containerEl, 'A PBI')).toEqual(['Sam']);
 		catalog(containerEl);
 		expect(assigneeOffers(containerEl, 'Case')).toEqual(['Robin']);
+	});
+
+	it('offers the TEST workflow’s observed states in the catalog and the plan’s in the plan', () => {
+		// Both directions in one fixture, because a shared list satisfies either alone.
+		const vault = bothFamilies();
+		vault.addFile('Ready case.md', {
+			frontmatter: { type: 'Test case', order: 40, testStatus: 'Approved' },
+			parentLink: 'Suite',
+		});
+		vault.addFile('Live PBI.md', {
+			frontmatter: { type: 'PBI', order: 40, status: 'Shipping' },
+			parentLink: 'Feature',
+		});
+		const { containerEl } = makeView(vault, {
+			stateProperty: 'note.status',
+			testStateProperty: 'note.testStatus',
+		});
+		clickExpandAll(containerEl);
+		expect(stateOffers(containerEl, 'A PBI')).toContain('Shipping');
+		expect(stateOffers(containerEl, 'A PBI')).not.toContain('Approved');
+		catalog(containerEl);
+		expect(stateOffers(containerEl, 'Case')).toContain('Approved');
+		expect(stateOffers(containerEl, 'Case')).not.toContain('Shipping');
 	});
 
 	it('offers no root drop to a row already last among the roots ITS projection draws', () => {
