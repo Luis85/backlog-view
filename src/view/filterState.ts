@@ -28,30 +28,34 @@ interface MatchIndex {
  * once — every scope is this function applied to a different set of roots, so a change
  * to what "matching" means lands on both at the same time.
  *
- * **The roots are half of "this projection's forest"; `member` is the other half.** The
- * walk below descends `item.children`, which is the REAL tree and holds rows this
- * projection does not draw — so handing it the right roots and letting it walk through
- * everything under them indexes the wrong thing: a needle matching a `Test case` beneath
- * a `PBI` marks that PBI and its whole ancestor chain visible, and the plan then shows
- * three rows with nothing on screen matching and the text still in the box. Stopping at a
- * non-member loses nothing, because a member below one is a root of this forest in its own
- * right and is visited through that.
+ * **Descending and MATCHING are two questions, and `member` answers only the second.**
+ * The walk goes everywhere `item.children` leads, because that is the real tree and a row
+ * this projection draws can sit below one it does not — a `Deliverable` under a
+ * `Test case` is a card on the Deliverables board, and a walk that stopped at the catalog
+ * never reaches it. But a non-member's TITLE is not a match here, and nothing propagates
+ * from it: a needle hitting a `Test case` under a `PBI` must not keep that PBI on the plan
+ * with nothing on screen matching, and must not surface the case on a Deliverable's card,
+ * where `hiddenMatches` reads this very set.
+ *
+ * Both halves were learned by getting them backwards in turn. Guarding the descent lost
+ * the nested `Deliverable`; guarding neither exposed the nested `Test case`. Neither is a
+ * special case of the other, and one predicate placed on the right line answers both.
  */
 function indexMatches(roots: BacklogItem[], needle: string, member: (item: BacklogItem) => boolean): MatchIndex {
 	const visible = new Set<string>();
 	const matches = new Set<string>();
 	const markSubtree = (item: BacklogItem): void => {
 		visible.add(item.file.path);
-		for (const child of item.children) if (member(child)) markSubtree(child);
+		for (const child of item.children) markSubtree(child);
 	};
 	const visit = (item: BacklogItem): boolean => {
-		const selfMatch = item.title.toLowerCase().includes(needle);
+		const selfMatch = member(item) && item.title.toLowerCase().includes(needle);
 		if (selfMatch) {
 			matches.add(item.file.path);
 			markSubtree(item);
 		}
 		let anyMatch = selfMatch;
-		for (const child of item.children) if (member(child)) anyMatch = visit(child) || anyMatch;
+		for (const child of item.children) anyMatch = visit(child) || anyMatch;
 		if (anyMatch) visible.add(item.file.path);
 		return anyMatch;
 	};
@@ -112,14 +116,14 @@ export class FilterState {
 		// screen in the catalog while nothing in the catalog matched at all; the inverse
 		// happens in the plan.
 		const roots = projectionPopulation(projection, model).roots;
-		this.focused = indexMatches(roots, needle, projectionMember(projection));
-		// The `whole` index walks the WHOLE tree and is deliberately unguarded, which is
-		// not an oversight beside the line above it. Its one consumer is the Deliverables
-		// board, whose population is decided by TYPE elsewhere (`deliverableResults`) — so
-		// membership is not this index's question, and a catalog row can never be a card
-		// there to be let in by the omission. Guarding it costs a real case instead: a
-		// `Deliverable` nested under a `Test case` IS on that board, and a walk stopping at
-		// the catalog path never reaches it, so an exact-title filter hid a card on screen.
-		this.whole = indexMatches(model.realRoots, needle, () => true);
+		const member = projectionMember(projection);
+		this.focused = indexMatches(roots, needle, member);
+		// The `whole` index takes the SAME membership rule and differs only in where it
+		// starts: the whole tree rather than this projection's forest, because the
+		// Deliverables board's population is deliberately focus-immune. Membership still
+		// applies — a `Test case` under a `Deliverable` must not put that card back on
+		// screen — and `indexMatches` descends past both regardless, which is what reaches
+		// a `Deliverable` nested under a test.
+		this.whole = indexMatches(model.realRoots, needle, member);
 	}
 }

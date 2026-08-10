@@ -392,6 +392,31 @@ describe('the catalog is tree-shaped, and the plan keeps its place', () => {
 		expect(cardTitles(containerEl)).toEqual(['Runbook']);
 	});
 
+	it('never surfaces a test as a match on a board that cannot draw it', () => {
+		// The mirror of the case above, on the same index: a `Test case` nested UNDER a
+		// Deliverable. If the walk counts its title as a match, the Deliverable card stays
+		// on screen for a needle nothing on that board matched, and the card's own match
+		// list then names a row the board excludes everywhere else.
+		const vault = bothFamilies();
+		vault.addFile('Guide.md', { frontmatter: { type: 'Deliverable', order: 40, docStatus: 'Draft' } });
+		vault.addFile('Guide check.md', {
+			frontmatter: { type: 'Test case', order: 10 },
+			parentLink: 'Guide',
+		});
+		const { containerEl, view } = makeView(vault, { deliverableStateProperty: 'note.docStatus' });
+		projectionButton(containerEl, 'Show as Deliverables board').dispatchEvent(
+			new MouseEvent('click', { bubbles: true }),
+		);
+		expect(cardTitles(containerEl)).toContain('Guide');
+		view.setFilter('Guide check');
+		expect(cardTitles(containerEl)).toEqual([]);
+		// The MATCH set itself, not just the cards: `hiddenMatches` reads it to name what a
+		// kept card is hiding, so a catalog row counted as a match here would be printed on
+		// a Deliverable's face even once the card question was answered.
+		const testCase = view.model?.byPath.get('Guide check.md');
+		expect(testCase && view.isFilterMatch(testCase)).toBe(false);
+	});
+
 	it('is not FOCUSED here either, so a root-level drop still lands', () => {
 		// Ignoring the control is not enough, and this is the half that is easy to miss:
 		// `model.focused` is one flag for the whole model, so a plan focus stored elsewhere
