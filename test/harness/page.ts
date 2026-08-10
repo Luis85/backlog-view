@@ -3,8 +3,12 @@ import { mountHarness } from './mount';
 import { drawSchemeToggle } from './theme';
 import { Projection } from '../../src/view/host';
 
-/** `?fixture=edges` mounts the awkward cases instead of the everyday backlog. */
-const fixture = new URLSearchParams(window.location.search).get('fixture') === 'edges' ? 'edges' : 'demo';
+/**
+ * `?fixture=edges` mounts the awkward cases instead of the everyday backlog, and
+ * `?fixture=folders` the same backlog filed in folders with inference on.
+ */
+const wantedFixture = new URLSearchParams(window.location.search).get('fixture');
+const fixture = wantedFixture === 'edges' || wantedFixture === 'folders' ? wantedFixture : 'demo';
 const { view } = mountHarness(document.body, fixture);
 
 // After the mount: the toggle is the harness's own furniture and is appended to the
