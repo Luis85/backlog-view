@@ -66,6 +66,13 @@ export class FakeVault {
 	afterWrite: ((path: string) => void) | null = null;
 	/** Handlers registered through vault.on('rename'), fired by `renameFile`. */
 	private renameHandlers: ((file: TFile, oldPath: string) => void)[] = [];
+	/**
+	 * Basename → file, for `getFirstLinkpathDest`. Rebuilt when the file map's SIZE
+	 * moves, which covers every add and every delete — including the deletes tests do
+	 * straight on `files`, which no method here could hook. A rename is the one mutation
+	 * that leaves the size alone, so both rename paths drop it explicitly.
+	 */
+	private basenameIndex: Map<string, TFile> | null = null;
 	/** Handlers registered through workspace.on('css-change'), fired by `changeCss`. */
 	private cssChangeHandlers: (() => void)[] = [];
 
@@ -113,12 +120,20 @@ export class FakeVault {
 		renderContext: {},
 		metadataCache: {
 			getFileCache: (file: TFile) => this.caches.get(file.path) ?? null,
-			getFirstLinkpathDest: (linkpath: string, _sourcePath: string) => {
-				for (const f of this.files.values()) {
-					if (f.path === linkpath || f.path === `${linkpath}.md` || f.basename === linkpath) return f;
-				}
-				return null;
-			},
+			/**
+			 * Indexed, because the fake is also the INSTRUMENT a large fixture is measured
+			 * with. The scan this replaced was one pass over every file per link, so an
+			 * 800-note flat fixture spent its time here rather than in the plugin — a
+			 * hotspot with no counterpart in a vault, where Obsidian resolves through an
+			 * index of its own.
+			 *
+			 * The precedence is now stated rather than emergent. The scan returned the
+			 * first file matching ANY of the three conditions, so an earlier-inserted
+			 * basename match beat a later exact-path one; nothing relies on that and a
+			 * vault does not do it.
+			 */
+			getFirstLinkpathDest: (linkpath: string, _sourcePath: string) =>
+				this.files.get(linkpath) ?? this.files.get(`${linkpath}.md`) ?? this.byBasename().get(linkpath) ?? null,
 			fileToLinktext: (file: TFile, _sourcePath: string) => file.basename,
 		},
 		vault: {
@@ -203,8 +218,26 @@ export class FakeVault {
 		return leaf;
 	}
 
+	/**
+	 * Basename → file in insertion order, so the first note added under a name wins —
+	 * which is what the scan this replaced did. Rebuilt only when the file map's size
+	 * says it must be.
+	 */
+	private byBasename(): Map<string, TFile> {
+		if (this.basenameIndex !== null && this.indexedFileCount === this.files.size) return this.basenameIndex;
+		const index = new Map<string, TFile>();
+		for (const file of this.files.values()) if (!index.has(file.basename)) index.set(file.basename, file);
+		this.basenameIndex = index;
+		this.indexedFileCount = this.files.size;
+		return index;
+	}
+
+	/** The `files.size` `basenameIndex` was built at — see `basenameIndex`. */
+	private indexedFileCount = -1;
+
 	/** Rename a file and fire vault.on('rename'), as Obsidian does. */
 	renameFile(oldPath: string, newPath: string): TFile {
+		this.basenameIndex = null;
 		const file = this.files.get(oldPath);
 		if (!file) throw new Error(`no such file: ${oldPath}`);
 		// The old name is read BEFORE the move, because the move rewrites it: the file
@@ -241,6 +274,7 @@ export class FakeVault {
 	 * from.
 	 */
 	renameFolder(oldPath: string, newPath: string): void {
+		this.basenameIndex = null;
 		for (const [path, file] of [...this.files]) {
 			if (!path.startsWith(`${oldPath}/`)) continue;
 			const moved = newPath + path.slice(oldPath.length);
