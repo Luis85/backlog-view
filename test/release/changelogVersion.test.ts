@@ -18,9 +18,12 @@ import { headings } from '../../scripts/docs-markdown.mjs';
  * than shipping a changelog that does not name its own latest release.
  *
  * What this cannot check: that the entry says anything true. A heading with no bullets
- * under it still passes. That is deliberate and the same limit `versionFiles.test.ts`
- * accepts for its own three assertions — the instrument can see the version files agree,
- * not that either one is correct.
+ * under it still passes, and so does a date that does not exist on a calendar — `2026-13-40`
+ * matches `\d{4}-\d{2}-\d{2}` exactly as a real one does, and `changelogNotes` never reads
+ * the heading's date at all, only the body beneath it, so an invalid one reaches neither
+ * the release body nor anything else this check gates. That is deliberate and the same
+ * limit `versionFiles.test.ts` accepts for its own three assertions — the instrument can
+ * see the version files agree, not that either one is correct.
  *
  * This used to be a hand-written regex, and review found a genuine gap on every round: no
  * date required, no anchor to `[Unreleased]`'s own position, filtering for well-formed
