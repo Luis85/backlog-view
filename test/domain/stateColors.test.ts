@@ -1,7 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { FakeViewConfig } from '../helpers/vault';
-import { settingsFrom } from '../helpers/settings';
+import { FakeVault, FakeViewConfig } from '../helpers/vault';
+import { settingsFrom, settingsWith } from '../helpers/settings';
+import { buildModel } from '../../src/domain/model';
+import { paletteFor, stateColorClass, statePalettes } from '../../src/domain/board';
 import { getViewOptions } from '../../src/domain/viewOptions';
 import { STATE_COLOR_NAMES, stateColorKey, stateColorName } from '../../src/domain/stateColors';
 
@@ -51,6 +53,24 @@ describe('the colour vocabulary', () => {
 			.filter((key) => key.startsWith('stateColor.'));
 
 		expect(keys).toEqual(['New', 'Active', 'Done', 'Draft'].map(stateColorKey));
+	});
+
+	it('takes no colour off Object.prototype for a state named like one', () => {
+		// A state VALUE is user data, so `constructor` and `toString` are configurations
+		// someone can have — and a bare index finds something truthy on every one of them.
+		// `nameTable` builds the resolver's own map null-prototype, so this can only be
+		// reached through a hand-built fixture holding a plain object; that is exactly the
+		// fixture `settingsWith` exists to let people write, and `byName` is the rule
+		// `nameTable`'s own doc states for reading one back. Shipped three times on three
+		// tables before this one, per that doc — which is why the check is at the lookup.
+		const settings = settingsWith({ stateKey: 'status', states: ['constructor'], stateColors: {} });
+		const vault = new FakeVault();
+		vault.addFile('P.md', { frontmatter: { type: 'PBI', order: 10, status: 'constructor' } });
+		const model = buildModel(vault.app, vault.entries(), settings);
+		const palette = paletteFor(statePalettes(model, settings), model.items[0]);
+		if (!palette) throw new Error('the configured workflow produced no palette');
+
+		expect(stateColorClass(settings, palette, 'constructor')).toBe('pbl-state-0');
 	});
 
 	it('reads a pick for either workflow’s states into the one table', () => {

@@ -361,7 +361,12 @@ export function stateColorClass(
 ): string | null {
 	const slot = paletteSlot(palette, state);
 	if (slot === null) return null;
-	const pick = settings.stateColors[(state ?? '').toLowerCase()];
+	// `byName`, never a bare index: the key is a state VALUE, so `constructor` and
+	// `toString` are configurations a user can have, and every one of them finds something
+	// truthy on `Object.prototype`. `nameTable` builds this map null-prototype so the
+	// resolver's own output is safe either way, but a hand-built fixture is a plain object
+	// and the class this line builds would then be a function's source text.
+	const pick = byName(settings.stateColors, state);
 	return pick ? `pbl-state-c-${pick}` : `pbl-state-${slot}`;
 }
 

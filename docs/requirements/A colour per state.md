@@ -93,6 +93,11 @@ string a `.base` holds never becomes a colour this plugin did not write.
 - Each state is offered exactly one colour box across both workflows, and `stateColor.*` is
   claimed by exactly one manual entry (which `test/docs/surfaces.test.ts` already enforces
   for every generated option family).
+- A state named `constructor`, `toString` or any other `Object.prototype` member takes its
+  positional slot, never a colour inherited off the prototype. The table is read with
+  `byName`, which is the rule `nameTable`'s own doc states and which its doc says had been
+  broken on three tables before this one — here the inherited value would become a class
+  containing spaces, which `addClass` rejects outright.
 - A hand-built `BacklogSettings` naming a colour the resolver would have dropped — an
   unconfigured state, or a value outside the offered names — is rejected by
   `settingsInconsistency`, key and value alike. Raised in review on this change, and it is
