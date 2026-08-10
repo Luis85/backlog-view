@@ -9,16 +9,10 @@ import { drawSchemeToggle } from './theme';
  */
 const wantedFixture = new URLSearchParams(window.location.search).get('fixture');
 const fixture = wantedFixture === 'edges' || wantedFixture === 'folders' ? wantedFixture : 'demo';
-// Measured HERE rather than inside `reportPerf`, which cannot be handed a view that does
-// not exist yet: the mount is the one measurement that happens before there is anything to
-// measure it with. `?notes=800` is what makes the number worth reading.
-//
-// The HEIGHT is taken on the same line as the time, and that is the point of taking it
-// here at all: `?view=` is applied below, so anything read after it describes the
-// requested projection rather than the collapsed tree this pair is labelled for.
-const mountStarted = performance.now();
-const { view, containerEl } = mountHarness(document.body, fixture, wantedNotes(window.location.search));
-const mount = { ms: performance.now() - mountStarted, px: containerEl.scrollHeight };
+// `mount` is measured INSIDE `mountHarness`, around the view's own first draw — see
+// `Mount` there. Timed from out here it counted the fixture generation and the harness
+// chrome, which scale with `?notes=` and are not the view.
+const { view, containerEl, mount } = mountHarness(document.body, fixture, wantedNotes(window.location.search));
 
 // After the mount: the toggle is the harness's own furniture and is appended to the
 // body, which `mountHarness` empties.

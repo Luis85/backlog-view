@@ -14,6 +14,7 @@
  */
 import { ProductBacklogView } from '../../src/view/backlogView';
 import type { Projection } from '../../src/view/uiState';
+import type { Mount } from './mount';
 
 /** Samples per row. Enough that one GC pause moves the worst column and not the median. */
 const SAMPLES = 5;
@@ -55,21 +56,6 @@ function sample(el: HTMLElement, op: string, run: () => void, prepare?: () => vo
 }
 
 /**
- * What the mount cost, measured by the CALLER, because both numbers have to be taken at
- * the mount and nothing here is reachable yet when it happens.
- *
- * The height is here rather than read on arrival for the reason the time always was:
- * `page.ts` applies `?view=` before calling in, so a height read at the top of `measure`
- * is the requested projection's, attached to a row labelled for the collapsed tree mount.
- * Reading it "before anything is switched or expanded" was a fix for the expansion and
- * missed the projection — the same overstatement one step along. (Codex, PR #128.)
- */
-export interface Mount {
-	ms: number;
-	px: number;
-}
-
-/**
  * The four rows, given what the mount cost.
  *
  * `render` is timed beside `update` because `onDataUpdated` builds and renders while
@@ -99,7 +85,8 @@ function measure(view: ProductBacklogView, el: HTMLElement, mount: Mount): { row
 	// and the tree's row count would read as zero — the panel's own sample size, wrong.
 	const treeRows = el.querySelectorAll('.pbl-row').length;
 	const rows: Row[] = [
-		// Both numbers come from the caller, taken at the mount itself — see `Mount`.
+		// Both numbers are taken inside `mountHarness`, around the view's first draw and
+		// before `?view=` or the expansion — see `Mount` in `mount.ts`.
 		// Labelled so it cannot be read as a row of the same sample as the four below it.
 		{ op: 'mount (collapsed, as it opens)', median: mount.ms, worst: mount.ms, px: mount.px },
 		sample(el, 'update (build + render)', () => view.onDataUpdated()),

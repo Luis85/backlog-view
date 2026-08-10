@@ -27,10 +27,29 @@ import { FileView } from '../helpers/obsidian-mock';
  */
 const SETTLE_MS = 100;
 
+/**
+ * What the view's own first draw cost, for `?perf`'s mount row.
+ *
+ * Measured HERE because this is the only place the boundary exists. Timing `mountHarness`
+ * from outside it counted generating the fixture's notes, filling the fake vault and
+ * drawing the harness's chrome — work that scales with `?notes=` and belongs to the
+ * harness rather than to the view, so the row got more misleading exactly at the sizes
+ * this mode is aimed at. The clock now starts after all of that. (Codex, PR #128.)
+ *
+ * The height is taken on the same call for the same reason the time is: everything after
+ * this point — `?view=`, the expansion — describes something other than the collapsed
+ * tree the row is labelled for.
+ */
+export interface Mount {
+	ms: number;
+	px: number;
+}
+
 export interface MountedHarness {
 	view: ProductBacklogView;
 	vault: FakeVault;
 	containerEl: HTMLElement;
+	mount: Mount;
 }
 
 /**
@@ -85,6 +104,11 @@ export function mountHarness(root: HTMLElement, fixture: HarnessFixture = 'demo'
 		}, SETTLE_MS);
 	};
 
+	// The one measurement that has to happen here rather than in `perf.ts` — see `Mount`.
+	// Unconditional because a branch on `?perf` would mean the timed mount and the ordinary
+	// one were different code paths, and the timed one is the whole point.
+	const started = performance.now();
 	view.onDataUpdated();
-	return { view, vault, containerEl };
+	const mount = { ms: performance.now() - started, px: containerEl.scrollHeight };
+	return { view, vault, containerEl, mount };
 }
