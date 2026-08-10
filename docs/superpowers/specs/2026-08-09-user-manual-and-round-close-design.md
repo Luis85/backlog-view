@@ -277,12 +277,12 @@ table for, in a file nobody thought to look at.
 
 ## The verification handover
 
-One `Task` under [[Verifications a device has to answer]] — deliberately **not** a ninth
-smoke-test note. The eight that exist say *what* to check. This says what to do in one
-sitting, in order:
+One `Task` under [[Verifications a device has to answer]] — deliberately **not** an
+eleventh smoke-test note. The ten that exist say *what* to check. This says what to do in
+one sitting, in order:
 
 1. `npm run test-build`, open this repository as a vault, open `docs/Product Backlog.base`.
-2. The eight existing checklists, in a stated sequence, with where each answer is recorded.
+2. The ten existing checklists, in a stated sequence, with where each answer is recorded.
 3. The phone — [[Smoke test the touch paths on a phone]], `P1`, and the sharpest gap in
    the product: `isDesktopOnly: false` is a shipped claim, every direct manipulation is a
    native drag, so on a phone the context menu **is** the entire interface and it has never

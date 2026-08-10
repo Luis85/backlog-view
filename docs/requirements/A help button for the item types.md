@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[User manual]]"
 order: 10
-status: Open
+status: Done
 priority: P1
 created: 2026-08-01
 source: user request

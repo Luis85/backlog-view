@@ -97,3 +97,25 @@ completed toggle and the ignored-notes advisory), their state in `src/view/filte
 (the match path, kept separate from the matches themselves), their model rules in
 `src/domain/model.ts` (`collectFocusRoots`, `pruneOutsideHierarchy`), and the screens it
 must agree with in `src/view/render/emptyStates.ts`.
+
+## Review note (2026-08-10) — not moved to Done
+
+Two acceptance-criteria lines fail against the current text of `src/view/manual/sections.ts`:
+
+- **The ignored-notes rule is given as `pruneOutsideHierarchy`'s subtree predicate, not
+  as the per-note shorthand.** The `'The ignored-notes count'` entry currently reads "any
+  note has no supported type and no parent" — a per-**note** test. `pruneOutsideHierarchy`
+  (`src/domain/model.ts:300-329`) tests per **root subtree**, by its own doc comment
+  ("one participant keeps the whole component"): an untyped container holding typed items
+  is kept, not counted. The manual's job is predicting the same rows the view keeps, and
+  the current sentence predicts a different, stricter set than the code drops.
+- **The section states that the filter is session state and reaches no file.** The
+  `'Quick filter'` entry never says this — it describes what stays visible while the
+  filter runs, but not that the typed text is never written anywhere. This is the
+  question the criterion itself names as the one a first-time user actually has, and it
+  goes unanswered.
+
+Both are tracked as parked content corrections in
+[[Six known corrections have no room in sections.ts]], blocked on the same 400-line
+budget. Left `Open` rather than moved, since both are explicit criterion lines and
+neither is met by what is on screen today.

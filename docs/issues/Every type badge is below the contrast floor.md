@@ -66,3 +66,21 @@ background would lift every badge at once rather than shuffling which type is wo
 `--pbl-badge-rgb` is one variable feeding both, so this is a change to two declarations in
 one rule, and it needs a live-vault look under a few themes rather than a calculation —
 which is why it is recorded rather than done here.
+
+## What the 2026-08-10 review measured, on top of the above
+
+Recorded as evidence, not as a fix — the note stays `Open`.
+
+- **The table above is light-scheme only.** Dark was never measured, and it also fails:
+  `PBI`/blue computes 3.59:1 in the dark scheme, `Bug`/red computes 4.13:1 — both still
+  under WCAG AA's 4.5:1, so this is not a light-scheme-only defect.
+- **The 0.14 alpha is confirmed as the weak lever, and by how much.** Dropping it alone to
+  0.10 leaves light's worst ratio near 1.9:1 — barely moved, because the text colour is
+  unchanged and the background is still close to the page. Mixing the text 50 % toward
+  `--text-normal` instead — leaving the alpha where it is — reaches 5.11:1 in light and
+  6.07:1 in dark, clearing the floor in both schemes. The lever that works is the text, not
+  the alpha.
+- **A solid pill has no workable ink across the eight tokens.** Neither fixed ink colour
+  clears every hue: white text bottoms out at 1.41:1 on yellow, black text at 3.21:1 on
+  purple. A solid-background badge would need a per-hue ink choice, not one constant, to
+  clear the floor everywhere.
