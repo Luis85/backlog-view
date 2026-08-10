@@ -75,6 +75,10 @@ function measure(view: ProductBacklogView, el: HTMLElement, mountMs: number): { 
 	// Restored at the end rather than reset to the tree: the run drives all four, and a
 	// `?perf&view=board` page has to be left showing the board it was asked for.
 	const opened = view.projection;
+	// Read before anything is switched or expanded, because the row it goes on is the one
+	// labelled "collapsed, as it opens" — taken after the expansion below, the `px` field
+	// reported the expanded height and contradicted its own row. (Codex, PR #128.)
+	const mountPx = el.scrollHeight;
 	// Switched to the tree BEFORE expanding, because `?perf` composes with `?view=board`
 	// and the expand control is disabled on a projection that drew no disclosure. Expanding
 	// there did nothing, counted zero rows, and left every later sample rendering a
@@ -85,10 +89,10 @@ function measure(view: ProductBacklogView, el: HTMLElement, mountMs: number): { 
 	// and the tree's row count would read as zero — the panel's own sample size, wrong.
 	const treeRows = el.querySelectorAll('.pbl-row').length;
 	const rows: Row[] = [
-		// Measured before the expansion above, because that is how the view actually opens:
-		// collapsed, drawing the roots and whatever the saved state had open. Labelled so
-		// it cannot be read as a row of the same sample as the four below it.
-		{ op: 'mount (collapsed, as it opens)', median: mountMs, worst: mountMs, px: el.scrollHeight },
+		// Both numbers predate the expansion above, because that is how the view actually
+		// opens: collapsed, drawing the roots and whatever the saved state had open.
+		// Labelled so it cannot be read as a row of the same sample as the four below it.
+		{ op: 'mount (collapsed, as it opens)', median: mountMs, worst: mountMs, px: mountPx },
 		sample(el, 'update (build + render)', () => view.onDataUpdated()),
 		sample(el, 'render only', () => view.render()),
 	];

@@ -39,11 +39,40 @@ export interface FakeLeaf {
 }
 
 /**
+ * A `Map` that counts the mutations made to it, so a cache over its contents can tell
+ * whether it is still current.
+ *
+ * The file map is PUBLIC and tests mutate it directly (`vault.files.delete('Gone.md')`),
+ * so no method on `FakeVault` can hook every change — which is why the counter lives on
+ * the map rather than beside it. Counting mutations rather than comparing `size` is the
+ * whole point: a delete followed by an add leaves the size where it started, and a cache
+ * trusting that reuses entries for a file that is gone.
+ */
+class TrackedMap<K, V> extends Map<K, V> {
+	version = 0;
+
+	override set(key: K, value: V): this {
+		this.version++;
+		return super.set(key, value);
+	}
+
+	override delete(key: K): boolean {
+		this.version++;
+		return super.delete(key);
+	}
+
+	override clear(): void {
+		this.version++;
+		super.clear();
+	}
+}
+
+/**
  * In-memory stand-in for the parts of the App surface that model.ts and ops.ts
  * touch: metadata cache, vault file tree, and frontmatter processing.
  */
 export class FakeVault {
-	files = new Map<string, TFile>();
+	files = new TrackedMap<string, TFile>();
 	folders = new Set<string>(['/']);
 	caches = new Map<string, FakeCache>();
 	frontmatter = new Map<string, Record<string, unknown>>();
@@ -67,10 +96,13 @@ export class FakeVault {
 	/** Handlers registered through vault.on('rename'), fired by `renameFile`. */
 	private renameHandlers: ((file: TFile, oldPath: string) => void)[] = [];
 	/**
-	 * Basename → file, for `getFirstLinkpathDest`. Rebuilt when the file map's SIZE
-	 * moves, which covers every add and every delete — including the deletes tests do
-	 * straight on `files`, which no method here could hook. A rename is the one mutation
-	 * that leaves the size alone, so both rename paths drop it explicitly.
+	 * Basename → file, for `getFirstLinkpathDest`. Rebuilt whenever `files.version` moves,
+	 * which is every add, delete, rename and clear — including the ones tests make on the
+	 * public map, which no method here could hook.
+	 *
+	 * It counts mutations rather than watching `size`, because size is not a mutation
+	 * detector: a delete and an add between two lookups return it to where it started, and
+	 * the stale index then answers with a file that has been removed. (Codex, PR #128.)
 	 */
 	private basenameIndex: Map<string, TFile> | null = null;
 	/** Handlers registered through workspace.on('css-change'), fired by `changeCss`. */
@@ -220,24 +252,24 @@ export class FakeVault {
 
 	/**
 	 * Basename → file in insertion order, so the first note added under a name wins —
-	 * which is what the scan this replaced did. Rebuilt only when the file map's size
-	 * says it must be.
+	 * which is what the scan this replaced did. Rebuilt whenever the map has been mutated
+	 * since it was built; a rename needs no invalidation of its own, because the two calls
+	 * it makes on `files` are themselves what moves the version.
 	 */
 	private byBasename(): Map<string, TFile> {
-		if (this.basenameIndex !== null && this.indexedFileCount === this.files.size) return this.basenameIndex;
+		if (this.basenameIndex !== null && this.indexedVersion === this.files.version) return this.basenameIndex;
 		const index = new Map<string, TFile>();
 		for (const file of this.files.values()) if (!index.has(file.basename)) index.set(file.basename, file);
 		this.basenameIndex = index;
-		this.indexedFileCount = this.files.size;
+		this.indexedVersion = this.files.version;
 		return index;
 	}
 
-	/** The `files.size` `basenameIndex` was built at — see `basenameIndex`. */
-	private indexedFileCount = -1;
+	/** The `files.version` `basenameIndex` was built at — see `basenameIndex`. */
+	private indexedVersion = -1;
 
 	/** Rename a file and fire vault.on('rename'), as Obsidian does. */
 	renameFile(oldPath: string, newPath: string): TFile {
-		this.basenameIndex = null;
 		const file = this.files.get(oldPath);
 		if (!file) throw new Error(`no such file: ${oldPath}`);
 		// The old name is read BEFORE the move, because the move rewrites it: the file
@@ -274,7 +306,6 @@ export class FakeVault {
 	 * from.
 	 */
 	renameFolder(oldPath: string, newPath: string): void {
-		this.basenameIndex = null;
 		for (const [path, file] of [...this.files]) {
 			if (!path.startsWith(`${oldPath}/`)) continue;
 			const moved = newPath + path.slice(oldPath.length);
