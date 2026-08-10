@@ -1156,3 +1156,122 @@ git push -u origin claude/test-management-epic-increment-wuwlva
 ```
 
 Watch both `verify` legs. Paths and line endings are the only things that differ between Ubuntu and Windows, and both have already produced a defect this repository could not see.
+
+
+---
+
+### Task 10: A subtree refresh forgets only the rows it detached
+
+**Files:**
+- Modify: `src/view/render/rows.ts` (`refreshRowChildren`, `forgetSubtree`)
+- Test: `test/view/testCatalog.test.ts`
+
+**Interfaces:**
+- Consumes: `projectionMember` from `src/view/projection.ts` (already exported).
+- Produces: nothing later tasks read.
+
+**Why this is a task and not a review note:** found on the branch by an automated PR
+reviewer, independent of the workflow feature, and it is the same defect family as the four
+`filterState` rounds — a walk over RAW children where it should follow the edges this
+projection draws.
+
+`refreshRowChildren` detaches a row's rendered child group and calls
+`forgetSubtree(ctx.rows, item.children)` to drop those rows from the `rowEls` index. But
+`item.children` is the RAW child list, and `forgetSubtree` recurses through all of it —
+including a non-member child whose own subtree holds a PROMOTED member rendered elsewhere.
+In `Epic → Feature` and `Epic → Test case → PBI`, the plan draws the `PBI` as an independent
+root; collapsing or expanding the Epic walks into the hidden `Test case` and deletes that
+`PBI` from `rowEls` while its DOM row is still on screen. Everything that reaches a row by
+lookup then fails for it: selection cannot mark or announce it, and a keyboard-opened menu
+loses its anchor.
+
+- [ ] **Step 1: Write the failing test**
+
+Add to `test/view/testCatalog.test.ts`:
+
+```ts
+	it('keeps a promoted root in the row index when its raw ancestor is collapsed', () => {
+		// `Epic → Feature` and `Epic → Test case → PBI`. The PBI is drawn as a promoted plan
+		// root; collapsing the Epic detaches only the Feature's group, so the PBI's row stays
+		// on screen and must stay reachable by lookup. Asserted through SELECTION, which is
+		// what reads `rowEls` — a DOM check would pass while the index was empty.
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feature.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
+		vault.addFile('Bridge case.md', { frontmatter: { type: 'Test case', order: 20 }, parentLink: 'Epic' });
+		vault.addFile('Deep PBI.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Bridge case' });
+		const { containerEl, view } = makeView(vault);
+		clickExpandAll(containerEl);
+		expect(titlesOf(containerEl)).toEqual(['Epic', 'Feature', 'Deep PBI']);
+
+		// Collapse the Epic through its own chevron — the real path `refreshRowChildren` runs on.
+		rowByTitle(containerEl, 'Epic').querySelector<HTMLElement>('.pbl-chevron')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(titlesOf(containerEl)).toEqual(['Epic', 'Deep PBI']);
+
+		// The promoted root is still drawn, so it must still be selectable.
+		view.selectPath('Deep PBI.md');
+		expect(rowByTitle(containerEl, 'Deep PBI').hasClass('pbl-selected')).toBe(true);
+	});
+```
+
+If `selectPath` is not the view's public selection entry point, find the one the other
+selection tests in `test/view/` drive and use that instead — assert through whatever marks
+`pbl-selected`, never by reading the index directly.
+
+- [ ] **Step 2: Run the test and watch it fail**
+
+Run: `npx vitest run test/view/testCatalog.test.ts -t "promoted root in the row index"`
+Expected: FAIL — the row is not marked selected, because its `rowEls` entry was deleted.
+
+- [ ] **Step 3: Forget only along the edges this projection draws**
+
+In `src/view/render/rows.ts`, give `forgetSubtree` the projection's membership predicate and
+recurse only through drawn children — the same guard `projectionForest`'s depth walk and
+`indexMatches`'s subtree walk already use, for the same reason:
+
+```ts
+/**
+ * Drop a removed subtree from the row index so stale elements can't be found — along the
+ * edges this projection DRAWS, never the raw child list.
+ *
+ * A non-member's subtree can hold a member this projection renders as a promoted ROOT,
+ * whose row is somewhere else entirely and is not being detached. Walking raw children
+ * deletes that row's index entry while its DOM stays on screen, and everything that reaches
+ * a row by lookup then fails for it silently: selection cannot mark or announce it, and a
+ * keyboard-opened menu loses its anchor.
+ */
+function forgetSubtree(rows: Map<string, HTMLElement>, items: BacklogItem[], member: (item: BacklogItem) => boolean): void {
+	for (const item of items) {
+		if (!member(item)) continue;
+		rows.delete(item.file.path);
+		forgetSubtree(rows, item.children, member);
+	}
+}
+```
+
+And at its one call site in `refreshRowChildren`:
+
+```ts
+		forgetSubtree(ctx.rows, item.children, projectionMember(ctx.host.projection));
+```
+
+Add `projectionMember` to the existing `../projection` import in that file.
+
+- [ ] **Step 4: Run the test and verify it passes**
+
+Run: `npx vitest run test/view/`
+Expected: PASS.
+
+- [ ] **Step 5: Watch it fail without the fix**
+
+Revert Step 3's guard, re-run the one test, confirm RED, restore. The comment states a rule,
+so a test has to hold it.
+
+- [ ] **Step 6: Run the whole check and commit**
+
+```bash
+npm run check
+git add src/view/render/rows.ts test/view/testCatalog.test.ts
+git commit -m "Forget a detached subtree along drawn edges, not raw children"
+```
