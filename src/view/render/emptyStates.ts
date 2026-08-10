@@ -3,6 +3,8 @@ import { BacklogViewHost } from '../host';
 import { newItemType, promptCreateItem } from '../interactions/create';
 import { runInit } from '../interactions/structure';
 import { adoptableProperties, LEVELS, OptionalField } from '../../domain/settings';
+import { manualLink } from '../../ui/manualDialog';
+import { manualSections } from '../manual/sections';
 
 /**
  * What the tree shows when it has no rows to show. Each of these runs at most once
@@ -61,6 +63,7 @@ export function renderEmptyState(host: BacklogViewHost, treeEl: HTMLElement): vo
 	setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'plus');
 	btn.createSpan({ text: `New ${topLevel}` });
 	btn.addEventListener('click', () => promptCreateItem(host, [topLevel], null));
+	manualLink(empty, host.app, manualSections(), { sectionId: 'finding', label: 'What shows here?' });
 }
 
 /**
@@ -228,6 +231,7 @@ export function renderFilterEmptyState(host: BacklogViewHost, treeEl: HTMLElemen
 		host.setFilter('');
 		host.focusFilter();
 	});
+	manualLink(empty, host.app, manualSections(), { sectionId: 'finding', label: 'What shows here?' });
 }
 
 /** Everything is done and hidden — celebrate, and offer the way back. */
@@ -235,4 +239,5 @@ export function renderAllDoneState(host: BacklogViewHost, treeEl: HTMLElement, t
 	const empty = noticeShell(treeEl, 'circle-check', `All ${total} item${total === 1 ? ' is' : 's are'} done and hidden.`);
 	const btn = empty.createEl('button', { text: 'Show completed items' });
 	btn.addEventListener('click', () => host.config.set('showCompleted', true));
+	manualLink(empty, host.app, manualSections(), { sectionId: 'finding', label: 'What shows here?' });
 }

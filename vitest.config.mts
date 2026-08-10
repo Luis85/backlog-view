@@ -255,6 +255,15 @@ export default defineConfig({
 			// Removing both took four branch-paths out of the denominator along with the
 			// two that were covered, which is why this is smaller subtraction again rather
 			// than a test for either.
+			// The point-of-need-doors increment (task 5: `manualLink`, its four call
+			// sites — the three empty states, the busy indicator with its own override, the
+			// config warning, the new-item prompt's `help` callback — and the toolbar-key
+			// invariant those last two now have to carry) measured 98.36/94.73/99.58/99.49
+			// (5906/6004, 3722/3929, 1427/1433, 4952/4977). All four round down to the
+			// figures already recorded above and stay; the increment's own branches —
+			// `manualLink`'s default resolve across its three outcomes, each driven rather
+			// than assumed — arrived already covered by the margin the risk-chip and
+			// user-manual increments had earned.
 			thresholds: {
 				statements: 98.3,
 				branches: 94.7,

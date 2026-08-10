@@ -21,7 +21,7 @@ import { BacklogItem, BacklogModel } from '../../domain/model';
 import { displayType, focusTarget, isDeliverableType } from '../../domain/itemTypes';
 import { DELIVERABLE_TYPE } from '../../domain/settings';
 import { configProblems } from '../../domain/settings';
-import { openManual } from '../../ui/manualDialog';
+import { manualLink, openManual } from '../../ui/manualDialog';
 import { manualSections } from '../manual/sections';
 
 /** Toolbar: creation buttons, backfill, expand/collapse, config warning, item count. */
@@ -129,7 +129,7 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	// thing on the row that says so was four elements and a divider away — a legible
 	// pause reads as a dead toolbar when the explanation is not beside the controls it
 	// explains.
-	renderBusyIndicator(barEl);
+	renderBusyIndicator(barEl, host);
 
 	// Classed, unlike the other two, because the last rung sheds it: the readouts it
 	// divides are all gone by then, and a divider that divides nothing is width in front
@@ -159,6 +159,15 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 		setIcon(warn.createSpan({ cls: 'pbl-warning-icon' }), 'alert-triangle');
 		warn.createSpan({ text: 'Check view options' });
 		setTooltip(warn, problems.join(' '));
+		// The door into `Help for setting up the view` — the configuration section, not the
+		// writes section this warning also gates: the reader's question at a warning is
+		// what to fix, and that answer lives with the options. Keyed like every other
+		// focusable toolbar control (`test/view/toolbarFocus.test.ts`'s own invariant),
+		// since `barEl.empty()` destroys it on every rebuild just like the rest of the row.
+		manualLink(warn, host.app, manualSections(), { sectionId: 'setup', label: 'What to fix' }).setAttribute(
+			KEY_ATTR,
+			'config-help',
+		);
 	}
 	// The advisories and the count are the same size and the same faint colour, so with
 	// nothing between them "1 note ignored" and "28 items" read as one sentence. They are
@@ -264,7 +273,7 @@ function renderNewButton(host: BacklogViewHost, barEl: HTMLElement, model: Backl
  * created on demand: progress ticks once per file, and rebuilding the toolbar for
  * each of them would be its own source of jank. `syncBusy` drives it in place.
  */
-function renderBusyIndicator(barEl: HTMLElement): void {
+function renderBusyIndicator(barEl: HTMLElement, host: BacklogViewHost): void {
 	const busy = barEl.createDiv({ cls: 'pbl-busy', attr: { role: 'status', 'aria-live': 'polite' } });
 	setIcon(busy.createSpan({ cls: 'pbl-busy-spinner' }), 'loader-2');
 	busy.createSpan({ cls: 'pbl-busy-label' });
@@ -274,6 +283,19 @@ function renderBusyIndicator(barEl: HTMLElement): void {
 	const count = busy.createSpan({ cls: 'pbl-busy-count', attr: { 'aria-hidden': 'true' } });
 	count.createSpan({ cls: 'pbl-busy-done' });
 	count.createSpan({ cls: 'pbl-busy-of' });
+	// The door into `Help for safe writes and undo`. This caller overrides `manualLink`'s
+	// default refocus rather than relying on it: `.pbl-busy` is hidden by CSS the moment
+	// the batch that opened it ends, so by closing time the default's own resolve would
+	// find a link that is connected but invisible — exactly the case that default exists
+	// to refuse. Landing on the `?` button through `focusInBar` is what the toolbar's own
+	// help button already does, resolved at close time for the same reason.
+	// Keyed like every other focusable toolbar control, even though it never survives its
+	// own rebuild via that mechanism — `syncBusy` only ever re-texts this indicator, never
+	// rebuilds it, so the key exists to satisfy the invariant `test/view/toolbarFocus.test.ts`
+	// checks over the whole row rather than to do restoring work of its own.
+	manualLink(busy, host.app, manualSections(), { sectionId: 'writes', label: 'What is happening' }, () =>
+		focusInBar(barEl, barEl.querySelector<HTMLElement>('.pbl-help-btn')),
+	).setAttribute(KEY_ATTR, 'busy-help');
 }
 
 /**

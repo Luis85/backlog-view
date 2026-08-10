@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 // @ts-expect-error — a build script, deliberately outside tsconfig's `src/**` include.
 import { assembleStyles } from '../../scripts/styles-assemble.mjs';
 import { installObsidianDom } from '../helpers/dom';
-import { ManualSection, openManual } from '../../src/ui/manualDialog';
+import { ManualSection, manualLink, openManual } from '../../src/ui/manualDialog';
 import { Modal } from '../helpers/obsidian-mock';
 
 installObsidianDom();
@@ -123,6 +123,72 @@ describe('the manual dialog', () => {
 		const second = Array.from(content().querySelectorAll<HTMLElement>('.vertical-tab-nav-item'))[1];
 		second.click();
 		expect(pane.scrollTop).toBe(0);
+	});
+});
+
+describe('the point-of-need link', () => {
+	beforeEach(() => {
+		Modal.lastOpened = null;
+		document.body.empty();
+	});
+
+	it('opens on its own section and carries its own label and section id', () => {
+		const parent = document.body.createDiv();
+		manualLink(parent, {} as never, SECTIONS, { sectionId: 'two', label: 'Read more' });
+		const link = parent.querySelector<HTMLButtonElement>('.pbl-help-link');
+		expect(link?.textContent).toBe('Read more');
+		expect(link?.getAttribute('data-pbl-section')).toBe('two');
+		link?.click();
+		expect(content().querySelector('.pbl-manual-pane h3')?.textContent).toBe('Second');
+	});
+
+	it('runs the caller-supplied onClosed instead of resolving a default target', () => {
+		const parent = document.body.createDiv();
+		let closed = 0;
+		manualLink(parent, {} as never, SECTIONS, { sectionId: 'one', label: 'Help' }, () => {
+			closed += 1;
+		});
+		parent.querySelector<HTMLButtonElement>('.pbl-help-link')?.click();
+		Modal.lastOpened?.close();
+		expect(closed).toBe(1);
+	});
+
+	// The default is RESOLVED, not captured (see the comment on `manualLink`), and the
+	// three cases below are the three things that resolve can find: the same link, still
+	// connected and visible; the same link, still connected but not visible (what
+	// `.pbl-busy` looks like to jsdom, which lays nothing out and so reports
+	// `offsetParent: null` for everything — the reason the busy indicator overrides this
+	// default rather than relying on it); and no link at all, because the caller's own
+	// re-render removed it.
+	it('default: refocuses the live link when it is connected and rendered visible', () => {
+		const parent = document.body.createDiv();
+		manualLink(parent, {} as never, SECTIONS, { sectionId: 'one', label: 'Help' });
+		const link = parent.querySelector<HTMLButtonElement>('.pbl-help-link');
+		link?.click();
+		// jsdom does no layout, so a real link's `offsetParent` is always null — stubbed
+		// here to what a browser reports for an element that is actually on screen.
+		Object.defineProperty(link, 'offsetParent', { value: document.body, configurable: true });
+		Modal.lastOpened?.close();
+		expect(document.activeElement).toBe(link);
+	});
+
+	it('default: does nothing when the link is connected but not rendered visible', () => {
+		const parent = document.body.createDiv();
+		manualLink(parent, {} as never, SECTIONS, { sectionId: 'one', label: 'Help' });
+		parent.querySelector<HTMLButtonElement>('.pbl-help-link')?.click();
+		// No `offsetParent` stub — jsdom's own default, which is what `.pbl-busy` looks
+		// like the moment CSS hides it.
+		Modal.lastOpened?.close();
+		expect(document.activeElement).toBe(document.body);
+	});
+
+	it('default: does nothing when the section it opened is gone by closing time', () => {
+		const parent = document.body.createDiv();
+		manualLink(parent, {} as never, SECTIONS, { sectionId: 'one', label: 'Help' });
+		parent.querySelector<HTMLButtonElement>('.pbl-help-link')?.click();
+		parent.empty(); // the caller's own re-render replaced the whole row
+		expect(() => Modal.lastOpened?.close()).not.toThrow();
+		expect(document.activeElement).toBe(document.body);
 	});
 });
 

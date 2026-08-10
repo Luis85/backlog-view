@@ -96,5 +96,6 @@ the Base's own settings still control, and the one of them this view deliberatel
 is measured against is `src/domain/viewOptions.ts` (`getViewOptions`), checked by
 `test/docs/surfaces.test.ts`'s "claims every view-option key in exactly one setup entry".
 What "misconfigured" means concretely is `configProblems` in `src/domain/settings.ts`; the
-command it names first is `src/commands/scaffold.ts`; and the column options it groups as
-presentation are rendered by `src/view/render/columns.ts`.
+command it names first is `src/commands/scaffold.ts`; the column options it groups as
+presentation are rendered by `src/view/render/columns.ts`; and the `Check view options`
+warning's own door into this section is `src/view/render/toolbar.ts`.

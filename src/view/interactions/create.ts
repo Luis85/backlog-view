@@ -1,6 +1,8 @@
 import { Notice } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { TitlePromptModal } from '../../ui/prompts';
+import { manualLink } from '../../ui/manualDialog';
+import { manualSections } from '../manual/sections';
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { focusTarget, folderForType } from '../../domain/itemTypes';
 import { ORDER_SPACING } from '../../domain/writePlan';
@@ -91,6 +93,7 @@ export function promptCreateItem(
 		detail: askFolder ? undefined : (typeName: string) => promptDetail(parentItem, folderFor(typeName)),
 		types: choices,
 		askFolder,
+		help: (el) => manualLink(el, host.app, manualSections(), { sectionId: 'creating', label: 'Where will this go?' }),
 		onSubmit: ({ title, folder, typeName }) => {
 			void createFromPrompt(host, {
 				levelName: typeName,

@@ -149,3 +149,45 @@ export function openManual(
 ): void {
 	new ManualDialog(app, sections, sectionId, onClosed).open();
 }
+
+/**
+ * The point-of-need door: a text button that opens the manual on one section and gives
+ * focus back to itself. Four surfaces use it — the new-item prompt, an empty state, the
+ * busy indicator and the config warning — and each is an acceptance criterion of one of
+ * the `Help for …` use cases rather than a convenience.
+ *
+ * `target` bundles `sectionId` and `label` rather than taking them as two more positional
+ * strings — `max-params` caps a function at five, and `parent`, `app`, `sections` and
+ * `onClosed` are the four that cannot fuse with anything else without losing a name at
+ * the call site.
+ */
+export function manualLink(
+	parent: HTMLElement,
+	app: App,
+	sections: ManualSection[],
+	target: { sectionId: string; label: string },
+	onClosed?: () => void,
+): HTMLButtonElement {
+	const link = parent.createEl('button', { cls: 'pbl-help-link', text: target.label, attr: { type: 'button' } });
+	// `onClosed` is how a caller says where focus goes, and EVERY caller here is
+	// volatile: a Bases refresh re-renders the empty state and the toolbar alike, so a
+	// captured `link` is a detached node by close time and `focus()` on it silently
+	// lands on the document. The busy indicator is the guaranteed case rather than the
+	// only one — `styles/busy.css` hides it the moment the batch ends.
+	//
+	// So the default RESOLVES rather than captures: it looks the link up again by the
+	// section it opens, inside the container it was drawn in, and falls through
+	// `focusInBar` when the toolbar is that container. A caller whose control cannot
+	// survive at all passes its own closure naming a different destination.
+	//
+	// This is the third place the capture-versus-resolve mistake was made in this plan.
+	// The `?` button and the overflow entry were each fixed alone; the default here was
+	// left capturing both times, which is what made it the survivor.
+	const refocus = () => {
+		const live = parent.querySelector<HTMLElement>(`.pbl-help-link[data-pbl-section="${target.sectionId}"]`);
+		if (live?.isConnected && live.offsetParent !== null) live.focus();
+	};
+	link.setAttribute('data-pbl-section', target.sectionId);
+	link.addEventListener('click', () => openManual(app, sections, target.sectionId, onClosed ?? refocus));
+	return link;
+}
