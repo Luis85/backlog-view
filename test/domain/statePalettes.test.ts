@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { BacklogSettings, STATE_COLOR_SLOTS } from '../../src/domain/settings';
+import { settingsFrom } from '../helpers/settings';
 import { paletteDone, paletteFor, paletteSlot, statePalettes } from '../../src/domain/board';
 import { buildModel } from '../../src/domain/model';
-import { BacklogSettings, STATE_COLOR_SLOTS } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
-import { settingsFrom } from '../helpers/settings';
 
 /** One workflow, the ordinary base: a state property and a list. */
 const oneWorkflow = settingsFrom({ stateProperty: 'note.status', stateValues: 'New, Active, Done', doneValues: 'Done' });

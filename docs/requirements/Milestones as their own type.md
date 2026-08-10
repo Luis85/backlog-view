@@ -244,7 +244,7 @@ date.
 
 ## Where it lives
 
-`MARKER_TYPES = ['Milestone']` in `src/domain/settings.ts`, beside `LEVELS` and
+`MARKER_TYPES = ['Milestone']` in `src/domain/typeVocabulary.ts`, beside `LEVELS` and
 `EXTRA_TYPES` rather than inside either — a declared type is not an extra type by adding
 its name to the wrong list, and `MARKER_TYPES` is the third category this note asked for
 rather than a widened `EXTRA_TYPES`. `ALL_TYPES` is `[...LEVELS, ...EXTRA_TYPES,

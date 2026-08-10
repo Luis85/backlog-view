@@ -232,7 +232,8 @@ the properties a vault HAS, so a property no note carries cannot be picked, and 
 property nothing names cannot be written to a note. It runs the `configProblems` gate
 itself before touching either: an action that changed the configuration and then had
 every write refused would leave the view worse than it found it. Everything about
-*which* properties those are lives in `domain/settings.ts` — see `src/domain/CLAUDE.md`.
+*which* properties those are lives in `domain/optionalProperties.ts` — see
+`src/domain/CLAUDE.md`.
 
 ### One move, three inputs — per projection
 

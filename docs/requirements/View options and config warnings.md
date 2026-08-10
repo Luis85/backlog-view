@@ -132,8 +132,8 @@ omission, and both numbers had moved by the time anyone looked.
 
 **Nothing yet — this note is design.** `src/domain/viewOptions.ts` is the schema whose
 `displayName`s and `placeholder`s move and
-whose `key`s must not · `src/domain/settings.ts` holds `configProblems` and
-`typeFolderKey` · `src/view/render/toolbar.ts` renders the warning chip ·
+whose `key`s must not · `src/domain/settingsConsistency.ts` holds `configProblems` and
+`src/domain/typeVocabulary.ts` holds `typeFolderKey` · `src/view/render/toolbar.ts` renders the warning chip ·
 `src/view/backlogView.ts` and `src/view/interactions/create.ts` quote a problem into a
 notice.
 Tests: `test/domain/viewOptions.test.ts`, `test/domain/settings.test.ts`.

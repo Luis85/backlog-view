@@ -108,7 +108,8 @@ frontmatter, **I want** one button that sets the properties up and writes them f
 
 ## Where it lives
 
-`src/domain/settings.ts` (`OPTIONAL_PROPERTIES`, the one table of what each optional
+`src/domain/optionalProperties.ts` (`OPTIONAL_PROPERTIES`, the one table of what each
+optional
 property is called and suggests, and `adoptableProperties`) ·
 `src/domain/writePlan.ts` (`computeInitWrites`, over `initWriteFor` and
 `missingKeyStubs`) · `src/domain/model.ts` (`ownKeys`, which key a note carries) ·

@@ -117,8 +117,8 @@ and one more chip in the property column the base already shows.
 
 ## Where it lives
 
-The assignee is a row of the optional-property table in `src/domain/settings.ts` — the one
-statement of "which property does this write target live in" that the pickers, the
+The assignee is a row of the optional-property table in
+`src/domain/optionalProperties.ts` — the one statement of "which property does this write target live in" that the pickers, the
 collision report, the adoption and the backfill all read. Adding that row is what makes
 steps 1 and 2 work with no code of their own, and the resolver now builds every optional
 key FROM that table rather than restating the pairing a line at a time. The picker itself

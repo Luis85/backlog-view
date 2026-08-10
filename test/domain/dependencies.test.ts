@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { dependentsClosure } from '../../src/domain/dependencies';
-import { BacklogItem, buildModel } from '../../src/domain/model';
 import { defaultSettings } from '../../src/domain/settings';
 import { settingsWith } from '../helpers/settings';
+import { dependentsClosure } from '../../src/domain/dependencies';
+import { BacklogItem, buildModel } from '../../src/domain/model';
 import { FakeVault } from '../helpers/vault';
 
 /**

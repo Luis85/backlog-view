@@ -1,23 +1,8 @@
 import { BasesAllOptions, BasesOptions, BasesPropertyId, BasesViewConfig } from 'obsidian';
-import {
-	ALL_TYPES,
-	BacklogSettings,
-	columnPolicyKey,
-	DEFAULT_DONE_VALUES,
-	DEFAULT_HOME_FOLDER,
-	DEFAULT_HORIZON_VALUES,
-	DEFAULT_PROP_COLUMN_WIDTH,
-	DEFAULT_RISK_VALUES,
-	defaultSettings,
-	defaultTypeFolder,
-	MAX_PROP_COLUMN_WIDTH,
-	MIN_PROP_COLUMN_WIDTH,
-	OptionalField,
-	optionalProperty,
-	resolveSettings,
-	typeFolderKey,
-	wipLimitKey,
-} from './settings';
+import { BacklogSettings, columnPolicyKey, DEFAULT_DONE_VALUES, DEFAULT_HORIZON_VALUES, DEFAULT_PROP_COLUMN_WIDTH, DEFAULT_RISK_VALUES, defaultSettings, MAX_PROP_COLUMN_WIDTH, MIN_PROP_COLUMN_WIDTH, wipLimitKey } from './settings';
+import { OptionalField, optionalProperty } from './optionalProperties';
+import { resolveSettings } from './settingsResolve';
+import { ALL_TYPES, DEFAULT_HOME_FOLDER, defaultTypeFolder, typeFolderKey } from './typeVocabulary';
 import { STATE_COLOR_CHOICES, stateColorKey } from './stateColors';
 import { CLICK_ACTIONS, defaultItemHandling, OPEN_TARGETS } from './itemHandling';
 import { sameValue } from './noteFields';

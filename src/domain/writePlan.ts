@@ -12,15 +12,9 @@ import {
 } from './itemTypes';
 import { readDate, sameValue } from './noteFields';
 import { hasHorizonAxis } from './roadmap';
-import {
-	BacklogSettings,
-	isDoneValue,
-	isStartedValue,
-	LEVELS,
-	OPTIONAL_FIELDS,
-	OptionalField,
-	optionalKeyFor,
-} from './settings';
+import { BacklogSettings, isDoneValue, isStartedValue } from './settings';
+import { OPTIONAL_FIELDS, OptionalField, optionalKeyFor } from './optionalProperties';
+import { LEVELS } from './typeVocabulary';
 
 /**
  * What a change to the tree *would* write, worked out without touching anything.

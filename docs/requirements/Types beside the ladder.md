@@ -214,7 +214,7 @@ evidence yet that anyone wants otherwise — revisit if a report says so.
 ## Where it lives
 
 `src/domain/itemTypes.ts` (`EXTRA_TYPE_RANK`, `isExtraType`, `childTypeChoices`,
-`folderForType`) · `src/domain/settings.ts` (`EXTRA_TYPES`, `ALL_TYPES`, `byTypeName`) ·
+`folderForType`) · `src/domain/typeVocabulary.ts` (`EXTRA_TYPES`, `ALL_TYPES`, `byName`) ·
 `src/domain/model.ts` (`collectFocusRoots`, `pruneOutsideHierarchy`) ·
 `src/domain/writePlan.ts` (`computeTypeChanges` — the pinned rank in the cascade) ·
 `src/view/render/rows.ts` (icon and badge colour) · `styles.css`.

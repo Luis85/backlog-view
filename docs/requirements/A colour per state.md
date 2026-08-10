@@ -132,7 +132,7 @@ names), `STATE_COLOR_CHOICES` (the same list as the dropdown shows it), `stateCo
 hand-editable `.base` is allowed to say). Its own module rather than more of
 `src/domain/settings.ts`, which is at the line cap that exists to ask that question.
 
-`resolveSettings` (`src/domain/settings.ts`) reads one `stateColors` table across both
+`resolveSettings` (`src/domain/settingsResolve.ts`) reads one `stateColors` table across both
 vocabularies, keyed by the lowercased value, and `colourProblem`
 (`src/domain/settingsConsistency.ts`) is the same rule read backwards, so a fixture that
 skips the resolver cannot hold a colour it would have dropped · `src/domain/viewOptions.ts` generates the

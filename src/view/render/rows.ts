@@ -5,7 +5,7 @@ import { offerableTypes, showItemMenu } from '../interactions/menu';
 import { renderAllDoneState, renderEmptyState, renderFilterEmptyState } from './emptyStates';
 import { BacklogItem } from '../../domain/model';
 import { childTypeChoices, displayType } from '../../domain/itemTypes';
-import { byName } from '../../domain/settings';
+import { byName } from '../../domain/typeVocabulary';
 import { ownWorkflowReading } from '../../domain/board';
 import {
 	INDENT_PER_DEPTH,

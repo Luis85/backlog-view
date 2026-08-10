@@ -100,8 +100,8 @@ more menu whose checkmark is asked of the plan rather than of a comparison besid
 
 ## Where it lives
 
-Risk is a row of the optional-property table in `src/domain/settings.ts` — the one
-statement of "which property does this write target live in" that the pickers, the
+Risk is a row of the optional-property table in `src/domain/optionalProperties.ts` —
+the one statement of "which property does this write target live in" that the pickers, the
 collision report, the adoption and the backfill all read. Adding that row is what makes
 steps 1 and 3 work with no code of their own: `adoptableProperties` binds the suggestion,
 `configProblems` reports its collisions, `readOwnKeys` in `src/domain/model.ts` tracks

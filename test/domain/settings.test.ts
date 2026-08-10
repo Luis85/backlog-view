@@ -1,23 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { settingsWith } from '../helpers/settings';
-import {
-	adoptableProperties,
-	ALL_TYPES,
-	byName,
-	configProblems,
-	defaultSettings,
-	defaultTypeFolder,
-	EXTRA_TYPES,
-	horizonMenuValues,
-	LEVELS,
-	MARKER_TYPES,
-	OPTIONAL_FIELDS,
-	OPTIONAL_PROPERTIES,
-	optionalKeyFor,
-	optionalProperty,
-	resolveSettings,
-	stateMenuValues,
-} from '../../src/domain/settings';
+import { defaultSettings, horizonMenuValues, stateMenuValues } from '../../src/domain/settings';
+import { adoptableProperties, OPTIONAL_FIELDS, OPTIONAL_PROPERTIES, optionalKeyFor, optionalProperty } from '../../src/domain/optionalProperties';
+import { configProblems } from '../../src/domain/settingsConsistency';
+import { resolveSettings } from '../../src/domain/settingsResolve';
+import { ALL_TYPES, byName, defaultTypeFolder, EXTRA_TYPES, LEVELS, MARKER_TYPES } from '../../src/domain/typeVocabulary';
 
 /** Stand-in for BasesViewConfig backed by a plain object. */
 function fakeConfig(values: Record<string, unknown> = {}) {

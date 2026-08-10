@@ -15,13 +15,8 @@ import {
 	readTags,
 	resolveParent,
 } from './noteFields';
-import {
-	BacklogSettings,
-	OPTIONAL_FIELDS,
-	OptionalField,
-	optionalKeyFor,
-	resolvedDeliverableStateKey,
-} from './settings';
+import { BacklogSettings } from './settings';
+import { OPTIONAL_FIELDS, OptionalField, optionalKeyFor, resolvedDeliverableStateKey } from './optionalProperties';
 import { isMarkerType } from './itemTypes';
 
 /**

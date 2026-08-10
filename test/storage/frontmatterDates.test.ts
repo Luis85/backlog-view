@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyWrites } from '../../src/storage/frontmatter';
-import { resolveSettings } from '../../src/domain/settings';
+import { resolveSettings } from '../../src/domain/settingsResolve';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
 
 /**

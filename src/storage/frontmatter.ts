@@ -12,13 +12,9 @@ import {
 	readString,
 	readTags,
 } from '../domain/noteFields';
-import {
-	BacklogSettings,
-	isDoneValue,
-	optionalKeyFor,
-	resolvedDeliverableStateKey,
-	vaultFolder,
-} from '../domain/settings';
+import { BacklogSettings, isDoneValue } from '../domain/settings';
+import { optionalKeyFor, resolvedDeliverableStateKey } from '../domain/optionalProperties';
+import { vaultFolder } from '../domain/settingsResolve';
 import { DateSpan, daysBetween, reversedSpan } from '../domain/timeline';
 import { ItemWrite, TagDelta } from '../domain/writePlan';
 import { DependsOnRestore, dependsOnRestore, restoreDependsOn } from './dependsOnWrite';

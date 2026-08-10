@@ -1,5 +1,5 @@
 import { displayType } from './itemTypes';
-import { ALL_TYPES } from './settings';
+import { ALL_TYPES } from './typeVocabulary';
 import { ShelfCard } from './bars';
 
 /** Display-only ordering of cards within a group. Never written anywhere. */

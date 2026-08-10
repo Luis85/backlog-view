@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { defaultSettings } from '../../src/domain/settings';
+import { settingsWith } from '../helpers/settings';
 import { BacklogItem } from '../../src/domain/model';
 import { buildModel } from '../../src/domain/model';
 import {
@@ -7,9 +9,7 @@ import {
 	computeAssigneeWrites,
 	computeRiskWrites,
 } from '../../src/domain/writePlan';
-import { defaultSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
-import { settingsWith } from '../helpers/settings';
 
 const settings = defaultSettings();
 

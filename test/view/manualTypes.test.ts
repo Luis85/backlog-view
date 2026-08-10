@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { typesSection } from '../../src/view/manual/typesSection';
-import { ALL_TYPES, LEVELS } from '../../src/domain/settings';
+import { ALL_TYPES, LEVELS } from '../../src/domain/typeVocabulary';
 
 describe('the types section', () => {
 	// The check behind "derived, not retyped": a type added to the vocabulary without an

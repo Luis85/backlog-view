@@ -7,7 +7,8 @@ import { ShelfSort } from '../domain/shelf';
 import { PlacementEnd } from '../domain/itemTypes';
 import { ScaleId, TimelineScale, TimelineWindow } from '../domain/timeline';
 import { ItemWrite, SchedulePlan } from '../domain/writePlan';
-import { BacklogSettings, OptionalProperty } from '../domain/settings';
+import { BacklogSettings } from '../domain/settings';
+import { OptionalProperty } from '../domain/optionalProperties';
 import { OpenTarget } from '../domain/itemHandling';
 import { WriteOutcome } from '../storage/frontmatter';
 

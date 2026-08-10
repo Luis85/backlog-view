@@ -80,7 +80,7 @@ Proposed, not settled — the first PBI builds the surface and the rest add sect
 - The README at `README.md` — the content that exists and is out of reach in the app.
 - `src/view/render/toolbar.ts` — the toolbar this button joins, and the tooltip-sized
   help it can currently give.
-- `src/domain/itemTypes.ts`, `src/domain/settings.ts` — the vocabulary a types section
+- `src/domain/itemTypes.ts`, `src/domain/typeVocabulary.ts` — the vocabulary a types section
   must be generated from.
 - `eslint.config.mjs` — the layering that decides where the content, the composition and
   the dialog each live.

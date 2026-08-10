@@ -1,4 +1,5 @@
-import { AXIS_FIELDS, AxisField, BacklogSettings, OptionalField, optionalKeyFor, resolvedDeliverableStateKey } from '../domain/settings';
+import { BacklogSettings } from '../domain/settings';
+import { AXIS_FIELDS, AxisField, OptionalField, optionalKeyFor, resolvedDeliverableStateKey } from '../domain/optionalProperties';
 import { AxisWrite, ItemWrite } from '../domain/writePlan';
 
 /**

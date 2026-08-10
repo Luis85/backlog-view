@@ -13,7 +13,8 @@ import {
 import {
 	CivilDate,
 } from './noteFields';
-import { ALL_TYPES, BacklogSettings, LEVELS } from './settings';
+import { BacklogSettings } from './settings';
+import { ALL_TYPES, LEVELS } from './typeVocabulary';
 import { assertResolvedSettings } from './settingsConsistency';
 import { earliest, latest, reversedSpan } from './timeline';
 import {

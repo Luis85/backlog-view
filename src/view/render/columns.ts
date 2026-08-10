@@ -6,7 +6,8 @@ import { removeTag } from '../interactions/tags';
 import { ownWorkflowReading, stateKeyFor } from '../../domain/board';
 import { BacklogItem } from '../../domain/model';
 import { hasHorizonAxis, SHELF_LABEL } from '../../domain/roadmap';
-import { BacklogSettings, hasRiskLevels, resolvedDeliverableStateKey } from '../../domain/settings';
+import { BacklogSettings, hasRiskLevels } from '../../domain/settings';
+import { resolvedDeliverableStateKey } from '../../domain/optionalProperties';
 
 /**
  * State shared by one render pass. Config lookups live here so per-row work stays

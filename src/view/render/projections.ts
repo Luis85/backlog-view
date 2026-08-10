@@ -8,7 +8,7 @@ import { BoardSnapshot, Projection, RoadmapSnapshot, ScrollBox } from '../host';
 import { CardDragController } from '../interactions/cardDrag';
 import { CivilDate } from '../../domain/noteFields';
 import { activeAxis } from '../../domain/roadmap';
-import { resolvedDeliverableStateKey } from '../../domain/settings';
+import { resolvedDeliverableStateKey } from '../../domain/optionalProperties';
 import { daysBetween, dayAt } from '../../domain/timeline';
 
 /**

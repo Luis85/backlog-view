@@ -72,7 +72,7 @@ can be checked by reading one directory.
   `toString`, `constructor` and `valueOf` are legal property names, and on a note
   lacking them the lookup returns the inherited function — truthy, so a blank test
   reports a date already recorded and the stamp is declined forever. `byName` in
-  `domain/settings.ts` says this hazard has shipped three times on other tables; this
+  `domain/typeVocabulary.ts` says this hazard has shipped three times on other tables; this
   is the same answer for frontmatter, and `rawValueOf` was already doing it alone.
 - A live value read here must go through the **same tolerant reader the model used**
   (`readString` for the state, as `buildModel` does). Frontmatter takes shapes a strict
@@ -263,7 +263,7 @@ whole thing from the file resolved correctly while silently dropping both.
   rather than clamping it, since a clamp still trusts a corrupt-but-plausible number into
   the layout. A range check is the same rule as a vocabulary check, not an exception to
   it. `focus` is checked for SHAPE only, not against the vocabulary: the
-  type list lives in `domain/settings.ts` and `focusTarget` already answers a name no
+  type list lives in `domain/typeVocabulary.ts` and `focusTarget` already answers a name no
   configured type matches with "no focus" — the same tolerance it had while this value
   lived in the `.base`.
 - The focus level is the one piece of this that is also an input to the MODEL, not just to
