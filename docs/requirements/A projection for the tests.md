@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[The test catalog projection]]"
 order: 10
-status: Open
+status: Done
 priority: P2
 created: 2026-08-08
 source: user request
@@ -369,126 +369,57 @@ base settings are saved on the view, working position on the device.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The toggle's positions are
-`src/view/render/toolbar.ts` and `src/view/render/projections.ts`, the stored position
-`src/view/uiState.ts` over `src/storage/collapseStore.ts`, the empty state
-`src/view/render/emptyStates.ts`, and the rows themselves `src/view/render/rows.ts` — the
-same tree renderer over a different population, which is what makes this projection cheap
-and is the reason it is a tree rather than a third kind of drawing.
+**`src/view/projection.ts`** is the new module, and it is what this PBI's shape turned out
+to be: *what a projection IS*, asked rather than compared. `treeShaped` answers the six
+gates that spelled `projection === 'tree'`, `hidesCompleted` the seventh that spelled
+`!== 'deliverables'`, `filterScopeFor` the one the view held as a private getter, and
+`projectionPopulation` / `projectionMember` the two halves of membership. A lint rule
+forbids a bare `projection === 'tree'` outside it, so the seventh gate somebody writes
+tomorrow is correct without being told. `offerableTypes` moved here too, with its own lint
+exemption — see [[Test suite and test case as a ladder of their own]].
 
-**`renderProjectionContent` needs a branch, not a fallthrough.** Its last line renders the
-tree and returns `role: 'tree', label: 'Product backlog'`, so every projection that is not
-board, roadmap or Deliverables gets the backlog's accessible name for free. The catalog
-wants the renderer and not the name, which is one line and the sort of line a fallthrough
-is designed to make invisible.
+**The forest is computed, not filtered** — `projectionForest` in `src/domain/model.ts`,
+beside `collectFocusRoots`, asked twice with opposite predicates. `renderForest` drops a
+hidden sibling *without descending through it*, so a `Test case` under a `PBI` would be
+lost by a filter; and because the same function answers both ways, 2c and
+[[Tests stay out of the plan]] 2a are one rule rather than two arguments that could
+disagree. It marks a promoted root `focusRoot` — the same category, so `siblingContext`,
+`outdentTarget`, `handleExpandCollapseKey` and the drop-target lookup all refuse it without
+one of them being edited — and re-derives depth through `assignVisualDepth`. It only ever
+SETS that flag, never clears it, which is what lets it compose with a focused plan.
 
-**The roots are the one thing no consumer can be handed unchanged.** `renderTree` takes
-`model.roots` and `renderForest` filters siblings without descending through the ones it
-drops, so a projection that only hides rows loses everything under a hidden parent. What
-this projection needs is a root set of its own, computed by the rule in step 2 — which
-belongs beside `collectFocusRoots` in `src/domain/model.ts`, the function that already
-answers "what does the rendered tree root at when it is not the model's own roots", rather
-than as a second re-rooting written inside the renderer.
+`model.catalog` carries the catalog's forest and is read off the whole UNFOCUSED tree
+beside `deliverableResults`, for that field's own reason: `buildModel`'s focus branch
+replaces roots, items and results together, so anything computed after it inherits the
+narrowing. The plan's forest replaces `model.roots`, so every existing consumer of the
+rendered forest inherits the exclusion for nothing.
 
-**Which consumers take it is a category question, and `grep model.roots` answers it.**
-Eight call sites outside the model read those roots, and they divide cleanly by what they
-are asking:
+**`rowHidden` is where membership is asked** (`src/view/rowVisibility.ts`), beside the
+quick filter and the completed toggle, and that placement is what made the rest small: the
+renderer, the keyboard's move targets, the board's cards, the roadmap's rows and every
+count measured over the same walk consult that one predicate already. A membership test
+added per surface is the shape that leaves the sixth one behind.
 
-| Takes the projection's roots — asks what is on screen | Keeps the whole tree — asks about the vault, or about what a stored number means |
-| --- | --- |
-| `src/view/render/rows.ts` (the forest, and the "any row at all" check) | `src/view/interactions/create.ts` — `hasItems` and `inferFolder`, which say so in a comment: *judge existence and infer folders from the FULL tree* |
-| `src/view/filterState.ts` — the match index | `src/domain/writePlan.ts` — the ✨ backfill, which writes to every note |
-| `src/view/interactions/keyboard.ts` — `visibleItems` | |
-| `src/domain/dropTargets.ts` — where a root-level drop lands: the **positionable** list, this projection's genuine roots (2d) | `src/domain/writePlan.ts` — the **ranking group** the order is computed and renumbered against: every parentless item, which is what the number means on disk (2d) |
-| `src/view/interactions/structure.ts` — indent and outdent's root list, likewise positionable | |
-| `src/view/interactions/create.ts` — which roots a new one is created *among* | `src/view/interactions/create.ts` — `endOfSiblingsOrder` for a new root takes the **ranking group**: it answers the supplied list's maximum plus a spacing, so a last suite at 10 with a hidden Epic at 20 hands the next suite the Epic's own number. Appending against the whole group is also the position the catalog wants — a maximum over a superset always clears the last visible root too |
+**Ranking moved to `model.realRoots`** in `src/domain/dropTargets.ts` and
+`src/view/interactions/structure.ts` — three reads that were `model.roots` only because
+the two were identical without a focus. That is the layer guide's own rule
+(*every data operation must use `realRoots`*) becoming load-bearing: an `order` is scoped
+to the notes sharing a parent, and a `Test suite` and an `Epic` share the null one. It is
+smaller than the code it replaced and collision-free by construction, so 2d's three lists
+need no fourth mechanism — `endOfSiblingsOrder` was already handed the real group.
 
-The line is *what is this asking about* — the screen, or the vault — and both sides already
-have their reasons written down beside them. The left column's mistake is invisible (a
-number or a target that disagrees with the rows); the right column's would be loud (a
-backfill that skipped notes).
+**The stored round trip was fixed rather than extended.** `PROJECTION_MODES` in
+`src/storage/collapseStore.ts` is the one list `readEntry` allows, and `projectionFor` in
+`src/view/collapseState.ts` inverts `PROJECTION_MODE` instead of the `if` chain that ended
+in an unguarded `return 'tree'` — the direction that would have left the toggle doing
+nothing the moment it was clicked.
 
-**This is a category invariant, so it wants a check at the forbidden thing rather than six
-tests.** `no-restricted-syntax` already forbids `processFrontMatter` outside `storage/`;
-the same shape — `model.roots` and `model.realRoots` readable only inside the module that
-computes projection roots, with the two vault-wide consumers exempted by name — would hold
-for a seventh consumer nobody has written yet. Six tests hold for the six that exist, which
-is exactly the guarantee this PBI has now had to widen three times.
-
-**"Tree-shaped" has the same problem and the same answer.** `projection === 'tree'` appears
-in six gates — `src/view/render/columns.ts` (the fitted column count),
-`src/view/resize.ts` (refit on resize), `src/view/backlogView.ts` twice (clearing the fit
-classes for card projections, and the second measuring pass),
-`src/view/render/toolbar.ts` (Expand/Collapse all), and `src/view/interactions/menu.ts`
-(the move section) — plus `hideCompleted`, which is written as `!== 'deliverables'` and
-needs the catalog beside it. A **predicate** the gates ask, rather than seven edited
-equality checks, is what makes the seventh gate correct when someone writes it; and a lint
-rule forbidding a bare `projection === 'tree'` outside that predicate is what makes the
-predicate hold rather than merely exist.
-
-**The forest is read off the unfocused tree**, which is a `src/domain/model.ts` question
-rather than a view one: `buildModel`'s focus branch replaces `roots`, `items` and `results`
-together, so anything computed after it inherits the narrowing. `deliverableResults` is
-already computed *before* that branch for exactly this reason, and the catalog's forest
-belongs beside it — not in a later pass that would have to undo the focus.
-
-**The promoted root wants a flag, not five edits.** `focusRoot` is a field on the item,
-set by `collectFocusRoots` and read at four call sites; a projection root is the same
-category, so either it sets that flag too or the flag is renamed to what it has always
-meant — a root of the **rendered forest**. The second is tempting and is a rename of shipped
-code this PBI does not otherwise touch; the first is smaller and leaves a field called
-`focusRoot` true for an item no focus produced, which is a comment's job to explain. Either
-way the depth comes from `assignVisualDepth`, which focus already uses for exactly this.
-
-**The stored mode is a round trip through three places, and exactly one is
-compiler-checked.**
-
-| | | |
-| --- | --- | --- |
-| `PROJECTION_MODE` (`view/collapseState.ts`) | projection → constant | `Record<Projection, …>`, so a new projection cannot be added without a case |
-| `projection()` (`view/collapseState.ts`) | constant → projection | a manual `if` chain ending in an unguarded `return 'tree'` |
-| `readEntry` (`storage/collapseStore.ts`) | what a stored value may be | a hand-written array literal; anything else is discarded on read |
-
-Only the first refuses to compile. The second and third accept a new projection silently and
-answer `tree`, so the catalog would be **written correctly and never activate** — and not
-merely after a reload: `setProjection` stores the constant and then renders, and the render
-asks `projection()`, so the toggle does nothing the moment it is clicked.
-
-`PROJECTION_MODE`'s own comment is the argument for fixing this by derivation rather than by
-three edits. It records that the chain it replaced *"stayed green after a new projection was
-added and silently persisted its bare name"* — the write direction was hardened after
-exactly this miss, and **the reverse direction is still that chain**, a few lines below the
-map that replaced it. One mapping should answer both directions, so the getter cannot drift
-from the setter.
-
-The storage half cannot join that mapping: `storage/` may not import `view/`, and lint fails
-the build on it. What it can do is run the other way, since the mode constants already live
-in `storage/` — one exported list of them there, consumed by `readEntry`, leaving
-`PROJECTION_MODE` its exhaustiveness over `Projection`. Then all three agree by
-construction and the next projection inherits every one.
-
-**Three lifecycle seams sit beside those gates and are not gates at all.**
-`refreshFromData` seeds default collapse state by handing `collapseNewParents` its
-populations — `model.items` **plus** `deliverableResults`, the second passed explicitly
-because the first is narrowed by a focus. The catalog's population joins it for exactly
-that reason: with a plan focus stored, a newly loaded suite outside the focused subtree is
-never offered to that call and opens expanded, against the promise that collapse here
-behaves as it does in the backlog tree. That the existing call already carries a second
-list is the evidence this is the established shape rather than a new one.
-`collapsiblePopulation` (`src/view/render/toolbar.ts`) decides what a bulk collapse
-*touches* rather than whether a button is *enabled*, so the tree-shaped predicate does not
-reach it — it needs the catalog's forest by name. And `UiStateController.setProjection`
-(`src/view/uiState.ts`) stores the mode and renders without recomputing the filter index,
-which no gate anywhere would have caught: the index is correct when built and wrong when
-the thing it was built for changes underneath it.
-
-`src/view/interactions/keyboard.ts` is the one gate needing nothing, and it is worth
-naming so nobody edits it: it dispatches to the **board** keyboard for `board` and
-`deliverables`, so a new projection falls to the tree's own handler by default. It is
-correct here by construction, which is what a projection-shaped gate looks like when it is
-written the right way round.
-
-Which items belong to this population is a domain question and lives with the type
-vocabulary in `src/domain/itemTypes.ts`, beside the answer [[Tests stay out of the plan]]
-needs, so the two are one predicate read from both directions rather than two lists that
-can disagree.
+`src/view/render/projections.ts` gets a BRANCH rather than a fallthrough, so the catalog
+takes the tree renderer and the label `Test catalog`; `src/view/render/emptyStates.ts`
+gains `renderCatalogEmptyState`, which offers creation and never configuration;
+`src/view/render/toolbar.ts` gains the fifth toggle position, the catalog's `INERT_FOCUS`
+entry, and the catalog's own `countedPopulation`; `src/view/render/toolbarControls.ts`'s
+`collapsiblePopulation` takes the catalog's items by name, deliberately not behind
+`treeShaped`, since it decides what a bulk collapse TOUCHES rather than whether a button is
+enabled; and `UiStateController.setProjection` (`src/view/uiState.ts`) recomputes the
+filter index through a hook of its own, which no gate anywhere would have caught.

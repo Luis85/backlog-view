@@ -4,6 +4,7 @@ import {
 	BOARD_MODE,
 	CATALOG_MODE,
 	DELIVERABLES_MODE,
+	ProjectionMode,
 	ROADMAP_MODE,
 	collapseStoreIdentity,
 	dropCollapseState,
@@ -29,7 +30,7 @@ import { BacklogViewHost, Projection } from './host';
  * {@link projectionFor} inverts this instead, and `PROJECTION_MODES` in `storage/` closes
  * the third leg. One mapping, three directions, no drift.
  */
-const PROJECTION_MODE: Record<Projection, string | null> = {
+const PROJECTION_MODE: Record<Projection, ProjectionMode | null> = {
 	tree: null,
 	board: BOARD_MODE,
 	roadmap: ROADMAP_MODE,

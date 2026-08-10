@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[The test catalog projection]]"
 order: 20
-status: Open
+status: Done
 priority: P2
 created: 2026-08-08
 source: user request
@@ -263,33 +263,41 @@ context row when a visible descendant needs a parent to hang from.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The predicate belongs in
-`src/domain/itemTypes.ts` beside the vocabulary, and it is asked in **two** places, which
-is the correction this note needed most.
+The predicate is `inCatalog` (`src/domain/itemTypes.ts`), asked of the item's LADDER, which
+is what makes it the effective type: a child of a `Test suite` with no `type` at all chains
+onto the test ladder and is a catalog member, where a predicate reading the raw field would
+have put a note that draws as a test case into the plan.
 
-**In the empty states**, which are a third kind of consumer and easy to miss because they
-are what renders when nothing else does: `renderTree`'s two branches
-(`src/view/render/rows.ts`) and `renderRoadmapAdvisory` (`src/view/render/roadmap.ts`) both
-decide from `model.items` / `model.results` and must decide from the plan's population.
+**In the projections**, it is asked exactly once — in `rowHidden`
+(`src/view/rowVisibility.ts`), beside the quick filter and the completed toggle. Everything
+downstream inherits it, because everything downstream already consults that one predicate:
+the tree's rows, the requirements board's cards, the roadmap's rows and shelf, the
+keyboard's move targets. `src/domain/board.ts`, `src/domain/roadmap.ts` and
+`src/domain/shelf.ts` needed no edit at all — they read `model.results` and `model.roots`,
+which are the PLAN's now.
 
-**In the projections**, for what is drawn: the tree in `src/view/rowVisibility.ts`, the
-boards in `src/domain/board.ts`, the roadmap in `src/domain/roadmap.ts` and
-`src/domain/shelf.ts`, with the derived vocabularies in `src/domain/vocabulary.ts` — and in
-`countedPopulation` (`src/view/render/toolbar.ts`), which is a projection question wearing
-a toolbar's clothes: it already branches per projection, two consumers read it (the count
-label and the completed toggle), and both are wrong together or right together.
+**In the empty states**, likewise for nothing: `renderTree` reads
+`projectionPopulation(...)` on all three of its decisions, so a base returning twelve test
+notes and no plan work shows the plan's ordinary empty state rather than *"All 12 items are
+done and hidden"* with a button that reveals nothing.
 
-**In `assignAll` (`src/domain/model.ts`)**, for what is counted — because the rollup is not
-a projection. That walk gathers descendant counts, done counts and date evidence while the
-tree is built, and it already carries the shape this needs: a context row contributes
-nothing itself, and a marker contributes nothing *and* is stated at the walk rather than at
-a call site "precisely so it holds for every quantity this walk gathers". A test is the
-third such exception and a stronger one — nothing from it and nothing from beneath it, per
-3b — and it belongs in the same place for the same reason.
+**In `assignAll` (`src/domain/model.ts`)**, for what is COUNTED, and this one had to be
+written: the rollup is not a projection. A test is the third exception in that walk and a
+stronger one than the two beside it — nothing from it AND nothing from beneath it, since a
+`Task` under a `Test case` is test work. Stated at the walk so it holds for every quantity
+the walk gathers. The subtree is still traversed; its rollup is discarded. The accepted
+cost is 3c: a suite shows no "3 of 5 cases done".
 
-Not pruning the model is still the load-bearing choice, and still [[A Deliverables board]]'s:
-a pruned model would take the coverage edges with it, and [[Untested work names itself]]
-needs them on the very rows the prune would have left behind. What was wrong was the
-sentence that followed from it — that the projections are therefore the *only* place to
-ask. Keeping an item in the model does not keep it out of the arithmetic the model does on
-the way past.
+**The vocabularies are per population**, and that is a shape rather than four edits:
+`ProjectionPopulation` carries `observedStates`, `observedHorizons` and `observedTags`, so
+`model` and `model.catalog` answer the same three names and `rowVocabulary`
+(`src/view/projection.ts`) is one ternary. The plan's are collected from the whole
+unfocused tree minus the catalog — unfocused, so what a menu offers never narrows with what
+is on screen. `observedDeliverableStates` needed nothing, being already scoped to
+`Deliverable`s.
+
+`countedPopulation` (`src/view/render/toolbar.ts`) answers from the projection's own
+population, which its two readers — the count label and the completed toggle's *"N hidden"*
+— share, so neither can offer to reveal what the other is not counting. The ignored-notes
+advisory is untouched, and the reason is that a test is a work item: it was never in that
+number.

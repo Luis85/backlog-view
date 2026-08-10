@@ -54,10 +54,10 @@ const specText = specFiles(REQUIREMENTS)
  * whose whole job was to notice that nobody had specified it. An id is never prose here,
  * so restricting the corpus costs nothing and closes the collision entirely.
  */
-function code(text: string): string {
+function code(text: string): { fenced: string[]; inline: string[] } {
 	const fenced = [...text.matchAll(/```\w*\n([\s\S]*?)```/g)].map(([, body]) => body);
 	const inline = [...text.replace(/```[\s\S]*?```/g, '').matchAll(/`([^`\n]+)`/g)].map(([, body]) => body);
-	return [...fenced, ...inline].join('\n');
+	return { fenced, inline };
 }
 
 /**
@@ -70,8 +70,20 @@ function code(text: string): string {
  * hyphen was missing from both.
  */
 function tokens(text: string): Set<string> {
-	const found = code(text).match(/[\w.-]+/g) ?? [];
-	return new Set(found.map((token) => token.replace(/^[.-]+|[.-]+$/g, '')).filter(Boolean));
+	const { fenced, inline } = code(text);
+	const found = [...fenced, ...inline].join('\n').match(/[\w.-]+/g) ?? [];
+	const set = new Set(found.map((token) => token.replace(/^[.-]+|[.-]+$/g, '')).filter(Boolean));
+	// A whole INLINE SPAN is a name too, and it has to be, because a key may contain a
+	// space: `typeFolderKey` lowercases the type name and keeps it, so the first
+	// multi-word type — `Test suite` — produces `typeFolder.test suite`, which the split
+	// above can only ever see as `typeFolder.test` and `suite`. An instrument that cannot
+	// represent a member of the set it is measuring reports that member as missing, which
+	// is a false failure rather than a false pass, and still the wrong answer.
+	//
+	// Spans only, never fenced blocks: a block is many statements, and admitting one whole
+	// would let a code sample vouch for any key that happens to be a line of it.
+	for (const span of inline) set.add(span.trim());
+	return set;
 }
 const SPEC_TOKENS = tokens(specText);
 const named = (name: string): boolean => SPEC_TOKENS.has(name);

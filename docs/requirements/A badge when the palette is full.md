@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[A catalog of tests]]"
 order: 20
-status: Open
+status: Done
 priority: P2
 created: 2026-08-08
 source: user request
@@ -148,9 +148,39 @@ and must not be closed as one.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The badge table is in `src/view/render/rows.ts`,
-which maps a type to an icon and a class; the axis and the borrowed hue are one rule in
-`styles/badges.css`, and the partial that must state *why* those two entries share a hue
-where every other type has its own. `src/view/render/legend.ts` is **not** touched, per 4a.
-Nothing in
-`src/domain/` is touched: which colour a type wears has never been a domain question.
+`src/view/render/badges.ts` — the icon-and-colour table for every declared type, and its
+one lookup. It is a module of its own now, where it used to be a `const` inside
+`render/rows.ts`, and BOTH halves of that move were forced by this PBI.
+
+The table gains `'test suite'` and `'test case'`, lowercase and with the space kept, and
+loses its old name (`NON_RUNG_STYLE`), which the two test types falsify: they ARE rungs.
+`badgeStyleFor` changed shape rather than gaining a branch — it asks the name the badge
+SHOWS instead of `item.levelIndex`, which indexes whichever ladder the item is on. A
+`Task` beneath a `Test case` is rung 2 there and rung 3 of the plan's, so the index alone
+would have drawn it as a PBI in blue. The result is shorter than the code it replaced and
+correct on both ladders without either being named in it.
+
+It moved out of `rows.ts` because it needs a SECOND caller and could not have one there.
+`view/manual/typesSection.ts` draws the same badges beside its own type entries, and it
+was doing so from a duplicated four-line spelling rule kept on the stated grounds that
+reaching across a module cost more than restating it. `Test suite` ended that:
+`pbl-lvl-${name.toLowerCase()}` yields `pbl-lvl-test suite`, a token `classList.add`
+rejects outright — so the copy became one that could both disagree with the stylesheet and
+throw. Importing it back created a cycle (the manual reaches the rows, the rows reach
+creation, creation reaches the manual), and the answer is not an exemption: a table of
+icons and class names depends on nothing, so it belongs where nothing depends back.
+
+`styles/badges.css` — one hue for both (`--color-orange-rgb`, Epic's) and the test axis
+stated once beside the Idea/Task pairing: a solid border in that hue where every other
+badge carries `border: 1px solid transparent`, so a test reads as OUTLINED where the rest
+read as filled. It composes with `.pbl-implied` rather than fighting it — that rule comes
+later in the file and overrides to dashed and transparent, so an implied `Test case` reads
+as both. Nothing is minted: the hue is Obsidian's token, so the Borrowed Palette Rule holds.
+
+Orange is Epic's, and the reason is the rule rather than the crowding: an `Epic` is a root
+by position in the plan and a `Test suite` is a root by nature in the catalog, and after
+[[Tests stay out of the plan]] the two populations are disjoint by construction, so no
+screen can draw both.
+
+`src/view/render/legend.ts` is **not** touched, per 4a. Nothing in `src/domain/` is
+touched: which colour a type wears has never been a domain question.

@@ -1,6 +1,5 @@
 import { inCatalog, isDeliverableType, ladderFor } from '../domain/itemTypes';
 import { BacklogItem, BacklogModel, ProjectionPopulation } from '../domain/model';
-import { FilterScope } from './filterState';
 import { BacklogViewHost, Projection } from './host';
 import { ALL_TYPES } from '../domain/settings';
 
@@ -20,6 +19,26 @@ import { ALL_TYPES } from '../domain/settings';
  * It is its own module rather than a pair of functions on `host.ts`, which stays free of
  * runtime code so imports cannot cycle.
  */
+
+/**
+ * Which forest a question is asked about. **Not a preference — the two surfaces are
+ * asking about different populations**, and one index cannot answer for both.
+ *
+ * `focused` is the rendered forest (`model.roots`), which a focus level narrows: the
+ * tree, the requirements board and the roadmap all render out of it. `whole` is the
+ * entire tree (`model.realRoots`), which is what the Deliverables board's population
+ * (`model.deliverableResults`) is built from — deliberately focus-immune, so that a
+ * focus set on another projection can never hide a Deliverable there.
+ *
+ * This started as one index that the Deliverables board also consulted, and it took
+ * three separate fixes to keep patching the gap: the out-of-focus Deliverable that was
+ * never indexed, then its matching ANCESTOR that was not either, then a focused row
+ * BELOW one that the patch wrote to and should not have. Each fix was correct and each
+ * was one case short, because a single set was being asked two questions. Two indexes
+ * over one rule cannot drift: neither is a special case of the other, and neither can
+ * write into the other.
+ */
+export type FilterScope = 'focused' | 'whole';
 
 /** Whether this projection draws ROWS — indentation, disclosure, a rank somebody chose. */
 export function treeShaped(projection: Projection): boolean {

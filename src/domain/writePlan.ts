@@ -16,7 +16,6 @@ import {
 	BacklogSettings,
 	isDoneValue,
 	isStartedValue,
-	LEVELS,
 	OPTIONAL_FIELDS,
 	OptionalField,
 	optionalKeyFor,
@@ -296,7 +295,12 @@ export function computeTypeChanges(
 	// landed under, and a rung of the other ladder is not one of those. Nothing refuses the
 	// drop — the ladder has always guided rather than refused — so what the user gets is a
 	// legal item in an odd place, still drawn as a root of its own projection.
-	const destLadder = parent?.ladder ?? LEVELS;
+	// A move to the TOP LEVEL keeps the item on the ladder it is already on, because the
+	// top level is not one place: it is the plan's roots and the catalog's at once, and
+	// which one a row lands in is decided by what the row IS. Reading `LEVELS` here
+	// instead would leave a `Test case` dragged to the top of the catalog untouched —
+	// autoType silently doing nothing on the one projection where it had something to say.
+	const destLadder = parent?.ladder ?? dragged.ladder;
 	if (dragged.ladder !== destLadder) return { cascade };
 
 	const newBaseIdx = rankOf(dragged, childLevelIndex(parent, destLadder));

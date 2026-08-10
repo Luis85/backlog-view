@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[A catalog of tests]]"
 order: 10
-status: Open
+status: Done
 priority: P2
 created: 2026-08-08
 source: user request
@@ -99,8 +99,9 @@ design: the relationship between a test and the work it checks is
 - **2a — a per-type folder is not configured.** Folder inference and the folder prompt
   run, as they do for any type whose folder option is cleared. The shipped defaults are
   `tests/suites` and `tests/cases` under the home folder, one picker each, from the same
-  generated per-type options every other type gets — this PBI adds two names to that
-  mapping and no machinery.
+  generated per-type options every other type gets — `typeFolder.test suite` and
+  `typeFolder.test case`, since `typeFolderKey` lowercases the name and keeps the space.
+  This PBI adds two names to that mapping and no machinery.
 - **3a — the row is a `Test case`.** Its only child is `Task`, so the modal is skipped.
 - **3b — the row is an `Epic`, `Feature` or `PBI`.** Neither test type is offered. The
   choices there stay `[ladderChild, ...EXTRA_TYPES]`, unchanged by this PBI — a test is
@@ -224,23 +225,39 @@ design: the relationship between a test and the work it checks is
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The names join `ALL_TYPES` in
-`src/domain/settings.ts`, with two entries in `DEFAULT_TYPE_SUBFOLDERS`; the per-type
-folder options in `src/domain/viewOptions.ts` are already generic over the vocabulary.
+`src/domain/settings.ts` — `TEST_LEVELS`, and two entries in `DEFAULT_TYPE_SUBFOLDERS`.
+`ALL_TYPES` filters the shared rung out rather than concatenating, so `Task` appears
+exactly once: two entries would give it a second folder option under the same key, a
+duplicate in every creator menu and two shelf groups. The per-type folder options in
+`src/domain/viewOptions.ts` were already generic over the vocabulary and needed nothing.
 
-The rungs are `src/domain/itemTypes.ts`' work and the only genuinely new shape in this
-PBI: `LEVELS` is one ladder today and `childLevelIndex`/`nextLevelIndex` read it as *the*
-ladder, so a second one means those functions ask which ladder an item is on before they
-ask which rung. **Every `LEVELS[…]` index is that same question**, and there are five —
-`ladderChild` and `displayType` here, the move cascade's two branches and `initWriteFor` in
-`src/domain/writePlan.ts`. A grep for `LEVELS[` is what enumerates them; reasoning about
-which ones "look like ladder decisions" is what misses `initWriteFor`, the one that writes. `childTypeChoices` gains the two branches above, and its top-level branch
-already answers `ALL_TYPES` in full, which is correct for a suite and wrong for nothing.
+`src/domain/itemTypes.ts` holds the rungs and the genuinely new shape: `ladderFor`, which
+answers WHICH ladder before anything asks which rung, and `inCatalog`, the membership
+predicate over its result. `childLevelIndex` and `nextLevelIndex` take the ladder they
+clamp against, and every `LEVELS[…]` index became `ladder[…]` — the five a `grep 'LEVELS\['`
+enumerates, including `initWriteFor` in `src/domain/writePlan.ts`, the one that writes.
+`keepsTypeOnMove` is beside them, so the generated README derives which types a move leaves
+alone instead of naming `EXTRA_TYPES` and being wrong about a marker.
 
-`src/view/interactions/menu.ts` — `offerableTypes` gains the catalog branch, beside the two
-projection branches it already carries. That is where "a projection offers only what it can
-show" is stated once, so the rule is kept by extending it rather than by a second test
-written beside it.
+**The shared deepest rung is what made this small.** `TEST_LEVELS` ends on `Task`, so 4c
+is `childLevelIndex` clamping on the right ladder and needs no rule; so is the membership
+of a `Task` under a test; so is 2e's absent parent, which chains from nothing and lands on
+the plan with no vault read. What is left to state is the one thing a chain cannot say:
+`ladderFor` returns the PLAN's ladder for a name neither ladder holds, so an extra type, a
+marker or a custom type beneath a `Test case` stays plan work rather than being swept in.
+
+`src/view/projection.ts` — `offerableTypes`, moved here from `interactions/menu.ts` with
+the lint rule that guards it, because "which types may this projection offer" is a fact
+about the projection rather than about a menu. Its catalog branch is the first that is not
+a filter over type NAMES: it asks membership AFTER THE WRITE, of the row's own parent, so
+one rule answers the top-level creator, the primary button's default, the focus picker and
+**Set type** — a null parent ladder being exactly what "at the top level" means.
+`retypeChoices` beside it is that function with the row in hand, which is what keeps
+`interactions/menu.ts` from re-importing the vocabulary to hand it back.
+
+`src/domain/writePlan.ts` — `computeTypeChanges` computes the ladder the DESTINATION hands
+out and refuses to descend any other, at the root of a moved subtree and nested inside one.
+That is what keeps a `Test case` dropped on a `PBI` a `Test case`.
 
 The one thing that function cannot answer as it stands is **which caller is asking**. Six
 call sites go through it, in two groups: four ask for the whole vocabulary

@@ -1,6 +1,7 @@
 import { BacklogItem } from '../domain/model';
 import { BacklogSettings } from '../domain/settings';
-import { FilterScope, FilterState } from './filterState';
+import { FilterState } from './filterState';
+import { FilterScope } from './projection';
 
 /**
  * Row visibility, with the quick filter itself optionally lifted. One predicate

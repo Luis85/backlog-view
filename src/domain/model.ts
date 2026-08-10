@@ -505,18 +505,6 @@ interface Rollup {
 	target: CivilDate | null;
 }
 
-/** Focused rendering re-roots the tree visually; effective levels stay untouched. */
-function assignVisualDepth(renderedRoots: BacklogItem[]): BacklogItem[] {
-	const items: BacklogItem[] = [];
-	const assign = (item: BacklogItem, depth: number) => {
-		item.depth = depth;
-		items.push(item);
-		for (const child of item.children) assign(child, depth + 1);
-	};
-	for (const root of renderedRoots) assign(root, 0);
-	return items;
-}
-
 /**
  * What a projection roots at: **every item it draws whose parent it does not draw**.
  *
@@ -535,10 +523,10 @@ function assignVisualDepth(renderedRoots: BacklogItem[]): BacklogItem[] {
  * lookup) then refuse to rank, reparent or navigate it against neighbours that are not
  * on screen, without one of them being edited.
  *
- * Depth is re-derived by `assignVisualDepth` for the same reason focus already does it:
- * a test promoted from under a nested `PBI` would otherwise draw three levels indented
- * with `aria-level="4"` and nothing above it — a lie to the eye and a worse one to a
- * screen reader.
+ * Depth is RE-DERIVED here rather than inherited, for the reason focus already had to do
+ * it: a test promoted from under a nested `PBI` would otherwise draw three levels
+ * indented with `aria-level="4"` and nothing above it — a lie to the eye and a worse one
+ * to a screen reader.
  */
 function projectionForest(
 	roots: BacklogItem[],
@@ -563,7 +551,23 @@ function projectionForest(
 		}
 	};
 	collect(roots, false);
-	const items = assignVisualDepth(forest);
+	// The depth walk descends through MEMBERS ONLY, and that is what makes running this
+	// twice safe: both projections walk the same objects, so a walk that followed every
+	// child would have the plan's descent reach a promoted `Test case` through its `PBI`
+	// parent and stamp depth 3 on the row the catalog had just placed at 0. Nothing is
+	// lost by stopping: a non-member's own member descendants are roots of this forest in
+	// their own right, collected above. This replaced a shared `assignVisualDepth` focus
+	// used, which had no predicate to stop at and could not be given one without becoming
+	// this function.
+	const items: BacklogItem[] = [];
+	const assign = (item: BacklogItem, depth: number) => {
+		item.depth = depth;
+		items.push(item);
+		for (const child of item.children) {
+			if (member(child)) assign(child, depth + 1);
+		}
+	};
+	for (const root of forest) assign(root, 0);
 	return {
 		roots: forest,
 		items,
