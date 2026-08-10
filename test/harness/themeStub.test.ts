@@ -151,6 +151,39 @@ function references(value: string): { name: string; fallback: string | null }[] 
 }
 
 /**
+ * Every name a value references, fallbacks INCLUDED — the edges CSS counts when it looks
+ * for cycles, which is a different set from the ones `resolvesValue` evaluates.
+ *
+ * That difference is the whole reason this exists separately. A branch CSS never
+ * evaluates still contributes a dependency: `--a: var(--present, var(--a))` is invalid at
+ * computed-value time even though `--present` resolves, so a walk that short-circuits on
+ * the primary cannot see the self-edge. Validity is therefore two questions — is the
+ * graph acyclic, and does some branch resolve — and this file asks them in two tests
+ * rather than folding one into the other.
+ */
+function edges(value: string): string[] {
+	return [...value.matchAll(/var\(\s*(--[\w-]+)/g)].map((match) => match[1]);
+}
+
+/** The names taking part in a dependency cycle, over the edges above. */
+function cyclic(values: Map<string, string>): string[] {
+	const state = new Map<string, 'open' | 'done'>();
+	const found = new Set<string>();
+	const walk = (name: string): void => {
+		if (state.get(name) === 'done') return;
+		if (state.get(name) === 'open') {
+			found.add(name);
+			return;
+		}
+		state.set(name, 'open');
+		for (const next of edges(values.get(name) ?? '')) if (values.has(next)) walk(next);
+		state.set(name, 'done');
+	};
+	for (const name of values.keys()) walk(name);
+	return [...found];
+}
+
+/**
  * Does a VALUE compute to something — every reference in it either resolving, or carrying
  * a fallback that does? That is CSS's own rule: a fallback applies exactly when the name
  * is missing, so requiring both branches would refuse a legitimate sheet and requiring
@@ -287,6 +320,29 @@ describe('the harness sheets cover the stylesheet', () => {
 		expect(resolves('--primary-ok', values)).toBe(true);
 		expect(resolves('--fallback-used', values)).toBe(true);
 		expect(resolves('--both-gone', values)).toBe(false);
+	});
+
+	it.each(['dark', 'light'] as const)('has no dependency cycle in %s, fallbacks counted', (scheme) => {
+		// Raised in review: `resolves` answers which branch supplies a value, and CSS asks
+		// something else first. Nothing in either sheet is cyclic today (882 and 883
+		// properties), so this is the assertion that keeps it that way rather than a fix
+		// for a live defect.
+		expect(cyclic(sheetValues(scheme))).toEqual([]);
+	});
+
+	it('sees a cycle that only the unused fallback branch creates', () => {
+		// The detector's own instrument, and the exact shape the review named: `--present`
+		// resolves, so every value-side walk short-circuits before the self-edge. A
+		// green cycle check would otherwise mean nothing.
+		const values = new Map([
+			['--a', 'var(--present, var(--a))'],
+			['--present', 'red'],
+		]);
+
+		expect(resolvesValue(values.get('--a') ?? '', values, new Set())).toBe(true);
+		expect(cyclic(values)).toEqual(['--a']);
+		// And the pair from the spec, where neither branch is the one taken.
+		expect(cyclic(new Map([['--x', 'var(--y, 0px)'], ['--y', 'var(--x, 0px)']]))).not.toEqual([]);
 	});
 
 	it('fails when a conditional wrapper it has never seen appears', () => {
