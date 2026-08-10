@@ -62,6 +62,7 @@ export function dropTargetFor(
 	item: BacklogItem,
 	zone: DropZone,
 	dragged: BacklogItem,
+	member: (item: BacklogItem) => boolean,
 ): DropTarget | null {
 	const position = zone === 'inside' ? insidePosition(item, dragged) : siblingPosition(model, item, zone, dragged);
 	if (!position) return null;
@@ -69,9 +70,20 @@ export function dropTargetFor(
 
 	// Dropping into the slot the item already occupies is a no-op — unless the
 	// drop would clear a stale parent link, which is a real change.
+	//
+	// **Asked of the DRAWN order, while the rank below is still computed from the real
+	// group.** Two questions over two lists, and the same split `rootDropTarget` already
+	// makes: a sibling group can interleave the projections (real roots `Epic A`,
+	// `Test suite`, `Epic B` draw as `Epic A`, `Epic B` in the plan), so a drop that moves
+	// the row past nothing anyone can see reads as a move on the real indices. It then
+	// rewrites `order` and spends the undo slot with both screens unchanged. With no
+	// interleaving the two readings coincide exactly, which is why this is a correction
+	// rather than a behaviour change for every existing base.
 	if (position.parent === dragged.parent && !clearsStaleLink(position.parent, dragged)) {
 		const fullList = position.parent ? position.parent.children : model.realRoots;
-		if (fullList.indexOf(dragged) === position.insertIndex) return null;
+		const drawnIndex = fullList.filter(member).indexOf(dragged);
+		const drawnInsert = position.siblings.slice(0, position.insertIndex).filter(member).length;
+		if (drawnInsert === drawnIndex) return null;
 	}
 	return position;
 }
@@ -98,9 +110,12 @@ function siblingPosition(
 	// sharing a parent, and a `Test suite` and an `Epic` share the null one — so ranking a
 	// suite against the catalog's roots alone would take a midpoint a hidden `Epic` may
 	// already hold, which is the one ranking limitation this plugin forbids itself from
-	// demonstrating. The item is a real root here (a promoted one returned above), so its
-	// position among the real group is the position among the visible one, read against
-	// the neighbours that actually decide the number.
+	// demonstrating. The item is a real root here (a promoted one returned above), so this
+	// real group is what decides the NUMBER — the insert index returned below is read
+	// against these neighbours whether or not the caller can see all of them. Whether the
+	// move is worth making at all is a separate question, over the drawn order, and it is
+	// the caller's: `dropTargetFor`'s own no-op check asks it against `member` rather than
+	// assuming the two orderings agree.
 	const fullList = parent ? parent.children : model.realRoots;
 	const siblings = fullList.filter((c) => c !== dragged);
 	if (!reorderableGroup(siblings)) return null;
