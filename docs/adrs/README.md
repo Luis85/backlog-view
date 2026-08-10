@@ -90,3 +90,5 @@ record itself changes. Open a record for its current status, area and any
 - [0021 — Parse the register with a Markdown library, not a pile of patterns](0021-parse-the-register-with-mdast.md)
 - [0022 — Audit what ships, beside the gate rather than inside it](0022-audit-what-ships-beside-the-gate.md)
 - [0023 — Columns are the Bases property order](0023-columns-are-the-bases-property-order.md)
+- [0024 — Keep a `CHANGELOG.md`, checked against the version bump](0024-keep-a-changelog-checked-against-the-version-bump.md)
+- [0025 — Put the changelog entry in the GitHub release body](0025-put-the-changelog-entry-in-the-github-release-body.md)
