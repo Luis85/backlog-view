@@ -1517,3 +1517,108 @@ npm run check
 git add src/domain/backlogReadme.ts test/domain/backlogReadme.test.ts
 git commit -m "Document the test workflow in the generated README"
 ```
+
+
+---
+
+### Task 13: The catalog draws no rollup column
+
+**Files:**
+- Modify: `src/view/render/columns.ts` (the rollup header, the meta cell, and the reserved width)
+- Test: `test/view/testCatalog.test.ts` or `test/view/testCatalogState.test.ts`, whichever has room under the 450-line cap
+
+**Interfaces:**
+- Consumes: `treeShaped` / the projection predicates in `src/view/projection.ts`.
+- Produces: nothing later tasks read.
+
+**Why:** found on the branch by an automated PR reviewer. The catalog reuses `renderTree`,
+so it inherits the rollup header and the `.pbl-meta-col` cell whose gates ask only
+`settings.stateKey` and `settings.showCounts`. But the model deliberately gives catalog rows
+**no** rollups — `assignAll` counts a child only when the child and the parent are both plan
+rows, which is extension 3c in `docs/requirements/Tests stay out of the plan.md`, an accepted
+cost rather than an oversight. So with a state property configured or Show counts on, the
+catalog draws a `Progress` / `Items` header over a column that is empty on every row, and
+reserves its width — shrinking every test title for nothing.
+
+This is the register's own rule read in the other direction: *a projection opting out of a
+feature opts out of the computation, not just the button.* Here the computation was opted out
+of and the control was left drawing. Both directions are the same rule and it has now been
+missed once each way.
+
+**Do not "fix" it by giving the catalog rollups.** 3c priced that (a second projection-scoped
+pass over the tree) and declined it; this task withholds the column, nothing more.
+
+- [ ] **Step 1: Write the failing test**
+
+```ts
+	it('draws no rollup column, because it has no rollups to put in one', () => {
+		// The catalog's rows carry no descendant counts by design (`Tests stay out of the
+		// plan` 3c), so a Progress header over an empty column on every row is the control
+		// outliving the computation behind it — and it costs every test title the width.
+		const { containerEl } = makeView(bothFamilies(), { showCounts: true, stateProperty: 'note.status' });
+		clickExpandAll(containerEl);
+		// The plan draws it, which is what makes the assertion below about the CATALOG
+		// rather than about the fixture.
+		expect(containerEl.querySelector('.pbl-meta-col')).not.toBeNull();
+
+		catalog(containerEl);
+		expect(containerEl.querySelector('.pbl-meta-col')).toBeNull();
+		expect(containerEl.querySelector('.pbl-cols')?.textContent ?? '').not.toContain('Progress');
+	});
+```
+
+Read `render/columns.ts` first and confirm the class names and the header's text — the
+selectors above are from the reviewer's description, not from a reading of the file. If the
+header cell carries a different label or class, assert what is actually there. What must not
+change is the shape: plan draws it, catalog does not.
+
+- [ ] **Step 2: Run the test and watch it fail**
+
+Run: `npx vitest run test/view/ -t "no rollup column"`
+Expected: FAIL — the catalog renders the meta column and its header.
+
+- [ ] **Step 3: Withhold the column in the catalog**
+
+Find the three places that decide the rollup — the header, the per-row cell, and the width
+reservation (`ROW_LEAD_WIDTH` / the `--pbl-meta-col` custom property or `renderAddSpacer`'s
+equivalent). Gate all three on the projection, through a predicate in
+`src/view/projection.ts` rather than a bare `projection === 'catalog'` comparison — a lint
+rule (`no-restricted-syntax`) forbids that comparison outside that module, and the module's
+own docstring explains why.
+
+Add the predicate there beside `treeShaped` and `hidesCompleted`, in their voice:
+
+```ts
+/**
+ * Whether this projection draws the rollup column. The catalog does not, and the reason is
+ * the same one that withholds its completed toggle: it has nothing to put in it. `assignAll`
+ * counts a child only where the child and the parent are both plan rows, so a suite's
+ * descendant count is structurally zero — a `Progress` header over an empty column on every
+ * row would be the control outliving the computation behind it, and would cost every test
+ * title the width it reserves.
+ */
+export function hasRollup(projection: Projection): boolean {
+	return projection !== 'catalog';
+}
+```
+
+**All three gates or none.** A header withheld while the cells still render leaves unlabelled
+boxes; cells withheld while the width is still reserved leaves the gap the reservation exists
+to fill. `src/view/CLAUDE.md`'s column-fit section states why an end-anchored strip cannot
+simply skip an element.
+
+- [ ] **Step 4: Run the tests and verify they pass**
+
+Run: `npx vitest run test/view/`
+Expected: PASS, including every existing column-fit test unchanged — those measure the plan
+and must not move.
+
+- [ ] **Step 5: Run the whole check and commit**
+
+`npm run check` in the FOREGROUND.
+
+```bash
+npm run check
+git add src/view/projection.ts src/view/render/columns.ts test/view/
+git commit -m "Withhold the rollup column where there are no rollups"
+```
