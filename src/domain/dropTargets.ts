@@ -110,7 +110,12 @@ function siblingPosition(
 }
 
 /** The target for the "Move to top level" strip, or null when unavailable. */
-export function rootDropTarget(model: BacklogModel, dragged: BacklogItem, focused: boolean): DropTarget | null {
+export function rootDropTarget(
+	model: BacklogModel,
+	dragged: BacklogItem,
+	focused: boolean,
+	rendered: BacklogItem[],
+): DropTarget | null {
 	// The caller's EFFECTIVE focus, not `model.focused`: that flag describes the plan, and
 	// a projection built from the unfocused tree is not focused however it is set. Passed
 	// in rather than read here because which projection is on screen is a view question.
@@ -121,8 +126,15 @@ export function rootDropTarget(model: BacklogModel, dragged: BacklogItem, focuse
 	// it makes the drop rank against a note nobody can see, and a renumbering pass with no
 	// gap available would rewrite that note's own `order`.
 	const siblings = model.realRoots.filter((r) => r !== dragged);
-	const alreadyLastRoot =
-		dragged.parent === null && model.realRoots.indexOf(dragged) === model.realRoots.length - 1;
+	// **The no-op is asked of what this projection DRAWS; the rank is computed from
+	// `realRoots`.** Two different questions over two different lists, and asking both of
+	// the ranking group was wrong in the direction that looks like a working feature: the
+	// plan's roots and the catalog's share one null-parent group, so the last Epic on screen
+	// is followed in `realRoots` by a `Test suite` nobody in the plan can see. The drop then
+	// reads as a real move — it rewrites the Epic's order to sit past that suite and spends
+	// the undo slot — while both screens are unchanged. Passed in for the same reason
+	// `focused` is: which rows are drawn is a view question, and the domain must not guess.
+	const alreadyLastRoot = dragged.parent === null && rendered.indexOf(dragged) === rendered.length - 1;
 	// The last root with a stale parent link still needs the drop target: the
 	// "move" is a no-op positionally but clears the unresolved parent property.
 	if (alreadyLastRoot && !clearsStaleLink(null, dragged)) return null;

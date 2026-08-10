@@ -1,5 +1,5 @@
 import { DropTarget, dropTargetFor, rootDropTarget, zoneForRatio } from '../../domain/dropTargets';
-import { effectivelyFocused } from '../projection';
+import { effectivelyFocused, projectionPopulation } from '../projection';
 import { DropZone } from '../../domain/dropTargets';
 import { BacklogViewHost } from '../host';
 import { BacklogItem, BacklogModel } from '../../domain/model';
@@ -87,7 +87,12 @@ export class DragDropController {
 
 	/** Where a top-level drop lands, asked with THIS projection's effective focus. */
 	private rootTarget(drag: { model: BacklogModel; dragged: BacklogItem }): DropTarget | null {
-		return rootDropTarget(drag.model, drag.dragged, effectivelyFocused(this.host.projection, drag.model));
+		return rootDropTarget(
+			drag.model,
+			drag.dragged,
+			effectivelyFocused(this.host.projection, drag.model),
+			projectionPopulation(this.host.projection, drag.model).roots,
+		);
 	}
 
 	/** Wire the persistent "Move to top level" strip and the tree background. */

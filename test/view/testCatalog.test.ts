@@ -166,6 +166,24 @@ describe('the catalog and the plan share a model and divide it', () => {
 		expect(assigneeOffers(containerEl, 'Case')).toEqual(['Robin']);
 	});
 
+	it('offers no root drop to a row already last among the roots ITS projection draws', () => {
+		// `realRoots` holds the plan's roots and the catalog's in one ranking group, so the
+		// last Epic is followed by a `Test suite` nobody in the plan can see. Asked of that
+		// list, the drop reads as a real move: it rewrites the Epic's order to sit after the
+		// hidden suite, spends the undo slot, and nothing changes on either screen.
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Suite.md', { frontmatter: { type: 'Test suite', order: 20 } });
+		const { view } = makeView(vault);
+		const epic = view.model?.byPath.get('Epic.md');
+		const suite = view.model?.byPath.get('Suite.md');
+		if (!epic || !suite) throw new Error('fixture missing');
+		// Last in the plan's own forest, and the mirror: the suite is last in the catalog's
+		// while an Epic precedes it in the ranking group.
+		expect(rootDropTarget(view.model!, epic, false, view.model!.roots)).toBeNull();
+		expect(rootDropTarget(view.model!, suite, false, view.model!.catalog.roots)).toBeNull();
+	});
+
 	it('takes no rollup from a plan row either, so a mis-dragged PBI moves no case', () => {
 		// The mirror of the test below, and the direction the one-way guard missed: `Stray
 		// PBI` hangs from `Case`, and the catalog HIDES it and promotes it to a plan root —
@@ -554,7 +572,7 @@ describe('the catalog is tree-shaped, and the plan keeps its place', () => {
 		catalog(containerEl);
 		expect(treeOf(containerEl).parentElement?.hasClass('pbl-focused')).toBe(false);
 		const stray = view.model?.byPath.get('Stray case.md');
-		expect(stray && rootDropTarget(view.model!, stray, false)).not.toBeNull();
+		expect(stray && rootDropTarget(view.model!, stray, false, view.model!.catalog.roots)).not.toBeNull();
 		// And the plan is still focused, which is the other half: this is a projection's
 		// answer, not a repair of the flag.
 		projectionButton(containerEl, 'Show as backlog tree').dispatchEvent(new MouseEvent('click', { bubbles: true }));

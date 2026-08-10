@@ -468,6 +468,19 @@ round. The lesson for the next consumer:
 `projectionPopulation(...).roots` alone is not the forest, and neither is roots plus one use
 of the membership rule.
 
+**Two questions over two lists, and `realRoots` answers only one of them.** 2d says the
+ranking group is never a projection's list and no projection may narrow it — true, and it is
+half the rule. `rootDropTarget` computed BOTH its answers from that group: the rank a drop
+lands at, correctly, and *is this row already last, so the drop is a no-op*, which is a
+question about the SCREEN. The plan's roots and the catalog's share one null-parent group, so
+the last Epic on screen is followed in `realRoots` by a `Test suite` nobody in the plan can
+see — and the drop then reads as a real move, rewriting that Epic's order to sit past the
+suite and spending the undo slot while both projections are unchanged. Found by review. The
+rendered roots are passed in for the same reason `effectivelyFocused` is: which rows are
+drawn is a view question. The lesson generalises past this function — **a rule about
+`realRoots` is a rule about ranking, and any other question asked of it is asked of the wrong
+list.**
+
 **A projection narrowing is not one filter but however many are true of it**, which the
 same review caught in `offerableTypes`. The requirements board's `Deliverable` exclusion
 returned EARLY, so every whole-vocabulary caller there still offered the test types — a New

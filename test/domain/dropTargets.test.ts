@@ -104,14 +104,14 @@ describe('dropTargetFor', () => {
 describe('rootDropTarget', () => {
 	it('appends after the other roots', () => {
 		const { model, get } = fixture();
-		const target = rootDropTarget(model, get('Feature B1'), false);
+		const target = rootDropTarget(model, get('Feature B1'), false, model.roots);
 		expect(target?.parent).toBeNull();
 		expect(target?.insertIndex).toBe(2);
 	});
 
 	it('is a no-op for the item already sitting as the last root', () => {
 		const { model, get } = fixture();
-		expect(rootDropTarget(model, get('Epic B'), false)).toBeNull();
+		expect(rootDropTarget(model, get('Epic B'), false, model.roots)).toBeNull();
 	});
 
 	it('still fires for a last root whose parent link is stale', () => {
@@ -121,7 +121,7 @@ describe('rootDropTarget', () => {
 		const model = buildModel(vault.app, vault.entries(), settings);
 		const orphan = model.roots.find((r) => r.title === 'Orphan') as BacklogItem;
 
-		expect(rootDropTarget(model, orphan, false)).not.toBeNull();
+		expect(rootDropTarget(model, orphan, false, model.roots)).not.toBeNull();
 	});
 
 	it('is unavailable while the caller is focused, and available while it is not', () => {
@@ -133,8 +133,8 @@ describe('rootDropTarget', () => {
 		const { vault } = fixture();
 		const model = buildModel(vault.app, vault.entries(), settingsWith({ focusLevel: 'Feature' }));
 		expect(model.focused).toBe(true);
-		expect(rootDropTarget(model, model.roots[0], true)).toBeNull();
-		expect(rootDropTarget(model, model.roots[0], false)).not.toBeNull();
+		expect(rootDropTarget(model, model.roots[0], true, model.roots)).toBeNull();
+		expect(rootDropTarget(model, model.roots[0], false, model.roots)).not.toBeNull();
 	});
 });
 
