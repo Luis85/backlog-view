@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { mountHarness } from './mount';
 import { installObsidianDom } from '../helpers/dom';
@@ -25,8 +24,9 @@ installObsidianDom();
  * The harness is not a test — it draws, and nothing asserts what it draws (ADR 0020).
  * These are what stop it from rotting anyway, and none costs a new gate step: one mounts
  * it so a harness that no longer builds fails here rather than the next time someone
- * tries to look at something, one holds the theme stub to the stylesheet it stands in
- * for, and one holds the icon set to the names the view actually asks for.
+ * tries to look at something, and one holds the icon set to the names the view actually
+ * asks for. Whether the two linked sheets between them RESOLVE every variable the
+ * partials read is its own subject, in `themeStub.test.ts`.
  */
 describe('the browser harness mounts', () => {
 	function mount() {
@@ -94,13 +94,6 @@ describe('the browser harness mounts', () => {
 });
 
 /**
- * The mock RECORDS a menu and a dialog; the harness has to DRAW them or a right-click
- * produces nothing on a page that advertises menus as usable. These drive the drawing
- * through the same events a person would, and the creation one is why the fake vault
- * notifies on `create` as well as on a frontmatter write — without that the new note
- * existed and the screen kept showing the old result set.
- */
-/**
  * The folder fixture is the same backlog filed the way a folder-note vault files it, so
  * what is worth checking is exactly that: the tree comes out the same, and it comes out
  * of the PATHS — no note in it carries a `parent` key to fall back on.
@@ -141,6 +134,13 @@ describe('the folder-structured fixture draws the same tree from its paths', () 
 	});
 });
 
+/**
+ * The mock RECORDS a menu and a dialog; the harness has to DRAW them or a right-click
+ * produces nothing on a page that advertises menus as usable. These drive the drawing
+ * through the same events a person would, and the creation one is why the fake vault
+ * notifies on `create` as well as on a frontmatter write — without that the new note
+ * existed and the screen kept showing the old result set.
+ */
 /**
  * The dependency connector shipped in Tasks 1–4 and drew nothing markup assertions had
  * been checking: it is a picture question — is the dot reachable on a bar too narrow for
@@ -351,61 +351,5 @@ describe('the harness draws every icon the view asks for', () => {
 		// The two axis legs share the roadmap's label, so the dated one is witnessed by
 		// the control only it draws.
 		expect(asked).toContain('locate-fixed');
-	});
-});
-
-describe('the theme stub covers the stylesheet', () => {
-	/** Every `var(--x)` in a directory of CSS, minus the plugin's own, which code sets. */
-	function variablesUsed(dir: string): Set<string> {
-		const used = new Set<string>();
-		for (const file of readdirSync(dir).filter((f) => f.endsWith('.css'))) {
-			for (const match of readFileSync(`${dir}/${file}`, 'utf8').matchAll(/var\(\s*(--[\w-]+)/g)) {
-				if (!match[1].startsWith('--pbl')) used.add(match[1]);
-			}
-		}
-		return used;
-	}
-
-	/**
-	 * What the page actually resolves in one scheme: everything outside the two
-	 * scheme blocks, plus that scheme's own. Asked per scheme rather than of the whole
-	 * file, because the file having a name in it somewhere is not the question — a
-	 * variable set only under `theme-dark` reads as nothing in light, and a search of
-	 * the text would call that covered.
-	 */
-	function variablesDefined(scheme: 'dark' | 'light'): Set<string> {
-		const theme = readFileSync('test/harness/theme.css', 'utf8');
-		const blockOf = (name: string) => new RegExp(`body\\.theme-${name}\\s*\\{([^}]*)\\}`).exec(theme)?.[1] ?? '';
-		const shared = theme.replace(/body\.theme-(dark|light)\s*\{[^}]*\}/g, '');
-		const defined = new Set<string>();
-		for (const source of [shared, blockOf(scheme)]) {
-			for (const match of source.matchAll(/^\s*(--[\w-]+)\s*:/gm)) defined.add(match[1]);
-		}
-		return defined;
-	}
-
-	it.each(['dark', 'light'] as const)('defines every Obsidian variable the partials read, in %s', (scheme) => {
-		const defined = variablesDefined(scheme);
-
-		expect([...variablesUsed('styles')].filter((name) => !defined.has(name))).toEqual([]);
-	});
-
-	it('splits the schemes rather than defining one of them', () => {
-		// The instrument again: a regex that failed to find either block would make the
-		// test above a search of the whole file, which is the thing it exists not to be.
-		const dark = variablesDefined('dark');
-		const light = variablesDefined('light');
-		expect(dark.has('--color-base-00')).toBe(true);
-		expect(light.has('--color-base-00')).toBe(true);
-		// Same set, different values — a name in one and not the other is the defect.
-		expect([...dark].filter((name) => !light.has(name))).toEqual([]);
-		expect([...light].filter((name) => !dark.has(name))).toEqual([]);
-	});
-
-	it('measures something — the instrument is checked before its verdict is trusted', () => {
-		// A regex that silently matched nothing would pass the test above forever.
-		expect(variablesUsed('styles').size).toBeGreaterThan(20);
-		expect(variablesUsed('styles').has('--background-primary')).toBe(true);
-		expect(variablesUsed('styles').has('--pbl-indent')).toBe(false);
 	});
 });

@@ -129,18 +129,21 @@ Obsidian's.
   records `data-icon`, so the suite is untouched. An unresolvable name is marked rather
   than skipped, because a blank control in the tool built for looking is the one failure
   nobody would see.
-- Its own checks live in `test/harness/harness.test.ts` — it still mounts, the theme
-  stub still covers every `var(--x)` the partials read, and every icon name the view asks
-  for across all four projections still resolves.
+- Its own checks live in `test/harness/harness.test.ts` — it still mounts, each fixture
+  still draws the cases it exists for, and every icon name the view asks for across all
+  four projections still resolves. `test/harness/themeStub.test.ts` is the separate
+  subject: whether the two linked sheets BETWEEN them resolve every `var(--x)` the
+  partials read, per scheme, counting only the blocks a harness `<body>` matches.
 
 **What it is faithful about:** markup, the CSS the partials write for themselves, every
 interaction, and icon SHAPES — lucide's own, sized through the `.svg-icon` class the
-partials style. **What it is not:** colour, and any layout a partial leans on an Obsidian
-element default to supply rather than writing itself. Two files answer that now, in
-order: `test/harness/obsidian.css` is Obsidian's REAL app.css, reduced to the rules the
-harness exercises (its header states what was kept and why), and `test/harness/theme.css`
-fills what the app sheet leaves to a theme — the variable palette, `.svg-icon`,
-`.clickable-icon`, and the leaf frame. Loading the real sheet first is what makes an
+partials style, and — since 2026-08-10 — Obsidian's own DEFAULT colours. **What it is
+not:** a user's colours, and any layout a partial leans on an Obsidian element default to
+supply rather than writing itself. Two files answer that now, in order:
+`test/harness/obsidian.css` is Obsidian's REAL app.css, reduced to the rules the harness
+exercises (its header states what was kept and why), and `test/harness/theme.css` carries
+the harness's own chrome — `.svg-icon`, `.clickable-icon`, the leaf frame, the menu and
+modal widgets — plus a copy of the palette that is now redundant with the app sheet. Loading the real sheet first is what makes an
 element default present at all rather than approximated: a card-children disclosure whose
 toggle rendered as a centred, boxed native button shipped looking right here and wrong in
 a vault (2026-08-08), because the stub then had no `button` rule and nothing had guessed
@@ -151,10 +154,13 @@ This narrows the gap; it does not close it. The reduced sheet keeps only what th
 harness was driven through, so an element default that no driven state reached is still
 absent, and a themed vault still replaces the colours. "Layout is faithful" remains true
 only of what a partial sets itself and of the app defaults the reduction happened to
-keep. The COLOUR half of
-the stub — `test/harness/theme.css`'s base scale and named palette, in both schemes — is
-close enough to judge contrast and hierarchy by and not close enough to read a colour off,
-since a themed vault replaces exactly those values. It therefore replaces NO live-vault
+keep. On COLOUR the claim changed shape rather than widening: the stub used to invent the
+base scale, and app.css turned out to define it — and the accent, the named colours and
+`color-scheme` — outright, so what the page draws is Obsidian's default appearance. That
+made twelve of the stub's declarations an approximation drawn OVER a correct value, and
+they were deleted; the measurement is in `test/harness/theme.css`'s header. What is still
+unanswerable is a USER's colours — a community theme replaces exactly these values, the
+accent is picked in settings — so this replaces NO live-vault
 verification, and asserting appearance from it is refused in
 [ADR 0020](../docs/adrs/0020-the-browser-harness-draws-it-does-not-assert.md): no
 baselines, no screenshot suite, no sixth step in `npm run check`.

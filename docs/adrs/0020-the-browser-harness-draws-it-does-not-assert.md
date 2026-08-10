@@ -35,9 +35,11 @@ it renders, and it is not part of the gate.** Four refusals, each with its own r
 - **No screenshot baselines, no image diffing.** A pixel baseline fails on every
   legitimate markup or spacing edit and says nothing about whether the result is right —
   the objection [ADR 0006](0006-jsdom-is-the-substitute-for-obsidian.md) already made to
-  HTML snapshots, and images are the same argument with a slower failure. It would also
-  be a baseline of *this stub's* colours, which are not Obsidian's, so a green diff would
-  certify a resemblance to something no user sees.
+  HTML snapshots, and images are the same argument with a slower failure. The second
+  reason this bullet used to give — that it would be a baseline of *this stub's* invented
+  colours — expired on 2026-08-10, when the palette turned out to come from Obsidian's own
+  app.css (see below); what survives it is that a baseline would still certify a
+  resemblance to the DEFAULT appearance, which is not what a user with a theme sees.
 - **No browser-automation dependency.** Driving the page needs a driver, a browser
   download and a version to pin — the cost [ADR 0006](0006-jsdom-is-the-substitute-for-obsidian.md)
   refused for end-to-end Obsidian, arriving through a side door with most of the same
@@ -47,7 +49,7 @@ it renders, and it is not part of the gate.** Four refusals, each with its own r
 - **No sixth step in `npm run check`.** [ADR 0007](0007-npm-run-check-is-the-whole-gate.md)
   makes those five steps the whole definition of done, and a build that produces something
   to look at is not a check. The harness stays alive inside the five that already run: a
-  vitest file mounts it, and another holds its theme stub to the stylesheet.
+  vitest file mounts it, and another holds the two linked sheets to the stylesheet.
 - **It replaces no live-vault verification.** Every `## How to check` note in
   `docs/issues/` stands, and the release sweep
   ([[A cadence for the checks CI cannot run]]) is unchanged. The harness cannot see a
@@ -65,7 +67,16 @@ which jsdom cannot do at all, since it returns zeros from `getBoundingClientRect
   stays open, deliberately. Appearance still ships on a hand check.
 - The harness will drift from the app in (at least) two ways, and both are invisible from
   inside the harness. The theme is the one that cannot close: no check here can compare a
-  colour to Obsidian's, so `test/harness/theme.css` stays an approximation forever. The
+  colour to a THEMED vault's, so what a user sees stays unverifiable.
+  **Update (2026-08-10):** the sentence this bullet carried until then — that
+  `test/harness/theme.css` stays an approximation forever — was measured and found false
+  in its premise. The reduced `obsidian.css` defines the default palette itself (base
+  scale, named colours, accent, `color-scheme`), so of the stub's variable declarations
+  none were unique to it, and twelve were an approximation drawn OVER a value app.css
+  resolves correctly. Those twelve are deleted. The page now draws Obsidian's DEFAULT
+  appearance, which is a narrower gap than "an approximation" and not a closed one: a
+  community theme replaces exactly those values and the accent is picked in settings, so
+  "no baselines" above still holds on its own reason. The
   other is narrower but was not distinguished from the first until it produced a real bug
   — a card-children disclosure rendered as a centred, boxed native `<button>` in a vault
   and as plain text here (2026-08-08), because the stub had no baseline at all for a bare
@@ -92,7 +103,8 @@ which jsdom cannot do at all, since it returns zeros from `getBoundingClientRect
   menus it could never show; the honest sentence is narrower than the one it replaced.
 - A page that is not a test can rot. Two checks cost nothing extra to run and stop the two
   ways it rots that anyone can see: it stops building, or its theme stub stops covering
-  the stylesheet. Neither notices that it stopped being *useful*.
+  the stylesheet — `harness.test.ts` and `themeStub.test.ts`. Neither notices that it
+  stopped being *useful*.
 - Nothing here is load-bearing for the release. The harness could be deleted and the
   plugin would ship unchanged, which is the property that lets it stay outside the gate
   with a clear conscience.
