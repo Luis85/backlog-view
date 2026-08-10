@@ -9,6 +9,7 @@ source: user request
 files:
   - src/domain/stateColors.ts
   - src/domain/settings.ts
+  - src/domain/settingsConsistency.ts
   - src/domain/viewOptions.ts
   - src/domain/board.ts
   - src/view/render/timeline.ts
@@ -92,6 +93,12 @@ string a `.base` holds never becomes a colour this plugin did not write.
 - Each state is offered exactly one colour box across both workflows, and `stateColor.*` is
   claimed by exactly one manual entry (which `test/docs/surfaces.test.ts` already enforces
   for every generated option family).
+- A hand-built `BacklogSettings` naming a colour the resolver would have dropped — an
+  unconfigured state, or a value outside the offered names — is rejected by
+  `settingsInconsistency`, key and value alike. Raised in review on this change, and it is
+  the same half-a-job shape that module already records twice for the limit and policy maps:
+  here the value is what a CLASS NAME is built from, so an unchecked one lets a fixture
+  assert `pbl-state-c-<anything>`, which no stylesheet paints.
 - **Not verifiable here, as ever: appearance.** jsdom asserts classes, not pixels. That the
   eight names read as eight distinguishable colours in a real theme, light and dark, and
   that a Bases `dropdown` renders its empty-string entry as a usable "no pick", are
@@ -121,7 +128,9 @@ hand-editable `.base` is allowed to say). Its own module rather than more of
 `src/domain/settings.ts`, which is at the line cap that exists to ask that question.
 
 `resolveSettings` (`src/domain/settings.ts`) reads one `stateColors` table across both
-vocabularies, keyed by the lowercased value · `src/domain/viewOptions.ts` generates the
+vocabularies, keyed by the lowercased value, and `colourProblem`
+(`src/domain/settingsConsistency.ts`) is the same rule read backwards, so a fixture that
+skips the resolver cannot hold a colour it would have dropped · `src/domain/viewOptions.ts` generates the
 dropdown per configured state, the requirements workflow's in its group and the
 Deliverables workflow's in its own, minus any the first already offered ·
 `stateColorClass` (`src/domain/board.ts`) is the single place a pick outranks a slot, and
