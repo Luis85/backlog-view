@@ -355,6 +355,22 @@ describe('the catalog is tree-shaped, and the plan keeps its place', () => {
 		expect(view.settings.focusLevel).toBe('PBI');
 	});
 
+	it('does not keep a plan row visible because a hidden TEST matched', () => {
+		// Handing the index this projection's roots is only half of it: the walk under those
+		// roots still reaches every child, so a needle matching a `Test case` beneath a
+		// `PBI` marks that PBI's whole ancestor chain as visible — rows on screen, none of
+		// them matching, and the text still in the box saying the filter works. That is the
+		// failure this rule exists to prevent, and it is the one that looks most like a
+		// working feature.
+		const { containerEl, view } = makeView(bothFamilies());
+		clickExpandAll(containerEl);
+		view.setFilter('Stray case');
+		expect(titlesOf(containerEl)).toEqual([]);
+		// And the same needle finds it in the projection that draws it.
+		catalog(containerEl);
+		expect(titlesOf(containerEl)).toEqual(['Stray case']);
+	});
+
 	it('is not FOCUSED here either, so a root-level drop still lands', () => {
 		// Ignoring the control is not enough, and this is the half that is easy to miss:
 		// `model.focused` is one flag for the whole model, so a plan focus stored elsewhere

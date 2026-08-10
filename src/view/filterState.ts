@@ -1,6 +1,6 @@
 import { BacklogItem, BacklogModel } from '../domain/model';
 import { Projection } from './host';
-import { FilterScope, projectionPopulation } from './projection';
+import { FilterScope, projectionMember, projectionPopulation } from './projection';
 
 /**
  * The quick filter's session state: what was typed, which paths it keeps on screen,
@@ -27,13 +27,22 @@ interface MatchIndex {
  * The match-path contract, over whatever forest it is handed. The whole rule, stated
  * once — every scope is this function applied to a different set of roots, so a change
  * to what "matching" means lands on both at the same time.
+ *
+ * **The roots are half of "this projection's forest"; `member` is the other half.** The
+ * walk below descends `item.children`, which is the REAL tree and holds rows this
+ * projection does not draw — so handing it the right roots and letting it walk through
+ * everything under them indexes the wrong thing: a needle matching a `Test case` beneath
+ * a `PBI` marks that PBI and its whole ancestor chain visible, and the plan then shows
+ * three rows with nothing on screen matching and the text still in the box. Stopping at a
+ * non-member loses nothing, because a member below one is a root of this forest in its own
+ * right and is visited through that.
  */
-function indexMatches(roots: BacklogItem[], needle: string): MatchIndex {
+function indexMatches(roots: BacklogItem[], needle: string, member: (item: BacklogItem) => boolean): MatchIndex {
 	const visible = new Set<string>();
 	const matches = new Set<string>();
 	const markSubtree = (item: BacklogItem): void => {
 		visible.add(item.file.path);
-		for (const child of item.children) markSubtree(child);
+		for (const child of item.children) if (member(child)) markSubtree(child);
 	};
 	const visit = (item: BacklogItem): boolean => {
 		const selfMatch = item.title.toLowerCase().includes(needle);
@@ -42,7 +51,7 @@ function indexMatches(roots: BacklogItem[], needle: string): MatchIndex {
 			markSubtree(item);
 		}
 		let anyMatch = selfMatch;
-		for (const child of item.children) anyMatch = visit(child) || anyMatch;
+		for (const child of item.children) if (member(child)) anyMatch = visit(child) || anyMatch;
 		if (anyMatch) visible.add(item.file.path);
 		return anyMatch;
 	};
@@ -103,7 +112,8 @@ export class FilterState {
 		// screen in the catalog while nothing in the catalog matched at all; the inverse
 		// happens in the plan.
 		const roots = projectionPopulation(projection, model).roots;
-		this.focused = indexMatches(roots, needle);
-		this.whole = roots === model.realRoots ? this.focused : indexMatches(model.realRoots, needle);
+		const member = projectionMember(projection);
+		this.focused = indexMatches(roots, needle, member);
+		this.whole = roots === model.realRoots ? this.focused : indexMatches(model.realRoots, needle, member);
 	}
 }

@@ -426,6 +426,16 @@ the flag, since which projection is on screen is a view question. The rule to ca
 fourth is the one 3b already states and this is the evidence for: **a projection opting out
 of a feature opts out of the computation, not just the button.**
 
+**A projection's forest is its ROOTS and its MEMBERSHIP, and handing a consumer only the
+first is the shape that looks fixed.** `indexMatches` was given this projection's roots
+and went on walking every `item.children` beneath them, which is the real tree — so a
+needle matching a `Test case` under a `PBI` marked that PBI and its whole ancestor chain
+visible, and the plan drew three rows with nothing on screen matching and the text still in
+the box. Found by review, and it is 2e reappearing after 2e was implemented: the walk stops
+at a non-member now, which loses nothing, because a member below one is a root of this
+forest in its own right and is visited through that. The lesson for the next consumer:
+`projectionPopulation(...).roots` alone is not the forest.
+
 **A projection narrowing is not one filter but however many are true of it**, which the
 same review caught in `offerableTypes`. The requirements board's `Deliverable` exclusion
 returned EARLY, so every whole-vocabulary caller there still offered the test types — a New
