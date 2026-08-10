@@ -192,6 +192,35 @@ describe('the catalog and the plan share a model and divide it', () => {
 		// `typeFolder.testSuite`, which `byName` would simply never find.
 		expect(Modal.lastOpened?.contentEl.textContent).toContain('docs/tests/suites');
 	});
+
+	it('is empty, not all-done, when its only row is a context row placing the other projection', () => {
+		// The base returns one plan `PBI` and its `Test case` parent is loaded as context.
+		// That context row IS a catalog item — so `items` is non-empty — but it is hidden,
+		// because the only child it places belongs to the plan. The population and the
+		// results disagree, and only the RESULTS answer "is there anything here": the items
+		// count reported "All 0 items are done and hidden" with a Show completed items
+		// button, in a projection that hides nothing by completion at all.
+		const vault = new FakeVault();
+		vault.addFile('Suite.md', { frontmatter: { type: 'Test suite', order: 10 } });
+		vault.addFile('Case.md', { frontmatter: { type: 'Test case', order: 10 }, parentLink: 'Suite' });
+		vault.addFile('Nested PBI.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Case' });
+		const { containerEl } = makeView(vault, {}, { only: ['Nested PBI.md'] });
+		catalog(containerEl);
+		expect(containerEl.querySelector('.pbl-empty-title')?.textContent).toBe('No tests yet');
+		expect(containerEl.textContent).not.toContain('done and hidden');
+	});
+
+	it('says the same of the plan, where a context test strands a catalog result', () => {
+		// The mirror, and it differs only in which membership rule runs: one `Test case`
+		// result whose excluded `PBI` parent is a plan row with nothing left to place.
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('A PBI.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Epic' });
+		vault.addFile('Stray case.md', { frontmatter: { type: 'Test case', order: 10 }, parentLink: 'A PBI' });
+		const { containerEl } = makeView(vault, {}, { only: ['Stray case.md'] });
+		expect(containerEl.querySelector('.pbl-empty-title')?.textContent).toBe('No backlog items');
+		expect(containerEl.textContent).not.toContain('done and hidden');
+	});
 });
 
 describe('what the catalog offers', () => {

@@ -128,6 +128,15 @@ base settings are saved on the view, working position on the device.
   draw: the case comes in as a context row, the Task is a catalog member under it, and an
   empty state there would be the view claiming there are no tests on a screen that has one
   on it. Keyed to what the projection draws, like every other population statement here.
+  **And its RESULTS rather than its items**, which is the root context-row rule reaching
+  one more decision rather than a qualification of this one: a base returning a `PBI` whose
+  excluded parent is a `Test case` gives the catalog exactly one item — that context row —
+  and it is hidden, because the only child it places is a plan row. Counting it as
+  population walked straight past the empty state into *All 0 items are done and hidden*,
+  with a completed toggle in the one projection that hides nothing by completion. The plan
+  has the mirror. Found by review, on the change that had just narrowed this decision from
+  the model's shared arrays to the projection's own — the narrowing was right and one
+  question short.
   The empty state's job is to say what a test catalog is and offer to create the first suite —
   the shape [[Board empty states]] established for a projection nobody has data for yet. It
   does **not** offer to configure anything: unlike the board and the roadmap, this

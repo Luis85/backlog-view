@@ -38,8 +38,16 @@ export function renderTree(ctx: RowContext, treeEl: HTMLElement): void {
 	// test notes and no plan work would be told "All 12 items are done and hidden", with a
 	// Show completed items button that reveals nothing — because nothing is completed and
 	// nothing is hidden by completion. A control offering to reveal what it cannot show.
+	//
+	// "Is there anything here" is asked of the RESULTS and not of the items, which is the
+	// same distinction one line further down rather than a second rule: a context row is
+	// placement, never population. A base returning one `PBI` whose excluded parent is a
+	// `Test case` gives the catalog exactly one item — that context row — and it is hidden,
+	// since the only child it places is a plan row. Counting it as population walked past
+	// this branch into "All 0 items are done and hidden", offering a completed toggle in a
+	// projection that hides nothing by completion at all.
 	const population = projectionPopulation(ctx.host.projection, model);
-	if (population.items.length === 0) {
+	if (population.results.length === 0) {
 		renderEmptyState(ctx.host, treeEl);
 		return;
 	}
