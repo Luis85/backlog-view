@@ -42,8 +42,10 @@ that forgot the entry fails `npm run check`.
 - The check can be satisfied by an empty heading with nothing under it; it verifies the
   version and the heading agree, not that the entry says anything true. Stated narrowly
   on purpose, the same limit `versionFiles.test.ts` accepts for its own assertions.
-- `--generate-notes` keeps running unchanged. This file does not replace the release's
-  own notes; it is the curated companion the auto-generated list was never trying to be.
+- `--generate-notes` keeps running. [ADR 0025](0025-put-the-changelog-entry-in-the-github-release-body.md)
+  puts this file's own entry directly in the release body ahead of it, so a reader on
+  the releases page sees the curated summary first rather than choosing between that
+  page and this file.
 
 ## Alternatives
 

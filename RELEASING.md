@@ -41,6 +41,16 @@ file directly, and `npm run dev` rewrites it whenever a partial changes. Each bu
 asset also gets a signed provenance attestation, verifiable with
 `gh attestation verify <file> --repo Luis85/backlog-view`.
 
+**The release body is required to carry this version's `CHANGELOG.md` entry, and that is
+automated rather than a step below to remember.** `gh release create` runs with both
+`--notes-file` — the section `scripts/changelog-notes.mjs` extracts for the tag being
+published — and `--generate-notes`, which GitHub prepends the extracted entry ahead of:
+the release body reads the curated summary first, the auto-generated merged-PR list
+underneath. See [ADR 0025](docs/adrs/0025-put-the-changelog-entry-in-the-github-release-body.md).
+The extraction throws, failing the workflow, if `manifest.json`'s version has no dated
+heading in `CHANGELOG.md` — `test/release/changelogVersion.test.ts` already keeps that
+off `main`, so in practice this only fires on a manual dispatch against an unusual ref.
+
 ### 1. Get the version bumped onto `main`
 
 Skip this step if the version files are already committed on `main` — the case for the

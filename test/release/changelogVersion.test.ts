@@ -1,5 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+// @ts-expect-error — a plain .mjs helper with no type declarations, imported for what it does.
+import { headings } from '../../scripts/docs-markdown.mjs';
 
 /**
  * `CHANGELOG.md` held against `manifest.json`, the same way `versionFiles.test.ts` holds
@@ -8,47 +10,45 @@ import { describe, expect, it } from 'vitest';
  * `RELEASING.md` says a second commit, right after the version bump and in the same pull
  * request, renames `## [Unreleased]` to `## [<version>] - <date>` — it cannot be the same
  * commit `npm version` makes, since that one runs against a clean tree. Nothing enforced
- * that until this test: a rule stated only in prose is exactly the shape of
- * defect `../CLAUDE.md`'s Claims section warns about — read as settled, caught by no
- * check. This makes the two facts disagree loudly: `manifest.json`'s version must be the
- * FIRST dated heading below `## [Unreleased]`, not merely present somewhere in the file's
- * history, so a bump that forgot the entry — or added one under the wrong heading — fails
- * here rather than shipping a changelog that does not name its own latest release.
+ * that until this test: a rule stated only in prose is exactly the shape of defect
+ * `../CLAUDE.md`'s Claims section warns about — read as settled, caught by no check. This
+ * makes the two facts disagree loudly: `manifest.json`'s version must be the FIRST dated
+ * heading below `## [Unreleased]`, not merely present somewhere in the file's history, so
+ * a bump that forgot the entry — or added one under the wrong heading — fails here rather
+ * than shipping a changelog that does not name its own latest release.
  *
  * What this cannot check: that the entry says anything true. A heading with no bullets
  * under it still passes. That is deliberate and the same limit `versionFiles.test.ts`
  * accepts for its own three assertions — the instrument can see the version files agree,
  * not that either one is correct.
  *
- * Four things a looser match let through, each caught by review before this test reached
- * `main`: a heading missing its `- <date>` (RELEASING.md's own rule, unchecked); a
- * version heading placed ABOVE `[Unreleased]` rather than below it; a malformed heading
- * sitting FIRST below `[Unreleased]`, ahead of a correctly dated one further down,
- * invisible to a match that filtered for well-formed headings before "first" was decided;
- * and — the one that fix still missed — a heading with no BRACKETS at all
- * (`## 0.8.0 - 2026-08-10`), which a `HEADING` pattern anchored on `## \[` skips exactly
- * the same way, despite the comment beside it claiming "unconditional". `HEADING` now
- * matches any level-2 heading, brackets or not, so nothing between `[Unreleased]` and the
- * first real content can be skipped on the way to picking "first" — only `DATED_VERSION`,
- * run once against whatever `HEADING` found, gets an opinion about its shape.
+ * This used to be a hand-written regex, and review found a genuine gap on every round: no
+ * date required, no anchor to `[Unreleased]`'s own position, filtering for well-formed
+ * headings before deciding which one was "first" (so a malformed one in first place hid
+ * behind a correct one further down), requiring brackets that a bracket-less malformed
+ * heading skipped past, and finally — CommonMark permits 0-3 leading spaces before a
+ * heading marker, which every version anchored on `^##` missed. Each fix closed one hole
+ * and opened the next: exactly the failure mode
+ * [ADR 0021](../../docs/adrs/0021-parse-the-register-with-mdast.md) retired for the docs
+ * register itself, for the same reason. `headings()` is the same mdast-backed parser
+ * `docs-check.mjs` already trusts for every other `## ` heading in this repository, so
+ * "the first heading below `[Unreleased]`" is asked of a real CommonMark parse instead of
+ * one more pattern.
  */
-const UNRELEASED = /^## \[Unreleased\]$/m;
-const HEADING = /^## .*$/gm;
-const DATED_VERSION = /^## \[(\d+\.\d+\.\d+)\] - \d{4}-\d{2}-\d{2}$/;
+const DATED_VERSION = /^\[(\d+\.\d+\.\d+)\] - \d{4}-\d{2}-\d{2}$/;
 
 describe('the changelog names the released version', () => {
 	const manifest = JSON.parse(readFileSync('manifest.json', 'utf8'));
-	const changelog = readFileSync('CHANGELOG.md', 'utf8');
+	const all = headings(readFileSync('CHANGELOG.md', 'utf8'));
+	const unreleasedAt = all.findIndex((h) => h.text === '[Unreleased]');
 
 	it('has an [Unreleased] section', () => {
-		expect(changelog).toMatch(UNRELEASED);
+		expect(unreleasedAt).toBeGreaterThanOrEqual(0);
 	});
 
 	it('names the manifest version, dated, as the first heading below [Unreleased]', () => {
-		const unreleased = UNRELEASED.exec(changelog);
-		const afterUnreleased = changelog.slice(unreleased.index + unreleased[0].length);
-		const [firstHeading] = [...afterUnreleased.matchAll(HEADING)].map((m) => m[0]);
-		const dated = firstHeading ? DATED_VERSION.exec(firstHeading) : null;
+		const first = all[unreleasedAt + 1];
+		const dated = first ? DATED_VERSION.exec(first.text) : null;
 		expect(dated?.[1]).toBe(manifest.version);
 	});
 });

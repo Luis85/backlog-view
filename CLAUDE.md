@@ -342,7 +342,12 @@ change that was fixing the previous instance.
   version bump (a second commit, not the same one — `npm version` won't run against a
   dirty tree) — `RELEASING.md` states the rule, `test/release/changelogVersion.test.ts`
   checks it, ADR 0024 records why. `[Unreleased]` entries are added by the PR that earns
-  them, not invented at release time.
+  them, not invented at release time. The release workflow also puts that entry in the
+  GitHub release body ahead of the auto-generated notes (`scripts/changelog-notes.mjs`,
+  ADR 0025) — heading boundaries there and in the test above come from `headings()` in
+  `scripts/docs-markdown.mjs`, the same mdast parser `docs-check.mjs` trusts, rather than
+  a hand-written pattern; ADR 0021 is why patterns over Markdown lost that argument once
+  already.
 - Dependencies are noticed by Dependabot and verified by `npm run check` — ADR 0019, which
   also says why `npm audit` is not a sixth step — and ADR 0022, which keeps it out of
   `check` for that reason while running `npm audit --omit=dev --audit-level=critical`
