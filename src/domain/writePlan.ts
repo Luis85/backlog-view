@@ -93,6 +93,12 @@ export interface ItemWrite {
 	 */
 	risk?: string | null;
 	/**
+	 * Who the item is assigned to, or **null to remove the key** — the risk field's rule,
+	 * for the same reason: nobody assigned is a fact about the item, and a blank name
+	 * would read as someone called nothing.
+	 */
+	assignee?: string | null;
+	/**
 	 * Optional properties to CREATE, empty, where the note does not carry them — the
 	 * backfill's whole vocabulary for "this feature needs a property and the note has
 	 * none". Named by field rather than by key, like every other write here, so the
@@ -412,6 +418,19 @@ export function computeRiskWrites(item: BacklogItem, value: string | null): Item
 	if (value === null) return item.ownKeys.risk ? [{ file: item.file, risk: null }] : [];
 	if (sameValue(item.riskValue, value)) return [];
 	return [{ file: item.file, risk: value }];
+}
+
+/**
+ * The write an assignee pick means — `computeRiskWrites`' two rules, over the one field
+ * whose vocabulary is observed rather than declared. That difference is entirely upstream:
+ * what a menu may OFFER is a question about the base's results, while what a pick WRITES
+ * is a question about this note, and the second one does not change because the first
+ * has no configured list behind it.
+ */
+export function computeAssigneeWrites(item: BacklogItem, value: string | null): ItemWrite[] {
+	if (value === null) return item.ownKeys.assignee ? [{ file: item.file, assignee: null }] : [];
+	if (sameValue(item.assigneeValue, value)) return [];
+	return [{ file: item.file, assignee: value }];
 }
 
 /** What a schedule entry asks for: a date per end, null to unschedule that end. */

@@ -336,6 +336,7 @@ describe('optionalKeyFor', () => {
 			startKey: 'start',
 			targetKey: 'due',
 			riskKey: 'risk',
+			assigneeKey: 'assignee',
 			deliverableStateKey: 'deliverableStatus',
 			dependsOnKey: 'dependsOn',
 		});
@@ -349,11 +350,13 @@ describe('optionalKeyFor', () => {
 			'start',
 			'due',
 			'risk',
+			'assignee',
 			'deliverableStatus',
 			'dependsOn',
 		]);
 		// Unconfigured is '', which every caller reads as "no key to write".
 		expect(OPTIONAL_FIELDS.map((field) => optionalKeyFor(defaultSettings(), field))).toEqual([
+			'',
 			'',
 			'',
 			'',
@@ -379,6 +382,7 @@ describe('the optional-property table', () => {
 			'start',
 			'target',
 			'risk',
+			'assignee',
 			'deliverableState',
 			'dependsOn',
 		]);
@@ -390,7 +394,7 @@ describe('adoptableProperties', () => {
 	it('offers the shipped key for every optional property nobody has named', () => {
 		const config = fakeConfig({});
 
-		// Eight, not nine: `deliverableState` suggests the SAME key `state` does
+		// Nine, not ten: `deliverableState` suggests the SAME key `state` does
 		// ('status'), and `state` is declared first, so its own adoption claims
 		// 'status' before the loop ever reaches `deliverableState` — the existing
 		// "don't suggest an already-taken key" guard (below) skips it, leaving the
@@ -404,6 +408,7 @@ describe('adoptableProperties', () => {
 			'start',
 			'due',
 			'risk',
+			'assignee',
 			'dependsOn',
 		]);
 	});

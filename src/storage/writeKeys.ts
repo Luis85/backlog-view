@@ -76,16 +76,17 @@ export function touchedKeys(settings: BacklogSettings, write: ItemWrite): string
 	// fallback, or a key written under it would have no inverse to undo it with.
 	const deliverableStateKeyTouched = resolvedDeliverableStateKey(settings);
 	if (deliverableStateWritten(write) && deliverableStateKeyTouched) keys.push(deliverableStateKeyTouched);
-	// One rule, four properties: listed whenever the write TOUCHES the key and a property
+	// One rule, five properties: listed whenever the write TOUCHES the key and a property
 	// names it — the same condition each `apply*` writes on, so applying and capturing
 	// cannot drift. A key written but not captured is a change no undo could reach; a key
 	// whose value did not change emits no inverse anyway, which is what lets the stamps
-	// ride the state's own undo. Stated as a list because a fourth such property should
-	// add a line here rather than another branch.
+	// ride the state's own undo. Stated as a list because each such property should add a
+	// line here rather than another branch — the assignee did exactly that.
 	const carried: [boolean, string][] = [
 		[write.startedDate !== undefined, settings.startedDateKey],
 		[write.finish !== undefined, settings.finishedDateKey],
 		[write.risk !== undefined, settings.riskKey],
+		[write.assignee !== undefined, settings.assigneeKey],
 		// Not "carries a value": this one is listed for the whole-key REMOVAL alone —
 		// see `dependsOnKeyRemoved`. It shares the list because what the list does with
 		// its first element is exactly right, not because the predicates match.

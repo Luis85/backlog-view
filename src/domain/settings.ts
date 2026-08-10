@@ -119,6 +119,14 @@ export interface BacklogSettings extends ItemHandling {
 	 * property with no levels is still a property worth creating on a note.
 	 */
 	riskValues: string[];
+	/**
+	 * Frontmatter key holding who the item is assigned to, or '' when no assignee
+	 * property is named. No companion list, unlike risk and the horizon: the names a
+	 * menu offers are the ones the RESULTS carry (`observedAssignees`) plus whatever
+	 * the user types, so there is no vocabulary to declare and nothing to clear —
+	 * which is why a named key alone is enough to draw the chip.
+	 */
+	assigneeKey: string;
 }
 
 /**
@@ -303,6 +311,7 @@ export function defaultSettings(): BacklogSettings {
 		deliverableDoneValues: [...DEFAULT_DONE_VALUES],
 		riskKey: '',
 		riskValues: [...DEFAULT_RISK_VALUES],
+		assigneeKey: '',
 		...defaultItemHandling(),
 	};
 }
@@ -327,6 +336,7 @@ export type OptionalField =
 	| 'target'
 	| 'dependsOn'
 	| 'risk'
+	| 'assignee'
 	| 'deliverableState';
 
 /**
@@ -343,6 +353,7 @@ type OptionalSettingsKey =
 	| 'targetKey'
 	| 'dependsOnKey'
 	| 'riskKey'
+	| 'assigneeKey'
 	| 'deliverableStateKey';
 
 /**
@@ -382,6 +393,7 @@ const PROPERTY_TABLE: Record<OptionalField, Omit<OptionalProperty, 'field'>> = {
 	start: { option: 'startProperty', suggested: 'start', label: 'start', settingsKey: 'startKey' },
 	target: { option: 'targetProperty', suggested: 'due', label: 'target', settingsKey: 'targetKey' },
 	risk: { option: 'riskProperty', suggested: 'risk', label: 'risk', settingsKey: 'riskKey' },
+	assignee: { option: 'assigneeProperty', suggested: 'assignee', label: 'assignee', settingsKey: 'assigneeKey' },
 	deliverableState: {
 		option: 'deliverableStateProperty',
 		// Same suggestion as `state` itself: Deliverables sharing the requirements
@@ -838,6 +850,16 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 	// left in the `.base` by re-marking a state as done cannot revive its limit.
 	const limitedStates = states.filter((s) => !doneSet.has(s.toLowerCase()));
 	const folders = resolveFolders({ str, clearable }, ALL_TYPES, fallback);
+	// Every optional property's key, read from the ONE table that already names both the
+	// option and the field it lands in — rather than a line per property restating that
+	// pairing a second time. The lines this replaces were correct, but they were a copy
+	// of `PROPERTY_TABLE` that nothing checked: a row whose `settingsKey` and hand-written
+	// destination disagreed would have bound the picker to one field and read another.
+	// `deliverableStateKey` is resolved here too and then OVERWRITTEN by `...deliverable`
+	// below, which is the only optional key with a fallback of its own to apply.
+	const optionalKeys = Object.fromEntries(
+		OPTIONAL_PROPERTIES.map((property) => [property.settingsKey, propKey(property.option, fallback[property.settingsKey])]),
+	) as Pick<BacklogSettings, OptionalSettingsKey>;
 	const tagsKey = (): string => {
 		const key = clearablePropKey('tagsProperty', fallback.tagsKey);
 		const taken = [
@@ -861,26 +883,19 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		...folders,
 		// UI state, not configuration: the view overwrites this with the stored pick.
 		focusLevel: fallback.focusLevel,
-		stateKey: propKey('stateProperty', fallback.stateKey),
+		...optionalKeys,
 		tagsKey: tagsKey(),
 		propColumnWidth: width('propertyColumnWidth', fallback.propColumnWidth),
 		doneValues: effectiveDoneValues,
 		wipLimits: nameTable(limitedStates, (s) => parseWipLimit(str(wipLimitKey(s)))),
 		columnPolicies: nameTable(states, (s) => str(columnPolicyKey(s)).trim() || null),
-		startedDateKey: propKey('startedDateProperty', fallback.startedDateKey),
-		finishedDateKey: propKey('finishedDateProperty', fallback.finishedDateKey),
 		startedStates: dedupe(list('startedStates')),
 		states,
 		showCompleted: bool('showCompleted', fallback.showCompleted),
-		horizonKey: propKey('horizonProperty', fallback.horizonKey),
 		// A real default that must stay clearable: an emptied list means "no bucket
 		// axis", and only an option never touched falls back to Now, Next, Later.
 		horizonValues: clearable('horizonValues', fallback.horizonValues, () => dedupe(list('horizonValues'))),
-		startKey: propKey('startProperty', fallback.startKey),
-		targetKey: propKey('targetProperty', fallback.targetKey),
-		dependsOnKey: propKey('dependsOnProperty', fallback.dependsOnKey),
 		...deliverable,
-		riskKey: propKey('riskProperty', fallback.riskKey),
 		// Clearable for the horizon values' reason: a real default that has to be
 		// switchable off, and an emptied list means "no levels" rather than the three
 		// this plugin shipped.

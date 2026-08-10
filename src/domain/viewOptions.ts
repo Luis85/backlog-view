@@ -209,6 +209,11 @@ function progressGroup(settings: BacklogSettings): BasesAllOptions {
 			// Assign missing properties — never to one this plugin chose for them.
 			optionalPropertyOption('startedDate', 'Started date property'),
 			optionalPropertyOption('finishedDate', 'Finished date property'),
+			// A property and no list beside it, unlike the state above and the risk
+			// levels below: the names Set assignee offers are the ones the results
+			// already carry, plus whatever the user types, so there is no vocabulary
+			// to declare here and nothing an empty box could turn off.
+			optionalPropertyOption('assignee', 'Assignee property'),
 			{
 				type: 'toggle',
 				key: 'showCompleted',

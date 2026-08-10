@@ -4,6 +4,7 @@ import { buildModel } from '../../src/domain/model';
 import {
 	computeDeliverableStateWrites,
 	computeInitWrites,
+	computeAssigneeWrites,
 	computeRiskWrites,
 } from '../../src/domain/writePlan';
 import { defaultSettings } from '../../src/domain/settings';
@@ -117,5 +118,51 @@ describe('computeRiskWrites', () => {
 		// nothing to take away and a pick is not a re-pick of anything.
 		expect(computeRiskWrites(unconfigured, null)).toEqual([]);
 		expect(computeRiskWrites(unconfigured, '1 - High')).toHaveLength(1);
+	});
+});
+
+describe('computeAssigneeWrites', () => {
+	const assigned = { ...settings, assigneeKey: 'assignee' };
+
+	/** One note with whatever assignee frontmatter the case needs. */
+	function item(frontmatter: Record<string, unknown>): BacklogItem {
+		const vault = new FakeVault();
+		vault.addFile('Item.md', { frontmatter: { type: 'PBI', order: 10, ...frontmatter } });
+		const model = buildModel(vault.app, vault.entries(), assigned);
+		const found = model.items[0];
+		if (!found) throw new Error('fixture item missing');
+		return found;
+	}
+
+	it('writes the name picked, byte for byte', () => {
+		expect(computeAssigneeWrites(item({}), 'Dana')).toEqual([
+			{ file: expect.objectContaining({ path: 'Item.md' }), assignee: 'Dana' },
+		]);
+	});
+
+	it('plans nothing for a re-pick of the name the item holds, whatever its case', () => {
+		// The risk plan's rule over the observed vocabulary: a note spelling a name its
+		// own way is not a different person, and the menu's checkmark asks this same
+		// function rather than a comparison written beside it.
+		expect(computeAssigneeWrites(item({ assignee: 'dana' }), 'Dana')).toEqual([]);
+	});
+
+	it('removes the key only where there is one to remove', () => {
+		// Presence, not value: the empty key the backfill leaves is a real thing to clear.
+		expect(computeAssigneeWrites(item({ assignee: '' }), null)).toEqual([
+			{ file: expect.objectContaining({ path: 'Item.md' }), assignee: null },
+		]);
+		expect(computeAssigneeWrites(item({}), null)).toEqual([]);
+	});
+
+	it('plans nothing at all when no assignee property is configured', () => {
+		const vault = new FakeVault();
+		vault.addFile('Item.md', { frontmatter: { type: 'PBI', order: 10, assignee: 'Dana' } });
+		const model = buildModel(vault.app, vault.entries(), settings);
+		const unconfigured = model.items[0];
+		if (!unconfigured) throw new Error('fixture item missing');
+
+		expect(computeAssigneeWrites(unconfigured, null)).toEqual([]);
+		expect(computeAssigneeWrites(unconfigured, 'Dana')).toHaveLength(1);
 	});
 });

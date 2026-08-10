@@ -246,21 +246,22 @@ await, because the batch's own refresh rebuilds `board`/`roadmap` before it reso
 and the column or bucket just vacated may be gone with its last card.
 
 **Absence is a value, and an unconfigured key is never written to** — a rule
-`storage/frontmatter.ts` now keeps in three different shapes, which is the fact to know
-before adding a fourth optional property. The state key guards inline
+`storage/frontmatter.ts` keeps in three different shapes, which is the fact to know
+before adding another optional property. The state key guards inline
 (`write.removeStateKey && settings.stateKey` in `applyInto`); the axis keys go through
 `axisEntries`, where `key !== ''` drops an unconfigured one and a `null` value means
-delete; the risk level restates both in `applyRisk`, four lines that read the same rule
-straight through. There is no single helper stating it, and the third property took the
-advice this paragraph gave — a **statement of the rule**, not a call — because a helper
-general enough to cover all three would have to carry the axis's civil-date equality and
-datetime merge past the two properties that must not have them. That is the argument to
-re-examine at a fourth, not a settled answer: three restatements are near where the
-balance tips, and a fourth that needs no date handling is the case that would tip it. If
-extraction happens, this paragraph is what has to change with it. It said the opposite
-until 2026-08-08, naming a `writeOptional` and a `removeHorizonKey` that have never
-existed: a guide enumerating symbols goes stale exactly the way the table rule below says,
-and here it sent a specification off to promise an implementer a call they would not find.
+delete; the plain LABEL properties — the risk level and the assignee — go through
+`applyLabels`, one loop over a list pairing each planned value with its configured key.
+That third shape was `applyRisk`, a four-line restatement of the rule, until the assignee
+arrived (2026-08-10) — which is exactly the case this paragraph said to re-examine at: a
+fourth property wanting those two lines and none of the axis's civil-date equality or
+datetime merge. It was extracted rather than copied, so a fifth label is a row in that
+list. What has NOT been extracted is the rule across all three shapes, and that is still
+deliberate: a helper general enough to cover the axis too would have to carry the date
+handling past the properties that must not have it. This paragraph said the opposite until
+2026-08-08, naming a `writeOptional` and a `removeHorizonKey` that have never existed: a
+guide enumerating symbols goes stale exactly the way the table rule below says, and here it
+sent a specification off to promise an implementer a call they would not find.
 
 A Set menu's **checkmark is asked of the PLAN** — an entry is checked exactly when
 picking it would write nothing — never by a comparison written beside the plan and

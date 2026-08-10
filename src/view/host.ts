@@ -27,7 +27,7 @@ export type Projection = 'tree' | 'board' | 'roadmap' | 'deliverables';
  * it. Declared here with the other view state the host exposes, so the interface every
  * module depends on depends on nothing itself.
  */
-export type ColumnKind = 'value' | 'tags' | 'state' | 'horizon' | 'risk';
+export type ColumnKind = 'value' | 'tags' | 'state' | 'horizon' | 'risk' | 'assignee';
 
 export interface Column {
 	prop: BasesPropertyId;

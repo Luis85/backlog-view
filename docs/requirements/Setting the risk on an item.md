@@ -114,12 +114,16 @@ note declares is read into `riskValue` by `src/domain/model.ts`, the tolerant wa
 workflow state is read.
 
 Steps 5 and 6 are `computeRiskWrites` in `src/domain/writePlan.ts` — the value, or null
-for a removal that is offered only on presence — applied by `applyRisk` in
-`src/storage/frontmatter.ts`, which is the third statement of this module's two standing
-rules: never a key no property names, and a null removes rather than blanks. The menu
-itself is `src/view/interactions/menu.ts`, beside **Set state** rather than with the
-roadmap's placement actions, because risk is an attribute of the item and not a position
-on an axis.
+for a removal that is offered only on presence — applied by `applyLabels` in
+`src/storage/frontmatter.ts`, which states this module's two standing rules — never a key
+no property names, and a null removes rather than blanks — once for risk and the assignee
+together, having been `applyRisk`'s third restatement of them until the fourth optional
+property made a shared one cheaper. What the menu
+OFFERS moved to `src/view/interactions/labels.ts` when the assignee arrived
+([[Setting the assignee on an item]]) — one shape for both label properties, differing
+only in where the list comes from — while `src/view/interactions/menu.ts` keeps the
+**Set risk** entry beside **Set state** rather than with the roadmap's placement actions,
+because risk is an attribute of the item and not a position on an axis.
 
 Driven in `test/domain/settings.test.ts`, `test/domain/writePlan.test.ts`,
 `test/storage/frontmatter.test.ts`, `test/view/risk.test.ts` and
