@@ -8,15 +8,12 @@ import { childTypeChoices, displayType } from '../../domain/itemTypes';
 import { byName } from '../../domain/settings';
 import { ownWorkflowReading } from '../../domain/board';
 import {
-	HORIZON_COL_WIDTH,
 	INDENT_PER_DEPTH,
 	META_COL_WIDTH,
 	renderAddSpacer,
 	renderColumnHeader,
 	renderRowColumns,
-	RISK_COL_WIDTH,
 	RowContext,
-	STATE_COL_WIDTH,
 } from './columns';
 
 /** Work-item icons by level position, echoing the Azure DevOps set (crown, trophy, book, check). */
@@ -48,10 +45,7 @@ export function renderTree(ctx: RowContext, treeEl: HTMLElement): void {
 	// stylesheet lays out with them, so the two cannot drift apart.
 	treeEl.setCssProps({
 		'--pbl-prop-col': `${ctx.host.settings.propColumnWidth}px`,
-		'--pbl-prop-count': String(ctx.chips.length),
-		'--pbl-state-col': `${STATE_COL_WIDTH}px`,
-		'--pbl-horizon-col': `${HORIZON_COL_WIDTH}px`,
-		'--pbl-risk-col': `${RISK_COL_WIDTH}px`,
+		'--pbl-prop-count': String(ctx.columns.length),
 		'--pbl-meta-col': `${META_COL_WIDTH}px`,
 		'--pbl-indent': `${INDENT_PER_DEPTH}px`,
 	});

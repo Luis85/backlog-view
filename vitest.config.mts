@@ -239,11 +239,24 @@ export default defineConfig({
 			// other three repeat the figures above and stay. The rise is again partly
 			// subtraction: three near-identical menu wrappers became one function with one
 			// set of branches, and the chip's own branches arrived driven.
+			//
+			// The bases-driven-columns increment (the properties menu becomes the sole
+			// source of which columns render and in what order, replacing the fixed chip
+			// list; narrowing becomes a count of leading columns dropped past the fit
+			// rather than a chip ladder; `showProperties` removed) measured
+			// 98.34/94.73/99.57/99.48 (5819/5917, 3704/3910, 1409/1415, 4867/4892) against
+			// the 98.34/94.70/99.57/99.49 recorded above. Statements and functions repeat
+			// the figures already recorded; branches rounds down to a new decimal (94.7,
+			// up from 94.70 -- the third digit moved); lines' honest rounding is 99.48,
+			// one hundredth below the prior entry's 99.49, on a larger denominator, so the
+			// threshold below is the floor this run actually clears, not a step down from
+			// one it does not. This is Task 6 of that plan, whose whole job is proving
+			// this floor against the finished suite rather than moving the code.
 			thresholds: {
-				statements: 98.3,
-				branches: 94.7,
-				functions: 99.5,
-				lines: 99.4,
+				statements: 98.34,
+				branches: 94.73,
+				functions: 99.57,
+				lines: 99.48,
 			},
 		},
 	},

@@ -33,6 +33,10 @@ describe('toolbar backfill', () => {
 
 		expect(vault.fm('Untyped.md')['type']).toBe('Feature');
 		expect(Notice.messages.some((m) => m.includes('updated 1 item'))).toBe(true);
+		// Nothing was bound on this run (noOptionalProperties clears every optional
+		// property), so nothing became a new property to go find in the properties menu —
+		// the guard on that clause is what this checks, not just its presence elsewhere.
+		expect(Notice.messages.some((m) => m.includes('properties menu'))).toBe(false);
 	});
 
 	it('binds the properties nobody has named, and creates them empty on every item', async () => {
@@ -90,6 +94,20 @@ describe('toolbar backfill', () => {
 				m.includes('set up status, started, finished, horizon, start, due, risk, dependsOn'),
 			),
 		).toBe(true);
+	});
+
+	it('says where a property it just bound becomes visible', async () => {
+		// Binding a property and stubbing it onto every note still shows nothing: the
+		// columns are the Bases properties menu, and `BasesViewConfig` has no setter for
+		// it. The Notice is the only place that loop is closed.
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		const { containerEl } = makeView(vault);
+
+		initButton(containerEl)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flush();
+
+		expect(Notice.messages.some((m) => m.includes('properties menu'))).toBe(true);
 	});
 
 	it('binds nothing a second time, and nothing the user cleared', async () => {

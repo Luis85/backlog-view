@@ -92,8 +92,9 @@ decline to read it.
 ## The direction already set
 
 The fix pattern exists in the same file. The numbers TS owns are **published to CSS** as
-custom properties by `renderTree` — `--pbl-prop-col`, `--pbl-state-col`, `--pbl-meta-col`,
-`--pbl-indent` — so the stylesheet reads them rather than repeating them. Five of the
+custom properties by `renderTree` — `--pbl-prop-col`, `--pbl-prop-count`,
+`--pbl-meta-col`, `--pbl-indent` — so the stylesheet reads them rather than repeating
+them. Five of the
 eight lead terms could follow, leaving only the ones that are Obsidian's.
 
 That is a direction, not a decision: publishing a `max-width` the theme should arguably

@@ -360,12 +360,6 @@ function displayGroup(): BasesAllOptions {
 		displayName: 'Display',
 		items: [
 			{
-				type: 'toggle',
-				key: 'showProperties',
-				displayName: 'Show visible properties on rows',
-				default: true,
-			},
-			{
 				type: 'slider',
 				key: 'propertyColumnWidth',
 				displayName: 'Property column width',

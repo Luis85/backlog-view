@@ -18,7 +18,7 @@ free of runtime code so imports stay cycle-free.
   drag cleanup. That spy is a regression guard for the paths that exist; the lint rule is
   the statement of the invariant, because it holds for paths not yet written. And the
   per-render config lookups (`getOrder`, `getDisplayName`) are resolved once per data
-  update by `chipProps` onto `host.chips`, which `RowContext` carries as a snapshot,
+  update by `resolveColumns` onto `host.columns`, which `RowContext` carries as a snapshot,
   never in the per-row path. `refreshRowChildren` must prune the subtree it removes
   from `rowEls`, and anything captured at wire time (drag handlers) must read expansion
   state live, because a targeted refresh leaves surrounding rows in place. Data updates
@@ -111,11 +111,11 @@ free of runtime code so imports stay cycle-free.
 - **The risk chip is the state chip a third time** (`renderRiskChip`, beside the other two
   in `render/columns.ts`), on `hasRiskLevels` — the same pair Set risk is gated on, so a
   chip whose menu could set nothing is not a state either side can reach alone — opening
-  `addRiskItems` through `showRiskMenu`, and skipped by `chipProps` like the other two so
-  the row never draws the value twice with one of them inert. It differs from the horizon's
-  in one place: an unjudged note draws a dashed *Risk* chip rather than nothing, because
-  absence here is an invitation and not a placement the shelf already names. Its column
-  drops after the properties and before the rollup.
+  `addRiskItems` through `showRiskMenu`, and drawn as the risk property's OWN cell like the
+  other two, so the row never draws the value twice with one of them inert. It differs from
+  the horizon's in one place: an unjudged note draws a dashed *Risk* chip rather than
+  nothing, because absence here is an invitation and not a placement the shelf already
+  names. Its column drops where the properties menu put it, like every other column.
 - **The four per-row menus are one function**: `chipMenu` in `interactions/menu.ts`, with
   `showStateMenu` / `showHorizonMenu` / `showRiskMenu` / `showTagMenu` as one-line exports
   over it. It is what stops a control from also activating the row it sits on — the reason
@@ -125,8 +125,9 @@ free of runtime code so imports stay cycle-free.
   definition of a configured bucket axis, never a second opinion — static for a context
   row, and opening `showHorizonMenu`, which is `addHorizonItems`, which is what the row
   menu's Set horizon is. Two surfaces, one builder: they cannot offer different values
-  or disagree about which is checked. A property with an interactive chip is skipped by
-  `chipProps`, so the row never draws it twice with only one of them editable.
+  or disagree about which is checked. The chip IS that property's cell (`renderCell`
+  dispatches on the column's kind), so the row never draws it twice with only one of them
+  editable.
 - The tree opens collapsed for a parent nobody has ruled on — `collapseNewParents`
   collapses each one the first time it is seen, in BOTH scopes from that one pass (it runs
   on a data update, not per projection, so the scope off screen would otherwise be
@@ -142,11 +143,12 @@ free of runtime code so imports stay cycle-free.
 ## Controls
 
 - Row layout is columnar: `.pbl-row-spacer` is the flexible middle, and everything after
-  it (`.pbl-props` → `.pbl-risk-col` → `.pbl-horizon-col` → `.pbl-state-col` →
-  `.pbl-meta-col`) is fixed-width, so values line
-  up across rows regardless of title length and indent. Every configured column renders
-  on every row — an empty property cell, a leaf's empty `.pbl-meta-col` — or the columns
-  after it would shift per row. **That holds for the whole end-anchored strip, not only
+  it (`.pbl-props`, one `.pbl-prop` cell per drawn column, then `.pbl-meta-col`) is
+  fixed-width, so values line
+  up across rows regardless of title length and indent. Every column the pass DRAWS
+  renders on every row — an empty property cell, a leaf's empty `.pbl-meta-col` — or the
+  columns after it would shift per row. Drawn, not configured: a column the pane cannot
+  hold is on no row at all, which is the difference the fit below turns on. **That holds for the whole end-anchored strip, not only
   for the columns**: the add button is last in it, and a row that can hold nothing
   withholds the control but reserves its width (`renderAddSpacer`, which the header uses
   for the same reason), because an element skipped from an end-anchored strip does not
@@ -159,9 +161,28 @@ free of runtime code so imports stay cycle-free.
   column no longer sits under its header), so a pane too narrow for them drops them
   whole: `columnFit` derives the threshold from the *configured* width and count — a
   fixed CSS breakpoint would clip two 280px columns in a 700px pane — and
-  `syncColumnFit` beside it applies the verdict, toggling `pbl-hide-props` /
-  `pbl-hide-risk` / `pbl-hide-meta` / `pbl-hide-horizon` / `pbl-hide-state` — in that order
-  of usefulness, the state chip surviving longest because it summarizes a row on its own. Every column a
+  `syncColumnFit` beside it applies the verdict, which is a COUNT plus one bit for the
+  rollup (`host.columnFit`, stored as ONE object so the rows and the header cannot end up
+  describing different frames) rather than a ladder of classes: columns
+  drop from the END of the properties menu's order,
+  because that order is the user's own statement of what matters and a ranking of ours
+  beside it would be a second opinion about it. **A dropped column is not rendered**, and
+  that is the accessibility half of the decision rather than an implementation detail:
+  clipping it in CSS would leave its cell in the accessibility tree — a Bases value can
+  render a native control, and the chips are `tabindex="-1"` buttons assistive tech
+  reaches by design — so focusing one would scroll the strip out from under its header.
+  The rollup is the one exception and keeps a class (`pbl-hide-meta`) for the ROWS,
+  because it is not in that order at all: pinned past its end, so "last" would always pick
+  it first, it goes after every column instead. **The header asks about it anyway**
+  (`columnFit.rollupDropped`), and that is the distinction to keep: configured is not
+  drawn, and a header built from the configuration alone was a sticky bordered bar holding
+  a spacer, an empty box and a label the stylesheet hides — the whole point of the bar is
+  the labels, so with none left it is not rendered. So the rollup is one concept behind
+  two mechanisms: the rows get a class, the header gets the verdict. That is a recorded
+  cost rather than an oversight — it cannot disagree visibly (`rollupDropped` implies no
+  columns implies no header) and `display: none` keeps the hidden box out of the
+  accessibility tree — and the two ways out of it are in
+  `docs/issues/The rollup is hidden by class and headed by verdict.md`. Every column a
   row can carry has to be in that budget: one drawn but not summed does not drop, it
   overflows. The two live in one file because a threshold
   computed in one place and applied in another is one edit from disagreeing; the view
@@ -185,20 +206,35 @@ free of runtime code so imports stay cycle-free.
   instead of repeating them. The terms that are Obsidian's (`--size-4-1` gaps, the tree
   padding) cannot be owned that way and stay as constants; a theme that redefines them
   moves the threshold by a few pixels, which is the accepted cost of not measuring. A term that grows without a bound, or
-  one left out of the sum, comes back as a clipped row rather than a dropped column. The
-  ladder ends at the state chip: below that only the row's lead is left, and the title
-  truncates from there.
-- Which properties become columns is resolved once per data update into `host.chips`
-  (`chipProps`), and everything else reads that: the rows render it, and
-  `tagsColumnVisible` is `chips.some((c) => c.tags)`. Deriving it twice is how the tag
-  menu came to offer editing for a column `chipProps` had skipped.
+  one left out of the sum, comes back as a clipped row rather than a dropped column. It
+  ends at the rollup: below that only the row's lead is left, and the title truncates
+  from there. `columnFit` measures `ctx.host.columns` — what EXISTS — and never
+  `ctx.columns`, which is the slice the last verdict produced: measuring that would
+  ratchet the count down and never let a column come back when the pane widens.
+- Which properties become columns is resolved once per data update into `host.columns`
+  (`resolveColumns`), and everything else reads that: the rows render it, and
+  `tagsColumnVisible` is `columns.some((c) => c.kind === 'tags')`. Deriving it twice is how
+  the tag menu came to offer editing for a column the renderer had skipped.
 - Tag editing follows the *column*, not the setting: `tagsColumnVisible` asks whether
-  the tags property is one of the resolved columns, because the pills the user removes
-  are the ones the column renders — a context menu that edited an invisible property
-  would write things nothing on screen shows. That
-  is a question about the Base's configuration, not about the pane: the responsive
-  `pbl-hide-*` classes are a space decision, and no command is withheld for them (the
-  state chip drops the same way and Set state stays). On a pane too narrow for the
+  the tags property is one of the resolved columns, because for tags the menu IS the
+  column — Edit tags writes a *delta* against exactly the pills the cell renders and
+  reports the item's current tags as its checkmarks, so with no column it would be the
+  only place those tags appear at all and the set it calls current would be one nothing
+  on screen shows. **That is a rule about the tags column, and it stops there.** Its
+  three siblings in `addEditableSections` gate on the settings predicates instead —
+  `stateKeyFor`, `hasRiskLevels`, `hasHorizonAxis` — so Set state, Set risk and Set
+  horizon stay offered on a property the properties menu is hiding, and those three DO
+  write something the row is not showing. Deliberate, not four cases waiting to be
+  smoothed into one: the plugin cannot write the visible order back (ADR 0023's
+  first-run gap), so withholding the write with the column would leave a base whose only
+  remaining route to the property is opening the note. Do not generalise the tags rule
+  to reach them — the honest statement is that state still shows through the rollup and
+  `pbl-done` while risk and horizon show nowhere else in the tree, and the asymmetry is
+  recorded in ADR 0023's Consequences rather than argued into a rule. That
+  is a question about the Base's configuration, not about the pane: narrowing is a space
+  decision — the pane draws fewer of the resolved columns (`host.columnFit`) and the
+  rollup keeps its class — and no command is withheld for it (the state chip's column
+  drops the same way and Set state stays). On a pane too narrow for the
   column the menu is the only way left to edit tags, and it shows the item's tags
   checked, so nothing is edited unseen.
   `applyWrites` drops `ItemWrite.tags` without a `tagsKey` (same rule as state). The
@@ -326,9 +362,9 @@ free of runtime code so imports stay cycle-free.
 ## The board projection
 
 - One scroller, two projections: board mode reuses `.pbl-tree` with its role swapped to
-  `listbox` and the keydown dispatched to `handleBoardKeydown`. The column-fit ladder
-  (`pbl-hide-*`) is the tree's — entering board mode clears its stale verdicts, or a
-  narrow-pane decision from tree mode would hide card cells.
+  `listbox` and the keydown dispatched to `handleBoardKeydown`. The column fit is the
+  tree's — entering board mode resets the verdict to null and clears `pbl-hide-meta`, or a
+  narrow-pane decision from tree mode would strip cells off cards.
 - The mode is `host.projection` — `'tree' | 'board' | 'roadmap'` — backed by the
   collapse store (UI state, per saved view, per device) — never `settings` and never
   the `.base`: base settings are saved on the view, working position in localStorage.
@@ -564,8 +600,9 @@ free of runtime code so imports stay cycle-free.
   previous `ScrollAnchor.content` — never on a same-content refresh, whatever
   `scrollLeft` happens to be: a data update mid-session must not yank the view back to
   now.
-- The board- and roadmap-mode CSS guards both clear the tree's stale `pbl-hide-*`
-  verdicts; the fit ladder is the tree's alone.
+- The board- and roadmap-mode CSS guards both keep the tree's stale `pbl-hide-meta` off a
+  card's rollup; the columns need no such guard, because a card projection resets the
+  verdict rather than carrying a class. The fit is the tree's alone either way.
 
 ## Lifecycle
 

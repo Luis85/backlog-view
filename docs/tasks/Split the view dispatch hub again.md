@@ -15,14 +15,31 @@ files:
 
 ## Evidence
 
-`src/view/backlogView.ts` measures **395 effective lines** (`skipBlankLines`,
+`src/view/backlogView.ts` measures **398 effective lines** (`skipBlankLines`,
 `skipComments`, the counting `max-lines` uses) against the 400-line cap every `src/` file
-is held to. Five lines, and its import block is already full — a new import costs one of
-them before a line of code is written.
+is held to. **Two lines**, and its import block is already full: a new import costs one
+of them before a line of code is written.
+
+Measured 2026-08-09 by running the rule itself at `max: 1` and reading the number it
+reports, then bisecting at 397/398 to check the instrument — because the **395** this
+note was filed with matches no revision that could be found: the file was at **exactly
+400** on `main` at the merge base of the Bases-driven-columns branch, and 398 after it.
+The trend the note is about is unchanged and if anything sharper than the original
+figure: two merges running, this file has sat within two lines of a cap it cannot cross.
+
+**And the cheap way out is blocked.** Moving a block to a neighbour is what the last two
+increments did, and the two neighbours these blocks would go to are at their own
+ceilings: `src/view/interactions/menu.ts` is at **399** of the same 400 (one line — it
+cannot receive the menu trio it is the natural home for), and `ResizePolicy`
+(`src/view/resize.ts`) takes **five constructor parameters** against the `max-params` cap
+of 5, so nothing more can be handed to it the way `syncToolbarFit` was. Of the three
+seams named below, only the card-move plumbing has an unblocked destination, and it does
+not have one yet — it would be a new file. Which is the argument for a real split rather
+than another shave.
 
 [[Split the view dispatch hub]] is the same measurement taken on 2026-08-02, and it is
 **Done**: extracting `WriteGate` into `src/view/writeGate.ts` took the file from exactly
-400 to 330. Sixty-five lines came back over the six months of work since, most recently
+400 to 330. Sixty-eight of those seventy lines have come back over the six months of work since, most recently
 the toolbar overhaul, which spent the whole of the remaining slack on nothing but a
 `css-change` listener and a fit call — and had to give one of them back (the
 `syncToolbarFit` call moved into `ResizePolicy`, where the design spec had put it anyway)

@@ -182,7 +182,11 @@ describe('rendering', () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Doing', tags: ['alpha'] } });
 		vault.addFile('Child.md', { frontmatter: { type: 'Feature', order: 10, parent: 'Epic' } });
-		const { containerEl } = makeView(vault, { stateProperty: 'note.status', tagsProperty: 'note.tags' });
+		const { containerEl } = makeView(
+			vault,
+			{ stateProperty: 'note.status', tagsProperty: 'note.tags' },
+			{ order: ['note.status', 'note.tags'] },
+		);
 		const row = rowByTitle(containerEl, 'Epic');
 
 		const controls = Array.from(row.querySelectorAll<HTMLElement>('button, a, [tabindex="-1"], .pbl-tag, .pbl-prop-value'));
@@ -515,33 +519,34 @@ describe('row columns', () => {
 		return vault;
 	}
 
-	it('puts the state chip in a column of its own, after the flexible spacer', () => {
-		const { containerEl } = makeView(statedVault(), { stateProperty: 'note.status' });
+	it('puts the state chip in a cell of the column strip, after the flexible spacer', () => {
+		const { containerEl } = makeView(statedVault(), { stateProperty: 'note.status' }, { order: ['note.status'] });
 
 		for (const row of rows(containerEl)) {
-			const col = row.querySelector('.pbl-state-col');
-			expect(col).not.toBeNull();
-			expect(col?.querySelector('.pbl-state-chip')).not.toBeNull();
-			// The spacer absorbs the free space, so the column lands at a fixed offset
-			expect(col?.previousElementSibling?.classList.contains('pbl-row-spacer')).toBe(true);
+			const cell = row.querySelector('.pbl-prop-state');
+			expect(cell).not.toBeNull();
+			expect(cell?.querySelector('.pbl-state-chip')).not.toBeNull();
+			// The spacer absorbs the free space, so the strip lands at a fixed offset
+			expect(cell?.parentElement?.previousElementSibling?.classList.contains('pbl-row-spacer')).toBe(true);
 		}
 	});
 
 	it('gives every row a rollup column, even leaves, so the columns line up', () => {
-		const { containerEl } = makeView(statedVault(), { stateProperty: 'note.status' });
+		const { containerEl } = makeView(statedVault(), { stateProperty: 'note.status' }, { order: ['note.status'] });
 
 		const epic = rowByTitle(containerEl, 'Epic');
 		const leaf = rowByTitle(containerEl, 'Short');
 		expect(epic.querySelector('.pbl-meta-col .pbl-progress-label')?.textContent).toBe('1/2');
 		expect(leaf.querySelector('.pbl-meta-col')).not.toBeNull();
 		expect(leaf.querySelector('.pbl-progress')).toBeNull();
-		expect(epic.querySelector('.pbl-state-col')?.nextElementSibling).toBe(epic.querySelector('.pbl-meta-col'));
+		// The rollup is pinned past the END of the column strip, wherever that ends.
+		expect(epic.querySelector('.pbl-props')?.nextElementSibling).toBe(epic.querySelector('.pbl-meta-col'));
 	});
 
-	it('drops both columns when neither states nor counts are configured', () => {
+	it('drops both when neither the property nor the counts are shown', () => {
 		const { containerEl } = makeView(statedVault(), { showCounts: false });
 		const epic = rowByTitle(containerEl, 'Epic');
-		expect(epic.querySelector('.pbl-state-col')).toBeNull();
+		expect(epic.querySelector('.pbl-state-chip')).toBeNull();
 		expect(epic.querySelector('.pbl-meta-col')).toBeNull();
 	});
 });

@@ -218,8 +218,11 @@ describe('write safety with context rows, across every entry point', () => {
 			riskProperty: 'note.risk',
 			dependsOnProperty: 'note.dependsOn',
 		});
-		// The tag column is a write surface too — drive it like every other one.
-		config.order = ['note.tags'];
+		// Every chip is a write surface too, and a chip is drawn by a VISIBLE column, so
+		// the sweep only reaches them if the base shows their properties. Without this
+		// the state, horizon and risk chips are absent and each `?.dispatchEvent` below
+		// drives nothing while still passing.
+		config.order = ['note.tags', 'note.status', 'note.horizon', 'note.risk'];
 		anyView.config = config;
 		anyView.data = {
 			data: vault.entries().filter((e) => !CONTEXT_PATHS.includes(e.file.path)),
@@ -309,14 +312,24 @@ describe('write safety with context rows, across every entry point', () => {
 			strip?.dispatchEvent(new MouseEvent('drop', { bubbles: true }));
 			await flush();
 		}
-		// Every context-menu command, every state chip, every structural shortcut
+		// Every context-menu command, every chip, every structural shortcut
 		const tree = treeOf(containerEl);
+		// Which chip kinds the sweep actually found. A chip renders only where its
+		// property is a visible column, so a query that matched nothing would leave
+		// `?.dispatchEvent` driving nothing and every assertion below still passing —
+		// checked after the loop rather than trusted.
+		const chipsDriven = new Set<string>();
 		for (const row of allRows) {
 			await triggerEveryCommand(row);
-			row.querySelector<HTMLElement>('.pbl-state-chip')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-			for (const state of Menu.lastShown?.items ?? []) {
-				state.clickHandler?.();
-				await flush();
+			for (const chipClass of ['.pbl-state-chip', '.pbl-horizon-chip', '.pbl-risk-chip']) {
+				const chip = row.querySelector<HTMLElement>(chipClass);
+				if (!chip) continue;
+				chipsDriven.add(chipClass);
+				chip.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+				for (const entry of Menu.lastShown?.items ?? []) {
+					entry.clickHandler?.();
+					await flush();
+				}
 			}
 			// Every tag control on the row: the add menu and each remove button
 			row.querySelector<HTMLElement>('.pbl-tag-add')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -334,6 +347,7 @@ describe('write safety with context rows, across every entry point', () => {
 				await flush();
 			}
 		}
+		expect([...chipsDriven].sort()).toEqual(['.pbl-horizon-chip', '.pbl-risk-chip', '.pbl-state-chip']);
 		// And the backfill, which walks the whole real tree
 		containerEl
 			.querySelectorAll<HTMLElement>('.pbl-icon-btn')[0]
@@ -364,7 +378,10 @@ describe('undo across the filter boundary', () => {
 		const view = new ProductBacklogView({} as never, containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
-		anyView.config = new FakeViewConfig({ stateProperty: 'note.status' });
+		const config = new FakeViewConfig({ stateProperty: 'note.status' });
+		// A chip is drawn by a VISIBLE column, so the base has to show the property.
+		config.order = ['note.status'];
+		anyView.config = config;
 		anyView.data = { data: vault.entries() };
 		view.onDataUpdated();
 		clickExpandAll(containerEl);

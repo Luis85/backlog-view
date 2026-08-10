@@ -302,9 +302,9 @@ describe('bar labels', () => {
 
 /**
  * A bar states its workflow state as a COLOUR: `pbl-state-N`, or green for done. No chip
- * is rendered on this projection (`renderStateChip`'s only call site is the tree, and
- * `chipProps` skips the state property), so before `stateNote` the colour was the whole
- * of it — nothing at all for a screen reader, and colour alone for a reader who cannot
+ * is rendered on this projection (`renderStateChip`'s only call site is a tree row's own
+ * column, and a timeline row draws no columns), so before `stateNote` the colour was the
+ * whole of it — nothing at all for a screen reader, and colour alone for a reader who cannot
  * separate the slots (WCAG 1.4.1). The words are hidden text in the row's own content,
  * because the row's accessible name is content-derived and an `aria-label` would replace
  * the badge and title rather than add to them.
@@ -325,7 +325,14 @@ describe('workflow state on the dated axis', () => {
 	}
 
 	function statefulRoadmap() {
-		const harness = makeView(statefulVault(), { ...DATE_AXIS, stateProperty: 'note.status' }, { collapsed: true });
+		// The state property is VISIBLE, so a state column resolves and a chip is something
+		// this frame could draw — without that, the chip assertion below is a question
+		// nobody asked.
+		const harness = makeView(
+			statefulVault(),
+			{ ...DATE_AXIS, stateProperty: 'note.status' },
+			{ collapsed: true, order: ['note.status'] },
+		);
 		harness.view.setProjection('roadmap');
 		return harness.containerEl;
 	}
@@ -347,7 +354,9 @@ describe('workflow state on the dated axis', () => {
 		// The colour is still drawn — this adds a carrier, it does not replace one.
 		expect(row.className).toMatch(/pbl-state-\d/);
 		expect(words(row)).toBe('Active');
-		// And not as a visible chip: the row is a lead column and a track, deliberately.
+		// And not as a visible chip, though the column now exists: a timeline row is a lead
+		// column and a track, so it draws no property strip at all — the words above are
+		// the whole of what it says about state.
 		expect(row.querySelector('.pbl-state-chip')).toBeNull();
 	});
 

@@ -214,17 +214,19 @@ narrowed to one type.
   Deliverable key — and the row's state chip shows and styles that same value, so the
   chip and the menu it opens can never name two workflows. Everything not typed
   `Deliverable` keeps the requirements workflow everywhere, unchanged.
-- The tree's single state column therefore serves BOTH workflows, and asks two different
-  questions to do it: the CELL exists whenever *either* workflow has a key
-  (`hasStateColumn`), and the CHIP inside it is gated on the key *this row's* workflow
-  writes (`stateKeyFor`, the same function `Set state` gates on, so a chip and a menu can
-  never disagree about which key a row writes). A vault configuring only the Deliverable
-  property gets the column, a chip on its Deliverables and an empty cell on every other
-  row — empty rather than absent, or the columns after it shift on that row alone. The
-  header takes the configured property's own display name while one key is in play,
-  fallback included, and the generic word `State` only where two DISTINCT keys share the
-  column, since naming it after either would misidentify the property half the rows below
-  it are showing.
+- The tree serves BOTH workflows in its column strip, and asks two different questions to
+  do it. The CELL is the Bases properties menu's question — a state property is a column
+  when the menu shows it, which since
+  [ADR 0023](../adrs/0023-columns-are-the-bases-property-order.md) means the two workflows
+  on distinct visible keys are **two** columns rather than one shared one. The CHIP inside
+  a cell is gated on the key *this row's* workflow writes (`stateKeyFor`, the same
+  function `Set state` gates on, so a chip and a menu can never disagree about which key a
+  row writes): every row fills exactly one state column and leaves the other empty —
+  empty rather than absent, or the columns after it shift on that row alone. A vault
+  SHOWING only the Deliverable property gets one column, a chip on its Deliverables and
+  an empty cell on every other row — configuring it is not what puts it there. Each column's header is its own property's
+  display name, fallback included; the generic word `State` is gone with the single
+  shared column that needed it, since a column now names exactly one property.
 - **Completion is deliberately NOT type-scoped.** `item.done`, `subtreeDone`, the rollup,
   the row's finished styling and "Show completed items" all stay the requirements
   workflow's, on every projection but the Deliverables board (which has no completion
