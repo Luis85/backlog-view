@@ -186,10 +186,14 @@ export interface WorkflowReading {
  * The same "an item's workflow follows its type, or its ladder" rule `stateKeyFor` states
  * for the KEY, stated once more for the VALUE. Before these two existed, the chip and the
  * menu each hand-wrote the same ternary — two copies of one rule is how they came to
- * disagree in the first place, and it is why a third workflow needed exactly two edits.
+ * disagree in the first place, and it is why a third workflow costs two edits HERE. It
+ * costs more elsewhere: the vocabulary, the write planner, the option and the badge are
+ * their own changes, and this sentence is about the selection alone.
  *
  * The pair is returned together so both halves come from ONE decision: a caller that needs
  * only the value still gets the value of the workflow whose done flag it would have got.
+ * That does not stop a caller taking one half — `stateChoices` in `interactions/menu.ts`
+ * legitimately reads `.value` alone — and doing so is not a sign the pairing was pointless.
  */
 export function ownWorkflowReading(item: BacklogItem): WorkflowReading {
 	if (isDeliverableType(item.typeName)) return { value: item.deliverableStateValue, done: item.deliverableDone };

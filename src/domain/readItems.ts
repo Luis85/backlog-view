@@ -182,8 +182,8 @@ function addItem(
 	const deliverableDoneValues = settings.deliverableDoneValues.map((v) => v.toLowerCase());
 	// Read on every item rather than only on catalog members, exactly as the Deliverable's
 	// is read on every item rather than only on Deliverables: this is a plain key read, and
-	// the membership question belongs where the workflow is CHOSEN (`board.ts`), which is
-	// also the only place `ladder` exists to ask it of.
+	// the membership question belongs where the workflow is CHOSEN. It cannot be asked here
+	// at all — a `RawItem` has no `ladder` yet, since `assignAll` is what puts one on it.
 	const testStateKey = resolvedTestStateKey(settings);
 	const testStateValue = testStateKey ? readString(ownValue(fm, testStateKey)) : null;
 	const testDoneValues = settings.testDoneValues.map((v) => v.toLowerCase());
