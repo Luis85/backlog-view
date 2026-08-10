@@ -132,13 +132,15 @@ Obsidian's.
 - Its own checks live in `test/harness/harness.test.ts` — it still mounts, each fixture
   still draws the cases it exists for, and every icon name the view asks for across all
   four projections still resolves. `test/harness/themeStub.test.ts` is the separate
-  subject: whether the two linked sheets BETWEEN them resolve every `var(--x)` the
-  partials read, per scheme, counting only the blocks a harness page matches — which
-  means following each value's own references rather than checking that a name is
-  declared, skipping a block under a wrapper like `@media print`, taking a `var()`
-  fallback as the one branch it is, and looking for dependency cycles per ELEMENT, since
-  a reference across `:root` and `body` is inheritance and not a dependency. Every one of
-  those four came from review on PR #125, and the first two were live defects.
+  subject: whether the two linked sheets BETWEEN them resolve every value the partials ask
+  the page for, per scheme. `test/helpers/cssVars.ts` is how it reads them, and each rule
+  in it came from a review round on PR #125 — follow a value's own references rather than
+  check that a name is declared; skip a block under a wrapper like `@media print`; accept
+  a rule when ANY selector in its comma-separated list matches; take a `var()` fallback as
+  the one branch it is, at a use site as at a declaration; and look for dependency cycles
+  per ELEMENT, since a reference across `:root` and `body` is inheritance rather than a
+  dependency. Three of those were live defects in the check; the rest were correct about
+  CSS with nothing in either sheet exhibiting them, and say so where they are stated.
 
 **What it is faithful about:** markup, the CSS the partials write for themselves, every
 interaction, and icon SHAPES — lucide's own, sized through the `.svg-icon` class the
