@@ -48,7 +48,7 @@ function sample(el: HTMLElement, op: string, run: () => void, prepare?: () => vo
 		prepare?.();
 		const started = performance.now();
 		run();
-		px = el.scrollHeight;
+		px = drawnHeight(el);
 		times.push(performance.now() - started);
 	}
 	times.sort((a, b) => a - b);
@@ -104,6 +104,20 @@ function measure(view: ProductBacklogView, el: HTMLElement, mount: Mount): { row
 	}
 	view.setProjection(opened);
 	return { rows, treeRows };
+}
+
+/**
+ * The CONTENT height of what was just drawn, and the layout flush that forces.
+ *
+ * The scroller rather than the container, because the container's own `scrollHeight` is
+ * clamped to the pane: it read 1042 for every row of the panel at every size, which is a
+ * column reporting nothing. The scroller's is the height of 832 rows, which is worth
+ * seeing — and either read forces the same layout, which is the reason the read is inside
+ * the sample at all. (Codex, PR #128.)
+ */
+function drawnHeight(el: HTMLElement): number {
+	const scroller = el.querySelector<HTMLElement>('.pbl-tree');
+	return scroller === null ? el.scrollHeight : scroller.scrollHeight;
 }
 
 /**

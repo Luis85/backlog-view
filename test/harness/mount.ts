@@ -109,13 +109,15 @@ export function mountHarness(root: HTMLElement, fixture: HarnessFixture = 'demo'
 	// one were different code paths, and the timed one is the whole point.
 	const started = performance.now();
 	view.onDataUpdated();
-	// The height is read BEFORE the clock stops, and that ordering is the measurement
-	// rather than a detail of it: reading it is what forces the browser to do the style and
-	// layout work it would otherwise defer past the last `performance.now()`. `sample()` in
-	// `perf.ts` is built the same way, so this row is comparable with the four below it —
-	// written as one object literal, whose properties evaluate left to right, it excluded
-	// the layout it was supposed to include and understated the draw. (Codex, PR #128.)
-	const px = containerEl.scrollHeight;
+	// Read BEFORE the clock stops, and that ordering is the measurement rather than a detail
+	// of it: reading it is what forces the browser to do the style and layout work it would
+	// otherwise defer past the last `performance.now()`. `sample()` in `perf.ts` is built
+	// the same way, so this row is comparable with the four below it — written as one object
+	// literal, whose properties evaluate left to right, it excluded the layout it was
+	// supposed to include and understated the draw.
+	// The SCROLLER's height rather than the container's, which is clamped to the pane and
+	// reported the same number at every size — a column saying nothing. (Codex, PR #128.)
+	const px = (containerEl.querySelector<HTMLElement>('.pbl-tree') ?? containerEl).scrollHeight;
 	const mount = { ms: performance.now() - started, px };
 	return { view, vault, containerEl, mount };
 }

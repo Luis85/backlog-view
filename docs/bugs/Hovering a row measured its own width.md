@@ -112,9 +112,9 @@ What it cannot see is a layout read reached through an API it does not name
 (`getBoundingClientRect`, `offsetTop`), or one on a path it does not drive — `dragover`,
 `keydown`, the card projections.
 
-**A sweep of those found reads that are staying**, and the guide's sentence was narrowed
-to admit them rather than left promising more than the code delivers: `zoneFor` in
-`interactions/dragDrop.ts`, the timeline's `dayAt` mapping and the link drag all call
+**A sweep of those found reads that are staying**, and `src/view/CLAUDE.md`'s sentence was
+narrowed to admit them rather than left promising more than the code delivers: `zoneFor`
+in `interactions/dragDrop.ts`, the timeline's `dayAt` mapping and the link drag all call
 `getBoundingClientRect` inside the gesture. A drag's geometry is a property of the POINTER
 rather than of the render, so there is no batched form of it — "where is the cursor now"
 cannot be precomputed. Whether those reads are costly at eight hundred rows is
@@ -122,20 +122,15 @@ cannot be precomputed. Whether those reads are costly at eight hundred rows is
 change, which is the same shape as the defect this note records. Nobody has reported it,
 and this note does not claim it is fine — only that it is a different question, and open.
 
-Each feature's own test stayed where it was and moved to the new path: the title's in
-`test/view/state.test.ts` (with a second beside it for `css-change`, driving a font change
-that makes a title start truncating) and the badge's in `test/view/columns.test.ts`, which
-gained the case the hover-time check made awkward to state — an implied badge whose cap is
-NOT biting still explains itself and gains no level name it did not need.
+The tooltips themselves are checked as the guarantee they now are, unconditional and
+measured by nothing: `test/view/state.test.ts` asserts a row's title tooltip carries that
+title whether or not it is clipped, and `test/view/columns.test.ts` asserts the badge's
+carries the level name — plus the implied-type explanation when the badge is dashed, and
+nothing else when it is not.
 
-One consequence worth stating: an element that has never been truncated is now never
-tooltipped at all, where the old code wrote an empty one. Clearing still happens when a
-title STOPS being truncated, which is the transition the guard has to keep working rather
-than skip — a test drives it in both directions across two `css-change` events.
-
-**Not checked here:** that the tooltip still *appears* in a vault, and that clearing one
-with `setTooltip(el, '')` actually removes it — the Obsidian typings do not say, and the
-mock only records the value. Live-vault check owed.
+**Not checked here:** that either tooltip appears in a vault at all. `setTooltip` is
+Obsidian's, the mock only records the value it was handed, and this is the one part of the
+change a user actually sees. Live-vault check owed.
 
 ## Lesson
 

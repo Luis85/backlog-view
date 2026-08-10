@@ -92,9 +92,16 @@ gets today.
 
 Each row is sampled five times; the panel reports the median and the worst, because a
 single browser sample at 800 rows swings enough on a stray GC pause that a lone number
-invites a re-run. Each sample reads `document.body.offsetHeight` before stopping the clock,
-so the browser's layout for what was just drawn lands inside the measurement rather than
-after it.
+invites a re-run. Each sample reads the SCROLLER's `scrollHeight` (`.pbl-tree`, not the container and not
+the body) before stopping the clock, so the browser's layout for what was just drawn lands
+inside the measurement rather than after it, and so the number reported alongside is the
+height of what was drawn.
+
+> **Correction, 2026-08-10** — this said `document.body.offsetHeight`, which the
+> implementation never used. The distinction is not cosmetic: the body carries the
+> harness's own furniture, and the view CONTAINER's `scrollHeight` is clamped to the pane,
+> so it reported the same value at every size — a column that looked like data and was
+> not. Both force the same layout; only the scroller's answer means anything.
 
 The results go two places: a fixed `.pbl-harness-perf` panel, so nothing has to be opened
 to read them, and `console.table`, so they can be pasted into a note. `.pbl-harness-*` is
