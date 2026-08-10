@@ -5,9 +5,10 @@ import { describe, expect, it } from 'vitest';
  * `CHANGELOG.md` held against `manifest.json`, the same way `versionFiles.test.ts` holds
  * the version files against each other.
  *
- * `RELEASING.md` says the version-bump commit renames `## [Unreleased]` to
- * `## [<version>] - <date>` in the same breath as bumping `manifest.json`. Nothing
- * enforced that until this test: a rule stated only in prose is exactly the shape of
+ * `RELEASING.md` says a second commit, right after the version bump and in the same pull
+ * request, renames `## [Unreleased]` to `## [<version>] - <date>` — it cannot be the same
+ * commit `npm version` makes, since that one runs against a clean tree. Nothing enforced
+ * that until this test: a rule stated only in prose is exactly the shape of
  * defect `../CLAUDE.md`'s Claims section warns about — read as settled, caught by no
  * check. This makes the two facts disagree loudly: `manifest.json`'s version must be the
  * FIRST dated heading below `## [Unreleased]`, not merely present somewhere in the file's

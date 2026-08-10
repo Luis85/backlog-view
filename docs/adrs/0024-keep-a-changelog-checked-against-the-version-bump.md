@@ -27,9 +27,10 @@ version has no matching `## [x.y.z]` heading as the first one below `[Unreleased
 
 A pull request that changes what the plugin does adds its own bullet under
 `## [Unreleased]` as it merges. `RELEASING.md`'s version-bump step (step 1) renames that
-heading to the version and date, in the same commit as the bump — see the rule stated
-there. The test is what turns "in the same commit" into something other than memory:
-a bump that forgot the entry fails `npm run check` on the pull request.
+heading to the version and date in a second commit, right after the bump and in the same
+pull request — it cannot be the same commit, since `npm version` refuses a dirty working
+tree. The test is what turns that rule into something other than memory: a pull request
+that forgot the entry fails `npm run check`.
 
 ## Consequences
 

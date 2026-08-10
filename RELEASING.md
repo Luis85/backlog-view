@@ -68,15 +68,19 @@ The repo's `.npmrc` sets `tag-version-prefix=""` so `npm version` names that loc
 `0.1.1`, not `v0.1.1` — Obsidian requires the published tag to exactly match the manifest
 version, and the release workflow refuses a mismatch as a second line of defense.
 
-**`npm version` does not touch `CHANGELOG.md`, and the same commit must**: rename its
-`## [Unreleased]` heading to `## [<version>] - <date>`, leaving a fresh, empty
-`## [Unreleased]` above it for whatever lands next. `[Unreleased]` is not this step's to
-fill from scratch — a pull request that changes what the plugin does adds its own bullet
-there as it merges, so the bump only retitles and dates a section that already has
-content. `test/release/changelogVersion.test.ts` is what makes this a check rather than a
-habit: it reads `manifest.json` and fails whenever its version has no matching heading in
-`CHANGELOG.md`, so a bump that forgot the entry fails `npm run check` on the pull request
-rather than shipping a release nobody can tell apart from the last one.
+**`npm version` does not touch `CHANGELOG.md`, and cannot be made to in one commit**: it
+refuses to run against a dirty working tree, and its own `version` script (`package.json`)
+stages only `manifest.json` and `versions.json` before committing — so `CHANGELOG.md`
+would either be swept in uncommitted, failing the clean-tree check, or left behind. Edit
+it as a **second commit right after**, in the same pull request: rename `## [Unreleased]`
+to `## [<version>] - <date>`, using the version `npm version` just wrote to
+`manifest.json`, and leave a fresh, empty `## [Unreleased]` above it for whatever lands
+next. `[Unreleased]` is not this step's to fill from scratch — a pull request that
+changes what the plugin does adds its own bullet there as it merges, so this edit only
+retitles and dates a section that already has content. `test/release/changelogVersion.test.ts`
+is what makes this a check rather than a habit: it reads `manifest.json` and fails
+whenever its version has no matching heading in `CHANGELOG.md`, so a pull request that
+forgot the entry fails `npm run check` before it reaches `main`.
 
 ### 2. Before the tag: the live-vault sweep
 
