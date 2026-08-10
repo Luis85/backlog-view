@@ -167,6 +167,11 @@ describe('rootDropTarget', () => {
 		vault.addFile('Suite.md', { frontmatter: { type: 'Test suite', order: 10 } });
 		vault.addFile('Case.md', { frontmatter: { type: 'Test case', order: 10 }, parentLink: 'Suite' });
 		vault.addFile('Test task.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'Case' });
+		// The other input `ladderFor` chains from the parent: a TYPELESS note, not a `Task`.
+		// A name-based guard ("refuse when typeName is Task") would pass the two rows above
+		// while never asking the ladder at all — this row is the one that tells the two
+		// implementations apart, so it stays even though it looks redundant with the `Task` row.
+		vault.addFile('Untyped.md', { frontmatter: { order: 10 }, parentLink: 'Case' });
 		const model = buildModel(vault.app, vault.entries(), settings);
 		const get = (path: string) => {
 			const item = model.byPath.get(path);
@@ -175,6 +180,7 @@ describe('rootDropTarget', () => {
 		};
 		const catalog = model.catalog.roots;
 		expect(rootDropTarget(model, get('Test task.md'), false, catalog)).toBeNull();
+		expect(rootDropTarget(model, get('Untyped.md'), false, catalog)).toBeNull();
 		// And the row whose ladder does NOT depend on its parent is still offered it, so this
 		// narrows exactly the case that changes projection and nothing else.
 		expect(rootDropTarget(model, get('Case.md'), false, catalog)).not.toBeNull();
