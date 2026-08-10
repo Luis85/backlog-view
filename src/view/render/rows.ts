@@ -353,7 +353,6 @@ export function renderBadge(host: BacklogViewHost, row: HTMLElement, item: Backl
 	// to measure `.pbl-badge-text` on `mouseover`, the same defect as the title's and in
 	// the same file, left behind by the fix to it.
 	if (item.impliedType) badge.addClass('pbl-implied');
-	else setTooltip(badge, '');
 }
 
 /** The fixed trailing columns, then the row's own add button. */
@@ -492,7 +491,19 @@ export function syncTruncationTooltips(rows: Map<string, HTMLElement>): void {
 	// layout per row and be worse than the per-hover read this replaced, since it would
 	// pay for every row rather than only hovered ones.
 	const overflowing = clipped.map((one) => one.measure.scrollWidth > one.measure.clientWidth);
-	clipped.forEach((one, i) => setTooltip(one.target, overflowing[i] === true ? one.full : one.plain));
+	for (const [i, one] of clipped.entries()) {
+		// Guarded exactly as `syncCountLabel` guards its own tooltip, and for its reason:
+		// `setTooltip` attaches Obsidian's hover handling on EVERY call. This pass runs on
+		// every resize notification and every theme change, so an unguarded write would
+		// stack a listener per title and per badge each time — rebuilding, at eight hundred
+		// rows, the hover cost this pass exists to remove. The last value is kept in
+		// `dataset` rather than read back off the tooltip, because what `setTooltip` writes
+		// is Obsidian's business and has changed between versions. (Codex, PR #128.)
+		const wanted = overflowing[i] === true ? one.full : one.plain;
+		if ((one.target.dataset.pblTip ?? '') === wanted) continue;
+		one.target.dataset.pblTip = wanted;
+		setTooltip(one.target, wanted);
+	}
 }
 
 /** What is MEASURED, what is TOOLTIPPED, and the text for each answer. */

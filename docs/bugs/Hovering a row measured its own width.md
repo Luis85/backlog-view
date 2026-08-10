@@ -99,6 +99,15 @@ that measures rendered text. Missing it would have left a title that just became
 with no tooltip and one that stopped truncating with a stale one — the one regression the
 hover-time check could not suffer, since it re-read the dimensions every time.
 
+**The write is guarded, and that is not an optimisation.** `setTooltip` attaches
+Obsidian's hover handling on EVERY call — a fact `syncBusyLabel` and `syncCountLabel`
+already record, the latter with the very pattern used here: keep the last value in
+`dataset` and write only on a change. Unguarded, a pass that runs on every resize
+notification and every theme change would stack a listener per title and per badge each
+time, rebuilding at eight hundred rows the cost it exists to remove. The last value is
+kept in `dataset` rather than read back off the tooltip because what `setTooltip` writes
+is Obsidian's business and has differed between versions.
+
 The handler keeps its `hover-link` trigger, which reads nothing.
 
 ## What is checked, and what is not
@@ -131,6 +140,11 @@ Each feature's own test stayed where it was and moved to the new path: the title
 that makes a title start truncating) and the badge's in `test/view/columns.test.ts`, which
 gained the case the hover-time check made awkward to state — an implied badge whose cap is
 NOT biting still explains itself and gains no level name it did not need.
+
+One consequence worth stating: an element that has never been truncated is now never
+tooltipped at all, where the old code wrote an empty one. Clearing still happens when a
+title STOPS being truncated, which is the transition the guard has to keep working rather
+than skip — a test drives it in both directions across two `css-change` events.
 
 **Not checked here:** that the tooltip still *appears* in a vault, and that clearing one
 with `setTooltip(el, '')` actually removes it — the Obsidian typings do not say, and the

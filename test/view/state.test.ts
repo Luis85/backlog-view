@@ -141,13 +141,20 @@ describe('view state details', () => {
 			const { containerEl } = makeView(vault);
 			const tooltip = (): string | undefined =>
 				rowByTitle(containerEl, 'Epic A').querySelector<HTMLElement>('.pbl-title')?.dataset.tooltip;
-			expect(tooltip()).toBe('');
+			// Never truncated, so never tooltipped at all: the pass writes only on a CHANGE,
+			// because `setTooltip` attaches hover handling on every call.
+			expect(tooltip()).toBeUndefined();
 
 			// A bigger interface font: the same box, wider text in it.
 			truncated = true;
 			vault.changeCss();
-
 			expect(tooltip()).toBe('Epic A');
+
+			// And back: the tooltip is CLEARED rather than left saying what the row now shows
+			// in full. This is the path the write guard has to keep working, not bypass.
+			truncated = false;
+			vault.changeCss();
+			expect(tooltip()).toBe('');
 		} finally {
 			scrollWidth.mockRestore();
 			clientWidth.mockRestore();
@@ -177,14 +184,28 @@ describe('view state details', () => {
 			return isTitle(this) ? 100 : Number(realClient?.call(this) ?? 0);
 		});
 		try {
-			const { containerEl, view } = makeView(fixture());
+			const vault = fixture();
+			const { containerEl, view } = makeView(vault);
 			view.onDataUpdated();
 			const tooltipOn = (title: string): string | undefined =>
 				rowByTitle(containerEl, title).querySelector<HTMLElement>('.pbl-title')?.dataset.tooltip;
 
 			expect(tooltipOn('Epic A')).toBe('Epic A');
-			// A title that fits carries no tooltip: its full text is already on screen.
-			expect(tooltipOn('Epic B')).toBe('');
+			// A title that fits carries no tooltip: its full text is already on screen, and
+			// the pass writes nothing rather than writing an empty one.
+			expect(tooltipOn('Epic B')).toBeUndefined();
+
+			// Run again over the SAME elements with nothing changed. `setTooltip` attaches
+			// Obsidian's hover handling on every call, so a pass that rewrote an unchanged
+			// value would stack a listener per row on every resize and every theme change,
+			// rebuilding the cost this pass exists to remove. Driven through `css-change`
+			// rather than a data update, because a rebuild replaces the elements and writing
+			// to a fresh one is not the case being guarded. The stand-in for "was it called"
+			// is the value the last call left, overwritten here by hand.
+			const title = rowByTitle(containerEl, 'Epic A').querySelector<HTMLElement>('.pbl-title');
+			if (title) title.dataset.tooltip = 'untouched';
+			vault.changeCss();
+			expect(title?.dataset.tooltip).toBe('untouched');
 		} finally {
 			scrollWidth.mockRestore();
 			clientWidth.mockRestore();
