@@ -8,13 +8,15 @@ import { ALL_TYPES } from '../domain/typeVocabulary';
  * the view used to answer with an equality check against one name.
  *
  * A projection added beside `'tree'` rather than *as* a tree fails each of those gates
- * silently and differently, which is why they are here and not spelled where they are
- * asked: no column fitting, no refit on resize, the fit classes cleared as though this
- * were a card projection, two dead toolbar buttons, and a row menu with no Move
+ * silently and differently wherever a comparison bypasses this file rather than asking
+ * it: no column fitting, no refit on resize, the fit classes cleared as though this were
+ * a card projection, two dead toolbar buttons, and a row menu with no Move
  * up/down/top/bottom and no indent or outdent — on a tree whose whole point is an order
- * somebody chose. A lint rule (`no-restricted-syntax`) forbids a bare
- * `projection === 'tree'` outside this file, so the predicate holds for a gate nobody has
- * written yet rather than merely existing beside the ones that do.
+ * somebody chose. Nothing enforces that mechanically: there is no `no-restricted-syntax`
+ * rule forbidding a bare `projection === 'tree'` outside this file, and the comparison
+ * already appears directly at a dozen call sites (see
+ * `docs/issues/The projection predicate has no lint rule behind it.md`). The predicate
+ * holds only where a caller asks it rather than comparing the value itself.
  *
  * It is its own module rather than a pair of functions on `host.ts`, which stays free of
  * runtime code so imports cannot cycle.
