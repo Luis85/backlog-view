@@ -1098,9 +1098,26 @@ In `Tests stay out of the plan.md`, extension 4a and the completed-toggle paragr
 
 In `A projection for the tests.md`, correct any sentence claiming tests have no states.
 
-- [ ] **Step 3: Correct the layer guides**
+- [ ] **Step 3: Correct the layer guides AND the source docstring that says the same thing**
 
-In `src/view/CLAUDE.md`, the `hidesCompleted` paragraph says *"the test catalog has no workflow at all — this increment gives tests no states, so there is no completion for a toggle to hide"*. The catalog still withholds the toggle and still hides nothing; rewrite the REASON, which is now a decision rather than an absence: tests have states, the catalog does not hide by them, and `3c`'s rollup cost is why.
+Two places assert that tests have no states, and the SOURCE one matters more because a
+maintainer reads it before the guide:
+
+- `src/view/projection.ts`, the docstring above `hidesCompleted` (around line 52), says the
+  catalog "has no workflow at all — this increment gives tests no states, so there is no
+  completion for a toggle to hide". False now. An automated reviewer flagged exactly this and
+  named the risk precisely: leaving it invites a future maintainer to *enable* the filtering,
+  since the stated reason for withholding it has evaporated.
+- `src/view/CLAUDE.md`, the `hidesCompleted` paragraph, says the same thing.
+
+Rewrite both to the decision that actually holds: tests DO have states and a done flag, a done
+test styles its row (`pbl-done` via `ownWorkflowReading`), and the catalog still hides nothing
+and shows no rollups — because `assignAll` counts a child only where child and parent are both
+plan rows, so there is no subtree completion to hide by. That is extension 3c's accepted cost,
+not an absence of states. Verify the `pbl-done` half against `src/view/render/rows.ts` before
+writing it rather than repeating this sentence.
+
+Also correct any sentence in `src/domain/CLAUDE.md` claiming the catalog has no workflow.
 
 In `src/domain/CLAUDE.md`, add the workflow-selection rule to the TWO LADDERS bullet: an item's workflow follows its type or its ladder, the two selectors are disjoint by construction, and both are stated in `stateKeyFor` and `ownWorkflowReading` and nowhere else.
 
