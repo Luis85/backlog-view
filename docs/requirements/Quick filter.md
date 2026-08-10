@@ -61,7 +61,8 @@ questions) ·
 `src/view/render/toolbarFilter.ts` (the input, `syncFilterUi`, and `revealFilter` — the
 ONE way the input is opened, because the reveal button, the clear path and
 `focusFilter()` all have to reach it) ·
-`src/view/render/toolbarFit.ts` (`revealFilter` — specified here because the filter is
+`src/view/render/toolbarFilter.ts` (`revealFilter` — specified against the ladder because
+the filter is
 the one control the ladder can hide out from under a keyboard user: `focus()` on a
 `display: none` element does nothing and reports nothing, which is why `revealFilter`
 refits before it focuses. The ladder itself, and everything else it sheds, is

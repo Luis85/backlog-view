@@ -66,11 +66,19 @@ blind to whether an explained option is explained *correctly*.
 
 ## The same gap, found again the next day, outside the manual
 
-Splitting `toolbar.ts` moved `renderFilterBox`, `syncFilterUi`, `revealFilter`,
-`renderIgnoredNote` and `countedPopulation` into three new modules. `npm run docs` passed.
-Three current notes went on naming `src/view/render/toolbar.ts` as the home of symbols
-that had left it — [[Quick filter]], [[What counts as a work item]], and an OPEN task
-still asking for a decision the split had already made.
+Splitting `toolbar.ts` moved thirteen symbols into three new modules. `npm run docs`
+passed. **Nine current notes** went on naming `src/view/render/toolbar.ts` as the home of
+symbols that had left it, plus an OPEN task still asking for a decision the split had
+already made.
+
+Nine, and not the three this paragraph first claimed. The first correction pass fixed
+exactly the three an external reviewer had listed, and a reviewer's list is a sample, not
+a sweep — the same list-shaped fix this plan diagnosed twice while building the manual and
+then committed anyway. The sweep that found the rest enumerated every moved symbol against
+`requirements/` and `adrs/` and re-ran until it came back empty. One of the nine
+([[Quick filter]] locating `revealFilter` in `toolbarFit.ts`) turned out to be **wrong
+before the split** — it was in `toolbar.ts` all along — so the move surfaced an error it
+did not cause.
 
 Rule 4 checks that a path a note names **exists**. It cannot check that the symbol named
 beside it is still in that file, so a pure move passes the gate while silently falsifying

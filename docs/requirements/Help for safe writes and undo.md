@@ -97,6 +97,6 @@ describes is `src/storage/frontmatter.ts` (the only module that writes, and wher
 write's inverse is captured), `src/view/writeGate.ts` (`applySafely`, `undoLast` and the
 gate they share, including undo's deliberate lack of a replay-time filter check),
 `src/domain/settings.ts` (`configProblems`, which is what "misconfigured" means
-concretely), and `src/view/render/toolbar.ts` (the write-in-flight indicator's own door
+concretely), and `src/view/render/toolbarBusy.ts` (the write-in-flight indicator's own door
 into this section — the config warning's door is [[Help for setting up the view]]'s to
 describe, not this note's).
