@@ -72,17 +72,29 @@ describe('the test workflow resolves like the Deliverable one', () => {
 	});
 
 	it('leaves the test key unbound on a first-run setup, so it shares status', () => {
-		// `state` is declared FIRST in PROPERTY_TABLE and claims `status`; the taken-key
-		// guard then skips this one. That ordering IS the "tests default to status" rule.
-		const config = new FakeViewConfig({});
-		const adopted = adoptableProperties(config as unknown as BasesViewConfig);
+		// `state` is declared FIRST in PROPERTY_TABLE and adopts `status`, which the loop then
+		// adds to `taken`; the "don't suggest an already-taken key" guard skips every later
+		// row suggesting it. That ordering IS the "tests default to status" rule.
+		const config = new FakeViewConfig({}) as unknown as BasesViewConfig;
+		const adopted = adoptableProperties(config, resolveSettings(config));
 		expect(adopted.find((p) => p.option === 'stateProperty')?.suggested).toBe('status');
 		expect(adopted.some((p) => p.option === 'testStateProperty')).toBe(false);
 	});
 });
 ```
 
-Import `resolvedTestStateKey` from `../../src/domain/optionalProperties` and `DEFAULT_DONE_VALUES` from `../../src/domain/settings` at the top of the file if not already imported.
+`adoptableProperties(config, settings)` takes TWO arguments — the config and the settings
+resolved from it — which is how every existing test in that file calls it.
+
+Import `resolvedTestStateKey` from `../../src/domain/optionalProperties` and
+`DEFAULT_DONE_VALUES` from `../../src/domain/settings` at the top of the file if not already
+imported.
+
+**One existing test in that file needs its COMMENT corrected, not its assertion.** The test
+asserting the adoptable suggestions begins *"Nine, not ten: `deliverableState` suggests the
+SAME key `state` does"*. Adding `testState` keeps the list at nine and for the same reason,
+so the assertion stands — update the comment to say nine, not eleven, and to name both rows
+the guard skips. Leaving it saying "ten" would make a correct test read as a stale one.
 
 - [ ] **Step 2: Run the tests and watch them fail**
 
