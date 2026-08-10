@@ -3,10 +3,8 @@ import { settingsWith } from '../helpers/settings';
 import {
 	adoptableProperties,
 	ALL_TYPES,
-	byName,
 	configProblems,
 	defaultSettings,
-	defaultTypeFolder,
 	EXTRA_TYPES,
 	horizonMenuValues,
 	LEVELS,
@@ -19,6 +17,8 @@ import {
 	resolveSettings,
 	stateMenuValues,
 } from '../../src/domain/settings';
+import { defaultTypeFolder } from '../../src/domain/typeFolders';
+import { byName } from '../../src/domain/nameLookup';
 
 /** Stand-in for BasesViewConfig backed by a plain object. */
 function fakeConfig(values: Record<string, unknown> = {}) {

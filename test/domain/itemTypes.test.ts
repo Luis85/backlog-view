@@ -12,13 +12,13 @@ import {
 import {
 	ALL_TYPES,
 	defaultSettings,
-	defaultTypeFolder,
 	EXTRA_TYPES,
 	LEVELS,
 	MARKER_TYPES,
 	resolveSettings,
 } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
+import { defaultTypeFolder } from '../../src/domain/typeFolders';
 
 const settings = defaultSettings();
 

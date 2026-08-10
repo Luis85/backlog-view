@@ -1,13 +1,13 @@
 import {
 	ALL_TYPES,
 	BacklogSettings,
-	byName,
 	DELIVERABLE_TYPE,
 	EXTRA_TYPES,
 	LEVELS,
 	MARKER_TYPES,
 	TEST_LEVELS,
 } from './settings';
+import { byName } from './nameLookup';
 
 /**
  * The type vocabulary: the level ladders, and the types that sit beside them.

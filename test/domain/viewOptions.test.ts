@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getViewOptions } from '../../src/domain/viewOptions';
-import { defaultTypeFolder } from '../../src/domain/settings';
+import { defaultTypeFolder } from '../../src/domain/typeFolders';
 
 
 /**

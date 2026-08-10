@@ -4,12 +4,10 @@ import {
 	BacklogSettings,
 	columnPolicyKey,
 	DEFAULT_DONE_VALUES,
-	DEFAULT_HOME_FOLDER,
 	DEFAULT_HORIZON_VALUES,
 	DEFAULT_PROP_COLUMN_WIDTH,
 	DEFAULT_RISK_VALUES,
 	defaultSettings,
-	defaultTypeFolder,
 	MAX_PROP_COLUMN_WIDTH,
 	MIN_PROP_COLUMN_WIDTH,
 	OptionalField,
@@ -21,6 +19,7 @@ import {
 import { STATE_COLOR_CHOICES, stateColorKey } from './stateColors';
 import { CLICK_ACTIONS, defaultItemHandling, OPEN_TARGETS } from './itemHandling';
 import { sameValue } from './noteFields';
+import { DEFAULT_HOME_FOLDER, defaultTypeFolder } from './typeFolders';
 
 /**
  * What Bases shows in the view-options menu: pure declaration, no logic. Split from
