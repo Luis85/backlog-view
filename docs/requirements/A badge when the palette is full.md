@@ -172,10 +172,17 @@ icons and class names depends on nothing, so it belongs where nothing depends ba
 
 `styles/badges.css` — one hue for both (`--color-orange-rgb`, Epic's) and the test axis
 stated once beside the Idea/Task pairing: a solid border in that hue where every other
-badge carries `border: 1px solid transparent`, so a test reads as OUTLINED where the rest
-read as filled. It composes with `.pbl-implied` rather than fighting it — that rule comes
-later in the file and overrides to dashed and transparent, so an implied `Test case` reads
-as both. Nothing is minted: the hue is Obsidian's token, so the Borrowed Palette Rule holds.
+badge carries `border: 1px solid transparent`. The badge keeps its tinted fill and gains a
+visible EDGE — an addition rather than a swap, which is what it turns out to look like: the
+browser harness draws it beside a `Task` badge in both schemes, and the shape reads at a
+glance. It composes with `.pbl-implied` rather than fighting it — that rule comes later in
+the file and overrides to dashed and transparent, so an implied `Test case` reads as both,
+which the harness also shows. Nothing is minted: the hue is Obsidian's token, so the
+Borrowed Palette Rule holds.
+
+What the harness still cannot answer is the COLOUR, since the theme stub's palette is an
+approximation of Obsidian's and a real theme replaces exactly those values. That is the
+live-vault item.
 
 Orange is Epic's, and the reason is the rule rather than the crowding: an `Epic` is a root
 by position in the plan and a `Test suite` is a root by nature in the catalog, and after

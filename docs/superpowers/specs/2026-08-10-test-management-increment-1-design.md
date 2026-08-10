@@ -110,9 +110,11 @@ palette is full]] 2b refuses.
 
 **The test axis is a solid outline in the borrowed hue.** Every badge carries
 `border: 1px solid transparent`; a test badge fills that border in at `0.55` alpha, so it
-reads as boxed where every other badge reads as filled. It composes with `.pbl-implied`,
-which overrides to dashed and transparent — an implied `Test case` therefore reads as
-outlined *and* as implied, which is the honest pair rather than a collision.
+keeps its tinted fill and gains a visible edge. (Written here as "boxed where the rest read
+as filled" before the harness was looked at; it is an ADDITION, not a swap, and the
+stylesheet says so now.) It composes with `.pbl-implied`, which overrides to dashed and
+transparent — an implied `Test case` therefore reads as outlined *and* as implied, which is
+the honest pair rather than a collision.
 
 Stated once in `styles/badges.css`, applied to both entries, beside the Idea/Task pairing
 and by the same standard. No colour originates in `styles/`: the hue is

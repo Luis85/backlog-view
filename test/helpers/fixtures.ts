@@ -155,6 +155,24 @@ export function demoVault(): FakeVault {
 	add(vault, 'Pricing one-pager', { type: 'Deliverable', order: 50, docStatus: 'Draft', horizon: 'Next' });
 	add(vault, 'Brand refresh brief', { type: 'Deliverable', order: 60 });
 
+	// The test catalog: its own ladder, so the fifth projection draws a real one and the
+	// plan's four go on drawing none of it. A suite with two cases is the smallest fixture
+	// that exercises the move section, whose every entry is defined by a visible NEIGHBOUR.
+	add(vault, 'Sign-up smoke tests', { type: 'Test suite', order: 60 });
+	add(vault, 'Register with an email address', { type: 'Test case', order: 10, status: 'Ready' }, 'Sign-up smoke tests');
+	add(vault, 'Register with a provider', { type: 'Test case', order: 20, status: 'Draft' }, 'Sign-up smoke tests');
+	// A `Task` under a case: the row that belongs to the catalog by what it hangs from
+	// rather than by its own name, and so the one that tells the membership rule from a
+	// list of type names.
+	add(vault, 'Fix the provider redirect', { type: 'Task', order: 10, status: 'Active' }, 'Register with a provider');
+	// A case with no `type` at all — drawn as a `Test case` and badged as an IMPLIED one,
+	// which is where the test axis and `.pbl-implied` have to compose rather than collide.
+	add(vault, 'Resume an abandoned sign-up', { order: 30 }, 'Sign-up smoke tests');
+	// The advisory mis-drag, both ways: a case parented to a PBI is drawn as a promoted
+	// root of the catalog, and the PBI beneath a case is a promoted root of the plan. No
+	// legal item is invisible in every projection, and this is the pair that shows it.
+	add(vault, 'Verify the rate limit', { type: 'Test case', order: 40 }, 'Single sign-on');
+
 	// Neither typed nor dated nor triaged: the shelf's whole reason to exist.
 	add(vault, 'Spike: offline mode', { order: 40 });
 	add(vault, 'Accessibility sweep', { type: 'Issue', order: 50, status: 'New' });

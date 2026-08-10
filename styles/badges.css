@@ -1,4 +1,5 @@
-/* Type badges: one colour per rung of the ladder — `src/view/render/rows.ts`. */
+/* Type badges: one colour per declared type — `src/view/render/badges.ts` maps each name
+   to an icon and to one of the classes below. */
 
 .pbl-badge {
 	display: inline-flex;
@@ -95,10 +96,11 @@
 .pbl-lvl-test-case { --pbl-badge-rgb: var(--color-orange-rgb); }
 
 /*
- * The test axis. Every other badge carries `border: 1px solid transparent` and a tinted
- * fill; a test fills that border in instead, so it reads as OUTLINED where the rest read
- * as filled — a difference that survives the hue being shared with Epic and does not rest
- * on the icon, which is what tells the suite from the case inside the axis.
+ * The test axis. Every other badge carries `border: 1px solid transparent` over a tinted
+ * fill; a test fills that border in, so it keeps the fill and gains a visible EDGE — an
+ * addition, not a swap, which is what it looks like beside a `Task` badge in the harness
+ * (both schemes, 2026-08-10). The difference survives the hue being shared with Epic and
+ * does not rest on the icon, which is what tells the suite from the case inside the axis.
  *
  * It composes with `.pbl-implied` rather than fighting it: that rule comes later in this
  * file and overrides to dashed and transparent, so an implied `Test case` reads as
