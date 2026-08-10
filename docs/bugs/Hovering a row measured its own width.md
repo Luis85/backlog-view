@@ -67,11 +67,15 @@ every `scrollWidth`/`clientWidth` read first, then every `setTooltip` write. Int
 them would force a layout per row and be worse than what it replaced — it would pay for
 every row rather than only hovered ones.
 
-It is called from `ResizePolicy.refit`, which already means *re-measure the pane and apply
-what that implies*: truncation is a consequence of the same measurement, so both callers
-(the render's own fit pass and the resize observer) get it without a branch each. A resize
-that changes no column verdict still changes how much room a title has, which is why the
-observer path needs it at all.
+It is called from `ResizePolicy`, which owns *when* to re-measure — from `refit`, which
+already means *re-measure the pane and apply what that implies*, so the render's fit pass
+and the resize observer both get it without a branch each; and from `cssChanged`, because
+a theme, a snippet or a late-loading font changes rendered text without moving the tree's
+box, so no observer fires and no render follows. The toolbar's own ladder was already on
+that event for exactly this reason, and title truncation is the second thing on the page
+that measures rendered text. Missing it would have left a title that just became truncated
+with no tooltip and one that stopped truncating with a stale one — the one regression the
+hover-time check could not suffer, since it re-read the dimensions every time.
 
 The handler keeps its `hover-link` trigger, which reads nothing.
 
@@ -88,8 +92,9 @@ What it cannot see is a layout read reached through an API it does not name
 them; the spy checks the two that were actually violated.
 
 The feature's own test stayed where it was, in `test/view/state.test.ts`, and moved to the
-new path — a truncated title still carries its full text. Both were watched failing
-against the old code.
+new path — a truncated title still carries its full text — with a second beside it for the
+`css-change` path, driving a font change that makes a title start truncating. All three
+were watched failing against the code they check.
 
 **Not checked here:** that the tooltip still *appears* in a vault, and that clearing one
 with `setTooltip(el, '')` actually removes it — the Obsidian typings do not say, and the

@@ -120,6 +120,40 @@ describe('view state details', () => {
 		expect(view.filterText).toBe('x');
 	});
 
+	it('re-measures the titles when the app says its CSS changed', () => {
+		// A theme, a snippet or a late-loading font changes rendered text without moving
+		// the tree's box, so no ResizeObserver fires and no render follows. The hover-time
+		// check this replaced could not suffer that — it re-read the dimensions every
+		// time — so the pass has to be told. (Codex, PR #128.)
+		let truncated = false;
+		const realScroll = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollWidth')?.get;
+		const realClient = Object.getOwnPropertyDescriptor(Element.prototype, 'clientWidth')?.get;
+		const isTitle = (el: Element): boolean => el.classList.contains('pbl-title');
+		const scrollWidth = vi.spyOn(Element.prototype, 'scrollWidth', 'get').mockImplementation(function (this: Element) {
+			if (!isTitle(this)) return Number(realScroll?.call(this) ?? 0);
+			return truncated && this.textContent === 'Epic A' ? 300 : 80;
+		});
+		const clientWidth = vi.spyOn(Element.prototype, 'clientWidth', 'get').mockImplementation(function (this: Element) {
+			return isTitle(this) ? 100 : Number(realClient?.call(this) ?? 0);
+		});
+		try {
+			const vault = fixture();
+			const { containerEl } = makeView(vault);
+			const tooltip = (): string | undefined =>
+				rowByTitle(containerEl, 'Epic A').querySelector<HTMLElement>('.pbl-title')?.dataset.tooltip;
+			expect(tooltip()).toBe('');
+
+			// A bigger interface font: the same box, wider text in it.
+			truncated = true;
+			vault.changeCss();
+
+			expect(tooltip()).toBe('Epic A');
+		} finally {
+			scrollWidth.mockRestore();
+			clientWidth.mockRestore();
+		}
+	});
+
 	it('surfaces the full text of truncated titles as a tooltip', () => {
 		// The guarantee, not the mechanism. Until 2026-08-10 this tooltip was set by the
 		// title's own `mouseover`, which read layout inside a pointer event and cost 65.7ms

@@ -24,6 +24,25 @@ export class ResizePolicy {
 		private readonly rowCtx: () => RowContext,
 	) {}
 
+	/**
+	 * What a theme, a snippet, an appearance setting or a late-loading font invalidates.
+	 *
+	 * Both of these measure RENDERED TEXT, and nothing else notices one changing: the only
+	 * `ResizeObserver` watches the tree, whose box need not move when the app's font does,
+	 * and no render follows a theme switch. So the toolbar would keep a step chosen for the
+	 * old metrics, and a title that just became truncated would carry no tooltip while one
+	 * that stopped truncating kept a stale one — which the hover-time check this replaced
+	 * could not suffer, since it re-read the current dimensions every time. (Codex, PR #128.)
+	 *
+	 * The column verdict is deliberately NOT re-taken here: `columnFit` derives its
+	 * threshold from the CONFIGURED width and count, so it is the one of the three that a
+	 * font cannot move.
+	 */
+	cssChanged(): void {
+		syncToolbarFit(this.toolbarEl);
+		syncTitleTooltips(this.rowCtx().rows);
+	}
+
 	/** Re-measure the pane and apply the column ladder to what is currently rendered. */
 	refit(): boolean {
 		const ctx = this.rowCtx();

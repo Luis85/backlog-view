@@ -311,8 +311,9 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	 * A renamed note is the same row; without that listener its state is left behind
 	 * under the old path and the next refresh shuts it as a parent nobody has ruled on.
 	 *
-	 * `css-change` is the toolbar's: the fit ladder measures RENDERED text, so a theme or
-	 * a font-size change invalidates its verdict — and nothing else notices one. The only
+	 * `css-change` belongs to whatever measures RENDERED text — the toolbar's fit ladder and
+	 * the titles' truncation, both in `ResizePolicy.cssChanged` — since a theme or a
+	 * font-size change invalidates them and nothing else notices one. The only
 	 * `ResizeObserver` here watches the tree, whose box need not move when the app's font
 	 * does, and no render follows a theme switch, so the row would keep a step chosen for
 	 * the old metrics until the pane happened to be resized. Observing `toolbarEl` too
@@ -325,7 +326,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.registerEvent(
 			this.app.vault.on('rename', (file, oldPath) => this.collapse.renamePath(oldPath, file.path)),
 		);
-		this.registerEvent(this.app.workspace.on('css-change', () => syncToolbarFit(this.toolbarEl)));
+		this.registerEvent(this.app.workspace.on('css-change', () => this.resize.cssChanged()));
 	}
 
 	adoptDefaultProperties(): OptionalProperty[] {
