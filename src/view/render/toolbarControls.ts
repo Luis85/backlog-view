@@ -116,6 +116,27 @@ export function iconButton(
 }
 
 /**
+ * A text write that is not a DOM mutation when the text has not changed. Both callers
+ * write into a live region — `.pbl-busy` is `role="status"` and `.pbl-count-label`
+ * carries an `aria-live="polite"` of its own — and **a live region announces on
+ * MUTATION, not on a changed value**: `setText` assigns `textContent`, which destroys
+ * the text node and builds a new one even when the string is identical. So the fixed
+ * label a redesign introduced to stop a 340-file backfill announcing 340 times still
+ * announced 340 times, and the count label — which is rewritten on every content render
+ * — announced once per filter keystroke. The guard is what makes "the drawn text does
+ * not change" a fact about the DOM rather than about the string.
+ *
+ * Two call sites, in two different files since `toolbar.ts` split into one module per
+ * subject (`toolbarBusy.ts`'s `syncBusyLabel`/`syncBusyCount`, `toolbarStatus.ts`'s
+ * `syncCountLabel`) — a shared helper here rather than a two-line local repeated in
+ * each, which is what "two call sites in one file" argued for before the split made
+ * that premise false.
+ */
+export function setTextIfChanged(el: HTMLElement, text: string): void {
+	if (el.textContent !== text) el.setText(text);
+}
+
+/**
  * A labelled menu button: an icon, the current value in words, a chevron. The text is
  * its own span so the fit ladder can hide it without touching the accessible name, which
  * stays on the button.
@@ -271,7 +292,7 @@ function renderTimelineControls(host: BacklogViewHost, zone: HTMLElement, barEl:
 
 /**
  * What the bulk collapse controls can reach — a DIFFERENT question from
- * `countedPopulation` in `toolbar.ts`, which is why it is a second function rather than a
+ * `countedPopulation` in `toolbarStatus.ts`, which is why it is a second function rather than a
  * reuse: counting asks for the Base's rows, and collapsing asks for everything on screen
  * that owns a disclosure, context rows included.
  *
