@@ -19,12 +19,18 @@
  * fine. Measured before deleting, per scheme: of this file's variable declarations, zero
  * were ones app.css leaves unset.
  *
- * So the rule for this file is now the simple one, with no exemption in the check that
- * holds it: nothing here may restate what app.css already says for the same selector,
- * custom property or ordinary declaration alike (`themeStub.test.ts`). What is left is
- * the harness's own furniture — the leaf frame, the menu and modal widgets the module
- * mock only records, the missing-icon marker, the scheme switch. None of it is
- * Obsidian's, and none of it has anywhere else to live.
+ * So the rule for this file is now the simple one, and `themeStub.test.ts` holds it from
+ * two directions because one of them can be dodged by a spelling. Nothing here may
+ * restate what app.css already says for the same selector, custom property or ordinary
+ * declaration alike — and, since `.svg-icon` and app.css's `svg.svg-icon` match the same
+ * element while comparing as different strings, every selector here must name something
+ * the HARNESS draws: a `.pbl-harness-*` class or the missing-icon attribute, which no
+ * Obsidian selector can be spelled as. `body` below is the single exception, and the
+ * first check is what keeps it to `height`.
+ *
+ * What that leaves is the harness's own furniture — the leaf frame, the menu and modal
+ * widgets the module mock only records, the missing-icon marker, the scheme switch. None
+ * of it is Obsidian's, and none of it has anywhere else to live.
  *
  * What the page now shows is therefore Obsidian's DEFAULT appearance rather than a guess
  * at one. Still not a user's: a community theme replaces exactly those values, the accent

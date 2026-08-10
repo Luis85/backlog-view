@@ -168,6 +168,12 @@ best case rather than the safe one. The stub loads second and spelled the theme 
 everywhere and the day a newer app.css is vendored in it would go on winning with stale
 values and a green suite — the coverage check asks only whether a name RESOLVES, and a
 stale duplicate resolves. All 54 remaining declarations were deleted rather than compared.
+A restatement check that compares selector STRINGS is then only as good as the spelling —
+`.svg-icon` and app.css's `svg.svg-icon` match the same element, `body.theme-light` and
+`.theme-light` likewise, and re-adding either slipped past it — so a second check asks
+ownership instead: every selector in the stub names something the harness itself draws (a
+`.pbl-harness-*` class, the missing-icon attribute), which no Obsidian selector can be
+spelled as, with `body` the one exception the first check holds to `height`.
 
 This narrows the gap; it does not close it. The reduced sheet keeps only what the
 harness was driven through, so an element default that no driven state reached is still

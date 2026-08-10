@@ -212,6 +212,37 @@ describe('the harness sheets cover the stylesheet', () => {
 		// Not vacuous, and pinned to the instance: app.css does style the selector the
 		// deleted rules used, so this check would have caught them.
 		expect(styled.has('.clickable-icon')).toBe(true);
+		// And its blind spot, stated where it can be read rather than left to be found: two
+		// selectors matching the same element are the same rule to a browser and different
+		// strings here. app.css spells `svg.svg-icon` and `body.theme-dark`, so the stub's
+		// old `.svg-icon` would have slipped through and a `body.theme-light` still would.
+		// The test below is what closes that, by asking a question spelling cannot dodge.
+		expect(styled.has('.svg-icon')).toBe(false);
+		expect(styled.has('body.theme-light')).toBe(false);
+	});
+
+	it('styles nothing in the stub but the harness’s own furniture, and the frame', () => {
+		// The same rule as above, asked so that a SPELLING cannot dodge it. Comparing
+		// selector strings finds a restatement only when both sheets write the selector the
+		// same way, and a browser does not care: `.svg-icon` and app.css's `svg.svg-icon`
+		// match the same element, as do `body.theme-light` and `.theme-light`. Both were
+		// live gaps — the stub's deleted `.svg-icon` rule was one, and re-adding a
+		// `body.theme-light` palette block passed the check above while doing exactly what
+		// the last round deleted.
+		//
+		// So the question here is ownership rather than equality: every selector in this
+		// file names something the HARNESS draws — a `.pbl-harness-*` class or the
+		// missing-icon attribute — and an Obsidian selector cannot be spelled that way at
+		// all. `body` is the one exception, for the frame rule, and the check above is what
+		// keeps that block to `height` alone. Nothing here needs `styles/`'s own `--pbl`
+		// classes either: those are the view's, and the view's stylesheet dresses them.
+		const own = /\.pbl-harness[\w-]*|\[data-icon-missing\]/;
+		const selectors = rules(readFileSync('test/harness/theme.css', 'utf8')).flatMap((rule) => rule.selectors);
+
+		expect(selectors.filter((selector) => selector !== 'body' && !own.test(selector))).toEqual([]);
+		// Not vacuous: the file does have rules, and one of them is the `body` exception.
+		expect(selectors.length).toBeGreaterThan(5);
+		expect(selectors).toContain('body');
 	});
 
 	it('fails when a conditional wrapper it has never seen appears', () => {
