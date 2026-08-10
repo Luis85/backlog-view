@@ -18,7 +18,7 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   offer are the ones the base's own results already carry — plus anything typed into
   **New assignee...** — so there is no list to declare and nothing to keep in step.
 - A **Test management** group in the view options: name a test state property (or leave
-  it unbound to share the plan's own `status`), list the test workflow's states in order,
+  it unbound to share the plan's own state property), list the test workflow's states in order,
   and say which of those count as done. A test catalog row's state chip and its
   `Set state` now read and write that state independently of the plan's, whichever
   property the two end up sharing or not.

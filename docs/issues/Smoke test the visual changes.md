@@ -408,14 +408,18 @@ and the badge half is the kind this repository can never see. The list:
    text field, showing the placeholder `Draft, Ready, Approved` when empty), and
    **Test states that count as done** (a plain text field, showing the placeholder
    `Done, Closed, Completed, Removed` when empty). Failure is any of the three missing,
-   out of order, mislabelled, rendered as the wrong control type (a property picker
-   drawn as free text, or vice versa), or a placeholder not appearing in its field while
-   empty. Nothing here checks that a value typed into either text field actually takes —
-   only that the group and its controls draw right.
+   out of order, mislabelled, or rendered as the wrong control type (a property picker
+   drawn as free text, or vice versa). For the two TEXT fields only — Bases' own property
+   picker may simply never draw a placeholder at all, so its absence there is not
+   evidence of anything — failure also includes the placeholder not appearing while the
+   field is empty. Nothing here checks that a value typed into either text field actually
+   takes — only that the group and its controls draw right.
 8. **`Test suite` (orange) and `Test case` (cyan) read as two colours, and both still
-   read as tests.** Point a Base at `docs/`, or a scratch vault with a `Test suite` and a
-   `Test case` note, and get a `Test suite` badge and a `Test case` badge on screen
-   together, in both light and dark. Two separate
+   read as tests.** `docs/` carries neither type today (`grep -rh "^type: " docs/` finds
+   only Bug, Epic, Feature, Issue, Milestone, PBI and Task), so there is no existing note
+   to point a Base at: create one note with `type: Test suite` and one with
+   `type: Test case` — in `docs/` itself or a scratch folder pointed at by its own Base —
+   and get both badges on screen together, in both light and dark. Two separate
    open questions, neither answerable here: **(a)** do the two badges actually read as
    two distinguishable colours under a real theme, rather than converging toward one
    under a theme that redefines orange and cyan close together; and **(b)** does each
