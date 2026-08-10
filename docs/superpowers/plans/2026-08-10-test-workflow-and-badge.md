@@ -938,12 +938,61 @@ Add `testManagementGroup()` to the list of groups, immediately after `deliverabl
 Run: `npx vitest run test/domain/viewOptions.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Run the whole check and commit**
+- [ ] **Step 5: Gate the backfill, which this group is what makes reachable**
+
+Exposing the picker is what turns a latent defect into a shipped one, so it is fixed in the
+same task rather than left for the final review. `missingKeyStubs`
+(`src/domain/writePlan.ts`) walks `OPTIONAL_FIELDS` and stubs every field's key onto every
+item; `deliverableState` has a type gate and `testState` has none. With a distinct
+`testStateProperty` configured, pressing **Assign missing properties** would write an empty
+test-state key onto every Epic, PBI and Task in the base.
+
+Write the failing test first, in `test/domain/writePlan.test.ts` beside the existing
+Deliverable-gate test (find it with `grep -n "deliverableState" test/domain/writePlan.test.ts`
+and match its shape):
+
+```ts
+it('stubs the test state on a catalog member and on nothing else', () => {
+	// The Deliverable gate's mirror, and the ladder rather than a type name for the reason
+	// every other membership test here uses it: a `Task` under a `Test case` is a catalog
+	// member and a type-name gate would miss it.
+	const vault = new FakeVault();
+	vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+	vault.addFile('Case.md', { frontmatter: { type: 'Test case', order: 20 } });
+	vault.addFile('Test task.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'Case' });
+	const settings = settingsWith({ testStateKey: 'testStatus' });
+	const model = buildModel(vault.app, vault.entries(), settings);
+	const stubsFor = (path: string) =>
+		computeInitWrites(model, settings).find((w) => w.file.path === path)?.stubs ?? [];
+	expect(stubsFor('Case.md')).toContain('testState');
+	expect(stubsFor('Test task.md')).toContain('testState');
+	expect(stubsFor('Epic.md')).not.toContain('testState');
+});
+```
+
+Run it, watch it fail on the Epic. Then add the gate in `missingKeyStubs`, immediately after
+the `deliverableState` one:
+
+```ts
+		// The same rule as the Deliverable's above and the same reason, asked of the LADDER
+		// rather than a type name: a test's state describes a test, and a `Task` under a
+		// `Test case` is one while a `Task` under a PBI is not. Without this, binding the
+		// property and pressing Assign missing properties stubs an empty test-state key onto
+		// every plan item in the base — which is what exposing the picker makes reachable,
+		// so the gate ships with the picker rather than after it.
+		if (field === 'testState' && !inCatalog(item)) continue;
+```
+
+Import `inCatalog` from `./itemTypes` — `writePlan.ts` already imports from that module.
+
+Run the test again and confirm it passes.
+
+- [ ] **Step 6: Run the whole check and commit**
 
 ```bash
 npm run check
-git add src/domain/viewOptions.ts test/domain/viewOptions.test.ts
-git commit -m "Give the test workflow its own options group"
+git add src/domain/viewOptions.ts src/domain/writePlan.ts test/domain/viewOptions.test.ts test/domain/writePlan.test.ts
+git commit -m "Give the test workflow its own options group, and gate its backfill"
 ```
 
 ---
