@@ -165,20 +165,18 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 		// readout that must stay in the accessibility tree even when the row cannot show it
 		// — its `aria-label` and tooltip still carry the whole sentence. That is the right
 		// call for TEXT: a clipped span with a name is still reachable. It is the wrong call
-		// for a CONTROL: a clipped-but-tabbable button is a focus target nobody can see —
-		// exactly the failure this door exists to prevent, not reproduce — and it passes
-		// every predicate a `display`/connectedness check can ask, since clipping is layout,
-		// not `display` (see `manualLink`'s own doc comment on why that is where this stops
-		// rather than growing a clipping check jsdom could never watch fail). Drawn as its
-		// own sibling instead: an ordinary non-shrinking toolbar child (`.pbl-toolbar > *`
-		// defaults to `flex: 0 0 auto` — `toolbarFit.css`'s own opening rule), so it is
-		// either fully shown or clipped together with the WHOLE row at the last resort every
-		// other unshed control already accepts (Undo, New's own label) — never clipped alone
-		// while the DOM still claims it is there. The cost: it no longer sits flush inside
-		// the warning's own box, so at the narrowest widths — where the warning is already
-		// trading its full sentence for an ellipsis — the two read as two adjacent items
-		// rather than one, and the row needs a little more width before both fit; every wider
-		// width is unaffected. `root: barEl` and an explicit `onClosed` through `focusInBar`,
+		// for a CONTROL: a clipped-but-tabbable button is a focus target nobody can see.
+		// Drawn as its own sibling instead: an ordinary non-shrinking toolbar child
+		// (`.pbl-toolbar > *` defaults to `flex: 0 0 auto` — `toolbarFit.css`'s own opening
+		// rule) — but being a sibling ALONE would have left it the last element on the row
+		// (everything after it already shed by step 5), and so the first thing the last
+		// rung's clip reaches: clipped alone while the DOM still claimed it was there. It
+		// carries `[data-pbl-key='config-help']` for exactly that reason — `toolbarFit.css`'s
+		// step 2 sheds it in the same rule as the help button, the filter and the density
+		// toggle, so it is gone (hidden, not clipped) four rungs before the warning's own
+		// clip ever runs. Nothing is withheld by this: `⋯ → Open the manual` survives every
+		// rung and the dialog's own sidebar is one click from `setup`; only the deep link
+		// itself is lost. `root: barEl` and an explicit `onClosed` through `focusInBar`,
 		// like the busy indicator beside it: `barEl` itself carries no `tabindex`, so
 		// `manualLink`'s own root-focus fallback cannot land on it, and a toolbar door
 		// without a real destination of its own has to name one rather than lean on a
@@ -465,11 +463,29 @@ function syncBusyLabel(el: HTMLElement, busy: BusyState | null): boolean {
  * Called on every render and on every progress tick, so it only touches text and
  * flags — never structure. Controls that would be refused mid-batch go `disabled`
  * with it, so the busy state is something a user reads rather than discovers.
+ *
+ * **This is also where a focus stranded by the indicator hiding is caught.** `.pbl-busy`
+ * carries the busy-help link — the first focusable element it has ever held — and
+ * `syncBusyLabel` drops `pbl-busy-on` the moment a batch ends, which makes the container
+ * `display: none` in `styles/busy.css`. A browser blurs a focused descendant to `<body>`
+ * the instant its container is hidden that way; `manualLink`'s own tier-2 root-focus
+ * fallback cannot catch it because that only runs while the DIALOG closes, and this
+ * transition can land well after the dialog is long shut (open the manual from "What is
+ * happening", close it, and only then does the batch that was already finishing end).
+ * Caught here because this is where the transition is owned: `hadFocus` is read before
+ * `syncBusyLabel` flips the class, so it asks the DOM the true "was focus in here"
+ * question rather than inferring it from `busy`, and the refocus fires only on the
+ * shown-to-hidden edge, onto the same `.pbl-help-btn` destination `focusInBar` already
+ * uses for both toolbar doors.
  */
 export function syncBusy(barEl: HTMLElement, busy: BusyState | null, canUndo: boolean): void {
 	const el = barEl.querySelector<HTMLElement>('.pbl-busy');
-	// Only on the visibility transition — see `syncBusyLabel`, which is what answers it.
-	if (el && syncBusyLabel(el, busy)) syncToolbarFit(barEl);
+	if (el) {
+		const hadFocus = el.contains(document.activeElement);
+		// Only on the visibility transition — see `syncBusyLabel`, which is what answers it.
+		if (syncBusyLabel(el, busy)) syncToolbarFit(barEl);
+		if (hadFocus && busy === null) focusInBar(barEl, barEl.querySelector<HTMLElement>('.pbl-help-btn'));
+	}
 	barEl.querySelectorAll<HTMLButtonElement>('.pbl-write-ctl').forEach((btn) => {
 		btn.disabled = busy !== null;
 	});

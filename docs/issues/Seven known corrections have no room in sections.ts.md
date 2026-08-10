@@ -11,16 +11,25 @@ files:
   - src/view/manual/sections.ts
 ---
 
-# Six known corrections have no room in sections.ts
+# Seven known corrections have no room in sections.ts
 
 ## What is blocked
 
 `src/view/manual/sections.ts` sits AT the 400-line lint budget (`CLAUDE.md`'s
-one-file-per-concern, 400-line max). During Task 3's review rounds six real, verified
-corrections were found against its prose and could not be applied — every prior trim
-taken to make room had already cost a fact, so a further trim was refused rather than
-taken again. All six are content for this same file; none is a placeholder or a guess.
-The fix is to split the module, not to compress its prose a third time — see the ruling
+one-file-per-concern, 400-line max). During Task 3's review rounds — and the final
+whole-branch review after it — nine real, verified corrections accumulated against its
+prose. Two were false claims rather than omissions, small enough to fix as rewordings
+inside their existing string literals with no new line added, and were corrected directly
+rather than parked: `sections.ts:21-23` (the MOVING intro claimed Alt+Left/Right moves a
+card to a different bucket "on the roadmap," unqualified, when a dated axis has no
+buckets to move between) and `sections.ts:347-352` (the Deliverables override claimed
+both its own state values *and* its own done values default to the shipped `Done,
+Closed, Completed, Removed`, when only `deliverableDoneValues` does — the state list
+stays empty and its columns come from observed values). The seven that remain are
+omissions rather than false sentences, and every prior trim taken to make room for a
+previous one had already cost a fact, so a further trim was refused rather than taken
+again. All seven are content for this same file; none is a placeholder or a guess. The
+fix is to split the module, not to compress its prose a third time — see the ruling
 below.
 
 ## The two facts already trimmed away
@@ -41,7 +50,7 @@ Neither is a criterion line the completeness test can catch — the setup sectio
 coverage test is keyed to `getViewOptions()` keys, and both are prose about a toolbar
 *action*, not an option — so nothing failed when they were cut.
 
-## The six content corrections, each verified against source
+## The seven content corrections, each verified against source
 
 1. **`sections.ts:401`** ("Presentation" / "What the Base still owns," current text
    implies any visible Base property becomes a row column). `chipProps()`
@@ -71,19 +80,23 @@ coverage test is keyed to `getViewOptions()` keys, and both are prose about a to
    [[Help for finding work]]'s own acceptance criterion asking for exactly that
    statement.
 6. **Restore the two sparkle facts** listed above, in the entry they were cut from.
+7. **`sections.ts:179`** ("Show completed items" toggle entry). Describes what the toggle
+   does while it is OFF, but `renderCompletedToggle()` does not render the control at all
+   without a configured state property — a reader hunting the missing eye control cannot
+   learn the prerequisite from the manual.
 
 ## The ruling this is carried under
 
 From the plan's own ledger (`.superpowers/sdd/2026-08-09-user-manual/progress.md`): "the
 budget has forced two trims, one of which lost a criterion fact... The indicated fix is
 to SPLIT the module, not to keep compressing prose; every further correction now costs a
-sentence elsewhere." The six items above are the bounded, named list that ruling promised
-rather than a place findings go to be forgotten — a seventh should not accumulate here
-without becoming its own task.
+sentence elsewhere." The seven items above are the bounded, named list that ruling
+promised rather than a place findings go to be forgotten — an eighth should not
+accumulate here without becoming its own task.
 
 ## Acceptance criteria
 
-None; this note records six verified corrections and blocks on a module split, not on a
-prose edit. The criteria that can be met live on the notes named above
+None; this note records seven verified corrections and blocks on a module split, not on
+a prose edit. The criteria that can be met live on the notes named above
 ([[Help for finding work]], [[Help for setting up the view]]) once the split gives their
 sections the room to be corrected.

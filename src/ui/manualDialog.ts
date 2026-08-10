@@ -232,14 +232,16 @@ function isVisible(el: HTMLElement, boundary: HTMLElement): boolean {
  * its content) — CSS clipping is a LAYOUT fact, not a `display` fact, and jsdom computes
  * no layout at all, so a predicate for it could not be watched failing here; it would be
  * trusted on faith, which this file does not do (see `docs/issues/A comment that
- * states a rule is not a check.md`). The one place that risk existed — the config
- * warning's own button, inside a container `styles/toolbarFit.css` deliberately shrinks
- * and clips at the last fit rung — is fixed at the SOURCE instead: that button is no
- * longer drawn inside the shrinkable container at all (`render/toolbar.ts`), so there is
- * no clipping case left for a predicate to catch or fail to catch. A future caller that
- * puts a focusable control inside an `overflow: hidden` flex-shrink container would
- * reopen exactly this question, and this paragraph is where the answer would have to
- * change.
+ * states a rule is not a check.md`). Clipping is handled by SHEDDING, not by a predicate:
+ * the config warning's own button sits as an ordinary sibling outside the container
+ * `styles/toolbarFit.css` shrinks and clips at the last fit rung, but that alone would
+ * still leave it the last element on the row and the first thing that rung's clip
+ * reaches — so the stylesheet gives it a rung of its own, well before the last one, and
+ * it is gone (`display: none`) rather than clipped by the time any clipping could
+ * happen. This visibility walk still checks nothing about layout — it cannot, in jsdom
+ * or in principle from here — so a future caller that puts a focusable control inside an
+ * `overflow: hidden` flex-shrink container without giving it an earlier rung reopens
+ * exactly this question, and this paragraph is where the answer would have to change.
  *
  * **The new-item prompt's own door is the one caller that skips both explicit
  * guarantees.** `root: el` (`view/interactions/create.ts`) is the modal's own

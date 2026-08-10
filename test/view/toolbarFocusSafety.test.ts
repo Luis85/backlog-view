@@ -1,0 +1,85 @@
+// @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
+import { describe, expect, it } from 'vitest';
+import { syncBusy } from '../../src/view/render/toolbar';
+import { fixture, makeView, useViewHarness } from '../helpers/view';
+
+useViewHarness();
+
+/**
+ * Split out of `toolbar.test.ts` for the same reason `deliverablesToolbar.test.ts` was:
+ * one subject, kept out of a file already near its line budget. This one is two
+ * regressions with a shared shape — a focusable control the toolbar can make
+ * unreachable without ever taking it out of the accessibility tree — found in the same
+ * final whole-branch review.
+ *
+ * The real partials, loaded once for the module so `getComputedStyle` answers for real
+ * — jsdom parses a stylesheet it is given, it lays nothing out on its own. Same
+ * mechanism `toolbarFit.test.ts` uses, for the one test here that needs it.
+ */
+for (const partial of ['styles/toolbar.css', 'styles/toolbarFit.css', 'styles/busy.css']) {
+	document.head.createEl('style', { text: readFileSync(partial, 'utf8') });
+}
+
+const toolbarOf = (containerEl: HTMLElement) => {
+	const bar = containerEl.querySelector<HTMLElement>('.pbl-toolbar');
+	if (!bar) throw new Error('toolbar not rendered');
+	return bar;
+};
+
+describe('focus safety when the toolbar narrows or a batch ends', () => {
+	/**
+	 * The config warning's own "What to fix" link is a direct, non-shrinking child of the
+	 * toolbar (`.pbl-toolbar > *` defaults to `flex: 0 0 auto`), drawn outside the warning
+	 * it belongs to so a control is never clipped-but-tabbable inside `.pbl-config-warning`'s
+	 * own last-rung shrink. Left with no rung of its own it would still be the last element
+	 * on the row — everything after it already gone by step 5 — and so the first thing that
+	 * last rung's clip reaches: clipped alone while the DOM still claimed it was there. It
+	 * joins the SAME step-2 rule as the help button rather than a rule of its own, per
+	 * `toolbarFit.css`'s own header, so it is gone by the time the `⋯` it sheds into first
+	 * renders, and untouched at step 1 — the same two rungs `toolbarFit.test.ts`'s help
+	 * button test asserts, over the same rule.
+	 */
+	it('sheds the config warning link at step 2, before the warning itself ever clips', () => {
+		const { containerEl } = makeView(fixture(), { orderProperty: 'note.parent' });
+		const bar = toolbarOf(containerEl);
+		const link = containerEl.querySelector<HTMLElement>('[data-pbl-key="config-help"]');
+		if (!link) throw new Error('the toolbar drew no config warning link to shed');
+
+		expect(getComputedStyle(link).display).not.toBe('none');
+
+		bar.setAttribute('data-pbl-fit', '1');
+		expect(getComputedStyle(link).display).not.toBe('none');
+
+		bar.setAttribute('data-pbl-fit', '2');
+		expect(getComputedStyle(link).display).toBe('none');
+	});
+
+	/**
+	 * The stranding this codebase had not caught: the mechanism above refuses to LAND
+	 * focus in a hidden `.pbl-busy`, but nothing handled focus already being there the
+	 * instant the container hides out from under it. The path: a batch is in flight, the
+	 * user opens the manual from "What is happening" (still genuinely visible), closes it,
+	 * tier 1 correctly returns focus to the still-visible link — and only THEN does the
+	 * batch end, dropping `pbl-busy-on` and hiding the link's own container. A real
+	 * browser blurs a focused descendant to `<body>` the moment its container goes
+	 * `display: none`; jsdom does not, which is what makes this handler directly
+	 * observable rather than merely inferred — `document.activeElement` would still read
+	 * as the link here even with no fix at all, so this test proves `syncBusy`'s own
+	 * handler runs and moves focus, not that it beats a real browser's blur to the punch.
+	 * That race is unobservable from here and stays on the vault list.
+	 */
+	it('moves focus off the busy help link before its container hides underneath it', () => {
+		const { containerEl } = makeView(fixture());
+		const bar = toolbarOf(containerEl);
+
+		syncBusy(bar, { done: 1, total: 2 }, false);
+		const link = bar.querySelector<HTMLElement>('.pbl-busy .pbl-help-link');
+		link?.focus();
+		expect(document.activeElement).toBe(link);
+
+		syncBusy(bar, null, false);
+
+		expect(document.activeElement).toBe(bar.querySelector('.pbl-help-btn'));
+	});
+});

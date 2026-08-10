@@ -19,8 +19,8 @@ const MOVING: ManualSection = {
 	intro:
 		'Where a drop lands decides what it means. The drop indicator is the cue. This ' +
 		"section is the tree's own hierarchy — the same Alt+Left/Right moves a card to a " +
-		'different workflow column on the board, or a different bucket on the roadmap, ' +
-		'and touches neither parent nor order.',
+		'different workflow column on the board, or a different bucket on the roadmap ' +
+		'when it is showing horizons, and touches neither parent nor order.',
 	entries: [
 		{
 			term: 'Between two rows',
@@ -344,13 +344,12 @@ const SETUP: ManualSection = {
 		{
 			term: 'The Deliverables workflow\'s own state property — an override',
 			text:
-					'Unset by default, and a first-run ✨ deliberately leaves it that way: with no ' +
-					'key of its own, Deliverables reads and writes State property above instead — ' +
-					'sharing its property, values and done values as one workflow. Name a property ' +
-					'here only to make Deliverables independent; its own values and done values ' +
-					'(below) then default to the shipped Done, Closed, Completed, Removed rather ' +
-					'than this vault’s customized shared list — an own key with nothing declared ' +
-					'is a genuinely separate workflow.',
+					'Unset by default, and a first-run ✨ deliberately leaves it that way: with no key of its own, Deliverables ' +
+					'reads and writes State property above instead — sharing its property, values and done values as one workflow. ' +
+					'Name a property here only to make Deliverables independent; its own done values (below) then default to the ' +
+					'shipped Done, Closed, Completed, Removed rather than this vault’s customized shared list, while its own state ' +
+					'values stay unset and columns come from whatever this vault’s Deliverables already use instead — an own key ' +
+					'with nothing declared is a genuinely separate workflow.',
 			keys: ['deliverableStateProperty'],
 		},
 		{

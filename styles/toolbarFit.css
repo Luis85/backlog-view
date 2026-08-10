@@ -92,7 +92,8 @@
 .pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']) .pbl-filter-icon,
 .pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']) .pbl-density-toggle,
 .pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']) .pbl-today-btn,
-.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']) .pbl-help-btn {
+.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']) .pbl-help-btn,
+.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']) [data-pbl-key='config-help'] {
 	display: none;
 }
 
