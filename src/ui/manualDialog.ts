@@ -151,10 +151,90 @@ export function openManual(
 }
 
 /**
+ * Whether `el` — and every ancestor between it and `boundary`, inclusive — is actually
+ * on screen: not `display: none` at any level. Never asked of a single element's own
+ * `display` alone, because that misses exactly the case a container hides while a
+ * descendant's own rule says nothing about it (`.pbl-busy` without `.pbl-busy-on`, the
+ * link inside it unaffected by that rule directly). Not `offsetParent`/`checkVisibility`
+ * either, on purpose: both are correct in a real browser but read `null`/hidden for
+ * EVERY element in EVERY jsdom test, stylesheet loaded or not — which is what would
+ * have kept a hidden-ancestor case untestable here rather than merely untested.
+ * `getComputedStyle` reflects a loaded stylesheet's rules, so walking with it stays
+ * testable. The identical walk lives in `view/render/toolbarFit.ts`'s `isVisibleInBar`,
+ * duplicated rather than imported: `ui/` reaches nothing else in `src/`.
+ */
+function isVisible(el: HTMLElement, boundary: HTMLElement): boolean {
+	for (let node: HTMLElement | null = el; node; node = node.parentElement) {
+		if (getComputedStyle(node).display === 'none') return false;
+		if (node === boundary) break;
+	}
+	return true;
+}
+
+/**
  * The point-of-need door: a text button that opens the manual on one section and gives
  * focus back to itself. Four surfaces use it — the new-item prompt, an empty state, the
  * busy indicator and the config warning — and each is an acceptance criterion of one of
  * the `Help for …` use cases rather than a convenience.
+ *
+ * **The guarantee, stated once rather than found five times as five separate
+ * predicates:** after the manual closes, focus lands on a visible, focusable control —
+ * whatever became of the control that opened it. Gone, hidden behind an ancestor,
+ * detached by a rebuild, or never rendered at all, the answer is the same shape:
+ * resolve the opener fresh (never a captured reference — see below); if that fails,
+ * fall back to a destination that is actually guaranteed to exist.
+ *
+ * That fallback is a two-tier default, tried in this order:
+ *
+ * 1. **Resolve, don't capture, and check ancestors, not just the element.** `parent` —
+ *    the shell the button was drawn into (`empty`, `warn`, `busy`) — is exactly what a
+ *    full render throws away (`treeEl.empty()` / `barEl.empty()` destroy every child and
+ *    rebuild them), so resolving FROM it, or focusing a captured reference to the
+ *    button itself, both find a detached node by close time. `root` is the caller's own
+ *    STABLE container instead — created once, only ever emptied-and-refilled — so a
+ *    query against it after a rebuild reaches the new instance of this same door if the
+ *    render still drew one. `isVisible`, above, is what makes "reaches one" and "it is
+ *    actually on screen" two different questions asked correctly, catching a hidden
+ *    ANCESTOR, not only a hidden element.
+ * 2. **`root` itself, but only when the caller made it a genuine focus target.** A
+ *    caller whose door is not there and cannot be found still owes focus somewhere
+ *    real: `root.tabIndex >= 0` is true of the tree (`treeEl`, the view's own single
+ *    tab stop — `role="tree" tabindex="0"`, permanent) and false of the toolbar bar
+ *    (`barEl` hosts several individually-focusable controls rather than being one
+ *    itself). Focusing an element with no `tabindex` is a silent no-op in both a real
+ *    browser and jsdom (confirmed empirically — neither moves focus off whatever a
+ *    plain, non-tabbable `<div>` already held), so this tier is not a leap of faith.
+ *
+ * A caller whose `root` fails tier 2 — the toolbar's two doors — MUST supply its own
+ * `onClosed` naming a real destination (`focusInBar`, which has its OWN further
+ * fallback chain down to the first visible control in the row). That is not a gap in
+ * the guarantee; it is the guarantee's other half, stated as a constraint on the
+ * caller rather than as more cleverness in the default: a `root` that cannot receive
+ * focus itself is a `root` whose caller has to say where focus goes instead, and the
+ * two toolbar doors both do.
+ *
+ * **What this default deliberately does NOT attempt: clipping.** A control can be
+ * connected, visible by every `display` in its ancestor chain, and still be scrolled or
+ * flex-shrunk out of the reader's view (`overflow: hidden` on a container narrower than
+ * its content) — CSS clipping is a LAYOUT fact, not a `display` fact, and jsdom computes
+ * no layout at all, so a predicate for it could not be watched failing here; it would be
+ * trusted on faith, which this file does not do (see `docs/issues/A comment that
+ * states a rule is not a check.md`). The one place that risk existed — the config
+ * warning's own button, inside a container `styles/toolbarFit.css` deliberately shrinks
+ * and clips at the last fit rung — is fixed at the SOURCE instead: that button is no
+ * longer drawn inside the shrinkable container at all (`render/toolbar.ts`), so there is
+ * no clipping case left for a predicate to catch or fail to catch. A future caller that
+ * puts a focusable control inside an `overflow: hidden` flex-shrink container would
+ * reopen exactly this question, and this paragraph is where the answer would have to
+ * change.
+ *
+ * This plan found the same missing guarantee five times before this paragraph: the `?`
+ * button's own capture, the overflow entry's yanked-back focus, this function's own
+ * captured `parent`, `focusInBar`'s single-level `display` check, and — arriving
+ * together, the sixth finding — this function's missing fallback and the config
+ * warning's clippable home. Every one was fixed correctly and in isolation and produced
+ * the next one; this paragraph and the two-tier default above are the attempt to state
+ * the guarantee once rather than find a seventh instance of it.
  *
  * `target` bundles `sectionId`, `label` and `root` rather than taking them as three more
  * positional arguments — `max-params` caps a function at five, and `parent`, `app`,
@@ -169,34 +249,13 @@ export function manualLink(
 	onClosed?: () => void,
 ): HTMLButtonElement {
 	const link = parent.createEl('button', { cls: 'pbl-help-link', text: target.label, attr: { type: 'button' } });
-	// `onClosed` is how a caller says where focus goes, and EVERY caller here is
-	// volatile: a Bases refresh re-renders the empty state and the toolbar alike, so a
-	// captured `link` is a detached node by close time and `focus()` on it silently
-	// lands on the document. The busy indicator is the guaranteed case rather than the
-	// only one — `styles/busy.css` hides it the moment the batch ends.
-	//
-	// So the default RESOLVES rather than captures — but NOT from `parent`. `parent` is
-	// the shell the button was drawn into (`empty`, `warn`, `busy`), and that shell is
-	// exactly what a full render throws away: `treeEl.empty()` / `barEl.empty()` destroy
-	// every child and rebuild them, so by close time `parent` is itself a detached node
-	// and querying inside it finds the stale link or nothing — the same defect as
-	// capturing the link outright, one level up. `root` is the caller's OWN stable
-	// container — `treeEl` or `barEl`, created once and only ever emptied-and-refilled,
-	// never replaced — so a query against it after a rebuild reaches the new instance of
-	// this same door if the render still draws one, and finds nothing if it does not.
-	// `focusInBar` is what the toolbar's two doors resolve through beneath that, since a
-	// fit rung can also hide the target; a caller whose control cannot survive at all
-	// (or needs a different destination entirely) passes its own `onClosed` instead.
-	//
-	// This is the FOURTH place the capture-versus-resolve mistake was made in this plan,
-	// and the previous paragraph once made it a third time while describing the fix for
-	// the other two: it named `parent` as what this resolves from, which is the exact
-	// shell that does not survive. See `docs/issues/A comment that states a rule is not
-	// a check.md` — a comment stating a rule beside code that breaks it is not a check
-	// on that code, and this one was proof of its own thesis for one review round.
 	const refocus = () => {
 		const live = target.root.querySelector<HTMLElement>(`.pbl-help-link[data-pbl-section="${target.sectionId}"]`);
-		if (live?.isConnected && live.offsetParent !== null) live.focus();
+		if (live?.isConnected && isVisible(live, target.root)) {
+			live.focus();
+			return;
+		}
+		if (target.root.tabIndex >= 0) target.root.focus();
 	};
 	link.setAttribute('data-pbl-section', target.sectionId);
 	link.addEventListener('click', () => openManual(app, sections, target.sectionId, onClosed ?? refocus));

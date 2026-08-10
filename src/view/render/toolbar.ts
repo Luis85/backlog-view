@@ -159,18 +159,33 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 		setIcon(warn.createSpan({ cls: 'pbl-warning-icon' }), 'alert-triangle');
 		warn.createSpan({ text: 'Check view options' });
 		setTooltip(warn, problems.join(' '));
-		// The door into `Help for setting up the view` — the configuration section, not the
-		// writes section this warning also gates: the reader's question at a warning is
-		// what to fix, and that answer lives with the options. `root: barEl`, never `warn`
-		// itself: `barEl.empty()` destroys `warn` on every rebuild along with the rest of
-		// the row, so the default refocus has to resolve from `barEl`, which survives it —
-		// see `manualLink`'s doc comment. Keyed like every other focusable toolbar control
-		// for the same reason (`test/view/toolbarFocus.test.ts`'s own invariant).
-		manualLink(warn, host.app, manualSections(), {
-			sectionId: 'setup',
-			label: 'What to fix',
-			root: barEl,
-		}).setAttribute(KEY_ATTR, 'config-help');
+		// The door into `Help for setting up the view` — deliberately NOT drawn inside
+		// `warn`. `styles/toolbarFit.css`'s last rung shrinks `.pbl-config-warning` and clips
+		// it with `overflow: hidden` rather than hiding it outright, because it is the one
+		// readout that must stay in the accessibility tree even when the row cannot show it
+		// — its `aria-label` and tooltip still carry the whole sentence. That is the right
+		// call for TEXT: a clipped span with a name is still reachable. It is the wrong call
+		// for a CONTROL: a clipped-but-tabbable button is a focus target nobody can see —
+		// exactly the failure this door exists to prevent, not reproduce — and it passes
+		// every predicate a `display`/connectedness check can ask, since clipping is layout,
+		// not `display` (see `manualLink`'s own doc comment on why that is where this stops
+		// rather than growing a clipping check jsdom could never watch fail). Drawn as its
+		// own sibling instead: an ordinary non-shrinking toolbar child (`.pbl-toolbar > *`
+		// defaults to `flex: 0 0 auto` — `toolbarFit.css`'s own opening rule), so it is
+		// either fully shown or clipped together with the WHOLE row at the last resort every
+		// other unshed control already accepts (Undo, New's own label) — never clipped alone
+		// while the DOM still claims it is there. The cost: it no longer sits flush inside
+		// the warning's own box, so at the narrowest widths — where the warning is already
+		// trading its full sentence for an ellipsis — the two read as two adjacent items
+		// rather than one, and the row needs a little more width before both fit; every wider
+		// width is unaffected. `root: barEl` and an explicit `onClosed` through `focusInBar`,
+		// like the busy indicator beside it: `barEl` itself carries no `tabindex`, so
+		// `manualLink`'s own root-focus fallback cannot land on it, and a toolbar door
+		// without a real destination of its own has to name one rather than lean on a
+		// default that has nothing to reach.
+		manualLink(barEl, host.app, manualSections(), { sectionId: 'setup', label: 'What to fix', root: barEl }, () =>
+			focusInBar(barEl, barEl.querySelector<HTMLElement>('.pbl-help-btn')),
+		).setAttribute(KEY_ATTR, 'config-help');
 	}
 	// The advisories and the count are the same size and the same faint colour, so with
 	// nothing between them "1 note ignored" and "28 items" read as one sentence. They are

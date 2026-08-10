@@ -112,7 +112,16 @@ describe('the manual is reachable where its questions are asked', () => {
 		// Two options naming the same property is a config problem, which is what draws
 		// the warning.
 		const { containerEl } = makeView(fixture(), { parentProperty: 'note.x', orderProperty: 'note.x' });
-		containerEl.querySelector<HTMLElement>('.pbl-config-warning .pbl-help-link')?.click();
+		// A structural regression guard, not only a functional one: `.pbl-config-warning`
+		// is fit step 6's one shrinkable, clipped-rather-than-hidden readout
+		// (`styles/toolbarFit.css`), so a focusable control drawn INSIDE it would stay
+		// tabbable while invisible — jsdom cannot see that directly (it lays out nothing),
+		// but it can see whether the door was ever put back there. Found by its own
+		// section id, the attribute `manualLink` always writes.
+		expect(containerEl.querySelector('.pbl-config-warning .pbl-help-link')).toBeNull();
+		const link = containerEl.querySelector<HTMLElement>('.pbl-toolbar [data-pbl-section="setup"]');
+		expect(link?.closest('.pbl-config-warning')).toBeNull();
+		link?.click();
 		expect(openedOn()).toBe('Setting up the view');
 	});
 

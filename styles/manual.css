@@ -134,8 +134,23 @@
    empty state, the busy indicator, the config warning and the new-item prompt, so it
    has to read as an inline link in all four rather than carry any one of their looks.
    The same button-chrome stripping the sidebar items above need, for the same reason:
-   a bare `<button>` here would wear Obsidian's own box instead of reading as text. */
-.pbl-help-link {
+   a bare `<button>` here would wear Obsidian's own box instead of reading as text.
+
+   **Element-qualified, not a bare class — the second instance of this specificity
+   defect in this plan, and the first version of this rule shipped it.** A class-only
+   `.pbl-help-link` is `(0,1,0)`; Obsidian's own `button:not(.clickable-icon)` is
+   `(0,1,1)` (`:not()` takes its argument's specificity, not zero) and sets
+   `background-color`, `color` and `box-shadow`. `(0,1,1) > (0,1,0)` regardless of
+   source order, so the bare-class reset silently did nothing in a real vault — every
+   help link rendered as Obsidian's filled, boxed default button, underneath text that
+   still read as a link. `button.pbl-help-link` ties Obsidian's rule at `(0,1,1)` and
+   then wins because the plugin's sheet loads last, the same fix
+   `docs/bugs/Obsidian's button rule outranks the plugin's chrome-stripping.md` and
+   `docs/issues/Four other controls still lose to Obsidian's button rule.md` already
+   established for five other controls. All three of Obsidian's properties are named
+   here explicitly — inheriting even one back is how a "fix" still half-works, which is
+   the second bug in the pair above (`.pbl-tag-remove`, `.pbl-state-chip`, …). */
+button.pbl-help-link {
 	background: none;
 	border: none;
 	padding: 0;
@@ -143,4 +158,28 @@
 	text-decoration: underline;
 	cursor: pointer;
 	font: inherit;
+	box-shadow: none;
+}
+
+/* Obsidian's own `button:hover` (also `(0,1,1)`, inside `@media (hover: hover)`) paints
+   a fill on hover — a SEPARATE rule from the base one above, so the base rule winning
+   at rest says nothing about which rule wins the hover-only repaint: a browser resolves
+   the winning declaration per PROPERTY, not per rule (`docs/bugs/The disclosure's hover
+   still painted a button fill.md`). Restated explicitly rather than left to inherit the
+   win, the same shape every other control in the pair above uses. */
+button.pbl-help-link:hover {
+	background-color: transparent;
+	box-shadow: none;
+}
+
+/* The base rule's own `box-shadow: none` also beats Obsidian's `button:focus-visible`
+   ring (a plain `box-shadow`) at the same `(0,1,1)` tie, so without a rule of its own
+   here, Tabbing to a help link shows no focus indicator at all — the same trap the
+   sidebar items above were fixed against. Outline, not box-shadow, matching every
+   other control this repository fixed the same way. Outward (`outline-offset: 1px`),
+   not inset: nothing a help link sits inside clips it the way the sidebar items'
+   flush edges or the state/horizon chips' own overflow:hidden columns do. */
+button.pbl-help-link:focus-visible {
+	outline: 1px solid var(--interactive-accent);
+	outline-offset: 1px;
 }

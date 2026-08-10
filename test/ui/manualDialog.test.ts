@@ -153,45 +153,73 @@ describe('the point-of-need link', () => {
 		expect(closed).toBe(1);
 	});
 
-	// The default is RESOLVED, not captured (see the comment on `manualLink`), and the
-	// three cases below are the three things that resolve can find: the same link, still
-	// connected and visible; the same link, still connected but not visible (what
-	// `.pbl-busy` looks like to jsdom, which lays nothing out and so reports
-	// `offsetParent: null` for everything — the reason the busy indicator overrides this
-	// default rather than relying on it); and no link at all, because the caller's own
-	// re-render removed it. `root` is `parent` in all three, which is a legal choice a
-	// caller whose own shell IS stable can make (the new-item prompt's `contentEl` is
-	// one) — the case where `root` has to be something ELSE is below, separately, since
-	// conflating the two was the defect a review round caught here.
-	it('default: refocuses the live link when it is connected and rendered visible', () => {
-		const parent = document.body.createDiv();
-		manualLink(parent, {} as never, SECTIONS, { sectionId: 'one', label: 'Help', root: parent });
-		const link = parent.querySelector<HTMLButtonElement>('.pbl-help-link');
+	// The default is RESOLVED, not captured (see the comment on `manualLink`). The tests
+	// below drive its two-tier fallback chain — resolve the live opener; else fall back
+	// to `root` when `root` is itself a real focus target — by the way the opener can
+	// fail, not by which of the four doors it is: absent (gone by close time), hidden
+	// behind an ancestor, and neither of those with nowhere left to fall back to.
+	it('default: refocuses the live link when it is connected and visible', () => {
+		const root = document.body.createDiv();
+		manualLink(root, {} as never, SECTIONS, { sectionId: 'one', label: 'Help', root });
+		const link = root.querySelector<HTMLButtonElement>('.pbl-help-link');
 		link?.click();
-		// jsdom does no layout, so a real link's `offsetParent` is always null — stubbed
-		// here to what a browser reports for an element that is actually on screen.
-		Object.defineProperty(link, 'offsetParent', { value: document.body, configurable: true });
 		Modal.lastOpened?.close();
 		expect(document.activeElement).toBe(link);
 	});
 
-	it('default: does nothing when the link is connected but not rendered visible', () => {
-		const parent = document.body.createDiv();
-		manualLink(parent, {} as never, SECTIONS, { sectionId: 'one', label: 'Help', root: parent });
-		parent.querySelector<HTMLButtonElement>('.pbl-help-link')?.click();
-		// No `offsetParent` stub — jsdom's own default, which is what `.pbl-busy` looks
-		// like the moment CSS hides it.
+	/**
+	 * "Hidden behind an ancestor" — what `.pbl-busy` looks like once its own `pbl-busy-on`
+	 * class is gone: the link's own rule says nothing, an ancestor's does. `wrap` stands
+	 * in for that ancestor, one level between the link and `root`. `root` here has no
+	 * `tabindex`, matching the toolbar bar's own shape, so this is also the case where
+	 * the fallback tier has nowhere to land — a caller whose root cannot itself take
+	 * focus has to supply its own `onClosed` instead (the toolbar's two doors both do).
+	 */
+	it('default: does nothing when an ancestor is hidden and root cannot itself take focus', () => {
+		const root = document.body.createDiv();
+		const wrap = root.createDiv();
+		manualLink(wrap, {} as never, SECTIONS, { sectionId: 'one', label: 'Help', root });
+		wrap.querySelector<HTMLButtonElement>('.pbl-help-link')?.click();
+		wrap.style.display = 'none'; // the ancestor hides; the link's own rule is untouched
 		Modal.lastOpened?.close();
 		expect(document.activeElement).toBe(document.body);
 	});
 
-	it('default: does nothing when the section it opened is gone by closing time', () => {
+	/**
+	 * The other half of the same case: `root` genuinely IS a focus target (`tabindex`,
+	 * matching the tree's own `role="tree" tabindex="0"`), so the fallback tier lands
+	 * there instead of giving up. Same hidden-ancestor shape as above — the only thing
+	 * that differs is whether `root` itself is reachable.
+	 */
+	it('default: falls back to root when the link is hidden and root is a genuine focus target', () => {
+		const root = document.body.createDiv();
+		root.tabIndex = 0;
+		const wrap = root.createDiv();
+		manualLink(wrap, {} as never, SECTIONS, { sectionId: 'one', label: 'Help', root });
+		wrap.querySelector<HTMLButtonElement>('.pbl-help-link')?.click();
+		wrap.style.display = 'none';
+		Modal.lastOpened?.close();
+		expect(document.activeElement).toBe(root);
+	});
+
+	it('default: does nothing when the section it opened is gone by closing time, and root cannot itself take focus', () => {
 		const parent = document.body.createDiv();
 		manualLink(parent, {} as never, SECTIONS, { sectionId: 'one', label: 'Help', root: parent });
 		parent.querySelector<HTMLButtonElement>('.pbl-help-link')?.click();
 		parent.empty(); // the caller's own re-render replaced the whole row
 		expect(() => Modal.lastOpened?.close()).not.toThrow();
 		expect(document.activeElement).toBe(document.body);
+	});
+
+	it('default: falls back to root when the section is gone by closing time and root is a genuine focus target', () => {
+		const root = document.body.createDiv();
+		root.tabIndex = 0;
+		const wrap = root.createDiv();
+		manualLink(wrap, {} as never, SECTIONS, { sectionId: 'one', label: 'Help', root });
+		wrap.querySelector<HTMLButtonElement>('.pbl-help-link')?.click();
+		root.empty(); // the caller's own re-render replaced the whole row, root included its content
+		expect(() => Modal.lastOpened?.close()).not.toThrow();
+		expect(document.activeElement).toBe(root);
 	});
 
 	/**
@@ -215,7 +243,6 @@ describe('the point-of-need link', () => {
 		const shellB = root.createDiv();
 		manualLink(shellB, {} as never, SECTIONS, { sectionId: 'one', label: 'Help', root });
 		const rebuilt = shellB.querySelector<HTMLButtonElement>('.pbl-help-link');
-		Object.defineProperty(rebuilt, 'offsetParent', { value: document.body, configurable: true });
 
 		Modal.lastOpened?.close();
 		expect(document.activeElement).toBe(rebuilt);
@@ -233,7 +260,6 @@ describe('the point-of-need link', () => {
 		root.empty(); // shellA (the resolve root this caller chose) is now detached
 		const shellB = root.createDiv();
 		const rebuilt = manualLink(shellB, {} as never, SECTIONS, { sectionId: 'one', label: 'Help', root: shellA });
-		Object.defineProperty(rebuilt, 'offsetParent', { value: document.body, configurable: true });
 
 		Modal.lastOpened?.close();
 		expect(document.activeElement).not.toBe(rebuilt);
@@ -258,6 +284,37 @@ describe("the manual's stylesheet", () => {
 
 	it('gives the sidebar item its own focus-visible ring, since it strips the one Obsidian would draw', () => {
 		const rule = /\.pbl-manual-nav \.vertical-tab-nav-item:focus-visible\s*\{[^}]*outline:\s*1px solid var\(--interactive-accent\)/;
+		expect(styles).toMatch(rule);
+	});
+
+	/**
+	 * The second instance of `docs/bugs/Obsidian's button rule outranks the plugin's
+	 * chrome-stripping.md` in this plan: a class-only `.pbl-help-link` selector is
+	 * `(0,1,0)`, Obsidian's `button:not(.clickable-icon)` is `(0,1,1)`, and a lower
+	 * specificity loses regardless of source order — the reset silently did nothing.
+	 * `test/harness/obsidian.css` carries the real vendored rule these three tests read
+	 * `styles.css` against; the specificity math is confirmed by hand in the CSS
+	 * comment beside the fixed rule. Existence only, the same limit named above: jsdom
+	 * applies no cascade, so this cannot prove which rule actually WINS in a browser —
+	 * only that the plugin's rule, qualified to tie and positioned to win, is in the
+	 * sheet. Same limit for the hover restatement and the focus ring below.
+	 */
+	it('element-qualifies the help link so its chrome-stripping actually ties and beats Obsidian’s button default', () => {
+		const rule = /button\.pbl-help-link\s*\{[^}]*background:\s*none[^}]*box-shadow:\s*none/;
+		expect(styles).toMatch(rule);
+	});
+
+	// Obsidian's OWN button:hover rule is a separate (0,1,1) declaration for the same
+	// two properties — a browser resolves the winner per PROPERTY, not per rule, so the
+	// base rule's win at rest says nothing about hover (`docs/bugs/The disclosure's
+	// hover still painted a button fill.md`).
+	it('restates the neutralised chrome on hover rather than leaving it to inherit the win', () => {
+		const rule = /button\.pbl-help-link:hover\s*\{[^}]*background-color:\s*transparent[^}]*box-shadow:\s*none/;
+		expect(styles).toMatch(rule);
+	});
+
+	it('gives the help link its own focus-visible ring, for the same reason as the sidebar item', () => {
+		const rule = /button\.pbl-help-link:focus-visible\s*\{[^}]*outline:\s*1px solid var\(--interactive-accent\)/;
 		expect(styles).toMatch(rule);
 	});
 
