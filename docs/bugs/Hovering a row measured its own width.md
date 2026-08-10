@@ -134,8 +134,22 @@ change a user actually sees. Live-vault check owed.
 
 ## Lesson
 
-**A feature can be correct, cheap-looking and still be paid for in the worst possible
-place.** Nothing about this code was wrong except *when* it ran: the same two property
-reads, moved out of the pointer event and batched, cost 0.13 ms instead of 65.7 ms. The
-question to ask of a handler is not "is this expensive?" but "what does this force, and
-what is pending when it runs?"
+**The cheapest measurement is the one nobody takes.** The first instinct here — and the
+first fix — was to keep the question and move it somewhere cheaper: same two property
+reads, out of the pointer event and into a batched pass. That removed the 65.7ms hover and
+was still wrong. Measuring 832 titles means laying out 832 rows, so the cost moved from
+"every hover" to "every render", and it locked out `content-visibility: auto` entirely,
+because a row the browser is skipping must be laid out to be measured.
+
+What actually fixed it was asking whether the question was worth its answer. It was not:
+the whole benefit of measuring was to withhold a tooltip from a title that already fits,
+and a redundant tooltip is a smaller cost than a layout. Deleting the measurement took the
+pass, its call site per projection, its invalidation source per event, and its write guard
+with it — five review findings' worth of machinery, all of it in service of an optimisation
+nobody had priced.
+
+Two things generalise. **A layout read is not expensive because of what it computes but
+because of what it forces**, so the question to ask of a handler is never "is this
+expensive?" but "what is pending when this runs?". And **when a measurement turns out to be
+costly, price the thing it was buying before finding it a cheaper home** — the second fix
+here was reached only after the first had been reviewed five times.
