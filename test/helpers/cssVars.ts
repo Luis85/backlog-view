@@ -199,6 +199,19 @@ export function resolvesValue(value: string, values: Map<string, string>, seen: 
 }
 
 /**
+ * `--x: initial` gives a custom property the GUARANTEED-INVALID value, so `var(--x)` is
+ * invalid and only a fallback can save it. A declaration is not always a value, and this
+ * is the spelling where a present literal means the opposite of resolved.
+ *
+ * The other CSS-wide keywords are deliberately not here. `inherit` and `unset` mean "take
+ * the parent's computed value", which this reader does not model — app.css declares 30 of
+ * them — and guessing would be worse than the gate `themeStub.test.ts` puts under this
+ * paragraph: no name a partial READS may be declared as any CSS-wide keyword. That check
+ * fails the day the question becomes real, which is the day to teach this inheritance.
+ */
+const GUARANTEED_INVALID = /^initial$/i;
+
+/**
  * Does `name` compute to something, following its value's own `var()` references?
  *
  * A declaration is not a value. `--shadow-xs: … var(--shadow-edges)` is declared under
@@ -209,5 +222,6 @@ export function resolvesValue(value: string, values: Map<string, string>, seen: 
 export function resolves(name: string, values: Map<string, string>, seen: Set<string> = new Set()): boolean {
 	if (seen.has(name)) return false;
 	const value = values.get(name);
-	return value !== undefined && resolvesValue(value, values, new Set([...seen, name]));
+	if (value === undefined || GUARANTEED_INVALID.test(value.replace(/!important\s*$/, '').trim())) return false;
+	return resolvesValue(value, values, new Set([...seen, name]));
 }

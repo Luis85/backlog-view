@@ -35,6 +35,9 @@ import {
 
 const SHEETS = ['test/harness/obsidian.css', 'test/harness/theme.css'] as const;
 
+/** The CSS-wide keywords, whose meaning for a custom property is not "this literal". */
+const CSS_WIDE = /^(initial|inherit|unset|revert|revert-layer)$/i;
+
 /** One element's own declarations, both sheets, in link order — app.css then the stub. */
 function scopeValues(scope: Set<string>, scheme: 'dark' | 'light'): Map<string, string> {
 	return new Map(SHEETS.flatMap((sheet) => [...declarations(readFileSync(sheet, 'utf8'), scheme, scope)]));
@@ -153,6 +156,34 @@ describe('the harness sheets cover the stylesheet', () => {
 		expect(resolves('--primary-ok', values)).toBe(true);
 		expect(resolves('--fallback-used', values)).toBe(true);
 		expect(resolves('--both-gone', values)).toBe(false);
+	});
+
+	it.each(['dark', 'light'] as const)('declares no partial-read name as a CSS-wide keyword, in %s', (scheme) => {
+		// The gate under `GUARANTEED_INVALID`. `initial` is handled — it is the one spelling
+		// that makes a present literal mean unresolved — while `inherit` and `unset` mean
+		// "the parent's computed value", which this reader does not model. app.css declares
+		// 30 of those, and no partial reads any of them. This is what fails the day one
+		// does, rather than a resolver guessing at an inheritance chain it cannot see.
+		const values = pageValues(scheme);
+		const read = [...variablesUsed('styles')].filter((name) => !name.startsWith('--pbl'));
+
+		expect(read.filter((name) => CSS_WIDE.test((values.get(name) ?? '').trim()))).toEqual([]);
+		// Not vacuous: the sheets do contain such declarations, just not under a name read here.
+		expect([...values.values()].filter((value) => CSS_WIDE.test(value.trim())).length).toBeGreaterThan(0);
+	});
+
+	it('reads `initial` as the guaranteed-invalid value it is', () => {
+		// Nothing in either sheet spells it, so the predicate is asked directly: a name
+		// declared `initial` is not resolved, and only a fallback rescues a use of it.
+		const values = new Map([
+			['--killed', 'initial'],
+			['--reader', 'var(--killed)'],
+			['--rescued', 'var(--killed, red)'],
+		]);
+
+		expect(resolves('--killed', values)).toBe(false);
+		expect(resolves('--reader', values)).toBe(false);
+		expect(resolves('--rescued', values)).toBe(true);
 	});
 
 	it('fails when a conditional wrapper it has never seen appears', () => {
