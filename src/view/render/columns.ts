@@ -7,7 +7,7 @@ import { ownWorkflowReading, stateKeyFor } from '../../domain/board';
 import { BacklogItem } from '../../domain/model';
 import { hasHorizonAxis, SHELF_LABEL } from '../../domain/roadmap';
 import { BacklogSettings, hasRiskLevels } from '../../domain/settings';
-import { resolvedDeliverableStateKey } from '../../domain/optionalProperties';
+import { resolvedDeliverableStateKey, resolvedTestStateKey } from '../../domain/optionalProperties';
 import { treeShaped } from '../projection';
 
 /**
@@ -221,14 +221,16 @@ export function resolveColumns(host: BacklogViewHost): Column[] {
  * `stateMenuValues` block returns the observed states with an undeclared workflow and
  * `['Done']` with nothing observed either, so the menu this chip opens is never empty.
  *
- * Both state keys map to `state`. With the two workflows on distinct keys and both
- * visible, that is two columns, and `renderStateChip` draws into whichever one names
- * the key this row's own workflow writes.
+ * All three state keys map to `state`. With two or more workflows on distinct keys and
+ * all visible, that is two or three columns, and `renderStateChip` draws into whichever
+ * one names the key this row's own workflow writes.
  */
 function columnKind(settings: BacklogSettings, prop: BasesPropertyId): ColumnKind {
 	const deliverableKey = resolvedDeliverableStateKey(settings);
+	const testKey = resolvedTestStateKey(settings);
 	if (settings.stateKey && prop === `note.${settings.stateKey}`) return 'state';
 	if (deliverableKey && prop === `note.${deliverableKey}`) return 'state';
+	if (testKey && prop === `note.${testKey}`) return 'state';
 	if (hasHorizonAxis(settings) && prop === `note.${settings.horizonKey}`) return 'horizon';
 	if (hasRiskLevels(settings) && prop === `note.${settings.riskKey}`) return 'risk';
 	if (settings.assigneeKey && prop === `note.${settings.assigneeKey}`) return 'assignee';

@@ -1,13 +1,19 @@
 import { Menu, MenuItem } from 'obsidian';
-import { hasRiskLevels, stateMenuValues } from '../../domain/settings';
+import { hasRiskLevels, menuValues, stateMenuValues } from '../../domain/settings';
 import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
 import { inferFolderParent } from '../../domain/folderNotes';
-import { isDeliverableType } from '../../domain/itemTypes';
+import { inCatalog, isDeliverableType } from '../../domain/itemTypes';
 
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { sameValue, todayStamp } from '../../domain/noteFields';
 import { hasHorizonAxis } from '../../domain/roadmap';
-import { computeDeliverableStateWrites, computeStateWrites, computeTypeChanges, ItemWrite } from '../../domain/writePlan';
+import {
+	computeDeliverableStateWrites,
+	computeStateWrites,
+	computeTestStateWrites,
+	computeTypeChanges,
+	ItemWrite,
+} from '../../domain/writePlan';
 import { addAssigneeItems, addRiskItems } from './labels';
 import { BoardModel, cardPaths, deliverablesWorkflow, ownWorkflowReading, stateKeyFor } from '../../domain/board';
 import { ShelfCard } from '../../domain/bars';
@@ -418,16 +424,31 @@ interface StateChoice {
  * tree would offer a Deliverable the requirements workflow's values and write them to
  * the requirements key. A Deliverable takes `deliverablesWorkflow`'s own `values`, the
  * same resolution its board draws columns from rather than a third opinion assembled
- * here, so the tree offers it the states it will actually be written into.
+ * here, so the tree offers it the states it will actually be written into. A catalog row
+ * (asked of the LADDER, `inCatalog`, never a type name) takes its own workflow's the same
+ * way, through `deliverableOrTestValues`.
  */
+
+/**
+ * A secondary workflow's own offered values, or null when this row is on neither. Both are
+ * `menuValues` over that workflow's declared list, its done values and its own observed
+ * vocabulary — the requirements list would be a third opinion about a property it is not
+ * even read through.
+ */
+function deliverableOrTestValues(host: BacklogViewHost, item: BacklogItem, model: BacklogModel | null): string[] | null {
+	if (!model) return null;
+	if (isDeliverableType(item.typeName)) return deliverablesWorkflow(model, host.settings).values;
+	if (!inCatalog(item)) return null;
+	return menuValues(host.settings.testStates, host.settings.testDoneValues, rowVocabulary(model, item).observedStates);
+}
+
 function stateChoices(host: BacklogViewHost, item: BacklogItem): StateChoice[] {
 	const board = activeBoard(host);
 	if (board) return board.columns.map((col) => ({ state: col.state, label: col.label }));
 	const model = host.model;
 	const values =
-		isDeliverableType(item.typeName) && model
-			? deliverablesWorkflow(model, host.settings).values
-			: stateMenuValues(host.settings, model ? rowVocabulary(model, item).observedStates : []);
+		deliverableOrTestValues(host, item, model) ??
+		stateMenuValues(host.settings, model ? rowVocabulary(model, item).observedStates : []);
 	const current = ownWorkflowReading(item).value;
 	const listed = current !== null && values.some((v) => sameValue(v, current));
 	const all = listed || current === null ? values : [...values, current];
@@ -446,6 +467,9 @@ function stateChoices(host: BacklogViewHost, item: BacklogItem): StateChoice[] {
  */
 function chooseState(host: BacklogViewHost, item: BacklogItem, choice: StateChoice): Promise<unknown> {
 	if (isDeliverableType(item.typeName)) return host.performDeliverablesBoardMove(item, choice.state);
+	// A catalog row has no board to move on, so its pick plans through the test
+	// workflow's own function rather than either board move method.
+	if (inCatalog(item)) return host.applySafely(computeTestStateWrites(item, choice.state));
 	if (host.projection === 'board' || choice.state === null) return host.performBoardMove(item, choice.state);
 	// The tree's own Set state plans through the same function the board's moves do, so
 	// the date stamps ride it too: a history with holes in it, where which hole depends
@@ -473,7 +497,9 @@ function addStateItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): vo
 			si.setTitle(choice.label).onClick(() => void chooseState(host, item, choice));
 			const noop = isDeliverableType(item.typeName)
 				? computeDeliverableStateWrites(item, choice.state).length === 0
-				: computeStateWrites(item, choice.state, host.settings, todayStamp()).length === 0;
+				: inCatalog(item)
+					? computeTestStateWrites(item, choice.state).length === 0
+					: computeStateWrites(item, choice.state, host.settings, todayStamp()).length === 0;
 			if (noop) si.setChecked(true);
 		});
 	}

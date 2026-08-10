@@ -13,7 +13,7 @@ import {
 	readTags,
 } from '../domain/noteFields';
 import { BacklogSettings, isDoneValue } from '../domain/settings';
-import { optionalKeyFor, resolvedDeliverableStateKey } from '../domain/optionalProperties';
+import { optionalKeyFor, resolvedDeliverableStateKey, resolvedTestStateKey } from '../domain/optionalProperties';
 import { vaultFolder } from '../domain/settingsResolve';
 import { DateSpan, daysBetween, reversedSpan } from '../domain/timeline';
 import { ItemWrite, TagDelta } from '../domain/writePlan';
@@ -200,13 +200,7 @@ function applyInto(
 	// The stateKey may be unset (progress tracking off) — never write to an empty key.
 	if (write.removeStateKey && settings.stateKey) delete fm[settings.stateKey];
 	else if (write.state !== undefined && settings.stateKey) setOwn(fm, settings.stateKey, write.state);
-	// The RESOLVED key — falls back to the requirements workflow's own `stateKey` when
-	// the Deliverable one is unset, so a card that looks movable on the Deliverables
-	// board (the model read through the same fallback, `model.ts`) actually lands bytes
-	// somewhere rather than resolving to the empty key `optionalKeyFor` would give here.
-	const deliverableStateKey = resolvedDeliverableStateKey(settings);
-	if (write.removeDeliverableStateKey && deliverableStateKey) delete fm[deliverableStateKey];
-	else if (write.deliverableState !== undefined && deliverableStateKey) setOwn(fm, deliverableStateKey, write.deliverableState);
+	applySecondaryStates(fm, settings, write);
 	applyStamps(fm, settings, write, leaving);
 	applyAxis(fm, settings, write);
 	applyLabels(fm, settings, write);
@@ -240,6 +234,24 @@ function applyHierarchy(app: App, fm: Record<string, unknown>, settings: Backlog
 	}
 	if (write.order !== undefined) setOwn(fm, settings.orderKey, write.order);
 	if (write.typeName !== undefined) setOwn(fm, settings.typeKey, write.typeName);
+}
+
+/**
+ * The Deliverable and test workflows' own state keys — the requirements state key's rule
+ * twice, pulled out of `applyInto` to keep it under the complexity cap. Both go through
+ * the RESOLVED key, never the raw `deliverableStateKey`/`testStateKey`: sharing the
+ * requirements property by fallback is the default configuration, and the reader uses the
+ * same resolution — so a card that looks movable through it (`model.ts`'s own fallback)
+ * actually lands bytes somewhere rather than resolving to the empty key `optionalKeyFor`
+ * would give here.
+ */
+function applySecondaryStates(fm: Record<string, unknown>, settings: BacklogSettings, write: ItemWrite): void {
+	const deliverableStateKey = resolvedDeliverableStateKey(settings);
+	if (write.removeDeliverableStateKey && deliverableStateKey) delete fm[deliverableStateKey];
+	else if (write.deliverableState !== undefined && deliverableStateKey) setOwn(fm, deliverableStateKey, write.deliverableState);
+	const testStateKey = resolvedTestStateKey(settings);
+	if (write.removeTestStateKey && testStateKey) delete fm[testStateKey];
+	else if (write.testState !== undefined && testStateKey) setOwn(fm, testStateKey, write.testState);
 }
 
 /**

@@ -1,5 +1,12 @@
 import { BacklogSettings } from '../domain/settings';
-import { AXIS_FIELDS, AxisField, OptionalField, optionalKeyFor, resolvedDeliverableStateKey } from '../domain/optionalProperties';
+import {
+	AXIS_FIELDS,
+	AxisField,
+	OptionalField,
+	optionalKeyFor,
+	resolvedDeliverableStateKey,
+	resolvedTestStateKey,
+} from '../domain/optionalProperties';
 import { AxisWrite, ItemWrite } from '../domain/writePlan';
 
 /**
@@ -20,6 +27,11 @@ import { AxisWrite, ItemWrite } from '../domain/writePlan';
  */
 function deliverableStateWritten(write: ItemWrite): boolean {
 	return write.removeDeliverableStateKey || write.deliverableState !== undefined;
+}
+
+/** The test-workflow twin of `deliverableStateWritten`, kept out of `touchedKeys` for the same budget reason. */
+function testStateWritten(write: ItemWrite): boolean {
+	return write.removeTestStateKey || write.testState !== undefined;
 }
 /**
  * The configured keys one axis write touches, each with the value it will write.
@@ -73,17 +85,17 @@ export function touchedKeys(settings: BacklogSettings, write: ItemWrite): string
 	if (write.order !== undefined) keys.push(settings.orderKey);
 	if (write.typeName !== undefined) keys.push(settings.typeKey);
 	if ((write.removeStateKey || write.state !== undefined) && settings.stateKey) keys.push(settings.stateKey);
-	// Same resolved key `applyInto` just wrote: capture and apply must read the SAME
-	// fallback, or a key written under it would have no inverse to undo it with.
-	const deliverableStateKeyTouched = resolvedDeliverableStateKey(settings);
-	if (deliverableStateWritten(write) && deliverableStateKeyTouched) keys.push(deliverableStateKeyTouched);
-	// One rule, five properties: listed whenever the write TOUCHES the key and a property
-	// names it — the same condition each `apply*` writes on, so applying and capturing
-	// cannot drift. A key written but not captured is a change no undo could reach; a key
-	// whose value did not change emits no inverse anyway, which is what lets the stamps
-	// ride the state's own undo. Stated as a list because each such property should add a
-	// line here rather than another branch — the assignee did exactly that.
+	// One rule, five-now-seven properties: listed whenever the write TOUCHES the key and a
+	// property names it — the same condition each `apply*` writes on, so applying and
+	// capturing cannot drift. A key written but not captured is a change no undo could
+	// reach; a key whose value did not change emits no inverse anyway, which is what lets
+	// the stamps ride the state's own undo. Stated as a list because each such property
+	// should add a line here rather than another branch — the assignee did exactly that.
 	const carried: [boolean, string][] = [
+		// Same RESOLVED keys `applyInto` just wrote: capture and apply must read the same
+		// fallback, or a key written under it would have no inverse to undo it with.
+		[deliverableStateWritten(write), resolvedDeliverableStateKey(settings)],
+		[testStateWritten(write), resolvedTestStateKey(settings)],
 		[write.startedDate !== undefined, settings.startedDateKey],
 		[write.finish !== undefined, settings.finishedDateKey],
 		[write.risk !== undefined, settings.riskKey],

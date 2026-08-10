@@ -50,6 +50,10 @@ export interface ItemWrite {
 	deliverableState?: string;
 	/** Remove the Deliverable state property entirely — its no-state column's drop. */
 	removeDeliverableStateKey?: boolean;
+	/** The test workflow's own state to set; absent means leave it alone. */
+	testState?: string;
+	/** Remove the test workflow's state key entirely — absence is what untriaged means. */
+	removeTestStateKey?: boolean;
 	/**
 	 * Tags to add and remove (without '#'). A delta rather than the new list,
 	 * because the row it came from can be a refresh behind the note: two removals
@@ -379,6 +383,17 @@ export function computeDeliverableStateWrites(item: BacklogItem, state: string |
 	return [
 		state === null ? { file: item.file, removeDeliverableStateKey: true } : { file: item.file, deliverableState: state },
 	];
+}
+
+/**
+ * Everything ONE test-workflow state change writes. No stamp logic, for the reason the
+ * Deliverable's has none and one more here: this epic records no results, so a case's state
+ * is what it IS rather than when it ran, and a started/finished date would be a claim about
+ * a run.
+ */
+export function computeTestStateWrites(item: BacklogItem, state: string | null): ItemWrite[] {
+	if (sameValue(item.testStateValue, state)) return [];
+	return [state === null ? { file: item.file, removeTestStateKey: true } : { file: item.file, testState: state }];
 }
 
 /**

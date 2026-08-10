@@ -8,6 +8,7 @@ import {
 	computeInitWrites,
 	computeAssigneeWrites,
 	computeRiskWrites,
+	computeTestStateWrites,
 } from '../../src/domain/writePlan';
 import { FakeVault } from '../helpers/vault';
 
@@ -53,6 +54,40 @@ describe('computeDeliverableStateWrites', () => {
 
 	it('plans nothing for a stateless card dropped on the no-state column', () => {
 		expect(computeDeliverableStateWrites(deliverable(null), null)).toEqual([]);
+	});
+});
+
+/** `computeDeliverableStateWrites`'s four cases, over the test workflow's own key. */
+describe('computeTestStateWrites', () => {
+	// A `Test case` is a catalog member (`inCatalog`), so it is never in `model.results` —
+	// that is the PLAN's own population — and comes from `model.catalog.results` instead.
+	function testCase(state: string | null) {
+		const vault = new FakeVault();
+		vault.addFile('C.md', {
+			frontmatter: { type: 'Test case', order: 10, ...(state !== null ? { testStatus: state } : {}) },
+		});
+		const settings = settingsWith({ testStateKey: 'testStatus' });
+		const model = buildModel(vault.app, vault.entries(), settings);
+		return model.catalog.results[0];
+	}
+
+	it('writes the canonical value, untransformed', () => {
+		const item = testCase('Draft');
+		expect(computeTestStateWrites(item, 'Ready')).toEqual([{ file: item.file, testState: 'Ready' }]);
+	});
+
+	it('plans nothing for a re-pick of the same state, case-insensitively', () => {
+		expect(computeTestStateWrites(testCase('draft'), 'Draft')).toEqual([]);
+	});
+
+	it('removes the key for a drop on the no-state column', () => {
+		const item = testCase('Draft');
+		const writes = computeTestStateWrites(item, null);
+		expect(writes).toEqual([{ file: item.file, removeTestStateKey: true }]);
+	});
+
+	it('plans nothing for a stateless case dropped on the no-state column', () => {
+		expect(computeTestStateWrites(testCase(null), null)).toEqual([]);
 	});
 });
 
