@@ -93,3 +93,8 @@ draw everything else.
 The types section itself is `src/view/manual/typesSection.ts`, generated from `ALL_TYPES`
 in `src/domain/settings.ts` — the composition layer, which may reach `domain/` where the
 dialog may not, and which is therefore where a badge class is resolved from a type name.
+
+The **?** itself is `src/view/render/toolbar.ts` — a `.pbl-help-btn` in the toolbar's
+zone 4, shed to the `⋯` at fit step 2 — and its overflow mirror is in
+`src/view/render/toolbarControls.ts`'s `overflowEntries`, which opens the same dialog
+without going through `pickAndRefocus` (a modal takes focus deliberately).

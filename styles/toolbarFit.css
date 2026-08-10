@@ -91,7 +91,8 @@
 .pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']) .pbl-filter-input,
 .pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']) .pbl-filter-icon,
 .pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']) .pbl-density-toggle,
-.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']) .pbl-today-btn {
+.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']) .pbl-today-btn,
+.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']) .pbl-help-btn {
 	display: none;
 }
 

@@ -705,6 +705,27 @@ describe('the toolbar fit ladder', () => {
 	});
 
 	/**
+	 * The manual's `?` is in the SAME step-2 selector list as the filter and the density
+	 * toggle — added to that list rather than a rule of its own, per `toolbarFit.css`'s own
+	 * header — so it has to be gone by the time the `⋯` it sheds into first renders (also
+	 * step 2), and untouched at step 1.
+	 */
+	it('sheds the help button at step 2, the same rung the ⋯ first renders at', () => {
+		const { containerEl } = makeView(fixture());
+		const bar = toolbarOf(containerEl);
+		const help = containerEl.querySelector<HTMLElement>('.pbl-help-btn');
+		if (!help) throw new Error('the toolbar drew no help button to shed');
+
+		expect(getComputedStyle(help).display).not.toBe('none');
+
+		bar.setAttribute('data-pbl-fit', '1');
+		expect(getComputedStyle(help).display).not.toBe('none');
+
+		bar.setAttribute('data-pbl-fit', '2');
+		expect(getComputedStyle(help).display).toBe('none');
+	});
+
+	/**
 	 * The status zone's divider is shed WITH the readouts it divides, not left behind them.
 	 * Step 4 sheds the advisories and the count stays, so the line still divides something;
 	 * step 5 takes the count and the line goes with it, or a rule stated "no readout ever

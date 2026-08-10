@@ -49,6 +49,7 @@ const RENAMED: Record<string, string> = {
 	// repository no longer has. Obsidian's `gantt-chart` is the bare bars, so it is the
 	// no-axes drawing that carries it forward under the longer name.
 	'gantt-chart': 'chart-no-axes-gantt',
+	'help-circle': 'circle-question-mark',
 	'indent-decrease': 'list-indent-decrease',
 	'indent-increase': 'list-indent-increase',
 	'loader-2': 'loader-circle',

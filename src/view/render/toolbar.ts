@@ -16,11 +16,13 @@ import {
 	renderOverflow,
 	renderProjectionZone,
 } from './toolbarControls';
-import { syncToolbarFit } from './toolbarFit';
+import { focusInBar, syncToolbarFit } from './toolbarFit';
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { displayType, focusTarget, isDeliverableType } from '../../domain/itemTypes';
 import { DELIVERABLE_TYPE } from '../../domain/settings';
 import { configProblems } from '../../domain/settings';
+import { openManual } from '../../ui/manualDialog';
+import { manualSections } from '../manual/sections';
 
 /** Toolbar: creation buttons, backfill, expand/collapse, config warning, item count. */
 export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
@@ -84,6 +86,24 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	});
 	renderCompletedToggle(host, barEl, model);
 	renderFilterBox(host, barEl);
+
+	// The general door to the manual. Zone 4 because it is the same in every projection,
+	// and last in it because the fit ladder sheds it at step 2 — of everything on this row
+	// it is the one control whose use is never urgent, and step 2 is the earliest rung at
+	// which shedding is possible at all, since that is where the `⋯` it sheds into first
+	// renders.
+	const helpBtn = iconButton(barEl, 'help-circle', 'Open the manual', 'help');
+	helpBtn.addClass('pbl-help-btn');
+	helpBtn.addEventListener('click', () => {
+		// Resolved at CLOSE time, not captured. `renderToolbar` empties the bar on any
+		// full render — a Bases data refresh while the manual is open is enough — and
+		// `helpBtn` is then a detached node that `focus()` silently does nothing with.
+		// Same reason the overflow entry queries rather than captures; `focusInBar`
+		// handles the replacement being hidden at the current rung.
+		openManual(host.app, manualSections(), 'types', () =>
+			focusInBar(barEl, barEl.querySelector<HTMLElement>('.pbl-help-btn')),
+		);
+	});
 
 	barEl.createDiv({ cls: 'pbl-toolbar-sep' });
 
