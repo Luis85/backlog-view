@@ -14,7 +14,7 @@
  */
 import { ProductBacklogView } from '../../src/view/backlogView';
 import type { Projection } from '../../src/view/uiState';
-import type { Mount } from './mount';
+import { drawnHeight, type Mount } from './mount';
 
 /** Samples per row. Enough that one GC pause moves the worst column and not the median. */
 const SAMPLES = 5;
@@ -104,20 +104,6 @@ function measure(view: ProductBacklogView, el: HTMLElement, mount: Mount): { row
 	}
 	view.setProjection(opened);
 	return { rows, treeRows };
-}
-
-/**
- * The CONTENT height of what was just drawn, and the layout flush that forces.
- *
- * The scroller rather than the container, because the container's own `scrollHeight` is
- * clamped to the pane: it read 1042 for every row of the panel at every size, which is a
- * column reporting nothing. The scroller's is the height of 832 rows, which is worth
- * seeing — and either read forces the same layout, which is the reason the read is inside
- * the sample at all. (Codex, PR #128.)
- */
-function drawnHeight(el: HTMLElement): number {
-	const scroller = el.querySelector<HTMLElement>('.pbl-tree');
-	return scroller === null ? el.scrollHeight : scroller.scrollHeight;
 }
 
 /**

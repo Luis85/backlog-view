@@ -92,16 +92,22 @@ gets today.
 
 Each row is sampled five times; the panel reports the median and the worst, because a
 single browser sample at 800 rows swings enough on a stray GC pause that a lone number
-invites a re-run. Each sample reads the SCROLLER's `scrollHeight` (`.pbl-tree`, not the container and not
-the body) before stopping the clock, so the browser's layout for what was just drawn lands
-inside the measurement rather than after it, and so the number reported alongside is the
-height of what was drawn.
+invites a re-run. Each sample reads the height of what was DRAWN before stopping the clock (`drawnHeight`
+in `mount.ts`), so the browser's layout for it lands inside the measurement rather than
+after it, and so the number reported alongside says something.
 
-> **Correction, 2026-08-10** — this said `document.body.offsetHeight`, which the
-> implementation never used. The distinction is not cosmetic: the body carries the
-> harness's own furniture, and the view CONTAINER's `scrollHeight` is clamped to the pane,
-> so it reported the same value at every size — a column that looked like data and was
-> not. Both force the same layout; only the scroller's answer means anything.
+> **Correction, 2026-08-10, twice.** This first said `document.body.offsetHeight`, which
+> the implementation never used; it then said the scroller's `scrollHeight`, which is
+> what the implementation used and is still wrong. No `scrollHeight` answers this
+> question: the container's is clamped to the pane, and `.pbl-tree` is a flex child that
+> FILLS the pane — an element's `scrollHeight` can never be smaller than its
+> `clientHeight`, so both report the viewport whenever the content is shorter than the
+> pane. On the edge-case fixture the column read ~1000px for four rows.
+>
+> `drawnHeight` takes the last child's bottom against the scroller's own top plus its
+> scroll offset, which is the content height in both directions: 199px for those four
+> rows, 33319px for 832. Every version forces the same layout — that is the reason the
+> read is inside the sample — so only the reported number ever changed.
 
 The results go two places: a fixed `.pbl-harness-perf` panel, so nothing has to be opened
 to read them, and `console.table`, so they can be pasted into a note. `.pbl-harness-*` is

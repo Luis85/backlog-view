@@ -45,6 +45,28 @@ export interface Mount {
 	px: number;
 }
 
+/**
+ * The height of what was actually DRAWN, and the layout flush that reading it forces.
+ *
+ * Neither `scrollHeight` answers this. The container's is clamped to the pane, and the
+ * scroller `.pbl-tree` is a flex child that fills it — an element's `scrollHeight` can
+ * never be smaller than its `clientHeight`, so both report the viewport whenever the
+ * content is shorter than the pane, which is every sparse fixture and every small
+ * `?notes=`. Twice now that column has looked like data and been the pane's height.
+ * (Codex, PR #128.)
+ *
+ * The last child's bottom, measured against the scroller's own top and its scroll
+ * offset, is the content height in both directions — and it forces the same layout,
+ * which is the reason the read sits inside the measurement at all.
+ */
+export function drawnHeight(containerEl: HTMLElement): number {
+	const scroller = containerEl.querySelector<HTMLElement>('.pbl-tree');
+	if (scroller === null) return containerEl.scrollHeight;
+	const last = scroller.lastElementChild;
+	if (last === null) return 0;
+	return Math.round(last.getBoundingClientRect().bottom - scroller.getBoundingClientRect().top + scroller.scrollTop);
+}
+
 export interface MountedHarness {
 	view: ProductBacklogView;
 	vault: FakeVault;
@@ -115,9 +137,8 @@ export function mountHarness(root: HTMLElement, fixture: HarnessFixture = 'demo'
 	// the same way, so this row is comparable with the four below it — written as one object
 	// literal, whose properties evaluate left to right, it excluded the layout it was
 	// supposed to include and understated the draw.
-	// The SCROLLER's height rather than the container's, which is clamped to the pane and
-	// reported the same number at every size — a column saying nothing. (Codex, PR #128.)
-	const px = (containerEl.querySelector<HTMLElement>('.pbl-tree') ?? containerEl).scrollHeight;
+	// See `drawnHeight`: neither container nor scroller `scrollHeight` answers this.
+	const px = drawnHeight(containerEl);
 	const mount = { ms: performance.now() - started, px };
 	return { view, vault, containerEl, mount };
 }
