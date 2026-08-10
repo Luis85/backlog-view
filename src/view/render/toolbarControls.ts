@@ -1,5 +1,5 @@
 import { Menu, setIcon, setTooltip } from 'obsidian';
-import { openStateColors } from '../interactions/stateColors';
+import { hasColorableStates, openStateColors } from '../interactions/stateColors';
 import { BacklogViewHost } from '../host';
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { activeAxis, configuredAxes, RoadmapAxis } from '../../domain/roadmap';
@@ -191,6 +191,7 @@ export function renderProjectionZone(host: BacklogViewHost, barEl: HTMLElement):
 		case 'roadmap':
 			renderAxisPicker(host, zone, barEl);
 			renderTimelineControls(host, zone, barEl);
+			renderStateColorsButton(host, zone);
 			break;
 		default:
 			// The tree, the board and the Deliverables board own no toolbar controls of
@@ -201,6 +202,24 @@ export function renderProjectionZone(host: BacklogViewHost, barEl: HTMLElement):
 	if (zone.childElementCount > 0) return;
 	sep.remove();
 	zone.remove();
+}
+
+/**
+ * The way into the state-colour dialog, and the only one — there is no palette command and
+ * no `⋯` entry, because neither could say WHERE the colours apply.
+ *
+ * It renders under the legend's own gate: roadmap mode, the dated axis, and a workflow
+ * whose states a colour can be stored against. That is the one screen a state colour is
+ * drawn on, so a control anywhere else would claim it affects the tree and the board, which
+ * it does not — and a control offered with nothing to colour would open onto an empty
+ * dialog. `hasColorableStates` is asked rather than restated here, so the button and what
+ * the dialog can actually show cannot drift apart.
+ */
+function renderStateColorsButton(host: BacklogViewHost, zone: HTMLElement): void {
+	if (activeAxis(host.settings, host.axisPick) !== 'dates' || !hasColorableStates(host)) return;
+	const btn = iconButton(zone, 'palette', 'State colours', 'state-colors');
+	btn.addClass('pbl-state-colors-btn');
+	btn.addEventListener('click', () => openStateColors(host));
 }
 
 /** Axis labels, one place, so the button and its menu cannot name it differently. */
@@ -383,20 +402,11 @@ export function collapseButton(
 	});
 }
 
-/** One `⋯` entry: what it says, and the button whose state it mirrors — if it has one. */
+/** One `⋯` entry: what it says, and the button whose state it mirrors. */
 interface OverflowEntry {
 	title: string;
 	icon: string;
-	/**
-	 * The rendered button this entry duplicates. Absent for an action that has no button
-	 * at all and lives only in this menu — a category this menu did not have until state
-	 * colours arrived, and one to add to sparingly: an action here is invisible until the
-	 * `⋯` is opened, which is the right home for configuration used once and the wrong one
-	 * for anything a projection is worked in. A menu-only entry mirrors no state, so it is
-	 * never disabled and never checked; it also survives every clip, since no button of
-	 * its own can fail to render.
-	 */
-	cls?: string;
+	cls: string;
 	run: () => void;
 	/** See `pickAndRefocus`'s doc comment: an entry that opens a modal takes focus
 	 * deliberately, so it must not be refocused back onto the `⋯` the instant `run()`
@@ -485,21 +495,8 @@ function overflowEntries(host: BacklogViewHost, barEl: HTMLElement): OverflowEnt
 				host.render();
 			},
 		},
-		{
-			title: 'State colours',
-			icon: 'palette',
-			// No `cls`: this has no button on the row. See `OverflowEntry.cls`.
-			// `onClosed` for the manual entry's reason, read once more: skipping the
-			// refocus stops focus being yanked off the dialog as it opens, and leaves it
-			// nowhere when the dialog CLOSES unless the caller puts it back.
-			run: () =>
-				openStateColors(host, () =>
-					focusInBar(barEl, barEl.querySelector<HTMLElement>('.pbl-overflow-btn')),
-				),
-			opensModal: true,
-		},
 	];
-	return all.filter((entry) => entry.cls === undefined || barEl.querySelector(`.${entry.cls}`) !== null);
+	return all.filter((entry) => barEl.querySelector(`.${entry.cls}`) !== null);
 }
 
 /**
@@ -514,7 +511,7 @@ export function renderOverflow(host: BacklogViewHost, barEl: HTMLElement): void 
 	btn.addEventListener('click', (evt) => {
 		const menu = new Menu();
 		for (const entry of overflowEntries(host, barEl)) {
-			const mirrored = entry.cls === undefined ? null : barEl.querySelector<HTMLButtonElement>(`.${entry.cls}`);
+			const mirrored = barEl.querySelector<HTMLButtonElement>(`.${entry.cls}`);
 			menu.addItem((mi) =>
 				mi
 					.setTitle(entry.title)

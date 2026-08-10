@@ -110,12 +110,7 @@ describe('the legend keys the same palette colours the marks draw', () => {
 		// and drift the first time the rotation changes — which the distinctness test
 		// beside it cannot see, because it never asks where the swatch's colour comes from.
 		expect(bodyOf(legendCss, '.pbl-legend-swatch', 'styles/legend.css')).toContain(
-			// Composed, not replaced: `--pbl-state-pick` is what TS writes for a PICKED
-			// colour and `--pbl-state-color` is what the slot class sets, so the swatch reads
-			// the pair in the same order the bar does. A swatch reading only the pick would
-			// go blank for every unpicked state; one reading only the slot would ignore every
-			// pick — and either way the strip would stop explaining the grid.
-			'background-color: var(--pbl-state-pick, var(--pbl-state-color));',
+			'background-color: var(--pbl-state-color);',
 		);
 		for (let slot = 0; slot < STATE_COLOR_SLOTS; slot++) {
 			expect(bodyOf(timelineCss, `.pbl-state-${slot}`, 'styles/timeline.css')).toContain('--pbl-state-color:');

@@ -100,13 +100,14 @@ export const SETUP: ManualSection = {
 		{
 			term: 'A colour per state',
 			text:
-				'Not here: Bases has no colour control, so the picker is this plugin’s own dialog — ' +
-				'⋯ → State colours in the toolbar, or the State colours command. It offers one swatch ' +
-				'per workflow state, across both workflows, each state once; the swatch opens on the ' +
-				'colour that state is already drawn in, and the arrow beside it puts the state back on ' +
-				'the default. Finished states are not offered — a done bar is green whatever is picked ' +
-				'— and a picked colour is fixed, where the default follows the theme between light and ' +
-				'dark. What it paints is the roadmap’s dated axis and its legend.',
+				'Not here: Bases has no colour control, so the picker is this plugin’s own dialog, ' +
+				'opened by the palette button on the roadmap toolbar — dated axis only, since that ' +
+				'is the one place a state colour is drawn. It offers one swatch per DECLARED state, ' +
+				'across both workflows, each state once; a state you have not listed in the boxes ' +
+				'above cannot be coloured, because there would be nowhere to keep the choice. The ' +
+				'swatch opens on the colour that state is drawn in now, and the arrow beside it puts ' +
+				'it back on the default. A chosen colour is fixed, where the default follows the ' +
+				'theme between light and dark; a finished state stays green whatever is chosen.',
 		},
 		{
 			term: 'Where new notes go',

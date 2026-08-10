@@ -5,6 +5,7 @@ import { BacklogSettings, menuValues, STATE_COLOR_SLOTS, stateMenuValues } from 
 import { resolvedDeliverableStateKey } from './optionalProperties';
 import { byName } from './typeVocabulary';
 import { collectObservedStates } from './vocabulary';
+import { isColorName } from './stateColors';
 
 /**
  * Deriving the board from the model and the settings: which columns exist, which
@@ -330,42 +331,41 @@ export function paletteSlot(palette: StatePalette, state: string | null): number
 }
 
 /**
- * How a state is COLOURED, wherever it is drawn: the positional slot class it takes, and
- * the colour the user picked for it if there is one. Both facts from one function rather
- * than two readers of `settings.stateColors`, for the reason `paletteSlot` already gives —
- * a legend that keys a colour no bar draws is the only failure this feature has ever had,
- * and the bar and its swatch now carry TWO things that must agree rather than one.
+ * How a state is PAINTED, wherever it is drawn: the class it takes, and the inline colour
+ * that overrides it. Both facts from one function rather than two readers of
+ * `settings.stateColors`, for the reason `paletteSlot` already gives — a legend that keys a
+ * colour no bar draws is the only failure this feature has ever had, and a bar and its
+ * swatch now carry TWO things that must agree rather than one.
+ *
+ * A stored NAME is a class (`styles/stateColors.css` paints it, so it follows the theme); a
+ * stored HEX is an inline value, which overrides whatever the class set. Either way the
+ * class is present, so a colour cleared in the picker falls back to the positional slot in
+ * the same render rather than to the plain accent.
  *
  * Null where no slot exists, and the pick is asked only after one does. The order is
- * load-bearing rather than taste: the pick is per VALUE while the slot is per PALETTE, so
- * a Deliverable whose own state shares a name with a coloured requirements state would
+ * load-bearing rather than taste: the pick is per VALUE while the slot is per PALETTE, so a
+ * Deliverable whose own state shares a name with a coloured requirements state would
  * otherwise paint a colour its own vocabulary never keyed, on a bar the legend has no
  * swatch for. Checked in `test/view/stateColors.test.ts`, which is the one case that fails
  * when these two lines are swapped.
  *
- * The slot class is returned even when a pick overrides it, and that is deliberate: the
- * pick is a custom property the stylesheet composes OVER the slot's own token
- * (`--pbl-state-pick` above `--pbl-state-color`, see `styles/timeline.css`), so a colour
- * cleared in the picker falls back to the positional slot in the same render rather than
- * to the plain accent.
- *
  * Done is not asked here and must not be: a done bar takes green by specificity in
- * `styles/timeline.css` and its swatch is keyed `pbl-legend-done` by the caller, so the
- * two agree without this knowing which states are finished. A pick on a done state is
- * therefore inert — stated in `docs/requirements/A colour per state.md`, not silently.
+ * `styles/timeline.css` and its swatch is keyed `pbl-legend-done` by the caller, so the two
+ * agree without this knowing which states are finished. A pick on a done state is therefore
+ * inert — stated in `docs/requirements/A colour per state.md`, not silently.
  */
-export interface StateColoring {
-	/** The positional slot class, which the state keeps whether or not it was picked. */
+export interface StatePaint {
+	/** The class the mark wears: a named colour's own, else the positional slot's. */
 	cls: string;
-	/** The hex the user picked, or null to let the slot's own colour stand. */
-	pick: string | null;
+	/** A picked hex, applied inline over that class, or null to leave it standing. */
+	color: string | null;
 }
 
-export function stateColoring(
+export function stateColorPaint(
 	settings: BacklogSettings,
 	palette: StatePalette,
 	state: string | null,
-): StateColoring | null {
+): StatePaint | null {
 	const slot = paletteSlot(palette, state);
 	if (slot === null) return null;
 	// `byName`, never a bare index: the key is a state VALUE, so `constructor` and
@@ -373,7 +373,11 @@ export function stateColoring(
 	// truthy on `Object.prototype`. `nameTable` builds this map null-prototype so the
 	// resolver's own output is safe either way, but a hand-built fixture is a plain object
 	// and the colour painted from this would then be a function's source text.
-	return { cls: `pbl-state-${slot}`, pick: byName(settings.stateColors, state) ?? null };
+	const chosen = byName(settings.stateColors, state);
+	if (chosen === undefined) return { cls: `pbl-state-${slot}`, color: null };
+	return isColorName(chosen)
+		? { cls: `pbl-state-c-${chosen}`, color: null }
+		: { cls: `pbl-state-${slot}`, color: chosen };
 }
 
 /**

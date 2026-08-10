@@ -59,7 +59,7 @@
 	width: 10px;
 	height: 10px;
 	border-radius: var(--radius-s);
-	background-color: var(--pbl-state-pick, var(--pbl-state-color));
+	background-color: var(--pbl-state-color);
 }
 
 /* ORDER IS BEHAVIOUR from here down: these four and `.pbl-legend-swatch` above are all

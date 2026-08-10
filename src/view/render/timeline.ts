@@ -14,7 +14,7 @@ import { isMarkerType } from '../../domain/itemTypes';
 import {
 	ownWorkflowReading,
 	paletteFor,
-	stateColoring,
+	stateColorPaint,
 	stateKeyFor,
 	StatePalette,
 	WorkflowReading,
@@ -445,16 +445,13 @@ function renderBarRow(
 	// Undefined where no workflow has a key at all — no vocabulary, so no slot, which is
 	// the same answer `paletteSlot` gives a state outside one: the plain accent.
 	const palette = paletteFor(mounts.palettes, bar.item);
-	// The slot class and the picked colour both come from `stateColoring`, which the
-	// legend's swatch also asks — two things that must agree now, from one answer.
-	const colour = palette ? stateColoring(ctx.host.settings, palette, own.value) : null;
-	if (colour) {
-		row.addClass(colour.cls);
-		// `--pbl-state-pick`, never `--pbl-state-color`: the slot's own token stays
-		// CSS-declared so a snippet can still override it, and the stylesheet composes
-		// this one above it. Writing the slot's token here would make it internal by the
-		// rule `docs/requirements/A documented restyling surface.md` states.
-		if (colour.pick) row.setCssProps({ '--pbl-state-pick': colour.pick });
+	// The class and the inline colour both come from `stateColorPaint`, which the legend's
+	// swatch also asks — two things that must agree now, from one answer.
+	const paint = palette ? stateColorPaint(ctx.host.settings, palette, own.value) : null;
+	if (paint) {
+		row.addClass(paint.cls);
+		// Inline, so it overrides whatever the class above set — see `StatePaint`.
+		if (paint.color) row.setCssProps({ '--pbl-state-color': paint.color });
 	}
 	const lead = row.createDiv({ cls: 'pbl-timeline-lead' });
 	renderRowChevron(ctx, lead, entry);
@@ -512,9 +509,9 @@ function renderBarRow(
 	const colors: DrawnColors = {
 		done: own.done,
 		milestone: !own.done && milestoneDrawn,
-		// `colour === null` IS "no slot", and a pick never creates one, so the plain accent
+		// `paint === null` IS "no slot", and a choice never creates one, so the plain accent
 		// is still exactly the case where the state is outside its own vocabulary.
-		accent: !own.done && colour === null && !milestoneDrawn,
+		accent: !own.done && paint === null && !milestoneDrawn,
 	};
 	return { row, colors };
 }

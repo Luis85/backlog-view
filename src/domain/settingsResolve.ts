@@ -1,6 +1,6 @@
 import { BasesViewConfig, normalizePath, parsePropertyId } from 'obsidian';
 import { resolveItemHandling } from './itemHandling';
-import { stateColorKey, stateColorValue } from './stateColors';
+import { colorableStates, stateColor, stateColorKey } from './stateColors';
 import {
 	BacklogSettings,
 	columnPolicyKey,
@@ -261,7 +261,7 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		wipLimits: nameTable(limitedStates, (s) => parseWipLimit(str(wipLimitKey(s)))),
 		columnPolicies: nameTable(states, (s) => str(columnPolicyKey(s)).trim() || null),
 		// Both vocabularies, one table — see `BacklogSettings.stateColors`.
-		stateColors: nameTable([...states, ...deliverable.deliverableStates], (s) => stateColorValue(str(stateColorKey(s)))),
+		stateColors: nameTable(colorableStates(states, deliverable.deliverableStates), (s) => stateColor(str(stateColorKey(s)))),
 		// The two stamp keys main resolved by hand here now arrive with every other
 		// optional key in `...optionalKeys` above, read off `PROPERTY_TABLE` itself.
 		startedStates: dedupe(list('startedStates')),

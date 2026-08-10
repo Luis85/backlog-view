@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { Menu, Modal } from '../helpers/obsidian-mock';
+import { Menu } from '../helpers/obsidian-mock';
 import { FakeVault } from '../helpers/vault';
 import { flush, fixture, makeView, noOptionalProperties, useViewHarness } from '../helpers/view';
 import { TIMELINE_LEAD_PX } from '../../src/view/render/timeline';
@@ -39,44 +39,7 @@ describe('the toolbar overflow menu', () => {
 			'Assign missing properties',
 			'Expand all',
 			'Collapse all',
-			// Last, and the only entry with no button on the row: it is not a control the
-			// ladder shed, it is configuration that never earned width. See `OverflowEntry.cls`.
-			'State colours',
 		]);
-	});
-
-	it('opens the colour picker from the menu-only entry, and puts focus back on the ⋯', () => {
-		// The other input on the same action — the palette command is checked in
-		// `test/commands/stateColors.test.ts`. Driven rather than asserted from the entry's
-		// presence: an entry whose `run` was never called is a menu item that looks right.
-		const vault = new FakeVault();
-		vault.addFile('P.md', { frontmatter: { type: 'PBI', order: 10, status: 'Active' } });
-		const { containerEl } = makeView(vault, { stateProperty: 'note.status', stateValues: 'New, Active' });
-		const entry = openOverflow(containerEl).find((i) => i.titleText === 'State colours');
-		entry?.click();
-
-		expect(Modal.lastOpened).not.toBeNull();
-		// `opensModal`, so the entry must NOT be refocused as the dialog opens — that would
-		// fight the dialog for focus as it appears.
-		const overflowBtn = containerEl.querySelector('.pbl-overflow-btn');
-		expect(document.activeElement).not.toBe(overflowBtn);
-
-		// And CLOSING it puts focus back, which is the half `⋯ → Open the manual` records as
-		// a real hole: skipping the refocus on open is not enough on its own, because by the
-		// time the dialog closes the menu item that opened it is long gone and focus would
-		// be left on nothing at all.
-		Modal.lastOpened?.close();
-		expect(document.activeElement).toBe(overflowBtn);
-	});
-
-	it('keeps the menu-only entry on every projection, since no button of its own can fail', () => {
-		// The other side of the rule below: an entry mirroring a button disappears with it,
-		// and one mirroring nothing cannot. Stated on the projection with the FEWEST shed
-		// controls, where it is the only thing separating the two lists.
-		const { view, containerEl } = makeView(fixture());
-		view.setProjection('tree');
-
-		expect(openOverflow(containerEl).map((i) => i.titleText)).toContain('State colours');
 	});
 
 	it('offers only what this projection renders — no density or today off the dated axis', () => {
@@ -89,7 +52,6 @@ describe('the toolbar overflow menu', () => {
 			'Assign missing properties',
 			'Expand all',
 			'Collapse all',
-			'State colours',
 		]);
 	});
 

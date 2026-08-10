@@ -1,8 +1,8 @@
-/* The state-colour dialog (`ui/colorPickerDialog.ts`). Layout only: every colour in it is
+/* The state-colour dialog (`ui/stateColorsDialog.ts`). Layout only: every colour in it is
    drawn by an `<input type="color">`, which is the platform's own control, and by the
    `Setting` rows Obsidian styles — so there is nothing here to theme and nothing that
    could disagree with what the grid paints. */
-.pbl-color-picker .pbl-color-intro {
+.pbl-state-colors .pbl-state-colors-intro {
 	margin-top: 0;
 	color: var(--text-muted);
 	font-size: var(--font-ui-small);
@@ -10,7 +10,7 @@
 
 /* The rows are dense on purpose: a workflow of eight states should not need scrolling to
    compare two colours, which is the whole reason to see them in one list. */
-.pbl-color-picker .setting-item {
+.pbl-state-colors .setting-item {
 	padding-top: var(--size-4-2);
 	padding-bottom: var(--size-4-2);
 }

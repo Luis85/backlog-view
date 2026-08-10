@@ -1,6 +1,6 @@
 import { BacklogSettings } from './settings';
 import { ownedProperties } from './optionalProperties';
-import { stateColorValue } from './stateColors';
+import { stateColor } from './stateColors';
 
 /**
  * Whether a `BacklogSettings` is one `resolveSettings` could have produced.
@@ -95,8 +95,8 @@ export function settingsInconsistency(settings: BacklogSettings): string | null 
  * from, so a fixture holding one the resolver would have dropped asserts a colour no
  * picker could have produced. Asked of `stateColorValue` itself rather than of a second
  * copy of the rule: the resolver stores exactly what that function returns, so anything it
- * would not return unchanged — a name, a capital, `#abc` before expansion, surrounding
- * space — is unproducible.
+ * would not return unchanged — a capital, `#abc`, `rgb(...)`, surrounding space — is
+ * unproducible.
  *
  * Its own function for `listProblem`'s reason — the complexity budget on the predicate above.
  */
@@ -104,9 +104,9 @@ function colourProblem(settings: BacklogSettings): string | null {
 	const colourable = new Set([...settings.states, ...settings.deliverableStates].map((state) => state.toLowerCase()));
 	const strayColour = Object.keys(settings.stateColors).find((key) => !colourable.has(key));
 	if (strayColour !== undefined) return `stateColors names ${strayColour}, which is not a configured state`;
-	const badColour = Object.entries(settings.stateColors).find(([, name]) => stateColorValue(name) !== name);
+	const badColour = Object.entries(settings.stateColors).find(([, name]) => stateColor(name) !== name);
 	if (badColour) {
-		return `stateColors sets ${badColour[0]} to ${JSON.stringify(badColour[1])}, which stateColorValue would discard`;
+		return `stateColors sets ${badColour[0]} to ${JSON.stringify(badColour[1])}, which stateColor would discard`;
 	}
 	return null;
 }

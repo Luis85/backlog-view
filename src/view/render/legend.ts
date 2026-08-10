@@ -1,5 +1,5 @@
 import { BacklogViewHost, DrawnColors } from '../host';
-import { paletteDone, stateColoring, StatePalette } from '../../domain/board';
+import { paletteDone, stateColorPaint, StatePalette } from '../../domain/board';
 import { activeAxis } from '../../domain/roadmap';
 
 /**
@@ -144,21 +144,21 @@ function renderPaletteSwatches(host: BacklogViewHost, section: HTMLElement, pale
 	for (const state of palette.values) {
 		const done = paletteDone(palette, state);
 		anyDone ||= done;
-		// The swatch asks `stateColoring`, the very function the bar asks — one answer, so
-		// the strip cannot key a colour the grid does not draw, and a PICKED colour reaches
-		// both through the same token. `state` came out of `palette.values`, so the coloring
-		// is never null here; the guard is the compiler's, not a case.
-		const colour = stateColoring(host.settings, palette, state);
+		// The swatch asks `stateColorPaint`, the very function the bar asks — one answer, so
+		// the strip cannot key a colour the grid does not draw, whether that colour came from
+		// a name or from the picker. `state` came out of `palette.values`, so the paint is
+		// never null here; the guard is the compiler's, not a case.
+		const paint = stateColorPaint(host.settings, palette, state);
 		if (done) addSwatch(section, 'pbl-legend-done', state);
-		else if (colour) addSwatch(section, colour.cls, state, colour.pick);
+		else if (paint) addSwatch(section, paint.cls, state, paint.color);
 	}
 	return anyDone;
 }
 
-function addSwatch(legendEl: HTMLElement, swatchCls: string, label: string, pick?: string | null): void {
+function addSwatch(legendEl: HTMLElement, swatchCls: string, label: string, color?: string | null): void {
 	const item = legendEl.createDiv({ cls: 'pbl-legend-item' });
 	const swatch = item.createSpan({ cls: `pbl-legend-swatch ${swatchCls}` });
 	// The bar's own token, set the same way on the same rule — see `renderBarRow`.
-	if (pick) swatch.setCssProps({ '--pbl-state-pick': pick });
+	if (color) swatch.setCssProps({ '--pbl-state-color': color });
 	item.createSpan({ cls: 'pbl-legend-label', text: label });
 }

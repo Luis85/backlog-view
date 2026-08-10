@@ -4,7 +4,7 @@ import { Modal, Notice } from '../helpers/obsidian-mock';
 import { FakeVault } from '../helpers/vault';
 import { makeView, useViewHarness } from '../helpers/view';
 import { stateColorKey } from '../../src/domain/stateColors';
-import { hexOf, openStateColors } from '../../src/view/interactions/stateColors';
+import { hasColorableStates, hexOf, openStateColors } from '../../src/view/interactions/stateColors';
 
 useViewHarness();
 
@@ -26,7 +26,7 @@ function vaultWith(frontmatter: Record<string, unknown> = {}): FakeVault {
 	return vault;
 }
 
-/** Open the picker the way the `⋯` menu does, and hand back what it drew. */
+/** Open the dialog the way the toolbar button does, and hand back what it drew. */
 function openPicker(options: Record<string, string> = {}, vault = vaultWith()) {
 	const { view, containerEl } = makeView(vault, { ...WORKFLOW, ...options }, { collapsed: true });
 	openStateColors(view);
@@ -50,21 +50,66 @@ function pick(row: { input: HTMLInputElement }, hex: string): void {
 	row.input.dispatchEvent(new Event('change'));
 }
 
-function save(): void {
-	const modal = Modal.lastOpened;
-	if (!modal) throw new Error('no dialog was opened');
-	const btn = Array.from(modal.contentEl.querySelectorAll('button')).find((el) => el.textContent === 'Save');
-	if (!btn) throw new Error('the dialog has no Save button');
-	btn.dispatchEvent(new MouseEvent('click'));
+
+
+/** The toolbar button, found the way a user does. */
+function colorButton(containerEl: HTMLElement): HTMLElement | null {
+	return containerEl.querySelector<HTMLElement>('.pbl-state-colors-btn');
 }
 
+describe('the state-colours button', () => {
+	it('renders where a state colour is actually drawn, and nowhere else', () => {
+		// The legend's own gate: roadmap mode, the dated axis. A control in the tree or on
+		// the board would claim state colours affect those projections, which they do not.
+		const { view, containerEl } = makeView(
+			vaultWith({ due: '2026-08-20' }),
+			{ ...WORKFLOW, startProperty: 'note.start', targetProperty: 'note.due', horizonProperty: 'note.horizon' },
+			{ collapsed: true },
+		);
+		expect(colorButton(containerEl)).toBeNull();
+
+		view.setProjection('roadmap');
+		view.setAxisPick('dates');
+		expect(colorButton(containerEl)).not.toBeNull();
+
+		// The horizon axis draws no bar and no legend, so it keys no state colour either.
+		view.setAxisPick('horizons');
+		expect(colorButton(containerEl)).toBeNull();
+	});
+
+	it('is withheld where there is nothing to colour, rather than opening onto nothing', () => {
+		// The button and the dialog ask ONE question (`hasColorableStates`), so a button
+		// that opened onto an empty dialog is impossible by construction.
+		const { view, containerEl } = makeView(
+			vaultWith({ due: '2026-08-20' }),
+			{ stateProperty: 'note.status', startProperty: 'note.start', targetProperty: 'note.due' },
+			{ collapsed: true },
+		);
+		view.setProjection('roadmap');
+		view.setAxisPick('dates');
+
+		expect(colorButton(containerEl)).toBeNull();
+	});
+
+	it('opens the dialog when pressed', () => {
+		const { view, containerEl } = makeView(
+			vaultWith({ due: '2026-08-20' }),
+			{ ...WORKFLOW, startProperty: 'note.start', targetProperty: 'note.due' },
+			{ collapsed: true },
+		);
+		view.setProjection('roadmap');
+		view.setAxisPick('dates');
+		colorButton(containerEl)?.dispatchEvent(new MouseEvent('click'));
+
+		expect(Modal.lastOpened).not.toBeNull();
+	});
+});
+
 describe('the state-colour picker', () => {
-	it('offers one row per state a colour can reach, and no done state', () => {
-		// `Done` is absent because its bar is green by specificity whatever is picked — a row
-		// that provably changes nothing. The other two are the vocabulary, in slot order.
+	it('offers one row per DECLARED state, in vocabulary order', () => {
 		openPicker();
 
-		expect(rows().map((row) => row.label)).toEqual(['New', 'Active']);
+		expect(rows().map((row) => row.label)).toEqual(['New', 'Active', 'Done']);
 	});
 
 	it('offers a state once across both workflows', () => {
@@ -73,40 +118,51 @@ describe('the state-colour picker', () => {
 		// contributes the ones the requirements list does not carry.
 		openPicker({ deliverableStateProperty: 'note.ds', deliverableStateValues: 'Active, Draft' });
 
-		expect(rows().map((row) => row.label)).toEqual(['New', 'Active', 'Draft']);
+		expect(rows().map((row) => row.label)).toEqual(['New', 'Active', 'Done', 'Draft']);
 	});
 
-	it('writes only the rows that were touched', () => {
-		// A dialog opened and saved must write nothing: every swatch holds a colour whether
-		// or not anyone chose it, so a full set would turn every seeded row into a pick.
+	it('offers nothing for a workflow whose states are only OBSERVED', () => {
+		// The finding this feature nearly shipped: `resolveSettings` builds the colour table
+		// from the DECLARED lists and has no model, so a colour chosen for an observed state
+		// would be written and silently dropped by the next refresh. Nothing is offered, the
+		// button does not render, and the notice names the box that fixes it.
+		Notice.reset();
+		const { view } = makeView(vaultWith(), { stateProperty: 'note.status' }, { collapsed: true });
+
+		expect(hasColorableStates(view)).toBe(false);
+		openStateColors(view);
+		expect(Modal.lastOpened).toBeNull();
+		expect(Notice.messages.join(' ')).toContain('list its states');
+	});
+
+	it('writes each choice as it is made, and only for the row touched', () => {
+		// There is no Save: a row nobody touched must write nothing, and a dialog submitting
+		// its whole row set would turn every seeded swatch into a choice.
 		const { view } = openPicker();
 		pick(rows()[1], '#ff0000');
-		save();
 
 		expect(view.config.setCalls).toEqual([{ key: stateColorKey('Active'), value: '#ff0000' }]);
 	});
 
-	it('writes nothing at all when nothing was touched', () => {
+	it('writes nothing at all when nothing is touched', () => {
 		const { view } = openPicker();
-		save();
 
 		expect(view.config.setCalls).toEqual([]);
 	});
 
-	it('clears a pick through the reset beside the swatch', () => {
-		// The way BACK to no pick, and it needs its own control: a colour input has no empty
-		// state, so without this the positional default is unreachable once anything is set.
+	it('clears a choice through the reset beside the swatch', () => {
+		// The way BACK to the default, and it needs its own control: a colour input has no
+		// empty state, so without this "by position" is unreachable once anything is set.
 		const { view } = openPicker({ [stateColorKey('Active')]: '#ff0000' });
 		const active = rows()[1];
 		expect(active.input.value).toBe('#ff0000');
 
 		active.reset.dispatchEvent(new MouseEvent('click'));
-		save();
 
 		expect(view.config.setCalls).toEqual([{ key: stateColorKey('Active'), value: null }]);
 	});
 
-	it('opens each swatch on a colour, picked or seeded', () => {
+	it('opens each swatch on a colour, chosen or seeded', () => {
 		// The seed's VALUE is not asserted: jsdom paints nothing, so every slot resolves to
 		// the fallback. What is asserted is that no row opens on a blank or absent colour,
 		// which is the failure a missing seed would actually produce.
@@ -129,9 +185,6 @@ describe('the state-colour picker', () => {
 	});
 
 	it('says so rather than opening an empty dialog with no workflow', () => {
-		// Two configurations reach the same empty screen — no state property, and a
-		// vocabulary that is all done values — and the notice names the one thing that
-		// fixes both.
 		Notice.reset();
 		openStateColors(makeView(vaultWith(), {}, { collapsed: true }).view);
 
