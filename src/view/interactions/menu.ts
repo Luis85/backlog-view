@@ -540,7 +540,7 @@ function addRiskItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): voi
 
 /**
  * `setSubmenu` is missing from the published obsidian typings, not from the app:
- * submenus predate the 1.10.2 this plugin requires, so the cast asserts what is
+ * submenus predate the 1.12.0 this plugin requires, so the cast asserts what is
  * always there rather than guarding against its absence.
  */
 const SHELF_SORTS: { value: ShelfSort; label: string }[] = [

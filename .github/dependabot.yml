@@ -48,6 +48,19 @@ updates:
       - dependency-name: "@types/node"
         versions:
           - ">=23"
+      # `obsidian` tracks manifest.json's minAppVersion, not npm's newest, for exactly the
+      # reason above one line up. Typings ahead of the floor typecheck an API the claimed
+      # app may not have, and nothing here would catch it: the suite runs against test
+      # doubles, and Obsidian cannot run in CI at all. That is not hypothetical — the
+      # manifest claimed 1.10.2 while the code called a Bases options callback that only
+      # receives a config from 1.12.0, and `^1.13.1` typings compiled it happily for
+      # eleven releases.
+      #
+      # Raise this WITH minAppVersion, in one deliberate commit, after checking what the
+      # newer app actually gives this plugin. Do not widen it to `^` to silence a bump.
+      - dependency-name: obsidian
+        versions:
+          - ">=1.13"
 
   # What deliberately falls outside that group gets its own pull request: every major,
   # and — at any level, patch included — the three @atlaskit packages, since the group is

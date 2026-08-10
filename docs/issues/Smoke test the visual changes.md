@@ -203,8 +203,9 @@ a real vault, in both light and dark:
    release doesn't carry draws nothing at all, silently.
 3. **`overflow: clip` on the toolbar row.** `styles/toolbarFit.css` asserts in a comment
    that this is safe on "Chrome 90+, far below the Electron behind `manifest.json`'s
-   1.10.2 floor" — nobody has checked that claim against Obsidian's actual bundled
-   Electron. Narrow the pane until the row would overflow. If `clip` isn't supported, the
+   1.12.0 floor" — nobody has checked that claim against Obsidian's actual bundled
+   Electron, and raising the floor from 1.10.2 to 1.12.0 makes it likelier without
+   checking it either. Narrow the pane until the row would overflow. If `clip` isn't supported, the
    row silently falls back to visible overflow and becomes horizontally scrollable again
    (the toolbar should never scroll — see the comment beside the rule).
 4. **The segmented switcher's active position, under a non-default theme.** Switch to a

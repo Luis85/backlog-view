@@ -95,7 +95,7 @@ function fakeConfig(values: Record<string, unknown> = {}) {
 }
 
 /** Every option, flattened out of its groups — the shape Bases is handed. */
-function optionKeys(config?: BasesViewConfig): string[] {
+function optionKeys(config: BasesViewConfig = fakeConfig()): string[] {
 	const keys: string[] = [];
 	for (const entry of getViewOptions(config)) {
 		const group = entry as { items?: { key?: string }[]; key?: string };

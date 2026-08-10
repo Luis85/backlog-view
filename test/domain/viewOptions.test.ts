@@ -27,7 +27,7 @@ describe('getViewOptions', () => {
 	});
 
 	it('declares every config key the view reads', () => {
-		const flat = getViewOptions().flatMap((o) => ('items' in o ? o.items : [o]));
+		const flat = getViewOptions(fakeConfig()).flatMap((o) => ('items' in o ? o.items : [o]));
 		const keys = flat.map((o) => o.key);
 		expect(keys).toEqual(
 			expect.arrayContaining([
@@ -46,12 +46,12 @@ describe('getViewOptions', () => {
 	});
 
 	it('leaves the focus level to the view toolbar', () => {
-		const flat = getViewOptions().flatMap((o) => ('items' in o ? o.items : [o]));
+		const flat = getViewOptions(fakeConfig()).flatMap((o) => ('items' in o ? o.items : [o]));
 		expect(flat.some((o) => o.key === 'focusLevel')).toBe(false);
 	});
 
 	it('declares a folder option per type, not one mapping to typo', () => {
-		const flat = getViewOptions().flatMap((o) => ('items' in o ? o.items : [o]));
+		const flat = getViewOptions(fakeConfig()).flatMap((o) => ('items' in o ? o.items : [o]));
 		const keys = flat.map((o) => o.key);
 		// The vocabulary is fixed, so the schema is static and names every type it has.
 		expect(keys).toEqual(
@@ -69,14 +69,14 @@ describe('getViewOptions', () => {
 		expect(keys).not.toContain('extraTypes');
 	});
 	it('declares the progress and display option keys', () => {
-		const flat = getViewOptions().flatMap((o) => ('items' in o ? o.items : [o]));
+		const flat = getViewOptions(fakeConfig()).flatMap((o) => ('items' in o ? o.items : [o]));
 		expect(flat.map((o) => o.key)).toEqual(
 			expect.arrayContaining(['stateValues', 'showCompleted', 'tagsProperty', 'propertyColumnWidth']),
 		);
 	});
 
 	it('declares the roadmap axis: properties to name, values prefilled, nothing detected', () => {
-		const flat = getViewOptions().flatMap((o) => ('items' in o ? o.items : [o]));
+		const flat = getViewOptions(fakeConfig()).flatMap((o) => ('items' in o ? o.items : [o]));
 		expect(flat.map((o) => o.key)).toEqual(
 			expect.arrayContaining(['horizonProperty', 'horizonValues', 'startProperty', 'targetProperty']),
 		);
@@ -94,7 +94,7 @@ describe('getViewOptions', () => {
 	});
 
 	it('limits the property pickers to note properties', () => {
-		const flat = getViewOptions().flatMap((o) => ('items' in o ? o.items : [o]));
+		const flat = getViewOptions(fakeConfig()).flatMap((o) => ('items' in o ? o.items : [o]));
 		const parent = flat.find((o) => o.key === 'parentProperty') as {
 			filter: (prop: string) => boolean;
 		};
@@ -117,7 +117,7 @@ describe('getViewOptions', () => {
 	});
 
 	it('exposes a Deliverables group with its own state property, states and done values', () => {
-		const groups = getViewOptions();
+		const groups = getViewOptions(fakeConfig());
 		const group = groups.find((g) => 'displayName' in g && g.displayName === 'Deliverables');
 		if (!group || !('items' in group)) throw new Error('Deliverables group missing');
 		const keys = group.items.map((item) => item.key);

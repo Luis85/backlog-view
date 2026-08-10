@@ -53,7 +53,9 @@ own data, and a Bases table cannot express a parent or a rank.
 
 ## Operating Context
 
-- **Obsidian 1.10.2+**, the floor for the Bases custom view API. That is a floor, not a
+- **Obsidian 1.12.0+**. The Bases custom view API opened in 1.10.2, but 1.12.0 is where a
+  view's options callback is handed the base's own configuration — without it the options
+  menu advertises the shipped defaults in someone else's base. That is a floor, not a
   range — there is no compatibility path to anything older.
 - Notes live in a **flat folder**; hierarchy is `parent`/`order`/`type` frontmatter, not
   directory structure. Folder-note layouts are supported as a mode, not assumed.

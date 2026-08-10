@@ -54,7 +54,8 @@ Azure DevOps Boards.
 
 ## Requirements
 
-- Obsidian **1.10.2 or newer** (the Bases custom-view API).
+- Obsidian **1.12.0 or newer** (the Bases custom-view API, with the view options a base
+  configures).
 - The **Bases** core plugin enabled.
 
 ## Setup
