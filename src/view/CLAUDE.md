@@ -19,7 +19,12 @@ free of runtime code so imports stay cycle-free.
   the statement of the invariant, because it holds for paths not yet written. And the
   per-render config lookups (`getOrder`, `getDisplayName`) are resolved once per data
   update by `resolveColumns` onto `host.columns`, which `RowContext` carries as a snapshot,
-  never in the per-row path. `refreshRowChildren` must prune the subtree it removes
+  never in the per-row path. **`.pbl-row` carries `content-visibility: auto`**, so the
+  browser skips layout and paint for rows off screen — 718ms to 283ms at 832 expanded rows
+  — and that holds only while nothing MEASURES a row during a render: a `scrollWidth` read
+  on a skipped row lays that row out by itself, which is why both tooltips are set
+  unconditionally rather than when needed. The rule is stated at the declaration in
+  `styles/tree.css` because that is where someone about to break it will be standing. `refreshRowChildren` must prune the subtree it removes
   from `rowEls`, and anything captured at wire time (drag handlers) must read expansion
   state live, because a targeted refresh leaves surrounding rows in place. Data updates
   still rebuild everything — skipping that needs to account for arbitrary chip property

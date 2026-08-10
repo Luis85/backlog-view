@@ -62,6 +62,31 @@ mistake in different clothes:
 What answered it was timing the phases where they happen, in the browser, with a
 temporary patch — thrown away once read.
 
+## Partly addressed: `content-visibility: auto`
+
+`.pbl-row` carries `content-visibility: auto; contain-intrinsic-size: auto 30px` since
+2026-08-10, which lets the browser skip layout and paint for rows scrolled out of the
+pane. Measured in the harness, folder layout, tree expanded:
+
+| rows | render before | render after |
+| --- | --- | --- |
+| 232 | ~148 ms | **62 ms** |
+| 832 | ~718 ms | **283 ms** |
+| 1632 | ~1089 ms | **446 ms** |
+
+Still linear, and still ~0.3 ms per row: this removes most of the LAYOUT half and none of
+the DOM-building half. `restoreScroll`'s forced layout — 65% of the render before — drops
+from 447 ms to 45 ms; what is left is `renderProjectionContent` building 832 rows that
+nobody can see.
+
+It works only because nothing measures a row any more. A `scrollWidth` read on a skipped
+row forces that row to lay out alone, so the truncation pass this feature deleted would
+have cost 5320 ms against 12 ms with the property on. **Anything added to the render that
+measures a row takes this back**, which is stated at the declaration itself.
+
+So the note stays open. The remaining cost is the DOM, and the answer to that is to build
+fewer rows — see the axis below.
+
 ## Where to look
 
 The per-row render path, not the model. `src/view/CLAUDE.md`'s own cost section names the
@@ -72,6 +97,18 @@ the accounting worth doing.
 Nothing is proposed here. This note records a measurement; which of virtualisation,
 diffing, or a cheaper per-row path is right is a design question with prior art in the
 register, and the numbers above are what it should be argued against.
+
+## Live-vault checks owed
+
+Neither can be answered here; jsdom does not implement `content-visibility` and the
+harness has no screen reader.
+
+- **A skipped row is still in the accessibility tree.** This is `auto`, not `hidden`, so
+  the row remains in the DOM and `aria-activedescendant` still resolves to it — but what
+  Obsidian's own Chromium reports to a screen reader for a skipped subtree is unverified.
+- **Keyboard navigation to an off-screen row still scrolls to the right place.** The
+  placeholder height is `auto 30px` until a row has been drawn once, so a jump into
+  never-rendered territory could land slightly off before settling.
 
 ## How to check
 

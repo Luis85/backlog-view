@@ -11,6 +11,13 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+### Changed
+
+- Large backlogs render about two and a half times faster with every row expanded: the
+  tree now lets the browser skip layout for rows scrolled out of the pane. Measured at 832
+  expanded rows, a full render goes from ~718ms to ~283ms; at 1632 rows, from ~1089ms to
+  ~446ms.
+
 ### Fixed
 
 - Hovering rows in a large backlog is no longer laggy. Deciding whether a title or a type
