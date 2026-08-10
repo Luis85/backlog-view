@@ -45,6 +45,15 @@ function bothFamilies(): FakeVault {
 	return vault;
 }
 
+/** The names `Set assignee` offers on one row, minus the always-present New entry. */
+function assigneeOffers(containerEl: HTMLElement, title: string): string[] {
+	rowByTitle(containerEl, title).dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+	const sub = Menu.lastShown?.item('Set assignee')?.submenu;
+	return (sub?.items ?? [])
+		.map((mi) => mi.titleText)
+		.filter((t): t is string => typeof t === 'string' && !t.startsWith('New assignee') && t !== 'Clear assignee');
+}
+
 /** Switch to the catalog through the real toolbar and open everything it drew. */
 function catalog(containerEl: HTMLElement): void {
 	projectionButton(containerEl, 'Show as test catalog').dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -134,6 +143,38 @@ describe('the catalog and the plan share a model and divide it', () => {
 		// included, which a count written as "counts tests" would leave visible and
 		// uncounted.
 		expect(count()).toBe('4 items');
+	});
+
+	it('scopes the ASSIGNEE vocabulary per projection like the other three', () => {
+		// The fourth observed list, added when the assignee property landed, and the one
+		// `rowVocabulary` was not asked for. Both directions, because one shared list
+		// satisfies either on its own: a name only a test carries must not be offered on a
+		// plan row, and a name only another test carries must still be offered here.
+		const vault = bothFamilies();
+		vault.addFile('Owned case.md', {
+			frontmatter: { type: 'Test case', order: 40, assignee: 'Robin' },
+			parentLink: 'Suite',
+		});
+		vault.addFile('Owned PBI.md', {
+			frontmatter: { type: 'PBI', order: 40, assignee: 'Sam' },
+			parentLink: 'Feature',
+		});
+		const { containerEl } = makeView(vault, { assigneeProperty: 'note.assignee' });
+		clickExpandAll(containerEl);
+		expect(assigneeOffers(containerEl, 'A PBI')).toEqual(['Sam']);
+		catalog(containerEl);
+		expect(assigneeOffers(containerEl, 'Case')).toEqual(['Robin']);
+	});
+
+	it('takes no rollup from a plan row either, so a mis-dragged PBI moves no case', () => {
+		// The mirror of the test below, and the direction the one-way guard missed: `Stray
+		// PBI` hangs from `Case`, and the catalog HIDES it and promotes it to a plan root —
+		// so a rollup on the case counts a descendant nothing in this projection can expand
+		// to. A rollup crosses no ladder boundary, in either direction.
+		const { containerEl } = makeView(bothFamilies(), { showCounts: true });
+		catalog(containerEl);
+		const rollup = rowByTitle(containerEl, 'Case').querySelector('.pbl-meta-col')?.textContent ?? '';
+		expect(rollup).not.toContain('1');
 	});
 
 	it('takes no rollup from a test, so a mis-dragged case moves no bar', () => {

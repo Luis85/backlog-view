@@ -448,12 +448,22 @@ function assignAll(tree: LinkedTree, settings: BacklogSettings): BacklogTree & {
 		let target: CivilDate | null = null;
 		for (const child of item.children) {
 			const sub = assign(child, depth + 1);
-			// A TEST is the third exception here and a STRONGER one than the two below:
-			// nothing from it and nothing from beneath it. A context row and a marker each
-			// contribute nothing themselves while their subtrees still reach their ancestors
-			// — a result under an excluded parent is still this base's work — but a `Task`
-			// under a `Test case` is test work by the membership rule, so this walk takes
-			// nothing from below a test either.
+			// A LADDER CROSSING is the third exception here and a STRONGER one than the two
+			// below: nothing from it and nothing from beneath it. A context row and a marker
+			// each contribute nothing themselves while their subtrees still reach their
+			// ancestors — a result under an excluded parent is still this base's work — but a
+			// `Task` under a `Test case` is test work by the membership rule, so this walk
+			// takes nothing from below a test either.
+			//
+			// **Asked of the PARENT as well as the child, and the two are not symmetric.**
+			// Written as `inCatalog(child)` alone it only stopped the PLAN counting a test,
+			// and the mirror ran on: a `PBI` mis-dragged under a `Test case` is HIDDEN by the
+			// catalog and promoted to a plan root, so the case drew a rollup for a descendant
+			// nothing in that projection can expand to. The fix is NOT
+			// `inCatalog(child) !== inCatalog(item)`, which is the shape that reads right and
+			// would hand the catalog the rollups 3c declined — a suite counting its cases,
+			// since parent and child agree. A rollup is a PLAN number: it counts only where
+			// both ends are plan rows.
 			//
 			// Stated at the walk rather than in the projections because the counts are
 			// gathered while the tree is BUILT: a predicate applied at draw time would hide
@@ -464,7 +474,7 @@ function assignAll(tree: LinkedTree, settings: BacklogSettings): BacklogTree & {
 			// The stated cost: a suite shows no "3 of 5 cases done". Accepted rather than
 			// solved, since a second projection-specific pass is a real price for a number
 			// this increment never promised — it records no results at all.
-			if (inCatalog(child)) continue;
+			if (inCatalog(child) || inCatalog(item)) continue;
 			// Traverse *through* a context row to the results below it, but never count
 			// it: rollups describe what the Base returned, and an excluded note's own
 			// state must not skew a progress bar or keep a finished subtree on screen.

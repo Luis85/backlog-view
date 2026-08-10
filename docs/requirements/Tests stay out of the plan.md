@@ -157,6 +157,14 @@ context row when a visible descendant needs a parent to hang from.
   cost for a number this epic never promised — it records no results, so a case's `done` is
   its `status` and nothing else. If a run ever becomes an item, that increment can revisit
   this; naming the cost here is what keeps it from being rediscovered as a bug.
+  **A rollup is therefore a PLAN number, and the walk asks that of both ends.** Written as
+  "stop at a test" it read as one question about the child and shipped as one: a `PBI`
+  mis-dragged under a `Test case` was still counted INTO that case, which the catalog then
+  drew as a rollup for a descendant it hides and promotes to a plan root — a bar with
+  nothing to expand to. Found by review. The correction is not "skip a child on the other
+  ladder", which is the symmetric shape that reads right and would hand the catalog exactly
+  the rollups this extension declines, since a suite and its cases agree. It is: count a
+  child only when the child and the PARENT are both plan rows.
 - **2d — the base returns catalog members and nothing else.** The plan shows its ordinary
   **empty** state, not its all-done one. Both decisions are keyed to the plan's population,
   and neither is today: `renderTree` tests `model.items.length` for empty and then hands
@@ -228,10 +236,17 @@ context row when a visible descendant needs a parent to hang from.
   test on a state no plan row has, offered to another test — because the two criteria are
   each other's failure mode: one shared vocabulary satisfies this one and breaks the one
   above, and one plan-scoped vocabulary does the reverse.
-- **All four** observed vocabularies are accounted for, states, tags, horizons and
-  Deliverable states, and the horizon is asserted rather than assumed from the state: they
-  are separate lists read by separate menus, and the state was already right in a draft
-  where the horizon was not.
+- **Every** observed vocabulary is accounted for — states, tags, horizons, Deliverable
+  states and the assignee — and each is asserted rather than assumed from the one beside
+  it: they are separate lists read by separate menus, and the state was already right in a
+  draft where the horizon was not. Written as *all four* this criterion was a COUNT, and a
+  count goes stale the way a table enumerating code does: the assignee property arrived on
+  `main` while this feature was in review, `ProjectionPopulation` gained the list, and
+  `assigneeChoices` went on reading `model.observedAssignees` — offering a test-only name
+  on every plan row and refusing a catalog row a name another test carries. Found by
+  review. The criterion is the RULE now, so the next list is covered by it rather than
+  requiring the number be edited: a vocabulary is scoped to the population of the
+  projection that offers it, and every menu reaches it through `rowVocabulary`.
 - A `Test case` parented to a `PBI` changes none of that PBI's rollup numbers — descendant
   count, done count, `subtreeDone`, `descendantStart`, `descendantTarget` — nor those of
   anything above it, and neither do its own `Task`s. Asserted on the **model**, over a tree
