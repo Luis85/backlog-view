@@ -1,5 +1,6 @@
 /** The bundle's entry point. Everything real is in `mount.ts`, which a test can drive. */
 import { mountHarness } from './mount';
+import { perfWanted, reportPerf, wantedNotes } from './perf';
 import { drawSchemeToggle } from './theme';
 
 /**
@@ -8,7 +9,12 @@ import { drawSchemeToggle } from './theme';
  */
 const wantedFixture = new URLSearchParams(window.location.search).get('fixture');
 const fixture = wantedFixture === 'edges' || wantedFixture === 'folders' ? wantedFixture : 'demo';
-const { view } = mountHarness(document.body, fixture);
+// Timed HERE rather than inside `reportPerf`, which cannot be handed a view that does not
+// exist yet: the mount is the one measurement that happens before there is anything to
+// measure it with. `?notes=800` is what makes the number worth reading.
+const mountStarted = performance.now();
+const { view, containerEl } = mountHarness(document.body, fixture, wantedNotes(window.location.search));
+const mountMs = performance.now() - mountStarted;
 
 // After the mount: the toggle is the harness's own furniture and is appended to the
 // body, which `mountHarness` empties.
@@ -26,3 +32,7 @@ const wanted = new URLSearchParams(window.location.search).get('view');
 if (wanted === 'board' || wanted === 'roadmap' || wanted === 'tree' || wanted === 'deliverables') {
 	view.setProjection(wanted);
 }
+
+// Last, because the run drives all four projections and restores whichever was open: run
+// first, it would have restored the tree over the projection `?view=` was about to ask for.
+if (perfWanted(window.location.search)) reportPerf(view, containerEl, mountMs);
