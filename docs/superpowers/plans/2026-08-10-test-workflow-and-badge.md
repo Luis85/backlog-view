@@ -2008,3 +2008,93 @@ npm run check
 git add CLAUDE.md src/view/CLAUDE.md docs/issues/
 git commit -m "Say what actually holds about the projection predicate"
 ```
+
+
+---
+
+### Task 18: One rule for every move that could change a row's projection
+
+**Files:**
+- Modify: `src/domain/dropTargets.ts` (extract the predicate Task 16 inlined; apply it in every target function there)
+- Modify: `src/view/interactions/structure.ts` (`outdentTarget`, and any sibling target function that changes a parent)
+- Test: `test/domain/dropTargets.test.ts` and/or `test/view/structure*.test.ts` — by subject
+
+**Interfaces:**
+- Produces: one exported predicate in `src/domain/dropTargets.ts`, something like
+  `changesProjection(item: BacklogItem, parent: BacklogItem | null): boolean`. Name it as you
+  see fit; what matters is that it is ONE function every target consults.
+
+**Why.** Task 16 refused a root drop that would move a row into the other projection, and put
+the check inline in `rootDropTarget`. An automated reviewer then found the same bug at the
+next entry point: with `Epic → Test case → Task`, the `Task` is an ordinary child, so
+**Outdent** is offered; taking it reparents the `Task` under the hidden `Epic`, `ladderFor`
+re-answers from the new parent, and the row leaves the catalog — regardless of `autoType`.
+
+**This is the third time this exact rule has been found missing at a surface that did not have
+it**: the top-level creator had it (extension 1c), the root drop did not (Task 16), and now
+outdent does not. That is the "one move, several inputs" family, and patching outdent alone
+invites a fourth instance. The rule goes in one place that every target consults.
+
+- [ ] **Step 1: Enumerate the entry points yourself — do not trust this list**
+
+Every reparenting operation produces a `DropTarget` carrying a `parent` and hands it to
+`host.performDrop`. Find them all. Start from:
+- `grep -rn "performDrop" src/` — every caller
+- `grep -rn "DropTarget" src/` — every producer
+
+At least `rootDropTarget`, `dropTargetFor`/`siblingPosition`/`insidePosition` and
+`outdentTarget` exist; check whether indent has one, whether the move menu produces targets
+of its own, and whether `Clear parent link` / `Use folder position` reparent by another route
+(they go through `removeParentWrites`, not a `DropTarget` — decide whether the rule belongs
+there too, and say why in your report either way).
+
+**Put the finding in your report as a list**: for each entry point, whether it can change the
+item's ladder, and whether it now consults the predicate.
+
+**Refuse at the TARGET, not at the write.** These functions are what the menu asks to decide
+whether to OFFER a command — `outdentTarget`'s own comment says "exported so the menu can
+offer the command on exactly the rows where it works". Refusing later would leave an offered
+command that does nothing, and this repo's rule is *absent rather than inert*.
+
+- [ ] **Step 2: Write the failing tests first**
+
+At minimum, outdent: build `Epic → Test case → Task`, confirm `outdentTarget` currently
+returns a target for the `Task`, and assert it should be null.
+
+**Make each test discriminate the LADDER from a type NAME.** A fixture whose only refused row
+is a `Task` passes against `typeName === 'Task' && inCatalog(item)`, which is not the rule —
+that mistake was made once already on this branch. Include a **typeless** row (no `type` in
+its frontmatter) under a `Test case`, since `ladderFor` chains from the parent for exactly
+two inputs — `Task` and typeless — and the typeless one is what tells the two implementations
+apart. Also assert a row that must STILL be offered the command, so an over-wide refusal
+fails.
+
+Watch them fail before implementing.
+
+- [ ] **Step 3: Extract the predicate and apply it**
+
+Take the condition Task 16 inlined in `rootDropTarget` — read it, do not re-derive it — and
+lift it to a named exported function that takes the item and its PROSPECTIVE parent, so it
+serves a target whose destination is a grandparent as well as one whose destination is null.
+`rootDropTarget` then calls it with `null`; `outdentTarget` calls it with the grandparent.
+
+Its comment should point at `docs/requirements/Test suite and test case as a ladder of their
+own.md` extension 1c, which decided this for the creator, and record that the rule reached
+three entry points at three different times. Verify 1c says what you claim before citing it.
+
+- [ ] **Step 4: Watch each new test fail without the predicate, and prove it discriminates**
+
+Revert the predicate's use in each target, confirm the matching test goes RED, restore. Then
+temporarily replace the predicate's body with the type-name version
+(`item.typeName === 'Task' && inCatalog(item)`) and confirm the TYPELESS assertions fail.
+Report both observations. This is the check that makes the tests worth having.
+
+- [ ] **Step 5: Run the whole check and commit**
+
+`npm run check` in the FOREGROUND, and watch its exit code rather than inferring from output.
+
+```bash
+npm run check
+git add src/domain/dropTargets.ts src/view/interactions/structure.ts test/
+git commit -m "Ask one predicate whether a move would change the row's projection"
+```
