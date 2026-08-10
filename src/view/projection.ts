@@ -73,6 +73,18 @@ export function hidesCompleted(projection: Projection): boolean {
 }
 
 /**
+ * Whether this projection draws the rollup column. The catalog does not, and the reason is
+ * the same one that withholds its completed toggle: it has nothing to put in it. `assignAll`
+ * counts a child only where the child and the parent are both plan rows, so a suite's
+ * descendant count is structurally zero — a `Progress` header over an empty column on every
+ * row would be the control outliving the computation behind it, and would cost every test
+ * title the width it reserves.
+ */
+export function hasRollup(projection: Projection): boolean {
+	return projection !== 'catalog';
+}
+
+/**
  * Whether THIS projection's rendered forest is a synthetic focus grouping.
  *
  * `model.focused` is one flag for the whole model, and the catalog is built from the

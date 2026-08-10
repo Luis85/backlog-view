@@ -1,5 +1,5 @@
 import { BasesPropertyId, NullValue, setIcon, setTooltip } from 'obsidian';
-import { BacklogViewHost, Column, ColumnFit, ColumnKind } from '../host';
+import { BacklogViewHost, Column, ColumnFit, ColumnKind, Projection } from '../host';
 import { DragDropController } from '../interactions/dragDrop';
 import { showAssigneeMenu, showHorizonMenu, showRiskMenu, showStateMenu, showTagMenu } from '../interactions/menu';
 import { removeTag } from '../interactions/tags';
@@ -8,7 +8,7 @@ import { BacklogItem } from '../../domain/model';
 import { hasHorizonAxis, SHELF_LABEL } from '../../domain/roadmap';
 import { BacklogSettings, hasRiskLevels } from '../../domain/settings';
 import { resolvedDeliverableStateKey, resolvedTestStateKey } from '../../domain/optionalProperties';
-import { treeShaped } from '../projection';
+import { hasRollup, treeShaped } from '../projection';
 
 /**
  * State shared by one render pass. Config lookups live here so per-row work stays
@@ -91,11 +91,12 @@ const TREE_PADDING = 16;
  */
 function columnFit(
 	settings: BacklogSettings,
+	projection: Projection,
 	columnCount: number,
 	depth: number,
 	width: number,
 ): ColumnFit {
-	const meta = settings.stateKey || settings.showCounts ? META_COL_WIDTH : 0;
+	const meta = (settings.stateKey || settings.showCounts) && hasRollup(projection) ? META_COL_WIDTH : 0;
 	const lead = ROW_LEAD_WIDTH + TREE_PADDING + depth * INDENT_PER_DEPTH;
 	const room = width - lead - meta;
 	const fitting = Math.max(0, Math.floor(room / settings.propColumnWidth));
@@ -127,7 +128,7 @@ export function syncColumnFit(ctx: RowContext, viewEl: HTMLElement, treeEl: HTML
 	if (width === 0) return false;
 	// Indent is part of what a row needs, so expanding a deep branch can be what
 	// makes the columns stop fitting.
-	const fit = columnFit(ctx.host.settings, ctx.host.columns.length, renderedDepth(ctx), width);
+	const fit = columnFit(ctx.host.settings, ctx.host.projection, ctx.host.columns.length, renderedDepth(ctx), width);
 	// Against what this pass actually DREW rather than against the stored number, so a
 	// render that drew a different count than the verdict claims still asks for the pass
 	// that reconciles them.
@@ -261,7 +262,10 @@ export function renderColumnHeader(ctx: RowContext, containerEl: HTMLElement): v
 	// the LAST pass measured, exactly as the columns above do; a verdict that has changed
 	// since buys the reconciling pass `syncColumnFit` asks for, which draws both from the
 	// same one.
-	const rollup = (settings.stateKey !== '' || settings.showCounts) && !ctx.host.columnFit?.rollupDropped;
+	const rollup =
+		(settings.stateKey !== '' || settings.showCounts) &&
+		hasRollup(ctx.host.projection) &&
+		!ctx.host.columnFit?.rollupDropped;
 	// Nothing to head at all, which is not the same question as "no columns".
 	if (ctx.columns.length === 0 && !rollup) return;
 	// Presentational: every value below carries its own accessible label.
@@ -446,7 +450,7 @@ function renderTagCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogIt
 /** Progress rollup or descendant count, in a column of its own so both align. */
 export function renderRollup(host: BacklogViewHost, row: HTMLElement, item: BacklogItem): void {
 	const settings = host.settings;
-	if (!settings.stateKey && !settings.showCounts) return;
+	if ((!settings.stateKey && !settings.showCounts) || !hasRollup(host.projection)) return;
 	const col = row.createDiv({ cls: 'pbl-meta-col' });
 	if (item.descendantCount === 0) return;
 

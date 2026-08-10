@@ -66,3 +66,27 @@ describe('the test workflow writes through its own key', () => {
 		expect(titlesOf(containerEl)).toContain('Signed off');
 	});
 });
+
+/**
+ * Grouped here rather than in `testCatalog.test.ts` (already at the `test/**` line
+ * budget) and not as its own file: this fixture and the `catalog()` helper above are
+ * exactly what it needs, and it is a fact about the same state-key-configured catalog
+ * the block above writes through — a state property drawing a chip on catalog rows but
+ * withholding the rollup those same rows have none of.
+ */
+describe('the catalog draws no rollup column', () => {
+	it('draws no rollup column, because it has no rollups to put in one', () => {
+		// The catalog's rows carry no descendant counts by design (`Tests stay out of the
+		// plan` 3c), so a Progress header over an empty column on every row is the control
+		// outliving the computation behind it — and it costs every test title the width.
+		const { containerEl } = makeView(bothFamilies(), { showCounts: true, stateProperty: 'note.status' });
+		clickExpandAll(containerEl);
+		// The plan draws it, which is what makes the assertion below about the CATALOG
+		// rather than about the fixture.
+		expect(containerEl.querySelector('.pbl-meta-col')).not.toBeNull();
+
+		catalog(containerEl);
+		expect(containerEl.querySelector('.pbl-meta-col')).toBeNull();
+		expect(containerEl.querySelector('.pbl-cols')?.textContent ?? '').not.toContain('Progress');
+	});
+});
