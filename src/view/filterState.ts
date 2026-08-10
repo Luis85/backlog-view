@@ -112,8 +112,14 @@ export class FilterState {
 		// screen in the catalog while nothing in the catalog matched at all; the inverse
 		// happens in the plan.
 		const roots = projectionPopulation(projection, model).roots;
-		const member = projectionMember(projection);
-		this.focused = indexMatches(roots, needle, member);
-		this.whole = roots === model.realRoots ? this.focused : indexMatches(model.realRoots, needle, member);
+		this.focused = indexMatches(roots, needle, projectionMember(projection));
+		// The `whole` index walks the WHOLE tree and is deliberately unguarded, which is
+		// not an oversight beside the line above it. Its one consumer is the Deliverables
+		// board, whose population is decided by TYPE elsewhere (`deliverableResults`) — so
+		// membership is not this index's question, and a catalog row can never be a card
+		// there to be let in by the omission. Guarding it costs a real case instead: a
+		// `Deliverable` nested under a `Test case` IS on that board, and a walk stopping at
+		// the catalog path never reaches it, so an exact-title filter hid a card on screen.
+		this.whole = indexMatches(model.realRoots, needle, () => true);
 	}
 }

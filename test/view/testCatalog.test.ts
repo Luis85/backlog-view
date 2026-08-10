@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { Menu, Modal } from 'obsidian';
 import { FakeVault } from '../helpers/vault';
 import { rootDropTarget } from '../../src/domain/dropTargets';
+import { cardTitles } from '../helpers/board';
 import {
 	clickExpandAll,
 	key,
@@ -369,6 +370,26 @@ describe('the catalog is tree-shaped, and the plan keeps its place', () => {
 		// And the same needle finds it in the projection that draws it.
 		catalog(containerEl);
 		expect(titlesOf(containerEl)).toEqual(['Stray case']);
+	});
+
+	it('still finds a Deliverable nested under a test on the board that draws it', () => {
+		// `deliverableResults` is read off the whole tree by TYPE, so a `Deliverable`
+		// beneath a `Test case` is a card on that board — and its filter index is the
+		// `whole` scope, deliberately focus-immune. Guarding THAT walk by plan membership
+		// stops it at the catalog path and hides a card that is on screen, which is the
+		// regression the projection-traversal fix introduced and this pins.
+		const vault = bothFamilies();
+		vault.addFile('Runbook.md', {
+			frontmatter: { type: 'Deliverable', order: 10, docStatus: 'Draft' },
+			parentLink: 'Case',
+		});
+		const { containerEl, view } = makeView(vault, { deliverableStateProperty: 'note.docStatus' });
+		projectionButton(containerEl, 'Show as Deliverables board').dispatchEvent(
+			new MouseEvent('click', { bubbles: true }),
+		);
+		expect(cardTitles(containerEl)).toContain('Runbook');
+		view.setFilter('Runbook');
+		expect(cardTitles(containerEl)).toEqual(['Runbook']);
 	});
 
 	it('is not FOCUSED here either, so a root-level drop still lands', () => {
