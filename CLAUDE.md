@@ -338,6 +338,10 @@ change that was fixing the previous instance.
   `normalizePath` on user paths, no global `app`.
 - Release tags must equal `manifest.json` version with NO `v` prefix — `.npmrc` sets
   `tag-version-prefix=""`; the release workflow rejects mismatches. See `RELEASING.md`.
+- `CHANGELOG.md` gains a dated `## [x.y.z]` section in the same commit as every version
+  bump — `RELEASING.md` states the rule, `test/release/changelogVersion.test.ts` checks
+  it, ADR 0024 records why. `[Unreleased]` entries are added by the PR that earns them,
+  not invented at release time.
 - Dependencies are noticed by Dependabot and verified by `npm run check` — ADR 0019, which
   also says why `npm audit` is not a sixth step — and ADR 0022, which keeps it out of
   `check` for that reason while running `npm audit --omit=dev --audit-level=critical`

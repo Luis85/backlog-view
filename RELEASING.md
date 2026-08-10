@@ -68,6 +68,16 @@ The repo's `.npmrc` sets `tag-version-prefix=""` so `npm version` names that loc
 `0.1.1`, not `v0.1.1` — Obsidian requires the published tag to exactly match the manifest
 version, and the release workflow refuses a mismatch as a second line of defense.
 
+**`npm version` does not touch `CHANGELOG.md`, and the same commit must**: rename its
+`## [Unreleased]` heading to `## [<version>] - <date>`, leaving a fresh, empty
+`## [Unreleased]` above it for whatever lands next. `[Unreleased]` is not this step's to
+fill from scratch — a pull request that changes what the plugin does adds its own bullet
+there as it merges, so the bump only retitles and dates a section that already has
+content. `test/release/changelogVersion.test.ts` is what makes this a check rather than a
+habit: it reads `manifest.json` and fails whenever its version has no matching heading in
+`CHANGELOG.md`, so a bump that forgot the entry fails `npm run check` on the pull request
+rather than shipping a release nobody can tell apart from the last one.
+
 ### 2. Before the tag: the live-vault sweep
 
 Some of this plugin's behaviour cannot be checked here at all — appearance, base identity,
