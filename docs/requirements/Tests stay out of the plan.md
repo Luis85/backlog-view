@@ -275,7 +275,7 @@ decide from `model.items` / `model.results` and must decide from the plan's popu
 **In the projections**, for what is drawn: the tree in `src/view/rowVisibility.ts`, the
 boards in `src/domain/board.ts`, the roadmap in `src/domain/roadmap.ts` and
 `src/domain/shelf.ts`, with the derived vocabularies in `src/domain/vocabulary.ts` — and in
-`countedPopulation` (`src/view/render/toolbar.ts`), which is a projection question wearing
+`countedPopulation` (`src/view/render/toolbarStatus.ts`), which is a projection question wearing
 a toolbar's clothes: it already branches per projection, two consumers read it (the count
 label and the completed toggle), and both are wrong together or right together.
 

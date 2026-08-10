@@ -174,6 +174,18 @@ jobs:
             manifest.json
             dist/styles.css
 
+      # `gh release create --notes-file` PREPENDS this ahead of `--generate-notes`'s own
+      # output — the CLI's own docs: additional notes are prepended to the generated
+      # ones — so the release body reads the curated summary first and the merged-PR
+      # list underneath. See ADR 0025. `changelogNotes` throws (failing this step) if
+      # `manifest.json`'s version has no matching heading, which is defence in depth:
+      # `test/release/changelogVersion.test.ts` already keeps that state off `main`, but
+      # a manual dispatch on an unusual ref is a path that check does not cover.
+      - name: Extract this version's changelog entry
+        env:
+          TAG: ${{ steps.release.outputs.tag }}
+        run: node scripts/changelog-notes.mjs "$TAG" > release-notes.md
+
       - name: Create release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -186,5 +198,6 @@ jobs:
           gh release create "$TAG" \
             --title "$TAG" \
             --target "$GITHUB_SHA" \
+            --notes-file release-notes.md \
             --generate-notes \
             main.js manifest.json dist/styles.css

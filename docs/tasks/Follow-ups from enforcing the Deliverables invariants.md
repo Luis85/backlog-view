@@ -46,9 +46,13 @@ opposite — `item.stateValue` / `item.done` on a Deliverable — and that spell
 legitimate in `view/` by decision, so no selector can separate the two. `ownWorkflowReading`
 is the answer; nothing enforces reaching for it.
 
-**`countedPopulation` is module-private** to `src/view/render/toolbar.ts`. A readout added
-in any other view file is structurally forced to duplicate it. Either export it or keep
-readouts in that one file deliberately, and say which.
+~~**`countedPopulation` is module-private** to `src/view/render/toolbar.ts`. A readout
+added in any other view file is structurally forced to duplicate it. Either export it or
+keep readouts in that one file deliberately, and say which.~~ **Answered by the toolbar
+split (2026-08-10), and by the first of the two options**: the readouts are now their own
+subject in `src/view/render/toolbarStatus.ts`, and `countedPopulation` is exported from
+it. Not chosen for this reason — the split was about churn — but it settles the question
+the same way, so the choice is on record rather than left open.
 
 **Split `test/view/deliverableWorkflowByType.test.ts`.** 572 raw lines, ~378 against the
 450 budget that skips blanks and comments, holding 15 `describe` blocks across six
