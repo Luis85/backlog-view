@@ -116,6 +116,6 @@ Two acceptance-criteria lines fail against the current text of `src/view/manual/
   goes unanswered.
 
 Both are tracked as parked content corrections in
-[[Seven known corrections have no room in sections.ts]], blocked on the same 400-line
+[[Known corrections have no room in sections.ts]], blocked on the same 400-line
 budget. Left `Open` rather than moved, since both are explicit criterion lines and
 neither is met by what is on screen today.

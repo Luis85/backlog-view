@@ -11,7 +11,7 @@ files:
   - src/view/manual/sections.ts
 ---
 
-# Seven known corrections have no room in sections.ts
+# Known corrections have no room in sections.ts
 
 ## What is blocked
 
@@ -50,14 +50,18 @@ Neither is a criterion line the completeness test can catch — the setup sectio
 coverage test is keyed to `getViewOptions()` keys, and both are prose about a toolbar
 *action*, not an option — so nothing failed when they were cut.
 
-## The seven content corrections, each verified against source
+## The content corrections, each verified against source
 
 1. **`sections.ts:401`** ("Presentation" / "What the Base still owns," current text
-   implies any visible Base property becomes a row column). `chipProps()`
-   (`src/view/render/columns.ts:187-208`) always filters `parent`/`order`/`type` and also
-   the configured state, horizon and risk properties, because a dedicated control already
-   renders each of those — a visible Base property does not automatically become a
-   column.
+   implies any visible Base property becomes a row column). **Re-verified after the merge
+   with main, and half of the original finding is now wrong** — recorded that way because
+   a parked item that goes stale silently is worse than one never filed. Main's
+   bases-driven-columns increment removed `chipProps()`; the skip set at
+   `src/view/render/columns.ts:187-192` is now `file.name`, `parent`, `order` and `type`
+   alone. The configured state, horizon and risk properties are **no longer filtered** —
+   they render as columns with their own chip kind. What survives is the smaller claim:
+   four properties are withheld because the view itself already shows them, so a visible
+   Base property does not automatically become a column.
 2. **`sections.ts:185`** ("The ignored-notes count," described per NOTE). `pruneOutsideHierarchy`
    (`src/domain/model.ts:300-329`) tests per ROOT SUBTREE, by its own doc comment: "one
    participant keeps the whole component." An untyped container holding typed items is
@@ -84,6 +88,18 @@ coverage test is keyed to `getViewOptions()` keys, and both are prose about a to
    does while it is OFF, but `renderCompletedToggle()` does not render the control at all
    without a configured state property — a reader hunting the missing eye control cannot
    learn the prerequisite from the manual.
+
+8. **`sections.ts:71`** (the MOVING section's focused-view exception). It says Indent
+   does not work "throughout a focused view". `siblingContext`
+   (`src/view/interactions/structure.ts:19`) returns `null` only for `item.focusRoot` or
+   `item.outsideFilter` — ordinary descendants keep their real sibling lists, so the
+   second of two PBIs under a focused Feature can still indent under the first. Scope the
+   exception to focus-root rows.
+
+   This one is an **overcorrection introduced by a fix to the same sentence**, which is
+   the third rewrite of that pair. It understates what the plugin can do rather than
+   overpromising, which is why it is here rather than blocking, but it is the same
+   false-claim class the two corrections fixed in place belonged to.
 
 ## The ruling this is carried under
 
