@@ -30,13 +30,26 @@ import { describe, expect, it } from 'vitest';
 const APPLIES = new Set([':root', 'body', '.theme-light', '.theme-dark', 'body.theme-light', 'body.theme-dark']);
 
 /**
+ * A conditional wrapper this page never satisfies. `@media print` is the only one either
+ * sheet uses around an applicable selector, and app.css puts real declarations there —
+ * `body { --font-text: var(--font-print) }` and a dark `--highlight-mix-blend-mode`.
+ * Counting them is not merely lenient about what EXISTS: they come last, so "later wins"
+ * would take the print value over the screen one and then chase `--font-print`, which no
+ * applicable block declares. The rule is stated for the spelling the sheets actually
+ * contain; the wrapper test below fails if a different one appears, rather than letting
+ * this quietly assume every future wrapper applies.
+ */
+const NEVER_APPLIES = /\bprint\b/;
+
+/**
  * Every custom property `file` declares for `scheme`, with its VALUE, from applicable
  * blocks only. The value is what makes the check transitive: a name with a declaration
  * whose own `var()` leads nowhere computes to nothing, and a set of names cannot say so.
  *
  * Brace-walked rather than matched with one regular expression, because both sheets nest
  * — `@supports (…) { :root { … } }` — and a flat pattern either misses the inner block or
- * swallows the wrapper's name with it. The innermost selector is the one that decides.
+ * swallows the wrapper's name with it. The innermost selector decides WHETHER the rule
+ * applies; every at-rule above it can still veto, which is what `NEVER_APPLIES` is for.
  * Later declaration wins, which is the cascade for everything here only because the two
  * sheets now AGREE; specificity is not simulated, and would have to be if they diverged.
  */
@@ -54,7 +67,8 @@ function declarations(file: string, scheme: 'dark' | 'light'): Map<string, strin
 		if (ch === '}') {
 			const selector = stack.pop() ?? '';
 			const other = scheme === 'dark' ? 'light' : 'dark';
-			if (APPLIES.has(selector) && !selector.includes(`theme-${other}`)) {
+			const vetoed = stack.some((wrapper) => wrapper.startsWith('@') && NEVER_APPLIES.test(wrapper));
+			if (!vetoed && APPLIES.has(selector) && !selector.includes(`theme-${other}`)) {
 				for (const match of chunk.matchAll(/(?:^|;)\s*(--[\w-]+)\s*:([^;]*)/g)) declared.set(match[1], match[2]);
 			}
 			chunk = '';
@@ -63,6 +77,35 @@ function declarations(file: string, scheme: 'dark' | 'light'): Map<string, strin
 		chunk += ch;
 	}
 	return declared;
+}
+
+/**
+ * Every at-rule wrapper that has a custom-property declaration under an applicable
+ * selector, in either sheet. The evidence behind `NEVER_APPLIES` naming one spelling: a
+ * rule that cannot see every wrapper must at least fail when a new one shows up.
+ */
+function wrappers(file: string): Set<string> {
+	const css = readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+	const found = new Set<string>();
+	const stack: string[] = [];
+	let chunk = '';
+	for (const ch of css) {
+		if (ch === '{') {
+			stack.push((chunk.trim().split('\n').pop() ?? '').trim());
+			chunk = '';
+			continue;
+		}
+		if (ch === '}') {
+			const selector = stack.pop() ?? '';
+			if (APPLIES.has(selector) && /(?:^|;)\s*--[\w-]+\s*:/.test(chunk)) {
+				for (const wrapper of stack) if (wrapper.startsWith('@')) found.add(wrapper);
+			}
+			chunk = '';
+			continue;
+		}
+		chunk += ch;
+	}
+	return found;
 }
 
 /** Just the names — what a caller asking "is it declared at all" wants. */
@@ -79,6 +122,49 @@ function sheetValues(scheme: 'dark' | 'light'): Map<string, string> {
 }
 
 /**
+ * The `var()` references at the TOP level of a value — the name each reads, and the
+ * fallback text after its first comma, if it has one.
+ *
+ * Paren-balanced rather than matched, because a fallback can hold a whole value including
+ * more `var()`s: app.css has `var(--color-base-35, var(--background-modifier-border-focus))`
+ * in three places. Scanning those inner ones as if they were top level is what made the
+ * first version of this file wrong in the strict direction — it demanded that a fallback
+ * nobody would evaluate resolve anyway. Each reference is consumed whole, so a nested one
+ * is only ever seen by the recursion that actually evaluates its branch.
+ */
+function references(value: string): { name: string; fallback: string | null }[] {
+	const found: { name: string; fallback: string | null }[] = [];
+	for (let i = value.indexOf('var('); i !== -1; i = value.indexOf('var(', i)) {
+		let depth = 1;
+		let comma = -1;
+		let j = i + 4;
+		for (; j < value.length && depth > 0; j++) {
+			if (value[j] === '(') depth++;
+			else if (value[j] === ')') depth--;
+			else if (value[j] === ',' && depth === 1 && comma === -1) comma = j;
+		}
+		const name = (comma === -1 ? value.slice(i + 4, j - 1) : value.slice(i + 4, comma)).trim();
+		if (name.startsWith('--')) found.push({ name, fallback: comma === -1 ? null : value.slice(comma + 1, j - 1) });
+		i = j;
+	}
+	return found;
+}
+
+/**
+ * Does a VALUE compute to something — every reference in it either resolving, or carrying
+ * a fallback that does? That is CSS's own rule: a fallback applies exactly when the name
+ * is missing, so requiring both branches would refuse a legitimate sheet and requiring
+ * neither would pass a broken one. Raised in review after the first version did the first
+ * of those.
+ */
+function resolvesValue(value: string, values: Map<string, string>, seen: Set<string>): boolean {
+	return references(value).every(
+		({ name, fallback }) =>
+			resolves(name, values, seen) || (fallback !== null && resolvesValue(fallback, values, seen)),
+	);
+}
+
+/**
  * Does `name` compute to something, following its value's own `var()` references?
  *
  * A declaration is not a value. `--shadow-xs: … var(--shadow-edges)` is declared under
@@ -87,19 +173,12 @@ function sheetValues(scheme: 'dark' | 'light'): Map<string, string> {
  * a review pointed at, with an instance already in the tree.
  *
  * A cycle answers false: CSS treats one as invalid at computed-value time, and it also
- * stops the walk. A reference WITH a fallback answers true without recursing, because the
- * fallback is what applies when the name is missing — no `var()` in either sheet carries
- * one today (measured), so that branch is reasoned rather than exercised.
+ * stops the walk.
  */
 function resolves(name: string, values: Map<string, string>, seen: Set<string> = new Set()): boolean {
 	if (seen.has(name)) return false;
 	const value = values.get(name);
-	if (value === undefined) return false;
-	const next = new Set([...seen, name]);
-	for (const ref of value.matchAll(/var\(\s*(--[\w-]+)\s*(,?)/g)) {
-		if (ref[2] !== ',' && !resolves(ref[1], values, next)) return false;
-	}
-	return true;
+	return value !== undefined && resolvesValue(value, values, new Set([...seen, name]));
 }
 
 /** Every `var(--x)` in a directory of CSS, minus the plugin's own, which code sets. */
@@ -176,5 +255,46 @@ describe('the harness sheets cover the stylesheet', () => {
 		expect(app.has('--shadow-xs')).toBe(true);
 		expect(resolves('--shadow-xs', sheetValues('dark'))).toBe(false);
 		expect(resolves('--shadow-xs', sheetValues('light'))).toBe(true);
+
+		// One reference, not two: app.css spells the nested fallback three times, and
+		// reading the inner one as top level is the strict-direction bug below.
+		const dark = sheetValues('dark');
+		expect(references(dark.get('--graph-line') ?? '')).toHaveLength(1);
+
+		// The print veto, asked of the VALUE that survived: app.css declares `--font-text`
+		// twice on `body`, and the print one comes second. Without the veto "later wins"
+		// takes it, and then chases a `--font-print` no applicable block declares.
+		expect(dark.get('--font-text')).not.toContain('--font-print');
+		expect(resolves('--font-text', dark)).toBe(true);
+	});
+
+	/**
+	 * A fallback is ONE branch, not two — and nothing in either sheet can say so, because
+	 * every nested fallback there happens to name something declared. So the predicate is
+	 * asked directly, over a map written here. The alternative was planting a broken
+	 * `var()` in a vendored sheet to make a real case, which would be a fixture disguised
+	 * as evidence.
+	 */
+	it('evaluates a fallback only when the primary is missing', () => {
+		const values = new Map([
+			['--primary-ok', 'var(--present, var(--gone))'],
+			['--fallback-used', 'var(--gone, var(--present))'],
+			['--both-gone', 'var(--gone, var(--also-gone))'],
+			['--present', 'red'],
+		]);
+
+		// The review's case: valid CSS, and the version this replaced called it false.
+		expect(resolves('--primary-ok', values)).toBe(true);
+		expect(resolves('--fallback-used', values)).toBe(true);
+		expect(resolves('--both-gone', values)).toBe(false);
+	});
+
+	it('fails when a conditional wrapper it has never seen appears', () => {
+		// `NEVER_APPLIES` names one spelling because one is what the sheets contain. This
+		// is the check under that sentence: a new wrapper — a width query, `@layer`, a
+		// second media type — has to be ruled on rather than silently assumed to apply.
+		const seen = new Set([...wrappers('test/harness/obsidian.css'), ...wrappers('test/harness/theme.css')]);
+
+		expect([...seen].sort()).toEqual(['@media print', '@supports (font-variation-settings: normal)']);
 	});
 });
