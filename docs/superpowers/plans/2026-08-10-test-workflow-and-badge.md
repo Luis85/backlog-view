@@ -1818,3 +1818,116 @@ npm run check
 git add CHANGELOG.md
 git commit -m "Give the test catalog the changelog entry its own PR owed it"
 ```
+
+
+---
+
+### Task 16: A root drop may not change which projection draws the row
+
+**Files:**
+- Modify: `src/domain/dropTargets.ts` (`rootDropTarget`)
+- Test: `test/domain/dropTargets.test.ts`
+
+**Interfaces:**
+- Consumes: `ladderFor` from `src/domain/itemTypes.ts`.
+- Produces: nothing later tasks read.
+
+**Why, and why the register already decided it.** Found on the branch by an automated
+reviewer: with `autoType` off (the default), the catalog offers **Move to top level** for a
+`Task` beneath a `Test case`. Taking it clears the parent without changing the type, and on
+rebuild `ladderFor('Task', null)` answers `LEVELS` — so the row leaves the catalog and
+reappears in the plan. It vanishes from the screen the user dragged it on.
+
+This is not a new judgement call. `docs/requirements/Test suite and test case as a ladder of
+their own.md` extension **1c** already withholds `Task` from the catalog's top-level CREATOR
+for precisely this reason, and calls it *"the case that proves the restriction belongs to the
+top-level creator rather than to a type list"*. The drop is the same act by another entry
+point and never got the same rule — the "one move, several inputs" family, where a rule is
+kept at one surface and forgotten at another.
+
+Read 1c before writing anything.
+
+**Which rows this affects, exactly.** Only those whose ladder DEPENDS on the parent.
+`ladderFor` chains from the parent for two inputs — `Task` and a note with no `type` — and
+answers from the name for every other. So a `Test case` dropped at top level stays a catalog
+member and must still be offered the target; a catalog `Task` must not be. Do not write a
+`Task`-specific test: ask the ladder.
+
+- [ ] **Step 1: Write the failing test**
+
+Add to `test/domain/dropTargets.test.ts`, beside the other `rootDropTarget` tests:
+
+```ts
+it('refuses a root drop that would move the row to the other projection', () => {
+	// A `Task` under a `Test case` is a catalog member because its parent is; at the top
+	// level `ladderFor` answers the plan's ladder, so clearing the parent would take the row
+	// off the screen it was dragged on. Extension 1c withholds the same act from the
+	// top-level CREATOR for this reason; the drop is the same act by another входа point.
+	const vault = new FakeVault();
+	vault.addFile('Suite.md', { frontmatter: { type: 'Test suite', order: 10 } });
+	vault.addFile('Case.md', { frontmatter: { type: 'Test case', order: 10 }, parentLink: 'Suite' });
+	vault.addFile('Test task.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'Case' });
+	const model = buildModel(vault.app, vault.entries(), settings);
+	const get = (path: string) => {
+		const item = model.byPath.get(path);
+		if (!item) throw new Error(`no item ${path}`);
+		return item;
+	};
+	const catalog = model.catalog.roots;
+	expect(rootDropTarget(model, get('Test task.md'), false, catalog)).toBeNull();
+	// And the row whose ladder does NOT depend on its parent is still offered it, so this
+	// narrows exactly the case that changes projection and nothing else.
+	expect(rootDropTarget(model, get('Case.md'), false, catalog)).not.toBeNull();
+});
+```
+
+Fix the stray non-English word in that comment ("входа" → "entry") — it is a typo in this
+brief, not a thing to reproduce. Match the file's existing `rootDropTarget` tests for how
+they build settings and call the function; the signature takes four arguments.
+
+- [ ] **Step 2: Run the test and watch it fail**
+
+Run: `npx vitest run test/domain/dropTargets.test.ts -t "other projection"`
+Expected: FAIL on the first assertion — a target is returned where null is wanted.
+
+- [ ] **Step 3: Refuse the drop that would change membership**
+
+In `rootDropTarget`, after the existing focus and stale-link handling:
+
+```ts
+	// **A root drop may not change which projection draws the row.** `ladderFor` chains from
+	// the PARENT for a `Task` and for a typeless note, so clearing the parent re-answers it:
+	// a catalog `Task` becomes a plan `Task` and vanishes from the screen it was dragged on.
+	// Extension 1c of `Test suite and test case as a ladder of their own` already withholds
+	// this act from the top-level CREATOR for the same reason; a drop is the same act by
+	// another entry point, and the rule belongs to both.
+	//
+	// Asked of the LADDER rather than of the type name: every other type answers from its
+	// own name and is unaffected, so this narrows exactly the rows whose membership the
+	// clearing would change.
+	if (ladderFor(item.typeName, null) !== dragged.ladder) return null;
+```
+
+**Read `rootDropTarget`'s real parameter names before pasting** — the sketch above may not
+match them, and the item being dragged is the one to ask. Import `ladderFor` from
+`./itemTypes`.
+
+- [ ] **Step 4: Run the tests and verify they pass**
+
+Run: `npx vitest run test/domain/ test/view/`
+Expected: PASS. Every existing root-drop test must be unchanged — a plan row at top level is
+unaffected, since `ladderFor` answers `LEVELS` for it either way.
+
+- [ ] **Step 5: Watch it fail without the fix**
+
+Revert Step 3, re-run the one test, confirm RED, restore.
+
+- [ ] **Step 6: Run the whole check and commit**
+
+`npm run check` in the FOREGROUND.
+
+```bash
+npm run check
+git add src/domain/dropTargets.ts test/domain/dropTargets.test.ts
+git commit -m "Refuse a root drop that would change which projection draws the row"
+```
