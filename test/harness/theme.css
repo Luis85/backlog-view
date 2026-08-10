@@ -1,210 +1,61 @@
 /*
- * The Obsidian variables `styles/` reads and this file defines instead of the real
- * `test/harness/obsidian.css` (Obsidian's own app.css, linked BEFORE this file — see
- * `harness.mjs`). That file supplies real element defaults now — a bare `<button>`
- * included, which is what closed the 2026-08-08 gap this comment used to describe
- * (see `docs/adrs/0020-the-browser-harness-draws-it-does-not-assert.md`) — so this
- * stub's job narrowed to the one thing app.css cannot supply on its own: a THEME.
- * app.css defines hundreds of variables in terms of a handful of others
- * (`--color-base-00`, `--accent-h`, …) that only a theme (Obsidian ships none by
- * default outside the app shell) or this stub gives concrete values. Every selector
- * below is more specific than app.css's own (`body.theme-dark` beats `.theme-dark`),
- * which is what makes this the effective palette even though it loads after
- * `obsidian.css` in the link order — not by accident, by design: those two files
- * disagreeing on `--color-base-*` would still be Obsidian's own published defaults
- * either way (Task 9 sourced them the same place), so the two coinciding is not a
- * coincidence worth relying on for a value this file does NOT also define.
+ * The harness's OWN chrome, and — since 2026-08-10 — nothing else.
  *
- * APPROXIMATIONS, not Obsidian's theme. Close enough that spacing, hierarchy and
- * interaction read the way they do in the app; NOT close enough that a colour seen here
- * is a colour a user sees. See ADR 0020, and keep the live-vault checks.
+ * This file used to be the only source of Obsidian's variables. It is not any more:
+ * `test/harness/obsidian.css` (Obsidian's real app.css, reduced, linked BEFORE this file
+ * — see `harness.mjs`) defines the whole default palette itself, concretely, under
+ * `.theme-light` / `.theme-dark` — the base scale, the named colours, the accent, and
+ * `color-scheme` with them.
  *
- * The set is checked, not remembered: `test/harness/harness.test.ts` scans every partial
- * for `var(--x)` and fails if one is missing here. Add a variable to a partial and that
- * test tells you to add it below, instead of the page quietly drawing it as nothing.
- */
-/*
- * Scheme-independent: geometry and type. Nothing here changes between light and dark,
- * so nothing here is duplicated below.
- */
-:root {
-	/* Spacing — Obsidian's 2px and 4px steps */
-	--size-2-1: 2px;
-	--size-2-2: 4px;
-	--size-2-3: 6px;
-	--size-4-1: 4px;
-	--size-4-2: 8px;
-	--size-4-3: 12px;
-	--size-4-4: 16px;
-	--size-4-5: 20px;
-	--size-4-8: 32px;
-
-	/* Radii */
-	--radius-s: 4px;
-	--radius-m: 8px;
-	--radius-l: 12px;
-
-	/* Type */
-	--font-medium: 500;
-	--font-semibold: 600;
-	--font-ui-smaller: 12px;
-	--font-ui-small: 13px;
-	--font-ui-medium: 15px;
-
-	/* Icons and pointer */
-	--icon-xs: 14px;
-	--icon-s: 16px;
-	--icon-size: 18px;
-	--icon-stroke: 1.75px;
-	--cursor: default;
-}
-
-/*
- * Everything a colour scheme decides, derived from the BASE SCALE the way Obsidian
- * derives it: the two blocks below set the scale and the palette, and these mappings
- * are written once against them. Written on `body`, which is where the theme class
- * goes (Obsidian's own placement), so `var(--color-base-00)` resolves against whichever
- * of the two is active — the same element, so no cascade subtlety to get wrong.
- */
-body {
-	--background-primary: var(--color-base-00);
-	--background-secondary: var(--color-base-20);
-	--background-modifier-border: var(--color-base-30);
-	--background-modifier-border-hover: var(--color-base-35);
-	--text-normal: var(--color-base-100);
-	--text-muted: var(--color-base-70);
-	--text-faint: var(--color-base-50);
-	--icon-color: var(--text-muted);
-	--text-error: var(--color-red);
-	--text-warning: var(--color-orange);
-
-	/*
-	 * The accent is HSL in Obsidian because a user picks it in settings; these are the
-	 * documented defaults, and they are the same in both schemes.
-	 */
-	--accent-h: 258;
-	--accent-s: 88%;
-	--accent-l: 66%;
-	--interactive-accent: hsl(var(--accent-h), var(--accent-s), var(--accent-l));
-	--interactive-accent-hsl: var(--accent-h), var(--accent-s), var(--accent-l);
-	--text-accent: var(--interactive-accent);
-	/* What a theme guarantees legible ON that accent — white in Obsidian's own default,
-	   in both schemes, because the accent is a mid-lightness hue in both. */
-	--text-on-accent: #ffffff;
-}
-
-/*
- * The base scale and the named palette, per scheme. These twelve steps and eight colours
- * are Obsidian's DOCUMENTED defaults rather than this stub's invention — which is what
- * makes the page worth looking at for contrast and hierarchy, and still not what makes it
- * a claim about a themed vault: a theme replaces exactly these values, and most do.
- */
-body.theme-dark {
-	color-scheme: dark;
-
-	--color-base-00: #1c1c1c;
-	--color-base-05: #212121;
-	--color-base-10: #232323;
-	--color-base-20: #282828;
-	--color-base-25: #2e2e2e;
-	--color-base-30: #333333;
-	--color-base-35: #3f3f3f;
-	--color-base-40: #555555;
-	--color-base-50: #666666;
-	--color-base-60: #999999;
-	--color-base-70: #b3b3b3;
-	--color-base-100: #dadada;
-
-	--color-red: #fb464c;
-	--color-orange: #e9973f;
-	--color-green: #44cf6e;
-	--color-cyan: #53dfdd;
-
-	--color-red-rgb: 251, 70, 76;
-	--color-orange-rgb: 233, 151, 63;
-	--color-yellow-rgb: 224, 222, 113;
-	--color-green-rgb: 68, 207, 110;
-	--color-cyan-rgb: 83, 223, 221;
-	--color-blue-rgb: 2, 122, 255;
-	--color-purple-rgb: 168, 130, 255;
-	--color-pink-rgb: 250, 153, 205;
-
-	/* Overlays lighten on dark and darken on light — the one pair that inverts. */
-	--background-modifier-hover: rgba(255, 255, 255, 0.075);
-	--background-modifier-active-hover: rgba(255, 255, 255, 0.15);
-	--shadow-s: 0 1px 2px rgba(0, 0, 0, 0.3);
-}
-
-body.theme-light {
-	color-scheme: light;
-
-	--color-base-00: #ffffff;
-	--color-base-05: #fcfcfc;
-	--color-base-10: #fafafa;
-	--color-base-20: #f6f6f6;
-	--color-base-25: #efefef;
-	--color-base-30: #e4e4e4;
-	--color-base-35: #dadada;
-	--color-base-40: #bdbdbd;
-	--color-base-50: #ababab;
-	--color-base-60: #707070;
-	--color-base-70: #5c5c5c;
-	--color-base-100: #222222;
-
-	--color-red: #e93147;
-	--color-orange: #ec7500;
-	--color-green: #08b94e;
-	--color-cyan: #00bfbc;
-
-	--color-red-rgb: 233, 49, 71;
-	--color-orange-rgb: 236, 117, 0;
-	--color-yellow-rgb: 224, 172, 0;
-	--color-green-rgb: 8, 185, 78;
-	--color-cyan-rgb: 0, 191, 188;
-	--color-blue-rgb: 8, 109, 221;
-	--color-purple-rgb: 120, 82, 238;
-	--color-pink-rgb: 213, 57, 132;
-
-	--background-modifier-hover: rgba(0, 0, 0, 0.05);
-	--background-modifier-active-hover: rgba(0, 0, 0, 0.1);
-	--shadow-s: 0 1px 2px rgba(0, 0, 0, 0.12);
-}
-
-/*
- * Obsidian's own baselines for the two things `setIcon` and the plugin's markup lean on
- * and neither defines. The partials size icons only where they want a size that is NOT
- * the default (`.pbl-shelf-icon .svg-icon` and its two dozen neighbours), and they say
- * `clickable-icon` on a button expecting the app to make it look like one — so without
- * these an icon-only control renders at whatever the SVG's intrinsic size is, which is
- * nothing, and the more specific plugin rules have no baseline to override.
+ * What sat here until review asked the second question was a COPY of that palette, kept
+ * as "redundant but harmless". It was neither. This file loads second and spelled the
+ * theme classes `body.theme-dark`, which outranks app.css's `.theme-dark`, so every line
+ * of the copy won twice over — and a copy that wins can only ever be equal or wrong.
+ * Twelve of them were already wrong (the accent chain, `--text-on-accent`, the hover
+ * overlays, `--shadow-s`, `--icon-size`/`--icon-stroke`) and went in the first pass; the
+ * remaining 54 were byte-identical and bought nothing, while standing ready to draw a
+ * stale colour over every value the NEXT vendored app.css brings — silently, because the
+ * coverage check below only asks whether a name resolves, and a stale duplicate resolves
+ * fine. Measured before deleting, per scheme: of this file's variable declarations, zero
+ * were ones app.css leaves unset.
  *
- * Approximations, like every value in this file: the shapes are lucide's real ones, the
- * sizes are Obsidian's documented defaults, and neither is a claim about what a themed
- * vault draws.
+ * So the rule for this file is now the simple one, and `themeStub.test.ts` holds it from
+ * two directions because one of them can be dodged by a spelling. Nothing here may
+ * restate what app.css already says for the same selector, custom property or ordinary
+ * declaration alike — and, since `.svg-icon` and app.css's `svg.svg-icon` match the same
+ * element while comparing as different strings, every selector here must name something
+ * the HARNESS draws: a `.pbl-harness-*` class or the missing-icon attribute, which no
+ * Obsidian selector can be spelled as. `body` below is the single exception, and the
+ * first check is what keeps it to `height`.
+ *
+ * What that leaves is the harness's own furniture — the leaf frame, the menu and modal
+ * widgets the module mock only records, the missing-icon marker, the scheme switch. None
+ * of it is Obsidian's, and none of it has anywhere else to live.
+ *
+ * What the page now shows is therefore Obsidian's DEFAULT appearance rather than a guess
+ * at one. Still not a user's: a community theme replaces exactly those values, the accent
+ * is picked in settings, and neither is knowable from here. See ADR 0020, and keep the
+ * live-vault checks.
+ *
+ * The coverage is checked, not remembered: `test/harness/themeStub.test.ts` scans every
+ * partial for `var(--x)` and fails if the two sheets between them resolve none, per scheme.
  */
-.svg-icon {
-	width: var(--icon-size);
-	height: var(--icon-size);
-	stroke-width: var(--icon-stroke);
-	flex-shrink: 0;
-}
 
-.clickable-icon {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	padding: var(--size-4-1);
-	border: none;
-	border-radius: var(--radius-s);
-	background-color: transparent;
-	color: var(--icon-color);
-	cursor: var(--cursor);
-}
+/*
+ * `.svg-icon`, `.clickable-icon` and its hover state were written here when this file was
+ * the only sheet — and they were still here, overriding app.css, until review caught them
+ * on 2026-08-10. app.css has all three: `svg.svg-icon` sizes an icon from the same
+ * `--icon-size` and `--icon-stroke`, and `.clickable-icon` carries the real control chrome
+ * (`padding: var(--size-2-2) var(--size-2-3)` — 4px 6px, not 4px all round), the real
+ * hover colour (`--icon-color-hover`, not `--text-normal`), plus the active, focus and
+ * disabled states this file never had. Every variable those rules read resolves here.
+ *
+ * The measurement that missed them compared CUSTOM PROPERTIES only, which is why the
+ * "Obsidian's default appearance" claim was broader than the sheet for a few hours. The
+ * check that now holds it is in `test/harness/themeStub.test.ts`: a rule here may not
+ * restate a declaration for a selector app.css already styles.
+ */
 
-.clickable-icon:hover {
-	background-color: var(--background-modifier-hover);
-	color: var(--text-normal);
-}
 
 /*
  * A bare `<button>`'s chrome — background, box-shadow, hover fill, padding, height,
@@ -224,12 +75,13 @@ body.theme-light {
  * harness supplies the frame the app would.
  */
 body {
-	margin: 0;
+	/*
+	 * The ONE thing app.css's own `body` rule cannot do here. It says `height: 100%`, which
+	 * needs an `html` height this page has no rule for — Obsidian's shell provides it.
+	 * Everything else that used to sit in this block (margin, background, colour, the font
+	 * family and size) is app.css's, and was being overridden by a guess until 2026-08-10.
+	 */
 	height: 100vh;
-	background-color: var(--background-primary);
-	color: var(--text-normal);
-	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-	font-size: var(--font-ui-small);
 }
 
 .pbl-harness-leaf {

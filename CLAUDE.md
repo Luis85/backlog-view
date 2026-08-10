@@ -41,8 +41,8 @@ substitute; say so honestly when a change still needs a live-vault smoke test.
 When the question is what a change *looks* like and no vault is at hand, `npm run harness`
 bundles the real view into a static page with the real stylesheet — no Obsidian, no
 dependency — so a browser can show it and drive it. It draws and asserts nothing: what it
-is faithful about, and where that runs out — colour always, and any layout a partial
-leans on an Obsidian element default to supply rather than writing itself — are in
+is faithful about, and where that runs out — a USER's colours always, and any layout a
+partial leans on an Obsidian element default to supply rather than writing itself — are in
 [`test/CLAUDE.md`](test/CLAUDE.md) and ADR 0020, and it replaces no live-vault check. A
 card-children disclosure centred and boxed like a raw button shipped looking right here
 and wrong in a vault (2026-08-08) for exactly that second reason: `test/harness/theme.css`
@@ -59,8 +59,9 @@ stylesheet, so a layout can be argued about before a module exists to argue with
 that no code produces yet needs its own bundle entry —
 `npm run harness -- test/harness/mock.ts`, a file that calls `mountHarness` and then draws
 by hand — and that file stays uncommitted, since nothing imports it and `npm run analyze`
-is right to call it dead. Either way it answers layout, spacing and hierarchy only;
-colour, iconography and anything Bases hands the view stay unanswerable here, so the
+is right to call it dead. Either way it answers layout, spacing and hierarchy, plus
+Obsidian's DEFAULT colours since the real app.css is what supplies them; a themed vault's
+colours, its accent, and anything Bases hands the view stay unanswerable here, so the
 live-vault check is still owed.
 
 `npm run test-build` is the handover for exactly those cases: it bundles into

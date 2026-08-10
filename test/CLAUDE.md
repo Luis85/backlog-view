@@ -103,7 +103,12 @@ Obsidian's.
   analyze` reports it dead, correctly.
 - `test/helpers/fixtures.ts` — the demo backlog and the view options that configure all
   four projections at once. A fourth fixture, not a replacement: the per-suite ones stay
-  four notes each on purpose.
+  four notes each on purpose. `demoVault('folders')` — `?fixture=folders`, mounted with
+  `folderOptions()` — is the SAME backlog filed the way a folder-note vault files it:
+  every note the note of its own folder, one noteless container folder on the way down,
+  and no `parent` key anywhere, so folder inference is the only thing placing a row.
+  Layout is a separate argument from the notes for exactly that reason — a second list of
+  notes could not show that the two trees come out the same.
 - **A change that visibly alters the view puts its cases in a FIXTURE, not in a mock.**
   In `demoVault()` where the case belongs in the everyday picture; in a named variant —
   `edgeCaseVault()`, reached by `?fixture=edges` — where it would distort it, which is
@@ -124,32 +129,64 @@ Obsidian's.
   records `data-icon`, so the suite is untouched. An unresolvable name is marked rather
   than skipped, because a blank control in the tool built for looking is the one failure
   nobody would see.
-- Its own checks live in `test/harness/harness.test.ts` — it still mounts, the theme
-  stub still covers every `var(--x)` the partials read, and every icon name the view asks
-  for across all four projections still resolves.
+- Its own checks live in `test/harness/harness.test.ts` — it still mounts, each fixture
+  still draws the cases it exists for, and every icon name the view asks for across all
+  four projections still resolves. `test/harness/themeStub.test.ts` is the separate
+  subject: whether the two linked sheets BETWEEN them resolve every value the partials ask
+  the page for, per scheme. `test/helpers/cssVars.ts` is how it reads them, and each rule
+  in it came from a review round on PR #125 — follow a value's own references rather than
+  check that a name is declared; skip a block under a wrapper like `@media print`; accept
+  a rule when ANY selector in its comma-separated list matches; take a `var()` fallback as
+  the one branch it is, at a use site as at a declaration; and look for dependency cycles
+  per ELEMENT, since a reference across `:root` and `body` is inheritance rather than a
+  dependency. Three of those were live defects in the check; the rest were correct about
+  CSS with nothing in either sheet exhibiting them, and say so where they are stated.
 
 **What it is faithful about:** markup, the CSS the partials write for themselves, every
 interaction, and icon SHAPES — lucide's own, sized through the `.svg-icon` class the
-partials style. **What it is not:** colour, and any layout a partial leans on an Obsidian
-element default to supply rather than writing itself. Two files answer that now, in
-order: `test/harness/obsidian.css` is Obsidian's REAL app.css, reduced to the rules the
-harness exercises (its header states what was kept and why), and `test/harness/theme.css`
-fills what the app sheet leaves to a theme — the variable palette, `.svg-icon`,
-`.clickable-icon`, and the leaf frame. Loading the real sheet first is what makes an
+partials style, and — since 2026-08-10 — Obsidian's own DEFAULT colours. **What it is
+not:** a user's colours, and any layout a partial leans on an Obsidian element default to
+supply rather than writing itself. Two files answer that now, in order:
+`test/harness/obsidian.css` is Obsidian's REAL app.css, reduced to the rules the harness
+exercises (its header states what was kept and why), and `test/harness/theme.css` carries
+the harness's own chrome — the leaf frame, the menu and modal widgets, the missing-icon
+marker — and, since 2026-08-10, no Obsidian value at all. Loading the real sheet first is what makes an
 element default present at all rather than approximated: a card-children disclosure whose
 toggle rendered as a centred, boxed native button shipped looking right here and wrong in
 a vault (2026-08-08), because the stub then had no `button` rule and nothing had guessed
 one. That episode is also why the stub no longer carries hand-written element defaults —
-a guessed baseline beside a real one is two answers to one question.
+a guessed baseline beside a real one is two answers to one question. That sentence was
+written before it was true: `.svg-icon`, `.clickable-icon` and its hover state stayed on
+until 2026-08-10, overriding app.css's real padding (4px vs 4px 6px) and hover colour,
+because the pass that deleted the stub's redundant COLOURS compared custom properties and
+could not see an ordinary declaration. `themeStub.test.ts` now refuses any rule here that
+restates a declaration app.css already makes for the same selector — with no exemption for
+variables, which is the second half of the same episode: that check first spared the
+palette copy as "identical and deliberate", and review pointed out that identical is the
+best case rather than the safe one. The stub loads second and spelled the theme classes
+`body.theme-dark`, outranking app.css's `.theme-dark`, so the copy won the cascade
+everywhere and the day a newer app.css is vendored in it would go on winning with stale
+values and a green suite — the coverage check asks only whether a name RESOLVES, and a
+stale duplicate resolves. All 54 remaining declarations were deleted rather than compared.
+A restatement check that compares selector STRINGS is then only as good as the spelling —
+`.svg-icon` and app.css's `svg.svg-icon` match the same element, `body.theme-light` and
+`.theme-light` likewise, and re-adding either slipped past it — so a second check asks
+ownership instead: every selector in the stub names something the harness itself draws (a
+`.pbl-harness-*` class, the missing-icon attribute), which no Obsidian selector can be
+spelled as, with `body` the one exception the first check holds to `height`.
 
 This narrows the gap; it does not close it. The reduced sheet keeps only what the
 harness was driven through, so an element default that no driven state reached is still
 absent, and a themed vault still replaces the colours. "Layout is faithful" remains true
 only of what a partial sets itself and of the app defaults the reduction happened to
-keep. The COLOUR half of
-the stub — `test/harness/theme.css`'s base scale and named palette, in both schemes — is
-close enough to judge contrast and hierarchy by and not close enough to read a colour off,
-since a themed vault replaces exactly those values. It therefore replaces NO live-vault
+keep. On COLOUR the claim changed shape rather than widening: the stub used to invent the
+base scale, and app.css turned out to define it — and the accent, the named colours and
+`color-scheme` — outright, so what the page draws is Obsidian's default appearance. That
+made twelve of the stub's declarations an approximation drawn OVER a correct value, and
+they were deleted with the rest of its palette; the measurement is in
+`test/harness/theme.css`'s header. What is still
+unanswerable is a USER's colours — a community theme replaces exactly these values, the
+accent is picked in settings — so this replaces NO live-vault
 verification, and asserting appearance from it is refused in
 [ADR 0020](../docs/adrs/0020-the-browser-harness-draws-it-does-not-assert.md): no
 baselines, no screenshot suite, no sixth step in `npm run check`.

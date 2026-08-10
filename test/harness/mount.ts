@@ -12,7 +12,7 @@ import { ProductBacklogView } from '../../src/view/backlogView';
 import { drawChrome } from './chrome';
 import { drawIcons } from './icons';
 import { installObsidianDom } from '../helpers/dom';
-import { demoOptions, demoOrder, demoResults, demoVault, edgeCaseVault } from '../helpers/fixtures';
+import { demoOptions, demoOrder, demoResults, demoVault, edgeCaseVault, folderOptions } from '../helpers/fixtures';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
 import { FileView } from '../helpers/obsidian-mock';
 
@@ -33,8 +33,12 @@ export interface MountedHarness {
 	containerEl: HTMLElement;
 }
 
-/** Which backlog to mount. See `edgeCaseVault` for why there is more than one. */
-export type HarnessFixture = 'demo' | 'edges';
+/**
+ * Which backlog to mount. See `edgeCaseVault` for why there is more than one, and
+ * `Layout` for why `folders` is the same backlog rather than a third one: it is
+ * `demo` filed the way a folder-note vault files it, mounted with inference on.
+ */
+export type HarnessFixture = 'demo' | 'edges' | 'folders';
 
 /**
  * Build the view into `root` against a fixture and return the pieces, so a test can
@@ -49,7 +53,7 @@ export function mountHarness(root: HTMLElement, fixture: HarnessFixture = 'demo'
 	drawIcons();
 	root.empty();
 
-	const vault = fixture === 'edges' ? edgeCaseVault() : demoVault();
+	const vault = fixture === 'edges' ? edgeCaseVault() : demoVault(fixture === 'folders' ? 'folders' : 'flat');
 	const leafEl = root.createDiv('pbl-harness-leaf');
 	const containerEl = leafEl.createDiv();
 	vault.addLeaf(new FileView(vault.addFile('Demo.base'), leafEl));
@@ -57,7 +61,7 @@ export function mountHarness(root: HTMLElement, fixture: HarnessFixture = 'demo'
 	const view = new ProductBacklogView({} as never, containerEl);
 	const anyView = view as unknown as Record<string, unknown>;
 	anyView.app = vault.app;
-	const config = new FakeViewConfig(demoOptions());
+	const config = new FakeViewConfig(fixture === 'folders' ? folderOptions() : demoOptions());
 	// The Bases properties menu is what puts a column on a row, chips included, so the
 	// page has to declare a visible order or it draws a strip with nothing in it.
 	config.order = demoOrder();
