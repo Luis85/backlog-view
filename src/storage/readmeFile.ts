@@ -1,6 +1,6 @@
 import { App, TFile } from 'obsidian';
 import { ensureFolder } from './frontmatter';
-import { vaultFolder } from '../domain/settings';
+import { vaultFolder } from '../domain/settingsResolve';
 import { README_FILE_NAME, readmeSource } from '../domain/readmeMarker';
 
 /**

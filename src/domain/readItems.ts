@@ -15,13 +15,8 @@ import {
 	readTags,
 	resolveParent,
 } from './noteFields';
-import {
-	BacklogSettings,
-	OPTIONAL_FIELDS,
-	OptionalField,
-	optionalKeyFor,
-	resolvedDeliverableStateKey,
-} from './settings';
+import { BacklogSettings } from './settings';
+import { OPTIONAL_FIELDS, OptionalField, optionalKeyFor, resolvedDeliverableStateKey } from './optionalProperties';
 import { isMarkerType } from './itemTypes';
 
 /**
@@ -107,6 +102,12 @@ export interface RawItem {
 	 * reason. Absence means nobody has judged it, which is a different fact from any level.
 	 */
 	riskValue: string | null;
+	/**
+	 * Who the note says it is assigned to, if an assignee property is configured. A plain
+	 * value for `riskValue`'s reason — a name the user typed or picked, with no reading
+	 * to refuse — and absence means nobody is on it, which is a fact, not a missing one.
+	 */
+	assigneeValue: string | null;
 	/**
 	 * Which configured optional keys the note CARRIES — presence, not value, and the
 	 * two are different questions here: an empty horizon reads as absent (untriaged)
@@ -195,6 +196,7 @@ function addItem(
 		plannedStart: readGated(settings.startKey, fm, readDate),
 		plannedTarget: readGated(settings.targetKey, fm, readDate),
 		riskValue: settings.riskKey ? readString(ownValue(fm, settings.riskKey)) : null,
+		assigneeValue: settings.assigneeKey ? readString(ownValue(fm, settings.assigneeKey)) : null,
 		ownKeys: readOwnKeys(fm, settings),
 		// NOT read for a context row, which is the same test `outsideFilter` is made of
 		// two lines up. An excluded note may be NAMED by a result and may never do the

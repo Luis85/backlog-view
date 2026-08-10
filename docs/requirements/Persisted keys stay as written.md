@@ -116,6 +116,6 @@ one of the two things this repository cannot test.
 writers — `applyWrites`, `applyRestores` and
 `createBacklogItem` · `src/storage/baseFile.ts` writes the scaffolded `.base` and owns the
 `docs` and `Product Backlog` defaults · `src/storage/collapseStore.ts` keys collapse state
-on the base's path · `src/domain/settings.ts` derives `typeFolderKey` from a type name.
+on the base's path · `src/domain/typeVocabulary.ts` derives `typeFolderKey` from a type name.
 Tests: `test/storage/frontmatter.test.ts`, `test/storage/restore.test.ts`,
 `test/storage/baseFile.test.ts`, `test/storage/collapseStore.test.ts`.

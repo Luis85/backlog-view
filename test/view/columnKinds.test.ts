@@ -15,10 +15,11 @@ describe('the columns are the properties menu, in its order', () => {
 			stateProperty: 'note.status',
 			horizonProperty: 'note.horizon',
 			riskProperty: 'note.risk',
+			assigneeProperty: 'note.assignee',
 		});
 		// Deliberately not the order the old code pinned them in: a chip goes where the
 		// user put it, between two ordinary properties if that is what they chose.
-		config.order = ['note.status', 'note.points', 'note.horizon', 'note.tags', 'note.risk'];
+		config.order = ['note.status', 'note.points', 'note.horizon', 'note.tags', 'note.risk', 'note.assignee'];
 		view.onDataUpdated();
 
 		expect(kinds(view)).toEqual([
@@ -27,6 +28,7 @@ describe('the columns are the properties menu, in its order', () => {
 			['note.horizon', 'horizon'],
 			['note.tags', 'tags'],
 			['note.risk', 'risk'],
+			['note.assignee', 'assignee'],
 		]);
 	});
 
@@ -66,6 +68,18 @@ describe('the columns are the properties menu, in its order', () => {
 			['note.horizon', 'value'],
 			['note.risk', 'value'],
 		]);
+	});
+
+	it('keeps the assignee a chip with no names observed at all', () => {
+		// The exception to the pair above, and the reason it is one: Set assignee always
+		// carries New assignee..., so there is no vocabulary this chip could be missing
+		// and nothing an empty base could make it into a plain column for.
+		const { config, containerEl, view } = makeView(fixture(), { assigneeProperty: 'note.assignee' });
+		config.order = ['note.assignee'];
+		view.onDataUpdated();
+
+		expect(kinds(view)).toEqual([['note.assignee', 'assignee']]);
+		expect(containerEl.querySelector('.pbl-assignee-chip')).not.toBeNull();
 	});
 
 	it("never draws the view's own machinery, however visible it is made", () => {

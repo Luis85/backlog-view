@@ -15,10 +15,12 @@ import {
 import {
 	CivilDate,
 } from './noteFields';
-import { ALL_TYPES, BacklogSettings, LEVELS } from './settings';
+import { BacklogSettings } from './settings';
+import { ALL_TYPES, LEVELS } from './typeVocabulary';
 import { assertResolvedSettings } from './settingsConsistency';
 import { earliest, latest, reversedSpan } from './timeline';
 import {
+	collectObservedAssignees,
 	collectObservedDeliverableStates,
 	collectObservedHorizons,
 	collectObservedStates,
@@ -116,6 +118,8 @@ export interface ProjectionPopulation {
 	observedHorizons: string[];
 	/** Distinct tags this population carries, alphabetical. */
 	observedTags: string[];
+	/** Distinct assignees this population carries, alphabetical. */
+	observedAssignees: string[];
 }
 
 export interface BacklogModel {
@@ -158,6 +162,8 @@ export interface BacklogModel {
 	observedHorizons: string[];
 	/** Distinct tags in the result set, alphabetical — the vocabulary the tag menus offer. */
 	observedTags: string[];
+	/** Distinct assignees in the result set, alphabetical — the whole list Set assignee offers. */
+	observedAssignees: string[];
 	/** Distinct Deliverable-workflow state values, scoped to Deliverable items. */
 	observedDeliverableStates: string[];
 	/** Notes the base returned that are not backlog items (see `pruneOutsideHierarchy`). */
@@ -169,9 +175,13 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	const linked = linkAll(createItems(app, entries, settings), settings);
 	breakCycles(linked);
 	const ignoredCount = settings.hierarchyOnly ? pruneOutsideHierarchy(linked, settings) : 0;
+	// Read off the linked phase, where main put it and where it still belongs: a
+	// Deliverable is an extra type, so it is never a catalog member and this one
+	// vocabulary needs no membership question asked of it. The other four do, and
+	// `ladder` is not assigned until `assignAll`, so they are taken below.
+	const observedDeliverableStates = collectObservedDeliverableStates(linked.all, settings);
 	sortSiblingsDeep(linked.roots);
 	const { roots, byPath, items } = assignAll(linked, settings);
-	const observedDeliverableStates = collectObservedDeliverableStates(items, settings);
 	assignDependencies(items);
 
 	// A focus level re-roots the rendered tree at the topmost items of that level,
@@ -577,11 +587,11 @@ function projectionForest(
 }
 
 /**
- * The three vocabularies a population carries, collected together because they are always
+ * The four vocabularies a population carries, collected together because they are always
  * asked together: *a vocabulary is scoped to the population of the projection that offers
- * it*, stated once rather than three times at three call sites.
+ * it*, stated once rather than four times at four call sites.
  *
- * The horizons are the one list that is ORDERED rather than sorted, so all three are
+ * The horizons are the one list that is ORDERED rather than sorted, so all four are
  * taken from the FINISHED tree rather than the load order: the roadmap mints a bucket per
  * new value as it walks its rows, which are these items filtered, so reading them in the
  * same sequence is what keeps the menu from naming the buckets in an order the axis then
@@ -590,11 +600,12 @@ function projectionForest(
 function vocabularyOf(
 	items: BacklogItem[],
 	settings: BacklogSettings,
-): Pick<ProjectionPopulation, 'observedStates' | 'observedHorizons' | 'observedTags'> {
+): Pick<ProjectionPopulation, 'observedStates' | 'observedHorizons' | 'observedTags' | 'observedAssignees'> {
 	return {
 		observedStates: collectObservedStates(items, settings),
 		observedHorizons: collectObservedHorizons(items),
 		observedTags: collectObservedTags(items),
+		observedAssignees: collectObservedAssignees(items),
 	};
 }
 

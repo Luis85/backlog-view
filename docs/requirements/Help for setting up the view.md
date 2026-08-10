@@ -95,7 +95,7 @@ the Base's own settings still control, and the one of them this view deliberatel
 `src/view/manual/sections.ts` — the setup section's own entries. The schema its coverage
 is measured against is `src/domain/viewOptions.ts` (`getViewOptions`), checked by
 `test/docs/surfaces.test.ts`'s "claims every view-option key in exactly one setup entry".
-What "misconfigured" means concretely is `configProblems` in `src/domain/settings.ts`; the
+What "misconfigured" means concretely is `configProblems` in `src/domain/settingsConsistency.ts`; the
 command it names first is `src/commands/scaffold.ts`; the column options it groups as
 presentation are rendered by `src/view/render/columns.ts`; and the `Check view options`
 warning's own door into this section is `src/view/render/toolbar.ts`.

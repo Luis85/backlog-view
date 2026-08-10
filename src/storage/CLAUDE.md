@@ -72,7 +72,7 @@ can be checked by reading one directory.
   `toString`, `constructor` and `valueOf` are legal property names, and on a note
   lacking them the lookup returns the inherited function — truthy, so a blank test
   reports a date already recorded and the stamp is declined forever. `byName` in
-  `domain/settings.ts` says this hazard has shipped three times on other tables; this
+  `domain/typeVocabulary.ts` says this hazard has shipped three times on other tables; this
   is the same answer for frontmatter, and `rawValueOf` was already doing it alone.
 - A live value read here must go through the **same tolerant reader the model used**
   (`readString` for the state, as `buildModel` does). Frontmatter takes shapes a strict
@@ -90,12 +90,16 @@ can be checked by reading one directory.
   `2026-08-01 Planning` parses as a date — treated as one, re-picking `2026-08-01 Review`
   compares equal and writes nothing, and the merge carries ` Planning` onto its
   replacement. `axisEntries` yields the FIELD with the key so that stays decidable.
-- The risk level (`ItemWrite.risk`) is those same two rules a third time, in `applyRisk`,
-  and it shares neither writer: a level is a label the user picked from their own list, so
-  it takes the horizon's plain `setOwn` rather than the dated ends' civil-date equality and
-  datetime merge, and it has no vocabulary of fields to iterate. Its key joins
-  `touchedKeys` on the very condition `applyRisk` writes on, which is what makes a level
-  and its removal undoable — a key written but not captured is a change no undo could reach.
+- The LABEL properties (`ItemWrite.risk`, `ItemWrite.assignee`) are those same two rules a
+  third time, in `applyLabels`, and they share the axis's writer with neither: a label is a
+  value the user picked or typed, so it takes the horizon's plain `setOwn` rather than the
+  dated ends' civil-date equality and datetime merge. One loop over a list pairing each
+  planned value with its configured key, because the two want the identical two lines —
+  `applyRisk` alone was the third restatement of the rule, and the assignee was the fourth
+  property, which is where the root guide said copying stops paying. A fifth label is a row
+  in that list. Each key joins `touchedKeys` on the very condition the writer writes on,
+  which is what makes a label and its removal undoable — a key written but not captured is
+  a change no undo could reach.
 - Two writes here are not work items — the `.base` file and the generated README — and
   both are in this directory for the same reason: "everything that puts bytes in the vault
   is in `storage/`" is only checkable while it has no exceptions. `readmeFile.ts` is also
@@ -259,7 +263,7 @@ whole thing from the file resolved correctly while silently dropping both.
   rather than clamping it, since a clamp still trusts a corrupt-but-plausible number into
   the layout. A range check is the same rule as a vocabulary check, not an exception to
   it. `focus` is checked for SHAPE only, not against the vocabulary: the
-  type list lives in `domain/settings.ts` and `focusTarget` already answers a name no
+  type list lives in `domain/typeVocabulary.ts` and `focusTarget` already answers a name no
   configured type matches with "no focus" — the same tolerance it had while this value
   lived in the `.base`.
 - The focus level is the one piece of this that is also an input to the MODEL, not just to

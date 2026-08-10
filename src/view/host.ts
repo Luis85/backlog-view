@@ -7,7 +7,8 @@ import { ShelfSort } from '../domain/shelf';
 import { PlacementEnd } from '../domain/itemTypes';
 import { ScaleId, TimelineScale, TimelineWindow } from '../domain/timeline';
 import { ItemWrite, SchedulePlan } from '../domain/writePlan';
-import { BacklogSettings, OptionalProperty } from '../domain/settings';
+import { BacklogSettings } from '../domain/settings';
+import { OptionalProperty } from '../domain/optionalProperties';
 import { OpenTarget } from '../domain/itemHandling';
 import { WriteOutcome } from '../storage/frontmatter';
 
@@ -27,7 +28,7 @@ export type Projection = 'tree' | 'board' | 'roadmap' | 'deliverables' | 'catalo
  * it. Declared here with the other view state the host exposes, so the interface every
  * module depends on depends on nothing itself.
  */
-export type ColumnKind = 'value' | 'tags' | 'state' | 'horizon' | 'risk';
+export type ColumnKind = 'value' | 'tags' | 'state' | 'horizon' | 'risk' | 'assignee';
 
 export interface Column {
 	prop: BasesPropertyId;

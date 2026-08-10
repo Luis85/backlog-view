@@ -52,6 +52,10 @@ export function demoOptions(): Record<string, unknown> {
 		// The levels are left at the shipped default, so the harness draws the chip against
 		// the vocabulary a vault gets by pressing ✨ rather than one invented here.
 		riskProperty: 'note.risk',
+		// A key and nothing beside it — the whole configuration this property takes, and
+		// the reason the harness can draw its chip against a vocabulary the fixture's own
+		// notes supply rather than one declared here.
+		assigneeProperty: 'note.assignee',
 		deliverableStateProperty: 'note.docStatus',
 		deliverableStateValues: 'Concept, Draft, In review, Published',
 		deliverableDoneValues: 'Published',
@@ -65,7 +69,7 @@ export function demoOptions(): Record<string, unknown> {
  * the point of the page is that a chip sits wherever the menu puts it.
  */
 export function demoOrder(): string[] {
-	return ['note.status', 'note.horizon', 'note.risk', 'note.tags'];
+	return ['note.status', 'note.horizon', 'note.risk', 'note.assignee', 'note.tags'];
 }
 
 /**
@@ -84,10 +88,13 @@ export function demoVault(): FakeVault {
 	// The three risk cases the chip has to draw, on rows that sit near each other: a level
 	// from the declared list here, one the list does not name on `Offline-first sync`, and
 	// every other row unjudged — which is the dashed, inviting chip and the commonest face.
-	add(vault, 'Single sign-on', { type: 'PBI', order: 20, status: 'Review', started: '2026-07-20', horizon: 'Now', start: '2026-07-20', due: '2026-08-15', risk: '1 - High' }, 'Sign-up flow');
+	// The assignee chip's two faces sit beside the risk chip's for the same reason: a name
+	// here and on `Welcome tour` below, every other row unassigned — the dashed, inviting
+	// chip, which is the commonest face of both.
+	add(vault, 'Single sign-on', { type: 'PBI', order: 20, status: 'Review', started: '2026-07-20', horizon: 'Now', start: '2026-07-20', due: '2026-08-15', risk: '1 - High', assignee: 'Dana' }, 'Sign-up flow');
 	add(vault, 'Provider handshake', { type: 'Task', order: 10, status: 'Active' }, 'Single sign-on');
 	add(vault, 'Token refresh', { type: 'Task', order: 20 }, 'Single sign-on');
-	add(vault, 'Welcome tour', { type: 'Feature', order: 20, status: 'Ready', horizon: 'Next' }, 'Onboarding');
+	add(vault, 'Welcome tour', { type: 'Feature', order: 20, status: 'Ready', horizon: 'Next', assignee: 'Kim' }, 'Onboarding');
 	// Dated while its parent is not, so `Welcome tour` draws an INFERRED bar: outlined,
 	// no grips at all, and still a connector — a link claims no date, so it needs no
 	// baseline the way a grip does.
@@ -139,8 +146,9 @@ export function demoVault(): FakeVault {
 	);
 
 	// A parent the Base excludes, with a child it returns: the context row on screen.
-	// Carries a risk too, so the context row draws the STATIC chip beside the static state.
-	vault.addFile(OUTSIDE, { frontmatter: { type: 'Epic', order: 30, status: 'Done', risk: '3 - Low' } });
+	// Carries a risk and an assignee too, so the context row draws both STATIC chips beside
+	// the static state — and its name is one the menus must never offer to a result.
+	vault.addFile(OUTSIDE, { frontmatter: { type: 'Epic', order: 30, status: 'Done', risk: '3 - Low', assignee: 'Dana' } });
 	add(vault, 'Legacy importer', { type: 'Feature', order: 10, status: 'Ready' }, 'Retired platform');
 
 	// Deliverables, on their own workflow: one per column so the fourth projection draws

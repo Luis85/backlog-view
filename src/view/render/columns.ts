@@ -1,12 +1,13 @@
 import { BasesPropertyId, NullValue, setIcon, setTooltip } from 'obsidian';
 import { BacklogViewHost, Column, ColumnFit, ColumnKind } from '../host';
 import { DragDropController } from '../interactions/dragDrop';
-import { showHorizonMenu, showRiskMenu, showStateMenu, showTagMenu } from '../interactions/menu';
+import { showAssigneeMenu, showHorizonMenu, showRiskMenu, showStateMenu, showTagMenu } from '../interactions/menu';
 import { removeTag } from '../interactions/tags';
 import { ownWorkflowReading, stateKeyFor } from '../../domain/board';
 import { BacklogItem } from '../../domain/model';
 import { hasHorizonAxis, SHELF_LABEL } from '../../domain/roadmap';
-import { BacklogSettings, hasRiskLevels, resolvedDeliverableStateKey } from '../../domain/settings';
+import { BacklogSettings, hasRiskLevels } from '../../domain/settings';
+import { resolvedDeliverableStateKey } from '../../domain/optionalProperties';
 import { treeShaped } from '../projection';
 
 /**
@@ -210,6 +211,9 @@ export function resolveColumns(host: BacklogViewHost): Column[] {
  *   observed on the results (plus a done value), so a state property with no configured
  *   list still has a menu with something in it. Pairing it would withhold the chip from
  *   every vault that never declared its workflow.
+ * - `assignee` is the key alone for a sharper version of the same reason: its menu
+ *   carries **New assignee...** whatever the results hold, so there is no vocabulary it
+ *   could be missing and no second half to pair with.
  *
  * Only the first bullet is under a test of this function (`test/view/columnKinds.test.ts`
  * clears both vocabularies and asks for `value`); the second is a fact about
@@ -227,6 +231,7 @@ function columnKind(settings: BacklogSettings, prop: BasesPropertyId): ColumnKin
 	if (deliverableKey && prop === `note.${deliverableKey}`) return 'state';
 	if (hasHorizonAxis(settings) && prop === `note.${settings.horizonKey}`) return 'horizon';
 	if (hasRiskLevels(settings) && prop === `note.${settings.riskKey}`) return 'risk';
+	if (settings.assigneeKey && prop === `note.${settings.assigneeKey}`) return 'assignee';
 	if (settings.tagsKey && prop === `note.${settings.tagsKey}`) return 'tags';
 	return 'value';
 }
@@ -344,7 +349,8 @@ function renderCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem,
 	if (column.kind === 'tags') renderTagCell(host, cell, item, column);
 	else if (column.kind === 'state') renderStateChip(host, cell, item, column);
 	else if (column.kind === 'horizon') renderHorizonChip(host, cell, item, column.label);
-	else if (column.kind === 'risk') renderRiskChip(host, cell, item, column.label);
+	else if (column.kind === 'risk' || column.kind === 'assignee')
+		renderLabelChip(host, cell, item, column.label, LABEL_CHIPS[column.kind]);
 	else renderValue(host, cell, item, column);
 }
 
@@ -562,28 +568,67 @@ function renderHorizonChip(host: BacklogViewHost, col: HTMLElement, item: Backlo
 }
 
 /**
- * Clickable risk chip — the state chip's shape a third time, over the level the note
- * declares. Rendered on `hasRiskLevels`, the same pair (a named property AND a non-empty
- * list) the row menu's Set risk is gated on, so a chip whose menu could set nothing is
- * not a state either side can reach alone. It opens `addRiskItems` through
- * `showRiskMenu` — the row menu's own builder, never a second list.
- *
- * Unjudged renders as a dashed "Risk" chip rather than as nothing, unlike the horizon's
- * `Unplaced`: absence here is not a placement to name, it is an invitation, and the row
- * is where the judgement is meant to be made.
+ * The two LABEL chips — the risk level and the assignee — as data rather than as two
+ * copies of one renderer. Each carries the icon of the menu it opens, so the chip and
+ * the row's Set entry read as one control, and each names the property in its own words:
+ * an unset chip is an INVITATION, not a placement, so it says what could go there rather
+ * than the horizon's `Unplaced`.
  */
-function renderRiskChip(host: BacklogViewHost, col: HTMLElement, item: BacklogItem, label: string): void {
-	const value = item.riskValue;
-	const cls = 'pbl-risk-chip' + (value === null ? ' pbl-risk-unset' : '');
+const LABEL_CHIPS: Record<'risk' | 'assignee', LabelChip> = {
+	risk: {
+		valueOf: (item) => item.riskValue,
+		cls: 'pbl-risk-chip',
+		unsetCls: 'pbl-risk-unset',
+		icon: 'shield-alert',
+		unsetIcon: 'shield',
+		placeholder: 'Risk',
+		noun: 'risk',
+		showMenu: showRiskMenu,
+	},
+	assignee: {
+		valueOf: (item) => item.assigneeValue,
+		cls: 'pbl-assignee-chip',
+		unsetCls: 'pbl-assignee-unset',
+		icon: 'user',
+		unsetIcon: 'user-plus',
+		placeholder: 'Assignee',
+		noun: 'assignee',
+		showMenu: showAssigneeMenu,
+	},
+};
 
-	// A note the Base excluded is context: show the level it claims, never offer to
-	// judge it. With nothing to show it renders nothing at all, rather than a
-	// button-shaped invitation to a write this row cannot take.
+interface LabelChip {
+	valueOf: (item: BacklogItem) => string | null;
+	cls: string;
+	unsetCls: string;
+	icon: string;
+	unsetIcon: string;
+	/** What an unset chip says — the property, not a value, because there is none. */
+	placeholder: string;
+	/** The property's name in a sentence, for the tooltips. */
+	noun: string;
+	showMenu: (host: BacklogViewHost, evt: MouseEvent, item: BacklogItem) => void;
+}
+
+/**
+ * Clickable label chip — the state chip's shape, over a plain value the note declares.
+ * Each kind is drawn on the same test the row menu's own Set entry is gated on
+ * (`columnKind` states which, per kind), so a chip whose menu could set nothing is not a
+ * state either side can reach alone, and it opens that menu's own builder through
+ * `showMenu` rather than a second list.
+ */
+function renderLabelChip(host: BacklogViewHost, col: HTMLElement, item: BacklogItem, label: string, spec: LabelChip): void {
+	const value = spec.valueOf(item);
+	const cls = spec.cls + (value === null ? ` ${spec.unsetCls}` : '');
+
+	// A note the Base excluded is context: show what it claims, never offer to change
+	// it. With nothing to show it renders nothing at all, rather than a button-shaped
+	// invitation to a write this row cannot take.
 	if (item.outsideFilter) {
 		if (value === null) return;
 		const chip = col.createDiv({ cls: `${cls} pbl-state-static` });
-		fillRiskChip(chip, value);
-		setTooltip(chip, "Not in this base's filter — risk can't be changed here");
+		fillLabelChip(chip, value, spec);
+		setTooltip(chip, `Not in this base's filter — ${spec.noun} can't be changed here`);
 		return;
 	}
 
@@ -597,19 +642,19 @@ function renderRiskChip(host: BacklogViewHost, col: HTMLElement, item: BacklogIt
 			'aria-label': chipLabel(label, value),
 		},
 	});
-	fillRiskChip(chip, value);
-	setTooltip(chip, 'Change risk');
-	chip.addEventListener('click', (evt) => showRiskMenu(host, evt, item));
+	fillLabelChip(chip, value, spec);
+	setTooltip(chip, `Change ${spec.noun}`);
+	chip.addEventListener('click', (evt) => spec.showMenu(host, evt, item));
 }
 
 /**
- * The risk chip's face, carrying the Set risk menu's own icon so the two read as one
- * control. An EMPTY value — the stub the backfill leaves — is a key with no judgement in
- * it, so it says the same thing absence does; Clear risk is still what takes the key away.
+ * A label chip's face. An EMPTY value — the stub the backfill leaves — is a key with
+ * nothing in it, so it says the same thing absence does; the menu's Clear entry is still
+ * what takes the key away.
  */
-function fillRiskChip(chip: HTMLElement, value: string | null): void {
-	setIcon(chip.createSpan({ cls: 'pbl-state-icon' }), value === null ? 'shield' : 'shield-alert');
-	chip.createSpan({ cls: 'pbl-state-text', text: value ?? 'Risk' });
+function fillLabelChip(chip: HTMLElement, value: string | null, spec: LabelChip): void {
+	setIcon(chip.createSpan({ cls: 'pbl-state-icon' }), value === null ? spec.unsetIcon : spec.icon);
+	chip.createSpan({ cls: 'pbl-state-text', text: value ?? spec.placeholder });
 }
 
 /**

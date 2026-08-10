@@ -70,17 +70,10 @@ the folder most results live in → ask.
 
 ## Where it lives
 
-`src/domain/typeFolders.ts` (`DEFAULT_HOME_FOLDER`, the per-type subfolder table and
-`defaultTypeFolder` over it — split out of `settings.ts` when that file reached its line
-cap, and split by SUBJECT rather than by size: where a type files itself is a question
-`BacklogSettings` consumes rather than one it is about) ·
-`src/domain/nameLookup.ts` (`byName`, the safe lookup every table keyed by a user-supplied
-name goes through — a leaf of its own because both of its neighbours need it and reaching
-back for it would be a cycle; its own comment had already recorded that it sat in
-`settings.ts` for want of somewhere better) ·
-`src/domain/settings.ts` (folder resolution, and `typeFolderKey` — which builds the
-persisted key and is shared with the schema, because a key spelled twice is a key that can
-differ) ·
+`src/domain/typeVocabulary.ts` (`defaultTypeFolder`, `byName`) ·
+`src/domain/settingsResolve.ts` (folder resolution, and
+`typeFolderKey` — which builds the persisted key and is shared with the schema, because a
+key spelled twice is a key that can differ) ·
 `src/domain/viewOptions.ts` (`homeFolder`, and one generated picker per type) ·
 `src/domain/itemTypes.ts` (`folderForType`) ·
 `src/view/interactions/create.ts` (`inferFolder`) ·

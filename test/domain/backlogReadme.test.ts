@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { backlogReadmeContent, readmeStates } from '../../src/domain/backlogReadme';
-import { ALL_TYPES, BacklogSettings, defaultSettings } from '../../src/domain/settings';
-import { ORDER_SPACING } from '../../src/domain/writePlan';
+import { BacklogSettings, defaultSettings } from '../../src/domain/settings';
 import { settingsWith } from '../helpers/settings';
+import { backlogReadmeContent, readmeStates } from '../../src/domain/backlogReadme';
+import { ALL_TYPES } from '../../src/domain/typeVocabulary';
+import { ORDER_SPACING } from '../../src/domain/writePlan';
 
 /**
  * The generated README is documentation the plugin promises is true, so these tests

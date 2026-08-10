@@ -151,7 +151,8 @@ a node test that did would be measuring the runner.
   following every child has the plan's descent reach a promoted row through its excluded
   parent and stamp the depth the catalog had just corrected. `model.catalog` is read off
   the whole UNFOCUSED tree beside `deliverableResults`, for that field's own reason.
-- The vocabulary is **fixed**: `LEVELS` and `EXTRA_TYPES` in `settings.ts` are constants,
+- The vocabulary is **fixed**: `LEVELS`, `TEST_LEVELS` and `EXTRA_TYPES` in
+  `typeVocabulary.ts` are constants,
   not options. Making them configurable cost collision rules between the two lists, a
   "what folder does a name nobody chose get" question with no good answer, and a schema
   that had to be generated per view; what it bought was a rename. Being opinionated
@@ -323,8 +324,17 @@ a node test that did would be measuring the runner.
   against the live value, and re-confirming `2026-8-1` still must not rewrite it as
   `2026-08-01` — that comparison moved with the decision rather than going away. The
   horizon axis keeps its model-time check; moving it is not this increment's.
+- **The configuration is four modules and the dependencies run one way** (ADR 0026):
+  `typeVocabulary.ts` (the fixed type names, `byName`, where a type's notes are filed) is a
+  leaf; `settings.ts` is the SHAPE and imports it; `optionalProperties.ts` (the table that
+  grows a row per feature) and `settingsResolve.ts` (the only module that touches
+  `BasesViewConfig`) sit above the shape and are never imported by it. `configProblems`
+  lives with `settingsInconsistency` in `settingsConsistency.ts`, because a collision report
+  and a fixture check are the same question — is this combination coherent — asked of the
+  two different producers. Put a new piece in the wrong one and `npm run analyze` fails on
+  the cycle, which is what makes this checked rather than remembered.
 - **Every write target beyond `parent`/`order`/`type` is one vocabulary**, declared once
-  in `settings.ts`: `OptionalField` and the `PROPERTY_TABLE` behind
+  in `optionalProperties.ts`: `OptionalField` and the `PROPERTY_TABLE` behind
   `OPTIONAL_PROPERTIES`, which carries per field the option that names it, the key it
   suggests, and the label a collision reports it by. Five readers depend on that being
   one statement — the view options' pickers (whose placeholder IS the suggestion),

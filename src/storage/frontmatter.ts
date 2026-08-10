@@ -12,13 +12,9 @@ import {
 	readString,
 	readTags,
 } from '../domain/noteFields';
-import {
-	BacklogSettings,
-	isDoneValue,
-	optionalKeyFor,
-	resolvedDeliverableStateKey,
-	vaultFolder,
-} from '../domain/settings';
+import { BacklogSettings, isDoneValue } from '../domain/settings';
+import { optionalKeyFor, resolvedDeliverableStateKey } from '../domain/optionalProperties';
+import { vaultFolder } from '../domain/settingsResolve';
 import { DateSpan, daysBetween, reversedSpan } from '../domain/timeline';
 import { ItemWrite, TagDelta } from '../domain/writePlan';
 import { DependsOnRestore, dependsOnRestore, restoreDependsOn } from './dependsOnWrite';
@@ -213,7 +209,7 @@ function applyInto(
 	else if (write.deliverableState !== undefined && deliverableStateKey) setOwn(fm, deliverableStateKey, write.deliverableState);
 	applyStamps(fm, settings, write, leaving);
 	applyAxis(fm, settings, write);
-	applyRisk(fm, settings, write);
+	applyLabels(fm, settings, write);
 	// Stubs last, and only where the LIVE note still has no such key. Presence is asked
 	// here rather than trusted from the plan for the reason the tag delta and the start
 	// stamp are: the row that planned this can be a refresh behind the note, and a value
@@ -280,21 +276,29 @@ function applyAxis(fm: Record<string, unknown>, settings: BacklogSettings, write
 }
 
 /**
- * The item's risk level — the THIRD shape of this module's two standing rules: never a
- * key no property names, and a null REMOVES rather than blanks, because a note nobody has
- * judged carries no risk key at all.
+ * The plain LABEL properties — the risk level, and who the item is assigned to — under
+ * this module's two standing rules: never a key no property names, and a null REMOVES
+ * rather than blanks, because a note nobody has judged and a note nobody is on carry no
+ * such key at all.
  *
- * It is a statement of those rules rather than a call to a shared helper, and
- * deliberately so: the state key guards inline, the axis keys go through `axisEntries`,
- * and a helper general enough to cover all three would have to carry the axis's civil-date
- * equality and datetime merge past the two properties that must not have them. Three
- * short statements are cheaper to read than one parameterised one. The root `CLAUDE.md`
- * names this trade-off; it changes with any fourth property that makes extraction pay.
+ * One loop rather than a statement per property, which is the trade-off the root
+ * `CLAUDE.md` said to re-examine at the fourth optional property and this is it: a label
+ * needs none of the axis's civil-date equality or datetime merge, so the second one that
+ * wants exactly these two lines is where a shared statement starts costing less than
+ * another copy of them. The state key still guards inline and the axis keys still go
+ * through `axisEntries` — this covers what is genuinely the same, and a fifth label
+ * property is a row in the list rather than a fifth restatement.
  */
-function applyRisk(fm: Record<string, unknown>, settings: BacklogSettings, write: ItemWrite): void {
-	if (write.risk === undefined || !settings.riskKey) return;
-	if (write.risk === null) delete fm[settings.riskKey];
-	else setOwn(fm, settings.riskKey, write.risk);
+function applyLabels(fm: Record<string, unknown>, settings: BacklogSettings, write: ItemWrite): void {
+	const labels: [string | null | undefined, string][] = [
+		[write.risk, settings.riskKey],
+		[write.assignee, settings.assigneeKey],
+	];
+	for (const [value, key] of labels) {
+		if (value === undefined || !key) continue;
+		if (value === null) delete fm[key];
+		else setOwn(fm, key, value);
+	}
 }
 
 /**

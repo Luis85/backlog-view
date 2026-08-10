@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { defaultSettings } from '../../src/domain/settings';
+import { settingsWith } from '../helpers/settings';
 import { buildModel } from '../../src/domain/model';
 import { childLevelIndex, displayType } from '../../src/domain/itemTypes';
-import { LEVELS, defaultSettings } from '../../src/domain/settings';
+import { LEVELS } from '../../src/domain/typeVocabulary';
 import { FakeVault } from '../helpers/vault';
-import { settingsWith } from '../helpers/settings';
 
 const settings = defaultSettings();
 /** Fixtures made of plain notes: opt out of the hierarchy scope so they survive the build. */

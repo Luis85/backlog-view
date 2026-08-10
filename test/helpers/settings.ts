@@ -24,7 +24,8 @@
  * A literal spread is banned in `test/**` by `no-restricted-syntax` (`eslint.config.mjs`)
  * so this stays the way in rather than the way most people happen to use.
  */
-import { BacklogSettings, defaultSettings, resolveSettings } from '../../src/domain/settings';
+import { BacklogSettings, defaultSettings } from '../../src/domain/settings';
+import { resolveSettings } from '../../src/domain/settingsResolve';
 import { settingsInconsistency } from '../../src/domain/settingsConsistency';
 import { FakeViewConfig } from './vault';
 

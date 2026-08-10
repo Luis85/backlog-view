@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { buildModel } from '../../src/domain/model';
 import { computeStateWrites } from '../../src/domain/writePlan';
-import { configProblems, resolveSettings } from '../../src/domain/settings';
+import { configProblems } from '../../src/domain/settingsConsistency';
+import { resolveSettings } from '../../src/domain/settingsResolve';
 import { dateStamp, todayStamp } from '../../src/domain/noteFields';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
 

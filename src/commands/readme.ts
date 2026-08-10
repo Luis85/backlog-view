@@ -1,6 +1,6 @@
 import { App, Notice } from 'obsidian';
 import { backlogReadmeContent } from '../domain/backlogReadme';
-import { configProblems } from '../domain/settings';
+import { configProblems } from '../domain/settingsConsistency';
 import { BacklogModel } from '../domain/model';
 import { BacklogSettings } from '../domain/settings';
 import { displaySource, joinSource, sourceComponent } from '../domain/readmeMarker';

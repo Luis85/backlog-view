@@ -225,11 +225,12 @@ design: the relationship between a test and the work it checks is
 
 ## Where it lives
 
-`src/domain/settings.ts` — `TEST_LEVELS`, and two entries in `DEFAULT_TYPE_SUBFOLDERS`.
-`ALL_TYPES` filters the shared rung out rather than concatenating, so `Task` appears
-exactly once: two entries would give it a second folder option under the same key, a
-duplicate in every creator menu and two shelf groups. The per-type folder options in
-`src/domain/viewOptions.ts` were already generic over the vocabulary and needed nothing.
+`src/domain/typeVocabulary.ts` — `TEST_LEVELS`, and two entries in
+`DEFAULT_TYPE_SUBFOLDERS`. `ALL_TYPES` filters the shared rung out rather than
+concatenating, so `Task` appears exactly once: two entries would give it a second folder
+option under the same key, a duplicate in every creator menu and two shelf groups. The
+per-type folder options in `src/domain/viewOptions.ts` were already generic over the
+vocabulary and needed nothing.
 
 `src/domain/itemTypes.ts` holds the rungs and the genuinely new shape: `ladderFor`, which
 answers WHICH ladder before anything asks which rung, and `inCatalog`, the membership

@@ -1,5 +1,4 @@
-import { LEVELS } from '../../domain/settings';
-import { byName } from '../../domain/nameLookup';
+import { byName, LEVELS } from '../../domain/typeVocabulary';
 
 /**
  * What a type's badge looks like — the icon and the colour class, and nothing else.

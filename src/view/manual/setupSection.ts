@@ -43,12 +43,20 @@ export const SETUP: ManualSection = {
 			keys: ['autoAssignType'],
 		},
 		{
-			term: 'State, tags and the stamps a state carries',
+			term: 'State, tags, assignee and the stamps a state carries',
 			text:
-				'The properties the state chip, the tag column, and a state change\'s own started/' +
-				'finished dates write to. None is written until its property is named — a stamp is ' +
-				'never written to a property this plugin chose on its own.',
-			keys: ['stateProperty', 'tagsProperty', 'startedDateProperty', 'finishedDateProperty'],
+				'The properties the state chip, the tag column, the assignee chip, and a state ' +
+				'change\'s own started/finished dates write to. None is written until its property ' +
+				'is named — a stamp is never written to a property this plugin chose on its own. ' +
+				'The assignee takes no list beside it: it offers the names already in the base, ' +
+				'plus whatever you type.',
+			keys: [
+				'stateProperty',
+				'tagsProperty',
+				'assigneeProperty',
+				'startedDateProperty',
+				'finishedDateProperty',
+			],
 		},
 		{
 			term: 'Risk',

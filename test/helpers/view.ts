@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, vi } from 'vitest';
 import { cleanup as liveRegionCleanup } from '@atlaskit/pragmatic-drag-and-drop-live-region';
 import { ProductBacklogView } from '../../src/view/backlogView';
-import { OPTIONAL_PROPERTIES } from '../../src/domain/settings';
+import { OPTIONAL_PROPERTIES } from '../../src/domain/optionalProperties';
 import { installObsidianDom } from './dom';
 import { FakeVault, FakeViewConfig } from './vault';
 import { FileView, Menu, Modal, Notice } from './obsidian-mock';

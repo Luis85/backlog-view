@@ -8,7 +8,6 @@ import { projectionPopulation } from '../projection';
 import { badgeStyleFor } from './badges';
 import { BacklogItem } from '../../domain/model';
 import { childTypeChoices, displayType } from '../../domain/itemTypes';
-
 import { ownWorkflowReading } from '../../domain/board';
 import {
 	INDENT_PER_DEPTH,

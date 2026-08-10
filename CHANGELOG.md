@@ -11,6 +11,13 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+### Added
+
+- An **assignee** property: name it in the view options (or press ✨ and let the view bind
+  and backfill `assignee`), then set it from the row's menu or its chip. The names on
+  offer are the ones the base's own results already carry — plus anything typed into
+  **New assignee...** — so there is no list to declare and nothing to keep in step.
+
 ## [0.6.0] - 2026-08-10
 
 Changelog tracking starts here. For what shipped in 0.1.0–0.5.2, see the

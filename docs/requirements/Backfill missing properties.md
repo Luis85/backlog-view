@@ -24,8 +24,9 @@ frontmatter, **I want** one button that sets the properties up and writes them f
 
 1. The user presses ✨.
 2. Every optional property the view options do not name yet — the state, the two date
-   stamps, the roadmap's horizon and dates ([[Horizons or dates]]) and the risk level
-   ([[Setting the risk on an item]]) — is bound to the key this view suggests, which is
+   stamps, the roadmap's horizon and dates ([[Horizons or dates]]), the risk level
+   ([[Setting the risk on an item]]) and the assignee
+   ([[Setting the assignee on an item]]) — is bound to the key this view suggests, which is
    the key its picker already shows as a placeholder. The list is stated once, in the
    optional-property table, so a property added there joins this button without anything
    here changing but this sentence. Without this the features that need a property cannot be reached at
@@ -107,7 +108,8 @@ frontmatter, **I want** one button that sets the properties up and writes them f
 
 ## Where it lives
 
-`src/domain/settings.ts` (`OPTIONAL_PROPERTIES`, the one table of what each optional
+`src/domain/optionalProperties.ts` (`OPTIONAL_PROPERTIES`, the one table of what each
+optional
 property is called and suggests, and `adoptableProperties`) ·
 `src/domain/writePlan.ts` (`computeInitWrites`, over `initWriteFor` and
 `missingKeyStubs`) · `src/domain/model.ts` (`ownKeys`, which key a note carries) ·

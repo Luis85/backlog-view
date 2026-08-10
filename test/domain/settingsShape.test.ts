@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { defaultSettings, resolveSettings } from '../../src/domain/settings';
-import { settingsInconsistency } from '../../src/domain/settingsConsistency';
+import { defaultSettings } from '../../src/domain/settings';
 import { settingsFrom, settingsWith } from '../helpers/settings';
+import { resolveSettings } from '../../src/domain/settingsResolve';
+import { settingsInconsistency } from '../../src/domain/settingsConsistency';
 import { FakeViewConfig } from '../helpers/vault';
 
 /**

@@ -97,7 +97,7 @@ assumed rather than derived).
 
 ## Where it lives
 
-`src/domain/settings.ts` — `Idea` joins `EXTRA_TYPES` and `DEFAULT_TYPE_SUBFOLDERS`
+`src/domain/typeVocabulary.ts` — `Idea` joins `EXTRA_TYPES` and `DEFAULT_TYPE_SUBFOLDERS`
 gains `idea: 'ideas'`. That is the whole of the behaviour: `ALL_TYPES`, the per-type
 folder option in `src/domain/viewOptions.ts`, `childTypeChoices` and `EXTRA_TYPE_RANK` in
 `src/domain/itemTypes.ts`, the scope test in `src/domain/model.ts`, the cascade's

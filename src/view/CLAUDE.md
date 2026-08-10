@@ -99,26 +99,32 @@ free of runtime code so imports stay cycle-free.
   key). Menu values = `stateMenuValues` (configured list, else observed ∪ a done
   value) plus the item's own unlisted value, so the current state can always render
   checked.
-- **Set risk is the state menu's shape without a projection**: rendered inside
-  `buildItemMenu`'s `editable` guard on `hasRiskLevels` — a property AND a levels list, so
-  a submenu never opens onto nothing — offering the declared list plus the item's own
-  unlisted value, checked from `computeRiskWrites` rather than from a comparison beside it,
-  with a `Clear risk` foot gated on `item.ownKeys.risk`. It lives in `interactions/menu.ts`
-  beside Set state rather than in `interactions/plan.ts`: risk is an attribute of the item,
-  not a position on an axis. Two inputs now — the menu and the chip below — and still no
-  `performRiskMove`, because the second input does not plan beside the first: it opens the
-  same builder. The rule is about a second PLAN, not a second surface.
-- **The risk chip is the state chip a third time** (`renderRiskChip`, beside the other two
-  in `render/columns.ts`), on `hasRiskLevels` — the same pair Set risk is gated on, so a
-  chip whose menu could set nothing is not a state either side can reach alone — opening
-  `addRiskItems` through `showRiskMenu`, and drawn as the risk property's OWN cell like the
-  other two, so the row never draws the value twice with one of them inert. It differs from
-  the horizon's in one place: an unjudged note draws a dashed *Risk* chip rather than
-  nothing, because absence here is an invitation and not a placement the shelf already
-  names. Its column drops where the properties menu put it, like every other column.
-- **The four per-row menus are one function**: `chipMenu` in `interactions/menu.ts`, with
-  `showStateMenu` / `showHorizonMenu` / `showRiskMenu` / `showTagMenu` as one-line exports
-  over it. It is what stops a control from also activating the row it sits on — the reason
+- **The two LABEL menus are the state menu's shape without a projection**: Set risk and
+  Set assignee, both rendered inside `buildItemMenu`'s `editable` guard, both offering a
+  list plus the item's own unlisted value, both checked from the PLAN
+  (`computeRiskWrites`, `computeAssigneeWrites`) rather than from a comparison beside it,
+  and both with a Clear foot gated on `item.ownKeys`. Their offers live together in
+  `interactions/labels.ts` and not in `interactions/plan.ts`: a label is an attribute of
+  the item, not a position on an axis. Where they differ is the GATE, and it follows from
+  where each list comes from — risk needs `hasRiskLevels` (a property AND a declared list,
+  so a submenu never opens onto nothing), while the assignee needs the KEY alone, because
+  its list is observed and `New assignee...` is in it whatever the results carry. There is
+  deliberately no `hasAssignees` predicate beside `hasRiskLevels`: it could only ever
+  answer what the key already does. Two inputs each — the menu and the chip below — and
+  still no `performRiskMove`, because the second input does not plan beside the first: it
+  opens the same builder. The rule is about a second PLAN, not a second surface.
+- **The label chips are the state chip again** (`renderLabelChip` in `render/columns.ts`,
+  driven by a table of the two rather than a renderer each), each on the same test its own
+  menu is gated on, so a chip whose menu could set nothing is not a state either side can
+  reach alone — opening `addRiskItems` / `addAssigneeItems` through `showRiskMenu` /
+  `showAssigneeMenu`, and drawn as that property's OWN cell like the other two, so the row
+  never draws the value twice with one of them inert. They differ from the horizon's in one
+  place: an unset note draws a dashed *Risk* or *Assignee* chip rather than nothing, because
+  absence here is an invitation and not a placement the shelf already names. Their columns
+  drop where the properties menu put them, like every other column.
+- **The five per-row menus are one function**: `chipMenu` in `interactions/menu.ts`, with
+  `showStateMenu` / `showHorizonMenu` / `showRiskMenu` / `showAssigneeMenu` / `showTagMenu`
+  as one-line exports over it. It is what stops a control from also activating the row it sits on — the reason
   every one of them was five identical lines before.
 - **The horizon chip is that same shape over the placement** (`renderHorizonChip`,
   beside the state chip in `render/columns.ts`): rendered on `hasHorizonAxis` — the one
@@ -221,15 +227,15 @@ free of runtime code so imports stay cycle-free.
   reports the item's current tags as its checkmarks, so with no column it would be the
   only place those tags appear at all and the set it calls current would be one nothing
   on screen shows. **That is a rule about the tags column, and it stops there.** Its
-  three siblings in `addEditableSections` gate on the settings predicates instead —
-  `stateKeyFor`, `hasRiskLevels`, `hasHorizonAxis` — so Set state, Set risk and Set
-  horizon stay offered on a property the properties menu is hiding, and those three DO
-  write something the row is not showing. Deliberate, not four cases waiting to be
+  siblings in `addEditableSections` gate on the settings predicates instead —
+  `stateKeyFor`, `hasRiskLevels`, `settings.assigneeKey`, `hasHorizonAxis` — so Set state,
+  Set risk, Set assignee and Set horizon stay offered on a property the properties menu is
+  hiding, and those DO write something the row is not showing. Deliberate, not a set of cases waiting to be
   smoothed into one: the plugin cannot write the visible order back (ADR 0023's
   first-run gap), so withholding the write with the column would leave a base whose only
   remaining route to the property is opening the note. Do not generalise the tags rule
   to reach them — the honest statement is that state still shows through the rollup and
-  `pbl-done` while risk and horizon show nowhere else in the tree, and the asymmetry is
+  `pbl-done` while risk, the assignee and the horizon show nowhere else in the tree, and the asymmetry is
   recorded in ADR 0023's Consequences rather than argued into a rule. That
   is a question about the Base's configuration, not about the pane: narrowing is a space
   decision — the pane draws fewer of the resolved columns (`host.columnFit`) and the

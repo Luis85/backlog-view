@@ -1,25 +1,11 @@
 import { BasesAllOptions, BasesOptions, BasesPropertyId, BasesViewConfig } from 'obsidian';
-import {
-	ALL_TYPES,
-	BacklogSettings,
-	columnPolicyKey,
-	DEFAULT_DONE_VALUES,
-	DEFAULT_HORIZON_VALUES,
-	DEFAULT_PROP_COLUMN_WIDTH,
-	DEFAULT_RISK_VALUES,
-	defaultSettings,
-	MAX_PROP_COLUMN_WIDTH,
-	MIN_PROP_COLUMN_WIDTH,
-	OptionalField,
-	optionalProperty,
-	resolveSettings,
-	typeFolderKey,
-	wipLimitKey,
-} from './settings';
+import { BacklogSettings, columnPolicyKey, DEFAULT_DONE_VALUES, DEFAULT_HORIZON_VALUES, DEFAULT_PROP_COLUMN_WIDTH, DEFAULT_RISK_VALUES, defaultSettings, MAX_PROP_COLUMN_WIDTH, MIN_PROP_COLUMN_WIDTH, wipLimitKey } from './settings';
+import { OptionalField, optionalProperty } from './optionalProperties';
+import { resolveSettings } from './settingsResolve';
+import { ALL_TYPES, DEFAULT_HOME_FOLDER, defaultTypeFolder, typeFolderKey } from './typeVocabulary';
 import { STATE_COLOR_CHOICES, stateColorKey } from './stateColors';
 import { CLICK_ACTIONS, defaultItemHandling, OPEN_TARGETS } from './itemHandling';
 import { sameValue } from './noteFields';
-import { DEFAULT_HOME_FOLDER, defaultTypeFolder } from './typeFolders';
 
 /**
  * What Bases shows in the view-options menu: pure declaration, no logic. Split from
@@ -210,6 +196,11 @@ function progressGroup(settings: BacklogSettings): BasesAllOptions {
 			// Assign missing properties — never to one this plugin chose for them.
 			optionalPropertyOption('startedDate', 'Started date property'),
 			optionalPropertyOption('finishedDate', 'Finished date property'),
+			// A property and no list beside it, unlike the state above and the risk
+			// levels below: the names Set assignee offers are the ones the results
+			// already carry, plus whatever the user types, so there is no vocabulary
+			// to declare here and nothing an empty box could turn off.
+			optionalPropertyOption('assignee', 'Assignee property'),
 			{
 				type: 'toggle',
 				key: 'showCompleted',

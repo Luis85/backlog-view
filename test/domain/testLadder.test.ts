@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { buildModel } from '../../src/domain/model';
 import { childTypeChoices, displayType, inCatalog, keepsTypeOnMove, ladderFor } from '../../src/domain/itemTypes';
 import { computeInitWrites, computeTypeChanges } from '../../src/domain/writePlan';
-import { ALL_TYPES, defaultSettings, EXTRA_TYPES, LEVELS, TEST_LEVELS } from '../../src/domain/settings';
+import { defaultSettings } from '../../src/domain/settings';
+import { ALL_TYPES, EXTRA_TYPES, LEVELS, TEST_LEVELS } from '../../src/domain/typeVocabulary';
 import { settingsWith } from '../helpers/settings';
 import { FakeVault } from '../helpers/vault';
 

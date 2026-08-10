@@ -1,7 +1,7 @@
 import { inCatalog, isDeliverableType, ladderFor } from '../domain/itemTypes';
 import { BacklogItem, BacklogModel, ProjectionPopulation } from '../domain/model';
 import { BacklogViewHost, Projection } from './host';
-import { ALL_TYPES } from '../domain/settings';
+import { ALL_TYPES } from '../domain/typeVocabulary';
 
 /**
  * What a projection IS, asked rather than compared — the three questions every gate in

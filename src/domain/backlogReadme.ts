@@ -1,13 +1,6 @@
-import {
-	ALL_TYPES,
-	BacklogSettings,
-	EXTRA_TYPES,
-	LEVELS,
-	MARKER_TYPES,
-	TEST_LEVELS,
-	resolvedDeliverableStateKey,
-	stateMenuValues,
-} from './settings';
+import { BacklogSettings, stateMenuValues } from './settings';
+import { resolvedDeliverableStateKey } from './optionalProperties';
+import { ALL_TYPES, EXTRA_TYPES, LEVELS, MARKER_TYPES, TEST_LEVELS } from './typeVocabulary';
 import { childTypeChoices, EXTRA_TYPE_RANK, folderForType, keepsTypeOnMove, LadderPosition, ladderFor } from './itemTypes';
 import { readmeMarker } from './readmeMarker';
 import { stampRows, stampRule, startedStates } from './readmeStamps';

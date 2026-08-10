@@ -1,12 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { settingsWith } from '../helpers/settings';
-import {
-	configProblems,
-	DEFAULT_DONE_VALUES,
-	defaultSettings,
-	resolvedDeliverableStateKey,
-	resolveSettings,
-} from '../../src/domain/settings';
+import { DEFAULT_DONE_VALUES, defaultSettings } from '../../src/domain/settings';
+import { resolvedDeliverableStateKey } from '../../src/domain/optionalProperties';
+import { configProblems } from '../../src/domain/settingsConsistency';
+import { resolveSettings } from '../../src/domain/settingsResolve';
 
 /** Stand-in for BasesViewConfig backed by a plain object. */
 function fakeConfig(values: Record<string, unknown> = {}) {

@@ -1,15 +1,10 @@
 import { isDeliverableType } from './itemTypes';
 import { BacklogItem, BacklogModel } from './model';
 import { sameValue } from './noteFields';
-import {
-	BacklogSettings,
-	menuValues,
-	resolvedDeliverableStateKey,
-	STATE_COLOR_SLOTS,
-	stateMenuValues,
-} from './settings';
+import { BacklogSettings, menuValues, STATE_COLOR_SLOTS, stateMenuValues } from './settings';
+import { resolvedDeliverableStateKey } from './optionalProperties';
+import { byName } from './typeVocabulary';
 import { collectObservedStates } from './vocabulary';
-import { byName } from './nameLookup';
 
 /**
  * Deriving the board from the model and the settings: which columns exist, which

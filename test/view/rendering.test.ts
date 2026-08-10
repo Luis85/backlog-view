@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 // @ts-expect-error — a build script, deliberately outside tsconfig's `src/**` include.
 import { assembleStyles } from '../../scripts/styles-assemble.mjs';
 import { FakeVault } from '../helpers/vault';
-import { ALL_TYPES, EXTRA_TYPES, MARKER_TYPES } from '../../src/domain/settings';
+import { ALL_TYPES, EXTRA_TYPES, MARKER_TYPES } from '../../src/domain/typeVocabulary';
 import { Menu, Notice } from '../helpers/obsidian-mock';
 import { clickExpandAll, drag, fixture, flush, key, makeView, rowByTitle, rows, titlesOf, treeOf, useViewHarness } from '../helpers/view';
 import { inCatalog, ladderFor } from '../../src/domain/itemTypes';
