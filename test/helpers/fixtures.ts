@@ -242,8 +242,11 @@ export function demoVault(layout: Layout = 'flat', extra = 0): FakeVault {
  * looking at; every case worth looking at is above.
  *
  * The shape is a backlog's rather than a list's — one Epic per 25, five Features under
- * it, PBIs and Tasks under those — because a flat thousand rows measures a different
- * render path from a tree that nests, and nesting is what a real vault does.
+ * it, PBIs and Tasks under those, and one Deliverable — because a flat thousand rows
+ * measures a different render path from a tree that nests, and nesting is what a real
+ * vault does. The Deliverable is there so that ALL FOUR projections grow with `?notes=`:
+ * the fourth draws only its own type, so without one its row on the panel reported the
+ * curated handful at every size while sitting beside three rows that scaled.
  *
  * The values ROTATE through the vocabularies `demoOptions()` declares, which is the
  * difference between measuring the projections and measuring their empty states: 800
@@ -257,6 +260,7 @@ export function demoVault(layout: Layout = 'flat', extra = 0): FakeVault {
 function addBulk(add: ReturnType<typeof adder>, count: number): void {
 	const states = ['New', 'Ready', 'Active', 'Review', 'Done'];
 	const horizons = ['Now', 'Next', 'Later'];
+	const docStates = ['Concept', 'Draft', 'In review', 'Published'];
 	let epic = '';
 	let feature = '';
 	let pbi = '';
@@ -278,7 +282,15 @@ function addBulk(add: ReturnType<typeof adder>, count: number): void {
 		if (at === 0) add((epic = `Bulk epic ${i + 1}`), { ...fm, type: 'Epic' });
 		else if (at % 5 === 1) add((feature = `Bulk feature ${i + 1}`), { ...fm, type: 'Feature' }, epic);
 		else if (at % 5 === 2 || at % 5 === 3) add((pbi = `Bulk PBI ${i + 1}`), { ...fm, type: 'PBI' }, feature);
-		else add(`Bulk task ${i + 1}`, { ...fm, type: 'Task' }, pbi);
+		// One per 25, on the OWN workflow the Deliverable state property declares — checked
+		// before the task branch it would otherwise fall into. Without it the fourth
+		// projection drew the same handful of curated cards at every size, so its row on the
+		// panel sat beside three that scaled and implied a scale it had not been asked to
+		// draw. A minority of the backlog, because that is what a Deliverable is.
+		// (Codex, PR #128.)
+		else if (at === 24) {
+			add(`Bulk deliverable ${i + 1}`, { ...fm, type: 'Deliverable', docStatus: docStates[i % docStates.length] }, feature);
+		} else add(`Bulk task ${i + 1}`, { ...fm, type: 'Task' }, pbi);
 	}
 }
 
