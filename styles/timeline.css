@@ -194,8 +194,11 @@
 	/* One color for solid/open bars: states override the variable, never the background.
 	   `--pbl-state-color` is set below by whichever `pbl-state-N` class the row carries
 	   (`paletteSlot`, domain/board.ts) and inherits down unset when it does not, so
-	   the fallback is what an item with no slot still draws: the plain accent it always had. */
-	--pbl-bar-color: var(--pbl-state-color, var(--interactive-accent));
+	   the fallback is what an item with no slot still draws: the plain accent it always had.
+	   `--pbl-state-pick` is the PICKED colour (`renderBarRow`). TS writes its OWN token and
+	   this composes, so `--pbl-state-color` stays snippet-overridable and a cleared pick
+	   falls back to the slot rather than to the accent — `A colour per state` says why. */
+	--pbl-bar-color: var(--pbl-state-pick, var(--pbl-state-color, var(--interactive-accent)));
 	background-color: var(--pbl-bar-color);
 }
 .pbl-bar-holdable { cursor: grab; } /* only where barHolds registers the body hold — barClasses, timeline.ts */

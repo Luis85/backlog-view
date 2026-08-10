@@ -1,47 +1,47 @@
 /**
- * The colours a state may be GIVEN by name, and the option key one is stored under.
+ * What a state's chosen colour IS, and the option key it is stored under.
  *
- * Its own module rather than more of `settings.ts` because it is one vocabulary with one
- * validator over it, and because `settings.ts` is at the line cap that exists to ask this
- * question. What is NOT here is what a colour means on screen: `stateColorClass`
- * (`domain/board.ts`) decides when a pick outranks a positional slot, because that is a
- * question about the palette, and `styles/stateColors.css` decides what each name paints.
+ * A hex, not a name. The eight theme names this held first never reached a release —
+ * `0.6.0` shipped before they merged — so there is no migration here and none is owed;
+ * a `.base` holding `orange` reads as no pick and the state falls back to its positional
+ * slot, which is the same thing any unreadable value does.
+ *
+ * What is NOT here is what a colour means on screen: `stateColoring` (`domain/board.ts`)
+ * decides when a pick outranks a positional slot, because that is a question about the
+ * palette, and `styles/timeline.css` still owns what a SLOT paints.
+ *
+ * The trade this shape makes, stated where the value is defined: a hex does not track the
+ * theme. The four positional slots resolve through `--color-*-rgb` and follow light, dark
+ * and whatever theme is installed; a picked colour is the same colour in all of them. That
+ * is why the picker seeds each swatch from what the bar currently draws
+ * (`stateColorSeeds`, `view/interactions/stateColors.ts`) rather than from a fixed list —
+ * a pick starts where the theme already was, and stops moving from there.
  */
 
 /**
- * Obsidian's own eight chromatic families, so a picked colour tracks the user's theme
- * exactly as the positional slots and the level badges do (`styles/badges.css`'s Borrowed
- * Palette Rule). A NAME, never a colour value — it becomes a CSS class, and a `.base` is
- * hand-editable, so {@link stateColorName} is what stands between the two.
+ * A colour as read from a hand-editable `.base`, normalised, or null for no pick.
  *
- * All eight, unlike the four a slot may take. The reservations `STATE_COLOR_SLOTS`
- * explains are about the colours this plugin assigns BY ITSELF; a pick is the user saying
- * which collision they want, and the legend keys whatever was picked off the same class
- * the bar carries, so the strip still explains the grid.
+ * Shorthand is expanded and case is dropped so the stored form is unique: the resolver
+ * keeps exactly what this returns, which is what lets `settingsInconsistency` recognise a
+ * value it would have discarded by asking this function rather than by restating the rule.
  */
-export const STATE_COLOR_NAMES = ['red', 'orange', 'yellow', 'green', 'cyan', 'blue', 'purple', 'pink'];
-
-/** {@link STATE_COLOR_NAMES} as the dropdown offers them, led by the no-pick default. */
-export const STATE_COLOR_CHOICES: Record<string, string> = {
-	'': 'By position',
-	...Object.fromEntries(STATE_COLOR_NAMES.map((name) => [name, name[0].toUpperCase() + name.slice(1)])),
-};
-
-/**
- * The persisted option key for one state's colour, by `wipLimitKey`'s rule: shared by the
- * schema that declares the option and the resolver that reads it back, because a key
- * spelled twice is a key that can differ.
- */
-export function stateColorKey(state: string): string {
-	return `stateColor.${state.toLowerCase()}`;
+export function stateColorValue(raw: string): string | null {
+	const hex = raw.trim().toLowerCase();
+	if (/^#[0-9a-f]{6}$/.test(hex)) return hex;
+	// `#abc` is what a person types; the picker never produces it.
+	if (/^#[0-9a-f]{3}$/.test(hex)) return `#${[...hex.slice(1)].map((c) => c + c).join('')}`;
+	return null;
 }
 
 /**
- * A colour name as read from a hand-editable `.base`: one of the offered names, or null
- * for no pick. Anything else — a colour value, a theme's own token, a typo — is null
- * rather than passed through, since this string goes on to be a class name.
+ * The persisted option key for one state's colour, by `wipLimitKey`'s rule: shared by
+ * every writer and the resolver that reads it back, because a key spelled twice is a key
+ * that can differ.
+ *
+ * It is no longer a view-option key — Bases has no colour control, so nothing declares
+ * this in the options schema and the picker writes it through `config.set` instead. The
+ * key is still user data in a `.base` file, which is the whole of why it is stated once.
  */
-export function stateColorName(raw: string): string | null {
-	const name = raw.trim().toLowerCase();
-	return STATE_COLOR_NAMES.includes(name) ? name : null;
+export function stateColorKey(state: string): string {
+	return `stateColor.${state.toLowerCase()}`;
 }

@@ -3,9 +3,7 @@ import { BacklogSettings, columnPolicyKey, DEFAULT_DONE_VALUES, DEFAULT_HORIZON_
 import { OptionalField, optionalProperty } from './optionalProperties';
 import { resolveSettings } from './settingsResolve';
 import { ALL_TYPES, DEFAULT_HOME_FOLDER, defaultTypeFolder, typeFolderKey } from './typeVocabulary';
-import { STATE_COLOR_CHOICES, stateColorKey } from './stateColors';
 import { CLICK_ACTIONS, defaultItemHandling, OPEN_TARGETS } from './itemHandling';
-import { sameValue } from './noteFields';
 
 /**
  * What Bases shows in the view-options menu: pure declaration, no logic. Split from
@@ -54,7 +52,7 @@ export function getViewOptions(config?: BasesViewConfig): BasesAllOptions[] {
 	return [
 		hierarchyGroup(),
 		progressGroup(settings),
-		deliverablesGroup(settings),
+		deliverablesGroup(),
 		roadmapGroup(),
 		riskGroup(),
 		newItemsGroup(settings.homeFolder),
@@ -229,7 +227,6 @@ function progressGroup(settings: BacklogSettings): BasesAllOptions {
 					default: '',
 					placeholder: 'What has to be true to leave this column',
 				},
-				stateColorOption(state),
 			]),
 		],
 	};
@@ -239,23 +236,7 @@ function progressGroup(settings: BacklogSettings): BasesAllOptions {
  * The Deliverable workflow's own group — columns and a workflow only, per Scope: no
  * WIP-limit or policy boxes, unlike `progressGroup`'s requirements workflow.
  */
-/**
- * One state's colour. A dropdown of Obsidian's own colour NAMES rather than a colour
- * value: `styles/stateColors.css` owns what each one paints, so a picked colour tracks
- * the theme exactly as the positional slots do, and a hand-edited `.base` cannot put an
- * arbitrary string where a class name goes. Empty is the default and means "by position".
- */
-function stateColorOption(state: string): BasesOptions {
-	return {
-		type: 'dropdown',
-		key: stateColorKey(state),
-		displayName: `Colour for ${state}`,
-		default: '',
-		options: STATE_COLOR_CHOICES,
-	};
-}
-
-function deliverablesGroup(settings: BacklogSettings): BasesAllOptions {
+function deliverablesGroup(): BasesAllOptions {
 	return {
 		type: 'group',
 		displayName: 'Deliverables',
@@ -275,15 +256,6 @@ function deliverablesGroup(settings: BacklogSettings): BasesAllOptions {
 				default: DEFAULT_DONE_VALUES.join(', '),
 				placeholder: DEFAULT_DONE_VALUES.join(', '),
 			},
-			// This workflow's own states get the same box, minus any the requirements
-			// vocabulary already offered: the colours are one table keyed by the state VALUE
-			// (see `BacklogSettings.stateColors`), so a state both workflows spell the same
-			// way is ONE setting, and a second box for it would be two controls over one key.
-			// That is the common case, not an edge one — a Deliverable workflow with no
-			// states of its own falls back to the requirements list entire.
-			...settings.deliverableStates
-				.filter((state) => !settings.states.some((own) => sameValue(own, state)))
-				.map(stateColorOption),
 		],
 	};
 }

@@ -55,6 +55,7 @@
 @import "./emptyStates.css";
 @import "./modals.css";
 @import "./manual.css";
+@import "./colorPicker.css";
 
 /* The two other projections, each with its overrides after what they override */
 @import "./board.css";
@@ -62,10 +63,6 @@
 @import "./cardChildren.css";
 @import "./roadmap.css";
 @import "./timeline.css";
-/* Position NOT load-bearing: `stateColors.css` declares the same `--pbl-state-color` the
-   slot classes above do, but on classes of its own that no row ever carries at the same
-   time (`stateColorClass` returns one or the other), so nothing here is decided by order. */
-@import "./stateColors.css";
 @import "./timelineFurniture.css";
 /* Position NOT load-bearing: every selector here is new (`.pbl-dependency-arrow*`,
    `.pbl-timeline-row.pbl-row-conflict`) rather than overriding one `timeline.css` or

@@ -14,7 +14,7 @@ import { isMarkerType } from '../../domain/itemTypes';
 import {
 	ownWorkflowReading,
 	paletteFor,
-	stateColorClass,
+	stateColoring,
 	stateKeyFor,
 	StatePalette,
 	WorkflowReading,
@@ -445,10 +445,17 @@ function renderBarRow(
 	// Undefined where no workflow has a key at all — no vocabulary, so no slot, which is
 	// the same answer `paletteSlot` gives a state outside one: the plain accent.
 	const palette = paletteFor(mounts.palettes, bar.item);
-	// A colour the user named for this state wins over its slot — `stateColorClass` is
-	// where that precedence lives, and the legend's swatch asks the same function.
-	const stateCls = palette ? stateColorClass(ctx.host.settings, palette, own.value) : null;
-	if (stateCls !== null) row.addClass(stateCls);
+	// The slot class and the picked colour both come from `stateColoring`, which the
+	// legend's swatch also asks — two things that must agree now, from one answer.
+	const colour = palette ? stateColoring(ctx.host.settings, palette, own.value) : null;
+	if (colour) {
+		row.addClass(colour.cls);
+		// `--pbl-state-pick`, never `--pbl-state-color`: the slot's own token stays
+		// CSS-declared so a snippet can still override it, and the stylesheet composes
+		// this one above it. Writing the slot's token here would make it internal by the
+		// rule `docs/requirements/A documented restyling surface.md` states.
+		if (colour.pick) row.setCssProps({ '--pbl-state-pick': colour.pick });
+	}
 	const lead = row.createDiv({ cls: 'pbl-timeline-lead' });
 	renderRowChevron(ctx, lead, entry);
 	renderBadge(ctx.host, lead, bar.item);
@@ -505,9 +512,9 @@ function renderBarRow(
 	const colors: DrawnColors = {
 		done: own.done,
 		milestone: !own.done && milestoneDrawn,
-		// `stateCls === null` IS "no slot": a named colour only ever replaces a slot the
-		// state already had, so the plain accent is still exactly the no-class case.
-		accent: !own.done && stateCls === null && !milestoneDrawn,
+		// `colour === null` IS "no slot", and a pick never creates one, so the plain accent
+		// is still exactly the case where the state is outside its own vocabulary.
+		accent: !own.done && colour === null && !milestoneDrawn,
 	};
 	return { row, colors };
 }

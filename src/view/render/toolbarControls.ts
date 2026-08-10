@@ -1,4 +1,5 @@
 import { Menu, setIcon, setTooltip } from 'obsidian';
+import { openStateColors } from '../interactions/stateColors';
 import { BacklogViewHost } from '../host';
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { activeAxis, configuredAxes, RoadmapAxis } from '../../domain/roadmap';
@@ -382,11 +383,20 @@ export function collapseButton(
 	});
 }
 
-/** One `⋯` entry: what it says, and the button whose state it mirrors. */
+/** One `⋯` entry: what it says, and the button whose state it mirrors — if it has one. */
 interface OverflowEntry {
 	title: string;
 	icon: string;
-	cls: string;
+	/**
+	 * The rendered button this entry duplicates. Absent for an action that has no button
+	 * at all and lives only in this menu — a category this menu did not have until state
+	 * colours arrived, and one to add to sparingly: an action here is invisible until the
+	 * `⋯` is opened, which is the right home for configuration used once and the wrong one
+	 * for anything a projection is worked in. A menu-only entry mirrors no state, so it is
+	 * never disabled and never checked; it also survives every clip, since no button of
+	 * its own can fail to render.
+	 */
+	cls?: string;
 	run: () => void;
 	/** See `pickAndRefocus`'s doc comment: an entry that opens a modal takes focus
 	 * deliberately, so it must not be refocused back onto the `⋯` the instant `run()`
@@ -475,8 +485,21 @@ function overflowEntries(host: BacklogViewHost, barEl: HTMLElement): OverflowEnt
 				host.render();
 			},
 		},
+		{
+			title: 'State colours',
+			icon: 'palette',
+			// No `cls`: this has no button on the row. See `OverflowEntry.cls`.
+			// `onClosed` for the manual entry's reason, read once more: skipping the
+			// refocus stops focus being yanked off the dialog as it opens, and leaves it
+			// nowhere when the dialog CLOSES unless the caller puts it back.
+			run: () =>
+				openStateColors(host, () =>
+					focusInBar(barEl, barEl.querySelector<HTMLElement>('.pbl-overflow-btn')),
+				),
+			opensModal: true,
+		},
 	];
-	return all.filter((entry) => barEl.querySelector(`.${entry.cls}`) !== null);
+	return all.filter((entry) => entry.cls === undefined || barEl.querySelector(`.${entry.cls}`) !== null);
 }
 
 /**
@@ -491,7 +514,7 @@ export function renderOverflow(host: BacklogViewHost, barEl: HTMLElement): void 
 	btn.addEventListener('click', (evt) => {
 		const menu = new Menu();
 		for (const entry of overflowEntries(host, barEl)) {
-			const mirrored = barEl.querySelector<HTMLButtonElement>(`.${entry.cls}`);
+			const mirrored = entry.cls === undefined ? null : barEl.querySelector<HTMLButtonElement>(`.${entry.cls}`);
 			menu.addItem((mi) =>
 				mi
 					.setTitle(entry.title)

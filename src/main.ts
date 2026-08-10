@@ -1,6 +1,7 @@
 import { Plugin } from 'obsidian';
 import { CREATE_BACKLOG_COMMAND_ID, promptCreateBacklogBase } from './commands/scaffold';
 import { WRITE_README_COMMAND_ID, writeBacklogReadmeCommand } from './commands/readme';
+import { pickStateColorsCommand, STATE_COLORS_COMMAND_ID } from './commands/stateColors';
 import { rekeyBase } from './storage/collapseStore';
 import { getViewOptions } from './domain/viewOptions';
 import { PRODUCT_BACKLOG_VIEW_TYPE, ProductBacklogView } from './view/backlogView';
@@ -33,6 +34,14 @@ export default class ProductBacklogPlugin extends Plugin {
 			// view's configuration, so with no such view there is nothing to describe and
 			// the command hides rather than writing something from the defaults.
 			checkCallback: (checking) => writeBacklogReadmeCommand(this.app, checking),
+		});
+		this.addCommand({
+			id: STATE_COLORS_COMMAND_ID,
+			name: 'State colours',
+			// A check callback for the README command's reason: the picker's rows come from
+			// the active view's own workflow, so with no loaded view there is nothing to open
+			// it onto and the command hides rather than showing an empty dialog.
+			checkCallback: (checking) => pickStateColorsCommand(this.app, checking),
 		});
 	}
 }

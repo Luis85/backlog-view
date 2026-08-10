@@ -1,68 +1,108 @@
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
 import { settingsFrom, settingsWith } from '../helpers/settings';
 import { buildModel } from '../../src/domain/model';
-import { paletteFor, stateColorClass, statePalettes } from '../../src/domain/board';
+import { paletteFor, stateColoring, statePalettes } from '../../src/domain/board';
 import { getViewOptions } from '../../src/domain/viewOptions';
-import { STATE_COLOR_NAMES, stateColorKey, stateColorName } from '../../src/domain/stateColors';
+import { stateColorKey, stateColorValue } from '../../src/domain/stateColors';
 
 /**
- * The colour vocabulary itself: what a state may be given, what a hand-edited `.base` is
- * allowed to say, which boxes the view options generate for it, and the stylesheet that
- * paints each name. What a bar and its legend swatch DO with a pick is
- * `test/view/stateColors.test.ts`, which needs a rendered grid to ask.
+ * What a pick IS: what a hand-editable `.base` may say, what the resolver keeps, and what
+ * `stateColoring` answers for a state. What a bar and its legend swatch DO with one is
+ * `test/view/stateColors.test.ts`, and the dialog that produces one is
+ * `test/view/stateColorPicker.test.ts` — both need a DOM to ask.
  */
 
-describe('the colour vocabulary', () => {
-	it('refuses everything outside the offered names', () => {
-		for (const name of STATE_COLOR_NAMES) expect(stateColorName(name.toUpperCase())).toBe(name);
-		// `''` is the no-pick default and must read as no pick, not as a colour called ''.
-		for (const raw of ['', ' ', 'rebeccapurple', '#ff0000', 'var(--color-red-rgb)', 'toString']) {
-			expect(stateColorName(raw), `${raw} resolved to a colour`).toBeNull();
+describe('a picked colour', () => {
+	it('keeps only what a picker could have produced, normalised', () => {
+		expect(stateColorValue('#ff0000')).toBe('#ff0000');
+		// Shorthand and case are what a person types; the picker emits neither, so both are
+		// normalised rather than refused — a `.base` is edited by hand as well as by us.
+		expect(stateColorValue('#ABC')).toBe('#aabbcc');
+		expect(stateColorValue('  #FF00aa ')).toBe('#ff00aa');
+		// Every one of these was a legal value at some point in this feature's life or is a
+		// plausible hand-edit. `orange` is the whole of the vocabulary this replaced: it is
+		// refused rather than mapped, because no release ever carried it.
+		for (const raw of ['', ' ', 'orange', 'rebeccapurple', 'rgb(1,2,3)', 'var(--color-red-rgb)', '#ff00', 'toString']) {
+			expect(stateColorValue(raw), `${raw} resolved to a colour`).toBeNull();
 		}
 	});
 
-	it('is painted by a rule per name, off the same token the slots set', () => {
-		// The instrument, not a sample: every name the dropdown OFFERS is looked for, so a
-		// name added to the list without a rule fails here rather than rendering a bar with
-		// a class nothing paints. `--pbl-state-color` is what makes the bar and the legend
-		// swatch one mapping — a rule setting `background-color` instead would colour the
-		// swatch and leave the bar on its fallback accent.
-		const css = readFileSync(new URL('../../styles/stateColors.css', import.meta.url), 'utf8');
-		for (const name of STATE_COLOR_NAMES) {
-			const rule = new RegExp(`\\.pbl-state-c-${name}\\s*\\{([^}]*)\\}`).exec(css);
-			expect(rule, `styles/stateColors.css has no rule for ${name}`).not.toBeNull();
-			expect(rule?.[1]).toContain('--pbl-state-color:');
+	it('is idempotent, which is what the fixture guard rests on', () => {
+		// `settingsInconsistency` recognises an unproducible value by asking this function
+		// rather than by restating the rule — which only works because what it returns is
+		// what the resolver stores.
+		for (const raw of ['#ff0000', '#ABC', ' #FF00aa ']) {
+			const stored = stateColorValue(raw);
+			expect(stored).not.toBeNull();
+			expect(stateColorValue(stored as string)).toBe(stored);
 		}
 	});
 
-	it('offers one box per state across both workflows, and never two for one key', () => {
-		// The colours are one table keyed by the state VALUE, so a state both workflows
-		// spell the same way is ONE setting — and a Deliverable workflow that declares no
-		// states of its own falls back to the requirements list entire, which is the common
-		// case rather than an edge one. Two boxes over one key is two controls disagreeing.
-		const config = new FakeViewConfig({
-			stateValues: 'New, Active, Done',
-			deliverableStateProperty: 'note.deliverableStatus',
-			deliverableStateValues: 'Draft, Active',
-		});
+	it('is no longer a view option, because Bases has no colour control', () => {
+		// The reason the picker is a dialog at all. Asserted from the SCHEMA rather than
+		// from a comment: a colour dropdown quietly reappearing here would be two controls
+		// over one key, and the manual's coverage check would then demand an entry claiming
+		// `stateColor.*` — which is the other half of this, checked in `surfaces.test.ts`.
+		const config = new FakeViewConfig({ stateValues: 'New, Active, Done' });
 		const keys = getViewOptions(config as never)
 			.flatMap((group) => ('items' in group ? group.items : []))
-			.map((option) => option.key)
-			.filter((key) => key.startsWith('stateColor.'));
+			.map((option) => option.key);
 
-		expect(keys).toEqual(['New', 'Active', 'Done', 'Draft'].map(stateColorKey));
+		expect(keys.filter((key) => key.startsWith('stateColor.'))).toEqual([]);
+	});
+
+	it('is read for either workflow’s states into the one table', () => {
+		const settings = settingsFrom({
+			stateValues: 'New, Active',
+			deliverableStateProperty: 'note.deliverableStatus',
+			deliverableStateValues: 'Draft',
+			[stateColorKey('Active')]: '#ff0000',
+			[stateColorKey('Draft')]: '#00FFFF',
+			// A key left behind by a state that has since gone from both lists. Never read:
+			// the table is built from the configured vocabularies, so a stale key cannot
+			// colour anything by coming back through a value some note still carries.
+			[stateColorKey('Blocked')]: '#ff00ff',
+		});
+
+		// Keyed by the LOWERCASED value and normalised, like every other per-state table.
+		expect(settings.stateColors).toEqual({ active: '#ff0000', draft: '#00ffff' });
+	});
+});
+
+describe('stateColoring', () => {
+	function coloringOf(options: Record<string, string>, state: string) {
+		const settings = settingsFrom({ stateProperty: 'note.status', ...options });
+		const vault = new FakeVault();
+		vault.addFile('P.md', { frontmatter: { type: 'PBI', order: 10, status: state } });
+		const model = buildModel(vault.app, vault.entries(), settings);
+		const palette = paletteFor(statePalettes(model, settings), model.items[0]);
+		if (!palette) throw new Error('the configured workflow produced no palette');
+		return stateColoring(settings, palette, state);
+	}
+
+	it('answers the slot and the pick together, so neither can be read without the other', () => {
+		const picked = coloringOf({ stateValues: 'New, Active', [stateColorKey('Active')]: '#ff0000' }, 'Active');
+
+		expect(picked).toEqual({ cls: 'pbl-state-1', pick: '#ff0000' });
+	});
+
+	it('keeps the slot class under a pick, so clearing one falls back to it', () => {
+		// The reason the stylesheet composes two tokens rather than TS writing one: the row
+		// carries its slot either way, so a cleared pick lands on the positional colour in
+		// the same render instead of on the plain accent.
+		const unpicked = coloringOf({ stateValues: 'New, Active' }, 'Active');
+
+		expect(unpicked).toEqual({ cls: 'pbl-state-1', pick: null });
 	});
 
 	it('takes no colour off Object.prototype for a state named like one', () => {
 		// A state VALUE is user data, so `constructor` and `toString` are configurations
 		// someone can have — and a bare index finds something truthy on every one of them.
-		// `nameTable` builds the resolver's own map null-prototype, so this can only be
-		// reached through a hand-built fixture holding a plain object; that is exactly the
-		// fixture `settingsWith` exists to let people write, and `byName` is the rule
-		// `nameTable`'s own doc states for reading one back. Shipped three times on three
-		// tables before this one, per that doc — which is why the check is at the lookup.
+		// `nameTable` builds the resolver's own map null-prototype, so this is only reachable
+		// through a hand-built fixture holding a plain object; that is exactly the fixture
+		// `settingsWith` exists to let people write, and `byName` is the rule `nameTable`'s
+		// own doc states for reading one back — broken on three tables before this one.
 		const settings = settingsWith({ stateKey: 'status', states: ['constructor'], stateColors: {} });
 		const vault = new FakeVault();
 		vault.addFile('P.md', { frontmatter: { type: 'PBI', order: 10, status: 'constructor' } });
@@ -70,23 +110,6 @@ describe('the colour vocabulary', () => {
 		const palette = paletteFor(statePalettes(model, settings), model.items[0]);
 		if (!palette) throw new Error('the configured workflow produced no palette');
 
-		expect(stateColorClass(settings, palette, 'constructor')).toBe('pbl-state-0');
-	});
-
-	it('reads a pick for either workflow’s states into the one table', () => {
-		const settings = settingsFrom({
-			stateValues: 'New, Active',
-			deliverableStateProperty: 'note.deliverableStatus',
-			deliverableStateValues: 'Draft',
-			[stateColorKey('Active')]: 'red',
-			[stateColorKey('Draft')]: 'Cyan',
-			// A key left behind by a state that has since gone from both lists. Never read:
-			// the table is built from the configured vocabularies, so a stale key cannot
-			// colour anything by coming back through a value some note still carries.
-			[stateColorKey('Blocked')]: 'pink',
-		});
-
-		// Keyed by the LOWERCASED value, like every other per-state table here.
-		expect(settings.stateColors).toEqual({ active: 'red', draft: 'cyan' });
+		expect(stateColoring(settings, palette, 'constructor')).toEqual({ cls: 'pbl-state-0', pick: null });
 	});
 });

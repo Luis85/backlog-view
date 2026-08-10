@@ -1,6 +1,6 @@
 import { BacklogSettings } from './settings';
 import { ownedProperties } from './optionalProperties';
-import { stateColorName } from './stateColors';
+import { stateColorValue } from './stateColors';
 
 /**
  * Whether a `BacklogSettings` is one `resolveSettings` could have produced.
@@ -91,12 +91,12 @@ export function settingsInconsistency(settings: BacklogSettings): string | null 
  *
  * Key AND value, together, for the reason the two maps above already record twice: a key
  * rule with no value rule beside it is a rule someone reads as covering both. Here the
- * value is what a class name is built from, so a fixture holding one the resolver would
- * have dropped can make `stateColorClass` emit `pbl-state-c-<anything>` — a class no
- * stylesheet paints, asserted by a test that looks like it passed. Asked of
- * `stateColorName` itself rather than of a second copy of the offered list: the resolver
- * stores exactly what that function returns, so anything it would not return unchanged
- * (an unknown name, a capital, surrounding space) is unproducible.
+ * value goes straight into a custom property the bar and its legend swatch both paint
+ * from, so a fixture holding one the resolver would have dropped asserts a colour no
+ * picker could have produced. Asked of `stateColorValue` itself rather than of a second
+ * copy of the rule: the resolver stores exactly what that function returns, so anything it
+ * would not return unchanged — a name, a capital, `#abc` before expansion, surrounding
+ * space — is unproducible.
  *
  * Its own function for `listProblem`'s reason — the complexity budget on the predicate above.
  */
@@ -104,9 +104,9 @@ function colourProblem(settings: BacklogSettings): string | null {
 	const colourable = new Set([...settings.states, ...settings.deliverableStates].map((state) => state.toLowerCase()));
 	const strayColour = Object.keys(settings.stateColors).find((key) => !colourable.has(key));
 	if (strayColour !== undefined) return `stateColors names ${strayColour}, which is not a configured state`;
-	const badColour = Object.entries(settings.stateColors).find(([, name]) => stateColorName(name) !== name);
+	const badColour = Object.entries(settings.stateColors).find(([, name]) => stateColorValue(name) !== name);
 	if (badColour) {
-		return `stateColors sets ${badColour[0]} to ${JSON.stringify(badColour[1])}, which stateColorName would discard`;
+		return `stateColors sets ${badColour[0]} to ${JSON.stringify(badColour[1])}, which stateColorValue would discard`;
 	}
 	return null;
 }

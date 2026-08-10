@@ -100,12 +100,13 @@ export const SETUP: ManualSection = {
 		{
 			term: 'A colour per state',
 			text:
-				'A colour box per workflow state — both workflows, each state offered once — saying ' +
-				'which of the theme’s eight colours the dated axis paints that state’s bars, and the ' +
-				'legend swatch that names it with them, since the two read one mapping. Left at By ' +
-				'position, a state keeps the colour its place in the list gives it. A done state ' +
-				'ignores the pick: a finished bar is green wherever this plugin draws one.',
-			keys: ['stateColor.*'],
+				'Not here: Bases has no colour control, so the picker is this plugin’s own dialog — ' +
+				'⋯ → State colours in the toolbar, or the State colours command. It offers one swatch ' +
+				'per workflow state, across both workflows, each state once; the swatch opens on the ' +
+				'colour that state is already drawn in, and the arrow beside it puts the state back on ' +
+				'the default. Finished states are not offered — a done bar is green whatever is picked ' +
+				'— and a picked colour is fixed, where the default follows the theme between light and ' +
+				'dark. What it paints is the roadmap’s dated axis and its legend.',
 		},
 		{
 			term: 'Where new notes go',

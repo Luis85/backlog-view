@@ -1,4 +1,4 @@
-import { App, FileView } from 'obsidian';
+import { App, BasesViewConfig, FileView } from 'obsidian';
 import { BacklogModel } from '../domain/model';
 import { BacklogSettings } from '../domain/settings';
 
@@ -15,10 +15,22 @@ import { BacklogSettings } from '../domain/settings';
 /** What a command needs of a view: where it is drawn, what it is called, what it shows. */
 export interface LiveBacklogView {
 	readonly viewEl: HTMLElement;
+	readonly app: App;
 	/** The saved view's own name — half of the identity a generated file carries. */
-	readonly config: { name: string };
+	readonly config: BasesViewConfig;
 	readonly settings: BacklogSettings;
 	readonly model: BacklogModel | null;
+	/**
+	 * The app, and the whole `BasesViewConfig` rather than the `{ name }` a generated
+	 * file needs from it. Both are here so a palette command can run an action a view
+	 * already offers — the state-colour picker takes exactly these four members
+	 * (`StateColorTarget`) and so serves the `⋯` entry and the command from one function,
+	 * rather than the view growing a method per command to forward one.
+	 *
+	 * The cost is real and small: `config` is now settable through this interface, so a
+	 * future command could write a `.base` option without going through the view. Keep
+	 * that to actions the view itself already exposes.
+	 */
 }
 
 const live = new Set<LiveBacklogView>();
