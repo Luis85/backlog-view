@@ -77,15 +77,17 @@ function resolveFolders(
 }
 
 /**
- * The Deliverable workflow's three resolved fields, lifted out of `resolveSettings`.
+ * One SECONDARY workflow's three resolved fields — the Deliverable's, and the test
+ * catalog's. Every argument in the comments below was written for the Deliverable and is
+ * true of the test workflow word for word with `test` substituted, so this is one function
+ * called twice rather than two copies of a fallback ladder that took a bug to get right.
+ * A third secondary workflow is a call.
  *
- * Extracted when merging `Idea` and `Deliverable` into one vocabulary pushed that function
- * past its 100-line budget. The seam is the honest one: these three are the only fields
- * whose value depends on ANOTHER of their own group — the key's fallback decides what the
- * two lists fall back to — so they are a unit wherever they are computed, and the budget
- * only made that visible.
+ * The seam is the honest one: these three are the only fields whose value depends on
+ * ANOTHER of their own group — the key's fallback decides what the two lists fall back to
+ * — so they are a unit wherever they are computed.
  */
-interface DeliverableWorkflowInputs {
+interface SecondaryWorkflowInputs {
 	propKey: (key: string, def: string) => string;
 	list: (key: string) => string[];
 	dedupe: (values: string[]) => string[];
@@ -95,49 +97,68 @@ interface DeliverableWorkflowInputs {
 	effectiveDoneValues: string[];
 }
 
-function resolveDeliverableWorkflow(
-	inputs: DeliverableWorkflowInputs,
-): { deliverableStateKey: string; deliverableStates: string[]; deliverableDoneValues: string[] } {
+/** Which option keys and which fallback fields this secondary workflow reads. */
+interface SecondaryWorkflowNames {
+	property: string;
+	stateValues: string;
+	doneValues: string;
+	fallbackKey: 'deliverableStateKey' | 'testStateKey';
+	fallbackDoneValues: 'deliverableDoneValues' | 'testDoneValues';
+}
+
+interface SecondaryWorkflow {
+	key: string;
+	states: string[];
+	doneValues: string[];
+}
+
+function resolveSecondaryWorkflow(inputs: SecondaryWorkflowInputs, names: SecondaryWorkflowNames): SecondaryWorkflow {
 	const { propKey, list, dedupe, fallback, states, effectiveDoneValues } = inputs;
-	// The KEY's own fallback condition, named ONCE and consulted by every Deliverable-
-	// workflow field below: the returned `deliverableStateKey` directly, and
-	// `deliverableStates`/`deliverableDoneValues` as the gate BEHIND each list's own
-	// emptiness check — a populated list wins first, and this only picks WHICH fallback
-	// an empty one takes — not three expressions that happen to agree today. Resolved
-	// here, before either list, because both need it. See `resolvedDeliverableStateKey`,
-	// which states the identical condition (`settings.deliverableStateKey === ''`) for
-	// every READER outside this function; this is that condition's one computation
-	// inside it — `deliverableStateKeyOwn` IS what becomes `settings.deliverableStateKey`
-	// below, so the two cannot drift into asking different questions.
-	const deliverableStateKeyOwn = propKey('deliverableStateProperty', fallback.deliverableStateKey);
-	const deliverableKeyFallsBack = deliverableStateKeyOwn === '';
-	// Falls back to the requirements workflow's own EFFECTIVE done values ONLY when the
-	// KEY is also falling back: "Deliverables don't need their own dedicated status
-	// property; they can use the same one" applies here too, so a vault that customized
-	// `doneValues` must not have that customization ignored while the Deliverable
-	// workflow shares its property. An OWN, distinct key with no done values of its own
-	// is a genuinely independent workflow and gets the shipped default
-	// (`fallback.deliverableDoneValues`) instead — never an unrelated property's
-	// customized list, exactly as before this workflow could share anything. Unlike the
-	// state KEY (`resolvedDeliverableStateKey`), a value list carries no collision risk,
-	// so there is no reason for every reader to re-resolve this fallback; both this and
-	// `deliverableStates` below are baked in HERE, eagerly, gated on the SAME condition.
-	const deliverableDoneValuesRaw = list('deliverableDoneValues');
-	const effectiveDeliverableDoneValues = deliverableDoneValuesRaw.length > 0
-		? deliverableDoneValuesRaw
-		: deliverableKeyFallsBack ? effectiveDoneValues : fallback.deliverableDoneValues;
-	// Same rule, over the declared vocabulary rather than the done values: falls back to
-	// the shared workflow's OWN declared states ONLY when the KEY is also falling back —
-	// a Deliverable state property configured on its OWN distinct key, with no declared
-	// states of its own yet, must not borrow a vocabulary that belongs to a DIFFERENT
-	// property. Own key configured: this list still falls through to ITS OWN observed
-	// values (`menuValues`) when left empty, exactly as `states` does for the
-	// requirements workflow — never to `states`, which is not read through that key.
-	const deliverableStatesRaw = dedupe(list('deliverableStateValues'));
+	// The KEY's own fallback condition, named ONCE and consulted by both lists below: as
+	// the returned key directly, and as the gate BEHIND each list's own emptiness check —
+	// a populated list wins first, and this only picks WHICH fallback an empty one takes.
+	// See `resolvedDeliverableStateKey` / `resolvedTestStateKey`, which state the identical
+	// condition for every READER outside this function.
+	const own = propKey(names.property, fallback[names.fallbackKey]);
+	const fallsBack = own === '';
+	// Falls back to the requirements workflow's own EFFECTIVE done values ONLY when the KEY
+	// is also falling back: a vault that customized `doneValues` must not have that ignored
+	// while this workflow shares its property. An OWN, distinct key with no done values of
+	// its own is a genuinely independent workflow and gets the shipped default instead —
+	// never an unrelated property's customized list.
+	const doneRaw = list(names.doneValues);
+	const doneValues = doneRaw.length > 0 ? doneRaw : fallsBack ? effectiveDoneValues : fallback[names.fallbackDoneValues];
+	// Same rule over the declared vocabulary: falls back to the shared workflow's OWN
+	// declared states ONLY when the KEY is also falling back — a state property configured
+	// on its OWN distinct key, with no declared states yet, must not borrow a vocabulary
+	// that belongs to a DIFFERENT property.
+	const statesRaw = dedupe(list(names.stateValues));
+	return { key: own, states: fallsBack && statesRaw.length === 0 ? states : statesRaw, doneValues };
+}
+
+/**
+ * Both secondary workflows, resolved together — pulled out of `resolveSettings` itself so
+ * the two `resolveSecondaryWorkflow` calls (one per workflow's option names) do not push
+ * that function over its own line budget. Purely a grouping: neither workflow depends on
+ * the other's result, unlike the three fields WITHIN one that `SecondaryWorkflowInputs`
+ * documents.
+ */
+function resolveSecondaryWorkflows(inputs: SecondaryWorkflowInputs): { deliverable: SecondaryWorkflow; test: SecondaryWorkflow } {
 	return {
-		deliverableStateKey: deliverableStateKeyOwn,
-		deliverableStates: deliverableKeyFallsBack && deliverableStatesRaw.length === 0 ? states : deliverableStatesRaw,
-		deliverableDoneValues: effectiveDeliverableDoneValues,
+		deliverable: resolveSecondaryWorkflow(inputs, {
+			property: 'deliverableStateProperty',
+			stateValues: 'deliverableStateValues',
+			doneValues: 'deliverableDoneValues',
+			fallbackKey: 'deliverableStateKey',
+			fallbackDoneValues: 'deliverableDoneValues',
+		}),
+		test: resolveSecondaryWorkflow(inputs, {
+			property: 'testStateProperty',
+			stateValues: 'testStateValues',
+			doneValues: 'testDoneValues',
+			fallbackKey: 'testStateKey',
+			fallbackDoneValues: 'testDoneValues',
+		}),
 	};
 }
 
@@ -216,7 +237,7 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 	// says it cannot have.
 	const effectiveDoneValues = doneValues.length > 0 ? doneValues : fallback.doneValues;
 	const states = dedupe(list('stateValues'));
-	const deliverable = resolveDeliverableWorkflow({ propKey, list, dedupe, fallback, states, effectiveDoneValues });
+	const { deliverable, test } = resolveSecondaryWorkflows({ propKey, list, dedupe, fallback, states, effectiveDoneValues });
 	const doneSet = new Set(effectiveDoneValues.map((v) => v.toLowerCase()));
 	// Limits are refused for done states HERE rather than only in the schema, so a key
 	// left in the `.base` by re-marking a state as done cannot revive its limit.
@@ -227,8 +248,8 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 	// pairing a second time. The lines this replaces were correct, but they were a copy
 	// of `PROPERTY_TABLE` that nothing checked: a row whose `settingsKey` and hand-written
 	// destination disagreed would have bound the picker to one field and read another.
-	// `deliverableStateKey` is resolved here too and then OVERWRITTEN by `...deliverable`
-	// below, which is the only optional key with a fallback of its own to apply.
+	// `deliverableStateKey` and `testStateKey` are resolved here too and then OVERWRITTEN by
+	// the explicit fields below: they are the two optional keys with a fallback of their own.
 	const keyEntries = OPTIONAL_PROPERTIES.map((p) => [p.settingsKey, propKey(p.option, fallback[p.settingsKey])]);
 	const optionalKeys = Object.fromEntries(keyEntries) as Pick<BacklogSettings, OptionalSettingsKey>;
 	const tagsKey = (): string => {
@@ -261,7 +282,7 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		wipLimits: nameTable(limitedStates, (s) => parseWipLimit(str(wipLimitKey(s)))),
 		columnPolicies: nameTable(states, (s) => str(columnPolicyKey(s)).trim() || null),
 		// Both vocabularies, one table — see `BacklogSettings.stateColors`.
-		stateColors: nameTable([...states, ...deliverable.deliverableStates], (s) => stateColorName(str(stateColorKey(s)))),
+		stateColors: nameTable([...states, ...deliverable.states], (s) => stateColorName(str(stateColorKey(s)))),
 		// The two stamp keys main resolved by hand here now arrive with every other
 		// optional key in `...optionalKeys` above, read off `PROPERTY_TABLE` itself.
 		startedStates: dedupe(list('startedStates')),
@@ -270,7 +291,12 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		// A real default that must stay clearable: an emptied list means "no bucket
 		// axis", and only an option never touched falls back to Now, Next, Later.
 		horizonValues: clearable('horizonValues', fallback.horizonValues, () => dedupe(list('horizonValues'))),
-		...deliverable,
+		deliverableStateKey: deliverable.key,
+		deliverableStates: deliverable.states,
+		deliverableDoneValues: deliverable.doneValues,
+		testStateKey: test.key,
+		testStates: test.states,
+		testDoneValues: test.doneValues,
 		// Clearable for the horizon values' reason: a real default that has to be
 		// switchable off, and an emptied list means "no levels" rather than the three
 		// this plugin shipped.

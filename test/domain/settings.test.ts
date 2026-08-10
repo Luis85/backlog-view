@@ -1,7 +1,16 @@
+import { BasesViewConfig } from 'obsidian';
 import { describe, expect, it } from 'vitest';
 import { settingsWith } from '../helpers/settings';
-import { defaultSettings, horizonMenuValues, stateMenuValues } from '../../src/domain/settings';
-import { adoptableProperties, OPTIONAL_FIELDS, OPTIONAL_PROPERTIES, optionalKeyFor, optionalProperty } from '../../src/domain/optionalProperties';
+import { FakeViewConfig } from '../helpers/vault';
+import { DEFAULT_DONE_VALUES, defaultSettings, horizonMenuValues, stateMenuValues } from '../../src/domain/settings';
+import {
+	adoptableProperties,
+	OPTIONAL_FIELDS,
+	OPTIONAL_PROPERTIES,
+	optionalKeyFor,
+	optionalProperty,
+	resolvedTestStateKey,
+} from '../../src/domain/optionalProperties';
 import { configProblems } from '../../src/domain/settingsConsistency';
 import { resolveSettings } from '../../src/domain/settingsResolve';
 import { ALL_TYPES, byName, defaultTypeFolder, EXTRA_TYPES, LEVELS, MARKER_TYPES, TEST_LEVELS } from '../../src/domain/typeVocabulary';
@@ -325,6 +334,7 @@ describe('optionalKeyFor', () => {
 			riskKey: 'risk',
 			assigneeKey: 'assignee',
 			deliverableStateKey: 'deliverableStatus',
+			testStateKey: 'testStatus',
 			dependsOnKey: 'dependsOn',
 		});
 		// Every field of the table, so a switch that fell through would be caught here
@@ -339,10 +349,12 @@ describe('optionalKeyFor', () => {
 			'risk',
 			'assignee',
 			'deliverableStatus',
+			'testStatus',
 			'dependsOn',
 		]);
 		// Unconfigured is '', which every caller reads as "no key to write".
 		expect(OPTIONAL_FIELDS.map((field) => optionalKeyFor(defaultSettings(), field))).toEqual([
+			'',
 			'',
 			'',
 			'',
@@ -371,6 +383,7 @@ describe('the optional-property table', () => {
 			'risk',
 			'assignee',
 			'deliverableState',
+			'testState',
 			'dependsOn',
 		]);
 		expect(OPTIONAL_FIELDS.map(optionalProperty)).toEqual(OPTIONAL_PROPERTIES);
@@ -381,12 +394,12 @@ describe('adoptableProperties', () => {
 	it('offers the shipped key for every optional property nobody has named', () => {
 		const config = fakeConfig({});
 
-		// Nine, not ten: `deliverableState` suggests the SAME key `state` does
-		// ('status'), and `state` is declared first, so its own adoption claims
-		// 'status' before the loop ever reaches `deliverableState` — the existing
-		// "don't suggest an already-taken key" guard (below) skips it, leaving the
-		// Deliverable workflow to fall back to the shared `stateKey` rather than
-		// binding a second, explicit property to the same value.
+		// Nine, not eleven: `deliverableState` and `testState` both suggest the SAME key
+		// `state` does ('status'), and `state` is declared first, so its own adoption
+		// claims 'status' before the loop ever reaches either of them — the existing
+		// "don't suggest an already-taken key" guard (below) skips both, leaving the
+		// Deliverable and test workflows to fall back to the shared `stateKey` rather
+		// than binding a second, explicit property to the same value.
 		expect(adoptableProperties(config, resolveSettings(config)).map((p) => p.suggested)).toEqual([
 			'status',
 			'started',
@@ -429,6 +442,49 @@ describe('adoptableProperties', () => {
 		const settings = resolveSettings(config);
 		expect(adoptableProperties(config, settings).map((p) => p.suggested)).not.toContain('status');
 		expect(configProblems(settings)).toEqual([]);
+	});
+});
+
+describe('the test workflow resolves like the Deliverable one', () => {
+	it('falls back to the requirements key, states and EFFECTIVE done values when unbound', () => {
+		const settings = resolveSettings(
+			new FakeViewConfig({
+				stateProperty: 'note.status',
+				stateValues: 'Draft, Ready, Approved',
+				doneValues: 'Approved',
+			}) as unknown as BasesViewConfig,
+		);
+		expect(settings.testStateKey).toBe('');
+		expect(resolvedTestStateKey(settings)).toBe('status');
+		expect(settings.testStates).toEqual(['Draft', 'Ready', 'Approved']);
+		expect(settings.testDoneValues).toEqual(['Approved']);
+	});
+
+	it('takes the shipped defaults, never the requirements customization, on its OWN key', () => {
+		// An own distinct key is a genuinely independent workflow: borrowing a list read
+		// through a DIFFERENT property is the bug the Deliverable resolver was written for.
+		const settings = resolveSettings(
+			new FakeViewConfig({
+				stateProperty: 'note.status',
+				stateValues: 'Draft, Ready, Approved',
+				doneValues: 'Approved',
+				testStateProperty: 'note.testStatus',
+			}) as unknown as BasesViewConfig,
+		);
+		expect(settings.testStateKey).toBe('testStatus');
+		expect(resolvedTestStateKey(settings)).toBe('testStatus');
+		expect(settings.testStates).toEqual([]);
+		expect(settings.testDoneValues).toEqual(DEFAULT_DONE_VALUES);
+	});
+
+	it('leaves the test key unbound on a first-run setup, so it shares status', () => {
+		// `state` is declared FIRST in PROPERTY_TABLE and adopts `status`, which the loop then
+		// adds to `taken`; the "don't suggest an already-taken key" guard skips every later
+		// row suggesting it. That ordering IS the "tests default to status" rule.
+		const config = new FakeViewConfig({}) as unknown as BasesViewConfig;
+		const adopted = adoptableProperties(config, resolveSettings(config));
+		expect(adopted.find((p) => p.option === 'stateProperty')?.suggested).toBe('status');
+		expect(adopted.some((p) => p.option === 'testStateProperty')).toBe(false);
 	});
 });
 
