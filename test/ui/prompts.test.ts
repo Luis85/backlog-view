@@ -93,6 +93,12 @@ describe('FolderSuggest', () => {
 		const all = (suggest as unknown as { getSuggestions: (query: string) => TFolder[] }).getSuggestions('');
 		expect(all.some((f) => f.path === '/')).toBe(false);
 
+		// The FULL path, which is the whole reason a row is legible: `Backlog` and
+		// `Backlog/Items` are both in this list and a leaf name would draw them alike.
+		const el = document.body.createDiv();
+		suggest.renderSuggestion(matches[1], el);
+		expect(el.textContent).toBe('Backlog/Items');
+
 		let inputEvents = 0;
 		input.addEventListener('input', () => inputEvents++);
 		suggest.selectSuggestion(matches[0], new MouseEvent('click'));

@@ -17,6 +17,42 @@ function submitOnEnter(inputEl: HTMLInputElement, submit: () => void, autofocus 
 	if (autofocus) window.setTimeout(() => inputEl.focus(), 0);
 }
 
+/**
+ * What every prompt in this file is: options handed in at construction, a footer holding
+ * one call-to-action button, and a content element emptied on the way out.
+ *
+ * It exists because those three were written four times and `npm run analyze` could see
+ * the repetition — not as a place to put anything a prompt might one day want. The rule
+ * for adding to it is that all four already do the thing, identically; anything true of
+ * three stays in the three.
+ *
+ * `cta` RETURNS the button rather than only mounting it, because one caller disables it
+ * until the title field has something in it. Mounting it is still the point: the footer
+ * is the last thing appended to `contentEl`, and a caller that built its own would be
+ * free to get that order wrong.
+ */
+abstract class PromptModal<O> extends Modal {
+	protected readonly options: O;
+
+	constructor(app: App, options: O) {
+		super(app);
+		this.options = options;
+	}
+
+	protected cta(label: string, submit: () => void): ButtonComponent {
+		let button!: ButtonComponent;
+		new Setting(this.contentEl).addButton((btn) => {
+			button = btn;
+			btn.setButtonText(label).setCta().onClick(submit);
+		});
+		return button;
+	}
+
+	onClose(): void {
+		this.contentEl.empty();
+	}
+}
+
 export interface NewItemPromptResult {
 	title: string;
 	/** Only present when the prompt asked for a folder. */
@@ -128,14 +164,7 @@ export interface ValuePromptOptions {
  * item is assigned to — because both ask the same question of a list this plugin does
  * not own.
  */
-export class ValuePromptModal extends Modal {
-	private readonly options: ValuePromptOptions;
-
-	constructor(app: App, options: ValuePromptOptions) {
-		super(app);
-		this.options = options;
-	}
-
+export class ValuePromptModal extends PromptModal<ValuePromptOptions> {
 	onOpen(): void {
 		this.titleEl.setText(this.options.title);
 		let value = '';
@@ -152,13 +181,7 @@ export class ValuePromptModal extends Modal {
 			submitOnEnter(text.inputEl, submit, true);
 		});
 
-		new Setting(this.contentEl).addButton((btn) => {
-			btn.setButtonText(this.options.ctaLabel).setCta().onClick(submit);
-		});
-	}
-
-	onClose(): void {
-		this.contentEl.empty();
+		this.cta(this.options.ctaLabel, submit);
 	}
 }
 
@@ -171,14 +194,7 @@ export interface FolderPromptOptions {
 }
 
 /** Prompt asking for a single folder, prefilled and with autocomplete. */
-export class FolderPromptModal extends Modal {
-	private readonly options: FolderPromptOptions;
-
-	constructor(app: App, options: FolderPromptOptions) {
-		super(app);
-		this.options = options;
-	}
-
+export class FolderPromptModal extends PromptModal<FolderPromptOptions> {
 	onOpen(): void {
 		this.titleEl.setText(this.options.heading);
 		let folder = this.options.defaultFolder;
@@ -197,13 +213,7 @@ export class FolderPromptModal extends Modal {
 				submitOnEnter(text.inputEl, submit, true);
 			});
 
-		new Setting(this.contentEl).addButton((btn) => {
-			btn.setButtonText(this.options.ctaLabel).setCta().onClick(submit);
-		});
-	}
-
-	onClose(): void {
-		this.contentEl.empty();
+		this.cta(this.options.ctaLabel, submit);
 	}
 }
 
@@ -248,14 +258,7 @@ export interface SchedulePromptOptions {
  * formatting apply, and the only values this dialog can hand back are a calendar
  * date or nothing at all.
  */
-export class SchedulePromptModal extends Modal {
-	private readonly options: SchedulePromptOptions;
-
-	constructor(app: App, options: SchedulePromptOptions) {
-		super(app);
-		this.options = options;
-	}
-
+export class SchedulePromptModal extends PromptModal<SchedulePromptOptions> {
 	onOpen(): void {
 		this.titleEl.setText(this.options.heading);
 		const values: Record<string, string> = {};
@@ -308,25 +311,12 @@ export class SchedulePromptModal extends Modal {
 			});
 		});
 
-		new Setting(this.contentEl).addButton((btn) => {
-			btn.setButtonText('Save').setCta().onClick(submit);
-		});
-	}
-
-	onClose(): void {
-		this.contentEl.empty();
+		this.cta('Save', submit);
 	}
 }
 
 /** Prompt asking for the title (and, when needed, target folder) of a new backlog item. */
-export class TitlePromptModal extends Modal {
-	private readonly options: NewItemPromptOptions;
-
-	constructor(app: App, options: NewItemPromptOptions) {
-		super(app);
-		this.options = options;
-	}
-
+export class TitlePromptModal extends PromptModal<NewItemPromptOptions> {
 	onOpen(): void {
 		this.titleEl.setText(this.options.heading);
 		let title = '';
@@ -388,13 +378,6 @@ export class TitlePromptModal extends Modal {
 				});
 		}
 
-		new Setting(this.contentEl).addButton((btn) => {
-			btn.setButtonText('Create').setCta().setDisabled(true).onClick(submit);
-			createBtn = btn;
-		});
-	}
-
-	onClose(): void {
-		this.contentEl.empty();
+		createBtn = this.cta('Create', submit).setDisabled(true);
 	}
 }

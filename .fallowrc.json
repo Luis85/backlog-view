@@ -18,6 +18,10 @@
 		{
 			"extends": "FuzzySuggestModal",
 			"members": ["getItems", "getItemText", "renderSuggestion", "onChooseItem"]
+		},
+		{
+			"extends": "PromptModal",
+			"members": ["onOpen"]
 		}
 	],
 	"health": {
