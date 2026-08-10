@@ -10,6 +10,7 @@ import {
 } from '../../src/domain/writePlan';
 import { defaultSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
+import { settingsWith } from '../helpers/settings';
 
 const settings = defaultSettings();
 /** Fixtures made of plain notes: opt out of the hierarchy scope so they survive the build. */
@@ -534,5 +535,22 @@ describe('computeInitWrites', () => {
 		expect(byPath.get('Bare Epic.md')?.order).toBe(20);
 		expect(byPath.get('Story.md')?.typeName).toBe('PBI');
 		expect(byPath.get('Story.md')?.order).toBe(ORDER_SPACING);
+	});
+
+	it('stubs the test state on a catalog member and on nothing else', () => {
+		// The Deliverable gate's mirror, and the ladder rather than a type name for the reason
+		// every other membership test here uses it: a `Task` under a `Test case` is a catalog
+		// member and a type-name gate would miss it.
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Case.md', { frontmatter: { type: 'Test case', order: 20 } });
+		vault.addFile('Test task.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'Case' });
+		const settings = settingsWith({ testStateKey: 'testStatus' });
+		const model = buildModel(vault.app, vault.entries(), settings);
+		const stubsFor = (path: string) =>
+			computeInitWrites(model, settings).find((w) => w.file.path === path)?.stubs ?? [];
+		expect(stubsFor('Case.md')).toContain('testState');
+		expect(stubsFor('Test task.md')).toContain('testState');
+		expect(stubsFor('Epic.md')).not.toContain('testState');
 	});
 });

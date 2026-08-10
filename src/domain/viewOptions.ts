@@ -55,6 +55,7 @@ export function getViewOptions(config?: BasesViewConfig): BasesAllOptions[] {
 		hierarchyGroup(),
 		progressGroup(settings),
 		deliverablesGroup(settings),
+		testManagementGroup(),
 		roadmapGroup(),
 		riskGroup(),
 		newItemsGroup(settings.homeFolder),
@@ -284,6 +285,41 @@ function deliverablesGroup(settings: BacklogSettings): BasesAllOptions {
 			...settings.deliverableStates
 				.filter((state) => !settings.states.some((own) => sameValue(own, state)))
 				.map(stateColorOption),
+		],
+	};
+}
+
+/**
+ * The test workflow's own group — the Deliverables group's mirror MINUS its colour
+ * section, which is a decision rather than an omission: `stateColors` is keyed by the state
+ * VALUE, so a test state spelled like a requirements or Deliverable state already picks up
+ * that state's colour and would be two controls over one key. What a test-ONLY state gives
+ * up is the override; it takes the positional colour its place in this list earns, which is
+ * what every state had before per-state colours existed.
+ */
+function testManagementGroup(): BasesAllOptions {
+	return {
+		type: 'group',
+		displayName: 'Test management',
+		items: [
+			optionalPropertyOption('testState', 'Test state property'),
+			{
+				type: 'text',
+				key: 'testStateValues',
+				displayName: 'Test workflow states (in order)',
+				default: '',
+				// About whether a case is fit to be WALKED. Deliberately not the plan's
+				// New/Active/Done, and deliberately not Pass/Fail — a result, which this epic
+				// refuses. A placeholder suggests and configures nothing.
+				placeholder: 'Draft, Ready, Approved',
+			},
+			{
+				type: 'text',
+				key: 'testDoneValues',
+				displayName: 'Test states that count as done',
+				default: DEFAULT_DONE_VALUES.join(', '),
+				placeholder: DEFAULT_DONE_VALUES.join(', '),
+			},
 		],
 	};
 }

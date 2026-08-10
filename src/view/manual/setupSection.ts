@@ -82,6 +82,17 @@ export const SETUP: ManualSection = {
 			keys: ['deliverableStateProperty'],
 		},
 		{
+			term: 'The test catalog\'s own workflow',
+			text:
+				'The property a `Test suite` or `Test case` row\'s state chip reads and writes, its ' +
+				'ordered states and its done values — unset by default, which is what makes a fresh ' +
+				'vault read `status` through the requirements board\'s own property rather than a ' +
+				'second one nobody named. Records no run history and draws no columns: the catalog ' +
+				'is a tree, and this is the same per-item state mechanism every other workflow here ' +
+				'already has, over its own property.',
+			keys: ['testStateProperty', 'testStateValues', 'testDoneValues'],
+		},
+		{
 			term: 'What progress means',
 			text:
 				'The workflow states offered for writing, done values, started values, and Show ' +

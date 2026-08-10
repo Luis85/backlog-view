@@ -4,6 +4,7 @@ import { BacklogItem, BacklogModel } from './model';
 import {
 	childLevelIndex,
 	EXTRA_TYPE_RANK,
+	inCatalog,
 	isDeliverableType,
 	isExtraType,
 	isMarkerType,
@@ -574,6 +575,13 @@ function missingKeyStubs(item: BacklogItem, settings: BacklogSettings): Optional
 		// this key gets in the generated README (Task 20) says "on a Deliverable", and
 		// this is what keeps that literally true rather than aspirational.
 		if (field === 'deliverableState' && !isDeliverableType(item.typeName)) continue;
+		// The same rule as the Deliverable's above and the same reason, asked of the LADDER
+		// rather than a type name: a test's state describes a test, and a `Task` under a
+		// `Test case` is one while a `Task` under a PBI is not. Without this, binding the
+		// property and pressing Assign missing properties stubs an empty test-state key onto
+		// every plan item in the base — which is what exposing the picker makes reachable,
+		// so the gate ships with the picker rather than after it.
+		if (field === 'testState' && !inCatalog(item)) continue;
 		if (optionalKeyFor(settings, field) === '' || item.ownKeys[field]) continue;
 		stubs.push(field);
 	}

@@ -62,4 +62,8 @@ refused, arrived at from the other end.
 
 **It will not invent a status vocabulary.** A test being drafted, ready or retired is
 exactly what `status` already says on every note in this register, and a second word for
-the same idea is a second thing to keep in sync.
+the same idea is a second thing to keep in sync. What a case later gained is not a new
+word but the plan's own per-item state mechanism a third time, over its own property —
+the `Test management` options group's `testStateProperty`, `testStateValues` and
+`testDoneValues` — unset by default, so a fresh vault reads `status` through the
+requirements board's property rather than a second one nobody named.

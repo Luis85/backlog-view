@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { BasesViewConfig } from 'obsidian';
 import { getViewOptions } from '../../src/domain/viewOptions';
 import { defaultTypeFolder } from '../../src/domain/typeVocabulary';
+import { FakeViewConfig } from '../helpers/vault';
 
 
 /**
@@ -122,6 +124,26 @@ describe('getViewOptions', () => {
 		if (!group || !('items' in group)) throw new Error('Deliverables group missing');
 		const keys = group.items.map((item) => item.key);
 		expect(keys).toEqual(['deliverableStateProperty', 'deliverableStateValues', 'deliverableDoneValues']);
+	});
+
+	it('exposes a Test management group with its own state property, states and done values', () => {
+		const groups = getViewOptions();
+		const group = groups.find((g) => 'displayName' in g && g.displayName === 'Test management');
+		if (!group || !('items' in group)) throw new Error('Test management group missing');
+		const keys = group.items.map((item) => item.key);
+		expect(keys).toEqual(['testStateProperty', 'testStateValues', 'testDoneValues']);
+	});
+
+	it('gives the test workflow no per-state colour boxes', () => {
+		// Not an omission: `stateColors` is keyed by the state VALUE, so a second box for a
+		// state both workflows spell the same way would be two controls over one key — and a
+		// test-only state takes its positional colour rather than an override.
+		const groups = getViewOptions(
+			new FakeViewConfig({ testStateValues: 'Draft, Ready, Approved' }) as unknown as BasesViewConfig,
+		);
+		const group = groups.find((g) => 'displayName' in g && g.displayName === 'Test management');
+		if (!group || !('items' in group)) throw new Error('Test management group missing');
+		expect(group.items.some((item) => item.key.startsWith('stateColor.'))).toBe(false);
 	});
 
 	it('offers neither until a workflow is stated', () => {
