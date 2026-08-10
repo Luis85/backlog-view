@@ -103,7 +103,12 @@ Obsidian's.
   analyze` reports it dead, correctly.
 - `test/helpers/fixtures.ts` — the demo backlog and the view options that configure all
   four projections at once. A fourth fixture, not a replacement: the per-suite ones stay
-  four notes each on purpose.
+  four notes each on purpose. `demoVault('folders')` — `?fixture=folders`, mounted with
+  `folderOptions()` — is the SAME backlog filed the way a folder-note vault files it:
+  every note the note of its own folder, one noteless container folder on the way down,
+  and no `parent` key anywhere, so folder inference is the only thing placing a row.
+  Layout is a separate argument from the notes for exactly that reason — a second list of
+  notes could not show that the two trees come out the same.
 - **A change that visibly alters the view puts its cases in a FIXTURE, not in a mock.**
   In `demoVault()` where the case belongs in the everyday picture; in a named variant —
   `edgeCaseVault()`, reached by `?fixture=edges` — where it would distort it, which is

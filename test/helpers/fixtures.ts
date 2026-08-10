@@ -22,11 +22,52 @@
 import { FakeVault } from './vault';
 
 /** The one note the Base does not return — the parent that renders as a context row. */
-const OUTSIDE = 'Retired platform.md';
+const OUTSIDE = 'Retired platform';
 
-/** Add a note to `vault`, the one shape every fixture below builds a backlog out of. */
-function add(vault: FakeVault, title: string, frontmatter: Record<string, unknown>, parent?: string): void {
-	vault.addFile(`${title}.md`, { frontmatter, parentLink: parent });
+/**
+ * How a fixture FILES its notes, which is a different question from what the backlog is.
+ *
+ * `flat` is one folder of notes joined by `parent` links — what the plugin ships as its
+ * default. `folders` is the vault a folder-note user already has: every note is the note
+ * of its own folder, its children live inside that folder, and NOTHING carries a `parent`
+ * key, so the path is the only thing placing a row. The same backlog either way, which is
+ * the point — the tree drawn from the second is the tree drawn from the first, and a
+ * fixture that stated a different backlog could not show that.
+ */
+export type Layout = 'flat' | 'folders';
+
+/**
+ * The `add` one fixture builds its notes with. It is a closure rather than a free
+ * function because the folder layout needs the parent's FOLDER, which only the calls
+ * already made can say.
+ *
+ * `container` names a folder with no note of its own — `Use cases` in the screenshot this
+ * layout came from. It is the case folder inference has to walk straight through
+ * (`Folder note hierarchy` extension 2a) and it is ignored in the flat layout, where a
+ * folder means nothing.
+ */
+function adder(vault: FakeVault, layout: Layout) {
+	const dirs = new Map<string, string>();
+	return function add(
+		title: string,
+		frontmatter: Record<string, unknown>,
+		parent?: string,
+		container?: string,
+	): void {
+		if (layout === 'flat') {
+			vault.addFile(`${title}.md`, { frontmatter, parentLink: parent });
+			return;
+		}
+		// Loud rather than misfiled: a parent named before it is added would otherwise land
+		// its child at the vault root and quietly rename the case the fixture was making.
+		if (parent !== undefined && !dirs.has(parent)) throw new Error(`fixture parent not added yet: ${parent}`);
+		const under = [parent === undefined ? '' : dirs.get(parent), container].filter(Boolean).join('/');
+		const dir = under === '' ? title : `${under}/${title}`;
+		dirs.set(title, dir);
+		if (under !== '') vault.folders.add(under);
+		vault.folders.add(dir);
+		vault.addFile(`${dir}/${title}.md`, { frontmatter });
+	};
 }
 
 /**
@@ -69,70 +110,87 @@ export function demoOrder(): string[] {
 }
 
 /**
+ * `demoOptions()` with folder inference on — the configuration `demoVault('folders')` has
+ * to be mounted under. The two go together: the folder fixture writes no `parent` key at
+ * all, so with the option off every one of its notes is a root.
+ */
+export function folderOptions(): Record<string, unknown> {
+	return { ...demoOptions(), inferFolderHierarchy: true };
+}
+
+/**
  * The notes. Two live epics with real subtrees, one epic outside the filter parenting a
  * feature that is inside it, a scattering of items with no state, no horizon and no
  * dates (which is what puts cards on the shelf and in the no-state column), and one
  * milestone for the line across the plan.
+ *
+ * `layout` decides only where those notes SIT — see `Layout`. Mount the `folders` one with
+ * `folderOptions()`.
  */
-export function demoVault(): FakeVault {
+export function demoVault(layout: Layout = 'flat'): FakeVault {
 	const vault = new FakeVault();
-	add(vault, 'Onboarding', { type: 'Epic', order: 10, status: 'Active', horizon: 'Now', start: '2026-07-01', due: '2026-09-30' });
-	add(vault, 'Sign-up flow', { type: 'Feature', order: 10, status: 'Active', horizon: 'Now', start: '2026-07-01', due: '2026-08-20' }, 'Onboarding');
-	add(vault, 'Email and password', { type: 'PBI', order: 10, status: 'Done', started: '2026-07-02', finished: '2026-07-18', horizon: 'Now' }, 'Sign-up flow');
-	add(vault, 'Validate the address', { type: 'Task', order: 10, status: 'Done' }, 'Email and password');
-	add(vault, 'Rate-limit the endpoint', { type: 'Task', order: 20, status: 'Done' }, 'Email and password');
+	const add = adder(vault, layout);
+	add('Onboarding', { type: 'Epic', order: 10, status: 'Active', horizon: 'Now', start: '2026-07-01', due: '2026-09-30' });
+	add('Sign-up flow', { type: 'Feature', order: 10, status: 'Active', horizon: 'Now', start: '2026-07-01', due: '2026-08-20' }, 'Onboarding');
+	// The two PBIs under this Feature sit in a `Use cases` folder that has no note of its
+	// own, which is the shape a real folder-organised vault has and the one case folder
+	// inference must walk straight THROUGH — `Folder note hierarchy` extension 2a. Their
+	// sibling `Cut the release branch` below stays outside it, so the container holds some
+	// of a sibling group rather than all of it.
+	add('Email and password', { type: 'PBI', order: 10, status: 'Done', started: '2026-07-02', finished: '2026-07-18', horizon: 'Now' }, 'Sign-up flow', 'Use cases');
+	add('Validate the address', { type: 'Task', order: 10, status: 'Done' }, 'Email and password');
+	add('Rate-limit the endpoint', { type: 'Task', order: 20, status: 'Done' }, 'Email and password');
 	// The three risk cases the chip has to draw, on rows that sit near each other: a level
 	// from the declared list here, one the list does not name on `Offline-first sync`, and
 	// every other row unjudged — which is the dashed, inviting chip and the commonest face.
-	add(vault, 'Single sign-on', { type: 'PBI', order: 20, status: 'Review', started: '2026-07-20', horizon: 'Now', start: '2026-07-20', due: '2026-08-15', risk: '1 - High' }, 'Sign-up flow');
-	add(vault, 'Provider handshake', { type: 'Task', order: 10, status: 'Active' }, 'Single sign-on');
-	add(vault, 'Token refresh', { type: 'Task', order: 20 }, 'Single sign-on');
-	add(vault, 'Welcome tour', { type: 'Feature', order: 20, status: 'Ready', horizon: 'Next' }, 'Onboarding');
+	add('Single sign-on', { type: 'PBI', order: 20, status: 'Review', started: '2026-07-20', horizon: 'Now', start: '2026-07-20', due: '2026-08-15', risk: '1 - High' }, 'Sign-up flow', 'Use cases');
+	add('Provider handshake', { type: 'Task', order: 10, status: 'Active' }, 'Single sign-on');
+	add('Token refresh', { type: 'Task', order: 20 }, 'Single sign-on');
+	add('Welcome tour', { type: 'Feature', order: 20, status: 'Ready', horizon: 'Next' }, 'Onboarding');
 	// Dated while its parent is not, so `Welcome tour` draws an INFERRED bar: outlined,
 	// no grips at all, and still a connector — a link claims no date, so it needs no
 	// baseline the way a grip does.
-	add(vault, 'Highlight the sidebar', { type: 'PBI', order: 10, status: 'New', horizon: 'Next', start: '2026-08-24', due: '2026-09-05' }, 'Welcome tour');
-	add(vault, 'Skip and resume', { type: 'PBI', order: 20 }, 'Welcome tour');
+	add('Highlight the sidebar', { type: 'PBI', order: 10, status: 'New', horizon: 'Next', start: '2026-08-24', due: '2026-09-05' }, 'Welcome tour');
+	add('Skip and resume', { type: 'PBI', order: 20 }, 'Welcome tour');
 	// An extra type at the SHALLOWEST legal parent, and the one place the pinned rank is
 	// visible rather than merely true: it sits among Features and its child is a Task, the
 	// rung two below the Epic holding it. Dated, so an extra type draws a bar as well.
 	// Waits for `Single sign-on`, which ends 08-15 — after this one starts. A CONFLICT
 	// arrow, and the marker on this row.
-	add(vault, 'Offline-first sync', { type: 'Idea', order: 30, status: 'Active', horizon: 'Next', start: '2026-08-10', due: '2026-10-15', dependsOn: '[[Single sign-on]]', risk: 'Existential' }, 'Onboarding');
-	add(vault, 'Survey the storage APIs', { type: 'Task', order: 10, status: 'Active' }, 'Offline-first sync');
+	add('Offline-first sync', { type: 'Idea', order: 30, status: 'Active', horizon: 'Next', start: '2026-08-10', due: '2026-10-15', dependsOn: '[[Single sign-on]]', risk: 'Existential' }, 'Onboarding');
+	add('Survey the storage APIs', { type: 'Task', order: 10, status: 'Active' }, 'Offline-first sync');
 	// A bar exactly one day wide — start and target on the same date, an ordinary PBI
 	// rather than a Milestone, so it draws the diamond from its GEOMETRY. The case where
 	// a bar is narrower than its own handles, and both the end grip and the connector
 	// still have to be reachable.
-	add(vault, 'Cut the release branch', { type: 'PBI', order: 40, status: 'Ready', start: '2026-09-14', due: '2026-09-14' }, 'Sign-up flow');
+	add('Cut the release branch', { type: 'PBI', order: 40, status: 'Ready', start: '2026-09-14', due: '2026-09-14' }, 'Sign-up flow');
 	// The second hop of a chain: this waits for `Offline-first sync`, which waits for
 	// `Single sign-on`. Dragging from here, `Single sign-on` must be refused THROUGH the
 	// chain and not merely as a direct neighbour — the transitive half of the rule, in
 	// the picture rather than only in a unit test.
-	add(vault, 'Sync conflict UX', { type: 'PBI', order: 50, status: 'New', start: '2026-10-20', due: '2026-11-30', dependsOn: '[[Offline-first sync]]' }, 'Onboarding');
+	add('Sync conflict UX', { type: 'PBI', order: 50, status: 'New', start: '2026-10-20', due: '2026-11-30', dependsOn: '[[Offline-first sync]]' }, 'Onboarding');
 
 	// Waits for `Sign-up flow`, which ends 08-20 — well before this starts. The ORDINARY
 	// arrow, so the picture has one of each rather than only the loud one.
-	add(vault, 'Billing', { type: 'Epic', order: 20, status: 'New', horizon: 'Later', start: '2026-10-01', due: '2027-01-31', dependsOn: '[[Sign-up flow]]' });
-	add(vault, 'Invoicing', { type: 'Feature', order: 10, status: 'New', horizon: 'Later' }, 'Billing');
-	add(vault, 'Monthly statement', { type: 'PBI', order: 10, status: 'New' }, 'Invoicing');
+	add('Billing', { type: 'Epic', order: 20, status: 'New', horizon: 'Later', start: '2026-10-01', due: '2027-01-31', dependsOn: '[[Sign-up flow]]' });
+	add('Invoicing', { type: 'Feature', order: 10, status: 'New', horizon: 'Later' }, 'Billing');
+	add('Monthly statement', { type: 'PBI', order: 10, status: 'New' }, 'Invoicing');
 	// SHELVED with a stated, readable start (its target precedes it), and its prerequisite
 	// runs past that start — `Arrows between bars` 2b: a conflict stated on the shelf card
 	// with no arrow drawn, since a shelved dependent has no bar to carry one.
-	add(vault, 'Dunning emails', { type: 'PBI', order: 20, start: '2026-08-05', due: '2026-07-01', dependsOn: '[[Sign-up flow]]' }, 'Invoicing');
+	add('Dunning emails', { type: 'PBI', order: 20, start: '2026-08-05', due: '2026-07-01', dependsOn: '[[Sign-up flow]]' }, 'Invoicing');
 	// An extra type at the DEEPEST legal parent, drawn level with the two PBIs above it.
-	add(vault, 'Usage-based pricing', { type: 'Idea', order: 30, status: 'New', horizon: 'Later' }, 'Invoicing');
+	add('Usage-based pricing', { type: 'Idea', order: 30, status: 'New', horizon: 'Later' }, 'Invoicing');
 	// A MILESTONE, and its dependency case is the one that survives the type's rule: a
 	// milestone waits for nothing, so it declares nothing — but it may be waited FOR, and
 	// `Launch checklist` below is what waits on it. Its own `dependsOn` is deliberately
 	// absent rather than present-and-ignored: the fixture draws what the view supports.
-	add(vault, 'Ship 1.0', { type: 'Milestone', order: 30, due: '2026-09-30' }, 'Billing');
+	add('Ship 1.0', { type: 'Milestone', order: 30, due: '2026-09-30' }, 'Billing');
 	// Waits on that milestone — the arrow INTO a diamond, which is the direction a
 	// milestone still takes part in. Also names a note this base does not have, so it
 	// carries the BROKEN case (1d) too: no arrow for that entry, and the row's glyph.
 	// That case lived on `Ship 1.0` until milestones stopped declaring anything.
 	add(
-		vault,
 		'Launch checklist',
 		{ type: 'PBI', order: 40, status: 'New', start: '2026-10-05', due: '2026-10-20', dependsOn: ['[[Ship 1.0]]', 'Contract signed'] },
 		'Billing',
@@ -140,28 +198,28 @@ export function demoVault(): FakeVault {
 
 	// A parent the Base excludes, with a child it returns: the context row on screen.
 	// Carries a risk too, so the context row draws the STATIC chip beside the static state.
-	vault.addFile(OUTSIDE, { frontmatter: { type: 'Epic', order: 30, status: 'Done', risk: '3 - Low' } });
-	add(vault, 'Legacy importer', { type: 'Feature', order: 10, status: 'Ready' }, 'Retired platform');
+	add(OUTSIDE, { type: 'Epic', order: 30, status: 'Done', risk: '3 - Low' });
+	add('Legacy importer', { type: 'Feature', order: 10, status: 'Ready' }, 'Retired platform');
 
 	// Deliverables, on their own workflow: one per column so the fourth projection draws
 	// a full board, hanging from three different rungs so the tree shows the pinned rank.
 	// `Runbook` carries a requirements `status` as well as its own `docStatus`, which is
 	// what the shared state column has to tell apart — it reads `In review` on the tree
 	// beside rows reading their own workflow, and never `Done`.
-	add(vault, 'Onboarding guide', { type: 'Deliverable', order: 30, docStatus: 'Published', horizon: 'Now' }, 'Onboarding');
-	add(vault, 'Draft the copy', { type: 'Task', order: 10, status: 'Done' }, 'Onboarding guide');
-	add(vault, 'Auth sequence diagram', { type: 'Deliverable', order: 30, docStatus: 'In review' }, 'Sign-up flow');
-	add(vault, 'Runbook', { type: 'Deliverable', order: 40, docStatus: 'In review', status: 'Done' }, 'Billing');
-	add(vault, 'Pricing one-pager', { type: 'Deliverable', order: 50, docStatus: 'Draft', horizon: 'Next' });
-	add(vault, 'Brand refresh brief', { type: 'Deliverable', order: 60 });
+	add('Onboarding guide', { type: 'Deliverable', order: 30, docStatus: 'Published', horizon: 'Now' }, 'Onboarding');
+	add('Draft the copy', { type: 'Task', order: 10, status: 'Done' }, 'Onboarding guide');
+	add('Auth sequence diagram', { type: 'Deliverable', order: 30, docStatus: 'In review' }, 'Sign-up flow');
+	add('Runbook', { type: 'Deliverable', order: 40, docStatus: 'In review', status: 'Done' }, 'Billing');
+	add('Pricing one-pager', { type: 'Deliverable', order: 50, docStatus: 'Draft', horizon: 'Next' });
+	add('Brand refresh brief', { type: 'Deliverable', order: 60 });
 
 	// Neither typed nor dated nor triaged: the shelf's whole reason to exist.
-	add(vault, 'Spike: offline mode', { order: 40 });
-	add(vault, 'Accessibility sweep', { type: 'Issue', order: 50, status: 'New' });
+	add('Spike: offline mode', { order: 40 });
+	add('Accessibility sweep', { type: 'Issue', order: 50, status: 'New' });
 	// Parentless and untriaged, which is two branches at once: a declared type belongs with
 	// no parent at all, and the shelf groups by type, so a second extra type is what shows
 	// its grouping and its type filter doing something rather than listing one name.
-	add(vault, 'Voice control', { type: 'Idea', order: 60 });
+	add('Voice control', { type: 'Idea', order: 60 });
 
 	return vault;
 }
@@ -172,7 +230,10 @@ export function demoVault(): FakeVault {
  * and what the query returned, so the fixture has to say which is which.
  */
 export function demoResults(vault: FakeVault): ReturnType<FakeVault['entries']> {
-	return vault.entries().filter((entry) => entry.file.path !== OUTSIDE);
+	// By BASENAME, not by path: the same note is `Retired platform.md` in one layout and
+	// `Retired platform/Retired platform.md` in the other, and which note the Base leaves
+	// out is a fact about the backlog rather than about where the fixture filed it.
+	return vault.entries().filter((entry) => entry.file.basename !== OUTSIDE);
 }
 
 /**
@@ -187,13 +248,14 @@ export function demoResults(vault: FakeVault): ReturnType<FakeVault['entries']> 
  */
 export function edgeCaseVault(): FakeVault {
 	const vault = new FakeVault();
-	add(vault, 'Platform', { type: 'Epic', order: 10, status: 'Active' });
+	const add = adder(vault, 'flat');
+	add('Platform', { type: 'Epic', order: 10, status: 'Active' });
 	// Clipped at BOTH edges regardless of what today is, so this fixture does not rot
 	// with the calendar: an eight-year span always exceeds the 1830-day budget.
-	add(vault, 'The long migration', { type: 'PBI', order: 10, status: 'Active', start: '2022-01-01', due: '2030-12-31' }, 'Platform');
+	add('The long migration', { type: 'PBI', order: 10, status: 'Active', start: '2022-01-01', due: '2030-12-31' }, 'Platform');
 	// Ordinary, inside the clamped window, so the clipped bar has something to be
 	// compared against and something legal to be dragged onto.
-	add(vault, 'Nearby work', { type: 'PBI', order: 20, status: 'New', start: '2026-08-04', due: '2026-08-28' }, 'Platform');
-	add(vault, 'One day only', { type: 'PBI', order: 30, status: 'Ready', start: '2026-08-12', due: '2026-08-12' }, 'Platform');
+	add('Nearby work', { type: 'PBI', order: 20, status: 'New', start: '2026-08-04', due: '2026-08-28' }, 'Platform');
+	add('One day only', { type: 'PBI', order: 30, status: 'Ready', start: '2026-08-12', due: '2026-08-12' }, 'Platform');
 	return vault;
 }

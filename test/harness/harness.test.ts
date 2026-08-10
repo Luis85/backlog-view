@@ -101,6 +101,47 @@ describe('the browser harness mounts', () => {
  * existed and the screen kept showing the old result set.
  */
 /**
+ * The folder fixture is the same backlog filed the way a folder-note vault files it, so
+ * what is worth checking is exactly that: the tree comes out the same, and it comes out
+ * of the PATHS — no note in it carries a `parent` key to fall back on.
+ */
+describe('the folder-structured fixture draws the same tree from its paths', () => {
+	function mount() {
+		const root = document.createElement('div');
+		document.body.appendChild(root);
+		return mountHarness(root, 'folders');
+	}
+
+	it('nests rows by folder note, walking through a container folder with no note', () => {
+		const { containerEl } = mount();
+		clickExpandAll(containerEl);
+
+		// Depth is what inference produced: `Onboarding/Onboarding.md`, its Feature's folder
+		// note below that, and the PBI inside `Use cases`, whose noteless folder the walk
+		// passes straight through rather than counting as a rung.
+		expect(rowFor(containerEl, 'Onboarding').getAttribute('aria-level')).toBe('1');
+		expect(rowFor(containerEl, 'Sign-up flow').getAttribute('aria-level')).toBe('2');
+		expect(rowFor(containerEl, 'Email and password').getAttribute('aria-level')).toBe('3');
+		expect(rowFor(containerEl, 'Validate the address').getAttribute('aria-level')).toBe('4');
+	});
+
+	it('places every row without a parent key, and still loads the folder note the Base left out', () => {
+		const { containerEl, vault } = mount();
+
+		// The category invariant, asked of the vault rather than of the rows that happened
+		// to be checked above: a single `parent` key anywhere would mean some part of this
+		// tree was placed by a link and the fixture was proving less than it looks like.
+		const linked = [...vault.frontmatter].filter(([, fm]) => 'parent' in fm).map(([path]) => path);
+		expect(linked).toEqual([]);
+		expect(vault.files.has('Onboarding/Sign-up flow/Use cases/Email and password/Email and password.md')).toBe(true);
+
+		// Extension 3a: the folder note above `Legacy importer` is not a result, so it is
+		// loaded from the vault as context — the same row the flat fixture gets from a link.
+		expect(rowFor(containerEl, 'Retired platform').classList.contains('pbl-outside')).toBe(true);
+	});
+});
+
+/**
  * The dependency connector shipped in Tasks 1–4 and drew nothing markup assertions had
  * been checking: it is a picture question — is the dot reachable on a bar too narrow for
  * its own grips, on a bar with no grips at all, on a bar clamped by the window — so these
