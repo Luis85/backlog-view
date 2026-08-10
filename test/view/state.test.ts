@@ -120,96 +120,18 @@ describe('view state details', () => {
 		expect(view.filterText).toBe('x');
 	});
 
-	it('re-measures the titles when the app says its CSS changed', () => {
-		// A theme, a snippet or a late-loading font changes rendered text without moving
-		// the tree's box, so no ResizeObserver fires and no render follows. The hover-time
-		// check this replaced could not suffer that — it re-read the dimensions every
-		// time — so the pass has to be told. (Codex, PR #128.)
-		let truncated = false;
-		const realScroll = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollWidth')?.get;
-		const realClient = Object.getOwnPropertyDescriptor(Element.prototype, 'clientWidth')?.get;
-		const isTitle = (el: Element): boolean => el.classList.contains('pbl-title');
-		const scrollWidth = vi.spyOn(Element.prototype, 'scrollWidth', 'get').mockImplementation(function (this: Element) {
-			if (!isTitle(this)) return Number(realScroll?.call(this) ?? 0);
-			return truncated && this.textContent === 'Epic A' ? 300 : 80;
-		});
-		const clientWidth = vi.spyOn(Element.prototype, 'clientWidth', 'get').mockImplementation(function (this: Element) {
-			return isTitle(this) ? 100 : Number(realClient?.call(this) ?? 0);
-		});
-		try {
-			const vault = fixture();
-			const { containerEl } = makeView(vault);
-			const tooltip = (): string | undefined =>
-				rowByTitle(containerEl, 'Epic A').querySelector<HTMLElement>('.pbl-title')?.dataset.tooltip;
-			// Never truncated, so never tooltipped at all: the pass writes only on a CHANGE,
-			// because `setTooltip` attaches hover handling on every call.
-			expect(tooltip()).toBeUndefined();
+	it('carries the full title in a tooltip, without measuring whether one was needed', () => {
+		// Unconditional on purpose. Deciding whether the title is actually clipped costs a
+		// `scrollWidth`/`clientWidth` read per row: as a hover handler that was 65.7ms per
+		// hover at 832 rows, and as a batched pass it forced the whole tree to lay out at
+		// the end of every render. The redundant tooltip on a title that fits is the price.
+		// See `docs/bugs/Hovering a row measured its own width.md`.
+		const { containerEl } = makeView(fixture());
+		const tooltipOn = (title: string): string | undefined =>
+			rowByTitle(containerEl, title).querySelector<HTMLElement>('.pbl-title')?.dataset.tooltip;
 
-			// A bigger interface font: the same box, wider text in it.
-			truncated = true;
-			vault.changeCss();
-			expect(tooltip()).toBe('Epic A');
-
-			// And back: the tooltip is CLEARED rather than left saying what the row now shows
-			// in full. This is the path the write guard has to keep working, not bypass.
-			truncated = false;
-			vault.changeCss();
-			expect(tooltip()).toBe('');
-		} finally {
-			scrollWidth.mockRestore();
-			clientWidth.mockRestore();
-		}
-	});
-
-	it('surfaces the full text of truncated titles as a tooltip', () => {
-		// The guarantee, not the mechanism. Until 2026-08-10 this tooltip was set by the
-		// title's own `mouseover`, which read layout inside a pointer event and cost 65.7ms
-		// per hover at 832 rows; it is now one batched pass at the end of the render. What a
-		// reader is owed is unchanged — a clipped title says what it says in full — so this
-		// test moved to the new path rather than going with the old one. That the hover
-		// reads no layout any more is its own check, in `renderCost.test.ts`.
-		//
-		// Stubbed on the PROTOTYPE because the render the pass runs at the end of rebuilds
-		// every row: a stub put on an element is on a node that is gone before anything
-		// measures it. Everything that is not a title delegates, so the column fit still
-		// measures the real (zero) pane.
-		const realScroll = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollWidth')?.get;
-		const realClient = Object.getOwnPropertyDescriptor(Element.prototype, 'clientWidth')?.get;
-		const isTitle = (el: Element): boolean => el.classList.contains('pbl-title');
-		const scrollWidth = vi.spyOn(Element.prototype, 'scrollWidth', 'get').mockImplementation(function (this: Element) {
-			if (!isTitle(this)) return Number(realScroll?.call(this) ?? 0);
-			return this.textContent === 'Epic A' ? 300 : 80;
-		});
-		const clientWidth = vi.spyOn(Element.prototype, 'clientWidth', 'get').mockImplementation(function (this: Element) {
-			return isTitle(this) ? 100 : Number(realClient?.call(this) ?? 0);
-		});
-		try {
-			const vault = fixture();
-			const { containerEl, view } = makeView(vault);
-			view.onDataUpdated();
-			const tooltipOn = (title: string): string | undefined =>
-				rowByTitle(containerEl, title).querySelector<HTMLElement>('.pbl-title')?.dataset.tooltip;
-
-			expect(tooltipOn('Epic A')).toBe('Epic A');
-			// A title that fits carries no tooltip: its full text is already on screen, and
-			// the pass writes nothing rather than writing an empty one.
-			expect(tooltipOn('Epic B')).toBeUndefined();
-
-			// Run again over the SAME elements with nothing changed. `setTooltip` attaches
-			// Obsidian's hover handling on every call, so a pass that rewrote an unchanged
-			// value would stack a listener per row on every resize and every theme change,
-			// rebuilding the cost this pass exists to remove. Driven through `css-change`
-			// rather than a data update, because a rebuild replaces the elements and writing
-			// to a fresh one is not the case being guarded. The stand-in for "was it called"
-			// is the value the last call left, overwritten here by hand.
-			const title = rowByTitle(containerEl, 'Epic A').querySelector<HTMLElement>('.pbl-title');
-			if (title) title.dataset.tooltip = 'untouched';
-			vault.changeCss();
-			expect(title?.dataset.tooltip).toBe('untouched');
-		} finally {
-			scrollWidth.mockRestore();
-			clientWidth.mockRestore();
-		}
+		expect(tooltipOn('Epic A')).toBe('Epic A');
+		expect(tooltipOn('Epic B')).toBe('Epic B');
 	});
 });
 

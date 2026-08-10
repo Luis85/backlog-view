@@ -72,41 +72,28 @@ one here.
 
 ## Fix
 
-Both measurements leave their handlers and become one batched pass,
-`syncTruncationTooltips`, over a small table of what a row can clip — the title, and the
-badge, which measures one element (`.pbl-badge-text`) and tooltips another (the badge, so
-the icon is hoverable too) and has a second string to say when the cap is not biting (an
-implied badge still explains itself). The pass is:
-every `scrollWidth`/`clientWidth` read first, then every `setTooltip` write. Interleaving
-them would force a layout per row and be worse than what it replaced — it would pay for
-every row rather than only hovered ones.
+**Both tooltips are set unconditionally at render, and nothing measures anything.** The
+title carries its own text; the badge carries the level name, plus the implied-type
+explanation when it is dashed. A tooltip repeating a title that already fits is the whole
+price, and it is small.
 
-`renderBadge` is shared with the board and the roadmap, so the pass runs for **every**
-projection, not only the tree: `renderTreeContent` calls it as it returns for a card
-projection, and the tree's own column fit calls it below. That was a live regression for
-one commit — moving the implied-type explanation out of the badge's hover handler dropped
-it from every card, because the pass hung off a fit the card projections deliberately
-skip. Their resize path needs no call of its own: a card's badge cap is a fixed width that
-a pane cannot move.
+That is the SECOND fix. The first moved both measurements into one batched pass at the end
+of the render — every read, then every write — which removed the per-hover cost and was
+wrong anyway:
 
-For the tree it is called from `ResizePolicy`, which owns *when* to re-measure — from `refit`, which
-already means *re-measure the pane and apply what that implies*, so the render's fit pass
-and the resize observer both get it without a branch each; and from `cssChanged`, because
-a theme, a snippet or a late-loading font changes rendered text without moving the tree's
-box, so no observer fires and no render follows. The toolbar's own ladder was already on
-that event for exactly this reason, and title truncation is the second thing on the page
-that measures rendered text. Missing it would have left a title that just became truncated
-with no tooltip and one that stopped truncating with a stale one — the one regression the
-hover-time check could not suffer, since it re-read the dimensions every time.
+- It forced the whole tree to lay out once per render, since measuring 832 titles means
+  laying out 832 rows.
+- It made `content-visibility: auto` unusable. That property lets the browser skip layout
+  for off-screen rows and takes this view's forced layout from **447ms to 45ms**; a pass
+  that measures every row defeats it one row at a time — measured at **5320ms against
+  12ms** with the property on.
+- It needed a call site per projection and per invalidation source (resize, `css-change`),
+  each of which was a separate review finding, and a write guard so `setTooltip` did not
+  attach Obsidian's hover handling on every pass.
 
-**The write is guarded, and that is not an optimisation.** `setTooltip` attaches
-Obsidian's hover handling on EVERY call — a fact `syncBusyLabel` and `syncCountLabel`
-already record, the latter with the very pattern used here: keep the last value in
-`dataset` and write only on a change. Unguarded, a pass that runs on every resize
-notification and every theme change would stack a listener per title and per badge each
-time, rebuilding at eight hundred rows the cost it exists to remove. The last value is
-kept in `dataset` rather than read back off the tooltip because what `setTooltip` writes
-is Obsidian's business and has differed between versions.
+Deleting it took all of that with it. Measured at 832 rows: the render is **718ms** with
+the pass gone, and **244ms** with `content-visibility` on top — against 692ms before any
+of this, when the cost was merely hidden in a handler nobody had timed.
 
 The handler keeps its `hover-link` trigger, which reads nothing.
 

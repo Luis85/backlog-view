@@ -16,8 +16,8 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 - Hovering rows in a large backlog is no longer laggy. Deciding whether a title or a type
   badge needed its full-text tooltip measured the element inside the hover event itself,
   which forced the whole tree to be laid out again on every hover — 65.7ms per hover at
-  832 rows, against 0.13ms now. Both tooltips are unchanged: a clipped title and a capped
-  level name still show their full text.
+  832 rows. Both now carry their full text always, so nothing measures and nothing is
+  hidden: the only visible difference is a tooltip on a title that already fits.
 
 ### Added
 

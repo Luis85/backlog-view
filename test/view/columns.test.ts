@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { BOARD_WORKFLOW, boardVault, cardByTitle } from '../helpers/board';
 import { clickExpandAll, fixture, makeView, rowByTitle, treeOf, useViewHarness } from '../helpers/view';
@@ -486,80 +486,24 @@ describe('property columns', () => {
 });
 
 describe('badges', () => {
-	it('puts the full level name in the tooltip once the cap truncates it', () => {
-		// The guarantee, not the mechanism: until 2026-08-10 the badge measured itself on
-		// `mouseover`, the same layout-read-in-a-pointer-event as the title's and in the
-		// same file. It is the batched pass now — see `syncTruncationTooltips` — so the
-		// widths are stated on the PROTOTYPE, because the render the pass runs at the end
-		// of rebuilds every row and a stub put on an element is on a node that is gone.
-		const realScroll = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollWidth')?.get;
-		const realClient = Object.getOwnPropertyDescriptor(Element.prototype, 'clientWidth')?.get;
-		const isBadge = (el: Element): boolean => el.classList.contains('pbl-badge-text');
-		const scrollWidth = vi.spyOn(Element.prototype, 'scrollWidth', 'get').mockImplementation(function (this: Element) {
-			return isBadge(this) ? 200 : Number(realScroll?.call(this) ?? 0);
-		});
-		const clientWidth = vi.spyOn(Element.prototype, 'clientWidth', 'get').mockImplementation(function (this: Element) {
-			return isBadge(this) ? 100 : Number(realClient?.call(this) ?? 0);
-		});
-		try {
-			const vault = new FakeVault();
-			// No type property: the level is implied, and the badge explains that
-			vault.addFile('Epic.md', { frontmatter: { order: 10 } });
-			vault.addFile('Child.md', { frontmatter: { type: 'Programme Increment', order: 10 }, parentLink: 'Epic' });
-			const { containerEl, view } = makeView(vault, { levels: 'Programme Increment, Epic' });
-			view.onDataUpdated();
-
-			const badge = rowByTitle(containerEl, 'Epic').querySelector<HTMLElement>('.pbl-badge');
-			expect(badge?.classList.contains('pbl-implied')).toBe(true);
-			// Both: the name the cap hid, and why the badge is dashed.
-			expect(badge?.dataset.tooltip).toContain('Epic');
-			expect(badge?.dataset.tooltip).toContain('Type property not set');
-		} finally {
-			scrollWidth.mockRestore();
-			clientWidth.mockRestore();
-		}
-	});
-
-	it('explains an implied badge on a CARD too, where the column fit never runs', () => {
-		// `renderBadge` is shared with the board and the roadmap, and the pass that now sets
-		// its tooltip hangs off the tree's column fit — which those projections deliberately
-		// skip. Moving the tooltip out of the badge's own hover handler therefore dropped the
-		// explanation from every card until this ran for them as well. (Codex, PR #128.)
+	it('puts the full level name in the tooltip, capped or not', () => {
+		// The name is capped in CSS so the row's lead stays bounded; the tooltip carries it
+		// in full without anyone measuring whether the cap is biting — see the title's own
+		// test in `state.test.ts` for why that question is not worth its layout read.
 		const vault = new FakeVault();
-		vault.addFile('Epic.md', { frontmatter: { order: 10, status: 'New' } });
-		vault.addFile('Child.md', { frontmatter: { type: 'Programme Increment', order: 10 }, parentLink: 'Epic' });
-		const { containerEl, view } = makeView(vault, {
-			levels: 'Programme Increment, Epic',
-			// A workflow, or the board draws its unconfigured empty state and no card at all.
-			stateProperty: 'note.status',
-			stateValues: 'New, Done',
-		});
-
-		view.setProjection('board');
-
-		const card = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-card')).find(
-			(one) => one.querySelector('.pbl-card-title')?.textContent === 'Epic',
-		);
-		const badge = card?.querySelector<HTMLElement>('.pbl-badge');
-		expect(badge?.classList.contains('pbl-implied')).toBe(true);
-		expect(badge?.dataset.tooltip).toContain('Type property not set');
-	});
-
-	it('says only why the badge is dashed while the cap is not biting', () => {
-		// The other half, which the old hover-time check made awkward to state: an implied
-		// badge that FITS still has to explain itself, and must not have the level name
-		// appended to a tooltip nobody needed.
-		// The fixture above, unstubbed: jsdom reports zero for both widths, which is a badge
-		// whose cap is not biting.
-		const vault = new FakeVault();
+		// No type property: the level is implied, and the badge explains that as well.
 		vault.addFile('Epic.md', { frontmatter: { order: 10 } });
 		vault.addFile('Child.md', { frontmatter: { type: 'Programme Increment', order: 10 }, parentLink: 'Epic' });
 		const { containerEl } = makeView(vault, { levels: 'Programme Increment, Epic' });
 
 		const badge = rowByTitle(containerEl, 'Epic').querySelector<HTMLElement>('.pbl-badge');
 		expect(badge?.classList.contains('pbl-implied')).toBe(true);
-		expect(badge?.dataset.tooltip).toBe(
-			'Type property not set — level implied from position. Use "Assign missing properties" to write it.',
-		);
+		expect(badge?.dataset.tooltip).toContain('Epic');
+		expect(badge?.dataset.tooltip).toContain('Type property not set');
+
+		// A declared type says its name and nothing else: there is nothing to explain.
+		const child = rowByTitle(containerEl, 'Child').querySelector<HTMLElement>('.pbl-badge');
+		expect(child?.classList.contains('pbl-implied')).toBe(false);
+		expect(child?.dataset.tooltip).toBe('Programme Increment');
 	});
 });

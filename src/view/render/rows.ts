@@ -185,14 +185,15 @@ function renderRowLead(
 
 	const title = row.createSpan({ cls: 'pbl-title' });
 	renderTitleText(host, title, item.title);
+	// Set unconditionally, and NOTHING measures whether it was needed. Deciding that costs
+	// a `scrollWidth`/`clientWidth` read per row, which forces layout — as a hover handler
+	// it cost 65.7ms per hover at 832 rows, and as a batched pass it forced the whole tree
+	// to lay out at the end of every render and made `content-visibility` unusable (5320ms
+	// against 12ms, because a skipped row must be laid out to be measured). A tooltip
+	// repeating a title that already fits is the price, and it is small.
+	setTooltip(title, item.title);
 	title.addEventListener('mouseover', (evt) => {
-		// NOTHING here may read layout. `scrollWidth`/`clientWidth` lived in this handler
-		// until 2026-08-10 to decide whether a truncated title needed a tooltip, and a
-		// layout read inside a pointer event forces a synchronous re-layout of the whole
-		// tree — while hovering is itself what dirties style (`.pbl-row:hover` changes this
-		// element's colour and the grip's opacity), so the read could never reuse a clean
-		// layout. Measured in the browser harness at 832 rows: 65.7ms per hover, against
-		// 0.13ms with the read gone. `syncTitleTooltips` does it in one batch instead.
+		// NOTHING here may read layout — see `src/view/CLAUDE.md`.
 		host.app.workspace.trigger('hover-link', {
 			event: evt,
 			source: PRODUCT_BACKLOG_VIEW_TYPE,
@@ -346,13 +347,12 @@ export function renderBadge(host: BacklogViewHost, row: HTMLElement, item: Backl
 		badge.addClass('pbl-lvl-unknown');
 	}
 	badge.createSpan({ cls: 'pbl-badge-text', text: badgeText });
-	// A long level name is capped so the row's lead stays bounded (columnFit budgets for
-	// it); the full name is one hover away when that cap actually bites — and an implied
-	// badge needs both, since the cap hides the very level it is explaining. Both are
-	// decided by `syncTruncationTooltips`, which reads the class back: this handler used
-	// to measure `.pbl-badge-text` on `mouseover`, the same defect as the title's and in
-	// the same file, left behind by the fix to it.
+	// The level name is capped in CSS so the row's lead stays bounded, so the tooltip
+	// carries it in full — unconditionally, for the reason the title's is: asking whether
+	// the cap is biting costs a layout read per row. An implied badge says why it is
+	// dashed as well, since the cap hides the very level it is explaining.
 	if (item.impliedType) badge.addClass('pbl-implied');
+	setTooltip(badge, item.impliedType ? `${badgeText} · ${IMPLIED_TYPE_TOOLTIP}` : badgeText);
 }
 
 /** The fixed trailing columns, then the row's own add button. */
@@ -462,86 +462,4 @@ function wireRowEvents(ctx: RowContext, row: HTMLElement, item: BacklogItem, chi
 		if (evt.button === 1 && !fromRowControl(evt)) ctx.host.openItemIn(item, 'tab');
 	});
 	row.addEventListener('contextmenu', (evt) => showItemMenu(ctx.host, evt, item, childTypes));
-}
-
-/**
- * Give every truncated title a tooltip carrying its full text, in ONE batch after a
- * render — the job the `mouseover` handler above used to do per hover.
- *
- * Two rules make this cheap, and both are the reason it is a pass rather than a handler:
- *
- * EVERY READ BEFORE ANY WRITE. `setTooltip` writes an attribute, which invalidates
- * style, so a read after it forces a fresh layout. Interleaving them would cost one
- * layout per row and be no better than what it replaces — worse, since it would pay for
- * every row rather than only hovered ones.
- *
- * IT IS CALLED WHERE THE ROWS ARE ALREADY SETTLED — after the content render and after a
- * resize — never from an input handler, where the layout it forces is the frame the user
- * is waiting on.
- *
- * The row map is walked rather than the tree scanned, because a `treeEl.querySelectorAll`
- * fails lint (see `src/view/CLAUDE.md`); the per-row query is bounded to one row, which
- * is the shape that rule permits. Cards carry `.pbl-card-title` and answer null here, so
- * a card projection's rows cost the walk and nothing else.
- */
-export function syncTruncationTooltips(rows: Map<string, HTMLElement>): void {
-	const clipped = [...rows.values()].flatMap(truncatablesIn);
-	// EVERY read, then EVERY write. `setTooltip` writes an attribute, which invalidates
-	// style, so a read after one forces a fresh layout: interleaving them would cost a
-	// layout per row and be worse than the per-hover read this replaced, since it would
-	// pay for every row rather than only hovered ones.
-	const overflowing = clipped.map((one) => one.measure.scrollWidth > one.measure.clientWidth);
-	for (const [i, one] of clipped.entries()) {
-		// Guarded exactly as `syncCountLabel` guards its own tooltip, and for its reason:
-		// `setTooltip` attaches Obsidian's hover handling on EVERY call. This pass runs on
-		// every resize notification and every theme change, so an unguarded write would
-		// stack a listener per title and per badge each time — rebuilding, at eight hundred
-		// rows, the hover cost this pass exists to remove. The last value is kept in
-		// `dataset` rather than read back off the tooltip, because what `setTooltip` writes
-		// is Obsidian's business and has changed between versions. (Codex, PR #128.)
-		const wanted = overflowing[i] === true ? one.full : one.plain;
-		if ((one.target.dataset.pblTip ?? '') === wanted) continue;
-		one.target.dataset.pblTip = wanted;
-		setTooltip(one.target, wanted);
-	}
-}
-
-/** What is MEASURED, what is TOOLTIPPED, and the text for each answer. */
-interface Truncatable {
-	measure: HTMLElement;
-	target: HTMLElement;
-	full: string;
-	plain: string;
-}
-
-/**
- * The two things in a row that are capped in CSS and say so on hover: the title, and the
- * type badge whose level name the lead's width budget caps.
- *
- * `querySelectorAll` rather than `querySelector` throughout — bounded to one row, which
- * is what the no-DOM-scan rule permits, and it yields nothing rather than null where the
- * element is absent, so neither the card projections (no `.pbl-title`) nor a badgeless
- * row needs a guard. Each text is rebuilt from the DOM rather than carried alongside it:
- * both elements hold their full text and are merely clipped by CSS, and the implied-type
- * message is a constant this file owns, so the class the render sets is enough to recover
- * what the badge should say.
- */
-function truncatablesIn(row: HTMLElement): Truncatable[] {
-	const found: Truncatable[] = [];
-	for (const title of row.querySelectorAll<HTMLElement>('.pbl-title')) {
-		found.push({ measure: title, target: title, full: String(title.textContent), plain: '' });
-	}
-	for (const badge of row.querySelectorAll<HTMLElement>('.pbl-badge')) {
-		const implied = badge.hasClass('pbl-implied') ? IMPLIED_TYPE_TOOLTIP : '';
-		for (const text of badge.querySelectorAll<HTMLElement>('.pbl-badge-text')) {
-			const name = String(text.textContent);
-			found.push({
-				measure: text,
-				target: badge,
-				full: implied === '' ? name : `${name} · ${implied}`,
-				plain: implied,
-			});
-		}
-	}
-	return found;
 }
