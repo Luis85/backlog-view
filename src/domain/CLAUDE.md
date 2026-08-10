@@ -148,12 +148,16 @@ a node test that did would be measuring the runner.
   list of test type names, for the reason above: a typeless child of a `Test suite` and a
   `Task` under a `Test case` are both members, and `isTestType(item.typeName)` gets both
   wrong while passing every other fixture. Two things are stated ONCE, both in `board.ts`:
-  the KEY (`stateKeyFor`) and the value-and-done pair (`ownWorkflowReading`) — which is why
-  the chip, `Set state`'s offers, its checkmarks and `pbl-done` all followed the third
-  workflow without being edited. That is the whole of what "once" covers: which PLANNER a
-  pick runs is a third selection over the same two predicates, and it lives in
-  `view/interactions/menu.ts`, because each workflow's write goes through a different
-  function.
+  the KEY (`stateKeyFor`) and the value-and-done pair (`ownWorkflowReading`). **What that
+  bought, exactly** — because "everything followed for free" is the flattering version and
+  it is false: `pbl-done` on a tree row (`render/rows.ts`) and the state CHIP's own reading
+  (`renderStateChip`) took the third workflow with no edit at all, while `Set state`'s
+  OFFERS and its CHECKMARKS each needed their own branch in `view/interactions/menu.ts`
+  (`deliverableOrTestValues`, and the `noop` ternary in `addStateItems`), because each
+  workflow's write goes through a different planner — which PLANNER a pick runs is a third
+  selection over the same two predicates, and it is stated there rather than here.
+  `columnKind` (`render/columns.ts`) needed a line too, or the chip that reads correctly
+  would have had no column to draw into.
 - **A projection's forest is computed, never filtered** — `projectionForest`, beside
   `collectFocusRoots`, asked twice with opposite predicates. `renderForest` drops a hidden
   sibling *without descending through it*, so hiding rows loses everything under a hidden

@@ -225,7 +225,7 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	const focused = focusIdx >= 0 || focusExtra !== '';
 	const focusRoots = focused ? collectFocusRoots(roots, focusIdx, focusExtra, settings) : roots;
 	const plan = projectionForest(focusRoots, (item) => !inCatalog(item), settings, false);
-	// `rest` LAST, and the order is load-bearing: both objects carry the three `observed*`
+	// `rest` LAST, and the order is load-bearing: both objects carry the same `observed*`
 	// lists, and the plan's must be the whole-tree-minus-catalog ones in `rest` rather than
 	// the forest's own. A forest's vocabulary is collected from what it RENDERS, which a
 	// focus level narrows — right for the catalog, which is never focused, and wrong for

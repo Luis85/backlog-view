@@ -207,7 +207,8 @@ context row when a visible descendant needs a parent to hang from.
   ([[A workflow for the tests]]), and the withholding survives that on a reason it never
   needed before: the thing the toggle hides is `subtreeDone`, which is the REQUIREMENTS
   rollup — an item's own `done` read through the plan's state key, and a descendant count
-  the catalog never accumulates (3c). Neither half is the test workflow's, so hiding by it
+  the catalog never accumulates (3c), which makes the second half vacuously TRUE here
+  rather than unreachable. Neither half is the test workflow's, so hiding by it
   would take a catalog row off the screen for a flag the catalog neither reads nor shows.
 - **4a — a test carries a state the plan's workflow also uses.** Which is the shipped
   default rather than a corner case: with no test state property named, all three workflows
@@ -319,8 +320,9 @@ the walk gathers. The subtree is still traversed; its rollup is discarded. The a
 cost is 3c: a suite shows no "3 of 5 cases done".
 
 **The vocabularies are per population**, and that is a shape rather than four edits:
-`ProjectionPopulation` carries `observedStates`, `observedHorizons` and `observedTags`, so
-`model` and `model.catalog` answer the same three names and `rowVocabulary`
+`ProjectionPopulation` carries the per-population `observed*` lists — `observedStates`,
+`observedHorizons`, `observedTags` and, since the assignee arrived, `observedAssignees` —
+so `model` and `model.catalog` answer the same names and `rowVocabulary`
 (`src/view/projection.ts`) is one ternary. The plan's are collected from the whole
 unfocused tree minus the catalog — unfocused, so what a menu offers never narrows with what
 is on screen. `observedDeliverableStates` needed nothing, being already scoped to

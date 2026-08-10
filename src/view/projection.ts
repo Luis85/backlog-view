@@ -149,7 +149,7 @@ export function projectionMember(projection: Projection): (item: { ladder: strin
  * beneath a `Test case` carrying a status nothing in the plan uses would mint a board
  * column no plan card can ever land in. The two criteria are each other's failure mode.
  *
- * `model` and `model.catalog` both carry the same three `observed*` lists, so this is one
+ * `model` and `model.catalog` both carry the same `observed*` lists, so this is one
  * ternary rather than a lookup: the plan's are collected from the whole tree minus the
  * catalog and the catalog's from its own whole population, both unfocused, so neither
  * narrows with what is on screen.

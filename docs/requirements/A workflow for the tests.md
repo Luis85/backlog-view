@@ -168,9 +168,13 @@ and `ownWorkflowReading` for the value-and-done pair. Each gained one branch, an
 secondary selectors are **disjoint by construction** rather than ordered: `isDeliverableType`
 asks a type NAME, `inCatalog` asks the ladder, and `ladderFor` answers `LEVELS` for
 `Deliverable` whatever it hangs under, so no item can satisfy both and the branch needs no
-argument about which is tested first. Everything that already read those two — the chip,
-`Set state`'s offers, its checkmarks, `pbl-done` on a row — started honouring the test
-workflow because they changed, which is the whole reason the rule lives in two places.
+argument about which is tested first. Two surfaces then took the third workflow with **no
+edit at all** — `pbl-done` on a tree row (`src/view/render/rows.ts`) and the state chip's
+own reading of value and done flag — which is the whole reason the rule lives in two places.
+Two did not, and the difference is worth stating rather than rounding off: `Set state`'s
+OFFERS and its CHECKMARKS each needed a branch of their own, because reading a workflow and
+planning a write to it are different questions and each workflow's write goes through a
+different planner (below).
 
 **The configuration is four modules and the dependencies run one way** (ADR 0026), so the
 workflow arrives as a row in each. `src/domain/optionalProperties.ts` gains the `testState`

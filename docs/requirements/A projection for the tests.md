@@ -82,10 +82,13 @@ base settings are saved on the view, working position on the device.
    Its **completed toggle** is withheld, as it already is on the Deliverables board, and
    withholding the button is only half. The reason is the Deliverables board's own: what the
    toggle hides is `subtreeDone`, the REQUIREMENTS rollup — an item's `done` read through
-   the plan's state key, times a descendant count this projection never accumulates
-   ([[Tests stay out of the plan]] 3c). Neither half belongs to the workflow a test is
-   actually on ([[A workflow for the tests]]), so hiding by it would take a row off this
-   screen for a flag this screen never shows.
+   the plan's state key, AND a descendant count this projection never accumulates
+   ([[Tests stay out of the plan]] 3c). Not that a catalog row can never satisfy it: the
+   count and the done count are both zero here, so the second half is satisfied *vacuously*
+   and `subtreeDone` collapses to that row's own requirements flag. That flag is a real one
+   and it is the wrong workflow's ([[A workflow for the tests]]) — so hiding by it would
+   take a row off this screen for something this screen never reads or draws, and would
+   agree with the test workflow only for as long as the two keys are one property.
    `hideCompleted` is on for every projection except `deliverables`,
    so the catalog joins that exception too. A toggle withheld while its filtering stays on
    is the worst of both: a done test disappears and nothing on screen offers to bring it
