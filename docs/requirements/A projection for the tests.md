@@ -393,10 +393,13 @@ base settings are saved on the view, working position on the device.
 to be: *what a projection IS*, asked rather than compared. `treeShaped` answers the six
 gates that spelled `projection === 'tree'`, `hidesCompleted` the seventh that spelled
 `!== 'deliverables'`, `filterScopeFor` the one the view held as a private getter, and
-`projectionPopulation` / `projectionMember` the two halves of membership. A lint rule
-forbids a bare `projection === 'tree'` outside it, so the seventh gate somebody writes
-tomorrow is correct without being told. `offerableTypes` moved here too, with its own lint
-exemption — see [[Test suite and test case as a ladder of their own]].
+`projectionPopulation` / `projectionMember` the two halves of membership. Nothing enforces
+that mechanically — there is no lint rule forbidding a bare `projection === 'tree'` outside
+it, and it already appears directly in ten other files (see
+[[The projection predicate has no lint rule behind it]]) — so the seventh gate somebody
+writes tomorrow is correct only if they ask the module rather than compare the value
+themselves. `offerableTypes` moved here too, with its own lint exemption — see
+[[Test suite and test case as a ladder of their own]].
 
 **The forest is computed, not filtered** — `projectionForest` in `src/domain/model.ts`,
 beside `collectFocusRoots`, asked twice with opposite predicates. `renderForest` drops a

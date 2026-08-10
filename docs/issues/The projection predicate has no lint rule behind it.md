@@ -9,6 +9,7 @@ created: 2026-08-10
 source: Task 17 of the test-workflow-and-badge plan — a guide asserted a check that does not exist
 files:
   - src/view/projection.ts
+  - docs/requirements/A projection for the tests.md
   - src/view/render/emptyStates.ts
   - src/view/render/projections.ts
   - src/view/render/toolbarStatus.ts
@@ -26,10 +27,17 @@ files:
 
 ## The claim
 
-`src/view/CLAUDE.md` stated, describing `view/projection.ts`'s `treeShaped`,
+Two guides stated the same claim, describing `view/projection.ts`'s `treeShaped`,
 `hidesCompleted`, `filterScopeFor`, `projectionPopulation`, `projectionMember`,
 `rowVocabulary` and `offerableTypes`: **"a lint rule forbids a bare
 `projection === 'tree'` outside it."** No such rule exists.
+
+`src/view/CLAUDE.md` stated it. So did
+`docs/requirements/A projection for the tests.md`, in its `## Where it lives` section —
+the highest-authority copy, since `docs-check.mjs` rule 7 makes that section the
+specification `src/view/projection.ts` is checked against for having a note that
+describes it at all. A brief naming only the first file missed the second on its first
+pass; both are corrected now.
 
 ## How it was verified
 
@@ -65,9 +73,9 @@ evidence the gap is real rather than theoretical.
 
 Which of the ten comparisons are legitimate dispatch and which are the drift the
 predicate module was built to stop. At least one is clearly the former —
-`renderContent`'s switch in `render/projections.ts` is a switch on the projection by
-design, not a stand-in for one of the named predicates. Sorting the rest, and deciding
-whether a `no-restricted-syntax` rule (with call sites it must not break) is worth
+`renderProjectionContent`'s if-chain in `render/projections.ts` is a dispatch on the
+projection by design, not a stand-in for one of the named predicates. Sorting the rest,
+and deciding whether a `no-restricted-syntax` rule (with call sites it must not break) is worth
 adding once they're sorted, is real work with a real product question in it and is not
 answered here.
 
