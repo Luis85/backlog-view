@@ -221,6 +221,34 @@ describe('configProblems', () => {
 	});
 });
 
+describe('three workflows may share one state key', () => {
+	function sharing(extra: Record<string, unknown> = {}) {
+		return resolveSettings(
+			new FakeViewConfig({
+				parentProperty: 'note.parent',
+				orderProperty: 'note.order',
+				typeProperty: 'note.type',
+				stateProperty: 'note.status',
+				deliverableStateProperty: 'note.status',
+				testStateProperty: 'note.status',
+				...extra,
+			}) as unknown as BasesViewConfig,
+		);
+	}
+
+	it('reports no collision when every user of the key is a workflow state', () => {
+		expect(configProblems(sharing())).toEqual([]);
+	});
+
+	it('still reports one when a label of any other kind joins them', () => {
+		// The exemption is about workflows, not about "these labels" — one more property on
+		// the key is an ordinary clash and has to read as one.
+		const problems = configProblems(sharing({ riskProperty: 'note.status' }));
+		expect(problems).toHaveLength(1);
+		expect(problems[0]).toContain('"status"');
+	});
+});
+
 describe('resolveSettings roadmap options', () => {
 	it('reads the axis properties, unset by default — the axis is declared, never guessed', () => {
 		const defaults = resolveSettings(fakeConfig());

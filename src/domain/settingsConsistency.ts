@@ -36,17 +36,46 @@ import { stateColorName } from './stateColors';
  * The list is the resolver's own guarantees, and it is the whole of what is checkable
  * here: these are relationships between VALUES, so no type can hold them.
  */
-export function settingsInconsistency(settings: BacklogSettings): string | null {
-	// `effectiveDoneValues` falls back to DEFAULT_DONE_VALUES, and the Deliverable list
-	// falls back to that in turn, so neither is ever empty coming out of the resolver.
-	if (settings.doneValues.length === 0) return 'doneValues is empty';
-	if (settings.deliverableDoneValues.length === 0) return 'deliverableDoneValues is empty';
-	// The one that bit. With the Deliverable key falling back and no list of its own
-	// declared, the resolver COPIES `states` — so an empty Deliverable list beside a
-	// populated requirements one is a state it cannot emit.
-	if (settings.deliverableStateKey === '' && settings.deliverableStates.length === 0 && settings.states.length > 0) {
-		return 'deliverableStates is empty while the key falls back to a configured states list';
+/**
+ * The two guarantees `resolveSecondaryWorkflow` gives EVERY secondary workflow (Deliverable,
+ * and the test catalog's added in Task 1): its done list is never empty (falls back to the
+ * requirements workflow's effective one, or to the shipped default with an own key), and its
+ * states list is empty only when its key is also falling back AND the requirements workflow
+ * declared none of its own to copy — the one case the resolver would have COPIED `states`
+ * into rather than leaving empty. `name` prefixes the message so a report says which
+ * workflow — `'deliverable'` or `'test'` — matching the field it names (`${name}DoneValues`,
+ * `${name}States`).
+ *
+ * Its own function for `settingsInconsistency`'s complexity budget: two workflows inline
+ * would be four `if`s repeating the same shape, which is exactly what pushed the caller over
+ * its limit when the test workflow's pair joined the Deliverable pair already there.
+ */
+function secondaryWorkflowProblem(name: string, key: string, doneValues: string[], states: string[], baseStates: string[]): string | null {
+	if (doneValues.length === 0) return `${name}DoneValues is empty`;
+	if (key === '' && states.length === 0 && baseStates.length > 0) {
+		return `${name}States is empty while the key falls back to a configured states list`;
 	}
+	return null;
+}
+
+export function settingsInconsistency(settings: BacklogSettings): string | null {
+	// `effectiveDoneValues` falls back to DEFAULT_DONE_VALUES, so it is never empty coming
+	// out of the resolver.
+	if (settings.doneValues.length === 0) return 'doneValues is empty';
+	// Both secondary workflows (Deliverable, and the test catalog's added in Task 1) get the
+	// same two guarantees from `resolveSecondaryWorkflow` — checked by one shared predicate
+	// rather than four inline `if`s, which is what kept this function under its complexity
+	// budget when the test workflow's pair joined the Deliverable pair already here.
+	const deliverableProblem = secondaryWorkflowProblem(
+		'deliverable',
+		settings.deliverableStateKey,
+		settings.deliverableDoneValues,
+		settings.deliverableStates,
+		settings.states,
+	);
+	if (deliverableProblem !== null) return deliverableProblem;
+	const testProblem = secondaryWorkflowProblem('test', settings.testStateKey, settings.testDoneValues, settings.testStates, settings.states);
+	if (testProblem !== null) return testProblem;
 
 	// `clearablePropKey`'s yielding rule: the tags key resolves to '' rather than
 	// colliding with one of the four properties that outrank it.
@@ -165,19 +194,21 @@ export function assertResolvedSettings(settings: BacklogSettings): void {
 }
 
 /**
- * The one pair `configProblems` lets share a key: the requirements state and the
- * Deliverable state, explicitly configured to the same property. Sharing by FALLBACK is
- * already legitimate and never reaches this map (`ownedProperties` reads
- * `deliverableStateKey` RAW, so an unset one resolves to ''); this is the same
- * "Deliverables can use the same status property" idea asked for explicitly. The two
- * workflows keep independent vocabularies either way, so the usual reason a shared key is
- * a mistake — one property silently overwriting the other's meaning — never applies here.
+ * The labels `configProblems` lets share ONE key: the three workflow states, explicitly
+ * configured to the same property. Sharing by FALLBACK is already legitimate and never
+ * reaches this map (`ownedProperties` reads the raw keys, so an unbound one resolves to
+ * ''); this is the same "they can use the same status property" idea asked for explicitly.
+ * The workflows keep independent vocabularies either way, so the usual reason a shared key
+ * is a mistake — one property silently overwriting the other's meaning — never applies.
  *
- * Scoped to EXACTLY this pair, not to "an entry named state or deliverable state": one
- * more label on the key (order, tags, an axis key) reports as a collision again, these
- * two named in it like any other clash.
+ * A SET rather than a pair, and that is the correction rather than a generalisation for its
+ * own sake: written as "exactly these two labels and no more" it reported a collision the
+ * moment a third workflow defaulted to the same key — blocking every write in the view, on
+ * the shipped configuration. Scoped to workflow states only: one more label of any other
+ * kind (order, tags, an axis key) reports as a collision again, these named in it like any
+ * other clash.
  */
-const STATE_KEY_SHARING_EXEMPT: [string, string] = ['state', 'deliverable state'];
+const WORKFLOW_STATE_LABELS = new Set(['state', 'deliverable state', 'test state']);
 
 /**
  * Configuration mistakes that would corrupt writes (e.g. parent and order stored
@@ -193,9 +224,7 @@ export function configProblems(settings: BacklogSettings): string[] {
 		keys.set(key, users);
 	}
 	for (const [key, users] of keys) {
-		if (users.length === STATE_KEY_SHARING_EXEMPT.length && STATE_KEY_SHARING_EXEMPT.every((l) => users.includes(l))) {
-			continue;
-		}
+		if (users.every((label) => WORKFLOW_STATE_LABELS.has(label))) continue;
 		if (users.length > 1) {
 			problems.push(`The ${users.join(' and ')} properties share the key "${key}".`);
 		}
