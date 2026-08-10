@@ -109,6 +109,12 @@ harness has no screen reader.
 - **Keyboard navigation to an off-screen row still scrolls to the right place.** The
   placeholder height is `auto 30px` until a row has been drawn once, so a jump into
   never-rendered territory could land slightly off before settling.
+- **The drag insertion line and its dot still straddle the row boundary.**
+  `content-visibility` brings paint containment, which clips anything a row draws outside
+  itself — and those two markers do that deliberately, at `-1px` and `-4px`. The target
+  row opts out (`styles/dragDrop.css`), and that the opt-out APPLIES was verified in
+  Chromium; that the markers then paint whole is a paint behaviour no check here can see.
+  Drag a row above another and look.
 
 ## How to check
 
