@@ -1,5 +1,5 @@
 import { BacklogSettings, stateMenuValues } from './settings';
-import { resolvedDeliverableStateKey } from './optionalProperties';
+import { resolvedDeliverableStateKey, resolvedTestStateKey } from './optionalProperties';
 import { ALL_TYPES, EXTRA_TYPES, LEVELS, MARKER_TYPES, TEST_LEVELS } from './typeVocabulary';
 import { childTypeChoices, EXTRA_TYPE_RANK, folderForType, keepsTypeOnMove, LadderPosition, ladderFor } from './itemTypes';
 import { readmeMarker } from './readmeMarker';
@@ -148,6 +148,23 @@ function typeSection(settings: BacklogSettings): string[] {
 	];
 }
 
+/**
+ * The `Optional, on a <label>` row for a secondary workflow's own state key —
+ * Deliverable's and the test workflow's are the identical shape, stated once rather than
+ * copied a second time. Empty when there is no key of its own to name: unset, or shared
+ * with the requirements property, in which case the row above already carries it.
+ */
+function ownWorkflowRow(key: string, shared: boolean, label: string, settings: BacklogSettings): string[] {
+	if (!key || shared) return [];
+	// NOT "the one above": that claim is false whenever `settings.stateKey` is unset, since
+	// `fieldRows` then has no requirements-workflow row at all (and no `## Workflow states`
+	// section either) — a fully independent, reachable configuration, and the one where
+	// there is nothing to be separate FROM, so the relationship goes unstated rather than
+	// invented.
+	const relation = settings.stateKey ? " — separate from the requirements workflow's" : '';
+	return [`| ${cell(key)} | Optional, on a ${label} | The ${label} workflow's own state${relation} |`];
+}
+
 function fieldRows(settings: BacklogSettings): string[] {
 	// In folder mode the property is how you OVERRIDE the folder note above, so calling
 	// it required would have an outside editor pin every note by hand and switch off the
@@ -169,9 +186,18 @@ function fieldRows(settings: BacklogSettings): string[] {
 	// the one key twice in a table of what a note may carry.
 	const deliverableKey = resolvedDeliverableStateKey(settings);
 	const sharedStateKey = deliverableKey !== '' && deliverableKey === settings.stateKey;
+	// The test workflow shares by the same fallback, and by default it does — sharing the
+	// requirements property is `resolvedTestStateKey`'s DEFAULT, not an edge case, so this
+	// row has to be able to name it too rather than just the Deliverable.
+	const testKey = resolvedTestStateKey(settings);
+	const sharedTestKey = testKey !== '' && testKey === settings.stateKey;
 	if (settings.stateKey) {
-		const alsoDeliverable = sharedStateKey ? ", and the Deliverable workflow's own state on a Deliverable" : '';
-		rows.push(`| ${cell(settings.stateKey)} | Optional | The workflow state — see below${alsoDeliverable} |`);
+		const sharers = [
+			...(sharedStateKey ? ["the Deliverable workflow's own state on a Deliverable"] : []),
+			...(sharedTestKey ? ["the test workflow's own state on a test"] : []),
+		];
+		const alsoShared = sharers.length > 0 ? `, and ${andList(sharers)}` : '';
+		rows.push(`| ${cell(settings.stateKey)} | Optional | The workflow state — see below${alsoShared} |`);
 	}
 	if (settings.tagsKey) rows.push(`| ${cell(settings.tagsKey)} | Optional | Tags, as a YAML list or one string |`);
 	// The two the view WRITES for you. They belong in the contract for the reason every
@@ -186,16 +212,10 @@ function fieldRows(settings: BacklogSettings): string[] {
 	if (settings.targetKey) rows.push(`| ${cell(settings.targetKey)} | Optional | Planned target, ${code('YYYY-MM-DD')} |`);
 	// A row of its OWN only where it is its own property. Shared, the row above already
 	// names this key and says it carries both — a second row for one key would be the
-	// table contradicting itself about how many properties a note has.
-	if (deliverableKey && !sharedStateKey) {
-		// NOT "the one above": that claim is false whenever `settings.stateKey` is unset,
-		// since `fieldRows` then has no requirements-workflow row at all (and no
-		// `## Workflow states` section either) — a fully independent, reachable
-		// configuration, and the one where there is nothing to be separate FROM, so the
-		// relationship goes unstated rather than invented.
-		const relation = settings.stateKey ? " — separate from the requirements workflow's" : '';
-		rows.push(`| ${cell(deliverableKey)} | Optional, on a Deliverable | The Deliverable workflow's own state${relation} |`);
-	}
+	// table contradicting itself about how many properties a note has. The test workflow's
+	// key gets the identical treatment, for the identical reason.
+	rows.push(...ownWorkflowRow(deliverableKey, sharedStateKey, 'Deliverable', settings));
+	rows.push(...ownWorkflowRow(testKey, sharedTestKey, 'test', settings));
 	return rows;
 }
 
