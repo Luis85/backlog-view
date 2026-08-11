@@ -2461,3 +2461,76 @@ npm run check
 git add src/view/interactions/menu.ts test/ docs/ src/view/CLAUDE.md
 git commit -m "Offer the catalog the removal its workflow already plans"
 ```
+
+---
+
+### Task 22: The card disclosure counts a row it does not draw as one it is hiding
+
+**Files:**
+- Modify: `src/view/render/cardChildren.ts` (the `omitted` count)
+- Test: `test/view/cardChildren.test.ts` (or the suite that already owns the disclosure's count)
+- Probably: `src/view/CLAUDE.md`'s card-disclosure paragraph
+
+**Why.** Reported by an automated reviewer on `18ffd6f`, confirmed here by reading the code:
+
+```ts
+const omitted = item.children.length - children.length;
+const note = omitted > 0 ? ` — ${omitted} more ${omitted === 1 ? 'is' : 'are'} hidden by the current view` : '';
+```
+
+`children` is `listedChildren`, which filters on `!host.isRowHidden(child)` — and `rowHidden`'s
+FIRST, unconditional clause is `!rule.inProjection(item)`. So a catalog child is dropped from
+the list, then counted again in `omitted` off RAW `item.children`. An `Epic` holding a
+`Feature` and a `Test case`, on any plan projection, reports *"1 more is hidden by the current
+view"* — announcing a row the plan is not merely hiding but does not have.
+
+The comment directly above that line says what the note is FOR: the disclosure counts what it
+lists while the rollup counts everything beneath, "so with completed work hidden the two
+disagree on purpose", said out loud only where a user can ask. Completed-hidden is a row this
+projection draws and is choosing not to show. A catalog member is not that. **Absent rather
+than hidden** is the branch's rule and the reason the toggle, the rollup and the match walk
+were each fixed already.
+
+**This is a FOURTH quantity on the same card**, and worth noting because Task 20's
+investigation named three and called two of them correct. The three were the rollup, the
+disclosure's LIST, and the match walk. The disclosure's own omitted COUNT was not examined,
+and it is wrong. A count derived by subtracting a filtered list from a raw one is the shape to
+look for.
+
+Severity is low — a tooltip and a count, read-only. It earns a task because it is the seventh
+finding in one family on this branch and the cheapest possible instance of it.
+
+- [ ] **Step 1: Reproduce before fixing**
+
+Build `Epic → Feature` plus `Epic → Test case`, render a plan CARD projection that draws the
+Epic with a disclosure, and assert the tooltip text. Confirm it says one is hidden. Then the
+control: with the `Test case` replaced by a completed `Feature` and completed items hidden,
+the same sentence SHOULD appear — that case is what the note exists for and must survive.
+
+- [ ] **Step 2: Count over the rows this projection draws**
+
+`projectionMember(host.projection)` (`src/view/projection.ts`) answers membership alone;
+`isRowHidden` conflates membership with the completed toggle and the quick filter, which is
+right for the LIST and wrong for this denominator. Take the members of `item.children` first,
+then subtract the listed ones.
+
+Do not reach for `!child.outsideFilter` (a context row IS a member) or for `inCatalog` spelled
+directly (that is a second opinion about membership, and the projection decides it, not the
+ladder alone).
+
+- [ ] **Step 3: Watch it fail, and watch the control keep passing**
+
+Revert the fix, see the new assertion go red, restore. Then confirm the completed-items case
+still reports its hidden child — a fix that silences the note entirely would pass a naive test
+and delete the feature.
+
+- [ ] **Step 4: Run the whole check and commit**
+
+Three files are at their line cap and must not grow: `src/domain/backlogReadme.ts` (400),
+`test/view/testCatalog.test.ts` (450), `src/view/interactions/menu.ts` (400).
+
+```bash
+npm run check
+git add src/view/render/cardChildren.ts test/ src/view/CLAUDE.md docs/
+git commit -m "Count what this projection draws, not what the note holds"
+```
