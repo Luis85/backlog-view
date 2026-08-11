@@ -658,16 +658,25 @@ for (const [, note] of notes) {
 
 // ------------------------------------------------------------------- verification notes
 /**
- * **What makes a verification findable, and nothing else about an `Issue`.**
+ * **What makes a verification findable, and nothing else about an `Issue` or a `Test case`.**
  *
- * `RELEASING.md` derives the pre-tag sweep by querying `docs/issues/` for notes carrying
- * `## How to check` as a whole heading line and reading their `cadence:`. That query is the
- * only thing in this repository leaning on an `Issue`'s shape, so it is the only thing
- * checked here. The three shapes `docs/README.md` documents — a decision, a limitation, a
- * verification — are deliberately NOT enforced: most notes in the folder do not match the
- * one their opening heading implies, and `## Outcome` is legitimately absent from a check
- * nobody has run yet, since the README says an outcome is written *after* the work. A gate
- * that failed three-quarters of the corpus would be answered by editing the corpus.
+ * `RELEASING.md` derives the pre-tag sweep by querying `docs/issues/` — and, since the test
+ * catalog migration, `docs/tests/cases/` — for notes carrying `## How to check` as a whole
+ * heading line and reading their `cadence:`. That query is the only thing in this repository
+ * leaning on either type's shape, so it is the only thing checked here. The three shapes
+ * `docs/README.md` documents — a decision, a limitation, a verification — are deliberately
+ * NOT enforced: most notes in `docs/issues/` do not match the one their opening heading
+ * implies, and `## Outcome` is legitimately absent from a check nobody has run yet, since the
+ * README says an outcome is written *after* the work. A gate that failed three-quarters of
+ * the corpus would be answered by editing the corpus.
+ *
+ * The rule covers both `Issue` and `Test case` because a verification can now legitimately
+ * be filed as either — the migration retypes what used to be an `Issue` carrying `## How to
+ * check` into a `Test case` under `docs/tests/cases/`, and the sweep has to keep finding it
+ * either way it lands. Once that retyping is done, an `Issue` still carrying the heading is
+ * no longer a verification in the old shape; it is a misfiling — the note landed under the
+ * wrong type instead of moving into the catalog — and that is worth failing rather than
+ * ignoring, exactly as it was before the migration.
  *
  * The rule is a biconditional because the drift went both ways at once. Three verifications
  * headed their section `## What to look at` and the query dropped them silently — including
@@ -681,8 +690,9 @@ for (const [, note] of notes) {
  * heuristic for it would gate on a guess.
  */
 const CADENCES = new Set(["release", "conditional"]);
+const SWEPT_TYPES = new Set(["Issue", "Test case"]);
 for (const [, note] of notes) {
-	if (note.type !== "Issue") continue;
+	if (!SWEPT_TYPES.has(note.type)) continue;
 	const text = texts.get(note.file);
 	// Whole-line, via the same matcher every other section rule uses: `## How to check,
 	// properly` heads an investigation into a CI gate that never ran, and a prefix match

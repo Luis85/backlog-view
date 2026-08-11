@@ -434,6 +434,21 @@ describe('a verification and its cadence', () => {
 			},
 			'cadence "sometimes" is not one of',
 		],
+		[
+			'a Test case the sweep would find, leaving its cadence to be guessed',
+			(files) => {
+				// order: 20, not 10 — a Test suite is a root exactly like an Epic (both are in
+				// `ROOT_TYPES`), and sibling order is scoped by parent, which is `null` for every
+				// root regardless of type. `baseRegister()` already has a root at order 10
+				// (`Thing`), so 10 here would collide on that unrelated rule and mask the one this
+				// case exists to exercise.
+				files['docs/tests/suites/Smoke test the tree.md'] =
+					'---\ntype: Test suite\norder: 20\nstatus: Open\n---\n\n# Smoke test the tree\n\nA suite.\n';
+				files['docs/tests/cases/Look at the thing.md'] =
+					'---\ntype: Test case\nparent: "[[Smoke test the tree]]"\norder: 10\nstatus: Open\n---\n\n# Look at the thing\n\n## How to check\n\nOpen it.\n';
+			},
+			'carries `## How to check` but no `cadence:`',
+		],
 	]);
 });
 
