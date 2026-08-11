@@ -65,6 +65,34 @@ a sweep four sittings rather than five. Refused because it inverts the rule abov
 is the test for bar dragging" stops having a guessable answer, and guessability is what
 makes a suite documentation rather than a list.
 
+### Two things found while planning, which the design above did not know
+
+**1. Three of the five suites already exist, as Features.** `Plugin Features Smoke Test`
+(Epic) holds [[Smoke test the tree]], [[Smoke test the board]] and
+[[Smoke test the roadmap]], and **16 of the 25 cases already hang under those three**. So
+the tree, board and roadmap suites are a *retype* of notes that exist, not new notes —
+`type: Feature` → `type: Test suite`, `parent:` removed because a suite is a root type.
+
+That leaves the Epic holding nothing. It is not deleted: this register keeps closed notes,
+and an Epic whose only purpose was to group smoke tests is itself the finding — the plan
+holding tests, which [[Tests stay out of the plan]] now forbids. It is closed with a line
+saying the catalog superseded it and where its children went.
+
+**2. Nine cases hang off plan items, and reparenting them severs the only link there is.**
+[[Smoke test the column agreements]] sits under [[WIP limits]], [[Smoke test the card
+children in a live vault]] under [[Children on the card]], and so on through
+[[Creating items]], [[Collapse persistence]], [[Product Kanban]] and [[Product Backlog]].
+Today that parent link is the *entire* connection between a feature and the check that
+proves it.
+
+[[Linking a test to what it covers]] is the feature that replaces it, and it is design, not
+built — so a straight reparent destroys the information with nothing to hold it. Each of
+those nine cases therefore gains a **`Covers [[<the plan item>]]`** line in its body,
+naming what it used to hang under. Prose, not a property: the coverage property is not
+bound, and inventing frontmatter ahead of the feature that owns it is the drift this
+register keeps writing notes about. When the property ships, these lines are the
+migration's own input.
+
 ### Case frontmatter
 
 `type: Test case`, `parent: "[[<suite>]]"`, `order`, and **`cadence` kept verbatim** —
