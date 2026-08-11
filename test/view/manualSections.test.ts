@@ -36,11 +36,11 @@ describe('the manual', () => {
 	});
 
 	// The entry's availability claims are an ENUMERATION, and this branch's dominant defect
-	// is one item short. `rootDropTarget` and `outdentTarget` ask `keepsProjection`, so the
-	// background drop and Outdent refuse a catalog `Task` or a typeless row — while the
-	// entry said the strip and Indent worked "except throughout a focused view", one stated
-	// exception and no others. Named here so a gate added to that set without a sentence
-	// fails rather than shipping as a promise the code refuses.
+	// is a list that does not match the code — one item short of the gates that ask
+	// `keepsProjection`, then one item LONG when the drop it named was deleted. The list
+	// below has one phrase per `keepsProjection` call site in `src/` and is meant to be
+	// rebuilt from a grep of that call rather than edited in place, so a gate added to or
+	// taken from that set fails here rather than shipping as a promise the code refuses.
 	it('names the projection boundary among the states a move is unavailable in', () => {
 		const moving = manualSections().find((s) => s.id === 'moving');
 		const prose = moving?.entries.map((e) => `${e.term} ${e.text}`).join(' ') ?? '';
@@ -49,7 +49,7 @@ describe('the manual', () => {
 		// position` had vanished with no rule to find — and a substring assertion locked the
 		// omission in rather than catching it.
 		expect(prose).toContain(
-			'dropping it beside a row at the top level, a drop on the tree background, Outdent, and the two menu entries that remove the parent link, Clear parent link and Use folder position',
+			'dropping it beside a row at the top level, Outdent, and the two menu entries that remove the parent link, Clear parent link and Use folder position',
 		);
 		expect(prose).toContain('a Task, or a note with no type');
 		// Narrow in the same breath, or the entry trades one falsification for its mirror.

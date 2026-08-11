@@ -96,12 +96,15 @@ a node test that did would be measuring the runner.
   and a `Test suite` and an `Epic` share the null one, so ranking against one projection's
   slice of that group takes a midpoint a hidden root may already hold. Three lists, and
   conflating any two breaks something — the RENDERED roots (what is on screen), the
-  POSITIONABLE roots (where a drop lands), and the RANKING group (`realRoots`, what number
-  it gets), which is not a projection's list at all and which no projection may narrow.
+  POSITIONABLE roots (what a move at the top level MEANS, which is a question about the
+  screen), and the RANKING group (`realRoots`, what number it gets), which is not a
+  projection's list at all and which no projection may narrow.
   Checked by lint in `writePlan.ts` and `interactions/create.ts` — the two files that
-  rank. Elsewhere `model.roots` is correct and deliberate: `dropTargets.ts` and
-  `structure.ts` reach it only after an earlier `focusRoot` return has ruled out the
-  synthetic case, which is exactly the subtlety worth reading twice before editing.
+  rank. The two files that POSITION at the top level hold both lists at once and must not
+  let either answer the other's question: `dropTargets.ts` ranks against `realRoots` while
+  asking its no-op question of the drawn order through the `member` predicate the view
+  hands it, and `structure.ts` ranks a root-level outdent the same way. That split is the
+  subtlety worth reading twice before editing.
 - Focus mode: the top row is a synthetic grouping — `focusRoot` items keep their real
   `parent` pointer, and reordering/outdent/indent across that row must stay disabled.
 - **A move never writes a `type`, at any depth** — a drop, an indent, an outdent,
@@ -295,7 +298,7 @@ a node test that did would be measuring the runner.
   invariant hold. Because that fallback lands the item last, the *positional* operations
   refuse such a group up front instead of landing somewhere other than aimed:
   `siblingPosition` (before/after drops), `canReorder` (the move menu, Alt+arrow) and
-  `outdentTarget`. Appends — dropping *into* a parent, on the tree background, indent — stay
+  `outdentTarget`. Appends — dropping *into* a parent, indent — stay
   available, since last is what they mean anyway. Gate each command on what it actually
   does: `canReorder` covers only the four move commands, while Indent follows its
   neighbour and Outdent answers for its own destination — gating those on `canReorder`

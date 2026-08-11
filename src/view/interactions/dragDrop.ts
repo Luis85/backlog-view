@@ -1,5 +1,5 @@
-import { DropTarget, dropTargetFor, rootDropTarget, zoneForRatio } from '../../domain/dropTargets';
-import { effectivelyFocused, projectionMember, projectionPopulation } from '../projection';
+import { dropTargetFor, zoneForRatio } from '../../domain/dropTargets';
+import { projectionMember } from '../projection';
 import { DropZone } from '../../domain/dropTargets';
 import { BacklogViewHost } from '../host';
 import { BacklogItem, BacklogModel } from '../../domain/model';
@@ -85,35 +85,6 @@ export class DragDropController {
 		});
 
 		row.addEventListener('dragend', () => this.clearDragState());
-	}
-
-	/** Where a top-level drop lands, asked with THIS projection's effective focus. */
-	private rootTarget(drag: { model: BacklogModel; dragged: BacklogItem }): DropTarget | null {
-		return rootDropTarget(
-			drag.model,
-			drag.dragged,
-			effectivelyFocused(this.host.projection, drag.model),
-			projectionPopulation(this.host.projection, drag.model).roots,
-		);
-	}
-
-	/** Dropping on the empty area below the tree moves items to the top level. */
-	setupRootDropZone(): void {
-		this.els.treeEl.addEventListener('dragover', (evt) => {
-			if (evt.target !== this.els.treeEl) return;
-			const drag = this.dragContext();
-			if (!drag || !this.rootTarget(drag)) return;
-			evt.preventDefault();
-			if (evt.dataTransfer) evt.dataTransfer.dropEffect = 'move';
-		});
-		this.els.treeEl.addEventListener('drop', (evt) => {
-			if (evt.target !== this.els.treeEl) return;
-			evt.preventDefault();
-			const drag = this.dragContext();
-			const target = drag ? this.rootTarget(drag) : null;
-			this.clearDragState();
-			if (drag && target) void this.host.performDrop(drag.dragged, target);
-		});
 	}
 
 	/** Rows are about to be rebuilt; drop the references to the old indicator and source rows. */

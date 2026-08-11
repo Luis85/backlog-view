@@ -2,7 +2,6 @@
 import { describe, expect, it } from 'vitest';
 import { Menu, Modal } from 'obsidian';
 import { FakeVault } from '../helpers/vault';
-import { rootDropTarget } from '../../src/domain/dropTargets';
 import { cardTitles } from '../helpers/board';
 import {
 	clickExpandAll,
@@ -194,24 +193,6 @@ describe('the catalog and the plan share a model and divide it', () => {
 		catalog(containerEl);
 		expect(stateOffers(containerEl, 'Case')).toContain('Approved');
 		expect(stateOffers(containerEl, 'Case')).not.toContain('Shipping');
-	});
-
-	it('offers no root drop to a row already last among the roots ITS projection draws', () => {
-		// `realRoots` holds the plan's roots and the catalog's in one ranking group, so the
-		// last Epic is followed by a `Test suite` nobody in the plan can see. Asked of that
-		// list, the drop reads as a real move: it rewrites the Epic's order to sit after the
-		// hidden suite, spends the undo slot, and nothing changes on either screen.
-		const vault = new FakeVault();
-		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
-		vault.addFile('Suite.md', { frontmatter: { type: 'Test suite', order: 20 } });
-		const { view } = makeView(vault);
-		const epic = view.model?.byPath.get('Epic.md');
-		const suite = view.model?.byPath.get('Suite.md');
-		if (!epic || !suite) throw new Error('fixture missing');
-		// Last in the plan's own forest, and the mirror: the suite is last in the catalog's
-		// while an Epic precedes it in the ranking group.
-		expect(rootDropTarget(view.model!, epic, false, view.model!.roots)).toBeNull();
-		expect(rootDropTarget(view.model!, suite, false, view.model!.catalog.roots)).toBeNull();
 	});
 
 	it('takes no rollup from a plan row either, so a mis-dragged PBI moves no case', () => {
@@ -598,20 +579,18 @@ describe('the catalog is tree-shaped, and the plan keeps its place', () => {
 		expect(testCase && view.isFilterMatch(testCase)).toBe(false);
 	});
 
-	it('is not FOCUSED here either, so a root-level drop still lands', () => {
+	it('is not FOCUSED here either, so it never wears a narrowing it did not apply', () => {
 		// Ignoring the control is not enough, and this is the half that is easy to miss:
 		// `model.focused` is one flag for the whole model, so a plan focus stored elsewhere
-		// leaves the catalog drawing its unfocused forest while `rootDropTarget` refuses
-		// every drop and the pane wears `pbl-focused`. A projection that opts out of a
-		// feature opts out of the COMPUTATION, not just the button — so a mis-parented case
-		// stays repairable at the catalog root rather than needing a trip back to the plan
-		// to clear a focus the user never set here.
+		// leaves the catalog drawing its unfocused forest while everything gated on that
+		// flag treats the pane as narrowed. A projection that opts out of a feature opts out
+		// of the COMPUTATION, not just the button. What is left to check is the class — the
+		// drop that used to be refused here was deleted on 2026-08-11 — so this asserts the
+		// predicate through its one remaining consumer, in both directions.
 		const { containerEl, view } = makeView(bothFamilies());
 		view.setFocusLevel('PBI');
 		catalog(containerEl);
 		expect(treeOf(containerEl).parentElement?.hasClass('pbl-focused')).toBe(false);
-		const stray = view.model?.byPath.get('Stray case.md');
-		expect(stray && rootDropTarget(view.model!, stray, false, view.model!.catalog.roots)).not.toBeNull();
 		// And the plan is still focused, which is the other half: this is a projection's
 		// answer, not a repair of the flag.
 		projectionButton(containerEl, 'Show as backlog tree').dispatchEvent(new MouseEvent('click', { bubbles: true }));

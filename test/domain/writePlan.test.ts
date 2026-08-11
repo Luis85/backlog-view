@@ -169,7 +169,7 @@ describe('computeDropWrites', () => {
 		const dragged = model.roots.find((r) => r.title === 'Orphan') as BacklogItem;
 		const siblings = siblingsWithout(model.roots, dragged);
 
-		// A drop on the tree background appends at the end — positionally a no-op.
+		// Outdenting a root appends at the end of the root group — positionally a no-op.
 		const writes = computeDropWrites(dragged, { parent: null, siblings, insertIndex: siblings.length });
 
 		expect(writes).toHaveLength(1);

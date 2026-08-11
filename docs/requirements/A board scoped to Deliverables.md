@@ -376,8 +376,8 @@ risk below is closed rather than open: a readout added in
   requirements key configured at all there is no such row and no `## Workflow states`
   section, so no relationship is stated — "separate from the requirements workflow's"
   would name something the reader cannot find.
-- The pane carries the same board-shaped styling (columns readable, no clipped overflow,
-  no leftover tree-only root drop zone) in Deliverables mode as in Board mode.
+- The pane carries the same board-shaped styling (columns readable, no clipped overflow)
+  in Deliverables mode as in Board mode.
 - A configured-but-empty Deliverables board (no `Deliverable` results in the base) shows
   "No deliverables yet," never a message claiming items are done and hidden.
 - "Show completed items" does not appear in the toolbar while viewing the Deliverables

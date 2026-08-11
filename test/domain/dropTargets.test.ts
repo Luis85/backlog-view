@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { dropTargetFor, isInvalidParent, rootDropTarget, zoneForRatio } from '../../src/domain/dropTargets';
+import { dropTargetFor, isInvalidParent, zoneForRatio } from '../../src/domain/dropTargets';
 import { BacklogItem, buildModel } from '../../src/domain/model';
 import { defaultSettings } from '../../src/domain/settings';
-import { settingsWith } from '../helpers/settings';
 import { FakeVault } from '../helpers/vault';
 import { projectionMember } from '../../src/view/projection';
 
@@ -122,11 +121,11 @@ describe('dropTargetFor', () => {
 	});
 
 	it('refuses a sibling drop that would move the row to the other projection', () => {
-		// The tree background is not the only way to a null parent: dropping before or
-		// after a real ROOT takes the root group as the new parent, which for a `Task` or a
-		// typeless note is exactly what the strip does — `ladderFor` re-answers with the
-		// plan's ladder and the row leaves the catalog it was dragged on. One predicate,
-		// asked here too, rather than a second guard that could disagree with the first.
+		// Dropping before or after a real ROOT takes the root group as the new parent, which
+		// for a `Task` or a typeless note changes ladder — `ladderFor` re-answers with the
+		// plan's and the row leaves the catalog it was dragged on. Since the drop on the
+		// tree background was deleted this is the only DRAG that reaches a null parent, and
+		// it asks the one predicate rather than a second guard that could disagree with it.
 		const vault = new FakeVault();
 		vault.addFile('Suite.md', { frontmatter: { type: 'Test suite', order: 10 } });
 		vault.addFile('Case.md', { frontmatter: { type: 'Test case', order: 10 }, parentLink: 'Suite' });
@@ -146,71 +145,6 @@ describe('dropTargetFor', () => {
 		// And nesting INSIDE a row of the same projection was never in question: the new
 		// parent is drawn on the same screen, so it carries the same ladder.
 		expect(dropTargetFor(model, suite, 'inside', get('Test task.md'), catalogMember)?.parent).toBe(suite);
-	});
-});
-
-describe('rootDropTarget', () => {
-	it('appends after the other roots', () => {
-		const { model, get } = fixture();
-		const target = rootDropTarget(model, get('Feature B1'), false, model.roots);
-		expect(target?.parent).toBeNull();
-		expect(target?.insertIndex).toBe(2);
-	});
-
-	it('is a no-op for the item already sitting as the last root', () => {
-		const { model, get } = fixture();
-		expect(rootDropTarget(model, get('Epic B'), false, model.roots)).toBeNull();
-	});
-
-	it('still fires for a last root whose parent link is stale', () => {
-		const vault = new FakeVault();
-		vault.addFile('Root.md', { frontmatter: { type: 'Epic', order: 10 } });
-		vault.addFile('Orphan.md', { frontmatter: { order: 20 }, parentLink: 'Missing' });
-		const model = buildModel(vault.app, vault.entries(), settings);
-		const orphan = model.roots.find((r) => r.title === 'Orphan') as BacklogItem;
-
-		expect(rootDropTarget(model, orphan, false, model.roots)).not.toBeNull();
-	});
-
-	it('is unavailable while the caller is focused, and available while it is not', () => {
-		// The flag is the CALLER's, not `model.focused`, because a focus is one fact about
-		// the model and not about every projection reading it: the test catalog is built
-		// from the unfocused tree, so a plan focus must not refuse a drop at ITS root. Both
-		// answers over one focused model, which is what makes this a parameter rather than
-		// a field somebody could have read here directly.
-		const { vault } = fixture();
-		const model = buildModel(vault.app, vault.entries(), settingsWith({ focusLevel: 'Feature' }));
-		expect(model.focused).toBe(true);
-		expect(rootDropTarget(model, model.roots[0], true, model.roots)).toBeNull();
-		expect(rootDropTarget(model, model.roots[0], false, model.roots)).not.toBeNull();
-	});
-
-	it('refuses a root drop that would move the row to the other projection', () => {
-		// A `Task` under a `Test case` is a catalog member because its parent is; at the top
-		// level `ladderFor` answers the plan's ladder, so clearing the parent would take the
-		// row off the screen it was dragged on. Extension 1c withholds the same act from the
-		// top-level CREATOR for this reason; the drop is the same act by another entry point.
-		const vault = new FakeVault();
-		vault.addFile('Suite.md', { frontmatter: { type: 'Test suite', order: 10 } });
-		vault.addFile('Case.md', { frontmatter: { type: 'Test case', order: 10 }, parentLink: 'Suite' });
-		vault.addFile('Test task.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'Case' });
-		// The other input `ladderFor` chains from the parent: a TYPELESS note, not a `Task`.
-		// A name-based guard ("refuse when typeName is Task") would pass the two rows above
-		// while never asking the ladder at all — this row is the one that tells the two
-		// implementations apart, so it stays even though it looks redundant with the `Task` row.
-		vault.addFile('Untyped.md', { frontmatter: { order: 10 }, parentLink: 'Case' });
-		const model = buildModel(vault.app, vault.entries(), settings);
-		const get = (path: string) => {
-			const item = model.byPath.get(path);
-			if (!item) throw new Error(`no item ${path}`);
-			return item;
-		};
-		const catalog = model.catalog.roots;
-		expect(rootDropTarget(model, get('Test task.md'), false, catalog)).toBeNull();
-		expect(rootDropTarget(model, get('Untyped.md'), false, catalog)).toBeNull();
-		// And the row whose ladder does NOT depend on its parent is still offered it, so this
-		// narrows exactly the case that changes projection and nothing else.
-		expect(rootDropTarget(model, get('Case.md'), false, catalog)).not.toBeNull();
 	});
 });
 

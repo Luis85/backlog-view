@@ -49,9 +49,6 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Changed
 
-- The **Move to top level** strip no longer appears over the bottom of the tree while you
-  drag. The drop it offered is still there — drop on the empty space below the last row —
-  and Alt+Left, plus the row menu's **Outdent**, reach the top level without a drag at all.
 - The toolbar now leads with the projection switcher and puts **New** beside it, and the
   dividers in the head of the row are gone — between those two, and in front of the
   roadmap's own controls. Each group is set off by spacing instead: a bordered button group
@@ -75,6 +72,13 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Removed
 
+- **Dragging an item onto the empty space below the tree no longer makes it top-level**,
+  and neither does the **Move to top level** strip that used to appear there during a drag
+  — the strip is gone as well. Making an item top-level is a deliberate action now:
+  **Outdent**, from the row's context menu or Alt+Left, makes a row a sibling of its own
+  parent, so a row one level down becomes top-level. It climbs one level at a time, so a
+  deeply nested item takes a few presses. Nothing about your notes changes, and nothing
+  needs migrating.
 - **Assign item type when moving is gone, and a move now never rewrites a note's type.**
   The option re-typed a whole moved subtree to match its new position. It was off by
   default, it was the only thing in the plugin that changed a `type` you had written, and

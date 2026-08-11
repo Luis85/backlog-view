@@ -24,8 +24,8 @@ visible rather than assumed.
 - [[Tree badges and icons]] — all seven types, including the new milestone diamond badge.
 - [[Tree columns and narrowing]] — the header lining up with row cells, and `pbl-hide-*`
   dropping columns in order as the pane narrows.
-- [[Tree drag between siblings, into a parent and onto the background]] — the three drop
-  shapes a drag can land in.
+- [[Tree drag between siblings and into a parent]] — the two drop
+  shapes a drag can land in, and the background that takes none.
 - [[Tree keyboard moves]] — Alt+arrow move, indent and outdent.
 - [[Tree context menu]] — Set type, Set state and Edit tags.
 - [[Tree quick filter and Show completed items]] — the filter highlighting matches, and

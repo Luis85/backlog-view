@@ -39,8 +39,8 @@ function clearsStaleLink(parent: BacklogItem | null, dragged: BacklogItem): bool
  * True when a sibling group can be *reordered*. Ranking rewrites the whole group
  * when the gaps run out, and the view never writes to a note the Base excluded —
  * so in a group holding one, an item would silently land at the end instead of
- * where it was aimed. Appending (dropping *into* a parent, on the tree background,
- * indent) stays available: landing last is what those mean anyway.
+ * where it was aimed. Appending (dropping *into* a parent, indent) stays available:
+ * landing last is what those mean anyway.
  */
 export function reorderableGroup(siblings: BacklogItem[]): boolean {
 	return !siblings.some((s) => s.outsideFilter);
@@ -71,18 +71,18 @@ export function dropTargetFor(
 	// **A drop may not change which projection draws the row** (`keepsProjection`). An
 	// `inside` drop never can — the hovered row is on this screen, so it carries this
 	// screen's ladder — but a `before`/`after` drop on a real ROOT lands in the root group,
-	// which is the background drop's own case reached by another gesture: a catalog `Task`
-	// dropped beside its suite answers the plan's ladder and vanishes off the screen it was
-	// dragged on. Asked once here rather than in each position function, so the two cannot
-	// answer it differently.
+	// which is where a move can cross the two ladders: a catalog `Task` dropped beside its
+	// suite answers the plan's ladder and vanishes off the screen it was dragged on. Asked
+	// once here rather than in each position function, so the two cannot answer it
+	// differently.
 	if (!keepsProjection(dragged, position.parent)) return null;
 
 	// Dropping into the slot the item already occupies is a no-op — unless the
 	// drop would clear a stale parent link, which is a real change.
 	//
 	// **Asked of the DRAWN order, while the rank below is still computed from the real
-	// group.** Two questions over two lists, and the same split `rootDropTarget` already
-	// makes: a sibling group can interleave the projections (real roots `Epic A`,
+	// group.** Two questions over two lists, and conflating them is a mistake this codebase
+	// has made before: a sibling group can interleave the projections (real roots `Epic A`,
 	// `Test suite`, `Epic B` draw as `Epic A`, `Epic B` in the plan), so a drop that moves
 	// the row past nothing anyone can see reads as a move on the real indices. It then
 	// rewrites `order` and spends the undo slot with both screens unchanged. With no
@@ -131,40 +131,4 @@ function siblingPosition(
 	const idx = siblings.indexOf(item);
 	if (idx === -1) return null;
 	return { parent, siblings, insertIndex: zone === 'before' ? idx : idx + 1 };
-}
-
-/** The target for a drop on the tree background, or null when unavailable. */
-export function rootDropTarget(
-	model: BacklogModel,
-	dragged: BacklogItem,
-	focused: boolean,
-	rendered: BacklogItem[],
-): DropTarget | null {
-	// The caller's EFFECTIVE focus, not `model.focused`: that flag describes the plan, and
-	// a projection built from the unfocused tree is not focused however it is set. Passed
-	// in rather than read here because which projection is on screen is a view question.
-	if (focused) return null;
-	// The real root group again, for `siblingPosition`'s reason and one more of its own:
-	// the rendered forest can hold a PROMOTED root, whose real siblings are elsewhere, and
-	// this target takes its list wholesale to compute an order against. A promoted row in
-	// it makes the drop rank against a note nobody can see, and a renumbering pass with no
-	// gap available would rewrite that note's own `order`.
-	const siblings = model.realRoots.filter((r) => r !== dragged);
-	// **The no-op is asked of what this projection DRAWS; the rank is computed from
-	// `realRoots`.** Two different questions over two different lists, and asking both of
-	// the ranking group was wrong in the direction that looks like a working feature: the
-	// plan's roots and the catalog's share one null-parent group, so the last Epic on screen
-	// is followed in `realRoots` by a `Test suite` nobody in the plan can see. The drop then
-	// reads as a real move — it rewrites the Epic's order to sit past that suite and spends
-	// the undo slot — while both screens are unchanged. Passed in for the same reason
-	// `focused` is: which rows are drawn is a view question, and the domain must not guess.
-	const alreadyLastRoot = dragged.parent === null && rendered.indexOf(dragged) === rendered.length - 1;
-	// The last root with a stale parent link still needs the drop target: the
-	// "move" is a no-op positionally but clears the unresolved parent property.
-	if (alreadyLastRoot && !clearsStaleLink(null, dragged)) return null;
-	// **A root drop may not change which projection draws the row** — the top level is
-	// this target's prospective parent, and `keepsProjection` is where that rule lives for
-	// every move that has one.
-	if (!keepsProjection(dragged, null)) return null;
-	return { parent: null, siblings, insertIndex: siblings.length };
 }

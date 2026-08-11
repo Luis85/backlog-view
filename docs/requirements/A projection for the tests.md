@@ -210,16 +210,19 @@ base settings are saved on the view, working position on the device.
   `createFromPrompt` already passes `parentItem.children`, which is the real group already.
   **A promoted root is also not in the projection's rankable roots**, which is a second
   list rather than a second reading of the first. The `focusRoot` flag protects a promoted
-  row when something acts *on* it; the root drop never targets it — `rootDropTarget` takes
-  the root list wholesale and computes an order against it — so a promoted row sitting in
-  that list makes a drop rank against a note whose real siblings are elsewhere, and a
-  renumbering pass with no gap available would rewrite that note's own `order`.
-  Focus never had to say this because `rootDropTarget` returns null the moment
-  `model.focused` is true; the catalog is deliberately **not** focused (3b), so the guard
-  that covers the one case does not cover the other. **Three** lists, then, and conflating
+  row when something acts *on* it, and anything that takes a root list WHOLESALE to compute
+  an order against has to answer for the promoted row in it separately: such a row makes a
+  drop rank against a note whose real siblings are elsewhere, and a renumbering pass with
+  no gap available would rewrite that note's own `order`. The gesture that made this
+  concrete — the drop on the tree background, which took the rendered roots as its list —
+  was deleted on 2026-08-11, so nothing takes a root list wholesale today. The rule
+  outlives it, which is why it is stated here rather than at a call site: it is what any
+  future root-level action has to be built against. **Three** lists, then, and conflating
   any two of them breaks something: the **rendered** roots, genuine and promoted, which the
   renderer, the keyboard, the filter index and the collapse seed walk; the **positionable**
-  roots, this projection's genuine roots, which say where a drop lands; and the **ranking**
+  roots, this projection's genuine roots, which say what a drop at the top level MEANS —
+  `dropTargetFor` asks its no-op question of the drawn order for exactly this reason; and
+  the **ranking**
   group, every parentless item **the model holds**, which says what number it gets. The
   third is not a projection's list at all — it is what the data means, as far as this view
   can see it — and no projection may narrow it without inventing duplicate orders. It is
@@ -241,8 +244,8 @@ base settings are saved on the view, working position on the device.
   **unfocused** tree, and ignoring the control is not enough to get that. `buildModel`
   replaces `roots`, `items` **and** `results` with the focus subtree and sets
   `focused: true`, so a stored focus of `PBI` would leave the catalog showing only the
-  tests inside that subtree — usually none — with a count to match, and
-  `rootDropTarget` refusing every drop because `model.focused` is still true.
+  tests inside that subtree — usually none — with a count to match, and everything gated
+  on that flag treating the pane as narrowed because `model.focused` is still true.
   The precedent is exact and one projection over: `deliverableResults` is read off the
   whole tree *before either branch narrows anything*, precisely so a focus set elsewhere
   can never hide a Deliverable. The catalog's forest and results come off the same
@@ -305,11 +308,12 @@ base settings are saved on the view, working position on the device.
   midpoint), it fails on a different arrangement, and a criterion written about drops alone
   passed this PBI for two rounds while creation still handed the new suite the Epic's own
   number.
-- A promoted root is absent from the **positionable** roots: a root drop, and
-  a new root's `endOfSiblingsOrder`, both position against the genuine roots alone, and no
-  renumbering pass rewrites a promoted note's `order`. Asserted with a promoted row present
-  and no order gap available — the arrangement where the wrong list does not merely
-  mis-rank the dropped item but writes to a note nobody touched.
+- A promoted root is absent from the **positionable** roots: a new root's
+  `endOfSiblingsOrder` positions against the genuine roots alone, and no renumbering pass
+  rewrites a promoted note's `order`. Asserted with a promoted row present and no order gap
+  available — the arrangement where the wrong list does not merely mis-rank the new item but
+  writes to a note nobody touched. The drop on the tree background was the other positioner
+  and was deleted on 2026-08-11; the criterion is about the list, not about that gesture.
 - Every drawn row's depth is **projection-relative**: a promoted root draws at depth 0 with
   `aria-level="1"`, whatever its depth in the model. Asserted on a test promoted from
   beneath a nested `PBI`, since a shallow fixture cannot tell a re-derived depth from an
@@ -441,11 +445,13 @@ nothing the moment it was clicked.
 times** — the completed toggle, the focus button, and the model narrowing behind it. The
 third was found by review after the first two were built: `model.focused` is one flag for
 the whole model, so a plan focus left the catalog drawing its unfocused forest while the
-pane wore `pbl-focused` and `rootDropTarget` refused every drop — a mis-parented case
-unrepairable at the catalog root until the user went back to a plan projection and cleared
-a focus they never set here. `effectivelyFocused` (`src/view/projection.ts`) is the
-projection's own answer, and `rootDropTarget` takes it as a PARAMETER rather than reading
-the flag, since which projection is on screen is a view question. The rule to carry into a
+pane wore `pbl-focused` and the root-level drop of the day refused every drop — a
+mis-parented case unrepairable at the catalog root until the user went back to a plan
+projection and cleared a focus they never set here. `effectivelyFocused`
+(`src/view/projection.ts`) is the projection's own answer, and the drop took it as a
+PARAMETER rather than reading the flag, since which projection is on screen is a view
+question. That drop was deleted on 2026-08-11 and the predicate stayed, because the rule
+is not about the drop. The rule to carry into a
 fourth is the one 3b already states and this is the evidence for: **a projection opting out
 of a feature opts out of the computation, not just the button.**
 
@@ -517,14 +523,19 @@ DENOMINATOR — the membership rule alone, not the visibility rule the numerator
 
 **Two questions over two lists, and `realRoots` answers only one of them.** 2d says the
 ranking group is never a projection's list and no projection may narrow it — true, and it is
-half the rule. `rootDropTarget` computed BOTH its answers from that group: the rank a drop
-lands at, correctly, and *is this row already last, so the drop is a no-op*, which is a
-question about the SCREEN. The plan's roots and the catalog's share one null-parent group, so
+half the rule. Every root-level drop written here computed BOTH its answers from that group:
+the rank a drop lands at, correctly, and *is this row already last, so the drop is a no-op*,
+which is a question about the SCREEN. The plan's roots and the catalog's share one
+null-parent group, so
 the last Epic on screen is followed in `realRoots` by a `Test suite` nobody in the plan can
 see — and the drop then reads as a real move, rewriting that Epic's order to sit past the
-suite and spending the undo slot while both projections are unchanged. Found by review. The
-rendered roots are passed in for the same reason `effectivelyFocused` is: which rows are
-drawn is a view question. The lesson generalises past this function — **a rule about
+suite and spending the undo slot while both projections are unchanged. Found by review, in
+two functions: the drop on the tree background, deleted on 2026-08-11, and `dropTargetFor`,
+where a `before`/`after` drop beside a real root reaches the same group and where the
+correction still lives — it asks the no-op question of the DRAWN order through the
+`member` predicate the view hands it, for the same reason `effectivelyFocused` is a
+parameter: which rows are drawn is a view question. The lesson generalises past either
+function — **a rule about
 `realRoots` is a rule about ranking, and any other question asked of it is asked of the wrong
 list.**
 

@@ -22,8 +22,10 @@ useViewHarness();
  * so a reparent that hands either of them a parent on the other ladder takes the row off
  * the screen it was acted on. Extension 1c of
  * `docs/requirements/Test suite and test case as a ladder of their own.md` withheld that
- * act from the top-level CREATOR; the root drop and then outdent were each found missing
- * it afterwards, which is why one predicate answers for all of them now.
+ * act from the top-level CREATOR; the drop on the tree background and then outdent were
+ * each found missing it afterwards, which is why one predicate answers for all of them
+ * now. That drop was itself deleted on 2026-08-11 — a gate leaving the set is what the
+ * predicate is for, and it costs the rule nothing.
  *
  * Every refusal below is asserted on a `Task` **and** on a typeless note, and every one
  * has a row beside it that must still be offered the command. A guard written as

@@ -492,7 +492,7 @@ function rulesSection(settings: BacklogSettings): string[] {
 			`under an ${code(LEVELS[0])} stays one, at its own level, however oddly it sits. Only a note with **no** type takes ` +
 			'the level its position implies, and a type this plugin does not ship sits one rung below its parent so its own children continue the ladder.' +
 			// The one refusal a TYPE can cause, and stated only as widely as it holds twice over.
-			// `keepsProjection` gates the four reparenting targets, and `ladderFor` chains from the
+			// `keepsProjection` gates every reparenting target, and `ladderFor` chains from the
 			// parent for a `Task` and a note with no `type` and for nothing else — so every other
 			// name answers from itself and can never change ladder by moving. And the "for a type
 			// reason" qualifier is the other half: `isInvalidParent` and `reorderableGroup` refuse

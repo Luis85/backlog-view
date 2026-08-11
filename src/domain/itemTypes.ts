@@ -112,11 +112,13 @@ export function inCatalog(item: { ladder: string[] }): boolean {
  * "the same type, answered differently by whether a parent is in hand". The rule was then
  * found missing at the top-level DROP, and an automated reviewer found it missing at
  * OUTDENT while that first patch was still the newest commit; a sibling drop beside a
- * real root and the parent-link actions turned out to reach it as well. Four gates ask it
- * today — `dropTargetFor`, `rootDropTarget`, `outdentTarget` and the menu's parent-link
- * section — and enumerating them is what found the last two, which is why this is a
- * function every reparenting target asks rather than a check each one restates. The
- * creator is the fifth surface of the same rule and answers it in `offerableTypes`, since
+ * real root and the parent-link actions turned out to reach it as well. Three gates ask
+ * it today — `dropTargetFor`, `outdentTarget` and the menu's parent-link section — and
+ * enumerating them is what found the last two, which is why this is a function every
+ * reparenting target asks rather than a check each one restates. It was four until the
+ * drop on the tree background was deleted (2026-08-11); a gate leaving the set costs the
+ * rule nothing, which is the point of stating it here rather than at each call. The
+ * creator is a further surface of the same rule and answers it in `offerableTypes`, since
  * it has no row on screen to keep there.
  *
  * Asked of the LADDER and never of a type NAME: every other type answers from its own
