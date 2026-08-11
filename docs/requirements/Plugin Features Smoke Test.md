@@ -1,14 +1,22 @@
 ---
 type: Epic
 order: 66.875
-status: Open
+status: Done
 created: 2026-08-02
+closed: 2026-08-11
 source: user request
 horizon: Later
 area: quality
 ---
 
 # Plugin Features Smoke Test
+
+**Closed by the test catalog (2026-08-11).** Its three children — [[Smoke test the tree]],
+[[Smoke test the board]] and [[Smoke test the roadmap]] — are `Test suite` notes now, roots
+of the catalog rather than a branch of the plan. That is [[Tests stay out of the plan]]
+applied to the one Epic that was holding tests, and it is why this note is closed rather
+than re-parented: an Epic whose whole purpose was to group smoke tests has no purpose once
+they group themselves.
 
 **A smoke test this repository can actually run.** Obsidian does not run in CI and jsdom
 asserts classes rather than pixels, so a whole class of defect — appearance, base
