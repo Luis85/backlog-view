@@ -40,15 +40,24 @@ describe('the projection zone', () => {
 		}
 	});
 
-	it('takes its separator with it, so an empty zone leaves no gap', () => {
+	/**
+	 * The boundary in front of the zone is SPACING, on the zone's own class. Two things
+	 * follow and both are asserted, because the second is what the divider kept getting
+	 * wrong: nothing draws a line there, and drawing a zone costs the row no separator at
+	 * all — so there is no leftover for an empty projection to leave behind.
+	 */
+	it('is set off by spacing, with no divider in front of it', () => {
 		const vault = fixture();
 		const { view, containerEl } = makeView(vault, bothAxes);
 
 		view.setProjection('roadmap');
 		view.setAxisPick('dates');
+		const drawn = zone(containerEl);
+		expect(drawn?.previousElementSibling?.classList.contains('pbl-toolbar-sep')).toBe(false);
+
 		const withZone = seps(containerEl);
 		view.setProjection('tree');
-		expect(seps(containerEl)).toBe(withZone - 1);
+		expect(seps(containerEl), 'a zone cost the row a separator').toBe(withZone);
 	});
 
 	it('names the axis and the zoom in words, and each menu checks the current value', () => {
@@ -103,12 +112,10 @@ describe('the projection zone', () => {
 	it('takes an EMPTY zone away on the projection that owns one', () => {
 		const vault = fixture();
 		const { view, containerEl } = makeView(vault, { horizonProperty: 'note.horizon' });
-		const bare = seps(containerEl); // tree: no zone, so no zone separator
 		view.setProjection('roadmap');
 
 		expect(containerEl.querySelector('[data-pbl-key="axis"]')).toBeNull();
 		expect(containerEl.querySelector('[data-pbl-key="zoom"]')).toBeNull();
 		expect(zone(containerEl), 'a roadmap that drew no control kept its zone').toBeNull();
-		expect(seps(containerEl), 'the empty zone left its separator behind').toBe(bare);
 	});
 });

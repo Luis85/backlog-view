@@ -179,13 +179,16 @@ function menuButton(
  * registration interface with one implementation is an abstraction nobody can read
  * faster than the branch it replaces.
  *
- * The zone and its leading separator are created together and removed together: a
- * separator introducing nothing is a rule the row states and does not keep. Emptiness is
- * decided from what was DRAWN rather than from a second reading of the settings, so the
- * two cannot disagree about whether this projection contributed anything.
+ * What separates it from the head of the row is SPACING, carried by the zone's own class
+ * (`styles/toolbar.css`), and no longer a drawn divider. That is one element fewer and,
+ * more to the point, one thing fewer that can be left behind: the divider and the zone
+ * were created together and removed together precisely because a separator introducing
+ * nothing is a rule the row states and does not keep, and a margin on the zone cannot
+ * outlive it. Emptiness is still decided from what was DRAWN rather than from a second
+ * reading of the settings, so nothing here can disagree with the pickers about whether
+ * this projection contributed anything.
  */
 export function renderProjectionZone(host: BacklogViewHost, barEl: HTMLElement): void {
-	const sep = barEl.createDiv({ cls: 'pbl-toolbar-sep' });
 	const zone = barEl.createDiv({ cls: 'pbl-zone pbl-zone-projection' });
 	switch (host.projection) {
 		case 'roadmap':
@@ -199,9 +202,7 @@ export function renderProjectionZone(host: BacklogViewHost, barEl: HTMLElement):
 			// somewhere else in the row.
 			break;
 	}
-	if (zone.childElementCount > 0) return;
-	sep.remove();
-	zone.remove();
+	if (zone.childElementCount === 0) zone.remove();
 }
 
 /**
@@ -315,6 +316,57 @@ function renderTimelineControls(host: BacklogViewHost, zone: HTMLElement, barEl:
 	const today = iconButton(zone, 'locate-fixed', 'Jump to today');
 	today.addClass('pbl-today-btn');
 	today.addEventListener('click', () => host.jumpToToday());
+}
+
+/**
+ * The click-action toggle's name, fixed: it names the SETTING rather than the next
+ * action, so `aria-pressed` can carry the value without the two contradicting each
+ * other. See `renderClickActionToggle`.
+ */
+export const CLICK_ACTION_LABEL = 'Clicking a row folds it';
+
+/**
+ * Where the click-action setting has an effect, and therefore where its toggle is drawn:
+ * the two ROW-shaped projections. The tree, and the roadmap's dated axis, whose timeline
+ * rows carry the same chevron over the same collapse call (`collapseKey` routes them to
+ * `TIMELINE_SCOPE`, which changes which bit is written and not what the gesture means).
+ *
+ * Never a card — the horizon axis's buckets, the board, the Deliverables board — because a
+ * card's disclosure lists children on its own face and a childless card draws none, so the
+ * option would be inert on the commonest one. That is `Opening the work.md` extension 1e's
+ * reasoning, kept as the reason this predicate has two arms rather than four.
+ *
+ * **This has to agree with who passes a fold to `wireCardActivation`, and nothing checks
+ * that mechanically.** The two fold call sites are `wireRowEvents` and `renderTimelineRow`;
+ * a third would have to be added here in the same change, or the row would fold with no
+ * toggle to say so. What IS checked is the pairing on the projections that exist:
+ * `test/view/toolbarClickAction.test.ts` drives a click on each and asserts the button is
+ * present exactly where the click folds.
+ */
+export function clickActionApplies(host: BacklogViewHost): boolean {
+	if (host.projection === 'tree') return true;
+	return host.projection === 'roadmap' && activeAxis(host.settings, host.axisPick) === 'dates';
+}
+
+/**
+ * What that toggle currently says, what it looks like saying it, and what pressing it
+ * does — one statement, because the toolbar button and its `⋯` entry are two inputs on
+ * one value and a menu that re-derived any of the three could offer the opposite of what
+ * the button was offering. The same rule the entries below already keep by reading
+ * `disabled` off the button they mirror, kept here at the source instead, since this
+ * value lives in the collapse store rather than on an element.
+ *
+ * `host.clickFolds` and not a setting: this is working position, per saved view and per
+ * device (ADR 0011), so `setClickFolds` both persists it and re-renders — no Bases
+ * refresh follows a change the base was not told about.
+ */
+export function clickActionToggle(host: BacklogViewHost): { folds: boolean; icon: string; flip: () => void } {
+	const folds = host.clickFolds;
+	return {
+		folds,
+		icon: folds ? 'fold-vertical' : 'file-text',
+		flip: () => host.setClickFolds(!folds),
+	};
 }
 
 /**
@@ -440,6 +492,7 @@ interface OverflowEntry {
  */
 function overflowEntries(host: BacklogViewHost, barEl: HTMLElement): OverflowEntry[] {
 	const compact = host.density === 'compact';
+	const clickAction = clickActionToggle(host);
 	const all: OverflowEntry[] = [
 		{
 			title: 'Compact rows',
@@ -501,6 +554,15 @@ function overflowEntries(host: BacklogViewHost, barEl: HTMLElement): OverflowEnt
 				collapseAll(host);
 				host.render();
 			},
+		},
+		{
+			// Last, where it sits in the row. Its checkmark comes from the button's own
+			// `aria-pressed` like the density toggle's, so the entry cannot say a click
+			// folds while the button says it opens.
+			title: CLICK_ACTION_LABEL,
+			icon: clickAction.icon,
+			cls: 'pbl-click-action-toggle',
+			run: clickAction.flip,
 		},
 	];
 	return all.filter((entry) => barEl.querySelector(`.${entry.cls}`) !== null);

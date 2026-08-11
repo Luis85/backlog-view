@@ -1,7 +1,7 @@
 import { setIcon, setTooltip } from 'obsidian';
 import { RowContext } from './columns';
 import { createCard, wireCardActivation } from './board';
-import { renderBadge, renderChevron, renderTitleText } from './rows';
+import { foldOnClick, renderBadge, renderChevron, renderTitleText } from './rows';
 import { dependencyNote, NO_CONFLICTS, renderDependencyArrows } from './timelineArrows';
 import { CardDragController } from '../interactions/cardDrag';
 import { dependenciesAvailable } from '../interactions/dependencies';
@@ -497,7 +497,14 @@ function renderBarRow(
 	renderConnector(ctx, mounts, { row, barEl: el, geometry }, bar);
 	renderBarLabel(track, bar, geometry, scale, window);
 	renderRowFacts(row, ctx, bar, { dates, own, conflictedPrereqs: mounts.conflictedPrereqs, lead });
-	wireCardActivation(ctx, row, bar.item);
+	// The one caller that passes a fold: this row has a chevron, so "clicking an item
+	// expands or collapses it" means here exactly what it means in the tree. Its two
+	// answers are this axis's own — `entry.hasChildren` is what `timelineRows` decided
+	// draws a disclosure, never `item.children`, and the redraw is the whole projection
+	// for the same reason `renderRowChevron`'s is.
+	wireCardActivation(ctx, row, bar.item, (evt) =>
+		foldOnClick(ctx.host, bar.item, evt, { hasChildren: entry.hasChildren, redraw: () => ctx.host.render() }),
+	);
 	// The same three overrides `styles/timeline.css` gives a bar, asked in the same
 	// order: done wins outright (the row class overrides regardless of geometry), then
 	// a milestone diamond only where `barClasses` actually added `pbl-bar-milestone` —

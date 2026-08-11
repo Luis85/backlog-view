@@ -5,6 +5,9 @@ import { offerableTypes, showMenuForClick } from '../interactions/menu';
 import { runInit } from '../interactions/structure';
 import {
 	capturedFocusKey,
+	CLICK_ACTION_LABEL,
+	clickActionApplies,
+	clickActionToggle,
 	collapseAll,
 	collapseButton,
 	collapseCtlsDisabled,
@@ -51,20 +54,21 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	const refocusKey = capturedFocusKey(barEl);
 	barEl.empty();
 
-	// 1 — what you came to do. The primary action leads the row: it is the one control
-	// here that ADDS to the backlog, and reading order is where a primary action belongs.
-	// It also settles what no rung could: New is no longer last, so the clip at a very
-	// narrow pane takes a readout instead of the button — see
-	// `docs/requirements/A toolbar that fits one row.md`, extension 4b.
-	renderNewButton(host, barEl, model);
-	// Two groups side by side read as one six-segment strip without this.
-	barEl.createDiv({ cls: 'pbl-toolbar-sep' });
-
-	// 2 — where am I. The switcher says what the rest of the row is about.
+	// 1 — where am I. The switcher leads: it says what the rest of the row is about, and
+	// what the primary action beside it will make.
 	renderModeToggle(host, barEl);
 
-	// 3 — what THIS projection owns, and nothing when it owns none. Draws its own
-	// leading separator, or neither.
+	// 2 — what you came to do. The one control here that ADDS to the backlog, kept at the
+	// head of the row with the switcher: the clip at a very narrow pane runs from the
+	// RIGHT, so both survive it — see `docs/requirements/A toolbar that fits one row.md`,
+	// extension 4b. No divider between the two: each is its own bordered
+	// `.pbl-btn-group`, so the boxes already say where one control ends and the next
+	// begins, and a line between them draws a boundary that is drawn twice.
+	renderNewButton(host, barEl, model);
+
+	// 3 — what THIS projection owns, and nothing at all when it owns none. Set off from
+	// the two groups above by its own spacing rather than by a divider, so an empty zone
+	// leaves nothing behind to remove.
 	renderProjectionZone(host, barEl);
 
 	barEl.createDiv({ cls: 'pbl-toolbar-spacer' });
@@ -99,6 +103,7 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 		mutate: () => collapseAll(host),
 	});
 	renderCompletedToggle(host, barEl, model);
+	renderClickActionToggle(host, barEl);
 	renderFilterBox(host, barEl);
 
 	// The general door to the manual. Zone 4 because it is the same in every projection,
@@ -347,6 +352,35 @@ function renderCompletedToggle(host: BacklogViewHost, barEl: HTMLElement, model:
 	btn.addClass('pbl-completed-toggle');
 	btn.toggleClass('is-active', !showing);
 	btn.addEventListener('click', () => host.config.set('showCompleted', !showing));
+}
+
+/**
+ * Whether a click on a row folds it, on the row beside the completed toggle — and the
+ * ONLY surface for it. It was the **Handling items** group's `clickAction` option until
+ * 2026-08-11, on this toggle and in the view options both; it is now working position in
+ * the collapse store (ADR 0011, `host.clickFolds`), per saved view and per device, so
+ * there is no second surface for this one to agree with and no `.base` carrying one
+ * reader's habit to everyone the base is shared with.
+ *
+ * Drawn on the two ROW-shaped projections and nowhere else — `clickActionApplies` states
+ * which and why. A toolbar toggle that changed nothing on the screen in front of you is
+ * worse than an absent one, the same argument the completed toggle makes about the
+ * Deliverables board one line above.
+ *
+ * The name is the SETTING and `aria-pressed` carries its value — the density toggle's
+ * rule for the density toggle's reason: a name flipping to the next action would announce
+ * "clicking a row opens the note, pressed" at the moment clicks were folding, which states
+ * the opposite of what is true. The icon still swaps, because it is what a sighted reader
+ * has and it says nothing to a screen reader.
+ */
+function renderClickActionToggle(host: BacklogViewHost, barEl: HTMLElement): void {
+	if (!clickActionApplies(host)) return;
+	const { folds, icon, flip } = clickActionToggle(host);
+	const btn = iconButton(barEl, icon, CLICK_ACTION_LABEL, 'click-action');
+	btn.addClass('pbl-click-action-toggle');
+	btn.toggleClass('is-active', folds);
+	btn.setAttribute('aria-pressed', String(folds));
+	btn.addEventListener('click', flip);
 }
 
 /**

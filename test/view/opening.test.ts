@@ -27,7 +27,7 @@ describe('what a click on an item does', () => {
 
 	it('folds the row and opens nothing when clicking is configured to fold', () => {
 		const vault = fixture();
-		const { containerEl } = makeView(vault, { clickAction: 'fold' });
+		const { containerEl } = makeView(vault, {}, { folds: true });
 		expect(titlesOf(containerEl)).toContain('Feature B1');
 
 		click(rowByTitle(containerEl, 'Epic B'));
@@ -45,7 +45,7 @@ describe('what a click on an item does', () => {
 	 */
 	it('still opens on a modified click while folding is configured', () => {
 		const vault = fixture();
-		const { containerEl } = makeView(vault, { clickAction: 'fold' });
+		const { containerEl } = makeView(vault, {}, { folds: true });
 
 		click(rowByTitle(containerEl, 'Epic B'), { ctrlKey: true });
 
@@ -60,7 +60,7 @@ describe('what a click on an item does', () => {
 	 */
 	it('opens nothing when a row with no children is clicked in fold mode', () => {
 		const vault = fixture();
-		const { containerEl } = makeView(vault, { clickAction: 'fold' });
+		const { containerEl } = makeView(vault, {}, { folds: true });
 
 		click(rowByTitle(containerEl, 'Feature B1'));
 
@@ -74,7 +74,7 @@ describe('what a click on an item does', () => {
 	 */
 	it('folds nothing while the quick filter is narrowing the tree', () => {
 		const vault = fixture();
-		const { view, containerEl } = makeView(vault, { clickAction: 'fold' });
+		const { view, containerEl } = makeView(vault, {}, { folds: true });
 		view.setFilter('Feature');
 
 		click(rowByTitle(containerEl, 'Epic B'));
@@ -92,7 +92,7 @@ describe('what a click on an item does', () => {
 	it('leaves card activation opening the note', () => {
 		const vault = boardVault();
 		// Epic B is a PARENT card, the one that has children to have folded.
-		const { containerEl } = makeBoard(vault, { clickAction: 'fold' });
+		const { containerEl } = makeBoard(vault, {}, { folds: true });
 		click(cardByTitle(containerEl, 'Epic B'));
 
 		expect(vault.opened.map((o) => o.path)).toEqual(['Epic B.md']);
@@ -101,7 +101,7 @@ describe('what a click on an item does', () => {
 	/** `Enter` is the keyboard's way to the note, and folding does not take it. */
 	it('opens the selection on Enter whatever clicking is configured to do', () => {
 		const vault = fixture();
-		const { containerEl } = makeView(vault, { clickAction: 'fold' });
+		const { containerEl } = makeView(vault, {}, { folds: true });
 		click(rowByTitle(containerEl, 'Feature B1'));
 		key(treeOf(containerEl), 'Enter');
 
@@ -209,16 +209,13 @@ describe('where an opened note goes', () => {
 });
 
 /**
- * Both keys are persisted in a `.base` a user can hand-edit, so the allowed list is
- * what decides — not the presence of a string. An unrecognised value falls back rather
- * than reaching a branch that has no arm for it.
+ * The key is persisted in a `.base` a user can hand-edit, so the allowed list is what
+ * decides — not the presence of a string. An unrecognised value falls back rather than
+ * reaching a branch that has no arm for it.
  */
 describe('a value no version of this plugin declared', () => {
 	it('falls back to the defaults', () => {
-		const settings = resolveSettings(config({ clickAction: 'toggle', openIn: 42 }));
-
-		expect(settings.clickAction).toBe('open');
-		expect(settings.openIn).toBe('active');
+		expect(resolveSettings(config({ openIn: 42 })).openIn).toBe('active');
 	});
 
 	/**
@@ -227,16 +224,26 @@ describe('a value no version of this plugin declared', () => {
 	 * exist. Same rule, same bug, as the type table `byName` was written for.
 	 */
 	it('falls back on a name inherited from Object.prototype', () => {
-		const settings = resolveSettings(config({ clickAction: 'constructor', openIn: 'toString' }));
-
-		expect(settings.clickAction).toBe('open');
-		expect(settings.openIn).toBe('active');
+		expect(resolveSettings(config({ openIn: 'toString' })).openIn).toBe('active');
 	});
 
 	it('reads the declared values back', () => {
-		const settings = resolveSettings(config({ clickAction: 'fold', openIn: 'split' }));
+		expect(resolveSettings(config({ openIn: 'split' })).openIn).toBe('split');
+	});
 
-		expect(settings.clickAction).toBe('fold');
-		expect(settings.openIn).toBe('split');
+	/**
+	 * `clickAction` was this group's other option until 2026-08-11 and is now working
+	 * position in the collapse store. A `.base` written before the move still holds the
+	 * key, and nothing may read it back — a stale `fold` silently changing what a click
+	 * does is the one way this move can be noticed by someone who never asked for it.
+	 */
+	it('ignores a clickAction key left in a base written before the move', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault, { clickAction: 'fold' });
+
+		click(rowByTitle(containerEl, 'Epic B'));
+
+		expect(vault.opened).toEqual([{ path: 'Epic B.md', mode: false }]);
+		expect(titlesOf(containerEl)).toContain('Feature B1');
 	});
 });

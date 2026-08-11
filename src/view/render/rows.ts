@@ -427,9 +427,10 @@ export function fromRowControl(evt: Event): boolean {
 }
 
 /**
- * "Clicking an item" set to fold: the row's body means what its chevron means, and the
- * note is reached from the menu, from `Enter`, or with the platform's modifier — which
- * is why a modified click is not this option's to take and falls through to opening.
+ * The toolbar's fold toggle set on (`host.clickFolds`): the row's body means what its
+ * chevron means, and the note is reached from the menu, from `Enter`, or with the
+ * platform's modifier — which is why a modified click is not this toggle's to take and
+ * falls through to opening.
  *
  * Returns true whenever the click was SPENT here, which includes the two cases that
  * fold nothing: a row with nothing under it has no fold to do, and a filtered tree
@@ -437,13 +438,29 @@ export function fromRowControl(evt: Event): boolean {
  * filter runs, so the write would look inert and then take effect once it cleared).
  * Falling through to `openItem` in either case would make the same gesture open a note
  * in one row and fold in the next.
+ *
+ * **Two ROW-shaped projections call this**, which is what `row` is for: the two things
+ * that differ between them are exactly the two a shared function cannot know. What
+ * counts as having children is the tree's visible child list here and the row set
+ * `timelineRows` drew on the dated axis — asking `item.children` there would offer a
+ * fold on a bar whose children are not rows on that grid. And the redraw is one
+ * subtree here and the whole projection there, since the window, the gridlines and
+ * every full-height mark are derived from the row set the fold changes. Everything
+ * else — the setting, the modifier, both refusals and the spend — is one statement,
+ * because a second copy of it is how the same gesture comes to mean different things
+ * on two screens that both draw rows. A CARD is not in this: its disclosure lists
+ * children on its own face, so `wireCardActivation`'s callers pass no fold at all.
  */
-function foldOnClick(ctx: RowContext, item: BacklogItem, evt: MouseEvent): boolean {
-	const host = ctx.host;
-	if (host.settings.clickAction !== 'fold' || Keymap.isModEvent(evt)) return false;
-	if (host.isFiltering() || !item.children.some((child) => !host.isRowHidden(child))) return true;
+export function foldOnClick(
+	host: BacklogViewHost,
+	item: BacklogItem,
+	evt: MouseEvent,
+	row: { hasChildren: boolean; redraw: () => void },
+): boolean {
+	if (!host.clickFolds || Keymap.isModEvent(evt)) return false;
+	if (host.isFiltering() || !row.hasChildren) return true;
 	host.setCollapsed(item.file.path, !host.isCollapsed(item.file.path));
-	host.refreshSubtree(item);
+	row.redraw();
 	return true;
 }
 
@@ -454,9 +471,16 @@ function wireRowEvents(ctx: RowContext, row: HTMLElement, item: BacklogItem, chi
 		// a chevron click would fold twice; folding on an add-button click would fold on
 		// the way to a modal.
 		if (fromRowControl(evt)) return;
-		ctx.host.selectItem(item, false);
-		if (foldOnClick(ctx, item, evt)) return;
-		ctx.host.openItem(item, evt);
+		const host: BacklogViewHost = ctx.host;
+		host.selectItem(item, false);
+		const spent = foldOnClick(host, item, evt, {
+			// The tree's own two answers: the children it is currently drawing, and the
+			// one subtree its fold changes.
+			hasChildren: item.children.some((child) => !host.isRowHidden(child)),
+			redraw: () => host.refreshSubtree(item),
+		});
+		if (spent) return;
+		host.openItem(item, evt);
 	});
 	row.addEventListener('auxclick', (evt) => {
 		if (evt.button === 1 && !fromRowControl(evt)) ctx.host.openItemIn(item, 'tab');

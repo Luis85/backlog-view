@@ -11,8 +11,29 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+### Added
+
+- **Clicking a row folds it** is now a toolbar toggle, beside the completed-items eye. It
+  moves into the `⋯` menu on a narrow pane, and it is remembered per saved view on this
+  device — beside the collapse state, like the projection and the focus level — rather
+  than in the `.base` file. So it is yours rather than everyone's: a base shared with a
+  colleague no longer carries your habit of clicking to fold. There is no
+  **Handling items → Clicking an item** view option any more; a `clickAction` key in a
+  base written before this is ignored, and the toggle starts from "opens the note".
+- Folding on click now covers the **roadmap's timeline** as well as the tree: a click on a
+  timeline row folds the rows below it, exactly as the row's own chevron does. Cards — on
+  a board, in a horizon bucket, on the shelf — still open their note, since a card lists
+  its children on its own face rather than folding rows. The toolbar toggle is drawn on
+  the tree and the timeline for the same reason.
+
 ### Changed
 
+- The toolbar now leads with the projection switcher and puts **New** beside it, and the
+  dividers in the head of the row are gone — between those two, and in front of the
+  roadmap's own controls. Each group is set off by spacing instead: a bordered button group
+  already says where one control ends and the next begins.
+  Both still sit at the head of the row, which is what keeps them on screen at the
+  narrowest pane.
 - **Dependencies work in a base that has never named the property.** The bar connector and
   the row menu's **Depends on…** used to be withheld until the dependency property was
   bound in the view options — which Obsidian's own picker cannot offer until some note

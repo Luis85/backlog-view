@@ -85,6 +85,12 @@ export interface CollapseSnapshot {
 	leadWidth?: number | null;
 	/** The focused type name; null or absent means the whole tree, the default. */
 	focus?: string | null;
+	/**
+	 * True when a plain click on a row folds it; absent means it opens the note, the
+	 * default. A boolean rather than the two-name vocabulary this was while it lived in
+	 * the `.base`: the only thing that reads it is a toggle.
+	 */
+	clickFolds?: boolean;
 	/** True only once the user has explicitly expanded the shelf; absent means collapsed, the default. */
 	shelfExpanded?: boolean;
 	/** Absent or null means 'tree' (sibling order), the default. */
@@ -131,6 +137,8 @@ interface StoredEntry {
 	 * in the `.base`.
 	 */
 	focus?: string;
+	/** Absent means a click opens the note, the default; stored only as `true`, like `shelfExpanded`. */
+	clickFolds?: boolean;
 	/** Absent means collapsed, the default; only ever stored as `true`, since `false` needs no entry. */
 	shelfExpanded?: boolean;
 	/** Absent means 'tree', the default. */
@@ -238,13 +246,13 @@ function defaultShelf(entry: StoredEntry | undefined): Pick<CollapseSnapshot, 's
 }
 
 /**
- * The six picks whose default is simply absence, read back off a stored entry — split
+ * The seven picks whose default is simply absence, read back off a stored entry — split
  * out of {@link loadCollapseState} so that function's own complexity stays readable as
  * the picks grow; this one is nothing but `??` chains.
  */
 function defaultPicks(
 	entry: StoredEntry | undefined,
-): Pick<CollapseSnapshot, 'mode' | 'axis' | 'zoom' | 'density' | 'leadWidth' | 'focus'> {
+): Pick<CollapseSnapshot, 'mode' | 'axis' | 'zoom' | 'density' | 'leadWidth' | 'focus' | 'clickFolds'> {
 	return {
 		mode: entry?.mode ?? null,
 		axis: entry?.axis ?? null,
@@ -252,6 +260,7 @@ function defaultPicks(
 		density: entry?.density ?? null,
 		leadWidth: entry?.leadWidth ?? null,
 		focus: entry?.focus ?? null,
+		clickFolds: entry?.clickFolds ?? false,
 	};
 }
 
@@ -262,8 +271,9 @@ function writeShelf(entry: StoredEntry, expanded: boolean, sort: string | null, 
 }
 
 /**
- * The six picks whose default is simply absence — the tree, no axis pick, no zoom, no
- * density, the default lead width, the whole tree. Empty and null are the same thing
+ * The seven picks whose default is simply absence — the tree, no axis pick, no zoom, no
+ * density, the default lead width, the whole tree, a click that opens. Empty, false and
+ * null are the same thing
  * here, which is what makes clearing a focus remove the field rather than store a name
  * meaning "none". `leadWidth` fits the same truthy check as the others despite being a
  * number: every value this module ever WRITES is already clamped to
@@ -276,6 +286,7 @@ function writePicks(entry: StoredEntry, snapshot: CollapseSnapshot): void {
 	if (snapshot.density) entry.density = snapshot.density;
 	if (snapshot.leadWidth) entry.leadWidth = snapshot.leadWidth;
 	if (snapshot.focus) entry.focus = snapshot.focus;
+	if (snapshot.clickFolds) entry.clickFolds = true;
 }
 
 export function loadCollapseState(app: App, id: ViewIdentity): CollapseSnapshot {
@@ -398,6 +409,7 @@ function entryHasContent(entry: StoredEntry): boolean {
 		entry.density !== undefined ||
 		entry.leadWidth !== undefined ||
 		entry.focus !== undefined ||
+		entry.clickFolds !== undefined ||
 		entry.shelfExpanded !== undefined ||
 		entry.shelfSort !== undefined ||
 		entry.shelfHiddenTypes !== undefined
@@ -425,6 +437,9 @@ function readEntry(value: unknown): StoredEntry | null {
 	// Not an enum: the vocabulary this is matched against lives in `domain/settings.ts`
 	// and a name outside it already reads as no focus, so the only check here is shape.
 	if (typeof record.focus === 'string' && record.focus.length > 0) entry.focus = record.focus;
+	// `=== true` rather than a truthy read: anything else a hand-edited entry holds is
+	// not a boolean this wrote, and the default is the value it falls back to anyway.
+	if (record.clickFolds === true) entry.clickFolds = true;
 	readShelfFields(record, entry);
 	return entryHasContent(entry) ? entry : null;
 }
