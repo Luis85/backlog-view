@@ -2259,3 +2259,111 @@ sitting at the max-params limit; the generated README's "see below, and A and B"
 **Owed and unperformable in this environment:** visual confirmation of the test suite's orange
 against the test case's cyan in a real theme; the `Test management` group in Obsidian's own
 options pane; whether Bases accepts a view-option key containing a space.
+
+---
+
+### Task 20: A card announces matches only from rows this projection draws
+
+**Files:**
+- Modify: `src/domain/board.ts` (`hiddenMatches`)
+- Modify: `src/view/childrenList.ts` (`undisclosedMatches`, which supplies the guard)
+- Test: `test/view/testCatalog.test.ts` or a filter/board suite — by subject, matching the
+  file that already owns the neighbouring assertions
+- Possibly: `docs/requirements/A projection for the tests.md` and `src/view/CLAUDE.md`'s
+  card-matches paragraph
+
+**Why.** Reported by an automated reviewer and REPRODUCED here before this task was written.
+`hiddenMatches` recurses through raw `parent.children` with no membership guard — the one
+"what is beneath this card" walk in the codebase that crosses the ladder boundary. On the same
+card, three quantities answer that question and only this one gets it wrong: the rollup stops
+at the boundary (`assignAll`'s `inCatalog(child) || inCatalog(item)`), the disclosure stops at
+it (`listedChildren` through `isRowHidden`), and the filter index stops at it (`markSubtree`).
+
+The evidence that makes it a defect rather than a preference is a pair of measurements over
+the SAME edge with the same needle:
+
+```
+Release (Deliverable) -> Smoke case (Test case) -> Release follow-up (PBI)
+  filter "follow-up"   -> cards: []          the index refuses to keep the card
+  filter "Release"     -> cards: ['Release'], match links: ['Release follow-up']
+```
+
+The index denies that match the power to keep the card alive, and the card then prints it
+anyway — the difference being only whether the card happened to match for an unrelated
+reason. The control, with no boundary (`Release -> Plumbing (Feature) -> Release follow-up`),
+keeps the card, names the match and rolls up 2: the feature working.
+
+**The framing in the original report is wrong and the fix must not inherit it.** It says the
+card exposes the PBI "as though it were beneath that Deliverable in the active projection".
+The Deliverables board has no edges — it is a flat set of `deliverableResults` cards and never
+draws the plan's forest — so that is not a statement this projection can make. The checkable
+version is narrower: *the card's three "beneath me" quantities disagree, and the two that are
+already right are the rollup and the disclosure.*
+
+Severity is low: a link on a card face and a menu entry, both read-only, and the note is
+reachable from the tree and the requirements board. It is an ownership misstatement, not a
+write hazard. It earns a task because it is the sixth finding on this machinery and the first
+one whose fix location is known before anyone edits.
+
+- [ ] **Step 1: Reproduce it yourself before changing anything**
+
+Fixture: `Release.md` (`type: Deliverable`), `Smoke case.md` (`type: Test case`, parent
+`Release`), `Release follow-up.md` (`type: PBI`, parent `Smoke case`) — the intervening test
+named so it cannot match the needle. Render the Deliverables board through the real toolbar
+button, `setFilter('Release')`, and assert on the MATCH SET the card exposes
+(`undisclosedMatches` / `.pbl-card-match`), never on `containerEl.textContent`. A previous
+round asserted `textContent`, passed, and proved nothing.
+
+- [ ] **Step 2: Fix it in the WALK, never in the match set**
+
+The PBI is a plan member and is legitimately a match in the `whole` index. It must stay one:
+that is what puts it on the tree as a promoted root, and it is the same property that keeps a
+`Deliverable` nested under a test on its own board. **Any rule of the form "a member below a
+non-member is not a match" is a previous round's regression restated** and deletes that
+Deliverable's card — `test/view/testCatalog.test.ts:493` exists to pin exactly that.
+
+So: `hiddenMatches` may descend only through rows this projection DRAWS. The predicate is
+already in the caller's hand — `undisclosedMatches` has the `host`, and `!host.isRowHidden(child)`
+answers it. A match's own ancestors along drawn edges are in `visible`, so the intermediate
+rows a genuine deep match hides behind are not hidden, while a non-member is hidden
+unconditionally by `rowHidden`'s first line. One guard, threaded from `view/childrenList.ts`
+into `domain/board.ts`, covers both consumers — the card face and `addMatchSection`'s menu
+entries — since both go through `undisclosedMatches`.
+
+Do NOT spell the guard `!child.outsideFilter` (breaks a context Deliverable naming its Task
+child) or "has no card" / "is not a direct child" (breaks the deep-match feature itself).
+
+- [ ] **Step 3: Watch the new test fail, and watch these seven keep passing**
+
+Run each before and after. They are the mirrors previous rounds broke:
+
+1. `test/view/testCatalog.test.ts:493` — nested `Deliverable` under a `Test case`, filtered by
+   its own title, keeps its card. **Breaks under any set-side fix.**
+2. `test/view/testCatalog.test.ts:545` — `Epic -> Test case -> Runbook` filtered by `Epic`:
+   board empty.
+3. `test/view/testCatalog.test.ts:567` — a `Test case` under a `Deliverable` is never a match.
+4. `test/view/testCatalog.test.ts:513` and `:529` — the up and down mirrors on
+   `Epic -> Test case -> PBI`.
+5. `test/view/boardFilter.test.ts` — the deep-match feature itself (`Epic A -> Feature A1 ->
+   PBI Login` under focus): the Epic card must still name `PBI Login`. This is why the guard
+   must be membership/visibility.
+6. `test/view/deliverablesBoardContext.test.ts` — a context (`outsideFilter`) Deliverable
+   naming its Task child. A context row IS a member.
+7. Add the no-boundary control as a fixture: `Release -> Plumbing (Feature) -> Release
+   follow-up`, filter `follow-up` — card survives, match named, `descendantCount: 2`. It is
+   the direct mirror of the defect fixture and the two must stay apart.
+
+- [ ] **Step 4: State the rule where the next walk will read it**
+
+`src/view/CLAUDE.md`'s card-matches paragraph currently says `hiddenMatches` "walks its
+subtree, stopping at anything already rendered". That is now one guard short. Say what the
+walk actually stops at, and why the match SET is deliberately not where this is enforced —
+that asymmetry is the whole finding and the next person will otherwise fix it in the set.
+
+- [ ] **Step 5: Run the whole check and commit**
+
+```bash
+npm run check
+git add src/domain/board.ts src/view/childrenList.ts test/ docs/ src/view/CLAUDE.md
+git commit -m "Announce a match only from a row this projection draws"
+```
