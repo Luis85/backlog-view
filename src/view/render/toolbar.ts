@@ -5,6 +5,8 @@ import { offerableTypes, showMenuForClick } from '../interactions/menu';
 import { runInit } from '../interactions/structure';
 import {
 	capturedFocusKey,
+	CLICK_ACTION_LABEL,
+	clickActionToggle,
 	collapseAll,
 	collapseButton,
 	collapseCtlsDisabled,
@@ -99,6 +101,7 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 		mutate: () => collapseAll(host),
 	});
 	renderCompletedToggle(host, barEl, model);
+	renderClickActionToggle(host, barEl);
 	renderFilterBox(host, barEl);
 
 	// The general door to the manual. Zone 4 because it is the same in every projection,
@@ -347,6 +350,35 @@ function renderCompletedToggle(host: BacklogViewHost, barEl: HTMLElement, model:
 	btn.addClass('pbl-completed-toggle');
 	btn.toggleClass('is-active', !showing);
 	btn.addEventListener('click', () => host.config.set('showCompleted', !showing));
+}
+
+/**
+ * The **Handling items** group's `clickAction` option, on the row beside the completed
+ * toggle: the same `.base` setting, written through the same `config.set`, so the toolbar
+ * and the view options are two surfaces over one value rather than two values that agree
+ * until one of them is used. Nothing is decided here that `resolveItemHandling` does not
+ * already decide — this only flips between the two values it declares.
+ *
+ * **Tree only**, which is the option's own wording rather than a second rule: it is
+ * "Clicking an item in the tree" because a card has no fold to do (`foldOnClick` in
+ * `render/rows.ts` is the one reader, and it runs on a row's body). A toolbar toggle that
+ * changed nothing on the screen in front of you is worse than an absent one — the same
+ * argument the completed toggle makes about the Deliverables board, one line above.
+ *
+ * The name is the SETTING and `aria-pressed` carries its value — the density toggle's
+ * rule for the density toggle's reason: a name flipping to the next action would announce
+ * "clicking a row opens the note, pressed" at the moment clicks were folding, which states
+ * the opposite of what is true. The icon still swaps, because it is what a sighted reader
+ * has and it says nothing to a screen reader.
+ */
+function renderClickActionToggle(host: BacklogViewHost, barEl: HTMLElement): void {
+	if (host.projection !== 'tree') return;
+	const { folds, icon, flip } = clickActionToggle(host);
+	const btn = iconButton(barEl, icon, CLICK_ACTION_LABEL, 'click-action');
+	btn.addClass('pbl-click-action-toggle');
+	btn.toggleClass('is-active', folds);
+	btn.setAttribute('aria-pressed', String(folds));
+	btn.addEventListener('click', flip);
 }
 
 /**

@@ -55,7 +55,8 @@ today's icon size, add up to.
    the toolbar element.
 3. `styles/toolbarFit.css` reads that attribute. Each step hides more of the row — the
    switcher's four words first, then the remaining labels together with the filter and
-   the dated axis's two singles, then the backfill and bulk-collapse buttons, then the
+   the dated axis's two singles, then the backfill, the bulk-collapse buttons and the
+   click-action toggle, then the
    two advisory notes with the divider that separated them from the count, then the count
    with the divider that led its zone — and `overflow: clip` on the bar means anything a
    step has not caught simply clips rather than wrapping.

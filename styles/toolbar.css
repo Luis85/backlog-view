@@ -44,8 +44,12 @@
 	cursor: var(--cursor, pointer);
 }
 
-/* The eye button lights up while completed items are hidden */
-.pbl-completed-toggle.is-active {
+/* The eye button lights up while completed items are hidden, and its neighbour the same
+   way while a click folds a row rather than opening it. One rule for both: they are two
+   state toggles standing next to each other, and a reader who learns what the accent
+   means on one of them has learned it on the other. */
+.pbl-completed-toggle.is-active,
+.pbl-click-action-toggle.is-active {
 	color: var(--text-accent);
 	background-color: var(--background-modifier-hover);
 }

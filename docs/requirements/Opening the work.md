@@ -45,6 +45,21 @@ found. Every row is a real note; the view is a lens on it, not a replacement for
   inert. Card activation keeps opening the note, which is what a card is for. Extending it
   is a product decision nobody has taken, not an omission: it would need an answer for the
   childless card first.
+- **1g — the option is flipped from the toolbar** (`renderClickActionToggle`). The same
+  `.base` value, written through the same `config.set`, on a toggle beside the
+  completed-items eye: this is the one **Handling items** option a reader changes while
+  working rather than while setting the view up, and the view options panel is four clicks
+  away. Two surfaces over one value, never two values — the toolbar reads what the dropdown
+  wrote and writes what the dropdown offers, so `resolveItemHandling` stays the only thing
+  that decides what the value can be.
+
+  It follows the option's own scoping and is drawn on the TREE alone, since that is where
+  the setting applies at all — an inert control is worse than an absent one. Its name is the
+  setting rather than the next action, with `aria-pressed` carrying the value, which is the
+  density toggle's rule for the density toggle's reason. The fit ladder sheds it at step 3
+  with the bulk collapse controls and it is in the `⋯` from there, so the row's floor is
+  unchanged by it — see `A toolbar that fits one row.md`, extension 4b, which measures what
+  a control with no rung costs.
 - **2b — the note is configured to open in a new tab or to the side** (`openIn`). To the
   side additionally **pins the backlog's own leaf**: the default target replaces the
   current tab, and a view whose point is to stay put while notes come and go must not be

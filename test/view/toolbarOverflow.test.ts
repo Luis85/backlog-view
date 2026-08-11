@@ -52,6 +52,10 @@ describe('the toolbar overflow menu', () => {
 			'Assign missing properties',
 			'Expand all',
 			'Collapse all',
+			// The tree's own: `clickAction` applies to a row's body, so the button this
+			// mirrors is drawn on no other projection — which is why the roadmap list
+			// above ends at Collapse all.
+			'Clicking a row folds it',
 		]);
 	});
 

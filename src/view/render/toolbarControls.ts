@@ -318,6 +318,30 @@ function renderTimelineControls(host: BacklogViewHost, zone: HTMLElement, barEl:
 }
 
 /**
+ * The click-action toggle's name, fixed: it names the SETTING rather than the next
+ * action, so `aria-pressed` can carry the value without the two contradicting each
+ * other. See `renderClickActionToggle`.
+ */
+export const CLICK_ACTION_LABEL = 'Clicking a row folds it';
+
+/**
+ * What that toggle currently says, what it looks like saying it, and what pressing it
+ * does — one statement, because the toolbar button and its `⋯` entry are two inputs on
+ * one setting and a menu that re-derived any of the three could offer to write what the
+ * button was not offering. The same rule the entries below already keep by reading
+ * `disabled` off the button they mirror, kept here at the source instead, since this
+ * value lives in the `.base` rather than on an element.
+ */
+export function clickActionToggle(host: BacklogViewHost): { folds: boolean; icon: string; flip: () => void } {
+	const folds = host.settings.clickAction === 'fold';
+	return {
+		folds,
+		icon: folds ? 'fold-vertical' : 'file-text',
+		flip: () => host.config.set('clickAction', folds ? 'open' : 'fold'),
+	};
+}
+
+/**
  * What the bulk collapse controls can reach — a DIFFERENT question from
  * `countedPopulation` in `toolbarStatus.ts`, which is why it is a second function rather than a
  * reuse: counting asks for the Base's rows, and collapsing asks for everything on screen
@@ -440,6 +464,7 @@ interface OverflowEntry {
  */
 function overflowEntries(host: BacklogViewHost, barEl: HTMLElement): OverflowEntry[] {
 	const compact = host.density === 'compact';
+	const clickAction = clickActionToggle(host);
 	const all: OverflowEntry[] = [
 		{
 			title: 'Compact rows',
@@ -501,6 +526,15 @@ function overflowEntries(host: BacklogViewHost, barEl: HTMLElement): OverflowEnt
 				collapseAll(host);
 				host.render();
 			},
+		},
+		{
+			// Last, where it sits in the row. Its checkmark comes from the button's own
+			// `aria-pressed` like the density toggle's, so the entry cannot say a click
+			// folds while the button says it opens.
+			title: CLICK_ACTION_LABEL,
+			icon: clickAction.icon,
+			cls: 'pbl-click-action-toggle',
+			run: clickAction.flip,
 		},
 	];
 	return all.filter((entry) => barEl.querySelector(`.${entry.cls}`) !== null);

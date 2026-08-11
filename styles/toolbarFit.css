@@ -125,9 +125,16 @@
 	display: none;
 }
 
-/* Step 3 — the backfill and both bulk collapse controls go to the `⋯`. Undo stays: it is
-   the only control on the row that takes something back. */
+/* Step 3 — the backfill, both bulk collapse controls and the click-action toggle go to
+   the `⋯`. Undo stays: it is the only control on the row that takes something back.
+
+   The click-action toggle is here rather than nowhere because a control with no rung
+   raises the floor extension 4b measures: the completed toggle is already such a control
+   and already costs the row a capability at 320px, and a second one beside it would spend
+   that width again. What it duplicates is a view option, so its `⋯` entry is not even its
+   only other surface. */
 .pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']):not([data-pbl-fit='2']) .pbl-write-ctl,
+.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']):not([data-pbl-fit='2']) .pbl-click-action-toggle,
 .pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']):not([data-pbl-fit='2']) .pbl-collapse-ctl {
 	display: none;
 }

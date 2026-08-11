@@ -11,6 +11,13 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+### Added
+
+- **Clicking a row folds it** is now a toolbar toggle, beside the completed-items eye —
+  the same view option as **Handling items → Clicking an item in the tree**, flipped
+  without opening the options panel. It is drawn on the tree, where the setting applies,
+  and moves into the `⋯` menu on a narrow pane.
+
 ### Changed
 
 - The toolbar now leads with the projection switcher and puts **New** beside it, with the
