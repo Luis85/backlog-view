@@ -185,9 +185,14 @@ a different control.
   whether or not the view can create it.
 ## Acceptance criteria
 
-- Both entries appear only on results and only with the key bound; **Remove dependency…**
-  appears whenever the note carries the key, judged on the key's presence rather than on
-  what the reader parsed out of it.
+- Both entries appear only on results, and neither appears where the dependency property is
+  CLEARED. The two part company on an UNBOUND key, and that split is
+  [[Bind a property by using it]]'s subject: **Depends on…** is offered, because picking one
+  is what names the property, while **Remove dependency…** is not, because with no key the
+  note carries nothing to take away. *Only with the key bound* was the rule for both until
+  2026-08-11.
+- **Remove dependency…** appears whenever the note carries the key, judged on the key's
+  presence rather than on what the reader parsed out of it.
 - Any value the key can hold is removable from here. A note left carrying the key with no
   control able to clear it is the state this feature must never produce or tolerate,
   whatever the value is — a name, a broken name, repeats, or nothing at all.

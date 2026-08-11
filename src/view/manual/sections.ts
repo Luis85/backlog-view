@@ -231,7 +231,9 @@ const WRITES: ManualSection = {
 				'state), tags, a state change\'s own started and finished date stamps, risk, the ' +
 				'roadmap\'s horizon and its start and target dates, and prerequisites (depends-on) ' +
 				'— each written only once its own property is named in the view options. An ' +
-				'unconfigured key is never written to; nothing invents one.',
+				'unconfigured key is never written to; nothing invents a value for one. ' +
+				'Depends-on is the one property that can name itself: drawing or picking a ' +
+				'dependency binds it first, and says so, unless you have cleared it.',
 		},
 		{
 			term: 'A change is one batch',
