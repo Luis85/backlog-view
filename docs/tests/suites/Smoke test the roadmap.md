@@ -15,13 +15,18 @@ appearance, checked once against a real vault.
 **Outcome** — **Run by the maintainer on 2026-08-02** in an `npm run test-build` vault
 ahead of the `0.4.0` release, the first time any of the roadmap had been looked at:
 nothing on the list needed adjusting. That is a run of the whole list and not a per-case
-record — each `Issue` below still asks for its own points written down as pass or fail,
-and each stays open until they are, so a stale check is visible rather than assumed.
+record — each `Test case` below still asks for its own points written down as pass or
+fail, and each stays open until they are, so a stale check is visible rather than
+assumed. [[Smoke test the writable timeline]] joined this suite in the 2026-08-11 test
+catalog migration and was not part of that run.
 
 ## Use cases
 
 - [[Roadmap axis picker and bucket drag]] — the picker's appear/disappear rule, bucket
   drag and drop, the shelf as the un-placing target, and the empty shelf mid-drag.
+- [[Smoke test the writable timeline]] — the dated axis's own writes: schedule from the
+  shelf, drag and resize a bar, auto-scroll, the sticky header and lead column, and every
+  gesture jsdom computes no layout for.
 - [[Roadmap dated axis month header]] — true month lengths and header-to-bar alignment.
 - [[Roadmap inferred bar appearance]] — solid vs. dashed, the done green override, and
   whether an unclosed dashed edge reads as open. **Seen once, 2026-08-02; no per-point

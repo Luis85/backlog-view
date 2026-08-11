@@ -95,7 +95,7 @@ Obsidian's internals, not a documented API. If collapse persistence ever goes qu
 an Obsidian update, this is the first thing to re-check — the failure is silent by design,
 so nothing else will report it.
 
-No code changed. The value of this issue was never a patch; it was retiring a thing this
+No code changed. The value of this case was never a patch; it was retiring a thing this
 repository believed but had not seen.
 
 **Re-confirmed 2026-08-02**, Windows desktop, against a bundle rebuilt by esbuild 0.28:

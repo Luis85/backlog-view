@@ -446,7 +446,7 @@ export class CardDragController {
 	 * else is guaranteed to have painted first. Whether that snapshot actually looks wrong
 	 * in Obsidian is unverifiable here: jsdom renders nothing and generates no preview
 	 * image at all. That is a live-vault check this repository owes
-	 * (`docs/requirements/Smoke test the roadmap.md`), not one this suite can discharge —
+	 * (`docs/tests/suites/Smoke test the roadmap.md`), not one this suite can discharge —
 	 * say so rather than assert it is fine.
 	 *
 	 * `onEnd` fires from `onDrop`, however the drag ends, dropped or cancelled, so the

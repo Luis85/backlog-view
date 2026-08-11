@@ -15,7 +15,7 @@ useViewHarness();
  * popover, so a test sets the input's value and fires `change` — everything after a colour
  * is chosen. It also cannot check a seed, because jsdom loads no stylesheet, so every slot
  * resolves to `FALLBACK_SEED`; that a seeded swatch matches the bar beside it is the
- * live-vault item in `docs/requirements/Smoke test the roadmap.md`.
+ * live-vault item in `docs/tests/suites/Smoke test the roadmap.md`.
  */
 
 const WORKFLOW = { stateProperty: 'note.status', stateValues: 'New, Active, Done', doneValues: 'Done' };

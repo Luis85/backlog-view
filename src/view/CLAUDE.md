@@ -343,7 +343,7 @@ free of runtime code so imports stay cycle-free.
   an ArrowDown, a key the grip does not claim and so lets bubble, dispatched at the
   focused grip moves no card selection. What nothing here can say is how a screen
   reader reads a separator in that position. That one is a live-vault item in
-  `docs/requirements/Smoke test the roadmap.md`.
+  `docs/tests/suites/Smoke test the roadmap.md`.
 - **An SVG node's `cls` is an ARRAY, never a space-separated string**, and that is a lint
   rule (`no-restricted-syntax`) rather than a habit. `addClass` lives on `HTMLElement`, so
   Obsidian hands `createSvg`'s `cls` straight to `classList.add`, which rejects a token

@@ -18,14 +18,14 @@ being written slightly differently.
 
 | | |
 | --- | --- |
-| **Actor** | Anyone adding or editing a note in `docs/issues/` |
+| **Actor** | Anyone adding or editing an `Issue` or `Test case` note |
 | **Trigger** | `npm run check`, on every commit and in CI |
 | **Preconditions** | `RELEASING.md` derives the sweep by querying for `## How to check` and reading `cadence:` |
 | **Guarantee** | A note that declares itself a verification is findable by the sweep, and a note the sweep finds declares when it is due. Neither can be left to be guessed. |
 
 **Main flow**
 
-1. The checker walks every `Issue` in the register.
+1. The checker walks every `Issue` and `Test case` in the register.
 2. For each, it asks two independent questions: does it carry `## How to check` as a whole
    heading line, and does it declare a `cadence:`.
 3. The two must agree, and a declared cadence must be one the sweep reads.
@@ -73,8 +73,10 @@ being written slightly differently.
 - The accept direction covers an `Issue` that is not a verification and one heading
   `## How to check, properly`, and neither is vacuous: widening the rule to "every `Issue`
   is a verification" turns both red, and making the matcher a prefix turns the second red.
-- `Epic`, `Feature`, `Task` and `Bug` stay ungated, and the `Issue` *section* shapes with
-  them. Scope promised is scope checked.
+- `Epic`, `Feature`, `Task`, `Bug` and `Test suite` stay ungated, and the `Issue` *section*
+  shapes with them; `Test case` joined `Issue` as gated by the 2026-08-11 test catalog
+  migration, which widened the check by type rather than by folder. Scope promised is
+  scope checked.
 - `npm run check` passes with no note in `docs/issues/` edited to satisfy the gate.
 
 ## Where it lives

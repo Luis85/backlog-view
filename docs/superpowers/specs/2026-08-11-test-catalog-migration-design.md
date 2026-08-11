@@ -53,11 +53,19 @@ for the automated suite — *the file you want is the file you would have named*
 
 | Suite | Cases |
 | --- | --- |
-| The tree in a live vault | 7 — context menu, quick filter and Show completed items, drag between siblings and into a parent, columns and narrowing, keyboard moves, undo, badges and icons |
+| The tree in a live vault | 8 — context menu, quick filter and Show completed items, drag between siblings and into a parent, columns and narrowing, keyboard moves, undo, badges and icons, parent links Obsidian parsed |
 | The board in a live vault | 4 — the board smoke test, card moves, card carrying hidden matches, columns and the filtered header |
 | The roadmap in a live vault | 6 — writable timeline, legend with two workflows, axis picker and bucket drag, inferred bar appearance, milestone appearance, dated axis month header |
 | Appearance and chrome | 4 — visual changes, the four button-specificity fixes, card children, column agreements |
-| Platform and vault identity | 4 — touch paths on a phone, folder-note layout, parent links Obsidian parsed, base identity |
+| Platform and vault identity | 3 — touch paths on a phone, folder-note layout, base identity |
+
+**Amended after the plan's own discovery.** This table originally put "parent links
+Obsidian parsed" under platform and vault identity (7 and 4), on the assumption every case
+not already under one of the three retyped Features would land fresh there. Task 3 of the
+plan found it already hanging under `Smoke test the tree` — via the Feature's own
+`parent:` link, before this design's suites existed — and left it there rather than moving
+it, which the plan's Task 4 table records with an explicit placeholder row. The counts
+above are the landed shape, 8 and 3; the plan is the later and better-informed document.
 
 The alternative considered was grouping by **what a run needs** — desktop pointer, touch
 device, themed vault, restart — which batches the expensive context switch and would make

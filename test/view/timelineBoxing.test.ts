@@ -25,7 +25,7 @@ function bodyOf(css: string, selector: string, file: string): string {
  * `getBoundingClientRect` is zeros — so the sibling test asserting the two tiers sum to
  * the same width is comparing the `--pbl-cell-w` values TS wrote, which agreed with each
  * other throughout the whole time the rendered tiers did not. The real check is a
- * browser, and it is recorded in `docs/requirements/Smoke test the roadmap.md`.
+ * browser, and it is recorded in `docs/tests/suites/Smoke test the roadmap.md`.
  *
  * What this file can do is read the stylesheet and refuse the deletion. It is a text
  * check and its reach is exactly that: it sees the declaration in the rule, and it
@@ -56,7 +56,7 @@ describe('the two boxes sized from TypeScript arithmetic', () => {
  *
  * Text again, and its reach is exactly that: it reads the palette variable each rule
  * names. It cannot tell you what those variables resolve to in a theme, which is the
- * live-vault question `docs/requirements/Smoke test the roadmap.md` still carries.
+ * live-vault question `docs/tests/suites/Smoke test the roadmap.md` still carries.
  */
 describe('the legend keys the same palette colours the marks draw', () => {
 	const timelineCss = readFileSync(new URL('../../styles/timeline.css', import.meta.url), 'utf8');
@@ -268,7 +268,7 @@ describe('the furniture declarations whose comments call them load-bearing', () 
  * Text again, and its reach is exactly that: it reads the two tokens the rules name and
  * refuses them being the same one. It cannot tell you what either resolves to in a theme,
  * nor measure the contrast between them — that stays the live-vault question in
- * `docs/requirements/Smoke test the roadmap.md`.
+ * `docs/tests/suites/Smoke test the roadmap.md`.
  */
 describe('the resize grip is ringed in a colour other than its own fill', () => {
 	const css = readFileSync(new URL('../../styles/timeline.css', import.meta.url), 'utf8');

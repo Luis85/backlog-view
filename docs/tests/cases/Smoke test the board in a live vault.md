@@ -68,7 +68,7 @@ bundler major end to end — the one thing the structural bundle checks in PR #4
 not do. A `-noEmit` compiler bump cannot reach the bundle at all, so TypeScript 6 needed
 nothing here.
 
-**What remains, and why this issue stays open.** Three lines are wholly unrun:
+**What remains, and why this case stays open.** Three lines are wholly unrun:
 
 - **Themes** — light and dark were exercised only incidentally, by the drag preview
   staying legible over both. The line's actual subjects were not inspected — column

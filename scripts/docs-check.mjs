@@ -671,13 +671,17 @@ for (const [, note] of notes) {
  *
  * The test catalog migration RE-POINTS that query from `docs/issues/` to
  * `docs/tests/cases/` — a substitution, not an addition, and by the time it lands
- * `RELEASING.md` names only the new folder. `SWEPT_TYPES` covers `Issue` and `Test case`
- * both anyway, and stays that way after: once a verification is retyped and moved, an
- * `Issue` still carrying `## How to check` is no longer a verification in the old shape,
- * it is a misfiling — the note landed under the wrong type instead of moving into the
- * catalog — and that is precisely what the re-pointed query can no longer reach on its
- * own. The gate keeps looking at the folder the sweep abandoned for exactly the case the
- * sweep now can't see.
+ * `RELEASING.md` names only the new folder. `SWEPT_TYPES` widened to cover `Issue` and
+ * `Test case` both, but the gate below reads `note.type`, never `note.file` — it is
+ * type-scoped and folder-blind, and always was. That means what it catches is narrower
+ * than "a verification the sweep can't see": it catches a note whose heading and cadence
+ * DISAGREE, regardless of which folder that note sits in. A well-formed misfiling — an
+ * `Issue` left in `docs/issues/` still carrying both `## How to check` and
+ * `cadence: release` — satisfies the biconditional below and passes green, while the
+ * re-pointed query never looks in `docs/issues/` and so never finds it either. The same
+ * gap runs the other way: a `Test case` sitting outside `docs/tests/cases/` with both the
+ * heading and a cadence is equally green here and equally invisible to the sweep. Nothing
+ * in this gate checks a type against a folder; that would be a new rule, not this one.
  *
  * The rule is a biconditional because the drift went both ways at once. Three verifications
  * headed their section `## What to look at` and the query dropped them silently — including

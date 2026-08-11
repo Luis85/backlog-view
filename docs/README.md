@@ -16,7 +16,7 @@ demonstrating itself:
 | `deliverables/` | Things this project has to produce that are not code | `Deliverable` |
 | `milestones/` | Dates the plan is answerable to, owned by no item | `Milestone` |
 | `tests/suites/` | Walkable groups of end-to-end tests, their own list rather than a branch of the plan | `Test suite` |
-| `tests/cases/` | One executable test each — preconditions, steps, expected result, as prose | `Test case` |
+| `tests/cases/` | One executable test each — a Preconditions line plus whatever shape it already had | `Test case` |
 | [`adrs/`](adrs/README.md) | **How** it is built — architecture decision records | *(none — not backlog items)* |
 | `superpowers/` | Claude's own design specs and implementation plans, not the product's | *(none — not backlog items)* |
 
@@ -343,7 +343,7 @@ is exactly the one nothing would notice the gate refusing.
 
 ## What each kind of note holds
 
-Seven note kinds, each answering a different question. The **type is a promise about the
+Eight note kinds, each answering a different question. The **type is a promise about the
 content**, so choosing it is the first editorial decision: a defect written as a Task loses
 the lesson, and a limitation written as a Bug reads as something someone is about to fix.
 
@@ -354,6 +354,7 @@ the lesson, and a limitation written as a Bug reads as something someone is abou
 | `PBI` | What someone does, step by step, and every way it can go otherwise | The use-case shape below — **enforced** |
 | `Task` | A piece of engineering work, and the evidence that justified it | Evidence · Why it matters · Approach · Acceptance criteria · Risks · Outcome |
 | `Issue` | A question, a decision taken, or a limitation accepted | Varies by which — see below |
+| `Test case` | What to check in a live vault, and whether it passed | Why this exists · Preconditions · How to check · Acceptance criteria · Outcome — see below |
 | `Bug` | What went wrong, what fixed it, and what it taught | What happened · Fix · Lesson |
 | ADR | What was chosen to build it, what that cost, what would change it | Context · Decision · Consequences · Alternatives · Revisit when — **in that order** |
 
@@ -451,9 +452,9 @@ shared harness moves, and says so as step 1. `Risks` appears when there is one w
 task did not anticipate. That last part is the most valuable paragraph in the folder: it is
 where a decision nobody planned to make gets recorded at the moment it was made.
 
-### `Issue` — a question, a decision, or a limitation
+### `Issue` — a decision, or a limitation
 
-An Issue is the widest kind, and its shape follows which of three things it is. Say which
+An Issue is the widest kind, and its shape follows which of two things it is. Say which
 in the first heading rather than making a reader infer it:
 
 - **A decision taken** — `The decision` · `Why` · `What a real fix would look like` ·
@@ -462,21 +463,32 @@ in the first heading rather than making a reader infer it:
 - **A limitation accepted** — `The limitation` · `Why it is deliberate` ·
   `What would lift it` · `Impact`. The point is the cost, stated plainly enough that a
   reader can disagree with it.
-- **A verification to run** — `Why this exists` · `How to check` · `Acceptance criteria` ·
-  `Outcome`. Written as a checklist someone can execute, because appearance and base identity
-  cannot be tested here. `## How to check` is carried by this kind and no other, which is
-  what lets `RELEASING.md` derive the release sweep instead of holding a list — so spelling
-  that heading anything else removes the note from the sweep silently. It also takes
-  `cadence:` in frontmatter, `release` (run in the pre-tag sweep) or `conditional` (its own
-  trigger, stated in its prose). `docs-check.mjs` holds those two to each other: the heading
-  and the cadence must both be present or both absent, and the cadence must be one of the
-  two. What it does **not** check is the section sequences above — see
-  [[The documented Issue shapes are not the ones in the folder]] — so a verification that
-  declares itself nowhere is still invisible to the sweep.
 
 An Issue may legitimately have **no acceptance criteria**, and should say so out loud
 ("None; recorded so the trade-off is re-decided knowingly rather than rediscovered"). A
 blank criteria section reads as an oversight; an explicit "none" reads as a decision.
+
+An Issue no longer carries the third shape, a live-vault check — that moved to `Test
+case` below in the 2026-08-11 test catalog migration, and an `Issue` still carrying
+`## How to check` today is a misfiling rather than a third option.
+
+### `Test case` — one executable check, and whether it passed
+
+`Why this exists` · a **Preconditions** line · `## How to check` · `Acceptance criteria`
+· `## Outcome` once it has run — the shape an `Issue`'s "verification to run" used to be.
+Each hangs from a `Test suite` in `docs/tests/suites/` (a walkable group, holding nothing
+to check itself) rather than from a Feature or PBI, since a check belongs to no rung the
+tree already ranks by. `## How to check` as a whole heading is what `RELEASING.md`'s
+release sweep queries `docs/tests/cases/` for, alongside `cadence:` — `release` (the
+pre-tag sweep) or `conditional` (its own trigger, stated in its prose). `docs-check.mjs`
+holds those two to each other, for both `Issue` and `Test case`: the heading and the
+cadence must both be present or both absent. That check is by **type**, not folder — see
+the comment above `SWEPT_TYPES` in `docs-check.mjs` for exactly what it does and does not
+catch.
+
+The 25 cases moved from `docs/issues/` kept their existing bodies rather than being
+rewritten into the shape above: several exist to record that a multi-part check partly
+ran, which a fresh skeleton would erase. That shape is for a case created new in a vault.
 
 ### `Bug` — what happened, the fix, the lesson
 

@@ -394,9 +394,11 @@ describe('the use-case shape', () => {
 
 /**
  * The sweep in `RELEASING.md` finds its checklist by querying `docs/tests/cases/`, so these
- * three are the only shape rules an `Issue` has. The gate deliberately does not enforce the
- * three section shapes `docs/README.md` documents — see the comment on `CADENCES` in
- * `docs-check.mjs` — so there are no cases here for those, and their absence is the rule.
+ * three are the only shape rules an `Issue` OR a `Test case` has — the guard widened to
+ * both types with the test catalog migration, and stays type-scoped rather than
+ * folder-scoped. The gate deliberately does not enforce the section shapes `docs/README.md`
+ * documents — see the comment on `CADENCES` in `docs-check.mjs` — so there are no cases here
+ * for those, and their absence is the rule.
  */
 describe('a verification and its cadence', () => {
 	const verification = (body: string, cadence?: string) => {

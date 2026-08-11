@@ -14,9 +14,9 @@ than jsdom's classes.
 
 **Outcome** — **Run by the maintainer on 2026-08-02** in an `npm run test-build` vault
 ahead of the `0.4.0` release: nothing on the list needed adjusting. That is a run of the
-whole list and not a per-case record — each `Issue` below still asks for its own points
-written down as pass or fail, and each stays open until they are, so a stale check is
-visible rather than assumed.
+whole list and not a per-case record — each `Test case` below still asks for its own
+points written down as pass or fail, and each stays open until they are, so a stale check
+is visible rather than assumed.
 
 ## Use cases
 

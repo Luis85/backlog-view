@@ -397,4 +397,13 @@ git push origin claude/obsidian-min-version-upgrade-7fpskt
 
 **Placeholders.** None. The two greps in T5 S5 are deliberate derivations, not TODOs — with the known hits named so an implementer can tell a complete run from an empty one.
 
+**Order deviation from this plan's literal numbers, and why.** `docs-check.mjs` scopes
+root sibling-order across **all** root types together, not per type, so the plan's literal
+10/20/30/40/50 for the five suites collided with the existing roots `Product Backlog`,
+`Product Roadmap` and `Product Kanban`. Landed values are suites 31/32/33/40/50, and
+per-suite case orders run to 80 (tree, after Task 4's reparented case) and 60 (roadmap),
+not the 10/20/30/40 written above — chosen to clear the same collision and to leave gaps
+for cases not yet imagined. The numbering is coherent and gate-verified; only this plan's
+literal numbers are stale.
+
 **Type consistency.** `SWEPT_TYPES` is defined in T1 S3 and used nowhere else. Suite names are fixed in T2 and referenced identically in T3 and T4's tables.

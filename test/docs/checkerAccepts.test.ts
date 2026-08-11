@@ -597,7 +597,8 @@ describe('the gate accepts valid documents', () => {
 		await expectAccepted(files);
 	});
 	it('accepts a Test case carrying `## How to check` and a `cadence:`', async () => {
-		// The sweep now reads `docs/tests/cases/` the same way it reads `docs/issues/` — see
+		// The sweep now reads `docs/tests/cases/` instead of `docs/issues/` — a re-point, not
+		// an addition — while the gate below stays type-scoped rather than folder-scoped; see
 		// the comment on `SWEPT_TYPES` in `docs-check.mjs`. order: 20 for the suite, not 10:
 		// a `Test suite` is a root exactly like an `Epic`, and root order is scoped by parent
 		// (`null` for every root regardless of type), so 10 would collide with `Thing`, the

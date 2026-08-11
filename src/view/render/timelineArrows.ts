@@ -37,7 +37,7 @@ const HEAD_PX = 6;
  * everything else in — a guessed row height is exactly the kind of baseline
  * `test/CLAUDE.md`'s card-children episode warns against, and jsdom cannot check
  * either one (every `getBoundingClientRect` here is zeros; a real vault is what
- * confirms the picture, `docs/requirements/Smoke test the roadmap.md`).
+ * confirms the picture, `docs/tests/suites/Smoke test the roadmap.md`).
  *
  * One element per edge (4a), never one per pair of rows the window happens to draw —
  * asked once, over `dependencyArrows`' own list, never a walk of `bars` squared.
