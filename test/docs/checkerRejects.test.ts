@@ -203,6 +203,19 @@ describe('cross-references', () => {
 			'names src/gone.ts, which does not exist',
 		],
 		[
+			// The regression this case exists for: `docs/tests/suites/` moved out of
+			// `docs/requirements/` in the test-catalog migration and was not added to
+			// `LIVING`, so a suite's source-path citations silently stopped being checked —
+			// the same shape as the cadence gate this migration went to lengths to keep
+			// live, reintroduced through a different rule.
+			'a test suite naming a source file that does not exist',
+			(files) => {
+				files['docs/tests/suites/Smoke test the tree.md'] =
+					'---\ntype: Test suite\norder: 20\nstatus: Open\n---\n\n# Smoke test the tree\n\nCovers `test/view/gone.test.ts`.\n';
+			},
+			'names test/view/gone.test.ts, which does not exist',
+		],
+		[
 			// An embedded image is a reference like any other, and the pattern this rule
 			// used to be caught it only because `](` appears in `![alt](src)` as well.
 			'an embedded image whose file does not exist',

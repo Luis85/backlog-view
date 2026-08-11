@@ -103,8 +103,22 @@ const ADR_AREAS = new Set(["architecture", "domain", "platform", "storage", "tes
  * Folders whose notes describe the code as it is now, so every path they name must
  * exist. The others (`tasks/`, `issues/`, `bugs/`) are records of a moment and may name
  * a file that has since been split or removed — rewriting them would falsify the record.
+ *
+ * `tests/` (both `suites/` and `cases/`) joined this list rather than staying out of it,
+ * and that was a measured choice, not a default: the test-catalog migration moved three
+ * `Feature`s to `docs/tests/suites/` (retyped `Test suite`) and twenty-five `Issue`s to
+ * `docs/tests/cases/` (retyped `Test case`), and the move silently took their source-path
+ * citations out of this check — the same shape as the cadence gate this migration went to
+ * lengths to keep live (see `SWEPT_TYPES` below), reintroduced here through a different
+ * rule. Adding the whole of `docs/tests/` was tried against the real corpus before being
+ * kept: nothing in it fails living. A `Test case`'s `## Runs` table is a record of a
+ * moment in the same way an `Issue`'s is, but that is a claim about its OWN content, not
+ * about whether the source paths it cites still exist — and no case in the corpus cites
+ * one that does not. If that ever stops being true, the fix is to narrow this list to
+ * `tests/suites/` alone and say in this comment why `tests/cases/` stayed out, not to
+ * silently drop the folder that broke it.
  */
-const LIVING = [path.join(DOCS, "requirements"), path.join(DOCS, "adrs")];
+const LIVING = [path.join(DOCS, "requirements"), path.join(DOCS, "adrs"), path.join(DOCS, "tests")];
 /** Anywhere beneath one of them: `walk` finds nested notes, so the rule has to reach them. */
 const isLiving = (file) => LIVING.some((dir) => file.startsWith(dir + path.sep));
 /** The only files legitimately outside the work-item hierarchy: ADRs, and the index pages. */
@@ -439,9 +453,9 @@ for (const file of files) {
  * the test name would have.
  *
  * Two things it does that the source-path rule above cannot. It holds in a CLOSED note
- * too — that rule lets a historical path slide for anything outside `requirements/` and
- * `adrs/`, which is right for prose naming a file and wrong for a citation, since a
- * citation claims the check is live. And it covers the root `README.md`, which is not in
+ * too — that rule lets a historical path slide for anything outside `LIVING`, which is
+ * right for prose naming a file and wrong for a citation, since a citation claims the
+ * check is live. And it covers the root `README.md`, which is not in
  * the register at all and is where the sentence this rule exists for was read by users.
  *
  * OPT-IN, deliberately: an unmarked claim is not checked. That is the by-name weakness
