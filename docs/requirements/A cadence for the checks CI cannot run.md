@@ -27,7 +27,7 @@ that grows.
 
 1. `RELEASING.md` names the sweep as a step before the tag.
 2. The maintainer runs `npm run test-build`, opens the repository as a vault, and walks the
-   **re-runnable** verifications in `docs/issues/`.
+   **re-runnable** verifications in `docs/tests/cases/`.
 3. Each note's `Outcome` is dated with what was seen.
 4. The tag goes out.
 
@@ -139,4 +139,4 @@ that grows.
 
 ## Where it lives
 
-`RELEASING.md` · `docs/issues/` · `test-build.mjs` · `docs/README.md` (the `Issue` shapes)
+`RELEASING.md` · `docs/tests/cases/` · `test-build.mjs` · `docs/README.md` (the `Issue` shapes)

@@ -130,7 +130,7 @@ testimonials, benchmarks, case studies or press to cite. There is no pricing and
 commercial model — MIT licensed. Obsidian itself cannot run in this repository, so **no
 claim about appearance, colour, iconography or anything Bases hands the view can be
 verified here**; those are owed to a live-vault check and several are kept as re-runnable
-checklists in `docs/issues/`.
+checklists in `docs/tests/cases/`.
 
 ## Product Principles
 

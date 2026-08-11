@@ -64,7 +64,7 @@ shipped translation.
 - Whatever can be a check in `npm run check` is one. A rule that lives only in a document
   is a rule that holds until the next contributor.
 - Whatever *cannot* be checked here says so, and leaves a re-runnable checklist in
-  `docs/issues/` instead of a claim. Appearance and language both fall in this category:
+  `docs/tests/cases/` instead of a claim. Appearance and language both fall in this category:
   the jsdom harness renders nothing, and `npm run test-build` is the path to eyes.
 
 ## Not a home for

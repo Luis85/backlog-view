@@ -27,4 +27,4 @@ the issue folder.
 
 ## Where it lives
 
-`RELEASING.md` · `docs/issues/` (the verification notes) · `test-build.mjs`
+`RELEASING.md` · `docs/tests/cases/` (the verification notes) · `test-build.mjs`

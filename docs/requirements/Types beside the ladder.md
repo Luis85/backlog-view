@@ -146,7 +146,7 @@ and deepest legal parent, the contrast against an undeclared custom type, every 
 through the real modal.
 
 Not verifiable here, as ever: the badge. Added to the
-[smoke-test checklist](../issues/Smoke%20test%20the%20visual%20changes.md).
+[smoke-test checklist](../tests/cases/Smoke%20test%20the%20visual%20changes.md).
 
 ## Follow-up: folders by type
 

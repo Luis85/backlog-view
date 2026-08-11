@@ -35,7 +35,7 @@ what the plugin looks like**, and PR #14 changed a good deal of appearance.
 in this repository and adds it to the enabled list, so the repository root opens as a
 vault with the plugin installed. On a first open, turn off Restricted Mode under
 *Settings → Community plugins* — until then no community plugin loads at all.
-`docs/issues/` is a ready-made backlog to point a Base at — these very notes — so the
+`docs/` is a ready-made backlog to point a Base at — these very notes — so the
 checks below have real data to run against.
 
 **Preconditions** — `npm run test-build` has installed the plugin into this repository,

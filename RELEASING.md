@@ -96,25 +96,28 @@ forgot the entry fails `npm run check` before it reaches `main`.
 
 Some of this plugin's behaviour cannot be checked here at all — appearance, base identity,
 whether a long press opens a menu. Obsidian does not run in the jsdom harness, so those
-checks are notes in `docs/issues/` and a person is the runner. Walk them **before** the
+checks are notes in `docs/tests/cases/` and a person is the runner. Walk them **before** the
 tag: after it, the only thing a failure can produce is a second release.
 
 1. `npm run test-build` installs the plugin into `.obsidian/plugins/` in this repository,
    so the repository root opens as a vault with `docs/` already a backlog. That is what
-   makes the sweep cheap enough to actually do.
+   makes the sweep cheap enough to actually do. The sweep is walked in the vault's
+   **Tests** projection — open `docs/Product Backlog.base`, switch to Tests, and walk
+   each suite top to bottom. The grep below stays authoritative for "did we miss one",
+   because a projection cannot be run from a terminal.
 2. Ask the register for the set — do not read a list from this file. The verifications are
-   the notes **in `docs/issues/` that carry `## How to check` as a whole heading line and
+   the notes **in `docs/tests/cases/` that carry `## How to check` as a whole heading line and
    are marked `cadence: release`**. One way to ask:
 
    ```bash
-   grep -rlxZ "## How to check" docs/issues/ |
+   grep -rlxZ "## How to check" docs/tests/cases/ |
      xargs -0 awk 'FNR==1{fm=0;hit=0} /^---$/{fm++} fm==1 && !hit && /^cadence: release$/{print FILENAME; hit=1}'
    ```
 
    Two things in that line are load-bearing and both were wrong in an earlier version of it:
 
    - **`-Z`/`-0`.** Every note here is titled in prose, so every path has spaces, and the
-     same query without them reports `docs/issues/Board` and `card` as missing files while
+     same query without them reports `docs/tests/cases/Board` and `card` as missing files while
      still looking like it worked.
    - **`awk` on the frontmatter rather than `grep -l "^cadence: release"`.** A plain `grep`
      matches the whole file, so a *conditional* note that merely mentions `cadence: release`
@@ -130,7 +133,7 @@ tag: after it, the only thing a failure can produce is a second release.
 
    Each of the three conditions is load-bearing, and each is a case that exists in the tree
    today rather than a hypothetical:
-   - **`docs/issues/` and not the whole of `docs/`** — the plans under
+   - **`docs/tests/cases/` and not the whole of `docs/`** — the plans under
      `docs/superpowers/` quote draft notes verbatim, headings and `type: Issue`
      frontmatter included, so a query scoped by type or heading alone sweeps a copy of a
      note instead of the note.
@@ -150,7 +153,7 @@ sweep that drops its quietest checks empties itself while reading as disciplined
 
 **`cadence:` says when a verification is due**, and every note carrying `## How to check`
 declares it. `release` means this sweep. `conditional` means the note keeps its own
-trigger, stated in its own prose — [Verify base identity in a live vault](docs/issues/Verify%20base%20identity%20in%20a%20live%20vault.md)
+trigger, stated in its own prose — [Verify base identity in a live vault](docs/tests/cases/Verify%20base%20identity%20in%20a%20live%20vault.md)
 asks to be repeated after an Obsidian or bundler upgrade, and running it every release would replace
 the cadence its outcome specifies with a more frequent one less likely to find anything.
 Those are **not** part of this sweep. A note carrying `## How to check` with no `cadence:`

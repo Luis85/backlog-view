@@ -11,7 +11,7 @@ demonstrating itself:
 | --- | --- | --- |
 | `requirements/` | What the plugin is meant to do | `Epic` → `Feature` → `PBI` |
 | `tasks/` | Engineering work done to keep it maintainable | `Task` |
-| `issues/` | Open questions, verifications and recorded decisions | `Issue` |
+| `issues/` | Open questions and recorded decisions | `Issue` |
 | `bugs/` | Defects, with what was learned from them | `Bug` |
 | `deliverables/` | Things this project has to produce that are not code | `Deliverable` |
 | `milestones/` | Dates the plan is answerable to, owned by no item | `Milestone` |
@@ -19,6 +19,10 @@ demonstrating itself:
 | `tests/cases/` | One executable test each — preconditions, steps, expected result, as prose | `Test case` |
 | [`adrs/`](adrs/README.md) | **How** it is built — architecture decision records | *(none — not backlog items)* |
 | `superpowers/` | Claude's own design specs and implementation plans, not the product's | *(none — not backlog items)* |
+
+`tests/cases/` holds the checks CI cannot run — appearance, base identity, anything that
+needs a live vault — and `RELEASING.md`'s release sweep reads it, deriving its set from
+`tests/cases/` rather than a list kept here.
 
 The backlog says what the product does and why someone wants it. The
 [ADRs](adrs/README.md) say what was chosen to make that possible, what it cost, and what

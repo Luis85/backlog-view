@@ -28,7 +28,7 @@
 	   ladder's entire job. `clip` clips identically and creates no scroll container, so
 	   there is nothing to scroll and nothing to reset. Chrome 90+, believed far below
 	   the Electron behind `manifest.json`'s 1.12.0 floor — believed, because nobody has
-	   checked it against a real install (`docs/issues/Smoke test the visual changes.md`,
+	   checked it against a real install (`docs/tests/cases/Smoke test the visual changes.md`,
 	   item 3). */
 	overflow: clip;
 }

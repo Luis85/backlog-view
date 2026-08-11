@@ -393,7 +393,7 @@ describe('the use-case shape', () => {
 });
 
 /**
- * The sweep in `RELEASING.md` finds its checklist by querying `docs/issues/`, so these
+ * The sweep in `RELEASING.md` finds its checklist by querying `docs/tests/cases/`, so these
  * three are the only shape rules an `Issue` has. The gate deliberately does not enforce the
  * three section shapes `docs/README.md` documents — see the comment on `CADENCES` in
  * `docs-check.mjs` — so there are no cases here for those, and their absence is the rule.
