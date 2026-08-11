@@ -418,6 +418,15 @@ free of runtime code so imports stay cycle-free.
   which is why `refreshFromData` restores first and reads `focusLevel` off the store
   onto the settings it just resolved. Everything downstream still reads it as
   `settings.focusLevel`; the `.base` is simply no longer where it comes from.
+  **`host.clickFolds` is the plainest member of that family** and the newest (2026-08-11):
+  whether a plain click on a row folds it instead of opening the note, stored the same way
+  and re-rendering the same way, with no model consequence at all. It reaches `settings`
+  through nothing — `foldOnClick` reads the host directly — because unlike the focus level
+  it was never a `.base` key that downstream code had learned to read. It has exactly one
+  surface, the toolbar's toggle, and that is the point rather than an omission: it stopped
+  being a view option when it moved, since a value that is working position on the device
+  cannot also be configuration on the view without a stored override beside a shared
+  default. ADR 0011 records what that costs.
 - `CardDragController` (in `interactions/cardDrag.ts`) is ONE controller for both card
   projections. It collects every adapter registration's cleanup and runs them at the top
   of each render pass: the projection is rebuilt wholesale, and pragmatic listeners left

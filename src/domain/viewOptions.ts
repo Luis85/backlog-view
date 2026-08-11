@@ -3,7 +3,7 @@ import { BacklogSettings, columnPolicyKey, DEFAULT_DONE_VALUES, DEFAULT_HORIZON_
 import { OptionalField, optionalProperty } from './optionalProperties';
 import { resolveSettings } from './settingsResolve';
 import { ALL_TYPES, DEFAULT_HOME_FOLDER, defaultTypeFolder, typeFolderKey } from './typeVocabulary';
-import { CLICK_ACTIONS, defaultItemHandling, OPEN_TARGETS } from './itemHandling';
+import { defaultItemHandling, OPEN_TARGETS } from './itemHandling';
 
 /**
  * What Bases shows in the view-options menu: pure declaration, no logic. Split from
@@ -62,23 +62,14 @@ export function getViewOptions(config?: BasesViewConfig): BasesAllOptions[] {
 }
 
 /**
- * What a row does when it is used: the two questions are separate because the answers
- * are. Folding on click withdraws no way of opening a note — the menu, `Enter` and the
- * platform's modifier all still open one, and all three obey the target below — so a
- * view can be a place to read the structure without ceasing to be a way into the notes.
+ * Where an opened note goes — every projection opens notes the same way, so this one
+ * needs no qualifier naming where it applies.
  *
- * The first option names **the tree and the timeline** because those are where it applies,
- * and an option naming more than it does is the same defect as a comment doing it. Those
- * two are the ROW-shaped projections: each draws a chevron that folds rows below it, so
- * one gesture means one thing on both. A CARD is still out, and for the reason that has
- * not changed — its disclosure lists children on the card's own face and a card with
- * nothing under it draws no disclosure at all, so the option would be inert on the
- * commonest card on a board. Where the target below applies is the opposite and needs no
- * qualifier at all: every projection opens notes the same way.
- *
- * Said in three words rather than two because the qualifier is the honest part: this read
- * "in the tree" until the timeline was added to it (2026-08-11), and a label left behind
- * by its own behaviour is the defect this paragraph exists to prevent.
+ * **Whether a plain click opens the note or folds the row was the group's other option
+ * until 2026-08-11.** It is not configuration any more: it is flipped while working, on
+ * the screen in front of you, so it lives in the collapse store with the projection and
+ * the focus level (ADR 0011) and is reached only from the toolbar toggle. Nothing here
+ * reads a `clickAction` key, so one left in a `.base` written before the move is inert.
  */
 function handlingItemsGroup(): BasesAllOptions {
 	const defaults = defaultItemHandling();
@@ -88,13 +79,6 @@ function handlingItemsGroup(): BasesAllOptions {
 		items: [
 			// The offered vocabulary is `itemHandling.ts`'s own, which is also what reads
 			// a stored value back — so nothing can be offered that cannot be read.
-			{
-				type: 'dropdown',
-				key: 'clickAction',
-				displayName: 'Clicking an item in the tree or timeline',
-				default: defaults.clickAction,
-				options: CLICK_ACTIONS,
-			},
 			{
 				type: 'dropdown',
 				key: 'openIn',

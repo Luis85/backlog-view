@@ -7,9 +7,11 @@ a kanban **board** whose columns are the configured workflow states, and a
 **roadmap** drawing whichever axis the view options declare (horizon buckets that a
 card can be moved between, or a read-only timeline from two date properties) with
 everything unplaceable on a counted shelf that is also the target that un-places. The
-mode, the roadmap-axis pick and the focus level are UI state (vault-scoped localStorage,
-beside the collapse state), never a `.base` setting: base settings are saved on the view,
-working position on the device.
+mode, the roadmap-axis pick, the focus level and whether a click on a row folds it are UI
+state (vault-scoped localStorage, beside the collapse state), never a `.base` setting: base
+settings are saved on the view, working position on the device. That last one was a view
+option until 2026-08-11 and moving it out is what ADR 0011 costs — a value is one or the
+other, never a stored override beside a shared default.
 Requires Obsidian 1.10.2+ (Bases custom view API).
 
 ## Definition of done

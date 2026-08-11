@@ -351,17 +351,21 @@ export function clickActionApplies(host: BacklogViewHost): boolean {
 /**
  * What that toggle currently says, what it looks like saying it, and what pressing it
  * does — one statement, because the toolbar button and its `⋯` entry are two inputs on
- * one setting and a menu that re-derived any of the three could offer to write what the
- * button was not offering. The same rule the entries below already keep by reading
+ * one value and a menu that re-derived any of the three could offer the opposite of what
+ * the button was offering. The same rule the entries below already keep by reading
  * `disabled` off the button they mirror, kept here at the source instead, since this
- * value lives in the `.base` rather than on an element.
+ * value lives in the collapse store rather than on an element.
+ *
+ * `host.clickFolds` and not a setting: this is working position, per saved view and per
+ * device (ADR 0011), so `setClickFolds` both persists it and re-renders — no Bases
+ * refresh follows a change the base was not told about.
  */
 export function clickActionToggle(host: BacklogViewHost): { folds: boolean; icon: string; flip: () => void } {
-	const folds = host.settings.clickAction === 'fold';
+	const folds = host.clickFolds;
 	return {
 		folds,
 		icon: folds ? 'fold-vertical' : 'file-text',
-		flip: () => host.config.set('clickAction', folds ? 'open' : 'fold'),
+		flip: () => host.setClickFolds(!folds),
 	};
 }
 

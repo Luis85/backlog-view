@@ -290,6 +290,29 @@ export function showMenuForClick(menu: Menu, evt: MouseEvent): void {
 }
 
 /**
+ * Show a menu under an ELEMENT — the keyboard path for a row or a board column stop,
+ * neither of which has a pointer to sit under. Falls back to the viewport corner when
+ * there is no element to anchor to, and reports false when there was no menu to open at
+ * all, so a caller that swallowed the key can give it back.
+ *
+ * Here rather than on the view, beside `showMenuForClick`: this module is where the
+ * anchoring decision is made — the reason `showAtMouseEvent` is banned everywhere else by
+ * lint — and a second `showAtPosition` sitting in `backlogView.ts` was the same decision
+ * taken in a second place.
+ *
+ * The corner fallback is a ROW's, not deliberately a column's too: `colEls` and
+ * `board.columns` are built by the same `.map()` over the same array (`renderBoard`), so
+ * an index that resolves a column always resolves an element, and that branch stays
+ * unreachable from `showColumnMenuFor`.
+ */
+export function showMenuAtElement(menu: Menu | null, el: HTMLElement | null): boolean {
+	if (!menu) return false;
+	const rect = el?.getBoundingClientRect();
+	menu.showAtPosition(rect ? { x: rect.left, y: rect.bottom } : { x: 0, y: 0 });
+	return true;
+}
+
+/**
  * A per-row control's own menu. Each of the four below opens exactly what the row menu's
  * matching section offers — one builder per property, never a second list — so a chip and
  * the context menu cannot disagree about what is offered or which entry is current.

@@ -427,9 +427,10 @@ export function fromRowControl(evt: Event): boolean {
 }
 
 /**
- * "Clicking an item" set to fold: the row's body means what its chevron means, and the
- * note is reached from the menu, from `Enter`, or with the platform's modifier — which
- * is why a modified click is not this option's to take and falls through to opening.
+ * The toolbar's fold toggle set on (`host.clickFolds`): the row's body means what its
+ * chevron means, and the note is reached from the menu, from `Enter`, or with the
+ * platform's modifier — which is why a modified click is not this toggle's to take and
+ * falls through to opening.
  *
  * Returns true whenever the click was SPENT here, which includes the two cases that
  * fold nothing: a row with nothing under it has no fold to do, and a filtered tree
@@ -456,7 +457,7 @@ export function foldOnClick(
 	evt: MouseEvent,
 	row: { hasChildren: boolean; redraw: () => void },
 ): boolean {
-	if (host.settings.clickAction !== 'fold' || Keymap.isModEvent(evt)) return false;
+	if (!host.clickFolds || Keymap.isModEvent(evt)) return false;
 	if (host.isFiltering() || !row.hasChildren) return true;
 	host.setCollapsed(item.file.path, !host.isCollapsed(item.file.path));
 	row.redraw();

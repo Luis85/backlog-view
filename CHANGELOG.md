@@ -13,10 +13,14 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Added
 
-- **Clicking a row folds it** is now a toolbar toggle, beside the completed-items eye —
-  the same view option as **Handling items → Clicking an item in the tree or timeline**,
-  flipped without opening the options panel. It moves into the `⋯` menu on a narrow pane.
-- That option now covers the **roadmap's timeline** as well as the tree: a click on a
+- **Clicking a row folds it** is now a toolbar toggle, beside the completed-items eye. It
+  moves into the `⋯` menu on a narrow pane, and it is remembered per saved view on this
+  device — beside the collapse state, like the projection and the focus level — rather
+  than in the `.base` file. So it is yours rather than everyone's: a base shared with a
+  colleague no longer carries your habit of clicking to fold. There is no
+  **Handling items → Clicking an item** view option any more; a `clickAction` key in a
+  base written before this is ignored, and the toggle starts from "opens the note".
+- Folding on click now covers the **roadmap's timeline** as well as the tree: a click on a
   timeline row folds the rows below it, exactly as the row's own chevron does. Cards — on
   a board, in a horizon bucket, on the shelf — still open their note, since a card lists
   its children on its own face rather than folding rows. The toolbar toggle is drawn on

@@ -355,11 +355,12 @@ function renderCompletedToggle(host: BacklogViewHost, barEl: HTMLElement, model:
 }
 
 /**
- * The **Handling items** group's `clickAction` option, on the row beside the completed
- * toggle: the same `.base` setting, written through the same `config.set`, so the toolbar
- * and the view options are two surfaces over one value rather than two values that agree
- * until one of them is used. Nothing is decided here that `resolveItemHandling` does not
- * already decide — this only flips between the two values it declares.
+ * Whether a click on a row folds it, on the row beside the completed toggle — and the
+ * ONLY surface for it. It was the **Handling items** group's `clickAction` option until
+ * 2026-08-11, on this toggle and in the view options both; it is now working position in
+ * the collapse store (ADR 0011, `host.clickFolds`), per saved view and per device, so
+ * there is no second surface for this one to agree with and no `.base` carrying one
+ * reader's habit to everyone the base is shared with.
  *
  * Drawn on the two ROW-shaped projections and nowhere else — `clickActionApplies` states
  * which and why. A toolbar toggle that changed nothing on the screen in front of you is

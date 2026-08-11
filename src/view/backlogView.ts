@@ -1,4 +1,4 @@
-import { BasesView, Menu, QueryController, setIcon } from 'obsidian';
+import { BasesView, QueryController, setIcon } from 'obsidian';
 import { CARD_SCOPE, CollapseState, TIMELINE_SCOPE } from './collapseState';
 import { FilterScope, FilterState } from './filterState';
 import { BacklogViewHost, BoardSnapshot, Column, ColumnFit, PRODUCT_BACKLOG_VIEW_TYPE, Projection, RoadmapSnapshot } from './host';
@@ -8,7 +8,7 @@ import { CardMoveController } from './cardMoves';
 import { CardDragController } from './interactions/cardDrag';
 import { DragDropController } from './interactions/dragDrop';
 import { handleProjectionKeydown } from './interactions/keyboard';
-import { buildColumnMenu, buildItemMenu } from './interactions/menu';
+import { buildColumnMenu, buildItemMenu, showMenuAtElement } from './interactions/menu';
 import { BacklogItem, BacklogModel, buildModel } from '../domain/model';
 import { childTypeChoices, PlacementEnd } from '../domain/itemTypes';
 import { DropTarget } from '../domain/dropTargets';
@@ -211,6 +211,14 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 
 	setFocusLevel(level: string): void {
 		this.ui.setFocusLevel(level);
+	}
+
+	get clickFolds(): boolean {
+		return this.ui.clickFolds;
+	}
+
+	setClickFolds(value: boolean): void {
+		this.ui.setClickFolds(value);
 	}
 
 	get shelfCollapsed(): boolean {
@@ -476,28 +484,11 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	}
 
 	showContextMenuFor(item: BacklogItem): void {
-		this.showMenuBelow(buildItemMenu(this, item, childTypeChoices(item)), this.rowElFor(item));
+		showMenuAtElement(buildItemMenu(this, item, childTypeChoices(item)), this.rowElFor(item));
 	}
 
 	showColumnMenuFor(index: number): boolean {
-		return this.showMenuBelow(buildColumnMenu(this.board?.board.columns[index]?.policy ?? ''), this.board?.colEls[index] ?? null);
-	}
-
-	/**
-	 * Anchor a menu under its own element's rect — the keyboard path for a row or a
-	 * column stop, neither of which has a pointer to sit under. Falls back to the
-	 * viewport corner when there is no element to anchor to, and reports false when
-	 * there was no menu to open, so a caller that swallowed the key can give it back.
-	 * The fallback is a row's, not deliberately a column's too: `colEls` and
-	 * `board.columns` are built by the same `.map()` over the same array
-	 * (`renderBoard`), so an index that resolves a column always resolves an element,
-	 * and this branch stays unreachable from `showColumnMenuFor`.
-	 */
-	private showMenuBelow(menu: Menu | null, el: HTMLElement | null): boolean {
-		if (!menu) return false;
-		const rect = el?.getBoundingClientRect();
-		menu.showAtPosition(rect ? { x: rect.left, y: rect.bottom } : { x: 0, y: 0 });
-		return true;
+		return showMenuAtElement(buildColumnMenu(this.board?.board.columns[index]?.policy ?? ''), this.board?.colEls[index] ?? null);
 	}
 
 	private rowElFor(item: BacklogItem): HTMLElement | null {

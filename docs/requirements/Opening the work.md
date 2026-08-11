@@ -33,7 +33,7 @@ found. Every row is a real note; the view is a lens on it, not a replacement for
   rule). It opens in a new tab, exactly as a link in a note would. Following the platform
   convention rather than reimplementing it is the point — which is also why the modifier
   outranks the configured target rather than being redirected by it.
-- **1e — clicking an item is configured to fold it** (`clickAction`). The row's body then
+- **1e — the toolbar's toggle is set to fold** (`host.clickFolds`). The row's body then
   means what its chevron means, and the note is reached from the row menu, from `Enter`,
   or with the modifier above. A row with nothing under it folds nothing and does not open
   either: one gesture cannot mean "fold" on a parent and "open" on a leaf without being
@@ -44,6 +44,14 @@ found. Every row is a real note; the view is a lens on it, not a replacement for
   and a card with nothing under it draws no disclosure at all, so the option would be inert
   on the commonest card on a board. Card activation keeps opening the note, which is what a
   card is for.
+
+  It stopped being a view OPTION on 2026-08-11 and is now working position, held per
+  saved view and per device in the collapse store under ADR 0011's rule — the toolbar
+  toggle is the only surface for it, and the **Handling items** group holds `openIn`
+  alone. What decided it is that this is flipped while reading rather than while setting
+  a view up, and a `.base` is shared: one person's habit of clicking to fold does not
+  belong to everyone the base syncs to. A `clickAction` key in a base written before the
+  move is inert, exactly as `focusLevel` is.
 
   Until 2026-08-11 this said **the TREE's option** and named extending it a product
   decision nobody had taken, needing an answer for the childless card first. The decision
@@ -62,13 +70,14 @@ found. Every row is a real note; the view is a lens on it, not a replacement for
   are derived from the row set the fold changes. Which collapse BIT is written follows
   `collapseKey` as it already did: the dated axis folds a plan under `TIMELINE_SCOPE`, the
   tree opens a node in the backlog, and neither reaches a card's own `CARD_SCOPE`.
-- **1g — the option is flipped from the toolbar** (`renderClickActionToggle`). The same
-  `.base` value, written through the same `config.set`, on a toggle beside the
-  completed-items eye: this is the one **Handling items** option a reader changes while
-  working rather than while setting the view up, and the view options panel is four clicks
-  away. Two surfaces over one value, never two values — the toolbar reads what the dropdown
-  wrote and writes what the dropdown offers, so `resolveItemHandling` stays the only thing
-  that decides what the value can be.
+- **1g — the toggle is where it is flipped, and the only place** (`renderClickActionToggle`).
+  A toggle beside the completed-items eye, writing through `host.setClickFolds` to the
+  collapse store: this is the thing a reader changes while working rather than while
+  setting the view up, and the view options panel is four clicks away. One surface over one
+  value — there is no dropdown left for it to agree with, which is what removed the whole
+  question of two surfaces drifting apart. Nothing is written to the `.base`, so no Bases
+  refresh follows and the view re-renders itself, the same rule the projection and the
+  focus level already keep.
 
   It follows the option's own scoping — `clickActionApplies`, the tree and the dated axis
   and no card — since a control that changes nothing on the screen in front of you is worse
@@ -122,18 +131,21 @@ found. Every row is a real note; the view is a lens on it, not a replacement for
 - **Open in new tab** and **Open to the right** are in the context menu, so both are
   reachable without a pointer.
 - Opening a note writes nothing.
-- With `clickAction` set to fold, a click folds the row and opens nothing — and the
+- With the toggle set to fold, a click folds the row and opens nothing — and the
   modifier, `Enter` and the menu still open the note. On the tree and on the dated axis
   alike, from one shared decision, so the gesture cannot mean different things on two
   screens that both draw rows; on a board, bucket or shelf CARD it opens the note as it
   always did.
-- The toolbar's toggle is drawn exactly where the setting has an effect: on the two
-  row-shaped projections and on no card.
+- The toolbar's toggle is drawn exactly where it has an effect: on the two row-shaped
+  projections and on no card.
+- The fold state survives closing and reopening the view, per saved view and per device,
+  and is never written to the `.base`; a `clickAction` key left in a base written before
+  the move changes nothing.
 - With `openIn` set to the side, the backlog's own leaf is pinned and a second open
   reuses the pane the first one made; the menu's **Open to the right** pins nothing and
   splits afresh, so two deliberately placed notes both stay on screen.
-- A `clickAction` or `openIn` value no version of this plugin declared falls back to the
-  default rather than reaching a branch that has no arm for it.
+- An `openIn` value no version of this plugin declared falls back to the default rather
+  than reaching a branch that has no arm for it.
 
 ## Where it lives
 
@@ -149,9 +161,13 @@ timeline's rows share, and whose optional fold is what keeps a card opening its 
 the option applies, and what its toolbar toggle says) ·
 `src/view/render/toolbar.ts` (`renderClickActionToggle`) ·
 `src/view/interactions/keyboard.ts` (`Enter`) ·
-`src/view/interactions/menu.ts` · `src/domain/itemHandling.ts` (the two settings, their
-offered vocabulary and the defensive read of a hand-edited value) ·
-`src/domain/viewOptions.ts` (the **Handling items** group: `clickAction`, `openIn`).
+`src/view/interactions/menu.ts` · `src/domain/itemHandling.ts` (`openIn`: its offered
+vocabulary and the defensive read of a hand-edited value) ·
+`src/domain/viewOptions.ts` (the **Handling items** group, which is `openIn` alone) ·
+`src/storage/collapseStore.ts` and `src/view/collapseState.ts` (`clickFolds`, stored
+beside the collapse sets) · `src/view/uiState.ts` (the pick, and the render it asks for).
 Tests: `test/view/rendering.test.ts`, `test/view/keyboard.test.ts`,
-`test/view/menu.test.ts`, `test/view/opening.test.ts` — asserted through `vault.opened` —
-and `test/view/toolbarClickAction.test.ts` for the toggle and the dated axis's fold.
+`test/view/menu.test.ts`, `test/view/opening.test.ts` — asserted through `vault.opened`,
+and where a stale `clickAction` key is shown to change nothing — `test/view/toolbarClickAction.test.ts`
+for the toggle and the dated axis's fold, and `test/view/persistence.test.ts` for the
+reopen.

@@ -3,32 +3,34 @@ import { describe, expect, it } from 'vitest';
 import { Menu } from '../helpers/obsidian-mock';
 import { FakeVault } from '../helpers/vault';
 import { rowFor, roadmapView, timelineTitles } from '../helpers/roadmap';
-import { fixture, makeView, refresh, useViewHarness } from '../helpers/view';
+import { fixture, makeView, useViewHarness } from '../helpers/view';
 
 useViewHarness();
 
 /**
- * The toolbar's copy of the **Handling items** group's `clickAction` option. Its own file
- * rather than `toolbar.test.ts`'s tail, for the reason that file already states about the
- * projection zone and the Deliverables board: one subject, and the shared file is at its
- * line budget.
+ * The toolbar toggle for whether a click folds a row. Its own file rather than
+ * `toolbar.test.ts`'s tail, for the reason that file already states about the projection
+ * zone and the Deliverables board: one subject, and the shared file is at its line budget.
  *
- * Two surfaces over one `.base` value is the whole feature, so what is asserted is the
- * value — that the button writes exactly what the dropdown offers and reads back exactly
- * what the dropdown wrote. An assertion that a click FOLDS belongs to `foldOnClick`'s own
- * suite and is not repeated here; this file would still pass if the setting stopped
- * working, and says so rather than implying otherwise.
+ * It is the ONLY surface for the value since 2026-08-11 — it was the **Handling items**
+ * group's `clickAction` dropdown too until then, and is now working position in the
+ * collapse store — so what this file asserts is the toggle's own loop: that pressing it
+ * changes what the button reports about itself, and that the `⋯` says the same thing.
+ * Two things belong elsewhere and are not repeated here: that the value SURVIVES the view
+ * (`test/view/persistence.test.ts`), and that a click actually folds — asserted in
+ * `test/view/opening.test.ts` for the tree, and in this file's second block for the dated
+ * axis, which is the one no other suite covers.
  */
 describe('the click-action toggle', () => {
 	const toggle = (containerEl: HTMLElement) =>
 		containerEl.querySelector<HTMLElement>('.pbl-toolbar .pbl-click-action-toggle');
 
-	it('reads the setting the view options wrote, both ways round', () => {
+	it('reports the stored value, both ways round', () => {
 		const opens = makeView(fixture());
 		expect(toggle(opens.containerEl)?.getAttribute('aria-pressed')).toBe('false');
 		expect(toggle(opens.containerEl)?.dataset.icon).toBe('file-text');
 
-		const folds = makeView(fixture(), { clickAction: 'fold' });
+		const folds = makeView(fixture(), {}, { folds: true });
 		expect(toggle(folds.containerEl)?.getAttribute('aria-pressed')).toBe('true');
 		expect(toggle(folds.containerEl)?.dataset.icon).toBe('fold-vertical');
 		expect(toggle(folds.containerEl)?.classList.contains('is-active')).toBe(true);
@@ -39,22 +41,25 @@ describe('the click-action toggle', () => {
 	 * name that flipped would announce "clicking a row folds it, pressed" as the value
 	 * that makes it true went away, which states the opposite of what is true; asserted
 	 * across the flip, since one reading alone cannot tell a fixed name from a lucky one.
+	 *
+	 * No `refresh` between the presses, and that is the half of the move worth checking:
+	 * nothing was written to the `.base`, so no Bases refresh is coming and the toggle
+	 * has to bring itself back saying the new value.
 	 */
 	it('keeps one name across the flip and carries the value in aria-pressed', () => {
-		const vault = fixture();
-		const { view, containerEl, config } = makeView(vault);
+		const { view, containerEl, config } = makeView(fixture());
 		const name = toggle(containerEl)?.getAttribute('aria-label');
 
 		toggle(containerEl)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		expect(config.setCalls.at(-1)).toEqual({ key: 'clickAction', value: 'fold' });
-
-		// Bases persists the option and refreshes the view; nothing re-renders on its own.
-		refresh(view, vault);
+		expect(view.clickFolds).toBe(true);
 		expect(toggle(containerEl)?.getAttribute('aria-label')).toBe(name);
 		expect(toggle(containerEl)?.getAttribute('aria-pressed')).toBe('true');
 
 		toggle(containerEl)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		expect(config.setCalls.at(-1)).toEqual({ key: 'clickAction', value: 'open' });
+		expect(view.clickFolds).toBe(false);
+		expect(toggle(containerEl)?.getAttribute('aria-pressed')).toBe('false');
+		// Nothing reached the `.base`: this value is not a view setting any more.
+		expect(config.setCalls).toEqual([]);
 	});
 
 	/**
@@ -102,18 +107,25 @@ describe('the click-action toggle', () => {
 		};
 
 		expect(entry(makeView(fixture()).containerEl)?.checked).toBe(false);
-		expect(entry(makeView(fixture(), { clickAction: 'fold' }).containerEl)?.checked).toBe(true);
+		expect(entry(makeView(fixture(), {}, { folds: true }).containerEl)?.checked).toBe(true);
 	});
 });
 
 /**
- * What the setting DOES on the dated axis, which is the half the toolbar test above
+ * What the value DOES on the dated axis, which is the half the toolbar test above
  * cannot see: the button being drawn there is a claim that a click folds, and the claim
  * is only worth what this block checks.
  */
-describe('clicking a timeline row with the option set to fold', () => {
-	const DATES = { clickAction: 'fold', startProperty: 'note.start', targetProperty: 'note.due' };
+describe('clicking a timeline row with the toggle set to fold', () => {
+	const DATES = { startProperty: 'note.start', targetProperty: 'note.due' };
 	const click = (el: HTMLElement) => el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+	/** The dated axis with folding on — the roadmap helper takes config, and this is not. */
+	function foldingAxis(vault: FakeVault): HTMLElement {
+		const harness = roadmapView(vault, DATES);
+		harness.view.setClickFolds(true);
+		return harness.containerEl;
+	}
 
 	/** An epic over a feature, both dated, so the grid has a disclosure to answer for. */
 	function nested(): FakeVault {
@@ -128,7 +140,7 @@ describe('clicking a timeline row with the option set to fold', () => {
 
 	it('folds the rows below it and opens nothing', () => {
 		const vault = nested();
-		const { containerEl } = roadmapView(vault, DATES);
+		const containerEl = foldingAxis(vault);
 		// Open it first: a parent nobody has ruled on arrives collapsed, so the click
 		// under test has something to shut rather than something to reveal.
 		click(rowFor(containerEl, 'Epic')!.querySelector<HTMLElement>('.pbl-chevron')!);
@@ -149,7 +161,7 @@ describe('clicking a timeline row with the option set to fold', () => {
 	 */
 	it('spends the click on a bar with no rows under it', () => {
 		const vault = nested();
-		const { containerEl } = roadmapView(vault, DATES);
+		const containerEl = foldingAxis(vault);
 		click(rowFor(containerEl, 'Epic')!.querySelector<HTMLElement>('.pbl-chevron')!);
 
 		click(rowFor(containerEl, 'Feature')!);
