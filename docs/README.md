@@ -172,9 +172,9 @@ decision recorded beside the CSS — so two more need an answer that is not anot
 share, and `The type palette has no unclaimed hue left` is resolved inside this epic or the
 types do not ship. What it deliberately does not build
 is a result — no pass, no fail, no run history, no automation — since a run is a second
-item family and the checklist this register already walks by hand
-(`Plugin Features Smoke Test`) is the evidence that the catalog is the part worth having
-first.
+item family and the checklist this register already walks by hand — the smoke test
+suites already living in the catalog — is the evidence that the catalog is the part
+worth having first.
 
 **Cross-cutting concerns** is the fourth kind: properties that have to be true of
 everything, or they are true of nothing. `Multilang` (every string comes out of a
