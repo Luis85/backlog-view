@@ -491,6 +491,18 @@ function chooseState(host: BacklogViewHost, item: BacklogItem, choice: StateChoi
 }
 
 /**
+ * What a pick on THIS row would write — the same two predicates `stateKeyFor` and
+ * `ownWorkflowReading` select a key and a reading with, asked a third time about the
+ * PLANNER, which is the selection those two do not make. `chooseState` keeps its own
+ * branching because it picks a move METHOD rather than a planner: two of its three
+ * answers are host methods that announce, and only the last is a plan handed to the gate.
+ */
+function stateWrites(host: BacklogViewHost, item: BacklogItem, state: string | null): ItemWrite[] {
+	if (isDeliverableType(item.typeName)) return computeDeliverableStateWrites(item, state);
+	return inCatalog(item) ? computeTestStateWrites(item, state) : computeStateWrites(item, state, host.settings, todayStamp());
+}
+
+/**
  * Render Set state's offers, checking the one the item already holds.
  *
  * "Already holds" is asked of the PLAN — an entry is checked exactly when picking
@@ -508,14 +520,31 @@ function addStateItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): vo
 	for (const choice of stateChoices(host, item)) {
 		menu.addItem((si) => {
 			si.setTitle(choice.label).onClick(() => void chooseState(host, item, choice));
-			const noop = isDeliverableType(item.typeName)
-				? computeDeliverableStateWrites(item, choice.state).length === 0
-				: inCatalog(item)
-					? computeTestStateWrites(item, choice.state).length === 0
-					: computeStateWrites(item, choice.state, host.settings, todayStamp()).length === 0;
-			if (noop) si.setChecked(true);
+			if (stateWrites(host, item, choice.state).length === 0) si.setChecked(true);
 		});
 	}
+	// The way back OFF a test state, as the foot this menu already uses for a removal —
+	// Clear horizon, Unschedule, and the two label menus in `labels.ts`. Only the catalog
+	// needs one: every other workflow reaches its no-state target through a board COLUMN
+	// (`stateChoices` reads `activeBoard`'s own columns, and `col.state === null` is the
+	// only thing in that list that removes a key), and the catalog is tree-shaped with no
+	// board — so without this entry `computeTestStateWrites(item, null)` was reachable from
+	// nothing on screen and a test state could be set and never removed. It is drawn on both
+	// surfaces at once because this is the one builder behind the chip and `Set state`.
+	//
+	// Offered exactly when picking it would WRITE something, asked of the same planner the
+	// pick runs — so no offered action can write nothing, and the gate cannot drift from the
+	// plan. The neighbours state that rule as `item.ownKeys` presence instead, and that
+	// spelling is unavailable here: `readOwnKeys` fills that record through `optionalKeyFor`,
+	// which answers the RAW `testStateKey`, while this workflow reads the resolved one
+	// (`resolvedTestStateKey`, through `stateKeyFor`) — so on the shipped default, where the
+	// tests share the plan's own `status`, `ownKeys.testState` is false on every note that
+	// carries a state. The cost of asking the plan is the one case presence and value
+	// disagree about: a BLANK test state reads as no value, so it is offered no clear.
+	const clear: StateChoice = { state: null, label: 'Clear test state' };
+	if (!inCatalog(item) || computeTestStateWrites(item, clear.state).length === 0) return;
+	menu.addSeparator();
+	menu.addItem((si) => si.setTitle(clear.label).setIcon('eraser').onClick(() => void chooseState(host, item, clear)));
 }
 
 /**

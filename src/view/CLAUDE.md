@@ -99,6 +99,19 @@ free of runtime code so imports stay cycle-free.
   key). Menu values = `stateMenuValues` (configured list, else observed ∪ a done
   value) plus the item's own unlisted value, so the current state can always render
   checked.
+- **Only the catalog's `Set state` carries a Clear foot** — the end of `addStateItems`
+  (`interactions/menu.ts`), so it is on both surfaces because that is the one builder behind
+  the chip and the submenu. Every other workflow reaches its no-state target through
+  a board COLUMN — `stateChoices` reads `activeBoard`'s own columns and `col.state === null`
+  is the only entry in that list that removes a key — and the catalog is tree-shaped with no
+  board, so without the foot `computeTestStateWrites(item, null)` was reachable from nothing
+  on screen. It gates on the PLAN, offered exactly when picking it would write something,
+  and that is a narrowing rather than a preference: the removals below gate on
+  `item.ownKeys`, which `readOwnKeys` fills through `optionalKeyFor` — the RAW
+  `testStateKey` — while this workflow reads `resolvedTestStateKey`, so on the shipped
+  default where the tests share the plan's `status` the presence flag is false on every note
+  that carries a state. The cost is the one case presence and value disagree about: a blank
+  test state reads as no value and is offered no clear.
 - **The two LABEL menus are the state menu's shape without a projection**: Set risk and
   Set assignee, both rendered inside `buildItemMenu`'s `editable` guard, both offering a
   list plus the item's own unlisted value, both checked from the PLAN
