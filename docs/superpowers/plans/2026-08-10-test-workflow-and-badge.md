@@ -2206,3 +2206,56 @@ npm run check
 git add src/view/manual/typesSection.ts src/domain/backlogReadme.ts test/ docs/
 git commit -m "Say which drops the projection boundary refuses"
 ```
+
+---
+
+## Execution status
+
+Recorded in this tracked file on purpose. This plan is being executed subagent-driven, whose
+ledger lives in a git-ignored scratch directory — and that directory has now been destroyed
+twice by container reclaims, taking every brief, report and review package with it. The
+commits survived both times because each task was pushed as it closed. What follows is the
+state a fresh session needs, kept where a reclaim cannot reach it. Update it as tasks close.
+
+**Complete and reviewed clean:** Tasks 1-14 and 16-18.
+
+Task 14 took three fix rounds and is worth reading before touching `missingKeyStubs`. Its
+three category gates were unified into one `stateKeyFor`-driven lookup because the three-gate
+form breaches fallow's complexity threshold — the countermand is recorded at Task 14's Step 3
+above. Every finding after the first round was PROSE describing that gate wrongly, four times
+running, including once from a controller instruction that told an implementer to restore a
+rationale nobody had checked was still true.
+
+**Not started:**
+
+- **Task 15** — the test catalog has no `[Unreleased]` changelog entry at all.
+- **Task 19** — the built-in manual and the generated vault README still tell users that no
+  drag is ever refused for what it would type something as, and that only a board narrows
+  Set type. `keepsProjection` falsified the first; `offerableTypes` falsified the second.
+
+**Open, unverified:** an automated reviewer reported that `hiddenMatches`
+(`src/domain/board.ts`) walks raw `parent.children` with no membership-edge guard, so with
+`Release (Deliverable) -> Test case -> Release follow-up (PBI)` filtered by `Release`, the
+Deliverable's card may name the PBI as a match beneath it although the catalog boundary breaks
+that edge in the active projection. **Reproduce before fixing.** This is the sixth finding on
+that machinery, and on two of the previous five the suggested fix was correct in isolation and
+produced the next finding — the four questions `member` answers are separate, and every round
+that treated two of them as one rule created the next round.
+
+**Found while measuring, out of scope, unfixed:** `src/domain/backlogReadme.ts` compares each
+secondary state key only against `settings.stateKey`, so two secondaries sharing a key with
+each other but not with the requirements key read as unshared, and the generated README prints
+one key as two rows. Same class as the defect its own `sharedStateKey` comment says was fixed
+once already. Task 19 edits that file.
+
+**For the final whole-branch review.** Point it at the two families where this branch's
+defects actually lived rather than at the diff as a whole: the filter/match machinery (six
+findings, one function) and projection-boundary gates (four findings, four separate entry
+points — the creator had the rule, the root drop did not, outdent did not, and the parent-link
+actions did not). Deferred minors: no live-vault check of menu-entry absence (jsdom only);
+unchecked drag call-site wiring affecting `rootDropTarget` and `dropTargetFor`; `dropTargetFor`
+sitting at the max-params limit; the generated README's "see below, and A and B" phrasing.
+
+**Owed and unperformable in this environment:** visual confirmation of the test suite's orange
+against the test case's cyan in a real theme; the `Test management` group in Obsidian's own
+options pane; whether Bases accepts a view-option key containing a space.
