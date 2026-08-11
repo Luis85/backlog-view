@@ -494,8 +494,11 @@ export function cardPaths(board: BoardModel): Set<string> {
  * hides under it, and a match announced by two cards is a match the user cannot count.
  * And at any row this projection does not DRAW — `drawn`, which the caller supplies,
  * because this module is pure and the answer is the view's (`view/childrenList.ts`
- * passes `!host.isRowHidden`, the predicate the disclosure and every count over the
- * same walk already consult). A row the screen has no line to is not a route to
+ * passes `!host.isRowHidden`, which is the disclosure's own predicate — `listedChildren`
+ * asks exactly it. The ROLLUP stops at the same ladder edge by a different and narrower
+ * test of its own (`inCatalog(child) || inCatalog(item)`, in `assignAll`), so the three
+ * agree about a test boundary and nothing here says more than that). A row the screen
+ * has no line to is not a route to
  * anything either, so that one stops the descent and not just the naming.
  *
  * `drawn` is where the ladder boundary is kept, and it is deliberately NOT kept in

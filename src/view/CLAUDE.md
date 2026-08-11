@@ -482,8 +482,11 @@ free of runtime code so imports stay cycle-free.
   is *beneath this card* was wrong. What the check reaches is one board and one walk:
   `test/view/boardFilter.test.ts` drives the face and the menu over a Deliverable whose
   only deep match hangs behind a `Test case`, against the control with a `Feature` in the
-  same place; nothing compares this walk to the rollup's and the disclosure's, which stop
-  at the same boundary by their own predicates. It matters most under focus, where the only cards are the focus level's: a
+  same place; nothing compares this walk to the rollup's and the disclosure's. Those two
+  are not one rule either — the disclosure asks `isRowHidden`, the very predicate passed
+  here, while the rollup asks `inCatalog` on both ends, which is narrower. All three stop
+  at the LADDER edge and that is the whole of what they agree on.
+  It matters most under focus, where the only cards are the focus level's: a
   match three levels down would otherwise be found, counted in the rollup, and
   impossible to get to. The links are `tabindex="-1"` buttons like every other per-row
   control, so the card MENU carries the same matches — that is their keyboard path, the
