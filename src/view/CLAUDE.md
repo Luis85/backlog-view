@@ -502,9 +502,19 @@ free of runtime code so imports stay cycle-free.
   `test/view/boardFilter.test.ts` drives the face and the menu over a Deliverable whose
   only deep match hangs behind a `Test case`, against the control with a `Feature` in the
   same place; nothing compares this walk to the rollup's and the disclosure's. Those two
-  are not one rule either — the disclosure asks `isRowHidden`, the very predicate passed
-  here, while the rollup asks `inCatalog` on both ends, which is narrower. All three stop
-  at the LADDER edge and that is the whole of what they agree on.
+  are not one rule either — the disclosure's LIST asks `isRowHidden`, the very predicate
+  passed here, while the rollup asks `inCatalog` on both ends, which is narrower. All three
+  stop at the LADDER edge and that is the whole of what they agree on.
+  **The disclosure's own tooltip is a FOURTH quantity on that card and takes a fourth
+  predicate**: `omitted` (`render/cardChildren.ts`) is the children this projection would
+  draw minus the ones it is drawing, so its denominator is `projectionMember` and never
+  `isRowHidden` — which conflates membership with the completed toggle and the quick
+  filter, correct for the list and wrong for what it is measured against. Subtracting the
+  list from raw `item.children` said "1 more is hidden by the current view" about a
+  `Test case`, a row the plan does not have rather than one it is holding back. What the
+  note is FOR survives that: with completed work hidden the same card still reports its
+  done child, which `test/view/cardChildren.test.ts` asserts in the one fixture as the
+  control beside the defect.
   It matters most under focus, where the only cards are the focus level's: a
   match three levels down would otherwise be found, counted in the rollup, and
   impossible to get to. The links are `tabindex="-1"` buttons like every other per-row

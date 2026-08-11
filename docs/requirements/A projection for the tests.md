@@ -501,6 +501,20 @@ card face and the row menu reach it through. The rule the six findings share, st
 more: **membership decides where a walk may GO, and a projection's disagreement about
 "beneath" is never repaired by changing what counts as a match.**
 
+**The seventh was not a walk but a COUNT, and it wanted a different predicate from all
+six.** The card disclosure's tooltip — *"N more are hidden by the current view"* — took its
+number by subtracting its own list from raw `item.children`
+(`src/view/render/cardChildren.ts`), so an `Epic` holding a `Feature` and a `Test case`
+announced as hidden a row the plan does not have. The LIST was never wrong and does not
+change: `listedChildren` filters on `!isRowHidden`, which is what the card draws. The
+denominator is a different question — what this projection would draw if nothing were being
+hidden — and `isRowHidden` cannot answer it, because it conflates membership with the
+completed toggle and the quick filter. So the count is taken over
+`projectionMember(host.projection)`, and the sentence keeps the case it exists for: with
+completed work hidden, the same card still reports its done child as hidden. **A count
+subtracting a filtered list from a raw one is the shape to look for, and the repair is the
+DENOMINATOR — the membership rule alone, not the visibility rule the numerator uses.**
+
 **Two questions over two lists, and `realRoots` answers only one of them.** 2d says the
 ranking group is never a projection's list and no projection may narrow it — true, and it is
 half the rule. `rootDropTarget` computed BOTH its answers from that group: the rank a drop
