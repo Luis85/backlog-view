@@ -13,6 +13,18 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Added
 
+- **A test catalog.** Two new types, `Test suite` and `Test case`, form a ladder of their
+  own — a suite holds cases, a case holds tasks — beside the plan's Epic → Feature → PBI →
+  Task rather than inside it. A suite is the top of that ladder, so tests are a catalog with
+  an order you chose rather than work filed under a requirement. The toolbar's new **Tests**
+  projection draws it, and you can walk a suite from the top with the plan out of the way.
+- **Your plan does not change when you start writing tests.** The tree, the boards and the
+  roadmap draw exactly what they drew before: a test is not a row, not a card, not a bar, and
+  not a number in anyone's progress. A test parented under a plan item by mistake still shows
+  up — in the catalog, as a root of its own — rather than vanishing, and the same holds the
+  other way for a plan item parented under a test.
+- Both new types are told apart at a glance the way every other type is, with the outlined
+  badge that marks a row as a test.
 - An **assignee** property: name it in the view options (or press ✨ and let the view bind
   and backfill `assignee`), then set it from the row's menu or its chip. The names on
   offer are the ones the base's own results already carry — plus anything typed into
