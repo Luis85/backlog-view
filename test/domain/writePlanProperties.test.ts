@@ -11,7 +11,7 @@ import {
 	computeTestStateWrites,
 } from '../../src/domain/writePlan';
 import { stubKeys } from '../../src/storage/writeKeys';
-import { applyWrites } from '../../src/storage/frontmatter';
+import { applyWrites, RestoreWrite } from '../../src/storage/frontmatter';
 import { FakeVault } from '../helpers/vault';
 
 const settings = defaultSettings();
@@ -182,7 +182,7 @@ describe('computeInitWrites — the test workflow state stub', () => {
 		expect(stubsFor('Runbook.md')).toContain('state');
 	});
 
-	it('stubs every workflow-state field whose resolved key coincides, deduped at the write boundary', async () => {
+	it('stubs every workflow-state field whose resolved key coincides, and names that key once', async () => {
 		// `configProblems` exempts exactly these three labels from the collision report, so
 		// a vault CAN point `state`, `deliverableState` and `testState` at one explicit key
 		// on purpose. The gate asks each field's own resolved key against `stateKeyFor`, not
@@ -201,10 +201,19 @@ describe('computeInitWrites — the test workflow state stub', () => {
 		// three fields sharing a key still produce three entries here.
 		const epicWrite = writeFor('Epic.md');
 		expect(stubKeys(settings, epicWrite?.stubs)).toEqual(['status', 'status', 'status']);
-		// The dedupe is at the write boundary (`applyInto` in `src/storage/frontmatter.ts`):
-		// it creates a key only while it is still absent, so applying all three duplicate
-		// targets still leaves the note with the one property, set once.
-		await applyWrites(vault.app, settings, [epicWrite!]);
+		// Two separate mechanisms turn those three into one property, and only the FIRST is
+		// reachable from here: `touchedKeys` (`src/storage/writeKeys.ts`) dedupes the key
+		// list, so the captured inverse names `status` once and the undo cannot read the
+		// second copy as a restore conflict. Asserting on the note alone cannot see it —
+		// writing `''` twice to a key looks exactly like writing it once, which is why
+		// deleting that `[...new Set(keys)]` left this test green until the inverse was
+		// asserted. The second mechanism is `applyInto`'s own presence guard, which skips a
+		// key the live note already carries; its check is `never blanks a value written
+		// since the plan was made` in `test/view/toolbar.test.ts`, since a stub landing on
+		// an ABSENT key writes the same `''` with or without it.
+		const inverses: RestoreWrite[] = [];
+		await applyWrites(vault.app, settings, [epicWrite!], undefined, (inv) => inverses.push(inv));
+		expect(inverses[0].keys).toHaveLength(1);
 		expect(vault.fm('Epic.md').status).toBe('');
 	});
 });

@@ -115,8 +115,10 @@ every other fixture.
   the picker rather than after it. **That is narrowed by the KEY, not by category, though**
   — pointed at the same explicit key `state` or `deliverableState` already use
   (`configProblems` allows exactly that pairing), `testState` is stubbed onto every item
-  resolving to that key, plan items included, because it and `state` then name the very
-  same property ([[Backfill missing properties]] 3b).
+  whose OWN workflow reads that key, which need not be a catalog member. Which items those
+  are depends on which key is shared: sharing with `state` reaches plan items too, because
+  the two then name the very same property, while sharing with `deliverableState` alone
+  reaches Deliverables and leaves plan items on `state` ([[Backfill missing properties]] 3b).
 - **5b — a test's state counts as done.** Its row is styled done, by the test workflow's
   own done values and against whatever the requirements key on the same note says. Nothing
   is HIDDEN by it: the catalog withholds the completed toggle and opts out of the

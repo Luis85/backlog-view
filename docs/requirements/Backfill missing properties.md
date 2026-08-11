@@ -72,8 +72,8 @@ frontmatter, **I want** one button that sets the properties up and writes them f
   its own optional property, and a note follows exactly one — its type, or its ladder
   ([[A workflow for the tests]]). `state`, `deliverableState` and `testState` are each
   stubbed only when their own resolved key IS the key `stateKeyFor` reads for THIS item —
-  asked by key, not by re-deriving the item's category, which the three configurations
-  below tell apart (measured against one Epic, one `Test case`, one `Deliverable`):
+  asked by key, not by re-deriving the item's category, which the configurations below
+  tell apart (measured against one Epic, one `Test case`, one `Deliverable`):
   - **Each workflow keyed distinctly.** Exactly one field lands per item: the Epic gets
     `state`, the `Test case` gets `testState` and not `state`, the `Deliverable` gets
     `deliverableState` and not `state`.
@@ -84,22 +84,42 @@ frontmatter, **I want** one button that sets the properties up and writes them f
     `deliverableState` themselves stay empty here, but by 5b's rule below, not this
     one: nothing names a property of their own for `optionalKeyFor` to find.
   - **Two or three properties pointed at the SAME explicit key on purpose**
-    (`configProblems` allows exactly this pairing). Every field resolving to that key is
-    stubbed together — the Epic, the `Test case` and the `Deliverable` each get `state`,
-    `deliverableState` AND `testState` — which is correct rather than narrowed further:
-    they name one property, and creating it once (`stubKeys`/`applyInto` write an absent
-    key once and skip it once it is there) is what a shared key means.
+    (`configProblems` allows exactly this pairing). The gate is still per field and still
+    the same question, so every field resolving to that key is stubbed together — and
+    WHICH rows they land on follows from which key is shared, not from how many fields
+    share it. All three pointed at `status`: the Epic, the `Test case` and the
+    `Deliverable` each get `state`, `deliverableState` AND `testState`. Only the two
+    secondaries pointed at a key of their own: the Epic keeps `state` alone, while the
+    `Test case` and the `Deliverable` get `deliverableState` and `testState` together and
+    neither gets `state` — because `stateKeyFor` reads the shared key for them and
+    `settings.stateKey` for the Epic. A field left unconfigured contributes nothing to
+    either shape, by 5b rather than by this gate — `state` and `testState` both on
+    `status` with the Deliverable option untouched stubs those two on every row and
+    `deliverableState` on none. Every shape is correct rather than narrowed
+    further: the fields name one property, and creating it once is what a shared key
+    means. Two mechanisms deliver that once, neither of them `stubKeys` (which names one
+    raw key per field, duplicates included) — `applyInto` creates a key only while the
+    live note lacks it, and `touchedKeys` dedupes the key list the inverse is captured
+    from, so the undo cannot read the second copy as a restore conflict.
 
   So pressing ✨ leaves no empty, unreadable property beside the one a row actually shows
-  in the first configuration — but in the second it stubs `state` onto a `Test case` or a
-  `Deliverable` on purpose, because that IS the only property those rows have to gain
-  while sharing the requirements key. This is also what keeps the generated README's
-  property table honest for a Deliverable sharing the key: `src/domain/backlogReadme.ts`
-  names a bound, shared state key "the Deliverable workflow's own state ... on a
-  Deliverable", and a stub that reaches every Deliverable (never a PBI or a Task) is what
-  makes that description true of every note it is printed for. (`stateKeyFor` in
+  in the distinct configuration — but in the fallback one it stubs `state` onto a
+  `Test case` or a `Deliverable` on purpose, because that IS the only property those rows
+  have to gain while sharing the requirements key. (`stateKeyFor` in
   `src/domain/board.ts` is the one place that decides which key an item's workflow uses;
   `missingKeyStubs` asks it rather than re-deriving the answer.)
+
+  **The generated README's property table is a separate reading of the same keys, and this
+  gate does not make it true.** `src/domain/backlogReadme.ts` prints "the Deliverable
+  workflow's own state on a Deliverable" whenever the resolved Deliverable key equals the
+  requirements key — which is the fallback configuration, where no `deliverableState` stub
+  is planned at all, and the shared one, where it is planned on the Epic as much as on the
+  `Deliverable`. The only configuration whose `deliverableState` stub reaches Deliverables
+  and nothing else is the distinct one, and that is exactly the configuration where the
+  clause is not printed. "A stub that reaches every Deliverable and never a PBI or a Task"
+  was the rationale of the CATEGORY gate this key-equality gate REPLACED; it is recorded
+  here as history so it is not restored as a fact. The README row describes what the
+  property carries, not what the backfill creates.
 - **4a — the item is an orphan**, its parent link resolving to nothing. `order` is written;
   `type` is not. Its real level is unknowable, so an implied one would be derived from the
   provisional top-level position the broken link put it in — a guess about a guess.
@@ -148,8 +168,10 @@ property is called and suggests, and `adoptableProperties`) ·
 `missingKeyStubs`) · `src/domain/model.ts` (`ownKeys`, which key a note carries) ·
 `src/view/interactions/structure.ts` (`runInit`, the action both entry points call) ·
 `src/view/backlogView.ts` (`adoptDefaultProperties`, the one write to the `.base` that
-is not a user turning an option) · `src/storage/frontmatter.ts` (`applyWrites`, whose
-`stubKeys` is where a stub becomes a key).
+is not a user turning an option) · `src/storage/frontmatter.ts` (`applyInto`, where a
+stub becomes a key on the note, and only while the live note still lacks it) ·
+`src/storage/writeKeys.ts` (`stubKeys`, which resolves a stub field to the raw key both
+that write and its captured inverse are named by).
 Tests: `test/domain/settings.test.ts`, `test/domain/writePlan.test.ts`,
 `test/domain/writePlanAxis.test.ts`, `test/storage/frontmatter.test.ts`,
 `test/view/toolbar.test.ts`, `test/view/contextRowWrites.test.ts`.

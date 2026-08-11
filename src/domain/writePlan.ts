@@ -568,9 +568,12 @@ function missingKeyStubs(item: BacklogItem, settings: BacklogSettings): Optional
 		// `settings.stateKey`, the shipped default) still gets `state` stubbed rather than
 		// skipped. Two fields legitimately CAN resolve to one key — `configProblems` exempts
 		// exactly these three labels from its collision report — and both then pass; that is
-		// harmless rather than narrowed further, since `stubKeys`/`applyInto`
-		// (`src/storage/writeKeys.ts`, `src/storage/frontmatter.ts`) write an absent key once
-		// and drop the rest.
+		// harmless rather than narrowed further, because two mechanisms downstream turn the
+		// duplicate names into one property created once. `applyInto`
+		// (`src/storage/frontmatter.ts`) creates a key only while the live note lacks it, and
+		// `touchedKeys` (`src/storage/writeKeys.ts`) dedupes the key list the inverse is
+		// captured from, so the undo cannot read the second copy as a restore conflict.
+		// `stubKeys` does NEITHER — it names one raw key per field, duplicates included.
 		const ownKey = WORKFLOW_STATE_KEY[field];
 		if (ownKey && ownKey(settings) !== stateKeyFor(settings, item)) continue;
 		// A named horizon property with no values is an UNCONFIGURED bucket axis — the
