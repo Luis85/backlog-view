@@ -10,7 +10,7 @@ created: 2026-08-02
 source: Feature Test epic
 ---
 
-# Tree drag between siblings, into a parent and onto the root strip
+# Tree drag between siblings, into a parent and onto the background
 
 A verification to run.
 
@@ -27,8 +27,10 @@ events but renders no indicator, no hover-expand animation and no cursor.
 - **Into a parent** — drag a row onto another row's body; the target should highlight
   as a container, and the drop should set `parent` to it, placed after its existing
   children.
-- **Onto the root strip** — drag a nested row to the strip at the top of the tree; it
-  should become a root note (parent key removed).
+- **Onto the tree background** — drag a nested row to the empty area below the last row;
+  it should become a root note (parent key removed). There is no drop affordance drawn
+  for this, which is the thing to judge: whether the drop is discoverable at all now the
+  strip is gone.
 - Hovering a collapsed row mid-drag should expand it after a short delay, without
   requiring the drag to pause.
 

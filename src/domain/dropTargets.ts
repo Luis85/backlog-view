@@ -39,7 +39,7 @@ function clearsStaleLink(parent: BacklogItem | null, dragged: BacklogItem): bool
  * True when a sibling group can be *reordered*. Ranking rewrites the whole group
  * when the gaps run out, and the view never writes to a note the Base excluded —
  * so in a group holding one, an item would silently land at the end instead of
- * where it was aimed. Appending (dropping *into* a parent, the top-level strip,
+ * where it was aimed. Appending (dropping *into* a parent, on the tree background,
  * indent) stays available: landing last is what those mean anyway.
  */
 export function reorderableGroup(siblings: BacklogItem[]): boolean {
@@ -71,7 +71,7 @@ export function dropTargetFor(
 	// **A drop may not change which projection draws the row** (`keepsProjection`). An
 	// `inside` drop never can — the hovered row is on this screen, so it carries this
 	// screen's ladder — but a `before`/`after` drop on a real ROOT lands in the root group,
-	// which is the top-level strip's own case reached by another gesture: a catalog `Task`
+	// which is the background drop's own case reached by another gesture: a catalog `Task`
 	// dropped beside its suite answers the plan's ladder and vanishes off the screen it was
 	// dragged on. Asked once here rather than in each position function, so the two cannot
 	// answer it differently.
@@ -133,7 +133,7 @@ function siblingPosition(
 	return { parent, siblings, insertIndex: zone === 'before' ? idx : idx + 1 };
 }
 
-/** The target for the "Move to top level" strip, or null when unavailable. */
+/** The target for a drop on the tree background, or null when unavailable. */
 export function rootDropTarget(
 	model: BacklogModel,
 	dragged: BacklogItem,

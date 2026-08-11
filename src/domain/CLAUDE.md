@@ -295,7 +295,7 @@ a node test that did would be measuring the runner.
   invariant hold. Because that fallback lands the item last, the *positional* operations
   refuse such a group up front instead of landing somewhere other than aimed:
   `siblingPosition` (before/after drops), `canReorder` (the move menu, Alt+arrow) and
-  `outdentTarget`. Appends — dropping *into* a parent, the top-level strip, indent — stay
+  `outdentTarget`. Appends — dropping *into* a parent, on the tree background, indent — stay
   available, since last is what they mean anyway. Gate each command on what it actually
   does: `canReorder` covers only the four move commands, while Indent follows its
   neighbour and Outdent answers for its own destination — gating those on `canReorder`

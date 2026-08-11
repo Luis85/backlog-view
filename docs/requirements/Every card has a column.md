@@ -42,9 +42,8 @@ has no authority to show less.
 
 - **1a — the item has no state property at all.** It gathers in a leading no-state column,
   before the workflow rather than outside the board. The column renders while it holds
-  cards; empty, it shrinks to a leading drop strip — the board's answer to the tree's
-  root strip — so clearing a state by drag stays possible without a permanently empty
-  column.
+  cards; empty, it shrinks to a leading drop strip, so clearing a state by drag stays
+  possible without a permanently empty column.
 - **2a — the value is not one the configured workflow names.** It still gets a column,
   appended after the configured ones and visibly outside the defined workflow. That is a
   nudge to adopt the state or re-state the items, never a dropped card.

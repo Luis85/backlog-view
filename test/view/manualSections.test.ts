@@ -37,7 +37,7 @@ describe('the manual', () => {
 
 	// The entry's availability claims are an ENUMERATION, and this branch's dominant defect
 	// is one item short. `rootDropTarget` and `outdentTarget` ask `keepsProjection`, so the
-	// top-level strip and Outdent refuse a catalog `Task` or a typeless row — while the
+	// background drop and Outdent refuse a catalog `Task` or a typeless row — while the
 	// entry said the strip and Indent worked "except throughout a focused view", one stated
 	// exception and no others. Named here so a gate added to that set without a sentence
 	// fails rather than shipping as a promise the code refuses.
@@ -49,7 +49,7 @@ describe('the manual', () => {
 		// position` had vanished with no rule to find — and a substring assertion locked the
 		// omission in rather than catching it.
 		expect(prose).toContain(
-			'dropping it beside a row at the top level, the top-level strip, Outdent, and the two menu entries that remove the parent link, Clear parent link and Use folder position',
+			'dropping it beside a row at the top level, a drop on the tree background, Outdent, and the two menu entries that remove the parent link, Clear parent link and Use folder position',
 		);
 		expect(prose).toContain('a Task, or a note with no type');
 		// Narrow in the same breath, or the entry trades one falsification for its mirror.

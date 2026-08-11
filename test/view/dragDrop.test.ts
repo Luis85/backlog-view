@@ -119,19 +119,18 @@ describe('drag and drop', () => {
 		expect(containerEl.querySelector('.pbl-view')?.classList.contains('pbl-dragging')).toBe(true);
 	});
 
-	it('clears a stale parent link when the last orphaned root is dropped on the top-level strip', async () => {
+	it('clears a stale parent link when the last orphaned root is dropped on the tree background', async () => {
 		const vault = new FakeVault();
 		vault.addFile('Root.md', { frontmatter: { type: 'Epic', order: 10 } });
 		vault.addFile('Orphan.md', { frontmatter: { type: 'Epic', order: 20 }, parentLink: 'Missing' });
 		const { containerEl } = makeView(vault);
 
 		expect(vault.fm('Orphan.md')['parent']).toBe('[[Missing]]');
-		const strip = containerEl.querySelector<HTMLElement>('.pbl-root-drop');
-		if (!strip) throw new Error('root drop strip missing');
+		const tree = treeOf(containerEl);
 
 		rowByTitle(containerEl, 'Orphan').dispatchEvent(new MouseEvent('dragstart', { bubbles: true }));
-		strip.dispatchEvent(new MouseEvent('dragover', { bubbles: true }));
-		strip.dispatchEvent(new MouseEvent('drop', { bubbles: true }));
+		tree.dispatchEvent(new MouseEvent('dragover', { bubbles: true }));
+		tree.dispatchEvent(new MouseEvent('drop', { bubbles: true }));
 		await flush();
 
 		expect('parent' in vault.fm('Orphan.md')).toBe(false);
@@ -261,16 +260,10 @@ describe('what the browser is told about the drag', () => {
 		expect(over.transfer.dropEffect).toBe('move');
 	});
 
-	it('asks for a move over the top-level strip and the tree background too', () => {
+	it('asks for a move over the tree background too', () => {
 		const vault = fixture();
 		const { containerEl } = makeView(vault);
-		const strip = containerEl.querySelector<HTMLElement>('.pbl-root-drop');
-		if (!strip) throw new Error('root drop strip missing');
 		rowByTitle(containerEl, 'Feature B1').dispatchEvent(new MouseEvent('dragstart', { bubbles: true }));
-
-		const overStrip = transferEvent('dragover');
-		strip.dispatchEvent(overStrip.evt);
-		expect(overStrip.transfer.dropEffect).toBe('move');
 
 		const overTree = transferEvent('dragover');
 		treeOf(containerEl).dispatchEvent(overTree.evt);
@@ -403,17 +396,12 @@ describe('the tree background', () => {
 	it('ignores a drag that did not start in the tree', async () => {
 		const vault = fixture();
 		const { containerEl } = makeView(vault);
-		const strip = containerEl.querySelector<HTMLElement>('.pbl-root-drop');
-		if (!strip) throw new Error('root drop strip missing');
-
 		// A file dragged in from outside Obsidian reaches the same listeners with no
 		// drag of ours in flight.
-		const overStrip = transferEvent('dragover');
-		strip.dispatchEvent(overStrip.evt);
-		expect(overStrip.evt.defaultPrevented).toBe(false);
-		expect(strip.classList.contains('pbl-drop-hover')).toBe(false);
+		const overTree = transferEvent('dragover');
+		treeOf(containerEl).dispatchEvent(overTree.evt);
+		expect(overTree.evt.defaultPrevented).toBe(false);
 
-		strip.dispatchEvent(new MouseEvent('drop', { bubbles: true }));
 		treeOf(containerEl).dispatchEvent(new MouseEvent('drop', { bubbles: true }));
 		const row = rowByTitle(containerEl, 'Epic A');
 		stubRect(row);

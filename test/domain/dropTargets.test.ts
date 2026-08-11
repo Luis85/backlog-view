@@ -122,7 +122,7 @@ describe('dropTargetFor', () => {
 	});
 
 	it('refuses a sibling drop that would move the row to the other projection', () => {
-		// The top-level strip is not the only way to a null parent: dropping before or
+		// The tree background is not the only way to a null parent: dropping before or
 		// after a real ROOT takes the root group as the new parent, which for a `Task` or a
 		// typeless note is exactly what the strip does — `ladderFor` re-answers with the
 		// plan's ladder and the row leaves the catalog it was dragged on. One predicate,

@@ -1,10 +1,5 @@
 /* The roadmap frame and its horizon axis — `src/view/render/roadmap.ts`. */
 
-/* The tree's "move to top level" strip has no meaning on an axis. */
-.pbl-roadmap-mode .pbl-root-drop {
-	display: none;
-}
-
 /* Time and buckets scroll sideways inside the same scroller the tree uses;
    the pane itself never scrolls horizontally. The scroller is also the query
    container that hands the pinned strips below their scrollport width. */

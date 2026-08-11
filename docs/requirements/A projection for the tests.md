@@ -210,7 +210,7 @@ base settings are saved on the view, working position on the device.
   `createFromPrompt` already passes `parentItem.children`, which is the real group already.
   **A promoted root is also not in the projection's rankable roots**, which is a second
   list rather than a second reading of the first. The `focusRoot` flag protects a promoted
-  row when something acts *on* it; the root strip never targets it — `rootDropTarget` takes
+  row when something acts *on* it; the root drop never targets it — `rootDropTarget` takes
   the root list wholesale and computes an order against it — so a promoted row sitting in
   that list makes a drop rank against a note whose real siblings are elsewhere, and a
   renumbering pass with no gap available would rewrite that note's own `order`.
@@ -305,7 +305,7 @@ base settings are saved on the view, working position on the device.
   midpoint), it fails on a different arrangement, and a criterion written about drops alone
   passed this PBI for two rounds while creation still handed the new suite the Epic's own
   number.
-- A promoted root is absent from the **positionable** roots: a drop on the root strip, and
+- A promoted root is absent from the **positionable** roots: a root drop, and
   a new root's `endOfSiblingsOrder`, both position against the genuine roots alone, and no
   renumbering pass rewrites a promoted note's `order`. Asserted with a promoted row present
   and no order gap available — the arrangement where the wrong list does not merely

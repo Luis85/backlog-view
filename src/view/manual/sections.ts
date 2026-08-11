@@ -31,6 +31,13 @@ const MOVING: ManualSection = {
 		},
 		{ term: 'Onto a row', text: 'Makes the item a child of that row.' },
 		{
+			term: 'Onto the empty space below the last row',
+			text:
+				'Makes the item top-level, ranked last. Nothing is drawn there to aim at, so ' +
+				'Outdent — Alt+Left, or the context menu — is the reliable way to say the same ' +
+				'thing, and the only one on a tree with no empty space left below it.',
+		},
+		{
 			term: 'Without a mouse',
 			text:
 				'In the tree, Alt and the arrow keys move, indent and outdent, and the context menu ' +
@@ -62,15 +69,16 @@ const MOVING: ManualSection = {
 				'renumbering that group would silently skip a write to a note the Base excludes. The ' +
 				'same rule governs Move up, Move down, Move to top, Move to bottom and Outdent from ' +
 				'the menu or Alt+arrow. Dropping into a parent stays available in every one of those ' +
-				'cases, since landing last is what it means anyway — and so do the top-level strip and ' +
-				'Indent, except throughout a focused view, where neither works at all: the top-level ' +
-				'strip refuses unconditionally while any focus is set, and a focus-root row has no ' +
+				'cases, since landing last is what it means anyway — and so do a drop on the empty ' +
+				'space below the last row and Indent, except throughout a focused view, where neither ' +
+				'works at all: that drop refuses unconditionally while any focus is set, and a ' +
+				'focus-root row has no ' +
 				'previous sibling for Indent to nest it under, by the same no-shared-ranking rule ' +
 				'above. One further case is about which screen a row is on rather than about ranking: ' +
 				'a Task, or a note with no type, takes the level of whatever it hangs from, so moving ' +
 				'one between the plan and the test catalog would take it off the screen it was moved ' +
 				'on. Every move that could do that is unavailable — dropping it beside a row at the top ' +
-				'level, the top-level strip, Outdent, and the two menu entries that remove the parent ' +
+				'level, a drop on the tree background, Outdent, and the two menu entries that remove the parent ' +
 				'link, Clear parent link and Use folder position — while every other type keeps its ' +
 				'own ladder wherever it lands and is refused none of them. Indent is not among them: ' +
 				'it nests under the row above, which is on this screen already.',

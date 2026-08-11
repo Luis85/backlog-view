@@ -58,14 +58,15 @@ lands, the three ways to make the same move, and where `order` comes from.
   the test catalog would take it off the screen it was moved on. `dropTargetFor`,
   `rootDropTarget`, `outdentTarget` and the parent-link actions all withhold it. Listed
   because 1a's enumeration read as complete and was one short: the section promised the
-  top-level strip worked "except throughout a focused view", and it does not work here
-  either. It is not a rule about types — every other type keeps its own ladder wherever it
+  drop that makes an item top-level worked "except throughout a focused view", and it does
+  not work here either. It is not a rule about types — every other type keeps its own ladder wherever it
   lands, and a backlog with no tests in it is refused none of this.
 - **3a — the user is on a keyboard throughout.** The keyboard and menu forms are listed
   beside the drag rather than in a footnote, so the section doubles as the keyboard
   reference at the moment someone wants it.
-- **3b — the view is focused on one type.** Indent, outdent and the top-level strip are
-  disabled at the top row, for the same reason a between-drop is: no shared ranking.
+- **3b — the view is focused on one type.** Indent, outdent and the drop that makes an
+  item top-level are disabled at the top row, for the same reason a between-drop is: no
+  shared ranking.
 - **5a — the reader expects a move to fix a mismatched type.** It does not, and the
   section says so rather than staying silent: a drop, an indent, an outdent and both
   parent-link entries write the parent and the rank, and a type is what the note says or

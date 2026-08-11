@@ -1,4 +1,4 @@
-import { BasesView, QueryController, setIcon } from 'obsidian';
+import { BasesView, QueryController } from 'obsidian';
 import { CARD_SCOPE, CollapseState, TIMELINE_SCOPE } from './collapseState';
 import { FilterState } from './filterState';
 import { BacklogViewHost, BoardSnapshot, Column, ColumnFit, PRODUCT_BACKLOG_VIEW_TYPE, Projection, RoadmapSnapshot } from './host';
@@ -55,7 +55,6 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	private toolbarEl: HTMLElement;
 	private legendEl: HTMLElement;
 	private treeEl: HTMLElement;
-	private rootDropEl: HTMLElement;
 	private dnd: DragDropController;
 	private cardDnd: CardDragController;
 	/** The board of the last render; null while the view is not a board. */
@@ -133,9 +132,6 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// Nothing to render until Bases delivers the first result set — say what is
 		// happening instead of showing an empty pane.
 		renderLoadingState(this.treeEl);
-		this.rootDropEl = this.viewEl.createDiv({ cls: 'pbl-root-drop' });
-		setIcon(this.rootDropEl.createSpan({ cls: 'pbl-root-drop-icon' }), 'corner-left-up');
-		this.rootDropEl.createSpan({ text: 'Move to top level' });
 
 		this.selection = new SelectionController(this.treeEl, this.rowEls, () => this.board?.colEls ?? []);
 		this.collapse = new CollapseState(this);
@@ -153,7 +149,6 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.dnd = new DragDropController(this, {
 			viewEl: this.viewEl,
 			treeEl: this.treeEl,
-			rootDropEl: this.rootDropEl,
 		});
 		this.resize = new ResizePolicy(this, this.viewEl, this.treeEl, this.toolbarEl, () => this.rowCtx());
 		this.dnd.setupRootDropZone();
