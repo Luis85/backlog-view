@@ -1,7 +1,7 @@
 ---
-type: Issue
-order: 80
-parent: "[[Product Backlog]]"
+type: Test case
+order: 10
+parent: "[[Smoke test appearance and chrome]]"
 status: Open
 priority: P2
 area: verification
@@ -21,6 +21,8 @@ files:
 
 # Smoke-test the visual changes in a real vault
 
+**Covers** [[Product Backlog]].
+
 ## Why this exists
 
 The jsdom harness drives real DOM events against the real view, so it covers structure
@@ -35,6 +37,10 @@ vault with the plugin installed. On a first open, turn off Restricted Mode under
 *Settings → Community plugins* — until then no community plugin loads at all.
 `docs/issues/` is a ready-made backlog to point a Base at — these very notes — so the
 checks below have real data to run against.
+
+**Preconditions** — `npm run test-build` has installed the plugin into this repository,
+the repository is open as a vault with Restricted Mode off, and a Base is pointed at
+`docs/` for real data to render.
 
 ## How to check
 

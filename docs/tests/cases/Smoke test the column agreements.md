@@ -1,7 +1,7 @@
 ---
-type: Issue
-parent: "[[WIP limits]]"
-order: 20
+type: Test case
+parent: "[[Smoke test appearance and chrome]]"
+order: 40
 status: Open
 priority: P2
 area: verification
@@ -15,11 +15,16 @@ files:
 
 # Smoke test the column agreements
 
+**Covers** [[WIP limits]].
+
 ## Why this exists
 
 Two questions about this increment cannot be answered in this repository. Obsidian
 does not run here, so the jsdom harness can say what the schema returns and what the
 DOM holds, and nothing about what Bases does with either.
+
+**Preconditions** — `npm run test-build` has installed the plugin, the repository is
+open as a vault, and `docs/Product Backlog.base` is open with a workflow configured.
 
 ## How to check
 

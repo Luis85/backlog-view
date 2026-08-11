@@ -1,7 +1,7 @@
 ---
-type: Issue
-order: 10
-parent: "[[Children on the card]]"
+type: Test case
+order: 30
+parent: "[[Smoke test appearance and chrome]]"
 status: Open
 priority: P2
 area: verification
@@ -17,6 +17,8 @@ files:
 
 # Smoke test the card children in a live vault
 
+**Covers** [[Children on the card]].
+
 ## Why this exists
 
 The jsdom harness drives the disclosure's structure and its writes the way it drives
@@ -26,6 +28,10 @@ reason: a disclosure living inside a card is mostly appearance and space, and ne
 something a DOM assertion can see. Run it once the feature lands, and re-run it when the
 disclosure's markup or `styles/cardChildren.css` changes; `docs/` itself is the test
 data, since several of its epics carry children a card can list.
+
+**Preconditions** — the card-children feature has landed; `npm run test-build` has
+installed the plugin, and a Base is pointed at `docs/`, whose epics already carry
+children a card can list.
 
 ## How to check
 

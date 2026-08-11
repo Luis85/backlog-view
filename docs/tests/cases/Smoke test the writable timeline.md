@@ -1,7 +1,7 @@
 ---
-type: Issue
-order: 110
-parent: "[[Product Backlog]]"
+type: Test case
+order: 60
+parent: "[[Smoke test the roadmap]]"
 status: Open
 priority: P2
 area: verification
@@ -22,6 +22,8 @@ files:
 
 # Smoke test the writable timeline
 
+**Covers** [[Product Backlog]].
+
 ## Why this exists
 
 The jsdom harness drives real DOM events against the real view, so it covers structure
@@ -39,6 +41,10 @@ in this repository and adds it to the enabled list, so the repository root opens
 vault with the plugin installed. `docs/Product Backlog.base` is a real backlog with a
 real milestone on it — open it and switch to the roadmap's timeline axis: the plugin
 displaying its own register is the smoke test.
+
+**Preconditions** — `npm run test-build` has installed the plugin, and
+`docs/Product Backlog.base` is open, switched to the roadmap's timeline axis, with a real
+milestone on it.
 
 ## How to check
 

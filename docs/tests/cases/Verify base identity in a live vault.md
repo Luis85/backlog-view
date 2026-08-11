@@ -1,7 +1,7 @@
 ---
-type: Issue
-order: 10
-parent: "[[Collapse persistence]]"
+type: Test case
+order: 30
+parent: "[[Smoke test the platform and vault identity]]"
 status: Done
 priority: P1
 area: verification
@@ -14,6 +14,8 @@ files:
 ---
 
 # Verify base identity resolves in a live vault
+
+**Covers** [[Collapse persistence]].
 
 ## Why this exists
 
@@ -35,11 +37,14 @@ feature simply never works**, with no error and no log line.
 
 That is the worst shape for a bug to have: shipped, believed working, quietly inert.
 
+**Preconditions** — `npm run test-build` has installed the plugin, and a Base is open in
+a real vault, ready to have several rows expanded.
+
 ## How to check
 
 `npm run test-build` gets you a vault with the plugin installed: it builds into
 `.obsidian/plugins/product-backlog-view/` here, so this repository root can be opened as
-one. Point a Base at `docs/issues/` (see [codebase-health](../requirements/Codebase%20health.md)) and:
+one. Point a Base at `docs/issues/` (see [codebase-health](../../requirements/Codebase%20health.md)) and:
 
 1. Open a backlog Base in a real vault.
 2. Expand several rows.
@@ -60,7 +65,7 @@ needs to change. Options in order of preference:
 3. Log once when identity cannot be resolved, so the silence at least becomes visible.
 
 Do **not** fall back to a shared storage key — see
-[embedded-bases-do-not-persist-collapse-state](Embedded%20bases%20do%20not%20persist%20collapse%20state.md)
+[embedded-bases-do-not-persist-collapse-state](../../issues/Embedded%20bases%20do%20not%20persist%20collapse%20state.md)
 for why two bases sharing one key is worse than not persisting.
 
 ## Acceptance criteria

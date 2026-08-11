@@ -1,7 +1,7 @@
 ---
-type: Issue
-parent: "[[Verifications a device has to answer]]"
-order: 20
+type: Test case
+parent: "[[Smoke test the platform and vault identity]]"
+order: 10
 status: Open
 area: verification
 cadence: release
@@ -18,6 +18,8 @@ files:
 ---
 
 # Smoke test the touch paths on a phone
+
+**Covers** [[Verifications a device has to answer]].
 
 ## Why this exists
 
@@ -36,6 +38,11 @@ interface. **None of it has been run on a device**, and jsdom cannot answer any 
 Priority is P1 among the verifications for one reason: if the first question below fails,
 the fallback the entire touch design rests on is absent, and that is not something a user
 would report as a bug so much as conclude the plugin does not work.
+
+**Preconditions** — a physical phone or tablet, with the plugin transferred onto it
+(cloning the repository alone does not put the build there — see "Getting the build onto
+the device" below), Restricted Mode off, and `docs/Product Backlog.base` open with
+`note.tags` visible in the columns.
 
 ## How to check
 
@@ -73,7 +80,7 @@ answer two questions.
      bucket button shipped unreachable on touch once.
    - `.pbl-tag-add` and `.pbl-tag-remove`, by **adding a tag and removing one**. These
      render only while the tags property is one of the view's visible columns — since
-     [ADR 0023](../adrs/0023-columns-are-the-bases-property-order.md) that means visible
+     [ADR 0023](../../adrs/0023-columns-are-the-bases-property-order.md) that means visible
      in the Bases properties menu, and nothing else — so `docs/Product Backlog.base` carries
      `note.tags` in its `order` for this check — if the column is not on screen, the
      controls are absent rather than unreachable and the question has not been asked.

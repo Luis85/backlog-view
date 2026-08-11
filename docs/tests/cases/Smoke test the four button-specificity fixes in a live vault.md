@@ -1,7 +1,7 @@
 ---
-type: Issue
-order: 50
-parent: "[[Children on the card]]"
+type: Test case
+order: 20
+parent: "[[Smoke test appearance and chrome]]"
 status: Open
 priority: P2
 area: verification
@@ -16,6 +16,8 @@ files:
 
 # Smoke test the four button-specificity fixes in a live vault
 
+**Covers** [[Children on the card]].
+
 ## Why this exists
 
 [[Four other controls still lose to Obsidian's button rule]] gave the state chip, the
@@ -25,6 +27,10 @@ element-qualified-selector fix `styles/cardChildren.css` already used, and
 harness renders nothing, and the fix was verified only in the browser harness against the
 real vendored `app.css` — not against Obsidian itself. `docs/` is the test data, since it
 carries tags, states and horizons for a live Base to show.
+
+**Preconditions** — `npm run test-build` has installed the plugin, and a Base is pointed
+at `docs/` with a state and a horizon property configured (`docs/Product Backlog.base`
+already does).
 
 ## How to check
 

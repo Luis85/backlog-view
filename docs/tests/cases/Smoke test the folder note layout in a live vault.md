@@ -1,7 +1,7 @@
 ---
-type: Issue
-order: 70
-parent: "[[Creating items]]"
+type: Test case
+order: 20
+parent: "[[Smoke test the platform and vault identity]]"
 status: Open
 priority: P2
 area: verification
@@ -11,6 +11,8 @@ source: Backlog as folder notes design
 ---
 
 # Smoke test the folder note layout in a live vault
+
+**Covers** [[Creating items]].
 
 ## Why this exists
 
@@ -25,6 +27,9 @@ starts and a verification remembered afterwards is one that gets skipped.
 Run it in a `npm run test-build` vault once the option lands. `docs/` is the test data:
 it is already a backlog, and it is already flat, so it exercises the mixed case from the
 first item created.
+
+**Preconditions** — the folder-notes option has landed; `npm run test-build` has
+installed the plugin, and a Base is pointed at `docs/`, which is already flat.
 
 ## How to check
 

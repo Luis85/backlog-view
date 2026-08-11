@@ -1,7 +1,7 @@
 ---
-type: Issue
-order: 50
-parent: "[[Product Kanban]]"
+type: Test case
+order: 40
+parent: "[[Smoke test the board]]"
 status: Open
 priority: P2
 area: verification
@@ -12,6 +12,8 @@ source: Product Kanban epic design
 
 # Smoke test the board in a live vault
 
+**Covers** [[Product Kanban]].
+
 ## Why this exists
 
 The jsdom harness will drive the board's structure and writes the way it drives the
@@ -21,6 +23,9 @@ Everything below needs eyes in a `npm run test-build` vault, and none of it can 
 asserted in this repository. Run it once the epic's features land, and re-run it when
 board markup or `styles.css` changes; `docs/` itself is the test data, since this base
 carries states.
+
+**Preconditions** — the Kanban epic's features have landed; `npm run test-build` has
+installed the plugin, and a Base is pointed at `docs/`, which carries states.
 
 ## How to check
 
