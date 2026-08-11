@@ -1,6 +1,6 @@
 import { BasesViewConfig, normalizePath, parsePropertyId } from 'obsidian';
 import { resolveItemHandling } from './itemHandling';
-import { stateColorKey, stateColorName } from './stateColors';
+import { colorableStates, stateColor, stateColorKey } from './stateColors';
 import {
 	BacklogSettings,
 	columnPolicyKey,
@@ -281,7 +281,10 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		wipLimits: nameTable(limitedStates, (s) => parseWipLimit(str(wipLimitKey(s)))),
 		columnPolicies: nameTable(states, (s) => str(columnPolicyKey(s)).trim() || null),
 		// Both vocabularies, one table — see `BacklogSettings.stateColors`.
-		stateColors: nameTable([...states, ...deliverable.states], (s) => stateColorName(str(stateColorKey(s)))),
+		// Requirements and Deliverable states only. The TEST workflow deliberately has no
+		// colour boxes (product decision, 2026-08-10), so its states are not colourable and
+		// must not join this table — `colorableStates` takes the two lists it takes.
+		stateColors: nameTable(colorableStates(states, deliverable.states), (s) => stateColor(str(stateColorKey(s)))),
 		// The two stamp keys main resolved by hand here now arrive with every other
 		// optional key in `...optionalKeys` above, read off `PROPERTY_TABLE` itself.
 		startedStates: dedupe(list('startedStates')),

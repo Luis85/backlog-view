@@ -34,20 +34,35 @@ function datedVault(): FakeVault {
 	return vault;
 }
 
-/** The colour class a row carries — a slot, a named pick, or none. */
-function rowColour(containerEl: HTMLElement, path: string): string | undefined {
-	const row = containerEl.querySelector<HTMLElement>(`.pbl-timeline-row[data-path="${path}"]`);
-	if (!row) throw new Error(`no timeline row for ${path}`);
-	return Array.from(row.classList).find((c) => c.startsWith('pbl-state-'));
+/** What decides a mark's colour: its slot class, and the picked token if it has one. */
+interface Painted {
+	cls: string | undefined;
+	color: string;
 }
 
-/** The swatch class the legend keys one state's label with. */
-function swatchColour(containerEl: HTMLElement, label: string): string | undefined {
+function paintedBy(el: HTMLElement | null | undefined, what: string): Painted {
+	if (!el) throw new Error(`no ${what}`);
+	return {
+		// `pbl-legend-swatch` is the swatch's own base class, not a colour — excluded by name
+		// so the two marks answer in the same vocabulary.
+		cls: Array.from(el.classList).find(
+			(c) => c !== 'pbl-legend-swatch' && (c.startsWith('pbl-state-') || c.startsWith('pbl-legend-')),
+		),
+		color: el.style.getPropertyValue('--pbl-state-color'),
+	};
+}
+
+/** How a bar's row is painted — the two things `stateColoring` decides, read off the DOM. */
+function rowColour(containerEl: HTMLElement, path: string): Painted {
+	return paintedBy(containerEl.querySelector<HTMLElement>(`.pbl-timeline-row[data-path="${path}"]`), `row for ${path}`);
+}
+
+/** How the legend paints the swatch keying one state. */
+function swatchColour(containerEl: HTMLElement, label: string): Painted {
 	const item = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-legend-item')).find(
 		(el) => el.querySelector('.pbl-legend-label')?.textContent === label,
 	);
-	if (!item) throw new Error(`no legend swatch labelled ${label}`);
-	return Array.from(item.querySelector('.pbl-legend-swatch')?.classList ?? []).find((c) => c !== 'pbl-legend-swatch');
+	return paintedBy(item?.querySelector<HTMLElement>('.pbl-legend-swatch'), `legend swatch labelled ${label}`);
 }
 
 function roadmapWith(options: Record<string, string>) {
@@ -56,24 +71,39 @@ function roadmapWith(options: Record<string, string>) {
 	return containerEl;
 }
 
-describe('a colour named for a state', () => {
-	it('replaces that state’s slot on the bar AND on the swatch that keys it', () => {
-		const containerEl = roadmapWith({ [stateColorKey('Active')]: 'red' });
+describe('a colour chosen for a state', () => {
+	it('reaches the bar AND the swatch that keys it, as a hex', () => {
+		const containerEl = roadmapWith({ [stateColorKey('Active')]: '#ff0000' });
 
-		expect(rowColour(containerEl, 'Active.md')).toBe('pbl-state-c-red');
-		expect(swatchColour(containerEl, 'Active')).toBe('pbl-state-c-red');
+		// The slot class STAYS under the inline colour on both — that is what makes clearing
+		// a choice fall back to the positional colour rather than to the plain accent.
+		expect(rowColour(containerEl, 'Active.md')).toEqual({ cls: 'pbl-state-1', color: '#ff0000' });
+		expect(swatchColour(containerEl, 'Active')).toEqual({ cls: 'pbl-state-1', color: '#ff0000' });
 	});
 
-	it('leaves every state nobody named on its positional slot', () => {
-		// The pick is per state, not per workflow: naming one colour must not renumber or
-		// unkey the rest, which still take the slot their place in the list gives them.
-		const containerEl = roadmapWith({ [stateColorKey('Active')]: 'red' });
+	it('reaches both the same way as a NAME, which is a class rather than a value', () => {
+		// The other stored shape, asked in the same breath for the same reason: a name is
+		// painted by `styles/stateColors.css`, so it follows the theme and needs nothing
+		// inline — and the swatch has to key it the same way or the strip stops explaining
+		// the grid.
+		const containerEl = roadmapWith({ [stateColorKey('Active')]: 'orange' });
 
-		expect(rowColour(containerEl, 'New.md')).toBe('pbl-state-0');
-		expect(swatchColour(containerEl, 'New')).toBe('pbl-state-0');
+		expect(rowColour(containerEl, 'Active.md')).toEqual({ cls: 'pbl-state-c-orange', color: '' });
+		expect(swatchColour(containerEl, 'Active')).toEqual({ cls: 'pbl-state-c-orange', color: '' });
+	});
+
+	it('leaves every state nobody chose on its positional slot, with nothing inline', () => {
+		// The choice is per state, not per workflow: choosing one colour must not renumber
+		// or unkey the rest, which still take the slot their place in the list gives them.
+		const containerEl = roadmapWith({ [stateColorKey('Active')]: '#ff0000' });
+
+		expect(rowColour(containerEl, 'New.md')).toEqual({ cls: 'pbl-state-0', color: '' });
+		expect(swatchColour(containerEl, 'New')).toEqual({ cls: 'pbl-state-0', color: '' });
 	});
 
 	it('is inert on a done state, which stays green on both sides', () => {
+		// The dialog offers the row (the vocabulary is the vocabulary), and the intro says
+		// what it does: nothing. This is that claim, checked.
 		// Green means finished everywhere in this plugin, and the bar takes it by
 		// specificity in `styles/timeline.css` whatever class the row also carries. The
 		// swatch is keyed `pbl-legend-done` for the same reason, so the pair still agrees —
@@ -82,23 +112,24 @@ describe('a colour named for a state', () => {
 		vault.addFile('Done.md', { frontmatter: { type: 'PBI', order: 10, due: DUE, status: 'Done' } });
 		const { view, containerEl } = makeView(
 			vault,
-			{ ...DATE_AXIS, ...WORKFLOW, doneValues: 'Done', [stateColorKey('Done')]: 'pink' },
+			{ ...DATE_AXIS, ...WORKFLOW, doneValues: 'Done', [stateColorKey('Done')]: '#ff00ff' },
 			{ collapsed: true },
 		);
 		view.setProjection('roadmap');
 
-		expect(swatchColour(containerEl, 'Done')).toBe('pbl-legend-done');
+		expect(swatchColour(containerEl, 'Done')).toEqual({ cls: 'pbl-legend-done', color: '' });
 		const row = containerEl.querySelector<HTMLElement>('.pbl-timeline-row[data-path="Done.md"]');
 		expect(row?.classList.contains('pbl-done')).toBe(true);
 	});
 
-	it('ignores a value no dropdown could have produced, rather than classing on it', () => {
-		// A `.base` is hand-editable and this string becomes a CSS class — so the resolver
-		// validates rather than passes through, and the state falls back to its slot.
-		const containerEl = roadmapWith({ [stateColorKey('Active')]: 'rebeccapurple; }' });
+	it('ignores a value neither shape allows, painting nothing from it', () => {
+		// A `.base` is hand-editable and this string would go straight into a style
+		// attribute — so the resolver validates rather than passes through, and the state
+		// falls back to its slot with nothing inline.
+		const containerEl = roadmapWith({ [stateColorKey('Active')]: 'red; --x: y' });
 
-		expect(rowColour(containerEl, 'Active.md')).toBe('pbl-state-1');
-		expect(swatchColour(containerEl, 'Active')).toBe('pbl-state-1');
+		expect(rowColour(containerEl, 'Active.md')).toEqual({ cls: 'pbl-state-1', color: '' });
+		expect(swatchColour(containerEl, 'Active')).toEqual({ cls: 'pbl-state-1', color: '' });
 	});
 
 	it('colours nothing where the item’s OWN palette does not carry that state', () => {
@@ -122,12 +153,12 @@ describe('a colour named for a state', () => {
 				...WORKFLOW,
 				deliverableStateProperty: 'note.deliverableStatus',
 				deliverableStateValues: 'Draft, Published',
-				[stateColorKey('Active')]: 'red',
+				[stateColorKey('Active')]: '#ff0000',
 			},
 			{ collapsed: true },
 		);
 		view.setProjection('roadmap');
 
-		expect(rowColour(containerEl, 'D.md')).toBeUndefined();
+		expect(rowColour(containerEl, 'D.md')).toEqual({ cls: undefined, color: '' });
 	});
 });
