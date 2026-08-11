@@ -103,8 +103,11 @@ tag: after it, the only thing a failure can produce is a second release.
    so the repository root opens as a vault with `docs/` already a backlog. That is what
    makes the sweep cheap enough to actually do. The sweep is walked in the vault's
    **Tests** projection — open `docs/Product Backlog.base`, switch to Tests, and walk
-   each suite top to bottom. The grep below stays authoritative for "did we miss one",
-   because a projection cannot be run from a terminal.
+   each suite top to bottom, running only the cases step 2's query names. The projection
+   is how you navigate the catalog, not the sweep itself: it shows every case, including
+   `cadence: conditional` ones, because `cadence` is not a property the view can filter
+   on. The grep below stays authoritative for "did we miss one" and for "should this one
+   run at all", because a projection cannot be run from a terminal.
 2. Ask the register for the set — do not read a list from this file. The verifications are
    the notes **in `docs/tests/cases/` that carry `## How to check` as a whole heading line and
    are marked `cadence: release`**. One way to ask:
