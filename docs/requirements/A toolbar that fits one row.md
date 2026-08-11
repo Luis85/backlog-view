@@ -38,15 +38,18 @@ today's icon size, add up to.
 | **Actor** | Backlog owner |
 | **Trigger** | Opening a saved view, resizing the pane, narrowing a split, switching projection, or a batch write starting or finishing |
 | **Preconditions** | A `product-backlog` view is open |
-| **Guarantee** | The row never wraps to a second line. Below the width that holds everything, controls are shed in a fixed order — always into the `⋯`, never into nothing. Past the last rung the row clips from its right end, so what survives is New, the switcher and the `⋯`: what you are looking at, what you can add, and the way back to everything shed. Extension 4b measures where each of the rest goes, and states the floor. |
+| **Guarantee** | The row never wraps to a second line. Below the width that holds everything, controls are shed in a fixed order — always into the `⋯`, never into nothing. Past the last rung the row clips from its right end, so what survives is the switcher, New and the `⋯`: what you are looking at, what you can add, and the way back to everything shed. Extension 4b measures where each of the rest goes, and states the floor. |
 
 **Main flow**
 
-1. `renderToolbar` draws the row in zones: the primary New button, the switcher, then
+1. `renderToolbar` draws the row in zones: the switcher, the primary New button, then
    `renderProjectionZone` for whatever the current projection owns (nothing, on three of
    the four), a spacer, the `⋯`, the shared controls, and the status readouts last.
-   New and the switcher are both `.pbl-btn-group` — one segmented box, a hairline
+   The switcher and New are both `.pbl-btn-group` — one segmented box, a hairline
    between the segments — because in each of them two or more buttons are one control.
+   Nothing divides the two: each box's own border is where one control ends and the next
+   begins, so a divider between them states that twice, and what separates them is
+   spacing instead.
 2. After the row is in the DOM, `syncToolbarFit` measures it: while `scrollWidth` exceeds
    `clientWidth` it advances a step, up to five, and writes the step as `data-pbl-fit` on
    the toolbar element.
@@ -118,14 +121,21 @@ today's icon size, add up to.
   primary action to the head of the row is what settled this: New used to be last and
   was therefore the first thing cut, which no arrangement of rungs could fix — a rung
   buys one control's width and the overflow resumes eating from the right. Now the
-  order of loss runs the other way, from the least to the most consequential.
+  order of loss runs the other way, from the least to the most consequential. WHICH of
+  the two head controls comes first is taste and has since changed (the switcher leads,
+  New follows it, 2026-08-11); that both are at the head is the part this extension
+  rests on.
 
   Measured in the harness, one row (47px) at every width down to 320px, on both
   projections: at 500px nothing is clipped at all; at 420px nothing; at 380px the clip
   reaches **undo**; at 320px the completed toggle and the filter's button go with it.
-  New, the switcher and the `⋯` survive every one of them, which is the property this
+  The switcher, New and the `⋯` survive every one of them, which is the property this
   extension exists to state — the two controls that say what you are looking at and
-  what you can add, plus the way back to everything shed.
+  what you can add, plus the way back to everything shed. Those figures were taken
+  before the two swapped places; the swap traded a divider for spacing between them, so
+  the row's width moved by about a pixel and the widths above stand within their own
+  precision — but they are inherited rather than re-measured, and the next harness pass
+  over this row is what would make them current again.
 
   What is lost is lost honestly rather than silently: undo keeps its Ctrl/Cmd+Z chord,
   so the 380px case costs a button and no capability. The 320px case does cost one —
@@ -176,8 +186,8 @@ today's icon size, add up to.
 - Every control a rung removes from the row remains operable through the `⋯`, with the
   same enabled and pressed state as the button it stands in for.
 - Nothing costs the primary action its place, and that is now true by ARRANGEMENT rather
-  than by rung order: New leads the row, the row clips from the right, so no readout and
-  no control can push it off. The readout half is still kept by construction underneath —
+  than by rung order: New sits at the head of the row beside the switcher, the row clips
+  from the right, so no readout and no control can push it off. The readout half is still kept by construction underneath —
   every readout is either shed by the advisory and count rungs or shrinkable at the last,
   and each divider sheds with the boundary it draws — which is what keeps the shedding
   order legible rather than merely harmless.

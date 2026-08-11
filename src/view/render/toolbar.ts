@@ -51,17 +51,17 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	const refocusKey = capturedFocusKey(barEl);
 	barEl.empty();
 
-	// 1 — what you came to do. The primary action leads the row: it is the one control
-	// here that ADDS to the backlog, and reading order is where a primary action belongs.
-	// It also settles what no rung could: New is no longer last, so the clip at a very
-	// narrow pane takes a readout instead of the button — see
-	// `docs/requirements/A toolbar that fits one row.md`, extension 4b.
-	renderNewButton(host, barEl, model);
-	// Two groups side by side read as one six-segment strip without this.
-	barEl.createDiv({ cls: 'pbl-toolbar-sep' });
-
-	// 2 — where am I. The switcher says what the rest of the row is about.
+	// 1 — where am I. The switcher leads: it says what the rest of the row is about, and
+	// what the primary action beside it will make.
 	renderModeToggle(host, barEl);
+
+	// 2 — what you came to do. The one control here that ADDS to the backlog, kept at the
+	// head of the row with the switcher: the clip at a very narrow pane runs from the
+	// RIGHT, so both survive it — see `docs/requirements/A toolbar that fits one row.md`,
+	// extension 4b. No divider between the two: each is its own bordered
+	// `.pbl-btn-group`, so the boxes already say where one control ends and the next
+	// begins, and a line between them draws a boundary that is drawn twice.
+	renderNewButton(host, barEl, model);
 
 	// 3 — what THIS projection owns, and nothing when it owns none. Draws its own
 	// leading separator, or neither.

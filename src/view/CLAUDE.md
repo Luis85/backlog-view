@@ -353,19 +353,25 @@ free of runtime code so imports stay cycle-free.
   the flag to guard against a click that lands on a child element and bubbles past
   `disabled`, which does not reopen the split `syncFilterUi` once caused, since a
   reader cannot disagree with the writer about what the value is.
-- **The toolbar is zones, and only one of them belongs to the projection.** The primary
-  action leads and the switcher follows it — both `.pbl-btn-group`, one shared segmented
-  box, because in each of them two or more buttons are one control. Then
+- **The toolbar is zones, and only one of them belongs to the projection.** The switcher
+  leads and the primary action follows it — both `.pbl-btn-group`, one shared segmented
+  box, because in each of them two or more buttons are one control, and **no divider
+  between them**: a bordered box already says where a control ends, so a line there draws
+  the boundary a second time. They are the only two neighbours in the row that need extra
+  air for it (`.pbl-btn-group + .pbl-btn-group` in `styles/toolbar.css`) — the row's own
+  4px gap was written for flat icon buttons, and between two bordered strips it reads as a
+  seam rather than a gap. Then
   `renderProjectionZone` draws whatever this projection owns and *nothing* when it
   owns none — the zone and its leading separator are created together and removed
   together, decided from what was drawn rather than from a second reading of the settings
   — then the spacer, then the `⋯`, then the controls that are the same in every
   projection, then the readouts. Adding a projection is adding a case to that switch; a
   control added anywhere else in the row is a claim that it belongs to every projection.
-  **Two positions in that order are load-bearing and the rest are taste.** New is first
-  because the row CLIPS from the right past the last rung, so leading it is what makes
-  "nothing costs the primary action its place" true by arrangement rather than by a rung
-  order no arrangement of rungs could deliver. The `⋯` is directly after the spacer for
+  **Two positions in that order are load-bearing and the rest are taste.** The switcher
+  and New are at the HEAD of it — in that order, which is taste; at the head, which is
+  not — because the row CLIPS from the right past the last rung, so putting the primary
+  action there is what makes "nothing costs the primary action its place" true by
+  arrangement rather than by a rung order no arrangement of rungs could deliver. The `⋯` is directly after the spacer for
   the same reason read once more: it is the only route to every shed control, so it must
   be the last thing the clip reaches, not the first — which is what it was when it sat
   beside undo.

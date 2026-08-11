@@ -263,6 +263,14 @@
 	gap: 0;
 }
 
+/* Two groups standing next to each other need more air than the row's own 4px gap, which
+   was written for flat icon buttons: with a border on each box that gap reads as a seam
+   and the two strips look like one. This is what replaced the divider that used to sit
+   between them — a bordered box already says where a control ends. */
+.pbl-btn-group + .pbl-btn-group {
+	margin-inline-start: var(--size-2-2);
+}
+
 /* The hairline is stated over the group's own children rather than per group, so a third
    group needs the class and nothing else. `+` and not a border on every segment: the
    leading edge is the box's own border, and doubling it there is the one place this

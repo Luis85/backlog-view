@@ -13,6 +13,11 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Changed
 
+- The toolbar now leads with the projection switcher and puts **New** beside it, with the
+  divider between them gone: each is a bordered button group, so the boxes already say
+  where one control ends and the next begins, and they are separated by spacing instead.
+  Both still sit at the head of the row, which is what keeps them on screen at the
+  narrowest pane.
 - **Dependencies work in a base that has never named the property.** The bar connector and
   the row menu's **Depends on…** used to be withheld until the dependency property was
   bound in the view options — which Obsidian's own picker cannot offer until some note
