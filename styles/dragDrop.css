@@ -97,51 +97,11 @@
 	background-color: hsla(var(--interactive-accent-hsl), 0.1);
 }
 
-/* Overlays the bottom edge while dragging — appearing must not reflow the
-   tree, or rows would shift under the cursor right as the drag starts. */
-.pbl-root-drop {
-	display: none;
-	align-items: center;
-	justify-content: center;
-	gap: var(--size-4-2);
-	position: absolute;
-	bottom: var(--size-4-2);
-	inset-inline: var(--size-4-2);
-	z-index: 20;
-	padding: var(--size-4-2);
-	border: 2px dashed var(--background-modifier-border);
-	border-radius: var(--radius-m);
-	color: var(--text-muted);
-	font-size: var(--font-ui-small);
-	background-color: var(--background-primary);
-	box-shadow: var(--shadow-s);
-}
-
-.pbl-view.pbl-dragging:not(.pbl-focused) .pbl-root-drop {
-	display: flex;
-}
-
 .pbl-new-pick {
 	margin-inline-start: calc(var(--size-4-1) * -1);
 }
 
 .pbl-new-pick .svg-icon {
-	width: var(--icon-s);
-	height: var(--icon-s);
-}
-
-.pbl-root-drop.pbl-drop-hover {
-	border-color: var(--interactive-accent);
-	color: var(--text-normal);
-	background-color: hsla(var(--interactive-accent-hsl), 0.1);
-}
-
-.pbl-root-drop-icon {
-	display: flex;
-	align-items: center;
-}
-
-.pbl-root-drop-icon .svg-icon {
 	width: var(--icon-s);
 	height: var(--icon-s);
 }

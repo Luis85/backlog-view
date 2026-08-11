@@ -6,13 +6,12 @@ import { BacklogItem, BacklogModel } from '../../domain/model';
 export interface DragDropElements {
 	viewEl: HTMLElement;
 	treeEl: HTMLElement;
-	rootDropEl: HTMLElement;
 }
 
 /**
- * Owns all transient drag state: the dragged path, drop indicators, the
- * hover-to-expand timer and the top-level drop strip. Drop targets themselves
- * are computed by the pure functions in dropTargets.ts.
+ * Owns all transient drag state: the dragged path, drop indicators and the
+ * hover-to-expand timer. Drop targets themselves are computed by the pure
+ * functions in dropTargets.ts.
  */
 export class DragDropController {
 	private readonly host: BacklogViewHost;
@@ -84,29 +83,8 @@ export class DragDropController {
 		row.addEventListener('dragend', () => this.clearDragState());
 	}
 
-	/** Wire the persistent "Move to top level" strip and the tree background. */
+	/** Dropping on the empty area below the tree moves items to the top level. */
 	setupRootDropZone(): void {
-		const handleOver = (evt: DragEvent, hover: (on: boolean) => void) => {
-			const drag = this.dragContext();
-			const target = drag ? rootDropTarget(drag.model, drag.dragged) : null;
-			if (!drag || !target) return null;
-			evt.preventDefault();
-			if (evt.dataTransfer) evt.dataTransfer.dropEffect = 'move';
-			hover(true);
-			return { dragged: drag.dragged, target };
-		};
-
-		this.els.rootDropEl.addEventListener('dragover', (evt) => {
-			handleOver(evt, (on) => this.els.rootDropEl.toggleClass('pbl-drop-hover', on));
-		});
-		this.els.rootDropEl.addEventListener('dragleave', () => this.els.rootDropEl.removeClass('pbl-drop-hover'));
-		this.els.rootDropEl.addEventListener('drop', (evt) => {
-			const result = handleOver(evt, () => undefined);
-			this.clearDragState();
-			if (result) void this.host.performDrop(result.dragged, result.target);
-		});
-
-		// Dropping on the empty area below the tree also moves items to the top level.
 		this.els.treeEl.addEventListener('dragover', (evt) => {
 			if (evt.target !== this.els.treeEl) return;
 			const drag = this.dragContext();
@@ -133,7 +111,6 @@ export class DragDropController {
 	clearDragState(): void {
 		this.draggedPath = null;
 		this.els.viewEl.removeClass('pbl-dragging');
-		this.els.rootDropEl.removeClass('pbl-drop-hover');
 		this.cancelHoverExpand();
 		if (this.activeDropRow) {
 			this.activeDropRow.classList.remove('pbl-drop-before', 'pbl-drop-after', 'pbl-drop-inside');

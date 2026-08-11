@@ -28,6 +28,9 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Changed
 
+- The **Move to top level** strip no longer appears over the bottom of the tree while you
+  drag. The drop it offered is still there — drop on the empty space below the last row —
+  and Alt+Left, plus the row menu's **Outdent**, reach the top level without a drag at all.
 - The toolbar now leads with the projection switcher and puts **New** beside it, and the
   dividers in the head of the row are gone — between those two, and in front of the
   roadmap's own controls. Each group is set off by spacing instead: a bordered button group

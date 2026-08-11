@@ -224,5 +224,7 @@ undoes it, from extension 1e above, are in `styles/timelineFurniture.css`
 draws on — and the drag-state rules (the illegal dimming, the drop-over outline, the
 preview line) are filed there beside it for the same reason, overriding by specificity
 rather than position. The declutter that hides bar labels while a gesture is aimed is
-`.pbl-linking`, never `.pbl-dragging`: that class also reveals the tree's root strip for a
-card move, which a link can never use, since it reparents nothing.
+`.pbl-linking`, never `.pbl-dragging`: that class means a card move is in flight, which a
+link is not, since it reparents nothing. (It also revealed the tree's root strip until
+that strip was removed — the class stayed separate for the reason above, not for that
+one.)

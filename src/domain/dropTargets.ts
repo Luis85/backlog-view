@@ -102,7 +102,7 @@ function siblingPosition(
 	return { parent, siblings, insertIndex: zone === 'before' ? idx : idx + 1 };
 }
 
-/** The target for the "Move to top level" strip, or null when unavailable. */
+/** The target for a drop on the tree background, or null when unavailable. */
 export function rootDropTarget(model: BacklogModel, dragged: BacklogItem): DropTarget | null {
 	if (model.focused) return null;
 	const siblings = model.roots.filter((r) => r !== dragged);

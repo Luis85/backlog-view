@@ -17,11 +17,6 @@
 	border: 0;
 }
 
-/* The tree's "move to top level" strip has no meaning between columns. */
-.pbl-board-mode .pbl-root-drop {
-	display: none;
-}
-
 /* The same scroller the tree uses, scrolling sideways instead: columns never drop and
    never shrink past their floor — a workflow stage exists whether or not the pane is
    narrow, so a pane too narrow for all of them scrolls rather than compressing them. */

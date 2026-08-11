@@ -359,7 +359,7 @@ describe('computeDropWrites', () => {
 		const dragged = model.roots.find((r) => r.title === 'Orphan') as BacklogItem;
 		const siblings = siblingsWithout(model.roots, dragged);
 
-		// Dropping onto "Move to top level" appends at the end — positionally a no-op.
+		// A drop on the tree background appends at the end — positionally a no-op.
 		const writes = computeDropWrites(dragged, { parent: null, siblings, insertIndex: siblings.length }, settings);
 
 		expect(writes).toHaveLength(1);
