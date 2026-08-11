@@ -2647,3 +2647,81 @@ npm run check
 git add -A src/ test/ docs/ README.md CHANGELOG.md
 git commit -m "Delete the autoType cascade"
 ```
+
+---
+
+### Task 24: Delete the drop-on-background move to top level
+
+**Decision.** The user's, 2026-08-11: *"I dont want to move an item to the top by dropping
+it on the background. this should be a deliberate action and is already doable via the
+right-click or by moving the items order"*. Main had just replaced the "Move to top level"
+strip with a drop on the tree background (PR #130); this removes the gesture rather than
+renaming it again.
+
+**Verified before writing this task**: `outdentTarget` returns `{ parent: null, … }` when the
+grandparent is null, ranked among `model.realRoots`, so **Outdent** on a depth-1 row IS the
+deliberate top-level move. Accepted cost, stated so nobody rediscovers it as a bug: Outdent
+climbs ONE level, so a deeply nested item needs several. `Move to top` (the menu's other
+entry) reorders within siblings and is a different action.
+
+**Files** (verify the list yourself — this is a deletion and the compiler will find more):
+- `src/domain/dropTargets.ts` — `rootDropTarget` and, if nothing else uses them, the two
+  parameters this branch added to it (`focused`, `rendered`)
+- `src/view/interactions/dragDrop.ts` — `rootTarget`, `setupRootDropZone`, the `.pbl-tree`
+  `dragover`/`drop` handlers, and the call that installs them
+- Tests: `test/domain/dropTargets.test.ts` (its `rootDropTarget` block),
+  `test/view/dragDrop.test.ts`, and `test/view/projectionMoves.test.ts`, which asserts the
+  projection guard on the root drop
+- Prose: `src/view/manual/sections.ts` and `test/view/manualSections.test.ts` (which pins its
+  wording), `docs/requirements/Help for moving and ranking.md`,
+  `docs/requirements/A projection for the tests.md`, `src/domain/CLAUDE.md`,
+  `docs/issues/Tree drag between siblings, into a parent and onto the background.md`,
+  `CHANGELOG.md`
+
+**The enumeration that shrinks.** `keepsProjection` is consulted by four gates today; with
+`rootDropTarget` gone it is three. The manual's `When a drop is unavailable` entry NAMES those
+gates — "dropping it beside a row at the top level, a drop on the tree background, Outdent,
+and the two menu entries that remove the parent link" — and `test/view/manualSections.test.ts`
+asserts that string. Both must shrink with the code. This exact sentence has already been
+wrong twice on this branch (once short by a menu entry, once naming a strip main had deleted),
+so **count the gates by grepping `keepsProjection` rather than by editing the sentence you
+find**.
+
+- [ ] **Step 1: Establish what dies and what survives**
+
+`grep -rn "rootDropTarget\|setupRootDropZone\|rootTarget" src/ test/ docs/`. Put the output in
+your report. Decide, and say why: do `effectivelyFocused` and the `rendered`/`focused`
+parameters have another caller, or do they go too? `effectivelyFocused` is used elsewhere —
+check before deleting anything it belongs to.
+
+- [ ] **Step 2: Delete, and let the compiler and fallow find the rest**
+
+`npm run analyze` gates dead code, so an orphaned export fails the build. Run it early.
+
+A drop on the background must become genuinely inert — no `preventDefault` on `dragover`, so
+no drop cursor invites a gesture nothing will honour. Absent rather than inert is this repo's
+rule and it applies to a drop target as much as to a menu entry.
+
+- [ ] **Step 3: Fix the prose by counting, not by editing what you find**
+
+Re-grep `keepsProjection` after the deletion, count the call sites, and make the manual's
+enumeration match that count exactly. Update the test's expected string in the same commit.
+Then check `docs/requirements/A projection for the tests.md` and `src/domain/CLAUDE.md`, which
+both describe the root drop as one of the guarded surfaces.
+
+- [ ] **Step 4: A changelog entry, in the user's language**
+
+Under `[Unreleased]` → `### Changed` (or `### Removed` — pick by whether a user would read
+this as a capability lost or a behaviour changed, and say which you chose). Name the
+replacement: Outdent, from the row's menu or Shift+Tab.
+
+- [ ] **Step 5: Prove it and commit**
+
+Re-run the Step 1 grep and put the after-output in the report. Every surviving hit must be
+prose deliberately recording the removal or a historical plan under `docs/superpowers/`.
+
+```bash
+npm run check
+git add -A src/ test/ docs/ CHANGELOG.md
+git commit -m "Delete the drop that made an item top-level"
+```
