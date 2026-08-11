@@ -88,25 +88,6 @@ export function hasRollup(projection: Projection): boolean {
 }
 
 /**
- * Whether THIS projection's rendered forest is a synthetic focus grouping.
- *
- * `model.focused` is one flag for the whole model, and the catalog is built from the
- * UNFOCUSED tree — so a focus stored for the plan leaves that flag true while the catalog
- * draws every suite. Anything gated on it would then be wrong here in the direction that
- * looks like a working screen: the pane wears `pbl-focused` and behaves as though it were
- * narrowed, over a forest the user never narrowed and cannot widen from here without going
- * back to a plan projection to clear a focus they never set on this one.
- *
- * This is the third time on this feature that withholding a CONTROL did not disable its
- * BEHAVIOUR — the completed toggle, the focus button, and now the narrowing behind it. The
- * rule to carry into any fourth: a projection opting out of a feature opts out of the
- * computation, not just the button.
- */
-export function effectivelyFocused(projection: Projection, model: BacklogModel): boolean {
-	return model.focused && projection !== 'catalog';
-}
-
-/**
  * The population this projection draws — its rendered roots, every row beneath them, and
  * the results among those.
  *

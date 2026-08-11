@@ -447,11 +447,17 @@ third was found by review after the first two were built: `model.focused` is one
 the whole model, so a plan focus left the catalog drawing its unfocused forest while the
 pane wore `pbl-focused` and the root-level drop of the day refused every drop — a
 mis-parented case unrepairable at the catalog root until the user went back to a plan
-projection and cleared a focus they never set here. `effectivelyFocused`
-(`src/view/projection.ts`) is the projection's own answer, and the drop took it as a
-PARAMETER rather than reading the flag, since which projection is on screen is a view
-question. That drop was deleted on 2026-08-11 and the predicate stayed, because the rule
-is not about the drop. The rule to carry into a
+projection and cleared a focus they never set here. The fix was a predicate,
+`effectivelyFocused`, which the drop took as a PARAMETER rather than reading the flag,
+since which projection is on screen is a view question.
+
+**Both of its consumers were then deleted, and it went with them** (2026-08-11): the drop,
+and a `pbl-focused` class whose one CSS rule had left with the strip it hid. Recorded rather
+than quietly dropped, because what remains is the part that matters — the catalog is built
+from the UNFOCUSED tree and `collectFocusRoots` skips its members, so the narrowing never
+reaches it in the first place and there is no flag left to disagree with. A predicate kept
+past its last consumer is the shape this branch deleted `autoType`'s cascade for. The rule to
+carry into a
 fourth is the one 3b already states and this is the evidence for: **a projection opting out
 of a feature opts out of the computation, not just the button.**
 
@@ -533,8 +539,9 @@ suite and spending the undo slot while both projections are unchanged. Found by 
 two functions: the drop on the tree background, deleted on 2026-08-11, and `dropTargetFor`,
 where a `before`/`after` drop beside a real root reaches the same group and where the
 correction still lives — it asks the no-op question of the DRAWN order through the
-`member` predicate the view hands it, for the same reason `effectivelyFocused` is a
-parameter: which rows are drawn is a view question. The lesson generalises past either
+`member` predicate the view hands it, and it is handed rather than derived for the reason
+every such parameter on this feature was: which rows are drawn is a view question and
+`domain/` must not guess at it. The lesson generalises past either
 function — **a rule about
 `realRoots` is a rule about ranking, and any other question asked of it is asked of the wrong
 list.**

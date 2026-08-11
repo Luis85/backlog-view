@@ -579,24 +579,6 @@ describe('the catalog is tree-shaped, and the plan keeps its place', () => {
 		expect(testCase && view.isFilterMatch(testCase)).toBe(false);
 	});
 
-	it('is not FOCUSED here either, so it never wears a narrowing it did not apply', () => {
-		// Ignoring the control is not enough, and this is the half that is easy to miss:
-		// `model.focused` is one flag for the whole model, so a plan focus stored elsewhere
-		// leaves the catalog drawing its unfocused forest while everything gated on that
-		// flag treats the pane as narrowed. A projection that opts out of a feature opts out
-		// of the COMPUTATION, not just the button. What is left to check is the class — the
-		// drop that used to be refused here was deleted on 2026-08-11 — so this asserts the
-		// predicate through its one remaining consumer, in both directions.
-		const { containerEl, view } = makeView(bothFamilies());
-		view.setFocusLevel('PBI');
-		catalog(containerEl);
-		expect(treeOf(containerEl).parentElement?.hasClass('pbl-focused')).toBe(false);
-		// And the plan is still focused, which is the other half: this is a projection's
-		// answer, not a repair of the flag.
-		projectionButton(containerEl, 'Show as backlog tree').dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		expect(treeOf(containerEl).parentElement?.hasClass('pbl-focused')).toBe(true);
-	});
-
 	it('never lets a focus level promote a catalog Task into the plan', () => {
 		// A catalog `Task` is rung 2 of ITS ladder, which is `PBI`'s index on the plan's —
 		// so a focus matching by index alone would promote it into a projection that
