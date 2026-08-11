@@ -38,7 +38,7 @@ function clearsStaleLink(parent: BacklogItem | null, dragged: BacklogItem): bool
  * True when a sibling group can be *reordered*. Ranking rewrites the whole group
  * when the gaps run out, and the view never writes to a note the Base excluded —
  * so in a group holding one, an item would silently land at the end instead of
- * where it was aimed. Appending (dropping *into* a parent, the top-level strip,
+ * where it was aimed. Appending (dropping *into* a parent, on the tree background,
  * indent) stays available: landing last is what those mean anyway.
  */
 export function reorderableGroup(siblings: BacklogItem[]): boolean {
