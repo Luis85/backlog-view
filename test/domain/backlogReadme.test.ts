@@ -42,6 +42,20 @@ describe('backlogReadmeContent', () => {
 		expect(content).not.toContain('and Bug and');
 	});
 
+	// This bullet is written into the user's own vault, and it said "nothing is refused"
+	// while the projection boundary was refusing exactly one class of move. Narrowed rather
+	// than deleted: the advisory rule is still what holds inside a ladder, so the check has
+	// to see BOTH halves — an unqualified "nothing is refused" and an unqualified "drops can
+	// be refused for type" are equally wrong, in opposite directions.
+	it('scopes the advisory rule to what the projection boundary leaves refused', () => {
+		const content = readme(settingsWith(), []);
+		expect(content).toContain('nothing is refused for the type a move would give a note');
+		expect(content).toContain('The one move the view withholds is a move **between the two ladders above**');
+		// The narrowness itself: only a `Task` and a typeless note read their ladder from
+		// where they hang, so the sentence must not read as a rule about types in general.
+		expect(content).toContain('Every other type keeps its ladder wherever it lands');
+	});
+
 	it('reads the type table off childTypeChoices, not off the ladder', () => {
 		const content = readme(settingsWith(), []);
 		// The clamp at the deepest rung: a Task holds a Task, which the ladder read

@@ -115,7 +115,14 @@ the view options can rename.
   mismatched hierarchy the sentence exists to explain. So a hand-written `Task` under an
   `Epic` is accepted, stays a `Task`, and is rewritten by nothing unless this view assigns
   types on a move. The README says all of it, because an outside editor that expects
-  validation will trust a silence that means nothing.
+  validation will trust a silence that means nothing. **"Almost nothing" is now literal
+  rather than rhetorical**, and the README names the exception: a move *between the two
+  ladders*, and only for the two notes that read their ladder from where they hang — a
+  `Task`, the rung both share, and a note with no `type` at all — because either would
+  change which ladder it is on and leave the screen it was moved on. It is not a type rule
+  and the bullet must not read as one: every other type answers from its own name and keeps
+  its ladder wherever it lands. See
+  [[Test suite and test case as a ladder of their own]].
 - **3d — the reader is a program.** Every field is stated with the forms the reader
   actually accepts — a parent as a wikilink, a bare name or an alias, and as the first
   entry of a list; a number written as a string — and every derived value is named as

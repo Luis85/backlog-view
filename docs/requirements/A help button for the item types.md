@@ -61,6 +61,14 @@ the surface every other section then lands in.
   type rules are advisory, and scopes that to type compatibility: other drops *are* refused
   (onto an item's own descendant, into a group with no shared ranking) and those belong to
   [[Help for moving and ranking]].
+- **4c — the user drags a `Task` out of a `Test suite` and onto the plan's top level.**
+  That one *is* refused, and it is the only class of move that is. The two ladders are
+  drawn as separate projections, and a `Task` or a note with no `type` reads its ladder
+  from where it hangs, so the row would leave the screen it was moved on. The entry states
+  it as exactly that — leaving the projection, never a rule about types — names the drag,
+  the outdent and the parent-link action together, and says the two rows it can happen to,
+  since every other type answers from its own name and a backlog with no tests in it is
+  refused nothing here. See [[Test suite and test case as a ladder of their own]].
 - **5a — the manual was opened from another section's link.** Closing returns focus to
   whatever opened it, so the dialog never strands the keyboard at the top of the pane.
 
@@ -78,6 +86,13 @@ the surface every other section then lands in.
 - "Advisory" is scoped to **type compatibility**, not to drops in general: `isInvalidParent`
   and the reorderable-group checks do refuse drops, and an unqualified "any drag is
   allowed" contradicts [[Help for moving and ranking]] as well as the view.
+- The projection refusal is written to the check and no wider: the two rows it can happen
+  to are named, the reason given is the row leaving the screen it was moved on, and nothing
+  reads as "a drop can be refused for type" — which would be as false as the "no drag is
+  ever refused" it replaced, in the other direction.
+- `Set type` is described as narrowing in **every** projection, since each offers what it
+  can draw. The two boards are one case of that rule rather than the whole of it, and the
+  row's own **+** is not described as narrowed by it.
 - The **displayed level** and the **written `type`** are kept apart: position implies the
   first and, with re-typing off by default, never rewrites the second.
 - Nothing is written and nothing is persisted by opening, reading or closing it.

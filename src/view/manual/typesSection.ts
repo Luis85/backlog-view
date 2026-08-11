@@ -104,12 +104,20 @@ export function typesSection(): ManualSection {
 			{
 				term: 'Type is advisory, not enforced',
 				text:
-					'The + narrows to what childTypeChoices names for this parent. Set type does not: in ' +
-					'the tree and the roadmap it offers the whole vocabulary, because assigning a type by ' +
-					"hand is advisory like a drag — a board's menu narrows only to what that board can show, " +
-					'a different question from what fits the ladder. No drag is ever refused for what it ' +
-					"would type something as. Other drops still are — onto an item's own descendant, or into " +
-					'a sibling group a reorder cannot reach right now — neither of which is about type.',
+					'The + narrows to the types that fit under this parent, and Set type narrows too — in ' +
+					'every projection rather than only on a board, because each offers what it can show. So ' +
+					"Test suite and Test case are not offered on a plan row, and the plan's own levels are " +
+					'not offered in the test catalog. Inside a ladder nothing is enforced, and no move is ' +
+					'refused for what it would type something as: a Task under an Epic stays a Task, at its ' +
+					'own level, however oddly it sits. What a move can be refused for is leaving the ' +
+					'projection it is drawn on, because the row would vanish off the screen it was moved on ' +
+					'— a drag, an outdent and a menu action that changes the parent link are all withheld ' +
+					'for it. Only two rows can cross that line, and only between the plan and the test ' +
+					'catalog: a Task, the rung both ladders share, and a note with no type at all, which ' +
+					"takes its parent's. Every other type keeps its own ladder wherever it lands, so a " +
+					'backlog with no tests in it is refused nothing here. Other drops still are — onto an ' +
+					"item's own descendant, or into a sibling group a reorder cannot reach right now — " +
+					'neither of which is about type.',
 			},
 		],
 	};

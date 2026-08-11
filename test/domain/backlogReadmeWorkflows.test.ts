@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { defaultSettings } from '../../src/domain/settings';
-import { settingsWith } from '../helpers/settings';
+import { settingsFrom, settingsWith } from '../helpers/settings';
 import { backlogReadmeContent } from '../../src/domain/backlogReadme';
 
 /**
@@ -106,6 +106,24 @@ describe('the property table with two workflows in it', () => {
 		const content = backlogReadmeContent(settings, [], 'test');
 		expect(content).toContain(
 			"The workflow state — see below, and the Deliverable workflow's own state on a Deliverable and the test workflow's own state on a test",
+		);
+	});
+
+	it('gives a key two secondary workflows share with each other, and not with the requirements one, ONE row', () => {
+		// The rule: a key gets one row, naming every workflow that reads it. Comparing each
+		// secondary against `settings.stateKey` alone was right while there were two workflows
+		// and became wrong at three — `shared` is neither workflow's own property, so the
+		// table listed it twice, once as a Deliverable's and once as a test's, in a table
+		// whose whole job is saying how many properties a note may carry.
+		const settings = settingsFrom({
+			stateProperty: 'note.status',
+			deliverableStateProperty: 'note.shared',
+			testStateProperty: 'note.shared',
+		});
+		const content = backlogReadmeContent(settings, [], 'test');
+		expect(keyRows(content, 'shared')).toBe(1);
+		expect(content).toContain(
+			"| `shared` | Optional, on a Deliverable or a test | The Deliverable and test workflows' own state — separate from the requirements workflow's |",
 		);
 	});
 });

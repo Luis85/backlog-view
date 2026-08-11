@@ -149,20 +149,45 @@ function typeSection(settings: BacklogSettings): string[] {
 }
 
 /**
- * The `Optional, on a <label>` row for a secondary workflow's own state key —
- * Deliverable's and the test workflow's are the identical shape, stated once rather than
- * copied a second time. Empty when there is no key of its own to name: unset, or shared
- * with the requirements property, in which case the row above already carries it.
+ * Each secondary workflow and the key it reads, in the order the table names them. ONE
+ * list, read by both halves of the state rows — the requirements row's "and also carries"
+ * clause and the own-property rows below it — so the two cannot disagree about which
+ * workflow sits on which key, and a fourth workflow is an entry here.
  */
-function ownWorkflowRow(key: string, shared: boolean, label: string, settings: BacklogSettings): string[] {
-	if (!key || shared) return [];
+function secondaryWorkflows(settings: BacklogSettings): [string, string][] {
+	return [[resolvedDeliverableStateKey(settings), 'Deliverable'], [resolvedTestStateKey(settings), 'test']];
+}
+
+/**
+ * The `Optional, on a <label>` rows for the secondary workflows' own state keys.
+ *
+ * **One row per KEY, naming every workflow that reads it** — the rule the table has to
+ * keep, since it is a list of what a note may carry and a key listed twice is a claim
+ * about how many properties there are. Grouping is what states it: comparing each
+ * secondary against `settings.stateKey` alone was right while there were two workflows
+ * and became wrong at three, because two secondaries can share a key with each other and
+ * with nothing else — printing `shared` once as a Deliverable's property and once as a
+ * test's.
+ *
+ * A key equal to the requirements one is skipped: the state row above already carries it
+ * and says which workflows join it there.
+ */
+function ownWorkflowRows(settings: BacklogSettings): string[] {
+	const byKey = new Map<string, string[]>();
+	for (const [key, label] of secondaryWorkflows(settings)) {
+		if (!key || key === settings.stateKey) continue;
+		byKey.set(key, [...(byKey.get(key) ?? []), label]);
+	}
 	// NOT "the one above": that claim is false whenever `settings.stateKey` is unset, since
 	// `fieldRows` then has no requirements-workflow row at all (and no `## Workflow states`
 	// section either) — a fully independent, reachable configuration, and the one where
 	// there is nothing to be separate FROM, so the relationship goes unstated rather than
 	// invented.
 	const relation = settings.stateKey ? " — separate from the requirements workflow's" : '';
-	return [`| ${cell(key)} | Optional, on a ${label} | The ${label} workflow's own state${relation} |`];
+	return [...byKey].map(([key, labels]) => {
+		const owner = labels.length > 1 ? `${andList(labels)} workflows'` : `${labels[0]} workflow's`;
+		return `| ${cell(key)} | Optional, on ${labels.map((l) => `a ${l}`).join(' or ')} | The ${owner} own state${relation} |`;
+	});
 }
 
 function fieldRows(settings: BacklogSettings): string[] {
@@ -179,23 +204,16 @@ function fieldRows(settings: BacklogSettings): string[] {
 		`| ${cell(settings.typeKey)} | Anything you want typed | One of the type names above, or one of your own. Without one an item takes the level its position implies |`,
 	];
 	// One property or two is decided by the resolved KEY, never by whether the Deliverable
-	// option was filled in: the two workflows share a property both when the Deliverable
-	// key is unset (the fallback) and when it is set to the requirements key on purpose —
-	// the one collision `configProblems` exempts. Asking the raw option instead documented
-	// that second, explicitly-shared configuration as two separate properties, and listed
-	// the one key twice in a table of what a note may carry.
-	const deliverableKey = resolvedDeliverableStateKey(settings);
-	const sharedStateKey = deliverableKey !== '' && deliverableKey === settings.stateKey;
-	// The test workflow shares by the same fallback, and by default it does — sharing the
-	// requirements property is `resolvedTestStateKey`'s DEFAULT, not an edge case, so this
-	// row has to be able to name it too rather than just the Deliverable.
-	const testKey = resolvedTestStateKey(settings);
-	const sharedTestKey = testKey !== '' && testKey === settings.stateKey;
+	// option was filled in: a workflow shares a property both when its own key is unset (the
+	// fallback — which is the DEFAULT for the test workflow, not an edge case) and when it is
+	// set to the requirements key on purpose, the one collision `configProblems` exempts.
+	// Asking the raw option instead documented that second, explicitly-shared configuration
+	// as two separate properties, and listed the one key twice in a table of what a note may
+	// carry.
 	if (settings.stateKey) {
-		const sharers = [
-			...(sharedStateKey ? ["the Deliverable workflow's own state on a Deliverable"] : []),
-			...(sharedTestKey ? ["the test workflow's own state on a test"] : []),
-		];
+		const sharers = secondaryWorkflows(settings)
+			.filter(([key]) => key === settings.stateKey)
+			.map(([, label]) => `the ${label} workflow's own state on a ${label}`);
 		const alsoShared = sharers.length > 0 ? `, and ${andList(sharers)}` : '';
 		rows.push(`| ${cell(settings.stateKey)} | Optional | The workflow state — see below${alsoShared} |`);
 	}
@@ -210,12 +228,10 @@ function fieldRows(settings: BacklogSettings): string[] {
 	if (hasHorizonAxis(settings)) rows.push(`| ${cell(settings.horizonKey)} | Optional | Which planning horizon the item sits in |`);
 	if (settings.startKey) rows.push(`| ${cell(settings.startKey)} | Optional | Planned start, ${code('YYYY-MM-DD')} |`);
 	if (settings.targetKey) rows.push(`| ${cell(settings.targetKey)} | Optional | Planned target, ${code('YYYY-MM-DD')} |`);
-	// A row of its OWN only where it is its own property. Shared, the row above already
-	// names this key and says it carries both — a second row for one key would be the
-	// table contradicting itself about how many properties a note has. The test workflow's
-	// key gets the identical treatment, for the identical reason.
-	rows.push(...ownWorkflowRow(deliverableKey, sharedStateKey, 'Deliverable', settings));
-	rows.push(...ownWorkflowRow(testKey, sharedTestKey, 'test', settings));
+	// A row of its OWN only where it is its own property, and one row per key however many
+	// workflows read it — a second row for one key would be the table contradicting itself
+	// about how many properties a note has.
+	rows.push(...ownWorkflowRows(settings));
 	return rows;
 }
 
@@ -480,11 +496,18 @@ function rulesSection(settings: BacklogSettings): string[] {
 	return [
 		'## What the view will and will not do to these notes',
 		'',
-		'- **The type rules are advisory.** They decide what the view *offers*; nothing is ' +
-			`refused, and a type you declare is the type you keep: a ${code(LEVELS[LEVELS.length - 1])} ` +
-			`under an ${code(LEVELS[0])} stays one, at its own level, however oddly it sits. Only a ` +
-			'note with **no** type takes the level its position implies, and a type this plugin ' +
-			'does not ship sits one rung below its parent so its own children continue the ladder.' +
+		'- **The type rules are advisory.** They decide what the view *offers*; nothing is refused for the type a move would ' +
+			`give a note, and a type you declare is the type you keep: a ${code(LEVELS[LEVELS.length - 1])} ` +
+			`under an ${code(LEVELS[0])} stays one, at its own level, however oddly it sits. Only a note with **no** type takes ` +
+			'the level its position implies, and a type this plugin does not ship sits one rung below its parent so its own children continue the ladder.' +
+			// The one refusal, and stated only as widely as it holds: `keepsProjection` gates the
+			// four reparenting targets, and `ladderFor` chains from the parent for a `Task` and a
+			// note with no `type` and for nothing else — so every other name answers from itself
+			// and can never change ladder by moving. "A drop can be refused for type" would be as
+			// false as the "nothing is refused" this replaced, in the other direction.
+			` The one move the view withholds is a move **between the two ladders above**, and only for the two notes that read ` +
+			`their ladder from where they hang: a ${code(LEVELS[LEVELS.length - 1])}, the rung both ladders share, and a note with ` +
+			`no ${code('type')} at all. Either would change ladder by being moved, and the row would leave the screen it was moved on, so the move is not offered. Every other type keeps its ladder wherever it lands.` +
 			// Which moves rewrite a type, and which types are exempt, is stated once — under
 			// the type table, where the vocabulary it qualifies is. Said again here it would
 			// be a second sentence to keep true, and this is the bullet that would drift:
