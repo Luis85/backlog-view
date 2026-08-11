@@ -335,7 +335,8 @@ export const CLICK_ACTION_LABEL = 'Clicking a row folds it';
  * Never a card — the horizon axis's buckets, the board, the Deliverables board — because a
  * card's disclosure lists children on its own face and a childless card draws none, so the
  * option would be inert on the commonest one. That is `Opening the work.md` extension 1e's
- * reasoning, kept as the reason this predicate has two arms rather than four.
+ * reasoning, kept as the reason this predicate has two arms rather than four — the first of which
+ * is every ROW-shaped projection, not the plan's tree alone.
  *
  * **This has to agree with who passes a fold to `wireCardActivation`, and nothing checks
  * that mechanically.** The two fold call sites are `wireRowEvents` and `renderTimelineRow`;
@@ -345,7 +346,14 @@ export const CLICK_ACTION_LABEL = 'Clicking a row folds it';
  * present exactly where the click folds.
  */
 export function clickActionApplies(host: BacklogViewHost): boolean {
-	if (host.projection === 'tree') return true;
+	// `treeShaped`, never `=== 'tree'`. The catalog renders through `renderTree` and so
+	// through `wireRowEvents`, which folds — so a bare comparison here withheld the only
+	// control over a behaviour that was still running, and a user who turned folding on in
+	// the plan had to go back there to turn it off. That is `projection.ts`'s own rule
+	// (a projection opting out of a feature opts out of the COMPUTATION, not just the
+	// control) failing in the direction it warns about, and the drift that module exists
+	// to stop: it arrived when the toggle merged in beside a projection it had never seen.
+	if (treeShaped(host.projection)) return true;
 	return host.projection === 'roadmap' && activeAxis(host.settings, host.axisPick) === 'dates';
 }
 

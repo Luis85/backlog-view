@@ -69,7 +69,7 @@ describe('the click-action toggle', () => {
 	 * control is absent rather than inert on the three card screens: a toolbar toggle that
 	 * changes nothing on the screen in front of you is worse than one that is not there.
 	 */
-	it('is drawn on the tree and the dated axis, and on no card projection', () => {
+	it('is drawn on every row-shaped projection and the dated axis, and on no card projection', () => {
 		const { view, containerEl } = makeView(fixture(), {
 			horizonProperty: 'note.horizon',
 			startProperty: 'note.start',
@@ -87,6 +87,13 @@ describe('the click-action toggle', () => {
 			view.setProjection(projection);
 			expect(toggle(containerEl), `${projection} drew a click-action toggle`).toBeNull();
 		}
+		// The catalog is ROW-shaped and renders through `renderTree`, so a click folds there
+		// exactly as it does in the plan. Withholding the toggle left the only control over
+		// a live behaviour on another screen — the defect a bare `projection === 'tree'`
+		// produced when this toggle merged in beside a projection it had never seen.
+		view.setProjection('catalog');
+		expect(toggle(containerEl), 'the catalog folds on click and drew no toggle').not.toBeNull();
+
 		view.setProjection('tree');
 		expect(toggle(containerEl)).not.toBeNull();
 	});
