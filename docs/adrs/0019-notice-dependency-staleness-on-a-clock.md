@@ -124,12 +124,26 @@ memory:
   archaeology dig.
 - The version floors in `package.json` now match what CI has actually run, so a fresh
   `npm install` cannot resolve something older than what was verified.
-- `obsidian` was specified as `latest` and is now `^1.13.1`. `latest` is not a range: it
-  is invisible to Dependabot, and it resolves to whatever shipped this morning, so two
-  developers running `npm install` a week apart typecheck against different typings while
-  CI — which runs `npm ci` — sees neither. The caret keeps every 1.x typings release
-  arriving automatically, which is the point of tracking them closely; it only makes a
-  major an event someone agrees to.
+- `obsidian` was specified as `latest`, which is not a range: it is invisible to
+  Dependabot, and it resolves to whatever shipped this morning, so two developers running
+  `npm install` a week apart typecheck against different typings while CI — which runs
+  `npm ci` — sees neither. That half of the reasoning stands and is why `latest` is gone.
+
+  **The replacement was `^1.13.1`, and that was wrong — corrected 2026-08-11 to `1.12.0`,
+  exactly.** This bullet used to argue that a caret "keeps every 1.x typings release
+  arriving automatically, which is the point of tracking them closely". Tracking them
+  closely is the opposite of what this dependency wants: the typings are not a library
+  this plugin consumes at its own pace, they are the *statement of what the host app
+  provides*, and `manifest.json`'s `minAppVersion` is a promise about which host. A range
+  above the floor lets the compiler accept an API the promise does not cover, and it did —
+  the manifest claimed 1.10.2 for eleven releases while the code called a Bases options
+  callback that only receives its config from 1.12.0, and nothing could see it, because
+  Obsidian cannot run in CI and the typings compiled it happily. Exactly, not `~`, for the
+  same argument one patch smaller: these typings are additive within a minor line and
+  carry `@since` tags proving it (1.12.3 added `Vault.appendBinary`, 1.12.2 the CLI
+  handler types). The rule now lives with the compatibility boundary it belongs to —
+  [ADR 0016](0016-break-compatibility-freely-before-1-0.md) — and the Dependabot entry
+  that keeps it names the fact that would end it, as every entry above is required to.
 - `vitest.config.ts` became `vitest.config.mts` under this upgrade — vite warns that a
   config using ESM syntax will stop loading when `configLoader: 'native'` becomes the
   default, and every other config in the repository is already `.mjs`.

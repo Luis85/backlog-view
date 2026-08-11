@@ -41,9 +41,11 @@ option per state, and that is where the names come from. The dropdown is gone; t
 are not, and the reason each half moved is worth stating:
 
 - **Bases cannot host a picker.** Its option schema is dropdown, file, folder, formula,
-  multitext, property, slider, text and toggle — there is no colour control, and the
-  `type: 'color'` in the typings belongs to the declarative Settings API (1.13.0), not to
-  Bases. A name in a dropdown was the only colour a view option could express, so the
+  multitext, property, slider, text and toggle — there is no colour control. The
+  `type: 'color'` that a search of the typings once turned up belongs to the declarative
+  Settings API rather than to Bases, and it is not even in the typings this repository
+  installs any more: it arrived in 1.13.0, above the 1.12.0 floor the `obsidian`
+  devDependency is now pinned to (ADR 0019). A name in a dropdown was the only colour a view option could express, so the
   setting leaves the view options entirely and the entry point becomes a button.
 - **A name still earns its place.** It resolves through `--color-*-rgb`, so it follows
   light, dark and whatever theme is installed; a hex does not. Keeping both means a
