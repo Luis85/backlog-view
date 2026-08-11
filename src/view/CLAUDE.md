@@ -110,8 +110,14 @@ free of runtime code so imports stay cycle-free.
   `item.ownKeys`, which `readOwnKeys` fills through `optionalKeyFor` — the RAW
   `testStateKey` — while this workflow reads `resolvedTestStateKey`, so on the shipped
   default where the tests share the plan's `status` the presence flag is false on every note
-  that carries a state. The cost is the one case presence and value disagree about: a blank
-  test state reads as no value and is offered no clear.
+  that carries a state. What it costs is everything presence and value disagree about: a key
+  holding any value `readString` refuses — blank, whitespace, YAML null, an empty list, a
+  mapping — is offered no clear, and only editing the note takes it off. **The backfill
+  produces exactly that state**: `applyInto` stubs a missing optional key as `''`, and on a
+  distinct `testStateProperty` `missingKeyStubs` puts the test state on every catalog member,
+  so pressing ✨ leaves each of them a key this menu cannot remove. Recorded rather than
+  fixed, and not a reason to switch gates — the presence gate would be absent on the shipped
+  default, where nothing is stubbed because the key falls back.
 - **The two LABEL menus are the state menu's shape without a projection**: Set risk and
   Set assignee, both rendered inside `buildItemMenu`'s `editable` guard, both offering a
   list plus the item's own unlisted value, both checked from the PLAN

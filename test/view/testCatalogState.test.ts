@@ -113,7 +113,7 @@ describe('a catalog row can take its test state back off', () => {
 		return menu.items.map((i) => i.titleText);
 	}
 
-	it('offers the removal on both surfaces, and clears the test key alone', async () => {
+	it('offers the removal on both surfaces', () => {
 		const { containerEl } = makeView(drafted(), workflow, { order: ['note.testStatus'] });
 		catalog(containerEl);
 		expect(setStateTitles(containerEl, 'Drafted')).toContain('Clear test state');

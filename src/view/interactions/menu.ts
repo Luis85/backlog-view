@@ -539,8 +539,17 @@ function addStateItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): vo
 	// which answers the RAW `testStateKey`, while this workflow reads the resolved one
 	// (`resolvedTestStateKey`, through `stateKeyFor`) — so on the shipped default, where the
 	// tests share the plan's own `status`, `ownKeys.testState` is false on every note that
-	// carries a state. The cost of asking the plan is the one case presence and value
-	// disagree about: a BLANK test state reads as no value, so it is offered no clear.
+	// carries a state.
+	//
+	// What asking the plan costs is everything presence and value disagree about: a key
+	// holding any value `readString` refuses — blank, whitespace, YAML null, an empty list,
+	// a mapping — reads as no value here and is offered no clear, and only editing the note
+	// takes it off. The plugin MANUFACTURES that state rather than waiting for one: `✨
+	// Assign missing properties` stubs a missing key as `''` (`applyInto` in
+	// `storage/frontmatter.ts`, over `missingKeyStubs`), which on a distinct
+	// `testStateProperty` is every catalog member. It is a residue rather than a reason to
+	// switch gates — the presence gate is absent on the shipped default, where nothing is
+	// stubbed because the key falls back — but it is not an edge case somebody has to build.
 	const clear: StateChoice = { state: null, label: 'Clear test state' };
 	if (!inCatalog(item) || computeTestStateWrites(item, clear.state).length === 0) return;
 	menu.addSeparator();

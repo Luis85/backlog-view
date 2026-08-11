@@ -127,17 +127,28 @@ every other fixture.
 - **5c — a state is picked and then needs taking off again.** The `Set state` list is
   strings on every catalog row, so the removal `computeTestStateWrites(item, null)` plans
   had nothing offering it: the no-state COLUMN is what reaches that target in the other two
-  workflows, and the catalog is tree-shaped with no board and will not gain one (Scope
-  above). It is a **Clear test state** foot instead — the shape this menu already uses for a
+  workflows, and the catalog is tree-shaped with no board — this PBI's own second paragraph
+  refuses one. It is a **Clear test state** foot instead — the shape this menu already uses for a
   removal — drawn at the end of `addStateItems` (`src/view/interactions/menu.ts`) and so on
   both surfaces at once, since that is the one builder behind the chip and the
   submenu. It is offered exactly when picking it would WRITE something, asked of that same
   planner: the neighbouring Clears gate on `item.ownKeys` presence and that spelling is
   unavailable here, because `readOwnKeys` resolves a field through `optionalKeyFor` — the
   RAW `testStateKey` — while the workflow reads the resolved one, so under 1a's shipped
-  default the presence flag is false on every note that carries a state. The cost is the one
-  case presence and value disagree about: a BLANK test state reads as no value and is not
-  offered a clear.
+  default the presence flag is false on every note that carries a state.
+- **5d — the residue that gate leaves, which the plugin creates itself.** Asking the plan
+  costs everything presence and value disagree about: a key holding any value `readString`
+  refuses — blank, whitespace, YAML null, an empty list, a mapping — reads as no value, is
+  offered no clear, and comes off only by editing the note. That is **not** a state a user
+  has to construct. `applyInto` (`src/storage/frontmatter.ts`) stubs a missing optional key
+  as `''`, and 5a has `missingKeyStubs` stub the test state onto every catalog member
+  whenever `testStateProperty` is keyed distinctly — so pressing ✨ **Assign missing
+  properties** leaves each catalog row a test state key this menu cannot take off again. It
+  is recorded rather than fixed here, and it is still not an argument for the `ownKeys` gate:
+  that gate is invisible on 1a's shipped default, where nothing is stubbed because the key
+  falls back. Closing it needs either a presence signal read through the RESOLVED key or a
+  presence-gated `computeTestStateWrites`, and `ownKeys` is also the backfill's own
+  complement, so both are changes with a blast radius past this menu.
 
 ## Acceptance criteria
 
@@ -176,7 +187,7 @@ every other fixture.
   **Checked by** `test/domain/writePlanProperties.test.ts` — "stubs the test state on a catalog member and on nothing else"
 - The removal reaches BOTH surfaces — the row menu's `Set state` and the state chip — because
   one builder draws them; a fix that reached only one is the failure this repository names.
-  **Checked by** `test/view/testCatalogState.test.ts` — "offers the removal on both surfaces, and clears the test key alone"
+  **Checked by** `test/view/testCatalogState.test.ts` — "offers the removal on both surfaces"
 - Picking it deletes the test key rather than blanking it, and leaves the requirements key
   and its finished-date stamp alone — the difference between the test planner and the
   requirements one, asserted rather than reasoned from which function was called.
@@ -260,10 +271,11 @@ offered values, or null for a row on neither — and the two branches that route
 pick: `chooseState` plans through `computeTestStateWrites` (a catalog row has no board to
 move on, so neither board-move method fits), and `addStateItems` asks its checkmark of that
 same PLAN rather than of a comparison written beside it — through `stateWrites`, which is
-that per-row planner selection stated once so the checkmark and the Clear foot beside it
-cannot answer for different workflows. The foot is the same question asked once more (5c):
-it is drawn exactly when `computeTestStateWrites(item, null)` plans a write, and it routes
-its pick back through `chooseState` rather than reaching the gate itself. `src/view/render/columns.ts`'s
+that per-row planner selection stated once rather than as a ternary inside the checkmark.
+The foot beside it is the same question asked once more (5c): it is drawn exactly when
+`computeTestStateWrites(item, null)` plans a write — that planner by name, since `inCatalog`
+has already answered which workflow this is — and it routes its pick back through
+`chooseState` rather than reaching the gate itself. `src/view/render/columns.ts`'s
 `columnKind` maps the third resolved state key to the `state` column kind, so a row draws
 its chip into whichever column names the key its own workflow writes and leaves the others
 empty. `src/view/manual/setupSection.ts` gains the entry describing the group, which is what

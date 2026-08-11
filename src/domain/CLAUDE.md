@@ -153,7 +153,7 @@ a node test that did would be measuring the runner.
   it is false: `pbl-done` on a tree row (`render/rows.ts`) and the state CHIP's own reading
   (`renderStateChip`) took the third workflow with no edit at all, while `Set state`'s
   OFFERS and its CHECKMARKS each needed their own branch in `view/interactions/menu.ts`
-  (`deliverableOrTestValues`, and the `noop` ternary in `addStateItems`), because each
+  (`deliverableOrTestValues`, and `stateWrites`), because each
   workflow's write goes through a different planner — which PLANNER a pick runs is a third
   selection over the same two predicates, and it is stated there rather than here.
   `columnKind` (`render/columns.ts`) needed a line too, or the chip that reads correctly
