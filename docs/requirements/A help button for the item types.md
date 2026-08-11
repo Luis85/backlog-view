@@ -62,8 +62,8 @@ the surface every other section then lands in.
   (onto an item's own descendant, into a group with no shared ranking) and those belong to
   [[Help for moving and ranking]].
 - **4c — the user drags a `Task` out of a `Test suite` and onto the plan's top level.**
-  That one *is* refused, and it is the only class of move refused for what it would type
-  something as — 4b's refusals stand beside it, for reasons that are not about type. The two ladders are
+  That one *is* refused, and it is the only class of move refused for a **type** reason —
+  4b's refusals stand beside it, for reasons that are not about type at all. The two ladders are
   drawn as separate projections, and a `Task` or a note with no `type` reads its ladder
   from where it hangs, so the row would leave the screen it was moved on. The entry states
   it as exactly that — leaving the projection, never a rule about types — names the drag,

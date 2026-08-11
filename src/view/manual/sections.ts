@@ -76,10 +76,10 @@ const MOVING: ManualSection = {
 				'a Task, or a note with no type, takes the level of whatever it hangs from, so moving ' +
 				'one between the plan and the test catalog would take it off the screen it was moved ' +
 				'on. Every move that could do that is unavailable — dropping it beside a row at the top ' +
-				'level, the top-level strip, Outdent, and the menu action that clears its parent link ' +
-				'— while every other type keeps its own ladder wherever it lands and is refused none ' +
-				'of them. Indent is not among them: it nests under the row above, which is on this ' +
-				'screen already.',
+				'level, the top-level strip, Outdent, and the two menu entries that remove the parent ' +
+				'link, Clear parent link and Use folder position — while every other type keeps its ' +
+				'own ladder wherever it lands and is refused none of them. Indent is not among them: ' +
+				'it nests under the row above, which is on this screen already.',
 		},
 		{
 			term: 'While a quick filter is active',

@@ -47,12 +47,20 @@ describe('the types section', () => {
 		expect(text).not.toContain('whole vocabulary');
 		expect(text).not.toMatch(/no (drag|move) is ever refused/i);
 		expect(text).toContain('leaving the projection it is drawn on');
+		// The whole list of withheld gestures. `addParentLinkSection` is gated once and
+		// guards two entries, so the singular "a menu action that changes the parent link"
+		// was one short — the same defect the moving section shipped, in a second file.
+		expect(text).toContain('a drag, an outdent and the two menu entries that remove the parent link');
 		// The two rows, named — the whole of what "narrow" means here.
 		expect(text).toContain('a Task, the rung both ladders share');
 		expect(text).toContain('a note with no type at all');
 		expect(text).toContain('Every other type keeps its own ladder wherever it lands');
 		// And `Task` stated as offered in the catalog, not withheld with the plan's levels.
-		expect(text).toContain('where Task is, on a row that hangs from a test');
+		// Stated as a RULE rather than a list: measured on a catalog row, Set type offers
+		// exactly `Task`, `Test suite` and `Test case`, so the catalog withholds eight types
+		// and any list of them goes stale the next time one is declared. The exact sets are
+		// pinned in `test/view/testCatalog.test.ts`.
+		expect(text).toContain("nothing from the plan's side is offered in the test catalog — except Task");
 	});
 
 	it('is a pure read — calling it twice gives equal content', () => {

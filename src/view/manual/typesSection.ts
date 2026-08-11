@@ -107,14 +107,14 @@ export function typesSection(): ManualSection {
 					'The + narrows to the types that fit under this parent, and on a board to what that board ' +
 					'can show as well. Set type narrows too — in every projection rather than only on a ' +
 					'board, because each offers what it can show. So Test suite and Test case are not ' +
-					'offered on a plan row, and Epic, Feature and PBI are not offered in the test catalog — ' +
-					'where Task is, on a row that hangs from a test, since it is the rung both ladders ' +
-					'share. Inside a ladder nothing is enforced, and no move is ' +
+					'offered on a plan row, and nothing from the plan\'s side is offered in the test ' +
+					'catalog — except Task, on a row that hangs from a test, since it is the rung both ' +
+					'ladders share. Inside a ladder nothing is enforced, and no move is ' +
 					'refused for what it would type something as: a Task under an Epic stays a Task, at its ' +
 					'own level, however oddly it sits. What a move can be refused for is leaving the ' +
 					'projection it is drawn on, because the row would vanish off the screen it was moved on ' +
-					'— a drag, an outdent and a menu action that changes the parent link are all withheld ' +
-					'for it. Only two rows can cross that line, and only between the plan and the test ' +
+					'— a drag, an outdent and the two menu entries that remove the parent link are all ' +
+					'withheld for it. Only two rows can cross that line, and only between the plan and the test ' +
 					'catalog: a Task, the rung both ladders share, and a note with no type at all, which ' +
 					"takes its parent's. Every other type keeps its own ladder wherever it lands, so a " +
 					'backlog with no tests in it is refused nothing here. Other drops still are — onto an ' +

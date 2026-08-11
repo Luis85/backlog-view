@@ -44,7 +44,13 @@ describe('the manual', () => {
 	it('names the projection boundary among the states a move is unavailable in', () => {
 		const moving = manualSections().find((s) => s.id === 'moving');
 		const prose = moving?.entries.map((e) => `${e.term} ${e.text}`).join(' ') ?? '';
-		expect(prose).toContain('the top-level strip, Outdent, and the menu action that clears its parent link');
+		// The WHOLE list, not a substring of it. `addParentLinkSection` is gated once and
+		// guards two entries, so naming one of them left a folder-mode user whose `Use folder
+		// position` had vanished with no rule to find — and a substring assertion locked the
+		// omission in rather than catching it.
+		expect(prose).toContain(
+			'dropping it beside a row at the top level, the top-level strip, Outdent, and the two menu entries that remove the parent link, Clear parent link and Use folder position',
+		);
 		expect(prose).toContain('a Task, or a note with no type');
 		// Narrow in the same breath, or the entry trades one falsification for its mirror.
 		expect(prose).toContain('every other type keeps its own ladder wherever it lands');

@@ -367,15 +367,24 @@ describe('what the catalog offers', () => {
 		// A `PBI` drawn in the plan as a promoted root: `Task` is a plan type BY NAME, so a
 		// projection-wide list offers it — and retyping makes the row inherit its test
 		// parent's membership and vanish into the catalog. Withheld.
-		expect(setTypeOn('Stray PBI')).not.toContain('Task');
-		expect(setTypeOn('A PBI')).toContain('Task');
+		// Asserted as the WHOLE list rather than one name each way, because that is what the
+		// manual's sentence about this claims (`view/manual/typesSection.ts`) and `toContain`
+		// says nothing about the other ten: an entry reading "Epic, Feature and PBI are not
+		// offered in the catalog" passed a `not.toContain('Epic')` while being short by five,
+		// and positively implied a `Bug` was assignable there. A type declared without a look
+		// at that entry now fails here.
+		const plan = ['Epic', 'Feature', 'PBI', 'Task', 'Issue', 'Bug', 'Idea', 'Deliverable', 'Milestone'];
+		expect(setTypeOn('Stray PBI')).toEqual(plan.filter((t) => t !== 'Task'));
+		expect(setTypeOn('A PBI')).toEqual(plan);
 		catalog(containerEl);
 		// The mirror: `Task` is not a test type, so a catalog-wide list of test types would
 		// withhold it — and retyping that row leaves it in the catalog, under the same
 		// suite. Offered. A criterion proving only the withholding is satisfied by a rule
-		// that withholds too much.
-		expect(setTypeOn('Case')).toContain('Task');
-		expect(setTypeOn('Case')).not.toContain('Epic');
+		// that withholds too much. Withheld on the SUITE, whose parent is the top level and
+		// therefore the plan's ladder — which is why the manual says "on a row that hangs
+		// from a test" rather than "in the catalog".
+		expect(setTypeOn('Case')).toEqual(['Task', 'Test suite', 'Test case']);
+		expect(setTypeOn('Suite')).toEqual(['Test suite', 'Test case']);
 	});
 
 	it('offers no test type on the requirements board either, and still no Deliverable', () => {
