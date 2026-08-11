@@ -134,12 +134,19 @@ tag: after it, the only thing a failure can produce is a second release.
    Each of the three conditions is load-bearing, and each is a case that exists in the tree
    today rather than a hypothetical:
    - **`docs/tests/cases/` and not the whole of `docs/`** — the plans under
-     `docs/superpowers/` quote draft notes verbatim, headings and `type: Issue`
-     frontmatter included, so a query scoped by type or heading alone sweeps a copy of a
-     note instead of the note.
-   - **A whole line, not a prefix** — `A gate that did not run looks like one that passed`
-     heads a section `## How to check, properly`. It is an investigation into a CI gate, not
-     something a device can run, and a prefix match sweeps it in.
+     `docs/superpowers/` quote draft notes verbatim, headings included, and frontmatter
+     included whether the quoted note is `type: Issue` or, since the 2026-08-11 test
+     catalog migration, `type: Test case` — so a query scoped by type or heading alone
+     sweeps a copy of a note instead of the note.
+   - **A whole line, not a prefix** — [[A gate that did not run looks like one that
+     passed]] heads a section `## How to check, properly`. It is an investigation into a
+     CI gate, not something a device can run, and a prefix match would sweep it in. That
+     note itself sits in `docs/issues/`, which this grep no longer reads since the sweep
+     was rescoped to `docs/tests/cases/`, so it is no longer live evidence for *this*
+     query — but the hazard it demonstrates is generic to any note in the swept folder,
+     and `docs-check.mjs`'s cadence gate is type-scoped rather than folder-scoped, so it
+     still reads this note where it lives and still needs the same whole-line match for
+     the same reason.
    - **`cadence: release`** — see below.
 3. Date each note's `Outcome` with what was seen. A verification that fails becomes a bug
    note; whether it blocks the release is your call, not the sweep's.
