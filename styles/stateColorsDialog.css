@@ -1,0 +1,26 @@
+/* The state-colour dialog (`ui/stateColorsDialog.ts`). Layout only: every colour in it is
+   drawn by an `<input type="color">`, which is the platform's own control, and by the
+   `Setting` rows Obsidian styles — so there is nothing here to theme and nothing that
+   could disagree with what the grid paints. */
+.pbl-state-colors .pbl-state-colors-intro {
+	margin-top: 0;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+/* The rows are dense on purpose: a workflow of eight states should not need scrolling to
+   compare two colours, which is the whole reason to see them in one list. */
+.pbl-state-colors .setting-item {
+	padding-top: var(--size-4-2);
+	padding-bottom: var(--size-4-2);
+}
+
+/* The probe `stateColorRows` reads a slot's painted colour off (`view/interactions/
+   stateColors.ts`). It exists for one `getComputedStyle` call and is removed in the same
+   statement, so it must never paint: `display: none` still computes colour, which is all
+   that is being asked of it. The `background-color` is the whole point — the slot classes
+   set a TOKEN, and a token is not readable until something paints from it. */
+.pbl-color-probe {
+	display: none;
+	background-color: var(--pbl-state-color);
+}
