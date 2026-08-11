@@ -14,9 +14,13 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 ### Added
 
 - **Clicking a row folds it** is now a toolbar toggle, beside the completed-items eye —
-  the same view option as **Handling items → Clicking an item in the tree**, flipped
-  without opening the options panel. It is drawn on the tree, where the setting applies,
-  and moves into the `⋯` menu on a narrow pane.
+  the same view option as **Handling items → Clicking an item in the tree or timeline**,
+  flipped without opening the options panel. It moves into the `⋯` menu on a narrow pane.
+- That option now covers the **roadmap's timeline** as well as the tree: a click on a
+  timeline row folds the rows below it, exactly as the row's own chevron does. Cards — on
+  a board, in a horizon bucket, on the shelf — still open their note, since a card lists
+  its children on its own face rather than folding rows. The toolbar toggle is drawn on
+  the tree and the timeline for the same reason.
 
 ### Changed
 

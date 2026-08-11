@@ -6,6 +6,7 @@ import { runInit } from '../interactions/structure';
 import {
 	capturedFocusKey,
 	CLICK_ACTION_LABEL,
+	clickActionApplies,
 	clickActionToggle,
 	collapseAll,
 	collapseButton,
@@ -359,11 +360,10 @@ function renderCompletedToggle(host: BacklogViewHost, barEl: HTMLElement, model:
  * until one of them is used. Nothing is decided here that `resolveItemHandling` does not
  * already decide — this only flips between the two values it declares.
  *
- * **Tree only**, which is the option's own wording rather than a second rule: it is
- * "Clicking an item in the tree" because a card has no fold to do (`foldOnClick` in
- * `render/rows.ts` is the one reader, and it runs on a row's body). A toolbar toggle that
- * changed nothing on the screen in front of you is worse than an absent one — the same
- * argument the completed toggle makes about the Deliverables board, one line above.
+ * Drawn on the two ROW-shaped projections and nowhere else — `clickActionApplies` states
+ * which and why. A toolbar toggle that changed nothing on the screen in front of you is
+ * worse than an absent one, the same argument the completed toggle makes about the
+ * Deliverables board one line above.
  *
  * The name is the SETTING and `aria-pressed` carries its value — the density toggle's
  * rule for the density toggle's reason: a name flipping to the next action would announce
@@ -372,7 +372,7 @@ function renderCompletedToggle(host: BacklogViewHost, barEl: HTMLElement, model:
  * has and it says nothing to a screen reader.
  */
 function renderClickActionToggle(host: BacklogViewHost, barEl: HTMLElement): void {
-	if (host.projection !== 'tree') return;
+	if (!clickActionApplies(host)) return;
 	const { folds, icon, flip } = clickActionToggle(host);
 	const btn = iconButton(barEl, icon, CLICK_ACTION_LABEL, 'click-action');
 	btn.addClass('pbl-click-action-toggle');

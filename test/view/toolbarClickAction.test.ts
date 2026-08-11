@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { Menu } from '../helpers/obsidian-mock';
+import { FakeVault } from '../helpers/vault';
+import { rowFor, roadmapView, timelineTitles } from '../helpers/roadmap';
 import { fixture, makeView, refresh, useViewHarness } from '../helpers/view';
 
 useViewHarness();
@@ -56,12 +58,13 @@ describe('the click-action toggle', () => {
 	});
 
 	/**
-	 * The option is "Clicking an item in the tree" because that is where it applies —
-	 * `foldOnClick` runs on a row's body, and a card has no fold to do. So the control is
-	 * absent rather than inert on the three card projections: a toolbar toggle that
+	 * The option applies to the two ROW-shaped projections — the tree and the dated axis,
+	 * each of which draws a chevron that folds rows — and to no card, whose disclosure
+	 * lists children on its own face and is absent altogether when there are none. So the
+	 * control is absent rather than inert on the three card screens: a toolbar toggle that
 	 * changes nothing on the screen in front of you is worse than one that is not there.
 	 */
-	it('is drawn on the tree alone', () => {
+	it('is drawn on the tree and the dated axis, and on no card projection', () => {
 		const { view, containerEl } = makeView(fixture(), {
 			horizonProperty: 'note.horizon',
 			startProperty: 'note.start',
@@ -69,7 +72,13 @@ describe('the click-action toggle', () => {
 		});
 		expect(toggle(containerEl)).not.toBeNull();
 
-		for (const projection of ['board', 'roadmap', 'deliverables'] as const) {
+		view.setProjection('roadmap');
+		view.setAxisPick('dates');
+		expect(toggle(containerEl), 'the dated axis drew no click-action toggle').not.toBeNull();
+
+		view.setAxisPick('horizons');
+		expect(toggle(containerEl), 'the horizon axis draws buckets of cards').toBeNull();
+		for (const projection of ['board', 'deliverables'] as const) {
 			view.setProjection(projection);
 			expect(toggle(containerEl), `${projection} drew a click-action toggle`).toBeNull();
 		}
@@ -94,5 +103,75 @@ describe('the click-action toggle', () => {
 
 		expect(entry(makeView(fixture()).containerEl)?.checked).toBe(false);
 		expect(entry(makeView(fixture(), { clickAction: 'fold' }).containerEl)?.checked).toBe(true);
+	});
+});
+
+/**
+ * What the setting DOES on the dated axis, which is the half the toolbar test above
+ * cannot see: the button being drawn there is a claim that a click folds, and the claim
+ * is only worth what this block checks.
+ */
+describe('clicking a timeline row with the option set to fold', () => {
+	const DATES = { clickAction: 'fold', startProperty: 'note.start', targetProperty: 'note.due' };
+	const click = (el: HTMLElement) => el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+	/** An epic over a feature, both dated, so the grid has a disclosure to answer for. */
+	function nested(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, start: '2026-08-01', due: '2026-12-01' } });
+		vault.addFile('Feature.md', {
+			frontmatter: { type: 'Feature', order: 10, start: '2026-08-05', due: '2026-09-01' },
+			parentLink: 'Epic',
+		});
+		return vault;
+	}
+
+	it('folds the rows below it and opens nothing', () => {
+		const vault = nested();
+		const { containerEl } = roadmapView(vault, DATES);
+		// Open it first: a parent nobody has ruled on arrives collapsed, so the click
+		// under test has something to shut rather than something to reveal.
+		click(rowFor(containerEl, 'Epic')!.querySelector<HTMLElement>('.pbl-chevron')!);
+		expect(timelineTitles(containerEl)).toEqual(['Epic', 'Feature']);
+
+		click(rowFor(containerEl, 'Epic')!);
+
+		expect(timelineTitles(containerEl)).toEqual(['Epic']);
+		expect(vault.opened).toEqual([]);
+	});
+
+	/**
+	 * The tree's own rule about a leaf, kept here rather than re-decided: a row with
+	 * nothing under it folds nothing and does not open either. One gesture cannot mean
+	 * "fold" on a parent and "open" on a leaf without being unpredictable on both — and
+	 * on this axis the question is `timelineRows`' own, since a bar's children are not
+	 * always rows on the grid.
+	 */
+	it('spends the click on a bar with no rows under it', () => {
+		const vault = nested();
+		const { containerEl } = roadmapView(vault, DATES);
+		click(rowFor(containerEl, 'Epic')!.querySelector<HTMLElement>('.pbl-chevron')!);
+
+		click(rowFor(containerEl, 'Feature')!);
+
+		expect(timelineTitles(containerEl)).toEqual(['Epic', 'Feature']);
+		expect(vault.opened).toEqual([]);
+	});
+
+	/**
+	 * The other half of the same rule, at the projection that must not have inherited it:
+	 * `wireCardActivation` serves board, bucket and shelf cards from the same function,
+	 * and the fold is a parameter exactly so those three keep opening notes.
+	 */
+	it('leaves a board card opening its note', () => {
+		const vault = nested();
+		const { view, containerEl } = makeView(vault, { ...DATES, stateProperty: 'note.status' });
+		view.setProjection('board');
+
+		const card = containerEl.querySelector<HTMLElement>('.pbl-card');
+		expect(card).not.toBeNull();
+		click(card!);
+
+		expect(vault.opened.map((o) => o.path)).toEqual(['Epic.md']);
 	});
 });

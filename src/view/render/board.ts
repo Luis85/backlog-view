@@ -420,8 +420,25 @@ export function renderCardBody(ctx: RowContext, card: HTMLElement, item: Backlog
 	renderCardChildren(ctx, card, item);
 }
 
-/** Click opens (selecting first), middle-click opens in a new tab — every projection's cards. */
-export function wireCardActivation(ctx: RowContext, card: HTMLElement, item: BacklogItem): void {
+/**
+ * Click opens (selecting first), middle-click opens in a new tab — every projection's
+ * cards.
+ *
+ * `fold` is the one caller's exception and is deliberately a parameter rather than a
+ * question asked here: the dated axis's timeline ROWS come through this function too, and
+ * they are the only thing it wires that has a fold to do (`renderTimelineRow` passes
+ * `foldOnClick`). A card's disclosure lists children on the card's own face and a card
+ * with none draws no disclosure at all, so "clicking an item folds it" has nothing to mean
+ * on one — asking the setting here would make the commonest card inert. Passing it in
+ * keeps that a fact about the call sites rather than a branch every card projection has to
+ * be read against.
+ */
+export function wireCardActivation(
+	ctx: RowContext,
+	card: HTMLElement,
+	item: BacklogItem,
+	fold?: (evt: MouseEvent) => boolean,
+): void {
 	// The same filter the tree's rows ask — see `fromRowControl`. A card contains buttons
 	// (the disclosure, the match links, the chips, the add) and a timeline row contains
 	// two more that are not buttons (the bar grips, the connector's neighbours), and none
@@ -429,6 +446,10 @@ export function wireCardActivation(ctx: RowContext, card: HTMLElement, item: Bac
 	card.addEventListener('click', (evt) => {
 		if (fromRowControl(evt)) return;
 		ctx.host.selectItem(item, false);
+		// Selected first either way, and opened only if the fold did not spend the click —
+		// the tree's own order in `wireRowEvents`, so one gesture cannot both fold a row
+		// and open its note.
+		if (fold?.(evt)) return;
 		ctx.host.openItem(item, evt);
 	});
 	card.addEventListener('auxclick', (evt) => {

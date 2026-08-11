@@ -38,13 +38,30 @@ found. Every row is a real note; the view is a lens on it, not a replacement for
   or with the modifier above. A row with nothing under it folds nothing and does not open
   either: one gesture cannot mean "fold" on a parent and "open" on a leaf without being
   unpredictable on both. A filtered tree refuses the flip exactly as the chevron does.
-  **This is the TREE's option and the option says so.** A card is not a row with a fold:
-  a board card's disclosure lists children on its own face, a timeline row's chevron folds
-  grid rows, and a card with nothing under it draws no disclosure at all — so the one
-  gesture would mean three things across the projections and leave the commonest card
-  inert. Card activation keeps opening the note, which is what a card is for. Extending it
-  is a product decision nobody has taken, not an omission: it would need an answer for the
-  childless card first.
+  **This is the ROW-shaped projections' option and the option says so** — the tree and the
+  dated axis, whose timeline rows carry the same chevron over the same collapse call. A
+  CARD is not a row with a fold: a board card's disclosure lists children on its own face
+  and a card with nothing under it draws no disclosure at all, so the option would be inert
+  on the commonest card on a board. Card activation keeps opening the note, which is what a
+  card is for.
+
+  Until 2026-08-11 this said **the TREE's option** and named extending it a product
+  decision nobody had taken, needing an answer for the childless card first. The decision
+  was taken (the human's own request) and the answer is the tree's, unchanged: a row with
+  no rows under it spends the click and opens nothing. What it needed was not a new rule
+  but the right question — `timelineRows` decides which bars keep a disclosure, so
+  `item.children` would have offered a fold on a bar whose children are not rows on that
+  grid. The card half of the old paragraph still stands and is why this stops at two
+  projections rather than four.
+- **1h — the timeline row folds, and the whole projection is redrawn** (`renderTimelineRow`
+  passing `foldOnClick` to `wireCardActivation`). The fold call itself is one shared
+  function so the gesture cannot come to mean different things on two screens that both
+  draw rows; what each caller supplies is the two things it alone knows — what counts as
+  having children, and what a fold has to redraw. On the tree that is one subtree; on the
+  dated axis it is everything, since the window, the gridlines and every full-height mark
+  are derived from the row set the fold changes. Which collapse BIT is written follows
+  `collapseKey` as it already did: the dated axis folds a plan under `TIMELINE_SCOPE`, the
+  tree opens a node in the backlog, and neither reaches a card's own `CARD_SCOPE`.
 - **1g — the option is flipped from the toolbar** (`renderClickActionToggle`). The same
   `.base` value, written through the same `config.set`, on a toggle beside the
   completed-items eye: this is the one **Handling items** option a reader changes while
@@ -53,8 +70,13 @@ found. Every row is a real note; the view is a lens on it, not a replacement for
   wrote and writes what the dropdown offers, so `resolveItemHandling` stays the only thing
   that decides what the value can be.
 
-  It follows the option's own scoping and is drawn on the TREE alone, since that is where
-  the setting applies at all — an inert control is worse than an absent one. Its name is the
+  It follows the option's own scoping — `clickActionApplies`, the tree and the dated axis
+  and no card — since a control that changes nothing on the screen in front of you is worse
+  than an absent one. That predicate has to agree with which renderers pass a fold, and
+  nothing checks that mechanically: the two call sites are `wireRowEvents` and
+  `renderTimelineRow`, a third would have to be added to it in the same change, and what
+  IS checked is the pairing on the projections that exist — the tests drive a click on each
+  and assert the button is present exactly where the click folds. Its name is the
   setting rather than the next action, with `aria-pressed` carrying the value, which is the
   density toggle's rule for the density toggle's reason. The fit ladder sheds it at step 3
   with the bulk collapse controls and it is in the `⋯` from there, so the row's floor is
@@ -101,7 +123,12 @@ found. Every row is a real note; the view is a lens on it, not a replacement for
   reachable without a pointer.
 - Opening a note writes nothing.
 - With `clickAction` set to fold, a click folds the row and opens nothing — and the
-  modifier, `Enter` and the menu still open the note.
+  modifier, `Enter` and the menu still open the note. On the tree and on the dated axis
+  alike, from one shared decision, so the gesture cannot mean different things on two
+  screens that both draw rows; on a board, bucket or shelf CARD it opens the note as it
+  always did.
+- The toolbar's toggle is drawn exactly where the setting has an effect: on the two
+  row-shaped projections and on no card.
 - With `openIn` set to the side, the backlog's own leaf is pinned and a second open
   reuses the pane the first one made; the menu's **Open to the right** pins nothing and
   splits afresh, so two deliberately placed notes both stay on screen.
@@ -113,10 +140,18 @@ found. Every row is a real note; the view is a lens on it, not a replacement for
 `src/view/openTarget.ts` (which leaf a note opens in: `open` for the configured target,
 which pins and reuses one side pane, and `openIn` for a target the caller named, which
 does neither) · `src/view/backlogView.ts` (`openItem` and `openItemIn`, each delegating
-to it) · `src/view/render/rows.ts` (the click and
-auxclick handlers, and `foldOnClick`) · `src/view/interactions/keyboard.ts` (`Enter`) ·
+to it) · `src/view/render/rows.ts` (the tree's click and
+auxclick handlers, and `foldOnClick` — the one decision both row-shaped projections
+make) · `src/view/render/board.ts` (`wireCardActivation`, which every card and the
+timeline's rows share, and whose optional fold is what keeps a card opening its note) ·
+`src/view/render/timeline.ts` (`renderTimelineRow`, the one caller that passes one) ·
+`src/view/render/toolbarControls.ts` (`clickActionApplies` and `clickActionToggle`: where
+the option applies, and what its toolbar toggle says) ·
+`src/view/render/toolbar.ts` (`renderClickActionToggle`) ·
+`src/view/interactions/keyboard.ts` (`Enter`) ·
 `src/view/interactions/menu.ts` · `src/domain/itemHandling.ts` (the two settings, their
 offered vocabulary and the defensive read of a hand-edited value) ·
 `src/domain/viewOptions.ts` (the **Handling items** group: `clickAction`, `openIn`).
 Tests: `test/view/rendering.test.ts`, `test/view/keyboard.test.ts`,
-`test/view/menu.test.ts`, `test/view/opening.test.ts` — asserted through `vault.opened`.
+`test/view/menu.test.ts`, `test/view/opening.test.ts` — asserted through `vault.opened` —
+and `test/view/toolbarClickAction.test.ts` for the toggle and the dated axis's fold.

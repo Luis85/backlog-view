@@ -67,13 +67,18 @@ export function getViewOptions(config?: BasesViewConfig): BasesAllOptions[] {
  * platform's modifier all still open one, and all three obey the target below — so a
  * view can be a place to read the structure without ceasing to be a way into the notes.
  *
- * The first option says **in the tree** because that is where it applies, and an option
- * naming more than it does is the same defect as a comment doing it. A card is not a row
- * with a fold: its disclosure lists children on the card's own face, a timeline row's
- * chevron folds grid rows, and a card with nothing under it draws no disclosure at all —
- * so one gesture would mean three things and leave the commonest card inert. Where the
- * target below applies is the opposite and needs no such qualifier: every projection
- * opens notes the same way.
+ * The first option names **the tree and the timeline** because those are where it applies,
+ * and an option naming more than it does is the same defect as a comment doing it. Those
+ * two are the ROW-shaped projections: each draws a chevron that folds rows below it, so
+ * one gesture means one thing on both. A CARD is still out, and for the reason that has
+ * not changed — its disclosure lists children on the card's own face and a card with
+ * nothing under it draws no disclosure at all, so the option would be inert on the
+ * commonest card on a board. Where the target below applies is the opposite and needs no
+ * qualifier at all: every projection opens notes the same way.
+ *
+ * Said in three words rather than two because the qualifier is the honest part: this read
+ * "in the tree" until the timeline was added to it (2026-08-11), and a label left behind
+ * by its own behaviour is the defect this paragraph exists to prevent.
  */
 function handlingItemsGroup(): BasesAllOptions {
 	const defaults = defaultItemHandling();
@@ -86,7 +91,7 @@ function handlingItemsGroup(): BasesAllOptions {
 			{
 				type: 'dropdown',
 				key: 'clickAction',
-				displayName: 'Clicking an item in the tree',
+				displayName: 'Clicking an item in the tree or timeline',
 				default: defaults.clickAction,
 				options: CLICK_ACTIONS,
 			},

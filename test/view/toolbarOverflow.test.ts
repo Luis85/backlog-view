@@ -39,6 +39,9 @@ describe('the toolbar overflow menu', () => {
 			'Assign missing properties',
 			'Expand all',
 			'Collapse all',
+			// The dated axis draws ROWS with chevrons, so the click-action setting applies
+			// here exactly as it does in the tree — and its button, and so this entry.
+			'Clicking a row folds it',
 		]);
 	});
 
@@ -52,9 +55,8 @@ describe('the toolbar overflow menu', () => {
 			'Assign missing properties',
 			'Expand all',
 			'Collapse all',
-			// The tree's own: `clickAction` applies to a row's body, so the button this
-			// mirrors is drawn on no other projection — which is why the roadmap list
-			// above ends at Collapse all.
+			// `clickAction` applies to a row's body, which the tree and the dated axis
+			// both have and no card projection does.
 			'Clicking a row folds it',
 		]);
 	});

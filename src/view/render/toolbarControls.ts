@@ -325,6 +325,29 @@ function renderTimelineControls(host: BacklogViewHost, zone: HTMLElement, barEl:
 export const CLICK_ACTION_LABEL = 'Clicking a row folds it';
 
 /**
+ * Where the click-action setting has an effect, and therefore where its toggle is drawn:
+ * the two ROW-shaped projections. The tree, and the roadmap's dated axis, whose timeline
+ * rows carry the same chevron over the same collapse call (`collapseKey` routes them to
+ * `TIMELINE_SCOPE`, which changes which bit is written and not what the gesture means).
+ *
+ * Never a card — the horizon axis's buckets, the board, the Deliverables board — because a
+ * card's disclosure lists children on its own face and a childless card draws none, so the
+ * option would be inert on the commonest one. That is `Opening the work.md` extension 1e's
+ * reasoning, kept as the reason this predicate has two arms rather than four.
+ *
+ * **This has to agree with who passes a fold to `wireCardActivation`, and nothing checks
+ * that mechanically.** The two fold call sites are `wireRowEvents` and `renderTimelineRow`;
+ * a third would have to be added here in the same change, or the row would fold with no
+ * toggle to say so. What IS checked is the pairing on the projections that exist:
+ * `test/view/toolbarClickAction.test.ts` drives a click on each and asserts the button is
+ * present exactly where the click folds.
+ */
+export function clickActionApplies(host: BacklogViewHost): boolean {
+	if (host.projection === 'tree') return true;
+	return host.projection === 'roadmap' && activeAxis(host.settings, host.axisPick) === 'dates';
+}
+
+/**
  * What that toggle currently says, what it looks like saying it, and what pressing it
  * does — one statement, because the toolbar button and its `⋯` entry are two inputs on
  * one setting and a menu that re-derived any of the three could offer to write what the

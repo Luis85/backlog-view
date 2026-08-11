@@ -119,9 +119,11 @@ export const SETUP: ManualSection = {
 		{
 			term: 'How an item opens',
 			text:
-				'What a click on a row does, and where the note it opens goes. The first of the ' +
-				'two is also a toggle on the toolbar, beside the completed-items eye, so it can ' +
-				'be flipped without opening this panel.',
+				'What a click on a row does, and where the note it opens goes. Folding on click ' +
+				'applies to the tree and to the timeline, the two places a row has a chevron — ' +
+				'never to a card, whose children are listed on its own face. It is also a toggle ' +
+				'on the toolbar of those two, beside the completed-items eye, so it can be ' +
+				'flipped without opening this panel.',
 			keys: ['clickAction', 'openIn'],
 		},
 		{
