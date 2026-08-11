@@ -2190,6 +2190,25 @@ Keep both texts sentence-case and free of the special characters the manifest ru
 Do not restate the mechanism (`ladderFor`, `keepsProjection`) in user-facing prose; users have
 neither symbol.
 
+- [ ] **Step 3a: One more thing the generated README says wrongly, in the same file**
+
+Found while measuring Task 14 and left for this task, since this is the task that edits
+`src/domain/backlogReadme.ts`. It compares each secondary state key only against
+`settings.stateKey`, so **two secondaries sharing a key with each other but not with the
+requirements key read as unshared**, and the table prints one key as two rows — one saying
+"on a Deliverable", one saying "on a test". Reproduce it first: resolve settings with
+`stateProperty` on `status` and BOTH `deliverableStateProperty` and `testStateProperty` on
+`shared`, generate the README, and count the rows for `shared`.
+
+This is the same class as the defect the file's own `sharedStateKey` comment says was fixed
+once already — the fix then compared against one other key, which was right while there were
+two workflows and became wrong at three. State the rule so a fourth workflow cannot reopen
+it: a key gets ONE row, naming every workflow that reads it.
+
+If your reproduction shows the table is already correct, say so and change nothing — the
+observation came from a measurement aimed at something else and has not been confirmed
+against the shipped generator.
+
 - [ ] **Step 4: Fix the tests that assert on these strings**
 
 Find them (`grep -rn "advisory" test/`, and the README snapshot/assertion suites). If a test
