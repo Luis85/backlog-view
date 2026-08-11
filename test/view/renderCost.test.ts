@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { FakeVault } from '../helpers/vault';
-import { key, makeView, rowByTitle, rows, treeOf, useViewHarness } from '../helpers/view';
+import { clickExpandAll, key, makeView, rowByTitle, rows, titlesOf, treeOf, useViewHarness } from '../helpers/view';
 
 useViewHarness();
 
@@ -99,5 +99,68 @@ describe('render cost', () => {
 
 		expect(one).not.toHaveBeenCalled();
 		expect(all).not.toHaveBeenCalled();
+	});
+
+	it('prunes a detached subtree from rowEls without taking a promoted root with it', () => {
+		// The over-pruning half of the same invariant the test above pins: `refreshRowChildren`
+		// must prune ONLY what it detached. `Epic → Feature` and `Epic → Test case → PBI` — the
+		// PBI is a plan member drawn as a promoted ROOT elsewhere, not under the Epic, so
+		// collapsing the Epic detaches only the Feature's group. Walking the raw child list
+		// instead of membership deletes the PBI's `rowEls` entry while its row stays on screen,
+		// and selection is what reads that map — a DOM check would pass with the index empty.
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feature.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
+		vault.addFile('Bridge case.md', { frontmatter: { type: 'Test case', order: 20 }, parentLink: 'Epic' });
+		vault.addFile('Deep PBI.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Bridge case' });
+		const { containerEl } = makeView(vault);
+		clickExpandAll(containerEl);
+		expect(titlesOf(containerEl)).toEqual(['Epic', 'Feature', 'Deep PBI']);
+
+		// Collapse the Epic through its own chevron — the real path `refreshRowChildren` runs on.
+		rowByTitle(containerEl, 'Epic')
+			.querySelector<HTMLElement>('.pbl-chevron')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(titlesOf(containerEl)).toEqual(['Epic', 'Deep PBI']);
+
+		// The promoted root is still drawn, so it must still be selectable.
+		rowByTitle(containerEl, 'Deep PBI').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(rowByTitle(containerEl, 'Deep PBI').classList.contains('pbl-selected')).toBe(true);
+	});
+
+	/**
+	 * The invariant is asked AT THE FORBIDDEN THING — the layout getters themselves —
+	 * rather than by asserting that this one handler looks right, so it holds for a hover
+	 * handler written tomorrow. Same reasoning as the tree-scan spy above, and the same
+	 * reason it is a spy on the call rather than a reading of the source.
+	 *
+	 * What it cost when it was false: `mouseover` on a row title read
+	 * `scrollWidth`/`clientWidth` to decide whether the title needed a tooltip, which
+	 * forces a synchronous re-layout of the whole tree — and hovering is itself what
+	 * dirties style, so the read could never reuse a clean layout. Measured in the browser
+	 * harness at 832 rows: 65.7ms per hover against 0.13ms without it.
+	 */
+	it('reads no layout while ANY part of a row is hovered', () => {
+		const { containerEl } = makeView(backlog(60));
+		const row = rowByTitle(containerEl, 'Feature 11');
+		// On the prototype, not the element: the handler could reach layout through any
+		// node it can see, and a spy on one element would miss a read of its parent.
+		const scrollWidth = vi.spyOn(Element.prototype, 'scrollWidth', 'get');
+		const clientWidth = vi.spyOn(Element.prototype, 'clientWidth', 'get');
+		try {
+			// EVERY descendant, not the title alone. Hovering only the title is what let the
+			// type badge keep the identical read through the fix that removed the title's —
+			// same defect, same file, missed because the check named a place instead of
+			// sweeping the category. (Codex, PR #128.)
+			for (const el of [row, ...row.querySelectorAll('*')]) {
+				el.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+			}
+
+			expect(scrollWidth).not.toHaveBeenCalled();
+			expect(clientWidth).not.toHaveBeenCalled();
+		} finally {
+			scrollWidth.mockRestore();
+			clientWidth.mockRestore();
+		}
 	});
 });

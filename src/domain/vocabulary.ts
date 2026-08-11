@@ -1,4 +1,4 @@
-import { isDeliverableType } from './itemTypes';
+import { inCatalog, isDeliverableType } from './itemTypes';
 import { FieldReading, tagKey } from './noteFields';
 import { BacklogSettings } from './settings';
 
@@ -27,15 +27,26 @@ interface VocabularySource {
 }
 
 /**
- * The rule the three collectors below share, stated once: walk the loaded items,
+ * The catalog's own state collector needs `ladder` for its membership test. Narrower
+ * than `VocabularySource` rather than widening it: `collectObservedDeliverableStates`
+ * deliberately runs off the LINKED phase, before `ladder` exists, and a field every
+ * collector must carry would break that call site for a field only one of them reads.
+ */
+interface CatalogVocabularySource extends VocabularySource {
+	ladder: string[];
+	testStateValue: string | null;
+}
+
+/**
+ * The rule the six collectors below share, stated once: walk the loaded items,
  * **skip every context row** — an excluded note's value is not this base's
  * vocabulary — and keep the first casing of each distinct value, in the order the
  * walk met it. `key` is how identity is decided; the tags collector passes `tagKey`
  * rather than lowercasing again, because tag identity is that function's to define.
  */
-function firstSeen(
-	all: VocabularySource[],
-	valuesOf: (item: VocabularySource) => string[],
+function firstSeen<T extends VocabularySource>(
+	all: T[],
+	valuesOf: (item: T) => string[],
 	key: (value: string) => string = (value) => value.toLowerCase(),
 ): string[] {
 	const seen = new Map<string, string>();
@@ -120,4 +131,22 @@ export function collectObservedDeliverableStates(all: VocabularySource[], settin
 		item.deliverableStateValue === null ? [] : [item.deliverableStateValue],
 	);
 	return sortOpenThenDone(values, settings.deliverableDoneValues);
+}
+
+/**
+ * First occurrence of every TEST workflow state value, sorted the way the other two sort
+ * their own: open states alphabetically, then done ones.
+ *
+ * Scoped by `inCatalog` BEFORE the first-seen walk, exactly as the Deliverable collector
+ * scopes by type and for a reason that bites harder here — the test key is SHARED with the
+ * requirements property by default, so without the filter every plan row's ordinary status
+ * would join the catalog's vocabulary. Redundant for the one caller that has it today,
+ * whose population is catalog members and context rows and nothing else, and still where
+ * the correctness lives: a collector is correct over the list it is handed or it is correct
+ * by luck.
+ */
+export function collectObservedTestStates(all: CatalogVocabularySource[], settings: BacklogSettings): string[] {
+	const tests = all.filter((item) => inCatalog(item));
+	const values = firstSeen(tests, (item) => (item.testStateValue === null ? [] : [item.testStateValue]));
+	return sortOpenThenDone(values, settings.testDoneValues);
 }

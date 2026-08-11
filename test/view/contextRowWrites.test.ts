@@ -318,14 +318,6 @@ describe('write safety with context rows, across every entry point', () => {
 				}
 			}
 		}
-		// The "move to top level" strip
-		for (const from of allRows) {
-			from.dispatchEvent(new MouseEvent('dragstart', { bubbles: true }));
-			const strip = containerEl.querySelector<HTMLElement>('.pbl-root-drop');
-			strip?.dispatchEvent(new MouseEvent('dragover', { bubbles: true }));
-			strip?.dispatchEvent(new MouseEvent('drop', { bubbles: true }));
-			await flush();
-		}
 		// Every context-menu command, every chip, every structural shortcut
 		const tree = treeOf(containerEl);
 		// Which chip kinds the sweep actually found. A chip renders only where its

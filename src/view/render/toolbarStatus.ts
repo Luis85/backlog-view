@@ -3,6 +3,7 @@ import { BacklogViewHost } from '../host';
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { displayType, isDeliverableType } from '../../domain/itemTypes';
 import { setTextIfChanged } from './toolbarControls';
+import { projectionPopulation } from '../projection';
 
 /**
  * The hierarchy is the tree's grouping and the workflow is the board's; a group-by
@@ -79,9 +80,11 @@ export function renderIgnoredNote(barEl: HTMLElement, model: BacklogModel): void
 
 /**
  * What this projection is counting — its own population, which is not the same question
- * for all four. The Deliverables board draws `model.deliverableResults`; the
+ * for all five. The Deliverables board draws `model.deliverableResults`; the
  * requirements board draws every result EXCEPT a Deliverable, which it excludes by
- * construction; the tree and the roadmap draw all of them.
+ * construction; the test catalog draws its own forest's results; and the tree and the
+ * roadmap draw what is left, which is the PLAN's population — `model.results` excludes
+ * the catalog already, so the tests leave three of these numbers without a branch here.
  *
  * One function because two toolbar readouts sit beside each other and have to agree:
  * the count label and the completed toggle's "(N hidden)". They did not — the label was
@@ -91,7 +94,11 @@ export function renderIgnoredNote(barEl: HTMLElement, model: BacklogModel): void
 export function countedPopulation(host: BacklogViewHost, model: BacklogModel): BacklogItem[] {
 	if (host.projection === 'deliverables') return model.deliverableResults;
 	if (host.projection === 'board') return model.results.filter((item) => !isDeliverableType(item.typeName));
-	return model.results;
+	// The catalog's own RESULTS — the tests and the `Task`s beneath them, no context row.
+	// Not "tests and only tests", which is a re-listed population that disagrees with the
+	// membership rule about a `Task`; and not "what it draws" either, which would sweep in
+	// a `Test case` present only as an excluded ancestor.
+	return projectionPopulation(host.projection, model).results;
 }
 
 /** e.g. "2 Epic · 4 Feature · 9 PBI · 3 Bug" for the item-count tooltip, over whichever population is passed. */

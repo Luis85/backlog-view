@@ -37,7 +37,8 @@ export type OptionalField =
 	| 'dependsOn'
 	| 'risk'
 	| 'assignee'
-	| 'deliverableState';
+	| 'deliverableState'
+	| 'testState';
 
 /**
  * The `BacklogSettings` field one optional property's key lands in. Spelled as a union
@@ -54,7 +55,8 @@ export type OptionalSettingsKey =
 	| 'dependsOnKey'
 	| 'riskKey'
 	| 'assigneeKey'
-	| 'deliverableStateKey';
+	| 'deliverableStateKey'
+	| 'testStateKey';
 
 /**
  * One such property: the option that names it, the key it adopts when nothing does,
@@ -112,6 +114,18 @@ const PROPERTY_TABLE: Record<OptionalField, Omit<OptionalProperty, 'field'>> = {
 		label: 'deliverable state',
 		settingsKey: 'deliverableStateKey',
 	},
+	testState: {
+		option: 'testStateProperty',
+		// Same suggestion as `state` and `deliverableState`, and the same mechanism delivers
+		// the same outcome: `adoptableProperties` refuses a suggestion another property has
+		// claimed, `state` is declared first and takes `status`, so a first-run setup leaves
+		// THIS key unbound and `resolvedTestStateKey` falls back to `stateKey`. Tests read
+		// `status` by sharing the plan's property, never by a second option written to point
+		// at it — which is what "test items rely on status by default" actually means here.
+		suggested: 'status',
+		label: 'test state',
+		settingsKey: 'testStateKey',
+	},
 	// Prerequisites, suggested by the name the Tasks plugin already uses for the same
 	// idea — offered as a placeholder, never matched by name.
 	dependsOn: { option: 'dependsOnProperty', suggested: 'dependsOn', label: 'depends on', settingsKey: 'dependsOnKey' },
@@ -166,6 +180,17 @@ export function resolvedDeliverableStateKey(settings: BacklogSettings): string {
 	return settings.deliverableStateKey || settings.stateKey;
 }
 
+/**
+ * The key a TEST's state is read and written through: its own when named, else the
+ * requirements key it shares by default. The identical fallback `resolvedDeliverableStateKey`
+ * states for the other secondary workflow, and stated separately rather than through a
+ * `resolvedSecondaryKey(settings, 'test')` because a dozen call sites read these by name and
+ * a parameterised one would make every one of them worse.
+ */
+export function resolvedTestStateKey(settings: BacklogSettings): string {
+	return settings.testStateKey || settings.stateKey;
+}
+
 /** The property id a frontmatter key is named by in the view options. */
 export function notePropertyId(key: string): string {
 	return `note.${key}`;
@@ -182,8 +207,18 @@ export function notePropertyId(key: string): string {
  * A suggestion whose key is already spoken for is skipped rather than adopted: it
  * would report as a collision in `configProblems` and block every write in the view,
  * which is a worse state than the unconfigured feature it was meant to enable.
+ *
+ * `only` narrows the answer to one field, for a feature that binds its own key the first
+ * time it is used rather than waiting for ✨ ([[Bind a property by using it]]). It filters
+ * the finished list rather than skipping the loop early, and that is the whole subtlety:
+ * whether a field may adopt depends on what the fields DECLARED BEFORE IT have claimed, so
+ * a loop that skipped them would report a suggestion free that the full pass takes.
  */
-export function adoptableProperties(config: BasesViewConfig, settings: BacklogSettings): OptionalProperty[] {
+export function adoptableProperties(
+	config: BasesViewConfig,
+	settings: BacklogSettings,
+	only?: OptionalField,
+): OptionalProperty[] {
 	const taken = new Set(ownedProperties(settings).map((owned) => owned.key));
 	taken.delete('');
 	const adoptable: OptionalProperty[] = [];
@@ -194,7 +229,7 @@ export function adoptableProperties(config: BasesViewConfig, settings: BacklogSe
 		taken.add(property.suggested);
 		adoptable.push(property);
 	}
-	return adoptable;
+	return only === undefined ? adoptable : adoptable.filter((property) => property.field === only);
 }
 
 /**

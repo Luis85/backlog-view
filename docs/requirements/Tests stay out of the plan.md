@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[The test catalog projection]]"
 order: 20
-status: Open
+status: Done
 priority: P2
 created: 2026-08-08
 source: user request
@@ -55,12 +55,13 @@ context row when a visible descendant needs a parent to hang from.
    question and is untouched (3a, 3d).
 4. The observed vocabularies are derived **per population**, and the rule is one sentence
    applied to each: *a vocabulary is scoped to the population of the projection that offers
-   it.* The count is the thing to get right — the model publishes **four**
-   (`observedStates`, `observedTags`, `observedHorizons`, `observedDeliverableStates`), and
-   an earlier draft of this step named two, which is how a `QA` horizon carried only by a
-   test would still have reached a plan row's Set horizon menu. `grep observed[A-Z]` is
-   what enumerates them; naming the ones a paragraph happens to be thinking about is what
-   misses the third.
+   it.* Which list is the thing to get right, and not by counting them: an earlier draft of
+   this step named two, which is how a `QA` horizon carried only by a test would still have
+   reached a plan row's Set horizon menu, and the number it was corrected to (four) went
+   stale the same week when `observedAssignees` arrived on `main` — the same defect one
+   level up, and the reason the criteria below state the rule rather than a total.
+   `grep observed[A-Z]` over `src/domain/model.ts` is what enumerates them; naming the ones
+   a paragraph happens to be thinking about is what misses the next.
    What the plan **draws and offers** — its board columns, and the values a plan row's Set
    state, Set horizon or tag picker offers — comes from the plan's population. The
    population, not the type list: `firstSeen` (`src/domain/vocabulary.ts`) skips a context
@@ -155,8 +156,27 @@ context row when a visible descendant needs a parent to hang from.
   done", because the one walk that computes rollups is the one told to stop at a test.
   Accepted rather than solved: a second projection-specific pass over the tree is a real
   cost for a number this epic never promised — it records no results, so a case's `done` is
-  its `status` and nothing else. If a run ever becomes an item, that increment can revisit
+  the state that case is IN and nothing else. (It later gained a workflow of its own to
+  answer that with, [[A workflow for the tests]]; the cost priced here is a ROLLUP, and a
+  per-item state is not one.) If a run ever becomes an item, that increment can revisit
   this; naming the cost here is what keeps it from being rediscovered as a bug.
+  **A rollup is therefore a PLAN number, and the walk asks that of both ends.** Written as
+  "stop at a test" it read as one question about the child and shipped as one: a `PBI`
+  mis-dragged under a `Test case` was still counted INTO that case, which the catalog then
+  drew as a rollup for a descendant it hides and promotes to a plan root — a bar with
+  nothing to expand to. Found by review. The correction is not "skip a child on the other
+  ladder", which is the symmetric shape that reads right and would hand the catalog exactly
+  the rollups this extension declines, since a suite and its cases agree. It is: count a
+  child only when the child and the PARENT are both plan rows.
+  **The NUMBER priced here left the COLUMN unpriced.** `renderTree`'s rollup header, its
+  per-row `.pbl-meta-col` cell and the width `columnFit` reserves for it all gated on
+  `settings.stateKey`/`settings.showCounts` alone, with no question asked of the
+  projection — so a vault with either configured drew a `Progress` header over a column
+  empty on every catalog row and spent every test title the width it reserved for
+  numbers this bullet had already declined to compute. `hasRollup`
+  (`src/view/projection.ts`) withholds the column the same way this bullet withholds the
+  rollup itself: an accepted cost restated where the UI, not the model, was the one still
+  paying it (found by an automated PR reviewer, fixed after this note was marked Done).
 - **2d — the base returns catalog members and nothing else.** The plan shows its ordinary
   **empty** state, not its all-done one. Both decisions are keyed to the plan's population,
   and neither is today: `renderTree` tests `model.items.length` for empty and then hands
@@ -192,11 +212,24 @@ context row when a visible descendant needs a parent to hang from.
   already gives one projection over: *on the requirements board a done Deliverable is not
   a hidden card, it is not a card at all, so counting it offered to reveal something
   pressing the button cannot show.* In the catalog the toggle is withheld entirely, as it
-  already is on the Deliverables board — this epic gives tests no workflow, so there is no
-  completion for it to hide.
-- **4a — a test carries a state the plan's workflow also uses.** Irrelevant: its state is
-  never read by a projection it is excluded from, so it cannot create a column, cannot fill
-  one, and cannot appear in a Set state menu.
+  already is on the Deliverables board. Tests have a workflow of their own now
+  ([[A workflow for the tests]]), and the withholding survives that on a reason it never
+  needed before: the thing the toggle hides is `subtreeDone`, which is the REQUIREMENTS
+  rollup — an item's own `done` read through the plan's state key, and a descendant count
+  the catalog never accumulates (3c), which makes the second half vacuously TRUE here
+  rather than unreachable. Neither half is the test workflow's, so hiding by it
+  would take a catalog row off the screen for a flag the catalog neither reads nor shows.
+- **4a — a test carries a state the plan's workflow also uses.** Which is the shipped
+  default rather than a corner case: with no test state property named, all three workflows
+  resolve to one key. Still irrelevant, and the reason is now that the workflows are
+  SEPARATE rather than that there is only one. A test is not in the plan's population, and
+  every plan surface derives from that population rather than from a list of type names —
+  the requirements board's columns come from `model.results`, which is the plan's forest;
+  a plan row's Set state offers `model.observedStates`, which is the whole tree minus the
+  catalog. So a test cannot create a plan column, cannot fill one, and cannot appear in a
+  plan row's Set state menu, whatever key its state happens to live under. The mirror holds
+  for the same reason and is the half a shared vocabulary would break: a plan row's state
+  never reaches a catalog row's menu either.
 - **5a — the user has no test items at all.** Every exclusion is a no-op and every
   projection renders exactly as it did. That is the criterion below, and it is the one
   worth asserting first because it is what almost every vault will experience.
@@ -228,10 +261,17 @@ context row when a visible descendant needs a parent to hang from.
   test on a state no plan row has, offered to another test — because the two criteria are
   each other's failure mode: one shared vocabulary satisfies this one and breaks the one
   above, and one plan-scoped vocabulary does the reverse.
-- **All four** observed vocabularies are accounted for, states, tags, horizons and
-  Deliverable states, and the horizon is asserted rather than assumed from the state: they
-  are separate lists read by separate menus, and the state was already right in a draft
-  where the horizon was not.
+- **Every** observed vocabulary is accounted for — states, tags, horizons, Deliverable
+  states and the assignee — and each is asserted rather than assumed from the one beside
+  it: they are separate lists read by separate menus, and the state was already right in a
+  draft where the horizon was not. Written as *all four* this criterion was a COUNT, and a
+  count goes stale the way a table enumerating code does: the assignee property arrived on
+  `main` while this feature was in review, `ProjectionPopulation` gained the list, and
+  `assigneeChoices` went on reading `model.observedAssignees` — offering a test-only name
+  on every plan row and refusing a catalog row a name another test carries. Found by
+  review. The criterion is the RULE now, so the next list is covered by it rather than
+  requiring the number be edited: a vocabulary is scoped to the population of the
+  projection that offers it, and every menu reaches it through `rowVocabulary`.
 - A `Test case` parented to a `PBI` changes none of that PBI's rollup numbers — descendant
   count, done count, `subtreeDone`, `descendantStart`, `descendantTarget` — nor those of
   anything above it, and neither do its own `Task`s. Asserted on the **model**, over a tree
@@ -263,33 +303,42 @@ context row when a visible descendant needs a parent to hang from.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The predicate belongs in
-`src/domain/itemTypes.ts` beside the vocabulary, and it is asked in **two** places, which
-is the correction this note needed most.
+The predicate is `inCatalog` (`src/domain/itemTypes.ts`), asked of the item's LADDER, which
+is what makes it the effective type: a child of a `Test suite` with no `type` at all chains
+onto the test ladder and is a catalog member, where a predicate reading the raw field would
+have put a note that draws as a test case into the plan.
 
-**In the empty states**, which are a third kind of consumer and easy to miss because they
-are what renders when nothing else does: `renderTree`'s two branches
-(`src/view/render/rows.ts`) and `renderRoadmapAdvisory` (`src/view/render/roadmap.ts`) both
-decide from `model.items` / `model.results` and must decide from the plan's population.
+**In the projections**, it is asked exactly once — in `rowHidden`
+(`src/view/rowVisibility.ts`), beside the quick filter and the completed toggle. Everything
+downstream inherits it, because everything downstream already consults that one predicate:
+the tree's rows, the requirements board's cards, the roadmap's rows and shelf, the
+keyboard's move targets. `src/domain/board.ts`, `src/domain/roadmap.ts` and
+`src/domain/shelf.ts` needed no edit at all — they read `model.results` and `model.roots`,
+which are the PLAN's now.
 
-**In the projections**, for what is drawn: the tree in `src/view/rowVisibility.ts`, the
-boards in `src/domain/board.ts`, the roadmap in `src/domain/roadmap.ts` and
-`src/domain/shelf.ts`, with the derived vocabularies in `src/domain/vocabulary.ts` — and in
-`countedPopulation` (`src/view/render/toolbarStatus.ts`), which is a projection question wearing
-a toolbar's clothes: it already branches per projection, two consumers read it (the count
-label and the completed toggle), and both are wrong together or right together.
+**In the empty states**, likewise for nothing: `renderTree` reads
+`projectionPopulation(...)` on all three of its decisions, so a base returning twelve test
+notes and no plan work shows the plan's ordinary empty state rather than *"All 12 items are
+done and hidden"* with a button that reveals nothing.
 
-**In `assignAll` (`src/domain/model.ts`)**, for what is counted — because the rollup is not
-a projection. That walk gathers descendant counts, done counts and date evidence while the
-tree is built, and it already carries the shape this needs: a context row contributes
-nothing itself, and a marker contributes nothing *and* is stated at the walk rather than at
-a call site "precisely so it holds for every quantity this walk gathers". A test is the
-third such exception and a stronger one — nothing from it and nothing from beneath it, per
-3b — and it belongs in the same place for the same reason.
+**In `assignAll` (`src/domain/model.ts`)**, for what is COUNTED, and this one had to be
+written: the rollup is not a projection. A test is the third exception in that walk and a
+stronger one than the two beside it — nothing from it AND nothing from beneath it, since a
+`Task` under a `Test case` is test work. Stated at the walk so it holds for every quantity
+the walk gathers. The subtree is still traversed; its rollup is discarded. The accepted
+cost is 3c: a suite shows no "3 of 5 cases done".
 
-Not pruning the model is still the load-bearing choice, and still [[A Deliverables board]]'s:
-a pruned model would take the coverage edges with it, and [[Untested work names itself]]
-needs them on the very rows the prune would have left behind. What was wrong was the
-sentence that followed from it — that the projections are therefore the *only* place to
-ask. Keeping an item in the model does not keep it out of the arithmetic the model does on
-the way past.
+**The vocabularies are per population**, and that is a shape rather than four edits:
+`ProjectionPopulation` carries the per-population `observed*` lists — `observedStates`,
+`observedHorizons`, `observedTags` and, since the assignee arrived, `observedAssignees` —
+so `model` and `model.catalog` answer the same names and `rowVocabulary`
+(`src/view/projection.ts`) is one ternary. The plan's are collected from the whole
+unfocused tree minus the catalog — unfocused, so what a menu offers never narrows with what
+is on screen. `observedDeliverableStates` needed nothing, being already scoped to
+`Deliverable`s.
+
+`countedPopulation` (`src/view/render/toolbarStatus.ts`) answers from the projection's own
+population, which its two readers — the count label and the completed toggle's *"N hidden"*
+— share, so neither can offer to reveal what the other is not counting. The ignored-notes
+advisory is untouched, and the reason is that a test is a work item: it was never in that
+number.

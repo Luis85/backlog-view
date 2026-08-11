@@ -120,21 +120,18 @@ describe('view state details', () => {
 		expect(view.filterText).toBe('x');
 	});
 
-	it('surfaces the full text of truncated titles as a tooltip', () => {
-		const vault = fixture();
-		const { containerEl } = makeView(vault);
+	it('carries the full title in a tooltip, without measuring whether one was needed', () => {
+		// Unconditional on purpose. Deciding whether the title is actually clipped costs a
+		// `scrollWidth`/`clientWidth` read per row: as a hover handler that was 65.7ms per
+		// hover at 832 rows, and as a batched pass it forced the whole tree to lay out at
+		// the end of every render. The redundant tooltip on a title that fits is the price.
+		// See `docs/bugs/Hovering a row measured its own width.md`.
+		const { containerEl } = makeView(fixture());
+		const tooltipOn = (title: string): string | undefined =>
+			rowByTitle(containerEl, title).querySelector<HTMLElement>('.pbl-title')?.dataset.tooltip;
 
-		const truncated = rowByTitle(containerEl, 'Epic A').querySelector<HTMLElement>('.pbl-title');
-		if (!truncated) throw new Error('title missing');
-		Object.defineProperty(truncated, 'scrollWidth', { value: 300 });
-		Object.defineProperty(truncated, 'clientWidth', { value: 100 });
-		truncated.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
-		expect(truncated.dataset.tooltip).toBe('Epic A');
-
-		// Titles that fit stay tooltip-free (jsdom reports zero widths for both)
-		const fitting = rowByTitle(containerEl, 'Epic B').querySelector<HTMLElement>('.pbl-title');
-		fitting?.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
-		expect(fitting?.dataset.tooltip).toBeUndefined();
+		expect(tooltipOn('Epic A')).toBe('Epic A');
+		expect(tooltipOn('Epic B')).toBe('Epic B');
 	});
 });
 

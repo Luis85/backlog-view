@@ -30,13 +30,15 @@ and each stays open until they are, so a stale check is visible rather than assu
 - [[Roadmap legend with two workflows]] — the second state vocabulary's own section, the
   three colour pairs four slots force on it, and the two greens. Layout and structure were
   measured in Chromium; the colour is the half no harness can answer. **Never checked.**
-- A colour named for a state ([[A colour per state]]) actually arrives, on both sides:
-  the `Colour for <state>` dropdown renders its empty-string entry as a usable `By
-  position` rather than as a blank row, picking a colour repaints that state's bars and
-  its legend swatch together, and the eight offered names read as eight distinguishable
-  colours in a real theme, light and dark — including whichever ones the theme brings
-  close to the today line's red, a milestone's cyan or the accent. jsdom asserts the
-  classes; only a vault can answer any of that. **Never checked.**
+- The state-colour dialog ([[A colour per state]]) works and looks right: the palette
+  button appears on the dated axis only, each swatch opens on the colour that state's bars
+  are actually drawn in (jsdom resolves nothing, so every seed under test is the grey
+  fallback), choosing one repaints the bars and the legend swatch together while the dialog
+  is still open, and the reset puts it back. Two things the suite cannot reach at all:
+  whether Obsidian's `ColorComponent.setValue` fires its own `onChange` — the reset sets the
+  swatch before recording the clear so the answer cannot matter, but that ordering is a
+  guard rather than a measurement — and whether the dialog stays usable at a workflow of
+  eight or ten states. **Never checked.**
 - [[Roadmap milestone appearance]] — the cyan badge, the diamond, the full-height line
   and its label, two milestones on one date, today's collision, label truncation, and a
   milestone past the window edge. **Seen once, 2026-08-02; no per-point record yet.**
@@ -149,8 +151,8 @@ and each stays open until they are, so a stale check is visible rather than assu
   nudge that separates a milestone from today exactly one line width.
 - [[Draw a dependency between bars]]'s gesture: the connector reveals on hover and stays
   under `(hover: none)`, illegal rows dim while the drag is held, the target under the
-  pointer outlines, the preview line tracks the pointer smoothly, labels vanish and the
-  tree's root strip stays hidden (`.pbl-linking`, never `.pbl-dragging`), and a completed
+  pointer outlines, the preview line tracks the pointer smoothly, labels vanish and no
+  card-move state is entered (`.pbl-linking`, never `.pbl-dragging`), and a completed
   or cancelled drag leaves nothing behind. Beside that, what a vault still owes, none of
   it answerable here: `wireLinkSource`'s `onGenerateDragPreview` mutates the content box
   and other rows' classes (dimming, the source mark), not only the dragged connector's

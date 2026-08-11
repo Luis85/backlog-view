@@ -39,9 +39,8 @@ the Base's own settings still control, and the one of them this view deliberatel
    - *What the tree is*: the three property names, `Ignore notes outside the hierarchy`,
      `Show parents outside the filter`, and `Infer hierarchy from folder notes` — the last
      because it changes where parents come from, not how they are drawn.
-   - *What a write does*: `Assign item type when moving`, which rewrites persisted `type`
-     values through a moved subtree, and the state and tags properties, which are the keys
-     the chip and the tag column write to.
+   - *What a write does*: the state and tags properties, which are the keys the chip and
+     the tag column write to.
    - *What progress means*: the state values offered for writing, the values counted as
      done, and `Show completed items` — which decide the rollups, the done styling and
      which subtrees render at all.

@@ -1,10 +1,13 @@
 import { Menu, setIcon, setTooltip } from 'obsidian';
 import { BacklogViewHost, Projection } from '../host';
 import { newItemType, promptCreateItem } from '../interactions/create';
-import { offerableTypes, showMenuForClick } from '../interactions/menu';
+import { showMenuForClick } from '../interactions/menu';
 import { runInit } from '../interactions/structure';
 import {
 	capturedFocusKey,
+	CLICK_ACTION_LABEL,
+	clickActionApplies,
+	clickActionToggle,
 	collapseAll,
 	collapseButton,
 	collapseCtlsDisabled,
@@ -20,6 +23,7 @@ import { focusInBar } from './toolbarFit';
 import { renderBusyIndicator } from './toolbarBusy';
 import { countedPopulation, levelBreakdown, renderIgnoredNote } from './toolbarStatus';
 import { renderFilterBox } from './toolbarFilter';
+import { hidesCompleted, offerableTypes } from '../projection';
 import { BacklogModel } from '../../domain/model';
 import { focusTarget } from '../../domain/itemTypes';
 import { DELIVERABLE_TYPE } from '../../domain/typeVocabulary';
@@ -51,20 +55,21 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	const refocusKey = capturedFocusKey(barEl);
 	barEl.empty();
 
-	// 1 — what you came to do. The primary action leads the row: it is the one control
-	// here that ADDS to the backlog, and reading order is where a primary action belongs.
-	// It also settles what no rung could: New is no longer last, so the clip at a very
-	// narrow pane takes a readout instead of the button — see
-	// `docs/requirements/A toolbar that fits one row.md`, extension 4b.
-	renderNewButton(host, barEl, model);
-	// Two groups side by side read as one six-segment strip without this.
-	barEl.createDiv({ cls: 'pbl-toolbar-sep' });
-
-	// 2 — where am I. The switcher says what the rest of the row is about.
+	// 1 — where am I. The switcher leads: it says what the rest of the row is about, and
+	// what the primary action beside it will make.
 	renderModeToggle(host, barEl);
 
-	// 3 — what THIS projection owns, and nothing when it owns none. Draws its own
-	// leading separator, or neither.
+	// 2 — what you came to do. The one control here that ADDS to the backlog, kept at the
+	// head of the row with the switcher: the clip at a very narrow pane runs from the
+	// RIGHT, so both survive it — see `docs/requirements/A toolbar that fits one row.md`,
+	// extension 4b. No divider between the two: each is its own bordered
+	// `.pbl-btn-group`, so the boxes already say where one control ends and the next
+	// begins, and a line between them draws a boundary that is drawn twice.
+	renderNewButton(host, barEl, model);
+
+	// 3 — what THIS projection owns, and nothing at all when it owns none. Set off from
+	// the two groups above by its own spacing rather than by a divider, so an empty zone
+	// leaves nothing behind to remove.
 	renderProjectionZone(host, barEl);
 
 	barEl.createDiv({ cls: 'pbl-toolbar-spacer' });
@@ -99,6 +104,7 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 		mutate: () => collapseAll(host),
 	});
 	renderCompletedToggle(host, barEl, model);
+	renderClickActionToggle(host, barEl);
 	renderFilterBox(host, barEl);
 
 	// The general door to the manual. Zone 4 because it is the same in every projection,
@@ -331,7 +337,11 @@ export function syncCollapseCtls(host: BacklogViewHost, barEl: HTMLElement): voi
  * and refreshes the view.
  */
 function renderCompletedToggle(host: BacklogViewHost, barEl: HTMLElement, model: BacklogModel): void {
-	if (!host.settings.stateKey || host.projection === 'deliverables') return;
+	// Withheld wherever the filtering it describes is off, which is one question and not
+	// two: `hidesCompleted` is what `rowHidden` asks, so a toggle can never sit over a
+	// projection that ignores it — the shape where a done row disappears and nothing on
+	// screen offers to bring it back.
+	if (!host.settings.stateKey || !hidesCompleted(host.projection)) return;
 	const showing = host.settings.showCompleted;
 	// This projection's OWN population, the same one the count label answers for: on the
 	// requirements board a done Deliverable is not a hidden card, it is not a card at
@@ -347,6 +357,35 @@ function renderCompletedToggle(host: BacklogViewHost, barEl: HTMLElement, model:
 	btn.addClass('pbl-completed-toggle');
 	btn.toggleClass('is-active', !showing);
 	btn.addEventListener('click', () => host.config.set('showCompleted', !showing));
+}
+
+/**
+ * Whether a click on a row folds it, on the row beside the completed toggle — and the
+ * ONLY surface for it. It was the **Handling items** group's `clickAction` option until
+ * 2026-08-11, on this toggle and in the view options both; it is now working position in
+ * the collapse store (ADR 0011, `host.clickFolds`), per saved view and per device, so
+ * there is no second surface for this one to agree with and no `.base` carrying one
+ * reader's habit to everyone the base is shared with.
+ *
+ * Drawn on the two ROW-shaped projections and nowhere else — `clickActionApplies` states
+ * which and why. A toolbar toggle that changed nothing on the screen in front of you is
+ * worse than an absent one, the same argument the completed toggle makes about the
+ * Deliverables board one line above.
+ *
+ * The name is the SETTING and `aria-pressed` carries its value — the density toggle's
+ * rule for the density toggle's reason: a name flipping to the next action would announce
+ * "clicking a row opens the note, pressed" at the moment clicks were folding, which states
+ * the opposite of what is true. The icon still swaps, because it is what a sighted reader
+ * has and it says nothing to a screen reader.
+ */
+function renderClickActionToggle(host: BacklogViewHost, barEl: HTMLElement): void {
+	if (!clickActionApplies(host)) return;
+	const { folds, icon, flip } = clickActionToggle(host);
+	const btn = iconButton(barEl, icon, CLICK_ACTION_LABEL, 'click-action');
+	btn.addClass('pbl-click-action-toggle');
+	btn.toggleClass('is-active', folds);
+	btn.setAttribute('aria-pressed', String(folds));
+	btn.addEventListener('click', flip);
 }
 
 /**
@@ -369,6 +408,27 @@ function renderCompletedToggle(host: BacklogViewHost, barEl: HTMLElement, model:
  * focusable, which `src/view/CLAUDE.md`'s "once a control is focusable, disabling it in
  * CSS is a lie" rule forbids.
  */
+/**
+ * The projections where the focus control is a static label rather than a menu, and what
+ * it says. Keyed by projection and PARTIAL — an entry is the exception, so the ordinary
+ * picker is what a projection gets by saying nothing.
+ *
+ * Both entries are the same decision twice: a control that narrowed this screen by
+ * matching level indices would hide rows for a reason the user never asked for. On the
+ * Deliverables board nothing narrows it at all; in the catalog the levels named are the
+ * OTHER ladder's, and a two-rung ladder has no rung called PBI.
+ */
+const INERT_FOCUS: Partial<Record<Projection, { label: string; tip: string }>> = {
+	deliverables: {
+		label: 'Deliverables',
+		tip: 'This board always shows every Deliverable — the focus level has no effect here',
+	},
+	catalog: {
+		label: 'Tests',
+		tip: 'The focus level names the plan’s own levels, so it has no effect on the test catalog',
+	},
+};
+
 function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: BacklogModel): void {
 	// Working position, not configuration: the collapse store persists it and the view
 	// rebuilds itself, because no Bases refresh follows a change it was not told about.
@@ -376,14 +436,19 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 	// where `capturedFocusKey` cannot see it.
 	const setLevel = (level: string) => pickAndRefocus(barEl, 'focus', () => host.setFocusLevel(level));
 
-	if (host.projection === 'deliverables') {
+	// Two projections answer with a static label and no menu, for the same reason and by
+	// the same shape: a menu offering choices that would do nothing is worse than no menu.
+	// The focus level is IGNORED in the catalog rather than cleared — its levels are the
+	// plan ladder's, and a focus set for the plan should still be there on the way back.
+	const inert = INERT_FOCUS[host.projection];
+	if (inert) {
 		const wrap = barEl.createDiv({ cls: 'pbl-focus' });
 		const btn = wrap.createEl('button', { cls: 'clickable-icon pbl-focus-btn', attr: { type: 'button' } });
 		setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'filter');
-		btn.setAttribute('aria-label', 'Deliverables');
-		btn.createSpan({ cls: 'pbl-btn-label', text: 'Deliverables' });
+		btn.setAttribute('aria-label', inert.label);
+		btn.createSpan({ cls: 'pbl-btn-label', text: inert.label });
 		btn.disabled = true;
-		setTooltip(btn, 'This board always shows every Deliverable — the focus level has no effect here');
+		setTooltip(btn, inert.tip);
 		return;
 	}
 
@@ -469,6 +534,10 @@ function renderModeToggle(host: BacklogViewHost, barEl: HTMLElement): void {
 	position('board', 'square-kanban', 'Show as kanban board', 'Board');
 	position('roadmap', 'map', 'Show as roadmap', 'Roadmap');
 	position('deliverables', 'package', 'Show as Deliverables board', 'Deliverables');
+	// FIFTH, not fourth: the toggle has carried four since the Deliverables board shipped,
+	// and a control that counted the three it had heard of would have REPLACED that board
+	// rather than joining it.
+	position('catalog', 'flask-conical', 'Show as test catalog', 'Tests');
 }
 
 /**

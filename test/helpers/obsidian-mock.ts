@@ -323,6 +323,11 @@ export class ExtraButtonComponent {
 		this.extraSettingsEl.setAttribute('aria-label', tooltip);
 		return this;
 	}
+	/** A real `disabled`, because the thing worth checking is that the DOM says so. */
+	setDisabled(disabled: boolean): this {
+		this.extraSettingsEl.toggleAttribute('disabled', disabled);
+		return this;
+	}
 	onClick(cb: () => unknown): this {
 		this.extraSettingsEl.addEventListener('click', cb);
 		return this;
@@ -348,12 +353,47 @@ export class DropdownComponent {
 	}
 }
 
+/**
+ * A colour swatch, as a real `<input type="color">` — which is what Obsidian's own is, so
+ * a test sets a colour by setting the input's value and dispatching `change`, the way the
+ * platform control does. It cannot model the picker POPOVER, which is the browser's; what
+ * a test can drive here is everything after a colour is chosen.
+ */
+export class ColorComponent {
+	colorEl: HTMLInputElement;
+	constructor(containerEl: HTMLElement) {
+		this.colorEl = containerEl.createEl('input') as HTMLInputElement;
+		this.colorEl.type = 'color';
+	}
+	setValue(value: string): this {
+		this.colorEl.value = value;
+		return this;
+	}
+	getValue(): string {
+		return this.colorEl.value;
+	}
+	onChange(cb: (value: string) => unknown): this {
+		this.colorEl.addEventListener('change', () => cb(this.colorEl.value));
+		return this;
+	}
+}
+
 export class Setting {
 	settingEl: HTMLElement;
+	/**
+	 * Where a Setting's controls go, which the real one separates from the name — a caller
+	 * that reaches for the controls alone (resetting every swatch in a row, say) needs the
+	 * two apart or it would find the name's own elements too.
+	 */
+	controlEl: HTMLElement;
 	constructor(containerEl: HTMLElement) {
 		this.settingEl = containerEl.createDiv({ cls: 'setting-item' });
+		this.controlEl = this.settingEl.createDiv({ cls: 'setting-item-control' });
 	}
-	setName(_name: string): this {
+	setName(name: string): this {
+		// Rendered, unlike the description below: a dialog built from a list is checked by
+		// WHICH ROWS it offers, and the name is the only thing that says which row this is.
+		this.settingEl.createDiv({ cls: 'setting-item-name', text: name });
 		return this;
 	}
 	setDesc(_desc: string): this {
@@ -363,19 +403,23 @@ export class Setting {
 		return this;
 	}
 	addText(cb: (text: TextComponent) => unknown): this {
-		cb(new TextComponent(this.settingEl));
+		cb(new TextComponent(this.controlEl));
 		return this;
 	}
 	addButton(cb: (btn: ButtonComponent) => unknown): this {
-		cb(new ButtonComponent(this.settingEl));
+		cb(new ButtonComponent(this.controlEl));
 		return this;
 	}
 	addDropdown(cb: (drop: DropdownComponent) => unknown): this {
-		cb(new DropdownComponent(this.settingEl));
+		cb(new DropdownComponent(this.controlEl));
 		return this;
 	}
 	addExtraButton(cb: (btn: ExtraButtonComponent) => unknown): this {
-		cb(new ExtraButtonComponent(this.settingEl));
+		cb(new ExtraButtonComponent(this.controlEl));
+		return this;
+	}
+	addColorPicker(cb: (picker: ColorComponent) => unknown): this {
+		cb(new ColorComponent(this.controlEl));
 		return this;
 	}
 }

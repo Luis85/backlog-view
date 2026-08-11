@@ -224,7 +224,7 @@ describe('keyboard expand and collapse', () => {
 describe('keyboard structure shortcuts', () => {
 	it('moves up, outdents and indents with Alt+arrows', async () => {
 		const vault = fixture();
-		const { containerEl } = makeView(vault, { autoAssignType: true });
+		const { containerEl } = makeView(vault);
 		const tree = treeOf(containerEl);
 
 		key(tree, 'ArrowDown');
@@ -236,8 +236,9 @@ describe('keyboard structure shortcuts', () => {
 		key(tree, 'ArrowRight', { altKey: true }); // indent under Epic A (previous sibling)
 		await flush();
 		expect(vault.fm('Epic B.md')['parent']).toBe('[[Epic A]]');
-		// The explicitly typed subtree follows the ladder
-		expect(vault.fm('Feature B1.md')['type']).toBe('PBI');
+		// The subtree it carried is not written at all — an indent moves one note.
+		expect(vault.fm('Feature B1.md')['type']).toBe('Feature');
+		expect(vault.writeLog.some((w) => w.path === 'Feature B1.md')).toBe(false);
 	});
 
 	it('outdents to the top level with Alt+ArrowLeft', async () => {

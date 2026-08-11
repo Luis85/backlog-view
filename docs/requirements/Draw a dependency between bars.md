@@ -33,7 +33,7 @@ mistaken for the resize grip it sits beside.
 | --- | --- |
 | **Actor** | Backlog owner |
 | **Trigger** | The pointer hovers, or the keyboard focuses, a timeline row whose item has a bar — or the device has no hover, where it is not revealed because it was never hidden |
-| **Preconditions** | Roadmap mode is on with the dated axis, and the dependency property is bound ([[Dependencies as a property]]) |
+| **Preconditions** | Roadmap mode is on with the dated axis, and the dependency property is bound — or is one the first link would bind ([[Bind a property by using it]]) |
 | **Guarantee** | The gesture plans no write of its own: a completed drag calls the same method the menu calls, so the batch, its refusals and its undo are identical either way. A cancelled drag writes nothing. No drop changes a date, and none writes to a note the Base excluded. |
 
 **Main flow**
@@ -57,8 +57,11 @@ mistaken for the resize grip it sits beside.
 - **1b — the row is outside the Base's filter.** No connector. It is never a write target,
   and a gesture that started from it would have to be refused at the end instead of never
   offered.
-- **1c — the dependency key is unbound, or the item has no bar.** No connector: nothing to
-  draw from, or nothing this view can record.
+- **1c — the dependency property is CLEARED, or the item has no bar.** No connector:
+  nothing this view may record, or nothing to draw from. Merely *unbound* stopped being
+  this case on 2026-08-11 — a connector is drawn on a key nobody has named, and making the
+  link is what names it ([[Bind a property by using it]]). Cleared is the user saying not
+  this one, and is the one configuration left with no connector anywhere.
 - **1d — the bar is narrower than its own handles.** The connector still sits outside the
   bar's end rather than inside it, so a one-day bar keeps both its resize grip and its
   connector instead of trading one for the other.
@@ -128,8 +131,11 @@ mistaken for the resize grip it sits beside.
 
 ## Acceptance criteria
 
-- The connector appears only on a result's bar, only with the key bound, and sits outside
-  the bar's end so it never displaces the resize grip — including on a bar one day wide.
+- The connector appears only on a result's bar, and never where the dependency property is
+  CLEARED — *only with the key bound* until 2026-08-11, which is now
+  [[Bind a property by using it]]'s subject: an unbound key draws the handle and the first
+  link names the property. It sits outside the bar's end so it never displaces the resize
+  grip — including on a bar one day wide.
 - It is always inside the grid: a bar clipped by the window carries its connector at the
   clipped edge, so no zoom or scroll position leaves a drawn bar with an unreachable
   connector.
@@ -218,5 +224,7 @@ undoes it, from extension 1e above, are in `styles/timelineFurniture.css`
 draws on — and the drag-state rules (the illegal dimming, the drop-over outline, the
 preview line) are filed there beside it for the same reason, overriding by specificity
 rather than position. The declutter that hides bar labels while a gesture is aimed is
-`.pbl-linking`, never `.pbl-dragging`: that class also reveals the tree's root strip for a
-card move, which a link can never use, since it reparents nothing.
+`.pbl-linking`, never `.pbl-dragging`: that class means a card move is in flight, which a
+link is not, since it reparents nothing. (It also revealed the tree's root strip until
+that strip was removed — the class stayed separate for the reason above, not for that
+one.)

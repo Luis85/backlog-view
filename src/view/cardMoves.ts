@@ -116,7 +116,7 @@ export class CardMoveController {
 	async performDrop(dragged: BacklogItem, target: DropTarget): Promise<void> {
 		// Dropping into a collapsed parent reveals where the item landed.
 		if (target.parent) this.host.setCollapsed(target.parent.file.path, false);
-		await this.applyMove(dragged, computeDropWrites(dragged, target, this.host.settings));
+		await this.applyMove(dragged, computeDropWrites(dragged, target));
 	}
 
 	/**

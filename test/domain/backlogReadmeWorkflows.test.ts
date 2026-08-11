@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { defaultSettings } from '../../src/domain/settings';
-import { settingsWith } from '../helpers/settings';
+import { settingsFrom, settingsWith } from '../helpers/settings';
 import { backlogReadmeContent } from '../../src/domain/backlogReadme';
 
 /**
@@ -82,5 +82,48 @@ describe('the property table with two workflows in it', () => {
 		const content = backlogReadmeContent(settings, [], 'test');
 		expect(content).toContain("| `docStatus` | Optional, on a Deliverable | The Deliverable workflow's own state |");
 		expect(content).not.toContain('requirements workflow');
+	});
+
+	it('documents a test state property of its own, and never twice when it is shared', () => {
+		// Shared by fallback is the DEFAULT configuration, so the row must not appear twice —
+		// the same rule this table already keeps for the Deliverable's key, and the reason it
+		// asks the RESOLVED key rather than the raw option.
+		const shared = settingsWith({ stateKey: 'status' });
+		const sharedContent = backlogReadmeContent(shared, [], 'test');
+		expect(keyRows(sharedContent, 'status')).toBe(1);
+
+		// Its own key: its own row, naming what carries it.
+		const own = settingsWith({ stateKey: 'status', testStateKey: 'testStatus' });
+		const ownContent = backlogReadmeContent(own, [], 'test');
+		expect(ownContent).toContain('| `testStatus` | Optional, on a test | The test workflow\'s own state — separate from the requirements workflow\'s |');
+	});
+
+	it('widens the shared-state row to name the test workflow too, when it also shares', () => {
+		// Both secondary workflows fall back to the same key by default, so the requirements
+		// row has to name both of them rather than just the Deliverable, the way the plain
+		// two-workflow case above names only the Deliverable.
+		const settings = settingsWith({ stateKey: 'status' });
+		const content = backlogReadmeContent(settings, [], 'test');
+		expect(content).toContain(
+			"The workflow state — see below, and the Deliverable workflow's own state on a Deliverable and the test workflow's own state on a test",
+		);
+	});
+
+	it('gives a key two secondary workflows share with each other, and not with the requirements one, ONE row', () => {
+		// The rule: a key gets one row, naming every workflow that reads it. Comparing each
+		// secondary against `settings.stateKey` alone was right while there were two workflows
+		// and became wrong at three — `shared` is neither workflow's own property, so the
+		// table listed it twice, once as a Deliverable's and once as a test's, in a table
+		// whose whole job is saying how many properties a note may carry.
+		const settings = settingsFrom({
+			stateProperty: 'note.status',
+			deliverableStateProperty: 'note.shared',
+			testStateProperty: 'note.shared',
+		});
+		const content = backlogReadmeContent(settings, [], 'test');
+		expect(keyRows(content, 'shared')).toBe(1);
+		expect(content).toContain(
+			"| `shared` | Optional, on a Deliverable or a test | The Deliverable and test workflows' own state — separate from the requirements workflow's |",
+		);
 	});
 });

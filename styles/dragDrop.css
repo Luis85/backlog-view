@@ -1,5 +1,33 @@
 /* Drag affordances and drop indicators — `src/view/interactions/dragDrop.ts`. */
 
+/*
+ * The one place a row is allowed to paint outside itself, so it is the one place that
+ * opts out of the containment `content-visibility: auto` brings (`tree.css`).
+ *
+ * The insertion line and its dot STRADDLE the boundary between two rows on purpose — that
+ * is what makes them read as "between these" rather than "in this one" — so they sit at
+ * negative offsets and paint into the row above or below. Paint containment clips exactly
+ * that: the 2px line would lose one of its pixels and the 8px dot would be drawn as a half
+ * circle. (Codex, PR #128.)
+ *
+ * Only the row under the pointer opts out, and only while it is a target, so the other
+ * eight hundred keep their containment and the drag pays for one row. Two classes beat
+ * `tree.css`'s single one on specificity, so this holds wherever the partials are
+ * assembled in.
+ *
+ * NOTHING CHECKS THE CLIPPING ITSELF. That the opt-out applies was verified in Chromium
+ * (a drop-target row computes `visible` where its neighbours compute `auto`); that the
+ * indicator then paints whole is a paint behaviour, which jsdom does not implement and
+ * the harness does not assert. It is on the live-vault list in
+ * [[The render is the whole cost of a data update]]. A pin asserting this rule's text
+ * would catch its deletion and nothing adjacent — see
+ * [[Finding 1 — the stylesheet has regression pins, not rules]].
+ */
+.pbl-row.pbl-drop-before,
+.pbl-row.pbl-drop-after {
+	content-visibility: visible;
+}
+
 .pbl-row.pbl-drag-source {
 	opacity: 0.35;
 }
@@ -69,51 +97,11 @@
 	background-color: hsla(var(--interactive-accent-hsl), 0.1);
 }
 
-/* Overlays the bottom edge while dragging — appearing must not reflow the
-   tree, or rows would shift under the cursor right as the drag starts. */
-.pbl-root-drop {
-	display: none;
-	align-items: center;
-	justify-content: center;
-	gap: var(--size-4-2);
-	position: absolute;
-	bottom: var(--size-4-2);
-	inset-inline: var(--size-4-2);
-	z-index: 20;
-	padding: var(--size-4-2);
-	border: 2px dashed var(--background-modifier-border);
-	border-radius: var(--radius-m);
-	color: var(--text-muted);
-	font-size: var(--font-ui-small);
-	background-color: var(--background-primary);
-	box-shadow: var(--shadow-s);
-}
-
-.pbl-view.pbl-dragging:not(.pbl-focused) .pbl-root-drop {
-	display: flex;
-}
-
 .pbl-new-pick {
 	margin-inline-start: calc(var(--size-4-1) * -1);
 }
 
 .pbl-new-pick .svg-icon {
-	width: var(--icon-s);
-	height: var(--icon-s);
-}
-
-.pbl-root-drop.pbl-drop-hover {
-	border-color: var(--interactive-accent);
-	color: var(--text-normal);
-	background-color: hsla(var(--interactive-accent-hsl), 0.1);
-}
-
-.pbl-root-drop-icon {
-	display: flex;
-	align-items: center;
-}
-
-.pbl-root-drop-icon .svg-icon {
 	width: var(--icon-s);
 	height: var(--icon-s);
 }

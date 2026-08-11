@@ -642,28 +642,34 @@ describe('the toolbar fit ladder', () => {
 	 * about looks — so they are asserted here, beside the ladder, rather than in the
 	 * toolbar's own file where they would read as layout preference.
 	 *
-	 * The row clips from its right end past the last rung. New leads it, which is what
-	 * makes "nothing costs the primary action its place" true by arrangement; a rung order
-	 * could never deliver it, because a rung buys one control's width and the overflow
-	 * resumes from the right. And the `⋯` sits at the head of the right-hand block rather
-	 * than among the write controls, because it is the only route to every shed control:
-	 * measured at 380px it was the FIRST thing cut when it sat last.
+	 * The row clips from its right end past the last rung. The switcher and New are the
+	 * two things at its head — nothing but them precedes the projection zone and the
+	 * spacer — which is what makes "nothing costs the primary action its place" true by
+	 * arrangement; a rung order could never deliver it, because a rung buys one control's
+	 * width and the overflow resumes from the right. And the `⋯` sits at the head of the
+	 * right-hand block rather than among the write controls, because it is the only route
+	 * to every shed control: measured at 380px it was the FIRST thing cut when it sat last.
 	 *
 	 * Asserted as relative order, not as indices — an index breaks on the next separator
-	 * added and says nothing about why.
+	 * added and says nothing about why. The two at the head are the exception and are
+	 * asserted as the first two children on purpose: "at the head" is the claim, and it is
+	 * a claim about absolute position that a relative test cannot make.
 	 */
-	it('leads with New and keeps the overflow button ahead of the clip edge', () => {
+	it('heads the row with the switcher and New, and keeps the overflow button ahead of the clip edge', () => {
 		const { containerEl } = makeView(fixture());
 		const bar = toolbarOf(containerEl);
 		const at = (sel: string) => [...bar.children].findIndex((c) => c.matches(sel) || !!c.querySelector(sel));
+		const modes = at('.pbl-mode-toggle');
 		const New = at('.pbl-new');
 		const overflow = at('.pbl-overflow-btn');
 		const undo = at('.pbl-undo-btn');
 		const count = at('.pbl-count-label');
-		expect([New, overflow, undo, count].every((i) => i >= 0)).toBe(true);
+		expect([modes, New, overflow, undo, count].every((i) => i >= 0)).toBe(true);
 
-		// Nothing at all before the primary action.
-		expect(New).toBe(0);
+		// The switcher, then the primary action, and nothing else in front of either —
+		// adjacent, so no divider can come back between two bordered groups.
+		expect(modes).toBe(0);
+		expect(New).toBe(1);
 		// The escape hatch is upstream of every control it can stand in for, so the clip
 		// reaches those first. Undo is the nearest of them and the one measured being cut.
 		expect(overflow).toBeLessThan(undo);

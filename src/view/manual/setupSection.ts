@@ -36,13 +36,6 @@ export const SETUP: ManualSection = {
 			keys: ['parentProperty', 'orderProperty', 'typeProperty', 'hierarchyOnly', 'showOutsideParents', 'inferFolderHierarchy'],
 		},
 		{
-			term: 'Assign item type when moving',
-			text:
-				"Off by default. On, a move that changes an item's parent retypes the ladder levels " +
-				'in its subtree to match — see "Moving and ranking" for exactly what it skips.',
-			keys: ['autoAssignType'],
-		},
-		{
 			term: 'State, tags, assignee and the stamps a state carries',
 			text:
 				'The properties the state chip, the tag column, the assignee chip, and a state ' +
@@ -82,6 +75,19 @@ export const SETUP: ManualSection = {
 			keys: ['deliverableStateProperty'],
 		},
 		{
+			term: 'The test catalog\'s own workflow',
+			text:
+				'Unset by default, like the Deliverable property above: with no key of its own, a ' +
+				'`Test suite` or `Test case` row\'s state chip reads and writes State property ' +
+				'instead, sharing its property and its states while it is falling back. Name a ' +
+				'property here to make it independent; its own done values then default to the ' +
+				'shipped Done, Closed, Completed, Removed rather than this vault\'s customized ' +
+				'shared list, while its own states stay unset. Records no run history and draws no ' +
+				'columns: the catalog is a tree, and this is the same per-item state mechanism ' +
+				'every other workflow here already has, over its own property.',
+			keys: ['testStateProperty', 'testStateValues', 'testDoneValues'],
+		},
+		{
 			term: 'What progress means',
 			text:
 				'The workflow states offered for writing, done values, started values, and Show ' +
@@ -100,12 +106,14 @@ export const SETUP: ManualSection = {
 		{
 			term: 'A colour per state',
 			text:
-				'A colour box per workflow state — both workflows, each state offered once — saying ' +
-				'which of the theme’s eight colours the dated axis paints that state’s bars, and the ' +
-				'legend swatch that names it with them, since the two read one mapping. Left at By ' +
-				'position, a state keeps the colour its place in the list gives it. A done state ' +
-				'ignores the pick: a finished bar is green wherever this plugin draws one.',
-			keys: ['stateColor.*'],
+				'Not here: Bases has no colour control, so the picker is this plugin’s own dialog, ' +
+				'opened by the palette button on the roadmap toolbar — dated axis only, since that ' +
+				'is the one place a state colour is drawn. It offers one swatch per DECLARED state, ' +
+				'across both workflows, each state once; a state you have not listed in the boxes ' +
+				'above cannot be coloured, because there would be nowhere to keep the choice. The ' +
+				'swatch opens on the colour that state is drawn in now, and the arrow beside it puts ' +
+				'it back on the default. A chosen colour is fixed, where the default follows the ' +
+				'theme between light and dark; a finished state stays green whatever is chosen.',
 		},
 		{
 			term: 'Where new notes go',
@@ -116,8 +124,13 @@ export const SETUP: ManualSection = {
 		},
 		{
 			term: 'How an item opens',
-			text: 'What a click on a row does, and where the note it opens goes.',
-			keys: ['clickAction', 'openIn'],
+			text:
+				'Where the note a click opens goes. Whether a click OPENS it at all is not here: ' +
+				'the toolbar toggle beside the completed-items eye decides that, on the tree and ' +
+				'the timeline — the two places a row has a chevron, never a card, whose children ' +
+				'are listed on its own face. It is kept per view on this device, like the ' +
+				'projection and the focus level, rather than in the base.',
+			keys: ['openIn'],
 		},
 		{
 			term: 'Presentation',

@@ -1,6 +1,8 @@
 import { Menu, setIcon, setTooltip } from 'obsidian';
+import { hasColorableStates, openStateColors } from '../interactions/stateColors';
 import { BacklogViewHost } from '../host';
 import { BacklogItem, BacklogModel } from '../../domain/model';
+import { projectionPopulation, treeShaped } from '../projection';
 import { activeAxis, configuredAxes, RoadmapAxis } from '../../domain/roadmap';
 import { ScaleId } from '../../domain/timeline';
 import { showMenuForClick } from '../interactions/menu';
@@ -178,18 +180,22 @@ function menuButton(
  * registration interface with one implementation is an abstraction nobody can read
  * faster than the branch it replaces.
  *
- * The zone and its leading separator are created together and removed together: a
- * separator introducing nothing is a rule the row states and does not keep. Emptiness is
- * decided from what was DRAWN rather than from a second reading of the settings, so the
- * two cannot disagree about whether this projection contributed anything.
+ * What separates it from the head of the row is SPACING, carried by the zone's own class
+ * (`styles/toolbar.css`), and no longer a drawn divider. That is one element fewer and,
+ * more to the point, one thing fewer that can be left behind: the divider and the zone
+ * were created together and removed together precisely because a separator introducing
+ * nothing is a rule the row states and does not keep, and a margin on the zone cannot
+ * outlive it. Emptiness is still decided from what was DRAWN rather than from a second
+ * reading of the settings, so nothing here can disagree with the pickers about whether
+ * this projection contributed anything.
  */
 export function renderProjectionZone(host: BacklogViewHost, barEl: HTMLElement): void {
-	const sep = barEl.createDiv({ cls: 'pbl-toolbar-sep' });
 	const zone = barEl.createDiv({ cls: 'pbl-zone pbl-zone-projection' });
 	switch (host.projection) {
 		case 'roadmap':
 			renderAxisPicker(host, zone, barEl);
 			renderTimelineControls(host, zone, barEl);
+			renderStateColorsButton(host, zone, barEl);
 			break;
 		default:
 			// The tree, the board and the Deliverables board own no toolbar controls of
@@ -197,9 +203,32 @@ export function renderProjectionZone(host: BacklogViewHost, barEl: HTMLElement):
 			// somewhere else in the row.
 			break;
 	}
-	if (zone.childElementCount > 0) return;
-	sep.remove();
-	zone.remove();
+	if (zone.childElementCount === 0) zone.remove();
+}
+
+/**
+ * The way into the state-colour dialog, and the only one — there is no palette command and
+ * no `⋯` entry, because neither could say WHERE the colours apply.
+ *
+ * It renders under the legend's own gate: roadmap mode, the dated axis, and a workflow
+ * whose states a colour can be stored against. That is the one screen a state colour is
+ * drawn on, so a control anywhere else would claim it affects the tree and the board, which
+ * it does not — and a control offered with nothing to colour would open onto an empty
+ * dialog. `hasColorableStates` is asked rather than restated here, so the button and what
+ * the dialog can actually show cannot drift apart.
+ */
+function renderStateColorsButton(host: BacklogViewHost, zone: HTMLElement, barEl: HTMLElement): void {
+	if (activeAxis(host.settings, host.axisPick) !== 'dates' || !hasColorableStates(host)) return;
+	const btn = iconButton(zone, 'palette', 'State colours', 'state-colors');
+	btn.addClass('pbl-state-colors-btn');
+	// Focus is put back at CLOSE time and looked up then, never captured: every change the
+	// dialog makes writes the `.base`, which rebuilds this toolbar — so the button pressed
+	// is detached by the time the dialog closes, and a modal returning focus to its opener
+	// would hand it to an element no longer in the document. `⋯ → Open the manual` records
+	// the same hole; this path meets it on every use rather than never.
+	btn.addEventListener('click', () =>
+		openStateColors(host, () => focusInBar(barEl, barEl.querySelector<HTMLElement>('.pbl-state-colors-btn'))),
+	);
 }
 
 /** Axis labels, one place, so the button and its menu cannot name it differently. */
@@ -291,6 +320,65 @@ function renderTimelineControls(host: BacklogViewHost, zone: HTMLElement, barEl:
 }
 
 /**
+ * The click-action toggle's name, fixed: it names the SETTING rather than the next
+ * action, so `aria-pressed` can carry the value without the two contradicting each
+ * other. See `renderClickActionToggle`.
+ */
+export const CLICK_ACTION_LABEL = 'Clicking a row folds it';
+
+/**
+ * Where the click-action setting has an effect, and therefore where its toggle is drawn:
+ * the two ROW-shaped projections. The tree, and the roadmap's dated axis, whose timeline
+ * rows carry the same chevron over the same collapse call (`collapseKey` routes them to
+ * `TIMELINE_SCOPE`, which changes which bit is written and not what the gesture means).
+ *
+ * Never a card — the horizon axis's buckets, the board, the Deliverables board — because a
+ * card's disclosure lists children on its own face and a childless card draws none, so the
+ * option would be inert on the commonest one. That is `Opening the work.md` extension 1e's
+ * reasoning, kept as the reason this predicate has two arms rather than four — the first of which
+ * is every ROW-shaped projection, not the plan's tree alone.
+ *
+ * **This has to agree with who passes a fold to `wireCardActivation`, and nothing checks
+ * that mechanically.** The two fold call sites are `wireRowEvents` and `renderTimelineRow`;
+ * a third would have to be added here in the same change, or the row would fold with no
+ * toggle to say so. What IS checked is the pairing on the projections that exist:
+ * `test/view/toolbarClickAction.test.ts` drives a click on each and asserts the button is
+ * present exactly where the click folds.
+ */
+export function clickActionApplies(host: BacklogViewHost): boolean {
+	// `treeShaped`, never `=== 'tree'`. The catalog renders through `renderTree` and so
+	// through `wireRowEvents`, which folds — so a bare comparison here withheld the only
+	// control over a behaviour that was still running, and a user who turned folding on in
+	// the plan had to go back there to turn it off. That is `projection.ts`'s own rule
+	// (a projection opting out of a feature opts out of the COMPUTATION, not just the
+	// control) failing in the direction it warns about, and the drift that module exists
+	// to stop: it arrived when the toggle merged in beside a projection it had never seen.
+	if (treeShaped(host.projection)) return true;
+	return host.projection === 'roadmap' && activeAxis(host.settings, host.axisPick) === 'dates';
+}
+
+/**
+ * What that toggle currently says, what it looks like saying it, and what pressing it
+ * does — one statement, because the toolbar button and its `⋯` entry are two inputs on
+ * one value and a menu that re-derived any of the three could offer the opposite of what
+ * the button was offering. The same rule the entries below already keep by reading
+ * `disabled` off the button they mirror, kept here at the source instead, since this
+ * value lives in the collapse store rather than on an element.
+ *
+ * `host.clickFolds` and not a setting: this is working position, per saved view and per
+ * device (ADR 0011), so `setClickFolds` both persists it and re-renders — no Bases
+ * refresh follows a change the base was not told about.
+ */
+export function clickActionToggle(host: BacklogViewHost): { folds: boolean; icon: string; flip: () => void } {
+	const folds = host.clickFolds;
+	return {
+		folds,
+		icon: folds ? 'fold-vertical' : 'file-text',
+		flip: () => host.setClickFolds(!folds),
+	};
+}
+
+/**
  * What the bulk collapse controls can reach — a DIFFERENT question from
  * `countedPopulation` in `toolbarStatus.ts`, which is why it is a second function rather than a
  * reuse: counting asks for the Base's rows, and collapsing asks for everything on screen
@@ -310,7 +398,13 @@ function renderTimelineControls(host: BacklogViewHost, zone: HTMLElement, barEl:
  * elsewhere can never hide a Deliverable — while `model.items` is the focused render set.
  */
 function collapsiblePopulation(host: BacklogViewHost, model: BacklogModel): BacklogItem[] {
-	return host.projection === 'deliverables' ? model.deliverableResults : model.items;
+	if (host.projection === 'deliverables') return model.deliverableResults;
+	// The catalog's own items for the same reason, reached the other way: `model.items` is
+	// the PLAN's population now, so left alone these two buttons would fold the plan from
+	// the catalog — and the collapse bits being shared by path, the plan would still be
+	// folded on the way back. Deliberately NOT behind `treeShaped`: this decides what a
+	// bulk collapse TOUCHES rather than whether a button is enabled.
+	return projectionPopulation(host.projection, model).items;
 }
 
 /**
@@ -349,7 +443,7 @@ export function collapseAll(host: BacklogViewHost): void {
  */
 export function collapseCtlsDisabled(host: BacklogViewHost): boolean {
 	if (host.isFiltering()) return true;
-	if (host.projection === 'tree') return false;
+	if (treeShaped(host.projection)) return false;
 	const barPaths = new Set((host.roadmap?.roadmap.bars ?? []).map((bar) => bar.item.file.path));
 	for (const path of host.cardChildrenShown) {
 		if (barPaths.has(path)) return false;
@@ -413,6 +507,7 @@ interface OverflowEntry {
  */
 function overflowEntries(host: BacklogViewHost, barEl: HTMLElement): OverflowEntry[] {
 	const compact = host.density === 'compact';
+	const clickAction = clickActionToggle(host);
 	const all: OverflowEntry[] = [
 		{
 			title: 'Compact rows',
@@ -474,6 +569,15 @@ function overflowEntries(host: BacklogViewHost, barEl: HTMLElement): OverflowEnt
 				collapseAll(host);
 				host.render();
 			},
+		},
+		{
+			// Last, where it sits in the row. Its checkmark comes from the button's own
+			// `aria-pressed` like the density toggle's, so the entry cannot say a click
+			// folds while the button says it opens.
+			title: CLICK_ACTION_LABEL,
+			icon: clickAction.icon,
+			cls: 'pbl-click-action-toggle',
+			run: clickAction.flip,
 		},
 	];
 	return all.filter((entry) => barEl.querySelector(`.${entry.cls}`) !== null);

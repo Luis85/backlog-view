@@ -1,9 +1,10 @@
 import { setIcon, setTooltip } from 'obsidian';
 import { RowContext } from './columns';
 import { createCard, wireCardActivation } from './board';
-import { renderBadge, renderChevron, renderTitleText } from './rows';
+import { foldOnClick, renderBadge, renderChevron, renderTitleText } from './rows';
 import { dependencyNote, NO_CONFLICTS, renderDependencyArrows } from './timelineArrows';
 import { CardDragController } from '../interactions/cardDrag';
+import { dependenciesAvailable } from '../interactions/dependencies';
 import { wireBarLink, wireLinkPreview } from '../interactions/linkDrag';
 import { effectiveLeadWidth, renderLeadResize } from '../interactions/timelineLeadResize';
 import { BacklogViewHost, DrawnColors } from '../host';
@@ -14,7 +15,7 @@ import { isMarkerType } from '../../domain/itemTypes';
 import {
 	ownWorkflowReading,
 	paletteFor,
-	stateColorClass,
+	stateColorPaint,
 	stateKeyFor,
 	StatePalette,
 	WorkflowReading,
@@ -445,10 +446,14 @@ function renderBarRow(
 	// Undefined where no workflow has a key at all — no vocabulary, so no slot, which is
 	// the same answer `paletteSlot` gives a state outside one: the plain accent.
 	const palette = paletteFor(mounts.palettes, bar.item);
-	// A colour the user named for this state wins over its slot — `stateColorClass` is
-	// where that precedence lives, and the legend's swatch asks the same function.
-	const stateCls = palette ? stateColorClass(ctx.host.settings, palette, own.value) : null;
-	if (stateCls !== null) row.addClass(stateCls);
+	// The class and the inline colour both come from `stateColorPaint`, which the legend's
+	// swatch also asks — two things that must agree now, from one answer.
+	const paint = palette ? stateColorPaint(ctx.host.settings, palette, own.value) : null;
+	if (paint) {
+		row.addClass(paint.cls);
+		// Inline, so it overrides whatever the class above set — see `StatePaint`.
+		if (paint.color) row.setCssProps({ '--pbl-state-color': paint.color });
+	}
 	const lead = row.createDiv({ cls: 'pbl-timeline-lead' });
 	renderRowChevron(ctx, lead, entry);
 	renderBadge(ctx.host, lead, bar.item);
@@ -492,7 +497,14 @@ function renderBarRow(
 	renderConnector(ctx, mounts, { row, barEl: el, geometry }, bar);
 	renderBarLabel(track, bar, geometry, scale, window);
 	renderRowFacts(row, ctx, bar, { dates, own, conflictedPrereqs: mounts.conflictedPrereqs, lead });
-	wireCardActivation(ctx, row, bar.item);
+	// The one caller that passes a fold: this row has a chevron, so "clicking an item
+	// expands or collapses it" means here exactly what it means in the tree. Its two
+	// answers are this axis's own — `entry.hasChildren` is what `timelineRows` decided
+	// draws a disclosure, never `item.children`, and the redraw is the whole projection
+	// for the same reason `renderRowChevron`'s is.
+	wireCardActivation(ctx, row, bar.item, (evt) =>
+		foldOnClick(ctx.host, bar.item, evt, { hasChildren: entry.hasChildren, redraw: () => ctx.host.render() }),
+	);
 	// The same three overrides `styles/timeline.css` gives a bar, asked in the same
 	// order: done wins outright (the row class overrides regardless of geometry), then
 	// a milestone diamond only where `barClasses` actually added `pbl-bar-milestone` —
@@ -505,9 +517,9 @@ function renderBarRow(
 	const colors: DrawnColors = {
 		done: own.done,
 		milestone: !own.done && milestoneDrawn,
-		// `stateCls === null` IS "no slot": a named colour only ever replaces a slot the
-		// state already had, so the plain accent is still exactly the no-class case.
-		accent: !own.done && stateCls === null && !milestoneDrawn,
+		// `paint === null` IS "no slot", and a choice never creates one, so the plain accent
+		// is still exactly the case where the state is outside its own vocabulary.
+		accent: !own.done && paint === null && !milestoneDrawn,
 	};
 	return { row, colors };
 }
@@ -684,15 +696,22 @@ interface ConnectorPlace {
  * clamped edge. A handle can sit at a boundary without asserting anything is there,
  * which is what a diamond cannot do.
  *
- * The draw condition (`dependsOnKey !== '' && !geometry.outside`) is a strict subset of
- * `wireBarLink`'s own gate (`dependsOnKey !== ''`): a bar can never draw a connector
- * without a target being wired for it. The key unconfigured is a feature this view does
- * not have ([[Draw a dependency between bars]] 1c) and refuses both; `geometry.outside`
- * is the one case where a target is still wired for a bar with no dot — a bar wholly
- * outside the window has no on-screen end to draw one from, but is still something
- * another bar's link may legitimately point at. An `outsideFilter` row needs no guard:
- * `deriveBars` routes it to context before any span is computed, so it never has a bar
- * to hang one on — the same reason [[Arrows between bars]] 1c needs none.
+ * The draw condition (`dependenciesAvailable && !geometry.outside`) is a strict subset of
+ * `wireBarLink`'s own gate (`dependenciesAvailable`): a bar can never draw a connector
+ * without a target being wired for it. The feature being off refuses both;
+ * `geometry.outside` is the one case where a target is still wired for a bar with no dot
+ * — a bar wholly outside the window has no on-screen end to draw one from, but is still
+ * something another bar's link may legitimately point at. An `outsideFilter` row needs no
+ * guard: `deriveBars` routes it to context before any span is computed, so it never has a
+ * bar to hang one on — the same reason [[Arrows between bars]] 1c needs none.
+ *
+ * What that predicate MEANS changed on 2026-08-11 and the shape did not. It used to be
+ * the bound key, so an unnamed property meant no connector anywhere
+ * ([[Draw a dependency between bars]] 1c) — which made the gesture unreachable in exactly
+ * the base that had never named the property, since Obsidian's picker cannot offer a
+ * property no note carries. The write binds the key now, so the handle is what leads to a
+ * bound property rather than something a bound property leads to
+ * ([[Bind a property by using it]]).
  *
  * `tabindex="-1"` like every other per-row control: the pane is one tab stop and the
  * arrows move the selection. The context menu's Depends on… is the keyboard path, which
@@ -701,7 +720,7 @@ interface ConnectorPlace {
 function renderConnector(ctx: RowContext, mounts: BarRowMounts, place: ConnectorPlace, bar: TimelineBar): void {
 	const { row, barEl, geometry } = place;
 	const dot =
-		ctx.host.settings.dependsOnKey === '' || geometry.outside
+		!dependenciesAvailable(ctx.host) || geometry.outside
 			? null
 			: barEl.createEl('button', {
 					cls: 'pbl-bar-connector',

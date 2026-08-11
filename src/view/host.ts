@@ -8,18 +8,18 @@ import { PlacementEnd } from '../domain/itemTypes';
 import { ScaleId, TimelineScale, TimelineWindow } from '../domain/timeline';
 import { ItemWrite, SchedulePlan } from '../domain/writePlan';
 import { BacklogSettings } from '../domain/settings';
-import { OptionalProperty } from '../domain/optionalProperties';
+import { OptionalField, OptionalProperty } from '../domain/optionalProperties';
 import { OpenTarget } from '../domain/itemHandling';
 import { WriteOutcome } from '../storage/frontmatter';
 
 export const PRODUCT_BACKLOG_VIEW_TYPE = 'product-backlog';
 
 /**
- * The four readings of one backlog. UI state, not a base setting: the choice
+ * The five readings of one backlog. UI state, not a base setting: the choice
  * lives beside the collapse state in vault-scoped localStorage — per saved view,
  * per device — and never in the `.base`.
  */
-export type Projection = 'tree' | 'board' | 'roadmap' | 'deliverables';
+export type Projection = 'tree' | 'board' | 'roadmap' | 'deliverables' | 'catalog';
 
 /**
  * A column of the trailing strip: the property id to read, the label the header shows,
@@ -286,6 +286,16 @@ export interface BacklogViewHost {
 	 * what it is re-rooted on; read the current focus off `settings.focusLevel`.
 	 */
 	setFocusLevel(level: string): void;
+	/**
+	 * Whether a plain click on a row's body folds it rather than opening the note —
+	 * false, opening it, is the default. UI state like the mode and the focus level: the
+	 * collapse store persists it per saved view and per device, never the `.base`,
+	 * because it is flipped while working and a `.base` is shared. Only the two
+	 * ROW-shaped projections read it (`clickActionApplies`).
+	 */
+	readonly clickFolds: boolean;
+	/** Flip what a click does and re-render; the collapse store persists the pick. */
+	setClickFolds(value: boolean): void;
 	/** Whether the shelf is collapsed for this saved view; collapsed is the default. */
 	readonly shelfCollapsed: boolean;
 	/** Toggle the shelf's collapse state and re-render the content pane. */
@@ -404,8 +414,16 @@ export interface BacklogViewHost {
 	 * Returns what it bound, so the caller can say so. Nothing already set is touched
 	 * and nothing CLEARED is revived (see `adoptableProperties`), so pressing it twice
 	 * binds nothing the second time.
+	 *
+	 * `only` narrows it to one field, which is how a feature binds its own key at the
+	 * moment it is first used instead of waiting for ✨ ([[Bind a property by using it]]).
+	 * One method rather than a second one beside it, so the sentence above stays true:
+	 * there is exactly one place this plugin writes an option the user did not turn.
+	 * The caller still owes the `configProblems` gate BEFORE calling — binding into a
+	 * view whose keys already collide would change the configuration and then have every
+	 * write refused, which is `runInit`'s own rule and not a new one.
 	 */
-	adoptDefaultProperties(): OptionalProperty[];
+	adoptDefaultProperties(only?: OptionalField): OptionalProperty[];
 
 	render(): void;
 	/**

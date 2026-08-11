@@ -1,5 +1,5 @@
 import { BasesPropertyId, NullValue, setIcon, setTooltip } from 'obsidian';
-import { BacklogViewHost, Column, ColumnFit, ColumnKind } from '../host';
+import { BacklogViewHost, Column, ColumnFit, ColumnKind, Projection } from '../host';
 import { DragDropController } from '../interactions/dragDrop';
 import { showAssigneeMenu, showHorizonMenu, showRiskMenu, showStateMenu, showTagMenu } from '../interactions/menu';
 import { removeTag } from '../interactions/tags';
@@ -7,7 +7,8 @@ import { ownWorkflowReading, stateKeyFor } from '../../domain/board';
 import { BacklogItem } from '../../domain/model';
 import { hasHorizonAxis, SHELF_LABEL } from '../../domain/roadmap';
 import { BacklogSettings, hasRiskLevels } from '../../domain/settings';
-import { resolvedDeliverableStateKey } from '../../domain/optionalProperties';
+import { resolvedDeliverableStateKey, resolvedTestStateKey } from '../../domain/optionalProperties';
+import { hasRollup, treeShaped } from '../projection';
 
 /**
  * State shared by one render pass. Config lookups live here so per-row work stays
@@ -90,11 +91,12 @@ const TREE_PADDING = 16;
  */
 function columnFit(
 	settings: BacklogSettings,
+	projection: Projection,
 	columnCount: number,
 	depth: number,
 	width: number,
 ): ColumnFit {
-	const meta = settings.stateKey || settings.showCounts ? META_COL_WIDTH : 0;
+	const meta = (settings.stateKey || settings.showCounts) && hasRollup(projection) ? META_COL_WIDTH : 0;
 	const lead = ROW_LEAD_WIDTH + TREE_PADDING + depth * INDENT_PER_DEPTH;
 	const room = width - lead - meta;
 	const fitting = Math.max(0, Math.floor(room / settings.propColumnWidth));
@@ -126,7 +128,7 @@ export function syncColumnFit(ctx: RowContext, viewEl: HTMLElement, treeEl: HTML
 	if (width === 0) return false;
 	// Indent is part of what a row needs, so expanding a deep branch can be what
 	// makes the columns stop fitting.
-	const fit = columnFit(ctx.host.settings, ctx.host.columns.length, renderedDepth(ctx), width);
+	const fit = columnFit(ctx.host.settings, ctx.host.projection, ctx.host.columns.length, renderedDepth(ctx), width);
 	// Against what this pass actually DREW rather than against the stored number, so a
 	// render that drew a different count than the verdict claims still asks for the pass
 	// that reconciles them.
@@ -154,7 +156,7 @@ export function syncColumnFit(ctx: RowContext, viewEl: HTMLElement, treeEl: HTML
  * either would be answering a question this projection does not ask.
  */
 function renderedDepth(ctx: RowContext): number {
-	if (ctx.host.projection !== 'tree') return 0;
+	if (!treeShaped(ctx.host.projection)) return 0;
 	let max = 0;
 	for (const path of ctx.rows.keys()) {
 		const depth = ctx.host.model?.byPath.get(path)?.depth ?? 0;
@@ -220,14 +222,16 @@ export function resolveColumns(host: BacklogViewHost): Column[] {
  * `stateMenuValues` block returns the observed states with an undeclared workflow and
  * `['Done']` with nothing observed either, so the menu this chip opens is never empty.
  *
- * Both state keys map to `state`. With the two workflows on distinct keys and both
- * visible, that is two columns, and `renderStateChip` draws into whichever one names
- * the key this row's own workflow writes.
+ * All three state keys map to `state`. With two or more workflows on distinct keys and
+ * all visible, that is two or three columns, and `renderStateChip` draws into whichever
+ * one names the key this row's own workflow writes.
  */
 function columnKind(settings: BacklogSettings, prop: BasesPropertyId): ColumnKind {
 	const deliverableKey = resolvedDeliverableStateKey(settings);
+	const testKey = resolvedTestStateKey(settings);
 	if (settings.stateKey && prop === `note.${settings.stateKey}`) return 'state';
 	if (deliverableKey && prop === `note.${deliverableKey}`) return 'state';
+	if (testKey && prop === `note.${testKey}`) return 'state';
 	if (hasHorizonAxis(settings) && prop === `note.${settings.horizonKey}`) return 'horizon';
 	if (hasRiskLevels(settings) && prop === `note.${settings.riskKey}`) return 'risk';
 	if (settings.assigneeKey && prop === `note.${settings.assigneeKey}`) return 'assignee';
@@ -258,7 +262,10 @@ export function renderColumnHeader(ctx: RowContext, containerEl: HTMLElement): v
 	// the LAST pass measured, exactly as the columns above do; a verdict that has changed
 	// since buys the reconciling pass `syncColumnFit` asks for, which draws both from the
 	// same one.
-	const rollup = (settings.stateKey !== '' || settings.showCounts) && !ctx.host.columnFit?.rollupDropped;
+	const rollup =
+		(settings.stateKey !== '' || settings.showCounts) &&
+		hasRollup(ctx.host.projection) &&
+		!ctx.host.columnFit?.rollupDropped;
 	// Nothing to head at all, which is not the same question as "no columns".
 	if (ctx.columns.length === 0 && !rollup) return;
 	// Presentational: every value below carries its own accessible label.
@@ -443,7 +450,7 @@ function renderTagCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogIt
 /** Progress rollup or descendant count, in a column of its own so both align. */
 export function renderRollup(host: BacklogViewHost, row: HTMLElement, item: BacklogItem): void {
 	const settings = host.settings;
-	if (!settings.stateKey && !settings.showCounts) return;
+	if ((!settings.stateKey && !settings.showCounts) || !hasRollup(host.projection)) return;
 	const col = row.createDiv({ cls: 'pbl-meta-col' });
 	if (item.descendantCount === 0) return;
 
@@ -467,11 +474,11 @@ export function renderRollup(host: BacklogViewHost, row: HTMLElement, item: Back
 /**
  * Clickable state chip — the inline write surface for the workflow state.
  *
- * WHOSE state is the item's type's question, the same one `Set state` asks in
- * `interactions/menu.ts`: a Deliverable shows and edits the Deliverable workflow's
- * value, so the chip and the menu it opens can never name different states. A
- * Deliverable under the fallback (no Deliverable state property configured) reads the
- * shared key, so this is the identical value either way.
+ * WHOSE state is the item's own question — its type, else its ladder — and the same one
+ * `Set state` asks in `interactions/menu.ts`: a Deliverable shows and edits the Deliverable
+ * workflow's value and a catalog row the test workflow's, so the chip and the menu it opens
+ * can never name different states. Either one under the fallback (no property of its own
+ * configured) reads the shared key, so this is the identical value either way.
  */
 function renderStateChip(host: BacklogViewHost, col: HTMLElement, item: BacklogItem, column: Column): void {
 	// The CELL is the properties menu's question and the CHIP is the row's own: this

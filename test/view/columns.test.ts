@@ -125,6 +125,35 @@ describe('property columns', () => {
 		expect(row.querySelectorAll('.pbl-prop').length).toBe(2);
 	});
 
+	it('does not reserve the rollup’s width on the catalog, which draws no rollup at all', () => {
+		// The catalog opts out of the rollup column entirely (`hasRollup`, `view/projection.ts`)
+		// — absent regardless of width, not narrowed by it — so the budget must not subtract
+		// the rollup's 84px for it even with a state property configured. Called directly, the
+		// way the Deliverables-board depth test above is, to assert `columnFit`'s own verdict
+		// rather than a rendered cell: a reverted gate here still renders no `.pbl-meta-col` on
+		// the catalog (the OTHER two gates hold it back), so a DOM assertion would stay green
+		// while the budget quietly starved every property column of the width it never spent.
+		const vault = fixture();
+		const { containerEl, view } = makeView(
+			vault,
+			{ propertyColumnWidth: 200, stateProperty: 'note.status' },
+			{ order: ['note.points'] },
+		);
+		view.setProjection('catalog');
+		const tree = treeOf(containerEl);
+		const viewEl = containerEl.querySelector('.pbl-view');
+		Object.defineProperty(tree, 'clientWidth', { value: 550, configurable: true });
+
+		const ctx = rowContext(view, null as never, new Map(), new Set());
+		syncColumnFit(ctx, viewEl as HTMLElement, tree);
+
+		// 550px holds the one 200px column only when the rollup's 84px is not subtracted from
+		// the budget. With the same state property configured, the PLAN drops this same column
+		// at this same width — `columnFit`'s width tests above establish the arithmetic; this is
+		// the catalog's own case of it.
+		expect(view.columnFit?.shown).toBe(1);
+	});
+
 	it('leaves nothing of a dropped column for a keyboard or a screen reader to find', () => {
 		// Clipping would hide the cell and keep it focusable — a control inside a column
 		// the view says it dropped, and focusing it scrolls the strip out from under its
@@ -486,26 +515,24 @@ describe('property columns', () => {
 });
 
 describe('badges', () => {
-	it('puts the full level name in the tooltip once the cap truncates it', () => {
+	it('puts the full level name in the tooltip, capped or not', () => {
+		// The name is capped in CSS so the row's lead stays bounded; the tooltip carries it
+		// in full without anyone measuring whether the cap is biting — see the title's own
+		// test in `state.test.ts` for why that question is not worth its layout read.
 		const vault = new FakeVault();
-		// No type property: the level is implied, and the badge explains that
+		// No type property: the level is implied, and the badge explains that as well.
 		vault.addFile('Epic.md', { frontmatter: { order: 10 } });
 		vault.addFile('Child.md', { frontmatter: { type: 'Programme Increment', order: 10 }, parentLink: 'Epic' });
 		const { containerEl } = makeView(vault, { levels: 'Programme Increment, Epic' });
 
 		const badge = rowByTitle(containerEl, 'Epic').querySelector<HTMLElement>('.pbl-badge');
-		const text = badge?.querySelector<HTMLElement>('.pbl-badge-text');
-		if (!badge || !text) throw new Error('badge not rendered');
-		expect(badge.classList.contains('pbl-implied')).toBe(true);
-		expect(badge.dataset.tooltip).toContain('Type property not set');
+		expect(badge?.classList.contains('pbl-implied')).toBe(true);
+		expect(badge?.dataset.tooltip).toContain('Epic');
+		expect(badge?.dataset.tooltip).toContain('Type property not set');
 
-		// jsdom measures nothing, so stand in for a name wider than the 120px cap
-		Object.defineProperty(text, 'scrollWidth', { value: 200, configurable: true });
-		Object.defineProperty(text, 'clientWidth', { value: 100, configurable: true });
-		badge.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
-
-		// Both: the name the cap hid, and why the badge is dashed
-		expect(badge.dataset.tooltip).toContain('Epic');
-		expect(badge.dataset.tooltip).toContain('Type property not set');
+		// A declared type says its name and nothing else: there is nothing to explain.
+		const child = rowByTitle(containerEl, 'Child').querySelector<HTMLElement>('.pbl-badge');
+		expect(child?.classList.contains('pbl-implied')).toBe(false);
+		expect(child?.dataset.tooltip).toBe('Programme Increment');
 	});
 });

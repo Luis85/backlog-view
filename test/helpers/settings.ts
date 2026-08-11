@@ -65,7 +65,7 @@ export function settingsWith(over: Partial<BacklogSettings> = {}): BacklogSettin
 	// Unset OR emptied, which are two signals rather than one: `deliverableDoneValues`
 	// DEFAULTS to a non-empty list, so "the caller said nothing" cannot be read off the
 	// merged object, while "the caller said []" cannot be read off `over` alone.
-	const follows = (field: 'deliverableStates' | 'deliverableDoneValues'): boolean =>
+	const follows = (field: 'deliverableStates' | 'deliverableDoneValues' | 'testStates' | 'testDoneValues'): boolean =>
 		over[field] === undefined || settings[field].length === 0;
 	if (settings.deliverableStateKey === '') {
 		// A falling-back key means both lists follow the requirements ones.
@@ -74,6 +74,14 @@ export function settingsWith(over: Partial<BacklogSettings> = {}): BacklogSettin
 	} else if (settings.deliverableDoneValues.length === 0) {
 		// With a key of its own it does NOT follow them — it takes its own default.
 		settings.deliverableDoneValues = defaultSettings().deliverableDoneValues;
+	}
+	// The identical rule, over the OTHER secondary workflow — `resolveSecondaryWorkflow`
+	// applies the same fallback for both, so the fixture helper has to mirror it twice too.
+	if (settings.testStateKey === '') {
+		if (follows('testStates')) settings.testStates = settings.states;
+		if (follows('testDoneValues')) settings.testDoneValues = settings.doneValues;
+	} else if (settings.testDoneValues.length === 0) {
+		settings.testDoneValues = defaultSettings().testDoneValues;
 	}
 	// `clearablePropKey`'s yielding rule, applied rather than restated at call sites.
 	const taken = [settings.parentKey, settings.orderKey, settings.typeKey, settings.stateKey];

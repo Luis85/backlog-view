@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[A catalog of tests]]"
 order: 20
-status: Open
+status: Done
 priority: P2
 created: 2026-08-08
 source: user request
@@ -69,13 +69,23 @@ and must not be closed as one.
    produces `typeFolder.test suite`). Whether a generated view-option key holding a space is
    acceptable to Bases is a live-vault question, not one this repository can answer; it is
    named here rather than assumed, and belongs on the smoke-test checklist with the badge.
-2. Both take one borrowed hue and the **test axis**: a variant treatment stated once in
+2. Both take a borrowed hue and the **test axis**: a variant treatment stated once in
    `styles/badges.css`, applied to both, that says *this is a test* before the icon says
-   which kind. Which hue they borrow is a decision to record beside the Idea/Task pairing
+   which kind. Which hue each borrows is a decision to record beside the Idea/Task pairing
    and by the same standard: not whichever looks least crowded, but the one whose existing
    wearer a test is least likely to sit beside.
-3. The suite and the case are told apart by icon and by rung, inside the shared axis, the
-   way `Epic` and `Feature` are told apart by icon inside the ladder.
+   **Two hues, not one.** This step said one, and it shipped as one — orange for both —
+   before the standard above was applied to the case as well as to the suite and answered
+   cyan for it. What that changes about the note is a count and a load: the documented
+   sharing goes from **one pair to three** (Idea + Task on yellow, Epic + Test suite on
+   orange, Milestone + Test case on cyan), and the axis stops being a bonus signal. With
+   both test types on one hue it merely reinforced the icon; a `Test case` now wears
+   `Milestone`'s hue, so the axis is what tells them apart and this note's guarantee below
+   depends on it for two pairs where it depended on it for none. What does not change is
+   the guarantee's other half: no shipped type's colour moved.
+3. The suite and the case are told apart by icon and by rung — and, since the hues split,
+   by hue as well — inside the shared axis, the way `Epic` and `Feature` are told apart by
+   icon inside the ladder.
 4. Nothing else is added to explain the axis. A badge already carries the type **in words**
    (`pbl-badge-text`), so the row that wears the axis also names what it is; a key would be
    a second surface repeating what the first one says in full.
@@ -92,7 +102,13 @@ and must not be closed as one.
 - **2b — the two test types are given two separate shared hues instead of one axis.** That
   is the pair-by-pair answer, and it is refused: it spends two more of the eight tokens'
   distinctness for two types nobody needs to tell apart *by colour*, and it is the shape
-  that produced two greens on two branches. One axis, one borrowed hue, one decision.
+  that produced two greens on two branches.
+  **Two hues *with* the axis is a different proposal, and it is what shipped.** What this
+  extension refuses is the *instead of* — hues doing the axis's job. The axis is what makes
+  a second borrowed hue affordable rather than a second unrecorded pairing: each pair still
+  has a stated reason and a stated separator, and a third test type would join the axis
+  without a third decision about hue. The count that has to stay right is the one this note
+  keeps: three sharing pairs, each recorded beside the CSS.
 - **3a — a third test type is added later.** The axis holds it — that is the property that
   makes this the right shape rather than a trick that works once — but nothing here builds
   for one. There is no third test type.
@@ -148,9 +164,67 @@ and must not be closed as one.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The badge table is in `src/view/render/rows.ts`,
-which maps a type to an icon and a class; the axis and the borrowed hue are one rule in
-`styles/badges.css`, and the partial that must state *why* those two entries share a hue
-where every other type has its own. `src/view/render/legend.ts` is **not** touched, per 4a.
-Nothing in
-`src/domain/` is touched: which colour a type wears has never been a domain question.
+`src/view/render/badges.ts` — the icon-and-colour table for every declared type, and its
+one lookup. It is a module of its own now, where it used to be a `const` inside
+`render/rows.ts`, and BOTH halves of that move were forced by this PBI.
+
+The table gains `'test suite'` and `'test case'`, lowercase and with the space kept, and
+loses its old name (`NON_RUNG_STYLE`), which the two test types falsify: they ARE rungs.
+`badgeStyleFor` changed shape rather than gaining a branch — it asks the name the badge
+SHOWS instead of `item.levelIndex`, which indexes whichever ladder the item is on. A
+`Task` beneath a `Test case` is rung 2 there and rung 3 of the plan's, so the index alone
+would have drawn it as a PBI in blue. The result is shorter than the code it replaced and
+correct on both ladders without either being named in it.
+
+It moved out of `rows.ts` because it needs a SECOND caller and could not have one there.
+`view/manual/typesSection.ts` draws the same badges beside its own type entries, and it
+was doing so from a duplicated four-line spelling rule kept on the stated grounds that
+reaching across a module cost more than restating it. `Test suite` ended that:
+`pbl-lvl-${name.toLowerCase()}` yields `pbl-lvl-test suite`, a token `classList.add`
+rejects outright — so the copy became one that could both disagree with the stylesheet and
+throw. Importing it back created a cycle (the manual reaches the rows, the rows reach
+creation, creation reaches the manual), and the answer is not an exemption: a table of
+icons and class names depends on nothing, so it belongs where nothing depends back.
+
+`styles/badges.css` — a hue each and the test axis stated once beside the Idea/Task
+pairing: a solid border in the badge's own hue where every other badge carries
+`border: 1px solid transparent`. The badge keeps its tinted fill and gains a visible EDGE —
+an addition rather than a swap, which is what it turns out to look like: the browser
+harness draws it beside a `Task` badge in both schemes, and the SHAPE reads at a glance.
+Read that for exactly what it is. It is evidence about the border treatment and about
+nothing else on this page — the harness answers no colour question at all (ADR 0020) — and
+it was gathered while both test types wore one hue, so it says nothing whatever about the
+split below. It composes with `.pbl-implied` rather than fighting it — that rule comes later in the file
+and overrides to dashed and transparent, so an implied `Test case` reads as both, which the
+harness also shows. Nothing is minted: both hues are Obsidian's tokens, so the Borrowed
+Palette Rule holds.
+
+What the harness still cannot answer is the COLOUR, since the theme stub's palette is an
+approximation of Obsidian's and a real theme replaces exactly those values. That is the
+live-vault item, and it is now the live-vault item for the SPLIT as well as for the axis:
+the shape above was looked at, the two hues beside each other and beside `Milestone`'s have
+not been looked at by anybody.
+
+The comment beside those two lines states the rule rather than the count it used to state,
+because a count is wrong again at the twelfth type: **hue is identity; where two types
+share one, the type name, the indentation or the test axis separates them, and which pair
+shares is a decision recorded there.**
+
+Orange is Epic's, and the reason is the rule rather than the crowding: an `Epic` is a root
+by position in the plan and a `Test suite` is a root by nature in the catalog, and after
+[[Tests stay out of the plan]] the two populations are disjoint by construction, so no
+plan or catalog screen draws both.
+
+Cyan is Milestone's, by the same standard. A `Milestone` is a marker — no rung, no
+children, no parent, drawn as a line on the timeline — and it can never be a catalog
+member, while a `Test case`'s ladder is fixed by NAME (`ladderFor`, against `TEST_LEVELS`)
+whatever it is dragged under, so it is never drawn in the plan tree, either board or either
+roadmap axis. The two cannot meet where a case is actually read.
+
+The one screen that draws every badge at once is the user manual's Item types list
+(`src/view/manual/typesSection.ts`, over `ALL_TYPES`), where each badge sits beside its own
+type name in words and hue is not asked to carry the identification. That is true of all
+three sharing pairs, not a concession made for this one.
+
+`src/view/render/legend.ts` is **not** touched, per 4a. Nothing in `src/domain/` is
+touched: which colour a type wears has never been a domain question.

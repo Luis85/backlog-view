@@ -47,8 +47,15 @@ export function childrenLabel(children: BacklogItem[]): string {
 /**
  * The matches a card should name on its face: everything `hiddenMatches` found beneath
  * it, minus anything its own disclosure already lists. One card cannot say the same
- * thing twice — and the walk itself is untouched, so a match three levels down still
- * surfaces where nothing else can reach it.
+ * thing twice — and the DEPTH of the walk is untouched, so a match three levels down
+ * still surfaces where nothing else can reach it.
+ *
+ * It is also the one place the walk's own boundary is supplied: `isRowHidden` is the
+ * same visibility rule `listedChildren` above filters by, handed down as `drawn` so the
+ * walk descends only along edges this projection puts on screen. `domain/board.ts` is
+ * pure and can never ask a host, so the predicate comes from here — and because both
+ * consumers of a card's matches (the card face's links and the row menu's Open match
+ * entries) route through this function, one guard answers for both.
  *
  * Reads `listedChildren`, never the disclosure's own expansion state — the state a
  * toggle owns is irrelevant here, since both this and `listedChildren` only run while
@@ -60,7 +67,10 @@ export function undisclosedMatches(
 	carded: Set<string>,
 ): BacklogItem[] {
 	const listed = new Set(listedChildren(host, item).map((child) => child.file.path));
-	return hiddenMatches(item, (child) => host.isFilterMatch(child), carded).filter(
-		(match) => !listed.has(match.file.path),
-	);
+	return hiddenMatches(
+		item,
+		(child) => host.isFilterMatch(child),
+		carded,
+		(child) => !host.isRowHidden(child),
+	).filter((match) => !listed.has(match.file.path));
 }

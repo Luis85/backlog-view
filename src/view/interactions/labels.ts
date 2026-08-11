@@ -4,6 +4,7 @@ import { BacklogItem } from '../../domain/model';
 import { sameValue } from '../../domain/noteFields';
 import { computeAssigneeWrites, computeRiskWrites, ItemWrite } from '../../domain/writePlan';
 import { ValuePromptModal } from '../../ui/prompts';
+import { rowVocabulary } from '../projection';
 
 /**
  * What the row offers for the two LABEL properties — the risk level, and who the item is
@@ -52,7 +53,13 @@ function riskChoices(host: BacklogViewHost, item: BacklogItem): string[] {
  * and a list.
  */
 function assigneeChoices(host: BacklogViewHost, item: BacklogItem): string[] {
-	const values = host.model?.observedAssignees ?? [];
+	// Through `rowVocabulary` like the state, horizon and tag menus, and for their reason:
+	// a vocabulary is scoped to the population of the projection that offers it. Read off
+	// the model directly — which is what this did until review — a name only a test carries
+	// is offered on every plan row, and a catalog row cannot reuse a name observed on
+	// another test. Per ROW rather than per projection, because both directions of a
+	// projection-wide answer are wrong: see `rowVocabulary`'s own comment.
+	const values = host.model ? rowVocabulary(host.model, item).observedAssignees : [];
 	const current = item.assigneeValue;
 	if (current === null || values.some((v) => sameValue(v, current))) return values;
 	return [...values, current];

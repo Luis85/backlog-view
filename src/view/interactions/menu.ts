@@ -1,13 +1,18 @@
 import { Menu, MenuItem } from 'obsidian';
-import { hasRiskLevels, stateMenuValues } from '../../domain/settings';
-import { ALL_TYPES } from '../../domain/typeVocabulary';
+import { hasRiskLevels, menuValues, stateMenuValues } from '../../domain/settings';
 import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
 import { inferFolderParent } from '../../domain/folderNotes';
-import { isDeliverableType } from '../../domain/itemTypes';
+import { inCatalog, isDeliverableType, keepsProjection } from '../../domain/itemTypes';
+
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { sameValue, todayStamp } from '../../domain/noteFields';
 import { hasHorizonAxis } from '../../domain/roadmap';
-import { computeDeliverableStateWrites, computeStateWrites, computeTypeChanges, ItemWrite } from '../../domain/writePlan';
+import {
+	computeDeliverableStateWrites,
+	computeStateWrites,
+	computeTestStateWrites,
+	ItemWrite,
+} from '../../domain/writePlan';
 import { addAssigneeItems, addRiskItems } from './labels';
 import { BoardModel, cardPaths, deliverablesWorkflow, ownWorkflowReading, stateKeyFor } from '../../domain/board';
 import { ShelfCard } from '../../domain/bars';
@@ -18,6 +23,7 @@ import { addHorizonItems, canSchedule, carriesDates, promptSchedule, unschedule 
 import { addTagItems, tagsColumnVisible } from './tags';
 import { addDependencyItems, dependenciesAvailable } from './dependencies';
 import { listedChildren, undisclosedMatches } from '../childrenList';
+import { offerableTypes, retypeChoices, rowVocabulary, treeShaped } from '../projection';
 
 /**
  * Whichever board-shaped projection is active, or null off both — `host.board` is the
@@ -26,27 +32,6 @@ import { listedChildren, undisclosedMatches } from '../childrenList';
  */
 function activeBoard(host: BacklogViewHost): BoardModel | null {
 	return host.board?.board ?? null;
-}
-
-/**
- * Which of `types` this projection may offer, for every surface that offers one —
- * `Set type`, a row's `New <child>`, and (through this same function) the toolbar's two
- * creators.
- *
- * The rule is one sentence and it cuts BOTH ways: **a projection offers only the types
- * it can show.** The requirements board excludes Deliverables
- * (`renderRequirementsBoard`), so it withholds that one; the Deliverables board shows
- * nothing else (`renderDeliverablesBoard`), so it withholds every other — including a
- * Deliverable card's `New Task`, which would write a note that vanishes on the pass that
- * created it. Withheld, not disabled — the "absent rather than inert" rule the state
- * chip and the axis actions already follow. The tree and the roadmap show everything and
- * narrow nothing. A new surface that offers a type calls this rather than reading
- * `ALL_TYPES` or `childTypeChoices` straight.
- */
-export function offerableTypes(host: BacklogViewHost, types: string[] = ALL_TYPES): string[] {
-	if (host.projection === 'board') return types.filter((type) => !isDeliverableType(type));
-	if (host.projection === 'deliverables') return types.filter((type) => isDeliverableType(type));
-	return types;
 }
 
 /** Whether `item` already carries this type — the comparison `Set type` checks by. */
@@ -114,7 +99,7 @@ export function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childTyp
 	// The move section is tree shape: every entry in it is defined by the row's
 	// visible NEIGHBOURS, and a card has none — within-column order is derived, so
 	// there is no rank to move within and no sibling to indent under.
-	if (host.projection === 'tree') addMoveSection(host, menu, item);
+	if (treeShaped(host.projection)) addMoveSection(host, menu, item);
 	if (editable) addParentLinkSection(host, menu, item);
 	addMatchSection(host, menu, item);
 	addChildrenSection(host, menu, item);
@@ -180,11 +165,29 @@ function addEditableSections(host: BacklogViewHost, model: BacklogModel, menu: M
 	if (canSchedule(host.settings, item)) addScheduleItems(host, menu, item);
 	if (tagsColumnVisible(host)) addEditTagsMenu(host, menu, item);
 	// A prerequisite is a property of the note rather than of a projection, so the
-	// entries are offered wherever an item renders — not only where one is drawn.
+	// entries are offered wherever an item renders — not only where one is drawn. The
+	// gate no longer asks whether the key is BOUND, only whether one could be: the write
+	// binds it ([[Bind a property by using it]]), so the entry is what names the property
+	// rather than something the naming has to precede.
 	if (dependenciesAvailable(host)) addDependencyItems(host, model, menu, item);
 }
 
 function addParentLinkSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
+	// Both entries reparent without producing a `DropTarget`: deleting the key hands the
+	// note to folder inference, so in folder mode the landing place is a real parent and
+	// the rule every drop and outdent keeps applies here too — a move may not change which
+	// projection draws the row. The landing place is what the gate is asked about; the write
+	// itself names no parent, since deleting the key is the whole of what either entry does.
+	// Outside folder mode there is nothing to withhold: the note becomes a root, which is the
+	// ladder an unresolved orphan is already answering.
+	//
+	// The cost is deliberate: a stale link on a note inside a `Test suite`'s folder now has
+	// no menu entry to clear it, and repairing it means editing the note. The alternative
+	// is the row leaving the screen it was cleared on, which is what extension 1c of
+	// `Test suite and test case as a ladder of their own` refuses.
+	const model = host.model;
+	const landing = host.settings.folderHierarchy && model ? inferFolderParent(item, model.byPath) : null;
+	if (!keepsProjection(item, landing)) return;
 	if (!item.parent && item.hasParentValue) {
 		// Top-level item whose parent property points outside the view (or was
 		// part of a cycle): remove the stale link. In folder mode the item then
@@ -193,7 +196,7 @@ function addParentLinkSection(host: BacklogViewHost, menu: Menu, item: BacklogIt
 			mi
 				.setTitle('Clear parent link')
 				.setIcon('unlink')
-				.onClick(() => void host.applySafely(removeParentWrites(host, item))),
+				.onClick(() => void host.applySafely([{ file: item.file, removeParentKey: true }])),
 		);
 	} else if (host.settings.folderHierarchy && (item.hasParentValue || item.explicitRoot)) {
 		// A link override or a top-level pin is hiding the folder position;
@@ -202,25 +205,9 @@ function addParentLinkSection(host: BacklogViewHost, menu: Menu, item: BacklogIt
 			mi
 				.setTitle('Use folder position')
 				.setIcon('folder')
-				.onClick(() => void host.applySafely(removeParentWrites(host, item))),
+				.onClick(() => void host.applySafely([{ file: item.file, removeParentKey: true }])),
 		);
 	}
-}
-
-/**
- * Removing the parent property re-homes the item (folder position or top
- * level); with autoType on it must retype like any other reparenting move.
- */
-function removeParentWrites(host: BacklogViewHost, item: BacklogItem): ItemWrite[] {
-	const writes: ItemWrite[] = [{ file: item.file, removeParentKey: true }];
-	const model = host.model;
-	if (!host.settings.autoType || !model) return writes;
-
-	const landingParent = host.settings.folderHierarchy ? inferFolderParent(item, model.byPath) : null;
-	const { typeField, cascade } = computeTypeChanges(item, landingParent, host.settings, true);
-	if (typeField !== undefined) writes[0].typeName = typeField;
-	writes.push(...cascade);
-	return writes;
 }
 
 function addMoveSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
@@ -284,6 +271,29 @@ export function showMenuForClick(menu: Menu, evt: MouseEvent): void {
 		return;
 	}
 	menu.showAtMouseEvent(evt);
+}
+
+/**
+ * Show a menu under an ELEMENT — the keyboard path for a row or a board column stop,
+ * neither of which has a pointer to sit under. Falls back to the viewport corner when
+ * there is no element to anchor to, and reports false when there was no menu to open at
+ * all, so a caller that swallowed the key can give it back.
+ *
+ * Here rather than on the view, beside `showMenuForClick`: this module is where the
+ * anchoring decision is made — the reason `showAtMouseEvent` is banned everywhere else by
+ * lint — and a second `showAtPosition` sitting in `backlogView.ts` was the same decision
+ * taken in a second place.
+ *
+ * The corner fallback is a ROW's, not deliberately a column's too: `colEls` and
+ * `board.columns` are built by the same `.map()` over the same array (`renderBoard`), so
+ * an index that resolves a column always resolves an element, and that branch stays
+ * unreachable from `showColumnMenuFor`.
+ */
+export function showMenuAtElement(menu: Menu | null, el: HTMLElement | null): boolean {
+	if (!menu) return false;
+	const rect = el?.getBoundingClientRect();
+	menu.showAtPosition(rect ? { x: rect.left, y: rect.bottom } : { x: 0, y: 0 });
+	return true;
 }
 
 /**
@@ -438,16 +448,31 @@ interface StateChoice {
  * tree would offer a Deliverable the requirements workflow's values and write them to
  * the requirements key. A Deliverable takes `deliverablesWorkflow`'s own `values`, the
  * same resolution its board draws columns from rather than a third opinion assembled
- * here, so the tree offers it the states it will actually be written into.
+ * here, so the tree offers it the states it will actually be written into. A catalog row
+ * (asked of the LADDER, `inCatalog`, never a type name) takes its own workflow's the same
+ * way, through `deliverableOrTestValues`.
  */
+
+/**
+ * A secondary workflow's own offered values, or null when this row is on neither. Both are
+ * `menuValues` over that workflow's declared list, its done values and its own observed
+ * vocabulary — the requirements list would be a third opinion about a property it is not
+ * even read through.
+ */
+function deliverableOrTestValues(host: BacklogViewHost, item: BacklogItem, model: BacklogModel | null): string[] | null {
+	if (!model) return null;
+	if (isDeliverableType(item.typeName)) return deliverablesWorkflow(model, host.settings).values;
+	if (!inCatalog(item)) return null;
+	return menuValues(host.settings.testStates, host.settings.testDoneValues, rowVocabulary(model, item).observedStates);
+}
+
 function stateChoices(host: BacklogViewHost, item: BacklogItem): StateChoice[] {
 	const board = activeBoard(host);
 	if (board) return board.columns.map((col) => ({ state: col.state, label: col.label }));
 	const model = host.model;
 	const values =
-		isDeliverableType(item.typeName) && model
-			? deliverablesWorkflow(model, host.settings).values
-			: stateMenuValues(host.settings, model?.observedStates ?? []);
+		deliverableOrTestValues(host, item, model) ??
+		stateMenuValues(host.settings, model ? rowVocabulary(model, item).observedStates : []);
 	const current = ownWorkflowReading(item).value;
 	const listed = current !== null && values.some((v) => sameValue(v, current));
 	const all = listed || current === null ? values : [...values, current];
@@ -466,11 +491,26 @@ function stateChoices(host: BacklogViewHost, item: BacklogItem): StateChoice[] {
  */
 function chooseState(host: BacklogViewHost, item: BacklogItem, choice: StateChoice): Promise<unknown> {
 	if (isDeliverableType(item.typeName)) return host.performDeliverablesBoardMove(item, choice.state);
+	// A catalog row has no board to move on, so its pick plans through the test
+	// workflow's own function rather than either board move method.
+	if (inCatalog(item)) return host.applySafely(computeTestStateWrites(item, choice.state));
 	if (host.projection === 'board' || choice.state === null) return host.performBoardMove(item, choice.state);
 	// The tree's own Set state plans through the same function the board's moves do, so
 	// the date stamps ride it too: a history with holes in it, where which hole depends
 	// on whether the user was looking at the tree or the board, is worse than none.
 	return host.applySafely(computeStateWrites(item, choice.state, host.settings, todayStamp()));
+}
+
+/**
+ * What a pick on THIS row would write — the same two predicates `stateKeyFor` and
+ * `ownWorkflowReading` select a key and a reading with, asked a third time about the
+ * PLANNER, which is the selection those two do not make. `chooseState` keeps its own
+ * branching because it picks a move METHOD rather than a planner: two of its three
+ * answers are host methods that announce, and only the last is a plan handed to the gate.
+ */
+function stateWrites(host: BacklogViewHost, item: BacklogItem, state: string | null): ItemWrite[] {
+	if (isDeliverableType(item.typeName)) return computeDeliverableStateWrites(item, state);
+	return inCatalog(item) ? computeTestStateWrites(item, state) : computeStateWrites(item, state, host.settings, todayStamp());
 }
 
 /**
@@ -491,12 +531,40 @@ function addStateItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): vo
 	for (const choice of stateChoices(host, item)) {
 		menu.addItem((si) => {
 			si.setTitle(choice.label).onClick(() => void chooseState(host, item, choice));
-			const noop = isDeliverableType(item.typeName)
-				? computeDeliverableStateWrites(item, choice.state).length === 0
-				: computeStateWrites(item, choice.state, host.settings, todayStamp()).length === 0;
-			if (noop) si.setChecked(true);
+			if (stateWrites(host, item, choice.state).length === 0) si.setChecked(true);
 		});
 	}
+	// The way back OFF a test state, as the foot this menu already uses for a removal —
+	// Clear horizon, Unschedule, and the two label menus in `labels.ts`. Only the catalog
+	// needs one: every other workflow reaches its no-state target through a board COLUMN
+	// (`stateChoices` reads `activeBoard`'s own columns, and `col.state === null` is the
+	// only thing in that list that removes a key), and the catalog is tree-shaped with no
+	// board — so without this entry `computeTestStateWrites(item, null)` was reachable from
+	// nothing on screen and a test state could be set and never removed. It is drawn on both
+	// surfaces at once because this is the one builder behind the chip and `Set state`.
+	//
+	// Offered exactly when picking it would WRITE something, asked of the same planner the
+	// pick runs — so no offered action can write nothing, and the gate cannot drift from the
+	// plan. The neighbours state that rule as `item.ownKeys` presence instead, and that
+	// spelling is unavailable here: `readOwnKeys` fills that record through `optionalKeyFor`,
+	// which answers the RAW `testStateKey`, while this workflow reads the resolved one
+	// (`resolvedTestStateKey`, through `stateKeyFor`) — so on the shipped default, where the
+	// tests share the plan's own `status`, `ownKeys.testState` is false on every note that
+	// carries a state.
+	//
+	// What asking the plan costs is everything presence and value disagree about: a key
+	// holding any value `readString` refuses — blank, whitespace, YAML null, an empty list,
+	// a mapping — reads as no value here and is offered no clear, and only editing the note
+	// takes it off. The plugin MANUFACTURES that state rather than waiting for one: `✨
+	// Assign missing properties` stubs a missing key as `''` (`applyInto` in
+	// `storage/frontmatter.ts`, over `missingKeyStubs`), which on a distinct
+	// `testStateProperty` is every catalog member. It is a residue rather than a reason to
+	// switch gates — the presence gate is absent on the shipped default, where nothing is
+	// stubbed because the key falls back — but it is not an edge case somebody has to build.
+	const clear: StateChoice = { state: null, label: 'Clear test state' };
+	if (!inCatalog(item) || computeTestStateWrites(item, clear.state).length === 0) return;
+	menu.addSeparator();
+	menu.addItem((si) => si.setTitle(clear.label).setIcon('eraser').onClick(() => void chooseState(host, item, clear)));
 }
 
 /**
@@ -658,7 +726,11 @@ function addEditTagsMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): 
 }
 
 function addSetTypeMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
-	const choices = offerableTypes(host);
+	// PER ROW, not per projection: `Set type` is the one caller whose answer depends on
+	// where the row would END UP, which is a question about its parent as well as its new
+	// type. See `offerableTypes` for the two rows a projection-wide list gets wrong in
+	// opposite directions.
+	const choices = retypeChoices(host, item);
 	// Absent rather than inert, the same rule the entries themselves follow: on the
 	// Deliverables board the only offerable type is the one every card already carries,
 	// so the submenu would hold a single entry, already checked, whose pick writes

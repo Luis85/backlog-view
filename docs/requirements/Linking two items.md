@@ -36,7 +36,7 @@ a different control.
 | --- | --- |
 | **Actor** | Backlog owner |
 | **Trigger** | The user opens the context menu on a work item |
-| **Preconditions** | The dependency property is bound ([[Dependencies as a property]]) |
+| **Preconditions** | The dependency property is bound, or is one the first pick would bind ([[Bind a property by using it]]) |
 | **Guarantee** | The write lands on the item the menu was opened on and on no other note; it is one batch through the one gate, taken back by one undo. A note the Base excluded is never written to and never offered as a target of a write. Every offer is one that would change something. |
 
 **Main flow**
@@ -61,8 +61,12 @@ a different control.
 
 **Extensions**
 
-- **1a — the dependency key is unbound.** Neither entry appears. An optional property
-  nobody has named is a feature this view does not have, not a disabled control.
+- **1a — the dependency property is CLEARED.** Neither entry appears: clearing is how a
+  user says *not this one*. An unbound key is no longer this case — since 2026-08-11
+  **Depends on…** is offered on a key nobody has named and picking one binds it
+  ([[Bind a property by using it]]), because a property this view withheld its own naming
+  action for was a feature that gated itself shut. **Remove dependency…** still needs the
+  key, since without one the note carries nothing to take away.
 - **1b — the item is outside the Base's filter.** Neither entry appears, alongside the
   other write actions the context menu already withholds. It renders, it parents, and that
   is all.
@@ -181,9 +185,14 @@ a different control.
   whether or not the view can create it.
 ## Acceptance criteria
 
-- Both entries appear only on results and only with the key bound; **Remove dependency…**
-  appears whenever the note carries the key, judged on the key's presence rather than on
-  what the reader parsed out of it.
+- Both entries appear only on results, and neither appears where the dependency property is
+  CLEARED. The two part company on an UNBOUND key, and that split is
+  [[Bind a property by using it]]'s subject: **Depends on…** is offered, because picking one
+  is what names the property, while **Remove dependency…** is not, because with no key the
+  note carries nothing to take away. *Only with the key bound* was the rule for both until
+  2026-08-11.
+- **Remove dependency…** appears whenever the note carries the key, judged on the key's
+  presence rather than on what the reader parsed out of it.
 - Any value the key can hold is removable from here. A note left carrying the key with no
   control able to clear it is the state this feature must never produce or tolerate,
   whatever the value is — a name, a broken name, repeats, or nothing at all.

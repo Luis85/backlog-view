@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { defaultSettings } from '../../src/domain/settings';
 import { settingsWith } from '../helpers/settings';
-import { collectObservedDeliverableStates } from '../../src/domain/vocabulary';
+import { collectObservedDeliverableStates, collectObservedTestStates } from '../../src/domain/vocabulary';
 import { buildModel } from '../../src/domain/model';
 import { resolvedDeliverableStateKey } from '../../src/domain/optionalProperties';
 import { ALL_TYPES } from '../../src/domain/typeVocabulary';
@@ -28,6 +28,33 @@ describe('collectObservedDeliverableStates', () => {
 		const model = buildModel(vault.app, vault.entries(), settings);
 
 		expect(collectObservedDeliverableStates(model.items, settings)).toEqual(['Draft', 'Published']);
+	});
+});
+
+describe('collectObservedTestStates', () => {
+	it('reads only catalog members through the SHARED default key, never a plan row', () => {
+		// `testStateKey` unset falls back to `stateKey` — the shipped default, and the
+		// configuration where an unfiltered walk would leak: the PBI's ordinary status
+		// lives on the exact same property the test workflow reads.
+		const settings = settingsWith({ stateKey: 'status' });
+		const vault = new FakeVault();
+		vault.addFile('Suite.md', { frontmatter: { type: 'Test suite', order: 10 } });
+		vault.addFile('Case.md', { frontmatter: { type: 'Test case', order: 10, status: 'Approved' }, parentLink: 'Suite' });
+		// A `Task` under a `Test case` is a catalog member by the ladder, not by its type
+		// name — its own state must be collected too.
+		vault.addFile('Task.md', { frontmatter: { type: 'Task', order: 10, status: 'Running' }, parentLink: 'Case' });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10, status: 'Shipping' } });
+		const model = buildModel(vault.app, vault.entries(), settings);
+		// `model.items` is the PLAN's own rendered forest and never holds a catalog member
+		// at all (they are `model.catalog.items`), so it cannot exercise the filter this
+		// collector's docstring calls "where the correctness lives" — a mixed population,
+		// undivided by either projection, is `byPath`'s whole set.
+		const whole = [...model.byPath.values()];
+
+		const states = collectObservedTestStates(whole, settings);
+		expect(states).toContain('Approved');
+		expect(states).toContain('Running');
+		expect(states).not.toContain('Shipping');
 	});
 });
 

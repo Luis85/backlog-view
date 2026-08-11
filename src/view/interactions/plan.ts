@@ -8,6 +8,7 @@ import { optionalKeyFor } from '../../domain/optionalProperties';
 import { formatCivil } from '../../domain/timeline';
 import { computeHorizonWrites, SchedulePlan } from '../../domain/writePlan';
 import { SchedulePromptModal } from '../../ui/prompts';
+import { rowVocabulary } from '../projection';
 
 /**
  * Setting the roadmap's placement properties from a row — the horizon it sits in and
@@ -61,7 +62,7 @@ export function carriesDates(item: BacklogItem): boolean {
  * bucket covers still follow, so what is reachable never depends on what is on screen.
  */
 function horizonChoices(host: BacklogViewHost, item: BacklogItem): string[] {
-	const vocabulary = horizonMenuValues(host.settings, host.model?.observedHorizons ?? []);
+	const vocabulary = horizonMenuValues(host.settings, host.model ? rowVocabulary(host.model, item).observedHorizons : []);
 	const drawn = host.projection === 'roadmap' ? (host.roadmap?.roadmap.buckets ?? []).map((b) => b.value) : [];
 	const values = [...drawn, ...vocabulary.filter((v) => !includesValue(drawn, v))];
 	const current = item.horizon.value;

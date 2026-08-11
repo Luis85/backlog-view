@@ -1,4 +1,5 @@
-import { dropTargetFor, rootDropTarget, zoneForRatio } from '../../domain/dropTargets';
+import { dropTargetFor, zoneForRatio } from '../../domain/dropTargets';
+import { projectionMember } from '../projection';
 import { DropZone } from '../../domain/dropTargets';
 import { BacklogViewHost } from '../host';
 import { BacklogItem, BacklogModel } from '../../domain/model';
@@ -6,13 +7,12 @@ import { BacklogItem, BacklogModel } from '../../domain/model';
 export interface DragDropElements {
 	viewEl: HTMLElement;
 	treeEl: HTMLElement;
-	rootDropEl: HTMLElement;
 }
 
 /**
- * Owns all transient drag state: the dragged path, drop indicators, the
- * hover-to-expand timer and the top-level drop strip. Drop targets themselves
- * are computed by the pure functions in dropTargets.ts.
+ * Owns all transient drag state: the dragged path, drop indicators and the
+ * hover-to-expand timer. Drop targets themselves are computed by the pure
+ * functions in dropTargets.ts.
  */
 export class DragDropController {
 	private readonly host: BacklogViewHost;
@@ -52,7 +52,7 @@ export class DragDropController {
 				return;
 			}
 			const zone = this.zoneFor(evt, row, hasChildren());
-			const target = dropTargetFor(drag.model, item, zone, drag.dragged);
+			const target = dropTargetFor(drag.model, item, zone, drag.dragged, projectionMember(this.host.projection));
 			if (!target) {
 				this.setDropIndicator(row, null);
 				return;
@@ -76,52 +76,15 @@ export class DragDropController {
 			evt.stopPropagation();
 			const drag = this.dragContext();
 			const zone = this.zoneFor(evt, row, hasChildren());
-			const target = drag && drag.dragged !== item ? dropTargetFor(drag.model, item, zone, drag.dragged) : null;
+			const target =
+				drag && drag.dragged !== item
+					? dropTargetFor(drag.model, item, zone, drag.dragged, projectionMember(this.host.projection))
+					: null;
 			this.clearDragState();
 			if (drag && target) void this.host.performDrop(drag.dragged, target);
 		});
 
 		row.addEventListener('dragend', () => this.clearDragState());
-	}
-
-	/** Wire the persistent "Move to top level" strip and the tree background. */
-	setupRootDropZone(): void {
-		const handleOver = (evt: DragEvent, hover: (on: boolean) => void) => {
-			const drag = this.dragContext();
-			const target = drag ? rootDropTarget(drag.model, drag.dragged) : null;
-			if (!drag || !target) return null;
-			evt.preventDefault();
-			if (evt.dataTransfer) evt.dataTransfer.dropEffect = 'move';
-			hover(true);
-			return { dragged: drag.dragged, target };
-		};
-
-		this.els.rootDropEl.addEventListener('dragover', (evt) => {
-			handleOver(evt, (on) => this.els.rootDropEl.toggleClass('pbl-drop-hover', on));
-		});
-		this.els.rootDropEl.addEventListener('dragleave', () => this.els.rootDropEl.removeClass('pbl-drop-hover'));
-		this.els.rootDropEl.addEventListener('drop', (evt) => {
-			const result = handleOver(evt, () => undefined);
-			this.clearDragState();
-			if (result) void this.host.performDrop(result.dragged, result.target);
-		});
-
-		// Dropping on the empty area below the tree also moves items to the top level.
-		this.els.treeEl.addEventListener('dragover', (evt) => {
-			if (evt.target !== this.els.treeEl) return;
-			const drag = this.dragContext();
-			if (!drag || !rootDropTarget(drag.model, drag.dragged)) return;
-			evt.preventDefault();
-			if (evt.dataTransfer) evt.dataTransfer.dropEffect = 'move';
-		});
-		this.els.treeEl.addEventListener('drop', (evt) => {
-			if (evt.target !== this.els.treeEl) return;
-			evt.preventDefault();
-			const drag = this.dragContext();
-			const target = drag ? rootDropTarget(drag.model, drag.dragged) : null;
-			this.clearDragState();
-			if (drag && target) void this.host.performDrop(drag.dragged, target);
-		});
 	}
 
 	/** Rows are about to be rebuilt; drop the references to the old indicator and source rows. */
@@ -133,7 +96,6 @@ export class DragDropController {
 	clearDragState(): void {
 		this.draggedPath = null;
 		this.els.viewEl.removeClass('pbl-dragging');
-		this.els.rootDropEl.removeClass('pbl-drop-hover');
 		this.cancelHoverExpand();
 		if (this.activeDropRow) {
 			this.activeDropRow.classList.remove('pbl-drop-before', 'pbl-drop-after', 'pbl-drop-inside');

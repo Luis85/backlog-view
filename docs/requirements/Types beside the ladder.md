@@ -94,8 +94,9 @@ this framing over a rules table of allowed parent/child pairs:
 
 - **Children are always Tasks.** Its rank is pinned, so `childLevelIndex` answers with
   the deepest level under an Epic exactly as under a PBI.
-- **It is never re-typed by a move.** `levelIndex === -1` already means "not a rung", and
-  the autoType cascade has always skipped those as deliberate user data.
+- **It is never re-typed by a move.** True of every type since 2026-08-11 — no move writes
+  a `type` at all — and true of an extra type before that too, because `levelIndex === -1`
+  already means "not a rung" and the cascade skipped those as deliberate user data.
 - **It may hang from Epic, Feature or PBI.** `childTypeChoices` offers it under any real
   rung above the deepest — not under a Task, which holds nothing, and not under another
   extra type, whose only children are Tasks.
@@ -124,9 +125,11 @@ Two questions changed what got built, and both were the user's to answer:
 - `computeLevel` — one branch: an extra type takes `EXTRA_TYPE_RANK` where an *unknown*
   custom type still takes `childSlot`. That contrast is the invariant worth keeping:
   **declared pins, undeclared inherits.**
-- `computeTypeChanges` — the dragged item is not re-typed when it is an extra type, and
-  its subtree descends from the extra rank rather than from where it landed. Without the
-  second half, dropping a Bug under an Epic would have turned its Tasks into PBIs.
+- The re-typing cascade (deleted 2026-08-11, [[Assigning type on a move]]) — the dragged
+  item was not re-typed when it was an extra type, and its subtree descended from the extra
+  rank rather than from where it landed. Without the second half, dropping a Bug under an
+  Epic would have turned its Tasks into PBIs. The rule that survives the deletion is the
+  pinning itself: any walk that hands out rungs takes an extra type's from the TYPE.
 - `collectFocusRoots` — an extra type has no `levelIndex` to match, so focusing its rank
   would have made it vanish from the view rather than rank beside the level it sits level
   with.
@@ -200,7 +203,9 @@ against — kept visible rather than edited away, because the reversals are the 
   removing it deleted.
 - **Folders are one picker per type**, defaulting under the home folder and built from the
   view's own config, so the box shows what creation will do.
-- **Re-typing on move is off by default.** A move is a move, not a re-classification.
+- **A move never re-types.** A move is a move, not a re-classification. An option that made
+  moves re-type a whole subtree existed until 2026-08-11; deleting it made this rule
+  unconditional, which is what ADR 0009 said it always was.
 - Nothing is enforced against a drag — unchanged, and still the point: the rules decide
   what is *offered*, never what is *refused*.
 
@@ -216,7 +221,6 @@ evidence yet that anyone wants otherwise — revisit if a report says so.
 `src/domain/itemTypes.ts` (`EXTRA_TYPE_RANK`, `isExtraType`, `childTypeChoices`,
 `folderForType`) · `src/domain/typeVocabulary.ts` (`EXTRA_TYPES`, `ALL_TYPES`, `byName`) ·
 `src/domain/model.ts` (`collectFocusRoots`, `pruneOutsideHierarchy`) ·
-`src/domain/writePlan.ts` (`computeTypeChanges` — the pinned rank in the cascade) ·
 `src/view/render/rows.ts` (icon and badge colour) · `styles.css`.
 Tests: `test/domain/itemTypes.test.ts`, `test/domain/writePlan.test.ts`,
 `test/view/rendering.test.ts`, `test/view/creation.test.ts`.

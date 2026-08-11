@@ -32,11 +32,9 @@ Azure DevOps Boards.
     — a marker on neither, which states a date rather than work.
 - **You never have to maintain these properties by hand.** The view assigns them:
   - Creating an item via the view writes `type`, `parent` and `order`.
-  - Dragging an item writes its new `parent` and `order`. It leaves `type` alone unless
-    you turn on **Assign item type when moving**, which then re-types the dragged item
-    and its explicitly ladder-typed descendants to match where it landed — skipping
-    untyped and custom-typed descendants, extra types and markers, and stopping at a
-    note the Base excluded.
+  - Dragging an item writes its new `parent` and `order`, and leaves `type` alone —
+    always. A move is a move, never a re-classification: the type a note carries is the
+    one it keeps until you change it with **Set type**.
   - Items without a `type` show a level implied from their parent's type (a child of a
     Feature reads as a PBI, wherever that Feature sits).
   - The toolbar's ✨ **Assign missing properties** button sets the whole view up in one
@@ -114,7 +112,7 @@ not show is not on the rows, and that includes the state, horizon, risk and tag 
 | Open an item | Click the row (Ctrl/Cmd-click for a new tab) |
 | Re-order among siblings | Drag a row and drop it **between** two rows |
 | Re-parent | Drag a row and drop it **onto** the middle of the new parent |
-| Make an item top-level | Drag it onto the **Move to top level** strip at the bottom |
+| Make an item top-level | Right-click → **Outdent** (Alt+Left), or drag it just above or below a row that is already top-level |
 | Create a child item | Hover a row and click **+**, or use the context menu — where the row can hold more than one kind of item, the modal asks which |
 | Create any type at the top | Toolbar **New** button, or the **▾** menu next to it for every other type |
 | Focus one type | Toolbar focus button next to **New** → pick a level or an extra type (**All types** returns) |
@@ -425,8 +423,8 @@ Context rows are italic and dimmed, with a `↳` marker. They are **not results*
   group also renumbers all of it when the gaps run out, so a group that contains a context
   row offers no reordering at all: no before/after drop, no **Move up/down/to top/to
   bottom**, no **Outdent** — even for an ordinary result row that happens to sit next to
-  one. Dropping *into* a parent, the top-level strip and **Indent** keep working, because
-  those append;
+  one. Dropping *into* a parent, dropping on the tree background and **Indent** keep
+  working, because those append;
 - they don't influence where new notes go: the folder for new items is inferred from the
   Base's own results, never from ancestors that live somewhere else in the vault — and
   **New \<child\>** on a context row creates the note in that results folder rather than
@@ -710,7 +708,6 @@ Open the view options in the Bases toolbar to configure:
 | Ignore notes outside the hierarchy | on | Only treat notes with a supported `type` or a parent as backlog items |
 | Show parents outside the filter | on | Load the ancestors the Base's filter excluded, so matches keep their place in the tree |
 | Infer hierarchy from folder notes | off | Folder mode: a folder's own note is the parent of the notes beside it, so a child needs no explicit `parent` link |
-| Assign item type when moving | off | Rewrite `type` on the dragged item and its explicitly ladder-typed descendants to match the level dropped into — skipping untyped and custom-typed descendants, extra types and markers, and stopping at a note the Base excluded |
 | State property | *(off)* | Note property with the workflow state; enables progress bars and done styling |
 | Workflow states (in order) | *(off)* | The board's columns, in that order. Left unset, the board draws the states your notes actually carry, plus a done column even if nothing is in it yet, so marking an item done is always one click away |
 | States that count as done | `Done, Closed, Completed, Removed` | Which state values complete an item |

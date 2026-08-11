@@ -4,6 +4,7 @@ import { BacklogItem, BacklogModel } from '../../domain/model';
 import { sameValue } from '../../domain/noteFields';
 import { RoadmapModel } from '../../domain/roadmap';
 import { indent, moveWithinSiblings, outdent } from './structure';
+import { projectionPopulation } from '../projection';
 
 /** Items currently rendered, top to bottom, honoring collapsed subtrees and the filter. */
 function visibleItems(host: BacklogViewHost, model: BacklogModel): BacklogItem[] {
@@ -17,7 +18,7 @@ function visibleItems(host: BacklogViewHost, model: BacklogModel): BacklogItem[]
 			}
 		}
 	};
-	walk(model.roots);
+	walk(projectionPopulation(host.projection, model).roots);
 	return visible;
 }
 
@@ -45,7 +46,10 @@ function handleTreeKeydown(host: BacklogViewHost, evt: KeyboardEvent): void {
 		return;
 	}
 	const model = host.model;
-	if (!model || model.items.length === 0) return;
+	// THIS projection's population. `model.items` is the plan's, and a stored plan focus
+	// can empty it while the catalog draws suites off the unfocused tree — so this guard
+	// alone would leave every key inert on a screen full of rows.
+	if (!model || projectionPopulation(host.projection, model).items.length === 0) return;
 	if (handleFilterKey(host, evt)) return;
 	const visible = visibleItems(host, model);
 	if (visible.length === 0) return;

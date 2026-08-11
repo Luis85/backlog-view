@@ -113,8 +113,8 @@ recognised correctly the first time and I never have to remember the property na
   creating a template against a setting that never actually took effect.
 - **Save as template** writes `templateForKey` with the source item's own `type` spelling
   verbatim (`epic` stays `epic`) — the plugin never rewrites a note's existing frontmatter
-  to canonicalize it, the same restraint the autoType cascade already shows a differently-
-  cased or custom type. What makes the template still reachable from a canonically-spelled
+  to canonicalize it, which is the same restraint every positional write already shows: a
+  move never rewrites a `type`, differently-cased or custom or otherwise. What makes the template still reachable from a canonically-spelled
   chosen type is [[Configuring the templates folder]]'s matching being case-insensitive,
   not a rewrite here.
 

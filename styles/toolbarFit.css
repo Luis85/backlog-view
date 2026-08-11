@@ -76,9 +76,9 @@
    pixels each.
 
    NOT New's, which is excepted here and shed at step 6. It is the same kind of label as
-   these three and it outranks them for one reason: it names the primary action, which now
-   leads the row, and a leading `+` with no word beside it is the row's most prominent
-   control saying least. That is a judgement about worth, not a mechanism — the exception
+   these three and it outranks them for one reason: it names the primary action, which sits
+   at the head of the row beside the switcher, and a `+` with no word beside it is the
+   row's most prominent control saying least. That is a judgement about worth, not a mechanism — the exception
    is one class, and if it is ever revisited, deleting `:not(.pbl-new-label)` and the step
    6 rule is the whole of it.
 
@@ -127,9 +127,16 @@
 	display: none;
 }
 
-/* Step 3 — the backfill and both bulk collapse controls go to the `⋯`. Undo stays: it is
-   the only control on the row that takes something back. */
+/* Step 3 — the backfill, both bulk collapse controls and the click-action toggle go to
+   the `⋯`. Undo stays: it is the only control on the row that takes something back.
+
+   The click-action toggle is here rather than nowhere because a control with no rung
+   raises the floor extension 4b measures: the completed toggle is already such a control
+   and already costs the row a capability at 320px, and a second one beside it would spend
+   that width again. What it duplicates is a view option, so its `⋯` entry is not even its
+   only other surface. */
 .pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']):not([data-pbl-fit='2']) .pbl-write-ctl,
+.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']):not([data-pbl-fit='2']) .pbl-click-action-toggle,
 .pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']):not([data-pbl-fit='2']) .pbl-collapse-ctl {
 	display: none;
 }
@@ -138,8 +145,8 @@
 
    These two rungs were written to keep one sentence true — no readout ever pushes the
    primary action off the row — and that sentence has since been settled somewhere else
-   entirely. New now LEADS the row and the row clips from its right end, so no readout can
-   cost it its place whatever these rungs do. What was for two rounds a guarantee held up
+   entirely. New sits at the HEAD of the row, second only to the switcher, and the row
+   clips from its right end, so no readout can cost it its place whatever these rungs do. What was for two rounds a guarantee held up
    by careful rung order is now a property of the arrangement, which is the better place
    for it: `src/view/render/toolbar.ts` says why, and `src/view/CLAUDE.md` calls the
    position load-bearing.
@@ -223,9 +230,9 @@
 
 /* Step 6 — the primary action's own label, and after it the row is icons.
 
-   Last because it is the most valuable word on the row: New leads, so a bare `+` is the
-   most prominent control saying least, and every other label had somewhere cheaper to go
-   first. The button keeps its own `aria-label`, so nothing loses its NAME here — the same
+   Last because it is the most valuable word on the row: New sits at its head, so a bare
+   `+` is the most prominent control saying least, and every other label had somewhere
+   cheaper to go first. The button keeps its own `aria-label`, so nothing loses its NAME here — the same
    thing steps 1 and 2 say, and the reason the label was never the accessible name. */
 .pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']):not([data-pbl-fit='2']):not([data-pbl-fit='3']):not([data-pbl-fit='4']):not([data-pbl-fit='5'])
 	.pbl-new-label {

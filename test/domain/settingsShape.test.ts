@@ -86,23 +86,25 @@ describe('settingsInconsistency, and what the only producer guarantees', () => {
 	});
 
 	it('rejects a colour map the resolver would have emptied, key or value', () => {
-		// The third per-state map, and the one whose VALUE becomes a class name: a fixture
-		// holding a colour the resolver would have dropped makes `stateColorClass` emit
-		// `pbl-state-c-<anything>`, which no stylesheet paints — a test asserting a class
-		// that cannot exist. Raised in review on the change that added the map, which is the
-		// same half-a-job shape the two maps above already record twice.
+		// The third per-state map, and the one whose VALUE is painted directly: a fixture
+		// holding a colour the resolver would have dropped asserts a colour no picker could
+		// produce. Raised in review on the change that added the map, which is the same
+		// half-a-job shape the two maps above already record twice.
 		const workflow = settingsWith({ states: ['Active', 'Done'], doneValues: ['Done'] });
-		expect(settingsInconsistency({ ...workflow, stateColors: { draft: 'red' } })).toContain('stateColors names draft');
-		expect(settingsInconsistency({ ...workflow, stateColors: { active: 'rebeccapurple' } })).toContain('would discard');
-		// A capital and surrounding space are as unproducible as an unknown name: the
-		// resolver stores exactly what `stateColorName` returns.
-		expect(settingsInconsistency({ ...workflow, stateColors: { active: 'Red' } })).toContain('would discard');
+		expect(settingsInconsistency({ ...workflow, stateColors: { draft: '#ff0000' } })).toContain('stateColors names draft');
+		// Shorthand, a capital and surrounding space are all unproducible: the resolver
+		// stores exactly what `stateColor` returns, lowercased and in one of its two shapes.
+		expect(settingsInconsistency({ ...workflow, stateColors: { active: '#abc' } })).toContain('would discard');
+		expect(settingsInconsistency({ ...workflow, stateColors: { active: '#FF0000' } })).toContain('would discard');
 		expect(settingsInconsistency({ ...workflow, stateColors: { active: ' red' } })).toContain('would discard');
-		// Unlike the two maps above, a DONE state may be coloured — the pick is simply inert
-		// there — and so may a Deliverable state, since this map spans both vocabularies.
+		expect(settingsInconsistency({ ...workflow, stateColors: { active: 'rebeccapurple' } })).toContain('would discard');
+		// Unlike the two maps above, a DONE state may be coloured — the choice is simply
+		// inert — and so may a Deliverable state, since this map spans both vocabularies.
 		const both = settingsWith({ states: ['Active'], deliverableStates: ['Draft'], deliverableStateKey: 'ds' });
-		expect(settingsInconsistency({ ...workflow, stateColors: { done: 'green' } })).toBeNull();
-		expect(settingsInconsistency({ ...both, stateColors: { active: 'red', draft: 'cyan' } })).toBeNull();
+		// Both stored shapes are producible, and a done state may carry either — the dialog
+		// offers the row and the intro says it does nothing.
+		expect(settingsInconsistency({ ...workflow, stateColors: { done: '#00ff00' } })).toBeNull();
+		expect(settingsInconsistency({ ...both, stateColors: { active: '#ff0000', draft: 'cyan' } })).toBeNull();
 	});
 
 	it('treats an emptied list as the resolver does — absent, not a rejection', () => {
@@ -128,8 +130,14 @@ describe('settingsInconsistency, and what the only producer guarantees', () => {
 		// the board two configured columns for one state, which no user can reach —
 		// `resolveSettings` applies `dedupe(list(...))` case-insensitively.
 		const base = defaultSettings();
-		expect(settingsInconsistency({ ...base, states: ['Active', 'active'], deliverableStates: ['Active', 'active'] }))
-			.toContain('states repeats');
+		expect(
+			settingsInconsistency({
+				...base,
+				states: ['Active', 'active'],
+				deliverableStates: ['Active', 'active'],
+				testStates: ['Active', 'active'],
+			}),
+		).toContain('states repeats');
 		expect(settingsInconsistency({ ...base, horizonValues: ['Now', 'NOW'] })).toContain('horizonValues repeats');
 		expect(settingsInconsistency({ ...base, startedStates: ['A', 'a'] })).toContain('startedStates repeats');
 		// The two DONE lists are deliberately exempt: they take `list()` without `dedupe()`,
@@ -141,10 +149,12 @@ describe('settingsInconsistency, and what the only producer guarantees', () => {
 		// reaches the resolver through `list()`, which trims and drops empties. Checking the
 		// narrower set against the wider rule is the mistake this predicate kept making, so
 		// the two spans are asserted apart.
-		// `deliverableStates` set alongside, or the copy rule above fires first and this
-		// asserts the wrong message — the predicate returns the FIRST broken relationship.
-		expect(settingsInconsistency({ ...base, states: [' Active '], deliverableStates: [' Active '] }))
-			.toContain('states holds');
+		// `deliverableStates`/`testStates` set alongside, or the copy rule above fires first
+		// and this asserts the wrong message — the predicate returns the FIRST broken
+		// relationship.
+		expect(
+			settingsInconsistency({ ...base, states: [' Active '], deliverableStates: [' Active '], testStates: [' Active '] }),
+		).toContain('states holds');
 		expect(settingsInconsistency({ ...base, doneValues: ['Done ', 'Closed'] })).toContain('doneValues holds');
 		expect(settingsInconsistency({ ...base, horizonValues: ['Now', ''] })).toContain('horizonValues holds');
 	});
@@ -152,7 +162,9 @@ describe('settingsInconsistency, and what the only producer guarantees', () => {
 	it('accepts what the resolver would have produced for that same fixture', () => {
 		// The pair to the case above, so "rejects" cannot quietly become "rejects everything".
 		const base = defaultSettings();
-		expect(settingsInconsistency({ ...base, stateKey: 'status', states: ['New'], deliverableStates: ['New'] })).toBeNull();
+		expect(
+			settingsInconsistency({ ...base, stateKey: 'status', states: ['New'], deliverableStates: ['New'], testStates: ['New'] }),
+		).toBeNull();
 		expect(settingsInconsistency(base)).toBeNull();
 	});
 });
@@ -204,6 +216,11 @@ describe('settingsWith reproduces what the resolver would have derived', () => {
 			name: 'a tags property aimed at the state key, which yields',
 			fields: { stateKey: 'status', tagsKey: 'status' },
 			options: { stateProperty: 'note.status', tagsProperty: 'note.status' },
+		},
+		{
+			name: 'a test workflow of its own, so nothing is copied',
+			fields: { testStateKey: 'testStatus', testDoneValues: [] },
+			options: { testStateProperty: 'note.testStatus', testDoneValues: '' },
 		},
 	];
 

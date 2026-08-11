@@ -1,6 +1,6 @@
-import { BasesView, Menu, QueryController, setIcon } from 'obsidian';
+import { BasesView, QueryController } from 'obsidian';
 import { CARD_SCOPE, CollapseState, TIMELINE_SCOPE } from './collapseState';
-import { FilterScope, FilterState } from './filterState';
+import { FilterState } from './filterState';
 import { BacklogViewHost, BoardSnapshot, Column, ColumnFit, PRODUCT_BACKLOG_VIEW_TYPE, Projection, RoadmapSnapshot } from './host';
 import { OpenController } from './openTarget';
 import { WriteGate } from './writeGate';
@@ -8,7 +8,7 @@ import { CardMoveController } from './cardMoves';
 import { CardDragController } from './interactions/cardDrag';
 import { DragDropController } from './interactions/dragDrop';
 import { handleProjectionKeydown } from './interactions/keyboard';
-import { buildColumnMenu, buildItemMenu } from './interactions/menu';
+import { buildColumnMenu, buildItemMenu, showMenuAtElement } from './interactions/menu';
 import { BacklogItem, BacklogModel, buildModel } from '../domain/model';
 import { childTypeChoices, PlacementEnd } from '../domain/itemTypes';
 import { DropTarget } from '../domain/dropTargets';
@@ -18,6 +18,7 @@ import { ItemWrite, SchedulePlan } from '../domain/writePlan';
 import { ScaleId } from '../domain/timeline';
 import { forgetBacklogView, rememberBacklogView } from './registry';
 import { ResizePolicy } from './resize';
+import { filterScopeFor, hidesCompleted, projectionMember, treeShaped } from './projection';
 import { rowHidden, VisibilityRule } from './rowVisibility';
 import { SelectionController } from './selection';
 import { UiStateController } from './uiState';
@@ -29,7 +30,7 @@ import { syncToolbarFit } from './render/toolbarFit';
 import { captureScroll, centreOnToday, renderProjectionContent, restoreScroll, ScrollAnchor } from './render/projections';
 import { refreshRowChildren } from './render/rows';
 import { BacklogSettings, defaultSettings } from '../domain/settings';
-import { adoptableProperties, notePropertyId, OptionalProperty } from '../domain/optionalProperties';
+import { adoptableProperties, notePropertyId, OptionalField, OptionalProperty } from '../domain/optionalProperties';
 import { resolveSettings } from '../domain/settingsResolve';
 import { OpenTarget } from '../domain/itemHandling';
 import { WriteOutcome } from '../storage/frontmatter';
@@ -54,7 +55,6 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	private toolbarEl: HTMLElement;
 	private legendEl: HTMLElement;
 	private treeEl: HTMLElement;
-	private rootDropEl: HTMLElement;
 	private dnd: DragDropController;
 	private cardDnd: CardDragController;
 	/** The board of the last render; null while the view is not a board. */
@@ -132,9 +132,6 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// Nothing to render until Bases delivers the first result set — say what is
 		// happening instead of showing an empty pane.
 		renderLoadingState(this.treeEl);
-		this.rootDropEl = this.viewEl.createDiv({ cls: 'pbl-root-drop' });
-		setIcon(this.rootDropEl.createSpan({ cls: 'pbl-root-drop-icon' }), 'corner-left-up');
-		this.rootDropEl.createSpan({ text: 'Move to top level' });
 
 		this.selection = new SelectionController(this.treeEl, this.rowEls, () => this.board?.colEls ?? []);
 		this.collapse = new CollapseState(this);
@@ -147,14 +144,13 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 			render: () => this.render(),
 			renderTreeContent: () => this.renderTreeContent(),
 			refreshFromData: () => this.refreshFromData(),
+			recomputeFilter: () => this.filter.recompute(this.model, this.projection),
 		});
 		this.dnd = new DragDropController(this, {
 			viewEl: this.viewEl,
 			treeEl: this.treeEl,
-			rootDropEl: this.rootDropEl,
 		});
 		this.resize = new ResizePolicy(this, this.viewEl, this.treeEl, this.toolbarEl, () => this.rowCtx());
-		this.dnd.setupRootDropZone();
 		this.cardDnd = new CardDragController(this, this.viewEl);
 		this.treeEl.addEventListener('keydown', (evt) => handleProjectionKeydown(this, evt));
 		this.registerDomEvent(document, 'dragend', () => this.dnd.clearDragState());
@@ -211,6 +207,14 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 
 	setFocusLevel(level: string): void {
 		this.ui.setFocusLevel(level);
+	}
+
+	get clickFolds(): boolean {
+		return this.ui.clickFolds;
+	}
+
+	setClickFolds(value: boolean): void {
+		this.ui.setClickFolds(value);
 	}
 
 	get shelfCollapsed(): boolean {
@@ -297,8 +301,8 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// active focus subtree was therefore never ruled on, its card opening expanded
 		// against the collapsed-by-default rule every other projection keeps. The same
 		// split `collapsiblePopulation` states for the buttons, at the other end of it.
-		this.collapse.collapseNewParents([...this.model.items, ...this.model.deliverableResults]);
-		this.filter.recompute(this.model);
+		this.collapse.collapseNewParents([...this.model.items, ...this.model.deliverableResults, ...this.model.catalog.items]);
+		this.filter.recompute(this.model, this.projection);
 		this.render();
 	}
 
@@ -328,8 +332,15 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.registerEvent(this.app.workspace.on('css-change', () => syncToolbarFit(this.toolbarEl)));
 	}
 
-	adoptDefaultProperties(): OptionalProperty[] {
-		const adopting = adoptableProperties(this.config, this.settings);
+	adoptDefaultProperties(only?: OptionalField): OptionalProperty[] {
+		// The narrowing belongs to the collector, never beside it: the one-field path
+		// cannot then disagree with ✨ about what may be adopted (see `host.ts`).
+		// Both halves resolved from the live config. `this.settings` is the last refresh's
+		// snapshot, and `adoptableProperties` asks the config which options are SET while
+		// asking the settings which keys are TAKEN — so mixing the two lets a property
+		// pointed at a suggestion since the last refresh be skipped without its key joining
+		// `taken`, and the suggestion is then bound onto it. (Codex, PR #128.)
+		const adopting = adoptableProperties(this.config, resolveSettings(this.config), only);
 		for (const property of adopting) this.config.set(property.option, notePropertyId(property.suggested));
 		// Rebuilt now rather than left to the refresh a config change brings: the batch
 		// that follows is planned from this model, and one built before the binding reads
@@ -347,7 +358,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 
 	setFilter(text: string): void {
 		this.filter.text = text;
-		this.filter.recompute(this.model);
+		this.filter.recompute(this.model, this.projection);
 		this.renderTreeContent();
 	}
 
@@ -376,26 +387,14 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 			filter: this.filter,
 			settings: this.settings,
 			applyFilter,
-			scope: this.filterScope,
-			hideCompleted: this.projection !== 'deliverables',
+			scope: filterScopeFor(this.projection),
+			hideCompleted: hidesCompleted(this.projection),
+			inProjection: projectionMember(this.projection),
 		};
 	}
 
 	isFilterMatch(item: BacklogItem): boolean {
-		return this.filter.matched(item.file.path, this.filterScope);
-	}
-
-	/**
-	 * Which of the filter's indexes this projection's questions are answered from —
-	 * decided ONCE here rather than at each of the three call sites, because getting it
-	 * wrong at one of them is invisible until someone types into the box on that exact
-	 * projection. The Deliverables board renders `model.deliverableResults`, built from
-	 * the whole unfocused tree; every other projection renders out of `model.roots`,
-	 * which a focus narrows. See `FilterScope`, which states why one index cannot serve
-	 * both and what it cost to learn that.
-	 */
-	private get filterScope(): FilterScope {
-		return this.projection === 'deliverables' ? 'whole' : 'focused';
+		return this.filter.matched(item.file.path, filterScopeFor(this.projection));
 	}
 
 	isFiltering(): boolean {
@@ -469,28 +468,11 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	}
 
 	showContextMenuFor(item: BacklogItem): void {
-		this.showMenuBelow(buildItemMenu(this, item, childTypeChoices(item)), this.rowElFor(item));
+		showMenuAtElement(buildItemMenu(this, item, childTypeChoices(item)), this.rowElFor(item));
 	}
 
 	showColumnMenuFor(index: number): boolean {
-		return this.showMenuBelow(buildColumnMenu(this.board?.board.columns[index]?.policy ?? ''), this.board?.colEls[index] ?? null);
-	}
-
-	/**
-	 * Anchor a menu under its own element's rect — the keyboard path for a row or a
-	 * column stop, neither of which has a pointer to sit under. Falls back to the
-	 * viewport corner when there is no element to anchor to, and reports false when
-	 * there was no menu to open, so a caller that swallowed the key can give it back.
-	 * The fallback is a row's, not deliberately a column's too: `colEls` and
-	 * `board.columns` are built by the same `.map()` over the same array
-	 * (`renderBoard`), so an index that resolves a column always resolves an element,
-	 * and this branch stays unreachable from `showColumnMenuFor`.
-	 */
-	private showMenuBelow(menu: Menu | null, el: HTMLElement | null): boolean {
-		if (!menu) return false;
-		const rect = el?.getBoundingClientRect();
-		menu.showAtPosition(rect ? { x: rect.left, y: rect.bottom } : { x: 0, y: 0 });
-		return true;
+		return showMenuAtElement(buildColumnMenu(this.board?.board.columns[index]?.policy ?? ''), this.board?.colEls[index] ?? null);
 	}
 
 	private rowElFor(item: BacklogItem): HTMLElement | null {
@@ -545,7 +527,6 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.treeEl.removeAttribute('aria-describedby');
 		this.dnd.onRenderStart();
 		this.cardDnd.onRenderStart();
-		this.viewEl.toggleClass('pbl-focused', model.focused);
 		// Collapse controls and drag grips are inert while a filter is active.
 		this.viewEl.toggleClass('pbl-filtering', this.isFiltering());
 
@@ -557,7 +538,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// Same lifetime as the row index: a set that outlived its render would claim
 		// disclosures for a screen that is gone.
 		this.cardKids.clear();
-		if (projection !== 'tree') {
+		if (!treeShaped(projection)) {
 			// The column ladder is the tree's: a narrow-pane verdict from tree mode must
 			// not strip cells off cards, and its rollup class must not hide theirs.
 			this.setColumnFit(null);
@@ -597,7 +578,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// "18 items" to "3 of 18", or the primary button is naming a different type.
 		// After the content, because the count is one of the things being measured.
 		syncToolbarFit(this.toolbarEl);
-		if (projection !== 'tree') return;
+		if (!treeShaped(projection)) return;
 		// Measured against the tree that now exists, scrollbar and all. A changed
 		// verdict means a column came or went, which only the rows can show — one
 		// more pass, guarded, since the second pass measures the same tree.

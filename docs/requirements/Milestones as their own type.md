@@ -268,8 +268,9 @@ returns the ladder's top plus every name in `MARKER_TYPES` — a milestone hangs
 nothing, and offering it only under a real parent would leave no way to create the case
 this whole feature is about.
 
-The autoType cascade needed one boundary, not two. `computeTypeChanges` in
-`src/domain/writePlan.ts` declares a single `stopsAt(item)` predicate —
+**Withdrawn on 2026-08-11 with the feature it describes** ([[Assigning type on a move]]);
+kept because the shape it arrived at is the one a future subtree walk wants. The cascade
+needed one boundary, not two. It declared a single `stopsAt(item)` predicate —
 `item.outsideFilter || isMarkerType(item.typeName)` — applied in exactly two places: as an
 early return on the **dragged** item (a marker dropped anywhere keeps its type, and so does
 its whole subtree, because nothing beneath a rankless item can be ranked from it), and as
@@ -277,9 +278,9 @@ the walk guard inside the descent (`if (stopsAt(child)) continue`), so a marker 
 inside a moved subtree stops the branch under it exactly as an `outsideFilter` row already
 does. There is no separate `isDeclaredNonRung` — the brief predicted one, and the shipped
 shape is one early-return predicate covering both the dragged-item exemption and the
-branch stop, because the two needed the same answer for the same reason. It pointedly does
-not reach the ladder: `Epic`, `Feature`, `PBI` and `Task` are declared *as* rungs and must
-keep being retyped by position, which is the whole of [[Assigning type on a move]].
+branch stop, because the two needed the same answer for the same reason. It pointedly did
+not reach the ladder: `Epic`, `Feature`, `PBI` and `Task` are declared *as* rungs, and
+exempting them would have left the cascade with nothing to do.
 
 Focus needed one change: `renderFocusPicker` in `src/view/render/toolbar.ts` now builds its
 menu by iterating `ALL_TYPES` directly, one `for` loop over the whole vocabulary rather than

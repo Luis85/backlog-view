@@ -4,6 +4,7 @@ import { mountHarness } from './mount';
 import { installObsidianDom } from '../helpers/dom';
 import { clickExpandAll, projectionButton, submitPrompt } from '../helpers/view';
 import { barFor, gripNames } from '../helpers/roadmap';
+import { demoVault } from '../helpers/fixtures';
 
 /** The rendered row for a title — the tree accessors take a container, and so do these. */
 function rowFor(containerEl: HTMLElement, title: string): HTMLElement {
@@ -84,12 +85,101 @@ describe('the browser harness mounts', () => {
 		expect(containerEl.querySelectorAll('.pbl-shelf .pbl-card').length).toBeGreaterThan(0);
 	});
 
+	it('draws the test catalog, with both ladders in one fixture and neither in the other', () => {
+		// The fixture rule, applied: a change that visibly alters the view puts its cases in
+		// the fixture, and this is what asserts they are still there — a deleted note or a
+		// renamed class fails here rather than leaving the harness quietly showing less.
+		const { view, containerEl } = mount();
+
+		view.setProjection('catalog');
+		clickExpandAll(containerEl);
+		const titles = Array.from(containerEl.querySelectorAll('.pbl-title')).map((n) => n.textContent);
+		// A suite with two cases (the move section needs a neighbour), the `Task` that
+		// belongs here by what it hangs from, the implied case where the test axis and
+		// `.pbl-implied` have to compose, and the promoted root the mis-drag produces.
+		expect(titles).toEqual(
+			expect.arrayContaining([
+				'Sign-up smoke tests',
+				'Register with a provider',
+				'Fix the provider redirect',
+				'Resume an abandoned sign-up',
+				'Verify the rate limit',
+			]),
+		);
+		// The badge is drawn against the real stylesheet, which is what the harness is for:
+		// the axis is a class here and a border there.
+		expect(containerEl.querySelector('.pbl-badge.pbl-lvl-test-suite')).not.toBeNull();
+		expect(containerEl.querySelector('.pbl-badge.pbl-lvl-test-case.pbl-implied')).not.toBeNull();
+		// And the plan draws none of it, which is the other half of the same bargain.
+		view.setProjection('tree');
+		clickExpandAll(containerEl);
+		const plan = Array.from(containerEl.querySelectorAll('.pbl-title')).map((n) => n.textContent);
+		expect(plan).not.toContain('Sign-up smoke tests');
+		expect(plan).toContain('Single sign-on');
+	});
+
 	it('switches projection through the real toolbar, which is the control being exercised', () => {
 		const { containerEl } = mount();
 
 		projectionButton(containerEl, 'Show as kanban board').dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
 		expect(containerEl.querySelector('.pbl-board-cols')).not.toBeNull();
+	});
+});
+
+/**
+ * The size knob (`?notes=800`), which exists so the page can be asked what the view costs
+ * at a size no curated fixture reaches.
+ *
+ * What is checked is that the knob DELIVERS the size, in both layouts — nothing here
+ * times anything, and nothing here may: a timing assertion is refused by
+ * [[The render path states its costs as checks]] and by ADR 0020's fourth refusal. But an
+ * instrument has to be honest about its own sample, and a knob that quietly produced a
+ * forty-row page while the panel reported confidently on eight hundred would be exactly
+ * the failure this whole feature exists to avoid.
+ */
+describe('the size knob grows the fixture it says it grows', () => {
+	function mount(fixture: 'demo' | 'folders', extra: number) {
+		const root = document.createElement('div');
+		document.body.appendChild(root);
+		return mountHarness(root, fixture, extra);
+	}
+
+	it.each(['demo', 'folders'] as const)('adds exactly the notes asked for, in the %s layout', (fixture) => {
+		const plain = mount(fixture, 0).vault.files.size;
+
+		const { vault, containerEl } = mount(fixture, 50);
+
+		expect(vault.files.size).toBe(plain + 50);
+		// Filed, not merely created: an epic per 25 means two of them, and in the folder
+		// layout each is the note of its own folder — the placement the whole layout rests
+		// on, and the one a generator can get wrong without the count noticing.
+		clickExpandAll(containerEl);
+		expect(titlesIn(containerEl)).toEqual(expect.arrayContaining(['Bulk epic 1', 'Bulk epic 26']));
+		expect(vault.files.has(fixture === 'folders' ? 'Bulk epic 1/Bulk epic 1.md' : 'Bulk epic 1.md')).toBe(true);
+	});
+
+	it('gives every generated note a target after its own start', () => {
+		// A span folded into the day index wrapped the fixture's 120-day window, so one
+		// generated note in six stated a target before its start, read as unplaceable, and
+		// went to the shelf — a sixth of the roadmap sample measuring the shelf instead of
+		// the bars it exists to draw. Asserted over ALL of them rather than at the wrap,
+		// because the next arithmetic slip will not be at the same index. (Codex, PR #128.)
+		const generated = [...mount('demo', 400).vault.frontmatter].filter(([path]) => path.startsWith('Bulk '));
+		expect(generated.length).toBe(400);
+		const reversed = generated.filter(([, fm]) => String(fm['due']) < String(fm['start'])).map(([path]) => path);
+		expect(reversed).toEqual([]);
+	});
+
+	it('puts no generated note within reach of a fixture nobody asked to grow', () => {
+		// The claim that keeps every other caller — the whole suite and the plain harness
+		// URL — on the fixture they had before the knob existed. Stated as the PREFIX
+		// rather than as a count, because a count here would also be counting the harness's
+		// own `.base` file, and because the prefix is what a title assertion could collide
+		// with: a curated note renamed into it would fail this too, correctly.
+		const titles = titlesIn(mount('demo', 0).containerEl);
+		expect(titles.filter((t) => t?.startsWith('Bulk '))).toEqual([]);
+		expect(demoVault().files.size).toBe(demoVault('flat', 0).files.size);
 	});
 });
 
@@ -282,7 +372,7 @@ describe('the chrome the mock only records', () => {
  */
 describe('the harness draws every icon the view asks for', () => {
 	/**
-	 * Walk all four projections and both roadmap axes, collecting what `setIcon` was
+	 * Walk all five projections and both roadmap axes, collecting what `setIcon` was
 	 * asked for. Driving the view rather than grepping `src/` on purpose: several icon
 	 * names never appear as a literal beside a `setIcon` call — the type badges come
 	 * from a table, the spinner and the filter's two states from branches — and a grep
@@ -306,7 +396,7 @@ describe('the harness draws every icon the view asks for', () => {
 			// collecting more of the same icons, which is what let a dark leg pass.
 			drew.push(containerEl.querySelector('.pbl-tree')?.getAttribute('aria-label') ?? '');
 		};
-		for (const projection of ['tree', 'board', 'roadmap', 'deliverables'] as const) {
+		for (const projection of ['tree', 'board', 'roadmap', 'deliverables', 'catalog'] as const) {
 			view.setProjection(projection);
 			collect();
 		}

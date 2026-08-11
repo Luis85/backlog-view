@@ -162,7 +162,7 @@
    above with a comma: `timelineBoxing.test.ts`'s "the furniture declarations whose
    comments call them load-bearing" reads `.pbl-dragging .pbl-bar-label {` as a literal
    selector, and a combined selector list would stop it finding either rule's body. Not
-   reused as one class either way — `.pbl-dragging` also reveals the root strip, and a
+   reused as one class either way — `.pbl-dragging` means a card move is in flight, and a
    link drag can reparent nothing. */
 .pbl-linking .pbl-bar-label {
 	visibility: hidden;

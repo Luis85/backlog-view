@@ -505,7 +505,7 @@ describe('write safety with context rows, at the dependency connector', () => {
 		// loading it as someone's ancestor would pass this same assertion for the wrong
 		// reason, by never being a candidate `legalTargets` walks at all.
 		expect(model.byPath.get('Epic.md')?.outsideFilter).toBe(true);
-		expect([...legalTargets(view.app, model, source)].map((f) => f.path)).not.toContain('Epic.md');
+		expect([...legalTargets(view, model, source)].map((f) => f.path)).not.toContain('Epic.md');
 	});
 
 	it('refuses the whole batch structurally if a write for one ever reaches the gate', async () => {

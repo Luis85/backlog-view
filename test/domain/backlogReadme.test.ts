@@ -42,6 +42,24 @@ describe('backlogReadmeContent', () => {
 		expect(content).not.toContain('and Bug and');
 	});
 
+	// This bullet is written into the user's own vault, and it said "nothing is refused"
+	// while the projection boundary was refusing exactly one class of move. Narrowed rather
+	// than deleted: the advisory rule is still what holds inside a ladder, so the check has
+	// to see BOTH halves — an unqualified "nothing is refused" and an unqualified "drops can
+	// be refused for type" are equally wrong, in opposite directions.
+	it('scopes the advisory rule to what the projection boundary leaves refused', () => {
+		const content = readme(settingsWith(), []);
+		expect(content).toContain('nothing is refused for the type a move would give a note');
+		// "for a **type** reason", not "the one move the view withholds": `isInvalidParent`
+		// and `reorderableGroup` refuse drops that have nothing to do with type, so the
+		// unqualified form is false in the direction opposite to the sentence it replaced.
+		expect(content).toContain('The one move the view withholds for a **type** reason');
+		expect(content).not.toMatch(/one move the view withholds is/);
+		// The narrowness itself: only a `Task` and a typeless note read their ladder from
+		// where they hang, so the sentence must not read as a rule about types in general.
+		expect(content).toContain('Every other type keeps its ladder wherever it lands');
+	});
+
 	it('reads the type table off childTypeChoices, not off the ladder', () => {
 		const content = readme(settingsWith(), []);
 		// The clamp at the deepest rung: a Task holds a Task, which the ladder read
@@ -511,30 +529,16 @@ describe('backlogReadmeContent', () => {
 		expect(folderMode).toContain('2. The folder configured for the type');
 	});
 
-	it('says what a move does to the type, per this view s setting', () => {
-		expect(readme(settingsWith({ autoType: false }), [])).toContain('never rewrites its type');
-		// The rules bullet names the trigger and sends the reader to the section that
-		// qualifies it, rather than restating it: `computeTypeChanges` rewrites nothing on a
-		// reorder and nothing on an extra type, so a second "a move re-types what it moves"
-		// here is a sentence that is already wrong twice.
-		const auto = readme(settingsWith({ autoType: true }), []);
-		expect(auto).toContain('A move into a new parent is the one thing that rewrites a type');
-		expect(auto).toContain('**The item types** above says which moves, and which types it leaves alone');
-		expect(auto).toContain('## The item types');
-		expect(auto).not.toContain('re-type what it moves');
-	});
-
-	it('qualifies the custom-type promise where a move rewrites it', () => {
-		// computeTypeChanges exempts only DECLARED extra types, so with types assigned on a
-		// move a dragged `Spike` is rewritten — the descendants keep theirs. An unqualified
-		// promise is wrong in exactly the configuration that opts into rewriting.
-		expect(readme(settingsWith({ autoType: false }))).toContain('Nothing rewrites it into one of these');
-		const auto = readme(settingsWith({ autoType: true }));
-		// Not every move: only one into a NEW parent, and never an extra type.
-		expect(auto).toContain('rewrites what you drag into a **new parent**');
-		expect(auto).toContain('Reordering among siblings rewrites nothing');
-		expect(auto).toContain('`Issue`, `Bug`, `Idea` and `Deliverable` keep their type wherever they land');
-		expect(auto).toContain('deeper in the subtree you dragged is left alone');
+	it('says a move never rewrites a type, and says it unconditionally', () => {
+		// The generated README is a promise made to a vault the plugin may never be opened
+		// in again, so it may not carry a qualifier that no configuration can now produce.
+		// Both places state it: the rules bullet, and the type table where a custom name is
+		// the thing at risk.
+		const generated = readme(settingsWith({}), []);
+		expect(generated).toContain('Moving a note never rewrites its type');
+		expect(generated).toContain('Nothing rewrites it into one of these');
+		expect(generated).not.toContain('rewrites what you drag');
+		expect(generated).not.toContain('keep their type wherever they land');
 	});
 
 	it('does not promise a propertyless note stays out of a folder-inferred tree', () => {

@@ -1,5 +1,6 @@
 import { ManualEntry, ManualSection } from '../../ui/manualDialog';
 import { ALL_TYPES, EXTRA_TYPES, LEVELS, MARKER_TYPES } from '../../domain/typeVocabulary';
+import { badgeStyleFor } from '../render/badges';
 
 /**
  * What each type is FOR. Keyed by type name and checked for completeness against
@@ -23,19 +24,26 @@ const INTENT: Record<string, string> = {
 		'A date the plan answers to. The + never offers to create one as a child, and draws no + of ' +
 		'its own — but that is what is OFFERED: nothing stops a drag from nesting one under an ' +
 		'existing row, or Set type from turning any row into one.',
+	'Test suite':
+		'A walkable group of end-to-end tests, and a root by nature — it hangs from nothing and ' +
+		'lives in the test catalog rather than in the plan. Holds Test cases.',
+	'Test case':
+		'One test somebody can execute: its preconditions, steps and expected result are the note ' +
+		'body, not properties. Holds Tasks, so the fix a failure provokes hangs where it was found.',
 };
 
 /**
- * The badge class the row renderer would give this type — `NON_RUNG_STYLE` in
- * `view/render/rows.ts`, which this mirrors rather than imports: that table also carries
- * an icon, which the manual has no use for, and duplicating the four-line spelling rule
- * (a ladder rung's index, an off-ladder type's lowercased name) is cheaper than reaching
- * across the module for it. Resolved here, not in `ui/`, because `ui/manualDialog.ts` may
- * not import `domain/` to know what a rung even is.
+ * The badge class the row renderer would give this type — taken FROM that renderer now
+ * rather than mirrored beside it. It used to be a four-line spelling rule duplicated
+ * here on the grounds that reaching across the module cost more than restating it, and
+ * `Test suite` is what ended that: `pbl-lvl-${typeName.toLowerCase()}` produces
+ * `pbl-lvl-test suite`, a token `classList.add` rejects outright, so the manual's copy
+ * became the first spelling that could disagree with the stylesheet AND throw. Resolved
+ * in `view/`, not in `ui/`, because `ui/manualDialog.ts` may not import `domain/` to know
+ * what a rung even is.
  */
 function badgeClass(typeName: string): string {
-	const rung = LEVELS.indexOf(typeName);
-	return rung >= 0 ? `pbl-lvl-${rung}` : `pbl-lvl-${typeName.toLowerCase()}`;
+	return badgeStyleFor(typeName).badge;
 }
 
 function entryFor(typeName: string): ManualEntry {
@@ -57,7 +65,7 @@ function entryFor(typeName: string): ManualEntry {
  *
  * The entries after the type list state what is invisible on screen: how the `+` decides
  * what it offers (`childTypeChoices`, `domain/itemTypes.ts`), that an untyped item still
- * reads at a level, that a move does not re-type by default, and that the type ladder is
+ * reads at a level, that a move never re-types, and that the type ladder is
  * advisory rather than enforced.
  */
 export function typesSection(): ManualSection {
@@ -88,20 +96,29 @@ export function typesSection(): ManualSection {
 			{
 				term: 'A move does not re-type',
 				text:
-					'Dragging an item leaves its type alone, unless Assign item type when moving is on — ' +
-					'it is off by default. On, it retypes the ladder levels in a moved subtree to match ' +
-					'their new position; see "Moving and ranking" → "A move does not re-type" for exactly ' +
-					'what it skips.',
+					'Dragging an item leaves its type alone, wherever it lands, and so does every other ' +
+					'way of re-parenting it. Set type is the only thing that writes a type to a note ' +
+					'that already has one.',
 			},
 			{
 				term: 'Type is advisory, not enforced',
 				text:
-					'The + narrows to what childTypeChoices names for this parent. Set type does not: in ' +
-					'the tree and the roadmap it offers the whole vocabulary, because assigning a type by ' +
-					"hand is advisory like a drag — a board's menu narrows only to what that board can show, " +
-					'a different question from what fits the ladder. No drag is ever refused for what it ' +
-					"would type something as. Other drops still are — onto an item's own descendant, or into " +
-					'a sibling group a reorder cannot reach right now — neither of which is about type.',
+					'The + narrows to the types that fit under this parent, and on a board to what that board ' +
+					'can show as well. Set type narrows too — in every projection rather than only on a ' +
+					'board, because each offers what it can show. So Test suite and Test case are not ' +
+					'offered on a plan row, and nothing from the plan\'s side is offered in the test ' +
+					'catalog — except Task, on a row that hangs from a test, since it is the rung both ' +
+					'ladders share. Inside a ladder nothing is enforced, and no move is ' +
+					'refused for what it would type something as: a Task under an Epic stays a Task, at its ' +
+					'own level, however oddly it sits. What a move can be refused for is leaving the ' +
+					'projection it is drawn on, because the row would vanish off the screen it was moved on ' +
+					'— a drag, an outdent and the two menu entries that remove the parent link are all ' +
+					'withheld for it. Only two rows can cross that line, and only between the plan and the test ' +
+					'catalog: a Task, the rung both ladders share, and a note with no type at all, which ' +
+					"takes its parent's. Every other type keeps its own ladder wherever it lands, so a " +
+					'backlog with no tests in it is refused nothing here. Other drops still are — onto an ' +
+					"item's own descendant, or into a sibling group a reorder cannot reach right now — " +
+					'neither of which is about type.',
 			},
 		],
 	};

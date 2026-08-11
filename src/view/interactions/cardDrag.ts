@@ -158,10 +158,45 @@ export class CardDragController {
 	 * started from.
 	 */
 	private readonly token = Symbol('pbl-card-drag');
+	private readonly unmarkView: () => void;
 
 	constructor(host: BacklogViewHost, viewEl: HTMLElement) {
 		this.host = host;
 		this.viewEl = viewEl;
+		this.unmarkView = this.markViewWhileDragging();
+	}
+
+	/**
+	 * `pbl-dragging`, for as long as one of this view's card moves is in flight.
+	 *
+	 * A MONITOR, registered for this controller's whole life and cleaned up only by
+	 * `dispose` — deliberately not among the per-render registrations, and not on the
+	 * `draggable` whose card the gesture picked up. The class rides `viewEl`, which is
+	 * built once and outlives every render, so the hook that takes it off has to outlive
+	 * every render too. A `draggable`'s does not: `onRenderStart` unhooks all of them at
+	 * the top of each pass, and pragmatic resolves a source's own callbacks out of its
+	 * registry AT DISPATCH TIME — "a draggable can be … removed completely" is the
+	 * library's own comment on the lookup — so a gesture that crossed a render never gets
+	 * its `onDrop`. A monitor is looked up in a registry of its own, kept in the drag's
+	 * active set from the moment it starts, and so is told however the drag ends: a drop,
+	 * a cancel, or the library's broken-drag fallback for a source removed mid-flight.
+	 *
+	 * The failure this fixes is silent and permanent. The drop still LANDS — the target
+	 * under the pointer is a live element the new pass registered — so nothing looks
+	 * wrong until the pane stops responding: a stale class leaves
+	 * `.pbl-dragging .pbl-timeline-drop { pointer-events: auto }` standing, and that
+	 * full-grid overlay then swallows every pointer event for the life of the view. No
+	 * row hover, no connector, no way to start another drag.
+	 *
+	 * Gated to `'move'`, which is what a link drag is NOT: the class means a card move is
+	 * in flight, and `.pbl-linking` is the link's own.
+	 */
+	private markViewWhileDragging(): () => void {
+		return monitorForElements({
+			canMonitor: ({ source }) => this.mine(source.data, 'move'),
+			onDragStart: () => this.viewEl.addClass('pbl-dragging'),
+			onDrop: () => this.viewEl.removeClass('pbl-dragging'),
+		});
 	}
 
 	/** This view's drag, and this KIND of it. Every `canDrop` here goes through it. */
@@ -177,6 +212,7 @@ export class CardDragController {
 
 	dispose(): void {
 		this.onRenderStart();
+		this.unmarkView();
 		// The live region is a shared singleton element on document.body.
 		liveRegionCleanup();
 	}
@@ -211,15 +247,13 @@ export class CardDragController {
 					ends: placementEnds(item.typeName),
 					view: this.token,
 				}),
-				onDragStart: () => {
-					this.viewEl.addClass('pbl-dragging');
-					cardEl.addClass('pbl-drag-source');
-				},
+				// The card's OWN mark only. What the drag puts on the view is the monitor's
+				// (`markViewWhileDragging`), because this hook is skipped entirely for a
+				// gesture that crossed a render — and unlike `viewEl`, this element does not
+				// survive one, so a mark stranded here dies with it.
+				onDragStart: () => cardEl.addClass('pbl-drag-source'),
 				// Fires when the drag ends however it ends — dropped or cancelled.
-				onDrop: () => {
-					this.viewEl.removeClass('pbl-dragging');
-					cardEl.removeClass('pbl-drag-source');
-				},
+				onDrop: () => cardEl.removeClass('pbl-drag-source'),
 			}),
 		);
 	}
