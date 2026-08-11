@@ -467,8 +467,23 @@ free of runtime code so imports stay cycle-free.
   hiding a match below it names those matches on its face — whether or not the card
   itself matched, since a match under a matching card is a second result and one card
   cannot stand for two — `hiddenMatches` walks its
-  subtree, stopping at anything already rendered so one match is never announced by two
-  cards. It matters most under focus, where the only cards are the focus level's: a
+  subtree, stopping at two things: anything already rendered, so one match is never
+  announced by two cards, and any row this projection does not DRAW, so a card claims
+  only what the screen puts a line to. The second is a predicate the CALLER supplies —
+  `undisclosedMatches` in `childrenList.ts` passes `!host.isRowHidden`, since
+  `domain/board.ts` is pure and can never ask a host — and because both consumers (the
+  face's links, `addMatchSection`'s menu entries) route through that one function, one
+  guard answers for both. **It is deliberately not enforced in the match SET**, and that
+  asymmetry is the finding rather than an accident: a `PBI` under a `Test case` is a plan
+  member and a real match — that is what promotes it to a root of the tree, and the same
+  property keeps a `Deliverable` nested under a test on its own board — so "a member
+  below a non-member is not a match" deletes a card that is on screen
+  (`test/view/testCatalog.test.ts` pins that direction). Only the claim that such a row
+  is *beneath this card* was wrong. What the check reaches is one board and one walk:
+  `test/view/boardFilter.test.ts` drives the face and the menu over a Deliverable whose
+  only deep match hangs behind a `Test case`, against the control with a `Feature` in the
+  same place; nothing compares this walk to the rollup's and the disclosure's, which stop
+  at the same boundary by their own predicates. It matters most under focus, where the only cards are the focus level's: a
   match three levels down would otherwise be found, counted in the rollup, and
   impossible to get to. The links are `tabindex="-1"` buttons like every other per-row
   control, so the card MENU carries the same matches — that is their keyboard path, the

@@ -490,18 +490,33 @@ export function cardPaths(board: BoardModel): Set<string> {
  * counted in the rollup, and unreachable. Naming them on the card is what makes the
  * search's own result something the user can get to.
  *
- * The walk stops at anything already rendered: that card names what hides under it,
- * and a match announced by two cards is a match the user cannot count.
+ * The walk stops at two things. At anything already RENDERED: that card names what
+ * hides under it, and a match announced by two cards is a match the user cannot count.
+ * And at any row this projection does not DRAW — `drawn`, which the caller supplies,
+ * because this module is pure and the answer is the view's (`view/childrenList.ts`
+ * passes `!host.isRowHidden`, the predicate the disclosure and every count over the
+ * same walk already consult). A row the screen has no line to is not a route to
+ * anything either, so that one stops the descent and not just the naming.
+ *
+ * `drawn` is where the ladder boundary is kept, and it is deliberately NOT kept in
+ * `matched`. A `PBI` beneath a `Test case` is a plan member and a genuine match — that
+ * is what promotes it to a root of the tree, and the same property is what keeps a
+ * `Deliverable` nested under a test on its own board — so a rule of the form "a member
+ * below a non-member is not a match" deletes a card that is on screen. What was wrong
+ * was only the claim that such a row is beneath THIS card: on the Deliverables board
+ * the `Test case` between the two is drawn nowhere, so nothing there relates them.
+ * Fix a disagreement about "beneath" in the walk; never in the match set.
  */
 export function hiddenMatches(
 	item: BacklogItem,
 	matched: (item: BacklogItem) => boolean,
 	rendered: Set<string>,
+	drawn: (item: BacklogItem) => boolean,
 ): BacklogItem[] {
 	const found: BacklogItem[] = [];
 	const walk = (parent: BacklogItem): void => {
 		for (const child of parent.children) {
-			if (rendered.has(child.file.path)) continue;
+			if (!drawn(child) || rendered.has(child.file.path)) continue;
 			if (matched(child)) found.push(child);
 			walk(child);
 		}

@@ -482,6 +482,25 @@ round. The lesson for the next consumer:
 `projectionPopulation(...).roots` alone is not the forest, and neither is roots plus one use
 of the membership rule.
 
+**The sixth finding on that machinery was a SEVENTH consumer of it, and the fix was not in
+the set.** `hiddenMatches` (`src/domain/board.ts`) — what a card names as hiding beneath it —
+recursed through raw `parent.children` with no guard at all, the one "what is under this
+card" walk that crossed the ladder boundary when the rollup (`assignAll`), the disclosure
+(`listedChildren`) and the index (`markSubtree`) all stop at it. Measured on one edge with
+one needle: `Release (Deliverable) → Smoke case (Test case) → Release follow-up (PBI)`, where
+filtering on `follow-up` produced no card at all — the index denying that match the power to
+keep it — while filtering on `Release` produced the card *and* printed `Release follow-up` on
+its face. The card and the index disagreeing about what is beneath the same row, with only
+an unrelated reason for the card's survival separating the two readings. The temptation is
+to answer it in question 2 above and stop counting that `PBI` as a match; that is the round
+this note already records as breaking the nested `Deliverable`, since being a member is
+exactly what promotes such a row to a root of its own projection. So the guard is on the
+WALK — descend only through rows this projection draws, `!host.isRowHidden` supplied by
+`undisclosedMatches` (`src/view/childrenList.ts`), which is the single function both the
+card face and the row menu reach it through. The rule the six findings share, stated once
+more: **membership decides where a walk may GO, and a projection's disagreement about
+"beneath" is never repaired by changing what counts as a match.**
+
 **Two questions over two lists, and `realRoots` answers only one of them.** 2d says the
 ranking group is never a projection's list and no projection may narrow it — true, and it is
 half the rule. `rootDropTarget` computed BOTH its answers from that group: the rank a drop
