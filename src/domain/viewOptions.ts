@@ -1,5 +1,5 @@
 import { BasesAllOptions, BasesOptions, BasesPropertyId, BasesViewConfig } from 'obsidian';
-import { BacklogSettings, columnPolicyKey, DEFAULT_DONE_VALUES, DEFAULT_HORIZON_VALUES, DEFAULT_PROP_COLUMN_WIDTH, DEFAULT_RISK_VALUES, defaultSettings, MAX_PROP_COLUMN_WIDTH, MIN_PROP_COLUMN_WIDTH, wipLimitKey } from './settings';
+import { BacklogSettings, columnPolicyKey, DEFAULT_DONE_VALUES, DEFAULT_HORIZON_VALUES, DEFAULT_PROP_COLUMN_WIDTH, DEFAULT_RISK_VALUES, MAX_PROP_COLUMN_WIDTH, MIN_PROP_COLUMN_WIDTH, wipLimitKey } from './settings';
 import { OptionalField, optionalProperty } from './optionalProperties';
 import { resolveSettings } from './settingsResolve';
 import { ALL_TYPES, DEFAULT_HOME_FOLDER, defaultTypeFolder, typeFolderKey } from './typeVocabulary';
@@ -40,7 +40,7 @@ function optionalPropertyOption(field: OptionalField, displayName: string): Base
  * the New button whose level it changes, and it is not a base setting at all — working
  * position, stored beside the collapse state.
  */
-export function getViewOptions(config?: BasesViewConfig): BasesAllOptions[] {
+export function getViewOptions(config: BasesViewConfig): BasesAllOptions[] {
 	// The type list is fixed, but each type's DEFAULT folder sits under this view's home
 	// folder — so the callback still reads the config. Declaring the shipped `docs/…`
 	// here regardless would make every picker in a `Roadmap` base advertise a folder the
@@ -48,7 +48,13 @@ export function getViewOptions(config?: BasesViewConfig): BasesAllOptions[] {
 	//
 	// The workflow states are the same idea taken further: they are user data outright,
 	// so the limit and policy boxes exist only once a workflow does.
-	const settings = config ? resolveSettings(config) : defaultSettings();
+	//
+	// The config is REQUIRED, and that is the 1.12.0 floor doing work: Obsidian passed
+	// this callback nothing until then, so the parameter was optional and fell back to
+	// `defaultSettings()` — which is exactly the wrong menu, advertising the shipped
+	// `docs/…` folders in someone else's base and hiding the per-state boxes entirely.
+	// A fallback for an Obsidian below the floor is dead code (ADR 0016); it is gone.
+	const settings = resolveSettings(config);
 	return [
 		hierarchyGroup(),
 		progressGroup(settings),

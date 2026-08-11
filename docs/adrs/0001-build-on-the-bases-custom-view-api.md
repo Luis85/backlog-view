@@ -30,7 +30,12 @@ lives, including this view's own options.
 
 - Everything a user already knows about Bases — filters, sorts, properties — works
   unchanged, and every backlog is a `.base` file they can edit, copy and share.
-- `minAppVersion` is **1.10.2**. That is a floor, not a range (see
+- `minAppVersion` is **1.12.0**, not the 1.10.2 that opened the API. A view's `options`
+  callback was handed nothing until 1.12.0, and this view's menu is not static — the type
+  folders default under the base's own home folder and the WIP boxes exist only once a
+  workflow does — so on 1.10.2 and 1.11.x the menu rendered the shipped defaults in
+  someone else's base. It was raised on 2026-08-10, after the manifest had claimed
+  1.10.2 through 0.6.0. That is a floor, not a range (see
   [ADR 0016](0016-break-compatibility-freely-before-1-0.md)); nothing here carries a shim
   for an older Obsidian.
 - A filtered Base returns matches **without their parents**, which would flatten the tree.
@@ -41,7 +46,9 @@ lives, including this view's own options.
 - Bases owns grouping, and grouping means nothing in a tree — the toolbar says so rather
   than pretending the setting works.
 - Obsidian's own typings trail the app (`setSubmenu` is absent entirely), so a few call
-  sites cast. That is a typings gap, not a version guard.
+  sites cast. That is a typings gap, not a version guard, and it does not close by moving
+  forward: `setSubmenu` is still missing at 1.13.1, and `isEmpty` is still declared on
+  `ObjectValue` rather than on the `Value` a getter returns.
 
 ## Alternatives
 

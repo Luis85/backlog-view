@@ -596,6 +596,21 @@ describe('the gate accepts valid documents', () => {
 
 		await expectAccepted(files);
 	});
+	it('accepts a Test case carrying `## How to check` and a `cadence:`', async () => {
+		// The sweep now reads `docs/tests/cases/` instead of `docs/issues/` — a re-point, not
+		// an addition — while the gate below stays type-scoped rather than folder-scoped; see
+		// the comment on `SWEPT_TYPES` in `docs-check.mjs`. order: 20 for the suite, not 10:
+		// a `Test suite` is a root exactly like an `Epic`, and root order is scoped by parent
+		// (`null` for every root regardless of type), so 10 would collide with `Thing`, the
+		// root `baseRegister()` already has at that order.
+		const files = baseRegister();
+		files['docs/tests/suites/Smoke test the tree.md'] =
+			'---\ntype: Test suite\norder: 20\nstatus: Open\n---\n\n# Smoke test the tree\n\nA suite.\n';
+		files['docs/tests/cases/Look at the thing.md'] =
+			'---\ntype: Test case\nparent: "[[Smoke test the tree]]"\norder: 10\nstatus: Open\ncadence: release\n---\n\n# Look at the thing\n\n## How to check\n\nOpen it.\n';
+
+		await expectAccepted(files);
+	});
 	it('accepts an Issue that is not a verification and says nothing about cadence', async () => {
 		// Most of `docs/issues/` is this: decisions and limitations, no `## How to check`,
 		// no `cadence:`. The biconditional has to leave them alone, or the gate added for

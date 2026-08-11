@@ -71,7 +71,7 @@ come from the stub, so an icon's appearance is no more a claim than any other co
 here. A menu that appeared here is a menu the view opened with the
 entries it built — it is no evidence about how Obsidian would draw it.
 
-Every live-vault verification in `docs/issues/` stands unchanged; none of them is answered
+Every live-vault verification in `docs/tests/cases/` stands unchanged; none of them is answered
 by a screenshot from here.
 
 ## Acceptance criteria

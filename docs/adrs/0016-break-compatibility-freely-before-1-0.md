@@ -29,8 +29,14 @@ was a branch that could only be tested against a state nobody could produce any 
 - No shim, fallback or migration for an older *plugin* version. When an option is removed,
   values users set for it stop being read.
 - `minAppVersion` is a **floor, not a range**. A shim for an Obsidian older than it is dead
-  code by definition — submenus, for instance, predate 1.10.2, so there is no fallback path
-  and should not be one.
+  code by definition — submenus, for instance, predate 1.12.0, so there is no fallback path
+  and should not be one. Raising the floor is therefore a *deletion*: moving it to 1.12.0
+  (2026-08-10) removed `getViewOptions`'s optional-config fallback, which existed only to
+  serve an Obsidian that passed the callback nothing.
+- The `obsidian` devDependency **tracks the floor**, not npm's newest, for the same reason
+  `@types/node` tracks the `engines` floor: typings ahead of `minAppVersion` typecheck an
+  API the claimed app may not have, and there is no gate here that would catch it. See
+  `.github/dependabot.yml`.
 - Release tags equal the `manifest.json` version with **no `v` prefix**; the release
   workflow rejects a mismatch.
 
@@ -58,8 +64,9 @@ was a branch that could only be tested against a state nobody could produce any 
 - **Deprecate first, remove later.** A deprecation window needs users to notice, which
   needs a release cadence and a changelog people read. At 0.x neither exists yet.
 - **Support a range of Obsidian versions.** The Bases custom view API arrived in 1.10.2
-  and the plugin is built on it ([ADR 0001](0001-build-on-the-bases-custom-view-api.md)).
-  There is no older behaviour to be compatible with.
+  and the plugin is built on it ([ADR 0001](0001-build-on-the-bases-custom-view-api.md));
+  the floor sits at 1.12.0 because that is where the API became able to state this view's
+  options correctly. There is no older behaviour to be compatible with.
 
 ## Revisit when
 

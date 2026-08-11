@@ -79,7 +79,7 @@ that stops matching every `file.inFolder("docs")` filter written since.
 **Collapse-store keys.** `storage/collapseStore.ts` keys collapse state on the base's
 path and prunes entries that name a path no longer present. Any locale-dependent
 component in that identity would drop every user's collapse state on a language switch,
-and `docs/issues/Verify base identity in a live vault.md` records that base identity is
+and `docs/tests/cases/Verify base identity in a live vault.md` records that base identity is
 one of the two things this repository cannot test.
 
 **Wikilink targets.** `parent: "[[Some Note]]"` names a file. Files are vault content.
@@ -105,7 +105,7 @@ one of the two things this repository cannot test.
   would be faithfully replayed by undo and by redo, so its correctness is inherited
   entirely from `applyWrites`. The criterion is to verify that reasoning holds, not to
   skip the function because it looked derivative.
-- A `docs/issues/` note records the one thing tests cannot cover: whether a vault created
+- A `docs/tests/cases/` note records the one thing tests cannot cover: whether a vault created
   in one language opens correctly in another. That needs two live vaults **and two
   languages**, so with English shipping alone it cannot arise yet — the note is opened
   against the first real translation, not this round.

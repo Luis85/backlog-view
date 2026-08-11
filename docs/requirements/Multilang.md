@@ -23,7 +23,7 @@ Obsidian ships in about thirty languages and tells a plugin which one is active:
 export function getLanguage(): string;
 ```
 
-`manifest.json` sets `minAppVersion: 1.10.2`, which is above 1.8.7, so **`getLanguage()`
+`manifest.json` sets `minAppVersion: 1.12.0`, which is above 1.8.7, so **`getLanguage()`
 is available unconditionally** — no feature test, no fallback path, and by the rule in
 the root `CLAUDE.md` no shim either. The API is a language *code* and nothing more:
 Obsidian translates its own UI and hands a plugin the code to translate its own.

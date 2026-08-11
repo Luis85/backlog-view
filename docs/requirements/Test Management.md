@@ -35,17 +35,17 @@ beside both trees — the shape [[Dependencies as a property]] settled on 2026-0
 the same reason, in the same words: *it is one more property, not a second graph.* What
 is different here is only the direction the edge points and what reads it.
 
-This is also what makes the register itself the worked example. [[Plugin Features Smoke
-Test]] is already test management written as prose — [[Smoke test the tree]] and its two
-siblings are test scripts wearing use-case frontmatter, because there was no test type to
-give them. This epic is the type they should have had.
+This is also what makes the register itself the worked example. [[Smoke test the tree]]
+and its two siblings are already test management written as prose — test scripts wearing
+use-case frontmatter, because there was no test type to give them. This epic is the type
+they should have had.
 
 ## What this epic will not do
 
 **It records no results.** No pass, no fail, no run history, no date of last execution. A
 test case says what to do and what should happen; whether it passed on Tuesday is a fact
 about a run, and a run is a second item family this epic deliberately does not build. The
-regression story here is the one [[Plugin Features Smoke Test]] already relies on: a
+regression story here is the one the smoke test catalog already relies on: a
 checklist that exists and is walked catches what an unwritten one cannot.
 
 **It runs nothing.** These are manual end-to-end tests from the user's perspective. The

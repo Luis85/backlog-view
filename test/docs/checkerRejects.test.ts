@@ -203,6 +203,19 @@ describe('cross-references', () => {
 			'names src/gone.ts, which does not exist',
 		],
 		[
+			// The regression this case exists for: `docs/tests/suites/` moved out of
+			// `docs/requirements/` in the test-catalog migration and was not added to
+			// `LIVING`, so a suite's source-path citations silently stopped being checked —
+			// the same shape as the cadence gate this migration went to lengths to keep
+			// live, reintroduced through a different rule.
+			'a test suite naming a source file that does not exist',
+			(files) => {
+				files['docs/tests/suites/Smoke test the tree.md'] =
+					'---\ntype: Test suite\norder: 20\nstatus: Open\n---\n\n# Smoke test the tree\n\nCovers `test/view/gone.test.ts`.\n';
+			},
+			'names test/view/gone.test.ts, which does not exist',
+		],
+		[
 			// An embedded image is a reference like any other, and the pattern this rule
 			// used to be caught it only because `](` appears in `![alt](src)` as well.
 			'an embedded image whose file does not exist',
@@ -393,10 +406,12 @@ describe('the use-case shape', () => {
 });
 
 /**
- * The sweep in `RELEASING.md` finds its checklist by querying `docs/issues/`, so these
- * three are the only shape rules an `Issue` has. The gate deliberately does not enforce the
- * three section shapes `docs/README.md` documents — see the comment on `CADENCES` in
- * `docs-check.mjs` — so there are no cases here for those, and their absence is the rule.
+ * The sweep in `RELEASING.md` finds its checklist by querying `docs/tests/cases/`, so these
+ * three are the only shape rules an `Issue` OR a `Test case` has — the guard widened to
+ * both types with the test catalog migration, and stays type-scoped rather than
+ * folder-scoped. The gate deliberately does not enforce the section shapes `docs/README.md`
+ * documents — see the comment on `CADENCES` in `docs-check.mjs` — so there are no cases here
+ * for those, and their absence is the rule.
  */
 describe('a verification and its cadence', () => {
 	const verification = (body: string, cadence?: string) => {
@@ -433,6 +448,21 @@ describe('a verification and its cadence', () => {
 				);
 			},
 			'cadence "sometimes" is not one of',
+		],
+		[
+			'a Test case the sweep would find, leaving its cadence to be guessed',
+			(files) => {
+				// order: 20, not 10 — a Test suite is a root exactly like an Epic (both are in
+				// `ROOT_TYPES`), and sibling order is scoped by parent, which is `null` for every
+				// root regardless of type. `baseRegister()` already has a root at order 10
+				// (`Thing`), so 10 here would collide on that unrelated rule and mask the one this
+				// case exists to exercise.
+				files['docs/tests/suites/Smoke test the tree.md'] =
+					'---\ntype: Test suite\norder: 20\nstatus: Open\n---\n\n# Smoke test the tree\n\nA suite.\n';
+				files['docs/tests/cases/Look at the thing.md'] =
+					'---\ntype: Test case\nparent: "[[Smoke test the tree]]"\norder: 10\nstatus: Open\n---\n\n# Look at the thing\n\n## How to check\n\nOpen it.\n';
+			},
+			'carries `## How to check` but no `cadence:`',
 		],
 	]);
 });

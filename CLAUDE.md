@@ -12,7 +12,7 @@ state (vault-scoped localStorage, beside the collapse state), never a `.base` se
 settings are saved on the view, working position on the device. That last one was a view
 option until 2026-08-11 and moving it out is what ADR 0011 costs — a value is one or the
 other, never a stored override beside a shared default.
-Requires Obsidian 1.10.2+ (Bases custom view API).
+Requires Obsidian 1.12.0+ (Bases custom view API, with config-aware view options).
 
 ## Definition of done
 
@@ -325,10 +325,16 @@ change that was fixing the previous instance.
 
 - `obsidian` npm typings trail the app: `setSubmenu` is absent from them entirely, so
   `submenuOf` casts rather than imports. That is a typings gap, NOT a version guard —
-  submenus predate the 1.10.2 in `manifest.json`, so there is no fallback path and
+  submenus predate the 1.12.0 in `manifest.json`, so there is no fallback path and
   should not be one. `isEmpty` is the opposite case: it IS in the typings, but on
   `ObjectValue` rather than the `Value` that `getValue()` returns, so testing for it
-  is a genuine question about the value in hand.
+  is a genuine question about the value in hand. Neither gap closes at a newer
+  typings version — both were checked against 1.13.1 and both still hold.
+- The `obsidian` devDependency is pinned to the FLOOR **exactly** (`1.12.0`), not to npm's
+  newest and not to a range over it, so the compiler refuses an API `minAppVersion` does
+  not promise. Exactly, because the typings are additive within a minor line and carry
+  `@since` tags to prove it. Raise the two together or not at all — see
+  `.github/dependabot.yml`.
 - Fallow resolves an interface's members through an **explicit type annotation**, not
   through a property access: a host method reached only via `const host = ctx.host`
   reports as an unused class member even though it is called. Annotate the local

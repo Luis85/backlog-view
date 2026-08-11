@@ -51,7 +51,7 @@ it renders, and it is not part of the gate.** Four refusals, each with its own r
   to look at is not a check. The harness stays alive inside the five that already run: a
   vitest file mounts it, and another holds the two linked sheets to the stylesheet.
 - **It replaces no live-vault verification.** Every `## How to check` note in
-  `docs/issues/` stands, and the release sweep
+  `docs/tests/cases/` stands, and the release sweep
   ([[A cadence for the checks CI cannot run]]) is unchanged. The harness cannot see a
   theme, a font stack, a touch gesture, or whether Bases hands the view what it expects.
 

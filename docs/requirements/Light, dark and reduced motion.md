@@ -45,7 +45,7 @@ a plugin that assumed the default theme.
 
 ## Why this is a note rather than a habit
 
-`docs/issues/Smoke test the visual changes.md` records the standing limitation in one
+`docs/tests/cases/Smoke test the visual changes.md` records the standing limitation in one
 line: *"No test in this repository has ever checked what the plugin looks like."* The
 jsdom harness drives real events against the real view and renders nothing. That note is
 deliberately kept open as a **checklist to re-run** rather than closed as history, and
@@ -87,7 +87,7 @@ way to get it:
   reaching the partial — and this PBI is the one most likely to invite exactly that, since
   a look check finds its subject by inspecting rendered output. A behaviour change coming
   out of a look check is a separate note, the way the appearance issue already insisted.
-- The result is a **re-runnable checklist** left in `docs/issues/`, not a closed task.
+- The result is a **re-runnable checklist** left in `docs/tests/cases/`, not a closed task.
   Every future theming change and every new locale needs the same pass, and the register
   has already established that these get reopened rather than rewritten.
 - It records which theme was used. "Checked against a community theme" is not evidence a
@@ -99,6 +99,6 @@ way to get it:
 its source partials — carries the
 `prefers-reduced-motion` and `hover: none` blocks and the two semantic colours ·
 `test-build.mjs` is the one-command path to a vault, which is what made the last round of
-these checks cheap enough to do · `docs/issues/Smoke test the visual changes.md` is the
+these checks cheap enough to do · `docs/tests/cases/Smoke test the visual changes.md` is the
 existing checklist this one joins, and the precedent for leaving a re-runnable note behind
 rather than closing a task.

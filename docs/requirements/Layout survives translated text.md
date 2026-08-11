@@ -241,10 +241,10 @@ drop strip runs along one edge. Every one of those has a mirrored meaning in RTL
 
 ## This one needs eyes
 
-The jsdom harness renders nothing, and `docs/issues/Smoke test the visual changes.md`
+The jsdom harness renders nothing, and `docs/tests/cases/Smoke test the visual changes.md`
 records that as a standing limitation with `npm run test-build` as the answer. **This PBI
 cannot be closed from this repository.** It needs a live vault and a re-runnable
-checklist in `docs/issues/`, the way the appearance check did, because the next locale
+checklist in `docs/tests/cases/`, the way the appearance check did, because the next locale
 added will need the same look.
 
 What it does **not** need is a second language, which is just as well: `English ships

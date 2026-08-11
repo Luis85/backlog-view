@@ -11,6 +11,8 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-08-10
+
 ### Added
 
 - **Clicking a row folds it** is now a toolbar toggle, beside the completed-items eye. It
@@ -49,6 +51,12 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Changed
 
+- **Obsidian 1.12.0 or newer is now required** (was 1.10.2). The Bases custom-view API
+  opened in 1.10.2, but a view's options callback was not handed the base's own
+  configuration until 1.12.0 — so on older versions this view's options menu showed the
+  shipped `docs/…` folders as the type-folder defaults inside any other base, and offered
+  no WIP-limit or column-policy box at all. Nothing else was affected: the tree, the board
+  and the roadmap all worked. Obsidian keeps serving 0.6.0 to vaults below the new floor.
 - The toolbar now leads with the projection switcher and puts **New** beside it, and the
   dividers in the head of the row are gone — between those two, and in front of the
   roadmap's own controls. Each group is set off by spacing instead: a bordered button group
@@ -88,6 +96,9 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   outdenting and clearing a parent link all write the parent and the rank and nothing
   else; **Set type** is how you change a type. If an existing base still has the setting
   saved, it is simply ignored — nothing to migrate and nothing to clean up.
+- The fallback that filled the view options menu when Obsidian handed the view no
+  configuration. Requiring the floor above is what makes that menu describe the base it
+  is open in, always.
 
 ### Fixed
 
@@ -103,6 +114,7 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   which forced the whole tree to be laid out again on every hover — 65.7ms per hover at
   832 rows. Both now carry their full text always, so nothing measures and nothing is
   hidden: the only visible difference is a tooltip on a title that already fits.
+
 ## [0.6.0] - 2026-08-10
 
 Changelog tracking starts here. For what shipped in 0.1.0–0.5.2, see the

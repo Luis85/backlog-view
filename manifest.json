@@ -1,8 +1,8 @@
 {
   "id": "product-backlog-view",
   "name": "Product Backlog",
-  "version": "0.6.0",
-  "minAppVersion": "1.10.2",
+  "version": "0.7.0",
+  "minAppVersion": "1.12.0",
   "description": "Display Bases results as a product backlog: a drag-and-drop tree of Epics, Features, PBIs and Tasks, a kanban board with WIP limits, and a roadmap, inspired by Azure DevOps Boards.",
   "author": "Luis85",
   "authorUrl": "https://github.com/Luis85",

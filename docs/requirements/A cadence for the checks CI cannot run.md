@@ -27,7 +27,7 @@ that grows.
 
 1. `RELEASING.md` names the sweep as a step before the tag.
 2. The maintainer runs `npm run test-build`, opens the repository as a vault, and walks the
-   **re-runnable** verifications in `docs/issues/`.
+   **re-runnable** verifications in `docs/tests/cases/`.
 3. Each note's `Outcome` is dated with what was seen.
 4. The tag goes out.
 
@@ -42,14 +42,18 @@ that grows.
 - **2b — "every note of the verification kind" is not something the register can answer.**
   It has to be, or the sweep is a hand-maintained list that misses the next check while
   satisfying every criterion below. `type: Issue` is too broad — the kind covers decisions
-  and limitations too — and `area: verification` is broader still, labelling records like
-  [[A comment that states a rule is not a check]] that no device can run.
+  and limitations too, and covered the verification kind as well until the 2026-08-11
+  migration gave verifications their own type, `Test case` — and `area: verification` is
+  broader still, labelling records like [[A comment that states a rule is not a check]]
+  that no device can run.
 
   **The shape distinguishes them, but only after three notes are normalized.**
-  `docs/README.md` documents a verification-to-run as `Why this exists` · `How to check` ·
-  `Acceptance criteria` · `Outcome`, and `## How to check` is carried by that kind and no
-  other. Matched **as a whole heading line**, it selected a strict subset of what `area:
-  verification` labels — **but three verifications did not use it.** [[Smoke test the board in a live vault]],
+  `docs/README.md` documented a verification-to-run as `Why this exists` · `How to check` ·
+  `Acceptance criteria` · `Outcome` — that shape is `Test case`'s now, with a
+  `Preconditions` line the 2026-08-11 migration added to it — and `## How to check` was
+  carried by that kind and no other. Matched **as a whole heading line**, it selected a
+  strict subset of what `area: verification` labels — **but three verifications did not
+  use it.** [[Smoke test the board in a live vault]],
   [[Smoke test the folder note layout in a live vault]] and
   [[Smoke test the visual changes]] head that section `## What to look at` instead, so the
   query as first written would have silently dropped them.
@@ -87,10 +91,12 @@ that grows.
   that do not exist. The plans under `docs/superpowers/` quote draft notes *verbatim* —
   `type: Issue` frontmatter and `## How to check` heading included — so
   `2026-08-02-per-column-agreements.md` carries a whole-line match for a note that also
-  exists for real in `docs/issues/`. A query matching on heading alone returns the same
-  verification twice, once at a path nobody can date an `Outcome` on. Found while running
-  the query this note specifies, not while writing it: extensions 2b and 2c were both
-  discovered by counting, and this one only by executing.
+  exists for real, now as `type: Test case` in `docs/tests/cases/` since the 2026-08-11
+  test catalog migration moved it (the draft's own quoted frontmatter is frozen and still
+  reads `Issue`). A query matching on heading alone returns the same verification twice,
+  once at a path nobody can date an `Outcome` on. Found while running the query this note
+  specifies, not while writing it: extensions 2b and 2c were both discovered by counting,
+  and this one only by executing.
 - **2g — the query is quoted rather than run.** Every note in this backlog is titled in
   prose, so every path holds spaces, and `grep -rlx ... | xargs grep -l ...` splits
   `Board card moves.md` into four missing files. The first version written into
@@ -123,13 +129,19 @@ that grows.
 - The query matches the **whole heading line**, so `## How to check, properly` in a
   non-verification note is not swept in. No case needs planting:
   [[A gate that did not run looks like one that passed]] heads a section exactly that way
-  and is a real Issue in the folder the query reads, so the counterexample is load-bearing
-  tree rather than a fixture that a later cleanup could delete as unused.
+  and is a real `Issue`. It left the folder `RELEASING.md`'s grep reads when extension 2f
+  narrowed that to `docs/tests/cases/`, so it is no longer what keeps the release sweep's
+  own grep honest — but `docs-check.mjs`'s convention gate reads every `Issue` and `Test
+  case` regardless of folder ([[The sweep query rests on a checked convention]]), and a
+  prefix match there would still wrongly demand a `cadence:` of a note that has no
+  business carrying one. The counterexample is load-bearing tree there rather than a
+  fixture a later cleanup could delete as unused.
 - After normalizing, a fresh count is taken and agrees with the register — not with any
   figure quoted while this note was being written, two of which were wrong.
-- The set is **derived, not listed**: the sweep names the query — Issues carrying
-  `## How to check` — so a verification added tomorrow is in it without anyone editing a
-  checklist. `RELEASING.md` must not contain an enumeration of the notes.
+- The set is **derived, not listed**: the sweep names the query — the notes in
+  `docs/tests/cases/` carrying `## How to check` — so a verification added tomorrow is in
+  it without anyone editing a checklist. `RELEASING.md` must not contain an enumeration of
+  the notes.
 - Every verification note states whether it is re-runnable or conditional, and a note that
   carries `## How to check` without saying which fails the sweep rather than being guessed
   at.
@@ -139,4 +151,5 @@ that grows.
 
 ## Where it lives
 
-`RELEASING.md` · `docs/issues/` · `test-build.mjs` · `docs/README.md` (the `Issue` shapes)
+`RELEASING.md` · `docs/tests/cases/` · `test-build.mjs` · `docs/README.md` (the `Test case`
+shape)

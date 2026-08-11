@@ -161,4 +161,4 @@ than derived — nine failures across six suites from the one-line change, which
 the badge table's comment claims and had not been asked since `Milestone`.
 
 Not verifiable here, as ever: the badge itself. Added to the
-[smoke-test checklist](../issues/Smoke%20test%20the%20visual%20changes.md).
+[smoke-test checklist](../tests/cases/Smoke%20test%20the%20visual%20changes.md).
