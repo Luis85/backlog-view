@@ -13,10 +13,16 @@ source: Measured while scoping the Issue-shape gate, PR #61
 
 ## The decision
 
-`docs/README.md` documents three shapes an `Issue` may take — a decision taken, a
-limitation accepted, a verification to run — each as a named sequence of sections. Checking
-the folder against them was the obvious reading of finding 13, and it is **not** what
-landed. Only the sweep's convention is gated.
+`docs/README.md` documented three shapes an `Issue` could take, when this was measured — a
+decision taken, a limitation accepted, a verification to run — each as a named sequence of
+sections. Checking the folder against them was the obvious reading of finding 13, and it is
+**not** what landed. Only the sweep's convention is gated.
+
+The third shape has since left `Issue` outright: the 2026-08-11 test catalog migration gave
+"a verification to run" its own type, `Test case`, filed under `docs/tests/cases/` rather
+than `docs/issues/`. `docs/README.md` now documents two `Issue` shapes, not three, and what
+follows measures those two against this folder — the verification shape's own conformance
+is a question for `docs/tests/cases/` now, unmeasured here.
 
 The reason is that the documented shapes and the written notes disagree, in most of the
 folder. Derive it rather than trusting a number here — key each note by its opening heading
@@ -33,12 +39,16 @@ belonging to no documented shape at all.
 
 ## Why
 
-Two different things are tangled here and only one is a defect.
+Two different things were tangled here, and only one was a defect.
 
-**`## Outcome` is not a defect.** The README says an outcome is written *after* the work,
-and most verifications have not been run yet. Their missing `Outcome` is the schema being
-honest. A gate demanding it would be answered by writing an empty section, which says less
-than the absence does.
+**`## Outcome` was not a defect — back when a verification was still an `Issue`.** The
+README said an outcome is written *after* the work, and most verifications had not been run
+yet; their missing `Outcome` was the schema being honest, and a gate demanding one would
+have been answered by writing an empty section, which says less than the absence does. That
+tangle left with the shape: `## Outcome` belongs to `Test case` now, and
+[[The sweep query rests on a checked convention]] makes the same refusal for `Test case`
+specifically (its own extension 2b). Neither of `Issue`'s two remaining shapes documents an
+`Outcome` at all, so the question does not apply to this folder any more.
 
 **The rest is unresolved.** Either the README describes an aspiration nobody has followed,
 or dozens of notes are malformed. That is a question about what the register is *for*, and
