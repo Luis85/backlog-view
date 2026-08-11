@@ -131,8 +131,11 @@ mistaken for the resize grip it sits beside.
 
 ## Acceptance criteria
 
-- The connector appears only on a result's bar, only with the key bound, and sits outside
-  the bar's end so it never displaces the resize grip — including on a bar one day wide.
+- The connector appears only on a result's bar, and never where the dependency property is
+  CLEARED — *only with the key bound* until 2026-08-11, which is now
+  [[Bind a property by using it]]'s subject: an unbound key draws the handle and the first
+  link names the property. It sits outside the bar's end so it never displaces the resize
+  grip — including on a bar one day wide.
 - It is always inside the grid: a bar clipped by the window carries its connector at the
   clipped edge, so no zoom or scroll position leaves a drawn bar with an unreachable
   connector.

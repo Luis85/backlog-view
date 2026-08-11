@@ -42,7 +42,7 @@ that no action can invent.
 | **Actor** | Backlog owner meeting dependencies for the first time |
 | **Trigger** | **Depends on…** is picked, or a link is dragged between two bars, in a view whose dependency property is unnamed |
 | **Preconditions** | The view options are valid; nothing has named the dependency property and nothing has cleared it |
-| **Guarantee** | One action binds one option and writes one note. Nothing already set is changed, nothing cleared is revived, and a refusal costs no configuration change: the `.base` is never left altered by an action whose write did not land. |
+| **Guarantee** | One action binds one option and writes one note. Nothing already set is changed and nothing cleared is revived. Every refusal reachable **before** the binding costs no configuration change; once the key is bound it STAYS, including when the write is then refused or fails, because it is a valid configuration either way and taking it back would leave the user unable to retry the action they just attempted (3c, 5a). |
 
 **Main flow**
 
@@ -109,7 +109,8 @@ that no action can invent.
   the last refresh resolved, so a property pointed at the suggestion since the control was
   drawn still counts.
 - A pick that would close a loop once the binding makes the vault's existing edges visible
-  writes nothing and says so.
+  writes nothing and says so — and the binding **stays**, which is the one thing a refusal
+  after this point does not take back.
 - What was set up is named in a notice, after it happened.
 
 ## Where it lives
