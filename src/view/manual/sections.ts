@@ -34,10 +34,12 @@ const MOVING: ManualSection = {
 			term: 'To the top level',
 			text:
 				'Outdent — Alt+Left, or the context menu — makes a row a sibling of its own parent, ' +
-				'so a depth-one row becomes top-level. There is no drag for it: a drop has to land ' +
-				'on something, and making an item top-level is a deliberate action rather than one a ' +
-				'released drag can mean by accident. Outdent climbs one level at a time, so a deeply ' +
-				'nested row takes several.',
+				'so a depth-one row becomes top-level, and it climbs one level at a time, so a ' +
+				'deeply nested row takes several. A drag can also do it, but only onto a place: ' +
+				'dropping a row just above or below one that is already top-level puts it there ' +
+				'too. What does nothing is a drop on the empty space below the last row — making an ' +
+				'item top-level is a deliberate action rather than one a released drag can mean by ' +
+				'accident.',
 		},
 		{
 			term: 'Without a mouse',

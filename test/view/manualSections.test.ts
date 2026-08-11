@@ -35,6 +35,22 @@ describe('the manual', () => {
 		expect(prose).toContain('focus-root row has no previous sibling');
 	});
 
+	// The "To the top level" entry claimed there was NO drag for it, which `siblingPosition`
+	// contradicts: it takes the hovered row's own parent, so a drop just above or below a
+	// REAL root lands in the null-parent group and makes the dragged row top-level
+	// (`test/domain/dropTargets.test.ts` pins that behaviour). The entry named one route and
+	// denied the other. Both are asserted here because the denial is what shipped, and an
+	// absence — "does not say there is no drag" — would pass against an entry that had gone
+	// silent on the subject instead.
+	it('names both routes to the top level, and denies neither', () => {
+		const moving = manualSections().find((s) => s.id === 'moving');
+		const top = moving?.entries.find((e) => e.term === 'To the top level');
+		const text = top?.text.toLowerCase() ?? '';
+		expect(text).toContain('outdent');
+		expect(text).toContain('already top-level');
+		expect(text).not.toContain('there is no drag');
+	});
+
 	// The entry's availability claims are an ENUMERATION, and this branch's dominant defect
 	// is a list that does not match the code — one item short of the gates that ask
 	// `keepsProjection`, then one item LONG when the drop it named was deleted. The list

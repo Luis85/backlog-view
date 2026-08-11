@@ -111,7 +111,7 @@ not show is not on the rows, and that includes the state, horizon, risk and tag 
 | Open an item | Click the row (Ctrl/Cmd-click for a new tab) |
 | Re-order among siblings | Drag a row and drop it **between** two rows |
 | Re-parent | Drag a row and drop it **onto** the middle of the new parent |
-| Make an item top-level | Drag it onto the empty space below the last row, or right-click → **Outdent** (Alt+Left) |
+| Make an item top-level | Right-click → **Outdent** (Alt+Left), or drag it just above or below a row that is already top-level |
 | Create a child item | Hover a row and click **+**, or use the context menu — where the row can hold more than one kind of item, the modal asks which |
 | Create any type at the top | Toolbar **New** button, or the **▾** menu next to it for every other type |
 | Focus one type | Toolbar focus button next to **New** → pick a level or an extra type (**All types** returns) |
