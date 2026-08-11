@@ -1,5 +1,33 @@
 /* Drag affordances and drop indicators — `src/view/interactions/dragDrop.ts`. */
 
+/*
+ * The one place a row is allowed to paint outside itself, so it is the one place that
+ * opts out of the containment `content-visibility: auto` brings (`tree.css`).
+ *
+ * The insertion line and its dot STRADDLE the boundary between two rows on purpose — that
+ * is what makes them read as "between these" rather than "in this one" — so they sit at
+ * negative offsets and paint into the row above or below. Paint containment clips exactly
+ * that: the 2px line would lose one of its pixels and the 8px dot would be drawn as a half
+ * circle. (Codex, PR #128.)
+ *
+ * Only the row under the pointer opts out, and only while it is a target, so the other
+ * eight hundred keep their containment and the drag pays for one row. Two classes beat
+ * `tree.css`'s single one on specificity, so this holds wherever the partials are
+ * assembled in.
+ *
+ * NOTHING CHECKS THE CLIPPING ITSELF. That the opt-out applies was verified in Chromium
+ * (a drop-target row computes `visible` where its neighbours compute `auto`); that the
+ * indicator then paints whole is a paint behaviour, which jsdom does not implement and
+ * the harness does not assert. It is on the live-vault list in
+ * [[The render is the whole cost of a data update]]. A pin asserting this rule's text
+ * would catch its deletion and nothing adjacent — see
+ * [[Finding 1 — the stylesheet has regression pins, not rules]].
+ */
+.pbl-row.pbl-drop-before,
+.pbl-row.pbl-drop-after {
+	content-visibility: visible;
+}
+
 .pbl-row.pbl-drag-source {
 	opacity: 0.35;
 }

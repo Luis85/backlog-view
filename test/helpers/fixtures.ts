@@ -130,8 +130,11 @@ export function folderOptions(): Record<string, unknown> {
  *
  * `layout` decides only where those notes SIT — see `Layout`. Mount the `folders` one with
  * `folderOptions()`.
+ *
+ * `extra` appends that many GENERATED notes after the curated ones — see `addBulk`. It
+ * defaults to none, so every existing caller gets the fixture it always got.
  */
-export function demoVault(layout: Layout = 'flat'): FakeVault {
+export function demoVault(layout: Layout = 'flat', extra = 0): FakeVault {
 	const vault = new FakeVault();
 	const add = adder(vault, layout);
 	add('Onboarding', { type: 'Epic', order: 10, status: 'Active', horizon: 'Now', start: '2026-07-01', due: '2026-09-30' });
@@ -247,7 +250,76 @@ export function demoVault(layout: Layout = 'flat'): FakeVault {
 	// its grouping and its type filter doing something rather than listing one name.
 	add('Voice control', { type: 'Idea', order: 60 });
 
+	addBulk(add, extra);
 	return vault;
+}
+
+/**
+ * A backlog's worth of generated notes, for asking the harness what the view COSTS at a
+ * size no curated fixture is ever going to reach (`?notes=800`). Nothing here is worth
+ * looking at; every case worth looking at is above.
+ *
+ * The shape is a backlog's rather than a list's — one Epic per 25, five Features under
+ * it, PBIs and Tasks under those, and one Deliverable — because a flat thousand rows
+ * measures a different render path from a tree that nests, and nesting is what a real
+ * vault does. The Deliverable is there so that ALL FOUR projections grow with `?notes=`:
+ * the fourth draws only its own type, so without one its row on the panel reported the
+ * curated handful at every size while sitting beside three rows that scaled.
+ *
+ * The values ROTATE through the vocabularies `demoOptions()` declares, which is the
+ * difference between measuring the projections and measuring their empty states: 800
+ * untriaged notes would put every card on the shelf and in the no-state column, and the
+ * board and the roadmap would be timed drawing almost nothing. One in seven is left
+ * without a horizon anyway, so the shelf is populated rather than empty.
+ *
+ * Titles carry a prefix no curated note uses, so a test that finds a row by title cannot
+ * be reached by one of these.
+ */
+function addBulk(add: ReturnType<typeof adder>, count: number): void {
+	const states = ['New', 'Ready', 'Active', 'Review', 'Done'];
+	const horizons = ['Now', 'Next', 'Later'];
+	const docStates = ['Concept', 'Draft', 'In review', 'Published'];
+	let epic = '';
+	let feature = '';
+	let pbi = '';
+	for (let i = 0; i < count; i++) {
+		const at = i % 25;
+		const fm: Record<string, unknown> = {
+			order: (i + 1) * 10,
+			status: states[i % states.length],
+			...(i % 7 === 0 ? {} : { horizon: horizons[i % horizons.length] }),
+			start: bulkDate(i),
+			// `i`, then twenty days on from THAT — never `bulkDate(i + 20)`, which wraps the
+			// window and lands one note in six with a target before its own start. Those
+			// read as unplaceable and go to the shelf, so a sixth of the roadmap sample
+			// would have been measuring the shelf instead of the bars. (Codex, PR #128.)
+			due: bulkDate(i, 20),
+			...(i % 11 === 0 ? { risk: '2 - Medium' } : {}),
+			...(i % 13 === 0 ? { assignee: 'Dana' } : {}),
+		};
+		if (at === 0) add((epic = `Bulk epic ${i + 1}`), { ...fm, type: 'Epic' });
+		else if (at % 5 === 1) add((feature = `Bulk feature ${i + 1}`), { ...fm, type: 'Feature' }, epic);
+		else if (at % 5 === 2 || at % 5 === 3) add((pbi = `Bulk PBI ${i + 1}`), { ...fm, type: 'PBI' }, feature);
+		// One per 25, on the OWN workflow the Deliverable state property declares — checked
+		// before the task branch it would otherwise fall into. Without it the fourth
+		// projection drew the same handful of curated cards at every size, so its row on the
+		// panel sat beside three that scaled and implied a scale it had not been asked to
+		// draw. A minority of the backlog, because that is what a Deliverable is.
+		// (Codex, PR #128.)
+		else if (at === 24) {
+			add(`Bulk deliverable ${i + 1}`, { ...fm, type: 'Deliverable', docStatus: docStates[i % docStates.length] }, feature);
+		} else add(`Bulk task ${i + 1}`, { ...fm, type: 'Task' }, pbi);
+	}
+}
+
+/**
+ * A civil date `i` days into the fixture's 120-day window, so generated bars spread
+ * across it, plus `span` days — added AFTER the wrap, which is the whole point of the
+ * second argument: a span folded into `i` comes back round to the start of the window and
+ * states a target before its own start.
+ */
+function bulkDate(i: number, span = 0): string {
+	return new Date(Date.UTC(2026, 6, 1 + (i % 120) + span)).toISOString().slice(0, 10);
 }
 
 /**

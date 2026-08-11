@@ -18,6 +18,9 @@ import {
 	RowContext,
 } from './columns';
 
+/** Why an implied badge is marked, said once: the render sets the class, the pass reads it. */
+const IMPLIED_TYPE_TOOLTIP =
+	'Type property not set — level implied from position. Use "Assign missing properties" to write it.';
 /** Render the tree content (or the empty state) into the tree element. */
 export function renderTree(ctx: RowContext, treeEl: HTMLElement): void {
 	const model = ctx.host.model;
@@ -195,9 +198,15 @@ function renderRowLead(
 
 	const title = row.createSpan({ cls: 'pbl-title' });
 	renderTitleText(host, title, item.title);
+	// Set unconditionally, and NOTHING measures whether it was needed. Deciding that costs
+	// a `scrollWidth`/`clientWidth` read per row, which forces layout — as a hover handler
+	// it cost 65.7ms per hover at 832 rows, and as a batched pass it forced the whole tree
+	// to lay out at the end of every render and made `content-visibility` unusable (5320ms
+	// against 12ms, because a skipped row must be laid out to be measured). A tooltip
+	// repeating a title that already fits is the price, and it is small.
+	setTooltip(title, item.title);
 	title.addEventListener('mouseover', (evt) => {
-		// Narrow panes truncate titles; surface the full text without a click.
-		if (title.scrollWidth > title.clientWidth) setTooltip(title, item.title);
+		// NOTHING here may read layout — see `src/view/CLAUDE.md`.
 		host.app.workspace.trigger('hover-link', {
 			event: evt,
 			source: PRODUCT_BACKLOG_VIEW_TYPE,
@@ -349,21 +358,13 @@ export function renderBadge(host: BacklogViewHost, row: HTMLElement, item: Backl
 	const style = badgeStyleFor(badgeText);
 	if (style.icon) setIcon(badge.createSpan({ cls: 'pbl-badge-icon' }), style.icon);
 	badge.addClass(style.badge);
-	const textEl = badge.createSpan({ cls: 'pbl-badge-text', text: badgeText });
-	const implied = item.impliedType
-		? 'Type property not set — level implied from position. Use "Assign missing properties" to write it.'
-		: '';
-	if (implied) {
-		badge.addClass('pbl-implied');
-		setTooltip(badge, implied);
-	}
-	// A long level name is capped so the row's lead stays bounded (columnFit budgets
-	// for it); the full name is one hover away when that cap actually bites — and an
-	// implied badge needs both, since the cap hides the very level it is explaining.
-	badge.addEventListener('mouseover', () => {
-		if (textEl.scrollWidth <= textEl.clientWidth) return;
-		setTooltip(badge, implied ? `${badgeText} · ${implied}` : badgeText);
-	});
+	badge.createSpan({ cls: 'pbl-badge-text', text: badgeText });
+	// The level name is capped in CSS so the row's lead stays bounded, so the tooltip
+	// carries it in full — unconditionally, for the reason the title's is: asking whether
+	// the cap is biting costs a layout read per row. An implied badge says why it is
+	// dashed as well, since the cap hides the very level it is explaining.
+	if (item.impliedType) badge.addClass('pbl-implied');
+	setTooltip(badge, item.impliedType ? `${badgeText} · ${IMPLIED_TYPE_TOOLTIP}` : badgeText);
 }
 
 /** The fixed trailing columns, then the row's own add button. */

@@ -207,8 +207,18 @@ export function notePropertyId(key: string): string {
  * A suggestion whose key is already spoken for is skipped rather than adopted: it
  * would report as a collision in `configProblems` and block every write in the view,
  * which is a worse state than the unconfigured feature it was meant to enable.
+ *
+ * `only` narrows the answer to one field, for a feature that binds its own key the first
+ * time it is used rather than waiting for ✨ ([[Bind a property by using it]]). It filters
+ * the finished list rather than skipping the loop early, and that is the whole subtlety:
+ * whether a field may adopt depends on what the fields DECLARED BEFORE IT have claimed, so
+ * a loop that skipped them would report a suggestion free that the full pass takes.
  */
-export function adoptableProperties(config: BasesViewConfig, settings: BacklogSettings): OptionalProperty[] {
+export function adoptableProperties(
+	config: BasesViewConfig,
+	settings: BacklogSettings,
+	only?: OptionalField,
+): OptionalProperty[] {
 	const taken = new Set(ownedProperties(settings).map((owned) => owned.key));
 	taken.delete('');
 	const adoptable: OptionalProperty[] = [];
@@ -219,7 +229,7 @@ export function adoptableProperties(config: BasesViewConfig, settings: BacklogSe
 		taken.add(property.suggested);
 		adoptable.push(property);
 	}
-	return adoptable;
+	return only === undefined ? adoptable : adoptable.filter((property) => property.field === only);
 }
 
 /**

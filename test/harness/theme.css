@@ -204,3 +204,49 @@ body {
 	color: var(--text-muted);
 	background-color: var(--background-modifier-hover);
 }
+
+/*
+ * The `?perf` panel (`test/harness/perf.ts`). Dashed and monospaced like the scheme
+ * switch above and parked in the opposite corner, for the same reason: it is the
+ * harness's furniture, and a panel of numbers in a screenshot that nobody can find in
+ * the plugin would read as something the plugin draws.
+ *
+ * The caveat line is styled as loudly as the numbers on purpose. It is what stops a
+ * figure being lifted off this panel and quoted as what the plugin costs in a vault.
+ */
+.pbl-harness-perf {
+	position: fixed;
+	left: var(--size-4-3);
+	bottom: var(--size-4-3);
+	z-index: 30;
+	max-width: 380px;
+	padding: var(--size-2-3) var(--size-4-2);
+	border: 1px dashed var(--background-modifier-border-hover);
+	border-radius: var(--radius-s);
+	background-color: var(--background-secondary);
+	color: var(--text-muted);
+	font-family: ui-monospace, monospace;
+	font-size: 11px;
+}
+
+.pbl-harness-perf h2 {
+	margin: 0 0 var(--size-2-2);
+	color: var(--text-normal);
+	font-family: inherit;
+	font-size: 11px;
+}
+
+.pbl-harness-perf td {
+	padding: 1px var(--size-4-2) 1px 0;
+	white-space: nowrap;
+}
+
+.pbl-harness-perf-worst {
+	color: var(--text-faint);
+}
+
+.pbl-harness-perf p {
+	margin: var(--size-2-3) 0 0;
+	color: var(--text-warning);
+	white-space: normal;
+}

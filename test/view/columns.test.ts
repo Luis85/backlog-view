@@ -515,26 +515,24 @@ describe('property columns', () => {
 });
 
 describe('badges', () => {
-	it('puts the full level name in the tooltip once the cap truncates it', () => {
+	it('puts the full level name in the tooltip, capped or not', () => {
+		// The name is capped in CSS so the row's lead stays bounded; the tooltip carries it
+		// in full without anyone measuring whether the cap is biting — see the title's own
+		// test in `state.test.ts` for why that question is not worth its layout read.
 		const vault = new FakeVault();
-		// No type property: the level is implied, and the badge explains that
+		// No type property: the level is implied, and the badge explains that as well.
 		vault.addFile('Epic.md', { frontmatter: { order: 10 } });
 		vault.addFile('Child.md', { frontmatter: { type: 'Programme Increment', order: 10 }, parentLink: 'Epic' });
 		const { containerEl } = makeView(vault, { levels: 'Programme Increment, Epic' });
 
 		const badge = rowByTitle(containerEl, 'Epic').querySelector<HTMLElement>('.pbl-badge');
-		const text = badge?.querySelector<HTMLElement>('.pbl-badge-text');
-		if (!badge || !text) throw new Error('badge not rendered');
-		expect(badge.classList.contains('pbl-implied')).toBe(true);
-		expect(badge.dataset.tooltip).toContain('Type property not set');
+		expect(badge?.classList.contains('pbl-implied')).toBe(true);
+		expect(badge?.dataset.tooltip).toContain('Epic');
+		expect(badge?.dataset.tooltip).toContain('Type property not set');
 
-		// jsdom measures nothing, so stand in for a name wider than the 120px cap
-		Object.defineProperty(text, 'scrollWidth', { value: 200, configurable: true });
-		Object.defineProperty(text, 'clientWidth', { value: 100, configurable: true });
-		badge.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
-
-		// Both: the name the cap hid, and why the badge is dashed
-		expect(badge.dataset.tooltip).toContain('Epic');
-		expect(badge.dataset.tooltip).toContain('Type property not set');
+		// A declared type says its name and nothing else: there is nothing to explain.
+		const child = rowByTitle(containerEl, 'Child').querySelector<HTMLElement>('.pbl-badge');
+		expect(child?.classList.contains('pbl-implied')).toBe(false);
+		expect(child?.dataset.tooltip).toBe('Programme Increment');
 	});
 });

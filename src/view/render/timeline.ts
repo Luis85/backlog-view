@@ -4,6 +4,7 @@ import { createCard, wireCardActivation } from './board';
 import { renderBadge, renderChevron, renderTitleText } from './rows';
 import { dependencyNote, NO_CONFLICTS, renderDependencyArrows } from './timelineArrows';
 import { CardDragController } from '../interactions/cardDrag';
+import { dependenciesAvailable } from '../interactions/dependencies';
 import { wireBarLink, wireLinkPreview } from '../interactions/linkDrag';
 import { effectiveLeadWidth, renderLeadResize } from '../interactions/timelineLeadResize';
 import { BacklogViewHost, DrawnColors } from '../host';
@@ -688,15 +689,22 @@ interface ConnectorPlace {
  * clamped edge. A handle can sit at a boundary without asserting anything is there,
  * which is what a diamond cannot do.
  *
- * The draw condition (`dependsOnKey !== '' && !geometry.outside`) is a strict subset of
- * `wireBarLink`'s own gate (`dependsOnKey !== ''`): a bar can never draw a connector
- * without a target being wired for it. The key unconfigured is a feature this view does
- * not have ([[Draw a dependency between bars]] 1c) and refuses both; `geometry.outside`
- * is the one case where a target is still wired for a bar with no dot — a bar wholly
- * outside the window has no on-screen end to draw one from, but is still something
- * another bar's link may legitimately point at. An `outsideFilter` row needs no guard:
- * `deriveBars` routes it to context before any span is computed, so it never has a bar
- * to hang one on — the same reason [[Arrows between bars]] 1c needs none.
+ * The draw condition (`dependenciesAvailable && !geometry.outside`) is a strict subset of
+ * `wireBarLink`'s own gate (`dependenciesAvailable`): a bar can never draw a connector
+ * without a target being wired for it. The feature being off refuses both;
+ * `geometry.outside` is the one case where a target is still wired for a bar with no dot
+ * — a bar wholly outside the window has no on-screen end to draw one from, but is still
+ * something another bar's link may legitimately point at. An `outsideFilter` row needs no
+ * guard: `deriveBars` routes it to context before any span is computed, so it never has a
+ * bar to hang one on — the same reason [[Arrows between bars]] 1c needs none.
+ *
+ * What that predicate MEANS changed on 2026-08-11 and the shape did not. It used to be
+ * the bound key, so an unnamed property meant no connector anywhere
+ * ([[Draw a dependency between bars]] 1c) — which made the gesture unreachable in exactly
+ * the base that had never named the property, since Obsidian's picker cannot offer a
+ * property no note carries. The write binds the key now, so the handle is what leads to a
+ * bound property rather than something a bound property leads to
+ * ([[Bind a property by using it]]).
  *
  * `tabindex="-1"` like every other per-row control: the pane is one tab stop and the
  * arrows move the selection. The context menu's Depends on… is the keyboard path, which
@@ -705,7 +713,7 @@ interface ConnectorPlace {
 function renderConnector(ctx: RowContext, mounts: BarRowMounts, place: ConnectorPlace, bar: TimelineBar): void {
 	const { row, barEl, geometry } = place;
 	const dot =
-		ctx.host.settings.dependsOnKey === '' || geometry.outside
+		!dependenciesAvailable(ctx.host) || geometry.outside
 			? null
 			: barEl.createEl('button', {
 					cls: 'pbl-bar-connector',

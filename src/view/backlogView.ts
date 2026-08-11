@@ -30,7 +30,7 @@ import { syncToolbarFit } from './render/toolbarFit';
 import { captureScroll, centreOnToday, renderProjectionContent, restoreScroll, ScrollAnchor } from './render/projections';
 import { refreshRowChildren } from './render/rows';
 import { BacklogSettings, defaultSettings } from '../domain/settings';
-import { adoptableProperties, notePropertyId, OptionalProperty } from '../domain/optionalProperties';
+import { adoptableProperties, notePropertyId, OptionalField, OptionalProperty } from '../domain/optionalProperties';
 import { resolveSettings } from '../domain/settingsResolve';
 import { OpenTarget } from '../domain/itemHandling';
 import { WriteOutcome } from '../storage/frontmatter';
@@ -330,8 +330,15 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.registerEvent(this.app.workspace.on('css-change', () => syncToolbarFit(this.toolbarEl)));
 	}
 
-	adoptDefaultProperties(): OptionalProperty[] {
-		const adopting = adoptableProperties(this.config, this.settings);
+	adoptDefaultProperties(only?: OptionalField): OptionalProperty[] {
+		// The narrowing belongs to the collector, never beside it: the one-field path
+		// cannot then disagree with ✨ about what may be adopted (see `host.ts`).
+		// Both halves resolved from the live config. `this.settings` is the last refresh's
+		// snapshot, and `adoptableProperties` asks the config which options are SET while
+		// asking the settings which keys are TAKEN — so mixing the two lets a property
+		// pointed at a suggestion since the last refresh be skipped without its key joining
+		// `taken`, and the suggestion is then bound onto it. (Codex, PR #128.)
+		const adopting = adoptableProperties(this.config, resolveSettings(this.config), only);
 		for (const property of adopting) this.config.set(property.option, notePropertyId(property.suggested));
 		// Rebuilt now rather than left to the refresh a config change brings: the batch
 		// that follows is planned from this model, and one built before the binding reads
