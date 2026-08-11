@@ -2556,3 +2556,94 @@ npm run check
 git add src/view/render/cardChildren.ts test/ src/view/CLAUDE.md docs/
 git commit -m "Count what this projection draws, not what the note holds"
 ```
+
+---
+
+### Task 23: Delete the autoType feature
+
+**Decision.** The user's, on 2026-08-11, in response to the final review's one Important
+finding: *"we should remove the whole auto type feature instead"*. Not a refactor — the
+feature goes.
+
+**Files** (measured, not guessed — verify the list yourself before trusting it):
+- `src/domain/writePlan.ts` — `computeTypeChanges` (~106 lines) and its call at :198
+- `src/view/interactions/menu.ts` — the `!host.settings.autoType` early return at :220 and the
+  `computeTypeChanges` call at :222
+- `src/domain/settings.ts`, `src/domain/settingsResolve.ts`, `src/domain/viewOptions.ts` — the
+  field, its resolution, and the toggle
+- `src/domain/itemTypes.ts` — `keepsTypeOnMove`, whose only consumer is the README sentence
+  below; and the `nextLevelIndex` docblock's reference to the cascade
+- `src/domain/backlogReadme.ts` — the conditional at :139-143 and the rules bullet at :517
+- Tests: `test/domain/writePlan.test.ts`, `writePlanContextRows.test.ts`, `testLadder.test.ts`,
+  `settings.test.ts`, `backlogReadme.test.ts`
+- Register: `docs/requirements/Assigning type on a move.md` (the feature's own note),
+  `src/domain/CLAUDE.md`, `README.md`, the manual, and
+  `docs/issues/The dragged item is retyped, its descendants are not.md`, which this CLOSES
+
+**Why this rather than the guard.** The final review found the cascade's nested no-crossing
+guard unchecked — deleting `|| child.ladder !== destLadder` leaves all 1818 tests green, and
+losing it lets a drag of an unrelated Epic write a plan rung onto a hand-nested `Test suite`
+and take it out of the catalog. That is the one door that does not ask `keepsProjection`.
+Deleting the cascade removes the door.
+
+It also settles two open register items rather than carrying them: the issue note above
+records that the dragged item is retyped while its descendants are not — an artefact nobody
+chose — and ADR 0009 says the type rules are advisory. `autoType` was the single exception to
+that ADR, off by default, and it is the only reason `keepsTypeOnMove`, the nested ladder guard
+and the "which types a move leaves alone" README sentence exist.
+
+- [ ] **Step 1: Establish the true call graph before deleting anything**
+
+`grep -rn "autoType\|computeTypeChanges\|keepsTypeOnMove" src/ test/ docs/ *.md`. Put the full
+output in your report. Some hits are prose that merely mentions the feature and some are code
+that depends on it; say which is which before you edit. In particular decide whether
+`nextLevelIndex` and `childLevelIndex` survive — they are the ladder's own arithmetic and are
+used well beyond the cascade, so they almost certainly do.
+
+- [ ] **Step 2: Delete, and let the compiler and lint find the rest**
+
+Remove the option, its resolution, the toggle, the planner and the two call sites. `npm run
+analyze` (fallow) gates dead code, so anything left orphaned fails the build rather than
+lingering — run it early and often.
+
+**A persisted `autoType` key in an existing `.base` becomes inert, which is correct and needs
+no migration**: `resolveSettings` reads the keys it knows and ignores the rest. Do not write a
+shim; ADR 0016 says a pre-1.0 breaking change gets a changelog line, not a deprecation window.
+
+- [ ] **Step 3: The README generator loses a branch, not a sentence**
+
+`backlogReadme.ts` currently says one of two things depending on the setting. With the feature
+gone the unconditional truth is the "off" branch — *moving a note never rewrites its type* —
+and the whole `keepsTypeOnMove` list at :139-143 goes with it. Check the surrounding prose
+still reads as one paragraph rather than a sentence with a hole in it, and remember that file
+is at its 400-line cap: this should take it comfortably under.
+
+- [ ] **Step 4: The register records a removal, not a silence**
+
+- `docs/requirements/Assigning type on a move.md` is a Done PBI for a feature that no longer
+  exists. Do not delete the note. Give it the status the register uses for withdrawn work
+  (read `docs/README.md`'s folder table and the frontmatter of an existing closed note first —
+  match what is there, do not invent a value) and state at the top WHY it was removed, naming
+  the unchecked nested guard and the user's decision.
+- `docs/issues/The dragged item is retyped, its descendants are not.md` is closed by this.
+  Close it, saying the asymmetry went away with the feature rather than being resolved.
+- `src/domain/CLAUDE.md` has several paragraphs built on the cascade — the `depth` bullet, the
+  extra-types bullet, the two-ladders bullet. Each states a real rule that outlives the
+  feature; edit them so they no longer promise a cascade, without deleting the rule they are
+  actually about.
+- **ADR 0009 gains no new decision** — it already says the rules are advisory, and this makes
+  that true without exception. Add nothing to it unless you find it now says something false.
+- `CHANGELOG.md` gains a `### Removed` entry under `[Unreleased]`, in the user's language: the
+  option is gone, a move never rewrites a type, and an existing setting is simply ignored.
+
+- [ ] **Step 5: Prove the deletion is total**
+
+Re-run the Step 1 grep and put the after-output in the report. Every surviving hit must be
+either prose deliberately recording the removal, or a historical plan/spec under
+`docs/superpowers/`. Then run the whole check.
+
+```bash
+npm run check
+git add -A src/ test/ docs/ README.md CHANGELOG.md
+git commit -m "Delete the autoType cascade"
+```
