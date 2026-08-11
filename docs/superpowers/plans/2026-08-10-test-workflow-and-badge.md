@@ -2236,7 +2236,29 @@ twice by container reclaims, taking every brief, report and review package with 
 commits survived both times because each task was pushed as it closed. What follows is the
 state a fresh session needs, kept where a reclaim cannot reach it. Update it as tasks close.
 
-**Complete and reviewed clean:** Tasks 1-14 and 16-18.
+**Complete and reviewed clean:** Tasks 1-21, except 22 (below). Tasks 19, 20 and 21 each
+landed after this section was first written.
+
+**A controller error worth keeping.** Task 21's brief told the implementer to gate the new
+`Clear test state` foot on `item.ownKeys`, copying the neighbours. It refused, and it was
+right: `readOwnKeys` fills that flag through `optionalKeyFor`, which answers the RAW
+`testStateKey`, while the test workflow reads the RESOLVED one. On the shipped default — tests
+sharing the plan's `status`, so the raw key is empty — the flag is false on every note that
+carries a state, so the recommended gate would have shipped a control that exists, passes its
+tests, and never appears. Measured, not argued. The lesson generalises past this task: a
+presence gate is only as good as the key it asks about, and this codebase has two of those.
+
+**Follow-up, deliberately not built here.** The plan-gated foot leaves a residue: any value
+`readString` refuses (blank, whitespace, YAML null, an empty list, a mapping) reads as no
+value and is offered no clear. The plugin manufactures it — `applyInto` stubs a missing
+optional key as `''`, and ✨ stubs the test state onto every catalog member — so with a
+distinct `testStateProperty` every catalog row gets one. What cannot be removed is always an
+EMPTY key, the stub the backfill left as an invitation, so nothing is ever stuck on screen and
+no state a user set is affected; what is lost is the tidy-up the horizon's presence gate
+gives. The fix is one condition (a presence signal read through the resolved key, or a
+presence-gated `computeTestStateWrites`) but `ownKeys` is also the backfill's own complement,
+so it needs its own task and tests. Recorded in the code, `src/view/CLAUDE.md` and extension
+5d rather than left to be found.
 
 Task 14 took three fix rounds and is worth reading before touching `missingKeyStubs`. Its
 three category gates were unified into one `stateKeyFor`-driven lookup because the three-gate
