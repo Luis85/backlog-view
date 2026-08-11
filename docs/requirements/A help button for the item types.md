@@ -67,7 +67,7 @@ the surface every other section then lands in.
   drawn as separate projections, and a `Task` or a note with no `type` reads its ladder
   from where it hangs, so the row would leave the screen it was moved on. The entry states
   it as exactly that — leaving the projection, never a rule about types — names the drag,
-  the outdent and the parent-link action together, and says the two rows it can happen to,
+  the outdent and BOTH parent-link actions together, and says the two rows it can happen to,
   since every other type answers from its own name and a backlog with no tests in it is
   refused nothing here. See [[Test suite and test case as a ladder of their own]].
 - **5a — the manual was opened from another section's link.** Closing returns focus to
