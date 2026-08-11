@@ -111,9 +111,10 @@ frontmatter, **I want** one button that sets the properties up and writes them f
 
   **The generated README's property table is a separate reading of the same keys, and this
   gate does not make it true.** `src/domain/backlogReadme.ts` prints "the Deliverable
-  workflow's own state on a Deliverable" whenever the resolved Deliverable key equals the
-  requirements key — which is the fallback configuration, where no `deliverableState` stub
-  is planned at all, and the shared one, where it is planned on the Epic as much as on the
+  workflow's own state on a Deliverable" whenever the requirements key is BOUND and the
+  resolved Deliverable key equals it — which is the fallback configuration, where no
+  `deliverableState` stub is planned at all, and the shared one, where it is planned on the
+  Epic as much as on the
   `Deliverable`. The only configuration whose `deliverableState` stub reaches Deliverables
   and nothing else is the distinct one, and that is exactly the configuration where the
   clause is not printed. "A stub that reaches every Deliverable and never a PBI or a Task"
