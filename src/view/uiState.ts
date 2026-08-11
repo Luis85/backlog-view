@@ -30,8 +30,9 @@ export interface UiStateHooks {
 
 /**
  * The collapse-store-backed UI state `BacklogViewHost` exposes: the projection, the
- * retained roadmap-axis pick, the focus level, the shelf's own collapse/sort/type
- * filter, and the dated axis's zoom, density and lead width. One shape repeated for
+ * retained roadmap-axis pick, the focus level, what a plain click on a row does, the
+ * shelf's own collapse/sort/type filter, and the dated axis's zoom, density and lead
+ * width. One shape repeated for
  * each — read the collapse store, write it back, ask for the render depth the change
  * needs — extracted for the reason `WriteGate` was: state (here, the collapse store
  * plus the render-depth choice) that only this cluster of methods touches, in the one
@@ -75,6 +76,19 @@ export class UiStateController {
 		if (level === this.collapse.focusLevel()) return;
 		this.collapse.setFocusLevel(level);
 		this.hooks.refreshFromData();
+	}
+
+	get clickFolds(): boolean {
+		return this.collapse.clickFolds();
+	}
+
+	setClickFolds(value: boolean): void {
+		if (value === this.clickFolds) return;
+		this.collapse.setClickFolds(value);
+		// A full render, like the projection and the zoom beside it: no Bases refresh
+		// follows a change it was not told about, and the toolbar's own toggle is what
+		// has to come back saying the new value.
+		this.hooks.render();
 	}
 
 	get shelfCollapsed(): boolean {

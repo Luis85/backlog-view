@@ -124,8 +124,13 @@ export const SETUP: ManualSection = {
 		},
 		{
 			term: 'How an item opens',
-			text: 'What a click on a row does, and where the note it opens goes.',
-			keys: ['clickAction', 'openIn'],
+			text:
+				'Where the note a click opens goes. Whether a click OPENS it at all is not here: ' +
+				'the toolbar toggle beside the completed-items eye decides that, on the tree and ' +
+				'the timeline — the two places a row has a chevron, never a card, whose children ' +
+				'are listed on its own face. It is kept per view on this device, like the ' +
+				'projection and the focus level, rather than in the base.',
+			keys: ['openIn'],
 		},
 		{
 			term: 'Presentation',

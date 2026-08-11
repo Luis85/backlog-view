@@ -337,6 +337,35 @@ describe('the persisted timeline lead-column width', () => {
 	});
 });
 
+describe('what a click on a row does', () => {
+	const id = { base: 'Backlog.base', view: 'Backlog' };
+	const none = { collapsed: new Set<string>(), expanded: new Set<string>() };
+
+	it('defaults to opening the note, and needs no entry at all', () => {
+		vault.addFile('Backlog.base');
+		saveCollapseState(vault.app, id, { ...none, clickFolds: false });
+		expect(stored(vault)['Backlog.base#Backlog']).toBeUndefined();
+		expect(loadCollapseState(vault.app, id).clickFolds).toBe(false);
+	});
+
+	it('round-trips folding on click', () => {
+		vault.addFile('Backlog.base');
+		saveCollapseState(vault.app, id, { ...none, clickFolds: true });
+		expect(loadCollapseState(vault.app, id).clickFolds).toBe(true);
+		expect(stored(vault)['Backlog.base#Backlog']).toMatchObject({ clickFolds: true });
+	});
+
+	/** User-writable data: only the value this module writes is the value it reads back. */
+	it('reads anything but a stored true as the default', () => {
+		for (const junk of ['fold', 1, {}, [], null]) {
+			vault.localStorage.set(STORE_KEY, {
+				'Backlog.base#Backlog': { base: 'Backlog.base', collapsed: [], expanded: [], clickFolds: junk },
+			});
+			expect(loadCollapseState(vault.app, id).clickFolds).toBe(false);
+		}
+	});
+});
+
 describe('the shelf working position', () => {
 	const id = { base: 'Backlog.base', view: 'Backlog' };
 	const none = { collapsed: new Set<string>(), expanded: new Set<string>() };

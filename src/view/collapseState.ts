@@ -172,6 +172,8 @@ export class CollapseState {
 	private leadWidth: number | null = null;
 	/** The focused type name; null means the whole tree, the default. */
 	private focus: string | null = null;
+	/** Whether a plain click on a row folds it; false means it opens the note, the default. */
+	private clickFoldsValue = false;
 	private shelfExpanded = false;
 	/** null means 'tree' (sibling order), the default. */
 	private shelfSortValue: string | null = null;
@@ -231,6 +233,16 @@ export class CollapseState {
 
 	setDensity(value: string | null): void {
 		this.density = value;
+		this.scheduleSave();
+	}
+
+	/** Whether a click on a row folds it in this saved view — false, opening it, is the default. */
+	clickFolds(): boolean {
+		return this.clickFoldsValue;
+	}
+
+	setClickFolds(value: boolean): void {
+		this.clickFoldsValue = value;
 		this.scheduleSave();
 	}
 
@@ -366,6 +378,7 @@ export class CollapseState {
 		this.density = snapshot.density ?? null;
 		this.leadWidth = snapshot.leadWidth ?? null;
 		this.focus = snapshot.focus ?? null;
+		this.clickFoldsValue = snapshot.clickFolds ?? false;
 		this.shelfExpanded = snapshot.shelfExpanded ?? false;
 		this.shelfSortValue = snapshot.shelfSort ?? null;
 		this.hiddenShelfTypes = new Set(snapshot.shelfHiddenTypes ?? []);
@@ -441,6 +454,7 @@ export class CollapseState {
 			density: this.density,
 			leadWidth: this.leadWidth,
 			focus: this.focus,
+			clickFolds: this.clickFoldsValue,
 			shelfExpanded: this.shelfExpanded,
 			shelfSort: this.shelfSortValue,
 			shelfHiddenTypes: [...this.hiddenShelfTypes],

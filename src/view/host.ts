@@ -286,6 +286,16 @@ export interface BacklogViewHost {
 	 * what it is re-rooted on; read the current focus off `settings.focusLevel`.
 	 */
 	setFocusLevel(level: string): void;
+	/**
+	 * Whether a plain click on a row's body folds it rather than opening the note —
+	 * false, opening it, is the default. UI state like the mode and the focus level: the
+	 * collapse store persists it per saved view and per device, never the `.base`,
+	 * because it is flipped while working and a `.base` is shared. Only the two
+	 * ROW-shaped projections read it (`clickActionApplies`).
+	 */
+	readonly clickFolds: boolean;
+	/** Flip what a click does and re-render; the collapse store persists the pick. */
+	setClickFolds(value: boolean): void;
 	/** Whether the shelf is collapsed for this saved view; collapsed is the default. */
 	readonly shelfCollapsed: boolean;
 	/** Toggle the shelf's collapse state and re-render the content pane. */

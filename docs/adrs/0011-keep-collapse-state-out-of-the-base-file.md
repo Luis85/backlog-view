@@ -57,10 +57,19 @@ leaf drawing it has one.
 - The cost: it does not sync. Open a vault on another machine and the tree starts
   collapsed. That is the right trade for state this personal, but it is a real one.
 - The entry has since taken every other piece of working position — the projection, the
-  roadmap axis and zoom, the shelf's own controls, and the **focus level**, which moved
-  out of the `.base` under exactly this decision. Focus is the one that also feeds the
-  MODEL rather than only the render, so the view restores before it builds; a `.base`
-  written before the move keeps a `focusLevel` key that nothing reads.
+  roadmap axis and zoom, the shelf's own controls, the **focus level**, and (2026-08-11)
+  **whether a click on a row folds it**, both of which moved out of the `.base` under
+  exactly this decision. Focus is the one that also feeds the MODEL rather than only the
+  render, so the view restores before it builds; a `.base` written before either move
+  keeps a `focusLevel` or `clickAction` key that nothing reads.
+- **Moving one OUT of the `.base` is what the rule costs, not a second surface over it.**
+  The fold value was a view option and a toolbar toggle at once, and keeping both would
+  have meant a stored override beside a shared default: a tri-state (follow the base, or
+  one of the two values), a way back to "follow", and a cue on the option that says a
+  device is ignoring it. The question this ADR asks — is this configuration, or is it one
+  person's working position — has one answer per value, so the option went rather than
+  growing a second reading of itself. What that gives up is a shareable default: a base
+  sent to a colleague no longer arrives folding on click.
 
 ## Alternatives
 

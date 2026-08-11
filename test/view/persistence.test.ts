@@ -247,6 +247,34 @@ describe('collapse state persistence', () => {
 		expect(second.view.shelfHiddenTypes).toEqual(new Set(['Task']));
 	});
 
+	/**
+	 * Folding on click stopped being a `.base` option on 2026-08-11, so the toolbar
+	 * toggle is now the only thing that sets it and this is what makes it survive the
+	 * view. Asserted through the GESTURE rather than the flag: the reopened view has to
+	 * fold on a click, which is the whole reason the value is stored at all.
+	 */
+	it('reopens folding on click when the last session turned it on, without writing the .base', () => {
+		const vault = fixture();
+		const first = makeView(vault, {}, { base: 'Backlog.base' });
+		first.view.setClickFolds(true);
+		first.view.onunload();
+
+		// Working position: it goes to local storage and nowhere near the shared file.
+		expect(first.config.setCalls.some((c) => c.key === 'clickAction')).toBe(false);
+
+		const second = makeView(vault, {}, { base: 'Backlog.base' });
+		expect(second.view.clickFolds).toBe(true);
+		rowByTitle(second.containerEl, 'Epic B').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(titlesOf(second.containerEl)).not.toContain('Feature B1');
+		expect(vault.opened).toEqual([]);
+
+		// And back off: false is the default, so it clears the field rather than storing it.
+		second.view.setClickFolds(false);
+		second.view.onunload();
+		expect(stored(vault)[Object.keys(stored(vault))[0]]).not.toHaveProperty('clickFolds');
+		expect(makeView(vault, {}, { base: 'Backlog.base' }).view.clickFolds).toBe(false);
+	});
+
 	it('reopens focused on the type the last session picked, without writing the .base', () => {
 		const vault = fixture();
 		const first = makeView(vault, {}, { base: 'Backlog.base' });

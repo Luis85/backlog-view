@@ -45,8 +45,8 @@ export function useViewHarness(): void {
  * harness expands it through the real toolbar control. Pass `collapsed` to assert on
  * the opening state itself.
  *
- * `focus` is an option rather than a config value because the focus level is NOT one:
- * it is working position, set through the view and stored beside the collapse state.
+ * `focus` and `folds` are options rather than config values because neither is one:
+ * both are working position, set through the view and stored beside the collapse state.
  */
 export function makeView(
 	vault: FakeVault,
@@ -56,6 +56,7 @@ export function makeView(
 		base,
 		viewName,
 		focus,
+		folds,
 		only,
 		order,
 	}: {
@@ -63,6 +64,7 @@ export function makeView(
 		base?: string;
 		viewName?: string;
 		focus?: string;
+		folds?: boolean;
 		only?: string[];
 		order?: string[];
 	} = {},
@@ -88,6 +90,7 @@ export function makeView(
 	anyView.data = { data: only ? vault.entries().filter((e) => only.includes(e.file.path)) : vault.entries() };
 	view.onDataUpdated();
 	if (focus) view.setFocusLevel(focus);
+	if (folds) view.setClickFolds(true);
 	if (!collapsed) clickExpandAll(containerEl);
 	return { view, config, containerEl };
 }

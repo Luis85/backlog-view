@@ -372,19 +372,27 @@ free of runtime code so imports stay cycle-free.
   the flag to guard against a click that lands on a child element and bubbles past
   `disabled`, which does not reopen the split `syncFilterUi` once caused, since a
   reader cannot disagree with the writer about what the value is.
-- **The toolbar is zones, and only one of them belongs to the projection.** The primary
-  action leads and the switcher follows it — both `.pbl-btn-group`, one shared segmented
-  box, because in each of them two or more buttons are one control. Then
+- **The toolbar is zones, and only one of them belongs to the projection.** The switcher
+  leads and the primary action follows it — both `.pbl-btn-group`, one shared segmented
+  box, because in each of them two or more buttons are one control, and **no divider
+  between them**: a bordered box already says where a control ends, so a line there draws
+  the boundary a second time. They are the only two neighbours in the row that need extra
+  air for it — the row's own 4px gap was written for flat icon buttons standing in a run,
+  and at a boundary it reads as a seam. Then
   `renderProjectionZone` draws whatever this projection owns and *nothing* when it
-  owns none — the zone and its leading separator are created together and removed
-  together, decided from what was drawn rather than from a second reading of the settings
-  — then the spacer, then the `⋯`, then the controls that are the same in every
+  owns none, decided from what was drawn rather than from a second reading of the settings.
+  **Every group boundary in the head of the row is spacing, stated once**
+  (`.pbl-btn-group + .pbl-btn-group, .pbl-zone-projection` in `styles/toolbar.css`) and no
+  longer a drawn line. A margin cannot outlive the element it is on, which is the whole
+  advantage: the zone's divider had to be created and removed *with* the zone, because a
+  separator introducing nothing is a rule the row states and does not keep. Then the spacer, then the `⋯`, then the controls that are the same in every
   projection, then the readouts. Adding a projection is adding a case to that switch; a
   control added anywhere else in the row is a claim that it belongs to every projection.
-  **Two positions in that order are load-bearing and the rest are taste.** New is first
-  because the row CLIPS from the right past the last rung, so leading it is what makes
-  "nothing costs the primary action its place" true by arrangement rather than by a rung
-  order no arrangement of rungs could deliver. The `⋯` is directly after the spacer for
+  **Two positions in that order are load-bearing and the rest are taste.** The switcher
+  and New are at the HEAD of it — in that order, which is taste; at the head, which is
+  not — because the row CLIPS from the right past the last rung, so putting the primary
+  action there is what makes "nothing costs the primary action its place" true by
+  arrangement rather than by a rung order no arrangement of rungs could deliver. The `⋯` is directly after the spacer for
   the same reason read once more: it is the only route to every shed control, so it must
   be the last thing the clip reaches, not the first — which is what it was when it sat
   beside undo.
@@ -461,6 +469,15 @@ free of runtime code so imports stay cycle-free.
   PLAN's control: the catalog is built from the unfocused tree and its picker is a static
   label, and `collectFocusRoots` skips catalog members — a catalog `Task` is rung 2 of its
   own ladder, which is `PBI`'s index on the plan's.
+  **`host.clickFolds` is the plainest member of that family** and the newest (2026-08-11):
+  whether a plain click on a row folds it instead of opening the note, stored the same way
+  and re-rendering the same way, with no model consequence at all. It reaches `settings`
+  through nothing — `foldOnClick` reads the host directly — because unlike the focus level
+  it was never a `.base` key that downstream code had learned to read. It has exactly one
+  surface, the toolbar's toggle, and that is the point rather than an omission: it stopped
+  being a view option when it moved, since a value that is working position on the device
+  cannot also be configuration on the view without a stored override beside a shared
+  default. ADR 0011 records what that costs.
 - **Membership is asked once, in `rowHidden`**, beside the quick filter and the completed
   toggle. That placement is what keeps a second projection small: the renderer, the
   keyboard's move targets, the board's cards, the roadmap's rows and every count measured

@@ -287,6 +287,7 @@ describe('toolbar controls are reachable without a mouse', () => {
 			'Expand all',
 			'Collapse all',
 			'Hide completed items',
+			'Clicking a row folds it',
 			'Filter items',
 			'Show all types',
 		]) {
