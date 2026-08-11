@@ -383,11 +383,11 @@ describe('drawing a dependency from one bar to another', () => {
 		expect(content.classList.contains('pbl-linking')).toBe(true);
 		expect(rowFor(containerEl, 'Beta')?.classList.contains('pbl-link-illegal')).toBe(true);
 		expect(rowFor(containerEl, 'Alpha')?.classList.contains('pbl-link-source')).toBe(true);
-		// `.pbl-dragging` is a CARD MOVE's own class — it reveals the tree's root strip,
-		// which a link can never use, since it reparents nothing (`.pbl-linking` is its
-		// own class for exactly this reason). Asserted here, not only left as a stylesheet
-		// comment, so a future tidy-up that reuses or comma-joins the two is caught by a
-		// test rather than by a root strip appearing under a gesture that cannot use it.
+		// `.pbl-dragging` is a CARD MOVE's own class, and a link reparents nothing
+		// (`.pbl-linking` is its own class for exactly this reason). Asserted here, not
+		// only left as a stylesheet comment, so a future tidy-up that reuses or
+		// comma-joins the two is caught by a test rather than by a card-move affordance
+		// appearing under a gesture that cannot use it.
 		expect(viewEl.classList.contains('pbl-dragging')).toBe(false);
 
 		gesture.cancel();

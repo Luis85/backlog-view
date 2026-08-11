@@ -151,8 +151,8 @@ and each stays open until they are, so a stale check is visible rather than assu
   nudge that separates a milestone from today exactly one line width.
 - [[Draw a dependency between bars]]'s gesture: the connector reveals on hover and stays
   under `(hover: none)`, illegal rows dim while the drag is held, the target under the
-  pointer outlines, the preview line tracks the pointer smoothly, labels vanish and the
-  tree's root strip stays hidden (`.pbl-linking`, never `.pbl-dragging`), and a completed
+  pointer outlines, the preview line tracks the pointer smoothly, labels vanish and no
+  card-move state is entered (`.pbl-linking`, never `.pbl-dragging`), and a completed
   or cancelled drag leaves nothing behind. Beside that, what a vault still owes, none of
   it answerable here: `wireLinkSource`'s `onGenerateDragPreview` mutates the content box
   and other rows' classes (dimming, the source mark), not only the dragged connector's

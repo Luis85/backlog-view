@@ -116,11 +116,6 @@
     },
     "shadows": [
       {
-        "name": "float",
-        "value": "var(--shadow-s)",
-        "purpose": "The only true elevation in the system: the root-drop strip that overlays the tree during a drag. Nothing else floats, so nothing else casts."
-      },
-      {
         "name": "ring",
         "value": "0 0 0 1px var(--interactive-accent) inset",
         "purpose": "Selected card, selected board column, drop-over target. A ring rather than a border change, so nothing reflows."
@@ -301,7 +296,7 @@
       },
       {
         "name": "The Dashed Line Rule",
-        "body": "A dashed border means present, but not asserted — and it means that everywhere: a context row's card, a column or bucket holding a value the configuration does not name, an unset chip, an implied badge, an inferred span, a drop ghost, the add-a-tag button, and the root-drop strip before it is targeted. A solid border asserts; a dashed one reports. Never use dashed for emphasis.",
+        "body": "A dashed border means present, but not asserted — and it means that everywhere: a context row's card, a column or bucket holding a value the configuration does not name, an unset chip, an implied badge, an inferred span, a drop ghost, and the add-a-tag button. A solid border asserts; a dashed one reports. Never use dashed for emphasis.",
         "section": "shapes"
       },
       {

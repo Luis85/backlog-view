@@ -318,16 +318,15 @@ describe('write safety with context rows, across every entry point', () => {
 				}
 			}
 		}
-		// The "move to top level" strip
+		// The tree background — the drop that moves an item to the top level
+		const tree = treeOf(containerEl);
 		for (const from of allRows) {
 			from.dispatchEvent(new MouseEvent('dragstart', { bubbles: true }));
-			const strip = containerEl.querySelector<HTMLElement>('.pbl-root-drop');
-			strip?.dispatchEvent(new MouseEvent('dragover', { bubbles: true }));
-			strip?.dispatchEvent(new MouseEvent('drop', { bubbles: true }));
+			tree.dispatchEvent(new MouseEvent('dragover', { bubbles: true }));
+			tree.dispatchEvent(new MouseEvent('drop', { bubbles: true }));
 			await flush();
 		}
 		// Every context-menu command, every chip, every structural shortcut
-		const tree = treeOf(containerEl);
 		// Which chip kinds the sweep actually found. A chip renders only where its
 		// property is a visible column, so a query that matched nothing would leave
 		// `?.dispatchEvent` driving nothing and every assertion below still passing —

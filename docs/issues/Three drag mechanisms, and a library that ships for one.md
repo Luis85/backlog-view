@@ -73,7 +73,7 @@ met, which makes this the moment it pointed at rather than a fresh proposal.
 
 It does not claim the tree should migrate. That is the decision to make, with evidence,
 and the honest arguments against are already on record: the tree's drag works, it is
-covered, and [[Tree drag between siblings, into a parent and onto the root strip]] is a
+covered, and [[Tree drag between siblings, into a parent and onto the background]] is a
 smoke test written against its current behaviour. Migrating a working, tested surface to
 change no user-visible outcome is exactly the kind of pass this repository is usually
 right to refuse.

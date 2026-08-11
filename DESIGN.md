@@ -320,10 +320,10 @@ shrinks, and it never partially occludes its neighbour.
 
 ## Elevation & Depth
 
-**This system is flat, and its depth is tonal.** There is exactly one `box-shadow` in the
-stylesheet that reads as elevation: `var(--shadow-s)` on `.pbl-root-drop`, the strip that
-overlays the tree's bottom edge during a drag — the only element that genuinely floats over
-other content. Every other `box-shadow` in the file is an `inset` or a 1px spread being used
+**This system is flat, and its depth is tonal.** No `box-shadow` in the stylesheet reads as
+elevation — nothing floats over other content, so nothing casts. It held one until the
+root-drop strip was removed, and losing the strip is what made the rule absolute rather
+than nearly so. Every `box-shadow` in the file is an `inset` or a 1px spread being used
 as a **ring**, not a shadow: selection, focus, drop-target and the focus-level button's
 active state all use `box-shadow: 0 0 0 1px var(--interactive-accent) [inset]` because a ring
 does not move the element or reflow its neighbours.
@@ -337,7 +337,6 @@ beneath it.
 
 ### Shadow Vocabulary
 
-- **Float** (`box-shadow: var(--shadow-s)`): the root-drop strip. The only true elevation.
 - **Ring** (`box-shadow: 0 0 0 1px var(--interactive-accent) inset`): selected card,
   selected column, drop-over target.
 - **Rail** (`box-shadow: inset 2px 0 0 var(--interactive-accent)`): the selected tree row.
@@ -381,7 +380,7 @@ bar; and an item **outside** the visible window collapses to a 10px top-border t
 that everywhere, without exception: a context row's card (in the Base's results only as
 scaffolding), a board column or horizon bucket holding a value the configuration does not
 name, an unset state or horizon chip, an implied type badge, an inferred timeline span, a
-drop ghost, the add-a-tag button, and the root-drop strip before it is targeted. A solid
+drop ghost, and the add-a-tag button. A solid
 border asserts; a dashed one reports. Never use dashed for emphasis.
 
 **The Shape-Before-Colour Rule.** Every state that matters must survive a monochrome

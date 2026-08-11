@@ -57,8 +57,9 @@ lands, the three ways to make the same move, and where `order` comes from.
 - **3a — the user is on a keyboard throughout.** The keyboard and menu forms are listed
   beside the drag rather than in a footnote, so the section doubles as the keyboard
   reference at the moment someone wants it.
-- **3b — the view is focused on one type.** Indent, outdent and the top-level strip are
-  disabled at the top row, for the same reason a between-drop is: no shared ranking.
+- **3b — the view is focused on one type.** Indent, outdent and the drop that makes an
+  item top-level are disabled at the top row, for the same reason a between-drop is: no
+  shared ranking.
 - **5a — `Assign item type when moving` is on.** The re-typing is described by what it
   **skips** — untyped descendants keep no type, a custom type keeps its name, `Issue` and
   `Bug` keep their pinned rank, and the cascade stops at a context row rather than

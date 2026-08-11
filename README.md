@@ -113,7 +113,7 @@ not show is not on the rows, and that includes the state, horizon, risk and tag 
 | Open an item | Click the row (Ctrl/Cmd-click for a new tab) |
 | Re-order among siblings | Drag a row and drop it **between** two rows |
 | Re-parent | Drag a row and drop it **onto** the middle of the new parent |
-| Make an item top-level | Drag it onto the **Move to top level** strip at the bottom |
+| Make an item top-level | Drag it onto the empty space below the last row, or right-click → **Outdent** (Alt+Left) |
 | Create a child item | Hover a row and click **+**, or use the context menu — where the row can hold more than one kind of item, the modal asks which |
 | Create any type at the top | Toolbar **New** button, or the **▾** menu next to it for every other type |
 | Focus one type | Toolbar focus button next to **New** → pick a level or an extra type (**All types** returns) |
@@ -424,8 +424,8 @@ Context rows are italic and dimmed, with a `↳` marker. They are **not results*
   group also renumbers all of it when the gaps run out, so a group that contains a context
   row offers no reordering at all: no before/after drop, no **Move up/down/to top/to
   bottom**, no **Outdent** — even for an ordinary result row that happens to sit next to
-  one. Dropping *into* a parent, the top-level strip and **Indent** keep working, because
-  those append;
+  one. Dropping *into* a parent, dropping on the tree background and **Indent** keep
+  working, because those append;
 - they don't influence where new notes go: the folder for new items is inferred from the
   Base's own results, never from ancestors that live somewhere else in the vault — and
   **New \<child\>** on a context row creates the note in that results folder rather than

@@ -28,6 +28,9 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Changed
 
+- The **Move to top level** strip no longer appears over the bottom of the tree while you
+  drag. The drop it offered is still there — drop on the empty space below the last row —
+  and Alt+Left, plus the row menu's **Outdent**, reach the top level without a drag at all.
 - The toolbar now leads with the projection switcher and puts **New** beside it, and the
   dividers in the head of the row are gone — between those two, and in front of the
   roadmap's own controls. Each group is set off by spacing instead: a bordered button group
@@ -49,6 +52,13 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Fixed
 
+- **The roadmap no longer stops responding to the pointer after a drag.** If the view
+  refreshed while a card or bar was being dragged — which a session spent drawing
+  dependencies does constantly, since every link is a write — the drag left its state
+  behind on the pane for good: rows stopped highlighting on hover, the dependency
+  connector never appeared again, and no further drag could be started. The drop itself
+  had landed correctly, which is why nothing looked wrong until the pane went dead.
+  Reopening the base was the only way out.
 - Hovering rows in a large backlog is no longer laggy. Deciding whether a title or a type
   badge needed its full-text tooltip measured the element inside the hover event itself,
   which forced the whole tree to be laid out again on every hover — 65.7ms per hover at

@@ -134,7 +134,7 @@ cannot fix, and there are **six**:
 | Icon | Site | Why it points |
 | --- | --- | --- |
 | `chevron-right` + its rotations | `rows.ts`, plus `.pbl-chevron.pbl-expanded` in `tree.css` and `@keyframes pbl-expand-nudge` in `dragDrop.css` | **Icon and transforms are one construct** — see below |
-| `corner-left-up` | the root-drop strip's icon span, `backlogView.ts` | The root-drop affordance |
+| `corner-left-up` | a card's parent line, `board.ts` | The cue that names the item above |
 | `corner-left-down` | the outside-filter marker in `rows.ts` | The outside-filter marker |
 | `indent-increase` | the move menu's Indent item, `menu.ts` | Indent, in the move menu |
 | `indent-decrease` | the move menu's Outdent item, `menu.ts` | Outdent |
@@ -213,8 +213,7 @@ drop strip runs along one edge. Every one of those has a mirrored meaning in RTL
 - Keeping new ones out is `Styling rules are checks`, in `Theming and styling` — this PBI
   owns the sweep and the verification, not the lint. The two features have to land in
   that order or the check has nothing to go green against.
-- Row indentation, the drag indicator and the root strip mirror correctly under
-  `dir="rtl"`.
+- Row indentation and the drag indicator mirror correctly under `dir="rtl"`.
 - All six directional icons are addressed — `chevron-right`, `corner-left-up`,
   `corner-left-down`, `indent-increase`, `indent-decrease`, `undo-2` — and the vertical
   ones are deliberately left alone: `arrow-up`/`arrow-down`(`-to-line`),
@@ -266,7 +265,7 @@ available in round one precisely because it is not a translation.
 constructs and the chevron's rotations —
 after `One stylesheet per concern` those live in the source partials rather than the
 assembled file · `src/view/render/rows.ts` chooses the chevron and the context marker ·
-`src/view/backlogView.ts` the root-drop affordance · `src/view/interactions/menu.ts` the
+`src/view/render/board.ts` the card's parent cue · `src/view/interactions/menu.ts` the
 indent icons · `src/view/render/toolbar.ts` the undo icon ·
 `src/view/interactions/keyboard.ts` binds the four physical direction keys.
 Tests: `test/view/keyboard.test.ts` is where direction-aware navigation gets asserted;
