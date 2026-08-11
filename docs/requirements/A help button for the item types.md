@@ -62,7 +62,8 @@ the surface every other section then lands in.
   (onto an item's own descendant, into a group with no shared ranking) and those belong to
   [[Help for moving and ranking]].
 - **4c — the user drags a `Task` out of a `Test suite` and onto the plan's top level.**
-  That one *is* refused, and it is the only class of move that is. The two ladders are
+  That one *is* refused, and it is the only class of move refused for what it would type
+  something as — 4b's refusals stand beside it, for reasons that are not about type. The two ladders are
   drawn as separate projections, and a `Task` or a note with no `type` reads its ladder
   from where it hangs, so the row would leave the screen it was moved on. The entry states
   it as exactly that — leaving the projection, never a rule about types — names the drag,
@@ -87,9 +88,16 @@ the surface every other section then lands in.
   and the reorderable-group checks do refuse drops, and an unqualified "any drag is
   allowed" contradicts [[Help for moving and ranking]] as well as the view.
 - The projection refusal is written to the check and no wider: the two rows it can happen
-  to are named, the reason given is the row leaving the screen it was moved on, and nothing
-  reads as "a drop can be refused for type" — which would be as false as the "no drag is
-  ever refused" it replaced, in the other direction.
+  to are **named**, the reason given is the row leaving the screen it was moved on, and the
+  narrowing sentence stands beside it — every other type keeps its own ladder wherever it
+  lands, so a backlog with no tests in it is refused nothing here. Without that last
+  sentence the entry would be as false as the "no drag is ever refused" it replaced, in the
+  other direction. Those three are what `test/view/manualTypes.test.ts` asserts; that no
+  OTHER sentence in the entry reads too widely is not something a substring check can see.
+- `Task` is stated as **offered** in the test catalog, since it is the rung both ladders
+  share. A sentence withholding "the plan's levels" there contradicts this same section's
+  `Test case` entry ("Holds Tasks") two entries apart, and contradicts the view — see
+  `test/view/testCatalog.test.ts`.
 - `Set type` is described as narrowing in **every** projection, since each offers what it
   can draw. The two boards are one case of that rule rather than the whole of it, and the
   row's own **+** is not described as narrowed by it.

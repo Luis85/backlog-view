@@ -35,6 +35,21 @@ describe('the manual', () => {
 		expect(prose).toContain('focus-root row has no previous sibling');
 	});
 
+	// The entry's availability claims are an ENUMERATION, and this branch's dominant defect
+	// is one item short. `rootDropTarget` and `outdentTarget` ask `keepsProjection`, so the
+	// top-level strip and Outdent refuse a catalog `Task` or a typeless row — while the
+	// entry said the strip and Indent worked "except throughout a focused view", one stated
+	// exception and no others. Named here so a gate added to that set without a sentence
+	// fails rather than shipping as a promise the code refuses.
+	it('names the projection boundary among the states a move is unavailable in', () => {
+		const moving = manualSections().find((s) => s.id === 'moving');
+		const prose = moving?.entries.map((e) => `${e.term} ${e.text}`).join(' ') ?? '';
+		expect(prose).toContain('the top-level strip, Outdent, and the menu action that clears its parent link');
+		expect(prose).toContain('a Task, or a note with no type');
+		// Narrow in the same breath, or the entry trades one falsification for its mirror.
+		expect(prose).toContain('every other type keeps its own ladder wherever it lands');
+	});
+
 	// The toolbar's New button makes exactly one type; the chevron beside it carries
 	// the vocabulary. `CREATING` previously claimed New alone "offers the whole
 	// vocabulary", which is what the primary button's own single-type prompt refuses.

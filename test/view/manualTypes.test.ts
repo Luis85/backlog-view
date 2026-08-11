@@ -32,15 +32,27 @@ describe('the types section', () => {
 	// whole vocabulary outside a board, and that no drag is ever refused for what it would
 	// type something as. Both are checked as TEXT because the text is what ships to a user —
 	// the behaviour behind them is driven in `test/view/projectionMoves.test.ts` and
-	// `test/view/testCatalog.test.ts`. What this cannot check is that the replacement stays
-	// as narrow as the code: it asserts the two falsified claims are gone and the refusal is
-	// stated, not that every word of the statement is true.
-	it('states the projection refusal, and neither claim the test catalog falsified', () => {
+	// `test/view/testCatalog.test.ts`.
+	//
+	// The NARROWNESS is what this entry actually delivers, so it is checked rather than
+	// trusted: the two rows a move can be refused for are named, and `Task` is stated as
+	// offered in the catalog — the sentence "the plan's own levels are not offered there"
+	// contradicted this section's own `Test case` entry ("Holds Tasks") two entries apart,
+	// and `test/view/testCatalog.test.ts` pins `Task` as offered on a `Test case`.
+	//
+	// What it cannot reach: that every word of the statement is true. It asserts the
+	// falsified sentences are gone and the narrow ones are present, no more.
+	it('states the projection refusal, names the two rows it reaches, and drops both falsified claims', () => {
 		const text = typesSection().entries.find((e) => e.term === 'Type is advisory, not enforced')?.text ?? '';
 		expect(text).not.toContain('whole vocabulary');
 		expect(text).not.toMatch(/no (drag|move) is ever refused/i);
-		expect(text).toContain('test catalog');
 		expect(text).toContain('leaving the projection it is drawn on');
+		// The two rows, named — the whole of what "narrow" means here.
+		expect(text).toContain('a Task, the rung both ladders share');
+		expect(text).toContain('a note with no type at all');
+		expect(text).toContain('Every other type keeps its own ladder wherever it lands');
+		// And `Task` stated as offered in the catalog, not withheld with the plan's levels.
+		expect(text).toContain('where Task is, on a row that hangs from a test');
 	});
 
 	it('is a pure read — calling it twice gives equal content', () => {

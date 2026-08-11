@@ -50,7 +50,11 @@ describe('backlogReadmeContent', () => {
 	it('scopes the advisory rule to what the projection boundary leaves refused', () => {
 		const content = readme(settingsWith(), []);
 		expect(content).toContain('nothing is refused for the type a move would give a note');
-		expect(content).toContain('The one move the view withholds is a move **between the two ladders above**');
+		// "for a **type** reason", not "the one move the view withholds": `isInvalidParent`
+		// and `reorderableGroup` refuse drops that have nothing to do with type, so the
+		// unqualified form is false in the direction opposite to the sentence it replaced.
+		expect(content).toContain('The one move the view withholds for a **type** reason');
+		expect(content).not.toMatch(/one move the view withholds is/);
 		// The narrowness itself: only a `Task` and a typeless note read their ladder from
 		// where they hang, so the sentence must not read as a rule about types in general.
 		expect(content).toContain('Every other type keeps its ladder wherever it lands');

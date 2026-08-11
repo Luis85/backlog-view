@@ -104,10 +104,12 @@ export function typesSection(): ManualSection {
 			{
 				term: 'Type is advisory, not enforced',
 				text:
-					'The + narrows to the types that fit under this parent, and Set type narrows too — in ' +
-					'every projection rather than only on a board, because each offers what it can show. So ' +
-					"Test suite and Test case are not offered on a plan row, and the plan's own levels are " +
-					'not offered in the test catalog. Inside a ladder nothing is enforced, and no move is ' +
+					'The + narrows to the types that fit under this parent, and on a board to what that board ' +
+					'can show as well. Set type narrows too — in every projection rather than only on a ' +
+					'board, because each offers what it can show. So Test suite and Test case are not ' +
+					'offered on a plan row, and Epic, Feature and PBI are not offered in the test catalog — ' +
+					'where Task is, on a row that hangs from a test, since it is the rung both ladders ' +
+					'share. Inside a ladder nothing is enforced, and no move is ' +
 					'refused for what it would type something as: a Task under an Epic stays a Task, at its ' +
 					'own level, however oddly it sits. What a move can be refused for is leaving the ' +
 					'projection it is drawn on, because the row would vanish off the screen it was moved on ' +

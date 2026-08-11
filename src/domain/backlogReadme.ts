@@ -500,12 +500,14 @@ function rulesSection(settings: BacklogSettings): string[] {
 			`give a note, and a type you declare is the type you keep: a ${code(LEVELS[LEVELS.length - 1])} ` +
 			`under an ${code(LEVELS[0])} stays one, at its own level, however oddly it sits. Only a note with **no** type takes ` +
 			'the level its position implies, and a type this plugin does not ship sits one rung below its parent so its own children continue the ladder.' +
-			// The one refusal, and stated only as widely as it holds: `keepsProjection` gates the
-			// four reparenting targets, and `ladderFor` chains from the parent for a `Task` and a
-			// note with no `type` and for nothing else — so every other name answers from itself
-			// and can never change ladder by moving. "A drop can be refused for type" would be as
-			// false as the "nothing is refused" this replaced, in the other direction.
-			` The one move the view withholds is a move **between the two ladders above**, and only for the two notes that read ` +
+			// The one refusal a TYPE can cause, and stated only as widely as it holds twice over.
+			// `keepsProjection` gates the four reparenting targets, and `ladderFor` chains from the
+			// parent for a `Task` and a note with no `type` and for nothing else — so every other
+			// name answers from itself and can never change ladder by moving. And the "for a type
+			// reason" qualifier is the other half: `isInvalidParent` and `reorderableGroup` refuse
+			// drops for reasons that have nothing to do with type, so an unqualified "the one move
+			// the view withholds" would be as false as the "nothing is refused" this replaced.
+			` The one move the view withholds for a **type** reason is a move between the two ladders above, and only for the two notes that read ` +
 			`their ladder from where they hang: a ${code(LEVELS[LEVELS.length - 1])}, the rung both ladders share, and a note with ` +
 			`no ${code('type')} at all. Either would change ladder by being moved, and the row would leave the screen it was moved on, so the move is not offered. Every other type keeps its ladder wherever it lands.` +
 			// Which moves rewrite a type, and which types are exempt, is stated once — under

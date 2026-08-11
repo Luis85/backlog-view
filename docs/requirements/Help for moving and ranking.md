@@ -54,6 +54,14 @@ lands, the three ways to make the same move, and where `order` comes from.
 - **1b — a quick filter is active.** Dragging is off entirely, because visual neighbours
   under a filter are not siblings. The section says so, since a row that will not lift is
   otherwise indistinguishable from a broken one.
+- **1c — the move would change which screen the row is on.** A `Task`, or a note with no
+  `type`, reads its level from whatever it hangs from, so moving one between the plan and
+  the test catalog would take it off the screen it was moved on. `dropTargetFor`,
+  `rootDropTarget`, `outdentTarget` and the parent-link actions all withhold it. Listed
+  because 1a's enumeration read as complete and was one short: the section promised the
+  top-level strip worked "except throughout a focused view", and it does not work here
+  either. It is not a rule about types — every other type keeps its own ladder wherever it
+  lands, and a backlog with no tests in it is refused none of this.
 - **3a — the user is on a keyboard throughout.** The keyboard and menu forms are listed
   beside the drag rather than in a footnote, so the section doubles as the keyboard
   reference at the moment someone wants it.
@@ -74,9 +82,13 @@ lands, the three ways to make the same move, and where `order` comes from.
   as the keyboard reference at the moment someone wants it.
 - The section names every state where a drop is deliberately unavailable, so an absent
   gesture reads as a rule rather than a bug.
-- No claim about a move being refused for **type** reasons — those rules are advisory —
-  and no claim that nothing is refused at all. Both would contradict
-  [[A help button for the item types]], in opposite directions.
+- No claim about a move being refused for **type compatibility** — those rules are
+  advisory — and no claim that nothing is refused at all. Both would contradict
+  [[A help button for the item types]], in opposite directions. The projection boundary
+  (1c) is not that claim and must not be written as one: it turns on which screen the row
+  is drawn on, so the section gives the row leaving that screen as the reason, names the
+  two rows it reaches, and says in the same breath that every other type keeps its own
+  ladder wherever it lands.
 - The re-typing cascade is described by what it skips — untyped, custom-typed, extra
   types, and anything past a context row — rather than as a whole-subtree rewrite.
   `README.md` currently says "the whole moved subtree"; the manual must not inherit that
