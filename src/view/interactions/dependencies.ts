@@ -4,6 +4,8 @@ import { dependentsClosure } from '../../domain/dependencies';
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { isMarkerType } from '../../domain/itemTypes';
 import { linkpathFromRawValue } from '../../domain/noteFields';
+import { adoptableProperties } from '../../domain/optionalProperties';
+import { configProblems } from '../../domain/settingsConsistency';
 import { ItemSuggestModal, SuggestChoice } from '../../ui/itemSuggest';
 import { DependsOnDelta } from '../../domain/writePlan';
 
@@ -44,17 +46,69 @@ export function addDependencyItems(host: BacklogViewHost, model: BacklogModel, m
 }
 
 /**
- * Whether the pair belongs on this row at all.
+ * Whether the feature belongs on this row at all.
  *
- * The configured key, and nothing else: an unnamed property is a feature this view does
- * not have, not a disabled control. The context-row half is deliberately NOT repeated
- * here — `buildItemMenu` adds these inside its `editable` block with every other entry
- * that edits the row's own frontmatter, so a second `outsideFilter` test would be a
- * second statement of one rule, and the kind that goes on reading as a guarantee after
- * the real guard moves.
+ * This used to be the configured key and nothing else, which withheld the menu pair, the
+ * connector and the drag from every base that had never named the property — and left the
+ * only route to naming one running through ✨ or a hand-edited note, since Obsidian's own
+ * picker offers the properties a vault HAS. A property no note carries cannot be picked,
+ * and a property nothing names cannot be written to a note, so the feature gated itself
+ * shut. The write binds the key now ([[Bind a property by using it]]), and the question
+ * this asks is therefore whether a key could exist rather than whether one does.
+ *
+ * What it still refuses is the option the user CLEARED. `adoptableProperties` carries that
+ * rule — turning a property off is a decision, and cleared reads identically to never-set
+ * in the resolved settings, which is why the CONFIG is asked — and the one other case it
+ * refuses comes free with it: a suggestion whose key another property already owns is not
+ * adoptable, so the feature is absent rather than offering a control whose write would be
+ * reported as a collision. Both leave an entry that would write nothing unoffered, which
+ * is the rule [[Linking two items]] states for this menu.
+ *
+ * The context-row half is deliberately NOT repeated here — `buildItemMenu` adds these
+ * inside its `editable` block with every other entry that edits the row's own
+ * frontmatter, so a second `outsideFilter` test would be a second statement of one rule,
+ * and the kind that goes on reading as a guarantee after the real guard moves.
  */
 export function dependenciesAvailable(host: BacklogViewHost): boolean {
-	return host.settings.dependsOnKey !== '';
+	return host.settings.dependsOnKey !== '' || adoptableProperties(host.config, host.settings, 'dependsOn').length > 0;
+}
+
+/**
+ * Bind the dependency property, if this is the first time anything asked to write one.
+ *
+ * `configProblems` is asked BEFORE the `.base` is touched, which is `runInit`'s own rule
+ * and for its reason: an action that changed the configuration and then had every write
+ * refused would leave the view worse than it found it. `applySafely` would refuse the
+ * batch either way; what this adds is that the refusal costs no configuration change.
+ *
+ * The second guard is for the window between the control being drawn and the pick
+ * landing. `dependenciesAvailable` was true when the menu was built, so the property was
+ * adoptable then — an edit to the `.base` since (clearing the option, or pointing another
+ * property at `dependsOn`) can end that while a suggester sits open, which is the same
+ * staleness every other pick here re-asks for rather than assumes away.
+ *
+ * Returns false when nothing may be bound, having said why. Only the ADD path can reach
+ * either guard: a removal is offered on the key's presence, which an unbound key cannot
+ * have.
+ */
+function bindDependencyKey(host: BacklogViewHost): boolean {
+	if (host.settings.dependsOnKey !== '') return true;
+	const problems = configProblems(host.settings);
+	if (problems.length > 0) {
+		new Notice(`Fix the view options first: ${problems[0]}`);
+		return false;
+	}
+	const bound = host.adoptDefaultProperties('dependsOn')[0];
+	if (bound === undefined) {
+		new Notice('The dependency property changed while the picker was open, so nothing was written.');
+		return false;
+	}
+	// After the fact rather than in front of the gesture: the `.base` changed for everyone
+	// who opens this view, so it is never silent — but a confirmation in front of a drag
+	// would put a dialog on the common path, to buy a decision that clearing the option
+	// takes back in one click.
+	new Notice(`Product Backlog: set up ${bound.suggested} to hold dependencies.`);
+	return true;
 }
 
 /**
@@ -390,5 +444,10 @@ export function applyDependencyWrite(host: BacklogViewHost, item: BacklogItem, d
 		new Notice('That note changed before the write landed, so nothing was written.');
 		return;
 	}
+	// After the recheck and before the write: binding rebuilds the model, so doing it
+	// first would leave the check above reading a model this function had already
+	// replaced — and binding for a write that then turns out to be refused would change
+	// the `.base` for nothing.
+	if (!bindDependencyKey(host)) return;
 	void host.applySafely([{ file: item.file, dependsOn }]);
 }

@@ -98,12 +98,36 @@ describe('when the entries are offered at all', () => {
 		expect(titles(openMenu(containerEl, 'B'))).toContain('Depends on…');
 	});
 
-	it('offers neither when the property is unbound', () => {
+	it('offers the add with the property unbound, since picking one is what binds it', () => {
+		// No `dependsOnProperty` at all. The entry used to be withheld here, which left the
+		// property nameable only through ✨ or a hand-edited note — see
+		// [[Bind a property by using it]]. The removal stays absent: with no key, the note
+		// carries nothing to take away, whatever its frontmatter happens to spell.
 		const { containerEl } = makeView(vaultWith({ B: { dependsOn: 'A' } }));
+
+		const entries = titles(openMenu(containerEl, 'B'));
+		expect(entries).toContain('Depends on…');
+		expect(entries).not.toContain('Remove dependency…');
+	});
+
+	it('offers neither when the option is CLEARED', () => {
+		// The one configuration that still turns the feature off. Clearing is how a user
+		// says "not this one", and reviving it would be the view overruling them — the
+		// rule `adoptableProperties` already keeps for ✨, reused rather than restated.
+		const { containerEl } = makeView(vaultWith({ B: { dependsOn: 'A' } }), { dependsOnProperty: '' });
 
 		const entries = titles(openMenu(containerEl, 'B'));
 		expect(entries).not.toContain('Depends on…');
 		expect(entries).not.toContain('Remove dependency…');
+	});
+
+	it('offers neither when another property already owns the suggested key', () => {
+		// Adoptable means the key is free. With `dependsOn` taken, binding it would report
+		// as a collision and block every write in the view, so the feature is absent
+		// instead of offering a control whose write could not land.
+		const { containerEl } = makeView(vaultWith(), { stateProperty: 'note.dependsOn' });
+
+		expect(titles(openMenu(containerEl, 'B'))).not.toContain('Depends on…');
 	});
 
 	it('offers the removal on a value that reads as nothing, and clears the key', async () => {

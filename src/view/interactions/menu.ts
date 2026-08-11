@@ -180,7 +180,10 @@ function addEditableSections(host: BacklogViewHost, model: BacklogModel, menu: M
 	if (canSchedule(host.settings, item)) addScheduleItems(host, menu, item);
 	if (tagsColumnVisible(host)) addEditTagsMenu(host, menu, item);
 	// A prerequisite is a property of the note rather than of a projection, so the
-	// entries are offered wherever an item renders — not only where one is drawn.
+	// entries are offered wherever an item renders — not only where one is drawn. The
+	// gate no longer asks whether the key is BOUND, only whether one could be: the write
+	// binds it ([[Bind a property by using it]]), so the entry is what names the property
+	// rather than something the naming has to precede.
 	if (dependenciesAvailable(host)) addDependencyItems(host, model, menu, item);
 }
 

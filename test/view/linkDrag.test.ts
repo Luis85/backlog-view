@@ -207,8 +207,20 @@ describe('the connector on a drawn bar', () => {
 		expect(vault.opened).toEqual([]);
 	});
 
-	it('is absent when the dependency key is unbound — a feature this view does not have', () => {
+	it('is drawn with the dependency key unbound, because the write is what binds it', () => {
+		// The gate used to be the bound key, which withheld the handle from exactly the
+		// base that had never named the property — and Obsidian's picker cannot offer a
+		// property no note carries, so that base had no way to bind one but ✨ or a
+		// hand-edited note. `Bind a property by using it` is the note.
 		const { containerEl } = datedLinkView(barVault(), DATE_AXIS);
+		expect(connectorFor(containerEl, 'Alpha')).not.toBeNull();
+	});
+
+	it('is absent when the option is CLEARED, which is the user saying not this', () => {
+		// The one configuration the feature is still off in. Cleared and never-set resolve
+		// identically in the settings, so the question is asked of the CONFIG — the same
+		// rule `adoptableProperties` keeps for ✨.
+		const { containerEl } = datedLinkView(barVault(), { ...DATE_AXIS, dependsOnProperty: '' });
 		expect(connectorFor(containerEl, 'Alpha')).toBeNull();
 	});
 
@@ -250,39 +262,44 @@ describe('the connector on a drawn bar', () => {
 	});
 });
 
-describe('what wiring a bar costs when the dependency key is unbound', () => {
+describe('what wiring a bar costs, and which configuration still pays nothing', () => {
 	// A few hundred rows is the scaling limit `src/view/CLAUDE.md`'s "Cost" section
 	// states, and a `dropTargetForElements` registration per bar (plus its cleanup, every
-	// render pass) is real work for a feature the view does not have — `wireBarLink`'s own
-	// early return is what keeps this at zero rather than one per bar. Driven through
-	// `CardDragController.prototype.wireDropTarget` — the same seam
-	// `test/view/cardDrag.test.ts`'s construction test reaches the controller through —
-	// because nothing on the rendered DOM distinguishes "no target registered" from "a
-	// target registered that nothing can ever satisfy". The spy starts only after the view
-	// is fully constructed and settled, and a plain `refresh` is what is measured: setup
-	// itself (`setProjection`, `setAxisPick`) is more than one render pass, and counting
-	// across all of them would make the assertion about how many times THIS SUITE happens
-	// to render rather than about one pass's cost.
-	it('registers no link drop target on any bar', () => {
+	// render pass) is real work — `wireBarLink`'s early return is what keeps it at zero
+	// rather than one per bar. What the gate ASKS changed on 2026-08-11: it used to be the
+	// bound key, so an unnamed property paid nothing; it is now `dependenciesAvailable`,
+	// so only a CLEARED option does. That is the saving handed back, measured here rather
+	// than described, which is why the unbound case is asserted at one-per-bar instead of
+	// being dropped. Driven through `CardDragController.prototype.wireDropTarget` — the
+	// same seam `test/view/cardDrag.test.ts`'s construction test reaches the controller
+	// through — because nothing on the rendered DOM distinguishes "no target registered"
+	// from "a target registered that nothing can ever satisfy". The spy starts only after
+	// the view is fully constructed and settled, and a plain `refresh` is what is
+	// measured: setup itself (`setProjection`, `setAxisPick`) is more than one render
+	// pass, and counting across all of them would make the assertion about how many times
+	// THIS SUITE happens to render rather than about one pass's cost.
+	const linkTargetsOn = (values: Record<string, unknown>): unknown[] => {
 		const vault = barVault();
-		const { view } = datedLinkView(vault, DATE_AXIS);
+		const { view } = datedLinkView(vault, values);
 		const spy = vi.spyOn(CardDragController.prototype, 'wireDropTarget');
 		refresh(view, vault);
-		const linkTargets = spy.mock.calls.filter((call) => call[3] === 'link');
-		expect(linkTargets).toHaveLength(0);
+		return spy.mock.calls.filter((call) => call[3] === 'link');
+	};
+
+	it('registers no link drop target on any bar when the option is cleared', () => {
+		expect(linkTargetsOn({ ...DATE_AXIS, dependsOnProperty: '' })).toHaveLength(0);
+	});
+
+	it('registers one per bar with the key unbound, which is the cost of the handle being there', () => {
+		expect(linkTargetsOn(DATE_AXIS)).toHaveLength(2);
 	});
 
 	it('registers one link drop target per bar once the key is bound', () => {
 		// The gate itself is falsifiable, not only its absence: with the key bound, the
 		// two bars in `barVault()` each still get one — the count a link drag actually
-		// needs, so the test above is measuring the gate and not a helper that wires
-		// nothing regardless.
-		const vault = barVault();
-		const { view } = datedLinkView(vault);
-		const spy = vi.spyOn(CardDragController.prototype, 'wireDropTarget');
-		refresh(view, vault);
-		const linkTargets = spy.mock.calls.filter((call) => call[3] === 'link');
-		expect(linkTargets).toHaveLength(2);
+		// needs, so the cleared case above is measuring the gate and not a helper that
+		// wires nothing regardless.
+		expect(linkTargetsOn({ ...DATE_AXIS, ...DEPS })).toHaveLength(2);
 	});
 });
 

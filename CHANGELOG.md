@@ -13,6 +13,14 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Changed
 
+- **Dependencies work in a base that has never named the property.** The bar connector and
+  the row menu's **Depends on…** used to be withheld until the dependency property was
+  bound in the view options — which Obsidian's own picker cannot offer until some note
+  already carries it, so the feature was hidden in exactly the vault that had never used
+  it. Making the first link now binds `dependsOn` for you and says so. Clearing the option
+  still turns the feature off, and an option you have already set is never changed.
+  The handle costs what it draws: on the dated axis with 811 bars expanded, a render goes
+  from ~274ms to ~318ms.
 - Large backlogs render about two and a half times faster with every row expanded: the
   tree now lets the browser skip layout for rows scrolled out of the pane. Measured at 832
   expanded rows, a full render goes from ~718ms to ~283ms; at 1632 rows, from ~1089ms to

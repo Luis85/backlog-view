@@ -59,21 +59,31 @@ const live = new WeakMap<HTMLElement, LiveLink>();
 /**
  * Wire one bar's two roles.
  *
- * Skipped entirely where the dependency key is unbound — `dependenciesAvailable`, the
- * same predicate the menu gates on — since with no key the drop this would register could
- * never mint a payload for it to accept: nothing anywhere could start the drag that would
- * land on it. Registering it anyway is not merely redundant but a real cost at the scale
- * `src/view/CLAUDE.md`'s "Cost" section states: a `dropTargetForElements` registration and
- * its cleanup on every one of a few hundred rows, every render pass, for a feature the
- * view does not have.
+ * Skipped entirely where the feature is off — `dependenciesAvailable`, the same predicate
+ * the menu and the connector gate on — since nothing there could ever mint a payload for
+ * this target to accept. That gate no longer asks whether the KEY is bound, only whether
+ * one could be ([[Bind a property by using it]]), so it is now false in one configuration
+ * rather than in every base that had not named the property.
+ *
+ * **Which hands back a real saving, and the bill is not where this comment used to say.**
+ * Measured in the browser harness, folders fixture, `?notes=800`, 811 expanded bars,
+ * Chromium, median of nine `render()` calls: the roadmap render goes from **~274 ms with
+ * the feature off to ~318 ms with it on**, and that ~16% is now paid by every base except
+ * one that cleared the option. Split three ways, ~35 ms of the 44 is `renderConnector`'s
+ * `<button>` — 811 more DOM nodes, at the same per-node cost the rest of the render is
+ * made of — and the two wirings together are ~9 ms, inside the run-to-run spread.
+ *
+ * So registering the drop targets at drag start, which is the optimisation this paragraph
+ * proposed before it was measured, would buy almost nothing. The cost is the handle, and
+ * the handle is the feature. What would actually move it is drawing fewer bars, which is
+ * [[The render is the whole cost of a data update]]'s own axis and not this feature's.
  *
  * Within that, the source half is skipped where no connector was drawn — no bar on screen
  * — and the TARGET half is wired regardless, because a bar with no connector of its own is
  * still something another bar's link may legitimately point at. That refusal is
- * `geometry.outside`, the one `renderConnector` itself withholds a dot for; it is not the
- * key-unbound case, which this function now refuses before either half is reached. The
- * target is `wireDropTarget` called with `kind: 'link'`, not a method of its own — see
- * that method's own comment for why the two collapsed into one.
+ * `geometry.outside`, the one `renderConnector` itself withholds a dot for. The target is
+ * `wireDropTarget` called with `kind: 'link'`, not a method of its own — see that method's
+ * own comment for why the two collapsed into one.
  */
 export function wireBarLink(ctx: RowContext, parts: BarLinkParts): void {
 	const host: BacklogViewHost = ctx.host;
@@ -147,9 +157,9 @@ function end(content: HTMLElement): void {
  * are minted on the first frame and never per frame, since a drag is many frames and a
  * node per frame is a node per frame to remove.
  *
- * Skipped where the dependency key is unbound, the same `dependenciesAvailable` gate
- * `wireBarLink` uses: with no key, `renderConnector` draws no connector anywhere on the
- * grid, so no link drag can ever start and this monitor would never see one.
+ * Skipped where the feature is off, the same `dependenciesAvailable` gate `wireBarLink`
+ * uses: there `renderConnector` draws no connector anywhere on the grid, so no link drag
+ * can ever start and this monitor would never see one.
  */
 export function wireLinkPreview(host: BacklogViewHost, dnd: CardDragController, content: HTMLElement): void {
 	if (!dependenciesAvailable(host)) return;
