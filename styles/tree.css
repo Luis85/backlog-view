@@ -19,6 +19,30 @@
 	align-items: center;
 	gap: var(--size-4-1);
 	min-height: 30px;
+	/*
+	 * Let the browser skip layout and paint for rows scrolled out of the pane. This is the
+	 * whole scaling lever for a large backlog and it is one declaration: measured in the
+	 * harness at 832 expanded rows, a full render goes from 718ms to 244ms, because the
+	 * forced layout that `restoreScroll` triggers drops from 447ms to 45ms.
+	 *
+	 * It only works because NOTHING measures a row any more. A `scrollWidth` read on a
+	 * skipped row forces that row to lay out by itself, one at a time — the truncation pass
+	 * this replaced cost 5320ms against 12ms with this property on, which is why both
+	 * tooltips are now set unconditionally (see [[Hovering a row measured its own width]]).
+	 * Anything added to the render that measures a row takes this back.
+	 *
+	 * `auto` on the intrinsic size, not a fixed number: the first render of a row records
+	 * its real height and the placeholder uses that afterwards, so a row that wraps its
+	 * tags does not leave the scrollbar lying. The 30px is the fallback for a row that has
+	 * never been drawn, and it is `min-height` above rather than a second opinion about it.
+	 *
+	 * A skipped row is still IN the DOM and in the accessibility tree — this is
+	 * `content-visibility: auto`, not `hidden` — so `aria-activedescendant` still resolves
+	 * to it and focus or a scroll renders it on demand. What that means for a screen reader
+	 * in Obsidian's own Chromium is a live-vault check, not something jsdom can answer.
+	 */
+	content-visibility: auto;
+	contain-intrinsic-size: auto 30px;
 	padding: var(--size-2-1) var(--size-4-1);
 	padding-inline-start: calc(var(--size-4-1) + var(--pbl-depth, 0) * var(--pbl-indent, 24px));
 	border-radius: var(--radius-s);

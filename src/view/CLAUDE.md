@@ -19,11 +19,39 @@ free of runtime code so imports stay cycle-free.
   the statement of the invariant, because it holds for paths not yet written. And the
   per-render config lookups (`getOrder`, `getDisplayName`) are resolved once per data
   update by `resolveColumns` onto `host.columns`, which `RowContext` carries as a snapshot,
-  never in the per-row path. `refreshRowChildren` must prune the subtree it removes
+  never in the per-row path. **`.pbl-row` carries `content-visibility: auto`**, so the
+  browser skips layout and paint for rows off screen — 718ms to 283ms at 832 expanded rows
+  — and that holds only while nothing MEASURES a row during a render: a `scrollWidth` read
+  on a skipped row lays that row out by itself, which is why both tooltips are set
+  unconditionally rather than when needed. The rule is stated at the declaration in
+  `styles/tree.css` because that is where someone about to break it will be standing. `refreshRowChildren` must prune the subtree it removes
   from `rowEls`, and anything captured at wire time (drag handlers) must read expansion
   state live, because a targeted refresh leaves surrounding rows in place. Data updates
   still rebuild everything — skipping that needs to account for arbitrary chip property
   values.
+- **No input handler reads layout to answer a question the event did not ask**, and think
+  hard before a RENDER does either. A layout read forces the browser to flush pending
+  style and layout synchronously; in an input handler the pending work is largest, because
+  the gesture is itself what dirtied style (`.pbl-row:hover` restyles the title and the
+  grip), so the read can never reuse a clean layout.
+  This shipped twice in one file — the row title's `mouseover` measured its own truncation
+  to decide on a tooltip, at **65.7ms per hover at 832 rows**, and the type badge's did the
+  identical thing. The answer was NOT to move the measurement into a batched pass, which
+  is where the first fix went: a pass that measures every row still forces the whole tree
+  to lay out once per render, and it makes `content-visibility` unusable, since a skipped
+  row must be laid out to be measured (5320ms against 12ms). **Both tooltips are now set
+  unconditionally at render and nothing measures anything** — a tooltip repeating a title
+  that already fits is the whole price. See
+  [[Hovering a row measured its own width]].
+  **The exception that stays**: a drag's geometry is a property of the pointer, not of the
+  render, so `zoneFor` (`interactions/dragDrop.ts`), the timeline's `dayAt` mapping and the
+  link drag all read `getBoundingClientRect` inside the gesture, and there is no batched
+  form of "where is the cursor now". Whether THAT costs anything at eight hundred rows is
+  **unmeasured**; do not read the rule as covering it.
+  What IS checked: `test/view/renderCost.test.ts` spies `scrollWidth`/`clientWidth` on
+  `Element.prototype` and dispatches `mouseover` at every descendant of a row. That is
+  hover, on the tree, for two properties — narrower than the sentence, which is why the
+  sentence states the rule rather than the spy's reach.
 - The write gate is `writeGate.ts`, not the view: `WriteGate` holds `applying`, the undo
   slot, `recovery`, the deferred update and the busy state — five fields serving one
   concern, of which only `busy` was ever read from outside it — and the view owns one,

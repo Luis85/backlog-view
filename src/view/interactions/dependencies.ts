@@ -3,7 +3,10 @@ import { BacklogViewHost } from '../host';
 import { dependentsClosure } from '../../domain/dependencies';
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { isMarkerType } from '../../domain/itemTypes';
-import { linkpathFromRawValue } from '../../domain/noteFields';
+import { linkpathFromRawValue, readLinkList } from '../../domain/noteFields';
+import { adoptableProperties } from '../../domain/optionalProperties';
+import { configProblems } from '../../domain/settingsConsistency';
+import { resolveSettings } from '../../domain/settingsResolve';
 import { ItemSuggestModal, SuggestChoice } from '../../ui/itemSuggest';
 import { DependsOnDelta } from '../../domain/writePlan';
 
@@ -44,17 +47,95 @@ export function addDependencyItems(host: BacklogViewHost, model: BacklogModel, m
 }
 
 /**
- * Whether the pair belongs on this row at all.
+ * Whether the feature belongs on this row at all.
  *
- * The configured key, and nothing else: an unnamed property is a feature this view does
- * not have, not a disabled control. The context-row half is deliberately NOT repeated
- * here — `buildItemMenu` adds these inside its `editable` block with every other entry
- * that edits the row's own frontmatter, so a second `outsideFilter` test would be a
- * second statement of one rule, and the kind that goes on reading as a guarantee after
- * the real guard moves.
+ * This used to be the configured key and nothing else, which withheld the menu pair, the
+ * connector and the drag from every base that had never named the property — and left the
+ * only route to naming one running through ✨ or a hand-edited note, since Obsidian's own
+ * picker offers the properties a vault HAS. A property no note carries cannot be picked,
+ * and a property nothing names cannot be written to a note, so the feature gated itself
+ * shut. The write binds the key now ([[Bind a property by using it]]), and the question
+ * this asks is therefore whether a key could exist rather than whether one does.
+ *
+ * What it still refuses is the option the user CLEARED. `adoptableProperties` carries that
+ * rule — turning a property off is a decision, and cleared reads identically to never-set
+ * in the resolved settings, which is why the CONFIG is asked — and the one other case it
+ * refuses comes free with it: a suggestion whose key another property already owns is not
+ * adoptable, so the feature is absent rather than offering a control whose write would be
+ * reported as a collision. Both leave an entry that would write nothing unoffered, which
+ * is the rule [[Linking two items]] states for this menu.
+ *
+ * The context-row half is deliberately NOT repeated here — `buildItemMenu` adds these
+ * inside its `editable` block with every other entry that edits the row's own
+ * frontmatter, so a second `outsideFilter` test would be a second statement of one rule,
+ * and the kind that goes on reading as a guarantee after the real guard moves.
  */
 export function dependenciesAvailable(host: BacklogViewHost): boolean {
-	return host.settings.dependsOnKey !== '';
+	return adoptedKey(host) !== '';
+}
+
+/**
+ * The frontmatter key a dependency write from this view would land in: the bound one, or
+ * the one the first write will bind ([[Bind a property by using it]]). '' exactly when
+ * nothing may be written at all, which is what makes it the availability test above.
+ *
+ * It exists because every legality question here has to be asked of the graph the WRITE
+ * will see, not of the one the model happens to hold. Those are the same key once the
+ * option is bound and different keys before it, and asking the model's meant asking a
+ * graph with no edges in it — `dependsOn` is suggested precisely because the Tasks plugin
+ * already uses that name, so a vault carrying it in a base that has never bound it is the
+ * vault this feature was designed to meet. There, everything was legal: the menu offered a
+ * note that already waits on the one being edited, and the drag marked no bar illegal and
+ * then refused the drop. (Codex, PR #128.)
+ */
+function adoptedKey(host: BacklogViewHost): string {
+	if (host.settings.dependsOnKey !== '') return host.settings.dependsOnKey;
+	return adoptableProperties(host.config, host.settings, 'dependsOn')[0]?.suggested ?? '';
+}
+
+/**
+ * Bind the dependency property, if this is the first time anything asked to write one.
+ *
+ * `configProblems` is asked BEFORE the `.base` is touched, which is `runInit`'s own rule
+ * and for its reason: an action that changed the configuration and then had every write
+ * refused would leave the view worse than it found it. `applySafely` would refuse the
+ * batch either way; what this adds is that the refusal costs no configuration change.
+ *
+ * The second guard is for the window between the control being drawn and the pick
+ * landing. `dependenciesAvailable` was true when the menu was built, so the property was
+ * adoptable then — an edit to the `.base` since (clearing the option, or pointing another
+ * property at `dependsOn`) can end that while a suggester sits open, which is the same
+ * staleness every other pick here re-asks for rather than assumes away.
+ *
+ * Returns false when nothing may be bound, having said why. Only the ADD path can reach
+ * either guard: a removal is offered on the key's presence, which an unbound key cannot
+ * have.
+ */
+function bindDependencyKey(host: BacklogViewHost): boolean {
+	if (host.settings.dependsOnKey !== '') return true;
+	// Resolved from the live CONFIG, never taken from `host.settings`, which is a snapshot
+	// from the last refresh. `adoptDefaultProperties` reads the config for "is this option
+	// set" and the settings for "which keys are taken", so a stale half lets a property
+	// pointed at `dependsOn` since the menu opened be skipped without its key joining
+	// `taken` — and this key is then bound onto it, which is the collision that blocks
+	// every write in the view. The two halves have to come from one moment; this is the
+	// one where the `.base` is about to be written. (Codex, PR #128.)
+	const problems = configProblems(resolveSettings(host.config));
+	if (problems.length > 0) {
+		new Notice(`Fix the view options first: ${problems[0]}`);
+		return false;
+	}
+	const bound = host.adoptDefaultProperties('dependsOn')[0];
+	if (bound === undefined) {
+		new Notice('The dependency property changed while the picker was open, so nothing was written.');
+		return false;
+	}
+	// After the fact rather than in front of the gesture: the `.base` changed for everyone
+	// who opens this view, so it is never silent — but a confirmation in front of a drag
+	// would put a dialog on the common path, to buy a decision that clearing the option
+	// takes back in one click.
+	new Notice(`Product Backlog: set up ${bound.suggested} to hold dependencies.`);
+	return true;
 }
 
 /**
@@ -102,8 +183,36 @@ function declaredPrerequisitePaths(app: App, model: BacklogModel, item: BacklogI
  * two menu callers are unchanged and cannot fall out of step with the sweep — there is
  * one definition of "what this note declares", not a fast one and a careful one.
  */
-function declaredMap(app: App, model: BacklogModel): Map<string, string[]> {
-	return new Map([...model.byPath].map(([path, item]) => [path, declaredPrerequisitePaths(app, model, item)]));
+function declaredMap(host: BacklogViewHost, model: BacklogModel): Map<string, string[]> {
+	const key = adoptedKey(host);
+	const parsed = key === host.settings.dependsOnKey;
+	return new Map(
+		[...model.byPath].map(([path, item]) => [
+			path,
+			parsed ? declaredPrerequisitePaths(host.app, model, item) : adoptedPrerequisitePaths(host.app, model, item, key),
+		]),
+	);
+}
+
+/**
+ * The same list for a key nothing has bound yet, read off the note rather than off the
+ * model — which parsed a key that is still `''` and so holds no entries at all.
+ *
+ * The two rules `readItems.ts` keeps at its own read are kept here too, at the same
+ * forbidden thing: a context row never declares (an excluded note may be named and may
+ * never do the naming) and neither does a marker (a milestone is a point in time, so it
+ * waits for nothing). Restating them is the price of reading a second key; deriving this
+ * from the model instead is what is not available, since the model has not read it.
+ *
+ * Entries that resolve outside this base are dropped, which is what makes the result the
+ * same SHAPE as `declaredPrerequisitePaths` — both answer "every note this one names that
+ * this base's model resolves", so `dependentsClosure` sees one kind of graph.
+ */
+function adoptedPrerequisitePaths(app: App, model: BacklogModel, item: BacklogItem, key: string): string[] {
+	if (item.outsideFilter || isMarkerType(item.typeName)) return [];
+	return readLinkList(app, item.file, app.metadataCache.getFileCache(item.file), key)
+		.map((entry) => entry.file?.path)
+		.filter((path): path is string => path !== undefined && model.byPath.has(path));
 }
 
 /**
@@ -119,10 +228,10 @@ function declaredMap(app: App, model: BacklogModel): Map<string, string[]> {
  * reason — `byPath` carries context rows that `results` never did.
  */
 function candidates(
-	app: App,
+	host: BacklogViewHost,
 	model: BacklogModel,
 	item: BacklogItem,
-	declared: Map<string, string[]> = declaredMap(app, model),
+	declared: Map<string, string[]> = declaredMap(host, model),
 ): BacklogItem[] {
 	// Asked once for the whole menu rather than once per row: naming any item that
 	// already waits on this one — at any depth, including through a broken cyclic edge —
@@ -167,18 +276,18 @@ function candidates(
  * note deleted and another created at the same path satisfies a path compare while being
  * a different note.
  */
-export function legalTargets(app: App, model: BacklogModel, source: BacklogItem): Set<TFile> {
-	const declared = declaredMap(app, model);
+export function legalTargets(host: BacklogViewHost, model: BacklogModel, source: BacklogItem): Set<TFile> {
+	const declared = declaredMap(host, model);
 	const legal = new Set<TFile>();
 	for (const target of model.byPath.values()) {
 		if (target.outsideFilter) continue;
-		if (candidates(app, model, target, declared).some((c) => c.file === source.file)) legal.add(target.file);
+		if (candidates(host, model, target, declared).some((c) => c.file === source.file)) legal.add(target.file);
 	}
 	return legal;
 }
 
 function promptAddDependency(host: BacklogViewHost, model: BacklogModel, item: BacklogItem): void {
-	const choices: SuggestChoice<BacklogItem>[] = candidates(host.app, model, item).map((candidate) => ({
+	const choices: SuggestChoice<BacklogItem>[] = candidates(host, model, item).map((candidate) => ({
 		label: candidate.title,
 		detail: candidate.file.path,
 		value: candidate,
@@ -204,7 +313,7 @@ function promptAddDependency(host: BacklogViewHost, model: BacklogModel, item: B
 			// path would satisfy a path compare while `choice.file` stayed detached, and
 			// the link written from it would name a note the user never picked.
 			const current = host.model;
-			const stillLegal = current !== null && candidates(host.app, current, item).some((c) => c.file === choice.file);
+			const stillLegal = current !== null && candidates(host, current, item).some((c) => c.file === choice.file);
 			if (!stillLegal) {
 				new Notice('That note changed while the picker was open, so nothing was written.');
 				return;
@@ -380,6 +489,17 @@ function promptRemoveDependency(host: BacklogViewHost, model: BacklogModel, item
  * case this must not refuse, and does not: Obsidian mutates the one `TFile` in place
  * rather than minting a new one, so the object the menu captured is the object the
  * refreshed model holds, under whatever path it now has.
+ *
+ * **The binding no longer changes any answer given before it**, and that is what removed
+ * the recheck that used to sit here. Binding rebuilds the model over edges that were
+ * invisible while nothing named the property — so a legality question asked of the MODEL
+ * before it was asked of a graph with nothing in it, and a pick that closed a loop in the
+ * vault's existing `dependsOn` was offered and then had to be refused after the fact. The
+ * answer is `adoptedKey`: every legality question here is asked of the key the write will
+ * land in, bound or about to be, so the offer and the sweep already see the edges the
+ * binding is going to reveal and neither one claims them legal. Refusing after the
+ * gesture — which for the drag meant marking no bar illegal and then rejecting the drop —
+ * was the thing to remove, not the thing to state better. (Codex, PR #128.)
  */
 export function applyDependencyWrite(host: BacklogViewHost, item: BacklogItem, dependsOn: DependsOnDelta): void {
 	const source = host.model?.byPath.get(item.file.path);
@@ -390,5 +510,10 @@ export function applyDependencyWrite(host: BacklogViewHost, item: BacklogItem, d
 		new Notice('That note changed before the write landed, so nothing was written.');
 		return;
 	}
+	// After the recheck and before the write: binding rebuilds the model, so doing it
+	// first would leave the check above reading a model this function had already
+	// replaced — and binding for a write that then turns out to be refused would change
+	// the `.base` for nothing.
+	if (!bindDependencyKey(host)) return;
 	void host.applySafely([{ file: item.file, dependsOn }]);
 }

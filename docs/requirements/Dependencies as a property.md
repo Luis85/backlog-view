@@ -36,13 +36,16 @@ rank. It is an edge drawn beside the tree, and everything structural stays where
 | --- | --- |
 | **Actor** | Backlog owner |
 | **Trigger** | The model is built over a result set with the dependency property configured |
-| **Preconditions** | The dependency key is bound in the view options; without it the feature is off everywhere |
+| **Preconditions** | The dependency key is bound in the view options; unbound, this note's own subject — reading edges — does not happen. Since 2026-08-11 that no longer means the FEATURE is off: the menu and the connector are offered on a key that could be bound, and the write binds it ([[Bind a property by using it]]) |
 | **Guarantee** | Reading dependencies writes nothing, repairs nothing and moves nothing. No item is hidden, re-parented, re-ranked or re-levelled by an edge — broken or otherwise. A note the Base excluded is never written to and never **declares** an edge: no edge comes from reading a context row's own list. Being *named* by a result is a different thing and is allowed, because that statement belongs to the result that made it. |
 
 **Main flow**
 
 1. The dependency key is resolved from the view options like every other optional key.
-   Unbound, the property does not exist for this view: nothing is read, drawn or offered.
+   Unbound, there is nothing on any note to read, so nothing is read and no edge exists.
+   *Nothing is OFFERED* was true of the controls too until 2026-08-11 and is not now — see
+   [[Bind a property by using it]], which makes the first link the thing that binds the
+   key. What stays true here is the reading: no key, no edges, whatever a note spells.
 2. Each result's value is read tolerantly, the way every field here is read — a single
    entry or a list, a `[[wikilink]]` or a bare name, blanks and repeats collapsed.
 3. Each entry resolves against the same item set `parent` resolves against, **once the
@@ -142,8 +145,10 @@ rank. It is an edge drawn beside the tree, and everything structural stays where
 
 ## Acceptance criteria
 
-- An unbound key means the feature is absent: nothing read, nothing drawn, nothing
-  offered in a menu, and no warning about a property nobody asked for.
+- An unbound key means no edges: nothing read, nothing drawn between bars, and no warning
+  about a property nobody asked for. *Nothing offered in a menu* was part of this
+  criterion until 2026-08-11 and now belongs to [[Bind a property by using it]], which
+  offers the controls and binds the key when one is used.
 - ✨ binds the key and backfills nothing: after it runs, no note carries an empty
   dependency list. The exemption is stated in the stub pass itself rather than left to
   follow from the property being a list.
