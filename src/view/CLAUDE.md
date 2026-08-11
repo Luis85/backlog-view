@@ -358,13 +358,15 @@ free of runtime code so imports stay cycle-free.
   box, because in each of them two or more buttons are one control, and **no divider
   between them**: a bordered box already says where a control ends, so a line there draws
   the boundary a second time. They are the only two neighbours in the row that need extra
-  air for it (`.pbl-btn-group + .pbl-btn-group` in `styles/toolbar.css`) — the row's own
-  4px gap was written for flat icon buttons, and between two bordered strips it reads as a
-  seam rather than a gap. Then
+  air for it — the row's own 4px gap was written for flat icon buttons standing in a run,
+  and at a boundary it reads as a seam. Then
   `renderProjectionZone` draws whatever this projection owns and *nothing* when it
-  owns none — the zone and its leading separator are created together and removed
-  together, decided from what was drawn rather than from a second reading of the settings
-  — then the spacer, then the `⋯`, then the controls that are the same in every
+  owns none, decided from what was drawn rather than from a second reading of the settings.
+  **Every group boundary in the head of the row is spacing, stated once**
+  (`.pbl-btn-group + .pbl-btn-group, .pbl-zone-projection` in `styles/toolbar.css`) and no
+  longer a drawn line. A margin cannot outlive the element it is on, which is the whole
+  advantage: the zone's divider had to be created and removed *with* the zone, because a
+  separator introducing nothing is a rule the row states and does not keep. Then the spacer, then the `⋯`, then the controls that are the same in every
   projection, then the readouts. Adding a projection is adding a case to that switch; a
   control added anywhere else in the row is a claim that it belongs to every projection.
   **Two positions in that order are load-bearing and the rest are taste.** The switcher

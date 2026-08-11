@@ -66,8 +66,9 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	// begins, and a line between them draws a boundary that is drawn twice.
 	renderNewButton(host, barEl, model);
 
-	// 3 — what THIS projection owns, and nothing when it owns none. Draws its own
-	// leading separator, or neither.
+	// 3 — what THIS projection owns, and nothing at all when it owns none. Set off from
+	// the two groups above by its own spacing rather than by a divider, so an empty zone
+	// leaves nothing behind to remove.
 	renderProjectionZone(host, barEl);
 
 	barEl.createDiv({ cls: 'pbl-toolbar-spacer' });

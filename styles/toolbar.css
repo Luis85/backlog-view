@@ -267,11 +267,17 @@
 	gap: 0;
 }
 
-/* Two groups standing next to each other need more air than the row's own 4px gap, which
-   was written for flat icon buttons: with a border on each box that gap reads as a seam
-   and the two strips look like one. This is what replaced the divider that used to sit
-   between them — a bordered box already says where a control ends. */
-.pbl-btn-group + .pbl-btn-group {
+/* What a GROUP BOUNDARY costs, in one place, because the row now draws its first two with
+   space rather than with a line: between the switcher and the primary action, and in front
+   of whatever the current projection owns. The row's own 4px gap was written for flat icon
+   buttons standing in a run; at a boundary it reads as a seam, so the two strips look like
+   one control and the roadmap's pickers look like more of the New group.
+
+   A margin and not a divider, for the reason the divider had to be removed WITH its zone:
+   spacing on the element cannot outlive the element, while a line drawn beside it can —
+   and a line that divides nothing is width spent in front of the primary action. */
+.pbl-btn-group + .pbl-btn-group,
+.pbl-zone-projection {
 	margin-inline-start: var(--size-2-2);
 }
 

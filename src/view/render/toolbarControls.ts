@@ -179,13 +179,16 @@ function menuButton(
  * registration interface with one implementation is an abstraction nobody can read
  * faster than the branch it replaces.
  *
- * The zone and its leading separator are created together and removed together: a
- * separator introducing nothing is a rule the row states and does not keep. Emptiness is
- * decided from what was DRAWN rather than from a second reading of the settings, so the
- * two cannot disagree about whether this projection contributed anything.
+ * What separates it from the head of the row is SPACING, carried by the zone's own class
+ * (`styles/toolbar.css`), and no longer a drawn divider. That is one element fewer and,
+ * more to the point, one thing fewer that can be left behind: the divider and the zone
+ * were created together and removed together precisely because a separator introducing
+ * nothing is a rule the row states and does not keep, and a margin on the zone cannot
+ * outlive it. Emptiness is still decided from what was DRAWN rather than from a second
+ * reading of the settings, so nothing here can disagree with the pickers about whether
+ * this projection contributed anything.
  */
 export function renderProjectionZone(host: BacklogViewHost, barEl: HTMLElement): void {
-	const sep = barEl.createDiv({ cls: 'pbl-toolbar-sep' });
 	const zone = barEl.createDiv({ cls: 'pbl-zone pbl-zone-projection' });
 	switch (host.projection) {
 		case 'roadmap':
@@ -199,9 +202,7 @@ export function renderProjectionZone(host: BacklogViewHost, barEl: HTMLElement):
 			// somewhere else in the row.
 			break;
 	}
-	if (zone.childElementCount > 0) return;
-	sep.remove();
-	zone.remove();
+	if (zone.childElementCount === 0) zone.remove();
 }
 
 /**

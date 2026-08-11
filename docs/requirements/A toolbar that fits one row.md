@@ -49,7 +49,8 @@ today's icon size, add up to.
    between the segments — because in each of them two or more buttons are one control.
    Nothing divides the two: each box's own border is where one control ends and the next
    begins, so a divider between them states that twice, and what separates them is
-   spacing instead.
+   spacing instead. The projection's zone after them is set off the same way — one
+   statement of what a group boundary costs, rather than a line in front of each group.
 2. After the row is in the DOM, `syncToolbarFit` measures it: while `scrollWidth` exceeds
    `clientWidth` it advances a step, up to five, and writes the step as `data-pbl-fit` on
    the toolbar element.
@@ -93,9 +94,12 @@ today's icon size, add up to.
 
 - **1a — the projection owns no toolbar controls of its own.** Three of the four —
   tree, board, Deliverables board — draw nothing in the projection zone, and
-  `renderProjectionZone` removes the zone's leading separator along with it, decided
-  from what was actually drawn rather than from a second reading of the settings, so
-  the two questions can never disagree.
+  `renderProjectionZone` removes the zone itself, decided from what was actually drawn
+  rather than from a second reading of the settings, so the two questions can never
+  disagree. There is nothing left beside it to remove: what sets the zone off is spacing
+  on its own class, so an absent zone takes its boundary with it by construction. The
+  divider that used to lead it had to be removed by hand in the same branch, which is the
+  narrower version of the rule a line drawn beside a conditional element always needs.
 - **2a — a rung would remove the control that currently holds focus.** The row does not
   drop a keyboard user on the floor: `syncToolbarFit` sends focus to the `⋯` whenever
   the newly-written step hides the element that had it, because the `⋯` is where that
@@ -210,9 +214,10 @@ today's icon size, add up to.
 The toolbar's control vocabulary, the projection-zone dispatch and the `⋯` overflow are
 `src/view/render/toolbarControls.ts`. `renderProjectionZone` is the one place the
 toolbar asks which projection it is drawing, so a new projection contributes a case
-rather than a guard of its own; the zone and its leading separator are created and
-removed together, from what was drawn rather than from a second reading of the
-settings. The shared control primitives live here too — `iconButton` and `menuButton`,
+rather than a guard of its own; the zone is drawn and removed from what it actually
+contains rather than from a second reading of the settings, and what sets it off from
+the head of the row is spacing on its own class rather than a divider it would have to
+take with it. The shared control primitives live here too — `iconButton` and `menuButton`,
 the two shapes every toolbar control is built from — and the keyed focus-restore
 mechanism used by any control whose activation rebuilds the row while focus is inside
 it (`KEY_ATTR`, `capturedFocusKey`, `refocusByKey`, `pickAndRefocus`): a control created

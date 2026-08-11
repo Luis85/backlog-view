@@ -24,9 +24,10 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Changed
 
-- The toolbar now leads with the projection switcher and puts **New** beside it, with the
-  divider between them gone: each is a bordered button group, so the boxes already say
-  where one control ends and the next begins, and they are separated by spacing instead.
+- The toolbar now leads with the projection switcher and puts **New** beside it, and the
+  dividers in the head of the row are gone — between those two, and in front of the
+  roadmap's own controls. Each group is set off by spacing instead: a bordered button group
+  already says where one control ends and the next begins.
   Both still sit at the head of the row, which is what keeps them on screen at the
   narrowest pane.
 - **Dependencies work in a base that has never named the property.** The bar connector and
