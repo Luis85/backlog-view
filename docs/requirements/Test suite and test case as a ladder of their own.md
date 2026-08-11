@@ -211,17 +211,17 @@ design: the relationship between a test and the work it checks is
   *position* from a root by *nature*; a suite is the second kind, and the first of that kind
   with children. Covered by a fixture holding a root suite, not by the pair appearing in
   `LEGAL_CHILDREN`.
-- The generated README states the new rungs in its **hierarchy table** and the new
-  exemption in its **move-rule prose**, which are two different statements and only the
-  first is a table. With `autoType` on, that prose says a move into a new parent rewrites
-  the type and then names `EXTRA_TYPES` as the types that keep theirs — so a reader is told
-  the opposite of what this PBI guarantees, since the test types keep their type and are
-  deliberately not extra types.
-  Fixed by deriving rather than by adding two names: the sentence should name **the types
-  the cascade does not rewrite**, asked of the same predicate `computeTypeChanges` uses, so
-  the generated contract cannot drift from the behaviour it describes. Naming
-  `EXTRA_TYPES` is what made it wrong here, and would again at the next type that is
-  neither a rung nor an extra.
+- The generated README states the new rungs in its **hierarchy table** and what a move
+  does to a type in its **move-rule prose**, which are two different statements and only
+  the first is a table. The prose used to carry an exception — with re-typing on, a move
+  into a new parent rewrote the type — and then named `EXTRA_TYPES` as the types that kept
+  theirs, telling a reader the opposite of what this PBI guarantees, since the test types
+  keep their type and are deliberately not extra types. It was fixed by DERIVING the
+  exempt list from the same predicate the cascade asked, rather than by adding two names.
+  The whole exception went on 2026-08-11 ([[Assigning type on a move]]), so the prose now
+  says *moving a note never rewrites its type* unconditionally and there is no list to get
+  wrong. The lesson outlives it: a generated document may not name a set the code
+  computes differently, whatever the set is.
 
 ## Where it lives
 
@@ -237,8 +237,9 @@ answers WHICH ladder before anything asks which rung, and `inCatalog`, the membe
 predicate over its result. `childLevelIndex` and `nextLevelIndex` take the ladder they
 clamp against, and every `LEVELS[…]` index became `ladder[…]` — the five a `grep 'LEVELS\['`
 enumerates, including `initWriteFor` in `src/domain/writePlan.ts`, the one that writes.
-`keepsTypeOnMove` is beside them, so the generated README derives which types a move leaves
-alone instead of naming `EXTRA_TYPES` and being wrong about a marker.
+A `keepsTypeOnMove` predicate sat beside them so the generated README could derive which
+types a move left alone rather than naming `EXTRA_TYPES` and being wrong about a marker;
+it went with the cascade on 2026-08-11, since a move now leaves every type alone.
 
 **The shared deepest rung is what made this small.** `TEST_LEVELS` ends on `Task`, so 4c
 is `childLevelIndex` clamping on the right ladder and needs no rule; so is the membership
@@ -256,9 +257,13 @@ one rule answers the top-level creator, the primary button's default, the focus 
 `retypeChoices` beside it is that function with the row in hand, which is what keeps
 `interactions/menu.ts` from re-importing the vocabulary to hand it back.
 
-`src/domain/writePlan.ts` — `computeTypeChanges` computes the ladder the DESTINATION hands
-out and refuses to descend any other, at the root of a moved subtree and nested inside one.
-That is what keeps a `Test case` dropped on a `PBI` a `Test case`.
+What keeps a `Test case` dropped on a `PBI` a `Test case` is that nothing rewrites a type
+on a move at all. The re-typing cascade in `src/domain/writePlan.ts` had to state the rule
+a second time — it computed the ladder the DESTINATION handed out and refused to descend
+any other, at the root of a moved subtree and nested inside one — and the nested half of
+that guard turned out to have nothing checking it, which is why the whole feature was
+removed on 2026-08-11 ([[Assigning type on a move]]). The rule itself is `keepsProjection`,
+which withholds the move rather than correcting it afterwards.
 
 The one thing that function cannot answer as it stands is **which caller is asking**. Six
 call sites go through it, in two groups: four ask for the whole vocabulary
@@ -278,11 +283,10 @@ shape exactly: a static label and no menu, not a menu with nothing in it
 rather than the four levels already, so a test belongs by being declared;
 `collectFocusRoots` is where a second ladder's levels have to mean something or be
 excluded, and [[A projection for the tests]] is what decides which.
-`src/domain/writePlan.ts` — `computeTypeChanges` must not cascade across ladders, which is
-the criterion above rather than a new mechanism.
 `src/domain/backlogReadme.ts` and `scripts/docs-check.mjs` — and **two statements each**,
 which is the part a "the tables learn the pair" sentence hides. The checker has
 `LEGAL_CHILDREN` *and* `ROOT_TYPES`, and only the second decides whether a parentless suite
-is legal. The README has its hierarchy table *and* its move-rule prose, and only the second
-tells a user which types survive a drag — today by naming `EXTRA_TYPES`, which the test
-types are not.
+is legal. The README has its hierarchy table *and* its move-rule prose; the second used to
+tell a user which types survive a drag, by naming `EXTRA_TYPES`, which the test types are
+not. It now tells them no type is rewritten by one, which is the same statement with
+nothing left to get wrong.

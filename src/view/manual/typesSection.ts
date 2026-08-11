@@ -65,7 +65,7 @@ function entryFor(typeName: string): ManualEntry {
  *
  * The entries after the type list state what is invisible on screen: how the `+` decides
  * what it offers (`childTypeChoices`, `domain/itemTypes.ts`), that an untyped item still
- * reads at a level, that a move does not re-type by default, and that the type ladder is
+ * reads at a level, that a move never re-types, and that the type ladder is
  * advisory rather than enforced.
  */
 export function typesSection(): ManualSection {
@@ -96,10 +96,9 @@ export function typesSection(): ManualSection {
 			{
 				term: 'A move does not re-type',
 				text:
-					'Dragging an item leaves its type alone, unless Assign item type when moving is on — ' +
-					'it is off by default. On, it retypes the ladder levels in a moved subtree to match ' +
-					'their new position; see "Moving and ranking" → "A move does not re-type" for exactly ' +
-					'what it skips.',
+					'Dragging an item leaves its type alone, wherever it lands, and so does every other ' +
+					'way of re-parenting it. Set type is the only thing that writes a type to a note ' +
+					'that already has one.',
 			},
 			{
 				term: 'Type is advisory, not enforced',

@@ -48,15 +48,9 @@ const MOVING: ManualSection = {
 		{
 			term: 'A move does not re-type',
 			text:
-				'Applies only when Assign item type when moving is on, and only on a move that ' +
-				"changes an item's parent. It retypes the dragged item and every explicitly " +
-				'ladder-typed descendant to match its new rung, cascading down through the whole ' +
-				'subtree — and skips the rest: an untyped descendant (its level is already implied ' +
-				'by its position), a descendant carrying a custom type outside the four levels, and ' +
-				'a declared extra type (Issue, Bug, Idea, Deliverable), which keeps its own pinned ' +
-				'rank rather than taking the ladder position. It stops descending a branch the moment ' +
-				'it meets a note the Base excluded or a Milestone — neither has a rung for what sits ' +
-				'below it to inherit.',
+				'A drop, an indent, an outdent and Clear parent link all write the parent and the ' +
+				'order and nothing else. A type is only ever what the note says or what Set type ' +
+				'wrote; where a note carries none, its level is read from where it hangs.',
 		},
 		{
 			term: 'When a drop is unavailable',

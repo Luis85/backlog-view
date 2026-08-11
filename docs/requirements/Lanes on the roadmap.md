@@ -39,9 +39,9 @@ crosses a lane and a column does.
    axis.
 2. The user moves an item into another lane — by drag, menu or lift
    ([[Keyboard and menu on the roadmap]]).
-3. The view plans the reparent the tree's drop-onto would plan — appended order, the
-   autoType cascade only as configured — plus the horizon or date write when the
-   gesture crossed the axis too, in one batch.
+3. The view plans the reparent the tree's drop-onto would plan — an appended order and no
+   type write — plus the horizon or date write when the gesture crossed the axis too, in
+   one batch.
 4. Undo takes the whole batch back.
 
 **Extensions**

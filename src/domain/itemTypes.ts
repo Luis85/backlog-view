@@ -151,12 +151,11 @@ export function childLevelIndex(parent: LadderPosition | null, ladder: string[] 
 
 /**
  * One rung below `levelIndex`, clamped at the deepest rung of `ladder` — the
- * single statement of "what a child's level is". Exported so a walk that has a
- * level in hand rather than an item (the autoType cascade, planning types for a
- * subtree that has not been written yet) descends by the same rule the model
- * will apply afterwards, instead of re-deriving it from tree depth.
+ * single statement of "what a child's level is", which `childLevelIndex` is this
+ * applied to an item. It takes a LEVEL rather than an item so the rule stays
+ * arithmetic about the ladder rather than something re-derived from tree depth.
  */
-export function nextLevelIndex(levelIndex: number, ladder: string[] = LEVELS): number {
+function nextLevelIndex(levelIndex: number, ladder: string[] = LEVELS): number {
 	return Math.min(levelIndex + 1, ladder.length - 1);
 }
 
@@ -239,24 +238,6 @@ export function childTypeChoices(parent: LadderPosition | null): string[] {
 }
 
 
-
-/**
- * True when a move into a new parent leaves this type alone — the types the autoType
- * cascade never rewrites, whatever they land under.
- *
- * Asked of the same two predicates `computeTypeChanges` asks, so the generated README
- * cannot promise a contract the code does not keep. It was `EXTRA_TYPES` spelled out
- * there, which was already wrong about a marker and was about to be wrong about two more
- * types: a name is not what decides this, a pinned or absent RUNG is.
- *
- * The test types are deliberately NOT here. Inside their own ladder they are rewritten by
- * position exactly as a plan rung is — a `Test suite` dropped under a suite becomes a
- * `Test case`. What protects them from the plan is a different rule, stated where it
- * applies: the cascade descends ONE ladder and crosses to neither.
- */
-export function keepsTypeOnMove(typeName: string): boolean {
-	return isExtraType(typeName) || isMarkerType(typeName);
-}
 
 /**
  * Where a new item of this type is filed, or null when the type has no folder of its

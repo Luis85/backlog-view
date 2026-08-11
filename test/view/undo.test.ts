@@ -13,13 +13,13 @@ const undoButton = (containerEl: HTMLElement): HTMLButtonElement => {
 };
 
 describe('undoing the last change', () => {
-	it('restores a drop whole: parent, order and type all come back', async () => {
+	it('restores a drop whole: both the parent and the order come back', async () => {
 		const vault = fixture();
-		const { containerEl } = makeView(vault, { autoAssignType: true });
+		const { containerEl } = makeView(vault);
 
 		drag(rowByTitle(containerEl, 'Epic A'), rowByTitle(containerEl, 'Epic B'), 'inside');
 		await flush();
-		expect(vault.fm('Epic A.md')).toEqual({ type: 'Feature', order: 30, parent: '[[Epic B]]' });
+		expect(vault.fm('Epic A.md')).toEqual({ type: 'Epic', order: 30, parent: '[[Epic B]]' });
 
 		undoButton(containerEl).dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		await flush();
@@ -57,7 +57,7 @@ describe('undoing the last change', () => {
 
 	it('undoing an undo redoes', async () => {
 		const vault = fixture();
-		const { containerEl } = makeView(vault, { autoAssignType: true });
+		const { containerEl } = makeView(vault);
 		const tree = treeOf(containerEl);
 
 		drag(rowByTitle(containerEl, 'Epic A'), rowByTitle(containerEl, 'Epic B'), 'inside');
@@ -69,7 +69,7 @@ describe('undoing the last change', () => {
 		key(tree, 'z', { ctrlKey: true });
 		await flush();
 
-		expect(vault.fm('Epic A.md')).toEqual({ type: 'Feature', order: 30, parent: '[[Epic B]]' });
+		expect(vault.fm('Epic A.md')).toEqual({ type: 'Epic', order: 30, parent: '[[Epic B]]' });
 	});
 
 	it('keeps a key edited since the write, restores the rest, and says what it kept', async () => {
@@ -110,18 +110,18 @@ describe('undoing the last change', () => {
 
 	it('a spent undo is consumed: a replay that restored nothing disables instead of retrying', async () => {
 		const vault = fixture();
-		const { containerEl } = makeView(vault, { autoAssignType: true });
+		const { containerEl } = makeView(vault);
 		const tree = treeOf(containerEl);
 
 		drag(rowByTitle(containerEl, 'Epic A'), rowByTitle(containerEl, 'Epic B'), 'inside');
 		await flush();
 		// Every key the batch wrote is hand-edited afterwards, so nothing can restore.
-		Object.assign(vault.fm('Epic A.md'), { parent: '[[Elsewhere]]', order: 1, type: 'Custom' });
+		Object.assign(vault.fm('Epic A.md'), { parent: '[[Elsewhere]]', order: 1 });
 
 		key(tree, 'z', { ctrlKey: true });
 		await flush();
-		expect(Notice.messages).toContain('Undo: 3 values were edited since and kept.');
-		expect(vault.fm('Epic A.md')).toEqual({ parent: '[[Elsewhere]]', order: 1, type: 'Custom' });
+		expect(Notice.messages).toContain('Undo: 2 values were edited since and kept.');
+		expect(vault.fm('Epic A.md')).toEqual({ type: 'Epic', parent: '[[Elsewhere]]', order: 1 });
 
 		// The batch is spent — conflicts stay conflicted — so it is not offered again.
 		expect(undoButton(containerEl).disabled).toBe(true);

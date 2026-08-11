@@ -5,9 +5,6 @@ import { defaultSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
 
 const settings = defaultSettings();
-/** Re-typing on move is opt-in; the cascade tests below are about what it does. */
-const autoTyped = { ...settings, autoType: true };
-
 describe('computeInitWrites with parents outside the filter', () => {
 	it('backfills the matches but never the context ancestors', () => {
 		const vault = new FakeVault();
@@ -51,7 +48,7 @@ describe('computeDropWrites in a group holding an outside-filter row', () => {
 		expect(epic.children[1].order).toBeNull();
 
 		const siblings = epic.children;
-		const writes = computeDropWrites(mover, { parent: epic, siblings, insertIndex: siblings.length }, settings);
+		const writes = computeDropWrites(mover, { parent: epic, siblings, insertIndex: siblings.length });
 
 		expect(writes.map((w) => w.file.path)).toEqual(['Mover.md']);
 		// Past the highest order it can see, rather than renumbering the group
@@ -72,14 +69,12 @@ describe('computeDropWrites in a group holding an outside-filter row', () => {
 		// Appending after the unranked A forces the renumbering path
 		const writes = computeDropWrites(
 			mover,
-			{ parent: epic, siblings: epic.children, insertIndex: epic.children.length },
-			settings,
-		);
+			{ parent: epic, siblings: epic.children, insertIndex: epic.children.length });
 		expect(writes.map((w) => w.file.path).sort()).toEqual(['A.md', 'B.md', 'Mover.md']);
 	});
 });
 
-describe('auto-type cascade across a context row', () => {
+describe('a context row below a result', () => {
 	/** The Base returns the Epic and the PBI, but not the Feature between them. */
 	function splitChain() {
 		const vault = new FakeVault();
@@ -88,7 +83,7 @@ describe('auto-type cascade across a context row', () => {
 		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature' });
 		vault.addFile('Other.md', { frontmatter: { type: 'Epic', order: 20 } });
 		const filtered = vault.entries().filter((e) => e.file.path !== 'Feature.md');
-		const model = buildModel(vault.app, filtered, autoTyped);
+		const model = buildModel(vault.app, filtered, settings);
 		return {
 			model,
 			epic: model.byPath.get('Epic.md') as BacklogItem,
@@ -103,29 +98,16 @@ describe('auto-type cascade across a context row', () => {
 		expect(feature.parent).toBe(epic);
 	});
 
-	it('stops the cascade at the context row instead of retyping past it', () => {
+	it('drops the whole subtree by moving one note, writing to nothing below it', () => {
+		// A reparent is one write however deep the subtree hangs, and the context row
+		// between the two results is not a target of it — which is what makes a filter
+		// that splits a chain safe to drag inside.
 		const { epic, other } = splitChain();
 
-		const writes = computeDropWrites(epic, { parent: other, siblings: [], insertIndex: 0 }, autoTyped);
+		const writes = computeDropWrites(epic, { parent: other, siblings: [], insertIndex: 0 });
 
-		// Only the dragged Epic is retyped: writing Feature.md is forbidden, and
-		// retyping PBI.md below it would half-update the ladder.
 		expect(writes.map((w) => w.file.path)).toEqual(['Epic.md']);
-		expect(writes[0].typeName).toBe('Feature');
-	});
-
-	it('still cascades through a branch made only of results', () => {
-		const vault = new FakeVault();
-		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
-		vault.addFile('Feature.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
-		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature' });
-		vault.addFile('Other.md', { frontmatter: { type: 'Epic', order: 20 } });
-		const model = buildModel(vault.app, vault.entries(), autoTyped);
-		const epic = model.byPath.get('Epic.md') as BacklogItem;
-		const other = model.byPath.get('Other.md') as BacklogItem;
-
-		const writes = computeDropWrites(epic, { parent: other, siblings: [], insertIndex: 0 }, autoTyped);
-		expect(writes.map((w) => w.file.path).sort()).toEqual(['Epic.md', 'Feature.md', 'PBI.md']);
+		expect(writes[0].typeName).toBeUndefined();
 	});
 });
 
@@ -140,7 +122,7 @@ describe('backfill ranking beside a context sibling', () => {
 		vault.addFile('Deep.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'Context' });
 		vault.addFile('Unranked.md', { frontmatter: { type: 'PBI' }, parentLink: 'Epic' });
 		const filtered = vault.entries().filter((e) => e.file.path !== 'Context.md');
-		return buildModel(vault.app, filtered, autoTyped);
+		return buildModel(vault.app, filtered, settings);
 	}
 
 	it('keeps a backfilled item where it already renders, below the context row', () => {
@@ -150,7 +132,7 @@ describe('backfill ranking beside a context sibling', () => {
 		expect(epic.children.map((c) => c.title)).toEqual(['Ranked', 'Context', 'Unranked']);
 		expect(model.byPath.get('Context.md')?.outsideFilter).toBe(true);
 
-		const writes = computeInitWrites(model, autoTyped);
+		const writes = computeInitWrites(model, settings);
 
 		// One spacing past everything visible: filling in a blank must not reorder
 		// the tree. Ignoring the context row's 1000 would rank it 20 and move it up.

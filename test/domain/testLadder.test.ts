@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { buildModel } from '../../src/domain/model';
-import { childTypeChoices, displayType, inCatalog, keepsTypeOnMove, ladderFor } from '../../src/domain/itemTypes';
-import { computeInitWrites, computeTypeChanges } from '../../src/domain/writePlan';
+import { childTypeChoices, displayType, inCatalog, keepsProjection, ladderFor } from '../../src/domain/itemTypes';
+import { computeInitWrites } from '../../src/domain/writePlan';
 import { defaultSettings } from '../../src/domain/settings';
-import { ALL_TYPES, EXTRA_TYPES, LEVELS, TEST_LEVELS } from '../../src/domain/typeVocabulary';
+import { EXTRA_TYPES, LEVELS, TEST_LEVELS } from '../../src/domain/typeVocabulary';
 import { ownWorkflowReading, stateKeyFor } from '../../src/domain/board';
 import { settingsWith } from '../helpers/settings';
 import { FakeVault } from '../helpers/vault';
@@ -185,41 +185,30 @@ describe('the rollup stops at a test', () => {
 	});
 });
 
-describe('the type cascade crosses no ladder', () => {
-	const autoTyped = settingsWith({ autoType: true });
-
-	it('leaves a Test case dropped on a PBI alone, at the root of the move and inside it', () => {
+describe('a move crosses no ladder', () => {
+	it('leaves the type of a row hand-nested on the other ladder alone', () => {
+		// Nothing rewrites a type on a move at all now, so the two advisory mis-drags stay
+		// exactly what the user made them: a legal row in an odd place, drawn as a root of
+		// its own projection rather than swept into the other one.
 		const { get } = fixture();
-		const { typeField, cascade } = computeTypeChanges(get('Stray case'), get('A PBI'), autoTyped, true);
-		expect(typeField).toBeUndefined();
-		expect(cascade).toEqual([]);
+		expect(get('Stray case').typeName).toBe('Test case');
+		expect(inCatalog(get('Stray case'))).toBe(true);
+		expect(get('Stray PBI').typeName).toBe('PBI');
+		expect(inCatalog(get('Stray PBI'))).toBe(false);
 	});
 
-	it('leaves a PBI dropped under a suite alone, the same way', () => {
+	it('withholds the reparenting move for the two rows that read their ladder from a parent', () => {
+		// The rule the cascade's no-crossing guard used to state a second time, and the one
+		// place it lives now: `keepsProjection`, asked by every reparenting gate. A `Task`
+		// and a typeless note chain their ladder from where they hang, so those two — and
+		// only those two — would change projection by being moved.
 		const { get } = fixture();
-		const { typeField, cascade } = computeTypeChanges(get('Stray PBI'), get('Suite'), autoTyped, true);
-		expect(typeField).toBeUndefined();
-		expect(cascade).toEqual([]);
-	});
-
-	it('still retypes within one ladder, so the exemption is not a blanket one', () => {
-		const { get } = fixture();
-		// The guard against a fix that stops the cascade everywhere: moving a `Test case`
-		// under another suite is a move on ONE ladder, and the rung rule still applies.
-		const onto = computeTypeChanges(get('Stray case'), get('Suite'), autoTyped, true);
-		expect(onto.typeField).toBeUndefined(); // already the right rung — a no-op, not a refusal
-		const promoted = computeTypeChanges(get('Case'), null, autoTyped, true);
-		expect(promoted.typeField).toBe('Test suite');
-	});
-
-	it('names the types a move leaves alone from the predicate the cascade asks', () => {
-		// The generated README derives this list rather than naming `EXTRA_TYPES`, which
-		// was already wrong about a marker and would be wrong again at the next type that
-		// is neither a rung nor an extra.
-		expect(ALL_TYPES.filter(keepsTypeOnMove)).toEqual([...EXTRA_TYPES, 'Milestone']);
-		// The test types are deliberately NOT here: inside their own ladder they ARE
-		// rewritten by position. What protects them from the plan is the crossing rule.
-		for (const type of TEST_LEVELS) expect(keepsTypeOnMove(type)).toBe(false);
+		expect(keepsProjection(get('Test task'), get('A PBI'))).toBe(false);
+		expect(keepsProjection(get('Untyped under suite'), get('Feature'))).toBe(false);
+		// Every other name answers from itself and can never change ladder by moving, which
+		// is what makes the mis-drags above possible in the first place.
+		expect(keepsProjection(get('Stray case'), get('A PBI'))).toBe(true);
+		expect(keepsProjection(get('Stray PBI'), get('Case'))).toBe(true);
 	});
 });
 

@@ -54,9 +54,10 @@ the surface every other section then lands in.
   beside it.
 - **3b — another type is added later.** The section is generated from `ALL_TYPES`, so a
   type without an explanation fails a test rather than shipping as a gap.
-- **4a — `Assign item type when moving` is on.** The rule is stated with its default (off)
-  and its effect when enabled, so the section describes the view in front of the reader
-  rather than the one the option would make.
+- **4a — the reader wants to know what a move does to a type.** It does nothing: the
+  section says so flatly, because a qualifier here would describe a view the reader does
+  not have. An option that made moves re-type existed until 2026-08-11 and this extension
+  used to be about stating its default correctly.
 - **4b — the user drags a Task under an Epic.** Nothing refuses it. The section says the
   type rules are advisory, and scopes that to type compatibility: other drops *are* refused
   (onto an item's own descendant, into a group with no shared ranking) and those belong to

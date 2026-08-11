@@ -529,30 +529,16 @@ describe('backlogReadmeContent', () => {
 		expect(folderMode).toContain('2. The folder configured for the type');
 	});
 
-	it('says what a move does to the type, per this view s setting', () => {
-		expect(readme(settingsWith({ autoType: false }), [])).toContain('never rewrites its type');
-		// The rules bullet names the trigger and sends the reader to the section that
-		// qualifies it, rather than restating it: `computeTypeChanges` rewrites nothing on a
-		// reorder and nothing on an extra type, so a second "a move re-types what it moves"
-		// here is a sentence that is already wrong twice.
-		const auto = readme(settingsWith({ autoType: true }), []);
-		expect(auto).toContain('A move into a new parent is the one thing that rewrites a type');
-		expect(auto).toContain('**The item types** above says which moves, and which types it leaves alone');
-		expect(auto).toContain('## The item types');
-		expect(auto).not.toContain('re-type what it moves');
-	});
-
-	it('qualifies the custom-type promise where a move rewrites it', () => {
-		// computeTypeChanges exempts only DECLARED extra types, so with types assigned on a
-		// move a dragged `Spike` is rewritten — the descendants keep theirs. An unqualified
-		// promise is wrong in exactly the configuration that opts into rewriting.
-		expect(readme(settingsWith({ autoType: false }))).toContain('Nothing rewrites it into one of these');
-		const auto = readme(settingsWith({ autoType: true }));
-		// Not every move: only one into a NEW parent, and never an extra type.
-		expect(auto).toContain('rewrites what you drag into a **new parent**');
-		expect(auto).toContain('Reordering among siblings rewrites nothing');
-		expect(auto).toContain('`Issue`, `Bug`, `Idea`, `Deliverable` and `Milestone` keep their type wherever they land');
-		expect(auto).toContain('deeper in the subtree you dragged is left alone');
+	it('says a move never rewrites a type, and says it unconditionally', () => {
+		// The generated README is a promise made to a vault the plugin may never be opened
+		// in again, so it may not carry a qualifier that no configuration can now produce.
+		// Both places state it: the rules bullet, and the type table where a custom name is
+		// the thing at risk.
+		const generated = readme(settingsWith({}), []);
+		expect(generated).toContain('Moving a note never rewrites its type');
+		expect(generated).toContain('Nothing rewrites it into one of these');
+		expect(generated).not.toContain('rewrites what you drag');
+		expect(generated).not.toContain('keep their type wherever they land');
 	});
 
 	it('does not promise a propertyless note stays out of a folder-inferred tree', () => {

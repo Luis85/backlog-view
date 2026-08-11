@@ -130,14 +130,13 @@ the view options can rename.
   computes and never stores ([[Board order is derived not stored]]). The ranking rule is
   stated with its tie-break, and the tie-break is a **view** setting: siblings sharing a
   number fall back to the order the base returned them in, not to anything in the notes.
-- **3e — the reader writes a type of their own.** It is kept and shown verbatim — with
-  the one exception this view can make, stated as narrowly as the code holds it: assigning
-  types on a move rewrites the item *dragged into a new parent*, a custom name included,
-  while a reorder among siblings rewrites nothing, an `Issue` or a `Bug` keeps its type
-  wherever it lands, and the same custom name deeper in the moved subtree survives
-  (`computeTypeChanges` returns early unless the parent changed, and exempts declared
-  extra types). An unqualified
-  promise is wrong in precisely the configuration that opted into rewriting. A custom type
+- **3e — the reader writes a type of their own.** It is kept and shown verbatim, and the
+  document says so without a qualifier: *nothing rewrites it into one of these*. That
+  sentence carried an exception until 2026-08-11 — an opt-in cascade rewrote the item
+  dragged into a new parent, custom name included — and the exception is what made this
+  extension delicate, since a generated document is a promise made to a vault the plugin
+  may never be opened in again. With the cascade gone the promise is unconditional, which
+  is the only shape a generated one can safely take. A custom type
   does **not** enrol a note that has no parent either: the scope rule seeds only on the types
   this plugin ships (`ALL_TYPES`), so a custom-typed root written to the letter of a
   contract that said "declare a type" would be dropped by the very configuration the

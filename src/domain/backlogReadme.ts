@@ -1,7 +1,7 @@
 import { BacklogSettings, stateMenuValues } from './settings';
 import { resolvedDeliverableStateKey, resolvedTestStateKey } from './optionalProperties';
 import { ALL_TYPES, EXTRA_TYPES, LEVELS, MARKER_TYPES, TEST_LEVELS } from './typeVocabulary';
-import { childTypeChoices, EXTRA_TYPE_RANK, folderForType, keepsTypeOnMove, LadderPosition, ladderFor } from './itemTypes';
+import { childTypeChoices, EXTRA_TYPE_RANK, folderForType, LadderPosition, ladderFor } from './itemTypes';
 import { readmeMarker } from './readmeMarker';
 import { stampRows, stampRule, startedStates } from './readmeStamps';
 import { andList, cell, code, list, yamlScalar } from './readmeText';
@@ -135,16 +135,7 @@ function typeSection(settings: BacklogSettings): string[] {
 		'',
 		'Write the type exactly as spelled above; matching is case-insensitive but the ' +
 			'spelling is the vocabulary. A type this plugin does not ship is kept as written and ' +
-			'shown as itself.' +
-			(settings.autoType
-				? ' With one exception, and it belongs to this view: assigning types on a move ' +
-					`rewrites what you drag into a **new parent**, a name of your own included. ` +
-					`Reordering among siblings rewrites nothing, ` +
-					`${andList(ALL_TYPES.filter(keepsTypeOnMove).map(code))} ` +
-					'keep their type wherever they land, a move between the two ladders above rewrites ' +
-					'nothing in either direction, and the same custom name deeper in the subtree you ' +
-					'dragged is left alone.'
-				: ' Nothing rewrites it into one of these.'),
+			'shown as itself. Nothing rewrites it into one of these.',
 	];
 }
 
@@ -510,11 +501,7 @@ function rulesSection(settings: BacklogSettings): string[] {
 			` The one move the view withholds for a **type** reason is a move between the two ladders above, and only for the two notes that read ` +
 			`their ladder from where they hang: a ${code(LEVELS[LEVELS.length - 1])}, the rung both ladders share, and a note with ` +
 			`no ${code('type')} at all. Either would change ladder by being moved, and the row would leave the screen it was moved on, so the move is not offered. Every other type keeps its ladder wherever it lands.` +
-			// Which moves rewrite a type, and which types are exempt, is stated once — under
-			// the type table, where the vocabulary it qualifies is. Said again here it would
-			// be a second sentence to keep true, and this is the bullet that would drift:
-			// "a move re-types what it moves" is wrong for a reorder and wrong for a Bug.
-			`${settings.autoType ? ` A move into a new parent is the one thing that rewrites a type — **${TYPES_HEADING}** above says which moves, and which types it leaves alone.` : ' Moving a note never rewrites its type.'}`,
+			' Moving a note never rewrites its type.',
 		'- **Only the properties above are written.** Prose, headings and any other frontmatter ' +
 			'are left alone.',
 		'- **Levels, progress and board position are derived, never stored.** Do not write them ' +

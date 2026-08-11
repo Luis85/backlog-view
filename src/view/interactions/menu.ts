@@ -11,7 +11,6 @@ import {
 	computeDeliverableStateWrites,
 	computeStateWrites,
 	computeTestStateWrites,
-	computeTypeChanges,
 	ItemWrite,
 } from '../../domain/writePlan';
 import { addAssigneeItems, addRiskItems } from './labels';
@@ -177,9 +176,9 @@ function addParentLinkSection(host: BacklogViewHost, menu: Menu, item: BacklogIt
 	// Both entries reparent without producing a `DropTarget`: deleting the key hands the
 	// note to folder inference, so in folder mode the landing place is a real parent and
 	// the rule every drop and outdent keeps applies here too — a move may not change which
-	// projection draws the row. Computed ONCE and handed to the writes below, so what was
-	// offered and what is written cannot disagree about where the note lands. Outside
-	// folder mode there is nothing to withhold: the note becomes a root, which is the
+	// projection draws the row. The landing place is what the gate is asked about; the write
+	// itself names no parent, since deleting the key is the whole of what either entry does.
+	// Outside folder mode there is nothing to withhold: the note becomes a root, which is the
 	// ladder an unresolved orphan is already answering.
 	//
 	// The cost is deliberate: a stale link on a note inside a `Test suite`'s folder now has
@@ -197,7 +196,7 @@ function addParentLinkSection(host: BacklogViewHost, menu: Menu, item: BacklogIt
 			mi
 				.setTitle('Clear parent link')
 				.setIcon('unlink')
-				.onClick(() => void host.applySafely(removeParentWrites(host, item, landing))),
+				.onClick(() => void host.applySafely([{ file: item.file, removeParentKey: true }])),
 		);
 	} else if (host.settings.folderHierarchy && (item.hasParentValue || item.explicitRoot)) {
 		// A link override or a top-level pin is hiding the folder position;
@@ -206,23 +205,9 @@ function addParentLinkSection(host: BacklogViewHost, menu: Menu, item: BacklogIt
 			mi
 				.setTitle('Use folder position')
 				.setIcon('folder')
-				.onClick(() => void host.applySafely(removeParentWrites(host, item, landing))),
+				.onClick(() => void host.applySafely([{ file: item.file, removeParentKey: true }])),
 		);
 	}
-}
-
-/**
- * Removing the parent property re-homes the item (folder position or top
- * level); with autoType on it must retype like any other reparenting move.
- */
-function removeParentWrites(host: BacklogViewHost, item: BacklogItem, landingParent: BacklogItem | null): ItemWrite[] {
-	const writes: ItemWrite[] = [{ file: item.file, removeParentKey: true }];
-	if (!host.settings.autoType) return writes;
-
-	const { typeField, cascade } = computeTypeChanges(item, landingParent, host.settings, true);
-	if (typeField !== undefined) writes[0].typeName = typeField;
-	writes.push(...cascade);
-	return writes;
 }
 
 function addMoveSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {

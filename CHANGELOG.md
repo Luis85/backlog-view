@@ -11,6 +11,18 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+### Removed
+
+- **Assign item type when moving is gone, and a move now never rewrites a note's type.**
+  The option re-typed a whole moved subtree to match its new position. It was off by
+  default, it was the only thing in the plugin that changed a `type` you had written, and
+  a review found one of its safety guards had nothing checking it — losing that guard let
+  an unrelated drag turn a hand-nested `Test suite` into plan work and drop it out of the
+  test catalog. Removing the feature removes that risk entirely. Dragging, indenting,
+  outdenting and clearing a parent link all write the parent and the rank and nothing
+  else; **Set type** is how you change a type. If an existing base still has the setting
+  saved, it is simply ignored — nothing to migrate and nothing to clean up.
+
 ### Changed
 
 - **Dependencies work in a base that has never named the property.** The bar connector and

@@ -176,9 +176,11 @@ above is a change to it, not a replacement for it.
 ### Evidence
 
 - One gesture can rewrite many notes: `renumberWrites` produces a write per sibling
-  when order gaps are spent, the `autoType` cascade retypes every explicitly-typed
-  descendant of a moved subtree, and the ✨ backfill (`computeInitWrites`) touches
-  every note missing `type` or `order` — over a real backlog, hundreds of files.
+  when order gaps are spent, and the ✨ backfill (`computeInitWrites`) touches
+  every note missing `type` or `order` — over a real backlog, hundreds of files. A third
+  case counted here when this was written — a re-typing cascade down a moved subtree —
+  was removed on 2026-08-11, and the two that remain are why the machinery still looks
+  as it does.
 - None of it could be taken back. `processFrontMatter` writes bypass the editor's undo
   stack, and File Recovery restores one note at a time — reconstructing a thirty-note
   renumber by hand is not a recovery path.

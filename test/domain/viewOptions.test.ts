@@ -38,7 +38,6 @@ describe('getViewOptions', () => {
 				'typeProperty',
 				'hierarchyOnly',
 				'inferFolderHierarchy',
-				'autoAssignType',
 				'stateProperty',
 				'doneValues',
 				'homeFolder',

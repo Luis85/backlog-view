@@ -52,12 +52,10 @@ describe('resolveSettings', () => {
 	it('reads toggles and normalizes the home folder', () => {
 		const settings = resolveSettings(
 			fakeConfig({
-				autoAssignType: true,
 				showCounts: false,
 				homeFolder: '/Backlog/Items/',
 			}),
 		);
-		expect(settings.autoType).toBe(true);
 		expect(settings.showCounts).toBe(false);
 		expect(settings.homeFolder).toBe('Backlog/Items');
 	});
@@ -79,13 +77,6 @@ describe('resolveSettings', () => {
 		// spelled as a folder that does not exist, which would be created as one.
 		expect(resolveSettings(fakeConfig({ homeFolder: '\\\\' })).homeFolder).toBe('');
 		expect(resolveSettings(fakeConfig({ homeFolder: '   ' })).homeFolder).toBe('');
-	});
-
-	it('leaves re-typing on move switched off unless it is asked for', () => {
-		// A move is a move, not a re-classification. The option is for people who want
-		// the ladder enforced on every drag, and it waits to be asked.
-		expect(defaultSettings().autoType).toBe(false);
-		expect(resolveSettings(fakeConfig()).autoType).toBe(false);
 	});
 
 	it('scopes the view to the hierarchy unless the toggle is turned off', () => {

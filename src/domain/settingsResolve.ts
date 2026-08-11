@@ -269,7 +269,6 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		hierarchyOnly: bool('hierarchyOnly', fallback.hierarchyOnly),
 		showOutsideParents: bool('showOutsideParents', fallback.showOutsideParents),
 		folderHierarchy: bool('inferFolderHierarchy', fallback.folderHierarchy),
-		autoType: bool('autoAssignType', fallback.autoType),
 		showCounts: bool('showCounts', fallback.showCounts),
 		...folders,
 		// UI state, not configuration: the view overwrites this with the stored pick.

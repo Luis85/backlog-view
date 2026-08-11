@@ -55,18 +55,19 @@ describe('drag and drop', () => {
 		expect(vault.fm('Epic B.md')['parent']).toBeUndefined();
 	});
 
-	it('re-parents and re-types when dropping into a row', async () => {
+	it('re-parents without re-typing when dropping into a row', async () => {
 		const vault = fixture();
-		// Re-typing on move is opt-in; this test is about what it does when asked for.
-		const { containerEl } = makeView(vault, { autoAssignType: true });
+		const { containerEl } = makeView(vault);
 
 		drag(rowByTitle(containerEl, 'Epic A'), rowByTitle(containerEl, 'Feature B2'), 'inside');
 		await flush();
 
 		const fm = vault.fm('Epic A.md');
 		expect(fm['parent']).toBe('[[Feature B2]]');
-		expect(fm['type']).toBe('PBI');
 		expect(fm['order']).toBe(10);
+		// An Epic two rungs below where the ladder would put it, and left as one: the drop
+		// writes the parent and the rank, and a type is the note's own statement.
+		expect(fm['type']).toBe('Epic');
 	});
 
 	it('refuses to drop an ancestor into its own subtree', async () => {

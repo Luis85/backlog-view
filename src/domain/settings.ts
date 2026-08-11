@@ -32,7 +32,6 @@ export interface BacklogSettings extends ItemHandling {
 	showOutsideParents: boolean;
 	/** Parent notes are inferred from folder notes when no explicit parent link is set. */
 	folderHierarchy: boolean;
-	autoType: boolean;
 	showCounts: boolean;
 	/**
 	 * Where new items go when their type has no folder of its own — the one general
@@ -226,7 +225,6 @@ export function defaultSettings(): BacklogSettings {
 		hierarchyOnly: true,
 		showOutsideParents: true,
 		folderHierarchy: false,
-		autoType: false,
 		showCounts: true,
 		homeFolder: DEFAULT_HOME_FOLDER,
 		typeFolders: nameTable(ALL_TYPES, (t) => defaultTypeFolder(t) || null),

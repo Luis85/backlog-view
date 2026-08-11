@@ -1,7 +1,7 @@
 import { TFile } from 'obsidian';
 import { DropTarget } from './dropTargets';
 import { BacklogItem, BacklogModel } from './model';
-import { childLevelIndex, EXTRA_TYPE_RANK, isExtraType, isMarkerType, nextLevelIndex, PlacementEnd } from './itemTypes';
+import { childLevelIndex, PlacementEnd } from './itemTypes';
 import { readDate, sameValue } from './noteFields';
 import { hasHorizonAxis } from './roadmap';
 import { stateKeyFor } from './board';
@@ -187,29 +187,22 @@ export interface AxisWrite {
  * Uses the gap between neighbor orders when possible; falls back to renumbering
  * the whole sibling group when orders are missing or too tightly packed.
  */
-export function computeDropWrites(
-	dragged: BacklogItem,
-	target: DropTarget,
-	settings: BacklogSettings,
-): ItemWrite[] {
+export function computeDropWrites(dragged: BacklogItem, target: DropTarget): ItemWrite[] {
 	const { parent, siblings, insertIndex } = target;
 	const parentField = computeParentField(dragged, parent);
-	const parentChanged = parentField !== undefined;
-	const { typeField, cascade } = computeTypeChanges(dragged, parent, settings, parentChanged);
 
 	const order = computeInsertOrder(siblings, insertIndex);
 	if (order !== null) {
-		return [{ file: dragged.file, parent: parentField, order, typeName: typeField }, ...cascade];
+		return [{ file: dragged.file, parent: parentField, order }];
 	}
 	// Renumbering rewrites every sibling, and the view never writes to a note the
 	// Base excluded. Placing the item past the highest order we can see keeps the
 	// drop working while touching only the note being moved. Callers refuse the
 	// *positional* drops in such a group, so landing last is what was asked for.
 	if (siblings.some((s) => s.outsideFilter)) {
-		const order = afterHighestKnown(siblings);
-		return [{ file: dragged.file, parent: parentField, order, typeName: typeField }, ...cascade];
+		return [{ file: dragged.file, parent: parentField, order: afterHighestKnown(siblings) }];
 	}
-	return [...renumberWrites(dragged, siblings, insertIndex, { parentField, typeField }), ...cascade];
+	return renumberWrites(dragged, siblings, insertIndex, parentField);
 }
 
 /** One spacing beyond the highest order in the group, ignoring siblings that have none. */
@@ -231,121 +224,6 @@ function computeParentField(dragged: BacklogItem, parent: BacklogItem | null): T
 	const staleRootLink = parent === null && dragged.parent === null && dragged.hasParentValue;
 	const parentChanged = oldParentPath !== newParentPath || staleRootLink;
 	return parentChanged ? (parent ? parent.file : null) : undefined;
-}
-
-/**
- * With autoType, the dragged item is retyped for its new slot and explicitly
- * typed descendants follow, so a subtree move cannot leave inconsistent
- * hierarchy metadata. Untyped descendants need no write (their level is
- * implied from the parent chain) and custom types outside the configured
- * ladder are deliberate — both are left alone. Exported so parent-link
- * removal ("Use folder position") retypes exactly like a drop would.
- */
-export function computeTypeChanges(
-	dragged: BacklogItem,
-	parent: BacklogItem | null,
-	settings: BacklogSettings,
-	parentChanged: boolean,
-): { typeField?: string; cascade: ItemWrite[] } {
-	const cascade: ItemWrite[] = [];
-	if (!parentChanged || !settings.autoType) return { cascade };
-
-	/**
-	 * Where the cascade STOPS. A marker occupies no rung, so nothing beneath one can be
-	 * ranked from it, and the marker itself has no position to be retyped by — the same
-	 * shape, and the same reason, as a row the Base excluded: where this walk cannot say
-	 * what a rung is, it stops rather than guesses. Stopping at the dragged item covers
-	 * both halves at once — the marker keeps its type, and so does anything hand-nested
-	 * beneath it — which is why `rankOf` below never meets one and stays a question about
-	 * extra types alone.
-	 *
-	 * It must NOT reach the ladder: `Epic`, `Feature`, `PBI` and `Task` are declared *as
-	 * rungs*, and exempting them would undo `Assigning type on a move` wholesale.
-	 */
-	const stopsAt = (item: BacklogItem): boolean => item.outsideFilter || isMarkerType(item.typeName);
-	if (stopsAt(dragged)) return { cascade };
-	// The same rule's third position: a marker as the DESTINATION hands out no rung
-	// either. `childLevelIndex` cannot tell "no rung" from "top level" — a marker's
-	// `effectiveLevelIndex` falls through the unrecognised-type branch and reads 0,
-	// same as no parent at all — so a walk that did not stop here would retype the
-	// dragged item and its whole subtree by a rank the marker does not have. This is
-	// the dragged item and every node of the walk applied to the one input `stopsAt`
-	// was never asked about: `parent` itself.
-	if (parent !== null && isMarkerType(parent.typeName)) return { cascade };
-
-	/**
-	 * The rung an item occupies after the move. A declared extra type carries its own,
-	 * pinned — that is what makes a Bug's children Tasks under an Epic as under a PBI —
-	 * and everything else takes the rung its position gives it.
-	 *
-	 * This applies at EVERY node, not just the dragged one. An extra type nested inside
-	 * a moved subtree is skipped by the retyping below (it has no `levelIndex`), but the
-	 * walk still has to descend from its rank rather than from the position it inherited,
-	 * or moving a Feature that contains a Bug rewrites that Bug's Tasks to PBIs — the
-	 * item left alone, its children silently corrupted.
-	 */
-	const extraRank = EXTRA_TYPE_RANK;
-	const rankOf = (item: BacklogItem, positional: number): number =>
-		isExtraType(item.typeName) ? extraRank : positional;
-
-	// The ladder the DESTINATION hands out — `LEVELS` under a plan row or no parent,
-	// `TEST_LEVELS` under a test. The cascade descends exactly one ladder, and this is it.
-	//
-	// **It crosses neither way, at the root of a moved subtree or nested inside one.** A
-	// `Test case` dropped onto a `PBI` keeps its type and a `PBI` dropped under a suite
-	// keeps its, which is the same answer the branch protecting a dragged `Bug` already
-	// gives for the same reason: this walk assigns the child type of the RUNG an item
-	// landed under, and a rung of the other ladder is not one of those. Nothing refuses the
-	// drop — the ladder has always guided rather than refused — so what the user gets is a
-	// legal item in an odd place, still drawn as a root of its own projection.
-	// A move to the TOP LEVEL keeps the item on the ladder it is already on, because the
-	// top level is not one place: it is the plan's roots and the catalog's at once, and
-	// which one a row lands in is decided by what the row IS. Reading `LEVELS` here
-	// instead would leave a `Test case` dragged to the top of the catalog untouched —
-	// autoType silently doing nothing on the one projection where it had something to say.
-	const destLadder = parent?.ladder ?? dragged.ladder;
-	if (dragged.ladder !== destLadder) return { cascade };
-
-	const newBaseIdx = rankOf(dragged, childLevelIndex(parent, destLadder));
-	let typeField: string | undefined;
-	// An extra type is never re-typed by position: dropping a Bug under an Epic leaves a Bug.
-	if (!isExtraType(dragged.typeName)) {
-		const implied = destLadder[newBaseIdx];
-		if (dragged.typeName === null || dragged.typeName.toLowerCase() !== implied.toLowerCase()) {
-			typeField = implied;
-		}
-	}
-
-	// Chained down the parent levels, never derived from depth: each child sits one
-	// rung below its parent's NEW level. That is the same walk `computeLevel` runs
-	// once these writes land, so the plan and the model it produces cannot disagree —
-	// and it holds under focus mode, where visual depth is re-rooted.
-	const walk = (node: BacklogItem, nodeLevel: number) => {
-		const childLevel = nextLevelIndex(nodeLevel, destLadder);
-		for (const child of node.children) {
-			// The cascade stops at a note the Base excluded — a filter can leave one
-			// *between* two results (Epic and PBI returned, the Feature between them
-			// not) — and at a marker, which has no rung for the branch below to descend
-			// from. We may not retype either, and retyping only the levels below one
-			// would leave a worse ladder than leaving that branch as it stands.
-			// The nested half of the no-crossing rule: a test hand-nested inside a moved plan
-			// subtree (or the reverse) is skipped WHOLE, exactly as a marker and a context
-			// row are — this walk cannot say what a rung is on a ladder it is not descending.
-			if (stopsAt(child) || child.ladder !== destLadder) continue;
-			if (child.typeName !== null && child.levelIndex !== -1) {
-				const targetLevel = destLadder[childLevel];
-				if (child.typeName.toLowerCase() !== targetLevel.toLowerCase()) {
-					cascade.push({ file: child.file, typeName: targetLevel });
-				}
-			}
-			// A custom type outside the ladder is left alone but still occupies this
-			// rung, exactly as `computeLevel` treats an unknown type — so its own
-			// children carry on from here rather than restarting.
-			walk(child, rankOf(child, childLevel));
-		}
-	};
-	walk(dragged, newBaseIdx);
-	return { typeField, cascade };
 }
 
 /**
@@ -526,7 +404,7 @@ function renumberWrites(
 	dragged: BacklogItem,
 	siblings: BacklogItem[],
 	insertIndex: number,
-	fields: { parentField: TFile | null | undefined; typeField: string | undefined },
+	parentField: TFile | null | undefined,
 ): ItemWrite[] {
 	const sequence = [...siblings];
 	sequence.splice(insertIndex, 0, dragged);
@@ -534,7 +412,7 @@ function renumberWrites(
 	sequence.forEach((item, i) => {
 		const slot = (i + 1) * ORDER_SPACING;
 		if (item === dragged) {
-			writes.push({ file: item.file, parent: fields.parentField, order: slot, typeName: fields.typeField });
+			writes.push({ file: item.file, parent: parentField, order: slot });
 		} else if (item.order !== slot) {
 			writes.push({ file: item.file, order: slot });
 		}

@@ -36,13 +36,6 @@ export const SETUP: ManualSection = {
 			keys: ['parentProperty', 'orderProperty', 'typeProperty', 'hierarchyOnly', 'showOutsideParents', 'inferFolderHierarchy'],
 		},
 		{
-			term: 'Assign item type when moving',
-			text:
-				"Off by default. On, a move that changes an item's parent retypes the ladder levels " +
-				'in its subtree to match — see "Moving and ranking" for exactly what it skips.',
-			keys: ['autoAssignType'],
-		},
-		{
 			term: 'State, tags, assignee and the stamps a state carries',
 			text:
 				'The properties the state chip, the tag column, the assignee chip, and a state ' +

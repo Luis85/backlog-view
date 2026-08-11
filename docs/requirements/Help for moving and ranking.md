@@ -42,8 +42,7 @@ lands, the three ways to make the same move, and where `order` comes from.
    indent / outdent.
 4. It explains `order`: a number ranking siblings, maintained by the view, with unranked
    items sorting last in whatever the Base's own sort produces.
-5. It closes with what a move does *not* do: re-type anything, unless
-   `Assign item type when moving` is on.
+5. It closes with what a move does *not* do: re-type anything, ever.
 
 **Extensions**
 
@@ -67,10 +66,11 @@ lands, the three ways to make the same move, and where `order` comes from.
   reference at the moment someone wants it.
 - **3b — the view is focused on one type.** Indent, outdent and the top-level strip are
   disabled at the top row, for the same reason a between-drop is: no shared ranking.
-- **5a — `Assign item type when moving` is on.** The re-typing is described by what it
-  **skips** — untyped descendants keep no type, a custom type keeps its name, `Issue` and
-  `Bug` keep their pinned rank, and the cascade stops at a context row rather than
-  retyping across a branch the Base excluded.
+- **5a — the reader expects a move to fix a mismatched type.** It does not, and the
+  section says so rather than staying silent: a drop, an indent, an outdent and both
+  parent-link entries write the parent and the rank, and a type is what the note says or
+  what `Set type` wrote. This extension used to describe an opt-in cascade by what it
+  skipped; the cascade was removed on 2026-08-11 ([[Assigning type on a move]]).
 
 ## Acceptance criteria
 
@@ -100,5 +100,6 @@ lands, the three ways to make the same move, and where `order` comes from.
 describes is `src/domain/dropTargets.ts` (the zones and the refusals),
 `src/view/interactions/dragDrop.ts` (the indicator) and
 `src/view/interactions/keyboard.ts` with `src/view/interactions/menu.ts` (the same moves
-without a mouse), plus `src/domain/writePlan.ts` (`computeTypeChanges`, the re-typing
-cascade this section is the one place that states in full).
+without a mouse), plus `src/domain/writePlan.ts` (`computeDropWrites`, which is where the
+section's closing claim — that a move writes the parent and the rank and nothing else —
+is either true or not).

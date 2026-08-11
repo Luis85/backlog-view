@@ -149,14 +149,6 @@ function hierarchyGroup(): BasesAllOptions {
 				displayName: 'Infer hierarchy from folder notes',
 				default: false,
 			},
-			{
-				type: 'toggle',
-				key: 'autoAssignType',
-				displayName: 'Assign item type when moving',
-				// Must match `defaultSettings().autoType`: the toggle showing on while
-				// moves changed nothing would be the UI lying about the behaviour.
-				default: false,
-			},
 		],
 	};
 }

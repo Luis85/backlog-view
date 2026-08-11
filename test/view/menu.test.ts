@@ -82,14 +82,14 @@ describe('context menu', () => {
 
 	it('indents under the previous sibling and moves to the bottom', async () => {
 		const vault = fixture();
-		// Indenting re-types only when re-typing on move is asked for.
-		const { containerEl } = makeView(vault, { autoAssignType: true });
+		const { containerEl } = makeView(vault);
 
 		rowByTitle(containerEl, 'Feature B2').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 		Menu.lastShown?.item('Indent under "Feature B1"')?.click();
 		await flush();
 		expect(vault.fm('Feature B2.md')['parent']).toBe('[[Feature B1]]');
-		expect(vault.fm('Feature B2.md')['type']).toBe('PBI');
+		// Indenting is a move, so the type it declared is the type it keeps.
+		expect(vault.fm('Feature B2.md')['type']).toBe('Feature');
 
 		rowByTitle(containerEl, 'Feature B1').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 		Menu.lastShown?.item('Move to bottom')?.click();
@@ -128,7 +128,7 @@ describe('context menu', () => {
 		expect(Menu.lastShown?.item('Use folder position')).toBeUndefined();
 	});
 
-	it('retypes items handed back to the folder hierarchy', async () => {
+	it('leaves the type alone on an item handed back to the folder hierarchy', async () => {
 		const vault = new FakeVault();
 		vault.addFile('Epics/Alpha/Alpha.md', { frontmatter: { type: 'Epic' } });
 		vault.addFile('Epics/Alpha/Login/Login.md', { frontmatter: { type: 'Feature' } });
@@ -136,23 +136,24 @@ describe('context menu', () => {
 			frontmatter: { type: 'Feature' },
 			parentLink: 'Alpha',
 		});
-		const { containerEl } = makeView(vault, { autoAssignType: true, inferFolderHierarchy: true });
+		const { containerEl } = makeView(vault, { inferFolderHierarchy: true });
 
 		rowByTitle(containerEl, 'Fast path').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 		Menu.lastShown?.item('Use folder position')?.click();
 		await flush();
 
-		// The folder parent is the Feature "Login", so the item becomes a PBI
+		// The folder parent is the Feature "Login", so the item now READS as a PBI — and
+		// that reading is derived. Deleting the key is the whole write.
 		const fm = vault.fm('Epics/Alpha/Login/Fast path/Fast path.md');
 		expect('parent' in fm).toBe(false);
-		expect(fm['type']).toBe('PBI');
+		expect(fm['type']).toBe('Feature');
 	});
 
-	it('retypes an orphan cleared to the top level', async () => {
+	it('leaves the type alone on an orphan cleared to the top level', async () => {
 		const vault = new FakeVault();
 		vault.addFile('Root.md', { frontmatter: { type: 'Epic', order: 10 } });
 		vault.addFile('Orphan.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Missing' });
-		const { containerEl } = makeView(vault, { autoAssignType: true });
+		const { containerEl } = makeView(vault);
 
 		rowByTitle(containerEl, 'Orphan').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 		Menu.lastShown?.item('Clear parent link')?.click();
@@ -160,7 +161,7 @@ describe('context menu', () => {
 
 		const fm = vault.fm('Orphan.md');
 		expect('parent' in fm).toBe(false);
-		expect(fm['type']).toBe('Epic');
+		expect(fm['type']).toBe('Feature');
 	});
 
 	it('opens the context menu from the keyboard', () => {
