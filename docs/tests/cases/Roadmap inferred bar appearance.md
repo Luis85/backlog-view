@@ -1,5 +1,5 @@
 ---
-type: Issue
+type: Test case
 order: 30
 parent: "[[Smoke test the roadmap]]"
 status: Open
@@ -33,6 +33,9 @@ The `due`/`start` dates on `[[Drag from the shelf to schedule]]` and
 check has something to look at, not commitments about when those PBIs will be built. The
 register's own rule is that every note states the evidence it rests on, and two invented
 dates on unbuilt work would otherwise read as promises nobody made.
+
+**Preconditions** — `npm run test-build` has installed the plugin into this repository, and
+the repository is open as a vault with `docs/Product Backlog.base` showing the tree.
 
 ## How to check
 

@@ -1,5 +1,5 @@
 ---
-type: Issue
+type: Test case
 order: 10
 parent: "[[Smoke test the tree]]"
 status: Open
@@ -18,6 +18,9 @@ A verification to run.
 
 `NON_RUNG_STYLE` in `src/view/render/rows.ts` is asserted by class in jsdom, never by
 pixel. The milestone diamond is new this increment and has never been looked at.
+
+**Preconditions** — `npm run test-build` has installed the plugin into this repository, and
+the repository is open as a vault with `docs/Product Backlog.base` showing the tree.
 
 ## How to check
 

@@ -1,5 +1,5 @@
 ---
-type: Issue
+type: Test case
 order: 40
 parent: "[[Smoke test the tree]]"
 status: Open
@@ -19,6 +19,9 @@ A verification to run.
 `view/interactions/keyboard.ts` is exercised in jsdom by synthetic `keydown` events; the
 sighted question — does the moved row stay visibly selected and legible in place — is
 not.
+
+**Preconditions** — `npm run test-build` has installed the plugin into this repository, and
+the repository is open as a vault with `docs/Product Backlog.base` showing the tree.
 
 ## How to check
 

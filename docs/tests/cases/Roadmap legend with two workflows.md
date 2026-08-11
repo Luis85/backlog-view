@@ -1,5 +1,5 @@
 ---
-type: Issue
+type: Test case
 order: 50
 parent: "[[Smoke test the roadmap]]"
 status: Done
@@ -56,6 +56,10 @@ but still does not demonstrate this configuration, because `docs/Product Backlog
 names no `deliverableStateProperty` and register notes carry `status` rather than a
 second workflow's key. Both halves of step 1 and 2 are still a deliberate act — the
 difference is that they are now an act performed on `docs/` rather than beside it.
+
+**Preconditions** — as above, plus a community theme installed and selectable, and the
+two-workflow setup above (Deliverable state property, Deliverable states/done values, and a
+few `Deliverable` notes), since this case is about the colour that only a themed vault shows.
 
 ## How to check
 

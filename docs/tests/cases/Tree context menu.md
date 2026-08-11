@@ -1,5 +1,5 @@
 ---
-type: Issue
+type: Test case
 order: 50
 parent: "[[Smoke test the tree]]"
 status: Open
@@ -19,6 +19,9 @@ A verification to run.
 `view/interactions/menu.ts` is asserted by which items it builds, never by how the
 Obsidian `Menu` actually renders — submenus in particular, since `setSubmenu` is a
 typings gap the code casts around (`src/view/CLAUDE.md`).
+
+**Preconditions** — `npm run test-build` has installed the plugin into this repository, and
+the repository is open as a vault with `docs/Product Backlog.base` showing the tree.
 
 ## How to check
 

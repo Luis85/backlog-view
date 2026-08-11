@@ -1,5 +1,5 @@
 ---
-type: Issue
+type: Test case
 order: 60
 parent: "[[Smoke test the tree]]"
 status: Open
@@ -18,6 +18,9 @@ A verification to run.
 
 Both are toolbar controls whose effect on layout — what actually disappears, and how a
 match is highlighted — is a rendering question jsdom answers by class alone.
+
+**Preconditions** — `npm run test-build` has installed the plugin into this repository, and
+the repository is open as a vault with `docs/Product Backlog.base` showing the tree.
 
 ## How to check
 

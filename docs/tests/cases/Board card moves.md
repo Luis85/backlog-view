@@ -1,5 +1,5 @@
 ---
-type: Issue
+type: Test case
 order: 30
 parent: "[[Smoke test the board]]"
 status: Open
@@ -18,6 +18,9 @@ A verification to run.
 
 `performBoardMove` is the one host method all three inputs share; jsdom drives each
 input and asserts the write, never the drag feel or the menu's rendered submenu.
+
+**Preconditions** — `npm run test-build` has installed the plugin into this repository, and
+the repository is open as a vault with `docs/Product Backlog.base` showing the tree.
 
 ## How to check
 

@@ -1,5 +1,5 @@
 ---
-type: Issue
+type: Test case
 order: 40
 parent: "[[Smoke test the roadmap]]"
 status: Open
@@ -24,6 +24,9 @@ point that matters most is the two-milestones-a-few-weeks-apart case, whose outc
 decides between the three candidate fixes in [[Nearby milestone labels cover each other]].
 No such decision has been recorded, so that question is still entirely open. [[Ship the roadmap epic]] is the first real
 milestone in the register, so it is the first chance to look at any of it.
+
+**Preconditions** — `npm run test-build` has installed the plugin into this repository, and
+the repository is open as a vault with `docs/Product Backlog.base` showing the tree.
 
 ## How to check
 

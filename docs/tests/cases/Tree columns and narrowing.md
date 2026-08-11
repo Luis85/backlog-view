@@ -1,5 +1,5 @@
 ---
-type: Issue
+type: Test case
 order: 20
 parent: "[[Smoke test the tree]]"
 status: Open
@@ -19,6 +19,9 @@ A verification to run.
 `columnFit` computes a threshold from the configured width and count; jsdom can assert
 how many cells it renders but never that the header actually lines up with the cells below
 it, or that the drop reads as graceful rather than jarring.
+
+**Preconditions** — `npm run test-build` has installed the plugin into this repository, and
+the repository is open as a vault with `docs/Product Backlog.base` showing the tree.
 
 ## How to check
 

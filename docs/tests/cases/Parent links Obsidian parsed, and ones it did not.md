@@ -1,5 +1,5 @@
 ---
-type: Issue
+type: Test case
 order: 80
 parent: "[[Smoke test the tree]]"
 status: Done
@@ -30,6 +30,9 @@ produce]] holds the analysis; this note is the ninety seconds that settles it.
 **Settled below**, and the answer is neither of the two this paragraph anticipated — which
 is why the paragraph is left standing rather than rewritten. What a question looked like
 before it was answered is the part a reader cannot reconstruct.
+
+**Preconditions** — `npm run test-build` has installed the plugin into this repository, and
+the repository is open as a vault with `docs/Product Backlog.base` showing the tree.
 
 ## How to check
 

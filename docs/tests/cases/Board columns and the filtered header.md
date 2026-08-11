@@ -1,5 +1,5 @@
 ---
-type: Issue
+type: Test case
 order: 10
 parent: "[[Smoke test the board]]"
 status: Open
@@ -19,6 +19,9 @@ A verification to run.
 `domain/board.ts` derives the columns and jsdom checks their DOM shape; whether they
 actually read as a workflow at a glance, and whether the filtered count reads as
 information rather than clutter, is a look-and-feel question.
+
+**Preconditions** — `npm run test-build` has installed the plugin into this repository, and
+the repository is open as a vault with `docs/Product Backlog.base` showing the tree.
 
 ## How to check
 

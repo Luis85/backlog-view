@@ -1,5 +1,5 @@
 ---
-type: Issue
+type: Test case
 order: 10
 parent: "[[Smoke test the roadmap]]"
 status: Open
@@ -18,6 +18,9 @@ A verification to run.
 
 The axis picker's appearance rule and the shelf's drag-target behaviour are both
 conditional on configuration and on a live drag — neither is something jsdom renders.
+
+**Preconditions** — `npm run test-build` has installed the plugin into this repository, and
+the repository is open as a vault with `docs/Product Backlog.base` showing the tree.
 
 ## How to check
 

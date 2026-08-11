@@ -1,5 +1,5 @@
 ---
-type: Issue
+type: Test case
 order: 30
 parent: "[[Smoke test the tree]]"
 status: Open
@@ -18,6 +18,9 @@ A verification to run.
 
 `view/interactions/dragDrop.ts` computes drop zones and indicators; jsdom drives the
 events but renders no indicator, no hover-expand animation and no cursor.
+
+**Preconditions** — `npm run test-build` has installed the plugin into this repository, and
+the repository is open as a vault with `docs/Product Backlog.base` showing the tree.
 
 ## How to check
 

@@ -1,5 +1,5 @@
 ---
-type: Issue
+type: Test case
 order: 70
 parent: "[[Smoke test the tree]]"
 status: Open
@@ -19,6 +19,9 @@ A verification to run.
 `view/interactions/undo.ts` is driven against a fixture in jsdom; what is unverified
 here is the felt result — the toolbar's undo control, and that the notes on disk really
 came back, not just the model held in memory.
+
+**Preconditions** — `npm run test-build` has installed the plugin into this repository, and
+the repository is open as a vault with `docs/Product Backlog.base` showing the tree.
 
 ## How to check
 
