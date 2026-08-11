@@ -240,3 +240,39 @@ describe('a link-kind payload against an ordinary drop target', () => {
 		expect(plan.mock.calls[0][0].item).toBe(item);
 	});
 });
+
+describe('a Bases update that re-renders mid-gesture', () => {
+	it('still takes the drag state back off the view when the drop lands', async () => {
+		// The class rides `.pbl-view`, which is built once and outlives every render, so
+		// nothing else will ever take it off: a stale one leaves
+		// `.pbl-dragging .pbl-timeline-drop { pointer-events: auto }` standing, and the
+		// full-grid overlay then swallows every pointer event for the life of the view —
+		// no row hover, no connector, no way to start another drag.
+		//
+		// What makes that reachable is the render pass: `onRenderStart` unhooks every
+		// draggable this controller registered, and pragmatic resolves a source's own
+		// callbacks out of its registry AT DISPATCH TIME ("a draggable can be … removed
+		// completely"), so the `draggable`'s `onDrop` is skipped for a gesture that
+		// crossed a render. The drop itself still lands — the target under the pointer is
+		// a live element the new pass registered — which is exactly why the stale class
+		// goes unnoticed until the pane stops responding.
+		const vault = new FakeVault();
+		vault.addFile('Planned.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-04', target: '2026-08-10' } });
+		const { view, containerEl } = makeView(vault, { startProperty: 'note.start', targetProperty: 'note.target' }, { collapsed: true });
+		view.setProjection('roadmap');
+		const viewEl = containerEl.querySelector<HTMLElement>('.pbl-view');
+		if (!viewEl) throw new Error('no view element');
+
+		const gesture = gridDrag.start(gripOf(containerEl, 'Planned', 'body'), { clientX: 300 });
+		gesture.over(overlayOf(containerEl), { clientX: 300 });
+		expect(viewEl.classList.contains('pbl-dragging')).toBe(true);
+
+		refresh(view, vault);
+		// The overlay is re-queried on purpose: the one the gesture entered was destroyed
+		// by that render, and the drop lands on the element the new pass drew.
+		gesture.drop(overlayOf(containerEl), { clientX: 300 });
+		await flush();
+
+		expect(viewEl.classList.contains('pbl-dragging')).toBe(false);
+	});
+});
