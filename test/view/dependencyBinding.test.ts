@@ -118,6 +118,50 @@ describe('binding the dependency property by writing one', () => {
 		expect(Notice.messages.some((message) => message.startsWith('Fix the view options first:'))).toBe(true);
 	});
 
+	it('refuses a pick that closes a loop the unbound key was hiding', async () => {
+		// The case the suggested key is CHOSEN for: `dependsOn` is the Tasks plugin's own
+		// name, so a vault that already uses it is exactly the vault this feature meets
+		// unbound. With no key the model reads no edges at all, so `candidates` offered A
+		// as a prerequisite for B while A's own frontmatter already waits for B. Binding
+		// makes those edges visible — which is a change to the graph the pick was planned
+		// against, and the legality has to be re-asked of it.
+		const v = vault();
+		v.addFile('A.md', { frontmatter: { type: 'PBI', order: 10, dependsOn: 'B' } });
+		const { containerEl, config } = makeView(v);
+
+		openMenu(containerEl, 'B').item('Depends on…')?.click();
+		expect(suggester().offered()).toContain('A A.md');
+		suggester().choose('A A.md');
+		await flush();
+
+		expect(v.fm('B.md')['dependsOn']).toBeUndefined();
+		expect(Notice.messages).toContain(
+			'Those two already depend on each other in the property just set up, so nothing was written.',
+		);
+		// The binding stays: it is a valid configuration, and it is what made the conflict
+		// visible in the first place.
+		expect(boundKeys(config.setCalls)).toEqual([{ key: 'dependsOnProperty', value: 'note.dependsOn' }]);
+	});
+
+	it('refuses when another property took the key while the picker was open', async () => {
+		// `adoptableProperties` asks the CONFIG whether an option is set and the SETTINGS
+		// which keys are taken. `host.settings` is a snapshot from the last refresh, so
+		// with the two disagreeing the new owner is skipped without its key joining
+		// `taken` — and `dependsOnProperty` is bound onto a key another property owns,
+		// which is the collision that blocks every write in the view. Both halves are read
+		// from the live config now.
+		const v = vault();
+		const { containerEl, config } = makeView(v);
+
+		openMenu(containerEl, 'B').item('Depends on…')?.click();
+		config.values['riskProperty'] = 'note.dependsOn';
+		suggester().choose('A A.md');
+		await flush();
+
+		expect(boundKeys(config.setCalls)).toEqual([]);
+		expect(v.fm('B.md')['dependsOn']).toBeUndefined();
+	});
+
 	it('refuses when the option is cleared while the picker is open, and writes nothing', async () => {
 		// `dependenciesAvailable` was true when the menu was built, so the entry was
 		// legitimately offered; an edit to the `.base` since is what ends that. The same

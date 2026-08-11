@@ -80,6 +80,15 @@ that no action can invent.
   another property, since the entry was drawn. Nothing is bound, nothing is written, and
   the notice says so — the same staleness every other pick in [[Linking two items]]
   re-asks for rather than assumes away.
+- **3c — the vault's notes already carry the suggested property.** The binding makes edges
+  visible that were not there when the pick was offered, so the pick's legality is asked
+  again of the rebuilt model before anything is written, and one that would now close a
+  loop is refused with a notice. The binding stays. This is not a corner: `dependsOn` is
+  suggested *because* the Tasks plugin already uses that name, so a vault carrying it in a
+  base that has never bound it is the vault this whole note is aimed at. With no key the
+  model reads no edges at all, so [[Linking two items]] 2's "not anything that would close
+  a loop" was being asked of a graph with nothing in it — and nothing downstream catches
+  it, since the writer collapses duplicate entries but rejects no cycle.
 - **4a — a second link is made later.** Nothing is bound: the key is named now, so step 3
   finds nothing to adopt and says nothing.
 - **5a — the write fails or is refused.** The binding stays. It is a valid configuration
@@ -96,7 +105,11 @@ that no action can invent.
 - An option the user set is never changed, and one the user cleared is never revived —
   with the option cleared, the feature is absent exactly as it was before this change.
 - Nothing is bound while the view options collide, or when the suggested key is already
-  spoken for.
+  spoken for — and *spoken for* is read from the live view config, not from the settings
+  the last refresh resolved, so a property pointed at the suggestion since the control was
+  drawn still counts.
+- A pick that would close a loop once the binding makes the vault's existing edges visible
+  writes nothing and says so.
 - What was set up is named in a notice, after it happened.
 
 ## Where it lives
@@ -107,10 +120,18 @@ early, because whether a field may adopt depends on what the fields declared bef
 have claimed) · `src/view/backlogView.ts` (`adoptDefaultProperties`, still the one place
 this plugin writes an option the user did not turn — one method with an optional field
 rather than a second one beside it) · `src/view/interactions/dependencies.ts`
-(`dependenciesAvailable`, the widened gate, and `bindDependencyKey`, which runs the
-`configProblems` check before touching the `.base`) ·
+(`dependenciesAvailable`, the widened gate; `bindDependencyKey`, which runs the
+`configProblems` check before touching the `.base`; and `stillLegalAfterBinding`, which is
+`candidates` asked once more of the model the binding rebuilt) ·
 `src/view/interactions/linkDrag.ts` and `src/view/render/timeline.ts` (the same gate, at
 the drag and at the connector).
+
+**One thing binding changes that is easy to miss, and both review findings were it**: the
+binding REBUILDS the model, so anything decided before it — the legality of a pick, which
+keys are taken — was decided against a state this action then replaced. 3c is that on the
+graph and 3b is that on the configuration, and the answer in both places is the same one
+[[Linking two items]] already gives for a suggester left open: ask again, of what is there
+now, rather than trusting what was there when the control was drawn.
 
 Driven in `test/view/dependencyBinding.test.ts` from this note's criteria — the subject
 there is the OPTION, so it asserts on the view config's own `set` calls rather than on

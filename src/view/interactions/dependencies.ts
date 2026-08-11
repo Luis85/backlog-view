@@ -6,6 +6,7 @@ import { isMarkerType } from '../../domain/itemTypes';
 import { linkpathFromRawValue } from '../../domain/noteFields';
 import { adoptableProperties } from '../../domain/optionalProperties';
 import { configProblems } from '../../domain/settingsConsistency';
+import { resolveSettings } from '../../domain/settingsResolve';
 import { ItemSuggestModal, SuggestChoice } from '../../ui/itemSuggest';
 import { DependsOnDelta } from '../../domain/writePlan';
 
@@ -93,7 +94,14 @@ export function dependenciesAvailable(host: BacklogViewHost): boolean {
  */
 function bindDependencyKey(host: BacklogViewHost): boolean {
 	if (host.settings.dependsOnKey !== '') return true;
-	const problems = configProblems(host.settings);
+	// Resolved from the live CONFIG, never taken from `host.settings`, which is a snapshot
+	// from the last refresh. `adoptDefaultProperties` reads the config for "is this option
+	// set" and the settings for "which keys are taken", so a stale half lets a property
+	// pointed at `dependsOn` since the menu opened be skipped without its key joining
+	// `taken` — and this key is then bound onto it, which is the collision that blocks
+	// every write in the view. The two halves have to come from one moment; this is the
+	// one where the `.base` is about to be written. (Codex, PR #128.)
+	const problems = configProblems(resolveSettings(host.config));
 	if (problems.length > 0) {
 		new Notice(`Fix the view options first: ${problems[0]}`);
 		return false;
@@ -413,6 +421,27 @@ function promptRemoveDependency(host: BacklogViewHost, model: BacklogModel, item
 }
 
 /**
+ * Whether an ADD is still a legal prerequisite for the model as it stands now.
+ *
+ * Asked of `candidates`, the same function that decided what to OFFER, so this is that one
+ * rule asked again rather than a second formulation of it — the reason `onChoose` and the
+ * drag's own `drop` already re-ask it rather than comparing against a captured list. What
+ * is new is only WHEN: after `bindDependencyKey`, which may have replaced the graph.
+ *
+ * Every other delta passes. A removal names a line the note already holds, and no legality
+ * question was ever asked of one — and no removal can reach the binding anyway, since it is
+ * offered on a key's presence that an unbound key cannot have.
+ */
+function stillLegalAfterBinding(host: BacklogViewHost, item: BacklogItem, dependsOn: DependsOnDelta): boolean {
+	const model = host.model;
+	if (dependsOn.add === undefined || model === null) return true;
+	// The item as the rebuilt model has it: the one the caller holds was built by the pass
+	// before the binding, so its `prerequisites` are the empty list an unbound key gives.
+	const live = liveSource(model, item);
+	return live !== null && candidates(host.app, model, live).some((c) => c.file === dependsOn.add);
+}
+
+/**
  * The one place a dependency write is planned and applied.
  *
  * Exported for `interactions/linkDrag.ts`, which CALLS it rather than planning beside it:
@@ -434,6 +463,16 @@ function promptRemoveDependency(host: BacklogViewHost, model: BacklogModel, item
  * case this must not refuse, and does not: Obsidian mutates the one `TFile` in place
  * rather than minting a new one, so the object the menu captured is the object the
  * refreshed model holds, under whatever path it now has.
+ *
+ * **An add is then re-asked once more, AFTER the binding**, and that ordering is the whole
+ * of it: binding a key for the first time rebuilds the model over edges that were
+ * invisible while nothing named the property, so every legality question answered before
+ * it was answered against a different graph. The case is not hypothetical — `dependsOn` is
+ * suggested precisely because the Tasks plugin already uses that name, so a vault whose
+ * notes carry it and whose base has never bound it is the vault this feature was designed
+ * to meet. There, `candidates` offered a note that already waits on the one being edited,
+ * and the pick closed a loop; the writer collapses duplicates but rejects no cycle, so
+ * nothing downstream caught it. (Codex, PR #128.)
  */
 export function applyDependencyWrite(host: BacklogViewHost, item: BacklogItem, dependsOn: DependsOnDelta): void {
 	const source = host.model?.byPath.get(item.file.path);
@@ -449,5 +488,9 @@ export function applyDependencyWrite(host: BacklogViewHost, item: BacklogItem, d
 	// replaced — and binding for a write that then turns out to be refused would change
 	// the `.base` for nothing.
 	if (!bindDependencyKey(host)) return;
+	if (!stillLegalAfterBinding(host, item, dependsOn)) {
+		new Notice('Those two already depend on each other in the property just set up, so nothing was written.');
+		return;
+	}
 	void host.applySafely([{ file: item.file, dependsOn }]);
 }
