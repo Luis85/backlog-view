@@ -203,7 +203,9 @@ against — kept visible rather than edited away, because the reversals are the 
   removing it deleted.
 - **Folders are one picker per type**, defaulting under the home folder and built from the
   view's own config, so the box shows what creation will do.
-- **Re-typing on move is off by default.** A move is a move, not a re-classification.
+- **A move never re-types.** A move is a move, not a re-classification. An option that made
+  moves re-type a whole subtree existed until 2026-08-11; deleting it made this rule
+  unconditional, which is what ADR 0009 said it always was.
 - Nothing is enforced against a drag — unchanged, and still the point: the rules decide
   what is *offered*, never what is *refused*.
 

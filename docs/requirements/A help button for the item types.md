@@ -103,7 +103,7 @@ the surface every other section then lands in.
   can draw. The two boards are one case of that rule rather than the whole of it, and the
   row's own **+** is not described as narrowed by it.
 - The **displayed level** and the **written `type`** are kept apart: position implies the
-  first and, with re-typing off by default, never rewrites the second.
+  first and never rewrites the second.
 - Nothing is written and nothing is persisted by opening, reading or closing it.
 - The dialog scrolls, closes on Escape, and returns focus to the button that opened it.
 
