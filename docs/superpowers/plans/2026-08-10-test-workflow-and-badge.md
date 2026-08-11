@@ -2386,3 +2386,78 @@ npm run check
 git add src/domain/board.ts src/view/childrenList.ts test/ docs/ src/view/CLAUDE.md
 git commit -m "Announce a match only from a row this projection draws"
 ```
+
+---
+
+### Task 21: A test state can be set and never removed
+
+**Files:**
+- Modify: `src/view/interactions/menu.ts` (`stateChoices`, or a removal entry beside it)
+- Test: `test/view/testCatalogState.test.ts`
+- Probably: `docs/requirements/A workflow for the tests.md` (the extension that specifies
+  Set state on a catalog row), and `src/view/CLAUDE.md` if the rule needs stating there
+
+**Why.** Reported by an automated reviewer on `1070fec` and confirmed here by reading the
+code, not by agreeing with it:
+
+`stateChoices` (`src/view/interactions/menu.ts`) returns `activeBoard(host)`'s columns when a
+board is drawn — and the leading no-state column is the ONLY thing that ever contributes
+`state: null`, which is what removes the key. With no board it returns
+`deliverableOrTestValues(...) ?? stateMenuValues(...)` plus the item's own unlisted value:
+strings, every one. The catalog is tree-shaped and has no board and never will, so
+**`computeTestStateWrites(item, null)` is unreachable from the UI**. Both surfaces are
+affected, because the chip and the row menu share `addStateItems`.
+
+A requirements row is not in this position even though its tree menu is equally string-only:
+its user can switch to the board and drop the card in `No state`. A `Deliverable` likewise
+has its own board. The catalog is the one workflow with a property the plugin will set and
+cannot unset, and this branch shipped that property.
+
+This is the mirror of a rule the repo already keeps — *"Removal actions appear only while the
+note CARRIES the key, so no offered action can write nothing"*. That rule stops an action
+that would do nothing; this is an action that can do something and is never offered.
+
+- [ ] **Step 1: Reproduce before designing**
+
+Drive a catalog row with a test state set, open both surfaces — the state chip and the row
+menu's `Set state` — and assert the offered entries. Confirm no entry removes the key, and
+confirm `computeTestStateWrites(item, null)` does plan a removal when called directly, so the
+gap really is the offer and not the planner.
+
+- [ ] **Step 2: Pick the shape, and follow an existing precedent rather than inventing one**
+
+Two precedents exist and they disagree, which is the decision to make and record:
+- the BOARD's answer is a no-state CHOICE in the same list (`col.state === null`);
+- the row menu's answer for every other optional property is a **Clear foot** gated on
+  `item.ownKeys` — `Clear horizon`, `Unschedule`, and the two label menus all do this, and
+  `src/view/CLAUDE.md` states the gate as presence, never value.
+
+Prefer the Clear foot: it is the shape this menu already uses for removal, it gates on
+presence so it is never offered when there is nothing to take away, and a no-state entry in a
+list of states reads as a state on a projection that draws no columns to explain it. If you
+choose otherwise, say why in the report and in the register note — do not leave two shapes
+with no argument between them.
+
+Whichever you pick, the CHECKMARK comes from the plan (`computeTestStateWrites` returning
+nothing), never from a comparison written beside it. That rule is in the root `CLAUDE.md` and
+it was broken once already when a second property arrived.
+
+- [ ] **Step 3: Watch it fail, then check the neighbours did not move**
+
+The new test must fail before the fix. Then confirm, by assertion and not by reasoning:
+- a catalog row with NO test state is not offered the removal (presence gate);
+- a requirements row and a `Deliverable` row are unchanged on every surface — this is the
+  catalog's gap and the fix must not add an entry to the other two workflows;
+- the entry writes through `computeTestStateWrites`, so a catalog row's removal cannot
+  acquire the requirements workflow's date stamps.
+
+- [ ] **Step 4: Run the whole check and commit**
+
+Note two files are at their line cap and must not grow: `src/domain/backlogReadme.ts` (400)
+and `test/view/testCatalog.test.ts` (450). Neither should need to.
+
+```bash
+npm run check
+git add src/view/interactions/menu.ts test/ docs/ src/view/CLAUDE.md
+git commit -m "Offer the catalog the removal its workflow already plans"
+```
