@@ -118,7 +118,7 @@ function begin(host: BacklogViewHost, content: HTMLElement, row: HTMLElement, it
 	// gesture that starts later than the render that drew it). A second null check here
 	// would guard nothing reachable.
 	const model = host.model as BacklogModel;
-	const legal = legalTargets(host.app, model, item);
+	const legal = legalTargets(host, model, item);
 	const box = content.getBoundingClientRect();
 	const dot = connector.getBoundingClientRect();
 	const state: LiveLink = {
@@ -197,6 +197,6 @@ function drop(host: BacklogViewHost, source: CardSource, target: BacklogItem): v
 	const model = host.model as BacklogModel;
 	const liveTarget = model.byPath.get(target.file.path);
 	if (liveTarget?.file !== target.file) return;
-	if (!legalTargets(host.app, model, source.item).has(target.file)) return;
+	if (!legalTargets(host, model, source.item).has(target.file)) return;
 	applyDependencyWrite(host, liveTarget, { add: source.item.file });
 }

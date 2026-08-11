@@ -118,29 +118,25 @@ describe('binding the dependency property by writing one', () => {
 		expect(Notice.messages.some((message) => message.startsWith('Fix the view options first:'))).toBe(true);
 	});
 
-	it('refuses a pick that closes a loop the unbound key was hiding', async () => {
+	it('never offers a pick that would close a loop the unbound key holds', () => {
 		// The case the suggested key is CHOSEN for: `dependsOn` is the Tasks plugin's own
 		// name, so a vault that already uses it is exactly the vault this feature meets
-		// unbound. With no key the model reads no edges at all, so `candidates` offered A
-		// as a prerequisite for B while A's own frontmatter already waits for B. Binding
-		// makes those edges visible — which is a change to the graph the pick was planned
-		// against, and the legality has to be re-asked of it.
+		// unbound. With no key the MODEL reads no edges at all, so a list asked of it
+		// offered A as a prerequisite for B while A's own frontmatter already waits for B —
+		// and the loop was caught only after the binding made the edge visible, by a refusal
+		// arriving after the action. What is offered is asked of the key the write will land
+		// in instead, so the pick is absent rather than refused.
 		const v = vault();
 		v.addFile('A.md', { frontmatter: { type: 'PBI', order: 10, dependsOn: 'B' } });
-		const { containerEl, config } = makeView(v);
+		const { containerEl } = makeView(v);
 
 		openMenu(containerEl, 'B').item('Depends on…')?.click();
-		expect(suggester().offered()).toContain('A A.md');
-		suggester().choose('A A.md');
-		await flush();
+		const offered = suggester().offered();
 
-		expect(v.fm('B.md')['dependsOn']).toBeUndefined();
-		expect(Notice.messages).toContain(
-			'Those two already depend on each other in the property just set up, so nothing was written.',
-		);
-		// The binding stays: it is a valid configuration, and it is what made the conflict
-		// visible in the first place.
-		expect(boundKeys(config.setCalls)).toEqual([{ key: 'dependsOnProperty', value: 'note.dependsOn' }]);
+		expect(offered).not.toContain('A A.md');
+		// Narrowed, not emptied: an entry with no loop behind it is still offered, so this
+		// cannot pass by the picker having opened on nothing at all.
+		expect(offered).toContain('Epic Epic.md');
 	});
 
 	it('refuses when another property took the key while the picker was open', async () => {

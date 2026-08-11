@@ -51,7 +51,7 @@ describe('which bars a link may be dropped onto', () => {
 		const { view } = makeView(vault, DEPS, only ? { only } : {});
 		const model = view.model;
 		if (!model) throw new Error('no model');
-		return { paths: [...legalTargets(view.app, model, itemFor(model, from))].map((f) => f.path).sort(), model, view };
+		return { paths: [...legalTargets(view, model, itemFor(model, from))].map((f) => f.path).sort(), model, view };
 	}
 
 	it('refuses the source itself and anything already waiting for it', () => {
@@ -75,6 +75,23 @@ describe('which bars a link may be dropped onto', () => {
 		// that was never a candidate to begin with.
 		const { paths } = sweep(ancestorVault(), 'A.md', ['A.md', 'B.md', 'C.md']);
 		expect(paths).toEqual(['C.md']);
+	});
+
+	it('reads the key the first write would BIND, so an unbound option hides no edges', () => {
+		// No `DEPS`: the option is unnamed, which is the configuration
+		// [[Bind a property by using it]] made the connector and this drag available in.
+		// The MODEL reads nothing there — its key is '' — so a sweep asked of it called
+		// every bar legal, marked none, and let the drop be refused afterwards, which is
+		// exactly what extension 2a says a gesture must not do. `dependsOn` is the Tasks
+		// plugin's own name, so a vault already carrying it is not a corner case here; it
+		// is the vault the feature was built to meet.
+		const { view } = makeView(chainVault());
+		const model = view.model;
+		if (!model) throw new Error('no model');
+
+		// B already waits for A on disk, and A onto A is the loop of length one — the same
+		// two refusals the bound case gives above, from a key nothing has named yet.
+		expect([...legalTargets(view, model, itemFor(model, 'A.md'))].map((f) => f.path).sort()).toEqual(['C.md', 'D.md']);
 	});
 
 	it('refuses a target whose existing entry never resolved into a real edge', () => {
@@ -117,7 +134,7 @@ describe('a milestone is a point in time, so it waits for nothing', () => {
 		const model = view.model;
 		if (!model) throw new Error('no model');
 
-		expect([...legalTargets(view.app, model, itemFor(model, 'Work.md'))].map((f) => f.path)).toEqual([]);
+		expect([...legalTargets(view, model, itemFor(model, 'Work.md'))].map((f) => f.path)).toEqual([]);
 	});
 
 	it('still takes part from the other end: another item may wait FOR it', () => {
@@ -136,7 +153,7 @@ describe('a milestone is a point in time, so it waits for nothing', () => {
 		vault.addFile('Other.md', { frontmatter: { type: 'PBI', order: 30 } });
 		const fresh = makeView(vault, DEPS).view.model;
 		if (!fresh) throw new Error('no model');
-		expect([...legalTargets(view.app, fresh, itemFor(fresh, 'Other.md'))].map((f) => f.path)).toContain('Work.md');
+		expect([...legalTargets(view, fresh, itemFor(fresh, 'Other.md'))].map((f) => f.path)).toContain('Work.md');
 	});
 
 	it('offers neither dependency menu entry on a milestone', () => {

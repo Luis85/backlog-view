@@ -42,7 +42,7 @@ that no action can invent.
 | **Actor** | Backlog owner meeting dependencies for the first time |
 | **Trigger** | **Depends on…** is picked, or a link is dragged between two bars, in a view whose dependency property is unnamed |
 | **Preconditions** | The view options are valid; nothing has named the dependency property and nothing has cleared it |
-| **Guarantee** | One action binds one option and writes one note. Nothing already set is changed and nothing cleared is revived. Every refusal reachable **before** the binding costs no configuration change; once the key is bound it STAYS, including when the write is then refused or fails, because it is a valid configuration either way and taking it back would leave the user unable to retry the action they just attempted (3c, 5a). |
+| **Guarantee** | One action binds one option and writes one note. Nothing already set is changed and nothing cleared is revived. Every refusal reachable **before** the binding costs no configuration change; once the key is bound it STAYS, including when the write is then refused or fails, because it is a valid configuration either way and taking it back would leave the user unable to retry the action they just attempted (5a). Nothing the binding reveals can invalidate what was offered, because what is offered is asked of the key about to be bound (3c). |
 
 **Main flow**
 
@@ -80,15 +80,19 @@ that no action can invent.
   another property, since the entry was drawn. Nothing is bound, nothing is written, and
   the notice says so — the same staleness every other pick in [[Linking two items]]
   re-asks for rather than assumes away.
-- **3c — the vault's notes already carry the suggested property.** The binding makes edges
-  visible that were not there when the pick was offered, so the pick's legality is asked
-  again of the rebuilt model before anything is written, and one that would now close a
-  loop is refused with a notice. The binding stays. This is not a corner: `dependsOn` is
-  suggested *because* the Tasks plugin already uses that name, so a vault carrying it in a
-  base that has never bound it is the vault this whole note is aimed at. With no key the
-  model reads no edges at all, so [[Linking two items]] 2's "not anything that would close
-  a loop" was being asked of a graph with nothing in it — and nothing downstream catches
-  it, since the writer collapses duplicate entries but rejects no cycle.
+- **3c — the vault's notes already carry the suggested property.** Every legality question
+  is asked of the key the write will land in — the bound one, or the one this action is
+  about to bind — so the edges the binding will make visible are already visible to the
+  offer. A pick that would close a loop is **never offered**, and a bar that would close
+  one is marked illegal while the drag is held, exactly as with the key bound. This is not
+  a corner: `dependsOn` is suggested *because* the Tasks plugin already uses that name, so
+  a vault carrying it in a base that has never bound it is the vault this whole note is
+  aimed at. Asked of the MODEL — which parses a key that is still `''` — [[Linking two
+  items]] 2's "not anything that would close a loop" was being asked of a graph with
+  nothing in it, and nothing downstream catches it, since the writer collapses duplicate
+  entries but rejects no cycle. Refusing *after* the action was the first answer to that
+  and was itself the defect on the drag, whose whole guarantee is that an illegal target is
+  visibly illegal before release ([[Draw a dependency between bars]] 2a).
 - **4a — a second link is made later.** Nothing is bound: the key is named now, so step 3
   finds nothing to adopt and says nothing.
 - **5a — the write fails or is refused.** The binding stays. It is a valid configuration
@@ -108,9 +112,9 @@ that no action can invent.
   spoken for — and *spoken for* is read from the live view config, not from the settings
   the last refresh resolved, so a property pointed at the suggestion since the control was
   drawn still counts.
-- A pick that would close a loop once the binding makes the vault's existing edges visible
-  writes nothing and says so — and the binding **stays**, which is the one thing a refusal
-  after this point does not take back.
+- A pick that would close a loop in the vault's existing edges is not offered, and a bar
+  that would is marked illegal while the drag is held — with the property unnamed exactly
+  as with it bound, because the key the write would land in is what both are asked of.
 - What was set up is named in a notice, after it happened.
 
 ## Where it lives
@@ -121,18 +125,23 @@ early, because whether a field may adopt depends on what the fields declared bef
 have claimed) · `src/view/backlogView.ts` (`adoptDefaultProperties`, still the one place
 this plugin writes an option the user did not turn — one method with an optional field
 rather than a second one beside it) · `src/view/interactions/dependencies.ts`
-(`dependenciesAvailable`, the widened gate; `bindDependencyKey`, which runs the
-`configProblems` check before touching the `.base`; and `stillLegalAfterBinding`, which is
-`candidates` asked once more of the model the binding rebuilt) ·
+(`adoptedKey`, the key a write would land in and therefore the one every legality question
+and the widened gate `dependenciesAvailable` are asked of; and `bindDependencyKey`, which
+runs the `configProblems` check before touching the `.base`) ·
 `src/view/interactions/linkDrag.ts` and `src/view/render/timeline.ts` (the same gate, at
 the drag and at the connector).
 
-**One thing binding changes that is easy to miss, and both review findings were it**: the
-binding REBUILDS the model, so anything decided before it — the legality of a pick, which
-keys are taken — was decided against a state this action then replaced. 3c is that on the
-graph and 3b is that on the configuration, and the answer in both places is the same one
-[[Linking two items]] already gives for a suggester left open: ask again, of what is there
-now, rather than trusting what was there when the control was drawn.
+**One thing binding changes that is easy to miss, and all three review findings were it**:
+the binding REBUILDS the model over a key nothing had read, so anything decided before it
+— the legality of a pick, which keys are taken — was decided against a state this action
+then replaced. 3b is that on the CONFIGURATION, and its answer is the one [[Linking two
+items]] already gives for a suggester left open: ask again, of what is there now, rather
+than trusting what was there when the control was drawn. 3c is that on the GRAPH, and the
+same answer was reached for and was wrong — asking again *after* the binding still means
+having offered the pick and marked no bar illegal, which for a drag is the refusal
+[[Draw a dependency between bars]] 2a exists to prevent. A graph is not a staleness
+problem: nothing invalidates it, the wrong key was read in the first place. So the
+question moved rather than repeating, and the recheck after the binding went with it.
 
 Driven in `test/view/dependencyBinding.test.ts` from this note's criteria — the subject
 there is the OPTION, so it asserts on the view config's own `set` calls rather than on
