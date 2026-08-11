@@ -23,7 +23,10 @@ routinely contains structures that are half-migrated, mid-thought, or deliberate
 
 - `childTypeChoices` decides which types the **+** modal and the menu propose.
 - Level inference decides what an untyped item *displays* as.
-- The auto-type cascade decides what a move *writes* — and is **off by default**.
+- Nothing decides what a move *writes*: a move writes the parent and the rank, never a
+  type. An opt-in cascade that did was this decision's one exception until 2026-08-11,
+  when it was removed and the rule became exceptionless
+  ([[Assigning type on a move]]).
 
 No drag is rejected for producing an illegal pair. A Task may be dropped under an Epic. A
 `Bug` may be put anywhere. The two things that *are* refused are refused for different
@@ -38,12 +41,12 @@ not the user's to act on here.
   finishes adopting.
 - An unrecognised custom type (`Spike`, `Chore`) keeps its name and occupies its parent's
   next slot. The view does not know what the user meant; carrying it through is the only
-  honest option. **With one exception, and it is not one this decision chose**: the
-  auto-type cascade — opt-in, off by default — leaves such a type alone as a *descendant*
-  and rewrites it on the *dragged item itself*. Two different predicates, only one of them
-  ever written down as a rule. Recorded under *The asymmetry* in
-  [[Assigning type on a move]]; this ADR states the intent, and the intent is not what the
-  dragged-item branch does.
+  honest option, and it now holds without qualification. It did not until 2026-08-11: an
+  opt-in cascade left such a type alone as a *descendant* and rewrote it on the *dragged
+  item itself* — two predicates, only one of them ever written down as a rule, and this
+  ADR's intent was never what the dragged branch did. It was deleted rather than
+  reconciled ([[Assigning type on a move]]), so the asymmetry went without anyone having
+  to choose between its two readings.
 - Every feature is additive rather than a new veto. Adding `Issue` and `Bug`
   ([ADR 0014](0014-rank-extra-types-by-type-not-by-position.md)) touched inference and
   offering, and needed no validation in the drop maths, the four move commands, the menu,

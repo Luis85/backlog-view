@@ -29,6 +29,17 @@ function nestedVault(): FakeVault {
 }
 
 /**
+ * `boardVault` plus a `Test case` under Epic B — a child on the OTHER ladder, which the
+ * plan's projections do not draw at all. Feature B1 is still Done, so the same fixture
+ * carries one child the plan hides and one it does not have.
+ */
+function catalogChildVault(): FakeVault {
+	const vault = boardVault();
+	vault.addFile('Case B1.md', { frontmatter: { type: 'Test case', order: 30 }, parentLink: 'Epic B' });
+	return vault;
+}
+
+/**
  * Like `boardVault`, but Epic B's children carry no explicit `type` — the common case,
  * where each child's badge names the level the ladder implies rather than a declared
  * name. The label has to agree with that badge.
@@ -111,6 +122,25 @@ describe('children on the card', () => {
 
 		const showing = makeBoard(boardVault());
 		expect(disclosure(cardByTitle(showing.containerEl, 'Epic B'))?.dataset.tooltip).not.toContain('hidden');
+	});
+
+	// A count taken by subtracting a filtered list from a RAW one is the shape this branch
+	// has now got wrong seven times: `listedChildren` drops a catalog child on membership,
+	// and the subtraction then reports it as a plan row the view is choosing to hide. The
+	// note says "hidden by the current view"; absent from this ladder is not that.
+	it('does not count a catalog child as a row the plan is hiding', () => {
+		const { containerEl } = makeBoard(catalogChildVault());
+		expect(disclosure(cardByTitle(containerEl, 'Epic B'))?.dataset.tooltip).not.toContain('hidden');
+	});
+
+	// The control, in the SAME fixture, because a fix that silenced the note entirely would
+	// pass the test above and delete the feature: Feature B1 is Done and hidden, so the note
+	// must still appear — and say one, not the two a raw subtraction would count.
+	it('still counts a completed child the view is hiding, and only that one', () => {
+		const { containerEl } = makeBoard(catalogChildVault(), { showCompleted: false });
+		expect(disclosure(cardByTitle(containerEl, 'Epic B'))?.dataset.tooltip).toContain(
+			'1 more is hidden by the current view',
+		);
 	});
 
 	// `aria-controls` says the two are related and nothing about what the list holds.

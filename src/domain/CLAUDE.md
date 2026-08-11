@@ -79,54 +79,121 @@ a node test that did would be measuring the runner.
   `effectiveLevelIndex`, which chains down the parent levels and carries unknown
   custom types through the ladder (see `childLevelIndex`). Never derive levels
   from depth — now a lint rule (`VISUAL_DEPTH`) over the two files that decide
-  types, since `rows.ts` legitimately reads depth for `aria-level`. The last
-  exception was the autoType cascade, which now descends by `nextLevelIndex` from
-  the dragged item's NEW level: the same chain `computeLevel` walks once the writes
-  land, so a plan cannot disagree with the model it produces. `nextLevelIndex` is
-  the one statement of "a child sits one rung below, clamped at the deepest level";
-  `childLevelIndex` is it applied to an item, and the cascade is it applied to a
-  level it is still planning. Chaining is *provably* what the old
-  `newBaseIdx + (child.depth - dragged.depth)` computed — `min(min(x+1,L)+1,L) =
-  min(x+2,L)` — so removing depth changed no behaviour and needed no product
-  decision, which is not what the issue expected. Where it does bite is the reading:
-  a Task nested straight under an Epic is retyped by the rung it occupies, not by
-  the level it declares.
-- `model.roots` is the RENDERED forest (synthetic under focus); every data operation
-  (backfill, ranking parentless items, root-level outdent) must use `model.realRoots`.
+  types (`writePlan.ts` and `interactions/create.ts`), since `rows.ts` legitimately reads
+  depth for `aria-level`. `nextLevelIndex` is the one statement of "a child sits one rung
+  below, clamped at the deepest level" and `childLevelIndex` is it applied to an item;
+  both are what a type write asks, and neither has ever been allowed to ask depth. The
+  last exception was the re-typing cascade, deleted 2026-08-11 with the feature it
+  belonged to ([[Assigning type on a move]]) — and the argument that ended it is worth
+  keeping, because it is the argument for the rule and not for that code: chaining is
+  *provably* what the depth arithmetic it replaced computed
+  (`min(min(x+1,L)+1,L) = min(x+2,L)`), so switching cost no behaviour and bought a
+  reading that survives focus mode re-rooting a row.
+- `model.roots` is the PLAN's rendered forest (synthetic under focus, and re-rooted past
+  any catalog member); every data operation (backfill, ranking parentless items,
+  root-level outdent) must use `model.realRoots`. That rule stopped being advice the day a
+  second projection existed: an `order` is a number scoped to the notes sharing a parent,
+  and a `Test suite` and an `Epic` share the null one, so ranking against one projection's
+  slice of that group takes a midpoint a hidden root may already hold. Three lists, and
+  conflating any two breaks something — the RENDERED roots (what is on screen), the
+  POSITIONABLE roots (what a move at the top level MEANS, which is a question about the
+  screen), and the RANKING group (`realRoots`, what number it gets), which is not a
+  projection's list at all and which no projection may narrow.
   Checked by lint in `writePlan.ts` and `interactions/create.ts` — the two files that
-  rank. Elsewhere `model.roots` is correct and deliberate: `dropTargets.ts` and
-  `structure.ts` reach it only after an earlier `focusRoot` return has ruled out the
-  synthetic case, which is exactly the subtlety worth reading twice before editing.
+  rank. The two files that POSITION at the top level hold both lists at once and must not
+  let either answer the other's question: `dropTargets.ts` ranks against `realRoots` while
+  asking its no-op question of the drawn order through the `member` predicate the view
+  hands it, and `structure.ts` ranks a root-level outdent the same way. That split is the
+  subtlety worth reading twice before editing.
 - Focus mode: the top row is a synthetic grouping — `focusRoot` items keep their real
   `parent` pointer, and reordering/outdent/indent across that row must stay disabled.
-- The autoType cascade retypes only descendants whose type matches a configured
-  level; custom types outside the ladder are deliberate user data. **That principle holds
-  for descendants and not for the dragged item**, which `computeTypeChanges` exempts only
-  when it is a *declared* extra type — so a `Spike` survives inside a moved subtree and is
-  rewritten when it is the thing moved. Nobody chose that; it is an artefact of two
-  predicates written for different reasons, and this line stating the principle
-  unqualified is how four notes came to claim the opposite. Recorded in
-  `docs/issues/The dragged item is retyped, its descendants are not.md`. If it is ever
-  decided the dragged item is genuinely special, say so **here**, rather than leaving the
-  exemption to live in a predicate.
-- The vocabulary is **fixed**: `LEVELS` and `EXTRA_TYPES` in `typeVocabulary.ts` are constants,
+- **A move never writes a `type`, at any depth** — a drop, an indent, an outdent,
+  Alt+arrow and both parent-link menu entries write the parent and the rank and nothing
+  else. A type is what the note declares, what `Set type` wrote, or what the backfill put
+  on a note that carried NONE; a note that already has one is never re-typed by anything
+  positional. That is why an unknown custom name is safe here: it is deliberate user data
+  and no walk is looking at it. A cascade that did rewrite it existed until 2026-08-11 and
+  was removed rather than repaired ([[Assigning type on a move]]) — it was the one write
+  path that did not ask `keepsProjection`, and it carried an asymmetry nobody chose
+  ([[The dragged item is retyped, its descendants are not]]). If one is ever built again,
+  the rule to keep is the one it broke: what a move may not do is take a row out of the
+  projection it was moved on.
+- **There are TWO ladders**, and every rule that reads a rung asks `ladderFor` which one
+  first. `LEVELS` is the plan's and `TEST_LEVELS` is the test catalog's, and they **share
+  their deepest rung** — `Task` is a rung of both. That sharing is the load-bearing
+  choice, not a coincidence: it turns three separately-argued rules into consequences of
+  the structure. A typeless child of a `Test suite` is a `Test case` by plain
+  `childLevelIndex` clamping on the right ladder; *a `Task` takes its parent's projection
+  and every other type takes its own* IS the ladder chain, so catalog membership needs no
+  exception for one type; and a `Task` whose `Test case` parent is not in the model has no
+  parent ladder to chain from, so it falls to the plan with nothing read to find out.
+  `ladderFor` chains from the parent for exactly two inputs — `Task` and a note with no
+  `type` — and answers from the NAME for every other, including a name **neither** ladder
+  holds. That last clause is the one to keep: written as "fall through to the parent" it
+  sweeps an extra type, a marker or a custom name beneath a `Test case` into the catalog,
+  where the register says it is plan work in the wrong place. `inCatalog` is the whole
+  membership predicate, read from both directions, so the two projections cannot both
+  claim a row or both disown one — and because it asks the LADDER it asks the effective
+  type, which is what makes a typeless child of a suite a member. **Nothing crosses
+  between them**, and that rule now lives in exactly one place: `keepsProjection`, asked by
+  every reparenting gate, which WITHHOLDS the move for the two rows that read their ladder
+  from where they hang — a `Task` and a note with no `type`. Every other name answers from
+  itself and can never change ladder by moving, so a `Test case` hand-dropped onto a `PBI`
+  stays a `Test case`: a legal row in an odd place, drawn as a root of its own projection.
+  A second statement of the same rule used to sit inside the re-typing cascade, unchecked,
+  and deleting the cascade is what removed it (2026-08-11).
+  **An item's workflow follows its type, or its ladder** — the rule the second ladder added
+  to the first. There are three workflows (requirements, Deliverable, test), and the two
+  secondary selectors are **disjoint by construction** rather than ordered:
+  `isDeliverableType` asks a type NAME and `inCatalog` asks the ladder, while `ladderFor`
+  answers `LEVELS` for `Deliverable` whatever it hangs under, so no item satisfies both and
+  the three-way branch needs no argument about which is tested first. `inCatalog` and not a
+  list of test type names, for the reason above: a typeless child of a `Test suite` and a
+  `Task` under a `Test case` are both members, and `isTestType(item.typeName)` gets both
+  wrong while passing every other fixture. Two things are stated ONCE, both in `board.ts`:
+  the KEY (`stateKeyFor`) and the value-and-done pair (`ownWorkflowReading`). **What that
+  bought, exactly** — because "everything followed for free" is the flattering version and
+  it is false: `pbl-done` on a tree row (`render/rows.ts`) and the state CHIP's own reading
+  (`renderStateChip`) took the third workflow with no edit at all, while `Set state`'s
+  OFFERS and its CHECKMARKS each needed their own branch in `view/interactions/menu.ts`
+  (`deliverableOrTestValues`, and `stateWrites`), because each
+  workflow's write goes through a different planner — which PLANNER a pick runs is a third
+  selection over the same two predicates, and it is stated there rather than here.
+  `columnKind` (`render/columns.ts`) needed a line too, or the chip that reads correctly
+  would have had no column to draw into.
+- **A projection's forest is computed, never filtered** — `projectionForest`, beside
+  `collectFocusRoots`, asked twice with opposite predicates. `renderForest` drops a hidden
+  sibling *without descending through it*, so hiding rows loses everything under a hidden
+  parent: a `Test case` mis-dragged under a `PBI` is a root of the catalog and a hidden
+  child of the plan, and the `PBI` under a `Test case` is the mirror. One function both
+  ways, so the two directions cannot be argued separately and disagree. It marks a
+  promoted root `focusRoot` — the same category, so the four call sites that already
+  refuse to rank or reparent one need no edit — and it assigns depth by walking MEMBERS
+  ONLY. That last part is not a detail: both projections walk the same objects, so a walk
+  following every child has the plan's descent reach a promoted row through its excluded
+  parent and stamp the depth the catalog had just corrected. `model.catalog` is read off
+  the whole UNFOCUSED tree beside `deliverableResults`, for that field's own reason.
+- The vocabulary is **fixed**: `LEVELS`, `TEST_LEVELS` and `EXTRA_TYPES` in
+  `typeVocabulary.ts` are constants,
   not options. Making them configurable cost collision rules between the two lists, a
   "what folder does a name nobody chose get" question with no good answer, and a schema
   that had to be generated per view; what it bought was a rename. Being opinionated
-  deletes all of that, and every level rule now has exactly one list to hold for. A note
-  typed something else is still handled — it keeps its name and carries the ladder through,
-  the `Bugfix` case below.
+  deletes all of that. What it does NOT buy any more is "one list to hold for", which this
+  bullet claimed until the test catalog: there are two ladders, both fixed, and a level
+  rule holds for whichever `ladderFor` names. A note typed something else is still handled
+  — it keeps its name and carries the ladder through, the `Bugfix` case below.
 - **Extra types** (`EXTRA_TYPES` — `Issue`, `Bug` and `Idea`) are declared types that are
   NOT rungs — `itemTypes.ts` owns them. The ladder cannot express "a Bug holds Tasks
   wherever it hangs", because every ladder rule is "one rung below the parent", so an
   extra type's rank is a property of the TYPE: `EXTRA_TYPE_RANK` (the rung whose children
   are the deepest level), pinned, never inherited. Everything else follows from that plus
   `levelIndex === -1`: its children imply the deepest level under an Epic as under a PBI,
-  the cascade already leaves it alone, and `computeTypeChanges` must not retype the
-  *dragged* item either — it descends the subtree from the extra rank rather than from
-  where the item landed, or a Bug's Tasks would become PBIs on a drop. The contrast that
-  keeps this honest: an UNKNOWN custom type still takes `childSlot`, so it continues the
-  ladder (Feature > Bugfix > implied Task). Declared pins, undeclared inherits.
+  wherever the Bug itself hangs, so anything walking a subtree to hand out rungs has to
+  descend from the extra rank rather than from the position the item inherited — the
+  failure that rule prevents is a Bug left correctly untouched with its Tasks silently
+  rewritten to PBIs. The contrast that keeps this honest: an UNKNOWN custom type still
+  takes `childSlot`, so it continues the ladder (Feature > Bugfix > implied Task).
+  Declared pins, undeclared inherits.
   `collectFocusRoots` has to know about them too — an extra type has no `levelIndex` to
   match, so focusing its rank would otherwise make it vanish rather than rank beside the
   level it sits level with. Nothing is enforced: `childTypeChoices` decides what is
@@ -137,10 +204,12 @@ a node test that did would be measuring the runner.
   second predicate rather than a widened `isExtraType`, because the two answer opposite
   questions. Three consequences follow, each stated once where it holds for every quantity
   the walk gathers rather than at a call site: it is never counted and never dated evidence
-  (the `self` line in `assignAll`, beside the context-row skip it resembles), and the
-  autoType cascade's `stopsAt` predicate — `outsideFilter || isMarkerType`, the same shape
-  for the same reason — stops at a marker exactly as it stops at a row the Base excluded, so
-  the cascade descends from a rank only where one exists.
+  (the `self` line in `assignAll`, beside the context-row skip it resembles), and any walk
+  that hands out rungs must STOP at one rather than guess — a marker supplies no rank to
+  descend from, exactly as a row the Base excluded supplies none, which is why the two
+  belong in one predicate wherever such a walk exists. The walk that had one
+  (`outsideFilter || isMarkerType`) went with the re-typing cascade on 2026-08-11; the
+  shape is recorded because the next such walk needs it, not because one is live.
   A fourth, added 2026-08-09 and the same shape again: **a marker DECLARES no
   prerequisites.** A point in time waits for nothing, so `readItems` reads a marker's
   dependency list as empty — beside the `outsideFilter` gate it already sits next to — and
@@ -164,10 +233,6 @@ a node test that did would be measuring the runner.
   type rather than a string. `baseFileContent` writes every one of these keys under the
   folder it scaffolds — the type folders outrank the home folder, so writing the home
   folder alone would still file the first Bug outside the filter just written for it.
-- `autoType` is OFF by default. Re-typing a whole moved subtree is a strong action to
-  take on a drag, and the ladder is advisory everywhere else; the option is for people
-  who want it enforced. Tests that assert a cascade opt in (`autoTyped`), which also
-  keeps them honest about what is default behaviour and what is not.
 - Options whose default is a REAL value need `clearable` (or `clearablePropKey` for
   property ids): `config.get` reports "never set" and "cleared" identically, so without
   it the home folder, the extra types and the type folders could never be turned off.
@@ -223,15 +288,17 @@ a node test that did would be measuring the runner.
   ancestors is gated by the option.
 - An `outsideFilter` row is NOT always an ancestor: a filter that returns an Epic and its
   PBI but not the Feature between them loads that Feature as context *below* a result, so
-  any subtree walk can meet one. The autoType cascade therefore stops at such a row and
-  skips its whole branch — retyping only the levels below it would half-update the ladder.
+  any subtree walk can meet one, above a result and below it alike. A walk that writes
+  must therefore skip such a row's whole BRANCH rather than step over the row and carry
+  on: half-updating a subtree past a note that may not be written to leaves the tree worse
+  than not touching it.
 - Renumbering rewrites a whole sibling group, so `computeDropWrites` refuses that path
   when the group holds an `outsideFilter` row and places the item after the highest known
   order instead (`afterHighestKnown`) — the single choke point that makes the context-row
   invariant hold. Because that fallback lands the item last, the *positional* operations
   refuse such a group up front instead of landing somewhere other than aimed:
   `siblingPosition` (before/after drops), `canReorder` (the move menu, Alt+arrow) and
-  `outdentTarget`. Appends — dropping *into* a parent, on the tree background, indent — stay
+  `outdentTarget`. Appends — dropping *into* a parent, indent — stay
   available, since last is what they mean anyway. Gate each command on what it actually
   does: `canReorder` covers only the four move commands, while Indent follows its
   neighbour and Outdent answers for its own destination — gating those on `canReorder`

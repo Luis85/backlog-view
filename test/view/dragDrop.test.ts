@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { FakeVault } from '../helpers/vault';
 import {
 	drag,
 	fixture,
@@ -55,18 +54,19 @@ describe('drag and drop', () => {
 		expect(vault.fm('Epic B.md')['parent']).toBeUndefined();
 	});
 
-	it('re-parents and re-types when dropping into a row', async () => {
+	it('re-parents without re-typing when dropping into a row', async () => {
 		const vault = fixture();
-		// Re-typing on move is opt-in; this test is about what it does when asked for.
-		const { containerEl } = makeView(vault, { autoAssignType: true });
+		const { containerEl } = makeView(vault);
 
 		drag(rowByTitle(containerEl, 'Epic A'), rowByTitle(containerEl, 'Feature B2'), 'inside');
 		await flush();
 
 		const fm = vault.fm('Epic A.md');
 		expect(fm['parent']).toBe('[[Feature B2]]');
-		expect(fm['type']).toBe('PBI');
 		expect(fm['order']).toBe(10);
+		// An Epic two rungs below where the ladder would put it, and left as one: the drop
+		// writes the parent and the rank, and a type is the note's own statement.
+		expect(fm['type']).toBe('Epic');
 	});
 
 	it('refuses to drop an ancestor into its own subtree', async () => {
@@ -116,23 +116,6 @@ describe('drag and drop', () => {
 
 		expect(to.classList.contains('pbl-drop-before')).toBe(true);
 		expect(containerEl.querySelector('.pbl-view')?.classList.contains('pbl-dragging')).toBe(true);
-	});
-
-	it('clears a stale parent link when the last orphaned root is dropped on the tree background', async () => {
-		const vault = new FakeVault();
-		vault.addFile('Root.md', { frontmatter: { type: 'Epic', order: 10 } });
-		vault.addFile('Orphan.md', { frontmatter: { type: 'Epic', order: 20 }, parentLink: 'Missing' });
-		const { containerEl } = makeView(vault);
-
-		expect(vault.fm('Orphan.md')['parent']).toBe('[[Missing]]');
-		const tree = treeOf(containerEl);
-
-		rowByTitle(containerEl, 'Orphan').dispatchEvent(new MouseEvent('dragstart', { bubbles: true }));
-		tree.dispatchEvent(new MouseEvent('dragover', { bubbles: true }));
-		tree.dispatchEvent(new MouseEvent('drop', { bubbles: true }));
-		await flush();
-
-		expect('parent' in vault.fm('Orphan.md')).toBe(false);
 	});
 });
 
@@ -192,21 +175,6 @@ describe('drag state details', () => {
 		expect(to.classList.contains('pbl-drop-before')).toBe(false);
 	});
 
-	it('drops on the tree background to move an item to the top level', async () => {
-		const vault = fixture();
-		const { containerEl } = makeView(vault);
-		const tree = treeOf(containerEl);
-
-		rowByTitle(containerEl, 'Feature B1').dispatchEvent(new MouseEvent('dragstart', { bubbles: true }));
-		tree.dispatchEvent(new MouseEvent('dragover', { bubbles: true }));
-		tree.dispatchEvent(new MouseEvent('drop', { bubbles: true }));
-		await flush();
-
-		const fm = vault.fm('Feature B1.md');
-		expect('parent' in fm).toBe(false);
-		expect(fm['order']).toBe(30);
-	});
-
 	it('clears all drag state on dragend', () => {
 		const vault = fixture();
 		const { containerEl } = makeView(vault);
@@ -259,15 +227,6 @@ describe('what the browser is told about the drag', () => {
 		expect(over.transfer.dropEffect).toBe('move');
 	});
 
-	it('asks for a move over the tree background too', () => {
-		const vault = fixture();
-		const { containerEl } = makeView(vault);
-		rowByTitle(containerEl, 'Feature B1').dispatchEvent(new MouseEvent('dragstart', { bubbles: true }));
-
-		const overTree = transferEvent('dragover');
-		treeOf(containerEl).dispatchEvent(overTree.evt);
-		expect(overTree.transfer.dropEffect).toBe('move');
-	});
 });
 
 describe('the drop indicator follows the pointer', () => {
@@ -377,51 +336,29 @@ describe('hover to expand', () => {
 });
 
 describe('the tree background', () => {
-	it('ignores a drop that lands on a row group rather than the background', async () => {
+	// The drop that made an item top-level was deleted on 2026-08-11: making a row a root is
+	// a deliberate action and Outdent is it. Absent rather than inert is this repo's rule, so
+	// what is checked is the whole gesture — nothing accepts the drag (an accepted `dragover`
+	// is what draws the move cursor and invites a drop nothing will honour) and nothing is
+	// written when it is released. Driven over a NESTED row, the one a background drop used
+	// to move, so a listener re-added anywhere on the tree fails this rather than passing on
+	// a fixture that had nothing to do.
+	it('accepts no drag and writes nothing when one is released on it', async () => {
 		const vault = fixture();
 		const { containerEl } = makeView(vault);
-		const group = containerEl.querySelector<HTMLElement>('.pbl-children');
-		if (!group) throw new Error('child group missing');
-
+		const tree = treeOf(containerEl);
 		rowByTitle(containerEl, 'Feature B1').dispatchEvent(new MouseEvent('dragstart', { bubbles: true }));
-		group.dispatchEvent(new MouseEvent('dragover', { bubbles: true }));
-		group.dispatchEvent(new MouseEvent('drop', { bubbles: true }));
+
+		const over = transferEvent('dragover');
+		tree.dispatchEvent(over.evt);
+		expect(over.evt.defaultPrevented).toBe(false);
+		expect(over.transfer.dropEffect).toBe('');
+
+		tree.dispatchEvent(new MouseEvent('drop', { bubbles: true }));
 		await flush();
 
 		expect(vault.writeLog).toHaveLength(0);
 		expect(vault.fm('Feature B1.md')['parent']).toBe('[[Epic B]]');
-	});
-
-	it('ignores a drag that did not start in the tree', async () => {
-		const vault = fixture();
-		const { containerEl } = makeView(vault);
-		// A file dragged in from outside Obsidian reaches the same listeners with no
-		// drag of ours in flight.
-		const overTree = transferEvent('dragover');
-		treeOf(containerEl).dispatchEvent(overTree.evt);
-		expect(overTree.evt.defaultPrevented).toBe(false);
-
-		treeOf(containerEl).dispatchEvent(new MouseEvent('drop', { bubbles: true }));
-		const row = rowByTitle(containerEl, 'Epic A');
-		stubRect(row);
-		row.dispatchEvent(new MouseEvent('dragover', { bubbles: true, clientY: 3 }));
-		await flush();
-
-		expect(row.className).not.toMatch(/pbl-drop-/);
-		expect(vault.writeLog).toHaveLength(0);
-	});
-
-	it('offers no top-level drop for an item already last at the top level', () => {
-		const vault = fixture();
-		const { containerEl } = makeView(vault);
-		rowByTitle(containerEl, 'Epic B').dispatchEvent(new MouseEvent('dragstart', { bubbles: true }));
-
-		const over = transferEvent('dragover');
-		treeOf(containerEl).dispatchEvent(over.evt);
-
-		// Not accepting the drag is what tells the browser this is a no-op.
-		expect(over.evt.defaultPrevented).toBe(false);
-		expect(over.transfer.dropEffect).toBe('');
 	});
 });
 

@@ -1,8 +1,8 @@
-import { isDeliverableType } from './itemTypes';
+import { inCatalog, isDeliverableType } from './itemTypes';
 import { BacklogItem, BacklogModel } from './model';
 import { sameValue } from './noteFields';
 import { BacklogSettings, menuValues, STATE_COLOR_SLOTS, stateMenuValues } from './settings';
-import { resolvedDeliverableStateKey } from './optionalProperties';
+import { resolvedDeliverableStateKey, resolvedTestStateKey } from './optionalProperties';
 import { byName } from './typeVocabulary';
 import { collectObservedStates } from './vocabulary';
 import { isColorName } from './stateColors';
@@ -160,18 +160,21 @@ export function requirementsFocusRoots(roots: BacklogItem[]): BacklogItem[] {
 }
 
 /**
- * The frontmatter key THIS item's state lives under — the resolved Deliverable key for
- * a Deliverable, the requirements `stateKey` for everything else, and `''` when the
- * workflow that tracks it has no key configured at all.
+ * The key an item's state is read and written through. Three workflows now, and the two
+ * secondary selectors are DISJOINT BY CONSTRUCTION rather than ordered: `isDeliverableType`
+ * asks a type NAME and `inCatalog` asks the LADDER, and a `Deliverable` is an extra type
+ * whose `ladderFor` answer is always `LEVELS`. No item can satisfy both, so this branch
+ * needs no argument about which is tested first.
  *
- * The same "an item's workflow follows its TYPE" rule the chip and the menu both
- * render from, stated once so they cannot gate on different keys: a chip drawn where
- * the menu offers nothing, or a menu offering picks that write to an empty key, are
- * the two halves of one disagreement. `''` is what makes "no key, no affordance" a
- * single test rather than a per-surface one.
+ * The ladder and not a list of test type names, for the reason the whole catalog rests on:
+ * a typeless child of a `Test suite` and a `Task` under a `Test case` are both catalog
+ * members, and a predicate written as `isTestType(item.typeName)` gets both wrong while
+ * passing every other fixture.
  */
 export function stateKeyFor(settings: BacklogSettings, item: BacklogItem): string {
-	return isDeliverableType(item.typeName) ? resolvedDeliverableStateKey(settings) : settings.stateKey;
+	if (isDeliverableType(item.typeName)) return resolvedDeliverableStateKey(settings);
+	if (inCatalog(item)) return resolvedTestStateKey(settings);
+	return settings.stateKey;
 }
 
 /** An item's state value and whether that value counts as done, from one workflow. */
@@ -181,22 +184,22 @@ export interface WorkflowReading {
 }
 
 /**
- * The same "an item's workflow follows its TYPE" rule `stateKeyFor` states for the KEY,
- * stated once more for the VALUE: a Deliverable's own reading is the Deliverable
- * workflow's value and done flag, never the requirements pair sitting on the same note.
- * Before this existed, the chip and the menu each hand-wrote the same
- * `isDeliverableType(item) ? deliverable : requirements` ternary — two copies of one
- * rule is how they came to disagree in the first place.
+ * The same "an item's workflow follows its type, or its ladder" rule `stateKeyFor` states
+ * for the KEY, stated once more for the VALUE. Before these two existed, the chip and the
+ * menu each hand-wrote the same ternary — two copies of one rule is how they came to
+ * disagree in the first place, and it is why a third workflow costs two edits HERE. It
+ * costs more elsewhere: the vocabulary, the write planner, the option and the badge are
+ * their own changes, and this sentence is about the selection alone.
  *
- * The pair is returned together so both halves come from ONE type decision: a caller
- * that needs only the value still gets the value of the workflow whose done flag it
- * would have got. It does not stop a caller taking one half — `stateChoices` legitimately
- * takes `.value` alone — and that is not what the pairing is for.
+ * The pair is returned together so both halves come from ONE decision: a caller that needs
+ * only the value still gets the value of the workflow whose done flag it would have got.
+ * That does not stop a caller taking one half — `stateChoices` in `interactions/menu.ts`
+ * legitimately reads `.value` alone — and doing so is not a sign the pairing was pointless.
  */
 export function ownWorkflowReading(item: BacklogItem): WorkflowReading {
-	return isDeliverableType(item.typeName)
-		? { value: item.deliverableStateValue, done: item.deliverableDone }
-		: { value: item.stateValue, done: item.done };
+	if (isDeliverableType(item.typeName)) return { value: item.deliverableStateValue, done: item.deliverableDone };
+	if (inCatalog(item)) return { value: item.testStateValue, done: item.testDone };
+	return { value: item.stateValue, done: item.done };
 }
 
 /**
@@ -502,18 +505,36 @@ export function cardPaths(board: BoardModel): Set<string> {
  * counted in the rollup, and unreachable. Naming them on the card is what makes the
  * search's own result something the user can get to.
  *
- * The walk stops at anything already rendered: that card names what hides under it,
- * and a match announced by two cards is a match the user cannot count.
+ * The walk stops at two things. At anything already RENDERED: that card names what
+ * hides under it, and a match announced by two cards is a match the user cannot count.
+ * And at any row this projection does not DRAW — `drawn`, which the caller supplies,
+ * because this module is pure and the answer is the view's (`view/childrenList.ts`
+ * passes `!host.isRowHidden`, which is the disclosure's own predicate — `listedChildren`
+ * asks exactly it. The ROLLUP stops at the same ladder edge by a different and narrower
+ * test of its own (`inCatalog(child) || inCatalog(item)`, in `assignAll`), so the three
+ * agree about a test boundary and nothing here says more than that). A row the screen
+ * has no line to is not a route to
+ * anything either, so that one stops the descent and not just the naming.
+ *
+ * `drawn` is where the ladder boundary is kept, and it is deliberately NOT kept in
+ * `matched`. A `PBI` beneath a `Test case` is a plan member and a genuine match — that
+ * is what promotes it to a root of the tree, and the same property is what keeps a
+ * `Deliverable` nested under a test on its own board — so a rule of the form "a member
+ * below a non-member is not a match" deletes a card that is on screen. What was wrong
+ * was only the claim that such a row is beneath THIS card: on the Deliverables board
+ * the `Test case` between the two is drawn nowhere, so nothing there relates them.
+ * Fix a disagreement about "beneath" in the walk; never in the match set.
  */
 export function hiddenMatches(
 	item: BacklogItem,
 	matched: (item: BacklogItem) => boolean,
 	rendered: Set<string>,
+	drawn: (item: BacklogItem) => boolean,
 ): BacklogItem[] {
 	const found: BacklogItem[] = [];
 	const walk = (parent: BacklogItem): void => {
 		for (const child of parent.children) {
-			if (rendered.has(child.file.path)) continue;
+			if (!drawn(child) || rendered.has(child.file.path)) continue;
 			if (matched(child)) found.push(child);
 			walk(child);
 		}

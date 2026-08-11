@@ -1,7 +1,7 @@
 import { Menu, setIcon, setTooltip } from 'obsidian';
 import { BacklogViewHost, Projection } from '../host';
 import { newItemType, promptCreateItem } from '../interactions/create';
-import { offerableTypes, showMenuForClick } from '../interactions/menu';
+import { showMenuForClick } from '../interactions/menu';
 import { runInit } from '../interactions/structure';
 import {
 	capturedFocusKey,
@@ -23,6 +23,7 @@ import { focusInBar } from './toolbarFit';
 import { renderBusyIndicator } from './toolbarBusy';
 import { countedPopulation, levelBreakdown, renderIgnoredNote } from './toolbarStatus';
 import { renderFilterBox } from './toolbarFilter';
+import { hidesCompleted, offerableTypes } from '../projection';
 import { BacklogModel } from '../../domain/model';
 import { focusTarget } from '../../domain/itemTypes';
 import { DELIVERABLE_TYPE } from '../../domain/typeVocabulary';
@@ -336,7 +337,11 @@ export function syncCollapseCtls(host: BacklogViewHost, barEl: HTMLElement): voi
  * and refreshes the view.
  */
 function renderCompletedToggle(host: BacklogViewHost, barEl: HTMLElement, model: BacklogModel): void {
-	if (!host.settings.stateKey || host.projection === 'deliverables') return;
+	// Withheld wherever the filtering it describes is off, which is one question and not
+	// two: `hidesCompleted` is what `rowHidden` asks, so a toggle can never sit over a
+	// projection that ignores it — the shape where a done row disappears and nothing on
+	// screen offers to bring it back.
+	if (!host.settings.stateKey || !hidesCompleted(host.projection)) return;
 	const showing = host.settings.showCompleted;
 	// This projection's OWN population, the same one the count label answers for: on the
 	// requirements board a done Deliverable is not a hidden card, it is not a card at
@@ -403,6 +408,27 @@ function renderClickActionToggle(host: BacklogViewHost, barEl: HTMLElement): voi
  * focusable, which `src/view/CLAUDE.md`'s "once a control is focusable, disabling it in
  * CSS is a lie" rule forbids.
  */
+/**
+ * The projections where the focus control is a static label rather than a menu, and what
+ * it says. Keyed by projection and PARTIAL — an entry is the exception, so the ordinary
+ * picker is what a projection gets by saying nothing.
+ *
+ * Both entries are the same decision twice: a control that narrowed this screen by
+ * matching level indices would hide rows for a reason the user never asked for. On the
+ * Deliverables board nothing narrows it at all; in the catalog the levels named are the
+ * OTHER ladder's, and a two-rung ladder has no rung called PBI.
+ */
+const INERT_FOCUS: Partial<Record<Projection, { label: string; tip: string }>> = {
+	deliverables: {
+		label: 'Deliverables',
+		tip: 'This board always shows every Deliverable — the focus level has no effect here',
+	},
+	catalog: {
+		label: 'Tests',
+		tip: 'The focus level names the plan’s own levels, so it has no effect on the test catalog',
+	},
+};
+
 function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: BacklogModel): void {
 	// Working position, not configuration: the collapse store persists it and the view
 	// rebuilds itself, because no Bases refresh follows a change it was not told about.
@@ -410,14 +436,19 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 	// where `capturedFocusKey` cannot see it.
 	const setLevel = (level: string) => pickAndRefocus(barEl, 'focus', () => host.setFocusLevel(level));
 
-	if (host.projection === 'deliverables') {
+	// Two projections answer with a static label and no menu, for the same reason and by
+	// the same shape: a menu offering choices that would do nothing is worse than no menu.
+	// The focus level is IGNORED in the catalog rather than cleared — its levels are the
+	// plan ladder's, and a focus set for the plan should still be there on the way back.
+	const inert = INERT_FOCUS[host.projection];
+	if (inert) {
 		const wrap = barEl.createDiv({ cls: 'pbl-focus' });
 		const btn = wrap.createEl('button', { cls: 'clickable-icon pbl-focus-btn', attr: { type: 'button' } });
 		setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'filter');
-		btn.setAttribute('aria-label', 'Deliverables');
-		btn.createSpan({ cls: 'pbl-btn-label', text: 'Deliverables' });
+		btn.setAttribute('aria-label', inert.label);
+		btn.createSpan({ cls: 'pbl-btn-label', text: inert.label });
 		btn.disabled = true;
-		setTooltip(btn, 'This board always shows every Deliverable — the focus level has no effect here');
+		setTooltip(btn, inert.tip);
 		return;
 	}
 
@@ -503,6 +534,10 @@ function renderModeToggle(host: BacklogViewHost, barEl: HTMLElement): void {
 	position('board', 'square-kanban', 'Show as kanban board', 'Board');
 	position('roadmap', 'map', 'Show as roadmap', 'Roadmap');
 	position('deliverables', 'package', 'Show as Deliverables board', 'Deliverables');
+	// FIFTH, not fourth: the toggle has carried four since the Deliverables board shipped,
+	// and a control that counted the three it had heard of would have REPLACED that board
+	// rather than joining it.
+	position('catalog', 'flask-conical', 'Show as test catalog', 'Tests');
 }
 
 /**

@@ -34,8 +34,9 @@ different property is a different question, and a cheap one.
 A note typed anything else is still handled, and this is what makes the decision liveable:
 an **unknown custom type keeps its name** and occupies its parent's next slot so the
 ladder carries on beneath it. `Declared pins, undeclared inherits.` (It is never rewritten
-as a *descendant*; the opt-in auto-type cascade does rewrite one that is itself dragged —
-an asymmetry nobody chose, recorded in [[Assigning type on a move]].)
+at all now. An opt-in cascade used to rewrite one that was itself dragged while leaving the
+same name alone as a *descendant* — an asymmetry nobody chose, deleted with the feature on
+2026-08-11; [[Assigning type on a move]].)
 
 ## Consequences
 

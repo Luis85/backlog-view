@@ -38,7 +38,8 @@ children are Tasks, hangs from Epic, Feature or PBI* ([[Types beside the ladder]
 it and ships it), and a milestone is the opposite on all three counts. Putting the name
 there would not extend the contract but falsify it, and `isExtraType` would silently mean
 two different things at four call sites — `computeLevel` and `collectFocusRoots` in
-`src/domain/model.ts`, and `computeTypeChanges` twice in `src/domain/writePlan.ts`.
+`src/domain/model.ts`, and twice in the re-typing cascade that lived in
+`src/domain/writePlan.ts` until 2026-08-11.
 
 The vocabulary takes a **third category** instead — a declared marker, no rung, no
 children, no parent — with `ALL_TYPES` as the union, which is what earns the name its
@@ -62,7 +63,7 @@ by hand.
 
 | Where | What it does to a milestone | Answered by |
 | --- | --- | --- |
-| `rankOf` in `computeTypeChanges` (`src/domain/writePlan.ts`) | Recognises only extra types, so a marker nested in a moved subtree takes the positional rung and its descendants are retyped from a rank it does not have — the exemption on the dragged item alone does not reach it | The `stopsAt` early return in `computeTypeChanges`, applied at the dragged item and at every node of the descent walk |
+| ~~The re-typing cascade's `rankOf` (`src/domain/writePlan.ts`)~~ | Recognised only extra types, so a marker nested in a moved subtree took the positional rung and its descendants were retyped from a rank it does not have | Answered by a `stopsAt` early return at the dragged item and every node of the walk; **moot since 2026-08-11**, when the cascade was deleted whole ([[Assigning type on a move]]). Nothing re-runs this row |
 | `renderFocusPicker` (`src/view/render/toolbar.ts`) | Builds its menu from `LEVELS` then `EXTRA_TYPES`, so the name a saved view may hold is one no user can pick | `renderFocusPicker` reading `ALL_TYPES` |
 | `addScheduleItems` (`src/view/interactions/menu.ts`) | Offers Schedule whenever *either* date key is configured, so narrowing the fields to the target alone opens a modal with nothing in it | `canSchedule` |
 | The date rollup ([[Spans roll up the tree]], `src/domain/model.ts`) | Gathers evidence from every result descendant, so a hand-nested milestone's target becomes a dateless ancestor's inferred end — a deadline reported as work | The `self` line in `assignAll` |

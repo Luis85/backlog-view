@@ -1,4 +1,5 @@
-/* Type badges: one colour per rung of the ladder — `src/view/render/rows.ts`. */
+/* Type badges: one colour per declared type — `src/view/render/badges.ts` maps each name
+   to an icon and to one of the classes below. */
 
 .pbl-badge {
 	display: inline-flex;
@@ -53,10 +54,12 @@
  * NINE badges, EIGHT theme tokens. Obsidian defines red, orange, yellow, green, cyan,
  * blue, purple and pink, and nothing here may invent a ninth without giving up theme
  * adaptation — so one pair has to share, and which pair is a decision rather than an
- * oversight. It used to be Idea and Deliverable, which is the worst pair available: two
- * extra types at the same rung, side by side under the same parent, told apart only by
- * their icons. That happened because `Idea` and `Deliverable` were built on branches that
- * could not see each other, and both reached for green.
+ * oversight. Two more collisions arrive with the test types below — the same decision
+ * made twice more, stated there as a rule rather than repeated as a choice each time. It
+ * used to be Idea and Deliverable, which is the worst pair available: two extra types at
+ * the same rung, side by side under the same parent, told apart only by their icons. That
+ * happened because `Idea` and `Deliverable` were built on branches that could not see
+ * each other, and both reached for green.
  *
  * Idea takes YELLOW instead, which costs the rule this comment used to state — that every
  * extra type is clear of the four levels — and buys the lightbulb the colour a lightbulb
@@ -71,6 +74,56 @@
 .pbl-lvl-milestone { --pbl-badge-rgb: var(--color-cyan-rgb); }
 /* Green, which no level uses and no extra type shares now that Idea has moved off it. */
 .pbl-lvl-deliverable { --pbl-badge-rgb: var(--color-green-rgb); }
+
+/*
+ * ELEVEN badges, still eight theme tokens, and this is where the pair-by-pair answer had to
+ * become a rule: Idea/Task was one sharing decision taken alone, and two more taken the same
+ * way is how Idea and Deliverable both reached for green on branches that could not see each
+ * other. The rule: HUE IS IDENTITY, and each pair that shares one relies on whatever else
+ * keeps it apart — the type NAME and the ladder's indentation for Idea and Task (neither
+ * wears the axis below), the test axis for the two pairs a test type is in, since
+ * `.pbl-lvl-test-suite` and `.pbl-lvl-test-case` both carry it and neither sharer does.
+ * Which pair shares, and what separates it, is a decision recorded here, never "whichever
+ * looked least crowded".
+ *
+ * A `Test suite` takes ORANGE, Epic's. An Epic is a root by POSITION in the plan and a suite
+ * is a root by NATURE in the catalog, and the two populations are disjoint by construction
+ * (`inCatalog`), so neither is ever drawn in the other's tree, board or roadmap — the one
+ * screen that draws both is the user manual's Item types list (`typesSection`, over
+ * `ALL_TYPES`), where every badge sits beside its own type name and hue is not asked to
+ * carry the identification.
+ *
+ * A `Test case` takes CYAN, Milestone's, by the same standard — the one whose existing wearer
+ * a test is least likely to sit beside. A `Milestone` is a marker: no rung, no children, no
+ * parent, drawn as a line on the timeline, and never a catalog member. A `Test case`'s
+ * ladder is fixed by NAME (`ladderFor`, against `TEST_LEVELS`) whatever it is dragged
+ * under, so it is never a member of the plan tree either — the two cannot meet where a case
+ * is actually READ.
+ *
+ * Nothing is minted here: both are Obsidian's own tokens, so the badges still track the
+ * user's theme.
+ */
+.pbl-lvl-test-suite { --pbl-badge-rgb: var(--color-orange-rgb); }
+.pbl-lvl-test-case { --pbl-badge-rgb: var(--color-cyan-rgb); }
+
+/*
+ * The test axis. Every other badge carries `border: 1px solid transparent` over a tinted
+ * fill; a test fills that border in, so it keeps the fill and gains a visible EDGE — an
+ * addition, not a swap, which is what it looks like beside a `Task` badge in the harness
+ * (both schemes, 2026-08-10). The axis is LOAD-BEARING now rather than reinforcing. While both
+ * test types shared one hue it merely backed up the icon; a `Test case` on cyan is the same
+ * hue as a `Milestone`, so the edge is what says *test* before anything else is read — which
+ * is what keeps "no two types are distinguishable by icon alone" true for both shared pairs.
+ *
+ * It composes with `.pbl-implied` rather than fighting it: that rule comes later in this
+ * file and overrides to dashed and transparent, so an implied `Test case` reads as
+ * outlined AND as implied. Two orthogonal signals, which is the honest pair — the axis
+ * says what family this is, the dash says the type was inferred.
+ */
+.pbl-badge.pbl-lvl-test-suite,
+.pbl-badge.pbl-lvl-test-case {
+	border-color: rgba(var(--pbl-badge-rgb), 0.55);
+}
 
 .pbl-badge[class*='pbl-lvl-']:not(.pbl-lvl-unknown) {
 	color: rgb(var(--pbl-badge-rgb));

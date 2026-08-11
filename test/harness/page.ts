@@ -2,6 +2,7 @@
 import { mountHarness } from './mount';
 import { perfWanted, reportPerf, wantedNotes } from './perf';
 import { drawSchemeToggle } from './theme';
+import { Projection } from '../../src/view/host';
 
 /**
  * `?fixture=edges` mounts the awkward cases instead of the everyday backlog, and
@@ -27,8 +28,9 @@ drawSchemeToggle();
  * dependency this harness is built to avoid.
  */
 const wanted = new URLSearchParams(window.location.search).get('view');
-if (wanted === 'board' || wanted === 'roadmap' || wanted === 'tree' || wanted === 'deliverables') {
-	view.setProjection(wanted);
+const PROJECTIONS: Projection[] = ['tree', 'board', 'roadmap', 'deliverables', 'catalog'];
+if (PROJECTIONS.includes(wanted as Projection)) {
+	view.setProjection(wanted as Projection);
 }
 
 // Last, because the run drives all four projections and restores whichever was open: run

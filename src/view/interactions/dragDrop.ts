@@ -1,4 +1,5 @@
-import { dropTargetFor, rootDropTarget, zoneForRatio } from '../../domain/dropTargets';
+import { dropTargetFor, zoneForRatio } from '../../domain/dropTargets';
+import { projectionMember } from '../projection';
 import { DropZone } from '../../domain/dropTargets';
 import { BacklogViewHost } from '../host';
 import { BacklogItem, BacklogModel } from '../../domain/model';
@@ -51,7 +52,7 @@ export class DragDropController {
 				return;
 			}
 			const zone = this.zoneFor(evt, row, hasChildren());
-			const target = dropTargetFor(drag.model, item, zone, drag.dragged);
+			const target = dropTargetFor(drag.model, item, zone, drag.dragged, projectionMember(this.host.projection));
 			if (!target) {
 				this.setDropIndicator(row, null);
 				return;
@@ -75,31 +76,15 @@ export class DragDropController {
 			evt.stopPropagation();
 			const drag = this.dragContext();
 			const zone = this.zoneFor(evt, row, hasChildren());
-			const target = drag && drag.dragged !== item ? dropTargetFor(drag.model, item, zone, drag.dragged) : null;
+			const target =
+				drag && drag.dragged !== item
+					? dropTargetFor(drag.model, item, zone, drag.dragged, projectionMember(this.host.projection))
+					: null;
 			this.clearDragState();
 			if (drag && target) void this.host.performDrop(drag.dragged, target);
 		});
 
 		row.addEventListener('dragend', () => this.clearDragState());
-	}
-
-	/** Dropping on the empty area below the tree moves items to the top level. */
-	setupRootDropZone(): void {
-		this.els.treeEl.addEventListener('dragover', (evt) => {
-			if (evt.target !== this.els.treeEl) return;
-			const drag = this.dragContext();
-			if (!drag || !rootDropTarget(drag.model, drag.dragged)) return;
-			evt.preventDefault();
-			if (evt.dataTransfer) evt.dataTransfer.dropEffect = 'move';
-		});
-		this.els.treeEl.addEventListener('drop', (evt) => {
-			if (evt.target !== this.els.treeEl) return;
-			evt.preventDefault();
-			const drag = this.dragContext();
-			const target = drag ? rootDropTarget(drag.model, drag.dragged) : null;
-			this.clearDragState();
-			if (drag && target) void this.host.performDrop(drag.dragged, target);
-		});
 	}
 
 	/** Rows are about to be rebuilt; drop the references to the old indicator and source rows. */

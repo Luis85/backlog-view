@@ -5,6 +5,7 @@ import { BacklogViewHost } from '../host';
 import { uniqueElementId } from '../selection';
 import { BacklogItem } from '../../domain/model';
 import { childrenLabel, listedChildren } from '../childrenList';
+import { projectionMember } from '../projection';
 import { ownWorkflowReading } from '../../domain/board';
 
 /**
@@ -63,7 +64,15 @@ export function renderCardChildren(ctx: RowContext, card: HTMLElement, item: Bac
 	// only when it is true, and only in the one place a user can ask: two numbers
 	// differing with nothing to explain them reads as broken data, and a permanent
 	// caveat on every card reads as noise.
-	const omitted = item.children.length - children.length;
+	//
+	// The denominator is the children this projection DRAWS, never `item.children` raw:
+	// `projectionMember` answers membership alone, while `isRowHidden` — what
+	// `listedChildren` filters by — conflates it with the completed toggle and the quick
+	// filter. Subtracting the second from the first counted a catalog child as a plan row
+	// the view was choosing to hide, and this note says exactly that. Absent from this
+	// ladder is not hidden by this view.
+	const drawn = item.children.filter(projectionMember(host.projection));
+	const omitted = drawn.length - children.length;
 	const note = omitted > 0 ? ` — ${omitted} more ${omitted === 1 ? 'is' : 'are'} hidden by the current view` : '';
 
 	const draw = (): void => {

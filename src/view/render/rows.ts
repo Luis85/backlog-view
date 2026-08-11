@@ -1,11 +1,13 @@
 import { Keymap, setIcon, setTooltip } from 'obsidian';
 import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
 import { promptCreateItem } from '../interactions/create';
-import { offerableTypes, showItemMenu } from '../interactions/menu';
+import { showItemMenu } from '../interactions/menu';
+import { offerableTypes, projectionMember } from '../projection';
 import { renderAllDoneState, renderEmptyState, renderFilterEmptyState } from './emptyStates';
+import { projectionPopulation } from '../projection';
+import { badgeStyleFor } from './badges';
 import { BacklogItem } from '../../domain/model';
 import { childTypeChoices, displayType } from '../../domain/itemTypes';
-import { byName } from '../../domain/typeVocabulary';
 import { ownWorkflowReading } from '../../domain/board';
 import {
 	INDENT_PER_DEPTH,
@@ -19,26 +21,6 @@ import {
 /** Why an implied badge is marked, said once: the render sets the class, the pass reads it. */
 const IMPLIED_TYPE_TOOLTIP =
 	'Type property not set — level implied from position. Use "Assign missing properties" to write it.';
-
-/** Work-item icons by level position, echoing the Azure DevOps set (crown, trophy, book, check). */
-const LEVEL_ICONS = ['crown', 'award', 'book-open', 'check-square'];
-/**
- * Icon and badge colour per declared NON-RUNG type — the extra types and the markers,
- * keyed lowercase. The vocabulary is fixed, so this covers ALL of it: there is no
- * fallback for a declared type, because there is no declared type this file has not been
- * told about. A test renders one of each and asserts every badge got an icon and a colour
- * the stylesheet defines, which is what makes that safe to rely on rather than something
- * to remember — and is the reason a name added to the vocabulary cannot ship here
- * unnoticed, whatever the count happens to be.
- */
-const NON_RUNG_STYLE: Record<string, { icon: string; badge: string }> = {
-	issue: { icon: 'circle-alert', badge: 'pbl-lvl-issue' },
-	bug: { icon: 'bug', badge: 'pbl-lvl-bug' },
-	idea: { icon: 'lightbulb', badge: 'pbl-lvl-idea' },
-	milestone: { icon: 'diamond', badge: 'pbl-lvl-milestone' },
-	deliverable: { icon: 'package', badge: 'pbl-lvl-deliverable' },
-};
-
 /** Render the tree content (or the empty state) into the tree element. */
 export function renderTree(ctx: RowContext, treeEl: HTMLElement): void {
 	const model = ctx.host.model;
@@ -53,20 +35,34 @@ export function renderTree(ctx: RowContext, treeEl: HTMLElement): void {
 		'--pbl-meta-col': `${META_COL_WIDTH}px`,
 		'--pbl-indent': `${INDENT_PER_DEPTH}px`,
 	});
-	if (model.items.length === 0) {
+	// THIS projection's population, on all three lines. Both decisions below used to read
+	// the shared arrays, which hold every item the model kept: a base returning twelve
+	// test notes and no plan work would be told "All 12 items are done and hidden", with a
+	// Show completed items button that reveals nothing — because nothing is completed and
+	// nothing is hidden by completion. A control offering to reveal what it cannot show.
+	//
+	// "Is there anything here" is asked of the RESULTS and not of the items, which is the
+	// same distinction one line further down rather than a second rule: a context row is
+	// placement, never population. A base returning one `PBI` whose excluded parent is a
+	// `Test case` gives the catalog exactly one item — that context row — and it is hidden,
+	// since the only child it places is a plan row. Counting it as population walked past
+	// this branch into "All 0 items are done and hidden", offering a completed toggle in a
+	// projection that hides nothing by completion at all.
+	const population = projectionPopulation(ctx.host.projection, model);
+	if (population.results.length === 0) {
 		renderEmptyState(ctx.host, treeEl);
 		return;
 	}
 	// Whether any row will render is knowable before rendering one: renderForest draws
 	// a row per root isRowHidden lets through. Asking first keeps the header — which is
 	// not a row — from having to be built and then thrown away again.
-	if (!model.roots.some((root) => !ctx.host.isRowHidden(root))) {
+	if (!population.roots.some((root) => !ctx.host.isRowHidden(root))) {
 		if (ctx.host.isFiltering()) renderFilterEmptyState(ctx.host, treeEl);
-		else renderAllDoneState(ctx.host, treeEl, model.results.length);
+		else renderAllDoneState(ctx.host, treeEl, population.results.length);
 		return;
 	}
 	renderColumnHeader(ctx, treeEl);
-	renderForest(ctx, treeEl, model.roots);
+	renderForest(ctx, treeEl, population.roots);
 }
 
 /**
@@ -82,7 +78,7 @@ export function refreshRowChildren(ctx: RowContext, item: BacklogItem, row: HTML
 
 	const existing = row.nextElementSibling;
 	if (existing instanceof HTMLElement && existing.hasClass('pbl-children')) {
-		forgetSubtree(ctx.rows, item.children);
+		forgetSubtree(ctx.rows, item.children, projectionMember(ctx.host.projection));
 		existing.detach();
 	}
 	const parentEl = row.parentElement;
@@ -93,11 +89,28 @@ export function refreshRowChildren(ctx: RowContext, item: BacklogItem, row: HTML
 	renderForest(ctx, childrenEl, item.children);
 }
 
-/** Drop a removed subtree from the row index so stale elements can't be found. */
-function forgetSubtree(rows: Map<string, HTMLElement>, items: BacklogItem[]): void {
+/**
+ * Drop a removed subtree from the row index so stale elements can't be found — along
+ * this projection's MEMBERSHIP edges, never the raw child list.
+ *
+ * A non-member's subtree can hold a member this projection renders as a promoted ROOT,
+ * whose row is somewhere else entirely and is not being detached. Walking raw children
+ * deletes that row's index entry while its DOM stays on screen, and everything that reaches
+ * a row by lookup then fails for it silently: selection cannot mark or announce it, and a
+ * keyboard-opened menu loses its anchor.
+ *
+ * Membership is a superset of what a pass actually DRAWS — `isRowHidden` (the quick
+ * filter, the completed toggle) narrows further — so this can walk into and delete the
+ * entry for a member that rendered no row this pass. That is harmless, not a second bug:
+ * a hidden member's subtree renders no rows to leave stale, and a full render clears
+ * `rowEls` outright (`this.rowEls.clear()` in `backlogView.ts`) before rebuilding it, so
+ * no stale entry can survive past that boundary either.
+ */
+function forgetSubtree(rows: Map<string, HTMLElement>, items: BacklogItem[], member: (item: BacklogItem) => boolean): void {
 	for (const item of items) {
+		if (!member(item)) continue;
 		rows.delete(item.file.path);
-		forgetSubtree(rows, item.children);
+		forgetSubtree(rows, item.children, member);
 	}
 }
 
@@ -336,16 +349,15 @@ export function renderBadge(host: BacklogViewHost, row: HTMLElement, item: Backl
 	// and takes the bare-text treatment, which is the honest look for a type this view
 	// knows nothing about — it is carried through the ladder, not styled as though it were
 	// understood.
-	const style = byName(NON_RUNG_STYLE, item.typeName);
-	if (item.levelIndex >= 0) {
-		setIcon(badge.createSpan({ cls: 'pbl-badge-icon' }), LEVEL_ICONS[item.levelIndex]);
-		badge.addClass(`pbl-lvl-${item.levelIndex}`);
-	} else if (style) {
-		setIcon(badge.createSpan({ cls: 'pbl-badge-icon' }), style.icon);
-		badge.addClass(style.badge);
-	} else {
-		badge.addClass('pbl-lvl-unknown');
-	}
+	// Asked of the name the badge SHOWS, never of `item.levelIndex`, which indexes
+	// whichever ladder the item is on: a `Task` beneath a `Test case` is rung 2 there and
+	// rung 3 of the plan's, so the index alone would draw it as a PBI in blue. The shown
+	// name answers for both ladders without either being named here — which is also what
+	// lets the two test types be ordinary entries in the table above rather than a third
+	// branch, even though they ARE rungs.
+	const style = badgeStyleFor(badgeText);
+	if (style.icon) setIcon(badge.createSpan({ cls: 'pbl-badge-icon' }), style.icon);
+	badge.addClass(style.badge);
 	badge.createSpan({ cls: 'pbl-badge-text', text: badgeText });
 	// The level name is capped in CSS so the row's lead stays bounded, so the tooltip
 	// carries it in full — unconditionally, for the reason the title's is: asking whether

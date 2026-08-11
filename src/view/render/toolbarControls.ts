@@ -2,6 +2,7 @@ import { Menu, setIcon, setTooltip } from 'obsidian';
 import { hasColorableStates, openStateColors } from '../interactions/stateColors';
 import { BacklogViewHost } from '../host';
 import { BacklogItem, BacklogModel } from '../../domain/model';
+import { projectionPopulation, treeShaped } from '../projection';
 import { activeAxis, configuredAxes, RoadmapAxis } from '../../domain/roadmap';
 import { ScaleId } from '../../domain/timeline';
 import { showMenuForClick } from '../interactions/menu';
@@ -334,7 +335,8 @@ export const CLICK_ACTION_LABEL = 'Clicking a row folds it';
  * Never a card — the horizon axis's buckets, the board, the Deliverables board — because a
  * card's disclosure lists children on its own face and a childless card draws none, so the
  * option would be inert on the commonest one. That is `Opening the work.md` extension 1e's
- * reasoning, kept as the reason this predicate has two arms rather than four.
+ * reasoning, kept as the reason this predicate has two arms rather than four — the first of which
+ * is every ROW-shaped projection, not the plan's tree alone.
  *
  * **This has to agree with who passes a fold to `wireCardActivation`, and nothing checks
  * that mechanically.** The two fold call sites are `wireRowEvents` and `renderTimelineRow`;
@@ -344,7 +346,14 @@ export const CLICK_ACTION_LABEL = 'Clicking a row folds it';
  * present exactly where the click folds.
  */
 export function clickActionApplies(host: BacklogViewHost): boolean {
-	if (host.projection === 'tree') return true;
+	// `treeShaped`, never `=== 'tree'`. The catalog renders through `renderTree` and so
+	// through `wireRowEvents`, which folds — so a bare comparison here withheld the only
+	// control over a behaviour that was still running, and a user who turned folding on in
+	// the plan had to go back there to turn it off. That is `projection.ts`'s own rule
+	// (a projection opting out of a feature opts out of the COMPUTATION, not just the
+	// control) failing in the direction it warns about, and the drift that module exists
+	// to stop: it arrived when the toggle merged in beside a projection it had never seen.
+	if (treeShaped(host.projection)) return true;
 	return host.projection === 'roadmap' && activeAxis(host.settings, host.axisPick) === 'dates';
 }
 
@@ -389,7 +398,13 @@ export function clickActionToggle(host: BacklogViewHost): { folds: boolean; icon
  * elsewhere can never hide a Deliverable — while `model.items` is the focused render set.
  */
 function collapsiblePopulation(host: BacklogViewHost, model: BacklogModel): BacklogItem[] {
-	return host.projection === 'deliverables' ? model.deliverableResults : model.items;
+	if (host.projection === 'deliverables') return model.deliverableResults;
+	// The catalog's own items for the same reason, reached the other way: `model.items` is
+	// the PLAN's population now, so left alone these two buttons would fold the plan from
+	// the catalog — and the collapse bits being shared by path, the plan would still be
+	// folded on the way back. Deliberately NOT behind `treeShaped`: this decides what a
+	// bulk collapse TOUCHES rather than whether a button is enabled.
+	return projectionPopulation(host.projection, model).items;
 }
 
 /**
@@ -428,7 +443,7 @@ export function collapseAll(host: BacklogViewHost): void {
  */
 export function collapseCtlsDisabled(host: BacklogViewHost): boolean {
 	if (host.isFiltering()) return true;
-	if (host.projection === 'tree') return false;
+	if (treeShaped(host.projection)) return false;
 	const barPaths = new Set((host.roadmap?.roadmap.bars ?? []).map((bar) => bar.item.file.path));
 	for (const path of host.cardChildrenShown) {
 		if (barPaths.has(path)) return false;

@@ -31,11 +31,15 @@ const MOVING: ManualSection = {
 		},
 		{ term: 'Onto a row', text: 'Makes the item a child of that row.' },
 		{
-			term: 'Onto the empty space below the last row',
+			term: 'To the top level',
 			text:
-				'Makes the item top-level, ranked last. Nothing is drawn there to aim at, so ' +
-				'Outdent — Alt+Left, or the context menu — is the reliable way to say the same ' +
-				'thing, and the only one on a tree with no empty space left below it.',
+				'Outdent — Alt+Left, or the context menu — makes a row a sibling of its own parent, ' +
+				'so a depth-one row becomes top-level, and it climbs one level at a time, so a ' +
+				'deeply nested row takes several. A drag can also do it, but only onto a place: ' +
+				'dropping a row just above or below one that is already top-level puts it there ' +
+				'too. What does nothing is a drop on the empty space below the last row — making an ' +
+				'item top-level is a deliberate action rather than one a released drag can mean by ' +
+				'accident.',
 		},
 		{
 			term: 'Without a mouse',
@@ -55,15 +59,9 @@ const MOVING: ManualSection = {
 		{
 			term: 'A move does not re-type',
 			text:
-				'Applies only when Assign item type when moving is on, and only on a move that ' +
-				"changes an item's parent. It retypes the dragged item and every explicitly " +
-				'ladder-typed descendant to match its new rung, cascading down through the whole ' +
-				'subtree — and skips the rest: an untyped descendant (its level is already implied ' +
-				'by its position), a descendant carrying a custom type outside the four levels, and ' +
-				'a declared extra type (Issue, Bug, Idea, Deliverable), which keeps its own pinned ' +
-				'rank rather than taking the ladder position. It stops descending a branch the moment ' +
-				'it meets a note the Base excluded or a Milestone — neither has a rung for what sits ' +
-				'below it to inherit.',
+				'A drop, an indent, an outdent and Clear parent link all write the parent and the ' +
+				'order and nothing else. A type is only ever what the note says or what Set type ' +
+				'wrote; where a note carries none, its level is read from where it hangs.',
 		},
 		{
 			term: 'When a drop is unavailable',
@@ -75,12 +73,17 @@ const MOVING: ManualSection = {
 				'renumbering that group would silently skip a write to a note the Base excludes. The ' +
 				'same rule governs Move up, Move down, Move to top, Move to bottom and Outdent from ' +
 				'the menu or Alt+arrow. Dropping into a parent stays available in every one of those ' +
-				'cases, since landing last is what it means anyway — and so do a drop on the empty ' +
-				'space below the last row and Indent, except throughout a focused view, where neither ' +
-				'works at all: that drop refuses unconditionally while any focus is set, and a ' +
-				'focus-root row has no ' +
+				'cases, since landing last is what it means anyway — and so does Indent, except on the ' +
+				'top row of a focused view: a focus-root row has no ' +
 				'previous sibling for Indent to nest it under, by the same no-shared-ranking rule ' +
-				'above.',
+				'above. One further case is about which screen a row is on rather than about ranking: ' +
+				'a Task, or a note with no type, takes the level of whatever it hangs from, so moving ' +
+				'one between the plan and the test catalog would take it off the screen it was moved ' +
+				'on. Every move that could do that is unavailable — dropping it beside a row at the top ' +
+				'level, Outdent, and the two menu entries that remove the parent ' +
+				'link, Clear parent link and Use folder position — while every other type keeps its ' +
+				'own ladder wherever it lands and is refused none of them. Indent is not among them: ' +
+				'it nests under the row above, which is on this screen already.',
 		},
 		{
 			term: 'While a quick filter is active',

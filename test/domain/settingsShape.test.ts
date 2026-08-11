@@ -130,8 +130,14 @@ describe('settingsInconsistency, and what the only producer guarantees', () => {
 		// the board two configured columns for one state, which no user can reach —
 		// `resolveSettings` applies `dedupe(list(...))` case-insensitively.
 		const base = defaultSettings();
-		expect(settingsInconsistency({ ...base, states: ['Active', 'active'], deliverableStates: ['Active', 'active'] }))
-			.toContain('states repeats');
+		expect(
+			settingsInconsistency({
+				...base,
+				states: ['Active', 'active'],
+				deliverableStates: ['Active', 'active'],
+				testStates: ['Active', 'active'],
+			}),
+		).toContain('states repeats');
 		expect(settingsInconsistency({ ...base, horizonValues: ['Now', 'NOW'] })).toContain('horizonValues repeats');
 		expect(settingsInconsistency({ ...base, startedStates: ['A', 'a'] })).toContain('startedStates repeats');
 		// The two DONE lists are deliberately exempt: they take `list()` without `dedupe()`,
@@ -143,10 +149,12 @@ describe('settingsInconsistency, and what the only producer guarantees', () => {
 		// reaches the resolver through `list()`, which trims and drops empties. Checking the
 		// narrower set against the wider rule is the mistake this predicate kept making, so
 		// the two spans are asserted apart.
-		// `deliverableStates` set alongside, or the copy rule above fires first and this
-		// asserts the wrong message — the predicate returns the FIRST broken relationship.
-		expect(settingsInconsistency({ ...base, states: [' Active '], deliverableStates: [' Active '] }))
-			.toContain('states holds');
+		// `deliverableStates`/`testStates` set alongside, or the copy rule above fires first
+		// and this asserts the wrong message — the predicate returns the FIRST broken
+		// relationship.
+		expect(
+			settingsInconsistency({ ...base, states: [' Active '], deliverableStates: [' Active '], testStates: [' Active '] }),
+		).toContain('states holds');
 		expect(settingsInconsistency({ ...base, doneValues: ['Done ', 'Closed'] })).toContain('doneValues holds');
 		expect(settingsInconsistency({ ...base, horizonValues: ['Now', ''] })).toContain('horizonValues holds');
 	});
@@ -154,7 +162,9 @@ describe('settingsInconsistency, and what the only producer guarantees', () => {
 	it('accepts what the resolver would have produced for that same fixture', () => {
 		// The pair to the case above, so "rejects" cannot quietly become "rejects everything".
 		const base = defaultSettings();
-		expect(settingsInconsistency({ ...base, stateKey: 'status', states: ['New'], deliverableStates: ['New'] })).toBeNull();
+		expect(
+			settingsInconsistency({ ...base, stateKey: 'status', states: ['New'], deliverableStates: ['New'], testStates: ['New'] }),
+		).toBeNull();
 		expect(settingsInconsistency(base)).toBeNull();
 	});
 });
@@ -206,6 +216,11 @@ describe('settingsWith reproduces what the resolver would have derived', () => {
 			name: 'a tags property aimed at the state key, which yields',
 			fields: { stateKey: 'status', tagsKey: 'status' },
 			options: { stateProperty: 'note.status', tagsProperty: 'note.status' },
+		},
+		{
+			name: 'a test workflow of its own, so nothing is copied',
+			fields: { testStateKey: 'testStatus', testDoneValues: [] },
+			options: { testStateProperty: 'note.testStatus', testDoneValues: '' },
 		},
 	];
 

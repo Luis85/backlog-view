@@ -3,118 +3,119 @@ type: PBI
 parent: "[[Reordering and reparenting]]"
 order: 40
 status: Done
+closed: 2026-08-11
+source: 2026-08-11 whole-branch review, plus the user's decision on it
 ---
 
 # Assigning type on a move
+
+**Withdrawn on 2026-08-11. The feature was removed rather than repaired, and nothing in
+the plugin re-types a note on a move any more.** This note is kept because the register
+keeps its closed work: it is now the record of a capability that existed, what it cost,
+and why it went.
+
+**Why it went.** The whole-branch review found the cascade's nested no-crossing guard
+(`|| child.ladder !== destLadder`, in what was `computeTypeChanges`) with nothing checking
+it: deleting that clause left all 1818 tests green, and losing it let a drag of an
+unrelated `Epic` write a plan rung onto a hand-nested `Test suite`, taking the note out of
+the test catalog. That was the one write path in the plugin that did not ask
+`keepsProjection`. Asked whether to build the missing check, the user chose to remove the
+whole feature instead — and removing the cascade removes the door rather than putting a
+lock on it.
+
+It also settles two things the register was carrying rather than deciding. The asymmetry
+below — the dragged item retyped while its descendants were not — went away with the code
+that produced it ([[The dragged item is retyped, its descendants are not]]). And ADR 0009
+says the type rules are advisory; this was its single exception, off by default, so the
+ADR is now true without one. The option is gone from the view options, and an
+`autoAssignType` key left in an existing `.base` is read by nothing.
+
+The want this note was written from, kept as it was written:
 
 **As** someone who wants the ladder enforced rather than suggested, **I want** a moved item
 and its subtree to take the types their new position implies, **so that** dragging a PBI
 under an Epic makes it a Feature without my editing every note beneath it — and **as**
 everyone else, **I want** that off by default, because re-typing a subtree is a strong
-thing to do on a drag.
+thing to do on a drag. Nothing serves it today; the ladder is advisory everywhere, and
+`Set type` is the only thing that writes a type to a note that already has one.
 
 ## Use case
 
+*What the feature did while it existed. Every row below is past tense on purpose: no
+configuration produces any of it now.*
+
 | | |
 | --- | --- |
-| **Actor** | Backlog owner who has opted in |
-| **Trigger** | Any move that changes an item's **parent** |
-| **Preconditions** | "Assign item type when moving" is on — it is **off** by default |
-| **Guarantee** | A reorder among siblings never re-types anything. Only a change of parent can, because only that changes what the position means. |
+| **Actor** | Backlog owner who had opted in |
+| **Trigger** | Any move that changed an item's **parent** |
+| **Preconditions** | "Assign item type when moving" was on — it was **off** by default |
+| **Guarantee** | A reorder among siblings never re-typed anything. Only a change of parent could, because only that changed what the position meant. |
 
 **Main flow**
 
-1. The item is dropped under a new parent.
-2. Its new rung is the one below that parent's, clamped at the deepest.
-3. If its `type` does not already say so, the new level is written.
-4. The walk descends the subtree, each child taking the rung below its parent's **new**
-   level, writing only those that disagree.
-5. The whole cascade is one batch, one refresh and one undo.
+1. The item was dropped under a new parent.
+2. Its new rung was the one below that parent's, clamped at the deepest.
+3. If its `type` did not already say so, the new level was written.
+4. The walk descended the subtree, each child taking the rung below its parent's **new**
+   level, writing only those that disagreed.
+5. The whole cascade was one batch, one refresh and one undo.
 
 **Extensions**
 
-- **1a — the move only reorders among siblings.** No type write at all.
-- **2a — the new parent is the top level.** The item becomes an `Epic`.
-- **3a — the item is an `Issue` or a `Bug`.** Left alone: its rank is a property of the
+- **1a — the move only reordered among siblings.** No type write at all.
+- **2a — the new parent was the top level.** The item became an `Epic`.
+- **3a — the item was an `Issue` or a `Bug`.** Left alone: its rank is a property of the
   type ([[Types beside the ladder]]).
-- **3b — the item's type is not on the ladder at all** (`Spike`, `Chore`). It **is**
-  rewritten to the level its new position implies. Only *declared* types that occupy no
-  rung are exempt here — the extra types, and the markers
-  ([[Milestones as their own type]]) — which is not what happens to the same undeclared
-  type one level down. See *The asymmetry* below. The exemption turns on **declared and
-  rungless**, not on membership of `EXTRA_TYPES`: `Epic` and `Task` are declared *as*
-  rungs and follow position, which is the whole point of the cascade.
-- **4a — a child is an extra type.** Also left alone — but the walk descends from **its**
+- **3b — the item's type was not on the ladder at all** (`Spike`, `Chore`). It **was**
+  rewritten to the level its new position implied — see *The asymmetry* below.
+- **4a — a child was an extra type.** Also left alone, and the walk descended from **its**
   pinned rank rather than the position it inherited. Taking the positional rung here
-  rewrote a nested Bug's Tasks into PBIs: the item correctly untouched, its children
-  silently corrupted ([[Nested extra type lost its pinned rank]]).
-- **4b — a child's type is not on the ladder at all** (`Spike`, `Chore`). Left alone, and
-  it still occupies its rung, so its own children carry on from there rather than
-  restarting. This matches what the level maths does when it renders, so plan and model
-  cannot disagree.
-- **4c — a child came from outside the Base's filter.** The cascade **stops** and skips
-  that whole branch. It may not be written to, and re-typing only the levels beneath it
-  would leave a worse ladder than leaving the branch alone.
-- **4d — a child is a marker** ([[Milestones as their own type]]). Left alone, and the walk
-  **stops** there, exactly as 4c stops: neither the marker nor anything hand-nested beneath
-  it is retyped. An extra type supplies a pinned rank to descend from and a marker supplies
-  none, so there is no rung its branch could be renumbered from. "It has no children" is
-  not the reason — the ladder guides and never refuses, so a marker can be hand-nested into
-  exactly as anything else can, and a rule resting on what creation *offers* would break on
-  the vault that did it anyway. Continuing past it is the 4a failure reached by a name with
-  no rank at all: the item correctly untouched, its children silently corrupted.
-
-**Guarantees**
-
-- Levels chain down the **parent's** new level, never down visual depth. That is the same
-  walk the model runs once the writes land — and it holds under focus mode, where depth is
-  re-rooted and would otherwise produce a plan that disagrees with the tree it creates.
+  rewrote a nested Bug's Tasks into PBIs ([[Nested extra type lost its pinned rank]]).
+- **4b — a child's type was not on the ladder at all.** Left alone, still occupying its
+  rung, so its own children carried on from there.
+- **4c — a child came from outside the Base's filter.** The cascade **stopped** and skipped
+  that whole branch.
+- **4d — a child was a marker** ([[Milestones as their own type]]). Left alone, and the
+  walk **stopped** there exactly as 4c stopped: a marker supplies no rank to descend from.
+- **4e — a child sat on the OTHER ladder.** Skipped whole, by the guard nothing checked.
+  This is the extension the removal is about.
 
 ## The asymmetry
 
-**An unrecognised custom type survives this cascade as a descendant and does not survive
-it as the dragged item.** `Spike` nested inside a moved subtree is left alone; `Spike`
-dropped somewhere becomes a `Feature`.
+**An unrecognised custom type survived this cascade as a descendant and did not survive it
+as the dragged item.** `Spike` nested inside a moved subtree was left alone; `Spike`
+dropped somewhere became a `Feature`. Two tests, only one of them written as a rule:
+the dragged item was exempted by `isExtraType` alone, a descendant by having no
+`levelIndex` — which extra types and unknown custom names both lack.
 
-The two tests are different, and only one of them was written as a rule:
-
-| | Retyped when — the `if` as written | So what is exempt |
-| --- | --- | --- |
-| The dragged item | `!isExtraType(dragged.typeName)` | declared extra types only |
-| Any descendant | `child.typeName !== null && child.levelIndex !== -1` | extra types **and** unknown custom types |
-
-There is a defensible reading — the dragged item is the one the user just acted on, so
-taking its new position as an instruction is stronger there than three levels down. But
-`src/domain/CLAUDE.md` states the principle without that qualification: *"custom types
-outside the ladder are deliberate user data"*, and `Spike` is either that or it is not.
-
-**Recorded, not resolved**, and now filed:
-[[The dragged item is retyped, its descendants are not]] holds the argument, what would
-settle it, and what leaving it undocumented already cost. This section stays because a use
-case has to describe what the code does; the issue is where the open question lives, so the
-behaviour is stated once and pointed at rather than restated in a fifth place.
+Nobody chose that, and it is now moot: no move writes a type at any depth, so the two
+tests that disagreed are both gone. [[The dragged item is retyped, its descendants are
+not]] holds what the argument was.
 
 ## Acceptance criteria
 
-- Off by default; with it off, no move writes a `type`.
-- A reorder within a sibling group never re-types.
-- Declared types that occupy no rung are never re-typed, at any depth. An extra type's
-  subtree ranks from its **pinned** rung; a marker has no rung at all, so the cascade stops
-  at it and leaves anything hand-nested beneath it alone rather than renumbering that
-  branch from a rank the marker does not have ([[Milestones as their own type]]).
-- An unrecognised custom **descendant** type is never re-typed, and its children continue
-  the ladder from the rung it occupies. The **dragged item's** own unrecognised type is
-  rewritten — see *The asymmetry*.
-- The cascade never writes to a note the Base excluded, and stops rather than skipping past
-  one.
-- The whole cascade is a single undo.
+*Superseded by the removal. What holds now is the single line at the bottom of the list.*
+
+- ~~Off by default; with it off, no move writes a `type`.~~
+- ~~A reorder within a sibling group never re-types.~~
+- ~~Declared types that occupy no rung are never re-typed, at any depth.~~
+- ~~An unrecognised custom **descendant** type is never re-typed.~~
+- ~~The cascade never writes to a note the Base excluded, and stops rather than skipping
+  past one.~~
+- ~~The whole cascade is a single undo.~~
+- **No move writes a `type`, in any configuration.** A drop, an indent, an outdent,
+  Alt+arrow and both parent-link menu entries write the parent and the rank and nothing
+  else; a type is what the note says or what `Set type` wrote. The rule that a move may not
+  change which projection draws a row survives on its own, in `keepsProjection`, which
+  withholds the move rather than rewriting anything.
 
 ## Where it lives
 
-`src/domain/writePlan.ts` (`computeTypeChanges`) ·
-`src/domain/itemTypes.ts` (`nextLevelIndex`, `childLevelIndex`, `EXTRA_TYPE_RANK`) ·
-`src/domain/viewOptions.ts` (`autoAssignType` — the toggle, whose schema default must
-match the runtime one, or the options UI lies about the behaviour).
-Tests: `test/domain/writePlan.test.ts`, `test/domain/writePlanContextRows.test.ts`,
-`test/domain/itemTypes.test.ts`.
-Bugs it has produced: [[Nested extra type lost its pinned rank]].
+Nowhere. The planner, the option, its resolution and the toggle were deleted on
+2026-08-11; `keepsTypeOnMove`, which existed only to let the generated README name the
+types this cascade left alone, went with them. The surviving rule — that a move never
+re-types — is checked in `test/domain/writePlan.test.ts` ("never plans a type: a drop
+writes the parent and the rank and nothing else") and in `test/domain/testLadder.test.ts`
+("a move crosses no ladder").
+
+Bugs it produced while it existed: [[Nested extra type lost its pinned rank]].

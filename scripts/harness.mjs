@@ -86,7 +86,7 @@ await writeFile(
 );
 
 console.log(`\nOpen ${pathToFileURL(path.resolve(OUT, 'index.html')).href}`);
-console.log('The toolbar switches all four projections; ?view=board|roadmap|deliverables opens into one.');
+console.log('The toolbar switches all five projections; ?view=board|roadmap|deliverables|catalog opens into one.');
 console.log('Every action is the view’s own. The menu and dialog WIDGETS are the harness’s stand-ins.');
 console.log(
 	'Colours are Obsidian’s own DEFAULTS, from its real app.css — not a themed vault’s, and neither is any layout a partial leans on an Obsidian element default for. See test/harness/theme.css and test/CLAUDE.md.',

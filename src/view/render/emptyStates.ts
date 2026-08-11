@@ -3,7 +3,7 @@ import { BacklogViewHost } from '../host';
 import { newItemType, promptCreateItem } from '../interactions/create';
 import { runInit } from '../interactions/structure';
 import { adoptableProperties, OptionalField } from '../../domain/optionalProperties';
-import { LEVELS } from '../../domain/typeVocabulary';
+import { LEVELS, TEST_LEVELS } from '../../domain/typeVocabulary';
 import { manualLink } from '../../ui/manualDialog';
 import { manualSections } from '../manual/sections';
 
@@ -59,6 +59,7 @@ export function renderLoadingState(treeEl: HTMLElement): void {
  * view's one stable element, created once and only ever emptied-and-refilled.
  */
 export function renderEmptyState(host: BacklogViewHost, treeEl: HTMLElement, root: HTMLElement = treeEl): void {
+	if (host.projection === 'catalog') return renderCatalogEmptyState(host, treeEl, root);
 	const model = host.model;
 	const focused = model?.focused ?? false;
 	const topLevel = focused && model ? newItemType(host.settings, model) : LEVELS[0];
@@ -73,6 +74,39 @@ export function renderEmptyState(host: BacklogViewHost, treeEl: HTMLElement, roo
 	btn.createSpan({ text: `New ${topLevel}` });
 	btn.addEventListener('click', () => promptCreateItem(host, [topLevel], null));
 	manualLink(empty, host.app, manualSections(), { sectionId: 'finding', label: 'What shows here?', root });
+}
+
+/**
+ * The test catalog with nothing in it: say what a catalog IS, and offer to make the first
+ * suite.
+ *
+ * It offers CREATION and never configuration, which is the one way it differs from the
+ * board's and the roadmap's empty states — unlike those two, this projection needs no key
+ * bound to exist, so there is nothing for a ✨ to do here and a setup button would point
+ * at a problem the user does not have.
+ *
+ * It is also keyed to what this projection DRAWS rather than to whether a test type
+ * appeared among the raw results, because `renderTree` reaches it on an empty population:
+ * a base returning a `Task` whose `Test case` parent was excluded still has a catalog —
+ * the case comes in as a context row, the Task is a catalog member under it, and an empty
+ * state there would be the view claiming there are no tests on a screen with one on it.
+ */
+function renderCatalogEmptyState(host: BacklogViewHost, treeEl: HTMLElement, root: HTMLElement): void {
+	const suite = TEST_LEVELS[0];
+	const empty = guidanceShell(
+		treeEl,
+		'flask-conical',
+		'No tests yet',
+		`The test catalog is a list of its own: a ${suite} holds ${TEST_LEVELS[1]}s, and a case carries ` +
+			'its preconditions, steps and expected result as ordinary markdown. It is not a branch of ' +
+			`the plan — nothing here shows up in the tree, the board or the roadmap. Create your first ${suite} ` +
+			'to start one.',
+	);
+	const btn = empty.createEl('button', { cls: 'mod-cta' });
+	setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'plus');
+	btn.createSpan({ text: `New ${suite}` });
+	btn.addEventListener('click', () => promptCreateItem(host, [suite], null));
+	manualLink(empty, host.app, manualSections(), { sectionId: 'types', label: 'What is a test suite?', root });
 }
 
 /**

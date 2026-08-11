@@ -2,7 +2,9 @@ import { BacklogItem } from '../domain/model';
 import { ShelfSort } from '../domain/shelf';
 import {
 	BOARD_MODE,
+	CATALOG_MODE,
 	DELIVERABLES_MODE,
+	ProjectionMode,
 	ROADMAP_MODE,
 	collapseStoreIdentity,
 	dropCollapseState,
@@ -15,18 +17,35 @@ import { BacklogViewHost, Projection } from './host';
 
 /**
  * The stored `mode` value for each projection, null for the tree — a `Record` rather
- * than a chain of ternaries, so the compiler refuses to build once a fifth `Projection`
+ * than a chain of ternaries, so the compiler refuses to build once a further `Projection`
  * joins the union without a case here. The chain this replaced (`mode === 'tree' ? null
  * : mode === 'board' ? BOARD_MODE : ...`) had an unguarded final `else`, which stayed
  * green after a new projection was added and silently persisted its bare name instead
  * of the constant `readEntry`'s allowlist expects.
+ *
+ * It is now the ONLY statement of the mapping. The reverse direction was still that same
+ * chain, a few lines below the map that replaced it, with the same unguarded
+ * `return 'tree'` — so a projection could be written correctly and never activate, since
+ * `setProjection` stores the constant and then renders and the render asks the getter.
+ * {@link projectionFor} inverts this instead, and `PROJECTION_MODES` in `storage/` closes
+ * the third leg. One mapping, three directions, no drift.
  */
-const PROJECTION_MODE: Record<Projection, string | null> = {
+const PROJECTION_MODE: Record<Projection, ProjectionMode | null> = {
 	tree: null,
 	board: BOARD_MODE,
 	roadmap: ROADMAP_MODE,
 	deliverables: DELIVERABLES_MODE,
+	catalog: CATALOG_MODE,
 };
+
+/** The projection a stored `mode` names — {@link PROJECTION_MODE} read backwards. */
+function projectionFor(mode: string | null): Projection {
+	const found = (Object.keys(PROJECTION_MODE) as Projection[]).find((p) => PROJECTION_MODE[p] === mode);
+	// The tree is the default and stores nothing, so it is also the answer for a value
+	// this version does not recognise — `readEntry` drops those on the way in, and
+	// agreeing with it here costs one `??`.
+	return found ?? 'tree';
+}
 
 /**
  * Prefix marking a key as the DATED AXIS's own fold state, kept apart from the tree's.
@@ -177,10 +196,7 @@ export class CollapseState {
 	}
 
 	projection(): Projection {
-		if (this.mode === BOARD_MODE) return 'board';
-		if (this.mode === ROADMAP_MODE) return 'roadmap';
-		if (this.mode === DELIVERABLES_MODE) return 'deliverables';
-		return 'tree';
+		return projectionFor(this.mode);
 	}
 
 	setProjection(mode: Projection): void {

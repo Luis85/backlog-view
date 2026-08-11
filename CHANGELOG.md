@@ -25,12 +25,30 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   a board, in a horizon bucket, on the shelf — still open their note, since a card lists
   its children on its own face rather than folding rows. The toolbar toggle is drawn on
   the tree and the timeline for the same reason.
+- **A test catalog.** Two new types, `Test suite` and `Test case`, form a ladder of their
+  own — a suite holds cases, a case holds tasks — beside the plan's Epic → Feature → PBI →
+  Task rather than inside it. A suite is the top of that ladder, so tests are a catalog with
+  an order you chose rather than work filed under a requirement. The toolbar's new **Tests**
+  projection draws it, and you can walk a suite from the top with the plan out of the way.
+- **Your plan does not change when you start writing tests.** The tree, the boards and the
+  roadmap draw exactly what they drew before: a test is not a row, not a card, not a bar, and
+  not a number in anyone's progress. A test parented under a plan item by mistake still shows
+  up — in the catalog, as a root of its own — rather than vanishing, and the same holds the
+  other way for a plan item parented under a test.
+- Both new types are told apart at a glance the way every other type is, with the outlined
+  badge that marks a row as a test.
+- An **assignee** property: name it in the view options (or press ✨ and let the view bind
+  and backfill `assignee`), then set it from the row's menu or its chip. The names on
+  offer are the ones the base's own results already carry — plus anything typed into
+  **New assignee...** — so there is no list to declare and nothing to keep in step.
+- A **Test management** group in the view options: name a test state property (or leave
+  it unbound to share the plan's own state property), list the test workflow's states in order,
+  and say which of those count as done. A test catalog row's state chip and its
+  `Set state` now read and write that state independently of the plan's, whichever
+  property the two end up sharing or not.
 
 ### Changed
 
-- The **Move to top level** strip no longer appears over the bottom of the tree while you
-  drag. The drop it offered is still there — drop on the empty space below the last row —
-  and Alt+Left, plus the row menu's **Outdent**, reach the top level without a drag at all.
 - The toolbar now leads with the projection switcher and puts **New** beside it, and the
   dividers in the head of the row are gone — between those two, and in front of the
   roadmap's own controls. Each group is set off by spacing instead: a bordered button group
@@ -49,6 +67,27 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   tree now lets the browser skip layout for rows scrolled out of the pane. Measured at 832
   expanded rows, a full render goes from ~718ms to ~283ms; at 1632 rows, from ~1089ms to
   ~446ms.
+- `Test case` now wears its own colour, cyan, instead of sharing `Test suite`'s orange —
+  the outlined border that marks both as tests is unchanged, only which hue each fills.
+
+### Removed
+
+- **Dragging an item onto the empty space below the tree no longer makes it top-level**,
+  and neither does the **Move to top level** strip that used to appear there during a drag
+  — the strip is gone as well. Making an item top-level is a deliberate action now:
+  **Outdent**, from the row's context menu or Alt+Left, makes a row a sibling of its own
+  parent, so a row one level down becomes top-level. It climbs one level at a time, so a
+  deeply nested item takes a few presses. Nothing about your notes changes, and nothing
+  needs migrating.
+- **Assign item type when moving is gone, and a move now never rewrites a note's type.**
+  The option re-typed a whole moved subtree to match its new position. It was off by
+  default, it was the only thing in the plugin that changed a `type` you had written, and
+  a review found one of its safety guards had nothing checking it — losing that guard let
+  an unrelated drag turn a hand-nested `Test suite` into plan work and drop it out of the
+  test catalog. Removing the feature removes that risk entirely. Dragging, indenting,
+  outdenting and clearing a parent link all write the parent and the rank and nothing
+  else; **Set type** is how you change a type. If an existing base still has the setting
+  saved, it is simply ignored — nothing to migrate and nothing to clean up.
 
 ### Fixed
 
@@ -64,14 +103,6 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   which forced the whole tree to be laid out again on every hover — 65.7ms per hover at
   832 rows. Both now carry their full text always, so nothing measures and nothing is
   hidden: the only visible difference is a tooltip on a title that already fits.
-
-### Added
-
-- An **assignee** property: name it in the view options (or press ✨ and let the view bind
-  and backfill `assignee`), then set it from the row's menu or its chip. The names on
-  offer are the ones the base's own results already carry — plus anything typed into
-  **New assignee...** — so there is no list to declare and nothing to keep in step.
-
 ## [0.6.0] - 2026-08-10
 
 Changelog tracking starts here. For what shipped in 0.1.0–0.5.2, see the

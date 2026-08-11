@@ -35,6 +35,43 @@ describe('the manual', () => {
 		expect(prose).toContain('focus-root row has no previous sibling');
 	});
 
+	// The "To the top level" entry claimed there was NO drag for it, which `siblingPosition`
+	// contradicts: it takes the hovered row's own parent, so a drop just above or below a
+	// REAL root lands in the null-parent group and makes the dragged row top-level
+	// (`test/domain/dropTargets.test.ts` pins that behaviour). The entry named one route and
+	// denied the other. Both are asserted here because the denial is what shipped, and an
+	// absence — "does not say there is no drag" — would pass against an entry that had gone
+	// silent on the subject instead.
+	it('names both routes to the top level, and denies neither', () => {
+		const moving = manualSections().find((s) => s.id === 'moving');
+		const top = moving?.entries.find((e) => e.term === 'To the top level');
+		const text = top?.text.toLowerCase() ?? '';
+		expect(text).toContain('outdent');
+		expect(text).toContain('already top-level');
+		expect(text).not.toContain('there is no drag');
+	});
+
+	// The entry's availability claims are an ENUMERATION, and this branch's dominant defect
+	// is a list that does not match the code — one item short of the gates that ask
+	// `keepsProjection`, then one item LONG when the drop it named was deleted. The list
+	// below has one phrase per `keepsProjection` call site in `src/` and is meant to be
+	// rebuilt from a grep of that call rather than edited in place, so a gate added to or
+	// taken from that set fails here rather than shipping as a promise the code refuses.
+	it('names the projection boundary among the states a move is unavailable in', () => {
+		const moving = manualSections().find((s) => s.id === 'moving');
+		const prose = moving?.entries.map((e) => `${e.term} ${e.text}`).join(' ') ?? '';
+		// The WHOLE list, not a substring of it. `addParentLinkSection` is gated once and
+		// guards two entries, so naming one of them left a folder-mode user whose `Use folder
+		// position` had vanished with no rule to find — and a substring assertion locked the
+		// omission in rather than catching it.
+		expect(prose).toContain(
+			'dropping it beside a row at the top level, Outdent, and the two menu entries that remove the parent link, Clear parent link and Use folder position',
+		);
+		expect(prose).toContain('a Task, or a note with no type');
+		// Narrow in the same breath, or the entry trades one falsification for its mirror.
+		expect(prose).toContain('every other type keeps its own ladder wherever it lands');
+	});
+
 	// The toolbar's New button makes exactly one type; the chevron beside it carries
 	// the vocabulary. `CREATING` previously claimed New alone "offers the whole
 	// vocabulary", which is what the primary button's own single-type prompt refuses.

@@ -16,7 +16,13 @@ import {
 	resolveParent,
 } from './noteFields';
 import { BacklogSettings } from './settings';
-import { OPTIONAL_FIELDS, OptionalField, optionalKeyFor, resolvedDeliverableStateKey } from './optionalProperties';
+import {
+	OPTIONAL_FIELDS,
+	OptionalField,
+	optionalKeyFor,
+	resolvedDeliverableStateKey,
+	resolvedTestStateKey,
+} from './optionalProperties';
 import { isMarkerType } from './itemTypes';
 
 /**
@@ -89,6 +95,10 @@ export interface RawItem {
 	deliverableStateValue: string | null;
 	/** True when the Deliverable state matches one of ITS OWN configured done values. */
 	deliverableDone: boolean;
+	/** The test workflow's own state value, or null when its key is unset or absent. */
+	testStateValue: string | null;
+	/** True when the test state matches one of ITS OWN configured done values. */
+	testDone: boolean;
 	/** The roadmap horizon this note declares, if a horizon property is configured. */
 	horizon: FieldReading<string>;
 	/** The planned start date the note states, if a start property is configured. */
@@ -170,6 +180,13 @@ function addItem(
 	const deliverableStateKey = resolvedDeliverableStateKey(settings);
 	const deliverableStateValue = deliverableStateKey ? readString(ownValue(fm, deliverableStateKey)) : null;
 	const deliverableDoneValues = settings.deliverableDoneValues.map((v) => v.toLowerCase());
+	// Read on every item rather than only on catalog members, exactly as the Deliverable's
+	// is read on every item rather than only on Deliverables: this is a plain key read, and
+	// the membership question belongs where the workflow is CHOSEN. It cannot be asked here
+	// at all — a `RawItem` has no `ladder` yet, since `assignAll` is what puts one on it.
+	const testStateKey = resolvedTestStateKey(settings);
+	const testStateValue = testStateKey ? readString(ownValue(fm, testStateKey)) : null;
+	const testDoneValues = settings.testDoneValues.map((v) => v.toLowerCase());
 	// Hoisted out of the literal below because the dependency read now asks it too.
 	const typeName = readString(ownValue(fm, settings.typeKey));
 	// Every field this note can answer for itself, and no others: the ten that used to
@@ -192,6 +209,8 @@ function addItem(
 		deliverableStateValue,
 		deliverableDone:
 			deliverableStateValue !== null && deliverableDoneValues.includes(deliverableStateValue.toLowerCase()),
+		testStateValue,
+		testDone: testStateValue !== null && testDoneValues.includes(testStateValue.toLowerCase()),
 		horizon: readGated(settings.horizonKey, fm, readPlacement),
 		plannedStart: readGated(settings.startKey, fm, readDate),
 		plannedTarget: readGated(settings.targetKey, fm, readDate),

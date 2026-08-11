@@ -42,8 +42,7 @@ lands, the three ways to make the same move, and where `order` comes from.
    indent / outdent.
 4. It explains `order`: a number ranking siblings, maintained by the view, with unranked
    items sorting last in whatever the Base's own sort produces.
-5. It closes with what a move does *not* do: re-type anything, unless
-   `Assign item type when moving` is on.
+5. It closes with what a move does *not* do: re-type anything, ever.
 
 **Extensions**
 
@@ -54,16 +53,26 @@ lands, the three ways to make the same move, and where `order` comes from.
 - **1b — a quick filter is active.** Dragging is off entirely, because visual neighbours
   under a filter are not siblings. The section says so, since a row that will not lift is
   otherwise indistinguishable from a broken one.
+- **1c — the move would change which screen the row is on.** A `Task`, or a note with no
+  `type`, reads its level from whatever it hangs from, so moving one between the plan and
+  the test catalog would take it off the screen it was moved on. `dropTargetFor`,
+  `outdentTarget` and the parent-link actions all withhold it. Listed because 1a's
+  enumeration read as complete and was one short: it promised a move worked "except
+  throughout a focused view", and this is a second exception. The enumeration has since
+  been one item LONG as well, when the drop on the tree background it named was deleted
+  (2026-08-11) — the list is per gate that asks `keepsProjection`, and it is rebuilt from
+  that call rather than edited. It is not a rule about types — every other type keeps its own ladder wherever it
+  lands, and a backlog with no tests in it is refused none of this.
 - **3a — the user is on a keyboard throughout.** The keyboard and menu forms are listed
   beside the drag rather than in a footnote, so the section doubles as the keyboard
   reference at the moment someone wants it.
-- **3b — the view is focused on one type.** Indent, outdent and the drop that makes an
-  item top-level are disabled at the top row, for the same reason a between-drop is: no
-  shared ranking.
-- **5a — `Assign item type when moving` is on.** The re-typing is described by what it
-  **skips** — untyped descendants keep no type, a custom type keeps its name, `Issue` and
-  `Bug` keep their pinned rank, and the cascade stops at a context row rather than
-  retyping across a branch the Base excluded.
+- **3b — the view is focused on one type.** Indent and outdent are disabled at the top
+  row, for the same reason a between-drop is: no shared ranking.
+- **5a — the reader expects a move to fix a mismatched type.** It does not, and the
+  section says so rather than staying silent: a drop, an indent, an outdent and both
+  parent-link entries write the parent and the rank, and a type is what the note says or
+  what `Set type` wrote. This extension used to describe an opt-in cascade by what it
+  skipped; the cascade was removed on 2026-08-11 ([[Assigning type on a move]]).
 
 ## Acceptance criteria
 
@@ -75,9 +84,13 @@ lands, the three ways to make the same move, and where `order` comes from.
   as the keyboard reference at the moment someone wants it.
 - The section names every state where a drop is deliberately unavailable, so an absent
   gesture reads as a rule rather than a bug.
-- No claim about a move being refused for **type** reasons — those rules are advisory —
-  and no claim that nothing is refused at all. Both would contradict
-  [[A help button for the item types]], in opposite directions.
+- No claim about a move being refused for **type compatibility** — those rules are
+  advisory — and no claim that nothing is refused at all. Both would contradict
+  [[A help button for the item types]], in opposite directions. The projection boundary
+  (1c) is not that claim and must not be written as one: it turns on which screen the row
+  is drawn on, so the section gives the row leaving that screen as the reason, names the
+  two rows it reaches, and says in the same breath that every other type keeps its own
+  ladder wherever it lands.
 - The re-typing cascade is described by what it skips — untyped, custom-typed, extra
   types, and anything past a context row — rather than as a whole-subtree rewrite.
   `README.md` currently says "the whole moved subtree"; the manual must not inherit that
@@ -89,5 +102,6 @@ lands, the three ways to make the same move, and where `order` comes from.
 describes is `src/domain/dropTargets.ts` (the zones and the refusals),
 `src/view/interactions/dragDrop.ts` (the indicator) and
 `src/view/interactions/keyboard.ts` with `src/view/interactions/menu.ts` (the same moves
-without a mouse), plus `src/domain/writePlan.ts` (`computeTypeChanges`, the re-typing
-cascade this section is the one place that states in full).
+without a mouse), plus `src/domain/writePlan.ts` (`computeDropWrites`, which is where the
+section's closing claim — that a move writes the parent and the rank and nothing else —
+is either true or not).

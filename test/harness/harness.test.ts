@@ -85,6 +85,39 @@ describe('the browser harness mounts', () => {
 		expect(containerEl.querySelectorAll('.pbl-shelf .pbl-card').length).toBeGreaterThan(0);
 	});
 
+	it('draws the test catalog, with both ladders in one fixture and neither in the other', () => {
+		// The fixture rule, applied: a change that visibly alters the view puts its cases in
+		// the fixture, and this is what asserts they are still there — a deleted note or a
+		// renamed class fails here rather than leaving the harness quietly showing less.
+		const { view, containerEl } = mount();
+
+		view.setProjection('catalog');
+		clickExpandAll(containerEl);
+		const titles = Array.from(containerEl.querySelectorAll('.pbl-title')).map((n) => n.textContent);
+		// A suite with two cases (the move section needs a neighbour), the `Task` that
+		// belongs here by what it hangs from, the implied case where the test axis and
+		// `.pbl-implied` have to compose, and the promoted root the mis-drag produces.
+		expect(titles).toEqual(
+			expect.arrayContaining([
+				'Sign-up smoke tests',
+				'Register with a provider',
+				'Fix the provider redirect',
+				'Resume an abandoned sign-up',
+				'Verify the rate limit',
+			]),
+		);
+		// The badge is drawn against the real stylesheet, which is what the harness is for:
+		// the axis is a class here and a border there.
+		expect(containerEl.querySelector('.pbl-badge.pbl-lvl-test-suite')).not.toBeNull();
+		expect(containerEl.querySelector('.pbl-badge.pbl-lvl-test-case.pbl-implied')).not.toBeNull();
+		// And the plan draws none of it, which is the other half of the same bargain.
+		view.setProjection('tree');
+		clickExpandAll(containerEl);
+		const plan = Array.from(containerEl.querySelectorAll('.pbl-title')).map((n) => n.textContent);
+		expect(plan).not.toContain('Sign-up smoke tests');
+		expect(plan).toContain('Single sign-on');
+	});
+
 	it('switches projection through the real toolbar, which is the control being exercised', () => {
 		const { containerEl } = mount();
 
@@ -339,7 +372,7 @@ describe('the chrome the mock only records', () => {
  */
 describe('the harness draws every icon the view asks for', () => {
 	/**
-	 * Walk all four projections and both roadmap axes, collecting what `setIcon` was
+	 * Walk all five projections and both roadmap axes, collecting what `setIcon` was
 	 * asked for. Driving the view rather than grepping `src/` on purpose: several icon
 	 * names never appear as a literal beside a `setIcon` call — the type badges come
 	 * from a table, the spinner and the filter's two states from branches — and a grep
@@ -363,7 +396,7 @@ describe('the harness draws every icon the view asks for', () => {
 			// collecting more of the same icons, which is what let a dark leg pass.
 			drew.push(containerEl.querySelector('.pbl-tree')?.getAttribute('aria-label') ?? '');
 		};
-		for (const projection of ['tree', 'board', 'roadmap', 'deliverables'] as const) {
+		for (const projection of ['tree', 'board', 'roadmap', 'deliverables', 'catalog'] as const) {
 			view.setProjection(projection);
 			collect();
 		}

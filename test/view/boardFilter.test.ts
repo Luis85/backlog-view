@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { Menu } from '../helpers/obsidian-mock';
-import { flush, makeView, useViewHarness } from '../helpers/view';
+import { flush, makeView, projectionButton, useViewHarness } from '../helpers/view';
 import { cardDrag } from '../helpers/dnd';
 import {
 	BOARD_WORKFLOW,
@@ -22,6 +22,14 @@ function matchesOn(containerEl: HTMLElement, title: string): string[] {
 	return Array.from(cardByTitle(containerEl, title).querySelectorAll<HTMLElement>('.pbl-card-match')).map(
 		(el) => el.textContent ?? '',
 	);
+}
+
+/** The card's own context menu, which is the keyboard path to those same links. */
+function cardMenu(containerEl: HTMLElement, title: string): Menu {
+	cardByTitle(containerEl, title).dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+	const menu = Menu.lastShown;
+	if (!menu) throw new Error(`no menu shown for card: ${title}`);
+	return menu;
 }
 
 /** An epic whose matching work sits two levels down, below the focus line. */
@@ -187,13 +195,6 @@ describe('a card kept only by a match below it', () => {
 });
 
 describe('reaching a hidden match without a pointer', () => {
-	function cardMenu(containerEl: HTMLElement, title: string): Menu {
-		cardByTitle(containerEl, title).dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
-		const menu = Menu.lastShown;
-		if (!menu) throw new Error(`no menu shown for card: ${title}`);
-		return menu;
-	}
-
 	it('the card menu offers every match, which is the keyboard path', () => {
 		const { containerEl, view } = board(deepVault(), {}, { focus: 'Epic' });
 		view.setFilter('Log');
@@ -238,6 +239,80 @@ describe('reaching a hidden match without a pointer', () => {
 		link?.dispatchEvent(new MouseEvent('auxclick', { bubbles: true, button: 1 }));
 
 		expect(vault.opened.map((o) => o.path)).toEqual(['PBI Login.md']);
+	});
+});
+
+describe('a card names only what this projection draws beneath it', () => {
+	/**
+	 * `Release → Smoke case (Test case) → Release follow-up (PBI)`. The PBI is a plan
+	 * member and a legitimate match, but every edge from the card down to it runs through
+	 * a catalog row the Deliverables board draws nowhere. The intervening test is named so
+	 * that it cannot match the needle itself — the boundary has to be the only thing in
+	 * question.
+	 */
+	function acrossTheLadder(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Release.md', { frontmatter: { type: 'Deliverable', order: 10, docStatus: 'Draft' } });
+		vault.addFile('Smoke case.md', { frontmatter: { type: 'Test case', order: 10 }, parentLink: 'Release' });
+		vault.addFile('Release follow-up.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Smoke case' });
+		return vault;
+	}
+
+	/** The same three notes with a `Feature` where the test was: no boundary to cross. */
+	function alongOneLadder(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Release.md', { frontmatter: { type: 'Deliverable', order: 10, docStatus: 'Draft' } });
+		vault.addFile('Plumbing.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Release' });
+		vault.addFile('Release follow-up.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Plumbing' });
+		return vault;
+	}
+
+	/** The Deliverables board through its own toolbar button, already narrowing. */
+	function deliverables(vault: FakeVault, needle: string) {
+		const harness = makeView(vault, { deliverableStateProperty: 'note.docStatus' });
+		projectionButton(harness.containerEl, 'Show as Deliverables board').dispatchEvent(
+			new MouseEvent('click', { bubbles: true }),
+		);
+		harness.view.setFilter(needle);
+		return harness;
+	}
+
+	it('withholds a match reached only through a row of the other ladder', () => {
+		// The needle matches the Deliverable itself, so the card is on screen for its own
+		// reason; `Release follow-up` sits two rows below it, behind a `Test case`.
+		const { containerEl } = deliverables(acrossTheLadder(), 'Release');
+
+		expect(cardTitles(containerEl)).toEqual(['Release']);
+		expect(matchesOn(containerEl, 'Release')).toEqual([]);
+	});
+
+	it('says the same in the menu, since one walk feeds both surfaces', () => {
+		const { containerEl } = deliverables(acrossTheLadder(), 'Release');
+
+		const entries = cardMenu(containerEl, 'Release')
+			.items.map((i) => i.titleText)
+			.filter((t) => t.startsWith('Open match'));
+		expect(entries).toEqual([]);
+	});
+
+	it('agrees with the index, which already refuses to keep a card for that match', () => {
+		// The other half of the measured pair, and what makes the first a defect rather
+		// than a preference: with only the deep PBI matching, the card does not survive at
+		// all. Printing that same match under a needle the card happened to match too was
+		// the face disagreeing with the index about what is beneath it.
+		const { containerEl } = deliverables(acrossTheLadder(), 'follow-up');
+
+		expect(cardTitles(containerEl)).toEqual([]);
+	});
+
+	it('still names one reached along drawn edges only', () => {
+		// The direct mirror: one type changed, no boundary, and the deep-match feature
+		// works — the card survives on its descendant's match, names it, and rolls it up.
+		const { containerEl, view } = deliverables(alongOneLadder(), 'follow-up');
+
+		expect(cardTitles(containerEl)).toEqual(['Release']);
+		expect(matchesOn(containerEl, 'Release')).toEqual(['Release follow-up']);
+		expect(view.model?.byPath.get('Release.md')?.descendantCount).toBe(2);
 	});
 });
 

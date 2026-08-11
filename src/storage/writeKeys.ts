@@ -1,5 +1,12 @@
 import { BacklogSettings } from '../domain/settings';
-import { AXIS_FIELDS, AxisField, OptionalField, optionalKeyFor, resolvedDeliverableStateKey } from '../domain/optionalProperties';
+import {
+	AXIS_FIELDS,
+	AxisField,
+	OptionalField,
+	optionalKeyFor,
+	resolvedDeliverableStateKey,
+	resolvedTestStateKey,
+} from '../domain/optionalProperties';
 import { AxisWrite, ItemWrite } from '../domain/writePlan';
 
 /**
@@ -13,14 +20,6 @@ import { AxisWrite, ItemWrite } from '../domain/writePlan';
  * Applying and capturing must read the SAME answer, so it belongs in one place either way.
  */
 
-/**
- * Whether a write carries a Deliverable-state change, set or removed. Its own function
- * to keep `touchedKeys` inside the complexity budget — inlined, the pair of branches
- * puts it at 17 against a cap of 16.
- */
-function deliverableStateWritten(write: ItemWrite): boolean {
-	return write.removeDeliverableStateKey || write.deliverableState !== undefined;
-}
 /**
  * The configured keys one axis write touches, each with the value it will write.
  * Applying and capturing read the SAME list: a key written but not captured would
@@ -41,24 +40,10 @@ export function axisEntries(
 }
 
 /**
- * Whether a write removes the prerequisite key WHOLE — the ONLY prerequisite change
- * `touchedKeys` lists. The add and the entry removals restore as a DELTA, exactly as the
- * tags do, and the tags key is absent from this module for that same reason: listing a
- * key for both would have undo put the prior value back AND replay the inverse delta over
- * it, restoring twice.
- *
- * Its own function for `deliverableStateWritten`'s reason — `touchedKeys` is at its
- * complexity cap, and an inlined optional chain is one more branch in it.
- */
-function dependsOnKeyRemoved(write: ItemWrite): boolean {
-	return write.dependsOn?.removeKey === true;
-}
-
-/**
  * The frontmatter keys this write will touch, in the order they are written.
  *
  * Deduped before it returns: the requirements state and the Deliverable state may
- * explicitly share one key (`configProblems`' `STATE_KEY_SHARING_EXEMPT`), and a
+ * explicitly share one key (`configProblems`' `WORKFLOW_STATE_LABELS`), and a
  * Deliverable item missing that key gets it named twice by `missingKeyStubs`, once for
  * each field's own gap-check. A duplicate key makes `captureInverse` record the same
  * before/after pair twice, and the second entry reads on `applyRestores` as a conflict —
@@ -73,25 +58,26 @@ export function touchedKeys(settings: BacklogSettings, write: ItemWrite): string
 	if (write.order !== undefined) keys.push(settings.orderKey);
 	if (write.typeName !== undefined) keys.push(settings.typeKey);
 	if ((write.removeStateKey || write.state !== undefined) && settings.stateKey) keys.push(settings.stateKey);
-	// Same resolved key `applyInto` just wrote: capture and apply must read the SAME
-	// fallback, or a key written under it would have no inverse to undo it with.
-	const deliverableStateKeyTouched = resolvedDeliverableStateKey(settings);
-	if (deliverableStateWritten(write) && deliverableStateKeyTouched) keys.push(deliverableStateKeyTouched);
-	// One rule, five properties: listed whenever the write TOUCHES the key and a property
-	// names it — the same condition each `apply*` writes on, so applying and capturing
-	// cannot drift. A key written but not captured is a change no undo could reach; a key
-	// whose value did not change emits no inverse anyway, which is what lets the stamps
-	// ride the state's own undo. Stated as a list because each such property should add a
-	// line here rather than another branch — the assignee did exactly that.
+	// One rule, five-now-seven properties: listed whenever the write TOUCHES the key and a
+	// property names it — the same condition each `apply*` writes on, so applying and
+	// capturing cannot drift. A key written but not captured is a change no undo could
+	// reach; a key whose value did not change emits no inverse anyway, which is what lets
+	// the stamps ride the state's own undo. Stated as a list because each such property
+	// should add a line here rather than another branch — the assignee did exactly that.
 	const carried: [boolean, string][] = [
+		// Same RESOLVED keys `applyInto` just wrote: capture and apply must read the same
+		// fallback, or a key written under it would have no inverse to undo it with.
+		[write.removeDeliverableStateKey || write.deliverableState !== undefined, resolvedDeliverableStateKey(settings)],
+		[write.removeTestStateKey || write.testState !== undefined, resolvedTestStateKey(settings)],
 		[write.startedDate !== undefined, settings.startedDateKey],
 		[write.finish !== undefined, settings.finishedDateKey],
 		[write.risk !== undefined, settings.riskKey],
 		[write.assignee !== undefined, settings.assigneeKey],
-		// Not "carries a value": this one is listed for the whole-key REMOVAL alone —
-		// see `dependsOnKeyRemoved`. It shares the list because what the list does with
-		// its first element is exactly right, not because the predicates match.
-		[dependsOnKeyRemoved(write), settings.dependsOnKey],
+		// Not "carries a value": this is the ONLY prerequisite change listed here, for the
+		// whole-key REMOVAL alone. The add and the entry removals restore as a DELTA,
+		// exactly as the tags do — listing a key for both would have undo put the prior
+		// value back AND replay the inverse delta over it, restoring twice.
+		[write.dependsOn?.removeKey === true, settings.dependsOnKey],
 	];
 	for (const [written, key] of carried) if (written && key) keys.push(key);
 	for (const { key } of axisEntries(settings, write.axis)) keys.push(key);

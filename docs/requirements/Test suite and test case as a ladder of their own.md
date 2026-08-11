@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[A catalog of tests]]"
 order: 10
-status: Open
+status: Done
 priority: P2
 created: 2026-08-08
 source: user request
@@ -99,8 +99,9 @@ design: the relationship between a test and the work it checks is
 - **2a — a per-type folder is not configured.** Folder inference and the folder prompt
   run, as they do for any type whose folder option is cleared. The shipped defaults are
   `tests/suites` and `tests/cases` under the home folder, one picker each, from the same
-  generated per-type options every other type gets — this PBI adds two names to that
-  mapping and no machinery.
+  generated per-type options every other type gets — `typeFolder.test suite` and
+  `typeFolder.test case`, since `typeFolderKey` lowercases the name and keeps the space.
+  This PBI adds two names to that mapping and no machinery.
 - **3a — the row is a `Test case`.** Its only child is `Task`, so the modal is skipped.
 - **3b — the row is an `Epic`, `Feature` or `PBI`.** Neither test type is offered. The
   choices there stay `[ladderChild, ...EXTRA_TYPES]`, unchanged by this PBI — a test is
@@ -210,37 +211,59 @@ design: the relationship between a test and the work it checks is
   *position* from a root by *nature*; a suite is the second kind, and the first of that kind
   with children. Covered by a fixture holding a root suite, not by the pair appearing in
   `LEGAL_CHILDREN`.
-- The generated README states the new rungs in its **hierarchy table** and the new
-  exemption in its **move-rule prose**, which are two different statements and only the
-  first is a table. With `autoType` on, that prose says a move into a new parent rewrites
-  the type and then names `EXTRA_TYPES` as the types that keep theirs — so a reader is told
-  the opposite of what this PBI guarantees, since the test types keep their type and are
-  deliberately not extra types.
-  Fixed by deriving rather than by adding two names: the sentence should name **the types
-  the cascade does not rewrite**, asked of the same predicate `computeTypeChanges` uses, so
-  the generated contract cannot drift from the behaviour it describes. Naming
-  `EXTRA_TYPES` is what made it wrong here, and would again at the next type that is
-  neither a rung nor an extra.
+- The generated README states the new rungs in its **hierarchy table** and what a move
+  does to a type in its **move-rule prose**, which are two different statements and only
+  the first is a table. The prose used to carry an exception — with re-typing on, a move
+  into a new parent rewrote the type — and then named `EXTRA_TYPES` as the types that kept
+  theirs, telling a reader the opposite of what this PBI guarantees, since the test types
+  keep their type and are deliberately not extra types. It was fixed by DERIVING the
+  exempt list from the same predicate the cascade asked, rather than by adding two names.
+  The whole exception went on 2026-08-11 ([[Assigning type on a move]]), so the prose now
+  says *moving a note never rewrites its type* unconditionally and there is no list to get
+  wrong. The lesson outlives it: a generated document may not name a set the code
+  computes differently, whatever the set is.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The names join `ALL_TYPES` in
-`src/domain/typeVocabulary.ts`, with two entries in `DEFAULT_TYPE_SUBFOLDERS`; the per-type
-folder options in `src/domain/viewOptions.ts` are already generic over the vocabulary.
+`src/domain/typeVocabulary.ts` — `TEST_LEVELS`, and two entries in
+`DEFAULT_TYPE_SUBFOLDERS`. `ALL_TYPES` filters the shared rung out rather than
+concatenating, so `Task` appears exactly once: two entries would give it a second folder
+option under the same key, a duplicate in every creator menu and two shelf groups. The
+per-type folder options in `src/domain/viewOptions.ts` were already generic over the
+vocabulary and needed nothing.
 
-The rungs are `src/domain/itemTypes.ts`' work and the only genuinely new shape in this
-PBI: `LEVELS` is one ladder today and `childLevelIndex`/`nextLevelIndex` read it as *the*
-ladder, so a second one means those functions ask which ladder an item is on before they
-ask which rung. **Every `LEVELS[…]` index is that same question**, and there are five —
-`ladderChild` and `displayType` here, the move cascade's two branches and `initWriteFor` in
-`src/domain/writePlan.ts`. A grep for `LEVELS[` is what enumerates them; reasoning about
-which ones "look like ladder decisions" is what misses `initWriteFor`, the one that writes. `childTypeChoices` gains the two branches above, and its top-level branch
-already answers `ALL_TYPES` in full, which is correct for a suite and wrong for nothing.
+`src/domain/itemTypes.ts` holds the rungs and the genuinely new shape: `ladderFor`, which
+answers WHICH ladder before anything asks which rung, and `inCatalog`, the membership
+predicate over its result. `childLevelIndex` and `nextLevelIndex` take the ladder they
+clamp against, and every `LEVELS[…]` index became `ladder[…]` — the five a `grep 'LEVELS\['`
+enumerates, including `initWriteFor` in `src/domain/writePlan.ts`, the one that writes.
+A `keepsTypeOnMove` predicate sat beside them so the generated README could derive which
+types a move left alone rather than naming `EXTRA_TYPES` and being wrong about a marker;
+it went with the cascade on 2026-08-11, since a move now leaves every type alone.
 
-`src/view/interactions/menu.ts` — `offerableTypes` gains the catalog branch, beside the two
-projection branches it already carries. That is where "a projection offers only what it can
-show" is stated once, so the rule is kept by extending it rather than by a second test
-written beside it.
+**The shared deepest rung is what made this small.** `TEST_LEVELS` ends on `Task`, so 4c
+is `childLevelIndex` clamping on the right ladder and needs no rule; so is the membership
+of a `Task` under a test; so is 2e's absent parent, which chains from nothing and lands on
+the plan with no vault read. What is left to state is the one thing a chain cannot say:
+`ladderFor` returns the PLAN's ladder for a name neither ladder holds, so an extra type, a
+marker or a custom type beneath a `Test case` stays plan work rather than being swept in.
+
+`src/view/projection.ts` — `offerableTypes`, moved here from `interactions/menu.ts` with
+the lint rule that guards it, because "which types may this projection offer" is a fact
+about the projection rather than about a menu. Its catalog branch is the first that is not
+a filter over type NAMES: it asks membership AFTER THE WRITE, of the row's own parent, so
+one rule answers the top-level creator, the primary button's default, the focus picker and
+**Set type** — a null parent ladder being exactly what "at the top level" means.
+`retypeChoices` beside it is that function with the row in hand, which is what keeps
+`interactions/menu.ts` from re-importing the vocabulary to hand it back.
+
+What keeps a `Test case` dropped on a `PBI` a `Test case` is that nothing rewrites a type
+on a move at all. The re-typing cascade in `src/domain/writePlan.ts` had to state the rule
+a second time — it computed the ladder the DESTINATION handed out and refused to descend
+any other, at the root of a moved subtree and nested inside one — and the nested half of
+that guard turned out to have nothing checking it, which is why the whole feature was
+removed on 2026-08-11 ([[Assigning type on a move]]). The rule itself is `keepsProjection`,
+which withholds the move rather than correcting it afterwards.
 
 The one thing that function cannot answer as it stands is **which caller is asking**. Six
 call sites go through it, in two groups: four ask for the whole vocabulary
@@ -260,11 +283,10 @@ shape exactly: a static label and no menu, not a menu with nothing in it
 rather than the four levels already, so a test belongs by being declared;
 `collectFocusRoots` is where a second ladder's levels have to mean something or be
 excluded, and [[A projection for the tests]] is what decides which.
-`src/domain/writePlan.ts` — `computeTypeChanges` must not cascade across ladders, which is
-the criterion above rather than a new mechanism.
 `src/domain/backlogReadme.ts` and `scripts/docs-check.mjs` — and **two statements each**,
 which is the part a "the tables learn the pair" sentence hides. The checker has
 `LEGAL_CHILDREN` *and* `ROOT_TYPES`, and only the second decides whether a parentless suite
-is legal. The README has its hierarchy table *and* its move-rule prose, and only the second
-tells a user which types survive a drag — today by naming `EXTRA_TYPES`, which the test
-types are not.
+is legal. The README has its hierarchy table *and* its move-rule prose; the second used to
+tell a user which types survive a drag, by naming `EXTRA_TYPES`, which the test types are
+not. It now tells them no type is rewritten by one, which is the same statement with
+nothing left to get wrong.

@@ -53,6 +53,7 @@ export function getViewOptions(config?: BasesViewConfig): BasesAllOptions[] {
 		hierarchyGroup(),
 		progressGroup(settings),
 		deliverablesGroup(),
+		testManagementGroup(),
 		roadmapGroup(),
 		riskGroup(),
 		newItemsGroup(settings.homeFolder),
@@ -135,14 +136,6 @@ function hierarchyGroup(): BasesAllOptions {
 				type: 'toggle',
 				key: 'inferFolderHierarchy',
 				displayName: 'Infer hierarchy from folder notes',
-				default: false,
-			},
-			{
-				type: 'toggle',
-				key: 'autoAssignType',
-				displayName: 'Assign item type when moving',
-				// Must match `defaultSettings().autoType`: the toggle showing on while
-				// moves changed nothing would be the UI lying about the behaviour.
 				default: false,
 			},
 		],
@@ -242,6 +235,43 @@ function deliverablesGroup(): BasesAllOptions {
 				type: 'text',
 				key: 'deliverableDoneValues',
 				displayName: 'Deliverable states that count as done',
+				default: DEFAULT_DONE_VALUES.join(', '),
+				placeholder: DEFAULT_DONE_VALUES.join(', '),
+			},
+		],
+	};
+}
+
+/**
+ * The test workflow's own group — the Deliverables group's mirror MINUS its colour
+ * section, which is a decision rather than an omission. `stateColors` is keyed by the
+ * state VALUE, so a test state spelled like a requirements state shares that state's
+ * colour key — no second control needed. What a test-ONLY state gives up is not an
+ * override in favour of a positional slot: `statePalettes` (`board.ts`) builds only the
+ * Work and Deliverables palettes, so a value in neither is in no palette at all —
+ * `paletteSlot` returns null and it draws the plain accent. A colour box here would key a
+ * colour nothing ever paints.
+ */
+function testManagementGroup(): BasesAllOptions {
+	return {
+		type: 'group',
+		displayName: 'Test management',
+		items: [
+			optionalPropertyOption('testState', 'Test state property'),
+			{
+				type: 'text',
+				key: 'testStateValues',
+				displayName: 'Test workflow states (in order)',
+				default: '',
+				// About whether a case is fit to be WALKED. Deliberately not the plan's
+				// New/Active/Done, and deliberately not Pass/Fail — a result, which this epic
+				// refuses. A placeholder suggests and configures nothing.
+				placeholder: 'Draft, Ready, Approved',
+			},
+			{
+				type: 'text',
+				key: 'testDoneValues',
+				displayName: 'Test states that count as done',
 				default: DEFAULT_DONE_VALUES.join(', '),
 				placeholder: DEFAULT_DONE_VALUES.join(', '),
 			},

@@ -35,8 +35,8 @@ crossing lanes is the drop-onto-a-row the tree already plans.
 1. The user turns lanes on.
 2. Each parent's card-children group under a lane header naming it.
 3. The user drags a card into another lane.
-4. The view plans the reparent the tree's drop-onto would plan — appended order, the
-   autoType cascade only as configured — and applies it through the one gate.
+4. The view plans the reparent the tree's drop-onto would plan — an appended order and no
+   type write — and applies it through the one gate.
 5. Undo takes it back as one batch.
 
 **Extensions**
@@ -71,7 +71,7 @@ crossing lanes is the drop-onto-a-row the tree already plans.
   never draggable.
 - Lane collapse is remembered per device, like columns and rows.
 - Dragging a card into another lane writes the reparent the tree's drop-onto would
-  plan — appended order, the autoType cascade only as configured — and, when the
+  plan — an appended order and no type write — and, when the
   column differs too, the state change in the same batch: one gate, one undo. A drop
   that would make an item its own ancestor is refused, as in the tree.
 - The drag is never the only path across lanes: the card menu gains a move-to-lane

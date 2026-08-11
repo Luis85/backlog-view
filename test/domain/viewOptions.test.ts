@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { BasesViewConfig } from 'obsidian';
 import { getViewOptions } from '../../src/domain/viewOptions';
 import { defaultTypeFolder } from '../../src/domain/typeVocabulary';
+import { FakeViewConfig } from '../helpers/vault';
 
 
 /**
@@ -36,7 +38,6 @@ describe('getViewOptions', () => {
 				'typeProperty',
 				'hierarchyOnly',
 				'inferFolderHierarchy',
-				'autoAssignType',
 				'stateProperty',
 				'doneValues',
 				'homeFolder',
@@ -122,6 +123,36 @@ describe('getViewOptions', () => {
 		if (!group || !('items' in group)) throw new Error('Deliverables group missing');
 		const keys = group.items.map((item) => item.key);
 		expect(keys).toEqual(['deliverableStateProperty', 'deliverableStateValues', 'deliverableDoneValues']);
+	});
+
+	it('exposes a Test management group with its own state property, states and done values', () => {
+		const groups = getViewOptions();
+		const group = groups.find((g) => 'displayName' in g && g.displayName === 'Test management');
+		if (!group || !('items' in group)) throw new Error('Test management group missing');
+		const keys = group.items.map((item) => item.key);
+		expect(keys).toEqual(['testStateProperty', 'testStateValues', 'testDoneValues']);
+	});
+
+	it('never keys a colour box to a state only the test workflow declares', () => {
+		// Not an omission: `stateColors` is keyed by the state VALUE, so a test state spelled
+		// like a requirements state shares that state's colour key already, and a test-ONLY
+		// state is in no palette at all (`statePalettes` builds only Work and Deliverables) —
+		// a box for it would key a colour nothing ever paints.
+		//
+		// Scoped to the WHOLE schema, not to the Test management group alone:
+		// `testManagementGroup()` takes no config, so a check confined to its own items could
+		// never fail — a `stateColor.draft` box added to Progress or Deliverables instead
+		// would pass it. Verified by experiment: adding `stateColorOption('Draft')` to
+		// `progressGroup`'s items fails this exact assertion.
+		const config = new FakeViewConfig({
+			stateValues: 'New, Active, Done',
+			deliverableStateValues: 'Concept, Review, Published',
+			testStateValues: 'Draft, Ready, Approved',
+		}) as unknown as BasesViewConfig;
+		const keys = getViewOptions(config)
+			.flatMap((g) => ('items' in g ? g.items : [g]))
+			.map((i) => i.key);
+		expect(keys.filter((k) => k === 'stateColor.draft' || k === 'stateColor.ready' || k === 'stateColor.approved')).toEqual([]);
 	});
 
 	it('offers neither until a workflow is stated', () => {

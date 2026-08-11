@@ -127,6 +127,25 @@ free of runtime code so imports stay cycle-free.
   key). Menu values = `stateMenuValues` (configured list, else observed ∪ a done
   value) plus the item's own unlisted value, so the current state can always render
   checked.
+- **Only the catalog's `Set state` carries a Clear foot** — the end of `addStateItems`
+  (`interactions/menu.ts`), so it is on both surfaces because that is the one builder behind
+  the chip and the submenu. Every other workflow reaches its no-state target through
+  a board COLUMN — `stateChoices` reads `activeBoard`'s own columns and `col.state === null`
+  is the only entry in that list that removes a key — and the catalog is tree-shaped with no
+  board, so without the foot `computeTestStateWrites(item, null)` was reachable from nothing
+  on screen. It gates on the PLAN, offered exactly when picking it would write something,
+  and that is a narrowing rather than a preference: the removals below gate on
+  `item.ownKeys`, which `readOwnKeys` fills through `optionalKeyFor` — the RAW
+  `testStateKey` — while this workflow reads `resolvedTestStateKey`, so on the shipped
+  default where the tests share the plan's `status` the presence flag is false on every note
+  that carries a state. What it costs is everything presence and value disagree about: a key
+  holding any value `readString` refuses — blank, whitespace, YAML null, an empty list, a
+  mapping — is offered no clear, and only editing the note takes it off. **The backfill
+  produces exactly that state**: `applyInto` stubs a missing optional key as `''`, and on a
+  distinct `testStateProperty` `missingKeyStubs` puts the test state on every catalog member,
+  so pressing ✨ leaves each of them a key this menu cannot remove. Recorded rather than
+  fixed, and not a reason to switch gates — the presence gate would be absent on the shipped
+  default, where nothing is stubbed because the key falls back.
 - **The two LABEL menus are the state menu's shape without a projection**: Set risk and
   Set assignee, both rendered inside `buildItemMenu`'s `editable` guard, both offering a
   list plus the item's own unlisted value, both checked from the PLAN
@@ -407,17 +426,49 @@ free of runtime code so imports stay cycle-free.
   `listbox` and the keydown dispatched to `handleBoardKeydown`. The column fit is the
   tree's — entering board mode resets the verdict to null and clears `pbl-hide-meta`, or a
   narrow-pane decision from tree mode would strip cells off cards.
-- The mode is `host.projection` — `'tree' | 'board' | 'roadmap'` — backed by the
+- The mode is `host.projection` — five of them now — backed by the
   collapse store (UI state, per saved view, per device) — never `settings` and never
   the `.base`: base settings are saved on the view, working position in localStorage.
+  **What a projection IS is meant to be asked, never compared**: `view/projection.ts`
+  holds `treeShaped`, `hidesCompleted`, `filterScopeFor`, `projectionPopulation`,
+  `projectionMember`, `rowVocabulary` and `offerableTypes`, so that "tree-shaped" is one
+  question asked in one place rather than six equality checks scattered beside it.
+  **Nothing enforces that mechanically** — unlike the SVG-`cls` and `showAtMouseEvent`
+  bans above, there is no `no-restricted-syntax` rule forbidding a bare
+  `projection === 'tree'` outside this module, and the gap is not hypothetical: it is
+  already compared directly in `render/emptyStates.ts`, `render/projections.ts`,
+  `render/toolbarStatus.ts`, `render/toolbarControls.ts`, `render/toolbar.ts`,
+  `render/legend.ts`, `interactions/keyboard.ts`, `interactions/plan.ts`,
+  `interactions/menu.ts` and `backlogView.ts`. Some of those are legitimate dispatch —
+  `renderProjectionContent`'s if-chain in `render/projections.ts` is a dispatch on the
+  projection by design — and some are the drift this module exists to stop; nothing here
+  tells them apart yet (see
+  [[The projection predicate has no lint rule behind it]]). Not routing through the
+  module has a real cost, which is what makes it worth using rather than only naming: a
+  projection added beside `'tree'` rather than as one, wherever a comparison bypasses the
+  module, fails silently and differently — no column fitting, no refit on resize, the fit
+  classes cleared as though it were a card projection, two dead toolbar buttons, and a row
+  menu with no Move up, indent or outdent on a tree whose whole point is an order somebody
+  chose.
+  Two things stay OUT of that module deliberately: `collapsiblePopulation` takes a
+  projection's items by name, because it decides what a bulk collapse TOUCHES rather than
+  whether a button is enabled; and the round trip through storage is closed by TYPE rather
+  than by a predicate — `PROJECTION_MODE` is a `Record<Projection, ProjectionMode | null>`,
+  so a projection mapped to a constant `readEntry` would refuse cannot compile.
   `setProjection` re-renders itself, because no config was set and no Bases refresh is
-  coming; the roadmap-axis pick (`setAxisPick`) follows the same rule. **The focus
-  level is that rule with one extra consequence**: it is stored the same way
+  coming, and it recomputes the filter index on the way — no gate anywhere would have
+  caught THAT omission, because an index is correct when built and wrong when the thing it
+  was built FOR changes underneath it. The roadmap-axis pick (`setAxisPick`) follows the
+  same re-render rule. **The focus level is that rule with one extra consequence**: it is
+  stored the same way
   (`setFocusLevel`), but it re-roots the MODEL rather than only the render, so it
   rebuilds through `refreshFromData` and the restore has to run BEFORE that build —
   which is why `refreshFromData` restores first and reads `focusLevel` off the store
   onto the settings it just resolved. Everything downstream still reads it as
-  `settings.focusLevel`; the `.base` is simply no longer where it comes from.
+  `settings.focusLevel`; the `.base` is simply no longer where it comes from. It is the
+  PLAN's control: the catalog is built from the unfocused tree and its picker is a static
+  label, and `collectFocusRoots` skips catalog members — a catalog `Task` is rung 2 of its
+  own ladder, which is `PBI`'s index on the plan's.
   **`host.clickFolds` is the plainest member of that family** and the newest (2026-08-11):
   whether a plain click on a row folds it instead of opening the note, stored the same way
   and re-rendering the same way, with no model consequence at all. It reaches `settings`
@@ -427,6 +478,12 @@ free of runtime code so imports stay cycle-free.
   being a view option when it moved, since a value that is working position on the device
   cannot also be configuration on the view without a stored override beside a shared
   default. ADR 0011 records what that costs.
+- **Membership is asked once, in `rowHidden`**, beside the quick filter and the completed
+  toggle. That placement is what keeps a second projection small: the renderer, the
+  keyboard's move targets, the board's cards, the roadmap's rows and every count measured
+  over the same walk consult that one predicate already, so they inherit the exclusion
+  rather than each remembering it. It is NOT how a projection finds its ROOTS — hiding a
+  row does not lift its children (see `src/domain/CLAUDE.md` on `projectionForest`).
 - `CardDragController` (in `interactions/cardDrag.ts`) is ONE controller for both card
   projections. It collects every adapter registration's cleanup and runs them at the top
   of each render pass: the projection is rebuilt wholesale, and pragmatic listeners left
@@ -474,8 +531,36 @@ free of runtime code so imports stay cycle-free.
   hiding a match below it names those matches on its face — whether or not the card
   itself matched, since a match under a matching card is a second result and one card
   cannot stand for two — `hiddenMatches` walks its
-  subtree, stopping at anything already rendered so one match is never announced by two
-  cards. It matters most under focus, where the only cards are the focus level's: a
+  subtree, stopping at two things: anything already rendered, so one match is never
+  announced by two cards, and any row this projection does not DRAW, so a card claims
+  only what the screen puts a line to. The second is a predicate the CALLER supplies —
+  `undisclosedMatches` in `childrenList.ts` passes `!host.isRowHidden`, since
+  `domain/board.ts` is pure and can never ask a host — and because both consumers (the
+  face's links, `addMatchSection`'s menu entries) route through that one function, one
+  guard answers for both. **It is deliberately not enforced in the match SET**, and that
+  asymmetry is the finding rather than an accident: a `PBI` under a `Test case` is a plan
+  member and a real match — that is what promotes it to a root of the tree, and the same
+  property keeps a `Deliverable` nested under a test on its own board — so "a member
+  below a non-member is not a match" deletes a card that is on screen
+  (`test/view/testCatalog.test.ts` pins that direction). Only the claim that such a row
+  is *beneath this card* was wrong. What the check reaches is one board and one walk:
+  `test/view/boardFilter.test.ts` drives the face and the menu over a Deliverable whose
+  only deep match hangs behind a `Test case`, against the control with a `Feature` in the
+  same place; nothing compares this walk to the rollup's and the disclosure's. Those two
+  are not one rule either — the disclosure's LIST asks `isRowHidden`, the very predicate
+  passed here, while the rollup asks `inCatalog` on both ends, which is narrower. All three
+  stop at the LADDER edge and that is the whole of what they agree on.
+  **The disclosure's own tooltip is a FOURTH quantity on that card and takes a fourth
+  predicate**: `omitted` (`render/cardChildren.ts`) is the children this projection would
+  draw minus the ones it is drawing, so its denominator is `projectionMember` and never
+  `isRowHidden` — which conflates membership with the completed toggle and the quick
+  filter, correct for the list and wrong for what it is measured against. Subtracting the
+  list from raw `item.children` said "1 more is hidden by the current view" about a
+  `Test case`, a row the plan does not have rather than one it is holding back. What the
+  note is FOR survives that: with completed work hidden the same card still reports its
+  done child, which `test/view/cardChildren.test.ts` asserts in the one fixture as the
+  control beside the defect.
+  It matters most under focus, where the only cards are the focus level's: a
   match three levels down would otherwise be found, counted in the rollup, and
   impossible to get to. The links are `tabindex="-1"` buttons like every other per-row
   control, so the card MENU carries the same matches — that is their keyboard path, the

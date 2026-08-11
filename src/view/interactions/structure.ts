@@ -1,5 +1,6 @@
 import { Notice } from 'obsidian';
 import { reorderableGroup } from '../../domain/dropTargets';
+import { keepsProjection } from '../../domain/itemTypes';
 import { BacklogViewHost } from '../host';
 import { BacklogItem } from '../../domain/model';
 import { DropTarget } from '../../domain/dropTargets';
@@ -17,7 +18,11 @@ function siblingContext(host: BacklogViewHost, item: BacklogItem): { fullList: B
 	// Focus roots share no ranking; an ancestor from outside the filter has siblings
 	// the query never returned, so ordering it against the loaded ones would be a guess.
 	if (!model || item.focusRoot || item.outsideFilter) return null;
-	const fullList = item.parent ? item.parent.children : model.roots;
+	// The real root group, not the rendered forest — the same rule `siblingPosition`
+	// keeps: an `order` is scoped to the notes sharing a parent, and a `Test suite` and an
+	// `Epic` share the null one, so a move ranked against one projection's slice of it can
+	// land on a number a hidden root already holds. A promoted root returned above.
+	const fullList = item.parent ? item.parent.children : model.realRoots;
 	const idx = fullList.indexOf(item);
 	return idx === -1 ? null : { fullList, idx };
 }
@@ -82,6 +87,12 @@ export function outdentTarget(host: BacklogViewHost, item: BacklogItem): DropTar
 	// This lands the item at a position among the parent's siblings — and that group
 	// holds the context parent itself whenever the Base excluded it.
 	if (!reorderableGroup(siblings)) return null;
+	// The grandparent may be on the other ladder — `Epic → Test case → Task` is the
+	// reachable shape, since the case is drawn in the catalog as a promoted root and its
+	// task is an ordinary child. Refused at the TARGET, not at the write: this function is
+	// what the menu asks to decide whether to OFFER the command, and an offered command
+	// that does nothing is what this repo refuses ahead of a withheld one.
+	if (!keepsProjection(item, grandparent)) return null;
 	return { parent: grandparent, siblings, insertIndex: siblings.indexOf(parent) + 1 };
 }
 

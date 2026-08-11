@@ -32,7 +32,6 @@ export interface BacklogSettings extends ItemHandling {
 	showOutsideParents: boolean;
 	/** Parent notes are inferred from folder notes when no explicit parent link is set. */
 	folderHierarchy: boolean;
-	autoType: boolean;
 	showCounts: boolean;
 	/**
 	 * Where new items go when their type has no folder of its own — the one general
@@ -128,6 +127,12 @@ export interface BacklogSettings extends ItemHandling {
 	deliverableStates: string[];
 	/** State values (case-insensitive) that count as done, for the Deliverable workflow. */
 	deliverableDoneValues: string[];
+	/** Frontmatter key holding the test workflow's own state, or '' when unset. */
+	testStateKey: string;
+	/** Test workflow states offered by a catalog row's Set state, in order; [] falls back to observed. */
+	testStates: string[];
+	/** State values (case-insensitive) that count as done, for the test workflow. */
+	testDoneValues: string[];
 	/** Frontmatter key holding the item's risk, or '' when no risk property is named. */
 	riskKey: string;
 	/**
@@ -220,7 +225,6 @@ export function defaultSettings(): BacklogSettings {
 		hierarchyOnly: true,
 		showOutsideParents: true,
 		folderHierarchy: false,
-		autoType: false,
 		showCounts: true,
 		homeFolder: DEFAULT_HOME_FOLDER,
 		typeFolders: nameTable(ALL_TYPES, (t) => defaultTypeFolder(t) || null),
@@ -245,6 +249,9 @@ export function defaultSettings(): BacklogSettings {
 		deliverableStateKey: '',
 		deliverableStates: [],
 		deliverableDoneValues: [...DEFAULT_DONE_VALUES],
+		testStateKey: '',
+		testStates: [],
+		testDoneValues: [...DEFAULT_DONE_VALUES],
 		riskKey: '',
 		riskValues: [...DEFAULT_RISK_VALUES],
 		assigneeKey: '',

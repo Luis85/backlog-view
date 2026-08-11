@@ -1,6 +1,7 @@
 import { BacklogItem } from '../domain/model';
 import { BacklogSettings } from '../domain/settings';
-import { FilterScope, FilterState } from './filterState';
+import { FilterState } from './filterState';
+import { FilterScope } from './projection';
 
 /**
  * Row visibility, with the quick filter itself optionally lifted. One predicate
@@ -32,9 +33,25 @@ export interface VisibilityRule {
 	scope: FilterScope;
 	/** False where the projection has no completion concept to hide by. */
 	hideCompleted: boolean;
+	/**
+	 * Whether this projection draws the item at all — `projectionMember`, which asks the
+	 * one catalog-membership rule. It is FIRST below and unconditional, unlike the two
+	 * questions under it: a filter suspends the completed toggle and a match must be
+	 * findable, but no needle makes a `Test case` a row of the plan.
+	 *
+	 * This is where the exclusion lives for the same reason the completed toggle's does —
+	 * one predicate, so the narrowed screen and the population its counts are measured
+	 * against cannot disagree. Everything downstream inherits it: the tree's rows, the
+	 * board's cards, the roadmap's rows and shelf, the keyboard's move targets, and every
+	 * count taken over the same walk.
+	 */
+	inProjection: (item: BacklogItem) => boolean;
 }
 
 export function rowHidden(item: BacklogItem, rule: VisibilityRule): boolean {
+	// A row this projection does not draw is not hidden BY anything — it is not on this
+	// screen at all — so nothing suspends it and no filter overrides it.
+	if (!rule.inProjection(item)) return true;
 	// While filtering, the filter alone decides — a match must be findable even
 	// when completed items are hidden, so hiding is suspended.
 	if (rule.filter.active) {

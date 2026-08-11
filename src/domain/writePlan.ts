@@ -1,20 +1,18 @@
 import { TFile } from 'obsidian';
 import { DropTarget } from './dropTargets';
 import { BacklogItem, BacklogModel } from './model';
-import {
-	childLevelIndex,
-	EXTRA_TYPE_RANK,
-	isDeliverableType,
-	isExtraType,
-	isMarkerType,
-	nextLevelIndex,
-	PlacementEnd,
-} from './itemTypes';
+import { childLevelIndex, PlacementEnd } from './itemTypes';
 import { readDate, sameValue } from './noteFields';
 import { hasHorizonAxis } from './roadmap';
+import { stateKeyFor } from './board';
 import { BacklogSettings, isDoneValue, isStartedValue } from './settings';
-import { OPTIONAL_FIELDS, OptionalField, optionalKeyFor } from './optionalProperties';
-import { LEVELS } from './typeVocabulary';
+import {
+	OPTIONAL_FIELDS,
+	OptionalField,
+	optionalKeyFor,
+	resolvedDeliverableStateKey,
+	resolvedTestStateKey,
+} from './optionalProperties';
 
 /**
  * What a change to the tree *would* write, worked out without touching anything.
@@ -51,6 +49,10 @@ export interface ItemWrite {
 	deliverableState?: string;
 	/** Remove the Deliverable state property entirely — its no-state column's drop. */
 	removeDeliverableStateKey?: boolean;
+	/** The test workflow's own state to set; absent means leave it alone. */
+	testState?: string;
+	/** Remove the test workflow's state key entirely — absence is what untriaged means. */
+	removeTestStateKey?: boolean;
 	/**
 	 * Tags to add and remove (without '#'). A delta rather than the new list,
 	 * because the row it came from can be a refresh behind the note: two removals
@@ -185,29 +187,22 @@ export interface AxisWrite {
  * Uses the gap between neighbor orders when possible; falls back to renumbering
  * the whole sibling group when orders are missing or too tightly packed.
  */
-export function computeDropWrites(
-	dragged: BacklogItem,
-	target: DropTarget,
-	settings: BacklogSettings,
-): ItemWrite[] {
+export function computeDropWrites(dragged: BacklogItem, target: DropTarget): ItemWrite[] {
 	const { parent, siblings, insertIndex } = target;
 	const parentField = computeParentField(dragged, parent);
-	const parentChanged = parentField !== undefined;
-	const { typeField, cascade } = computeTypeChanges(dragged, parent, settings, parentChanged);
 
 	const order = computeInsertOrder(siblings, insertIndex);
 	if (order !== null) {
-		return [{ file: dragged.file, parent: parentField, order, typeName: typeField }, ...cascade];
+		return [{ file: dragged.file, parent: parentField, order }];
 	}
 	// Renumbering rewrites every sibling, and the view never writes to a note the
 	// Base excluded. Placing the item past the highest order we can see keeps the
 	// drop working while touching only the note being moved. Callers refuse the
 	// *positional* drops in such a group, so landing last is what was asked for.
 	if (siblings.some((s) => s.outsideFilter)) {
-		const order = afterHighestKnown(siblings);
-		return [{ file: dragged.file, parent: parentField, order, typeName: typeField }, ...cascade];
+		return [{ file: dragged.file, parent: parentField, order: afterHighestKnown(siblings) }];
 	}
-	return [...renumberWrites(dragged, siblings, insertIndex, { parentField, typeField }), ...cascade];
+	return renumberWrites(dragged, siblings, insertIndex, parentField);
 }
 
 /** One spacing beyond the highest order in the group, ignoring siblings that have none. */
@@ -229,100 +224,6 @@ function computeParentField(dragged: BacklogItem, parent: BacklogItem | null): T
 	const staleRootLink = parent === null && dragged.parent === null && dragged.hasParentValue;
 	const parentChanged = oldParentPath !== newParentPath || staleRootLink;
 	return parentChanged ? (parent ? parent.file : null) : undefined;
-}
-
-/**
- * With autoType, the dragged item is retyped for its new slot and explicitly
- * typed descendants follow, so a subtree move cannot leave inconsistent
- * hierarchy metadata. Untyped descendants need no write (their level is
- * implied from the parent chain) and custom types outside the configured
- * ladder are deliberate — both are left alone. Exported so parent-link
- * removal ("Use folder position") retypes exactly like a drop would.
- */
-export function computeTypeChanges(
-	dragged: BacklogItem,
-	parent: BacklogItem | null,
-	settings: BacklogSettings,
-	parentChanged: boolean,
-): { typeField?: string; cascade: ItemWrite[] } {
-	const cascade: ItemWrite[] = [];
-	if (!parentChanged || !settings.autoType) return { cascade };
-
-	/**
-	 * Where the cascade STOPS. A marker occupies no rung, so nothing beneath one can be
-	 * ranked from it, and the marker itself has no position to be retyped by — the same
-	 * shape, and the same reason, as a row the Base excluded: where this walk cannot say
-	 * what a rung is, it stops rather than guesses. Stopping at the dragged item covers
-	 * both halves at once — the marker keeps its type, and so does anything hand-nested
-	 * beneath it — which is why `rankOf` below never meets one and stays a question about
-	 * extra types alone.
-	 *
-	 * It must NOT reach the ladder: `Epic`, `Feature`, `PBI` and `Task` are declared *as
-	 * rungs*, and exempting them would undo `Assigning type on a move` wholesale.
-	 */
-	const stopsAt = (item: BacklogItem): boolean => item.outsideFilter || isMarkerType(item.typeName);
-	if (stopsAt(dragged)) return { cascade };
-	// The same rule's third position: a marker as the DESTINATION hands out no rung
-	// either. `childLevelIndex` cannot tell "no rung" from "top level" — a marker's
-	// `effectiveLevelIndex` falls through the unrecognised-type branch and reads 0,
-	// same as no parent at all — so a walk that did not stop here would retype the
-	// dragged item and its whole subtree by a rank the marker does not have. This is
-	// the dragged item and every node of the walk applied to the one input `stopsAt`
-	// was never asked about: `parent` itself.
-	if (parent !== null && isMarkerType(parent.typeName)) return { cascade };
-
-	/**
-	 * The rung an item occupies after the move. A declared extra type carries its own,
-	 * pinned — that is what makes a Bug's children Tasks under an Epic as under a PBI —
-	 * and everything else takes the rung its position gives it.
-	 *
-	 * This applies at EVERY node, not just the dragged one. An extra type nested inside
-	 * a moved subtree is skipped by the retyping below (it has no `levelIndex`), but the
-	 * walk still has to descend from its rank rather than from the position it inherited,
-	 * or moving a Feature that contains a Bug rewrites that Bug's Tasks to PBIs — the
-	 * item left alone, its children silently corrupted.
-	 */
-	const extraRank = EXTRA_TYPE_RANK;
-	const rankOf = (item: BacklogItem, positional: number): number =>
-		isExtraType(item.typeName) ? extraRank : positional;
-
-	const newBaseIdx = rankOf(dragged, childLevelIndex(parent));
-	let typeField: string | undefined;
-	// An extra type is never re-typed by position: dropping a Bug under an Epic leaves a Bug.
-	if (!isExtraType(dragged.typeName)) {
-		const implied = LEVELS[newBaseIdx];
-		if (dragged.typeName === null || dragged.typeName.toLowerCase() !== implied.toLowerCase()) {
-			typeField = implied;
-		}
-	}
-
-	// Chained down the parent levels, never derived from depth: each child sits one
-	// rung below its parent's NEW level. That is the same walk `computeLevel` runs
-	// once these writes land, so the plan and the model it produces cannot disagree —
-	// and it holds under focus mode, where visual depth is re-rooted.
-	const walk = (node: BacklogItem, nodeLevel: number) => {
-		const childLevel = nextLevelIndex(nodeLevel);
-		for (const child of node.children) {
-			// The cascade stops at a note the Base excluded — a filter can leave one
-			// *between* two results (Epic and PBI returned, the Feature between them
-			// not) — and at a marker, which has no rung for the branch below to descend
-			// from. We may not retype either, and retyping only the levels below one
-			// would leave a worse ladder than leaving that branch as it stands.
-			if (stopsAt(child)) continue;
-			if (child.typeName !== null && child.levelIndex !== -1) {
-				const targetLevel = LEVELS[childLevel];
-				if (child.typeName.toLowerCase() !== targetLevel.toLowerCase()) {
-					cascade.push({ file: child.file, typeName: targetLevel });
-				}
-			}
-			// A custom type outside the ladder is left alone but still occupies this
-			// rung, exactly as `computeLevel` treats an unknown type — so its own
-			// children carry on from here rather than restarting.
-			walk(child, rankOf(child, childLevel));
-		}
-	};
-	walk(dragged, newBaseIdx);
-	return { typeField, cascade };
 }
 
 /**
@@ -359,6 +260,17 @@ export function computeDeliverableStateWrites(item: BacklogItem, state: string |
 	return [
 		state === null ? { file: item.file, removeDeliverableStateKey: true } : { file: item.file, deliverableState: state },
 	];
+}
+
+/**
+ * Everything ONE test-workflow state change writes. No stamp logic, for the reason the
+ * Deliverable's has none and one more here: this epic records no results, so a case's state
+ * is what it IS rather than when it ran, and a started/finished date would be a claim about
+ * a run.
+ */
+export function computeTestStateWrites(item: BacklogItem, state: string | null): ItemWrite[] {
+	if (sameValue(item.testStateValue, state)) return [];
+	return [state === null ? { file: item.file, removeTestStateKey: true } : { file: item.file, testState: state }];
 }
 
 /**
@@ -492,7 +404,7 @@ function renumberWrites(
 	dragged: BacklogItem,
 	siblings: BacklogItem[],
 	insertIndex: number,
-	fields: { parentField: TFile | null | undefined; typeField: string | undefined },
+	parentField: TFile | null | undefined,
 ): ItemWrite[] {
 	const sequence = [...siblings];
 	sequence.splice(insertIndex, 0, dragged);
@@ -500,7 +412,7 @@ function renumberWrites(
 	sequence.forEach((item, i) => {
 		const slot = (i + 1) * ORDER_SPACING;
 		if (item === dragged) {
-			writes.push({ file: item.file, parent: fields.parentField, order: slot, typeName: fields.typeField });
+			writes.push({ file: item.file, parent: parentField, order: slot });
 		} else if (item.order !== slot) {
 			writes.push({ file: item.file, order: slot });
 		}
@@ -517,9 +429,31 @@ function renumberWrites(
  * tree. Writing a state or a placement instead would invent a plan, which on a
  * roadmap is indistinguishable from a decision.
  */
+
+/** Each workflow-state field's own resolved key — `state`'s never falls back to be one. */
+const WORKFLOW_STATE_KEY: Partial<Record<OptionalField, (settings: BacklogSettings) => string>> = {
+	state: (settings) => settings.stateKey,
+	deliverableState: resolvedDeliverableStateKey,
+	testState: resolvedTestStateKey,
+};
+
 function missingKeyStubs(item: BacklogItem, settings: BacklogSettings): OptionalField[] {
 	const stubs: OptionalField[] = [];
 	for (const field of OPTIONAL_FIELDS) {
+		// A workflow-state field is stubbed only when its own resolved key IS the key
+		// `stateKeyFor` says THIS item's workflow reads — asked by KEY EQUALITY, not by
+		// re-deriving the item's category, so a secondary key left unset (falling back to
+		// `settings.stateKey`, the shipped default) still gets `state` stubbed rather than
+		// skipped. Two fields legitimately CAN resolve to one key — `configProblems` exempts
+		// exactly these three labels from its collision report — and both then pass; that is
+		// harmless rather than narrowed further, because two mechanisms downstream turn the
+		// duplicate names into one property created once. `applyInto`
+		// (`src/storage/frontmatter.ts`) creates a key only while the live note lacks it, and
+		// `touchedKeys` (`src/storage/writeKeys.ts`) dedupes the key list the inverse is
+		// captured from, so the undo cannot read the second copy as a restore conflict.
+		// `stubKeys` does NEITHER — it names one raw key per field, duplicates included.
+		const ownKey = WORKFLOW_STATE_KEY[field];
+		if (ownKey && ownKey(settings) !== stateKeyFor(settings, item)) continue;
 		// A named horizon property with no values is an UNCONFIGURED bucket axis — the
 		// axis the roadmap declines to draw and the menu declines to set. Creating its
 		// key here would be the one write left on an axis nothing else acknowledges,
@@ -534,11 +468,6 @@ function missingKeyStubs(item: BacklogItem, settings: BacklogSettings): Optional
 		// to leave behind, so backfilling one would have ✨ create what a remove must
 		// clean up.
 		if (field === 'dependsOn') continue;
-		// The Deliverable workflow's own state describes a Deliverable, never a PBI, a
-		// Task or any other type sharing the same backfill pass — the property-table row
-		// this key gets in the generated README (Task 20) says "on a Deliverable", and
-		// this is what keeps that literally true rather than aspirational.
-		if (field === 'deliverableState' && !isDeliverableType(item.typeName)) continue;
 		if (optionalKeyFor(settings, field) === '' || item.ownKeys[field]) continue;
 		stubs.push(field);
 	}
@@ -561,7 +490,12 @@ function initWriteFor(item: BacklogItem, settings: BacklogSettings, nextOrder: (
 	// write a type derived from its provisional top-level position.
 	const levelUnknown = item.parent === null && item.hasParentValue;
 	if (item.typeName === null && !levelUnknown) {
-		write.typeName = LEVELS[childLevelIndex(item.parent)];
+		// The item's OWN ladder, which for a typeless note is the one it chains from its
+		// parent. This is the half of the implied type that cannot be undone by looking
+		// away: left on `LEVELS`, a typeless child of a `Test suite` would be badged a
+		// `Feature` and then have `Feature` WRITTEN to it, moving the note out of the
+		// catalog and into the plan — permanently, and without anyone asking.
+		write.typeName = item.ladder[childLevelIndex(item.parent, item.ladder)];
 		needed = true;
 	}
 	const stubs = missingKeyStubs(item, settings);

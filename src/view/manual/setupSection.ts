@@ -36,13 +36,6 @@ export const SETUP: ManualSection = {
 			keys: ['parentProperty', 'orderProperty', 'typeProperty', 'hierarchyOnly', 'showOutsideParents', 'inferFolderHierarchy'],
 		},
 		{
-			term: 'Assign item type when moving',
-			text:
-				"Off by default. On, a move that changes an item's parent retypes the ladder levels " +
-				'in its subtree to match — see "Moving and ranking" for exactly what it skips.',
-			keys: ['autoAssignType'],
-		},
-		{
 			term: 'State, tags, assignee and the stamps a state carries',
 			text:
 				'The properties the state chip, the tag column, the assignee chip, and a state ' +
@@ -80,6 +73,19 @@ export const SETUP: ManualSection = {
 					'values stay unset and columns come from whatever this vault’s Deliverables already use instead — an own key ' +
 					'with nothing declared is a genuinely separate workflow.',
 			keys: ['deliverableStateProperty'],
+		},
+		{
+			term: 'The test catalog\'s own workflow',
+			text:
+				'Unset by default, like the Deliverable property above: with no key of its own, a ' +
+				'`Test suite` or `Test case` row\'s state chip reads and writes State property ' +
+				'instead, sharing its property and its states while it is falling back. Name a ' +
+				'property here to make it independent; its own done values then default to the ' +
+				'shipped Done, Closed, Completed, Removed rather than this vault\'s customized ' +
+				'shared list, while its own states stay unset. Records no run history and draws no ' +
+				'columns: the catalog is a tree, and this is the same per-item state mechanism ' +
+				'every other workflow here already has, over its own property.',
+			keys: ['testStateProperty', 'testStateValues', 'testDoneValues'],
 		},
 		{
 			term: 'What progress means',

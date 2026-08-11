@@ -17,6 +17,15 @@ export interface UiStateHooks {
 	renderTreeContent(): void;
 	/** Re-roots the model, since the change (focus alone) is what it is re-rooted on. */
 	refreshFromData(): void;
+	/**
+	 * Rebuild the quick filter's match index. Only the projection needs it, and no gate
+	 * anywhere would have caught the omission: the index is correct when built and wrong
+	 * when the thing it was built FOR changes underneath it. A switch with a needle still
+	 * in the box would otherwise answer for the projection the user just left — rows that
+	 * do not match staying on screen, matches missing, and the text still in the input
+	 * saying the filter is working.
+	 */
+	recomputeFilter(): void;
 }
 
 /**
@@ -48,6 +57,8 @@ export class UiStateController {
 	setProjection(mode: Projection): void {
 		if (mode === this.projection) return;
 		this.collapse.setProjection(mode);
+		// Before the render, not after: the render is what reads the index.
+		this.hooks.recomputeFilter();
 		this.hooks.render();
 	}
 

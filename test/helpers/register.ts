@@ -164,9 +164,11 @@ const HIERARCHY_TABLE = [
 	'| `Epic` | *(nothing — it is a root)* | `Feature`, `Issue`, `Bug`, `Idea`, `Deliverable` |',
 	'| `Feature` | `Epic` | `PBI`, `Issue`, `Bug`, `Idea`, `Deliverable` |',
 	'| `PBI` | `Feature` | `Task`, `Issue`, `Bug`, `Idea`, `Deliverable` |',
-	'| `Task` | `PBI`, `Issue`, `Bug`, `Idea`, `Deliverable` | *(nothing)* |',
+	'| `Task` | `PBI`, `Issue`, `Bug`, `Idea`, `Deliverable`, `Test case` | *(nothing)* |',
 	'| `Issue` / `Bug` / `Idea` / `Deliverable` | `Epic`, `Feature` or `PBI` | `Task` |',
 	'| `Milestone` | *(nothing — a root by nature)* | *(nothing)* |',
+	'| `Test suite` | *(nothing — a root by nature)* | `Test case` |',
+	'| `Test case` | `Test suite` | `Task` |',
 ].join('\n') + '\n';
 
 export function baseRegister(): Register {

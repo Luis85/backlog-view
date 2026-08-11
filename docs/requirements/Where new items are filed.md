@@ -79,4 +79,5 @@ key spelled twice is a key that can differ) ·
 `src/view/interactions/create.ts` (`inferFolder`) ·
 `src/commands/scaffold.ts` (the Create backlog command).
 Tests: `test/domain/itemTypes.test.ts`, `test/domain/settings.test.ts`,
-`test/domain/viewOptions.test.ts`, `test/view/creation.test.ts`.
+`test/domain/viewOptions.test.ts`, `test/view/creation.test.ts`,
+`test/storage/baseFile.test.ts`.

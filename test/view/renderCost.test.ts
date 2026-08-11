@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { FakeVault } from '../helpers/vault';
-import { key, makeView, rowByTitle, rows, treeOf, useViewHarness } from '../helpers/view';
+import { clickExpandAll, key, makeView, rowByTitle, rows, titlesOf, treeOf, useViewHarness } from '../helpers/view';
 
 useViewHarness();
 
@@ -99,6 +99,33 @@ describe('render cost', () => {
 
 		expect(one).not.toHaveBeenCalled();
 		expect(all).not.toHaveBeenCalled();
+	});
+
+	it('prunes a detached subtree from rowEls without taking a promoted root with it', () => {
+		// The over-pruning half of the same invariant the test above pins: `refreshRowChildren`
+		// must prune ONLY what it detached. `Epic → Feature` and `Epic → Test case → PBI` — the
+		// PBI is a plan member drawn as a promoted ROOT elsewhere, not under the Epic, so
+		// collapsing the Epic detaches only the Feature's group. Walking the raw child list
+		// instead of membership deletes the PBI's `rowEls` entry while its row stays on screen,
+		// and selection is what reads that map — a DOM check would pass with the index empty.
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feature.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
+		vault.addFile('Bridge case.md', { frontmatter: { type: 'Test case', order: 20 }, parentLink: 'Epic' });
+		vault.addFile('Deep PBI.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Bridge case' });
+		const { containerEl } = makeView(vault);
+		clickExpandAll(containerEl);
+		expect(titlesOf(containerEl)).toEqual(['Epic', 'Feature', 'Deep PBI']);
+
+		// Collapse the Epic through its own chevron — the real path `refreshRowChildren` runs on.
+		rowByTitle(containerEl, 'Epic')
+			.querySelector<HTMLElement>('.pbl-chevron')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(titlesOf(containerEl)).toEqual(['Epic', 'Deep PBI']);
+
+		// The promoted root is still drawn, so it must still be selectable.
+		rowByTitle(containerEl, 'Deep PBI').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(rowByTitle(containerEl, 'Deep PBI').classList.contains('pbl-selected')).toBe(true);
 	});
 
 	/**

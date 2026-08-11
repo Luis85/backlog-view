@@ -54,13 +54,23 @@ the surface every other section then lands in.
   beside it.
 - **3b — another type is added later.** The section is generated from `ALL_TYPES`, so a
   type without an explanation fails a test rather than shipping as a gap.
-- **4a — `Assign item type when moving` is on.** The rule is stated with its default (off)
-  and its effect when enabled, so the section describes the view in front of the reader
-  rather than the one the option would make.
+- **4a — the reader wants to know what a move does to a type.** It does nothing: the
+  section says so flatly, because a qualifier here would describe a view the reader does
+  not have. An option that made moves re-type existed until 2026-08-11 and this extension
+  used to be about stating its default correctly.
 - **4b — the user drags a Task under an Epic.** Nothing refuses it. The section says the
   type rules are advisory, and scopes that to type compatibility: other drops *are* refused
   (onto an item's own descendant, into a group with no shared ranking) and those belong to
   [[Help for moving and ranking]].
+- **4c — the user drags a `Task` out of a `Test suite` and onto the plan's top level.**
+  That one *is* refused, and it is the only class of move refused for a **type** reason —
+  4b's refusals stand beside it, for reasons that are not about type at all. The two ladders are
+  drawn as separate projections, and a `Task` or a note with no `type` reads its ladder
+  from where it hangs, so the row would leave the screen it was moved on. The entry states
+  it as exactly that — leaving the projection, never a rule about types — names the drag,
+  the outdent and BOTH parent-link actions together, and says the two rows it can happen to,
+  since every other type answers from its own name and a backlog with no tests in it is
+  refused nothing here. See [[Test suite and test case as a ladder of their own]].
 - **5a — the manual was opened from another section's link.** Closing returns focus to
   whatever opened it, so the dialog never strands the keyboard at the top of the pane.
 
@@ -78,8 +88,22 @@ the surface every other section then lands in.
 - "Advisory" is scoped to **type compatibility**, not to drops in general: `isInvalidParent`
   and the reorderable-group checks do refuse drops, and an unqualified "any drag is
   allowed" contradicts [[Help for moving and ranking]] as well as the view.
+- The projection refusal is written to the check and no wider: the two rows it can happen
+  to are **named**, the reason given is the row leaving the screen it was moved on, and the
+  narrowing sentence stands beside it — every other type keeps its own ladder wherever it
+  lands, so a backlog with no tests in it is refused nothing here. Without that last
+  sentence the entry would be as false as the "no drag is ever refused" it replaced, in the
+  other direction. Those three are what `test/view/manualTypes.test.ts` asserts; that no
+  OTHER sentence in the entry reads too widely is not something a substring check can see.
+- `Task` is stated as **offered** in the test catalog, since it is the rung both ladders
+  share. A sentence withholding "the plan's levels" there contradicts this same section's
+  `Test case` entry ("Holds Tasks") two entries apart, and contradicts the view — see
+  `test/view/testCatalog.test.ts`.
+- `Set type` is described as narrowing in **every** projection, since each offers what it
+  can draw. The two boards are one case of that rule rather than the whole of it, and the
+  row's own **+** is not described as narrowed by it.
 - The **displayed level** and the **written `type`** are kept apart: position implies the
-  first and, with re-typing off by default, never rewrites the second.
+  first and never rewrites the second.
 - Nothing is written and nothing is persisted by opening, reading or closing it.
 - The dialog scrolls, closes on Escape, and returns focus to the button that opened it.
 
