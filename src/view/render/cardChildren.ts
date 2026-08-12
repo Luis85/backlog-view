@@ -1,4 +1,5 @@
-import { setIcon, setTooltip } from 'obsidian';
+import { setTooltip } from 'obsidian';
+import { drawIcon } from './icons';
 import { RowContext } from './columns';
 import { renderBadge, renderTitleText } from './rows';
 import { BacklogViewHost } from '../host';
@@ -49,7 +50,7 @@ export function renderCardChildren(ctx: RowContext, card: HTMLElement, item: Bac
 	// is what makes it announce "3 features" before its items.
 	list.setAttribute('aria-labelledby', toggle.id);
 	const chevron = toggle.createSpan({ cls: 'pbl-card-kids-chevron' });
-	setIcon(chevron, 'chevron-right');
+	drawIcon(chevron, 'chevron-right');
 	toggle.createSpan({ cls: 'pbl-card-kids-count', text: childrenLabel(children) });
 	// The quick filter OVERRIDES collapse state without replacing it: `isCardCollapsed`
 	// returns false while it runs, but `setCardCollapsed` still writes. A live toggle would

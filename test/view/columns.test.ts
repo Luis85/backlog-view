@@ -144,7 +144,7 @@ describe('property columns', () => {
 		const viewEl = containerEl.querySelector('.pbl-view');
 		Object.defineProperty(tree, 'clientWidth', { value: 550, configurable: true });
 
-		const ctx = rowContext(view, null as never, new Map(), new Set());
+		const ctx = rowContext(view, new Map(), new Set());
 		syncColumnFit(ctx, viewEl as HTMLElement, tree);
 
 		// 550px holds the one 200px column only when the rollup's 84px is not subtracted from
@@ -406,7 +406,7 @@ describe('property columns', () => {
 		// tree-only gating on `refit()`, so this asserts `syncColumnFit`'s own contract
 		// rather than relying on that gating to keep the two from ever meeting.
 		const rows = new Map<string, HTMLElement>([[d.file.path, document.createElement('div')]]);
-		const ctx = rowContext(view, null as never, rows, new Set());
+		const ctx = rowContext(view, rows, new Set());
 		syncColumnFit(ctx, viewEl as HTMLElement, tree);
 
 		// The one column fits beside a card's zero indent, and would not beside eight

@@ -1,4 +1,5 @@
-import { setIcon, setTooltip } from 'obsidian';
+import { setTooltip } from 'obsidian';
+import { drawIcon } from './icons';
 import { renderCardChildren } from './cardChildren';
 import { renderPropCells, renderRollup, RowContext } from './columns';
 import {
@@ -282,8 +283,8 @@ function renderColumnHeader(
 		cls: 'pbl-board-col-header pbl-board-col-stop',
 		attr: { role: 'option', 'aria-selected': 'false', 'aria-label': columnLabel(col, filtering) },
 	});
-	if (col.done) setIcon(header.createSpan({ cls: 'pbl-board-col-icon' }), 'circle-check');
-	if (col.state === null) setIcon(header.createSpan({ cls: 'pbl-board-col-icon' }), 'circle-dashed');
+	if (col.done) drawIcon(header.createSpan({ cls: 'pbl-board-col-icon' }), 'circle-check');
+	if (col.state === null) drawIcon(header.createSpan({ cls: 'pbl-board-col-icon' }), 'circle-dashed');
 	header.createSpan({ cls: 'pbl-board-col-name', text: col.label });
 	if (!strip) {
 		// A column is a stage of the workflow, not a search result: while the filter
@@ -297,13 +298,13 @@ function renderColumnHeader(
 			// shape, and `columnLabel` carries the words.
 			if (overBy(col) > 0) {
 				header.addClass('pbl-board-col-over');
-				setIcon(header.createSpan({ cls: 'pbl-board-col-over-icon' }), 'triangle-alert');
+				drawIcon(header.createSpan({ cls: 'pbl-board-col-over-icon' }), 'triangle-alert');
 			}
 		}
 	}
 	if (col.outsideWorkflow) {
 		const mark = header.createSpan({ cls: 'pbl-board-col-stray' });
-		setIcon(mark, 'circle-help');
+		drawIcon(mark, 'circle-help');
 		setTooltip(
 			colEl,
 			`"${col.label}" is not one of the configured workflow states. Add it to "${stateOptionLabel}" in the view options, or move its cards.`,
@@ -330,7 +331,7 @@ function renderColumnPolicy(header: HTMLElement, col: BoardColumn): void {
 	description.id = uniqueElementId('pbl-col-policy');
 	header.setAttribute('aria-describedby', description.id);
 	const affordance = header.createSpan({ cls: 'pbl-board-col-policy' });
-	setIcon(affordance, 'info');
+	drawIcon(affordance, 'info');
 	setTooltip(affordance, col.policy);
 	header.addEventListener('contextmenu', (evt) => showColumnMenu(evt, col.policy));
 }
@@ -387,7 +388,7 @@ export function renderCardBody(ctx: RowContext, card: HTMLElement, item: Backlog
 	renderBadge(host, head, item);
 	if (item.outsideFilter) {
 		const marker = head.createSpan({ cls: 'pbl-outside-marker' });
-		setIcon(marker, 'corner-left-down');
+		drawIcon(marker, 'corner-left-down');
 		setTooltip(marker, "Not in this base's filter — shown to place its items");
 		// A description, not a label: a label would REPLACE the content-derived
 		// accessible name and cost a screen reader the badge, the parent line and
@@ -401,7 +402,7 @@ export function renderCardBody(ctx: RowContext, card: HTMLElement, item: Backlog
 	// card. An excluded parent still labels it: reading is what context is for.
 	if (item.parent) {
 		const parent = card.createDiv({ cls: 'pbl-card-parent' });
-		setIcon(parent.createSpan({ cls: 'pbl-card-parent-icon' }), 'corner-left-up');
+		drawIcon(parent.createSpan({ cls: 'pbl-card-parent-icon' }), 'corner-left-up');
 		parent.createSpan({ text: item.parent.title });
 		setTooltip(parent, `Under "${item.parent.title}"`);
 	}
@@ -482,7 +483,7 @@ function renderCardMatches(ctx: RowContext, card: HTMLElement, item: BacklogItem
 	const matches = undisclosedMatches(host, item, carded);
 	if (matches.length === 0) return;
 	const list = card.createDiv({ cls: 'pbl-card-matches' });
-	setIcon(list.createSpan({ cls: 'pbl-card-matches-icon' }), 'search');
+	drawIcon(list.createSpan({ cls: 'pbl-card-matches-icon' }), 'search');
 	for (const match of matches) {
 		const link = list.createEl('button', {
 			cls: 'pbl-card-match',

@@ -1,4 +1,5 @@
-import { Keymap, setIcon, setTooltip } from 'obsidian';
+import { Keymap, setTooltip } from 'obsidian';
+import { drawIcon } from './icons';
 import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
 import { promptCreateItem } from '../interactions/create';
 import { showItemMenu } from '../interactions/menu';
@@ -163,8 +164,6 @@ function renderItem(
 
 	renderRowLead(ctx, row, item, { hasChildren, collapsed });
 	renderRowTrailing(ctx, row, item, childTypes);
-	wireRowEvents(ctx, row, item, childTypes);
-	ctx.dnd.wireRow(row, item);
 
 	if (hasChildren && !collapsed) {
 		renderForest(ctx, childGroupEl(containerEl, item), item.children);
@@ -188,7 +187,7 @@ function renderRowLead(
 	const host = ctx.host;
 	// Purely a drag affordance — the row itself is the draggable element.
 	const grip = row.createDiv({ cls: 'pbl-grip', attr: { 'aria-hidden': 'true' } });
-	setIcon(grip, 'grip-vertical');
+	drawIcon(grip, 'grip-vertical');
 
 	// The tree refreshes the one subtree it changed; the dated axis's rows share this
 	// control and re-render whole, which is why what to redraw is the caller's.
@@ -219,13 +218,13 @@ function renderRowLead(
 
 	if (item.orphan) {
 		const orphan = row.createSpan({ cls: 'pbl-orphan' });
-		setIcon(orphan, 'unlink');
+		drawIcon(orphan, 'unlink');
 		setTooltip(orphan, 'Parent is set but not part of this view');
 	}
 
 	if (item.outsideFilter) {
 		const marker = row.createSpan({ cls: 'pbl-outside-marker' });
-		setIcon(marker, 'corner-left-down');
+		drawIcon(marker, 'corner-left-down');
 		setTooltip(marker, "Not in this base's filter — shown to keep the hierarchy");
 	}
 }
@@ -287,7 +286,7 @@ export function renderChevron(
 		label === undefined
 			? rowEl.createDiv({ cls })
 			: disclosureButton(rowEl, cls, { expanded: !state.collapsed, label, disabled: host.isFiltering() });
-	setIcon(chevron, 'chevron-right');
+	drawIcon(chevron, 'chevron-right');
 	chevron.toggleClass('pbl-expanded', !state.collapsed);
 	chevron.addEventListener('click', () => {
 		// Read here rather than trusted from `disabled`: a click landing on the icon
@@ -356,7 +355,7 @@ export function renderBadge(host: BacklogViewHost, row: HTMLElement, item: Backl
 	// lets the two test types be ordinary entries in the table above rather than a third
 	// branch, even though they ARE rungs.
 	const style = badgeStyleFor(badgeText);
-	if (style.icon) setIcon(badge.createSpan({ cls: 'pbl-badge-icon' }), style.icon);
+	if (style.icon) drawIcon(badge.createSpan({ cls: 'pbl-badge-icon' }), style.icon);
 	badge.addClass(style.badge);
 	badge.createSpan({ cls: 'pbl-badge-text', text: badgeText });
 	// The level name is capped in CSS so the row's lead stays bounded, so the tooltip
@@ -388,7 +387,7 @@ function renderRowTrailing(ctx: RowContext, row: HTMLElement, item: BacklogItem,
 		cls: 'pbl-add clickable-icon',
 		attr: { type: 'button', tabindex: '-1', 'aria-label': addLabel(childTypes) },
 	});
-	setIcon(addBtn, 'plus');
+	drawIcon(addBtn, 'plus');
 	setTooltip(addBtn, addLabel(childTypes));
 	addBtn.addEventListener('click', () => promptCreateItem(ctx.host, childTypes, item));
 }
@@ -476,14 +475,38 @@ export function foldOnClick(
 	return true;
 }
 
-function wireRowEvents(ctx: RowContext, row: HTMLElement, item: BacklogItem, childTypes: string[]): void {
-	row.addEventListener('click', (evt) => {
+/**
+ * The item a row-aimed event is about, or null off the rows entirely. Resolved at EVENT
+ * time from the row's `data-path` against the current model, never captured at render:
+ * the tree's listeners live on the pane (one set for the view, not one per row — the
+ * measurement that retired the per-row set is in
+ * `docs/bugs/The render is the whole cost of a data update.md`), so there is no
+ * wire-time item to capture and nothing to go stale when a data update replaces the
+ * model.
+ *
+ * `.pbl-row` is the tree's alone — cards and timeline rows are `.pbl-card` — so on a card
+ * projection every one of these handlers resolves nothing and stands aside.
+ */
+function rowItem(host: BacklogViewHost, evt: Event): BacklogItem | null {
+	const row = evt.target instanceof Element ? evt.target.closest('.pbl-row') : null;
+	const path = row instanceof HTMLElement ? row.dataset.path : undefined;
+	return path ? (host.model?.byPath.get(path) ?? null) : null;
+}
+
+/**
+ * The tree's row activation, wired ONCE on the pane — called from the view's
+ * constructor, beside the keydown it mirrors. The per-row wiring this replaces cost a
+ * listener set per row and rebuilt them all on every data update.
+ */
+export function wireRowEvents(host: BacklogViewHost, treeEl: HTMLElement): void {
+	treeEl.addEventListener('click', (evt) => {
 		// Before selection AND before the fold: a control inside the row is not the row,
 		// whichever of the two things "clicking an item" is configured to mean. Folding on
 		// a chevron click would fold twice; folding on an add-button click would fold on
 		// the way to a modal.
 		if (fromRowControl(evt)) return;
-		const host: BacklogViewHost = ctx.host;
+		const item = rowItem(host, evt);
+		if (!item) return;
 		host.selectItem(item, false);
 		const spent = foldOnClick(host, item, evt, {
 			// The tree's own two answers: the children it is currently drawing, and the
@@ -494,8 +517,13 @@ function wireRowEvents(ctx: RowContext, row: HTMLElement, item: BacklogItem, chi
 		if (spent) return;
 		host.openItem(item, evt);
 	});
-	row.addEventListener('auxclick', (evt) => {
-		if (evt.button === 1 && !fromRowControl(evt)) ctx.host.openItemIn(item, 'tab');
+	treeEl.addEventListener('auxclick', (evt) => {
+		if (evt.button !== 1 || fromRowControl(evt)) return;
+		const item = rowItem(host, evt);
+		if (item) host.openItemIn(item, 'tab');
 	});
-	row.addEventListener('contextmenu', (evt) => showItemMenu(ctx.host, evt, item, childTypes));
+	treeEl.addEventListener('contextmenu', (evt) => {
+		const item = rowItem(host, evt);
+		if (item) showItemMenu(host, evt, item, offerableTypes(host, childTypeChoices(item)));
+	});
 }

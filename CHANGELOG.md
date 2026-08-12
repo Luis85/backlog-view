@@ -11,6 +11,14 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+### Changed
+
+- Large backlogs redraw a little faster: the refresh after every change re-parses no
+  icons (each is built once and cloned) and rebuilds no listeners (the tree's activation
+  and drag handlers now live on the pane, one set for the view). Roughly a tenth off a
+  data update at ~800 expanded rows, measured in the browser harness; behaviour is
+  unchanged.
+
 ## [0.7.0] - 2026-08-10
 
 ### Added

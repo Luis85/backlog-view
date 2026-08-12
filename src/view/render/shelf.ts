@@ -1,4 +1,5 @@
-import { setIcon, setTooltip } from 'obsidian';
+import { setTooltip } from 'obsidian';
+import { drawIcon } from './icons';
 import { createCard, renderCardBody, wireCardActivation } from './board';
 import { RowContext } from './columns';
 import { renderShelfControls } from './shelfControls';
@@ -213,7 +214,7 @@ function renderShelfCard(ctx: RowContext, cardsEl: HTMLElement, entry: ShelfCard
 	// somewhere a guess put it.
 	if (entry.reason !== null) {
 		const reason = card.createDiv({ cls: 'pbl-shelf-reason' });
-		setIcon(reason.createSpan({ cls: 'pbl-shelf-reason-icon' }), 'alert-triangle');
+		drawIcon(reason.createSpan({ cls: 'pbl-shelf-reason-icon' }), 'alert-triangle');
 		reason.createSpan({ text: entry.reason });
 	}
 	// 1b: no bar exists here for any arrow to reach — the shelf card IS this
@@ -232,7 +233,7 @@ function renderShelfCard(ctx: RowContext, cardsEl: HTMLElement, entry: ShelfCard
 	const waits = wiring.axis === 'dates' ? dependencyNote(entry.item, conflicting) : '';
 	if (waits) {
 		const dep = card.createDiv({ cls: 'pbl-shelf-dependency' + (conflicting.size > 0 ? ' pbl-shelf-conflict' : '') });
-		setIcon(dep.createSpan({ cls: 'pbl-shelf-dependency-icon' }), conflicting.size > 0 ? 'alert-triangle' : 'link');
+		drawIcon(dep.createSpan({ cls: 'pbl-shelf-dependency-icon' }), conflicting.size > 0 ? 'alert-triangle' : 'link');
 		dep.createSpan({ text: waits });
 	}
 	wireCardActivation(ctx, card, entry.item);
@@ -260,7 +261,7 @@ export function renderContextStrip(
 	if (context.length === 0) return { cards: [], el: null };
 	const stripEl = frameEl.createDiv({ cls: 'pbl-roadmap-context', attr: { role: 'group', 'aria-label': 'Context' } });
 	const header = stripEl.createDiv({ cls: 'pbl-shelf-header' });
-	setIcon(header.createSpan({ cls: 'pbl-shelf-icon' }), 'corner-left-down');
+	drawIcon(header.createSpan({ cls: 'pbl-shelf-icon' }), 'corner-left-down');
 	header.createSpan({ cls: 'pbl-shelf-name', text: 'Context' });
 	setTooltip(header, "Not in this base's filter — shown for the hierarchy, never counted");
 	const cardsEl = stripEl.createDiv({ cls: 'pbl-shelf-cards' });

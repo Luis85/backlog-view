@@ -1,4 +1,5 @@
-import { setIcon, setTooltip } from 'obsidian';
+import { setTooltip } from 'obsidian';
+import { drawIcon } from './icons';
 import { RowContext } from './columns';
 import { createCard, wireCardActivation } from './board';
 import { foldOnClick, renderBadge, renderChevron, renderTitleText } from './rows';
@@ -575,7 +576,7 @@ function renderRowFacts(
 	// marker is this same icon with this same string beside it, which is what keeps one
 	// fact reading as one fact across the two surfaces `Dependencies` allows it on.
 	if (conflicted.size > 0 || bar.item.brokenPrerequisites.length > 0) {
-		setIcon(lead.createSpan({ cls: 'pbl-timeline-dependency-flag', attr: { 'aria-hidden': 'true' } }), 'alert-triangle');
+		drawIcon(lead.createSpan({ cls: 'pbl-timeline-dependency-flag', attr: { 'aria-hidden': 'true' } }), 'alert-triangle');
 		// The words the glyph stands for, so a pointer reader gets what the span gives a
 		// screen reader. The row's own accessible name already carries it, so the tooltip
 		// is a second route to one fact rather than the only route to a hidden one.

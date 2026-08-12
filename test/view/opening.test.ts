@@ -99,6 +99,38 @@ describe('what a click on an item does', () => {
 	});
 
 	/** `Enter` is the keyboard's way to the note, and folding does not take it. */
+	/**
+	 * The pane wires activation once and resolves the row per event, so a gesture that
+	 * began on no row — the tree's own background below the last row — must resolve to
+	 * no item rather than to whichever row was wired last.
+	 */
+	it('activates nothing from the pane background', () => {
+		const vault = fixture();
+		const { view, containerEl } = makeView(vault);
+
+		click(treeOf(containerEl));
+		treeOf(containerEl).dispatchEvent(new MouseEvent('auxclick', { bubbles: true, button: 1 }));
+
+		expect(vault.opened).toEqual([]);
+		expect(view.selectedPath).toBeNull();
+	});
+
+	/**
+	 * The other half of resolving per event: a row element whose path the CURRENT model
+	 * does not hold — the shape a stale element has after the note behind it leaves the
+	 * results — resolves to no item, rather than crashing or acting on a memory.
+	 */
+	it('activates nothing from a row the model no longer knows', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+		const ghost = treeOf(containerEl).createDiv({ cls: 'pbl-row' });
+		ghost.dataset.path = 'Gone.md';
+
+		click(ghost);
+
+		expect(vault.opened).toEqual([]);
+	});
+
 	it('opens the selection on Enter whatever clicking is configured to do', () => {
 		const vault = fixture();
 		const { containerEl } = makeView(vault, {}, { folds: true });

@@ -1,6 +1,6 @@
-import { BasesPropertyId, NullValue, setIcon, setTooltip } from 'obsidian';
+import { BasesPropertyId, NullValue, setTooltip } from 'obsidian';
+import { drawIcon } from './icons';
 import { BacklogViewHost, Column, ColumnFit, ColumnKind, Projection } from '../host';
-import { DragDropController } from '../interactions/dragDrop';
 import { showAssigneeMenu, showHorizonMenu, showRiskMenu, showStateMenu, showTagMenu } from '../interactions/menu';
 import { removeTag } from '../interactions/tags';
 import { ownWorkflowReading, stateKeyFor } from '../../domain/board';
@@ -17,7 +17,6 @@ import { hasRollup, treeShaped } from '../projection';
  */
 export interface RowContext {
 	host: BacklogViewHost;
-	dnd: DragDropController;
 	/** Rendered rows by path — the view's O(1) lookup for selection and subtree updates. */
 	rows: Map<string, HTMLElement>;
 	/**
@@ -29,17 +28,12 @@ export interface RowContext {
 	columns: Column[];
 }
 
-export function rowContext(
-	host: BacklogViewHost,
-	dnd: DragDropController,
-	rows: Map<string, HTMLElement>,
-	cardKids: Set<string>,
-): RowContext {
+export function rowContext(host: BacklogViewHost, rows: Map<string, HTMLElement>, cardKids: Set<string>): RowContext {
 	// What this pass DRAWS. `host.columns` stays what EXISTS — `syncColumnFit` measures
 	// that one, or a narrowed pane would ratchet the count down and never let a column
 	// come back when it widens again.
 	const shown = host.columns.slice(0, host.columnFit?.shown ?? host.columns.length);
-	return { host, dnd, rows, cardKids, columns: shown };
+	return { host, rows, cardKids, columns: shown };
 }
 
 /**
@@ -298,7 +292,7 @@ export function renderColumnHeader(ctx: RowContext, containerEl: HTMLElement): v
  * drift from the thing it reserves for.
  */
 export function renderAddSpacer(containerEl: HTMLElement): void {
-	setIcon(containerEl.createDiv({ cls: 'pbl-add-spacer clickable-icon', attr: { 'aria-hidden': 'true' } }), 'plus');
+	drawIcon(containerEl.createDiv({ cls: 'pbl-add-spacer clickable-icon', attr: { 'aria-hidden': 'true' } }), 'plus');
 }
 
 /**
@@ -426,7 +420,7 @@ function renderTagCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogIt
 			cls: 'pbl-tag-remove',
 			attr: { type: 'button', tabindex: '-1', 'aria-label': `Remove tag ${tag}` },
 		});
-		setIcon(remove, 'x');
+		drawIcon(remove, 'x');
 		setTooltip(remove, `Remove #${tag}`);
 		remove.addEventListener('click', (evt) => {
 			// `preventDefault` only: a tag pill is a link-shaped control, and the row's own
@@ -442,7 +436,7 @@ function renderTagCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogIt
 		cls: 'pbl-tag-add',
 		attr: { type: 'button', tabindex: '-1', 'aria-label': 'Add tag' },
 	});
-	setIcon(add, 'plus');
+	drawIcon(add, 'plus');
 	setTooltip(add, 'Add tag');
 	add.addEventListener('click', (evt) => showTagMenu(host, evt, item));
 }
@@ -522,7 +516,7 @@ function renderStateChip(host: BacklogViewHost, col: HTMLElement, item: BacklogI
 
 function fillStateChip(chip: HTMLElement, done: boolean, value: string | null): void {
 	const icon = done ? 'circle-check' : value !== null ? 'circle' : 'circle-dashed';
-	setIcon(chip.createSpan({ cls: 'pbl-state-icon' }), icon);
+	drawIcon(chip.createSpan({ cls: 'pbl-state-icon' }), icon);
 	chip.createSpan({ cls: 'pbl-state-text', text: value ?? 'State' });
 }
 
@@ -659,7 +653,7 @@ function renderLabelChip(host: BacklogViewHost, col: HTMLElement, item: BacklogI
  * what takes the key away.
  */
 function fillLabelChip(chip: HTMLElement, value: string | null, spec: LabelChip): void {
-	setIcon(chip.createSpan({ cls: 'pbl-state-icon' }), value === null ? spec.unsetIcon : spec.icon);
+	drawIcon(chip.createSpan({ cls: 'pbl-state-icon' }), value === null ? spec.unsetIcon : spec.icon);
 	chip.createSpan({ cls: 'pbl-state-text', text: value ?? spec.placeholder });
 }
 
@@ -670,6 +664,6 @@ function fillLabelChip(chip: HTMLElement, value: string | null, spec: LabelChip)
  * accessible name, which is where the state chip puts it too.
  */
 function fillHorizonChip(chip: HTMLElement, value: string | null): void {
-	setIcon(chip.createSpan({ cls: 'pbl-state-icon' }), value === null ? 'inbox' : 'milestone');
+	drawIcon(chip.createSpan({ cls: 'pbl-state-icon' }), value === null ? 'inbox' : 'milestone');
 	chip.createSpan({ cls: 'pbl-state-text', text: value ?? SHELF_LABEL });
 }

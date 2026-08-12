@@ -25,35 +25,49 @@ export class DragDropController {
 	constructor(host: BacklogViewHost, els: DragDropElements) {
 		this.host = host;
 		this.els = els;
+		this.wireTree(els.treeEl);
 	}
 
 	/**
-	 * Wire the drag handlers of one rendered row. Expansion state is read live: an
-	 * expand no longer rebuilds the tree, so a value captured here would go stale.
+	 * The tree's drag handlers, wired ONCE on the pane rather than once per row — a
+	 * listener set per row was rebuilt on every data update, and the measurement that
+	 * retired it is in `docs/bugs/The render is the whole cost of a data update.md`.
+	 * Both ends of the gesture are resolved at EVENT time: the dragged item was already
+	 * looked up per event (`dragContext`, for the mid-drag refresh), and the row under
+	 * the cursor now is too (`rowTarget`), so expansion state and the item itself are
+	 * always the current model's. There is no delegated `dragend`: the document listener
+	 * the view registers already hears every one, including from a row detached
+	 * mid-drag — the per-row copy this replaces made each cleanup run twice.
 	 */
-	wireRow(row: HTMLElement, item: BacklogItem): void {
-		const hasChildren = () => item.children.some((child) => !this.host.isRowHidden(child));
-
-		row.addEventListener('dragstart', (evt) => {
-			this.draggedPath = item.file.path;
+	private wireTree(treeEl: HTMLElement): void {
+		treeEl.addEventListener('dragstart', (evt) => {
+			const target = this.rowTarget(evt);
+			// The render's own statement of what may be picked up: `renderItem` sets
+			// `draggable` false while filtering and on a context row, and reading it back
+			// keeps this one rule theirs rather than restating it here.
+			if (!target || !target.row.draggable) return;
+			this.draggedPath = target.item.file.path;
 			if (evt.dataTransfer) {
-				evt.dataTransfer.setData('text/plain', item.file.path);
+				evt.dataTransfer.setData('text/plain', target.item.file.path);
 				evt.dataTransfer.effectAllowed = 'move';
 			}
 			this.els.viewEl.addClass('pbl-dragging');
-			row.addClass('pbl-drag-source');
-			this.dragSourceRow = row;
+			target.row.addClass('pbl-drag-source');
+			this.dragSourceRow = target.row;
 		});
 
-		row.addEventListener('dragover', (evt) => {
+		treeEl.addEventListener('dragover', (evt) => {
+			const target = this.rowTarget(evt);
+			if (!target) return;
+			const { row, item } = target;
 			const drag = this.dragContext();
 			if (!drag || drag.dragged === item) {
 				this.setDropIndicator(row, null);
 				return;
 			}
-			const zone = this.zoneFor(evt, row, hasChildren());
-			const target = dropTargetFor(drag.model, item, zone, drag.dragged, projectionMember(this.host.projection));
-			if (!target) {
+			const zone = this.zoneFor(evt, row, this.hasVisibleChildren(item));
+			const dropTarget = dropTargetFor(drag.model, item, zone, drag.dragged, projectionMember(this.host.projection));
+			if (!dropTarget) {
 				this.setDropIndicator(row, null);
 				return;
 			}
@@ -61,30 +75,49 @@ export class DragDropController {
 			if (evt.dataTransfer) evt.dataTransfer.dropEffect = 'move';
 			this.setDropIndicator(row, zone);
 			const collapsed = this.host.isCollapsed(item.file.path);
-			if (zone === 'inside' && hasChildren() && collapsed) this.scheduleHoverExpand(row, item);
+			if (zone === 'inside' && this.hasVisibleChildren(item) && collapsed) this.scheduleHoverExpand(row, item);
 			else if (this.hoverExpand?.path === item.file.path) this.cancelHoverExpand();
 		});
 
-		row.addEventListener('dragleave', (evt) => {
-			if (evt.relatedTarget instanceof Node && row.contains(evt.relatedTarget)) return;
-			if (this.activeDropRow === row) this.setDropIndicator(row, null);
-			if (this.hoverExpand?.path === item.file.path) this.cancelHoverExpand();
+		treeEl.addEventListener('dragleave', (evt) => {
+			const target = this.rowTarget(evt);
+			if (!target) return;
+			if (evt.relatedTarget instanceof Node && target.row.contains(evt.relatedTarget)) return;
+			if (this.activeDropRow === target.row) this.setDropIndicator(target.row, null);
+			if (this.hoverExpand?.path === target.item.file.path) this.cancelHoverExpand();
 		});
 
-		row.addEventListener('drop', (evt) => {
+		treeEl.addEventListener('drop', (evt) => {
+			const target = this.rowTarget(evt);
+			if (!target) return;
 			evt.preventDefault();
 			evt.stopPropagation();
 			const drag = this.dragContext();
-			const zone = this.zoneFor(evt, row, hasChildren());
-			const target =
-				drag && drag.dragged !== item
-					? dropTargetFor(drag.model, item, zone, drag.dragged, projectionMember(this.host.projection))
+			const zone = this.zoneFor(evt, target.row, this.hasVisibleChildren(target.item));
+			const dropTarget =
+				drag && drag.dragged !== target.item
+					? dropTargetFor(drag.model, target.item, zone, drag.dragged, projectionMember(this.host.projection))
 					: null;
 			this.clearDragState();
-			if (drag && target) void this.host.performDrop(drag.dragged, target);
+			if (drag && dropTarget) void this.host.performDrop(drag.dragged, dropTarget);
 		});
+	}
 
-		row.addEventListener('dragend', () => this.clearDragState());
+	/**
+	 * The row an event landed on and the item it is about, or null anywhere else —
+	 * `.pbl-row` is the tree's alone (cards are `.pbl-card`), so a card projection's
+	 * native drags, bubbling through the same pane, resolve nothing here and pass by.
+	 */
+	private rowTarget(evt: Event): { row: HTMLElement; item: BacklogItem } | null {
+		const row = evt.target instanceof Element ? evt.target.closest('.pbl-row') : null;
+		if (!(row instanceof HTMLElement) || !row.dataset.path) return null;
+		const item = this.host.model?.byPath.get(row.dataset.path);
+		return item ? { row, item } : null;
+	}
+
+	/** Read live on every ask — a targeted subtree refresh changes it with no drag event between. */
+	private hasVisibleChildren(item: BacklogItem): boolean {
+		return item.children.some((child) => !this.host.isRowHidden(child));
 	}
 
 	/** Rows are about to be rebuilt; drop the references to the old indicator and source rows. */
