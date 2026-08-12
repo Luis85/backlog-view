@@ -65,6 +65,11 @@ on a board, the hierarchy has to travel on the card.
   than one visible chip among several empty ones. The assignee's own UNSET state is not
   this case: its dashed "Assignee" invitation is a value ("nobody yet"), not an absence,
   so it draws exactly as the row's chip does (ADR 0027).
+- **3d — every cell on the card was 3c.** The wrapper around them (`.pbl-props`) goes
+  too — it is itself a flex child of the card's own column layout and gap, so an empty
+  one left standing is 3c's gap moved up one level rather than a case it missed. The
+  common trigger is a card with exactly one configured plain column and no value for it,
+  or a context card with nothing on any cell at all.
 - **4a — the parent is outside the Base's filter.** It still labels the card. Reading an
   excluded note to say where something sits is the reading the tree already does; what
   the rule forbids is writing to one. Excluded items appear on the board themselves only

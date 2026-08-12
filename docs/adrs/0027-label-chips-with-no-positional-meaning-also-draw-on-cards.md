@@ -59,7 +59,14 @@ option for exactly this — off for the tree's own call, on for the card's — a
 cell renderer's own answer to "did you draw anything" rather than re-deriving it by
 reading the DOM the renderer just built, the mistake ADR 0023's Consequences already
 names once (the tag menu drifting from what the tree renders because two derivations of
-"what is on screen" disagreed).
+"what is on screen" disagreed). The WRAPPER around the cells (`.pbl-props`) goes too when
+every one of them did: it is itself a flex child of `.pbl-card`'s own column layout and
+its own `gap`, so an empty wrapper left standing is the identical gap moved up one
+level — a card whose only configured column is empty, or a context card with nothing on
+any of its cells, is not an edge case of the cell-level rule but the same rule applied
+one level higher. Found by an automated review the first version of this change missed
+(Codex, PR #132) — the fix is one more condition in the same function, tracking whether
+anything was drawn across the whole pass rather than per cell.
 
 ## Consequences
 

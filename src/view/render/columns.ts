@@ -320,6 +320,13 @@ export function renderRowColumns(ctx: RowContext, row: HTMLElement, item: Backlo
  * unchanged. Asked of `renderCell`'s own answer rather than read back off the DOM it
  * built: a second derivation of "is there anything here" is how the tag menu once came
  * to offer editing for a column the renderer had skipped.
+ *
+ * The WRAPPER goes too when every cell inside it did — `.pbl-props` is itself a flex
+ * child of `.pbl-card`, which lays out in a column with its own `gap`; an empty wrapper
+ * still counts as a child for that gap to measure from, so a card whose columns are ALL
+ * empty (a lone plain property with no value, or a context card with nothing on any of
+ * its cells) would keep exactly the double-gap this option exists to remove, just moved
+ * up one level. (Codex, PR #132.)
  */
 export function renderPropCells(
 	ctx: RowContext,
@@ -329,6 +336,7 @@ export function renderPropCells(
 	{ dropEmpty = false }: { dropEmpty?: boolean } = {},
 ): void {
 	const props = row.createDiv({ cls: 'pbl-props' });
+	let anyDrawn = false;
 	for (const column of columns) {
 		// `value` takes no modifier: `.pbl-prop-value` is already the class of the SPAN
 		// a plain value renders into, and giving the cell the same name would make one
@@ -336,8 +344,10 @@ export function renderPropCells(
 		const cls = 'pbl-prop' + (column.kind === 'value' ? '' : ` pbl-prop-${column.kind}`);
 		const cell = props.createDiv({ cls });
 		const drew = renderCell(ctx.host, cell, item, column);
-		if (dropEmpty && !drew) cell.detach();
+		if (drew) anyDrawn = true;
+		else if (dropEmpty) cell.detach();
 	}
+	if (dropEmpty && !anyDrawn) props.detach();
 }
 
 /**

@@ -309,6 +309,11 @@ describe('property columns', () => {
 
 		const withoutValue = cardByTitle(containerEl, 'Epic B');
 		expect(withoutValue.querySelectorAll('.pbl-prop').length).toBe(0);
+		// The WRAPPER too: `.pbl-props` is itself a flex child of `.pbl-card`'s own `gap`,
+		// so an empty one left behind is the identical bug moved up one level — a card
+		// whose only configured column is empty is exactly this case, not an edge of it.
+		// (Found by review, Codex, PR #132.)
+		expect(withoutValue.querySelector('.pbl-props')).toBeNull();
 	});
 
 	it('keeps the assignee\'s own dashed invitation chip on a card — unset is not empty', () => {
