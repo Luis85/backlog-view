@@ -11,6 +11,21 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+### Added
+
+- **The assignee chip now shows on cards** — the board, the roadmap's buckets and its
+  shelf — not only on the tree's rows. Pressing it opens the same **Set assignee** list
+  the row's chip does. State and horizon still don't: a card's own column or bucket
+  already says those.
+
+### Fixed
+
+- **A card no longer leaves a blank gap for a property with nothing to show.** A plain
+  value or a tag list with no content used to still reserve its cell, which read as
+  broken spacing between the chips that did have something to say; that cell is now
+  absent entirely. An unassigned item's dashed "Assignee" invitation is unaffected — it
+  is a value ("nobody yet"), not an empty cell.
+
 ### Changed
 
 - Large backlogs redraw a little faster: the refresh after every change re-parses no

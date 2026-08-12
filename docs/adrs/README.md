@@ -93,3 +93,4 @@ record itself changes. Open a record for its current status, area and any
 - [0024 — Keep a `CHANGELOG.md`, checked against the version bump](0024-keep-a-changelog-checked-against-the-version-bump.md)
 - [0025 — Put the changelog entry in the GitHub release body](0025-put-the-changelog-entry-in-the-github-release-body.md)
 - [0026 — Configuration is a shape, a table and a resolver](0026-configuration-is-a-shape-a-table-and-a-resolver.md)
+- [0027 — Label chips with no positional meaning also draw on cards](0027-label-chips-with-no-positional-meaning-also-draw-on-cards.md)

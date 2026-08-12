@@ -130,6 +130,11 @@ answered twice:
   in the *Active* column carrying an *Active* chip. The second is a per-projection skip
   list to keep in step with every new projection, which is the kind of second opinion
   this whole record exists to remove.
+  **Revisited narrowly in [ADR 0027](0027-label-chips-with-no-positional-meaning-also-draw-on-cards.md):**
+  a chip kind with no positional meaning on ANY projection — the assignee — is not the
+  second alternative above, since which kinds those are is fixed rather than something
+  each new projection has to be asked about. The rejection stands for state and horizon,
+  which is what it was ever an argument about.
 - **Seed the visible order from the plugin**, so ✨ could show what it just bound and a
   scaffolded base would draw its chips immediately. Refused because the API does not
   offer it: `BasesViewConfig` exposes `getOrder()` and no setter, and `set()` is
