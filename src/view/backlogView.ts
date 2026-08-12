@@ -28,7 +28,7 @@ import { renderLoadingState } from './render/emptyStates';
 import { renderLegend } from './render/legend';
 import { syncToolbarFit } from './render/toolbarFit';
 import { captureScroll, centreOnToday, renderProjectionContent, restoreScroll, ScrollAnchor } from './render/projections';
-import { refreshRowChildren } from './render/rows';
+import { refreshRowChildren, wireRowEvents } from './render/rows';
 import { BacklogSettings, defaultSettings } from '../domain/settings';
 import { adoptableProperties, notePropertyId, OptionalField, OptionalProperty } from '../domain/optionalProperties';
 import { resolveSettings } from '../domain/settingsResolve';
@@ -153,6 +153,9 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.resize = new ResizePolicy(this, this.viewEl, this.treeEl, this.toolbarEl, () => this.rowCtx());
 		this.cardDnd = new CardDragController(this, this.viewEl);
 		this.treeEl.addEventListener('keydown', (evt) => handleProjectionKeydown(this, evt));
+		// The tree's row activation, once for the pane — rows are resolved per event, so
+		// nothing about them is captured at render (`wireRowEvents` in `render/rows.ts`).
+		wireRowEvents(this, this.treeEl);
 		this.registerDomEvent(document, 'dragend', () => this.dnd.clearDragState());
 		// Which columns fit depends on the pane, which changes without a data update.
 		if (typeof ResizeObserver !== 'undefined') {
@@ -594,7 +597,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 
 	/** The per-pass render state: the row index plus the hoisted config lookups. */
 	private rowCtx(): RowContext {
-		return rowContext(this, this.dnd, this.rowEls, this.cardKids);
+		return rowContext(this, this.rowEls, this.cardKids);
 	}
 
 	// -------------------------------------------------------------------- writes

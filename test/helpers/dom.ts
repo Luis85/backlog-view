@@ -78,6 +78,16 @@ export function installObsidianDom(): void {
 	if (typeof globalThis.ResizeObserver === 'undefined') {
 		globalThis.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;
 	}
+	// Obsidian also declares the create* helpers as GLOBALS returning DETACHED elements —
+	// unlike the prototype forms below, which append to their receiver. The icon template
+	// in `src/view/render/icons.ts` is the first consumer here.
+	if (typeof (globalThis as Record<string, unknown>).createDiv === 'undefined') {
+		(globalThis as Record<string, unknown>).createDiv = (options?: CreateOptions | string): HTMLElement => {
+			const el = document.createElement('div');
+			applyOptions(el, options);
+			return el;
+		};
+	}
 	const proto = HTMLElement.prototype as unknown as Record<string, unknown>;
 	if (proto.__obsidianDomInstalled) return;
 	proto.__obsidianDomInstalled = true;

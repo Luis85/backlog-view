@@ -87,6 +87,46 @@ measures a row takes this back**, which is stated at the declaration itself.
 So the note stays open. The remaining cost is the DOM, and the answer to that is to build
 fewer rows — see the axis below.
 
+## Partly addressed: icons cloned, listeners delegated (2026-08-12)
+
+Two constant-factor cuts, specified in [[A row costs its content, not its wiring]]:
+`setIcon` parsed each icon's SVG per call, three to five times per row, and now clones a
+per-name template (`drawIcon`); each row wired eight-plus listeners (five drag, three
+activation), rebuilt on every update, and the pane now carries one delegated set,
+resolving the row per event.
+
+**Measured interleaved, because this environment drifts.** The same baseline bundle
+measured ~570 ms and ~306 ms for `update` a few hours apart on one machine, so two
+single runs compared across time can manufacture — or hide — a 2× effect. The shipped
+numbers are A/B: the old and new bundles built side by side, four runs each,
+alternating, medians of the panel's medians, 832 rows, folder fixture, tree expanded:
+
+| op | before | after | delta |
+| --- | --- | --- | --- |
+| update (build + render) | 306 ms | 278 ms | −9% |
+| render only | 265 ms | 230 ms | −13% |
+| switch to tree | 294 ms | 254 ms | −14% |
+| switch to board | 317 ms | 281 ms | −11% |
+| mount (collapsed) | 97 ms | 84 ms | −14% |
+
+The roadmap switch read +6% and the deliverables switch +13% of 29 ms; both are inside
+this instrument's run-to-run swing, and the roadmap took only the strictly-cheaper icon
+change. An earlier draft of this section claimed ~17% and ~25% for the two cuts from
+single runs isolated with throwaway patches — retracted for the same reason as the
+subtraction above: the instrument's drift was larger than the difference it was asked to
+resolve.
+
+Both cuts are constants, not the class: the render is still linear in the rows, still
+rebuilt whole per update, and the table at the top still describes its shape. What the
+delegation also bought is structural — no handler captures an item at render time any
+more, which is the correctness prerequisite for reusing row ELEMENTS across updates, the
+class-changing fix this note is still open for.
+
+One honesty note on the panel: the fake `entry` has no `renderTo`, so every plain
+property cell here falls into the cheap `setText` catch path. A real vault runs
+Obsidian's Bases value renderer per cell and real tooltips, so it pays MORE per row than
+these numbers — the direction of the error is known, not its size.
+
 ## Where to look
 
 The per-row render path, not the model. `src/view/CLAUDE.md`'s own cost section names the

@@ -1,4 +1,5 @@
-import { setIcon, setTooltip } from 'obsidian';
+import { setTooltip } from 'obsidian';
+import { drawIcon } from './icons';
 import { renderCardChildren } from './cardChildren';
 import { renderPropCells, renderRollup, RowContext } from './columns';
 import {
@@ -282,8 +283,8 @@ function renderColumnHeader(
 		cls: 'pbl-board-col-header pbl-board-col-stop',
 		attr: { role: 'option', 'aria-selected': 'false', 'aria-label': columnLabel(col, filtering) },
 	});
-	if (col.done) setIcon(header.createSpan({ cls: 'pbl-board-col-icon' }), 'circle-check');
-	if (col.state === null) setIcon(header.createSpan({ cls: 'pbl-board-col-icon' }), 'circle-dashed');
+	if (col.done) drawIcon(header.createSpan({ cls: 'pbl-board-col-icon' }), 'circle-check');
+	if (col.state === null) drawIcon(header.createSpan({ cls: 'pbl-board-col-icon' }), 'circle-dashed');
 	header.createSpan({ cls: 'pbl-board-col-name', text: col.label });
 	if (!strip) {
 		// A column is a stage of the workflow, not a search result: while the filter
@@ -297,13 +298,13 @@ function renderColumnHeader(
 			// shape, and `columnLabel` carries the words.
 			if (overBy(col) > 0) {
 				header.addClass('pbl-board-col-over');
-				setIcon(header.createSpan({ cls: 'pbl-board-col-over-icon' }), 'triangle-alert');
+				drawIcon(header.createSpan({ cls: 'pbl-board-col-over-icon' }), 'triangle-alert');
 			}
 		}
 	}
 	if (col.outsideWorkflow) {
 		const mark = header.createSpan({ cls: 'pbl-board-col-stray' });
-		setIcon(mark, 'circle-help');
+		drawIcon(mark, 'circle-help');
 		setTooltip(
 			colEl,
 			`"${col.label}" is not one of the configured workflow states. Add it to "${stateOptionLabel}" in the view options, or move its cards.`,
@@ -330,7 +331,7 @@ function renderColumnPolicy(header: HTMLElement, col: BoardColumn): void {
 	description.id = uniqueElementId('pbl-col-policy');
 	header.setAttribute('aria-describedby', description.id);
 	const affordance = header.createSpan({ cls: 'pbl-board-col-policy' });
-	setIcon(affordance, 'info');
+	drawIcon(affordance, 'info');
 	setTooltip(affordance, col.policy);
 	header.addEventListener('contextmenu', (evt) => showColumnMenu(evt, col.policy));
 }
@@ -387,7 +388,7 @@ export function renderCardBody(ctx: RowContext, card: HTMLElement, item: Backlog
 	renderBadge(host, head, item);
 	if (item.outsideFilter) {
 		const marker = head.createSpan({ cls: 'pbl-outside-marker' });
-		setIcon(marker, 'corner-left-down');
+		drawIcon(marker, 'corner-left-down');
 		setTooltip(marker, "Not in this base's filter — shown to place its items");
 		// A description, not a label: a label would REPLACE the content-derived
 		// accessible name and cost a screen reader the badge, the parent line and
@@ -401,18 +402,31 @@ export function renderCardBody(ctx: RowContext, card: HTMLElement, item: Backlog
 	// card. An excluded parent still labels it: reading is what context is for.
 	if (item.parent) {
 		const parent = card.createDiv({ cls: 'pbl-card-parent' });
-		setIcon(parent.createSpan({ cls: 'pbl-card-parent-icon' }), 'corner-left-up');
+		drawIcon(parent.createSpan({ cls: 'pbl-card-parent-icon' }), 'corner-left-up');
 		parent.createSpan({ text: item.parent.title });
 		setTooltip(parent, `Under "${item.parent.title}"`);
 	}
 
-	// A card draws the plain columns only. The chips are the tree's: a board card's
-	// column IS its state and a bucket IS its horizon, so a chip on the card would
-	// repeat what the card's own position already says. Filtered from the ONE resolved
-	// list rather than resolved a second time — two derivations of "what is on screen"
-	// is how the tag menu came to offer editing for a column the renderer had skipped.
-	const plain = ctx.columns.filter((column) => column.kind === 'value' || column.kind === 'tags');
-	if (plain.length > 0) renderPropCells(ctx, card, item, plain);
+	// A card draws the plain columns, the tag pills, and the assignee chip. State and
+	// horizon stay chips of the TREE only: a board card's column already IS its state
+	// and a bucket already IS its horizon, so either chip on the card would repeat what
+	// the card's own position says. The assignee has no such equivalent on any
+	// projection — nothing about a card's position ever says who is on it — so it keeps
+	// its row's chip shape rather than becoming a value with no edit affordance. Risk is
+	// in the identical position and stays excluded regardless, not by the same argument:
+	// nobody has asked for it on a card yet (ADR 0027 records the amendment and its
+	// scope). Filtered from the ONE resolved list rather than resolved a second time —
+	// two derivations of "what is on screen" is how the tag menu once came to offer
+	// editing for a column the renderer had skipped.
+	const cardColumns = ctx.columns.filter(
+		(column) => column.kind === 'value' || column.kind === 'tags' || column.kind === 'assignee',
+	);
+	// Cards stack their cells and size each to content (`styles/cards.css`) rather than
+	// sharing the tree's fixed-width, header-aligned columns, so a cell with nothing to
+	// show is not a value that happens to be blank — it is a chip-shaped gap the layout
+	// has no reason to reserve. `dropEmpty` is the tree/card difference stated once, in
+	// `renderPropCells` itself, rather than here as a second opinion about it.
+	if (cardColumns.length > 0) renderPropCells(ctx, card, item, cardColumns, { dropEmpty: true });
 	renderRollup(host, card, item);
 	// One call, three surfaces: board cards, roadmap bucket cards and shelf cards all
 	// come through here. Timeline rows never do — they use the card SHELL with a
@@ -482,7 +496,7 @@ function renderCardMatches(ctx: RowContext, card: HTMLElement, item: BacklogItem
 	const matches = undisclosedMatches(host, item, carded);
 	if (matches.length === 0) return;
 	const list = card.createDiv({ cls: 'pbl-card-matches' });
-	setIcon(list.createSpan({ cls: 'pbl-card-matches-icon' }), 'search');
+	drawIcon(list.createSpan({ cls: 'pbl-card-matches-icon' }), 'search');
 	for (const match of matches) {
 		const link = list.createEl('button', {
 			cls: 'pbl-card-match',

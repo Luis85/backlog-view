@@ -262,6 +262,39 @@ describe('the drop indicator follows the pointer', () => {
 		expect(second.classList.contains('pbl-drop-before')).toBe(true);
 	});
 
+	it('offers nothing over a row the model no longer knows', async () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+		const ghost = treeOf(containerEl).createDiv({ cls: 'pbl-row' });
+		ghost.dataset.path = 'Gone.md';
+		stubRect(ghost);
+
+		rowByTitle(containerEl, 'Epic A').dispatchEvent(new MouseEvent('dragstart', { bubbles: true }));
+		ghost.dispatchEvent(new MouseEvent('dragover', { bubbles: true, clientY: 3 }));
+		expect(ghost.className).not.toMatch(/pbl-drop-/);
+
+		ghost.dispatchEvent(new MouseEvent('drop', { bubbles: true, clientY: 3 }));
+		await flush();
+		expect(vault.writeLog).toHaveLength(0);
+	});
+
+	it('keeps the live target lit when the pointer exits a row that never took the indicator', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+		const target = rowByTitle(containerEl, 'Epic B');
+		const bystander = rowByTitle(containerEl, 'Feature B1');
+		stubRect(target);
+
+		rowByTitle(containerEl, 'Epic A').dispatchEvent(new MouseEvent('dragstart', { bubbles: true }));
+		target.dispatchEvent(new MouseEvent('dragover', { bubbles: true, clientY: 28 }));
+		expect(target.classList.contains('pbl-drop-after')).toBe(true);
+
+		// The pointer skims another row on its way; leaving THAT row must not strip the
+		// indicator from the row the drag is actually aimed at.
+		bystander.dispatchEvent(new MouseEvent('dragleave', { bubbles: true }));
+		expect(target.classList.contains('pbl-drop-after')).toBe(true);
+	});
+
 	it('survives the pointer crossing into the row own children', () => {
 		const vault = fixture();
 		const { containerEl } = makeView(vault);

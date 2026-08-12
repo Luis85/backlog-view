@@ -25,8 +25,13 @@ free of runtime code so imports stay cycle-free.
   on a skipped row lays that row out by itself, which is why both tooltips are set
   unconditionally rather than when needed. The rule is stated at the declaration in
   `styles/tree.css` because that is where someone about to break it will be standing. `refreshRowChildren` must prune the subtree it removes
-  from `rowEls`, and anything captured at wire time (drag handlers) must read expansion
-  state live, because a targeted refresh leaves surrounding rows in place. Data updates
+  from `rowEls`. The row and drag listeners live on the PANE, one delegated set for the
+  view (`wireRowEvents` in `render/rows.ts`, `wireTree` in `interactions/dragDrop.ts`),
+  resolving their row by `data-path` against the current model per event — so nothing
+  about a row is captured at wire time, a targeted refresh that leaves surrounding rows
+  in place cannot leave a handler holding a stale item, and a data update rebuilds rows
+  without rebuilding listeners. Per-row icons are cloned from per-name templates
+  (`drawIcon` in `render/icons.ts`) rather than re-parsed through `setIcon`. Data updates
   still rebuild everything — skipping that needs to account for arbitrary chip property
   values.
 - **No input handler reads layout to answer a question the event did not ask**, and think

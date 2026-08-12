@@ -144,7 +144,7 @@ describe('property columns', () => {
 		const viewEl = containerEl.querySelector('.pbl-view');
 		Object.defineProperty(tree, 'clientWidth', { value: 550, configurable: true });
 
-		const ctx = rowContext(view, null as never, new Map(), new Set());
+		const ctx = rowContext(view, new Map(), new Set());
 		syncColumnFit(ctx, viewEl as HTMLElement, tree);
 
 		// 550px holds the one 200px column only when the rollup's 84px is not subtracted from
@@ -229,6 +229,13 @@ describe('property columns', () => {
 		// room, so a verdict carried out of a narrow tree would strip cells off cards —
 		// and the rollup class beside it would hide theirs.
 		const vault = fixture();
+		// Both properties carry a value: this test is about the COUNT the narrow tree
+		// verdict must not strip off a card, not about the separate rule that an empty
+		// cell renders no `.pbl-prop` on a card at all (see the `dropEmpty` tests below).
+		vault.entryValues.set('Epic A.md', {
+			'note.points': { toString: () => '5' },
+			'note.owner': { toString: () => 'Sam' },
+		});
 		const { containerEl, config, view } = makeView(vault, {
 			propertyColumnWidth: 280,
 			stateProperty: 'note.status',
@@ -251,35 +258,93 @@ describe('property columns', () => {
 		expect(cardByTitle(containerEl, 'Epic A').querySelectorAll('.pbl-prop').length).toBe(view.columns.length);
 	});
 
-	it('draws no chip of any kind on a card, whichever ones the tree row drew', () => {
+	it('draws no state, horizon or risk chip on a card, but does draw the assignee chip', () => {
 		// A board card's column IS its state and a bucket IS its horizon, so a chip inside
-		// one repeats what the card's own position already says. Asserted as a DIFFERENCE
-		// rather than as an absence: the same item's tree row draws all three, so an empty
-		// fixture or an unconfigured axis cannot pass this for the filter.
+		// one repeats what the card's own position already says; the assignee has no such
+		// equivalent on any projection (ADR 0027). Asserted as a DIFFERENCE rather than as
+		// an absence: the same item's tree row draws all four, so an empty fixture or an
+		// unconfigured axis cannot pass this for the filter.
 		const vault = boardVault();
 		vault.entryValues.set('Epic A.md', { 'note.points': { toString: () => '5' } });
+		vault.setFrontmatter('Epic A.md', { type: 'Epic', order: 10, status: 'New', assignee: 'Sam' });
 		const { containerEl, view } = makeView(
 			vault,
-			{ ...BOARD_WORKFLOW, horizonProperty: 'note.horizon', riskProperty: 'note.risk' },
-			{ order: ['note.points', 'note.status', 'note.horizon', 'note.risk'] },
+			{ ...BOARD_WORKFLOW, horizonProperty: 'note.horizon', riskProperty: 'note.risk', assigneeProperty: 'note.assignee' },
+			{ order: ['note.points', 'note.status', 'note.horizon', 'note.risk', 'note.assignee'] },
 		);
 
 		const row = rowByTitle(containerEl, 'Epic A');
-		expect(row.querySelectorAll('.pbl-prop').length).toBe(4);
+		expect(row.querySelectorAll('.pbl-prop').length).toBe(5);
 		expect(row.querySelector('.pbl-state-chip')).not.toBeNull();
 		expect(row.querySelector('.pbl-horizon-chip')).not.toBeNull();
 		expect(row.querySelector('.pbl-risk-chip')).not.toBeNull();
+		expect(row.querySelector('.pbl-assignee-chip')?.textContent).toContain('Sam');
 
 		view.setProjection('board');
 
-		// The plain column still draws, so this is a filter on the kind and not a card
-		// that stopped reading the list.
+		// The plain column and the assignee chip still draw, so this is a filter on the
+		// kind and not a card that stopped reading the list.
 		const card = cardByTitle(containerEl, 'Epic A');
-		expect(card.querySelectorAll('.pbl-prop').length).toBe(1);
+		expect(card.querySelectorAll('.pbl-prop').length).toBe(2);
 		expect(card.querySelector('.pbl-prop-value')?.textContent).toBe('5');
 		expect(card.querySelector('.pbl-state-chip')).toBeNull();
 		expect(card.querySelector('.pbl-horizon-chip')).toBeNull();
 		expect(card.querySelector('.pbl-risk-chip')).toBeNull();
+		expect(card.querySelector('.pbl-assignee-chip')?.textContent).toContain('Sam');
+	});
+
+	it('drops an empty property cell from a card instead of leaving a gap with nothing in it', () => {
+		// The tree keeps the cell (previous test, and the suite above it): its columns are
+		// fixed-width and share a header, so an absent one shifts every column after it. A
+		// card has neither, so the same empty cell is only `padding-inline-end` with no
+		// content — a gap the user reported as broken spacing (ADR 0027).
+		const vault = boardVault();
+		vault.entryValues.set('Epic A.md', { 'note.points': { toString: () => '5' } });
+		// Epic B gets no 'note.points' entry at all — the empty case.
+		const { containerEl, view } = makeView(vault, BOARD_WORKFLOW, { order: ['note.points'] });
+		view.setProjection('board');
+
+		const withValue = cardByTitle(containerEl, 'Epic A');
+		expect(withValue.querySelectorAll('.pbl-prop').length).toBe(1);
+
+		const withoutValue = cardByTitle(containerEl, 'Epic B');
+		expect(withoutValue.querySelectorAll('.pbl-prop').length).toBe(0);
+		// The WRAPPER too: `.pbl-props` is itself a flex child of `.pbl-card`'s own `gap`,
+		// so an empty one left behind is the identical bug moved up one level — a card
+		// whose only configured column is empty is exactly this case, not an edge of it.
+		// (Found by review, Codex, PR #132.)
+		expect(withoutValue.querySelector('.pbl-props')).toBeNull();
+	});
+
+	it('drops a tags cell from a card when there are no tags, add button included', () => {
+		// The add button is a real affordance but `opacity: 0` until hover or focus
+		// (styles/tags.css) — at rest it draws nothing a reader can see, so it must not
+		// keep an otherwise-empty cell alive on a card. The tree keeps it regardless
+		// (dropEmpty is never on there), which the first assertion pins.
+		const vault = boardVault(); // neither epic carries tags.
+		const { containerEl, view } = makeView(vault, BOARD_WORKFLOW, { order: ['note.tags'] });
+
+		expect(rowByTitle(containerEl, 'Epic A').querySelector('.pbl-tag-add')).not.toBeNull();
+
+		view.setProjection('board');
+		const card = cardByTitle(containerEl, 'Epic A');
+		expect(card.querySelector('.pbl-prop-tags')).toBeNull();
+		expect(card.querySelector('.pbl-tag-add')).toBeNull();
+	});
+
+	it('keeps the assignee\'s own dashed invitation chip on a card — unset is not empty', () => {
+		// The assignee's unset state is a deliberate "nobody yet" affordance, the same
+		// chip the row draws, and dropEmpty must not confuse it with a cell that drew
+		// nothing: `renderLabelChip` always returns true for an editable row, exactly
+		// because pressing it does something.
+		const vault = boardVault(); // Epic A carries no assignee.
+		const { containerEl, view } = makeView(vault, { ...BOARD_WORKFLOW, assigneeProperty: 'note.assignee' }, { order: ['note.assignee'] });
+		view.setProjection('board');
+
+		const chip = cardByTitle(containerEl, 'Epic A').querySelector('.pbl-assignee-chip');
+		expect(chip).not.toBeNull();
+		expect(chip?.classList.contains('pbl-assignee-unset')).toBe(true);
+		expect(chip?.textContent).toContain('Assignee');
 	});
 
 	it('does not buy a second render pass on a pane whose verdict has not moved', () => {
@@ -406,7 +471,7 @@ describe('property columns', () => {
 		// tree-only gating on `refit()`, so this asserts `syncColumnFit`'s own contract
 		// rather than relying on that gating to keep the two from ever meeting.
 		const rows = new Map<string, HTMLElement>([[d.file.path, document.createElement('div')]]);
-		const ctx = rowContext(view, null as never, rows, new Set());
+		const ctx = rowContext(view, rows, new Set());
 		syncColumnFit(ctx, viewEl as HTMLElement, tree);
 
 		// The one column fits beside a card's zero indent, and would not beside eight

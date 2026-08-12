@@ -47,12 +47,35 @@ on a board, the hierarchy has to travel on the card.
   by the PANE is the other question and has the other answer: a narrow tree drops columns
   from its rows and a card keeps every one of them, because a card is never indented and
   never competes for the row's width.
-- **3b — the property is one the tree draws as a chip** (state, horizon or risk). The
-  card draws no cell for it. A board card's column already IS its state and a bucket
-  already IS its horizon, so a chip inside one would repeat what its position says; risk
-  has no such equivalent and is simply absent, which is a card carrying less than its row
-  ([ADR 0023](../adrs/0023-columns-are-the-bases-property-order.md) records the
-  alternatives — a per-projection skip list, or every chip on every card).
+- **3b — the property is one the tree draws as a chip.** State and horizon draw no cell
+  on the card: a board card's column already IS its state and a bucket already IS its
+  horizon, so a chip inside one would repeat what its position says
+  ([ADR 0023](../adrs/0023-columns-are-the-bases-property-order.md)). Risk is in the
+  identical position and stays absent too — unasked, not for the same reason. The
+  assignee is the one chip kind that DOES draw on a card (2026-08-12): nothing about a
+  card's position, on any projection, says who is on it, so it keeps the row's own chip
+  rather than becoming a plain, read-only value or a gap indistinguishable from an empty
+  property ([ADR 0027](../adrs/0027-label-chips-with-no-positional-meaning-also-draw-on-cards.md)).
+- **3c — a plain-value or tags cell has nothing to show.** No cell renders at all, rather
+  than an empty one holding a place no header aligns it under. The tree keeps its empty
+  cell — its columns are fixed-width and share a header, so a column drawn has to hold
+  its place on every row or the ones after it shift — but a card has neither, so an empty
+  cell there is only a chip-shaped gap (`padding-inline-end` with nothing beside it). A
+  context card with nothing to show on any of its cells now carries none of them, rather
+  than one visible chip among several empty ones. The assignee's own UNSET state is not
+  this case: its dashed "Assignee" invitation is a value ("nobody yet"), not an absence,
+  so it draws exactly as the row's chip does (ADR 0027). Zero tags IS this case, an
+  editable item included: the add button that would otherwise be the only content is
+  `opacity: 0` until hovered or focused, so a reader sees nothing until they already
+  know to look — a card that dropped every other kind of empty cell but kept this one
+  would be the one place the fix stopped short (Codex, PR #132). Nothing is lost by
+  dropping it: **Edit tags** in the card's own menu is gated on the property being a
+  visible column, never on this one item's cell.
+- **3d — every cell on the card was 3c.** The wrapper around them (`.pbl-props`) goes
+  too — it is itself a flex child of the card's own column layout and gap, so an empty
+  one left standing is 3c's gap moved up one level rather than a case it missed. The
+  common trigger is a card with exactly one configured plain column and no value for it,
+  or a context card with nothing on any cell at all.
 - **4a — the parent is outside the Base's filter.** It still labels the card. Reading an
   excluded note to say where something sits is the reading the tree already does; what
   the rule forbids is writing to one. Excluded items appear on the board themselves only
@@ -70,10 +93,17 @@ on a board, the hierarchy has to travel on the card.
 ## Acceptance criteria
 
 - A card renders the item's name, its type badge, the plain property cells the row would
-  render, and its tag pills. Both projections read the same resolved column list
-  (`host.columns`), so a property the properties menu hides is hidden on both — while a
-  column the narrow PANE drops off the tree's rows still draws on a card.
-  **Checked by** `test/view/columns.test.ts` — "draws no chip of any kind on a card, whichever ones the tree row drew"
+  render, its tag pills and its assignee chip. Both projections read the same resolved
+  column list (`host.columns`), so a property the properties menu hides is hidden on
+  both — while a column the narrow PANE drops off the tree's rows still draws on a card.
+  **Checked by** `test/view/columns.test.ts` — "draws no state, horizon or risk chip on a card, but does draw the assignee chip"
+- A plain-value or tags cell with nothing to show renders no cell at all on a card —
+  the whole `.pbl-props` wrapper too, when every cell inside it was empty — where the
+  tree keeps the empty one to hold its column's place. Zero tags counts as nothing to
+  show even when editable: the add button that would otherwise be the only content is
+  invisible until hover. The assignee's own UNSET chip is not this case — it is a
+  deliberate invitation and draws exactly as the row's does.
+  **Checked by** `test/view/columns.test.ts` — "drops an empty property cell from a card instead of leaving a gap with nothing in it" (now also asserting the wrapper), "drops a tags cell from a card when there are no tags, add button included", and "keeps the assignee's own dashed invitation chip on a card — unset is not empty"
 - The parent renders on the card as context — including a parent outside the Base's
   filter, which labels the card; outside-filter items themselves render on the board
   only in the context forms the epic names.
@@ -88,7 +118,15 @@ on a board, the hierarchy has to travel on the card.
 item contains: the badge and highlighted title come from `src/view/render/rows.ts`
 (`renderBadge`, `renderTitleText`), the property cells and the rollup from
 `src/view/render/columns.ts` (`renderPropCells`, `renderRollup`), all reading the same
-resolved `host.columns` — `renderCardBody` filters it to the `value` and `tags` kinds
-before handing it on. The state chip control is deliberately absent — the card's own
-column already says the state, and its write affordance is the card menu's Set state.
-Driven in `test/view/board.test.ts` through the accessors in `test/helpers/board.ts`.
+resolved `host.columns` — `renderCardBody` filters it to the `value`, `tags` and
+`assignee` kinds before handing it on, and passes `{ dropEmpty: true }` so a cell with
+nothing to show is not rendered at all — see
+[ADR 0027](../adrs/0027-label-chips-with-no-positional-meaning-also-draw-on-cards.md)
+for why those two travel together and why state and horizon stay out. `renderCardBody`
+is shared by the board, the roadmap's buckets and its shelf (`src/view/render/roadmap.ts`,
+`src/view/render/shelf.ts`), so a change here is a change to all three at once. The state
+chip control is deliberately absent — the card's own column already says the state, and
+its write affordance is the card menu's Set state.
+Driven in `test/view/board.test.ts` through the accessors in `test/helpers/board.ts`, and
+the card-vs-row kind filter and the empty-cell rule in `test/view/columns.test.ts`, beside
+`resolveColumns`'s own suite.

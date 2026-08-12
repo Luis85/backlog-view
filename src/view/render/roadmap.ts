@@ -1,4 +1,5 @@
-import { setIcon, setTooltip } from 'obsidian';
+import { setTooltip } from 'obsidian';
+import { drawIcon } from './icons';
 import { createCard, renderCardBody, wireCardActivation } from './board';
 import { RowContext } from './columns';
 import { renderAllDoneState, renderEmptyState, renderFilterEmptyState } from './emptyStates';
@@ -173,7 +174,7 @@ function renderBucket(
 	header.createSpan({ cls: 'pbl-bucket-count', text: String(bucket.count) });
 	if (!bucket.declared) {
 		const mark = header.createSpan({ cls: 'pbl-bucket-stray' });
-		setIcon(mark, 'circle-help');
+		drawIcon(mark, 'circle-help');
 		setTooltip(
 			colEl,
 			`"${bucket.value}" is not one of the declared horizons. Add it to "Horizons (in order)" in the view options, or re-place its items.`,
@@ -224,7 +225,7 @@ function renderBucketNew(ctx: RowContext, header: HTMLElement, bucket: HorizonBu
 		cls: 'clickable-icon pbl-bucket-add',
 		attr: { type: 'button', tabindex: '-1', 'aria-label': `New ${type} in ${bucket.value}` },
 	});
-	setIcon(btn, 'plus');
+	drawIcon(btn, 'plus');
 	setTooltip(btn, `New ${type} in "${bucket.value}"`);
 	btn.addEventListener('click', () => promptCreateItem(host, [type], null, { horizon: bucket.value }));
 }

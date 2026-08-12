@@ -1,6 +1,6 @@
-import { BasesPropertyId, NullValue, setIcon, setTooltip } from 'obsidian';
+import { BasesPropertyId, NullValue, setTooltip } from 'obsidian';
+import { drawIcon } from './icons';
 import { BacklogViewHost, Column, ColumnFit, ColumnKind, Projection } from '../host';
-import { DragDropController } from '../interactions/dragDrop';
 import { showAssigneeMenu, showHorizonMenu, showRiskMenu, showStateMenu, showTagMenu } from '../interactions/menu';
 import { removeTag } from '../interactions/tags';
 import { ownWorkflowReading, stateKeyFor } from '../../domain/board';
@@ -17,7 +17,6 @@ import { hasRollup, treeShaped } from '../projection';
  */
 export interface RowContext {
 	host: BacklogViewHost;
-	dnd: DragDropController;
 	/** Rendered rows by path — the view's O(1) lookup for selection and subtree updates. */
 	rows: Map<string, HTMLElement>;
 	/**
@@ -29,17 +28,12 @@ export interface RowContext {
 	columns: Column[];
 }
 
-export function rowContext(
-	host: BacklogViewHost,
-	dnd: DragDropController,
-	rows: Map<string, HTMLElement>,
-	cardKids: Set<string>,
-): RowContext {
+export function rowContext(host: BacklogViewHost, rows: Map<string, HTMLElement>, cardKids: Set<string>): RowContext {
 	// What this pass DRAWS. `host.columns` stays what EXISTS — `syncColumnFit` measures
 	// that one, or a narrowed pane would ratchet the count down and never let a column
 	// come back when it widens again.
 	const shown = host.columns.slice(0, host.columnFit?.shown ?? host.columns.length);
-	return { host, dnd, rows, cardKids, columns: shown };
+	return { host, rows, cardKids, columns: shown };
 }
 
 /**
@@ -298,7 +292,7 @@ export function renderColumnHeader(ctx: RowContext, containerEl: HTMLElement): v
  * drift from the thing it reserves for.
  */
 export function renderAddSpacer(containerEl: HTMLElement): void {
-	setIcon(containerEl.createDiv({ cls: 'pbl-add-spacer clickable-icon', attr: { 'aria-hidden': 'true' } }), 'plus');
+	drawIcon(containerEl.createDiv({ cls: 'pbl-add-spacer clickable-icon', attr: { 'aria-hidden': 'true' } }), 'plus');
 }
 
 /**
@@ -316,21 +310,44 @@ export function renderRowColumns(ctx: RowContext, row: HTMLElement, item: Backlo
 /**
  * Shared with the cards, which pass a narrowed list — one resolved column list drives
  * every projection, and a caller may draw fewer of them but never a different set.
+ *
+ * `dropEmpty` is the card's own request: the tree needs every drawn column's cell on
+ * every row, empty or not, because the columns are fixed-width and share a header — an
+ * absent cell would shift every one after it (`src/view/CLAUDE.md`). A card has no such
+ * row to stay aligned with, so an empty cell there is not a value that happens to be
+ * blank, it is a chip-shaped gap with nothing in it — `padding-inline-end` alone, wide
+ * enough to misalign the chips around it. Off by default, so the tree's own call is
+ * unchanged. Asked of `renderCell`'s own answer rather than read back off the DOM it
+ * built: a second derivation of "is there anything here" is how the tag menu once came
+ * to offer editing for a column the renderer had skipped.
+ *
+ * The WRAPPER goes too when every cell inside it did — `.pbl-props` is itself a flex
+ * child of `.pbl-card`, which lays out in a column with its own `gap`; an empty wrapper
+ * still counts as a child for that gap to measure from, so a card whose columns are ALL
+ * empty (a lone plain property with no value, or a context card with nothing on any of
+ * its cells) would keep exactly the double-gap this option exists to remove, just moved
+ * up one level. (Codex, PR #132.)
  */
 export function renderPropCells(
 	ctx: RowContext,
 	row: HTMLElement,
 	item: BacklogItem,
 	columns: Column[],
+	{ dropEmpty = false }: { dropEmpty?: boolean } = {},
 ): void {
 	const props = row.createDiv({ cls: 'pbl-props' });
+	let anyDrawn = false;
 	for (const column of columns) {
 		// `value` takes no modifier: `.pbl-prop-value` is already the class of the SPAN
 		// a plain value renders into, and giving the cell the same name would make one
 		// selector mean two boxes.
 		const cls = 'pbl-prop' + (column.kind === 'value' ? '' : ` pbl-prop-${column.kind}`);
-		renderCell(ctx.host, props.createDiv({ cls }), item, column);
+		const cell = props.createDiv({ cls });
+		const drew = renderCell(ctx.host, cell, item, column);
+		if (drew) anyDrawn = true;
+		else if (dropEmpty) cell.detach();
 	}
+	if (dropEmpty && !anyDrawn) props.detach();
 }
 
 /**
@@ -350,14 +367,18 @@ export function renderPropCells(
  * of a generic element is its own text, which here IS the value — so the label it would
  * carry is the tooltip's job, and that tooltip already says why the cell cannot be
  * written rather than what pressing it would do.
+ *
+ * Returns whether it drew anything — each branch's own answer, not a second reading of
+ * the cell it just built, so `renderPropCells`' `dropEmpty` and this function's idea of
+ * "empty" can never disagree.
  */
-function renderCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem, column: Column): void {
-	if (column.kind === 'tags') renderTagCell(host, cell, item, column);
-	else if (column.kind === 'state') renderStateChip(host, cell, item, column);
-	else if (column.kind === 'horizon') renderHorizonChip(host, cell, item, column.label);
-	else if (column.kind === 'risk' || column.kind === 'assignee')
-		renderLabelChip(host, cell, item, column.label, LABEL_CHIPS[column.kind]);
-	else renderValue(host, cell, item, column);
+function renderCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem, column: Column): boolean {
+	if (column.kind === 'tags') return renderTagCell(host, cell, item, column);
+	if (column.kind === 'state') return renderStateChip(host, cell, item, column);
+	if (column.kind === 'horizon') return renderHorizonChip(host, cell, item, column.label);
+	if (column.kind === 'risk' || column.kind === 'assignee')
+		return renderLabelChip(host, cell, item, column.label, LABEL_CHIPS[column.kind]);
+	return renderValue(host, cell, item, column);
 }
 
 /**
@@ -369,19 +390,19 @@ function chipLabel(label: string, value: string | null): string {
 	return value === null ? `Set ${label}` : `Change ${label} (currently ${value})`;
 }
 
-function renderValue(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem, column: Column): void {
+function renderValue(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem, column: Column): boolean {
 	// An ancestor from outside the filter has no Bases row, so no property values.
 	let value = null;
 	try {
 		value = item.entry?.getValue(column.prop) ?? null;
 	} catch {
-		return;
+		return false;
 	}
-	if (value === null || value instanceof NullValue) return;
+	if (value === null || value instanceof NullValue) return false;
 	// isEmpty() is declared on some Value subclasses (ObjectValue) but not on Value
 	// itself, so this stays a genuine test of the value in hand, not a version guard.
 	const maybeEmpty = value as { isEmpty?: () => boolean };
-	if (typeof maybeEmpty.isEmpty === 'function' && maybeEmpty.isEmpty()) return;
+	if (typeof maybeEmpty.isEmpty === 'function' && maybeEmpty.isEmpty()) return false;
 
 	const text = value.toString().trim();
 	const valueEl = cell.createSpan({ cls: 'pbl-prop-value' });
@@ -396,7 +417,7 @@ function renderValue(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem
 	// checkbox or an icon renders no text of its own and is still a value to show.
 	if (rendered === '' && text === '') {
 		valueEl.detach();
-		return;
+		return false;
 	}
 	// The column is narrow and the header names it only once — say both here, and
 	// in the accessible name too, since the header itself is presentational (and
@@ -404,13 +425,25 @@ function renderValue(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem
 	const described = `${column.label}: ${rendered || text}`;
 	setTooltip(valueEl, described);
 	valueEl.setAttribute('aria-label', described);
+	return true;
 }
 
 /**
  * Tags as pills, each removable, with a button to add one. A note the Base excluded
  * is context: its tags render, but nothing on the row offers to write them.
+ *
+ * Draws SOMETHING whenever there is a pill — never for the add button alone, editable or
+ * not: `.pbl-tag-add` is `opacity: 0` until the row or card is hovered or focused
+ * (`styles/tags.css`), so at rest it draws nothing a reader can see, only a reserved
+ * width. Zero tags is therefore "nothing to show" on BOTH branches now, which is why the
+ * editable one's final answer joins the non-editable one's rather than staying an
+ * unconditional `true` — the tree ignores the difference (`dropEmpty` is never on there,
+ * so the cell and its hover-reveal button keep their place regardless); a card drops the
+ * cell, and its own context menu's **Edit tags** — offered whenever the tags property is
+ * a visible column, independent of any one item's own cell — remains the reliable way to
+ * add a first tag. (Codex, PR #132.)
  */
-function renderTagCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem, column: Column): void {
+function renderTagCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem, column: Column): boolean {
 	const editable = !item.outsideFilter;
 	// The pills live in their own box so that *they* clip when there are more than
 	// the column can show. The add button is a sibling of that box, not the last
@@ -426,7 +459,7 @@ function renderTagCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogIt
 			cls: 'pbl-tag-remove',
 			attr: { type: 'button', tabindex: '-1', 'aria-label': `Remove tag ${tag}` },
 		});
-		setIcon(remove, 'x');
+		drawIcon(remove, 'x');
 		setTooltip(remove, `Remove #${tag}`);
 		remove.addEventListener('click', (evt) => {
 			// `preventDefault` only: a tag pill is a link-shaped control, and the row's own
@@ -436,15 +469,16 @@ function renderTagCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogIt
 		});
 	}
 	if (item.tags.length > 0) setTooltip(cell, `${column.label}: ${item.tags.map((t) => `#${t}`).join(', ')}`);
-	if (!editable) return;
+	if (!editable) return item.tags.length > 0;
 
 	const add = cell.createEl('button', {
 		cls: 'pbl-tag-add',
 		attr: { type: 'button', tabindex: '-1', 'aria-label': 'Add tag' },
 	});
-	setIcon(add, 'plus');
+	drawIcon(add, 'plus');
 	setTooltip(add, 'Add tag');
 	add.addEventListener('click', (evt) => showTagMenu(host, evt, item));
+	return item.tags.length > 0;
 }
 
 /** Progress rollup or descendant count, in a column of its own so both align. */
@@ -480,7 +514,7 @@ export function renderRollup(host: BacklogViewHost, row: HTMLElement, item: Back
  * can never name different states. Either one under the fallback (no property of its own
  * configured) reads the shared key, so this is the identical value either way.
  */
-function renderStateChip(host: BacklogViewHost, col: HTMLElement, item: BacklogItem, column: Column): void {
+function renderStateChip(host: BacklogViewHost, col: HTMLElement, item: BacklogItem, column: Column): boolean {
 	// The CELL is the properties menu's question and the CHIP is the row's own: this
 	// column names ONE key, and a row draws into it only when that is the key its
 	// workflow writes. With both workflows visible on distinct keys there are two such
@@ -489,7 +523,7 @@ function renderStateChip(host: BacklogViewHost, col: HTMLElement, item: BacklogI
 	// `stateKeyFor` is the same function `buildItemMenu` gates Set state on, so the chip
 	// and the menu can never disagree about which key this row writes.
 	const key = stateKeyFor(host.settings, item);
-	if (!key || `note.${key}` !== column.prop) return;
+	if (!key || `note.${key}` !== column.prop) return false;
 	const { value, done } = ownWorkflowReading(item);
 	const cls = 'pbl-state-chip' + (done ? ' pbl-state-done' : '') + (value === null ? ' pbl-state-unset' : '');
 
@@ -497,11 +531,11 @@ function renderStateChip(host: BacklogViewHost, col: HTMLElement, item: BacklogI
 	// write it. An unset one renders nothing at all rather than a "State" button
 	// that would look like an invitation.
 	if (item.outsideFilter) {
-		if (value === null) return;
+		if (value === null) return false;
 		const chip = col.createDiv({ cls: `${cls} pbl-state-static` });
 		fillStateChip(chip, done, value);
 		setTooltip(chip, "Not in this base's filter — state can't be changed here");
-		return;
+		return true;
 	}
 
 	// A native button, so assistive tech can activate it — but no Tab stop: the
@@ -518,11 +552,12 @@ function renderStateChip(host: BacklogViewHost, col: HTMLElement, item: BacklogI
 	fillStateChip(chip, done, value);
 	setTooltip(chip, 'Change state');
 	chip.addEventListener('click', (evt) => showStateMenu(host, evt, item));
+	return true;
 }
 
 function fillStateChip(chip: HTMLElement, done: boolean, value: string | null): void {
 	const icon = done ? 'circle-check' : value !== null ? 'circle' : 'circle-dashed';
-	setIcon(chip.createSpan({ cls: 'pbl-state-icon' }), icon);
+	drawIcon(chip.createSpan({ cls: 'pbl-state-icon' }), icon);
 	chip.createSpan({ cls: 'pbl-state-text', text: value ?? 'State' });
 }
 
@@ -538,7 +573,7 @@ function fillStateChip(chip: HTMLElement, done: boolean, value: string | null): 
  * and a chip whose menu could set nothing would be a third opinion about what
  * "configured" means.
  */
-function renderHorizonChip(host: BacklogViewHost, col: HTMLElement, item: BacklogItem, label: string): void {
+function renderHorizonChip(host: BacklogViewHost, col: HTMLElement, item: BacklogItem, label: string): boolean {
 	// A value the reader refuses is not a placement: the roadmap shelves such a card
 	// with the reason on its face, and the chip says the same thing — unplaced, and
 	// why — rather than showing a horizon the axis would not honor.
@@ -551,11 +586,11 @@ function renderHorizonChip(host: BacklogViewHost, col: HTMLElement, item: Backlo
 	// it. With nothing to show it renders nothing at all, rather than a button-shaped
 	// invitation to a write this row cannot take.
 	if (item.outsideFilter) {
-		if (unplaced) return;
+		if (unplaced) return false;
 		const chip = col.createDiv({ cls: `${cls} pbl-state-static` });
 		fillHorizonChip(chip, value);
 		setTooltip(chip, "Not in this base's filter — horizon can't be changed here");
-		return;
+		return true;
 	}
 
 	// A native button with no Tab stop, the state chip's bargain: reachable by
@@ -571,6 +606,7 @@ function renderHorizonChip(host: BacklogViewHost, col: HTMLElement, item: Backlo
 	fillHorizonChip(chip, value);
 	setTooltip(chip, reason ?? 'Change horizon');
 	chip.addEventListener('click', (evt) => showHorizonMenu(host, evt, item));
+	return true;
 }
 
 /**
@@ -623,7 +659,7 @@ interface LabelChip {
  * state either side can reach alone, and it opens that menu's own builder through
  * `showMenu` rather than a second list.
  */
-function renderLabelChip(host: BacklogViewHost, col: HTMLElement, item: BacklogItem, label: string, spec: LabelChip): void {
+function renderLabelChip(host: BacklogViewHost, col: HTMLElement, item: BacklogItem, label: string, spec: LabelChip): boolean {
 	const value = spec.valueOf(item);
 	const cls = spec.cls + (value === null ? ` ${spec.unsetCls}` : '');
 
@@ -631,11 +667,11 @@ function renderLabelChip(host: BacklogViewHost, col: HTMLElement, item: BacklogI
 	// it. With nothing to show it renders nothing at all, rather than a button-shaped
 	// invitation to a write this row cannot take.
 	if (item.outsideFilter) {
-		if (value === null) return;
+		if (value === null) return false;
 		const chip = col.createDiv({ cls: `${cls} pbl-state-static` });
 		fillLabelChip(chip, value, spec);
 		setTooltip(chip, `Not in this base's filter — ${spec.noun} can't be changed here`);
-		return;
+		return true;
 	}
 
 	// A native button with no Tab stop, the state chip's bargain: reachable by
@@ -651,6 +687,7 @@ function renderLabelChip(host: BacklogViewHost, col: HTMLElement, item: BacklogI
 	fillLabelChip(chip, value, spec);
 	setTooltip(chip, `Change ${spec.noun}`);
 	chip.addEventListener('click', (evt) => spec.showMenu(host, evt, item));
+	return true;
 }
 
 /**
@@ -659,7 +696,7 @@ function renderLabelChip(host: BacklogViewHost, col: HTMLElement, item: BacklogI
  * what takes the key away.
  */
 function fillLabelChip(chip: HTMLElement, value: string | null, spec: LabelChip): void {
-	setIcon(chip.createSpan({ cls: 'pbl-state-icon' }), value === null ? spec.unsetIcon : spec.icon);
+	drawIcon(chip.createSpan({ cls: 'pbl-state-icon' }), value === null ? spec.unsetIcon : spec.icon);
 	chip.createSpan({ cls: 'pbl-state-text', text: value ?? spec.placeholder });
 }
 
@@ -670,6 +707,6 @@ function fillLabelChip(chip: HTMLElement, value: string | null, spec: LabelChip)
  * accessible name, which is where the state chip puts it too.
  */
 function fillHorizonChip(chip: HTMLElement, value: string | null): void {
-	setIcon(chip.createSpan({ cls: 'pbl-state-icon' }), value === null ? 'inbox' : 'milestone');
+	drawIcon(chip.createSpan({ cls: 'pbl-state-icon' }), value === null ? 'inbox' : 'milestone');
 	chip.createSpan({ cls: 'pbl-state-text', text: value ?? SHELF_LABEL });
 }
