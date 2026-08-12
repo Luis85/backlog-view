@@ -316,6 +316,22 @@ describe('property columns', () => {
 		expect(withoutValue.querySelector('.pbl-props')).toBeNull();
 	});
 
+	it('drops a tags cell from a card when there are no tags, add button included', () => {
+		// The add button is a real affordance but `opacity: 0` until hover or focus
+		// (styles/tags.css) — at rest it draws nothing a reader can see, so it must not
+		// keep an otherwise-empty cell alive on a card. The tree keeps it regardless
+		// (dropEmpty is never on there), which the first assertion pins.
+		const vault = boardVault(); // neither epic carries tags.
+		const { containerEl, view } = makeView(vault, BOARD_WORKFLOW, { order: ['note.tags'] });
+
+		expect(rowByTitle(containerEl, 'Epic A').querySelector('.pbl-tag-add')).not.toBeNull();
+
+		view.setProjection('board');
+		const card = cardByTitle(containerEl, 'Epic A');
+		expect(card.querySelector('.pbl-prop-tags')).toBeNull();
+		expect(card.querySelector('.pbl-tag-add')).toBeNull();
+	});
+
 	it('keeps the assignee\'s own dashed invitation chip on a card — unset is not empty', () => {
 		// The assignee's unset state is a deliberate "nobody yet" affordance, the same
 		// chip the row draws, and dropEmpty must not confuse it with a cell that drew

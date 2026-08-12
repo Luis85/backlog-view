@@ -432,8 +432,16 @@ function renderValue(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem
  * Tags as pills, each removable, with a button to add one. A note the Base excluded
  * is context: its tags render, but nothing on the row offers to write them.
  *
- * Draws SOMETHING whenever there is a pill or an add affordance — a context row with no
- * tags gets neither, which is the one case this cell has nothing to show at all.
+ * Draws SOMETHING whenever there is a pill — never for the add button alone, editable or
+ * not: `.pbl-tag-add` is `opacity: 0` until the row or card is hovered or focused
+ * (`styles/tags.css`), so at rest it draws nothing a reader can see, only a reserved
+ * width. Zero tags is therefore "nothing to show" on BOTH branches now, which is why the
+ * editable one's final answer joins the non-editable one's rather than staying an
+ * unconditional `true` — the tree ignores the difference (`dropEmpty` is never on there,
+ * so the cell and its hover-reveal button keep their place regardless); a card drops the
+ * cell, and its own context menu's **Edit tags** — offered whenever the tags property is
+ * a visible column, independent of any one item's own cell — remains the reliable way to
+ * add a first tag. (Codex, PR #132.)
  */
 function renderTagCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem, column: Column): boolean {
 	const editable = !item.outsideFilter;
@@ -470,7 +478,7 @@ function renderTagCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogIt
 	drawIcon(add, 'plus');
 	setTooltip(add, 'Add tag');
 	add.addEventListener('click', (evt) => showTagMenu(host, evt, item));
-	return true;
+	return item.tags.length > 0;
 }
 
 /** Progress rollup or descendant count, in a column of its own so both align. */

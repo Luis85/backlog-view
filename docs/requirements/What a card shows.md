@@ -64,7 +64,13 @@ on a board, the hierarchy has to travel on the card.
   context card with nothing to show on any of its cells now carries none of them, rather
   than one visible chip among several empty ones. The assignee's own UNSET state is not
   this case: its dashed "Assignee" invitation is a value ("nobody yet"), not an absence,
-  so it draws exactly as the row's chip does (ADR 0027).
+  so it draws exactly as the row's chip does (ADR 0027). Zero tags IS this case, an
+  editable item included: the add button that would otherwise be the only content is
+  `opacity: 0` until hovered or focused, so a reader sees nothing until they already
+  know to look — a card that dropped every other kind of empty cell but kept this one
+  would be the one place the fix stopped short (Codex, PR #132). Nothing is lost by
+  dropping it: **Edit tags** in the card's own menu is gated on the property being a
+  visible column, never on this one item's cell.
 - **3d — every cell on the card was 3c.** The wrapper around them (`.pbl-props`) goes
   too — it is itself a flex child of the card's own column layout and gap, so an empty
   one left standing is 3c's gap moved up one level rather than a case it missed. The
@@ -91,11 +97,13 @@ on a board, the hierarchy has to travel on the card.
   column list (`host.columns`), so a property the properties menu hides is hidden on
   both — while a column the narrow PANE drops off the tree's rows still draws on a card.
   **Checked by** `test/view/columns.test.ts` — "draws no state, horizon or risk chip on a card, but does draw the assignee chip"
-- A plain-value or tags cell with nothing to show renders no cell at all on a card,
-  where the tree keeps the empty one to hold its column's place. The assignee's own
-  UNSET chip is not this case — it is a deliberate invitation and draws exactly as the
-  row's does.
-  **Checked by** `test/view/columns.test.ts` — "drops an empty property cell from a card instead of leaving a gap with nothing in it" and "keeps the assignee's own dashed invitation chip on a card — unset is not empty"
+- A plain-value or tags cell with nothing to show renders no cell at all on a card —
+  the whole `.pbl-props` wrapper too, when every cell inside it was empty — where the
+  tree keeps the empty one to hold its column's place. Zero tags counts as nothing to
+  show even when editable: the add button that would otherwise be the only content is
+  invisible until hover. The assignee's own UNSET chip is not this case — it is a
+  deliberate invitation and draws exactly as the row's does.
+  **Checked by** `test/view/columns.test.ts` — "drops an empty property cell from a card instead of leaving a gap with nothing in it" (now also asserting the wrapper), "drops a tags cell from a card when there are no tags, add button included", and "keeps the assignee's own dashed invitation chip on a card — unset is not empty"
 - The parent renders on the card as context — including a parent outside the Base's
   filter, which labels the card; outside-filter items themselves render on the board
   only in the context forms the epic names.

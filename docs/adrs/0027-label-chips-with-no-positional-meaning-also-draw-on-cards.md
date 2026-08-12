@@ -68,6 +68,17 @@ one level higher. Found by an automated review the first version of this change 
 (Codex, PR #132) — the fix is one more condition in the same function, tracking whether
 anything was drawn across the whole pass rather than per cell.
 
+"Drew something" is a visible-AT-REST question, not an interactive-affordance one — a
+second correction the same reviewer caught. `.pbl-tag-add` is `opacity: 0` until its row
+or card is hovered or focused, so an editable item with zero tags used to answer `true`
+solely because the (invisible) add button was there: correct for the tree, where the
+question is never asked, and wrong for a card, which would then have kept exactly the
+gap this record exists to remove. `renderTagCell` now answers `item.tags.length > 0` on
+both its branches — the add button no longer counts, editable or not — and a card that
+drops the cell for it loses nothing a reader could reach anyway: **Edit tags** in the
+card's own context menu is gated on the tags property being a visible COLUMN
+(`tagsColumnVisible`), never on one item's own cell, so it stays offered.
+
 ## Consequences
 
 - **A card can now show four kinds of cell** — plain values, tags, and the assignee
