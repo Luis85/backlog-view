@@ -11,6 +11,8 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-08-12
+
 ### Added
 
 - **The assignee chip now shows on cards** — the board, the roadmap's buckets and its
