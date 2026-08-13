@@ -51,9 +51,10 @@ ancestors of an actual result pulled in to keep the hierarchy intact
 path either. A Base scoped by folder alone, the shape this repository's own
 `docs/Product Backlog.base` already uses, hands every note in scope to the plugin and
 lets this view's own settings sort by type, which is what lets an absence be read at all;
-a Base whose own query already narrows by type has to name the absence type too, or its
-absences never reach this feature. Nothing new here — every declared type this plugin
-reads, markers included, already depends on the Base returning it, and none of them is
-guaranteed past that — but an absence is the one note with no fallback place to sit if it
-doesn't: an ordinary work item an overly narrow Base excludes is merely missing from the
-tree; a resource whose absence is excluded the same way reads as free when it is not.
+a Base whose own query already narrows by type has to name `Absence` too — the fixed
+type name [[Resource absences]] declares — or its absences never reach this feature.
+Nothing new here — every declared type this plugin reads, markers included, already
+depends on the Base returning it, and none of them is guaranteed past that — but an
+absence is the one note with no fallback place to sit if it doesn't: an ordinary work
+item an overly narrow Base excludes is merely missing from the tree; a resource whose
+absence is excluded the same way reads as free when it is not.

@@ -13,12 +13,12 @@ source: user request
 stretch, **so that** a row I am about to drop work into already shows the days nobody
 should be scheduled across.
 
-An absence is deliberately never a work item — no parent, no rank, no ladder rung — but it
-is not typeless either: it carries its own declared type, one `pruneOutsideHierarchy`
-never gets asked about because the exclusion happens earlier and UNCONDITIONALLY, where
-`src/domain/readItems.ts` reads each note, before a `RawItem` is ever built and whether or
-not `hierarchyOnly` is on. That is the opposite polarity from a marker
-([[Milestones as their own type]]): a marker is recognized and KEPT, ranked out of the
+An absence is deliberately never a work item — no parent, no rank, no ladder rung — but
+it is not typeless either: it carries its own declared type, `Absence`, one
+`pruneOutsideHierarchy` never gets asked about because the exclusion happens earlier and
+UNCONDITIONALLY, where `src/domain/readItems.ts` reads each note, before a `RawItem` is
+ever built and whether or not `hierarchyOnly` is on. That is the opposite polarity from a
+marker ([[Milestones as their own type]]): a marker is recognized and KEPT, ranked out of the
 ladder but still a `BacklogItem`; an absence is recognized and DROPPED, so a vault with
 `hierarchyOnly` off — where every note a folder-scoped Base returns becomes an item —
 excludes it the same way a stricter vault already would. It is a note with four facts now,
@@ -43,8 +43,8 @@ already looks.
 2. The prompt asks for the resource, pre-filled from the row, a title, a start date and
    an end date.
 3. Submitting writes a new note carrying the resource's name in the assignee property,
-   the two dates in the start and target properties, its own declared type, and the
-   title as its own — nothing else.
+   the two dates in the start and target properties, its own declared type (`Absence`),
+   and the title as its own — nothing else.
 4. The row draws it as a blocked stretch, positioned exactly as a bar would be, in that
    resource's row only.
 
@@ -94,7 +94,7 @@ already looks.
   scoped by folder alone, the way this repository's own `docs/Product Backlog.base` is,
   hands every note in scope to the plugin and lets this view's own settings do the
   type-based sorting, which is what lets an absence be read at all; a Base whose own
-  query already narrows by type has to name the absence type in that query too, or its
+  query already narrows by type has to name `Absence` in that query too, or its
   absences never reach this view. No guarantee here claims otherwise —
   [[The resource timeline]]'s landmines name this as a property of the whole feature, not
   something this PBI builds its way out of.
@@ -111,6 +111,20 @@ already looks.
   in a vault that has absences, not a reason this PBI owes a stable discriminator none
   of the other six names has: recognition already depends on a stable, currently
   configured `typeKey`, the same precondition every declared type's does.
+- **4g — an absence's own frontmatter is edited directly, outside the prompt**, so one
+  date is cleared, unreadable, or the range is reversed while both properties stay
+  configured. 2a and 2b catch exactly this at the prompt, but the prompt is not the only
+  way a note's frontmatter changes — Obsidian's own editing is always available, and
+  this plugin has no way to intercept it. The read gate answers it the same way 4d
+  answers a configuration that narrows: it does not render, silently, rather than
+  reusing the ordinary bar math to draw a one-ended or reversed range as something it is
+  not. Reading one broken absence differently from reading a whole vault with too few
+  configured properties would be two rules for one fact — a range this axis cannot
+  trust to be what it claims — so 4d's own gate (both ends present and in order) is
+  asked of each absence's OWN values, not only of the settings, and answers the same
+  way either time: no shelf exists for a written absence to fall back to
+  ([[Bars from two dates]] is a work item's answer, and 2b already says why it does not
+  reach here), so the only reading that cannot mislead is none at all.
 
 ## Acceptance criteria
 
@@ -121,9 +135,15 @@ already looks.
   creating one: if the configuration narrows to one property or none after absences
   already exist, none of them render until both are configured again — never read as a
   one-ended ordinary bar from whichever single key is still configured.
+- The same validation the prompt applies (both ends present, end not before start) is
+  applied again when reading each absence back, not only when the properties are
+  configured: a note whose own frontmatter was edited directly into a missing or
+  reversed range does not render either, since a hand edit can produce the exact
+  invalid shapes the prompt was built to refuse, and this plugin cannot intercept that
+  edit to catch it any earlier.
 - Submitting the prompt with a resource, a title and both dates writes one new note
-  carrying exactly those facts — no parent, no order, and its own declared type rather
-  than one from the ladder.
+  carrying exactly those facts — no parent, no order, and its own declared type
+  (`Absence`) rather than one from the ladder.
 - That type is recognized and the note excluded from the model unconditionally — before
   `RawItem` is built, whether or not `hierarchyOnly` is on — never relying on lacking a
   parent or a supported type the way an ordinary untyped note is excluded.
@@ -158,10 +178,11 @@ note's data away rather than keeping it anywhere, the new reader would need its 
 at the same `entries: BasesEntry[]` `buildModel` already takes (sourced from
 `this.data.data` in `src/view/backlogView.ts`) — the same list, read a second time for
 the opposite type — rather than an independent vault scan: extension 4e is the
-consequence of that choice, not an oversight it leaves open. The type name itself would
-join `src/domain/typeVocabulary.ts` as its own fourth category, opposite `MARKER_TYPES`
-in polarity: a marker is recognized and kept, ranked out of the ladder but still read;
-this is recognized and dropped, never read at all. Creating and deleting one would still
+consequence of that choice, not an oversight it leaves open. The type name itself —
+`Absence`, matching `Milestone`'s own capitalization and Title Case — would join
+`src/domain/typeVocabulary.ts` as its own fourth category, opposite `MARKER_TYPES` in
+polarity: a marker is recognized and kept, ranked out of the ladder but still read; this
+is recognized and dropped, never read at all. Creating and deleting one would still
 go through `src/storage/frontmatter.ts`, the only module allowed to touch the vault, behind
 the same `configProblems` gate every other write here answers to — a narrow function
 beside `createBacklogItem` rather than a call to it, since an absence has no parent and

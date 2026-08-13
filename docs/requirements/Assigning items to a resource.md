@@ -54,6 +54,16 @@ instead.
   to place it at — 3c below is the exception, where it does not.
 - **1d — the drop lands on the shelf.** The assignee key is removed, not blanked — the
   item returns to unassigned, rather than rendering in a row named nothing.
+- **1e — the drop lands on the resource the shelved card's assignee already names.**
+  `computeAssigneeWrites` plans nothing, since the value would not change — the same
+  test that makes 1a a no-op for an already-placed bar dropped on its own row. Reached
+  from the shelf, though, 1a's own silence does not carry over: a bar that stays exactly
+  where the cursor found it already answers the question, but a shelved card that stays
+  shelved after a drop does not — nothing about the card told the user its assignee
+  already matched the row. Announced anyway, the same way 3c announces a write that DOES
+  land with no visible effect, even though here none lands at all: naming the resource
+  already on the note and that a date is what is still missing. No undo slot is spent —
+  there is nothing to take back.
 - **2a — the target row is one named by an observed, undeclared resource.** The move
   writes that value: observed vocabulary is writable vocabulary, the same rule the
   horizon axis and the board already keep.
@@ -81,6 +91,10 @@ instead.
 
 - A resource move is one write to the assignee property, through the gate, one undo.
 - A drop that lands in the bar's own row writes nothing and keeps the previous undo.
+- A drop from the shelf onto the resource the card's assignee already names also writes
+  nothing and keeps the previous undo, but — unlike the bar case — is announced anyway,
+  naming the resource and that a date is still missing, since a shelved card that stays
+  shelved gives the user no other way to tell the drop landed on an unchanged value.
 - Dragging between rows changes only the assignee; the bar's own dates never change as a
   side effect of which row it lands in.
 - Shelf to row writes the resource's name; row to shelf removes the key rather than

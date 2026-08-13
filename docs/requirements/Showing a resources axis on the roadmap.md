@@ -108,7 +108,9 @@ vocabulary the way the horizon values do.
   the dated axis does) and never the default a first render selects — it takes the
   position after both existing axes in `configuredAxes`' priority order, and losing its
   configuration falls back the same generic way losing either existing axis already
-  does.
+  does. A saved pick of this axis survives a reload — the storage layer's own
+  string vocabulary for the stored pick includes it, not only the in-memory
+  `RoadmapAxis` type, since the two are checked separately.
 - Declared resources render as rows in declared order, empty or not; the roster is
   optional and, unlike the horizon values, ships with nothing prefilled.
 - A row's membership is the note's own assignee value; a bar's position is computed
@@ -148,10 +150,15 @@ would widen the selection machinery [[Horizons or dates]] built rather than add 
 second one: `RoadmapAxis` gains `'resources'` alongside `'horizons'` and `'dates'`,
 `configuredAxes` pushes it last (after the `hasDateAxis` push, so it never leads),
 `AXIS_LABEL` in `src/view/render/toolbarControls.ts` gains a third entry, and
-`renderAxisPicker`'s two `choice(...)` calls gain a third — `activeAxis` and the
-persisted pick in `src/storage/collapseStore.ts` need no change at all, since both
-already resolve generically over however many axes `configuredAxes` returns. The optional
-roster is one more row through the settings shape ADR 0026 already splits between
+`renderAxisPicker`'s two `choice(...)` calls gain a third — `activeAxis` itself needs no
+change, since it already resolves generically over however many axes `configuredAxes`
+returns. The persisted PICK is not the same claim: `src/storage/collapseStore.ts` reads
+stored state defensively rather than trusting it as the `RoadmapAxis` type, so its own
+`AXIS_VALUES` — a separate list of strings, not derived from the type — gains
+`'resources'` too, or a saved pick of this axis is silently dropped on the next load and
+falls back to whichever axis remains, exactly as an axis losing its configuration
+already does (extension 1a), which would misreport a stored pick as one never made. The
+optional roster is one more row through the settings shape ADR 0026 already splits between
 `src/domain/settings.ts` and its view-options picker; the value itself is
 `assigneeValue`, already on the model ([[Setting the assignee on an item]]). Rendering
 would sit in `src/view/render/roadmap.ts`, beside the bucket and shelf rendering it
