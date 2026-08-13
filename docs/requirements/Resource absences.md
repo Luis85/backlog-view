@@ -79,12 +79,35 @@ already looks.
   ordinary file delete rather than this backlog's undo — the note was never one of this
   backlog's write targets to begin with, so there is no batch for the gate to have
   captured an inverse of.
+- **4d — the configuration narrows to one date property, or none, after absences already
+  exist.** They stop rendering, all of them, silently — the same gate 1a already puts in
+  front of creating one applies to reading them too: the reader checks both properties
+  are configured before placing anything, so a note with both dates still in its
+  frontmatter is not read as a one-ended ordinary bar just because the setting naming its
+  other end is gone. Nothing distinguishes "this note's other key was removed from
+  settings" from "this note was never a two-ended absence" — the only reading that cannot
+  mislead is none at all, until both keys are configured again.
+- **4e — the Base backing this view excludes the absence type from its own query.**
+  Nothing here can override that: `readItems.ts` only ever sees the `BasesEntry[]` the
+  Base itself hands over, plus ancestors of an actual result (`loadOutsideParents`) — and
+  an absence, having no parent, can never arrive by that second path either. A Base
+  scoped by folder alone, the way this repository's own `docs/Product Backlog.base` is,
+  hands every note in scope to the plugin and lets this view's own settings do the
+  type-based sorting, which is what lets an absence be read at all; a Base whose own
+  query already narrows by type has to name the absence type in that query too, or its
+  absences never reach this view. No guarantee here claims otherwise —
+  [[The resource timeline]]'s landmines name this as a property of the whole feature, not
+  something this PBI builds its way out of.
 
 ## Acceptance criteria
 
 - Add absence offers itself only when both date properties are configured — the
   resources axis's own precondition (either property alone) is not enough, since an
   absence cannot infer a missing end.
+- Reading and placing absences is gated on that same both-properties condition, not only
+  creating one: if the configuration narrows to one property or none after absences
+  already exist, none of them render until both are configured again — never read as a
+  one-ended ordinary bar from whichever single key is still configured.
 - Submitting the prompt with a resource, a title and both dates writes one new note
   carrying exactly those facts — no parent, no order, and its own declared type rather
   than one from the ladder.
@@ -96,7 +119,10 @@ already looks.
 - The note lives in its own configured folder, falling back to the backlog's home
   folder when unset.
 - The absence renders as a blocked stretch in its own resource's row, positioned by the
-  same date math a bar uses, and nowhere else.
+  same date math a bar uses, and nowhere else — and only ever for a note the Base's own
+  query actually returns; a Base whose query narrows by type has to include the absence
+  type, the same dependency every other declared type here already has on the Base
+  returning it.
 - A resource named only by an absence still gets a row.
 - Overlapping bars and absences in one row stack, with no lane-packing.
 - Deleting an absence removes the note through Obsidian's own delete.
@@ -110,11 +136,16 @@ path. Reading and placing an absence would be new, small code beside
 declared type and skip the note before a `RawItem` is built from it, unconditionally,
 never reaching `pruneOutsideHierarchy` — which runs only when `settings.hierarchyOnly`
 is true (`buildModel` in `src/domain/model.ts`) and would therefore be the wrong gate
-for an exclusion that has to hold either way. The type name itself would join
-`src/domain/typeVocabulary.ts` as its own fourth category, opposite `MARKER_TYPES` in
-polarity: a marker is recognized and kept, ranked out of the ladder but still read; this
-is recognized and dropped, never read at all. Creating and deleting one would still go
-through `src/storage/frontmatter.ts`, the only module allowed to touch the vault, behind
+for an exclusion that has to hold either way. Because `readItems.ts` throws a skipped
+note's data away rather than keeping it anywhere, the new reader would need its own look
+at the same `entries: BasesEntry[]` `buildModel` already takes (sourced from
+`this.data.data` in `src/view/backlogView.ts`) — the same list, read a second time for
+the opposite type — rather than an independent vault scan: extension 4e is the
+consequence of that choice, not an oversight it leaves open. The type name itself would
+join `src/domain/typeVocabulary.ts` as its own fourth category, opposite `MARKER_TYPES`
+in polarity: a marker is recognized and kept, ranked out of the ladder but still read;
+this is recognized and dropped, never read at all. Creating and deleting one would still
+go through `src/storage/frontmatter.ts`, the only module allowed to touch the vault, behind
 the same `configProblems` gate every other write here answers to — a narrow function
 beside `createBacklogItem` rather than a call to it, since an absence has no parent and
 no rank for that function's `NewItemSpec` to carry, and its type is a fixed constant

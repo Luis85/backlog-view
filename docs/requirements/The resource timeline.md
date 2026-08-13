@@ -43,3 +43,17 @@ board or any other axis — the same spirit an ADR opts out in, though the mecha
 differs: a type check here, a folder there. Building the row's rendering as one more
 consumer of the roadmap model without that seam in mind means rebuilding the row once
 the second source exists, rather than adding to it.
+
+**Every row here still depends on the Base's own query, and an absence has no second way
+in.** `readItems.ts` only ever processes what the Base hands over as `BasesEntry[]`, plus
+ancestors of an actual result pulled in to keep the hierarchy intact
+(`loadOutsideParents`) — and an absence, having no parent, can never arrive by that second
+path either. A Base scoped by folder alone, the shape this repository's own
+`docs/Product Backlog.base` already uses, hands every note in scope to the plugin and
+lets this view's own settings sort by type, which is what lets an absence be read at all;
+a Base whose own query already narrows by type has to name the absence type too, or its
+absences never reach this feature. Nothing new here — every declared type this plugin
+reads, markers included, already depends on the Base returning it, and none of them is
+guaranteed past that — but an absence is the one note with no fallback place to sit if it
+doesn't: an ordinary work item an overly narrow Base excludes is merely missing from the
+tree; a resource whose absence is excluded the same way reads as free when it is not.
