@@ -2,9 +2,22 @@
 type: PBI
 parent: "[[The resource timeline]]"
 order: 20
-status: Open
+status: Active
 created: 2026-08-13
 source: user request
+files:
+  - src/domain/roadmap.ts
+  - src/view/backlogView.ts
+  - src/view/cardMoves.ts
+  - src/view/host.ts
+  - src/view/interactions/cardDrag.ts
+  - src/view/interactions/keyboard.ts
+  - src/view/interactions/labels.ts
+  - src/view/render/barLabel.ts
+  - src/view/render/lanes.ts
+  - src/view/render/roadmap.ts
+  - src/view/render/shelf.ts
+  - src/view/render/timeline.ts
 started: ""
 finished: ""
 horizon: ""
@@ -119,20 +132,104 @@ instead.
 
 ## Where it lives
 
-Unbuilt. The write is already planned — `computeAssigneeWrites` in
-`src/domain/writePlan.ts`, built for [[Setting the assignee on an item]], needs no
-change. What this PBI would add is the orchestration around it: a `performResourceMove`
-beside `performHorizonMove` in `src/view/cardMoves.ts` (`CardMoveController`), a resource
-ladder in `src/view/interactions/keyboard.ts` the same SHAPE as `horizonStops` (a stop
-list, an index, a step) but on Alt+Up/Down rather than `horizonStops`' Left/Right — the
-two cannot share a function unchanged, since the direction is exactly what has to differ
-— a `CreatePlacement.assignee` field threaded through `src/view/interactions/create.ts`
-the way `horizon` already is, and routing the row menu's Set assignee
-(`src/view/interactions/labels.ts`) through `performResourceMove` while this axis is
-active — the way `chooseHorizon` in `src/view/interactions/plan.ts` already branches by
-mode.
+Built, apart from extension 3b (below). The plan needed no change at all —
+`computeAssigneeWrites` in `src/domain/writePlan.ts` was built for
+[[Setting the assignee on an item]] and already plans exactly this value, with the two
+rules a move needs: nothing for a re-pick of the name the note holds, and a removal only
+where there is a key to take away. What this PBI added is the orchestration.
+
+`performResourceMove` in `src/view/cardMoves.ts` (`CardMoveController`) is the one method
+every input lands on, so a drop cannot plan a different write than the key or the menu
+that mean the same thing, and it is the one place a move is announced. It captures both
+pre-write facts before the batch, which is not optional here: the batch's own refresh
+rebuilds `host.roadmap` before the await resolves, so the row just vacated may be gone
+with its last bar. Naming the two ends is `src/domain/roadmap.ts`'s `resourceSource` /
+`resourcePlacementLabel` / `resourceTargetLabel`, the shape `horizonSource` /
+`placementLabel` / `targetLabel` already has — with one deliberate difference stated at
+`resourceLabel`: this axis mints a row only where a BAR lands, so a name no row draws is
+still a name the note states, and reading it as the shelf (which the horizon axis is
+right to do, since every result's value mints a bucket there) would report "from
+Unplaced" about a note that plainly says Alice. `announceResourceMove` in
+`src/view/interactions/cardDrag.ts` says it, in the live region every card move already
+shares.
+
+The gesture is the drag layer both card projections share. On this axis a bar is an
+ordinary card SOURCE — hold `null`, no span baseline, no ends — because what it is dropped
+ON is the whole message; the date holds stay withheld (`TimelineDrawing.hold` in
+`src/view/render/timeline.ts`, which replaced the read-only increment's `grips` flag). A
+resource's band is wired **element by element** — the header, each bar row, each excluded
+note's row — through `TimelineDrawing.laneTarget`, a hook the grid takes from
+`renderGridAxis` in `src/view/render/roadmap.ts` (`laneDrop`) exactly as `wireDropTarget`
+takes its `plan`: the grid knows which elements belong to which row and nothing about what
+landing on one should write. Per element because there is no container to wire — every row
+is a flat sibling positioned against one shared day grid — and the cost is that the
+highlight is the element under the pointer rather than the whole band. A wrapper per row
+would fix that and would put a box between every row and the sticky lead column the
+geometry rests on; either way the highlight is a live-vault check.
+
+**One thing had to be un-drawn for any of it to work**, and it is the finding worth
+keeping. `.pbl-timeline-drop` — the dated axis's one positional target — takes pointer
+events across the whole day area while a drag is live, so left in place it would swallow
+every drop the rows are the target for. It is therefore drawn only where a POSITION on it
+means something. That exposed the one decoration it used to cover: `.pbl-today` is the
+only absolutely positioned mark in the content layer without `pointer-events: none`,
+because its tooltip is the only place its date is written, so `.pbl-timeline-flat` (on the
+content element) turns that off for this axis alone. Every other layer already opted out,
+for the reason `.pbl-milestone-line`'s own comment in `styles/timeline.css` records: a 2px
+dead strip through every row. What jsdom can check is that the overlay is absent and the
+class is present; that its presence would have swallowed the drop is a live-vault check,
+since nothing here hit-tests.
+
+The shelf is `shelfRemoval`'s `'resources'` branch in `src/view/render/shelf.ts`, which
+went from accepting nothing to the horizon axis's own removal over a different key —
+including its re-drop rule, since a card already drawn there can still carry a name with
+no date to sit beside. The keyboard is `handleResourceMoveKey` in
+`src/view/interactions/keyboard.ts`, on **Alt+Up/Down**: resources are rows, and
+Left/Right on this grid is reserved for a future scheduling gesture, which is what
+`horizonStops` answering null on the dated axis has been holding open. The two ladders
+share `ladderStep` — the edges hold rather than wrap, and the `offLadder` case both need —
+and nothing else, because the direction is exactly what has to differ; `offLadder` is
+reached differently here, by a card naming a resource no row draws rather than by an empty
+key. `Set assignee` in `src/view/interactions/labels.ts` leads with the DRAWN rows and
+routes its pick through `chooseAssignee`, the way `chooseHorizon` in
+`src/view/interactions/plan.ts` already branches by mode. Leading with the rows is not
+tidiness: a declared-and-empty row has a drop target and appears on no result, so a list
+built from the observed names alone would leave the menu the one input to this move that
+goes quiet.
+
+`CreatePlacement.assignee` was already built — threaded through
+`src/view/interactions/create.ts` and `createBacklogItem` by
+[[Showing a resources axis on the roadmap]], whose row New button writes it. This note
+claimed otherwise until 2026-08-13; the claim is corrected rather than kept, because a
+specification promising an implementer a call they will not find is the same defect the
+root `CLAUDE.md` records a guide making once already.
 
 `src/view/render/barLabel.ts` is not this PBI's feature. It is the bar's title and the
 mark width it clears, moved out of `src/view/render/timeline.ts` when that file hit its
 400-line budget and this increment needed eight lines in it — the same move `laneEntries`
 made into `src/view/render/lanes.ts`, for the same reason.
+
+Driven by synthetic drags, keys and menus in `test/view/resourceMoves.test.ts` (the vault
+is `test/helpers/resources.ts`, shared with the axis's own suite so the two cannot
+describe different axes), by `test/view/resourceLanes.test.ts` for what the axis draws,
+and by the resources block of `test/view/contextCardWrites.test.ts`, which now asks this
+axis the same three context-row questions as the board's and the horizon axis's.
+
+**Extension 3b is NOT built**, exactly as it is not for [[Moving between horizons]]: a
+move whose new value takes the note out of the Base's own results applies, and the card
+leaves on the refresh in silence. The mechanism belongs to [[New cards in place]], it was
+built once from one sentence and taken back out, and
+[[The outcome report was built from one sentence]] records the open question — nothing
+correlates a Bases pass with a write — that has to be answered before it is built again.
+That is why this note is Active rather than Done.
+
+**Extension 2c is specified and unexercisable.** A row named only by a logged absence
+needs [[Resource absences]], which is unbuilt, so nothing can put such a row on screen for
+a drop to land in. It needs no case of its own when that lands: `laneDrop` writes
+`lane.name` whatever minted the row, so how a row came to exist has never been a question
+the drop asks. Recorded rather than tested against a fixture that cannot exist.
+
+What a live vault still owes: the band highlight under a dragged bar (per element, not per
+band), that the absent overlay really does let a drop through where it used to sit, whether
+a screen reader announces a move whose card visibly does not move, and how a row being
+dropped into reads beside its neighbours. jsdom dispatches the events and paints nothing.

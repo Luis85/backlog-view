@@ -19,8 +19,15 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   **Resources (in order)** to give someone a row before anything lands in it; anyone a note
   names gets a row of their own regardless, and work with no assignee, or with nobody's
   dates to sit at, waits on the shelf. Configured views keep showing Horizons or Timeline
-  until you pick the new axis. Nothing on it can be dragged yet — moving work between rows
-  is the next increment.
+  until you pick the new axis.
+
+- **Move work between resources** — drag a bar into someone else's row, or onto the shelf
+  to un-assign it; **Alt+Up** and **Alt+Down** step the selected card one row, and **Set
+  assignee** on the row menu now offers every row on screen, empty ones included. All
+  three write the same single value to the note's own assignee property, undoable as one
+  batch. A row is who and a date is when, so moving work between rows never changes its
+  dates — and an item with no dates stays on the shelf under its new owner, which the view
+  says out loud rather than leaving it looking like a drop that missed.
 
 ## [0.7.1] - 2026-08-12
 

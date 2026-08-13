@@ -84,6 +84,22 @@
 	}
 }
 
+/* `.pbl-timeline-flat` is the content layer of a grid that positions nothing by the
+   pointer, which is this axis and only this axis. It draws no `.pbl-timeline-drop`, and
+   that overlay is what used to cover the full-height marks: every other absolutely
+   positioned decoration there already opts out of pointer events (`.pbl-grid-line`,
+   `.pbl-weekend-layer`, `.pbl-milestone-line`, `.pbl-dependency-layer`), but the today
+   line cannot do so unconditionally, because its tooltip is the only place its date is
+   written. Without this it is a 2px dead strip through every row here, swallowing the
+   drop the row beneath it is the target for — the defect `.pbl-milestone-line`'s own
+   comment in `timeline.css` records, reached the other way. Two classes against that
+   file's one, so this wins on SPECIFICITY and its position in `index.css` decides
+   nothing. What jsdom can check is that the class is on the content layer; that it stops
+   a real pointer is a live-vault question, since nothing here hit-tests. */
+.pbl-timeline-flat .pbl-today {
+	pointer-events: none;
+}
+
 /* The drop signal, and the only one: which row a bar lands in is the whole message, so
    there is no position within a row to indicate. Wired per element rather than per band
    (`laneDrop` in `src/view/render/roadmap.ts`), so what lights is the header or the row

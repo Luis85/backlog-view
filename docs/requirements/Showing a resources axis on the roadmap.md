@@ -24,6 +24,13 @@ files:
   - src/view/render/shelf.ts
   - src/view/render/timeline.ts
   - src/view/render/toolbarControls.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Showing a resources axis on the roadmap
@@ -215,6 +222,13 @@ writes an assignee, which is [[Assigning items to a resource]]'s, and a bar wire
 grips over a grid with no registered target is the "picked up and had nowhere to land"
 failure `src/view/CLAUDE.md` records. A row's own New button and the write behind it are
 this PBI's and are built.
+
+All four of those seams were reversed by [[Assigning items to a resource]] on 2026-08-13,
+which is what "in this increment" was reserving them for. The GRIP stays withheld even so,
+and for the reason stated above rather than by inheritance: a grip writes a DATE, and this
+axis still registers no positional target one could land on. What a bar offers now is an
+ordinary card drag — hold `null`, no baseline — which is a different gesture with a
+different write behind it.
 
 What is genuinely new is the row-grouping walk itself, and where an absence's bar merges
 into it. `ResourceLane.bars` is a plain list the renderer walks, which is the seam
