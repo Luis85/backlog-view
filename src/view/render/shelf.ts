@@ -11,7 +11,7 @@ import { canSchedule, unschedulePlan } from '../interactions/plan';
 import { BacklogItem } from '../../domain/model';
 import { placeItem, ShelfCard, statedEnds, UNSCHEDULED_LABEL, withoutEnds } from '../../domain/bars';
 import { placementEnds } from '../../domain/itemTypes';
-import { RoadmapAxis, SHELF_LABEL } from '../../domain/roadmap';
+import { drawsGrid, RoadmapAxis, SHELF_LABEL } from '../../domain/roadmap';
 import { organizeShelf, ShelfGroup } from '../../domain/shelf';
 
 /** What dropping a card on the shelf MEANS, the words that promise it, and its preview. */
@@ -230,7 +230,7 @@ function renderShelfCard(ctx: RowContext, cardsEl: HTMLElement, entry: ShelfCard
 	// one fact wherever it does show. Visible content, like the reason above it, so it
 	// reaches the card's accessible name the same content-derived way.
 	const conflicting = wiring.conflicts.get(entry.item.file.path) ?? NO_CONFLICTS;
-	const waits = wiring.axis === 'dates' ? dependencyNote(entry.item, conflicting) : '';
+	const waits = drawsGrid(wiring.axis) ? dependencyNote(entry.item, conflicting) : '';
 	if (waits) {
 		const dep = card.createDiv({ cls: 'pbl-shelf-dependency' + (conflicting.size > 0 ? ' pbl-shelf-conflict' : '') });
 		drawIcon(dep.createSpan({ cls: 'pbl-shelf-dependency-icon' }), conflicting.size > 0 ? 'alert-triangle' : 'link');

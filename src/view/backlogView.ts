@@ -12,7 +12,7 @@ import { buildColumnMenu, buildItemMenu, showMenuAtElement } from './interaction
 import { BacklogItem, BacklogModel, buildModel } from '../domain/model';
 import { childTypeChoices, PlacementEnd } from '../domain/itemTypes';
 import { DropTarget } from '../domain/dropTargets';
-import { activeAxis, RoadmapAxis } from '../domain/roadmap';
+import { activeAxis, drawsGrid, RoadmapAxis } from '../domain/roadmap';
 import { ShelfSort } from '../domain/shelf';
 import { ItemWrite, SchedulePlan } from '../domain/writePlan';
 import { ScaleId } from '../domain/timeline';
@@ -520,10 +520,12 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		const projection = this.projection;
 		this.viewEl.toggleClass('pbl-board-mode', projection === 'board' || projection === 'deliverables');
 		this.viewEl.toggleClass('pbl-roadmap-mode', projection === 'roadmap');
-		this.viewEl.toggleClass(
-			'pbl-roadmap-dates',
-			projection === 'roadmap' && activeAxis(this.settings, this.axisPick) === 'dates',
-		);
+		// The class NAME stays what it is: it turns on the GRID's layout, which the
+		// resources axis needs in full, and every rule in `styles/` plus every test
+		// already names it — renaming it would be a diff across the stylesheet for no
+		// behaviour. What it is asked about is `drawsGrid`, not the plain dated axis.
+		const axis = projection === 'roadmap' ? activeAxis(this.settings, this.axisPick) : null;
+		this.viewEl.toggleClass('pbl-roadmap-dates', axis !== null && drawsGrid(axis));
 		// The keyboard instructions belong to the board and are rebuilt with it below;
 		// dropped here so the attribute never outlives the element it points at — a
 		// dangling `aria-describedby` is read as no description at all.

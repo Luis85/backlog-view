@@ -1,6 +1,6 @@
 import { BacklogViewHost, DrawnColors } from '../host';
 import { paletteDone, stateColorPaint, StatePalette } from '../../domain/board';
-import { activeAxis } from '../../domain/roadmap';
+import { activeAxis, drawsGrid } from '../../domain/roadmap';
 
 /**
  * A colour key for the dated axis's bars, rendered under the toolbar and outside the
@@ -42,7 +42,10 @@ export function renderLegend(
 	drawn: DrawnColors,
 ): void {
 	legendEl.empty();
-	const onDatedAxis = host.projection === 'roadmap' && activeAxis(host.settings, host.axisPick) === 'dates';
+	// Whichever axis draws BARS, not the plain dated one: the resources axis draws the
+	// same bars grouped into rows, so a swatch keys exactly what it keys there.
+	const axis = host.projection === 'roadmap' ? activeAxis(host.settings, host.axisPick) : null;
+	const onDatedAxis = axis !== null && drawsGrid(axis);
 	// The class itself is the gate, not a hidden variant of it: a rule that hid an
 	// always-present `.pbl-legend` empty box would still leave the box in the layout
 	// and in `querySelector('.pbl-legend')`'s answer to "is a legend here".

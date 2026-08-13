@@ -4,7 +4,7 @@ import { RowContext, syncColumnFit } from './render/columns';
 import { TIMELINE_LEAD_PX } from './render/timeline';
 import { syncToolbarFit } from './render/toolbarFit';
 import { effectiveLeadWidth } from './interactions/timelineLeadResize';
-import { activeAxis } from '../domain/roadmap';
+import { activeAxis, drawsGrid } from '../domain/roadmap';
 
 /**
  * When to re-measure the pane and re-run the column-fit ladder — the policy half of
@@ -48,13 +48,14 @@ export class ResizePolicy {
 		if (treeShaped(this.host.projection)) return this.refit();
 		// The COLUMN ladder is the tree's alone — board columns and the horizon axis's
 		// buckets scroll rather than dropping columns, and the shelf answers to a stored
-		// pick rather than to a width. The dated axis is the one other case a resize can
+		// pick rather than to a width. A GRID axis is the one other case a resize can
 		// starve: its lead column is sized against the pane, not its own content, so a
 		// narrowed split can leave a stale render covering the whole grid until something
-		// else happens to re-render it.
+		// else happens to re-render it. Both grid axes, since both draw that lead column.
 		const roadmap = this.host.roadmap;
 		if (this.host.projection !== 'roadmap' || !roadmap) return false;
-		if (activeAxis(this.host.settings, this.host.axisPick) !== 'dates') return false;
+		const axis = activeAxis(this.host.settings, this.host.axisPick);
+		if (axis === null || !drawsGrid(axis)) return false;
 		const stored = this.host.leadWidth ?? TIMELINE_LEAD_PX;
 		const effective = effectiveLeadWidth(stored, this.treeEl.clientWidth);
 		// No `refitting` guard here, and `refit`'s reasoning does not carry: that one

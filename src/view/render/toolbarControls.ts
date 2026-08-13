@@ -3,7 +3,7 @@ import { hasColorableStates, openStateColors } from '../interactions/stateColors
 import { BacklogViewHost } from '../host';
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { projectionPopulation, treeShaped } from '../projection';
-import { activeAxis, configuredAxes, RoadmapAxis } from '../../domain/roadmap';
+import { activeAxis, configuredAxes, drawsGrid, RoadmapAxis } from '../../domain/roadmap';
 import { ScaleId } from '../../domain/timeline';
 import { showMenuForClick } from '../interactions/menu';
 import { runInit } from '../interactions/structure';
@@ -218,7 +218,8 @@ export function renderProjectionZone(host: BacklogViewHost, barEl: HTMLElement):
  * the dialog can actually show cannot drift apart.
  */
 function renderStateColorsButton(host: BacklogViewHost, zone: HTMLElement, barEl: HTMLElement): void {
-	if (activeAxis(host.settings, host.axisPick) !== 'dates' || !hasColorableStates(host)) return;
+	const axis = activeAxis(host.settings, host.axisPick);
+	if (axis === null || !drawsGrid(axis) || !hasColorableStates(host)) return;
 	const btn = iconButton(zone, 'palette', 'State colours', 'state-colors');
 	btn.addClass('pbl-state-colors-btn');
 	// Focus is put back at CLOSE time and looked up then, never captured: every change the
@@ -287,11 +288,13 @@ function renderAxisPicker(host: BacklogViewHost, zone: HTMLElement, barEl: HTMLE
 }
 
 /**
- * The zoom picker, jump-to-today and the density toggle, on the dated axis alone — the
- * horizon axis has no density to choose and no today to return to.
+ * The zoom picker, jump-to-today and the density toggle, on whichever axis draws the
+ * GRID — the horizon axis has no density to choose and no today to return to, and the
+ * resources axis has both, being the same grid grouped into rows.
  */
 function renderTimelineControls(host: BacklogViewHost, zone: HTMLElement, barEl: HTMLElement): void {
-	if (activeAxis(host.settings, host.axisPick) !== 'dates') return;
+	const axis = activeAxis(host.settings, host.axisPick);
+	if (axis === null || !drawsGrid(axis)) return;
 	const btn = menuButton(
 		zone,
 		ZOOM_LABEL[host.zoom].icon,
