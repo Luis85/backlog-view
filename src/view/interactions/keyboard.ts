@@ -395,38 +395,112 @@ function horizonStops(roadmap: RoadmapModel): (string | null)[] | null {
 	return [null, ...roadmap.buckets.map((bucket) => bucket.value)];
 }
 
-/** Alt+Left/Right: the selected card moves one bucket, by the drop's own write. */
+/**
+ * The rows an Alt+arrow steps through on the resources axis: the shelf first, then the
+ * rows as they render — `horizonStops`' ladder over a different property, and the shelf
+ * leads for that ladder's own stated reason.
+ *
+ * Null on the other two axes, so this handler swallows no key it does not act on.
+ */
+function resourceStops(roadmap: RoadmapModel): (string | null)[] | null {
+	if (roadmap.axis !== 'resources') return null;
+	return [null, ...roadmap.lanes.map((lane) => lane.name)];
+}
+
+/**
+ * One step along a placement ladder: the neighbouring stop, or null at an edge. The edges
+ * HOLD rather than wrap — a card at the end has nowhere further to advance, and wrapping
+ * would un-place finished triage unasked.
+ *
+ * `offLadder` is the exception both axes need and neither could express without it: a card
+ * DRAWN where the ladder's first stop is, without being ON it, because its note still
+ * holds something. A backward step from there is the real, undoable cleanup the drag and
+ * the menu both plan for that same card, and indexing it at stop 0 made that stop an edge
+ * for exactly the card that had somewhere to go.
+ */
+function ladderStep(stops: (string | null)[], current: number, step: number, offLadder: boolean): number | null {
+	const target = offLadder && step < 0 ? 0 : current + step;
+	return target < 0 || target >= stops.length ? null : target;
+}
+
+/**
+ * Alt+arrow: the selected card moves one placement, by the drop's own write. Which KEYS
+ * that is, and along which ladder, belongs to the axis — buckets lay out sideways and
+ * resources stack, so the two cannot share a handler unchanged; what they do share is
+ * `ladderStep`.
+ */
 function handleRoadmapMoveKey(
 	host: BacklogViewHost,
 	snapshot: RoadmapSnapshot,
 	card: BacklogItem,
 	evt: KeyboardEvent,
 ): void {
-	if (evt.key !== 'ArrowLeft' && evt.key !== 'ArrowRight') return;
-	const stops = horizonStops(snapshot.roadmap);
-	// Not this projection's chord to swallow on the dated axis — and never a context
-	// card: the same rule that keeps it out of the draggables, applied where a
-	// keyboard could otherwise reach past them. Both bail BEFORE preventDefault, so a
+	// Never a context card: the same rule that keeps it out of the draggables, applied
+	// where a keyboard could otherwise reach past them. Before any `preventDefault`, so a
 	// key this handler does not act on is left to whatever else wants it.
-	if (!stops || card.outsideFilter) return;
+	if (card.outsideFilter) return;
+	if (snapshot.roadmap.axis === 'resources') handleResourceMoveKey(host, snapshot.roadmap, card, evt);
+	else handleHorizonMoveKey(host, snapshot.roadmap, card, evt);
+}
+
+/** Alt+Left/Right: the selected card moves one bucket, by the drop's own write. */
+function handleHorizonMoveKey(
+	host: BacklogViewHost,
+	roadmap: RoadmapModel,
+	card: BacklogItem,
+	evt: KeyboardEvent,
+): void {
+	if (evt.key !== 'ArrowLeft' && evt.key !== 'ArrowRight') return;
+	// Not this projection's chord to swallow on the dated axis: those moves are the
+	// scheduling feature's, and a shortcut that quietly did something else instead would
+	// be worse than one that does nothing.
+	const stops = horizonStops(roadmap);
+	if (!stops) return;
 	evt.preventDefault();
 	// An unreadable or empty value shelves the card, and `sameValue` reads both as
 	// absence — so the stop it moves FROM is the one it is drawn in, not the one it
 	// claims.
 	const current = stops.findIndex((stop) => sameValue(stop, card.horizon.value));
 	if (current < 0) return;
-	const step = evt.key === 'ArrowRight' ? 1 : -1;
-	// …but it is drawn on the shelf without being ON it: the note still holds
-	// something, so reaching the shelf is a real, undoable cleanup — the very write
-	// the shelf drop and Clear horizon plan for the same card. Indexing it at stop 0
-	// made the shelf edge look like an edge for it, and the keyboard alone could not
-	// express a move its two siblings both could.
+	// …but it is drawn on the shelf without being ON it: the note still holds something,
+	// so reaching the shelf is a real, undoable cleanup — the very write the shelf drop
+	// and Clear horizon plan for the same card. See `ladderStep`.
 	const offLadder = card.horizon.value === null && card.ownKeys.horizon;
-	const target = offLadder && step < 0 ? 0 : current + step;
-	// The edges hold rather than wrap: a card in the last bucket has nowhere further
-	// to advance, and wrapping would un-place it unasked.
-	if (target < 0 || target >= stops.length) return;
+	const target = ladderStep(stops, current, evt.key === 'ArrowRight' ? 1 : -1, offLadder);
+	if (target === null) return;
 	void host.performHorizonMove(card, stops[target]);
+}
+
+/**
+ * Alt+Up/Down: the selected card moves one resource row, by the drop's own write.
+ *
+ * UP and DOWN because resources are ROWS, stacked on the same calendar grid the dated axis
+ * draws — and because Left/Right on that grid is reserved: `horizonStops` answers null on
+ * the dated axis today precisely so a future scheduling gesture can claim them there
+ * without a stray shortcut already meaning something else. Resources sit ON that grid, so
+ * this is the one axis where a row change and a date change could both plausibly want the
+ * same keys, and only one dimension can have them.
+ */
+function handleResourceMoveKey(
+	host: BacklogViewHost,
+	roadmap: RoadmapModel,
+	card: BacklogItem,
+	evt: KeyboardEvent,
+): void {
+	if (evt.key !== 'ArrowUp' && evt.key !== 'ArrowDown') return;
+	const stops = resourceStops(roadmap);
+	if (!stops) return;
+	evt.preventDefault();
+	const current = stops.findIndex((stop) => sameValue(stop, card.assigneeValue));
+	// A name no drawn row carries — `handleHorizonMoveKey`'s `offLadder`, reached by this
+	// axis's own minting rule rather than by an empty key: a row exists only where a BAR
+	// lands, so a card naming somebody with no date to sit beside is drawn on the shelf
+	// while its note still names them. Taking that name off is what the shelf drop and
+	// Clear assignee both plan for it, so the keyboard has to be able to say it too.
+	const offLadder = current < 0;
+	const target = ladderStep(stops, offLadder ? 0 : current, evt.key === 'ArrowDown' ? 1 : -1, offLadder);
+	if (target === null) return;
+	void host.performResourceMove(card, stops[target]);
 }
 
 /** The card a navigation key moves to, or null for a key that is not navigation. */

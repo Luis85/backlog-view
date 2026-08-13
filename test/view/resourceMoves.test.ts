@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { Notice } from '../helpers/obsidian-mock';
-import { Harness, flush, makeView, refresh, useViewHarness } from '../helpers/view';
+import { Harness, flush, key, makeView, refresh, treeOf, useViewHarness } from '../helpers/view';
 import { announced, cardDrag } from '../helpers/dnd';
 import { cardByTitle } from '../helpers/board';
 import { barFor, laneOrder, lanesOf, shelfOf, shelfTitles } from '../helpers/roadmap';
@@ -304,5 +304,104 @@ describe('moving between resources by drag', () => {
 		expect(containerEl.querySelectorAll('.pbl-bar-grip')).not.toHaveLength(0);
 		expect(containerEl.querySelector('.pbl-timeline-drop')).not.toBeNull();
 		expect(containerEl.querySelector('.pbl-timeline-content')?.classList.contains('pbl-timeline-flat')).toBe(false);
+	});
+});
+
+describe('moving between resources without a drag', () => {
+	it('Alt+Down advances the selected card one row, writing the drop’s own value', async () => {
+		const vault = resourceVault();
+		const { view, containerEl } = laneRoadmap(vault);
+
+		view.selectItem(view.model?.byPath.get('Alice dated.md') as never);
+		key(treeOf(containerEl), 'ArrowDown', { altKey: true });
+		await flush();
+
+		expect(vault.fm('Alice dated.md')['assignee']).toBe('Bob');
+		expect(vault.writeLog).toHaveLength(1);
+	});
+
+	it('Alt+Up off the first row un-assigns, and off the shelf does nothing', async () => {
+		const vault = resourceVault();
+		const { view, containerEl } = laneRoadmap(vault);
+		const tree = treeOf(containerEl);
+
+		// The shelf leads the ladder, the horizon axis's own rule: it is where un-placing
+		// lives and where an untriaged card enters the axis from.
+		view.selectItem(view.model?.byPath.get('Alice dated.md') as never);
+		key(tree, 'ArrowUp', { altKey: true });
+		await flush();
+		expect('assignee' in vault.fm('Alice dated.md')).toBe(false);
+
+		// And there is nowhere further up: the edges hold rather than wrap.
+		view.selectItem(view.model?.byPath.get('Nobody.md') as never);
+		key(tree, 'ArrowUp', { altKey: true });
+		await flush();
+		expect(vault.writeLog.map((w) => w.path)).toEqual(['Alice dated.md']);
+	});
+
+	it('holds at the last row rather than wrapping', async () => {
+		const vault = resourceVault();
+		const { view, containerEl } = laneRoadmap(vault);
+
+		// Zoe is the last row drawn.
+		view.selectItem(view.model?.byPath.get('Stray.md') as never);
+		key(treeOf(containerEl), 'ArrowDown', { altKey: true });
+		await flush();
+
+		expect(vault.fm('Stray.md')['assignee']).toBe('Zoe');
+		expect(vault.writeLog).toEqual([]);
+	});
+
+	it('reaches a card whose note names a resource NO row draws', async () => {
+		// This axis mints a row only where a BAR lands, so a card naming somebody with no
+		// date to sit beside names a resource that has no stop on the ladder at all — it is
+		// drawn on the shelf without being ON it, and taking that name off is a real,
+		// undoable write the drag and the menu can both express. The keyboard is the third
+		// input to one move, so it has to reach it too. `Quinn` is neither declared nor
+		// carried by any dated result, which is what makes the index genuinely absent —
+		// `Undated` would not do, since Alice's own row is drawn by her two bars.
+		const vault = resourceVault();
+		vault.addFile('Quinn work.md', { frontmatter: { type: 'Epic', order: 60, assignee: 'Quinn' } });
+		const { view, containerEl } = laneRoadmap(vault);
+		expect(shelfTitles(containerEl)).toContain('Quinn work');
+
+		view.selectItem(view.model?.byPath.get('Quinn work.md') as never);
+		key(treeOf(containerEl), 'ArrowUp', { altKey: true });
+		await flush();
+
+		expect('assignee' in vault.fm('Quinn work.md')).toBe(false);
+	});
+
+	it('writes nothing on Alt+Left, Alt+Right, or Alt with a second modifier', async () => {
+		const vault = resourceVault();
+		const { view, containerEl } = laneRoadmap(vault);
+		const tree = treeOf(containerEl);
+		view.selectItem(view.model?.byPath.get('Alice dated.md') as never);
+
+		// Left/Right on this grid is reserved: resources sit ON the dated axis, and only
+		// one dimension can have those keys. A chord aimed at Obsidian or the OS must not
+		// land as a frontmatter write either.
+		key(tree, 'ArrowLeft', { altKey: true });
+		key(tree, 'ArrowRight', { altKey: true });
+		key(tree, 'ArrowDown', { altKey: true, shiftKey: true });
+		key(tree, 'ArrowDown', { altKey: true, ctrlKey: true });
+		await flush();
+
+		expect(vault.writeLog).toEqual([]);
+	});
+
+	it('leaves Alt+Up/Down inert on the horizon axis, where rows are not what moves', async () => {
+		// The control beside the case above: the ladder is per axis, and the horizon
+		// axis's own is Left/Right. Neither may quietly answer the other's keys.
+		const vault = new FakeVault();
+		vault.addFile('Item.md', { frontmatter: { type: 'Epic', order: 10, horizon: 'Now' } });
+		const harness = makeView(vault, { horizonProperty: 'note.horizon' }, { collapsed: true });
+		harness.view.setProjection('roadmap');
+		harness.view.selectItem(harness.view.model?.byPath.get('Item.md') as never);
+
+		key(treeOf(harness.containerEl), 'ArrowDown', { altKey: true });
+		await flush();
+
+		expect(vault.writeLog).toEqual([]);
 	});
 });
