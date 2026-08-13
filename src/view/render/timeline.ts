@@ -1,6 +1,7 @@
 import { setTooltip } from 'obsidian';
 import { drawIcon } from './icons';
 import { RowContext } from './columns';
+import { renderLaneContextRow, renderLaneHead, renderLaneRowDescription, TimelineEntry } from './lanes';
 import { createCard, wireCardActivation } from './board';
 import { foldOnClick, renderBadge, renderChevron, renderTitleText } from './rows';
 import { dependencyNote, NO_CONFLICTS, renderDependencyArrows } from './timelineArrows';
@@ -35,6 +36,7 @@ import {
 	TimelineWindow,
 	weekendOffsetDays,
 } from '../../domain/timeline';
+import { ResourceLane } from '../../domain/roadmap';
 import { CivilDate } from '../../domain/noteFields';
 
 /**
@@ -152,18 +154,28 @@ export interface TimelineDrawing {
 	 * draws the shelf itself, separately, after this pass.
 	 */
 	shelf: ShelfCard[];
+	/**
+	 * Whether a bar here may be taken hold of. False on the resources axis, which wires
+	 * no drop target for a gesture to land on — a move there writes an assignee, and that
+	 * is [[Assigning items to a resource]]'s. Withheld at the source rather than left
+	 * dangling: a grip advertised over a grid with no target registered is exactly the
+	 * "bars picked up and had nowhere to land" failure `src/view/CLAUDE.md` records.
+	 */
+	grips: boolean;
 }
 
 export function renderTimeline(
 	ctx: RowContext,
 	containerEl: HTMLElement,
-	rows: TimelineRow[],
+	entries: TimelineEntry[],
 	drawing: TimelineDrawing,
 ): TimelineRender {
 	const { today, scale, dnd, palettes, available, shelf } = drawing;
-	// What a collapsed row hides, it hides from the whole grid: the window is the drawn
-	// spans, exactly as it already is for the spans hiding completed work removes.
-	const bars = rows.map((row) => row.bar);
+	// Every bar this grid will draw, in draw order — the window, the milestone lines and
+	// the dependency arrows are all computed from it and are axis-independent. What a
+	// collapsed row hides, it hides from the whole grid: the window is the drawn spans,
+	// exactly as it already is for the spans hiding completed work removes.
+	const bars = entries.flatMap((entry) => (entry.kind === 'row' ? [entry.row.bar] : []));
 	const window = timelineWindow(bars.map((bar) => bar.span), today);
 	// Resolved ONCE, here, and threaded everywhere `TIMELINE_LEAD_PX` used to be read
 	// directly: the CSS width below and the TS arithmetic that places the today line,
@@ -240,17 +252,31 @@ export function renderTimeline(
 		tracks,
 		palettes,
 		conflictedPrereqs: dependencies.conflicts,
+		grips: drawing.grips,
 	};
 	const drawn: DrawnColors = { done: false, milestone: milestoneLines, accent: false };
-	rows.forEach((entry, index) => {
-		const { row, colors } = renderBarRow(ctx, mounts, window, entry, scale);
-		if (colors.done) drawn.done = true;
-		if (colors.milestone) drawn.milestone = true;
-		if (colors.accent) drawn.accent = true;
+	// The stripe counts drawn ROWS only: a lane header is chrome, and counting it would
+	// flip the parity of every row beneath it.
+	let drawnRows = 0;
+	let lane: ResourceLane | null = null;
+	for (const entry of entries) {
+		if (entry.kind === 'lane') {
+			lane = entry.lane;
+			renderLaneHead(ctx, content, entry.lane);
+			continue;
+		}
+		const row =
+			entry.kind === 'context'
+				? renderLaneContextRow(ctx, content, entry.item)
+				: reportColors(renderBarRow(ctx, mounts, window, entry.row, scale), drawn);
+		// Whose row this is, said on the row itself: the header is a sibling div and
+		// cannot label what follows it. See `renderLaneRowDescription`.
+		if (lane) renderLaneRowDescription(row, lane.name);
 		// Assigned at render because CSS has no nth-of-class, and nth-child would
 		// count the header, the lines and the layers interleaved in this container.
-		if (index % 2 === 1) row.addClass('pbl-row-even');
-	});
+		if (drawnRows % 2 === 1) row.addClass('pbl-row-even');
+		drawnRows++;
+	}
 	// After every row exists, never before: an edge's arrow anchors on the ROWS the
 	// prerequisite and the dependent actually drew, and its Y comes from where those
 	// rows really landed rather than a guessed row height — see `renderDependencyArrows`,
@@ -417,6 +443,16 @@ interface BarRowMounts {
 	conflictedPrereqs: ReadonlyMap<string, ReadonlySet<string>>;
 	/** See `TimelineDrawing.palettes`. */
 	palettes: StatePalette[];
+	/** See `TimelineDrawing.grips`. */
+	grips: boolean;
+}
+
+/** A bar row's element, with the colours it drew folded into the pass's own report. */
+function reportColors(rendered: { row: HTMLElement; colors: DrawnColors }, drawn: DrawnColors): HTMLElement {
+	if (rendered.colors.done) drawn.done = true;
+	if (rendered.colors.milestone) drawn.milestone = true;
+	if (rendered.colors.accent) drawn.accent = true;
+	return rendered.row;
 }
 
 function renderBarRow(
@@ -468,7 +504,7 @@ function renderBarRow(
 	// Asked ONCE, of `barHolds`, shared by the class that advertises a body drag and
 	// the loop that actually wires one — so what the cursor promises and what a drop
 	// registers cannot disagree. The body hold IS the bar; the grips are its two edges.
-	const holds = barHolds(bar.item, ctx.host.settings, bar);
+	const holds = mounts.grips ? barHolds(bar.item, ctx.host.settings, bar) : [];
 	const el = track.createDiv({ cls: barClasses(bar, geometry, holds.includes('body')) });
 	el.setCssProps({
 		'--pbl-bar-left': `${geometry.startDay * scale.dayPx}px`,

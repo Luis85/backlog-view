@@ -5,7 +5,8 @@ import { RowContext } from './columns';
 import { renderAllDoneState, renderEmptyState, renderFilterEmptyState } from './emptyStates';
 import { renderContextStrip, renderShelf, shelfRemoval } from './shelf';
 import { syncShelfTabStops } from './shelfControls';
-import { renderTimeline } from './timeline';
+import { barEntries, laneEntries } from './lanes';
+import { renderTimeline, TimelineRender } from './timeline';
 import { DrawnColors, RoadmapSnapshot, ScrollBox } from '../host';
 import { CardDragController } from '../interactions/cardDrag';
 import { newItemType, promptCreateItem } from '../interactions/create';
@@ -13,7 +14,7 @@ import { wireTimelineDrag } from '../interactions/timelineDrag';
 import { StatePalette, statePalettes } from '../../domain/board';
 import { timelineRows } from '../../domain/bars';
 import { BacklogItem } from '../../domain/model';
-import { buildRoadmap, HorizonBucket, RoadmapAxis } from '../../domain/roadmap';
+import { buildRoadmap, HorizonBucket, RoadmapAxis, RoadmapModel } from '../../domain/roadmap';
 import { scaleFor, TimelineScale, TimelineWindow } from '../../domain/timeline';
 import { CivilDate } from '../../domain/noteFields';
 
@@ -82,26 +83,11 @@ export function renderRoadmap(
 		// scrolls nothing, so auto-scroll toward an edge has to watch the box that does.
 		dnd.wireScroller(treeEl);
 	} else {
+		// Both grid axes through ONE call: what differs between them is the entry list and
+		// whether a bar may be taken hold of — never a second grid.
 		const activeScale = scaleFor(host.zoom);
 		palettes = statePalettes(model, host.settings);
-		// The rows the grid draws, which is the bars minus whatever a collapsed bar above
-		// them is holding shut. Asked here rather than inside `buildRoadmap`: collapse is
-		// the view's own state, and the shelf beside the grid is a statement about what the
-		// axis could not place — a row hidden by a disclosure has not become unplaced.
-		const rows = timelineRows(roadmap.bars, (path) => host.isCollapsed(path));
-		const timeline = renderTimeline(ctx, frameEl, rows, {
-			today,
-			scale: activeScale,
-			dnd,
-			shelf: roadmap.shelf,
-			palettes,
-			// The PANE's width, not the frame's or the not-yet-built scroller's: this is
-			// the element `backlogView.ts`'s `ResizeObserver` watches, so a render here and
-			// a resize-driven re-render there measure the same box. They can still read it
-			// a scrollbar apart, since this measurement happens after `treeEl.empty()` —
-			// see `TimelineDrawing.available`, which states what that costs.
-			available: treeEl.clientWidth,
-		});
+		const timeline = renderGridAxis(ctx, frameEl, treeEl, roadmap, { axis, today, dnd, palettes });
 		cards.push(...timeline.cards);
 		todayLeft = timeline.todayLeft;
 		scroller = timeline.scroller;
@@ -110,15 +96,6 @@ export function renderRoadmap(
 		leadWidth = timeline.leadWidth;
 		drawn = timeline.drawn;
 		dependencyConflicts = timeline.dependencyConflicts;
-		wireTimelineDrag(ctx, dnd, {
-			overlay: timeline.overlay,
-			scroller: timeline.scroller,
-			window: timeline.window,
-			scale: activeScale,
-			headerTrack: timeline.headerTrack,
-			tracks: timeline.tracks,
-			leadWidth: timeline.leadWidth,
-		});
 	}
 	// Captured before the shelf renders: collapsing the shelf changes ITS contribution
 	// to `cards` (see `renderShelf`), never the axis's own — this is the true "does the
@@ -151,6 +128,72 @@ export function renderRoadmap(
 	if (advisoryEl) boxes.push({ key: 'advisory', el: advisoryEl });
 
 	return { roadmap, cards, shelfEl: shelf.el, todayLeft, scroller, boxes, window, scale, leadWidth, drawn, palettes };
+}
+
+/** What a grid axis needs to draw — grouped so `renderGridAxis` stays inside max-params. */
+interface GridDrawing {
+	axis: RoadmapAxis;
+	today: CivilDate;
+	dnd: CardDragController;
+	palettes: StatePalette[];
+}
+
+/**
+ * Either axis that draws the dated grid. The window, the day header, the gridlines, the
+ * today line, the milestone lines, the dependency layer and the drop overlay are all
+ * `renderTimeline`'s and identical on both; the two differences are stated here and
+ * nowhere else.
+ *
+ * **The entry list.** The dated axis draws its bars minus whatever a collapsed bar above
+ * them is holding shut — asked here rather than inside `buildRoadmap`, because collapse is
+ * the view's own state and a row hidden by a disclosure has not become unplaced. The
+ * resources axis asks nothing: its rows are flat, so nothing folds and nothing is hidden.
+ *
+ * **What a gesture may do.** The grid is ONE positional drop target and it writes DATES.
+ * The resources axis wires none and offers no grip, because a move there writes an
+ * assignee — [[Assigning items to a resource]]'s work — and a grid that accepted a date
+ * drag while its rows meant something else would be writing the axis the reader is not
+ * looking at.
+ */
+function renderGridAxis(
+	ctx: RowContext,
+	frameEl: HTMLElement,
+	treeEl: HTMLElement,
+	roadmap: RoadmapModel,
+	drawing: GridDrawing,
+): TimelineRender {
+	const { axis, today, dnd, palettes } = drawing;
+	const activeScale = scaleFor(ctx.host.zoom);
+	const entries =
+		axis === 'resources'
+			? laneEntries(roadmap.lanes)
+			: barEntries(timelineRows(roadmap.bars, (path) => ctx.host.isCollapsed(path)));
+	const timeline = renderTimeline(ctx, frameEl, entries, {
+		today,
+		scale: activeScale,
+		dnd,
+		shelf: roadmap.shelf,
+		palettes,
+		grips: axis === 'dates',
+		// The PANE's width, not the frame's or the not-yet-built scroller's: this is
+		// the element `backlogView.ts`'s `ResizeObserver` watches, so a render here and
+		// a resize-driven re-render there measure the same box. They can still read it
+		// a scrollbar apart, since this measurement happens after `treeEl.empty()` —
+		// see `TimelineDrawing.available`, which states what that costs.
+		available: treeEl.clientWidth,
+	});
+	if (axis === 'dates') {
+		wireTimelineDrag(ctx, dnd, {
+			overlay: timeline.overlay,
+			scroller: timeline.scroller,
+			window: timeline.window,
+			scale: activeScale,
+			headerTrack: timeline.headerTrack,
+			tracks: timeline.tracks,
+			leadWidth: timeline.leadWidth,
+		});
+	}
+	return timeline;
 }
 
 /**

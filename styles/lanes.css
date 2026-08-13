@@ -1,0 +1,53 @@
+/* The resources axis's row headers, and the bar-less row an excluded note gets inside
+   one. The grid's geometry is `timeline.css`'s and is deliberately not repeated: the
+   header's lead is `.pbl-timeline-lead`, so it sticks and sizes off the same
+   `--pbl-tl-lead` every row's lead does, and its empty `.pbl-timeline-track` is what
+   carries the header band across the day area. */
+
+.pbl-lane-head {
+	display: flex;
+	align-items: stretch;
+	background-color: var(--background-secondary);
+	border-bottom: 1px solid var(--background-modifier-border);
+	font-weight: var(--font-semibold);
+}
+
+/* The band has to reach the header's own lead too, or the sticky lead column keeps
+   `.pbl-timeline-lead`'s `--background-primary` and the header reads as a row with a
+   coloured tail. */
+.pbl-lane-head .pbl-timeline-lead {
+	background-color: var(--background-secondary);
+}
+
+.pbl-lane-head .pbl-timeline-track {
+	min-height: 26px;
+}
+
+.pbl-lane-name {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.pbl-lane-count {
+	color: var(--text-muted);
+	font-weight: var(--font-normal);
+}
+
+/* Outside the declared roster — the bucket axis's own stray marking, in the one form a
+   row can carry it: `.pbl-bucket-undeclared` dims a column header, and this dims a row's. */
+.pbl-lane-undeclared .pbl-lane-name {
+	font-style: italic;
+}
+
+.pbl-lane-stray {
+	display: flex;
+	align-items: center;
+	color: var(--text-muted);
+}
+
+/* A context row in a lane draws no bar, so its track is empty on purpose — the muting is
+   what says the row is here to place its children rather than to be read as a plan. */
+.pbl-lane-context {
+	opacity: 0.65;
+}

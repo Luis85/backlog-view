@@ -112,6 +112,32 @@ export function timelineRows(containerEl: HTMLElement): HTMLElement[] {
 	return Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-timeline-row'));
 }
 
+export function lanesOf(containerEl: HTMLElement): HTMLElement[] {
+	return Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-lane-head'));
+}
+
+export function laneNames(containerEl: HTMLElement): string[] {
+	return lanesOf(containerEl).map((el) => el.querySelector('.pbl-lane-name')?.textContent ?? '');
+}
+
+export function laneCountOf(lane: HTMLElement): string {
+	return lane.querySelector('.pbl-lane-count')?.textContent ?? '';
+}
+
+/**
+ * Every drawn row of the resources axis in order, headers included — what the reader's
+ * eye walks down. A header reads as `lane:<name>` so one assertion can state both the
+ * grouping and the order within a group, which two separate lists cannot.
+ */
+export function laneOrder(containerEl: HTMLElement): string[] {
+	const rows = containerEl.querySelectorAll<HTMLElement>('.pbl-lane-head, .pbl-timeline-row');
+	return Array.from(rows).map((el) =>
+		el.classList.contains('pbl-lane-head')
+			? `lane:${el.querySelector('.pbl-lane-name')?.textContent ?? ''}`
+			: (el.querySelector('.pbl-card-title')?.textContent ?? ''),
+	);
+}
+
 /** The titles the grid drew, in row order — what a disclosure adds to and takes away. */
 export function timelineTitles(containerEl: HTMLElement): string[] {
 	return timelineRows(containerEl).map((row) => row.querySelector('.pbl-card-title')?.textContent ?? '');

@@ -140,34 +140,71 @@ vocabulary the way the horizon values do.
 
 ## Where it lives
 
-Unbuilt. The read half would extend `src/domain/roadmap.ts`'s existing bucket
-derivation (`deriveBuckets`, the declared-order, minted-stray shape
-[[Buckets from a horizon property]] already specifies) with a sibling keyed off
-`assigneeValue` instead of the horizon value, and would reuse `src/domain/bars.ts`'s
-`placeItem`/`inferSpan` unchanged — a bar's position within its row is the same
-computation the dated axis already makes, only grouped differently. `hasResourceAxis`
-would join `hasHorizonAxis` and `hasDateAxis` in the same file, and reaching the axis
-would widen the selection machinery [[Horizons or dates]] built rather than add a
-second one: `RoadmapAxis` gains `'resources'` alongside `'horizons'` and `'dates'`,
-`configuredAxes` pushes it last (after the `hasDateAxis` push, so it never leads),
-`AXIS_LABEL` in `src/view/render/toolbarControls.ts` gains a third entry, and
-`renderAxisPicker`'s two `choice(...)` calls gain a third — `activeAxis` itself needs no
-change, since it already resolves generically over however many axes `configuredAxes`
-returns. The persisted PICK is not the same claim: `src/storage/collapseStore.ts` reads
-stored state defensively rather than trusting it as the `RoadmapAxis` type, so its own
-`AXIS_VALUES` — a separate list of strings, not derived from the type — gains
-`'resources'` too, or a saved pick of this axis is silently dropped on the next load and
-falls back to whichever axis remains, exactly as an axis losing its configuration
-already does (extension 1a), which would misreport a stored pick as one never made. The
-optional roster is one more row through the settings shape ADR 0026 already splits between
-`src/domain/settings.ts` and its view-options picker; the value itself is
-`assigneeValue`, already on the model ([[Setting the assignee on an item]]). Rendering
-would sit in `src/view/render/roadmap.ts`, beside the bucket and shelf rendering it
-already holds, with the chip suppression reading the same row-membership question
-`src/view/render/columns.ts` already asks for the horizon chip. Creation from a row
-would run the existing `promptCreateItem` (`src/view/interactions/create.ts`) with
-`CreatePlacement` carrying the resource's name the way it already carries a horizon's.
+The read half extends `src/domain/roadmap.ts`'s existing bucket derivation with a sibling
+keyed off `assigneeValue` instead of the horizon value — `deriveLanes`, in the
+declared-order, minted-stray shape [[Buckets from a horizon property]] already specifies —
+and reuses `src/domain/bars.ts`'s `placeItem`/`inferSpan` unchanged: a bar's position
+within its row is the same computation the dated axis already makes, only grouped
+differently. `ResourceLane` and `hasResourceAxis` join `hasHorizonAxis` and `hasDateAxis`
+in that same file, and reaching the axis widened the selection machinery
+[[Horizons or dates]] built rather than adding a second one: `RoadmapAxis` gains
+`'resources'`, `configuredAxes` pushes it last (after the `hasDateAxis` push, so it never
+leads), `AXIS_LABEL` in `src/view/render/toolbarControls.ts` gains a third entry, and
+`activeAxis` needed no change at all, since it already resolves generically over however
+many axes `configuredAxes` returns. `renderAxisPicker`'s literal `choice(...)` calls became
+a loop over `configuredAxes` itself: with exactly two axes a spelled-out list was the same
+thing, and with three it stopped being — two configured out of three would have offered the
+unconfigured one, whose pick `activeAxis` then falls straight back out of.
+
+The persisted PICK is not the same claim: `src/storage/collapseStore.ts` reads stored state
+defensively rather than trusting it as the `RoadmapAxis` type, so its own `AXIS_VALUES` — a
+separate list of strings, not derived from the type — gains `'resources'` too, or a saved
+pick of this axis is silently dropped on the next load and falls back to whichever axis
+remains, exactly as an axis losing its configuration already does (extension 1a), which
+would misreport a stored pick as one never made. The optional roster is one more row through
+the settings shape ADR 0026 already splits between `src/domain/settings.ts` and its
+view-options picker (`resourceNames`, in the Roadmap group, with nothing prefilled); the
+value a row is matched on is `assigneeValue`, already on the model
+([[Setting the assignee on an item]]).
+
+**One predicate carries the axis through the view**: `drawsGrid` in
+`src/domain/roadmap.ts`, because six places compared `activeAxis(...) === 'dates'` to mean
+"the dated grid is on screen" — the zoom, density and jump-to-today controls, the
+state-colour button, the legend, the resize policy's lead-column branch, the
+`pbl-roadmap-dates` layout class and a shelf card's dependency note. That comparison was
+exact while one axis drew a grid and stopped being the moment a second one did. Four sites
+keep their comparison deliberately, because they mean the plain dated axis and nothing
+else: `collapseKey`'s `TIMELINE_SCOPE` and `clickActionApplies`, since rows here are flat
+and fold nothing, and the two `'horizons'` gates.
+
+Rendering is `src/view/render/lanes.ts` — the row header, and the bar-less row an excluded
+note gets inside one — drawn by `src/view/render/timeline.ts`, which now takes a
+`TimelineEntry` list rather than a row list so a header can be interleaved: the window, the
+day header, the gridlines, the today line, the milestone lines, the dependency layer and
+the drop overlay are all derived from the bars in that list and are the same on both grid
+axes, so rows cost no second grid. `laneEntries` sits beside the dated axis's own
+`barEntries` in that file rather than in `lanes.ts`, so the grid and the row renderer do not
+import each other. `src/view/render/roadmap.ts` dispatches the three axes and holds
+`renderGridAxis`, the one place the two grid axes differ: which entry list, and whether a
+bar may be taken hold of. `styles/lanes.css` carries the header's band, imported after
+`timeline.css` because it overrides `.pbl-timeline-lead` at equal specificity.
+
+**The axis is read-only in this increment, and that is a decision rather than an
+omission.** No grip on a bar (`TimelineDrawing.grips`), no drop target on the grid, and a
+shelf that accepts nothing (`shelfRemoval`'s own `'resources'` branch): every move here
+writes an assignee, which is [[Assigning items to a resource]]'s, and a bar wired with
+grips over a grid with no registered target is the "picked up and had nowhere to land"
+failure `src/view/CLAUDE.md` records. A row's own New button and the write behind it are
+this PBI's and are built.
 
 What is genuinely new is the row-grouping walk itself, and where an absence's bar merges
-into it — [[Resource absences]] owns the second source, and this PBI's rendering is what
-has to leave the seam for it.
+into it. `ResourceLane.bars` is a plain list the renderer walks, which is the seam
+[[Resource absences]] needs: a second source appends to it rather than changing how a row
+is drawn.
+
+**Not built here, and owed:** the acceptance criterion that a row's name must win over a
+picked template's assignee cannot be met yet, because templates do not exist —
+[[Creating an item from a template]] is unbuilt, so there is no template write for a row
+name to win over. The precedence rule belongs to that PBI when it lands. And the header's
+appearance in a themed vault, plus how a screen reader reads a header div among `option`
+rows, are live-vault checks the jsdom harness cannot make.

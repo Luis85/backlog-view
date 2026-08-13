@@ -3,6 +3,7 @@ import { BacklogSettings } from '../../src/domain/settings';
 import { settingsWith } from '../helpers/settings';
 import { buildModel } from '../../src/domain/model';
 import { buildRoadmap } from '../../src/domain/roadmap';
+import { resourceVault } from '../helpers/resources';
 import { FakeVault } from '../helpers/vault';
 
 /**
@@ -28,26 +29,11 @@ function titles(bars: { item: { title: string } }[]): string[] {
 	return bars.map((bar) => bar.item.title);
 }
 
-function teamVault(): FakeVault {
-	const vault = new FakeVault();
-	vault.addFile('Alice dated.md', {
-		frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
-	});
-	vault.addFile('Cased.md', {
-		frontmatter: { type: 'Epic', order: 20, assignee: 'alice', start: '2026-08-05', due: '2026-08-06' },
-	});
-	vault.addFile('Stray.md', {
-		frontmatter: { type: 'Epic', order: 30, assignee: 'Zoe', start: '2026-08-02', due: '2026-08-03' },
-	});
-	vault.addFile('Nobody.md', { frontmatter: { type: 'Epic', order: 40, start: '2026-08-01', due: '2026-08-02' } });
-	vault.addFile('Undated.md', { frontmatter: { type: 'Epic', order: 50, assignee: 'Alice' } });
-	return vault;
-}
 
 describe('the resources axis', () => {
 	it('renders every declared resource in declared order, empty or not', () => {
 		const settings = resourceSettings({ resourceNames: ['Alice', 'Bob'] });
-		const roadmap = laneOf(teamVault(), settings);
+		const roadmap = laneOf(resourceVault(), settings);
 
 		// Bob is empty and still there; the undeclared assignee appends after both.
 		expect(roadmap.lanes.map((lane) => lane.name)).toEqual(['Alice', 'Bob', 'Zoe']);
@@ -56,14 +42,14 @@ describe('the resources axis', () => {
 
 	it('groups by the note’s own assignee, case-insensitively, in tree order', () => {
 		const settings = resourceSettings({ resourceNames: ['Alice'] });
-		const roadmap = laneOf(teamVault(), settings);
+		const roadmap = laneOf(resourceVault(), settings);
 
 		expect(titles(roadmap.lanes[0].bars)).toEqual(['Alice dated', 'Cased']);
 	});
 
 	it('positions a bar exactly as the dated axis does — no second date reading', () => {
 		const settings = resourceSettings({ resourceNames: ['Alice'] });
-		const vault = teamVault();
+		const vault = resourceVault();
 		const lanes = laneOf(vault, settings);
 		const dated = buildRoadmap(buildModel(vault.app, vault.entries(), settings), settings, () => true, 'dates');
 
@@ -74,7 +60,7 @@ describe('the resources axis', () => {
 
 	it('shelves a result with no assignee whatever its dates say — a row is who, not when', () => {
 		const settings = resourceSettings({ resourceNames: ['Alice'] });
-		const roadmap = laneOf(teamVault(), settings);
+		const roadmap = laneOf(resourceVault(), settings);
 
 		const nobody = roadmap.shelf.find((card) => card.item.title === 'Nobody');
 		expect(nobody).toBeDefined();
@@ -123,7 +109,7 @@ describe('the resources axis', () => {
 
 	it('placed plus shelved equals the visible result rows', () => {
 		const settings = resourceSettings({ resourceNames: ['Alice'] });
-		const roadmap = laneOf(teamVault(), settings);
+		const roadmap = laneOf(resourceVault(), settings);
 
 		const placed = roadmap.lanes.reduce((sum, lane) => sum + lane.bars.length, 0);
 		expect(roadmap.placedCount).toBe(placed);
@@ -135,7 +121,7 @@ describe('the resources axis', () => {
 		// menu's children section and the toolbar's collapse gate — so an axis that draws
 		// bars must report them, or a lane's bar answers "card" to both.
 		const settings = resourceSettings({ resourceNames: ['Alice'] });
-		const roadmap = laneOf(teamVault(), settings);
+		const roadmap = laneOf(resourceVault(), settings);
 
 		expect(titles(roadmap.bars)).toEqual(['Alice dated', 'Cased', 'Stray']);
 	});

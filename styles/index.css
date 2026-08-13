@@ -63,6 +63,11 @@
 @import "./cardChildren.css";
 @import "./roadmap.css";
 @import "./timeline.css";
+/* Position IS load-bearing: the row header borrows `.pbl-timeline-lead`, and its own
+   background rule for that element has the same specificity as `timeline.css`'s, so it
+   only wins by coming after it. Moved above and a header's sticky lead column keeps the
+   row background while the rest of the header is shaded. */
+@import "./lanes.css";
 /* Position NOT load-bearing: `stateColors.css` declares the same `--pbl-state-color` the
    slot classes do, but on classes of its own that no row ever carries at the same time
    (`stateColorPaint` returns one or the other), so nothing here is decided by order. */

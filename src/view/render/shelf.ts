@@ -71,6 +71,20 @@ export function shelfRemoval(host: BacklogViewHost, axis: RoadmapAxis): ShelfRem
 			canDrag: () => true,
 		};
 	}
+	if (axis === 'resources') {
+		// Nothing on this axis is a drag source or a drop target yet: a move here writes
+		// an assignee, and that is [[Assigning items to a resource]]'s. So the strip
+		// reports what could not be placed and accepts nothing — refused rather than
+		// ignored, so it never highlights for a drag it would not honour, and `canDrag`
+		// false so no gesture starts that would have nowhere to land.
+		return {
+			plan: () => undefined,
+			tooltip: 'Results this axis cannot place — a row needs an assignee, and a bar in it needs dates',
+			accepts: () => false,
+			outcome: null,
+			canDrag: () => false,
+		};
+	}
 	return {
 		// The captured shape rides along, not the item's own: `source.ends` is what the
 		// hold was picked up under, from `CardSource`, and it may disagree with the
