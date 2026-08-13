@@ -42,7 +42,13 @@ instead.
 - **1a — the drop lands in the row the bar is already in.** No write is planned, and the
   undo slot is not consumed.
 - **1b — the user cannot drag.** The row menu's Set assignee, and a resource ladder for
-  Alt+Left/Right, both write the identical batch.
+  Alt+Up/Down, both write the identical batch — Up/Down because resources are ROWS,
+  stacked vertically on the same calendar grid the dated axis draws, and Alt+Left/Right
+  on that grid is already reserved: `horizonStops` in `src/view/interactions/keyboard.ts`
+  answers null on the dated axis today specifically so a future scheduling gesture can
+  claim Left/Right there without a stray shortcut already meaning something else.
+  Resources sit ON that grid, so this is the axis where both a row change and a date
+  change could plausibly want the same keys, and only one dimension can have them.
 - **1c — the drag starts on the shelf.** The same single write: this is the same triage
   gesture the shelf already exists for, entering a row whenever the card also has a date
   to place it at — 3c below is the exception, where it does not.
@@ -96,9 +102,11 @@ Unbuilt. The write is already planned — `computeAssigneeWrites` in
 `src/domain/writePlan.ts`, built for [[Setting the assignee on an item]], needs no
 change. What this PBI would add is the orchestration around it: a `performResourceMove`
 beside `performHorizonMove` in `src/view/cardMoves.ts` (`CardMoveController`), a resource
-ladder for Alt+arrow in `src/view/interactions/keyboard.ts` mirroring `horizonStops`, a
-`CreatePlacement.assignee` field threaded through `src/view/interactions/create.ts` the
-way `horizon` already is, and routing the row menu's Set assignee
+ladder in `src/view/interactions/keyboard.ts` the same SHAPE as `horizonStops` (a stop
+list, an index, a step) but on Alt+Up/Down rather than `horizonStops`' Left/Right — the
+two cannot share a function unchanged, since the direction is exactly what has to differ
+— a `CreatePlacement.assignee` field threaded through `src/view/interactions/create.ts`
+the way `horizon` already is, and routing the row menu's Set assignee
 (`src/view/interactions/labels.ts`) through `performResourceMove` while this axis is
 active — the way `chooseHorizon` in `src/view/interactions/plan.ts` already branches by
 mode.

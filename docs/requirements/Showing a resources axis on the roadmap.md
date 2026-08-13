@@ -57,14 +57,23 @@ vocabulary the way the horizon values do.
   draw. A dateless parent WITH dated descendants is not this case: it draws the same
   inferred bar the plain dated axis would, only grouped into its resource's row instead
   of the plain one.
-- **3d — the item is outside the Base's filter (a context row).** It slots into a
-  resource row that already EXISTS — declared by the roster or created by a result, the
-  same `placeContext` rule the horizon axis already keeps
-  ([[Buckets from a horizon property]]) — never mints one of its own, is never counted,
-  and is never shelved.
+- **3d — the item is outside the Base's filter (a context row).** It groups into a
+  resource row that already EXISTS — declared by the roster or created by a result —
+  never mints one of its own, is never counted, and is never shelved, the same
+  membership rule the horizon axis already keeps
+  ([[Buckets from a horizon property]]). What it does NOT do, dated or not, is draw as a
+  positioned bar there: `deriveBars` in `src/domain/bars.ts` routes every context row
+  straight to a context collection before `placeItem` is ever asked about it,
+  unconditionally — the dated axis this axis reuses never draws a context row's dates
+  as a bar at all, own or inferred, so there is no separate "what if it has no date"
+  case to answer here either. A context row with no resource-row match at all falls to
+  the same undifferentiated context this axis's own dated ancestor already keeps.
 - **4a — the user creates from a row.** The row's own resource name rides the single
   creation write, the same as a bucket's — no note ever exists in a row its frontmatter
-  does not claim.
+  does not claim. Where a template is also picked, the row's name wins over anything the
+  template declares for the assignee property
+  ([[Creating an item from a template]] extension 5d) — the same reason a picked
+  template cannot override a bucket's horizon either.
 
 ## Acceptance criteria
 
@@ -78,10 +87,14 @@ vocabulary the way the horizon values do.
   lost.
 - A result with no assignee shelves; a result with an assignee and no date to place —
   none of its own, none inferred from descendants — shelves too.
-- A context row only ever slots into a resource row that already exists, declared or
-  result-created; it never mints one, is never counted, and is never shelved.
+- A context row only ever groups into a resource row that already exists, declared or
+  result-created; it never mints one, is never counted, and is never shelved. It is
+  never drawn as a positioned bar either, dated or not — the dated axis it derives from
+  never places a context row's dates as a bar, so this axis inherits that rather than
+  adding a case for it.
 - Creating from a row writes that resource's name into the assignee property as part of
-  the single creation write.
+  the single creation write, and wins over anything a picked template declares for that
+  same property.
 - A card's own assignee chip does not also draw while the card renders inside its
   resource's row — the row already says who it is assigned to, the same rule
   [ADR 0027](../adrs/0027-label-chips-with-no-positional-meaning-also-draw-on-cards.md)

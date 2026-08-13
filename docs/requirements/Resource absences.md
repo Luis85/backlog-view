@@ -13,13 +13,20 @@ source: user request
 stretch, **so that** a row I am about to drop work into already shows the days nobody
 should be scheduled across.
 
-An absence is deliberately never a work item — no parent, no rank, no place in the fixed
-type vocabulary — the same way an ADR opts out of the backlog it documents rather than
-joining it under a type nobody asked it to carry. It is a note with three facts: which
-resource, and a date range, read through the same assignee and date properties
-[[Assignment]] and [[The timeline]] already configure, so nothing here is a second
-vocabulary. It renders once, in the row its own resource names, and it is never offered
-anywhere else this backlog already looks.
+An absence is deliberately never a work item — no parent, no rank, no ladder rung — but it
+is not typeless either: it carries its own declared type, one `pruneOutsideHierarchy`
+never gets asked about because the exclusion happens earlier and UNCONDITIONALLY, where
+`src/domain/readItems.ts` reads each note, before a `RawItem` is ever built and whether or
+not `hierarchyOnly` is on. That is the opposite polarity from a marker
+([[Milestones as their own type]]): a marker is recognized and KEPT, ranked out of the
+ladder but still a `BacklogItem`; an absence is recognized and DROPPED, so a vault with
+`hierarchyOnly` off — where every note a folder-scoped Base returns becomes an item —
+excludes it the same way a stricter vault already would. It is a note with four facts now,
+not three: which resource, a date range, read through the same assignee and date
+properties [[Assignment]] and [[The timeline]] already configure, and its own type name —
+the one property here that IS a second vocabulary, of exactly one value. It renders once,
+in the row its own resource names, and it is never offered anywhere else this backlog
+already looks.
 
 ## Use case
 
@@ -28,7 +35,7 @@ anywhere else this backlog already looks.
 | **Actor** | Backlog owner |
 | **Trigger** | Adding an absence from a resource's row header |
 | **Preconditions** | Roadmap mode is on with the resources axis, and BOTH date properties are configured — sharper than the axis's own gate (`hasDateAxis` accepts either alone), because an absence has no descendant to infer a missing end from the way a work item does |
-| **Guarantee** | An absence names exactly one resource and one date range, is never added to the tree, the board, the horizon axis or the plain dated axis, and is never a write target for anything else this backlog already does to a work item. |
+| **Guarantee** | An absence names exactly one resource and one date range, is never added to the tree, the board, the horizon axis or the plain dated axis regardless of the `hierarchyOnly` setting, and is never a write target for anything else this backlog already does to a work item. |
 
 **Main flow**
 
@@ -36,8 +43,8 @@ anywhere else this backlog already looks.
 2. The prompt asks for the resource, pre-filled from the row, a title, a start date and
    an end date.
 3. Submitting writes a new note carrying the resource's name in the assignee property,
-   the two dates in the start and target properties, and the title as its own — nothing
-   else.
+   the two dates in the start and target properties, its own declared type, and the
+   title as its own — nothing else.
 4. The row draws it as a blocked stretch, positioned exactly as a bar would be, in that
    resource's row only.
 
@@ -58,7 +65,8 @@ anywhere else this backlog already looks.
   this is caught, not the render.
 - **3a — the folder configured for absences is not yet set.** Falls back to the
   backlog's own home folder, the same default a type with no folder of its own already
-  resolves to.
+  resolves to — safe to share with every other type's notes, because what keeps an
+  absence out of the tree and the other axes is its type, never its folder.
 - **4a — an absence overlaps another absence, or an item's own bar, in the same row.**
   Both draw, stacked; the row's own height grows rather than either one moving to avoid
   the other.
@@ -78,8 +86,11 @@ anywhere else this backlog already looks.
   resources axis's own precondition (either property alone) is not enough, since an
   absence cannot infer a missing end.
 - Submitting the prompt with a resource, a title and both dates writes one new note
-  carrying exactly those facts — no parent, no order, and no type from the fixed
-  vocabulary.
+  carrying exactly those facts — no parent, no order, and its own declared type rather
+  than one from the ladder.
+- That type is recognized and the note excluded from the model unconditionally — before
+  `RawItem` is built, whether or not `hierarchyOnly` is on — never relying on lacking a
+  parent or a supported type the way an ordinary untyped note is excluded.
 - A blank resource, start or end writes nothing; an end before the start writes nothing
   either, caught at the prompt rather than left to a render with nowhere to show it.
 - The note lives in its own configured folder, falling back to the backlog's home
@@ -95,11 +106,18 @@ anywhere else this backlog already looks.
 Unbuilt, and the one PBI in this feature that is not an extension of an existing write
 path. Reading and placing an absence would be new, small code beside
 `src/domain/roadmap.ts` rather than inside it — an absence is deliberately never a
-`BacklogItem`, so it cannot be read by `src/domain/readItems.ts` or ranked by anything
-`src/domain/model.ts` already walks. Creating and deleting one would still go through
-`src/storage/frontmatter.ts`, the only module allowed to touch the vault, behind the
-same `configProblems` gate every other write here answers to — a narrow function beside
-`createBacklogItem` rather than a call to it, since an absence has no type, no parent
-and no rank for that function's `NewItemSpec` to carry. The prompt itself would sit
+`BacklogItem`: `src/domain/readItems.ts` (`createItems`/`addItem`) would recognize its
+declared type and skip the note before a `RawItem` is built from it, unconditionally,
+never reaching `pruneOutsideHierarchy` — which runs only when `settings.hierarchyOnly`
+is true (`buildModel` in `src/domain/model.ts`) and would therefore be the wrong gate
+for an exclusion that has to hold either way. The type name itself would join
+`src/domain/typeVocabulary.ts` as its own fourth category, opposite `MARKER_TYPES` in
+polarity: a marker is recognized and kept, ranked out of the ladder but still read; this
+is recognized and dropped, never read at all. Creating and deleting one would still go
+through `src/storage/frontmatter.ts`, the only module allowed to touch the vault, behind
+the same `configProblems` gate every other write here answers to — a narrow function
+beside `createBacklogItem` rather than a call to it, since an absence has no parent and
+no rank for that function's `NewItemSpec` to carry, and its type is a fixed constant
+rather than one `NewItemSpec` chooses from the ladder. The prompt itself would sit
 beside `ValuePromptModal` in `src/ui/prompts.ts` — one more small form asking for values
 this plugin does not own.

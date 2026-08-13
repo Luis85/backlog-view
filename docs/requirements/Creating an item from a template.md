@@ -18,7 +18,7 @@ start blank every time, without losing the one-title-and-done speed of a plain i
 | **Actor** | Backlog owner, creating an item ([[New item flow]]) |
 | **Trigger** | Choosing a type in the new-item modal for which at least one template exists |
 | **Preconditions** | `templatesFolder` is configured and at least one template matches the chosen type ([[Configuring the templates folder]]) |
-| **Guarantee** | A template only ever adds to what the plugin already writes — its body pre-fills an editable field, its extra frontmatter merges in. The plugin's own hierarchy keys (`type`, `parent`, `order`), the roadmap's axis keys (`horizon`, `start`, `target`) and the workflow's transition stamps (`started`, `finished`) are never taken from a template at all — stripped before anything is written, not merely overridden, since creation does not always supply its own value for every one of them to win with. The workflow state is tri-state, not binary: an EXPLICIT placement — a real column, or the no-state column's deliberate absence — always wins over a template's state; only the ABSENCE of any placement at all (creation with no board-column context) lets the template's state survive. |
+| **Guarantee** | A template only ever adds to what the plugin already writes — its body pre-fills an editable field, its extra frontmatter merges in. The plugin's own hierarchy keys (`type`, `parent`, `order`), the roadmap's axis keys (`horizon`, `start`, `target`) and the workflow's transition stamps (`started`, `finished`) are never taken from a template at all — stripped before anything is written, not merely overridden, since creation does not always supply its own value for every one of them to win with. Two keys are precedence, not strip: the workflow state and, if the resources axis exists, the assignee — each survives from a template only where creation supplies no positional claim of its own to outrank it, state's own claim being three-way (a real column, the no-state column's deliberate absence, or no board-column context at all) and the assignee's two-way (a resource row, or no row context at all). |
 
 **Main flow**
 
@@ -71,6 +71,20 @@ start blank every time, without losing the one-title-and-done speed of a plain i
   ever a default for creation with *no board-column context at all* — the tree's **+**,
   the toolbar's **New**, a row's context menu — never for a column that placed the card
   in "no state" on purpose.
+- **5d — the template carries an assignee, and creation is happening from a resource
+  row on the roadmap** ([[Assigning items to a resource]], itself still design). The
+  row's own resource name wins, the same shape as 5b: `assignee` is a second key with a
+  plausible deliberate template default ("this kind of Task starts with QA") and a
+  positional creation context that can outrank it, so it is not on the unconditional
+  strip list with `horizon`/`start`/`target` — those describe a PLACEMENT and have no
+  standalone meaning a template could sensibly declare; `assignee` names a PERSON and
+  reads perfectly well as an ordinary default. Unlike state, there is no resources-axis
+  equivalent of the no-state column — no row means "explicitly nobody" the way that
+  column means "explicitly no state" — so this key has only the two-way shape 5b's half
+  already covers, not the three-way one 5c adds for state.
+- **5e — the template carries an assignee, and creation is happening with no resource
+  row context at all.** The template's own assignee survives, same as any other extra
+  frontmatter — the ordinary default case 5d's row precedence is the exception to.
 
 ## Acceptance criteria
 
@@ -90,9 +104,15 @@ start blank every time, without losing the one-title-and-done speed of a plain i
   else template default": an explicit placement — a real column's state, or the
   no-state column's deliberate absence — always wins over a template's state; the
   template's state survives only when creation carries no board-column placement at
-  all. It is the only key in the merge with that three-way shape, because it is the
-  only one of the group with a plausible reason to be a deliberate template default
-  rather than incidental copy-through.
+  all.
+- If the resources axis exists, the assignee key is not on the stripped list either, for
+  the same reason state is not: creation from a resource row wins over a template's
+  assignee, and the template's own survives only where creation carries no resource-row
+  context at all. Two-way rather than state's three, since nothing about this axis gives
+  "explicitly nobody" a placement of its own the way the no-state column does. State and
+  the assignee are the only two keys in the merge with a plausible reason to be a
+  deliberate template default rather than incidental copy-through — everything else
+  stripped is a placement with no standalone meaning to declare.
 - Creation still goes through the same config gate as every other write.
 
 ## Where it lives

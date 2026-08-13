@@ -37,7 +37,9 @@ first feature that asks it to co-declare with another property rather than stand
 **A resource's row draws from two sources, and the first PBI has to leave room for the
 second.** [[Showing a resources axis on the roadmap]] positions the Base's own results;
 [[Resource absences]] adds a second kind of bar the same row must also draw, from notes
-that are never Base results at all — deliberately outside the tree, the board and every
-other axis, the way an ADR is deliberately outside the backlog it documents. Building the
-row's rendering as one more consumer of the roadmap model without that seam in mind means
-rebuilding the row once the second source exists, rather than adding to it.
+that carry their own declared type and are excluded before they ever become a
+`BacklogItem` — unconditionally, regardless of `hierarchyOnly`, never in the tree, the
+board or any other axis — the same spirit an ADR opts out in, though the mechanism
+differs: a type check here, a folder there. Building the row's rendering as one more
+consumer of the roadmap model without that seam in mind means rebuilding the row once
+the second source exists, rather than adding to it.
