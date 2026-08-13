@@ -123,3 +123,43 @@
 .pbl-bar.pbl-drag-source {
 	opacity: 0.35;
 }
+
+/* An unavailable stretch. Hatched rather than filled, and muted rather than coloured: a
+   bar is work somebody planned and this is the absence of any, so the two must not read
+   alike at a glance — the same argument `.pbl-bar-inferred` makes for outlining a span
+   the view derived rather than one a note stated. It carries no state colour, no grip and
+   no connector, because none of those means anything here. How it reads against a themed
+   background, and against a bar it overlaps, is a live-vault check. */
+.pbl-absence {
+	position: absolute;
+	top: 50%;
+	transform: translateY(-50%);
+	left: var(--pbl-bar-left);
+	width: var(--pbl-bar-width);
+	height: 12px;
+	border-radius: var(--radius-s);
+	border: 1px solid var(--background-modifier-border);
+	background-image: repeating-linear-gradient(
+		45deg,
+		var(--background-modifier-border) 0,
+		var(--background-modifier-border) 4px,
+		transparent 4px,
+		transparent 8px
+	);
+}
+
+/* Muted like a context row, and for a related reason: it is here to say what the row
+   cannot take, not to be read as part of the plan. */
+.pbl-absence-row {
+	opacity: 0.8;
+}
+
+.pbl-absence-row .pbl-timeline-track {
+	min-height: 22px;
+}
+
+.pbl-absence-icon {
+	display: flex;
+	align-items: center;
+	color: var(--text-muted);
+}

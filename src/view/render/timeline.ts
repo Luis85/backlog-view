@@ -2,7 +2,13 @@ import { setTooltip } from 'obsidian';
 import { drawIcon } from './icons';
 import { renderBarLabel } from './barLabel';
 import { RowContext } from './columns';
-import { renderLaneContextRow, renderLaneHead, renderLaneRowDescription, TimelineEntry } from './lanes';
+import {
+	renderLaneAbsence,
+	renderLaneContextRow,
+	renderLaneHead,
+	renderLaneRowDescription,
+	TimelineEntry,
+} from './lanes';
 import { createCard, wireCardActivation } from './board';
 import { foldOnClick, renderBadge, renderChevron, renderTitleText } from './rows';
 import { dependencyNote, NO_CONFLICTS, renderDependencyArrows } from './timelineArrows';
@@ -272,6 +278,13 @@ export function renderTimeline(
 		if (entry.kind === 'lane') {
 			lane = entry.lane;
 			drawing.laneTarget?.(renderLaneHead(ctx, content, entry.lane), entry.lane);
+			continue;
+		}
+		if (entry.kind === 'absence') {
+			// Its own drawn line, and NOT counted as a bar row: the stripe alternates over
+			// work, and an absence is furniture of the row rather than a row of work in it.
+			const away = renderLaneAbsence(content, entry.absence, { window, scale });
+			if (lane) renderLaneRowDescription(away, lane.name);
 			continue;
 		}
 		const row =

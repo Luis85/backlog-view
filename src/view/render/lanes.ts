@@ -4,9 +4,11 @@ import { RowContext } from './columns';
 import { drawIcon } from './icons';
 import { renderBadge, renderTitleText } from './rows';
 import { newItemType, promptCreateItem } from '../interactions/create';
+import { Absence } from '../../domain/absences';
 import { TimelineRow } from '../../domain/bars';
 import { BacklogItem } from '../../domain/model';
 import { ResourceLane } from '../../domain/roadmap';
+import { barGeometry, formatCivil, MIN_BAR_PX, TimelineScale, TimelineWindow } from '../../domain/timeline';
 
 /**
  * WHAT the grid draws and in what order — `TimelineEntry` and the two axes' entry lists —
@@ -37,6 +39,7 @@ import { ResourceLane } from '../../domain/roadmap';
  */
 export type TimelineEntry =
 	| { kind: 'lane'; lane: ResourceLane }
+	| { kind: 'absence'; absence: Absence }
 	| { kind: 'row'; row: TimelineRow }
 	| { kind: 'context'; item: BacklogItem };
 
@@ -60,6 +63,11 @@ export function laneEntries(lanes: ResourceLane[]): TimelineEntry[] {
 	const entries: TimelineEntry[] = [];
 	for (const lane of lanes) {
 		entries.push({ kind: 'lane', lane });
+		// Absences lead the band: an unavailable stretch is a fact about the ROW, and the
+		// work in it reads against that rather than the other way round. One entry each —
+		// two overlapping stretches are two lines, never packed into one (4a), because a
+		// packing rule is a second geometry to keep in step with the one the bars use.
+		for (const absence of lane.absences) entries.push({ kind: 'absence', absence });
 		for (const bar of lane.bars) {
 			entries.push({ kind: 'row', row: { bar, hasChildren: false, collapsed: false } });
 		}
@@ -156,6 +164,46 @@ export function renderLaneContextRow(ctx: RowContext, content: HTMLElement, item
 	renderTitleText(ctx.host, title, item.title);
 	setTooltip(lead, item.title);
 	row.createDiv({ cls: 'pbl-timeline-track' });
+	return row;
+}
+
+/**
+ * One unavailable stretch, drawn where a bar would be drawn and by the same arithmetic —
+ * `barGeometry` against the same window, so a stretch and the work it crosses cannot
+ * disagree about which day is which.
+ *
+ * NOT a card: `createCard` gives a `BacklogItem` its selection, its context styling and
+ * its place in the pane's roving walk, and an absence is none of those things — it is not
+ * in `roadmap.cards`, cannot be selected, and has no note-opening activation. What it has
+ * is a title, a range, and (from Task 6) a context menu to delete it.
+ *
+ * The dates go in the row's own accessible name rather than on the mark: the mark is a
+ * plain div, where ARIA prohibits a name, and a reader who cannot see the stretch needs
+ * to be told which days it covers — which no neighbouring element says for it. Whose row
+ * it is in is `renderLaneRowDescription`'s, exactly as it is for every other row of the
+ * band.
+ */
+export function renderLaneAbsence(
+	content: HTMLElement,
+	absence: Absence,
+	ruler: { window: TimelineWindow; scale: TimelineScale },
+): HTMLElement {
+	const { window, scale } = ruler;
+	const row = content.createDiv({ cls: 'pbl-timeline-row pbl-absence-row' });
+	const lead = row.createDiv({ cls: 'pbl-timeline-lead' });
+	drawIcon(lead.createSpan({ cls: 'pbl-absence-icon', attr: { 'aria-hidden': 'true' } }), 'user-x');
+	const title = lead.createDiv({ cls: 'pbl-card-title', text: absence.title });
+	setTooltip(title, absence.title);
+	const track = row.createDiv({ cls: 'pbl-timeline-track' });
+	const geometry = barGeometry(window, { start: absence.start, target: absence.target });
+	const mark = track.createDiv({ cls: 'pbl-absence' });
+	mark.setCssProps({
+		'--pbl-bar-left': `${geometry.startDay * scale.dayPx}px`,
+		'--pbl-bar-width': `${Math.max(geometry.spanDays * scale.dayPx, MIN_BAR_PX)}px`,
+	});
+	const dates = `${formatCivil(absence.start)} → ${formatCivil(absence.target)}`;
+	setTooltip(mark, dates);
+	row.setAttribute('aria-label', `${absence.title} — unavailable ${dates}`);
 	return row;
 }
 
