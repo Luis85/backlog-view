@@ -56,6 +56,25 @@ export const EXTRA_TYPES = ['Issue', 'Bug', 'Idea', DELIVERABLE_TYPE];
  */
 export const MARKER_TYPES = ['Milestone'];
 /**
+ * The one DECLARED name that is not a work-item type at all — a resource's own
+ * unavailable stretch. It joins none of the lists above and, deliberately, not
+ * `ALL_TYPES` either: that list is what admits a name everywhere a work item's name
+ * matters (`childTypeChoices` offers every entry at the top level, `focusTarget` accepts
+ * one as a focus root, the shelf groups by it, the generated README and the in-app manual
+ * document it as a declared type), and every one of those is exactly what an absence must
+ * refuse. Keeping it out is what makes each of those consumers need NO edit, rather than
+ * six exclusions somebody has to remember.
+ *
+ * It is the opposite POLARITY from a marker on the read, too: a marker is recognized and
+ * KEPT — ranked out of the ladder, still a `BacklogItem` — while this is recognized and
+ * DROPPED, never read as an item at all. See ADR 0028.
+ *
+ * Deliberately absent from `DEFAULT_TYPE_SUBFOLDERS`: an absence with no folder of its
+ * own falls through to the home folder, which is what the spec asks for and what a type
+ * this plugin ships no opinion about already gets.
+ */
+export const ABSENCE_TYPE = 'Absence';
+/**
  * Every declared type, ladder first — the whole vocabulary in one list, and now the one
  * place the two ladders' shared rung is spent exactly once. `TEST_LEVELS` ends on
  * `LEVELS`' deepest rung by construction, so it is filtered against what is already here
