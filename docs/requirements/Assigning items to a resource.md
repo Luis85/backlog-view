@@ -53,6 +53,10 @@ instead.
 - **2b — the card is outside the Base's filter.** There is no such card: context rows
   are never draggable and never write targets, and any batch naming one is refused
   whole by the gate.
+- **2c — the target row is named only by a logged absence, nobody assigned to it yet.**
+  The move writes that value too: an absence puts a resource on screen the same as a
+  declared or observed one does ([[Resource absences]] extension 4b), and nothing about
+  how the row came to exist changes what dropping into it means.
 - **3a — the write is refused** (configuration problems, or a batch naming an excluded
   note). Refused whole and loudly; nothing half-moves.
 - **3b — the new value takes the note outside the Base's filter.** The write stands, the
@@ -67,8 +71,9 @@ instead.
   side effect of which row it lands in.
 - Shelf to row writes the resource's name; row to shelf removes the key rather than
   blanking it, and undo restores it.
-- Writable vocabulary is the declared roster plus observed-on-results; context rows
-  contribute nothing to it and can never be moved or written.
+- Writable vocabulary is the declared roster, observed-on-results, and any resource
+  named only by a logged absence — every source that can put a row on screen; context
+  rows contribute nothing to it and can never be moved or written.
 - Menu and keyboard produce the identical batch the drag produces.
 - A refused batch is refused whole, loudly, changing nothing.
 - A move whose value takes the note outside the Base's filter applies, is announced with

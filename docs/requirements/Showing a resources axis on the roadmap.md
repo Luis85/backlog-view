@@ -35,9 +35,10 @@ vocabulary the way the horizon values do.
 1. The user names a roster of resources in the view options — optional, the same shape
    as the horizon values — beside the assignee and date properties already configured.
 2. Each declared resource renders as a row, in declared order, empty or not.
-3. Every result whose assignee value names a row, and whose start or target date is
-   readable, renders as a bar in that row, positioned exactly where the dated axis would
-   place it.
+3. Every result whose assignee value names a row renders as a bar in that row,
+   positioned exactly where the dated axis would place it — its own dates first, a
+   dateless parent's inferred from its descendants exactly as
+   [[Spans roll up the tree]] already gives it, and the shelf only where neither exists.
 4. A bar carries what a dated-axis bar carries.
 
 **Extensions**
@@ -49,12 +50,18 @@ vocabulary the way the horizon values do.
   [[Buckets from a horizon property]] already gives an undeclared horizon.
 - **3b — a result has no assignee.** The shelf, whatever its dates say: a row is who,
   not when, and there is no row to place an unnamed result into.
-- **3c — a result has an assignee but no readable date.** The shelf too. Naming a
-  resource is not scheduling against them, and a row with no date to position a bar at
-  has nothing to draw.
+- **3c — a result has an assignee but no date to place** — none of its own, and for a
+  parent, none inferred from its descendants either ([[Spans roll up the tree]]'s own
+  shelving case, unchanged by which axis is asking). The shelf. Naming a resource is not
+  scheduling against them, and a row with no date to position a bar at has nothing to
+  draw. A dateless parent WITH dated descendants is not this case: it draws the same
+  inferred bar the plain dated axis would, only grouped into its resource's row instead
+  of the plain one.
 - **3d — the item is outside the Base's filter (a context row).** It slots into a
-  resource row a result has already created, never mints one of its own, is never
-  counted, and is never shelved — the roadmap's context-row rule, unchanged.
+  resource row that already EXISTS — declared by the roster or created by a result, the
+  same `placeContext` rule the horizon axis already keeps
+  ([[Buckets from a horizon property]]) — never mints one of its own, is never counted,
+  and is never shelved.
 - **4a — the user creates from a row.** The row's own resource name rides the single
   creation write, the same as a bucket's — no note ever exists in a row its frontmatter
   does not claim.
@@ -63,14 +70,16 @@ vocabulary the way the horizon values do.
 
 - Declared resources render as rows in declared order, empty or not; the roster is
   optional and, unlike the horizon values, ships with nothing prefilled.
-- A row's membership is the note's own assignee value; a bar's position is its own start
-  or target date, read the same tolerant way the dated axis already reads them.
+- A row's membership is the note's own assignee value; a bar's position is computed
+  exactly as the dated axis already computes one — a childless item's own dates, a
+  dateless parent's inferred from descendants, the shelf only where neither exists —
+  read the same tolerant way the dated axis already reads them.
 - An undeclared-but-observed assignee gets a trailing row named by itself; nothing is
   lost.
-- A result with no assignee shelves; a result with an assignee but no readable date
-  shelves too.
-- A context row only ever slots into a resource row a result has already created; it
-  never mints one, is never counted, and is never shelved.
+- A result with no assignee shelves; a result with an assignee and no date to place —
+  none of its own, none inferred from descendants — shelves too.
+- A context row only ever slots into a resource row that already exists, declared or
+  result-created; it never mints one, is never counted, and is never shelved.
 - Creating from a row writes that resource's name into the assignee property as part of
   the single creation write.
 - A card's own assignee chip does not also draw while the card renders inside its
