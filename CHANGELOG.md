@@ -11,6 +11,17 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+### Added
+
+- **A resources axis on the roadmap** — a third choice beside Horizons and Timeline, drawn
+  from the assignee property you already use: one row per person, with their work
+  positioned by exactly the dates the timeline already reads. Declare a roster under
+  **Resources (in order)** to give someone a row before anything lands in it; anyone a note
+  names gets a row of their own regardless, and work with no assignee, or with nobody's
+  dates to sit at, waits on the shelf. Configured views keep showing Horizons or Timeline
+  until you pick the new axis. Nothing on it can be dragged yet — moving work between rows
+  is the next increment.
+
 ## [0.7.1] - 2026-08-12
 
 ### Added

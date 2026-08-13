@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
+import { Modal } from '../helpers/obsidian-mock';
+import { shelfRemoval } from '../../src/view/render/shelf';
 import { Harness, makeView, useViewHarness } from '../helpers/view';
 import { laneCountOf, laneNames, laneOrder, lanesOf, shelfTitles } from '../helpers/roadmap';
 import { resourceVault } from '../helpers/resources';
@@ -98,12 +100,79 @@ describe('the resources axis on screen', () => {
 		expect(harness.containerEl.querySelectorAll('.pbl-bar')).not.toHaveLength(0);
 	});
 
+	it('offers a New button per row, naming the resource it creates for', () => {
+		const harness = laneRoadmap(resourceVault());
+		const add = lanesOf(harness.containerEl)[0].querySelector<HTMLButtonElement>('.pbl-lane-add');
+		expect(add).not.toBeNull();
+		// `tabindex="-1"` like the bucket's and the tree's: the pane is one tab stop, and a
+		// row is not a keyboard stop of its own yet.
+		expect(add?.getAttribute('tabindex')).toBe('-1');
+		expect(add?.getAttribute('aria-label')).toBe('New Epic for Alice');
+	});
+
+	it('opens the ordinary New flow from a row, for that row’s own resource', () => {
+		const harness = laneRoadmap(resourceVault());
+		lanesOf(harness.containerEl)[0].querySelector<HTMLButtonElement>('.pbl-lane-add')?.click();
+
+		// The same gated prompt the toolbar's New opens — this button adds a placement to
+		// it and changes nothing else about where the note lands.
+		expect(Modal.lastOpened).not.toBeNull();
+	});
+
+	it('offers a shelf that accepts nothing, and can plan nothing either', () => {
+		// The narrowing stated at the object rather than only through a gesture: with no
+		// drag source on this axis there is no drop to drive, so the three answers are
+		// asked directly — refused rather than ignored, so the strip never highlights for
+		// a drag it would not honour, and no gesture starts that would have nowhere to land.
+		const harness = laneRoadmap(resourceVault());
+		const removal = shelfRemoval(harness.view, 'resources');
+		const item = harness.view.model?.byPath.get('Undated.md');
+
+		expect(removal.accepts({ item, hold: 'body' } as never)).toBe(false);
+		expect(removal.accepts({ item, hold: null } as never)).toBe(false);
+		expect(removal.canDrag(item as never)).toBe(false);
+		expect(removal.outcome).toBeNull();
+		removal.plan({ item, hold: 'body' } as never);
+		expect(harness.view.model?.byPath.get('Undated.md')).toBeDefined();
+	});
+
 	it('keeps the dated axis’s own grips, which this axis only withholds for itself', () => {
 		// The control beside the case above: the withholding is per axis, not a deletion.
 		const harness = laneRoadmap(resourceVault());
 		// `setAxisPick` re-renders itself — no config was set, so no Bases refresh follows.
 		harness.view.setAxisPick('dates');
 		expect(harness.containerEl.querySelectorAll('.pbl-bar-grip')).not.toHaveLength(0);
+	});
+});
+
+describe('the assignee chip on this axis', () => {
+	/** The roster, with the assignee property ALSO drawn as a column — what draws a chip. */
+	function chipRoadmap() {
+		const harness = laneRoadmap(resourceVault());
+		harness.config.order = ['note.assignee'];
+		harness.view.onDataUpdated();
+		harness.view.setShelfCollapsed(false);
+		return harness;
+	}
+
+	it('does not draw on a bar row — the row it sits in already says whose it is', () => {
+		// True by construction today: a bar row wears the card SHELL and never goes
+		// through `renderCardBody`, which is what draws the chips. This is the check under
+		// that sentence rather than a second mechanism enforcing it.
+		const harness = chipRoadmap();
+		const rows = harness.containerEl.querySelectorAll<HTMLElement>('.pbl-timeline-row');
+		expect(rows.length).toBeGreaterThan(0);
+		for (const row of rows) expect(row.querySelector('.pbl-assignee-chip')).toBeNull();
+	});
+
+	it('still draws on a shelf card, where no row says it', () => {
+		// The other direction, and the reason the rule is about POSITION rather than about
+		// the axis: `Undated` names a resource and sits on the shelf, so nothing on screen
+		// would say who it belongs to if the chip were withheld here too.
+		const harness = chipRoadmap();
+		const shelf = harness.containerEl.querySelector<HTMLElement>('.pbl-shelf');
+		const chips = Array.from(shelf?.querySelectorAll<HTMLElement>('.pbl-assignee-chip') ?? []);
+		expect(chips.map((chip) => chip.textContent)).toContain('Alice');
 	});
 });
 

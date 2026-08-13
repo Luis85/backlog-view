@@ -51,3 +51,35 @@
 .pbl-lane-context {
 	opacity: 0.65;
 }
+
+/* The row's own New button — `.pbl-bucket-add`'s pair in `styles/roadmap.css`, over a row
+   instead of a column. Hidden until the row is hovered or the button itself is focused,
+   which is what keeps the header readable at a glance. */
+.pbl-lane-add {
+	flex: 0 0 auto;
+	border: none;
+	box-shadow: none;
+	background-color: transparent;
+	cursor: var(--cursor, pointer);
+	opacity: 0;
+	transition: opacity 120ms ease-in-out;
+}
+
+.pbl-lane-head:hover .pbl-lane-add,
+.pbl-lane-add:focus-visible {
+	opacity: 1;
+}
+
+.pbl-lane-add .svg-icon {
+	width: var(--icon-s);
+	height: var(--icon-s);
+}
+
+/* Reachable without hover, beside the rule it overrides: a row is not a tab stop, so a
+   touch reader who gets neither the hover nor a stop cannot reach this control at all
+   rather than merely not seeing it. */
+@media (hover: none) {
+	.pbl-lane-add {
+		opacity: 1;
+	}
+}

@@ -6,7 +6,7 @@ import { Menu, Notice } from '../helpers/obsidian-mock';
 import { flush, key, makeView, treeOf, useViewHarness } from '../helpers/view';
 import { cardDrag } from '../helpers/dnd';
 import { cardByTitle } from '../helpers/board';
-import { bucketNames, rowFor, shelfTitles } from '../helpers/roadmap';
+import { bucketNames, laneCountOf, laneNames, lanesOf, rowFor, shelfTitles } from '../helpers/roadmap';
 import { legalTargets } from '../../src/view/interactions/dependencies';
 
 /**
@@ -350,6 +350,95 @@ describe('write safety with context rows, across the roadmap’s entry points', 
 		view.showContextMenuFor(view.model?.byPath.get('PBI.md') as never);
 		const offered = Menu.lastShown?.item('Set horizon')?.submenu?.items.map((i) => i.titleText);
 		expect(offered).toEqual(['Now', 'Next', 'Later', 'Clear horizon']);
+	});
+});
+
+describe('write safety with context rows, across the resources axis’s entry points', () => {
+	/**
+	 * The same stress shape on the resources axis: the context PBI names a resource of
+	 * its own and renders inside that row, among live bars.
+	 *
+	 * The three questions this block asks are narrower than its siblings' on purpose, and
+	 * the narrowing is the finding rather than a gap: **this axis writes nothing yet.** No
+	 * bar is a drag source, the grid registers no drop target, and the shelf accepts
+	 * nothing — every move here writes an assignee, which is
+	 * [[Assigning items to a resource]]'s. So what is checked is that the gestures produce
+	 * no write and that the row itself is never a source of vocabulary; the structural
+	 * refusal behind a future move is `applySafely`'s and is already driven by the blocks
+	 * above.
+	 */
+	function laneStressView() {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feature B.md', {
+			frontmatter: { type: 'Feature', order: 20, assignee: 'Sam', start: '2026-08-01', due: '2026-08-09' },
+			parentLink: 'Epic',
+		});
+		vault.addFile('PBI.md', {
+			frontmatter: { type: 'PBI', order: 5, assignee: 'Sam', start: '2026-08-02', due: '2026-08-04' },
+			parentLink: 'Feature B',
+		});
+		// Context, between results. Its assignee is on no declared list and on no result,
+		// so a row named for it could only have come from the context row itself.
+		vault.addFile('Mid.md', {
+			frontmatter: { type: 'PBI', order: 10, assignee: 'Ancient', start: '2026-08-03', due: '2026-08-05' },
+			parentLink: 'Feature B',
+		});
+		vault.addFile('Task.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'Mid' });
+		const containerEl = document.body.createDiv();
+		const view = new ProductBacklogView({} as never, containerEl);
+		const anyView = view as unknown as Record<string, unknown>;
+		anyView.app = vault.app;
+		anyView.config = new FakeViewConfig({
+			assigneeProperty: 'note.assignee',
+			startProperty: 'note.start',
+			targetProperty: 'note.due',
+			resourceNames: 'Sam',
+		});
+		anyView.data = { data: vault.entries().filter((e) => !['Epic.md', 'Mid.md'].includes(e.file.path)) };
+		view.onDataUpdated();
+		view.setFocusLevel('PBI');
+		view.setProjection('roadmap');
+		view.setAxisPick('resources');
+		return { view, containerEl, vault };
+	}
+
+	it('never writes to a context card, whatever is dropped wherever', async () => {
+		const { view, containerEl, vault } = laneStressView();
+		expect(view.model?.byPath.get('Mid.md')?.outsideFilter).toBe(true);
+		const cards = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-card'));
+		const targets = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-lane-head, .pbl-shelf'));
+		expect(cards.length).toBeGreaterThan(1);
+
+		for (const card of cards) {
+			for (const target of targets) {
+				cardDrag(card, target);
+				await flush();
+			}
+		}
+		// Nothing on this axis accepts a drop yet, context card or result alike.
+		expect(vault.writeLog).toEqual([]);
+	});
+
+	it('never mints a row from a context value, and never counts one', () => {
+		const { view, containerEl } = laneStressView();
+		const mid = view.model?.byPath.get('Mid.md');
+		expect(mid?.outsideFilter).toBe(true);
+
+		// The membership half of the rule: an excluded note's assignee is not this base's
+		// vocabulary, so `Ancient` names no row — and the row it does join counts only
+		// what the Base returned.
+		expect(laneNames(containerEl)).toEqual(['Sam']);
+		const sam = lanesOf(containerEl)[0];
+		expect(laneCountOf(sam)).toBe('1');
+	});
+
+	it('is never shelved, whatever it carries', () => {
+		const { containerEl } = laneStressView();
+
+		// The shelf is a statement about the RESULTS. `Mid` has dates of its own and is
+		// still not on it, because it is not a result at all.
+		expect(shelfTitles(containerEl)).not.toContain('Mid');
 	});
 });
 

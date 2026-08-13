@@ -313,6 +313,34 @@ describe('createBacklogItem', () => {
 		expect(vault.fm(unconfigured.path)).toEqual({ type: 'Epic', order: 30 });
 	});
 
+	it('writes the resource row a note was created in, in that same single write', async () => {
+		const vault = new FakeVault();
+		const staffed = { ...settings, assigneeKey: 'assignee' };
+
+		const file = await createBacklogItem(vault.app, staffed, {
+			folder: 'Backlog',
+			title: 'Assigned',
+			typeName: 'Epic',
+			parent: null,
+			order: 10,
+			assignee: 'Alice',
+		});
+		// The bucket's own argument, over a different property: the note never sits in a
+		// row its frontmatter does not name, because there is no moment at which it does.
+		expect(vault.fm(file.path)).toEqual({ type: 'Epic', order: 10, assignee: 'Alice' });
+
+		// Never to an unconfigured key — the rule every optional property here keeps.
+		const unconfigured = await createBacklogItem(vault.app, settings, {
+			folder: 'Backlog',
+			title: 'Nobody',
+			typeName: 'Epic',
+			parent: null,
+			order: 20,
+			assignee: 'Alice',
+		});
+		expect(vault.fm(unconfigured.path)).toEqual({ type: 'Epic', order: 20 });
+	});
+
 	it('pins parentless creations in folder mode', async () => {
 		const vault = new FakeVault();
 		vault.addFile('Epics/Alpha/Alpha.md', { frontmatter: { type: 'Epic' } });

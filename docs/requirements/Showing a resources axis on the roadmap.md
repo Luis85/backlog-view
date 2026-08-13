@@ -2,9 +2,28 @@
 type: PBI
 parent: "[[The resource timeline]]"
 order: 10
-status: Open
+status: Done
 created: 2026-08-13
 source: user request
+files:
+  - src/domain/roadmap.ts
+  - src/domain/settings.ts
+  - src/domain/settingsConsistency.ts
+  - src/domain/settingsResolve.ts
+  - src/domain/viewOptions.ts
+  - src/storage/collapseStore.ts
+  - src/storage/frontmatter.ts
+  - src/view/backlogView.ts
+  - src/view/resize.ts
+  - src/view/interactions/create.ts
+  - src/view/manual/setupSection.ts
+  - src/view/render/lanes.ts
+  - src/view/render/legend.ts
+  - src/view/render/projections.ts
+  - src/view/render/roadmap.ts
+  - src/view/render/shelf.ts
+  - src/view/render/timeline.ts
+  - src/view/render/toolbarControls.ts
 ---
 
 # Showing a resources axis on the roadmap

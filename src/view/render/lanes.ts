@@ -3,6 +3,7 @@ import { createCard } from './board';
 import { RowContext } from './columns';
 import { drawIcon } from './icons';
 import { renderBadge, renderTitleText } from './rows';
+import { newItemType, promptCreateItem } from '../interactions/create';
 import { TimelineRow } from '../../domain/bars';
 import { BacklogItem } from '../../domain/model';
 import { ResourceLane } from '../../domain/roadmap';
@@ -98,7 +99,39 @@ export function renderLaneHead(ctx: RowContext, content: HTMLElement, lane: Reso
 			`"${lane.name}" is not one of the declared resources. Add it to "Resources (in order)" in the view options, or re-assign its items.`,
 		);
 	}
+	renderLaneNew(ctx, lead, lane);
 	head.createDiv({ cls: 'pbl-timeline-track' });
+}
+
+/**
+ * Create straight into this row. The New flow runs exactly as the toolbar's — the same
+ * config gate, the same type folders, the same type it would offer — with this row's
+ * resource written inside the one `createBacklogItem` call, so a note never sits in a row
+ * its own frontmatter does not claim.
+ *
+ * Unlike a bucket's, that write does not DRAW the card in the row: creation supplies no
+ * date, so the note is unplaceable the moment it is read back and shelves on the same
+ * refresh. `createFromPrompt` says so in its Notice rather than letting a click on a
+ * specific row silently produce a card somewhere else.
+ *
+ * `tabindex="-1"` like the bucket's and the tree's: the pane is one tab stop and a row is
+ * not a keyboard stop of its own. The capability is not lost, only the shortcut — the
+ * toolbar's New button is an ordinary tab stop, and Set assignee names any resource from
+ * the row menu. Closing that gap properly means row stops, which is
+ * `docs/requirements/Keyboard and menu on the roadmap.md`'s work.
+ */
+function renderLaneNew(ctx: RowContext, lead: HTMLElement, lane: ResourceLane): void {
+	const host = ctx.host;
+	const model = host.model;
+	if (!model) return;
+	const type = newItemType(host.settings, model);
+	const btn = lead.createEl('button', {
+		cls: 'clickable-icon pbl-lane-add',
+		attr: { type: 'button', tabindex: '-1', 'aria-label': `New ${type} for ${lane.name}` },
+	});
+	drawIcon(btn, 'plus');
+	setTooltip(btn, `New ${type} for "${lane.name}"`);
+	btn.addEventListener('click', () => promptCreateItem(host, [type], null, { assignee: lane.name }));
 }
 
 /**

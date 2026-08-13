@@ -644,6 +644,8 @@ export interface NewItemSpec {
 	order: number;
 	/** The bucket it was created in, when it was created from one. */
 	horizon?: string;
+	/** The resource's row it was created in, when it was created from one. */
+	assignee?: string;
 }
 
 /** Create a new backlog note in the configured folder with its hierarchy properties set. */
@@ -673,6 +675,13 @@ export async function createBacklogItem(app: App, settings: BacklogSettings, spe
 	for (const { key, value } of axisEntries(settings, spec.horizon ? { horizon: spec.horizon } : undefined)) {
 		if (value !== null) setOwn(fm, key, value);
 	}
+	// A note created in a resource's row claims that resource in the same write, for the
+	// bucket's own reason above. This is the LABEL shape rather than the axis's — no
+	// civil-date equality and no datetime merge — the same distinction `applyLabels` makes
+	// on the edit path, and the same two rules either way: never to an unconfigured key,
+	// and a value the user picked written plainly.
+	const assigneeKey = optionalKeyFor(settings, 'assignee');
+	if (spec.assignee && assigneeKey) setOwn(fm, assigneeKey, spec.assignee);
 	return app.vault.create(path, `---\n${stringifyYaml(fm)}---\n`);
 }
 
