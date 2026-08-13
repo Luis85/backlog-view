@@ -14,7 +14,7 @@ import { wireTimelineDrag } from '../interactions/timelineDrag';
 import { StatePalette, statePalettes } from '../../domain/board';
 import { timelineRows } from '../../domain/bars';
 import { BacklogItem } from '../../domain/model';
-import { buildRoadmap, HorizonBucket, RoadmapAxis, RoadmapModel } from '../../domain/roadmap';
+import { buildRoadmap, HorizonBucket, ResourceLane, RoadmapAxis, RoadmapModel } from '../../domain/roadmap';
 import { scaleFor, TimelineScale, TimelineWindow } from '../../domain/timeline';
 import { CivilDate } from '../../domain/noteFields';
 
@@ -149,10 +149,12 @@ interface GridDrawing {
  * the view's own state and a row hidden by a disclosure has not become unplaced. The
  * resources axis asks nothing: its rows are flat, so nothing folds and nothing is hidden.
  *
- * **What a gesture may do.** The grid is ONE positional drop target and it writes DATES.
- * The resources axis wires none and offers no grip, because a move there writes an
- * assignee — [[Assigning items to a resource]]'s work — and a grid that accepted a date
- * drag while its rows meant something else would be writing the axis the reader is not
+ * **What a gesture may do.** On the dated axis the grid is ONE positional drop target and
+ * it writes DATES. On the resources axis a bar is an ordinary card and each element of a
+ * row's band is a drop target of its own (`laneDrop`), because which row it lands in is
+ * the whole message — so no grip is offered and no positional target is registered, and
+ * the overlay that would be one is not drawn at all. A grid that accepted a date drag
+ * while its rows meant something else would be writing the axis the reader is not
  * looking at.
  */
 function renderGridAxis(
@@ -174,7 +176,8 @@ function renderGridAxis(
 		dnd,
 		shelf: roadmap.shelf,
 		palettes,
-		grips: axis === 'dates',
+		hold: axis === 'dates' ? 'dates' : 'card',
+		laneTarget: axis === 'resources' ? (el, lane) => laneDrop(ctx, dnd, el, lane) : null,
 		// The PANE's width, not the frame's or the not-yet-built scroller's: this is
 		// the element `backlogView.ts`'s `ResizeObserver` watches, so a render here and
 		// a resize-driven re-render there measure the same box. They can still read it
@@ -182,7 +185,7 @@ function renderGridAxis(
 		// see `TimelineDrawing.available`, which states what that costs.
 		available: treeEl.clientWidth,
 	});
-	if (axis === 'dates') {
+	if (axis === 'dates' && timeline.overlay) {
 		wireTimelineDrag(ctx, dnd, {
 			overlay: timeline.overlay,
 			scroller: timeline.scroller,
@@ -192,8 +195,31 @@ function renderGridAxis(
 			tracks: timeline.tracks,
 			leadWidth: timeline.leadWidth,
 		});
+	} else {
+		// `wireTimelineDrag` does this for the dated axis; a roster taller than the pane
+		// needs it just as much, and the horizon axis's buckets already have it.
+		dnd.wireScroller(timeline.scroller);
 	}
 	return timeline;
+}
+
+/**
+ * What dropping on a resource's band means: that row's own name into the DRAGGED note's
+ * assignee property, through the one method every input on this axis lands on. A minted
+ * row is a target like any other — its name is observed vocabulary, and observed
+ * vocabulary is writable, the board's own rule. A context row inside the band is a target
+ * too and is safe as one: the write names the note being carried, never the row it landed
+ * on.
+ *
+ * Wired per ELEMENT rather than per band, because a header, its bars and the excluded
+ * notes it places are siblings positioned against one shared day grid and there is no
+ * container to wire. What that costs is the highlight — the element under the pointer
+ * lights rather than the whole band — which is a live-vault question either way, since
+ * jsdom paints nothing. A wrapper per row would answer it and would put a box between
+ * every row and the sticky lead column the grid's geometry rests on.
+ */
+function laneDrop(ctx: RowContext, dnd: CardDragController, el: HTMLElement, lane: ResourceLane): void {
+	dnd.wireDropTarget(el, (source) => void ctx.host.performResourceMove(source.item, lane.name));
 }
 
 /**

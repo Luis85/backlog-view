@@ -354,6 +354,20 @@
 	opacity: 0.55;
 }
 
+/* The resources axis positions nothing by the pointer, so it draws no
+   `.pbl-timeline-drop` — and that overlay is what used to cover the full-height marks.
+   Every other absolutely positioned decoration in the content layer already opts out of
+   pointer events (`.pbl-grid-line`, `.pbl-weekend-layer`, `.pbl-milestone-line`,
+   `.pbl-dependency-layer`); this line cannot do so unconditionally, because its tooltip
+   is the only place its date is written. Without this it is a 2px dead strip through
+   every row on that axis, swallowing the drop the row beneath it is the target for —
+   the same defect `.pbl-milestone-line`'s own comment records, reached the other way.
+   What jsdom can check is that the class is on the content layer; that it stops a real
+   pointer is a live-vault question, since nothing here hit-tests. */
+.pbl-timeline-flat .pbl-today {
+	pointer-events: none;
+}
+
 /* A milestone's line runs the grid's full height at its date, behind the bars. Same
    shape as .pbl-today and deliberately a lower layer: today stays on top because it is
    the reader's own mark, and the two sit side by side inside one day cell. Cyan to match

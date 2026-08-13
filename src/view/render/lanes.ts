@@ -83,8 +83,12 @@ export function laneEntries(lanes: ResourceLane[]): TimelineEntry[] {
  * each of its rows as well (`renderLaneRowDescription`) and this header claims no role of
  * its own. Same accepted deviation as the lead-resize grip's; how a screen reader
  * actually reads it is a live-vault check this harness cannot make.
+ *
+ * Returns the element, so the caller can wire it: this module draws a row's header and
+ * has no opinion about what dropping on one should write. Not being a container is what
+ * makes that the caller's problem per ELEMENT rather than once per band.
  */
-export function renderLaneHead(ctx: RowContext, content: HTMLElement, lane: ResourceLane): void {
+export function renderLaneHead(ctx: RowContext, content: HTMLElement, lane: ResourceLane): HTMLElement {
 	const head = content.createDiv({
 		cls: 'pbl-lane-head' + (lane.declared ? '' : ' pbl-lane-undeclared'),
 	});
@@ -101,6 +105,7 @@ export function renderLaneHead(ctx: RowContext, content: HTMLElement, lane: Reso
 	}
 	renderLaneNew(ctx, lead, lane);
 	head.createDiv({ cls: 'pbl-timeline-track' });
+	return head;
 }
 
 /**

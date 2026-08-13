@@ -12,10 +12,10 @@ useViewHarness();
 /**
  * The resources axis on screen: one row per resource over the dated grid it derives from.
  *
- * What it does NOT drive is any move — nothing on this axis is a drag source or a drop
- * target yet, which is [[Assigning items to a resource]]'s work — so the two assertions
- * about that are here as the statement of a deliberate narrowing rather than as coverage
- * of a feature.
+ * What a move DOES is `test/view/resourceMoves.test.ts`'s subject and is not repeated
+ * here. What stays is the one half of it this file is about: a bar on this axis offers no
+ * date grip, because a move here writes an assignee and the grid registers no target a
+ * date gesture could land on.
  */
 
 const RESOURCES = {
@@ -91,10 +91,10 @@ describe('the resources axis on screen', () => {
 		expect(rows[2].getAttribute('aria-description')).toBe('Assigned to Zoe');
 	});
 
-	it('offers no grip on a bar, because nothing on this axis accepts a drop yet', () => {
-		// A move here writes an assignee, not dates, so the grid wires no drop target —
-		// and a grip advertised over a grid with nothing to land on is the failure this
-		// withholding exists to prevent.
+	it('offers no date grip on a bar, because a move here writes an assignee', () => {
+		// The bar IS a drag source now, wired as an ordinary card — but a grip writes a
+		// DATE, and this grid registers no positional target for one. What the drag does
+		// instead is `test/view/resourceMoves.test.ts`'s.
 		const harness = laneRoadmap(resourceVault());
 		expect(harness.containerEl.querySelectorAll('.pbl-bar-grip')).toHaveLength(0);
 		expect(harness.containerEl.querySelectorAll('.pbl-bar')).not.toHaveLength(0);
@@ -119,21 +119,20 @@ describe('the resources axis on screen', () => {
 		expect(Modal.lastOpened).not.toBeNull();
 	});
 
-	it('offers a shelf that accepts nothing, and can plan nothing either', () => {
-		// The narrowing stated at the object rather than only through a gesture: with no
-		// drag source on this axis there is no drop to drive, so the three answers are
-		// asked directly — refused rather than ignored, so the strip never highlights for
-		// a drag it would not honour, and no gesture starts that would have nowhere to land.
+	it('offers a shelf that un-assigns, and takes any shelved card as a source', () => {
+		// Asked at the object as well as through a gesture: the strip must not highlight
+		// for a drag it would not honour, and a shelved card that could not be picked up
+		// would leave triage a one-way street.
 		const harness = laneRoadmap(resourceVault());
 		const removal = shelfRemoval(harness.view, 'resources');
 		const item = harness.view.model?.byPath.get('Undated.md');
 
+		// A grip released here is not an un-assignment; an ordinary card is.
 		expect(removal.accepts({ item, hold: 'body' } as never)).toBe(false);
-		expect(removal.accepts({ item, hold: null } as never)).toBe(false);
-		expect(removal.canDrag(item as never)).toBe(false);
+		expect(removal.accepts({ item, hold: null } as never)).toBe(true);
+		expect(removal.canDrag(item as never)).toBe(true);
+		// Nothing to distinguish before the release: a drop here always un-assigns.
 		expect(removal.outcome).toBeNull();
-		removal.plan({ item, hold: 'body' } as never);
-		expect(harness.view.model?.byPath.get('Undated.md')).toBeDefined();
 	});
 
 	it('keeps the dated axis’s own grips, which this axis only withholds for itself', () => {

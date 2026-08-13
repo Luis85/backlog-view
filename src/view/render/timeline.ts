@@ -80,8 +80,12 @@ export interface TimelineRender {
 	content: HTMLElement;
 	/** The window the grid drew, for the drag's px↔date and for the zoom anchor. */
 	window: TimelineWindow;
-	/** The one drop target spanning the day area — see `renderTimeline`'s own comment. */
-	overlay: HTMLElement;
+	/**
+	 * The one drop target spanning the day area — see `renderTimeline`'s own comment.
+	 * Null on an axis that positions nothing by the pointer, which is where drawing it
+	 * would swallow the drops its rows are the targets for.
+	 */
+	overlay: HTMLElement | null;
 	/** The header's day track: where a placement's preview is drawn, having no row yet. */
 	headerTrack: HTMLElement;
 	/** Each drawn row's day track, by path — where a MOVE's preview is drawn, in its own row. */
@@ -143,13 +147,25 @@ export interface TimelineDrawing {
 	 */
 	shelf: ShelfCard[];
 	/**
-	 * Whether a bar here may be taken hold of. False on the resources axis, which wires
-	 * no drop target for a gesture to land on — a move there writes an assignee, and that
-	 * is [[Assigning items to a resource]]'s. Withheld at the source rather than left
-	 * dangling: a grip advertised over a grid with no target registered is exactly the
-	 * "bars picked up and had nowhere to land" failure `src/view/CLAUDE.md` records.
+	 * What a gesture on this grid MEANS — the one thing the two grid axes do not share.
+	 * `'dates'` wires each bar's holds (`barHolds`) against the positional target the
+	 * caller registers on the overlay; `'card'` wires the BAR as an ordinary card drag —
+	 * hold `null`, no span baseline, no ends — because on the resources axis what a bar is
+	 * dropped ON is the whole of the message. Neither is the other narrowed: a date hold
+	 * offered where a row means WHO would write the axis the reader is not looking at, and
+	 * a grip advertised with no date target registered is the "bars picked up and had
+	 * nowhere to land" failure `src/view/CLAUDE.md` records.
 	 */
-	grips: boolean;
+	hold: 'dates' | 'card';
+	/**
+	 * Wire one element of a resource's band as a drop target. What a drop MEANS is the
+	 * caller's, exactly as `wireDropTarget`'s own `plan` is: this module knows which
+	 * elements belong to which row and nothing about what landing on one should write.
+	 * Called per ELEMENT — the header, each bar row, each excluded note's row — because
+	 * they are siblings positioned against one shared day grid and there is no container
+	 * to wire. Null on the dated axis, which has no rows to belong to.
+	 */
+	laneTarget: ((el: HTMLElement, lane: ResourceLane) => void) | null;
 }
 
 export function renderTimeline(
@@ -183,7 +199,12 @@ export function renderTimeline(
 	// divides there.
 	const grid = containerEl.createDiv({ cls: 'pbl-timeline' });
 	grid.toggleClass('pbl-density-compact', ctx.host.density === 'compact');
-	const content = grid.createDiv({ cls: 'pbl-timeline-content' });
+	// `pbl-timeline-flat` says nothing on this grid is positioned by the pointer, which
+	// is what decides whether the full-height marks may intercept events — see the drop
+	// overlay below, and `.pbl-timeline-flat .pbl-today` in `styles/timeline.css`.
+	const content = grid.createDiv({
+		cls: 'pbl-timeline-content' + (drawing.hold === 'dates' ? '' : ' pbl-timeline-flat'),
+	});
 	content.setCssProps({
 		'--pbl-tl-lead': `${leadWidth}px`,
 		'--pbl-tl-days': `${window.days * scale.dayPx}px`,
@@ -240,7 +261,7 @@ export function renderTimeline(
 		tracks,
 		palettes,
 		conflictedPrereqs: dependencies.conflicts,
-		grips: drawing.grips,
+		hold: drawing.hold,
 	};
 	const drawn: DrawnColors = { done: false, milestone: milestoneLines, accent: false };
 	// The stripe counts drawn ROWS only: a lane header is chrome, and counting it would
@@ -250,7 +271,7 @@ export function renderTimeline(
 	for (const entry of entries) {
 		if (entry.kind === 'lane') {
 			lane = entry.lane;
-			renderLaneHead(ctx, content, entry.lane);
+			drawing.laneTarget?.(renderLaneHead(ctx, content, entry.lane), entry.lane);
 			continue;
 		}
 		const row =
@@ -258,8 +279,13 @@ export function renderTimeline(
 				? renderLaneContextRow(ctx, content, entry.item)
 				: reportColors(renderBarRow(ctx, mounts, window, entry.row, scale), drawn);
 		// Whose row this is, said on the row itself: the header is a sibling div and
-		// cannot label what follows it. See `renderLaneRowDescription`.
-		if (lane) renderLaneRowDescription(row, lane.name);
+		// cannot label what follows it. See `renderLaneRowDescription`. And every element
+		// of the band is a drop target of its own, for the same reason — there is no
+		// container to wire, so the band is wired one element at a time.
+		if (lane) {
+			renderLaneRowDescription(row, lane.name);
+			drawing.laneTarget?.(row, lane);
+		}
 		// Assigned at render because CSS has no nth-of-class, and nth-child would
 		// count the header, the lines and the layers interleaved in this container.
 		if (drawnRows % 2 === 1) row.addClass('pbl-row-even');
@@ -284,7 +310,16 @@ export function renderTimeline(
 	// reader and a bar's grips: the empty shelf's own trick — in the DOM so a drop has
 	// somewhere to land, out of the way until a drag needs it — reached by a second
 	// surface. `interactions/timelineDrag.ts` decides what a position on it means.
-	const overlay = content.createDiv({ cls: 'pbl-timeline-drop', attr: { 'aria-hidden': 'true' } });
+	//
+	// Drawn only where a position on it MEANS something. The resources axis registers no
+	// positional target — which row a bar lands in is the whole message — and an overlay
+	// left standing there would take pointer events for the entire day area and swallow
+	// every drop the rows beneath it are the target for. This is not the empty shelf's
+	// case, which stays in the DOM because it can always be dropped on: here it never can.
+	const overlay =
+		drawing.hold === 'dates'
+			? content.createDiv({ cls: 'pbl-timeline-drop', attr: { 'aria-hidden': 'true' } })
+			: null;
 	return {
 		cards: bars.map((bar) => bar.item),
 		todayLeft,
@@ -431,8 +466,8 @@ interface BarRowMounts {
 	conflictedPrereqs: ReadonlyMap<string, ReadonlySet<string>>;
 	/** See `TimelineDrawing.palettes`. */
 	palettes: StatePalette[];
-	/** See `TimelineDrawing.grips`. */
-	grips: boolean;
+	/** See `TimelineDrawing.hold`. */
+	hold: 'dates' | 'card';
 }
 
 /** A bar row's element, with the colours it drew folded into the pass's own report. */
@@ -492,8 +527,10 @@ function renderBarRow(
 	// Asked ONCE, of `barHolds`, shared by the class that advertises a body drag and
 	// the loop that actually wires one — so what the cursor promises and what a drop
 	// registers cannot disagree. The body hold IS the bar; the grips are its two edges.
-	const holds = mounts.grips ? barHolds(bar.item, ctx.host.settings, bar) : [];
-	const el = track.createDiv({ cls: barClasses(bar, geometry, holds.includes('body')) });
+	const holds = mounts.hold === 'dates' ? barHolds(bar.item, ctx.host.settings, bar) : [];
+	// The cursor promises what a drop actually registers on BOTH axes: the dated axis's
+	// body hold, or the whole-bar card drag the resources axis wires below.
+	const el = track.createDiv({ cls: barClasses(bar, geometry, mounts.hold === 'card' || holds.includes('body')) });
 	el.setCssProps({
 		'--pbl-bar-left': `${geometry.startDay * scale.dayPx}px`,
 		'--pbl-bar-width': `${Math.max(geometry.spanDays * scale.dayPx, MIN_BAR_PX)}px`,
@@ -519,6 +556,13 @@ function renderBarRow(
 		// measures — see `CardSource.scrollLeft` and `interactions/timelineDrag.ts`.
 		mounts.dnd.wireCard(grip, bar.item, hold, () => mounts.scroller.scrollLeft);
 	}
+	// The resources axis's own source: the BAR is what the reader takes hold of, wired as
+	// an ordinary card — `hold: null`, which is exactly what each axis's shelf `accepts`
+	// asks for and what a row's own drop target takes. No `originScroll`: nothing here is
+	// measured as a delta. The connector below is a nearer draggable, so a drag begun on
+	// it is still a link rather than this. A context row never reaches this function
+	// (`deriveBars` routes one away before a bar exists), and `wireCard` refuses one anyway.
+	if (mounts.hold === 'card') mounts.dnd.wireCard(el, bar.item);
 	renderConnector(ctx, mounts, { row, barEl: el, geometry }, bar);
 	renderBarLabel(track, bar, geometry, scale, window);
 	renderRowFacts(row, ctx, bar, { dates, own, conflictedPrereqs: mounts.conflictedPrereqs, lead });

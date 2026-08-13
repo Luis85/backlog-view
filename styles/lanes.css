@@ -83,3 +83,27 @@
 		opacity: 1;
 	}
 }
+
+/* The drop signal, and the only one: which row a bar lands in is the whole message, so
+   there is no position within a row to indicate. Wired per element rather than per band
+   (`laneDrop` in `src/view/render/roadmap.ts`), so what lights is the header or the row
+   actually under the pointer — whether that reads as "this resource" is a live-vault
+   question this harness cannot answer. The lead column paints its own background and
+   would otherwise cover the highlight across the one part of the row a reader dragging
+   from the left is most likely to be over. */
+.pbl-lane-head.pbl-drop-over,
+.pbl-timeline-row.pbl-drop-over {
+	box-shadow: 0 0 0 1px var(--interactive-accent) inset;
+	background-color: hsla(var(--interactive-accent-hsl), 0.08);
+}
+
+.pbl-lane-head.pbl-drop-over .pbl-timeline-lead,
+.pbl-timeline-row.pbl-drop-over .pbl-timeline-lead {
+	background-color: hsla(var(--interactive-accent-hsl), 0.08);
+}
+
+/* The bar being carried — the tree row's own `.pbl-drag-source` opacity, over the mark
+   that is the drag source on this axis. */
+.pbl-bar.pbl-drag-source {
+	opacity: 0.35;
+}

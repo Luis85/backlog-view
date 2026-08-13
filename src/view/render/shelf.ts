@@ -72,17 +72,19 @@ export function shelfRemoval(host: BacklogViewHost, axis: RoadmapAxis): ShelfRem
 		};
 	}
 	if (axis === 'resources') {
-		// Nothing on this axis is a drag source or a drop target yet: a move here writes
-		// an assignee, and that is [[Assigning items to a resource]]'s. So the strip
-		// reports what could not be placed and accepts nothing — refused rather than
-		// ignored, so it never highlights for a drag it would not honour, and `canDrag`
-		// false so no gesture starts that would have nowhere to land.
 		return {
-			plan: () => undefined,
-			tooltip: 'Results this axis cannot place — a row needs an assignee, and a bar in it needs dates',
-			accepts: () => false,
+			plan: (source) => void host.performResourceMove(source.item, null),
+			tooltip: 'Results this axis cannot place — dropping a card here removes its assignee',
+			// The horizon axis's rule and its reason: a card already DRAWN here can still
+			// carry a name — assigned, with no date to sit beside — so refusing a re-drop
+			// would withhold exactly the cleanup its shelving reason is asking for. A
+			// re-drop with nothing to clear plans zero writes and no-ops.
+			accepts: (source) => source.hold === null,
+			// Nothing to distinguish before the release: a drop here always un-assigns.
 			outcome: null,
-			canDrag: () => false,
+			// Every shelved item can be re-assigned. Unlike the dated axis there is no type
+			// here whose only writable end might be unconfigured, so no gate is needed.
+			canDrag: () => true,
 		};
 	}
 	return {
