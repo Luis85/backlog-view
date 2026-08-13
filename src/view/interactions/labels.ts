@@ -51,6 +51,14 @@ function riskChoices(host: BacklogViewHost, item: BacklogItem): string[] {
  * **New assignee...** below, and that is what keeps an empty vocabulary from being an
  * empty menu — the reason this feature needs only a key named, where risk needs a key
  * and a list.
+ *
+ * On the roadmap's resources axis the DRAWN ROWS lead, read off the frame as drawn —
+ * `horizonChoices`' rule for its buckets, and the board's Set state for its columns. It
+ * matters here for a reason this menu did not have until that axis could be moved on: a
+ * DECLARED resource with nothing assigned yet has a row a drag can drop into and appears
+ * on no result at all, so a list built from the observed names alone would leave the menu
+ * the one input to this move that goes quiet. Everything observed still follows, so what
+ * is reachable never depends on what is on screen.
  */
 function assigneeChoices(host: BacklogViewHost, item: BacklogItem): string[] {
 	// Through `rowVocabulary` like the state, horizon and tag menus, and for their reason:
@@ -59,10 +67,35 @@ function assigneeChoices(host: BacklogViewHost, item: BacklogItem): string[] {
 	// is offered on every plan row, and a catalog row cannot reuse a name observed on
 	// another test. Per ROW rather than per projection, because both directions of a
 	// projection-wide answer are wrong: see `rowVocabulary`'s own comment.
-	const values = host.model ? rowVocabulary(host.model, item).observedAssignees : [];
+	const observed = host.model ? rowVocabulary(host.model, item).observedAssignees : [];
+	const drawn = onResourceAxis(host) ? (host.roadmap?.roadmap.lanes ?? []).map((lane) => lane.name) : [];
+	const values = [...drawn, ...observed.filter((v) => !drawn.some((d) => sameValue(d, v)))];
 	const current = item.assigneeValue;
 	if (current === null || values.some((v) => sameValue(v, current))) return values;
 	return [...values, current];
+}
+
+/**
+ * Whether the frame on screen is the one whose ROWS this property draws. Asked twice —
+ * for what the menu offers, and for where a pick goes — and stated once, because a menu
+ * offering the drawn rows while its picks bypassed the move would be exactly the
+ * disagreement routing the two together exists to prevent.
+ */
+function onResourceAxis(host: BacklogViewHost): boolean {
+	return host.projection === 'roadmap' && host.roadmap?.roadmap.axis === 'resources';
+}
+
+/**
+ * What picking a name DOES. On the resources axis it takes the DRAG's own path, so a pick
+ * and a drop onto the same row are one write, one gate and — the part only this path can
+ * supply — one announcement, said once by `performResourceMove` rather than by each input
+ * separately. Elsewhere there is no frame to announce into and the planned write goes
+ * straight through the gate. `chooseHorizon` splits on the roadmap for this reason and
+ * `chooseState` on the board.
+ */
+function chooseAssignee(host: BacklogViewHost, item: BacklogItem, value: string | null): Promise<unknown> {
+	if (onResourceAxis(host)) return host.performResourceMove(item, value);
+	return host.applySafely(computeAssigneeWrites(item, value));
 }
 
 /**
@@ -87,11 +120,20 @@ function addLabelItems(
 		clearTitle: string;
 		/** Drawn after the choices and before the clear entry — the assignee's way to type one. */
 		extra?: () => void;
+		/**
+		 * What a pick DOES, where that is more than handing the plan to the gate — the
+		 * assignee's route through `performResourceMove` while its own axis is drawn. The
+		 * CHECKMARK still asks `writes`, and must: an entry is checked exactly when picking
+		 * it would write nothing, which is a question about the plan and not about who
+		 * applies it.
+		 */
+		apply?: (value: string | null) => void;
 	},
 ): void {
+	const apply = spec.apply ?? ((value: string | null) => void host.applySafely(spec.writes(value)));
 	for (const value of spec.choices) {
 		menu.addItem((si) => {
-			si.setTitle(value).onClick(() => void host.applySafely(spec.writes(value)));
+			si.setTitle(value).onClick(() => apply(value));
 			if (spec.writes(value).length === 0) si.setChecked(true);
 		});
 	}
@@ -102,7 +144,7 @@ function addLabelItems(
 		si
 			.setTitle(spec.clearTitle)
 			.setIcon('eraser')
-			.onClick(() => void host.applySafely(spec.writes(null))),
+			.onClick(() => apply(null)),
 	);
 }
 
@@ -131,6 +173,7 @@ export function addAssigneeItems(host: BacklogViewHost, menu: Menu, item: Backlo
 		writes: (value) => computeAssigneeWrites(item, value),
 		present: item.ownKeys.assignee,
 		clearTitle: 'Clear assignee',
+		apply: (value) => void chooseAssignee(host, item, value),
 		extra: () =>
 			menu.addItem((si) =>
 				si
@@ -141,7 +184,13 @@ export function addAssigneeItems(host: BacklogViewHost, menu: Menu, item: Backlo
 	});
 }
 
-/** Free-text entry, suggesting the names already in use so spellings stay consistent. */
+/**
+ * Free-text entry, suggesting the names already in use so spellings stay consistent.
+ *
+ * Through `chooseAssignee` like every other pick: a name typed here is a fourth input to
+ * the same move, not a second plan beside it, so on the resources axis it announces itself
+ * exactly as a drop into that row would.
+ */
 function promptNewAssignee(host: BacklogViewHost, item: BacklogItem): void {
 	new ValuePromptModal(host.app, {
 		title: 'Assign item',
@@ -149,6 +198,6 @@ function promptNewAssignee(host: BacklogViewHost, item: BacklogItem): void {
 		placeholder: 'Alex',
 		ctaLabel: 'Assign',
 		known: assigneeChoices(host, item),
-		onSubmit: (value) => void host.applySafely(computeAssigneeWrites(item, value.trim())),
+		onSubmit: (value) => void chooseAssignee(host, item, value.trim()),
 	}).open();
 }

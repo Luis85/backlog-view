@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { FakeVault } from '../helpers/vault';
-import { Notice } from '../helpers/obsidian-mock';
+import { Menu, Notice } from '../helpers/obsidian-mock';
 import { Harness, flush, key, makeView, refresh, treeOf, useViewHarness } from '../helpers/view';
 import { announced, cardDrag } from '../helpers/dnd';
 import { cardByTitle } from '../helpers/board';
@@ -403,5 +403,66 @@ describe('moving between resources without a drag', () => {
 		await flush();
 
 		expect(vault.writeLog).toEqual([]);
+	});
+});
+
+describe('Set assignee on this axis', () => {
+	it('leads with the rows on screen, declared-and-empty included', () => {
+		const { view } = laneRoadmap(resourceVault());
+
+		view.showContextMenuFor(view.model?.byPath.get('Alice dated.md') as never);
+		const submenu = Menu.lastShown?.item('Set assignee')?.submenu;
+
+		// Every row a drop can reach, in the order the frame draws them — Bob has a row
+		// and appears on no result, so a list built from the observed names alone would
+		// leave the menu the one input to this move that goes quiet.
+		expect(submenu?.items.map((i) => i.titleText)).toEqual([
+			'Alice',
+			'Bob',
+			'Zoe',
+			'New assignee...',
+			'Clear assignee',
+		]);
+		expect(submenu?.item('Alice')?.checked).toBe(true);
+	});
+
+	it('routes a pick through the one method, so a pick and a drop say one sentence', async () => {
+		vi.useFakeTimers();
+		const { view } = laneRoadmap(resourceVault());
+		const spy = vi.spyOn(view, 'performResourceMove');
+
+		view.showContextMenuFor(view.model?.byPath.get('Alice dated.md') as never);
+		Menu.lastShown?.item('Set assignee')?.submenu?.item('Bob')?.clickHandler?.();
+
+		expect(spy).toHaveBeenCalledOnce();
+		expect(await announced()).toBe('Moved "Alice dated" from Alice to Bob');
+	});
+
+	it('clears the key from the menu, the shelf drop’s own write', async () => {
+		const vault = resourceVault();
+		const { view } = laneRoadmap(vault);
+
+		view.showContextMenuFor(view.model?.byPath.get('Alice dated.md') as never);
+		Menu.lastShown?.item('Set assignee')?.submenu?.item('Clear assignee')?.clickHandler?.();
+		await flush();
+
+		expect('assignee' in vault.fm('Alice dated.md')).toBe(false);
+	});
+
+	it('goes straight through the gate off this axis, where there is no frame to announce into', async () => {
+		vi.useFakeTimers();
+		const vault = resourceVault();
+		const { view } = laneRoadmap(vault);
+		const spy = vi.spyOn(view, 'performResourceMove');
+
+		view.setProjection('tree');
+		view.showContextMenuFor(view.model?.byPath.get('Alice dated.md') as never);
+		Menu.lastShown?.item('Set assignee')?.submenu?.item('Zoe')?.clickHandler?.();
+
+		// `announced` drives the live region's own timer, which flushes the write with it —
+		// `flush()` waits on a real timeout and would hang against the fake clock.
+		expect(await announced()).toBe('');
+		expect(spy).not.toHaveBeenCalled();
+		expect(vault.fm('Alice dated.md')['assignee']).toBe('Zoe');
 	});
 });
