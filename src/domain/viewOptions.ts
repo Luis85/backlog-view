@@ -2,7 +2,7 @@ import { BasesAllOptions, BasesOptions, BasesPropertyId, BasesViewConfig } from 
 import { BacklogSettings, columnPolicyKey, DEFAULT_DONE_VALUES, DEFAULT_HORIZON_VALUES, DEFAULT_PROP_COLUMN_WIDTH, DEFAULT_RISK_VALUES, MAX_PROP_COLUMN_WIDTH, MIN_PROP_COLUMN_WIDTH, wipLimitKey } from './settings';
 import { OptionalField, optionalProperty } from './optionalProperties';
 import { resolveSettings } from './settingsResolve';
-import { ALL_TYPES, DEFAULT_HOME_FOLDER, defaultTypeFolder, typeFolderKey } from './typeVocabulary';
+import { ABSENCE_TYPE, ALL_TYPES, DEFAULT_HOME_FOLDER, defaultTypeFolder, typeFolderKey } from './typeVocabulary';
 import { defaultItemHandling, OPEN_TARGETS } from './itemHandling';
 
 /**
@@ -365,9 +365,13 @@ function newItemsGroup(homeFolder: string): BasesAllOptions {
 				default: DEFAULT_HOME_FOLDER,
 				placeholder: 'Same folder as existing items',
 			},
-			// A picker per type, in ladder order then the extras. One input each is the
-			// difference between choosing a folder and spelling a mapping correctly.
-			...ALL_TYPES.map(
+			// A picker per type, in ladder order then the extras — and then the absence,
+			// which has a folder like any other note this plugin writes and is a type in
+			// no other sense. One input each is the difference between choosing a folder
+			// and spelling a mapping correctly. `defaultTypeFolder` answers '' for the
+			// absence, so its box shows the home folder as a placeholder and an unset
+			// option files it there.
+			...[...ALL_TYPES, ABSENCE_TYPE].map(
 				(type): BasesOptions => ({
 					type: 'folder',
 					key: typeFolderKey(type),

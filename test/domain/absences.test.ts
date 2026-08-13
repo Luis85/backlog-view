@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { buildModel } from '../../src/domain/model';
 import { absencesConfigured } from '../../src/domain/absences';
-import { ALL_TYPES } from '../../src/domain/typeVocabulary';
+import { ABSENCE_TYPE, ALL_TYPES, typeFolderKey } from '../../src/domain/typeVocabulary';
+import { folderForType } from '../../src/domain/itemTypes';
 import { BacklogSettings } from '../../src/domain/settings';
-import { settingsWith } from '../helpers/settings';
+import { settingsFrom, settingsWith } from '../helpers/settings';
 import { FakeVault } from '../helpers/vault';
 
 /**
@@ -99,5 +100,33 @@ describe('an absence is never a work item', () => {
 		// there is no shelf for a written absence to fall back to.
 		expect(model.items).toEqual([]);
 		expect(model.absences).toEqual([]);
+	});
+});
+
+describe('where an absence is filed', () => {
+	it('has a folder option of its own, resolved like every other type’s', () => {
+		const settings = settingsFrom({ 'typeFolder.absence': 'docs/absences' });
+
+		expect(folderForType(ABSENCE_TYPE, settings)).toBe('docs/absences');
+	});
+
+	it('falls back to the home folder rather than to a shipped subfolder', () => {
+		// 3a. Deliberately absent from `DEFAULT_TYPE_SUBFOLDERS`: sharing the home folder
+		// with every other type's notes is safe, because what keeps an absence out of the
+		// tree and the other axes is its TYPE and never its folder.
+		const settings = settingsFrom({ homeFolder: 'notes' });
+
+		expect(folderForType(ABSENCE_TYPE, settings)).toBeNull();
+		expect(settings.homeFolder).toBe('notes');
+		// The contrast that makes the sentence a claim rather than a coincidence: a type
+		// this plugin DOES ship an opinion about tracks the home folder instead.
+		expect(folderForType('Epic', settings)).toBe('notes/requirements');
+	});
+
+	it('reaches that folder without joining the work-item vocabulary', () => {
+		// The criterion stated at both ends: the key exists, and the list that drives every
+		// creator menu, focus target and shelf group does not contain the name.
+		expect(typeFolderKey(ABSENCE_TYPE)).toBe('typeFolder.absence');
+		expect(ALL_TYPES).not.toContain(ABSENCE_TYPE);
 	});
 });

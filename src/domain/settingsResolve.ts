@@ -12,7 +12,7 @@ import {
 	wipLimitKey,
 } from './settings';
 import { OPTIONAL_PROPERTIES, OptionalSettingsKey } from './optionalProperties';
-import { ALL_TYPES, defaultTypeFolder, typeFolderKey } from './typeVocabulary';
+import { ABSENCE_TYPE, ALL_TYPES, defaultTypeFolder, typeFolderKey } from './typeVocabulary';
 
 /**
  * Reading a `.base` file's stored options into a `BacklogSettings`.
@@ -241,7 +241,12 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 	// Limits are refused for done states HERE rather than only in the schema, so a key
 	// left in the `.base` by re-marking a state as done cannot revive its limit.
 	const limitedStates = states.filter((s) => !doneSet.has(s.toLowerCase()));
-	const folders = resolveFolders({ str, clearable }, ALL_TYPES, fallback);
+	// `ALL_TYPES` plus the one declared name that is deliberately not in it. Passed as a
+	// local array rather than by widening the vocabulary: `resolveFolders` already takes
+	// the types it should resolve, so this reuses the whole per-type shape — the option
+	// key, the clearable read, the home-folder fallback — without any consumer of
+	// `ALL_TYPES` seeing an extra entry it would then have to exclude.
+	const folders = resolveFolders({ str, clearable }, [...ALL_TYPES, ABSENCE_TYPE], fallback);
 	// Every optional property's key, read from the ONE table that already names both the
 	// option and the field it lands in — rather than a line per property restating that
 	// pairing a second time. The lines this replaces were correct, but they were a copy
