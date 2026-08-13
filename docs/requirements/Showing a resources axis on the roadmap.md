@@ -43,6 +43,23 @@ vocabulary the way the horizon values do.
 
 **Extensions**
 
+- **1a — reaching the axis at all.** [[Horizons or dates]] already specifies the toolbar
+  control that picks among configured axes, persisted per saved view; this is a third
+  choice through that same mechanism (`configuredAxes` / `activeAxis` in
+  `src/domain/roadmap.ts`, `renderAxisPicker` in `src/view/render/toolbarControls.ts`),
+  never a fourth idea of what picking an axis means. It cannot be configured alone —
+  `hasResourceAxis` needs the same start-or-target property `hasDateAxis` does, so
+  wherever this axis is configured the dated axis necessarily is too — and it is never
+  the default a first render picks: `configuredAxes`' own order is priority
+  (`horizons` ahead of `dates` today because "the axis that cannot over-promise" leads),
+  and this axis is a further grouping ON TOP of dates, one step more specific still, so
+  it takes the LAST position rather than displacing either. A vault that newly names an
+  assignee property alongside its dates does not have its roadmap silently change under
+  it — the resources axis has to be picked, the same way dates already has to be picked
+  over a configured horizon axis. Losing this axis's configuration afterward needs no
+  new case either: [[Horizons or dates]] extension 3a already states that the roadmap
+  falls back to whichever configured axis remains, pick retained rather than rewritten,
+  and that is generic over how many axes exist, not written for exactly two.
 - **2a — a declared resource holds no bars.** It renders anyway — the horizon board's
   own empty-bucket rule, over a different property.
 - **3a — a result's assignee is not in the declared roster.** It renders in a row named
@@ -70,13 +87,28 @@ vocabulary the way the horizon values do.
   the same undifferentiated context this axis's own dated ancestor already keeps.
 - **4a — the user creates from a row.** The row's own resource name rides the single
   creation write, the same as a bucket's — no note ever exists in a row its frontmatter
-  does not claim. Where a template is also picked, the row's name wins over anything the
-  template declares for the assignee property
+  does not claim. Unlike a bucket, that write alone does not draw the card IN the row:
+  [[New item flow]] supplies no date, and a picked template's start and target are
+  stripped the same way a bucket-created note's horizon never is
+  ([[Creating an item from a template]]), so the new note is exactly 3c's case the
+  moment it is read back — an assignee and no date — and shelves on the same refresh
+  that creates it. Announced the way [[Assigning items to a resource]] extension 3c
+  already announces the identical outcome reached by a drag instead of a click: naming
+  the resource now on the note and that a date is what is still missing to place it,
+  rather than letting a click on a specific row silently produce a card that renders
+  somewhere else entirely. Where a template is also picked, the row's name wins over
+  anything the template declares for the assignee property
   ([[Creating an item from a template]] extension 5d) — the same reason a picked
   template cannot override a bucket's horizon either.
 
 ## Acceptance criteria
 
+- The resources axis is a third choice through [[Horizons or dates]]'s own toolbar
+  picker and persisted pick, never reachable alone (it requires the same date property
+  the dated axis does) and never the default a first render selects — it takes the
+  position after both existing axes in `configuredAxes`' priority order, and losing its
+  configuration falls back the same generic way losing either existing axis already
+  does.
 - Declared resources render as rows in declared order, empty or not; the roster is
   optional and, unlike the horizon values, ships with nothing prefilled.
 - A row's membership is the note's own assignee value; a bar's position is computed
@@ -94,7 +126,10 @@ vocabulary the way the horizon values do.
   adding a case for it.
 - Creating from a row writes that resource's name into the assignee property as part of
   the single creation write, and wins over anything a picked template declares for that
-  same property.
+  same property — but, having no date of its own (neither creation nor a template
+  supplies one), it shelves on the same refresh rather than drawing in the row, announced
+  the same way [[Assigning items to a resource]] extension 3c already announces the
+  identical outcome reached by a drag.
 - A card's own assignee chip does not also draw while the card renders inside its
   resource's row — the row already says who it is assigned to, the same rule
   [ADR 0027](../adrs/0027-label-chips-with-no-positional-meaning-also-draw-on-cards.md)
@@ -108,8 +143,15 @@ derivation (`deriveBuckets`, the declared-order, minted-stray shape
 `assigneeValue` instead of the horizon value, and would reuse `src/domain/bars.ts`'s
 `placeItem`/`inferSpan` unchanged — a bar's position within its row is the same
 computation the dated axis already makes, only grouped differently. `hasResourceAxis`
-would join `hasHorizonAxis` and `hasDateAxis` in the same file. The optional roster is
-one more row through the settings shape ADR 0026 already splits between
+would join `hasHorizonAxis` and `hasDateAxis` in the same file, and reaching the axis
+would widen the selection machinery [[Horizons or dates]] built rather than add a
+second one: `RoadmapAxis` gains `'resources'` alongside `'horizons'` and `'dates'`,
+`configuredAxes` pushes it last (after the `hasDateAxis` push, so it never leads),
+`AXIS_LABEL` in `src/view/render/toolbarControls.ts` gains a third entry, and
+`renderAxisPicker`'s two `choice(...)` calls gain a third — `activeAxis` and the
+persisted pick in `src/storage/collapseStore.ts` need no change at all, since both
+already resolve generically over however many axes `configuredAxes` returns. The optional
+roster is one more row through the settings shape ADR 0026 already splits between
 `src/domain/settings.ts` and its view-options picker; the value itself is
 `assigneeValue`, already on the model ([[Setting the assignee on an item]]). Rendering
 would sit in `src/view/render/roadmap.ts`, beside the bucket and shelf rendering it

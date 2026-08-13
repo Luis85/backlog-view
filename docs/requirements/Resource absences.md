@@ -35,7 +35,7 @@ already looks.
 | **Actor** | Backlog owner |
 | **Trigger** | Adding an absence from a resource's row header |
 | **Preconditions** | Roadmap mode is on with the resources axis, and BOTH date properties are configured — sharper than the axis's own gate (`hasDateAxis` accepts either alone), because an absence has no descendant to infer a missing end from the way a work item does |
-| **Guarantee** | An absence names exactly one resource and one date range, is never added to the tree, the board, the horizon axis or the plain dated axis regardless of the `hierarchyOnly` setting, and is never a write target for anything else this backlog already does to a work item. |
+| **Guarantee** | An absence names exactly one resource and one date range, is never added to the tree, the board, the horizon axis or the plain dated axis regardless of the `hierarchyOnly` setting — for as long as the configured type key still names the value the note was written under, the same condition every declared type's own recognition already depends on — and is never a write target for anything else this backlog already does to a work item. |
 
 **Main flow**
 
@@ -98,6 +98,19 @@ already looks.
   absences never reach this view. No guarantee here claims otherwise —
   [[The resource timeline]]'s landmines name this as a property of the whole feature, not
   something this PBI builds its way out of.
+- **4f — the configured type-key property is renamed after absences already exist.**
+  Nothing about this feature is special here: renaming `typeKey` desyncs every note's
+  frontmatter — still written under the old name — from the property the reader now
+  looks for, and nothing in this vocabulary migrates a rename, absences included. A
+  Milestone in the same vault stops being recognized as a marker exactly the same way,
+  for exactly the same reason. What differs is the CONSEQUENCE, not the mechanism: a
+  Milestone that stops being recognized becomes a wrongly-ranked ordinary item — still
+  visible, wrong the way an ordinary configuration mistake is — while an absence that
+  stops being recognized becomes a real-looking task, the one inversion this whole
+  feature exists to prevent. That asymmetry is a reason to be careful renaming `typeKey`
+  in a vault that has absences, not a reason this PBI owes a stable discriminator none
+  of the other six names has: recognition already depends on a stable, currently
+  configured `typeKey`, the same precondition every declared type's does.
 
 ## Acceptance criteria
 
@@ -126,6 +139,10 @@ already looks.
 - A resource named only by an absence still gets a row.
 - Overlapping bars and absences in one row stack, with no lane-packing.
 - Deleting an absence removes the note through Obsidian's own delete.
+- Renaming the configured type-key property after absences already exist is not
+  migrated — the same non-guarantee every declared type's recognition already carries —
+  though the consequence is sharper here: a note that stops being recognized as an
+  absence can become a real-looking task rather than merely a mis-styled one.
 
 ## Where it lives
 
