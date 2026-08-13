@@ -4,7 +4,8 @@ import { RowContext } from './columns';
 import { drawIcon } from './icons';
 import { renderBadge, renderTitleText } from './rows';
 import { newItemType, promptCreateItem } from '../interactions/create';
-import { Absence } from '../../domain/absences';
+import { promptAddAbsence } from '../interactions/absences';
+import { Absence, absencesConfigured } from '../../domain/absences';
 import { TimelineRow } from '../../domain/bars';
 import { BacklogItem } from '../../domain/model';
 import { ResourceLane } from '../../domain/roadmap';
@@ -111,9 +112,34 @@ export function renderLaneHead(ctx: RowContext, content: HTMLElement, lane: Reso
 			`"${lane.name}" is not one of the declared resources. Add it to "Resources (in order)" in the view options, or re-assign its items.`,
 		);
 	}
+	renderLaneAbsenceAdd(ctx, lead, lane);
 	renderLaneNew(ctx, lead, lane);
 	head.createDiv({ cls: 'pbl-timeline-track' });
 	return head;
+}
+
+/**
+ * Mark this resource unavailable for a stretch. Gated on `absencesConfigured` rather than
+ * on the axis being drawn — sharper than the axis's own precondition, which accepts either
+ * date property alone — so the control is absent rather than opening a form whose range
+ * could never be written.
+ *
+ * `tabindex="-1"` like the row's New button, and with the same gap behind it: the pane is
+ * one tab stop and a row is not a keyboard stop, so there is no keyboard route to this
+ * control, nor to the delete on the stretch it creates. Closing that properly means row
+ * stops, which is `docs/requirements/Keyboard and menu on the roadmap.md`'s work — the
+ * identical statement the New button beside it already carries, not a new one.
+ */
+function renderLaneAbsenceAdd(ctx: RowContext, lead: HTMLElement, lane: ResourceLane): void {
+	if (!absencesConfigured(ctx.host.settings)) return;
+	const host = ctx.host;
+	const btn = lead.createEl('button', {
+		cls: 'clickable-icon pbl-lane-add pbl-lane-absence-add',
+		attr: { type: 'button', tabindex: '-1', 'aria-label': `Add absence for ${lane.name}` },
+	});
+	drawIcon(btn, 'user-x');
+	setTooltip(btn, `Add absence for "${lane.name}"`);
+	btn.addEventListener('click', () => promptAddAbsence(host, lane));
 }
 
 /**

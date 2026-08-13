@@ -315,6 +315,91 @@ export class SchedulePromptModal extends PromptModal<SchedulePromptOptions> {
 	}
 }
 
+/** The four facts an absence is: who is away, what to call it, and both ends of the range. */
+export interface AbsenceResult {
+	resource: string;
+	title: string;
+	start: string;
+	target: string;
+}
+
+export interface AbsencePromptOptions {
+	heading: string;
+	description: string;
+	/** Pre-filled from the row it was opened on, and editable — the row is a default, not a lock. */
+	resource: string;
+	/** Names to suggest, so spellings stay consistent with the rows already drawn. */
+	known: string[];
+	/**
+	 * Refuse with a reason, keeping the prompt open and the values in place. Null accepts.
+	 * `SchedulePromptModal`'s own contract, for its own reason: what a date IS belongs to
+	 * the layer that reads them, which is what keeps `ui/` free of the domain.
+	 */
+	validate: (result: AbsenceResult) => string | null;
+	onSubmit: (result: AbsenceResult) => void;
+}
+
+/**
+ * Prompt asking for one resource's unavailable stretch.
+ *
+ * Both ends, always — this is the one form in this file where an empty date is not a real
+ * answer, because an absence has nothing beneath it to infer the other end from and no
+ * shelf to wait on. So there is no per-field clear button either: `SchedulePromptModal`
+ * carries one because clearing an end is how a single date is taken back, and here that
+ * would offer a gesture whose result the validator must then refuse.
+ *
+ * The date fields are `type="date"` for that same modal's reason: the platform's picker,
+ * and the only values that can come back are a calendar date or nothing.
+ */
+export class AbsencePromptModal extends PromptModal<AbsencePromptOptions> {
+	onOpen(): void {
+		this.titleEl.setText(this.options.heading);
+		const values: AbsenceResult = { resource: this.options.resource, title: '', start: '', target: '' };
+
+		this.contentEl.createDiv({ cls: 'pbl-modal-detail', text: this.options.description });
+		// Rendered up front and filled on refusal, so the dialog does not resize under the
+		// pointer as you submit — `SchedulePromptModal`'s own reasoning.
+		const errorEl = this.contentEl.createDiv({ cls: 'pbl-modal-error', attr: { role: 'alert' } });
+
+		const submit = () => {
+			const trimmed: AbsenceResult = {
+				resource: values.resource.trim(),
+				title: values.title.trim(),
+				start: values.start.trim(),
+				target: values.target.trim(),
+			};
+			const problem = this.options.validate(trimmed);
+			if (problem !== null) {
+				errorEl.setText(problem);
+				return;
+			}
+			this.close();
+			this.options.onSubmit(trimmed);
+		};
+		const field = (name: string, key: keyof AbsenceResult, setup: (input: HTMLInputElement) => void) => {
+			new Setting(this.contentEl).setName(name).addText((text) => {
+				text.setValue(values[key]);
+				text.onChange((v) => {
+					values[key] = v;
+					// The refusal was about what was entered, so it stops being true the
+					// moment the entry changes.
+					errorEl.setText('');
+				});
+				setup(text.inputEl);
+				submitOnEnter(text.inputEl, submit, key === 'title');
+			});
+		};
+
+		field('Resource', 'resource', (input) => new KnownValueSuggest(this.app, input, this.options.known));
+		// Autofocused rather than the resource, which the row above already answered.
+		field('Title', 'title', (input) => (input.placeholder = 'Away'));
+		field('Start', 'start', (input) => (input.type = 'date'));
+		field('End', 'target', (input) => (input.type = 'date'));
+
+		this.cta('Save', submit);
+	}
+}
+
 /** Prompt asking for the title (and, when needed, target folder) of a new backlog item. */
 export class TitlePromptModal extends PromptModal<NewItemPromptOptions> {
 	onOpen(): void {

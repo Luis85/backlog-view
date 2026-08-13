@@ -652,13 +652,7 @@ export interface NewItemSpec {
 export async function createBacklogItem(app: App, settings: BacklogSettings, spec: NewItemSpec): Promise<TFile> {
 	const folder = vaultFolder(spec.folder);
 	await ensureFolder(app, folder);
-
-	const base = sanitizeTitle(spec.title);
-	const filePath = (name: string) => (folder ? normalizePath(`${folder}/${name}.md`) : `${name}.md`);
-	let path = filePath(base);
-	for (let i = 1; app.vault.getAbstractFileByPath(path) !== null; i++) {
-		path = filePath(`${base} ${i}`);
-	}
+	const path = uniqueNotePath(app, folder, spec.title);
 
 	// One atomic write: a create-then-update pair could fail in between and leave
 	// a blank note without its hierarchy properties behind.
@@ -691,6 +685,20 @@ export async function createBacklogItem(app: App, settings: BacklogSettings, spe
  */
 function wikilinkTo(app: App, target: TFile, sourcePath: string): string {
 	return '[[' + app.metadataCache.fileToLinktext(target, sourcePath) + ']]';
+}
+
+/**
+ * The path a new note takes: the sanitized title in the folder, suffixed until nothing is
+ * there. Shared by both creators in this directory, so an absence and a work item cannot
+ * disagree about what a title becomes on disk or about what happens when the name is
+ * taken.
+ */
+export function uniqueNotePath(app: App, folder: string, title: string): string {
+	const base = sanitizeTitle(title);
+	const filePath = (name: string) => (folder ? normalizePath(`${folder}/${name}.md`) : `${name}.md`);
+	let path = filePath(base);
+	for (let i = 1; app.vault.getAbstractFileByPath(path) !== null; i++) path = filePath(`${base} ${i}`);
+	return path;
 }
 
 function sanitizeTitle(title: string): string {
