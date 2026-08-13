@@ -52,10 +52,16 @@
 	opacity: 0.65;
 }
 
-/* The row's own New button — `.pbl-bucket-add`'s pair in `styles/roadmap.css`, over a row
-   instead of a column. Hidden until the row is hovered or the button itself is focused,
-   which is what keeps the header readable at a glance. */
-.pbl-lane-add {
+/* A row header's own controls — New, and Add absence — `.pbl-bucket-add`'s pair in
+   `styles/roadmap.css`, over a row instead of a column. Hidden until the row is hovered or
+   the button itself is focused, which is what keeps the header readable at a glance.
+
+   A style hook shared by both, deliberately separate from the identity classes
+   (`.pbl-lane-add`, `.pbl-lane-absence-add`) that say WHICH control this is. They were one
+   class until Add absence arrived, and every selector naming `.pbl-lane-add` then matched
+   two different buttons — which is a real defect and not only a test's problem: the next
+   selector written for "the row's New button" would silently reach the other one too. */
+.pbl-lane-ctl {
 	flex: 0 0 auto;
 	border: none;
 	box-shadow: none;
@@ -65,12 +71,12 @@
 	transition: opacity 120ms ease-in-out;
 }
 
-.pbl-lane-head:hover .pbl-lane-add,
-.pbl-lane-add:focus-visible {
+.pbl-lane-head:hover .pbl-lane-ctl,
+.pbl-lane-ctl:focus-visible {
 	opacity: 1;
 }
 
-.pbl-lane-add .svg-icon {
+.pbl-lane-ctl .svg-icon {
 	width: var(--icon-s);
 	height: var(--icon-s);
 }
@@ -79,7 +85,7 @@
    touch reader who gets neither the hover nor a stop cannot reach this control at all
    rather than merely not seeing it. */
 @media (hover: none) {
-	.pbl-lane-add {
+	.pbl-lane-ctl {
 		opacity: 1;
 	}
 }

@@ -40,7 +40,7 @@ export default defineConfig({
 			// removed. The entries are not restored — git holds them — but main's
 			// THRESHOLDS are taken whole, because they are higher and a floor only rises.
 			thresholds: {
-				statements: 98.48,
+				statements: 98.49,
 				branches: 94.81,
 				functions: 99.81,
 				lines: 99.59,

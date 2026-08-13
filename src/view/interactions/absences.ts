@@ -38,9 +38,13 @@ export function promptAddAbsence(host: BacklogViewHost, lane: ResourceLane): voi
 		heading: 'Add absence',
 		description: `Marks the resource unavailable for a stretch. Filed ${folder ? `in "${folder}"` : 'in the vault root'}.`,
 		resource: lane.name,
-		// The rows on screen, so a second absence for the same person cannot come to
-		// spell that person differently from the row it draws in.
-		known: host.roadmap?.roadmap.lanes.map((drawn) => drawn.name) ?? [lane.name],
+		// The declared roster plus the row this was opened on, so a name typed here keeps
+		// the spelling the view options gave it. Deliberately NOT the drawn rows, which
+		// would be the wider list: reaching them means `host.roadmap`, which is nullable,
+		// and the fallback arm is one no click can take — the control only exists while a
+		// row is drawn. A branch nothing can reach is worse than a shorter list, and the
+		// row in hand already covers the case the wider list was for.
+		known: [...new Set([lane.name, ...host.settings.resourceNames])],
 		validate: absenceProblem,
 		onSubmit: (result) => void writeAbsence(host, folder, result),
 	}).open();

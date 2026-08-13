@@ -270,40 +270,7 @@ export function renderTimeline(
 		hold: drawing.hold,
 	};
 	const drawn: DrawnColors = { done: false, milestone: milestoneLines, accent: false };
-	// The stripe counts drawn ROWS only: a lane header is chrome, and counting it would
-	// flip the parity of every row beneath it.
-	let drawnRows = 0;
-	let lane: ResourceLane | null = null;
-	for (const entry of entries) {
-		if (entry.kind === 'lane') {
-			lane = entry.lane;
-			drawing.laneTarget?.(renderLaneHead(ctx, content, entry.lane), entry.lane);
-			continue;
-		}
-		if (entry.kind === 'absence') {
-			// Its own drawn line, and NOT counted as a bar row: the stripe alternates over
-			// work, and an absence is furniture of the row rather than a row of work in it.
-			const away = renderLaneAbsence(ctx, content, entry.absence, { window, scale });
-			if (lane) renderLaneRowDescription(away, lane.name);
-			continue;
-		}
-		const row =
-			entry.kind === 'context'
-				? renderLaneContextRow(ctx, content, entry.item)
-				: reportColors(renderBarRow(ctx, mounts, window, entry.row, scale), drawn);
-		// Whose row this is, said on the row itself: the header is a sibling div and
-		// cannot label what follows it. See `renderLaneRowDescription`. And every element
-		// of the band is a drop target of its own, for the same reason — there is no
-		// container to wire, so the band is wired one element at a time.
-		if (lane) {
-			renderLaneRowDescription(row, lane.name);
-			drawing.laneTarget?.(row, lane);
-		}
-		// Assigned at render because CSS has no nth-of-class, and nth-child would
-		// count the header, the lines and the layers interleaved in this container.
-		if (drawnRows % 2 === 1) row.addClass('pbl-row-even');
-		drawnRows++;
-	}
+	drawEntries(entries, { ctx, mounts, window, drawing, drawn });
 	// After every row exists, never before: an edge's arrow anchors on the ROWS the
 	// prerequisite and the dependent actually drew, and its Y comes from where those
 	// rows really landed rather than a guessed row height — see `renderDependencyArrows`,
@@ -346,6 +313,68 @@ export function renderTimeline(
 		drawn,
 		dependencyConflicts: dependencies.conflicts,
 	};
+}
+
+/**
+ * Everything the entry walk needs beyond the entries — one object, not six arguments.
+ * `drawing` whole rather than the two fields taken out of it: it already carries both the
+ * scale and `laneTarget`, and naming them here would be a second list to keep in step.
+ */
+interface EntryPass {
+	ctx: RowContext;
+	mounts: BarRowMounts;
+	window: TimelineWindow;
+	drawing: TimelineDrawing;
+	/** Filled as each bar row reports what it painted — see `TimelineRender.drawn`. */
+	drawn: DrawnColors;
+}
+
+/**
+ * Draw every entry the axis handed over, in order — the one place the four entry kinds
+ * are told apart.
+ *
+ * Its own function rather than a loop inside `renderTimeline`, which is at the
+ * complexity budget `npm run analyze` enforces: the grid's own setup (the window, the
+ * header, the lines, the layers, the overlay) and the walk over what it contains are two
+ * jobs, and the fourth entry kind is what made keeping them in one measurably too much.
+ *
+ * **The stripe counts drawn ROWS only.** A lane header is chrome and an absence is the
+ * row's own furniture, so neither reaches the counter — counting either would flip the
+ * parity of every work row beneath it.
+ */
+function drawEntries(entries: TimelineEntry[], pass: EntryPass): void {
+	const { ctx, mounts, window, drawn } = pass;
+	const { scale, laneTarget } = pass.drawing;
+	let drawnRows = 0;
+	let lane: ResourceLane | null = null;
+	for (const entry of entries) {
+		if (entry.kind === 'lane') {
+			lane = entry.lane;
+			laneTarget?.(renderLaneHead(ctx, mounts.content, entry.lane), entry.lane);
+			continue;
+		}
+		if (entry.kind === 'absence') {
+			const away = renderLaneAbsence(ctx, mounts.content, entry.absence, { window, scale });
+			if (lane) renderLaneRowDescription(away, lane.name);
+			continue;
+		}
+		const row =
+			entry.kind === 'context'
+				? renderLaneContextRow(ctx, mounts.content, entry.item)
+				: reportColors(renderBarRow(ctx, mounts, window, entry.row, scale), drawn);
+		// Whose row this is, said on the row itself: the header is a sibling div and
+		// cannot label what follows it. See `renderLaneRowDescription`. And every element
+		// of the band is a drop target of its own, for the same reason — there is no
+		// container to wire, so the band is wired one element at a time.
+		if (lane) {
+			renderLaneRowDescription(row, lane.name);
+			laneTarget?.(row, lane);
+		}
+		// Assigned at render because CSS has no nth-of-class, and nth-child would
+		// count the header, the lines and the layers interleaved in this container.
+		if (drawnRows % 2 === 1) row.addClass('pbl-row-even');
+		drawnRows++;
+	}
 }
 
 /**

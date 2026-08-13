@@ -230,10 +230,13 @@ axis still registers no positional target one could land on. What a bar offers n
 ordinary card drag — hold `null`, no baseline — which is a different gesture with a
 different write behind it.
 
-What is genuinely new is the row-grouping walk itself, and where an absence's bar merges
-into it. `ResourceLane.bars` is a plain list the renderer walks, which is the seam
-[[Resource absences]] needs: a second source appends to it rather than changing how a row
-is drawn.
+What is genuinely new is the row-grouping walk itself, and where an absence merges into
+it. A row draws from a list per SOURCE and the renderer walks each — which is the seam
+[[Resource absences]] needed, though not in the shape this paragraph first promised: it
+said a second source would append to `ResourceLane.bars`, and it cannot, because
+`TimelineBar.item` is a `BacklogItem` and an absence is deliberately never one. The seam
+held; the sentence was wrong about which list. `ResourceLane.absences` is the second one,
+added 2026-08-13.
 
 **Not built here, and owed:** the acceptance criterion that a row's name must win over a
 picked template's assignee cannot be met yet, because templates do not exist —

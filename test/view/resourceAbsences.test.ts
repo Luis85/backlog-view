@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { Menu, Modal, Notice } from '../helpers/obsidian-mock';
 import { flush, Harness, makeView, submitButton, useViewHarness } from '../helpers/view';
@@ -254,9 +254,35 @@ describe('adding an absence', () => {
 		expect(submitAbsence({ title: 'Away', start: '2026-09-04', target: '' })).toBe(false);
 		// And a resource: a stretch nobody is away for has no row to draw in.
 		expect(submitAbsence({ resource: '', title: 'Away', start: '2026-09-04', target: '2026-09-05' })).toBe(false);
+		// And a title: it is the note's own name, so there is nothing to file without one.
+		expect(submitAbsence({ title: '', start: '2026-09-04', target: '2026-09-05' })).toBe(false);
 		await flush();
 
 		expect(vault.files.size).toBe(before);
+	});
+
+	it('files it in the vault root when no folder is configured at all', async () => {
+		const vault = absenceVault();
+		const { containerEl } = laneRoadmap(vault, { homeFolder: '' });
+
+		addButton(containerEl, 'Bob')?.click();
+		submitAbsence({ title: 'Conference', start: '2026-09-01', target: '2026-09-04' });
+		await flush();
+
+		expect(vault.fm('Conference.md')['type']).toBe('Absence');
+	});
+
+	it('reports a write it could not make, rather than failing silently', async () => {
+		const vault = absenceVault();
+		const { containerEl } = laneRoadmap(vault);
+		vi.spyOn(vault.app.vault, 'create').mockRejectedValue(new Error('disk full'));
+		vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+		addButton(containerEl, 'Alice')?.click();
+		submitAbsence({ title: 'Away', start: '2026-09-01', target: '2026-09-04' });
+		await flush();
+
+		expect(Notice.messages.some((m) => m.startsWith('Could not create the absence'))).toBe(true);
 	});
 });
 
@@ -290,5 +316,18 @@ describe('deleting an absence', () => {
 		// never one of this backlog's write targets.
 		expect(vault.writeLog).toEqual([]);
 		expect(view.canUndo()).toBe(false);
+	});
+
+	it('reports a delete it could not make, rather than failing silently', async () => {
+		const vault = absenceVault();
+		const { containerEl } = laneRoadmap(vault);
+		vi.spyOn(vault.app.fileManager, 'trashFile').mockRejectedValue(new Error('locked'));
+		vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+		openAbsenceMenu(containerEl);
+		Menu.lastShown?.item('Delete absence')?.click();
+		await flush();
+
+		expect(Notice.messages.some((m) => m.startsWith('Could not delete the absence'))).toBe(true);
 	});
 });

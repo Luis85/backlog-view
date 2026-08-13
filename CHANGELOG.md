@@ -29,6 +29,22 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   dates — and an item with no dates stays on the shelf under its new owner, which the view
   says out loud rather than leaving it looking like a drop that missed.
 
+- **Mark a resource unavailable** — **Add absence** on a row header writes a note saying
+  who is away and for how long, and that stretch draws as a blocked band in their row and
+  nowhere else. It is never a backlog item: it has no parent, no rank and no state, it
+  never appears in the tree, on a board or on the other roadmap axes, and it is deleted
+  through Obsidian's ordinary file delete rather than this plugin's undo. Needs both date
+  properties configured — an absence has no children to infer a missing end from — and
+  files itself under **Folder for Absence items**, or the home folder when that is unset.
+
+### Changed
+
+- **`Absence` is now a reserved type name.** If a note in your vault already uses
+  `Absence` as an informal value of your type property, it will stop appearing in every
+  projection — the plugin now reads that name as "a resource is away", not as work. Rename
+  the value on those notes to keep them in the backlog. See
+  [ADR 0028](docs/adrs/0028-absence-is-a-reserved-name-outside-the-vocabulary.md).
+
 ## [0.7.1] - 2026-08-12
 
 ### Added

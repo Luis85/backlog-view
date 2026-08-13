@@ -2,9 +2,32 @@
 type: PBI
 parent: "[[The resource timeline]]"
 order: 30
-status: Open
+status: Done
 created: 2026-08-13
 source: user request
+files:
+  - src/domain/absences.ts
+  - src/domain/itemTypes.ts
+  - src/domain/model.ts
+  - src/domain/readItems.ts
+  - src/domain/roadmap.ts
+  - src/domain/settingsResolve.ts
+  - src/domain/typeVocabulary.ts
+  - src/domain/viewOptions.ts
+  - src/storage/absenceNotes.ts
+  - src/storage/frontmatter.ts
+  - src/ui/prompts.ts
+  - src/view/interactions/absences.ts
+  - src/view/manual/setupSection.ts
+  - src/view/render/lanes.ts
+  - src/view/render/timeline.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Resource absences
@@ -190,44 +213,97 @@ already looks.
 
 ## Where it lives
 
-Unbuilt, and the one PBI in this feature that is not an extension of an existing write
-path. Reading and placing an absence would be new, small code beside
-`src/domain/roadmap.ts` rather than inside it — an absence is deliberately never a
-`BacklogItem`: `src/domain/readItems.ts` (`createItems`/`addItem`) would recognize its
-declared type and skip the note before a `RawItem` is built from it, unconditionally,
-never reaching `pruneOutsideHierarchy` — which runs only when `settings.hierarchyOnly`
-is true (`buildModel` in `src/domain/model.ts`) and would therefore be the wrong gate
-for an exclusion that has to hold either way. Because `readItems.ts` throws a skipped
-note's data away rather than keeping it anywhere, the new reader would need its own look
-at the same `entries: BasesEntry[]` `buildModel` already takes (sourced from
-`this.data.data` in `src/view/backlogView.ts`) — the same list, read a second time for
-the opposite type — rather than an independent vault scan: extension 4e is the
-consequence of that choice, not an oversight it leaves open. The type name itself —
-`Absence`, matching `Milestone`'s own capitalization and Title Case — would live in
-`src/domain/typeVocabulary.ts` beside the other three categories but join NONE of
-them, opposite `MARKER_TYPES` in polarity for the read (a marker is recognized and
-kept, ranked out of the ladder but still read; this is recognized and dropped, never
-read at all) and, unlike a marker, never folded into `ALL_TYPES` either. `ALL_TYPES` is
-what admits a name everywhere a work item's name matters — `childTypeChoices` offers
-every entry at the top level (`itemTypes.ts`, `if (!parent) return ALL_TYPES`),
-`focusTarget` accepts one as a focus root, `shelf.ts` groups by it, `backlogReadme.ts`
-and the in-app manual document it as a declared type — and every one of those is
-exactly what an absence must refuse: never a creatable type
-(Add absence is its own prompt, not the type-picker New flow), never a focus target (it
-never reaches the tree to focus on), never grouped on a shelf built for work items it
-never joins. A standalone `ABSENCE_TYPE = 'Absence'` constant keeps the one thing it
-DOES need — a configured folder — without buying everything else `ALL_TYPES` membership
-grants along with it: `typeFolderKey('Absence')` still names its option
-(`typeFolder.absence`, the same naming convention every other type's folder option
-already uses), resolved by its own small call beside wherever
-`resolveFolders(..., ALL_TYPES, ...)` runs today (`src/domain/settingsResolve.ts`)
-rather than by joining the list that call already iterates. Every consumer of
-`ALL_TYPES` sees nothing new by construction, since none of them reaches past that one
-list — the only edit any of them needs is none. Creating and deleting one would still
-go through `src/storage/frontmatter.ts`, the only module allowed to touch the vault, behind
-the same `configProblems` gate every other write here answers to — a narrow function
-beside `createBacklogItem` rather than a call to it, since an absence has no parent and
-no rank for that function's `NewItemSpec` to carry, and its type is a fixed constant
-rather than one `NewItemSpec` chooses from the ladder. The prompt itself would sit
-beside `ValuePromptModal` in `src/ui/prompts.ts` — one more small form asking for values
-this plugin does not own.
+Built 2026-08-13, and the one PBI in this feature that is not an extension of an existing
+write path.
+
+The name is `ABSENCE_TYPE` in `src/domain/typeVocabulary.ts`, beside the other three
+categories and a member of NONE of them — `ALL_TYPES` least of all, which is what makes
+every consumer of that list need no edit: `childTypeChoices` never offers it, `focusTarget`
+never accepts it, `shelf.ts` never groups by it, and neither the generated README nor the
+in-app manual documents it as a declared type. `isAbsenceType` sits beside `isMarkerType`
+in `src/domain/itemTypes.ts` and is its own predicate for that predicate's own reason: the
+two answer opposite questions, and this one decides whether a note becomes an item at all.
+[ADR 0028](../adrs/0028-absence-is-a-reserved-name-outside-the-vocabulary.md) records that
+this is the first DROPPED-polarity name this fixed vocabulary has added, which is what
+extension 4h costs.
+
+What an absence IS — the record, whether the configuration can carry one
+(`absencesConfigured`), and reading one back with the same validity gate the prompt
+applies (`readAbsence`) — is `src/domain/absences.ts`, pure and the one place 2a, 2b, 4d
+and 4g are answered. `absencesConfigured` is deliberately sharper than the axis's own
+`hasDateAxis`, and it is asked of CREATING one and of READING one back from that single
+definition.
+
+**The reader sits in `addItem`, not in a second pass over the entries, and this note said
+otherwise until it was built.** The projection below was that the reader "would need its
+own look at the same `entries: BasesEntry[]` `buildModel` already takes — the same list,
+read a second time for the opposite type". It cannot: `test/domain/modelCost.test.ts`
+pins `reads === items`, one `getFileCache` per note loaded, and `addItem` holds this
+layer's only call site — so a second pass over the same entries either doubles that count
+or has to read through `BasesEntry.getValue()`, which the jsdom harness answers `null` to,
+leaving every absence test asserting against a vault the code cannot read. The divert
+therefore happens where the cache is already open: `addItem` reads `typeName` four lines
+before it builds the `RawItem`, and `isAbsenceType` returns early there — unconditionally,
+never through `pruneOutsideHierarchy`, which runs only when `settings.hierarchyOnly` is
+true (`buildModel` in `src/domain/model.ts`) and would therefore be the wrong gate for an
+exclusion that has to hold either way. What was kept lands on `RawStore.absences` and is
+carried straight onto `BacklogModel.absences`; extension 4e is a consequence of reading
+only what the Base hands over, unchanged by where the reading happens.
+
+**A row's second source is `ResourceLane.absences`, a second LIST.**
+[[Showing a resources axis on the roadmap]] promised the seam as "a second source appends
+to `ResourceLane.bars`", and that shape is impossible: `TimelineBar.item` is a
+`BacklogItem` and an absence is deliberately never one. The seam itself held — a row draws
+from a list per source and the renderer walks each — so that note's sentence was corrected
+rather than satisfied. `deriveLanes` in `src/domain/roadmap.ts` places them in a third pass
+between the results and the context rows, through `laneNamed`, which now states the
+row-minting rule once because two sources reach it: unlike a context row, an absence MAY
+mint a row (4b), since it is a statement this base's own notes make about a resource
+rather than a value borrowed from a note the filter excluded. It is never counted and
+never shelved, the rule a context row already keeps.
+
+Drawing is `src/view/render/lanes.ts` — a fourth `TimelineEntry` kind leading each band,
+and `renderLaneAbsence`, positioned by `barGeometry` against the same window a bar is —
+drawn from `src/view/render/timeline.ts`'s own entry loop, which does NOT count one as a
+drawn row: the stripe alternates over work, and an absence is furniture of the row. The
+blocked stretch is `styles/lanes.css`, hatched rather than filled and muted rather than
+coloured, on `.pbl-bar-inferred`'s own argument that a mark the view did not read off a
+plan must not look like one.
+
+Creating one is `AbsencePromptModal` in `src/ui/prompts.ts` (`SchedulePromptModal`'s shape,
+with no per-field clear button — an empty end is not a real answer here) opened by
+`promptAddAbsence` in `src/view/interactions/absences.ts`, which runs the `configProblems`
+gate BEFORE the form so no typing is taken for a write that would be refused. The write
+itself is `createAbsenceNote` in `src/storage/absenceNotes.ts` — a module of its own rather
+than a function beside `createBacklogItem`, because `src/storage/frontmatter.ts` is at its
+line budget and because neither act goes through `applyWrites`: an absence is not a write
+target of this backlog, so there is no batch, no captured inverse and no undo slot. What
+they share is the rule that makes `storage/` a boundary — everything that puts bytes in the
+vault is in that directory — which is why `deleteAbsenceNote` is there too, even though no
+lint rule names `trashFile` the way one names `vault.create`. `uniqueNotePath` was extracted
+out of `createBacklogItem` so both creators name notes the same way. The folder is
+`typeFolder.absence`, resolved by passing `[...ALL_TYPES, ABSENCE_TYPE]` to `resolveFolders`
+(`src/domain/settingsResolve.ts`) and offered as one more picker in
+`src/domain/viewOptions.ts` — the whole per-type shape reused without any consumer of
+`ALL_TYPES` seeing an entry it would have to exclude. The manual's setup entry
+(`src/view/manual/setupSection.ts`) claimed "a picker per type in the fixed vocabulary",
+which stopped being the whole of it and was narrowed to what is drawn.
+
+**Neither Add absence nor Delete absence has a keyboard path**, and this is the bucket New
+button's own gap in its own words rather than a new one: the pane is one tab stop with a
+roving selection over `roadmap.cards`, an absence is not a card, and a row is not a
+keyboard stop, so nothing selects one to act on. Both controls are `tabindex="-1"`.
+Closing the gap properly means row stops, which is
+[[Keyboard and menu on the roadmap]]'s work.
+
+**That the delete cannot go through the write gate is a COMPILE-time fact, not a test.**
+`ItemWrite` names a file and a set of frontmatter changes, and there is no "remove the
+note" among them, so `applySafely` cannot express this at all. Recorded here rather than
+driven by a check that would only be re-stating the type.
+
+**What a live vault still owes**, because jsdom paints nothing and trashes nothing: how the
+hatched stretch reads against a themed background and against a bar it overlaps; whether a
+screen reader announces an absence row usefully among `option` rows, given that the row is
+a plain div carrying its own `aria-label` and the same `aria-description` every row of the
+band gets; and the delete's confirmation behaviour under the user's own "deleted files"
+setting.

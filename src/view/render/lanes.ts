@@ -135,7 +135,7 @@ function renderLaneAbsenceAdd(ctx: RowContext, lead: HTMLElement, lane: Resource
 	if (!absencesConfigured(ctx.host.settings)) return;
 	const host = ctx.host;
 	const btn = lead.createEl('button', {
-		cls: 'clickable-icon pbl-lane-add pbl-lane-absence-add',
+		cls: 'clickable-icon pbl-lane-ctl pbl-lane-absence-add',
 		attr: { type: 'button', tabindex: '-1', 'aria-label': `Add absence for ${lane.name}` },
 	});
 	drawIcon(btn, 'user-x');
@@ -166,7 +166,7 @@ function renderLaneNew(ctx: RowContext, lead: HTMLElement, lane: ResourceLane): 
 	if (!model) return;
 	const type = newItemType(host.settings, model);
 	const btn = lead.createEl('button', {
-		cls: 'clickable-icon pbl-lane-add',
+		cls: 'clickable-icon pbl-lane-ctl pbl-lane-add',
 		attr: { type: 'button', tabindex: '-1', 'aria-label': `New ${type} for ${lane.name}` },
 	});
 	drawIcon(btn, 'plus');

@@ -53,6 +53,50 @@ abstract class PromptModal<O> extends Modal {
 	}
 }
 
+/** What a refusable prompt needs of its options, whatever else it also asks for. */
+interface Refusable<T> {
+	description: string;
+	/**
+	 * Refuse the entry with a reason, keeping the prompt open and the values in place.
+	 * Null accepts. What a value MEANS belongs to the layer that reads them, so these
+	 * dialogs ask rather than decide — which is what keeps `ui/` free of the domain.
+	 */
+	validate: (value: T) => string | null;
+	onSubmit: (value: T) => void;
+}
+
+/**
+ * The description line, the error element rendered up front, and a submit that asks
+ * `validate` before it closes — what the two prompts that REFUSE an entry do identically.
+ *
+ * A free function rather than another member of `PromptModal`: that base is what ALL the
+ * prompts in this file do, and its own rule is that anything true of only some of them
+ * stays out. Two of five collect an entry that can be wrong; the other three cannot be.
+ * The error element comes back so the field renderers can clear it — a refusal was about
+ * what was entered, so it stops being true the moment the entry changes.
+ */
+function refusableBody<T>(
+	modal: Modal,
+	options: Refusable<T>,
+	read: () => T,
+): { errorEl: HTMLElement; submit: () => void } {
+	modal.contentEl.createDiv({ cls: 'pbl-modal-detail', text: options.description });
+	// Rendered up front and filled on refusal: a message that appears only when the
+	// dialog grows one is a dialog that resizes under the pointer as you submit.
+	const errorEl = modal.contentEl.createDiv({ cls: 'pbl-modal-error', attr: { role: 'alert' } });
+	const submit = () => {
+		const value = read();
+		const problem = options.validate(value);
+		if (problem !== null) {
+			errorEl.setText(problem);
+			return;
+		}
+		modal.close();
+		options.onSubmit(value);
+	};
+	return { errorEl, submit };
+}
+
 export interface NewItemPromptResult {
 	title: string;
 	/** Only present when the prompt asked for a folder. */
@@ -231,19 +275,10 @@ export interface DateFieldSpec {
 	value: string;
 }
 
-export interface SchedulePromptOptions {
+export interface SchedulePromptOptions extends Refusable<Record<string, string>> {
 	heading: string;
-	description: string;
 	/** Only the ends the configured axis has: a field with no property is never asked for. */
 	fields: DateFieldSpec[];
-	/**
-	 * Refuse the entry with a reason, keeping the prompt open and the values in place.
-	 * Null accepts. What a date IS belongs to the layer that reads them, so this
-	 * dialog asks rather than decides — which is also what keeps `ui/` free of the
-	 * domain it would otherwise have to import.
-	 */
-	validate: (values: Record<string, string>) => string | null;
-	onSubmit: (values: Record<string, string>) => void;
 }
 
 /**
@@ -264,22 +299,11 @@ export class SchedulePromptModal extends PromptModal<SchedulePromptOptions> {
 		const values: Record<string, string> = {};
 		for (const spec of this.options.fields) values[spec.field] = spec.value;
 
-		this.contentEl.createDiv({ cls: 'pbl-modal-detail', text: this.options.description });
-		// Rendered up front and filled on refusal: a message that appears only when the
-		// dialog grows one is a dialog that resizes under the pointer as you submit.
-		const errorEl = this.contentEl.createDiv({ cls: 'pbl-modal-error', attr: { role: 'alert' } });
-
-		const submit = () => {
+		const { errorEl, submit } = refusableBody(this, this.options, () => {
 			const trimmed: Record<string, string> = {};
 			for (const [field, value] of Object.entries(values)) trimmed[field] = value.trim();
-			const problem = this.options.validate(trimmed);
-			if (problem !== null) {
-				errorEl.setText(problem);
-				return;
-			}
-			this.close();
-			this.options.onSubmit(trimmed);
-		};
+			return trimmed;
+		});
 
 		this.options.fields.forEach((spec, i) => {
 			const setting = new Setting(this.contentEl).setName(spec.name);
@@ -323,20 +347,12 @@ export interface AbsenceResult {
 	target: string;
 }
 
-export interface AbsencePromptOptions {
+export interface AbsencePromptOptions extends Refusable<AbsenceResult> {
 	heading: string;
-	description: string;
 	/** Pre-filled from the row it was opened on, and editable — the row is a default, not a lock. */
 	resource: string;
-	/** Names to suggest, so spellings stay consistent with the rows already drawn. */
+	/** Names to suggest, so spellings stay consistent with the roster the view options name. */
 	known: string[];
-	/**
-	 * Refuse with a reason, keeping the prompt open and the values in place. Null accepts.
-	 * `SchedulePromptModal`'s own contract, for its own reason: what a date IS belongs to
-	 * the layer that reads them, which is what keeps `ui/` free of the domain.
-	 */
-	validate: (result: AbsenceResult) => string | null;
-	onSubmit: (result: AbsenceResult) => void;
 }
 
 /**
@@ -356,26 +372,12 @@ export class AbsencePromptModal extends PromptModal<AbsencePromptOptions> {
 		this.titleEl.setText(this.options.heading);
 		const values: AbsenceResult = { resource: this.options.resource, title: '', start: '', target: '' };
 
-		this.contentEl.createDiv({ cls: 'pbl-modal-detail', text: this.options.description });
-		// Rendered up front and filled on refusal, so the dialog does not resize under the
-		// pointer as you submit — `SchedulePromptModal`'s own reasoning.
-		const errorEl = this.contentEl.createDiv({ cls: 'pbl-modal-error', attr: { role: 'alert' } });
-
-		const submit = () => {
-			const trimmed: AbsenceResult = {
-				resource: values.resource.trim(),
-				title: values.title.trim(),
-				start: values.start.trim(),
-				target: values.target.trim(),
-			};
-			const problem = this.options.validate(trimmed);
-			if (problem !== null) {
-				errorEl.setText(problem);
-				return;
-			}
-			this.close();
-			this.options.onSubmit(trimmed);
-		};
+		const { errorEl, submit } = refusableBody(this, this.options, () => ({
+			resource: values.resource.trim(),
+			title: values.title.trim(),
+			start: values.start.trim(),
+			target: values.target.trim(),
+		}));
 		const field = (name: string, key: keyof AbsenceResult, setup: (input: HTMLInputElement) => void) => {
 			new Setting(this.contentEl).setName(name).addText((text) => {
 				text.setValue(values[key]);
