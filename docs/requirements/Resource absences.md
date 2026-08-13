@@ -125,6 +125,20 @@ already looks.
   way either time: no shelf exists for a written absence to fall back to
   ([[Bars from two dates]] is a work item's answer, and 2b already says why it does not
   reach here), so the only reading that cannot mislead is none at all.
+- **4h — a note already carries `type: Absence` before this feature ever ships**, an
+  ordinary custom value nobody had reserved. Every other name this vocabulary has ever
+  added only RECLASSIFIES such a note — "a note typed something else is still handled:
+  it keeps its name and carries the ladder through" — because every other addition is
+  KEPT polarity, the same way Milestone reclassifies a same-named note rather than
+  removing it. `Absence` is the first addition that is DROPPED polarity, so a vault with
+  a coincidentally-named note has it vanish from every projection the moment this
+  feature ships, not merely render differently. Accepted as the honest cost of a plain,
+  guessable name a user has to be able to type into their own Base query too (extension
+  4e) — an obscure, collision-proof string would trade a rare migration surprise for an
+  everyday usability cost on every vault, not only the unlucky one — but worth a
+  release-note callout naming the newly reserved value, the same way expanding this
+  fixed vocabulary at all has always been a considered act rather than a silent one
+  ([ADR 0013](../adrs/0013-fix-the-type-vocabulary-at-six-names.md)).
 
 ## Acceptance criteria
 
@@ -147,6 +161,16 @@ already looks.
 - That type is recognized and the note excluded from the model unconditionally — before
   `RawItem` is built, whether or not `hierarchyOnly` is on — never relying on lacking a
   parent or a supported type the way an ordinary untyped note is excluded.
+- `Absence` is a standalone constant, never a member of `ALL_TYPES`: it is never offered
+  as a creatable type in the ordinary New flow, never a focus target, never grouped on
+  the work-item shelf, never listed as a declared type in the generated manual — every
+  consumer of `ALL_TYPES` is unaffected by construction, since none of them reaches past
+  that list. Its configured folder is resolved by its own small path that reuses the
+  same per-type resolution shape without joining the list that drives it.
+- A pre-existing note using `Absence` as an informal custom type value stops appearing
+  in every projection once this feature ships, the same way declaring a new name into
+  this vocabulary has always changed what that name means — accepted rather than
+  engineered around, and worth a release-note callout naming the newly reserved value.
 - A blank resource, start or end writes nothing; an end before the start writes nothing
   either, caught at the prompt rather than left to a render with nowhere to show it.
 - The note lives in its own configured folder, falling back to the backlog's home
@@ -179,10 +203,27 @@ at the same `entries: BasesEntry[]` `buildModel` already takes (sourced from
 `this.data.data` in `src/view/backlogView.ts`) — the same list, read a second time for
 the opposite type — rather than an independent vault scan: extension 4e is the
 consequence of that choice, not an oversight it leaves open. The type name itself —
-`Absence`, matching `Milestone`'s own capitalization and Title Case — would join
-`src/domain/typeVocabulary.ts` as its own fourth category, opposite `MARKER_TYPES` in
-polarity: a marker is recognized and kept, ranked out of the ladder but still read; this
-is recognized and dropped, never read at all. Creating and deleting one would still
+`Absence`, matching `Milestone`'s own capitalization and Title Case — would live in
+`src/domain/typeVocabulary.ts` beside the other three categories but join NONE of
+them, opposite `MARKER_TYPES` in polarity for the read (a marker is recognized and
+kept, ranked out of the ladder but still read; this is recognized and dropped, never
+read at all) and, unlike a marker, never folded into `ALL_TYPES` either. `ALL_TYPES` is
+what admits a name everywhere a work item's name matters — `childTypeChoices` offers
+every entry at the top level (`itemTypes.ts`, `if (!parent) return ALL_TYPES`),
+`focusTarget` accepts one as a focus root, `shelf.ts` groups by it, `backlogReadme.ts`
+and the in-app manual document it as a declared type — and every one of those is
+exactly what an absence must refuse: never a creatable type
+(Add absence is its own prompt, not the type-picker New flow), never a focus target (it
+never reaches the tree to focus on), never grouped on a shelf built for work items it
+never joins. A standalone `ABSENCE_TYPE = 'Absence'` constant keeps the one thing it
+DOES need — a configured folder — without buying everything else `ALL_TYPES` membership
+grants along with it: `typeFolderKey('Absence')` still names its option
+(`typeFolder.absence`, the same naming convention every other type's folder option
+already uses), resolved by its own small call beside wherever
+`resolveFolders(..., ALL_TYPES, ...)` runs today (`src/domain/settingsResolve.ts`)
+rather than by joining the list that call already iterates. Every consumer of
+`ALL_TYPES` sees nothing new by construction, since none of them reaches past that one
+list — the only edit any of them needs is none. Creating and deleting one would still
 go through `src/storage/frontmatter.ts`, the only module allowed to touch the vault, behind
 the same `configProblems` gate every other write here answers to — a narrow function
 beside `createBacklogItem` rather than a call to it, since an absence has no parent and
