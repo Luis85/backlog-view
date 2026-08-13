@@ -127,6 +127,77 @@ describe('the resources axis', () => {
 	});
 });
 
+describe('absences in the row list', () => {
+	/** The shared vault, plus one absence written the way the prompt writes them. */
+	function withAbsence(resource: string): FakeVault {
+		const vault = resourceVault();
+		vault.addFile('Away.md', {
+			frontmatter: { type: 'Absence', assignee: resource, start: '2026-08-04', due: '2026-08-06' },
+		});
+		return vault;
+	}
+
+	function lanesWith(resource: string) {
+		return laneOf(withAbsence(resource), resourceSettings({ resourceNames: ['Alice', 'Bob'] }));
+	}
+
+	it('draws in the row its own resource names, and nowhere else', () => {
+		const roadmap = lanesWith('Alice');
+
+		expect(roadmap.lanes.find((lane) => lane.name === 'Alice')?.absences.map((a) => a.title)).toEqual(['Away']);
+		expect(roadmap.lanes.filter((lane) => lane.absences.length > 0)).toHaveLength(1);
+	});
+
+	it('mints a row for a resource nothing else names — a third source', () => {
+		// 4b: an absence can be the first reason a row exists, extending the
+		// declared-or-observed row list rather than needing something assigned first.
+		const quinn = lanesWith('Quinn').lanes.find((lane) => lane.name === 'Quinn');
+
+		expect(quinn).toBeDefined();
+		expect(quinn?.declared).toBe(false);
+		expect(quinn?.bars).toEqual([]);
+		expect(quinn?.absences).toHaveLength(1);
+	});
+
+	it('joins the row a result already minted, matched as the bars are', () => {
+		// Case-insensitively, the one matching rule this axis has.
+		const roadmap = lanesWith('alice');
+
+		expect(roadmap.lanes.filter((lane) => lane.name.toLowerCase() === 'alice')).toHaveLength(1);
+		expect(roadmap.lanes.find((lane) => lane.name === 'Alice')?.absences).toHaveLength(1);
+	});
+
+	it('is never counted, and never changes what the shelf reports', () => {
+		// The row's count is RESULT bars, exactly as a bucket's count is results. An
+		// absence is neither a result nor a work item, so it moves no number here.
+		const settings = resourceSettings({ resourceNames: ['Alice', 'Bob'] });
+		const bare = laneOf(resourceVault(), settings);
+		const withOne = lanesWith('Alice');
+
+		expect(withOne.placedCount).toBe(bare.placedCount);
+		expect(withOne.shelf.map((card) => card.item.title)).toEqual(bare.shelf.map((card) => card.item.title));
+		expect(titles(withOne.bars)).toEqual(titles(bare.bars));
+	});
+
+	it('draws on the other two axes not at all', () => {
+		// It reaches `deriveLanes` and nothing else: the horizon axis and the plain dated
+		// axis read the model's own rows, which an absence was never among.
+		const settings = resourceSettings({ horizonKey: 'horizon', horizonValues: ['Now', 'Next'] });
+		const vault = withAbsence('Alice');
+		const model = buildModel(vault.app, vault.entries(), settings);
+
+		const dates = buildRoadmap(model, settings, () => true, 'dates');
+		const horizons = buildRoadmap(model, settings, () => true, 'horizons');
+		const named = [
+			...titles(dates.bars),
+			...dates.shelf.map((card) => card.item.title),
+			...horizons.buckets.flatMap((bucket) => bucket.cards.map((card) => card.title)),
+			...horizons.shelf.map((card) => card.item.title),
+		];
+		expect(named).not.toContain('Away');
+	});
+});
+
 describe('a context row on the resources axis', () => {
 	/**
 	 * A vault whose Epic is loaded as CONTEXT, and a FOCUS level that puts it in the row

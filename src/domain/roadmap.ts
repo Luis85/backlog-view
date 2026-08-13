@@ -1,3 +1,4 @@
+import { Absence } from './absences';
 import { firstPlacedIndex } from './board';
 import { deriveBars, placeItem, ShelfCard, statedEnds, TimelineBar } from './bars';
 import { BacklogItem, BacklogModel } from './model';
@@ -112,11 +113,13 @@ export interface HorizonBucket {
  * A row of the resources axis: one resource, and everything drawn against it. Declared
  * rows render in declared order, empty or not; a result whose assignee is undeclared
  * mints a trailing row named by itself, the same rule an undeclared horizon mints a
- * bucket by. Context rows never mint one.
+ * bucket by. Context rows never mint one — an absence MAY, which is the one place this
+ * axis has a third source rather than two.
  *
- * `bars` is a plain list the renderer walks, which is the seam [[Resource absences]]
- * needs: a second source of bars for this row appends to it rather than changing how
- * the row is drawn.
+ * A row draws from a list per SOURCE and the renderer walks each. [[Resource absences]]
+ * needed that seam and this comment used to promise it in the wrong shape — that a
+ * second source would append to `bars`. It cannot: `TimelineBar.item` is a `BacklogItem`
+ * and an absence is deliberately never one, so the second list is `absences`.
  */
 export interface ResourceLane {
 	/** The assignee value this row stands for, in its first-seen casing. */
@@ -125,6 +128,12 @@ export interface ResourceLane {
 	declared: boolean;
 	/** Result bars, in tree order, positioned exactly as the dated axis positions one. */
 	bars: TimelineBar[];
+	/**
+	 * This resource's own unavailable stretches — the row's second source, drawn beside
+	 * its bars and counted with neither. Never a work item, so never in `bars`, never on
+	 * the shelf and never in `placedCount`.
+	 */
+	absences: Absence[];
 	/**
 	 * Context rows whose assignee names this row. Drawn here so the row says whose work
 	 * they place — never as a positioned bar, never counted, never shelved.
@@ -304,7 +313,7 @@ export function buildRoadmap(
 	const rows = roadmapRows(model, visible);
 	const roadmap: RoadmapModel = { axis, buckets: [], bars: [], lanes: [], shelf: [], context: [], placedCount: 0 };
 	if (axis === 'horizons') deriveBuckets(rows, settings, roadmap, visible);
-	else if (axis === 'resources') deriveLanes(rows, settings, roadmap);
+	else if (axis === 'resources') deriveLanes(rows, settings, roadmap, model.absences);
 	else {
 		const dated = deriveBars(rows);
 		roadmap.bars = dated.bars;
@@ -400,14 +409,24 @@ function placeContext(item: BacklogItem, byValue: Map<string, HorizonBucket>, ro
  * unreadable and reversed refusals and the rollup inference are the dated axis's rules,
  * and this axis groups their answers rather than restating one of them.
  */
-function deriveLanes(rows: BacklogItem[], settings: BacklogSettings, roadmap: RoadmapModel): void {
+function deriveLanes(
+	rows: BacklogItem[],
+	settings: BacklogSettings,
+	roadmap: RoadmapModel,
+	absences: Absence[],
+): void {
 	const lanes = settings.resourceNames.map(
-		(name): ResourceLane => ({ name, declared: true, bars: [], context: [] }),
+		(name): ResourceLane => ({ name, declared: true, bars: [], absences: [], context: [] }),
 	);
 	const byName = new Map<string, ResourceLane>(lanes.map((lane) => [lane.name.toLowerCase(), lane]));
 	for (const item of rows) {
 		if (!item.outsideFilter) placeAssigned(item, lanes, byName, roadmap);
 	}
+	// Second, so a resource a result already named keeps the casing that result gave its
+	// row — and third-source minting: unlike a context row, an absence MAY create one,
+	// because it is a statement this base's own notes make about a resource rather than a
+	// value borrowed from a note the filter excluded.
+	for (const absence of absences) laneNamed(absence.resource, lanes, byName).absences.push(absence);
 	for (const item of rows) {
 		if (item.outsideFilter) placeContextLane(item, byName, roadmap);
 	}
@@ -438,14 +457,24 @@ function placeAssigned(
 		roadmap.shelf.push({ item, reason: placement.reason });
 		return;
 	}
-	// Matching is case-insensitive, exactly as the buckets match horizons.
-	let lane = byName.get(name.toLowerCase());
-	if (!lane) {
-		lane = { name, declared: false, bars: [], context: [] };
-		byName.set(name.toLowerCase(), lane);
-		lanes.push(lane);
-	}
-	lane.bars.push(placement.bar);
+	laneNamed(name, lanes, byName).bars.push(placement.bar);
+}
+
+/**
+ * The row this name belongs to, minting a trailing one where nothing has yet. Matching is
+ * case-insensitive, exactly as the buckets match horizons, and the rule is stated once
+ * because two sources may now mint: a result's own assignee, and an absence's.
+ *
+ * Not to be confused with `laneFor` above, which answers what a DRAWN row is called for
+ * the sentence a move is announced in and mints nothing.
+ */
+function laneNamed(name: string, lanes: ResourceLane[], byName: Map<string, ResourceLane>): ResourceLane {
+	const existing = byName.get(name.toLowerCase());
+	if (existing) return existing;
+	const lane: ResourceLane = { name, declared: false, bars: [], absences: [], context: [] };
+	byName.set(name.toLowerCase(), lane);
+	lanes.push(lane);
+	return lane;
 }
 
 /** A context row joins a row that already exists, or the axis's undifferentiated context. */
