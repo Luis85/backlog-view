@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
-import { Modal, Notice } from '../helpers/obsidian-mock';
+import { Menu, Modal, Notice } from '../helpers/obsidian-mock';
 import { flush, Harness, makeView, submitButton, useViewHarness } from '../helpers/view';
 import { laneCountOf, laneNames, lanesOf } from '../helpers/roadmap';
 
@@ -257,5 +257,38 @@ describe('adding an absence', () => {
 		await flush();
 
 		expect(vault.files.size).toBe(before);
+	});
+});
+
+describe('deleting an absence', () => {
+	function openAbsenceMenu(containerEl: HTMLElement): void {
+		containerEl
+			.querySelector<HTMLElement>('.pbl-absence-row')
+			?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+	}
+
+	it('offers a delete on the stretch’s own context menu, and nothing else', () => {
+		const { containerEl } = laneRoadmap(absenceVault());
+
+		openAbsenceMenu(containerEl);
+
+		// Not `buildItemMenu`: every entry in that menu is about a work item — a type, a
+		// state, a parent link, a rank — and an absence has none of them.
+		expect(Menu.lastShown?.items.map((i) => i.titleText)).toEqual(['Delete absence']);
+	});
+
+	it('removes the note through Obsidian’s own delete, not through the gate', async () => {
+		const vault = absenceVault();
+		const { view, containerEl } = laneRoadmap(vault);
+
+		openAbsenceMenu(containerEl);
+		Menu.lastShown?.item('Delete absence')?.click();
+		await flush();
+
+		expect(vault.trashed).toEqual(['Alice away.md']);
+		// No batch was captured, so there is nothing for undo to take back — the note was
+		// never one of this backlog's write targets.
+		expect(vault.writeLog).toEqual([]);
+		expect(view.canUndo()).toBe(false);
 	});
 });

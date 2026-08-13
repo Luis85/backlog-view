@@ -1,11 +1,13 @@
-import { Notice } from 'obsidian';
+import { Menu, Notice } from 'obsidian';
 import { BacklogViewHost } from '../host';
+import { showMenuForClick } from './menu';
 import { AbsencePromptModal, AbsenceResult } from '../../ui/prompts';
+import { Absence } from '../../domain/absences';
 import { folderForType } from '../../domain/itemTypes';
 import { ResourceLane } from '../../domain/roadmap';
 import { configProblems } from '../../domain/settingsConsistency';
 import { ABSENCE_TYPE } from '../../domain/typeVocabulary';
-import { createAbsenceNote } from '../../storage/absenceNotes';
+import { createAbsenceNote, deleteAbsenceNote } from '../../storage/absenceNotes';
 
 /**
  * The view's half of an absence: opening the prompt from a resource's row header,
@@ -61,6 +63,37 @@ function absenceProblem(result: AbsenceResult): string | null {
 	if (!result.start || !result.target) return 'An absence needs both a start and an end date.';
 	if (result.target < result.start) return 'The end date is before the start date.';
 	return null;
+}
+
+/**
+ * The absence row's own context menu: one entry, and deliberately not `buildItemMenu`.
+ * Every entry in that menu is about a work item — a type, a state, a parent link, a rank
+ * — and an absence has none of them.
+ *
+ * `chipMenu`'s shape (`interactions/menu.ts`) over a row rather than a control, and the
+ * `stopPropagation` it carries is not needed here: an absence row is not a card, so
+ * nothing wired `wireCardActivation` on it and there is no row action to bubble into.
+ */
+export function showAbsenceMenu(host: BacklogViewHost, absence: Absence, evt: MouseEvent): void {
+	evt.preventDefault();
+	const menu = new Menu();
+	menu.addItem((mi) =>
+		mi
+			.setTitle('Delete absence')
+			.setIcon('trash-2')
+			.onClick(() => void removeAbsence(host, absence)),
+	);
+	showMenuForClick(menu, evt);
+}
+
+async function removeAbsence(host: BacklogViewHost, absence: Absence): Promise<void> {
+	try {
+		await deleteAbsenceNote(host.app, absence.file);
+		new Notice(`Deleted "${absence.title}".`);
+	} catch (e) {
+		console.error('Product Backlog: failed to delete the absence', e);
+		new Notice('Could not delete the absence. See the developer console for details.');
+	}
 }
 
 async function writeAbsence(host: BacklogViewHost, folder: string, result: AbsenceResult): Promise<void> {

@@ -4,7 +4,8 @@ import { RowContext } from './columns';
 import { drawIcon } from './icons';
 import { renderBadge, renderTitleText } from './rows';
 import { newItemType, promptCreateItem } from '../interactions/create';
-import { promptAddAbsence } from '../interactions/absences';
+import { promptAddAbsence, showAbsenceMenu } from '../interactions/absences';
+import { BacklogViewHost } from '../host';
 import { Absence, absencesConfigured } from '../../domain/absences';
 import { TimelineRow } from '../../domain/bars';
 import { BacklogItem } from '../../domain/model';
@@ -201,7 +202,8 @@ export function renderLaneContextRow(ctx: RowContext, content: HTMLElement, item
  * NOT a card: `createCard` gives a `BacklogItem` its selection, its context styling and
  * its place in the pane's roving walk, and an absence is none of those things — it is not
  * in `roadmap.cards`, cannot be selected, and has no note-opening activation. What it has
- * is a title, a range, and (from Task 6) a context menu to delete it.
+ * is a title, a range, and a context menu to delete it
+ * (`view/interactions/absences.ts`).
  *
  * The dates go in the row's own accessible name rather than on the mark: the mark is a
  * plain div, where ARIA prohibits a name, and a reader who cannot see the stretch needs
@@ -210,12 +212,15 @@ export function renderLaneContextRow(ctx: RowContext, content: HTMLElement, item
  * band.
  */
 export function renderLaneAbsence(
+	ctx: RowContext,
 	content: HTMLElement,
 	absence: Absence,
 	ruler: { window: TimelineWindow; scale: TimelineScale },
 ): HTMLElement {
 	const { window, scale } = ruler;
+	const host: BacklogViewHost = ctx.host;
 	const row = content.createDiv({ cls: 'pbl-timeline-row pbl-absence-row' });
+	row.addEventListener('contextmenu', (evt) => showAbsenceMenu(host, absence, evt));
 	const lead = row.createDiv({ cls: 'pbl-timeline-lead' });
 	drawIcon(lead.createSpan({ cls: 'pbl-absence-icon', attr: { 'aria-hidden': 'true' } }), 'user-x');
 	const title = lead.createDiv({ cls: 'pbl-card-title', text: absence.title });

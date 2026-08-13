@@ -229,8 +229,18 @@ export class FakeVault {
 				// out, so anything read after the await sees the rebuilt board.
 				this.afterWrite?.(file.path);
 			},
+			/** Obsidian's own delete-to-trash, recorded so a test can assert the note went. */
+			trashFile: async (file: TFile) => {
+				this.files.delete(file.path);
+				this.caches.delete(file.path);
+				this.frontmatter.delete(file.path);
+				this.trashed.push(file.path);
+			},
 		},
 	};
+
+	/** Paths `fileManager.trashFile` removed, in the order they went. */
+	readonly trashed: string[] = [];
 
 	/** What Obsidian fires when the theme, the appearance settings or a snippet change. */
 	changeCss(): void {

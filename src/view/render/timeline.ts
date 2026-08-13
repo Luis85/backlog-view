@@ -283,7 +283,7 @@ export function renderTimeline(
 		if (entry.kind === 'absence') {
 			// Its own drawn line, and NOT counted as a bar row: the stripe alternates over
 			// work, and an absence is furniture of the row rather than a row of work in it.
-			const away = renderLaneAbsence(content, entry.absence, { window, scale });
+			const away = renderLaneAbsence(ctx, content, entry.absence, { window, scale });
 			if (lane) renderLaneRowDescription(away, lane.name);
 			continue;
 		}
