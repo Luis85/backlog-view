@@ -27,7 +27,7 @@ anywhere else this backlog already looks.
 | --- | --- |
 | **Actor** | Backlog owner |
 | **Trigger** | Adding an absence from a resource's row header |
-| **Preconditions** | Roadmap mode is on with the resources axis |
+| **Preconditions** | Roadmap mode is on with the resources axis, and BOTH date properties are configured — sharper than the axis's own gate (`hasDateAxis` accepts either alone), because an absence has no descendant to infer a missing end from the way a work item does |
 | **Guarantee** | An absence names exactly one resource and one date range, is never added to the tree, the board, the horizon axis or the plain dated axis, and is never a write target for anything else this backlog already does to a work item. |
 
 **Main flow**
@@ -43,9 +43,19 @@ anywhere else this backlog already looks.
 
 **Extensions**
 
+- **1a — only one of the two date properties is configured.** Add absence does not
+  offer itself: the resources axis's own gate (`hasDateAxis`) accepts either property
+  alone, but an absence's range needs both ends WRITTEN, and there is nothing beneath
+  an absence to infer a missing one from — so this trigger needs the sharper
+  precondition above, not the axis's.
 - **2a — the prompt is submitted with no resource, no start or no end.** Nothing is
   written. An absence's range needs both ends stated; unlike a work item's, there is
   nothing beneath it to infer a missing one from.
+- **2b — the end is before the start.** Nothing is written either, and for the same
+  reason as 2a: a written absence has no shelf of its own to fall back to the way a
+  work item's reversed pair does ([[Bars from two dates]]), so there is no visible
+  surface for a reversed range to land on once the note exists. The prompt is where
+  this is caught, not the render.
 - **3a — the folder configured for absences is not yet set.** Falls back to the
   backlog's own home folder, the same default a type with no folder of its own already
   resolves to.
@@ -64,10 +74,14 @@ anywhere else this backlog already looks.
 
 ## Acceptance criteria
 
+- Add absence offers itself only when both date properties are configured — the
+  resources axis's own precondition (either property alone) is not enough, since an
+  absence cannot infer a missing end.
 - Submitting the prompt with a resource, a title and both dates writes one new note
   carrying exactly those facts — no parent, no order, and no type from the fixed
   vocabulary.
-- A blank resource, start or end writes nothing.
+- A blank resource, start or end writes nothing; an end before the start writes nothing
+  either, caught at the prompt rather than left to a render with nowhere to show it.
 - The note lives in its own configured folder, falling back to the backlog's home
   folder when unset.
 - The absence renders as a blocked stretch in its own resource's row, positioned by the
