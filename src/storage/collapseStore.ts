@@ -71,7 +71,7 @@ export type ProjectionMode = (typeof PROJECTION_MODES)[number];
  * when both are configured. Mirrors `RoadmapAxis` in `domain/roadmap.ts`; spelled
  * here as strings because stored state is read defensively, not trusted as a type.
  */
-const AXIS_VALUES = ['horizons', 'dates'];
+const AXIS_VALUES = ['horizons', 'dates', 'resources'];
 /**
  * The values the `zoom` field may hold. Mirrors `ScaleId` in `domain/timeline.ts`;
  * spelled here as strings for the same reason `AXIS_VALUES` is — stored state is read

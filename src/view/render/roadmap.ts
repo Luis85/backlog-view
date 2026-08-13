@@ -45,7 +45,7 @@ export function renderRoadmap(
 	const model = host.model;
 	if (!model) {
 		return {
-			roadmap: { axis, buckets: [], bars: [], shelf: [], context: [], placedCount: 0 },
+			roadmap: { axis, buckets: [], bars: [], lanes: [], shelf: [], context: [], placedCount: 0 },
 			cards: [],
 			shelfEl: null,
 			todayLeft: null,

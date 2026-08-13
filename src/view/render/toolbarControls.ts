@@ -237,6 +237,9 @@ const AXIS_LABEL: Record<RoadmapAxis, { icon: string; text: string }> = {
 	// controls in one row wearing one icon is what the harness mock caught.
 	dates: { icon: 'gantt-chart', text: 'Timeline' },
 	horizons: { icon: 'columns-3', text: 'Horizons' },
+	// `users`, not `user`: the axis is every resource at once, and no other control in
+	// this row wears it.
+	resources: { icon: 'users', text: 'Resources' },
 };
 
 /** Zoom labels, same rule. */
@@ -247,16 +250,23 @@ const ZOOM_LABEL: Record<ScaleId, { icon: string; text: string }> = {
 };
 
 /**
- * Which axis this saved view shows — offered only while both axes are configured: with
+ * Which axis this saved view shows — offered only while more than one is configured: with
  * one there is no choice to make, and the axis that remains always beats guidance. The
  * pick persists the way the mode itself does, and it is retained when its axis loses its
  * configuration, so restoring the cleared property restores the saved choice with it.
+ *
+ * The entries are `configuredAxes` itself, in its own priority order, never a list of
+ * names spelled here: with exactly two axes a literal list was the same thing, and with a
+ * third it stopped being — two configured out of three would have offered the
+ * unconfigured one, whose pick `activeAxis` then falls straight back out of, so the menu
+ * would show a choice that visibly does nothing.
  */
 function renderAxisPicker(host: BacklogViewHost, zone: HTMLElement, barEl: HTMLElement): void {
 	// Two refusals in one line, and the order is the honest one: with no axis at all
 	// there is nothing to NAME, and with one there is nothing to choose between.
 	const active = activeAxis(host.settings, host.axisPick);
-	if (active === null || configuredAxes(host.settings).length < 2) return;
+	const axes = configuredAxes(host.settings);
+	if (active === null || axes.length < 2) return;
 	const btn = menuButton(zone, AXIS_LABEL[active].icon, AXIS_LABEL[active].text, 'axis', `Roadmap axis: ${AXIS_LABEL[active].text}`);
 	setTooltip(btn, 'Roadmap axis');
 	btn.addEventListener('click', (evt) => {
@@ -271,8 +281,7 @@ function renderAxisPicker(host: BacklogViewHost, zone: HTMLElement, barEl: HTMLE
 					// causes, and the bar is what survives it.
 					.onClick(() => pickAndRefocus(barEl, 'axis', () => host.setAxisPick(axis))),
 			);
-		choice('horizons');
-		choice('dates');
+		for (const axis of axes) choice(axis);
 		showMenuForClick(menu, evt);
 	});
 }

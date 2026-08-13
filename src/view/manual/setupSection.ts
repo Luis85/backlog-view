@@ -60,8 +60,17 @@ export const SETUP: ManualSection = {
 			term: 'Placing work on the roadmap',
 			text:
 				'The horizon property and its buckets; the start and target date properties the ' +
-				'timeline schedules; and the depends-on property a dependency connector writes.',
-			keys: ['horizonProperty', 'horizonValues', 'startProperty', 'targetProperty', 'dependsOnProperty'],
+				'timeline schedules; the resources whose rows the timeline can be grouped into, ' +
+				'which is optional because an assignee nobody declared still gets a row of its ' +
+				'own; and the depends-on property a dependency connector writes.',
+			keys: [
+				'horizonProperty',
+				'horizonValues',
+				'startProperty',
+				'targetProperty',
+				'resourceNames',
+				'dependsOnProperty',
+			],
 		},
 		{
 			term: 'The Deliverables workflow\'s own state property — an override',

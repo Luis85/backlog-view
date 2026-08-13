@@ -185,7 +185,9 @@ function progressGroup(settings: BacklogSettings): BasesAllOptions {
 			// A property and no list beside it, unlike the state above and the risk
 			// levels below: the names Set assignee offers are the ones the results
 			// already carry, plus whatever the user types, so there is no vocabulary
-			// to declare here and nothing an empty box could turn off.
+			// to declare here and nothing an empty box could turn off. The Roadmap
+			// group's "Resources (in order)" is not that missing list — it declares the
+			// resources AXIS's rows and never narrows what this menu offers.
 			optionalPropertyOption('assignee', 'Assignee property'),
 			{
 				type: 'toggle',
@@ -312,6 +314,16 @@ function roadmapGroup(): BasesAllOptions {
 			},
 			optionalPropertyOption('start', 'Start date property'),
 			optionalPropertyOption('target', 'Target date property'),
+			// The resources axis's ROW list, not a vocabulary: it adds rows nothing has
+			// landed in yet and never narrows what Set assignee offers. No default,
+			// unlike the horizons above — nobody declares who exists, so an empty box is
+			// the configured state rather than a cleared one.
+			{
+				type: 'text',
+				key: 'resourceNames',
+				displayName: 'Resources (in order)',
+				placeholder: 'Optional, comma separated',
+			},
 			optionalPropertyOption('dependsOn', 'Depends-on property'),
 		],
 	};

@@ -32,8 +32,9 @@ vocabulary the way the horizon values do.
 
 **Main flow**
 
-1. The user names a roster of resources in the view options — optional, the same shape
-   as the horizon values — beside the assignee and date properties already configured.
+1. The user names a roster of resources in the view options (`resourceNames`) — optional,
+   the same shape as the horizon values but with nothing prefilled, since nobody declares
+   who exists — beside the assignee and date properties already configured.
 2. Each declared resource renders as a row, in declared order, empty or not.
 3. Every result whose assignee value names a row renders as a bar in that row,
    positioned exactly where the dated axis would place it — its own dates first, a

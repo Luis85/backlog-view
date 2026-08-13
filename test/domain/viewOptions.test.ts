@@ -94,6 +94,15 @@ describe('getViewOptions', () => {
 		expect(target.placeholder).toBe('due');
 	});
 
+	it('offers the resource roster beside the axis, with nothing prefilled', () => {
+		const flat = getViewOptions(fakeConfig()).flatMap((o) => ('items' in o ? o.items : [o]));
+		const roster = flat.find((o) => o.key === 'resourceNames') as { default?: string };
+		expect(roster).toBeDefined();
+		// Unlike the horizons above: nobody declares who exists, so there is no canonical
+		// list to ship and an empty box is the configured state rather than a cleared one.
+		expect(roster.default).toBeUndefined();
+	});
+
 	it('limits the property pickers to note properties', () => {
 		const flat = getViewOptions(fakeConfig()).flatMap((o) => ('items' in o ? o.items : [o]));
 		const parent = flat.find((o) => o.key === 'parentProperty') as {

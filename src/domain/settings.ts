@@ -112,6 +112,15 @@ export interface BacklogSettings extends ItemHandling {
 	 */
 	horizonValues: string[];
 	/**
+	 * Declared resource names, in roadmap row order. Ships EMPTY, unlike
+	 * `horizonValues`: nobody declares who exists, so the resources axis is configured
+	 * by its assignee property and a date property alone, and this list only ever adds
+	 * rows nothing has landed in yet. It is not a vocabulary — it never narrows what
+	 * Set assignee offers — and it is not `clearable`, because absence is the shipped
+	 * state rather than a cleared default.
+	 */
+	resourceNames: string[];
+	/**
 	 * Frontmatter key holding the prerequisites this note waits for, or '' when the
 	 * feature is unconfigured. A LIST key, unlike every other optional property here,
 	 * which is why the read and the write both have their own shape.
@@ -243,6 +252,7 @@ export function defaultSettings(): BacklogSettings {
 		showCompleted: true,
 		horizonKey: '',
 		horizonValues: [...DEFAULT_HORIZON_VALUES],
+		resourceNames: [],
 		dependsOnKey: '',
 		startKey: '',
 		targetKey: '',

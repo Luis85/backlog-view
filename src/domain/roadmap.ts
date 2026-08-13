@@ -1,5 +1,5 @@
 import { firstPlacedIndex } from './board';
-import { deriveBars, ShelfCard, TimelineBar } from './bars';
+import { deriveBars, placeItem, ShelfCard, statedEnds, TimelineBar } from './bars';
 import { BacklogItem, BacklogModel } from './model';
 import { FieldReading, sameValue } from './noteFields';
 import { BacklogSettings } from './settings';
@@ -18,7 +18,7 @@ import { BacklogSettings } from './settings';
  * chose. No date is ever read as a horizon, in either direction.
  */
 
-export type RoadmapAxis = 'horizons' | 'dates';
+export type RoadmapAxis = 'horizons' | 'dates' | 'resources';
 
 /**
  * Which axes the options declare, the default first. Horizons lead deliberately:
@@ -29,6 +29,12 @@ export function configuredAxes(settings: BacklogSettings): RoadmapAxis[] {
 	const axes: RoadmapAxis[] = [];
 	if (hasHorizonAxis(settings)) axes.push('horizons');
 	if (hasDateAxis(settings)) axes.push('dates');
+	// LAST, and this list's order is priority. Resources is a further grouping ON TOP
+	// of dates — one step more specific still — so it takes the end rather than
+	// displacing either: a vault that newly names an assignee property does not have
+	// its roadmap change under it, the same way dates has to be picked over a
+	// configured horizon axis.
+	if (hasResourceAxis(settings)) axes.push('resources');
 	return axes;
 }
 
@@ -45,6 +51,32 @@ export function hasHorizonAxis(settings: BacklogSettings): boolean {
 /** One date property is enough: a milestone-only roadmap is perfectly coherent. */
 export function hasDateAxis(settings: BacklogSettings): boolean {
 	return settings.startKey !== '' || settings.targetKey !== '';
+}
+
+/**
+ * The resources axis is DERIVATIVE: a row groups items, and the same start-or-target
+ * property the dated axis reads is what positions them inside it. So it needs both, and
+ * it can never be configured where the dated axis is not — there is no parallel pair of
+ * "resource dates" to name, and gating this on the assignee property alone is the one
+ * mistake [[The resource timeline]] names as the one to not make. The ROSTER is
+ * deliberately absent from this test: nobody declares who exists, so a row list is
+ * optional and observed assignees supply the rest.
+ */
+export function hasResourceAxis(settings: BacklogSettings): boolean {
+	return settings.assigneeKey !== '' && hasDateAxis(settings);
+}
+
+/**
+ * Whether this axis draws the dated GRID — the day header, the gridlines, the today
+ * line and bars — rather than a bucket board. Asked rather than compared, because "the
+ * dated grid is on screen" and "the plain dated axis is on screen" stopped being one
+ * question when the resources axis arrived: what belongs to the GRID (the zoom, the
+ * density, jump-to-today, the state-colour legend) belongs to both, while what belongs
+ * to a FOLD (the click-action toggle, the timeline collapse scope) belongs to the plain
+ * dated axis alone, since resource rows are flat.
+ */
+export function drawsGrid(axis: RoadmapAxis): boolean {
+	return axis === 'dates' || axis === 'resources';
 }
 
 /**
@@ -76,12 +108,44 @@ export interface HorizonBucket {
 	count: number;
 }
 
+/**
+ * A row of the resources axis: one resource, and everything drawn against it. Declared
+ * rows render in declared order, empty or not; a result whose assignee is undeclared
+ * mints a trailing row named by itself, the same rule an undeclared horizon mints a
+ * bucket by. Context rows never mint one.
+ *
+ * `bars` is a plain list the renderer walks, which is the seam [[Resource absences]]
+ * needs: a second source of bars for this row appends to it rather than changing how
+ * the row is drawn.
+ */
+export interface ResourceLane {
+	/** The assignee value this row stands for, in its first-seen casing. */
+	name: string;
+	/** False for a row minted by a result's undeclared assignee. */
+	declared: boolean;
+	/** Result bars, in tree order, positioned exactly as the dated axis positions one. */
+	bars: TimelineBar[];
+	/**
+	 * Context rows whose assignee names this row. Drawn here so the row says whose work
+	 * they place — never as a positioned bar, never counted, never shelved.
+	 */
+	context: BacklogItem[];
+}
+
 export interface RoadmapModel {
 	axis: RoadmapAxis;
 	/** The horizon axis; empty on the dated axis. */
 	buckets: HorizonBucket[];
-	/** The dated axis, in row order; empty on the horizon axis. */
+	/**
+	 * Every bar the drawn axis has, in row order; empty on the horizon axis. Filled on
+	 * the resources axis too — flattened in row order — because two readers ask this
+	 * list whether a path is drawn as a BAR rather than as a card (the card menu's
+	 * children section, the toolbar's collapse gate), and an axis that draws bars while
+	 * reporting none makes both answer "card".
+	 */
 	bars: TimelineBar[];
+	/** The resources axis, in row order; empty on the other two. */
+	lanes: ResourceLane[];
 	/** Unplaced results in sibling order — the tree's own rank, not arrival order. */
 	shelf: ShelfCard[];
 	/**
@@ -182,8 +246,9 @@ export function buildRoadmap(
 	axis: RoadmapAxis,
 ): RoadmapModel {
 	const rows = roadmapRows(model, visible);
-	const roadmap: RoadmapModel = { axis, buckets: [], bars: [], shelf: [], context: [], placedCount: 0 };
+	const roadmap: RoadmapModel = { axis, buckets: [], bars: [], lanes: [], shelf: [], context: [], placedCount: 0 };
 	if (axis === 'horizons') deriveBuckets(rows, settings, roadmap, visible);
+	else if (axis === 'resources') deriveLanes(rows, settings, roadmap);
 	else {
 		const dated = deriveBars(rows);
 		roadmap.bars = dated.bars;
@@ -265,6 +330,73 @@ function placeContext(item: BacklogItem, byValue: Map<string, HorizonBucket>, ro
 	const value = item.horizon.value;
 	const bucket = value !== null ? byValue.get(value.toLowerCase()) : undefined;
 	if (bucket) bucket.cards.push(item);
+	else roadmap.context.push(item);
+}
+
+/**
+ * The resources axis. Two passes for `deriveBuckets`' own reason — only a result may
+ * mint a row, so a context row joins one that already exists — with one difference that
+ * follows from the axis being derivative: a result mints its row only where a BAR lands.
+ * An assignee with no date to position has nothing to draw, so it would otherwise mint a
+ * row whose only member is on the shelf.
+ *
+ * Every placement question is `placeItem`'s, asked unchanged: the marker reduction, the
+ * unreadable and reversed refusals and the rollup inference are the dated axis's rules,
+ * and this axis groups their answers rather than restating one of them.
+ */
+function deriveLanes(rows: BacklogItem[], settings: BacklogSettings, roadmap: RoadmapModel): void {
+	const lanes = settings.resourceNames.map(
+		(name): ResourceLane => ({ name, declared: true, bars: [], context: [] }),
+	);
+	const byName = new Map<string, ResourceLane>(lanes.map((lane) => [lane.name.toLowerCase(), lane]));
+	for (const item of rows) {
+		if (!item.outsideFilter) placeAssigned(item, lanes, byName, roadmap);
+	}
+	for (const item of rows) {
+		if (item.outsideFilter) placeContextLane(item, byName, roadmap);
+	}
+	roadmap.lanes = lanes;
+	// Flattened in row order — see `RoadmapModel.bars` for who asks and why.
+	roadmap.bars = lanes.flatMap((lane) => lane.bars);
+}
+
+/**
+ * A result joins its resource's row, or shelves. The assignee is asked FIRST and the
+ * dates second, and that order is the rule rather than a convenience: a row is who and
+ * not when, so an unassigned result shelves whatever its dates say — there is no row to
+ * place it into.
+ */
+function placeAssigned(
+	item: BacklogItem,
+	lanes: ResourceLane[],
+	byName: Map<string, ResourceLane>,
+	roadmap: RoadmapModel,
+): void {
+	const name = item.assigneeValue;
+	if (name === null) {
+		roadmap.shelf.push({ item, reason: null });
+		return;
+	}
+	const placement = placeItem(item, statedEnds(item));
+	if (placement.kind === 'shelf') {
+		roadmap.shelf.push({ item, reason: placement.reason });
+		return;
+	}
+	// Matching is case-insensitive, exactly as the buckets match horizons.
+	let lane = byName.get(name.toLowerCase());
+	if (!lane) {
+		lane = { name, declared: false, bars: [], context: [] };
+		byName.set(name.toLowerCase(), lane);
+		lanes.push(lane);
+	}
+	lane.bars.push(placement.bar);
+}
+
+/** A context row joins a row that already exists, or the axis's undifferentiated context. */
+function placeContextLane(item: BacklogItem, byName: Map<string, ResourceLane>, roadmap: RoadmapModel): void {
+	const name = item.assigneeValue;
+	const lane = name === null ? undefined : byName.get(name.toLowerCase());
+	if (lane) lane.context.push(item);
 	else roadmap.context.push(item);
 }
 
