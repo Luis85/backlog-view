@@ -43,8 +43,9 @@ instead.
   undo slot is not consumed.
 - **1b — the user cannot drag.** The row menu's Set assignee, and a resource ladder for
   Alt+Left/Right, both write the identical batch.
-- **1c — the drag starts on the shelf.** The same single write: entering a row is the
-  same triage gesture the shelf already exists for.
+- **1c — the drag starts on the shelf.** The same single write: this is the same triage
+  gesture the shelf already exists for, entering a row whenever the card also has a date
+  to place it at — 3c below is the exception, where it does not.
 - **1d — the drop lands on the shelf.** The assignee key is removed, not blanked — the
   item returns to unassigned, rather than rendering in a row named nothing.
 - **2a — the target row is one named by an observed, undeclared resource.** The move
@@ -62,6 +63,13 @@ instead.
 - **3b — the new value takes the note outside the Base's filter.** The write stands, the
   card leaves the view on the refresh, announced with a notice naming what happened and
   offering to open the note. Undo still takes it back.
+- **3c — the card has an assignee but no date, so it stays shelved whichever resource it
+  is dropped onto** ([[Showing a resources axis on the roadmap]] extension 3c — a row is
+  who, a date is when, and this write only ever answers who). The write still lands —
+  the assignee changes — but nothing visibly enters a row, so it is announced the same
+  way 3b announces a write whose visible effect is not the obvious one: naming the
+  resource now on the note and that a date is what is still missing to place it. Undo
+  still takes the assignee back as one batch.
 
 ## Acceptance criteria
 
@@ -78,6 +86,9 @@ instead.
 - A refused batch is refused whole, loudly, changing nothing.
 - A move whose value takes the note outside the Base's filter applies, is announced with
   an open path, and stays undoable.
+- A move onto a dateless card writes the assignee and stays shelved rather than silently
+  claiming to enter a row; it is announced the same way an out-of-filter move is, and
+  stays undoable.
 
 ## Where it lives
 
