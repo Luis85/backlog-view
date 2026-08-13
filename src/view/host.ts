@@ -363,6 +363,18 @@ export interface BacklogViewHost {
 	performHorizonMove(item: BacklogItem, horizon: string | null): Promise<boolean>;
 
 	/**
+	 * Plan and apply the assignee write a resource move means — the target row's own
+	 * name, or key removal for the shelf. The horizon axis's rule on this axis's
+	 * property: one path for all three inputs (a drop, an Alt+Up/Down, the row menu's
+	 * Set assignee), so no input can reach a row another cannot, and every move that
+	 * lands announces itself once. A move onto the row the card is already in plans
+	 * nothing and resolves false, leaving the undo slot untouched — but a card with no
+	 * date to be placed at still says so out loud, since nothing on screen would
+	 * otherwise tell the reader the drop landed at all.
+	 */
+	performResourceMove(item: BacklogItem, name: string | null): Promise<boolean>;
+
+	/**
 	 * Plan and apply the date batch a schedule move means — the ends the item's own
 	 * type answers for, or their removal. The board's and the horizon axis's rule on
 	 * the dated one: one path for every input (a drag, a grip, the row's entry, the

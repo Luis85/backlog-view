@@ -1,9 +1,11 @@
+import { Notice } from 'obsidian';
 import { BacklogItem } from '../domain/model';
 import { placementEnds, PlacementEnd } from '../domain/itemTypes';
-import { placeItem } from '../domain/bars';
+import { placeItem, statedEnds } from '../domain/bars';
 import { DropTarget } from '../domain/dropTargets';
-import { horizonSource } from '../domain/roadmap';
+import { horizonSource, resourceSource } from '../domain/roadmap';
 import {
+	computeAssigneeWrites,
 	computeDeliverableStateWrites,
 	computeDropWrites,
 	computeHorizonWrites,
@@ -15,7 +17,12 @@ import {
 import { todayStamp } from '../domain/noteFields';
 import { WriteOutcome } from '../storage/frontmatter';
 import { BacklogViewHost } from './host';
-import { announceBoardMove, announceHorizonMove, announceScheduleMove } from './interactions/cardDrag';
+import {
+	announceBoardMove,
+	announceHorizonMove,
+	announceResourceMove,
+	announceScheduleMove,
+} from './interactions/cardDrag';
 
 /**
  * Card-move write orchestration: the `BacklogViewHost` methods a drag, an Alt+arrow
@@ -65,6 +72,35 @@ export class CardMoveController {
 		return this.applyCardMove(item, computeHorizonWrites(item, horizon), () =>
 			announceHorizonMove(buckets, item.title, from, horizon),
 		);
+	}
+
+	async performResourceMove(item: BacklogItem, name: string | null): Promise<boolean> {
+		// Both captures before the batch, for `applyCardMove`'s stated reason: the refresh
+		// that ends this write rebuilds `host.roadmap` before the await resolves, and the
+		// row just vacated may be gone with its last bar.
+		const from = resourceSource(item);
+		const lanes = this.host.roadmap?.roadmap;
+		// Asked of the function that decides what DRAWS — `removalOutcome`'s rule on the
+		// dated shelf, for its reason. A row is who and a date is when, so a card with no
+		// date to sit at draws nothing whatever row it names, and extensions 1e and 3c both
+		// ask for that to be said rather than left looking like a bug. The WORDS are built
+		// here rather than a closure over the item, so what is captured is a string that
+		// cannot go stale behind the write.
+		const stays =
+			name !== null && placeItem(item, statedEnds(item)).kind === 'shelf'
+				? `"${item.title}" is assigned to ${name}. Add a start or target date to place it in the row.`
+				: null;
+		const writes = computeAssigneeWrites(item, name);
+		if (writes.length === 0) {
+			// 1a says nothing: a bar that stayed exactly where the cursor found it already
+			// answers the question. 1e does, because a shelved card that stays shelved does
+			// not — nothing about the card told the user its assignee already matched the row.
+			if (stays) new Notice(stays);
+			return false;
+		}
+		const moved = await this.applyCardMove(item, writes, () => announceResourceMove(lanes, item.title, from, name));
+		if (moved && stays) new Notice(stays);
+		return moved;
 	}
 
 	async performScheduleMove(

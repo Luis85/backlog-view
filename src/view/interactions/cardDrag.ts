@@ -6,7 +6,15 @@ import { TFile } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { BoardModel, columnLabelFor } from '../../domain/board';
 import { BacklogItem } from '../../domain/model';
-import { HorizonSource, placementLabel, RoadmapModel, targetLabel } from '../../domain/roadmap';
+import {
+	HorizonSource,
+	placementLabel,
+	resourcePlacementLabel,
+	ResourceSource,
+	resourceTargetLabel,
+	RoadmapModel,
+	targetLabel,
+} from '../../domain/roadmap';
 import { BarHold, Placement, StatedEnds, UNSCHEDULED_LABEL } from '../../domain/bars';
 import { PlacementEnd, placementEnds } from '../../domain/itemTypes';
 import { DateSpan, daysBetween, formatCivil } from '../../domain/timeline';
@@ -79,6 +87,21 @@ export function announceHorizonMove(
 ): void {
 	if (!roadmap) return;
 	announceMove(title, placementLabel(roadmap, from), targetLabel(roadmap, to));
+}
+
+/**
+ * The resources axis's own pair, asked of two functions for the same reason the horizon
+ * axis has two — what the note SAID and where the user SENT it are different questions,
+ * and answering them once cost a cleanup being reported as no change.
+ */
+export function announceResourceMove(
+	roadmap: RoadmapModel | null | undefined,
+	title: string,
+	from: ResourceSource,
+	to: string | null,
+): void {
+	if (!roadmap) return;
+	announceMove(title, resourcePlacementLabel(roadmap, from), resourceTargetLabel(roadmap, to));
 }
 
 /**

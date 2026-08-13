@@ -623,6 +623,10 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		return this.cardMoves.performHorizonMove(item, horizon);
 	}
 
+	performResourceMove(item: BacklogItem, name: string | null): Promise<boolean> {
+		return this.cardMoves.performResourceMove(item, name);
+	}
+
 	performScheduleMove(
 		item: BacklogItem,
 		plan: SchedulePlan,

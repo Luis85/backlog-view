@@ -226,6 +226,62 @@ export function horizonSource(item: BacklogItem): HorizonSource {
 	return { reading: item.horizon, keyPresent: item.ownKeys.horizon };
 }
 
+/** A key that is there and names nobody — the stub the backfill leaves. */
+const EMPTY_ASSIGNEE_LABEL = 'an empty assignee';
+
+/** The drawn row a name belongs to, matched as the bars were placed. */
+function laneFor(roadmap: RoadmapModel, value: string): string | null {
+	return roadmap.lanes.find((lane) => sameValue(lane.name, value))?.name ?? null;
+}
+
+/**
+ * A name in the casing the row on screen carries, or the name itself where no row draws
+ * it. Both ends of a resource move's sentence share this half, unlike the horizon axis's
+ * pair above — and the reason is this axis's own minting rule rather than a shortcut.
+ * `placementLabel` falls back to the SHELF for a value no bucket carries, which is right
+ * on an axis where every result's value mints a bucket; here a row exists only where a
+ * BAR lands, so a note naming a resource it has no date to sit beside names a resource
+ * with no row — and reading that as the shelf would report "from Unplaced" about a note
+ * that plainly says Alice. What the two ends do NOT share is the null case, which is the
+ * whole of what `targetLabel` and `placementLabel` were split over.
+ */
+function resourceLabel(roadmap: RoadmapModel, value: string): string {
+	return laneFor(roadmap, value) ?? value;
+}
+
+/** Where a pick sends a card. Nobody named is the shelf, under the name the frame gives it. */
+export function resourceTargetLabel(roadmap: RoadmapModel, name: string | null): string {
+	return name === null ? SHELF_LABEL : resourceLabel(roadmap, name);
+}
+
+/** What a note's assignee key said, and whether it was there at all. */
+export interface ResourceSource {
+	value: string | null;
+	keyPresent: boolean;
+}
+
+/**
+ * Both pre-write facts about who a card names, taken together — so a caller capturing
+ * "where it came from" before an await cannot capture half of it. `horizonSource`'s
+ * shape, for `horizonSource`'s reason: an empty key reads as absence while
+ * `computeAssigneeWrites` clears on PRESENCE, so a real, undo-consuming cleanup would
+ * otherwise be announced as a move that did not happen.
+ */
+export function resourceSource(item: BacklogItem): ResourceSource {
+	return { value: item.assigneeValue, keyPresent: item.ownKeys.assignee };
+}
+
+/**
+ * What a card's assignee WAS. Two ways to say nobody, and only one of them is nothing to
+ * take away. There is no third: `readString` refuses nothing here, so an assignee is a
+ * string or it is absent, and this axis has no unreadable case for the horizon's third
+ * label to answer.
+ */
+export function resourcePlacementLabel(roadmap: RoadmapModel, source: ResourceSource): string {
+	if (source.value !== null) return resourceLabel(roadmap, source.value);
+	return source.keyPresent ? EMPTY_ASSIGNEE_LABEL : SHELF_LABEL;
+}
+
 /**
  * The row set, the board's own rule: focused, the rendered roots — results as
  * live rows and a focus-level item outside the filter as inert context — else
