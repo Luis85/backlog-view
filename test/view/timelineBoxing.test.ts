@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { STATE_COLOR_SLOTS } from '../../src/domain/settings';
-import { LABEL_RESERVE_PX } from '../../src/view/render/timeline';
+import { LABEL_RESERVE_PX } from '../../src/view/render/barLabel';
 
 /** The declarations of one rule, by selector — good enough for a single-selector rule. */
 function bodyOf(css: string, selector: string, file: string): string {

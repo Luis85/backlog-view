@@ -5,6 +5,13 @@ order: 20
 status: Open
 created: 2026-08-13
 source: user request
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Assigning items to a resource
@@ -124,3 +131,8 @@ the way `horizon` already is, and routing the row menu's Set assignee
 (`src/view/interactions/labels.ts`) through `performResourceMove` while this axis is
 active — the way `chooseHorizon` in `src/view/interactions/plan.ts` already branches by
 mode.
+
+`src/view/render/barLabel.ts` is not this PBI's feature. It is the bar's title and the
+mark width it clears, moved out of `src/view/render/timeline.ts` when that file hit its
+400-line budget and this increment needed eight lines in it — the same move `laneEntries`
+made into `src/view/render/lanes.ts`, for the same reason.
