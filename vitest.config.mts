@@ -26,6 +26,11 @@ export default defineConfig({
 			// 94.0038 mid-flight; taking the 94.0 it rounds down from would have failed the
 			// very next run, because sharing a chevron between two renderers deleted six
 			// branches along with the duplicate. Record what the FINISHED increment measures.
+			// It happened again on 2026-08-14, the same way and with the same shape of cause:
+			// branches were raised to 94.85 mid-flight, and then a hold this increment had
+			// added was taken back out with the tests that drove it. 94.83 is what the
+			// finished work measures, and it is above the 94.81 this branch started from —
+			// which is the floor that may never move down, unlike a figure taken in passing.
 			//
 			// A coverage failure here is first a question about which branch nothing can
 			// take, and only then about a missing test. A 93.99 against a 94.0 floor turned
@@ -40,10 +45,10 @@ export default defineConfig({
 			// removed. The entries are not restored — git holds them — but main's
 			// THRESHOLDS are taken whole, because they are higher and a floor only rises.
 			thresholds: {
-				statements: 98.49,
-				branches: 94.81,
+				statements: 98.54,
+				branches: 94.88,
 				functions: 99.81,
-				lines: 99.59,
+				lines: 99.6,
 			},
 		},
 	},

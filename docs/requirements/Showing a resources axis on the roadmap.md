@@ -112,21 +112,16 @@ vocabulary the way the horizon values do.
   as a bar at all, own or inferred, so there is no separate "what if it has no date"
   case to answer here either. A context row with no resource-row match at all falls to
   the same undifferentiated context this axis's own dated ancestor already keeps.
-- **4a — the user creates from a row.** The row's own resource name rides the single
-  creation write, the same as a bucket's — no note ever exists in a row its frontmatter
-  does not claim. Unlike a bucket, that write alone does not draw the card IN the row:
-  [[New item flow]] supplies no date, and a picked template's start and target are
-  stripped the same way a bucket-created note's horizon never is
-  ([[Creating an item from a template]]), so the new note is exactly 3c's case the
-  moment it is read back — an assignee and no date — and shelves on the same refresh
-  that creates it. Announced the way [[Assigning items to a resource]] extension 3c
-  already announces the identical outcome reached by a drag instead of a click: naming
-  the resource now on the note and that a date is what is still missing to place it,
-  rather than letting a click on a specific row silently produce a card that renders
-  somewhere else entirely. Where a template is also picked, the row's name wins over
-  anything the template declares for the assignee property
-  ([[Creating an item from a template]] extension 5d) — the same reason a picked
-  template cannot override a bucket's horizon either.
+- **4a — creating from a row. WITHDRAWN on 2026-08-14; a row offers no New button.** It
+  was built, and the reason it went is the reason this extension had to keep explaining
+  itself: creation supplies no date and nothing else on the path does either, so a note
+  made here was assigned and then immediately shelved for want of one — a click on a
+  specific row producing a card somewhere else entirely. The write was correct and one
+  atomic call, the announcement said exactly what had happened, and the gesture was still
+  a row promising a placement it cannot make. A resource's row is where work is SEEN; the
+  toolbar's New creates it, and Set assignee or a drag puts it in a row once it has a date
+  to sit at. `CreatePlacement.assignee` and the creation write behind it went with the
+  button rather than being left for a caller that no longer exists.
 
 ## Acceptance criteria
 
@@ -153,12 +148,8 @@ vocabulary the way the horizon values do.
   never drawn as a positioned bar either, dated or not — the dated axis it derives from
   never places a context row's dates as a bar, so this axis inherits that rather than
   adding a case for it.
-- Creating from a row writes that resource's name into the assignee property as part of
-  the single creation write, and wins over anything a picked template declares for that
-  same property — but, having no date of its own (neither creation nor a template
-  supplies one), it shelves on the same refresh rather than drawing in the row, announced
-  the same way [[Assigning items to a resource]] extension 3c already announces the
-  identical outcome reached by a drag.
+- A row header offers **Add absence and nothing else** — no New button, since creation
+  supplies no date and a note made from a row would shelve on the same refresh (4a).
 - A card's own assignee chip does not also draw while the card renders inside its
   resource's row — the row already says who it is assigned to, the same rule
   [ADR 0027](../adrs/0027-label-chips-with-no-positional-meaning-also-draw-on-cards.md)
@@ -215,20 +206,21 @@ import each other. `src/view/render/roadmap.ts` dispatches the three axes and ho
 bar may be taken hold of. `styles/lanes.css` carries the header's band, imported after
 `timeline.css` because it overrides `.pbl-timeline-lead` at equal specificity.
 
-**The axis is read-only in this increment, and that is a decision rather than an
-omission.** No grip on a bar (`TimelineDrawing.grips`), no drop target on the grid, and a
-shelf that accepts nothing (`shelfRemoval`'s own `'resources'` branch): every move here
-writes an assignee, which is [[Assigning items to a resource]]'s, and a bar wired with
-grips over a grid with no registered target is the "picked up and had nowhere to land"
-failure `src/view/CLAUDE.md` records. A row's own New button and the write behind it are
-this PBI's and are built.
+**The axis was read-only in this increment, and that was a decision rather than an
+omission.** No grip on a bar, no drop target on the grid, and a shelf that accepted nothing
+(`shelfRemoval`'s own `'resources'` branch): every move here writes an assignee, which is
+[[Assigning items to a resource]]'s, and a bar wired with grips over a grid with no
+registered target is the "picked up and had nowhere to land" failure `src/view/CLAUDE.md`
+records. A row's own New button and the write behind it were this PBI's, and were
+withdrawn on 2026-08-14 — see extension 4a.
 
 All four of those seams were reversed by [[Assigning items to a resource]] on 2026-08-13,
-which is what "in this increment" was reserving them for. The GRIP stays withheld even so,
-and for the reason stated above rather than by inheritance: a grip writes a DATE, and this
-axis still registers no positional target one could land on. What a bar offers now is an
-ordinary card drag — hold `null`, no baseline — which is a different gesture with a
-different write behind it.
+which is what "in this increment" was reserving them for, and the last of them — the GRIP,
+withheld even then because a grip writes a DATE and no positional target existed to land
+one on — by [[Scheduling inside a resource's row]] on 2026-08-14. The target that was
+missing is not the overlay: it is each band ELEMENT, which reads the same pointer X for the
+same date and knows its own row as well, so a release answers both questions at once. The
+overlay stays undrawn for the reason it always was.
 
 What is genuinely new is the row-grouping walk itself, and where an absence merges into
 it. A row draws from a list per SOURCE and the renderer walks each — which is the seam
@@ -238,9 +230,25 @@ said a second source would append to `ResourceLane.bars`, and it cannot, because
 held; the sentence was wrong about which list. `ResourceLane.absences` is the second one,
 added 2026-08-13.
 
-**Not built here, and owed:** the acceptance criterion that a row's name must win over a
-picked template's assignee cannot be met yet, because templates do not exist —
-[[Creating an item from a template]] is unbuilt, so there is no template write for a row
-name to win over. The precedence rule belongs to that PBI when it lands. And the header's
-appearance in a themed vault, plus how a screen reader reads a header div among `option`
-rows, are live-vault checks the jsdom harness cannot make.
+**The rows were FLAT here, and stopped being so on 2026-08-14.** This note said a fold was
+impossible — a chevron would let one person's chevron hide another person's bar, since
+membership is by assignee and a parent and its child routinely sit in different bands.
+That was right about the hazard and wrong about the conclusion: it rules out an ancestry
+fold computed over the whole grid and says nothing about one computed per BAND, which is
+what [[Folding a resource's band]] built. The header gained a disclosure of its own in the
+same increment.
+
+**The LEGEND is this PBI's file** (`src/view/render/legend.ts`, reached through `drawsGrid`
+above), and on 2026-08-14 `DrawnColors` came to carry a fourth thing the render reports: a
+MARK rather than a colour override, the absence hatch, so the `Unavailable` swatch can be
+gated the way the other four are. Reported from the render rather than derived from the
+model for those three's own reason — `laneEntries` skips a collapsed band whole, so a
+predicate over `roadmap.lanes` would key a stretch nothing on screen draws, which is exactly
+the mistake the done and milestone swatches each made once. The interface is therefore wider
+than its name, and a BAR's own report is the narrower `BarColors` so no row literal has to
+claim anything about a mark drawn nowhere near it. See
+[[An absence read fainter than the decoration behind it]].
+
+**Not built here, and owed:** the header's appearance in a themed vault, plus how a screen
+reader reads a header div among `option` rows, are live-vault checks the jsdom harness
+cannot make.

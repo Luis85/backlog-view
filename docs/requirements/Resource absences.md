@@ -17,10 +17,14 @@ files:
   - src/storage/absenceNotes.ts
   - src/storage/frontmatter.ts
   - src/ui/prompts.ts
+  - src/view/host.ts
   - src/view/interactions/absences.ts
   - src/view/manual/setupSection.ts
   - src/view/render/lanes.ts
+  - src/view/render/legend.ts
   - src/view/render/timeline.ts
+  - styles/lanes.css
+  - styles/legend.css
 started: ""
 finished: ""
 horizon: ""
@@ -102,6 +106,30 @@ already looks.
   ordinary file delete rather than this backlog's undo — the note was never one of this
   backlog's write targets to begin with, so there is no batch for the gate to have
   captured an inverse of.
+- **4i — editing one already placed** (added 2026-08-14). Beside the delete on that same
+  menu, opening the SAME form Add absence opens, pre-filled: one field list, one validator,
+  one set of refusals, so the two acts cannot come to disagree about what an absence is.
+  Changing the resource or either date rewrites the frontmatter in place; changing the
+  TITLE renames the note, because an absence's title is its basename and nothing else —
+  through Obsidian's own rename, so any link naming it follows. Outside the gate for 4c's
+  reason, and so outside the undo: what takes an edit back is the file history every other
+  note has.
+- **4j — an edit whose write fails.** Reported, never silent, the shape 4c's own failure
+  already has. The frontmatter is written BEFORE the rename, deliberately: a rename that
+  landed first and then failed would leave a note named for a stretch it does not hold,
+  while this way the worst outcome is the right dates under the old name — visible, and
+  fixable from the same menu.
+- **4k — the stretch also shades the band's own work rows** (added 2026-08-14). The same
+  unavailable days are drawn behind the bars of every work row in that band, so a bar and
+  the stretch it crosses are read on one line rather than two — which is what the user story
+  above asks for and what a line of its own could not give: the collision was the hardest
+  thing on the band to see. **4a is unchanged**: both still draw, stacked, and nothing moves
+  to avoid anything. This is an ADDITION beside the named line and never a replacement for
+  it, because that line is the surface carrying the title, the dates and the Edit/Delete
+  menu — a resource whose only content is an absence (4b) would otherwise get a row with
+  nothing in it to act on. A stretch the drawn window cannot reach shades nothing at all,
+  since the shading would then colour days it does not cover. See
+  [[An absence read fainter than the decoration behind it]].
 - **4d — the configuration narrows to one date property, or none, after absences already
   exist.** They stop rendering, all of them, silently — the same gate 1a already puts in
   front of creating one applies to reading them too: the reader checks both properties
@@ -165,6 +193,11 @@ already looks.
 
 ## Acceptance criteria
 
+- A placed stretch offers Edit and Delete on its own context menu and nothing else: it is
+  not a work item, so none of the type, state, parent-link or rank entries belong to it.
+- Editing opens the same form adding one does, pre-filled and refusing the same ranges;
+  it rewrites the note in place, renames it when the title changes, and reports a write it
+  could not make.
 - Add absence offers itself only when both date properties are configured — the
   resources axis's own precondition (either property alone) is not enough, since an
   absence cannot infer a missing end.
@@ -212,6 +245,14 @@ already looks.
   absence can become a real-looking task rather than merely a mis-styled one.
 
 ## Where it lives
+
+**Editing** (2026-08-14) is `promptEditAbsence` in `src/view/interactions/absences.ts` over
+`updateAbsenceNote` and `renameAbsenceNote` in `src/storage/absenceNotes.ts`. The prompt
+gained one optional field — `editing`, the three values to pre-fill — rather than a second
+modal, which is what keeps the validator and the refusals one statement. `AbsenceSpec` split
+in two for the same reason the acts did: `AbsenceFacts` is what an absence SAYS and is all
+an update takes, while the folder and the title decide where the note IS and belong to
+creating one. The config gate runs before either form opens, from one `refusedByConfig`.
 
 Built 2026-08-13, and the one PBI in this feature that is not an extension of an existing
 write path.
@@ -266,9 +307,49 @@ Drawing is `src/view/render/lanes.ts` — a fourth `TimelineEntry` kind leading 
 and `renderLaneAbsence`, positioned by `barGeometry` against the same window a bar is —
 drawn from `src/view/render/timeline.ts`'s own entry loop, which does NOT count one as a
 drawn row: the stripe alternates over work, and an absence is furniture of the row. The
-blocked stretch is `styles/lanes.css`, hatched rather than filled and muted rather than
-coloured, on `.pbl-bar-inferred`'s own argument that a mark the view did not read off a
-plan must not look like one.
+blocked stretch is `styles/lanes.css`, hatched rather than filled and never state-coloured,
+on `.pbl-bar-inferred`'s own argument that a mark the view did not read off a plan must not
+look like one.
+
+**The mark is drawn from a TEXT token and never from a `--background-modifier-*` one**
+(2026-08-14). That second palette is what `.pbl-grid-line` is made of and the family
+`.pbl-weekend-layer` draws from, so a mark built out of it cannot out-read the decoration it
+sits on — which is how it shipped and how it was reported. `.pbl-absence-row`'s muting
+belongs to the row's LEAD alone for the same reason: it says "this row is furniture", and
+applied to the stretch it said "this mark is faint". Both are checked as the RULE rather than
+as the colour, in `test/view/timelineBoxing.test.ts`, whose reach is the tokens each rule
+names and nothing about what they resolve to. See
+[[An absence read fainter than the decoration behind it]].
+
+**The wash (4k) is `renderAbsenceWash`, beside `renderLaneAbsence`**, called from
+`drawEntries`' own row branch — a WORK row only, since the stretch's own line already carries
+the mark, a context row makes no positional claim at all, and on the dated axis there is no
+band to be a member of. It is PREPENDED into the row's day track, and that is the whole layer
+story: appended it paints over the bar, and giving `.pbl-bar` a `z-index` to lift it instead
+would out-rank the sticky lead column at 2, since the track establishes no stacking context.
+A per-ROW wash rather than a band-height one because a band has no container element — its
+top and height are knowable only by measuring after the render, the layout read
+`src/view/CLAUDE.md` forbids and the reason `TimelineDrawing.laneElement` reports per element
+rather than wiring a band.
+
+**`crossedAbsences` in `src/domain/absences.ts` is the one place "does this bar cross a
+stretch" is answered.** It judges the overlap on the days the bar DRAWS — `start ?? target` …
+`target ?? start`, `barGeometry`'s own borrowing — so a one-ended bar is judged at the single
+day it renders rather than treated as unbounded in the direction it has no date for; a
+backlog stating targets and no starts is the ordinary case here, and the other reading would
+report a crossing on nearly every stretch behind it. From DATES, never from geometry, so a
+crossing outside the drawn window still marks its row: the row is where the fact lives, and a
+window-derived mark would narrow it to wherever the reader happens to be scrolled. What
+reports it is `noteAbsenceClash`, the dependency conflict's shape reused — a glyph in the
+lead plus the words it stands for as `.pbl-sr-only` content, because the wash tells this in
+colour alone and WCAG 1.4.1 refuses that.
+
+**The band header's own glyph** (`renderLaneHead`) qualifies the count rather than changing
+what it counts: `lane.bars.length` is RESULT bars and stays so, the rule a bucket's count
+already keeps, which had left a band whose only content is an absence reading `0`. It is
+`aria-hidden`, and that is honest rather than a gap — each stretch's own row below carries
+`<title> — unavailable <dates>` as its accessible name, so this is a second route for a
+sighted reader rather than the only route to the fact.
 
 Creating one is `AbsencePromptModal` in `src/ui/prompts.ts` (`SchedulePromptModal`'s shape,
 with no per-field clear button — an empty end is not a real answer here) opened by
@@ -307,3 +388,15 @@ screen reader announces an absence row usefully among `option` rows, given that 
 a plain div carrying its own `aria-label` and the same `aria-description` every row of the
 band gets; and the delete's confirmation behaviour under the user's own "deleted files"
 setting.
+
+The 2026-08-14 readability increment adds four to that list, none of them answerable here and
+only three of them answerable by `npm run harness`, which draws Obsidian's DEFAULT colours
+while a themed vault replaces exactly the tokens this change turns on: whether 18% of
+`--text-muted` actually out-reads a themed vault's weekend shading, and whether it still reads
+as shading rather than as a second bar under the one it sits beneath; whether the hatch at
+`--text-muted` holds against a community theme's background and against a bar it overlaps —
+the check above, now with a different token in it; whether two glyphs in one lead crowd the
+title at a narrow lead width; and whether the `Unavailable` swatch's finer hatch reads as
+hatch at 10px. The demo fixture is already pointed at the first three: `demoVault()` carries
+Dana's `Single sign-on` (2026-07-20 → 2026-08-15) running straight through her absence
+(2026-08-10 → 2026-08-14), plus Sam, whose row exists only because he is away.
