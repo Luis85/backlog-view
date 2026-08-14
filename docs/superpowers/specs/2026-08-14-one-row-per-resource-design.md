@@ -10,8 +10,11 @@ twenty rows before any work is drawn.
 
 **One row per person, whatever they have.** The stretches move into the header's own
 track, overlapping stretches pack into sub-lanes instead of stacking into lines, a band
-with nothing in it folds itself away, and the cost of scheduling work across an absence
-becomes a number rather than a glyph.
+with nothing in it draws as one quiet row, and the cost of scheduling work across an
+absence becomes a number rather than a glyph.
+
+The request also asked for such a band to FOLD itself. It does not — §4 says why, and the
+short version is that after the first change it would fold nothing.
 
 Mocked before building (a browser screenshot at week zoom), which is where the readout
 shape, the pill and the days-lost sentence come from.
@@ -60,6 +63,9 @@ Half of that refusal is answered and half is paid:
 - **Packing the BARS.** Only absences pack. A bar's row is `timelineRows`' and stays so.
 - **A second mark geometry for the n=1 case.** One height, one pitch, one formula (§3).
 - **Moving anything to avoid anything.** Packing groups; it never nudges.
+- **A model-driven fold default** ("no work → folded"), and the second stored set it needs.
+  See §4: after the stretches move into the header it changes nothing on screen, and it
+  would fold every empty lane once on first load after upgrade.
 - **A midnight timer.** `docs/issues/The roadmap keeps yesterday's date across midnight.md`
   owns that, and this change adds a fifth consumer of the same stale value without making
   it worse.
@@ -157,27 +163,33 @@ point of packing over stacking.
 
 ## 4. Folding
 
-### The default is a function of the model
+### The fold state does not change at all, and that is the finding
 
+The request asked for "no work → folded by default", which needs a second stored set:
 `collapsedLanes` is an explicit set of folded NAMES, so "folded unless opened" cannot be
-expressed by adding names — a reader who opens an empty lane has nothing to store. A second
-set is added beside it, the same stored shape (`string[]`, read through `readPaths`,
-written only when non-empty):
+expressed by adding names — a reader who opens an empty lane has nothing to store.
 
-```
-collapsed = openLanes.has(name)   ? false
-          : foldedLanes.has(name) ? true
-          : lane.bars.length === 0
-```
+**It was refused, because after §2 it is inert.** A band is header → bars → context rows.
+Once the stretches move into the header's own track, a lane with no bars has nothing
+beneath the header at all, so `laneEntries` emits the identical entry list either way:
+collapsed pushes the header and `continue`s; open pushes the header, then no absences, then
+`timelineRows([])`, then no context. Same rows, same marks, same height. The default would
+have bought **a chevron pointing right** — and cost a second set in the collapse store, a
+`setLaneCollapsed` that has to prune the other set, and a first load after upgrade where
+every empty lane folds itself once, which reads as data loss for exactly as long as it takes
+to look broken.
 
-`setLaneCollapsed` writes into whichever set the new state belongs to and prunes the other,
-so a name is never in both. This is the **one state-model change in the whole redesign**;
-everything else is render and CSS.
+So there is **no state-model change in this redesign**. `collapsedLanes` stays exactly as
+it is, one explicit set, and the whole change is render and CSS.
 
-**What it costs on first load after upgrade, stated because it looks like data loss.** An
-old entry has no `openLanes`, which reads as empty — the "absence is the default" rule the
-store already keeps — so every lane with no bars folds itself once, including one the
-reader had open. It is one click to reopen and the answer then persists.
+The one case where folding an empty lane is not inert: a lane with no bars but with CONTEXT
+rows, where folding does hide something. That is not an argument for the default either —
+a context row is placement rather than population, and auto-folding on a count that excludes
+the only thing the fold would hide is a rule that would have to be explained every time it
+fired.
+
+What the request actually wanted from this — quiet people taking one quiet row — is
+delivered by §2 and by `.pbl-lane-quiet` below, with no persisted state involved.
 
 ### The load rail
 
@@ -330,9 +342,11 @@ in one branch, or the diff reads as churn.
 
 **Node** — `test/domain/bars.test.ts`: the load rail's union, same shape.
 
-**Storage** — the fold resolution: unset + no bars → folded; unset + bars → open; an
-explicit open on an empty lane survives a round trip; an explicit fold on a busy lane
-survives; a name is never in both sets.
+**Storage** — nothing. The collapse store is untouched, which is the point of §4.
+
+**View** — one check for the refusal in §4, so it is not re-proposed by someone reading the
+mock: a lane with no bars renders the same rows folded and open. It states why the default
+was declined, in the one place that can fail if that stops being true.
 
 **View** — `test/view/resourceAbsences.test.ts`:
 
@@ -356,8 +370,9 @@ survives; a name is never in both sets.
   paragraph amended a second time.
 - `docs/requirements/Showing a resources axis on the roadmap.md`: the header's readout, the
   fold default, the load rail, quiet lanes.
-- `docs/requirements/Folding a resource's band.md`: the default is now a function of the
-  model, and the two-set resolution.
+- `docs/requirements/Folding a resource's band.md`: the load rail, and — recorded so it is
+  not re-proposed from the mock — that a model-driven fold default was asked for and
+  refused as inert, with the reason from §4.
 - `CHANGELOG.md` `[Unreleased]`, folded into the entries already there rather than added
   beside them — one user-visible change, not two.
 - `docs/tests/suites/Smoke test the roadmap.md`: the live-vault rows below.
