@@ -395,10 +395,12 @@ setting.
 The 2026-08-14 readability increment added four to that list and **the first two are now
 answered**: checked in a vault at 385 results, in light, the hatch and the wash both out-read
 the weekend banding, and the wash reads as shading rather than as a second bar — once it was
-drawn OVER the bars rather than under them, which is what that look found. What stays owed:
-whether two glyphs in one lead (a dependency flag and an absence flag, which can both land on
-one row) crowd the title at a narrow lead width; whether the `Unavailable` swatch's finer hatch
-reads as hatch at 10px rather than as a slashed circle; and all of it in dark. The demo fixture
+drawn OVER the bars rather than under them, which is what that look found. **The swatch
+question is answered too, and answered "no"**: at 10px square it read as a slashed circle among
+the five colour dots, so it is 20px wide now and draws the mark's own gradient rather than a
+halved copy of it. What stays owed: whether two glyphs in one lead (a dependency flag and an
+absence flag, which can both land on one row) crowd the title at a narrow lead width, and all
+of it in dark. The demo fixture
 is pointed at the first: `demoVault()` carries Dana's `Single sign-on` (2026-07-20 →
 2026-08-15) running straight through her absence (2026-08-10 → 2026-08-14), plus Sam, whose row
 exists only because he is away.

@@ -350,16 +350,23 @@ describe('the absence marks are drawn from the content palette', () => {
 		expect(height(lanes, '.pbl-absence', 'styles/lanes.css')).toBe(bar);
 	});
 
-	it('keys the hatch in the colour the stretch draws it in', () => {
-		// The strip's whole subject is that a swatch cannot say a colour the mark does not
+	it('keys the hatch with the very gradient the stretch draws, not a copy of it', () => {
+		// The strip's whole subject is that a swatch cannot say something the mark does not
 		// draw. The three pairs above check that for the marks whose colour is a `--color-*`
-		// palette entry; the hatch names a text token instead, so it needs this pairing rather
-		// than that helper. The PERIOD is deliberately not compared — see `.pbl-legend-absence`.
+		// palette entry; this mark is a HATCH, so the thing to pair is the whole gradient —
+		// the token and the period together, because a key drawn at a different period is a
+		// different mark. It was: the swatch halved the period to fit a 10px square and came
+		// out reading as a slashed circle. Widening the swatch is what made one gradient
+		// serve both, so this now asserts what the earlier colour-only pairing could not.
 		const legend = readFileSync(new URL('../../styles/legend.css', import.meta.url), 'utf8');
+		const gradient = (css: string, selector: string, file: string) =>
+			/background-image:\s*([^;]+);/.exec(bodyOf(css, selector, file))?.[1].replace(/\s+/g, ' ');
+		const mark = gradient(lanes, '.pbl-absence', 'styles/lanes.css');
+		expect(mark, '.pbl-absence draws no gradient at all').toBeDefined();
+		expect(gradient(legend, '.pbl-legend-absence', 'styles/legend.css')).toBe(mark);
+		// And the border it sits in, which the gradient does not cover.
 		const inked = (css: string, selector: string, file: string) => tokens(css, selector, file).filter((t) => t.startsWith('--text-'))[0];
-		const mark = inked(lanes, '.pbl-absence', 'styles/lanes.css');
-		expect(mark, '.pbl-absence names no text token').toBeDefined();
-		expect(inked(legend, '.pbl-legend-absence', 'styles/legend.css')).toBe(mark);
+		expect(inked(legend, '.pbl-legend-absence', 'styles/legend.css')).toBe(inked(lanes, '.pbl-absence', 'styles/lanes.css'));
 	});
 
 	it('lets the pointer through the shading, rather than taking the drop the row is the target for', () => {

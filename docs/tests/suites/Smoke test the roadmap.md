@@ -91,9 +91,10 @@ catalog migration and was not part of that run.
   increment existed for. It also found the two defects in
   [[An absence read fainter than the decoration behind it]]'s own closing section — the wash
   under the bars rather than over them, and a header glyph competing with the Add absence
-  button — neither of which any check here could see. **Still unchecked**: the two glyphs in one
-  lead at a narrow lead width (no row in that vault carried both), the `Unavailable` swatch at
-  10px, and everything in dark. The fixture is pointed at the first of those: `demoVault()`
+  button, and the `Unavailable` swatch reading as a ⊘ among five colour dots — none of which
+  any check here could see. **Still unchecked**: the two glyphs in one lead at a narrow lead
+  width (no row in that vault carried both), and everything in dark. The fixture is pointed at
+  the first of those: `demoVault()`
   carries Dana's `Single sign-on` (2026-07-20 → 2026-08-15) running straight through her absence
   (2026-08-10 → 2026-08-14), plus Sam, whose row exists only because he is away.
 - The lead column's resize grip, which is where this feature keeps everything jsdom

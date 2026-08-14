@@ -148,8 +148,8 @@ colours only.
 The increment shipped without a look — no browser was available to the session that built it —
 and the maintainer opened it in a vault at 385 results the same day. **The contrast question is
 answered: the hatch and the wash both out-read the weekend banding**, in a real theme, which is
-the first of the four this note said it owed. Two things were wrong, and both are the kind only
-looking finds:
+the first of the four this note said it owed. Three things were wrong, and all three are the kind
+only looking finds:
 
 **The wash was UNDER the bars, and that is backwards.** It was built that way deliberately, on
 the reasoning that a bar is the thing being asked about and must not be obscured by the
@@ -167,3 +167,12 @@ count competed with the Add absence button, which reveals on hover in the same p
 it was meant to qualify is never read alone: the stretch's own hatched row is directly beneath
 the header. Removed with its two tests, and recorded as a refusal on
 [[Resource absences]] so it is not proposed again from the finding alone.
+
+**The `Unavailable` swatch read as a ⊘ symbol.** This one the spec asked outright — "whether
+the swatch's finer hatch reads as hatch at 10px" — and the answer is no: a 10px square with a
+border and a halved period is a slashed circle, sitting among five colour dots. The period had
+been halved *because* the real 4px stripe fits a 10px square only once, which is the tell that
+the square was the wrong shape rather than the period the wrong number. The swatch is 20px
+wide now and draws the mark's own gradient, so the key and the mark are one declaration
+compared as one fact — a strictly stronger check than the colour-only pairing it replaces,
+which could not have caught this at all.
