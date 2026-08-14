@@ -53,6 +53,16 @@ export default defineConfig({
 			// not others. Recorded in
 			// `docs/issues/The coverage figure is not reproducible to a hundredth.md`.
 			//
+			// A FOURTH sample sharpened that candidate rather than confirming it: on 2026-08-14
+			// CI failed 98.51 against this 98.52 while three local runs measured 98.52, same
+			// commit, same totals, one covered statement apart — and BOTH CI legs measured the
+			// same figure, on two operating systems, one of which ran five tests the other
+			// skips. So the split is environment-shaped, not run-to-run, which rules out a
+			// coin-flip race and rules in something about the machine. TZ and worker count were
+			// tried locally and reproduced nothing. What unblocked it was covering two
+			// statements a local run had already been counting as uncovered, not moving a
+			// figure: a floor a local sample sets is a floor CI may not clear.
+			//
 			// A coverage failure here is first a question about which branch nothing can
 			// take, and only then about a missing test. A 93.99 against a 94.0 floor turned
 			// out to be two DEAD branches — one arm whose only callers passed a three-name

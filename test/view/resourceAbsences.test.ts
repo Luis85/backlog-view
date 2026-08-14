@@ -332,7 +332,10 @@ describe('adding an absence', () => {
 		// And a resource: a stretch nobody is away for has no row to draw in.
 		expect(submitAbsence({ resource: '', title: 'Away', start: '2026-09-04', target: '2026-09-05' })).toBe(false);
 		// And a title: it is the note's own name, so there is nothing to file without one.
-		expect(submitAbsence({ title: '', start: '2026-09-04', target: '2026-09-05' })).toBe(false);
+		// The resource is restated because the form KEEPS what the last attempt left in it —
+		// without it this line re-refuses the blank resource above and says nothing about the
+		// title at all, which is what it did until the missing statement showed up in coverage.
+		expect(submitAbsence({ resource: 'Alice', title: '', start: '2026-09-04', target: '2026-09-05' })).toBe(false);
 		await flush();
 
 		expect(vault.files.size).toBe(before);
@@ -486,6 +489,23 @@ describe('editing a placed absence', () => {
 		// would answer by appending a number.
 		expect(vault.files.has('Alice away.md')).toBe(true);
 		expect(vault.fm('Alice away.md')['start']).toBe('2026-08-05');
+	});
+
+	it('re-asks the gate at submit, exactly as the add flow does', async () => {
+		// The edit form outlives the config it opened under for the same reason the add form
+		// does — Obsidian's options pane stays reachable while a modal is up — and the write
+		// after a narrowing would reach `setOwn(fm, '', ...)`, a key nobody configured.
+		const vault = absenceVault();
+		const harness = laneRoadmap(vault);
+
+		openEdit(harness.containerEl);
+		harness.config.values['targetProperty'] = undefined;
+		refresh(harness.view, vault);
+		submitAbsence({ resource: 'Alice', title: 'Alice away', start: '2026-08-05', target: '2026-08-09' });
+		await flush();
+
+		expect(vault.fm('Alice away.md')['start']).toBe('2026-08-04');
+		expect(Notice.messages.some((m) => m.startsWith('Name the assignee and both date properties'))).toBe(true);
 	});
 
 	it('is blocked by the config gate before it takes any typing', () => {

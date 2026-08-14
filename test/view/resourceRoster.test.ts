@@ -51,6 +51,22 @@ describe('what a landed move declares', () => {
 		expect(rosterWrites(harness)).toEqual(['Alice, Bob, Zoe']);
 	});
 
+	it('appends to what the config holds NOW, so a second new name keeps the first', async () => {
+		// No refresh between the two: `host.settings` is a snapshot from the last data
+		// update, so a roster read off it still says `Alice, Bob` while the option already
+		// says `Alice, Bob, Zoe` — and appending to the snapshot would replace Zoe's
+		// declaration with Quinn's while both notes keep their assignee. Reading the config
+		// at commit time is what makes the second write a merge.
+		const vault = resourceVault();
+		const harness = laneRoadmap(vault);
+		const { view } = harness;
+
+		await view.performResourceMove(view.model?.byPath.get('Nobody.md') as never, 'Zoe');
+		await view.performResourceMove(view.model?.byPath.get('Undated.md') as never, 'Quinn');
+
+		expect(rosterWrites(harness)).toEqual(['Alice, Bob, Zoe', 'Alice, Bob, Zoe, Quinn']);
+	});
+
 	it('declares nothing for a removal or a name the roster carries in another casing', async () => {
 		const vault = resourceVault();
 		const harness = laneRoadmap(vault);

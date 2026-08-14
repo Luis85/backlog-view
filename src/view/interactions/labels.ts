@@ -3,6 +3,7 @@ import { BacklogViewHost } from '../host';
 import { BacklogItem } from '../../domain/model';
 import { sameValue } from '../../domain/noteFields';
 import { mergedValues } from '../../domain/settings';
+import { resolveSettings } from '../../domain/settingsResolve';
 import { computeAssigneeWrites, computeRiskWrites, ItemWrite } from '../../domain/writePlan';
 import { ValuePromptModal } from '../../ui/prompts';
 import { rowVocabulary } from '../projection';
@@ -142,10 +143,21 @@ async function chooseAssignee(host: BacklogViewHost, item: BacklogItem, value: s
  *
  * Both callers run this AFTER their write lands, never before it — the ordering
  * `test/view/resourceRoster.test.ts` states from the rule.
+ *
+ * The list it appends to is read from the CONFIG at commit time, never from
+ * `host.settings` — a snapshot taken at the last data update, while this write lands
+ * after an awaited one, so two declarations between two refreshes had the second replace
+ * the first's name instead of joining it. Through `resolveSettings` rather than a second
+ * reading of the raw option: the split, the trim and the dedupe are that function's, and
+ * parsing the string here would be a second opinion about what the roster is.
+ * **It closes the window it can see, and only that one.** Whether one pane's `set` is
+ * visible to another pane's `get` before its own refresh is an Obsidian internal nothing
+ * here can answer, so two panes declaring two new names in the same instant may still
+ * leave one of them undeclared — a live-vault question, recorded on PR #134.
  */
 export function declareResource(host: BacklogViewHost, name: string | null): void {
 	if (name === null || name.includes(',') || host.settings.assigneeKey === '') return;
-	const roster = host.settings.resourceNames;
+	const roster = resolveSettings(host.config).resourceNames;
 	if (roster.some((declared) => sameValue(declared, name))) return;
 	host.config.set('resourceNames', [...roster, name].join(', '));
 }
