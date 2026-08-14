@@ -86,13 +86,16 @@ export interface DrawnColors {
 	accent: boolean;
 	/**
 	 * An unavailable stretch drew somewhere on this grid (`.pbl-absence`) — the resources
-	 * axis only, since it is the only axis whose entry list holds one.
+	 * axis only, since a stretch draws in a resource's header and the dated axis has none.
 	 *
 	 * Not a colour override like the three above, and the interface is wider than its name
 	 * because of it: what this reports is which MARKS a pass drew that the key has to
 	 * explain, and a hatch is one. Reported from the render for the same reason the others
-	 * are — `laneEntries` skips a collapsed band whole, so a predicate over `roadmap.lanes`
-	 * would key a stretch nothing on screen draws.
+	 * are — a lane the axis is not drawing at all (the dated axis, or a projection with no
+	 * roadmap open) still has absences sitting in `roadmap.lanes`, so a predicate over the
+	 * MODEL would key a stretch nothing on screen draws. A collapsed band is not such a
+	 * case: its header still draws its own stretches since 2026-08-14, so this and the
+	 * legend key both stay lit through a fold.
 	 *
 	 * The three above are a BAR's own report, which is why `reportColors` and `renderBarRow`
 	 * take the narrower `BarColors`: a bar row draws no hatch and has nothing to say here.
@@ -330,8 +333,9 @@ export interface BacklogViewHost {
 	readonly shelfHiddenTypes: ReadonlySet<string>;
 	setShelfHiddenTypes(types: ReadonlySet<string>): void;
 	/**
-	 * Whether one resource's whole BAND is folded shut on the resources axis — its bars,
-	 * its absences and the notes it places, leaving the header.
+	 * Whether one resource's whole BAND is folded shut on the resources axis — its bars and
+	 * the notes it places, leaving the header. Not its absences: those draw in the header's
+	 * own track since 2026-08-14, so a fold leaves them exactly where they were.
 	 *
 	 * A third collapse question beside {@link isCollapsed} and {@link isCardCollapsed}, and
 	 * a third because it is asked of a NAME: a resource is not a note, so it has no path to

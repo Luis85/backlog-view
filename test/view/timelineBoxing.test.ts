@@ -59,9 +59,9 @@ describe('the two boxes sized from TypeScript arithmetic', () => {
 		// what the pane looks like and can refuse the declaration that made it look wrong.
 		const lanes = readFileSync(new URL('../../styles/lanes.css', import.meta.url), 'utf8');
 		// Every selector that dims. A ROW selector is one naming a row class and nothing
-		// beneath it — `.pbl-absence-row .pbl-timeline-lead > *` is CONTENT, and is exactly
+		// beneath it — `.pbl-lane-context .pbl-timeline-lead > *` is CONTENT, and is exactly
 		// the shape this rule asks for.
-		const rowClass = /^\.pbl-(absence-row|lane-context|lane-head|timeline-row)\b[^\s>]*$/;
+		const rowClass = /^\.pbl-(lane-context|lane-head|timeline-row)\b[^\s>]*$/;
 		const dimmed = [...lanes.matchAll(/([^{}]+)\{([^}]*)\}/g)]
 			.filter((rule) => /opacity:\s*0?\.\d/.test(rule[2]))
 			.flatMap((rule) => rule[1].split(','))

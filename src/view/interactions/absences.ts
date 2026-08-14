@@ -137,13 +137,15 @@ function absenceProblem(result: AbsenceResult): string | null {
 }
 
 /**
- * The absence row's own context menu: one entry, and deliberately not `buildItemMenu`.
- * Every entry in that menu is about a work item — a type, a state, a parent link, a rank
- * — and an absence has none of them.
+ * The absence mark's own context menu: one entry each, and deliberately not
+ * `buildItemMenu`. Every entry in that menu is about a work item — a type, a state, a
+ * parent link, a rank — and an absence has none of them.
  *
- * `chipMenu`'s shape (`interactions/menu.ts`) over a row rather than a control, and the
- * `stopPropagation` it carries is not needed here: an absence row is not a card, so
- * nothing wired `wireCardActivation` on it and there is no row action to bubble into.
+ * `chipMenu`'s shape (`interactions/menu.ts`) over a mark rather than a control, but
+ * WITHOUT the `stopPropagation` it carries: the mark is a child of the header
+ * `TimelineDrawing.laneElement` registers, and the band's drop depends on `dragover` and
+ * `drop` bubbling up to it (`renderLaneAbsences`'s own doc comment). Stopping propagation
+ * here would recreate `docs/bugs/An absence stretch is a dead spot in its own band.md`.
  */
 export function showAbsenceMenu(host: BacklogViewHost, absence: Absence, evt: MouseEvent): void {
 	evt.preventDefault();

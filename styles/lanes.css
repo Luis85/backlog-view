@@ -176,7 +176,7 @@
    a `calc` instead of a branch. */
 .pbl-absence {
 	position: absolute;
-	top: calc(7px + var(--pbl-sublane) * 17px);
+	top: calc(7px + var(--pbl-sublane, 0) * 17px);
 	left: var(--pbl-bar-left);
 	width: var(--pbl-bar-width);
 	height: 13px;

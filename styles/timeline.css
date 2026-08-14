@@ -172,11 +172,12 @@
 
    On `.pbl-timeline-row` alone, never on `.pbl-card.pbl-timeline-row`, and that is the
    whole of what this rule has to get right. Gated on the card class it reached only the
-   rows that are also cards — and an absence stretch is deliberately neither a
-   `BacklogItem` nor a card (`renderLaneAbsence` in `src/view/render/lanes.ts` says why),
-   so it had no flex context at all: its lead and its track stacked as blocks and the
-   hatched stripe drew on the line BELOW the name of the person it belongs to. A layout
-   every row needs cannot be attached to a class only some rows carry. */
+   rows that are also cards — and an absence stretch, while it drew as a row of its own
+   (before it moved into its resource's header track on 2026-08-14; `renderLaneAbsence`,
+   since deleted, said why it was deliberately neither a `BacklogItem` nor a card), had no
+   flex context at all: its lead and its track stacked as blocks and the hatched stripe
+   drew on the line BELOW the name of the person it belonged to. A layout every row needs
+   cannot be attached to a class only some rows carry. */
 .pbl-timeline-row {
 	display: flex;
 	flex-direction: row;

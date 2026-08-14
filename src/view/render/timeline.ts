@@ -382,11 +382,14 @@ function drawEntries(entries: TimelineEntry[], pass: EntryPass): void {
 	for (const entry of entries) {
 		if (entry.kind === 'lane') {
 			lane = entry.lane;
-			// The legend keys what the grid actually PAINTED, and since 2026-08-14 the header
-			// paints its own resource's stretches whether the band is open or shut — so this is
-			// the one place left to report it from.
-			if (entry.lane.absences.length > 0) drawn.absence = true;
-			inBand(renderLaneHead(ctx, mounts.content, entry, { window, scale, today }), false);
+			// The legend keys what the grid actually PAINTED — asked of the DOM the header just
+			// produced, not of `entry.lane.absences` (a MODEL predicate `renderLaneAbsences`'
+			// own early return could drift out of step with by hand). Since 2026-08-14 the
+			// header paints its own resource's stretches whether the band is open or shut, so
+			// this is the one place left to ask.
+			const head = renderLaneHead(ctx, mounts.content, entry, { window, scale, today });
+			if (head.querySelector('.pbl-absence') !== null) drawn.absence = true;
+			inBand(head, false);
 			continue;
 		}
 		let row: HTMLElement;

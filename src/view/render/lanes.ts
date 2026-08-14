@@ -382,10 +382,10 @@ function renderLaneAbsences(
 
 /**
  * The days one resource is unavailable, shaded across a WORK row of their own band — OVER the
- * bars, so a bar and the stretch it crosses are read on one line rather than two. The band's
- * own named line (`renderLaneAbsence`) still leads it and is where the title, the dates and
- * the menu live; this is the same fact where the collision actually happens, which is what
- * this feature's user story asks for and what a line of its own could not give.
+ * bars, so a bar and the stretch it crosses are read on one line rather than two. The mark in
+ * the header's own track (`renderLaneAbsences`) still carries the title, the dates and the
+ * menu; this is the same fact where the collision actually happens, which is what this
+ * feature's user story asks for and what the header's mark alone could not give.
  *
  * `barGeometry` against the same window the mark is placed against, so the shading and the
  * stretch cannot disagree about which day is which.

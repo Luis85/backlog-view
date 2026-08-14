@@ -68,7 +68,8 @@ export function renderLegend(
 	if (drawn.milestone) addSwatch(legendEl, 'pbl-legend-milestone', 'Milestone');
 	// The hatch, on the same rule and reported the same way: `drawn.absence` is the render's
 	// own word for "a stretch drew here", so this appears exactly where the mark does — on
-	// the resources axis, and not for a band the reader has folded shut.
+	// the resources axis, and stays lit through a fold, since a collapsed band's header
+	// keeps drawing its own stretches (2026-08-14).
 	if (drawn.absence) addSwatch(legendEl, 'pbl-legend-absence', 'Unavailable');
 }
 
