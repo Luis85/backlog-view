@@ -61,6 +61,14 @@ const against = args.against ?? null;
 // register has now made twice — a difference smaller than the noise of its own terms,
 // read as a finding. So a comparison starts at three and prints both sides' spreads.
 const runs = Number(args.runs ?? (against ? 3 : 1));
+// A whole number of runs, or nothing. `--runs=abc` and `--runs=0` printed an EMPTY table
+// and exited 0 — an instrument answering confidently when it measured nothing, which is
+// the failure this whole file is written against; `2.5` ran three times under a heading
+// saying 2.5, and `Infinity` never came back. (Codex, PR #137.)
+if (!Number.isInteger(runs) || runs < 1) {
+	console.error(`--runs must be a whole number of runs, at least 1 — got "${args.runs}".`);
+	process.exit(1);
+}
 // A viewport, because one is load-bearing rather than incidental: `content-visibility`
 // skips what is off screen, so a window twice as tall renders twice as many rows before
 // the browser stops. Chromium's headless default is 800x600; this states a size instead
