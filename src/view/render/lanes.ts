@@ -324,10 +324,15 @@ export function renderLaneContextRow(ctx: RowContext, content: HTMLElement, item
  * (`view/interactions/absences.ts`).
  *
  * The dates go in the row's own accessible name rather than on the mark: the mark is a
- * plain div, where ARIA prohibits a name, and a reader who cannot see the stretch needs
- * to be told which days it covers — which no neighbouring element says for it. Whose row
- * it is in is `renderLaneRowDescription`'s, exactly as it is for every other row of the
- * band.
+ * plain div, where ARIA prohibits a name, and a reader who cannot see the stretch needs to
+ * be told which days it covers. A note created since 2026-08-14 is NAMED for its dates
+ * (`absenceTitle`), so such a row now states them twice — accepted rather than trimmed,
+ * because *an absence's title is its basename and nothing else* is the rule the edit path is
+ * built on: a hand rename or an older note can leave any string there, and a row that
+ * dropped the dates whenever the title looked like it carried them would lose them exactly
+ * where the name lies. If the repetition reads badly in a vault the fix is `absenceTitle`,
+ * one pure function, and not a second rule about what this row draws. Whose row it is in is
+ * `renderLaneRowDescription`'s, exactly as it is for every other row of the band.
  */
 export function renderLaneAbsence(
 	ctx: RowContext,

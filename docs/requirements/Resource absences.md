@@ -127,9 +127,12 @@ already looks.
 - **4l — the title is derived, not asked for** (added 2026-08-14). The form asks for the
   resource, a start and an end, and the note is named `<resource> away <start> → <end>`
   (`absenceTitle` in `src/domain/absences.ts`, the one producer, so the create path and the
-  edit path cannot disagree). Both dates are in it so two absences never collide and
-  `uniqueNotePath` never appends a number — a basename is read in the explorer, in search
-  and in a link, none of which has a row beside it to supply the dates. **A hand rename does
+  edit path cannot disagree). Both dates are in it so two stretches of one resource over
+  DIFFERENT days read apart — a basename is read in the explorer, in search and in a link,
+  none of which has a row beside it to supply the dates. Not "never collides": the same
+  resource over the same days derives the same name, and so does a note already sitting at
+  it, so `uniqueNotePath` still appends a number sometimes — and a rename asks it about the
+  note's OWN path, or a note that landed at `… 1` would ratchet to `… 2` on the next edit. **A hand rename does
   not survive the next edit**: rename the note in Obsidian, change a date, and it takes the
   derived name back. Accepted rather than engineered around — the alternative is comparing
   against the name the OLD facts would have produced, a second rule whose failure mode is a

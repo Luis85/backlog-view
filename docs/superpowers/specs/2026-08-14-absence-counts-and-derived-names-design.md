@@ -147,10 +147,11 @@ The one producer, so the create path and the edit path cannot come to disagree a
 an absence is called — the same reason the two acts already share one form, one validator
 and one set of refusals.
 
-Both dates in the name, so two absences never collide and `uniqueNotePath` never has to
-append a number: `Evi away 1` and `Evi away 2` are two names that say nothing apart, and a
-filename is read in the explorer, in search and in a link, where no row is there to supply
-the dates. `sanitizeTitle` replaces `\/:*?"<>|#^[]` only, so both the dates and the arrow
+Both dates in the name, so two stretches of one resource over DIFFERENT days read apart:
+`Evi away 1` and `Evi away 2` are two names that say nothing apart, and a filename is read
+in the explorer, in search and in a link, where no row is there to supply the dates. Not
+"never collides" — the same resource over the same days derives the same name, and so does
+a note already sitting at it, so `uniqueNotePath` still appends a number sometimes. `sanitizeTitle` replaces `\/:*?"<>|#^[]` only, so both the dates and the arrow
 survive to disk unchanged — checked, not assumed.
 
 It takes `AbsenceFacts`, which already exists and is already exactly these three fields for
@@ -188,9 +189,13 @@ way the worst outcome is the right dates under the old name — visible, and fix
 same menu. What changes is only the premise of the test that drives it: "an edit that also
 changes the title" and "an edit that changes the dates" are now the same edit.
 
-**No new guard for an edit that renames nothing.** `renameAbsenceNote` already returns
-early when `sanitizeTitle(title) === file.basename`, and it compares the sanitized form for
-exactly this kind of reason. A re-confirmed edit therefore renames nothing, for free.
+**An edit that renames nothing.** `renameAbsenceNote` returns early where the title already
+resolves to the note's own path. That guard was a comparison of `sanitizeTitle(title)` with
+the basename when this was written, and it was not enough once the name became derived: a
+note that had landed at `X 1` derives `X` for ever after, so the guard could no longer fire
+and each edit ratcheted the suffix. It is now one comparison of the resolved PATH, with the
+note's own path counted free (`uniqueNotePath`'s `self`). A re-confirmed edit renames
+nothing, collided name or not.
 
 ## 8. Three consequences, stated rather than solved
 

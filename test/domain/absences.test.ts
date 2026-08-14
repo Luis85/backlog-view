@@ -1,6 +1,7 @@
 import { TFile } from 'obsidian';
 import { describe, expect, it } from 'vitest';
 import { buildModel } from '../../src/domain/model';
+import { buildRoadmap } from '../../src/domain/roadmap';
 import { Absence, absencesConfigured, absenceTitle, crossedAbsences, pendingAbsences } from '../../src/domain/absences';
 import { CivilDate, readDate } from '../../src/domain/noteFields';
 import { ABSENCE_TYPE, ALL_TYPES, typeFolderKey } from '../../src/domain/typeVocabulary';
@@ -53,6 +54,32 @@ describe('an absence is never a work item', () => {
 
 		expect(model.items.map((i) => i.title)).toEqual(['Work']);
 		expect(model.absences).toHaveLength(1);
+	});
+
+	it('keeps nothing at all for a note the Base never returned', () => {
+		// The context-row rule, at the one collection an absence lands in: an `outsideFilter`
+		// note is never a source of anything derived from the results — no band, no stretch
+		// and no count. Stated at the KEEPING rather than at the path that reaches it, since
+		// `loadOutsideParents` is only today's way in: any future caller handing `addItem` a
+		// note with no entry trips this.
+		const vault = new FakeVault();
+		vault.addFile('Work.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
+			parentLink: 'Away',
+		});
+		// Its resource is on no result at all, so a band named for it could only have been
+		// minted by the excluded note itself.
+		vault.addFile('Away.md', {
+			frontmatter: { type: 'Absence', assignee: 'Quinn', start: '2026-08-04', due: '2026-08-06' },
+		});
+		const settings = settingsFor();
+		const entries = vault.entries().filter((entry) => entry.file.path === 'Work.md');
+		const model = buildModel(vault.app, entries, settings);
+		const roadmap = buildRoadmap(model, settings, () => true, 'resources');
+
+		expect(model.absences).toEqual([]);
+		expect(roadmap.lanes.map((lane) => lane.name)).toEqual(['Alice']);
+		expect(roadmap.lanes[0].absences).toEqual([]);
 	});
 
 	it('keeps the name out of every list the work-item vocabulary drives', () => {
@@ -209,10 +236,12 @@ describe('how many stretches are still to come', () => {
 });
 
 describe('what an absence note is called', () => {
-	it('names the resource and both ends, so two never collide', () => {
-		// Both dates, so `uniqueNotePath` never has to append a number: `Alice away 1` and
-		// `Alice away 2` are two names that say nothing apart, and a filename is read in the
-		// explorer, in search and in a link, where no row is there to supply the dates.
+	it('names the resource and both ends, so two over different days read apart', () => {
+		// Both dates, so one resource's two stretches are told apart by the name itself:
+		// `Alice away 1` and `Alice away 2` say nothing apart, and a filename is read in the
+		// explorer, in search and in a link, where no row is there to supply the dates. Not
+		// "never collides" — the same days derive the same name, which is why `uniqueNotePath`
+		// still has a suffix and a rename still has to know its own path.
 		expect(absenceTitle({ resource: 'Alice', start: '2026-08-04', target: '2026-08-06' })).toBe(
 			'Alice away 2026-08-04 → 2026-08-06',
 		);

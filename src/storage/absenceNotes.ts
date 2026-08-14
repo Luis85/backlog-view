@@ -3,7 +3,7 @@ import { AbsenceFacts } from '../domain/absences';
 import { BacklogSettings } from '../domain/settings';
 import { vaultFolder } from '../domain/settingsResolve';
 import { ABSENCE_TYPE } from '../domain/typeVocabulary';
-import { ensureFolder, sanitizeTitle, uniqueNotePath } from './frontmatter';
+import { ensureFolder, uniqueNotePath } from './frontmatter';
 import { setOwn } from './ownProperty';
 
 /**
@@ -90,21 +90,19 @@ export async function updateAbsenceNote(
  * that names this note, which matters here for the same reason it matters anywhere —
  * nothing stops a reader linking to an absence from a planning note.
  *
- * A no-op where the name has not changed, checked against the file's own basename rather
- * than against what the form was opened with: those differ the moment two edits race, and
- * a rename to the name a note already has is a needless write that `uniqueNotePath` would
- * answer by appending a number.
- *
- * The comparison is of the SANITIZED title, because that is what the other side of it is:
- * a basename has already been through `sanitizeTitle`, so `Offsite?` typed over `Offsite`
- * is one file name and two strings — and the raw comparison let it past, where
- * `uniqueNotePath` found the note's own path occupied and renamed it to `Offsite 1`. A
- * title edit that changes nothing must change nothing.
+ * A no-op where the name has not changed, asked as ONE question: the path this title
+ * resolves to, against the path the note already has. That single comparison answers both
+ * halves it used to take two rules to answer — the title is sanitized on the way (`Offsite?`
+ * typed over `Offsite` is one file name and two strings), and the note's own path is free
+ * rather than taken (`uniqueNotePath`'s `self`), so a note that once landed at `X 1` is
+ * re-confirmed there instead of ratcheting to `X 2` on every later edit. Both are the same
+ * rule: a title edit that changes nothing must change nothing.
  */
 export async function renameAbsenceNote(app: App, file: TFile, title: string): Promise<void> {
-	if (sanitizeTitle(title) === file.basename) return;
 	const folder = file.parent?.path ?? '';
-	await app.fileManager.renameFile(file, uniqueNotePath(app, folder === '/' ? '' : folder, title));
+	const path = uniqueNotePath(app, folder === '/' ? '' : folder, title, file);
+	if (path === file.path) return;
+	await app.fileManager.renameFile(file, path);
 }
 
 /**

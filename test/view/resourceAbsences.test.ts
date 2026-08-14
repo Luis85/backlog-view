@@ -345,6 +345,13 @@ describe('adding an absence', () => {
 	});
 
 	it('writes nothing for a blank field or a reversed range', async () => {
+		// **The ORDER of these three submissions is load-bearing.** A refusal leaves the form
+		// open with what was typed still in it, so each attempt starts from the last one's
+		// values — which is why the blank RESOURCE goes last: move it up and the attempts
+		// after it inherit an empty resource, so 2a and 2b are refused for the missing name
+		// rather than for the reason they claim, and the file check below still passes. Found
+		// by coverage rather than by reading, and the class of loss is
+		// `docs/issues/A comment that states a rule is not a check.md`.
 		const vault = absenceVault();
 		const { containerEl } = laneRoadmap(vault);
 		const before = vault.files.size;
@@ -469,6 +476,29 @@ describe('editing a placed absence', () => {
 		await flush();
 
 		expect(vault.files.has('Alice away 2026-08-04 → 2026-08-06 1.md')).toBe(true);
+		expect(Notice.messages).toContain('Updated "Alice away 2026-08-04 → 2026-08-06 1".');
+	});
+
+	it('leaves a note that already landed on a collided name where it is, edit after edit', async () => {
+		// The number is appended ONCE, by the collision. A second edit derives the same name
+		// again, so the note's own occupied path must not be read as taken — or every later
+		// edit ratchets the suffix (`… 1` → `… 2` → `… 3`), rewrites every link naming the
+		// note and reports a name the reader did not ask for.
+		const vault = absenceVault();
+		vault.addFile('Alice away 2026-08-04 → 2026-08-06.md', { frontmatter: { type: 'Epic', order: 20 } });
+		const harness = laneRoadmap(vault);
+
+		openEdit(harness.containerEl);
+		submitAbsence({ resource: 'Alice', start: '2026-08-04', target: '2026-08-06' });
+		await flush();
+		refresh(harness.view, vault);
+		// Nothing changed on the second pass — the same three facts, re-confirmed.
+		openEdit(harness.containerEl);
+		submitAbsence({ resource: 'Alice', start: '2026-08-04', target: '2026-08-06' });
+		await flush();
+
+		expect(vault.files.has('Alice away 2026-08-04 → 2026-08-06 1.md')).toBe(true);
+		expect(vault.files.has('Alice away 2026-08-04 → 2026-08-06 2.md')).toBe(false);
 		expect(Notice.messages).toContain('Updated "Alice away 2026-08-04 → 2026-08-06 1".');
 	});
 

@@ -8,7 +8,13 @@ import { folderForType } from '../../domain/itemTypes';
 import { ResourceLane } from '../../domain/roadmap';
 import { configProblems } from '../../domain/settingsConsistency';
 import { ABSENCE_TYPE } from '../../domain/typeVocabulary';
-import { createAbsenceNote, deleteAbsenceNote, renameAbsenceNote, updateAbsenceNote } from '../../storage/absenceNotes';
+import {
+	AbsenceSpec,
+	createAbsenceNote,
+	deleteAbsenceNote,
+	renameAbsenceNote,
+	updateAbsenceNote,
+} from '../../storage/absenceNotes';
 
 /**
  * The view's half of an absence: opening the prompt from a resource's row header,
@@ -206,7 +212,10 @@ async function editAbsence(host: BacklogViewHost, absence: Absence, result: Abse
 async function writeAbsence(host: BacklogViewHost, result: AbsenceResult): Promise<void> {
 	if (refusedByConfig(host)) return;
 	try {
-		const spec = { folder: absenceFolder(host), title: absenceTitle(result), ...result };
+		// The spread comes FIRST, so the derived name wins over anything the form's own
+		// result might one day carry under that key — and the annotation is what makes an
+		// excess property an error rather than a silent extra field.
+		const spec: AbsenceSpec = { ...result, folder: absenceFolder(host), title: absenceTitle(result) };
 		const file = await createAbsenceNote(host.app, host.settings, spec);
 		new Notice(`Marked ${result.resource} away — "${file.basename}".`);
 	} catch (e) {

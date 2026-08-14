@@ -82,10 +82,13 @@ export default defineConfig({
 			// the exact single-count swing
 			// `docs/issues/The coverage figure is not reproducible to a hundredth.md`
 			// already names, reproduced again rather than assumed. Both samples clear this
-			// floor, but by less than one flipped count would cost, so per that issue's own
-			// policy this increment declines the rise too rather than pin a number a clean
-			// tree could fail. Functions and lines held at 99.81 and 99.6 across all four
-			// runs — nothing to raise there either.
+			// floor by more than one count: a statement is 0.0147pp of 6810 and a branch
+			// 0.0227pp of 4407, so the 0.02–0.04pp of headroom on statements is one to three
+			// of them, and the 0.06–0.08pp on branches is two to four. The rise is declined
+			// anyway, and the margin is not the reason — the reason is the one this comment
+			// already gives: a rise needs a figure the suite REPRODUCES, and this increment
+			// measured two. Pinning either would be pinning a sample. Functions and lines held
+			// at 99.81 and 99.6 across all four runs — nothing to raise there either.
 			thresholds: {
 				statements: 98.52,
 				branches: 94.83,

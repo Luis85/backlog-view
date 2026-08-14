@@ -145,11 +145,14 @@ export function pendingAbsences(absences: Absence[], today: CivilDate): number {
  * name computed separately in each act is exactly how the two would come to disagree about
  * what an absence is.
  *
- * Both dates are in it so two absences never collide and `uniqueNotePath` never appends a
- * number — `Alice away 1` beside `Alice away 2` is two names that say nothing apart, and a
+ * Both dates are in it, so two absences for one resource over DIFFERENT days get different
+ * names — `Alice away 1` beside `Alice away 2` is two names that say nothing apart, and a
  * basename is read in the explorer, in search and in a link, none of which has a row beside
- * it to supply the dates. Every character here survives `sanitizeTitle`, which replaces
- * `\/:*?"<>|#^[]` and leaves the arrow and the hyphens alone.
+ * it to supply the dates. Not "never collides": the same resource over the same days derives
+ * the same name, and so does any note already sitting at it, so `uniqueNotePath` still
+ * appends a number sometimes — which is why a rename asks it about the note's own path
+ * (`self`) rather than assuming the question cannot arise. Every character here survives
+ * `sanitizeTitle`, which replaces `\/:*?"<>|#^[]` and leaves the arrow and the hyphens alone.
  *
  * **A hand rename does not survive the next edit**, and that is the accepted cost of the
  * name being a function of the facts rather than a defect: rename the note in Obsidian, edit
