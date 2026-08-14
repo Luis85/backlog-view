@@ -5,7 +5,7 @@ import { drawIcon } from './icons';
 import { renderBadge, renderChevron, renderTitleText } from './rows';
 import { promptAddAbsence, showAbsenceMenu } from '../interactions/absences';
 import { BacklogViewHost } from '../host';
-import { Absence, absencesConfigured, pendingAbsences } from '../../domain/absences';
+import { Absence, absencesConfigured, awayWeeks } from '../../domain/absences';
 import { timelineRows, TimelineRow } from '../../domain/bars';
 import { BacklogItem } from '../../domain/model';
 import { CivilDate } from '../../domain/noteFields';
@@ -223,7 +223,7 @@ export function renderLaneHead(
  */
 function laneReadout(lane: ResourceLane, today: CivilDate): string {
 	const items = `${lane.bars.length} item${lane.bars.length === 1 ? '' : 's'}`;
-	const away = pendingAbsences(lane.absences, today);
+	const away = lane.absences.length === 0 ? 0 : awayWeeks(lane.absences, today);
 	if (away === 0) return items;
 	return `${items} / ${away} absence${away === 1 ? '' : 's'}`;
 }

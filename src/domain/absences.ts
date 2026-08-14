@@ -1,7 +1,7 @@
 import { TFile } from 'obsidian';
 import { CivilDate, ownValue, readDate, readString } from './noteFields';
 import { BacklogSettings } from './settings';
-import { DateSpan, daysBetween, reversedSpan } from './timeline';
+import { DateSpan, daysBetween, reversedSpan, unionDays } from './timeline';
 
 /**
  * What a resource's own unavailable stretch IS, whether the configuration can carry one,
@@ -117,23 +117,21 @@ export function crossedAbsences(span: DateSpan, absences: Absence[]): Absence[] 
 }
 
 /**
- * How many of these stretches have not ended — the count a band's header reports beside its
- * item count.
+ * Has this stretch not ended? One comparison, not two: a stretch whose target is today or
+ * later has either not started or not finished, and there is no third case — written as two
+ * conditions it invites a reader to "fix" a missing start comparison that would drop every
+ * running absence.
  *
- * **"Upcoming or currently active" is ONE comparison, not two.** A stretch whose target is
- * today or later has either not started or not finished, and there is no third case; written
- * as two conditions it invites a reader to "fix" a missing start comparison that would then
- * drop every running absence. Inclusive at today, `crossedAbsences`' own boundary rule, so
- * one absence does not mean two different things on one row.
+ * Inclusive at today, `crossedAbsences`' own boundary rule, so one absence does not mean two
+ * different things on one row. From DATES and never from geometry, so a stretch outside the
+ * drawn window still counts and the answer does not change as the reader scrolls.
  *
- * From DATES, never from geometry, which is that function's other rule read again: a stretch
- * outside the drawn window still counts, or the number would change as the reader scrolls.
- *
- * `today` is a parameter because nothing in this layer reads a clock — `todayCivil()` is
- * computed in the view and injected, which is what lets a test say which day today is.
+ * Private, and it was `pendingAbsences` — an exported COUNT — until the band header stopped
+ * reporting one (2026-08-14). What the header shows now is weeks, so the count had no caller
+ * left and only the filter survived.
  */
-export function pendingAbsences(absences: Absence[], today: CivilDate): number {
-	return absences.filter((absence) => daysBetween(today, absence.target) >= 0).length;
+function isPending(absence: Absence, today: CivilDate): boolean {
+	return daysBetween(today, absence.target) >= 0;
 }
 
 /**
@@ -162,4 +160,74 @@ export function pendingAbsences(absences: Absence[], today: CivilDate): number {
  */
 export function absenceTitle(facts: AbsenceFacts): string {
 	return `${facts.resource} away ${facts.start} → ${facts.target}`;
+}
+
+/**
+ * These stretches grouped into the sub-lanes they can be drawn on — the first holding as
+ * many as fit without sharing a day, the next taking what is left, and so on.
+ *
+ * **This is not the lane-packing extension 4a refused, and the difference is the whole
+ * argument.** That refusal's reason was "a packing rule is a second geometry to keep in step
+ * with the one the bars use". This returns `Absence[][]` and computes no pixel: it runs over
+ * ABSENCES only and never over bars, so every bar is still placed by `barGeometry` against
+ * the same window, one row per `timelineRows` row, with nothing moved aside for anything.
+ * There is one geometry and a grouping decided before it.
+ *
+ * What 4a was protecting survives in a sharper form: nothing is ever hidden or merged by
+ * packing. Two stretches that share a day get two sub-lanes and the header grows to hold
+ * them both.
+ *
+ * Greedy FIRST-fit rather than best-fit, deliberately: a long stretch then holds sub-lane 0
+ * and everything short slots in beneath it, instead of each new stretch pushing the pile
+ * down. The boundary is `crossedAbsences`' — inclusive at both ends — so two that merely
+ * touch do not share a line, because one of them would have to lie about the shared day.
+ */
+export function packAbsences(absences: Absence[]): Absence[][] {
+	const sorted = [...absences].sort((a, b) => daysBetween(b.start, a.start));
+	const packed: Absence[][] = [];
+	for (const absence of sorted) {
+		const room = packed.find((sub) => daysBetween(sub[sub.length - 1].target, absence.start) >= 1);
+		if (room === undefined) packed.push([absence]);
+		else room.push(absence);
+	}
+	return packed;
+}
+
+/**
+ * How many of the days this span DRAWS are days its resource is away — the number the row
+ * reports beside a bar scheduled across a stretch.
+ *
+ * Each crossed stretch is clamped to the bar's own days first and the results are UNIONED,
+ * never summed: two overlapping stretches must not cost the same day twice, which is the
+ * defect this shares its primitive with `awayWeeks` to prevent.
+ *
+ * `crossedAbsences` decides WHICH stretches count, so the two cannot disagree about whether
+ * a bar is affected at all — a row that carries the clash mark and reports zero days lost
+ * would be two answers to one question.
+ */
+export function daysLost(span: DateSpan, absences: Absence[]): number {
+	const from = (span.start ?? span.target) as CivilDate;
+	const to = (span.target ?? span.start) as CivilDate;
+	return unionDays(
+		crossedAbsences(span, absences).map((absence) => ({
+			start: daysBetween(from, absence.start) > 0 ? absence.start : from,
+			target: daysBetween(absence.target, to) > 0 ? absence.target : to,
+		})),
+	);
+}
+
+/**
+ * How long this resource is still away, in whole weeks rounded UP — the band header's pill.
+ *
+ * Rounded up because a partial week is still time nobody can be scheduled into, and reported
+ * in weeks because a header is scanned rather than read: "3 wk away" answers the question a
+ * roster is being looked at to answer, and the exact days are on the stretches themselves.
+ *
+ * Only the stretches that have not ended (`isPending`), and their union rather than their
+ * sum — `daysLost`'s rule, from the same primitive, so the two numbers on one screen cannot
+ * disagree about how long one set of stretches lasts.
+ */
+export function awayWeeks(absences: Absence[], today: CivilDate): number {
+	const pending = absences.filter((absence) => isPending(absence, today));
+	return Math.ceil(unionDays(pending.map((absence) => ({ start: absence.start, target: absence.target }))) / 7);
 }

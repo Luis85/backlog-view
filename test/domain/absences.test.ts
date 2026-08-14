@@ -2,7 +2,7 @@ import { TFile } from 'obsidian';
 import { describe, expect, it } from 'vitest';
 import { buildModel } from '../../src/domain/model';
 import { buildRoadmap } from '../../src/domain/roadmap';
-import { Absence, absencesConfigured, absenceTitle, crossedAbsences, pendingAbsences } from '../../src/domain/absences';
+import { Absence, absencesConfigured, absenceTitle, awayWeeks, crossedAbsences, daysLost, packAbsences } from '../../src/domain/absences';
 import { CivilDate, readDate } from '../../src/domain/noteFields';
 import { ABSENCE_TYPE, ALL_TYPES, typeFolderKey } from '../../src/domain/typeVocabulary';
 import { folderForType } from '../../src/domain/itemTypes';
@@ -201,37 +201,101 @@ describe('a bar scheduled across an absence', () => {
 	});
 });
 
-describe('how many stretches are still to come', () => {
-	// Fixed rather than derived from the clock: this function TAKES today, which is the
-	// whole reason it can be asked about a day the test chooses.
+describe('packing overlapping stretches into sub-lanes', () => {
+	const titles = (packed: Absence[][]): string[][] => packed.map((sub) => sub.map((one) => one.title));
+
+	it('puts stretches that share no day in one sub-lane, in date order', () => {
+		const packed = packAbsences([away('B', '2026-08-10', '2026-08-12'), away('A', '2026-08-01', '2026-08-03')]);
+
+		expect(titles(packed)).toEqual([['A', 'B']]);
+	});
+
+	it('opens a second sub-lane for two that merely TOUCH', () => {
+		// Inclusive at both ends, `crossedAbsences`' rule: 1–5 and 5–9 share the 5th, so they
+		// cannot be drawn on one line without one of them lying about a day.
+		const packed = packAbsences([away('A', '2026-08-01', '2026-08-05'), away('B', '2026-08-05', '2026-08-09')]);
+
+		expect(titles(packed)).toEqual([['A'], ['B']]);
+	});
+
+	it('opens a third only when three are mutually overlapping', () => {
+		const packed = packAbsences([
+			away('A', '2026-08-01', '2026-08-10'),
+			away('B', '2026-08-02', '2026-08-11'),
+			away('C', '2026-08-03', '2026-08-12'),
+		]);
+
+		expect(titles(packed)).toEqual([['A'], ['B'], ['C']]);
+	});
+
+	it('reuses the first sub-lane that has room rather than the emptiest', () => {
+		// A greedy first-fit, so a long stretch does not push everything after it downward.
+		const packed = packAbsences([
+			away('Long', '2026-08-01', '2026-08-20'),
+			away('Early', '2026-08-02', '2026-08-04'),
+			away('Late', '2026-08-06', '2026-08-08'),
+		]);
+
+		expect(titles(packed)).toEqual([['Long'], ['Early', 'Late']]);
+	});
+
+	it('packs nothing into nothing', () => {
+		expect(packAbsences([])).toEqual([]);
+	});
+});
+
+describe('how many of a bar’s days an absence takes', () => {
+	const AUG = away('Alice away', '2026-08-04', '2026-08-06');
+
+	it('counts nothing for a span that crosses nothing', () => {
+		expect(daysLost({ start: civil('2026-08-10'), target: civil('2026-08-20') }, [AUG])).toBe(0);
+		expect(daysLost({ start: civil('2026-08-01'), target: civil('2026-08-20') }, [])).toBe(0);
+	});
+
+	it('counts only the days the two actually share', () => {
+		// The bar runs 1–5, the stretch 4–6: two shared days, not the stretch's three.
+		expect(daysLost({ start: civil('2026-08-01'), target: civil('2026-08-05') }, [AUG])).toBe(2);
+	});
+
+	it('counts the whole span when the stretch covers it', () => {
+		expect(daysLost({ start: civil('2026-08-05'), target: civil('2026-08-06') }, [AUG])).toBe(2);
+	});
+
+	it('counts a day shared by two stretches ONCE', () => {
+		// The union, never the sum — two overlapping stretches do not cost a day twice.
+		const also = away('Also', '2026-08-05', '2026-08-08');
+		expect(daysLost({ start: civil('2026-08-01'), target: civil('2026-08-10') }, [AUG, also])).toBe(5);
+	});
+
+	it('judges a one-ended bar at the single day it draws', () => {
+		expect(daysLost({ start: null, target: civil('2026-08-05') }, [AUG])).toBe(1);
+		expect(daysLost({ start: null, target: civil('2026-08-20') }, [AUG])).toBe(0);
+	});
+});
+
+describe('how long a resource is away', () => {
 	const TODAY = civil('2026-08-14');
 
-	it('counts one that has not ended — running or still ahead', () => {
-		// One comparison, not two: a stretch whose target is today or later has either not
-		// started or not finished, and there is no third case.
-		expect(pendingAbsences([away('Running', '2026-08-10', '2026-08-20')], TODAY)).toBe(1);
-		expect(pendingAbsences([away('Ahead', '2026-09-01', '2026-09-05')], TODAY)).toBe(1);
+	it('rounds part of a week up, since a partial week is still time lost', () => {
+		expect(awayWeeks([away('One day', '2026-08-20', '2026-08-20')], TODAY)).toBe(1);
+		expect(awayWeeks([away('Seven', '2026-08-20', '2026-08-26')], TODAY)).toBe(1);
+		expect(awayWeeks([away('Eight', '2026-08-20', '2026-08-27')], TODAY)).toBe(2);
 	});
 
-	it('counts the day it ends, and not the day after', () => {
-		// Inclusive at today, `crossedAbsences`' own boundary rule — one absence must not
-		// mean two different things on one row.
-		expect(pendingAbsences([away('Ends today', '2026-08-01', '2026-08-14')], TODAY)).toBe(1);
-		expect(pendingAbsences([away('Ended yesterday', '2026-08-01', '2026-08-13')], TODAY)).toBe(0);
+	it('leaves out a stretch that has already ended, and keeps one still running', () => {
+		// The filter `pendingAbsences` used to be, now the only thing left of it.
+		expect(awayWeeks([away('Over', '2026-08-01', '2026-08-13')], TODAY)).toBe(0);
+		expect(awayWeeks([away('Ends today', '2026-08-01', '2026-08-14')], TODAY)).toBe(2);
 	});
 
-	it('counts only the pending ones out of a mixed list', () => {
-		const list = [
-			away('Old', '2026-01-01', '2026-01-05'),
-			away('Running', '2026-08-10', '2026-08-20'),
-			away('Next', '2026-12-01', '2026-12-05'),
-		];
-
-		expect(pendingAbsences(list, TODAY)).toBe(2);
+	it('counts a day two stretches share once', () => {
+		const overlapping = [away('A', '2026-08-20', '2026-08-26'), away('B', '2026-08-24', '2026-08-30')];
+		// Eleven days together, not fourteen — two weeks, not two-and-a-bit rounded to three.
+		expect(awayWeeks(overlapping, TODAY)).toBe(2);
 	});
 
-	it('counts nothing for a resource with no stretches at all', () => {
-		expect(pendingAbsences([], TODAY)).toBe(0);
+	it('is nothing for a resource with no stretches at all', () => {
+		expect(awayWeeks([], TODAY)).toBe(0);
 	});
 });
 
