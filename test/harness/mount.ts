@@ -97,8 +97,8 @@ export interface MountedHarness {
 	mount: Mount;
 	/**
 	 * A fingerprint of the WORKLOAD — the view options and property order this mount
-	 * configured, then the results' paths and frontmatter in the order the Base returned
-	 * them.
+	 * configured, every note in the vault with its frontmatter, and which of them the Base
+	 * returns, in its order.
 	 *
 	 * The COUNT is not the workload: two builds can hand the view the same number of notes
 	 * with a different hierarchy, different fields or a different generated shape, and then
@@ -106,7 +106,12 @@ export interface MountedHarness {
 	 * comparing them reported no mismatch and presented the delta as like-for-like. The
 	 * configuration is in here for the same reason and arrived one round later: the notes
 	 * can be identical while the columns, the workflow or the horizons are not.
-	 * (Codex, PR #137.)
+	 *
+	 * What is deliberately NOT in it is the RESOLVED settings — the ladder and every other
+	 * default that `domain/` supplies where the options are silent. Those are the code under
+	 * measurement: a run comparing a build that changed a default is a run asking what that
+	 * change cost, and answering it with "unlike workloads" would refuse the question this
+	 * tool exists for. The line is inputs, not behaviour. (Codex, PR #137.)
 	 *
 	 * Cheap and non-cryptographic on purpose: this answers "did the workload change", never
 	 * "what was it", and it is computed before the mount's own clock starts.
@@ -177,7 +182,14 @@ export function mountHarness(root: HTMLElement, fixture: HarnessFixture = 'demo'
 	const contents = fingerprint([
 		stableJson(options),
 		JSON.stringify(order),
-		...results.map((entry) => `${entry.file.path}\u0000${stableJson(vault.frontmatter.get(entry.file.path))}`),
+		// Every note in the VAULT, not only the results: `Retired platform` is excluded from
+		// what the Base returns and the model still loads it as a context row, so a change to
+		// it is a change to the work with nothing in a results-only hash to show for it.
+		// (Codex, PR #137.)
+		...[...vault.frontmatter.keys()].sort().map((path) => `${path}\u0000${stableJson(vault.frontmatter.get(path))}`),
+		// And which of them the Base returns, in its order, since that is a second fact
+		// about the workload that the note set alone does not carry.
+		results.map((entry) => entry.file.path).join('\u0002'),
 	]);
 
 	let settle: ReturnType<typeof setTimeout> | undefined;

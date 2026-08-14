@@ -125,7 +125,16 @@ instruments improvised around a browser.
   is compared too — the question is "did the workload change", never "what was it". The
   CONFIGURATION is in that fingerprint beside the notes, one round later and for the same
   reason: the visible property order, the workflow states, the horizons and the scale all
-  change what a card or a bucket draws while every note stays as it was. A baseline too old to report any of it
+  change what a card or a bucket draws while every note stays as it was. So is every note
+  in the VAULT rather than only the results: the fixture's context row is excluded from what
+  the Base returns and the model loads it anyway, so a change to it changed the work with
+  nothing in a results-only hash to show for it.
+
+  What the fingerprint deliberately leaves out is the RESOLVED settings — the ladder and
+  every other default `domain/` supplies where the options are silent. Those are the code
+  under measurement: a run comparing a build that changed a default is a run asking what
+  that change cost, and answering it with "unlike workloads" would refuse the question this
+  tool exists to answer. The line is INPUTS, not behaviour. A baseline too old to report any of it
   is named as that — "not reported" — rather than assumed to agree. (Codex, PR #137.)
 
 - **3g — a flag that selects nothing the table measures.** `--view` was one: the run
