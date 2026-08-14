@@ -531,7 +531,12 @@ free of runtime code so imports stay cycle-free.
   one projection over.
   **The default is the board's alone.** `col.done && !col.openWork` folds a done column
   once, and `openWork` is measured over the POPULATION (`domain/board.ts`), so a quick
-  filter cannot make a stage look finished and fold work the reader was holding. A bucket
+  filter cannot make a stage look finished and fold work the reader was holding. It is the
+  one derived quantity a CONTEXT card contributes to, and only through its rollup: under a
+  focus such a card can be the only thing standing for the results below it, so a column
+  folded on its silence takes them off the board — with no advisory, since the board does
+  hold a card. Its own state still counts for nothing, which is the context-row rule
+  intact rather than bent. A bucket
   passes `false`: an axis has no notion of finished. The once-only part is
   `collapseNewParents`' rule reached lazily — a column does not exist in the model, so the
   render is the first moment there is anything to settle.

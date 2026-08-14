@@ -147,6 +147,13 @@ arrive with it. Its keyboard path is the column's own menu, which moved to
 withheld from a column with nothing agreed, and every column has a fold now, so it is
 unconditional and `menu.ts` — which is about an ITEM — stopped being its home.
 
+**A context card speaks for the results below it and for nothing else.** It joins no
+count, and its own state is no part of this board's verdict — the context-row rule — but
+its result descendants are the Base's own rows, and under a focus that card can be the
+only thing standing for them. Folding a Done column on its silence took those results off
+the board with it, and left no advisory, since the board did hold a card. So the rollup
+answers here and the card does not (found by review, Codex, PR #140).
+
 **A selection inside a folded column goes dormant** rather than being cleared — the tree's
 own behaviour when a parent above the selected row is collapsed, reached more easily here.
 Recorded, not fixed: [[A selection the frame did not draw]].

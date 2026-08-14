@@ -444,8 +444,18 @@ export function boardColumns(
 	// The population each filtered count is "of": the same candidates through the same
 	// placement, with only the filter lifted. Results only, exactly as `count` is.
 	for (const card of candidates) {
-		if (card.outsideFilter || !population(card)) continue;
+		if (!population(card)) continue;
 		const col = columnFor(card);
+		// A context card joins no count — placement, not population — and its OWN state is
+		// not this base's verdict on anything, the context-row rule. What IS the Base's is
+		// everything below it, and under a focus this card can be the only thing standing
+		// for those rows: fold its column away and the results it places leave the board
+		// with it, silently and with no advisory, because the board does hold a card. So
+		// the rollup speaks here and the card does not. Found by review (Codex, PR #140).
+		if (card.outsideFilter) {
+			if (card.doneDescendants !== card.descendantCount) col.openWork = true;
+			continue;
+		}
 		col.fullCount += 1;
 		// Asked here rather than of `col.cards` on purpose — see `BoardColumn.openWork`.
 		//

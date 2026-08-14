@@ -93,6 +93,52 @@ describe('a column reports whether it still holds open work', () => {
 	});
 });
 
+describe('a context card speaks for the results below it and for nothing else', () => {
+	/** An excluded Done epic placing one result — the shape a focused board draws. */
+	function contextVault(childState: string): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Done' } });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10, status: childState }, parentLink: 'Epic' });
+		return vault;
+	}
+
+	it('reports open work when a result below it is unfinished', () => {
+		// Found by review (Codex, PR #140). Under a focus this card can be the ONLY thing
+		// standing for those rows, so a Done column folded on its silence took the results
+		// off the board with it — and left no advisory, since the board did hold a card.
+		const vault = contextVault('New');
+		const model = buildModel(vault.app, only(vault, 'PBI.md'), settings);
+		// `model.roots` rather than `model.results`, which is what a FOCUSED board hands
+		// this function (`requirementsFocusRoots`): a context card is only ever a card
+		// there, and results-only candidates could never produce one.
+		const board = boardColumns(requirementsWorkflow(model, settings), model.roots, everything);
+
+		const done = board.columns.find((c) => c.label === 'Done');
+		expect(done?.cards.map((c) => c.title)).toEqual(['Epic']);
+		expect(done?.openWork).toBe(true);
+	});
+
+	it('reports none when everything below it is finished', () => {
+		const vault = contextVault('Done');
+		const model = buildModel(vault.app, only(vault, 'PBI.md'), settings);
+		const board = boardColumns(requirementsWorkflow(model, settings), model.roots, everything);
+
+		expect(board.columns.find((c) => c.label === 'Done')?.openWork).toBe(false);
+	});
+
+	it('still counts for nothing, in either direction', () => {
+		// The half of the context-row rule that has not moved: it is placement, never
+		// population, so admitting its ROLLUP to this one question must not admit the card.
+		const vault = contextVault('New');
+		const model = buildModel(vault.app, only(vault, 'PBI.md'), settings);
+		const board = boardColumns(requirementsWorkflow(model, settings), model.roots, everything);
+
+		const done = board.columns.find((c) => c.label === 'Done');
+		expect(done?.count).toBe(0);
+		expect(done?.fullCount).toBe(0);
+	});
+});
+
 describe('openWork under the Deliverables workflow', () => {
 	function deliverablesSettings(extra: Partial<BacklogSettings> = {}): BacklogSettings {
 		return {

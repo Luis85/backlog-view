@@ -215,6 +215,27 @@ describe('the done column’s own default', () => {
 	});
 });
 
+describe('the fold and a context card', () => {
+	it('never folds a column whose context card is standing for open results', () => {
+		// The blank-board case, driven end to end: focused at Epic with the epic excluded,
+		// the context card in Done is the only card on the board and the open PBI beneath
+		// it has none of its own. A Done column folded on its silence left every column
+		// empty and no advisory — the board simply showed nothing.
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Done' } });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10, status: 'New' }, parentLink: 'Epic' });
+		const { view, containerEl } = makeView(vault, BOARD_WORKFLOW, {
+			collapsed: true,
+			only: ['PBI.md'],
+			focus: 'Epic',
+		});
+		view.setProjection('board');
+
+		expect(folded(columnByName(containerEl, 'Done'))).toBe(false);
+		expect(cardTitles(columnByName(containerEl, 'Done'))).toEqual(['Epic']);
+	});
+});
+
 describe('folding a horizon bucket', () => {
 	it('takes its cards off the roadmap and stays a drop target', async () => {
 		const vault = horizonVault();
