@@ -103,12 +103,12 @@ describe('the manual dialog', () => {
 	it('gives the dialog a stable accessible name that does not change when the section does', () => {
 		openManual({} as never, SECTIONS, 'one');
 		const titleEl = Modal.lastOpened?.titleEl;
-		expect(titleEl?.textContent).toBe('Product Backlog manual');
+		expect(titleEl?.textContent).toBe('Product backlog manual');
 
 		const second = Array.from(content().querySelectorAll<HTMLElement>('.vertical-tab-nav-item'))[1];
 		second.click();
 		expect(content().querySelector('.pbl-manual-pane h3')?.textContent).toBe('Second');
-		expect(titleEl?.textContent).toBe('Product Backlog manual');
+		expect(titleEl?.textContent).toBe('Product backlog manual');
 	});
 
 	it('resets the pane to the top when the section changes, so a scrolled reader is not stranded mid-section', () => {

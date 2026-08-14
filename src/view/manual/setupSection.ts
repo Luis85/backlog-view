@@ -60,8 +60,17 @@ export const SETUP: ManualSection = {
 			term: 'Placing work on the roadmap',
 			text:
 				'The horizon property and its buckets; the start and target date properties the ' +
-				'timeline schedules; and the depends-on property a dependency connector writes.',
-			keys: ['horizonProperty', 'horizonValues', 'startProperty', 'targetProperty', 'dependsOnProperty'],
+				'timeline schedules; the resources whose rows the timeline can be grouped into, ' +
+				'which is optional because an assignee nobody declared still gets a row of its ' +
+				'own; and the depends-on property a dependency connector writes.',
+			keys: [
+				'horizonProperty',
+				'horizonValues',
+				'startProperty',
+				'targetProperty',
+				'resourceNames',
+				'dependsOnProperty',
+			],
 		},
 		{
 			term: 'The Deliverables workflow\'s own state property — an override',
@@ -119,7 +128,8 @@ export const SETUP: ManualSection = {
 			term: 'Where new notes go',
 			text:
 				"The home folder new items fall back to, and each type's own folder — a picker per " +
-				'type in the fixed vocabulary, ranking ahead of the home folder.',
+				'type in the fixed vocabulary, one more for absences, and each ranking ahead of ' +
+				'the home folder.',
 			keys: ['homeFolder', 'typeFolder.*'],
 		},
 		{

@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Work item hierarchy]]"
 order: 20
 status: Done
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Level ladder and implied types

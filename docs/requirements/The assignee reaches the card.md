@@ -9,6 +9,13 @@ source: user request
 files:
   - src/view/render/board.ts
   - src/view/render/columns.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # The assignee reaches the card

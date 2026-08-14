@@ -12,9 +12,9 @@ import { buildColumnMenu, buildItemMenu, showMenuAtElement } from './interaction
 import { BacklogItem, BacklogModel, buildModel } from '../domain/model';
 import { childTypeChoices, PlacementEnd } from '../domain/itemTypes';
 import { DropTarget } from '../domain/dropTargets';
-import { activeAxis, RoadmapAxis } from '../domain/roadmap';
+import { activeAxis, drawsGrid, RoadmapAxis } from '../domain/roadmap';
 import { ShelfSort } from '../domain/shelf';
-import { ItemWrite, SchedulePlan } from '../domain/writePlan';
+import { ItemWrite, ScheduleGesture, SchedulePlan } from '../domain/writePlan';
 import { ScaleId } from '../domain/timeline';
 import { forgetBacklogView, rememberBacklogView } from './registry';
 import { ResizePolicy } from './resize';
@@ -22,10 +22,10 @@ import { filterScopeFor, hidesCompleted, projectionMember, treeShaped } from './
 import { rowHidden, VisibilityRule } from './rowVisibility';
 import { SelectionController } from './selection';
 import { UiStateController } from './uiState';
-import { detectIgnoredGrouping, renderToolbar, revealFilter, syncBusy, syncCollapseCtls, syncCountLabel, syncFilterUi } from './render/toolbar';
+import { detectIgnoredGrouping, renderToolbar, revealFilter, syncBusy, syncFilterUi } from './render/toolbar';
 import { resolveColumns, rowContext, RowContext } from './render/columns';
 import { renderLoadingState } from './render/emptyStates';
-import { renderLegend } from './render/legend';
+import { syncAfterContent } from './render/afterContent';
 import { syncToolbarFit } from './render/toolbarFit';
 import { captureScroll, centreOnToday, renderProjectionContent, restoreScroll, ScrollAnchor } from './render/projections';
 import { refreshRowChildren, wireRowEvents } from './render/rows';
@@ -244,6 +244,16 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.ui.setShelfHiddenTypes(types);
 	}
 
+	isLaneCollapsed(name: string): boolean {
+		// The quick filter overrides every fold, exactly as `isCollapsed` does for a row:
+		// while a search runs, everything on a path to a match renders open.
+		return !this.filter.active && this.ui.isLaneCollapsed(name);
+	}
+
+	setLaneCollapsed(name: string, collapsed: boolean): void {
+		this.ui.setLaneCollapsed(name, collapsed);
+	}
+
 	get zoom(): ScaleId {
 		return this.ui.zoom;
 	}
@@ -427,7 +437,14 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	 * about the same note wherever it happens to be drawn.
 	 */
 	private collapseKey(path: string): string {
-		return this.projection === 'roadmap' && activeAxis(this.settings, this.axisPick) === 'dates' ? TIMELINE_SCOPE + path : path;
+		// `drawsGrid`, not `=== 'dates'`: a bar's fold is one fact about the dated GRID, and
+		// both axes that draw one ask it of the same bars. The resources axis groups those
+		// bars by who is on them and scopes the fold to a single band (`laneEntries`), which
+		// changes which rows a chevron reaches and not what the bit means — so a subtree a
+		// reader shut on one of the two comes back shut on the other, which is the answer a
+		// second bit could not give without the two grids disagreeing about one plan.
+		const grid = this.projection === 'roadmap' && drawsGrid(activeAxis(this.settings, this.axisPick) ?? 'horizons');
+		return grid ? TIMELINE_SCOPE + path : path;
 	}
 
 	isCardCollapsed(path: string): boolean {
@@ -520,10 +537,12 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		const projection = this.projection;
 		this.viewEl.toggleClass('pbl-board-mode', projection === 'board' || projection === 'deliverables');
 		this.viewEl.toggleClass('pbl-roadmap-mode', projection === 'roadmap');
-		this.viewEl.toggleClass(
-			'pbl-roadmap-dates',
-			projection === 'roadmap' && activeAxis(this.settings, this.axisPick) === 'dates',
-		);
+		// The class NAME stays what it is: it turns on the GRID's layout, which the
+		// resources axis needs in full, and every rule in `styles/` plus every test
+		// already names it — renaming it would be a diff across the stylesheet for no
+		// behaviour. What it is asked about is `drawsGrid`, not the plain dated axis.
+		const axis = projection === 'roadmap' ? activeAxis(this.settings, this.axisPick) : null;
+		this.viewEl.toggleClass('pbl-roadmap-dates', axis !== null && drawsGrid(axis));
 		// The keyboard instructions belong to the board and are rebuilt with it below;
 		// dropped here so the attribute never outlives the element it points at — a
 		// dangling `aria-describedby` is read as no description at all.
@@ -564,23 +583,9 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// fork that decides what was drawn.
 		this.scroll = restoreScroll(this.treeEl, this.scroll, this.roadmap, projection);
 		this.selection.resyncAfterRender();
-		syncCountLabel(this, this.toolbarEl);
-		// Beside `syncCountLabel` for the same reason: both read what the content render
-		// just produced, so both have to run after it rather than in the toolbar pass.
-		syncCollapseCtls(this, this.toolbarEl);
-		// Rendered HERE rather than in `render()`: the legend keys what the grid just drew,
-		// and `drawn` comes off the snapshot this pass produced. Every path that redraws
-		// content has to refresh it, not only a full render — a filter re-renders content
-		// ALONE, and it can hide the last bar drawing a colour (or reveal the first), which
-		// changes what the key must say. Above the early return below, because that return
-		// is the tree's and this is the roadmap's.
-		const drawn = this.roadmap?.drawn ?? { done: false, milestone: false, accent: false };
-		renderLegend(this, this.legendEl, this.roadmap?.palettes ?? [], drawn);
-		// Every render that reaches here can have changed the row's width: the toolbar
-		// was rebuilt with a different projection zone, or the count label went from
-		// "18 items" to "3 of 18", or the primary button is naming a different type.
-		// After the content, because the count is one of the things being measured.
-		syncToolbarFit(this.toolbarEl);
+		// Above the early return below, because that return is the TREE's and two of these
+		// are the roadmap's — see `syncAfterContent`, which holds all four and their reasons.
+		syncAfterContent(this, { toolbarEl: this.toolbarEl, legendEl: this.legendEl });
 		if (!treeShaped(projection)) return;
 		// Measured against the tree that now exists, scrollbar and all. A changed
 		// verdict means a column came or went, which only the rows can show — one
@@ -619,6 +624,10 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 
 	performHorizonMove(item: BacklogItem, horizon: string | null): Promise<boolean> {
 		return this.cardMoves.performHorizonMove(item, horizon);
+	}
+
+	performResourceMove(item: BacklogItem, name: string | null, when?: ScheduleGesture): Promise<boolean> {
+		return this.cardMoves.performResourceMove(item, name, when);
 	}
 
 	performScheduleMove(

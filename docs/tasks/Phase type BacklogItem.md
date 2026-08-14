@@ -10,6 +10,13 @@ created: 2026-07-31
 source: PR #14 maintainability review
 files:
   - src/domain/model.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Make `BacklogItem`'s build phases visible in its type

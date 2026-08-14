@@ -4,6 +4,13 @@ parent: "[[Product Kanban]]"
 order: 10
 status: Active
 created: 2026-08-01
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Backlog and board

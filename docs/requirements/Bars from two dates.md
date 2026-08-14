@@ -9,6 +9,13 @@ files:
   - src/domain/noteFields.ts
   - src/domain/timeline.ts
   - src/view/render/timeline.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Bars from two dates

@@ -13,6 +13,13 @@ files:
   - src/view/writeGate.ts
   - src/view/interactions/cardDrag.ts
   - src/view/render/roadmap.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Moving between horizons

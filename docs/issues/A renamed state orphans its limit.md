@@ -10,6 +10,13 @@ source: implementation of the per-column agreements increment
 files:
   - src/domain/settings.ts
   - src/domain/viewOptions.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # A renamed state orphans its limit

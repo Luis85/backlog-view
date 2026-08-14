@@ -11,6 +11,52 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+### Added
+
+- **A resources axis on the roadmap** — a third choice beside Horizons and Timeline, drawn
+  from the assignee property you already use: one row per person, with their work
+  positioned by exactly the dates the timeline already reads. Declare a roster under
+  **Resources (in order)** to give someone a row before anything lands in it; anyone a note
+  names gets a row of their own regardless, and work with no assignee, or with nobody's
+  dates to sit at, waits on the shelf. Configured views keep showing Horizons or Timeline
+  until you pick the new axis.
+
+- **Move work between resources** — drag a bar into someone else's row, or onto the shelf
+  to un-assign it; **Alt+Up** and **Alt+Down** step the selected card one row, and **Set
+  assignee** on the row menu now offers every row on screen, empty ones included. All
+  three write the same single value to the note's own assignee property, undoable as one
+  batch. A row is who and a date is when, so moving work between rows never changes its
+  dates — and an item with no dates stays on the shelf under its new owner, which the view
+  says out loud rather than leaving it looking like a drop that missed.
+
+- **Mark a resource unavailable** — **Add absence** on a row header writes a note saying
+  who is away and for how long, and that stretch draws as a blocked band in their row and
+  nowhere else. It is never a backlog item: it has no parent, no rank and no state, it
+  never appears in the tree, on a board or on the other roadmap axes, and it is deleted
+  through Obsidian's ordinary file delete rather than this plugin's undo. Needs both date
+  properties configured — an absence has no children to infer a missing end from — and
+  files itself under **Folder for Absence items**, or the home folder when that is unset.
+
+- **An absence is readable against the work it crosses** — the stretch is drawn in a text
+  colour instead of the one the gridlines and the weekend banding are made of, so it no longer
+  reads fainter than the shading behind it, and at the same height as a bar. The same days are
+  now shaded across that person's own rows and over the bars in them, edge to edge with a line
+  down each end of the range, so a plan running through an absence is one line to read rather
+  than two to compare; the named stretch stays where it was, with its title, its dates and its
+  menu. A bar scheduled across one carries a marker in its row header naming which absence and
+  which days, and the legend gains an **Unavailable** key wherever a stretch is actually on
+  screen.
+
+- **Schedule from a resource's row** — a bar in someone's row now behaves like a bar on
+  the plain timeline: drag its body to move it in time, drag either end to change how long
+  it takes, and drop an unscheduled card straight into a row to give it both an owner and a
+  date in one go. A drag that moves sideways *and* into another row writes who and when as
+  a single change, undoable in one step, and says both in one message. Dragging an END into
+  someone else's row still only resizes — a resize is not a hand-off — and releasing on a
+  row's title assigns it without guessing a date. Dropping on the shelf still un-assigns
+  and leaves the dates alone. Keyboard scheduling on this axis is not in yet: **Alt+Up** and
+  **Alt+Down** still move between rows only.
+
 ## [0.7.1] - 2026-08-12
 
 ### Added

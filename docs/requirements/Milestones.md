@@ -6,6 +6,13 @@ status: Done
 created: 2026-08-02
 closed: 2026-08-02
 source: user request
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Milestones

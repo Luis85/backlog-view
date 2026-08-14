@@ -1,0 +1,5 @@
+# One line ending in the repository, whatever the checkout's platform writes.
+# CI runs on Ubuntu AND Windows, and the root guide records that line endings have
+# already produced a defect one of them could not see; on 2026-08-13/14 a Windows
+# session committed ~15 files as CRLF, inflating their diffs by the whole file.
+* text=auto eol=lf

@@ -7,6 +7,7 @@ import {
 	computeDeliverableStateWrites,
 	computeInitWrites,
 	computeAssigneeWrites,
+	computeResourceMoveWrites,
 	computeRiskWrites,
 	computeTestStateWrites,
 } from '../../src/domain/writePlan';
@@ -308,5 +309,30 @@ describe('computeAssigneeWrites', () => {
 
 		expect(computeAssigneeWrites(unconfigured, null)).toEqual([]);
 		expect(computeAssigneeWrites(unconfigured, 'Dana')).toHaveLength(1);
+	});
+
+	describe('with a date gesture beside it', () => {
+		const schedule = { plan: { start: '2026-08-08', target: '2026-08-17' }, ends: ['start', 'target'] as const };
+
+		it('puts both halves on ONE write, so the pair is one thing to take back', () => {
+			const writes = computeResourceMoveWrites(item({ assignee: 'Ali' }), 'Dana', { ...schedule, ends: [...schedule.ends] });
+
+			// Two records naming this file would capture two inverses, and an undo could then
+			// return the row and keep the dates — a state the one gesture cannot describe.
+			expect(writes).toHaveLength(1);
+			expect(writes[0].assignee).toBe('Dana');
+			expect(writes[0].axis).toMatchObject({ start: '2026-08-08', target: '2026-08-17' });
+		});
+
+		it('carries whichever half actually changed, and nothing when neither did', () => {
+			const one = item({ assignee: 'Ali' });
+
+			// A slide inside one row: the name is a re-pick, so no assignee is named at all.
+			expect(computeResourceMoveWrites(one, 'ali', { ...schedule, ends: [...schedule.ends] })[0]?.assignee).toBeUndefined();
+			// A vertical drag: no gesture, so no axis write.
+			expect(computeResourceMoveWrites(one, 'Dana', null)[0]?.axis).toBeUndefined();
+			// Neither: an empty batch, which is what keeps the undo slot for the move before.
+			expect(computeResourceMoveWrites(one, 'ali', null)).toEqual([]);
+		});
 	});
 });

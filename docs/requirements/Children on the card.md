@@ -10,6 +10,13 @@ files:
   - src/view/collapseState.ts
   - src/view/backlogView.ts
   - src/view/interactions/menu.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Children on the card

@@ -1,4 +1,5 @@
 import { App, BasesEntry } from 'obsidian';
+import { Absence } from './absences';
 import { inferFolderParent } from './folderNotes';
 import { DependencyNode, resolveDependencies } from './dependencies';
 import { createItems, RawItem, RawStore } from './readItems';
@@ -169,11 +170,19 @@ export interface BacklogModel {
 	observedDeliverableStates: string[];
 	/** Notes the base returned that are not backlog items (see `pruneOutsideHierarchy`). */
 	ignoredCount: number;
+	/**
+	 * Every absence the Base returned, read but never made into an item — see
+	 * `src/domain/absences.ts`. Beside the items rather than among them: nothing that
+	 * walks the tree, ranks siblings, counts a rollup or draws a projection may meet one,
+	 * and the only reader is the resources axis's own row derivation.
+	 */
+	absences: Absence[];
 }
 
 export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSettings): BacklogModel {
 	assertResolvedSettings(settings);
-	const linked = linkAll(createItems(app, entries, settings), settings);
+	const store = createItems(app, entries, settings);
+	const linked = linkAll(store, settings);
 	breakCycles(linked);
 	const ignoredCount = settings.hierarchyOnly ? pruneOutsideHierarchy(linked, settings) : 0;
 	// Read off the linked phase, where main put it and where it still belongs: a
@@ -217,6 +226,9 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 		// opts out of the COMPUTATION, not just the button.
 		catalog: projectionForest(roots, inCatalog, settings, true),
 		ignoredCount,
+		// Straight off the store: the divert happened before phase 1 produced an item, so
+		// no later phase has ever seen one and none of them can have changed it.
+		absences: store.absences,
 	};
 	// The plan is a projection too, and its forest is computed by the same rule the
 	// catalog's is — a work item somebody dropped under a test is drawn in the plan, as a

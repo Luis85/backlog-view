@@ -16,6 +16,13 @@ files:
   - eslint.config.mjs
   - .fallowrc.json
   - package.json
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # The page that mounts the real view

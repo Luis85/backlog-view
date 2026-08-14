@@ -640,6 +640,32 @@ describe('the gate accepts valid documents', () => {
 
 		await expectAccepted(files);
 	});
+	it('accepts an Absence, which the plugin writes into this very folder and is not a work item', async () => {
+		// `docs/` is a vault this plugin is pointed at, so pressing Add absence on a
+		// resource row writes one of these HERE. An absence has no parent, no rank, no
+		// status and no ladder rung on purpose (ADR 0028), so every backlog rule the gate
+		// has would fail one — and it did, until 2026-08-14: three of them in
+		// `docs/absences/` turned `npm run check` red with fifteen problems for a feature
+		// working exactly as specified.
+		//
+		// Written with none of the fields `note()` supplies, because that is the shape
+		// `createAbsenceNote` actually produces — a case built from the helper would pass
+		// on frontmatter no absence carries.
+		const files = baseRegister();
+		files['docs/absences/Away.md'] =
+			'---\ntype: Absence\nassignee: Alice\nstart: 2026-08-04\ndue: 2026-08-06\n---\n\n# Away\n';
+
+		await expectAccepted(files);
+	});
+	it('accepts an Absence wherever it is filed, since its folder is a user setting', async () => {
+		// Exempted by TYPE, not by path: `Folder for Absence items` is configuration this
+		// checker cannot see, so a `docs/absences/` rule would be the gate guessing one.
+		const files = baseRegister();
+		files['docs/requirements/Alice is away.md'] =
+			'---\ntype: Absence\nassignee: Alice\nstart: 2026-08-04\ndue: 2026-08-06\n---\n\n# Alice is away\n';
+
+		await expectAccepted(files);
+	});
 });
 
 /**

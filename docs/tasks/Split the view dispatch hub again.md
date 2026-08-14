@@ -9,6 +9,7 @@ created: 2026-08-09
 source: final review of the toolbar overhaul branch
 files:
   - src/view/backlogView.ts
+  - src/view/render/afterContent.ts
 ---
 
 # Split the view dispatch hub again
@@ -85,6 +86,16 @@ Whichever is chosen has to leave `BacklogViewHost` answerable by one class, per 
 write-gate and lifecycle rules in
 [`src/view/CLAUDE.md`](../../src/view/CLAUDE.md) — the constraint that decided the shape
 of `WriteGate` and would decide this one too.
+
+**Taken in part on 2026-08-14, and this task stays open.** The resources axis's two folds
+put `backlogView.ts` over the cap a third time, and the cut was the render-orchestration
+seam named above — but only its post-content half: `syncCountLabel`, `syncCollapseCtls`,
+`renderLegend` and `syncToolbarFit` moved whole into `src/view/render/afterContent.ts`,
+which is a real subject ("everything that reads what the content render just produced")
+rather than a line-count cut. It bought about six lines against the seventy this note asks
+for, so the margin is still thin and the next increment will meet this task again — which
+is exactly what the criterion below was written to refuse. `render` and the body of
+`renderTreeContent` are still here, and are still the cut worth making.
 
 ## Acceptance criteria
 

@@ -6,6 +6,7 @@ views:
   - type: product-backlog
     name: Backlog
     order:
+      - assignee
       - status
       - priority
       - area
@@ -22,6 +23,11 @@ views:
     finishedDateProperty: note.finished
     showCompleted: true
     openIn: split
+    riskProperty: note.risk
+    assigneeProperty: note.assignee
+    dependsOnProperty: note.dependsOn
+    resourceNames: Evi, Sarah, Jolanda, Chris, Igmar, Ben, Alex
+    typeFolder.absence: docs/absences
   - type: table
     name: Data Quality
     groupBy:
@@ -36,3 +42,8 @@ views:
       - tags
     columnSize:
       note.area: 152
+  - type: table
+    name: Implementation Plans
+    filters:
+      and:
+        - file.inFolder("docs/superpowers/plans")

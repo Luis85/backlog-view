@@ -4,6 +4,13 @@ order: 32
 status: Open
 created: 2026-08-02
 source: user request
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Smoke test the board

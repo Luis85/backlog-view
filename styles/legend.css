@@ -87,3 +87,32 @@
    where something actually draws it: a state the vocabulary does not list, or no state
    at all. */
 .pbl-legend-other { background-color: var(--interactive-accent); }
+
+/* The hatch `.pbl-absence` draws (`styles/lanes.css`) — the same token at the same period,
+   which `test/view/timelineBoxing.test.ts` pairs as one fact by comparing the whole gradient.
+
+   **WIDER than the square every other swatch is, and that width is what makes one gradient
+   serve both.** At 10px square the real 4px stripe fits once, which reads as a half-filled
+   circle rather than as hatch; halving the period to fit made it worse and made the key a
+   different mark from the one it keys — seen in a vault at 385 results as a ⊘ symbol among
+   five dots. 20px fits the mark's own stripe twice. The mark is a BAR, so the swatch that
+   keys it is a bar too, which is a better answer than a rounder square: the other five key
+   colours, and this one keys a texture.
+
+   ORDER IS BEHAVIOUR here as it is for the four rules above, and it now covers the `width`
+   as well as the colour: both selectors are one class, so this wins only by standing LATER
+   than `.pbl-legend-swatch`. This sets a background-IMAGE over that rule's background-color,
+   which resolves to nothing on a swatch carrying no slot class; `transparent` is stated
+   rather than left to that, so the swatch is the hatch and its border and nothing else. */
+.pbl-legend-absence {
+	width: 20px;
+	background-color: transparent;
+	border: 1px solid var(--text-muted);
+	background-image: repeating-linear-gradient(
+		45deg,
+		var(--text-muted) 0,
+		var(--text-muted) 4px,
+		transparent 4px,
+		transparent 8px
+	);
+}

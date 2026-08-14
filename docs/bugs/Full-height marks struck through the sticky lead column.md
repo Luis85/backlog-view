@@ -7,10 +7,16 @@ area: styling
 priority: P2
 created: 2026-08-08
 closed: 2026-08-08
-source: Reported from a live vault; reproduced and fixed in the browser harness at
-  700px wide with the grid scrolled so the today line passes under the lead column
+source: Reported from a live vault; reproduced and fixed in the browser harness at 700px wide with the grid scrolled so the today line passes under the lead column
 files:
   - styles/timelineFurniture.css
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Full-height marks struck through the sticky lead column

@@ -10,6 +10,13 @@ source: 2026-08-01 Codex review of PR #24
 files:
   - src/storage/frontmatter.ts
   - src/storage/baseFile.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # A failed creation leaves the folder it made

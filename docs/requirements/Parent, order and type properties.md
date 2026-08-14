@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Work item hierarchy]]"
 order: 10
 status: Done
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Parent, order and type properties

@@ -7,6 +7,13 @@ area: architecture
 priority: P3
 created: 2026-08-03
 source: Review of 0.4.0, finding 9 — docs/superpowers/plans/2026-08-03-codebase-quality-review.md
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Finding 9 — three file-structure seams worth taking when nearby

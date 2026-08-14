@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Item Templates]]"
 order: 10
 status: Open
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Configuring the templates folder

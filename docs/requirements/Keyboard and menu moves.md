@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Reordering and reparenting]]"
 order: 20
 status: Done
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Keyboard and menu moves

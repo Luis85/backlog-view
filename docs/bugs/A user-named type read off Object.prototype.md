@@ -11,6 +11,13 @@ files:
   - src/domain/itemTypes.ts
   - src/domain/settings.ts
   - src/view/render/rows.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # A user-named type read off Object.prototype

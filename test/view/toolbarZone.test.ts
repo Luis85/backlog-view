@@ -40,6 +40,39 @@ describe('the projection zone', () => {
 		}
 	});
 
+	it('holds the same grid controls on the resources axis, which is a dated grid too', () => {
+		const vault = fixture();
+		const { view, containerEl } = makeView(vault, { ...bothAxes, assigneeProperty: 'note.assignee' });
+
+		view.setProjection('roadmap');
+		view.setAxisPick('resources');
+		const drawn = zone(containerEl);
+		// It has a density to choose, a today to return to and bars whose states a colour
+		// can be stored against — every control that belongs to the GRID rather than to
+		// the plain dated axis.
+		expect(drawn?.querySelector('[data-pbl-key="zoom"]')).not.toBeNull();
+		expect(drawn?.querySelector('.pbl-density-toggle')).not.toBeNull();
+		expect(drawn?.querySelector('.pbl-today-btn')).not.toBeNull();
+	});
+
+	it('offers the row-fold toggle on BOTH grid axes, because a bar row folds on each', () => {
+		const vault = fixture();
+		const { view, containerEl } = makeView(vault, { ...bothAxes, assigneeProperty: 'note.assignee' });
+
+		view.setProjection('roadmap');
+		view.setAxisPick('dates');
+		expect(containerEl.querySelector('.pbl-click-action-toggle')).not.toBeNull();
+		// Withheld here until 2026-08-14, when resource rows stopped being flat: a bar row
+		// folds its own band's subtree now, so a click on one has something to fold and a
+		// toggle that governed it everywhere else would be the one input going quiet.
+		view.setAxisPick('resources');
+		expect(containerEl.querySelector('.pbl-click-action-toggle')).not.toBeNull();
+		// Still withheld where nothing folds at all: a bucket is a card, and a card's
+		// disclosure lists children on its own face.
+		view.setAxisPick('horizons');
+		expect(containerEl.querySelector('.pbl-click-action-toggle')).toBeNull();
+	});
+
 	/**
 	 * The boundary in front of the zone is SPACING, on the zone's own class. Two things
 	 * follow and both are asserted, because the second is what the divider kept getting

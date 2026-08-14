@@ -5,7 +5,6 @@ order: 10
 status: Active
 priority: P2
 created: 2026-08-01
-due: 2026-09-10
 files:
   - src/view/render/timeline.ts
   - src/view/interactions/timelineDrag.ts
@@ -17,6 +16,11 @@ files:
   - src/view/backlogView.ts
   - src/view/cardMoves.ts
   - src/storage/frontmatter.ts
+started: ""
+finished: ""
+horizon: ""
+risk: ""
+assignee: Ben
 ---
 
 # Drag from the shelf to schedule

@@ -10,6 +10,13 @@ source: found while building [[Draw a dependency between bars]]
 files:
   - src/view/interactions/dependencies.ts
   - src/view/interactions/cardDrag.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # A dependency write is announced to nobody

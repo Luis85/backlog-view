@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Multilang]]"
 order: 70
 status: Open
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Type names are data

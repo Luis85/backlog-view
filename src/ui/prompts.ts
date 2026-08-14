@@ -53,6 +53,50 @@ abstract class PromptModal<O> extends Modal {
 	}
 }
 
+/** What a refusable prompt needs of its options, whatever else it also asks for. */
+interface Refusable<T> {
+	description: string;
+	/**
+	 * Refuse the entry with a reason, keeping the prompt open and the values in place.
+	 * Null accepts. What a value MEANS belongs to the layer that reads them, so these
+	 * dialogs ask rather than decide — which is what keeps `ui/` free of the domain.
+	 */
+	validate: (value: T) => string | null;
+	onSubmit: (value: T) => void;
+}
+
+/**
+ * The description line, the error element rendered up front, and a submit that asks
+ * `validate` before it closes — what the two prompts that REFUSE an entry do identically.
+ *
+ * A free function rather than another member of `PromptModal`: that base is what ALL the
+ * prompts in this file do, and its own rule is that anything true of only some of them
+ * stays out. Two of five collect an entry that can be wrong; the other three cannot be.
+ * The error element comes back so the field renderers can clear it — a refusal was about
+ * what was entered, so it stops being true the moment the entry changes.
+ */
+function refusableBody<T>(
+	modal: Modal,
+	options: Refusable<T>,
+	read: () => T,
+): { errorEl: HTMLElement; submit: () => void } {
+	modal.contentEl.createDiv({ cls: 'pbl-modal-detail', text: options.description });
+	// Rendered up front and filled on refusal: a message that appears only when the
+	// dialog grows one is a dialog that resizes under the pointer as you submit.
+	const errorEl = modal.contentEl.createDiv({ cls: 'pbl-modal-error', attr: { role: 'alert' } });
+	const submit = () => {
+		const value = read();
+		const problem = options.validate(value);
+		if (problem !== null) {
+			errorEl.setText(problem);
+			return;
+		}
+		modal.close();
+		options.onSubmit(value);
+	};
+	return { errorEl, submit };
+}
+
 export interface NewItemPromptResult {
 	title: string;
 	/** Only present when the prompt asked for a folder. */
@@ -231,19 +275,10 @@ export interface DateFieldSpec {
 	value: string;
 }
 
-export interface SchedulePromptOptions {
+export interface SchedulePromptOptions extends Refusable<Record<string, string>> {
 	heading: string;
-	description: string;
 	/** Only the ends the configured axis has: a field with no property is never asked for. */
 	fields: DateFieldSpec[];
-	/**
-	 * Refuse the entry with a reason, keeping the prompt open and the values in place.
-	 * Null accepts. What a date IS belongs to the layer that reads them, so this
-	 * dialog asks rather than decides — which is also what keeps `ui/` free of the
-	 * domain it would otherwise have to import.
-	 */
-	validate: (values: Record<string, string>) => string | null;
-	onSubmit: (values: Record<string, string>) => void;
 }
 
 /**
@@ -264,22 +299,11 @@ export class SchedulePromptModal extends PromptModal<SchedulePromptOptions> {
 		const values: Record<string, string> = {};
 		for (const spec of this.options.fields) values[spec.field] = spec.value;
 
-		this.contentEl.createDiv({ cls: 'pbl-modal-detail', text: this.options.description });
-		// Rendered up front and filled on refusal: a message that appears only when the
-		// dialog grows one is a dialog that resizes under the pointer as you submit.
-		const errorEl = this.contentEl.createDiv({ cls: 'pbl-modal-error', attr: { role: 'alert' } });
-
-		const submit = () => {
+		const { errorEl, submit } = refusableBody(this, this.options, () => {
 			const trimmed: Record<string, string> = {};
 			for (const [field, value] of Object.entries(values)) trimmed[field] = value.trim();
-			const problem = this.options.validate(trimmed);
-			if (problem !== null) {
-				errorEl.setText(problem);
-				return;
-			}
-			this.close();
-			this.options.onSubmit(trimmed);
-		};
+			return trimmed;
+		});
 
 		this.options.fields.forEach((spec, i) => {
 			const setting = new Setting(this.contentEl).setName(spec.name);
@@ -310,6 +334,82 @@ export class SchedulePromptModal extends PromptModal<SchedulePromptOptions> {
 				});
 			});
 		});
+
+		this.cta('Save', submit);
+	}
+}
+
+/** The four facts an absence is: who is away, what to call it, and both ends of the range. */
+export interface AbsenceResult {
+	resource: string;
+	title: string;
+	start: string;
+	target: string;
+}
+
+export interface AbsencePromptOptions extends Refusable<AbsenceResult> {
+	heading: string;
+	/** Pre-filled from the row it was opened on, and editable — the row is a default, not a lock. */
+	resource: string;
+	/** Names to suggest, so spellings stay consistent with the roster the view options name. */
+	known: string[];
+	/**
+	 * The stretch being EDITED, pre-filling the other three fields. Absent when adding one,
+	 * which is what makes this one form for both acts rather than two that can disagree
+	 * about what an absence is — the validator, the field list and the refusal rules are
+	 * the same questions whether the note exists yet or not.
+	 */
+	editing?: { title: string; start: string; target: string };
+}
+
+/**
+ * Prompt asking for one resource's unavailable stretch.
+ *
+ * Both ends, always — this is the one form in this file where an empty date is not a real
+ * answer, because an absence has nothing beneath it to infer the other end from and no
+ * shelf to wait on. So there is no per-field clear button either: `SchedulePromptModal`
+ * carries one because clearing an end is how a single date is taken back, and here that
+ * would offer a gesture whose result the validator must then refuse.
+ *
+ * The date fields are `type="date"` for that same modal's reason: the platform's picker,
+ * and the only values that can come back are a calendar date or nothing.
+ */
+export class AbsencePromptModal extends PromptModal<AbsencePromptOptions> {
+	onOpen(): void {
+		this.titleEl.setText(this.options.heading);
+		const editing = this.options.editing;
+		const values: AbsenceResult = {
+			resource: this.options.resource,
+			title: editing?.title ?? '',
+			start: editing?.start ?? '',
+			target: editing?.target ?? '',
+		};
+
+		const { errorEl, submit } = refusableBody(this, this.options, () => ({
+			resource: values.resource.trim(),
+			title: values.title.trim(),
+			start: values.start.trim(),
+			target: values.target.trim(),
+		}));
+		const field = (name: string, key: keyof AbsenceResult, setup: (input: HTMLInputElement) => void) => {
+			new Setting(this.contentEl).setName(name).addText((text) => {
+				text.setValue(values[key]);
+				text.onChange((v) => {
+					values[key] = v;
+					// The refusal was about what was entered, so it stops being true the
+					// moment the entry changes.
+					errorEl.setText('');
+				});
+				setup(text.inputEl);
+				submitOnEnter(text.inputEl, submit, key === 'title');
+			});
+		};
+
+		field('Resource', 'resource', (input) => new KnownValueSuggest(this.app, input, this.options.known));
+		// Autofocused rather than the resource, which the row above already answered.
+		field('Title', 'title', (input) => (input.placeholder = 'Away'));
+		field('Start', 'start', (input) => (input.type = 'date'));
+		field('End', 'target', (input) => (input.type = 'date'));
 
 		this.cta('Save', submit);
 	}

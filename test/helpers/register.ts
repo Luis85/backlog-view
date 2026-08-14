@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
 
 /**
  * A whole miniature repository, handed to the real `docs-check.mjs`.
@@ -19,6 +19,20 @@ import { expect, it } from 'vitest';
  * The tree needs `src/` and `test/` as well as `docs/`, because the gate's last rule
  * reads them: every module must be named by at least one note.
  */
+
+/**
+ * A real budget for every case in the five files that import this, because every one of
+ * them WRITES A TREE TO DISK AND SPAWNS NODE — a cost of its own, unlike anything else in
+ * this suite, and one the 5s default was never chosen for. Under whole-suite contention
+ * the first case in each file is the one that pays for the cold spawn, and those are
+ * exactly the five that started timing out as the suite grew; each passes in well under a
+ * second when run alone. Slack for a subprocess, not licence for a slow check: a case that
+ * genuinely needs 20s is planting a corpus far larger than a delta against `baseRegister`.
+ *
+ * Set here rather than per file because it is a fact about what this helper DOES, and a
+ * timeout repeated at every call site is one a new file forgets.
+ */
+vi.setConfig({ testTimeout: 20_000 });
 
 const run = promisify(execFile);
 const REPO = fileURLToPath(new URL('../..', import.meta.url));

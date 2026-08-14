@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Safe writes]]"
 order: 20
 status: Done
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # The write gate

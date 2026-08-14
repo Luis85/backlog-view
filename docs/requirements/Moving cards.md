@@ -4,6 +4,13 @@ parent: "[[Product Kanban]]"
 order: 30
 status: Active
 created: 2026-08-01
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Moving cards

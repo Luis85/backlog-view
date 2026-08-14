@@ -8,6 +8,13 @@ created: 2026-08-01
 files:
   - src/view/render/emptyStates.ts
   - src/view/render/roadmap.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Roadmap empty states

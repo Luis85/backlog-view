@@ -9,6 +9,13 @@ closed: 2026-08-05
 files:
   - test/harness/theme.css
   - test/harness/harness.test.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # The theme stub is checked against the stylesheet

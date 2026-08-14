@@ -10,6 +10,13 @@ created: 2026-07-31
 source: PR #14 maintainability review
 files:
   - src/domain/settings.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Separate the view-options schema from settings resolution

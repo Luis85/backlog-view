@@ -6,6 +6,13 @@ status: Done
 area: docs
 created: 2026-08-03
 closed: 2026-08-03
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # The sweep query rests on a checked convention

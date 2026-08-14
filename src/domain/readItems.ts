@@ -23,7 +23,8 @@ import {
 	resolvedDeliverableStateKey,
 	resolvedTestStateKey,
 } from './optionalProperties';
-import { isMarkerType } from './itemTypes';
+import { isAbsenceType, isMarkerType } from './itemTypes';
+import { Absence, readAbsence } from './absences';
 
 /**
  * Phase 1 of the model build: what each NOTE says about itself, before anything knows
@@ -135,9 +136,15 @@ export interface RawItem {
 export interface RawStore {
 	all: RawItem[];
 	byPath: Map<string, RawItem>;
+	/**
+	 * The notes diverted before they could become items — see `addItem`. Beside the items
+	 * rather than among them, and carried straight onto the model: nothing that walks the
+	 * tree, ranks siblings or counts a rollup ever meets one.
+	 */
+	absences: Absence[];
 }
 export function createItems(app: App, entries: BasesEntry[], settings: BacklogSettings): RawStore {
-	const store: RawStore = { all: [], byPath: new Map() };
+	const store: RawStore = { all: [], byPath: new Map(), absences: [] };
 	/** The notes these items hang from — seeds for loading the ancestors the filter cut. */
 	const parents: TFile[] = [];
 
@@ -189,6 +196,17 @@ function addItem(
 	const testDoneValues = settings.testDoneValues.map((v) => v.toLowerCase());
 	// Hoisted out of the literal below because the dependency read now asks it too.
 	const typeName = readString(ownValue(fm, settings.typeKey));
+	// Recognized in order to be REFUSED, and refused here rather than by the scope prune:
+	// `pruneOutsideHierarchy` runs only while `hierarchyOnly` is on, so a vault with it off
+	// — where every note a folder-scoped Base returns becomes an item — would keep this one
+	// as a real-looking task. That is the one inversion this whole feature exists to
+	// prevent, so the gate is unconditional and sits before a `RawItem` exists at all.
+	//
+	// Read HERE rather than by a second pass over the same entries: `addItem` is the only
+	// `getFileCache` call site in this layer and `test/domain/modelCost.test.ts` pins one
+	// read per note loaded, so a second reader would either double that count or have to
+	// read through `BasesEntry.getValue()`. The cache is open on this line.
+	if (isAbsenceType(typeName)) return divertAbsence(store, file, fm, settings);
 	// Every field this note can answer for itself, and no others: the ten that used to
 	// be initialised here as placeholders now belong to the phases that compute them.
 	const item: RawItem = {
@@ -238,6 +256,26 @@ function addItem(
 	store.byPath.set(file.path, item);
 	store.all.push(item);
 	return seed;
+}
+
+/**
+ * Keep what an absence says and produce no item — the body of `addItem`'s one early
+ * return, out of line so that function stays under its complexity budget.
+ *
+ * Always null, which is `addItem`'s own "no ancestor to seed": an absence has no parent,
+ * so it can never pull one in and `loadOutsideParents` must never be handed one. A note
+ * whose range this axis cannot trust keeps nothing at all — the divert is the TYPE's and
+ * unconditional, while what is kept is `readAbsence`'s question.
+ */
+function divertAbsence(
+	store: RawStore,
+	file: TFile,
+	fm: Record<string, unknown> | undefined,
+	settings: BacklogSettings,
+): null {
+	const absence = readAbsence(file, fm, settings);
+	if (absence) store.absences.push(absence);
+	return null;
 }
 
 /**

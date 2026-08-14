@@ -1,6 +1,6 @@
 import { BacklogViewHost, DrawnColors } from '../host';
 import { paletteDone, stateColorPaint, StatePalette } from '../../domain/board';
-import { activeAxis } from '../../domain/roadmap';
+import { activeAxis, drawsGrid } from '../../domain/roadmap';
 
 /**
  * A colour key for the dated axis's bars, rendered under the toolbar and outside the
@@ -42,7 +42,10 @@ export function renderLegend(
 	drawn: DrawnColors,
 ): void {
 	legendEl.empty();
-	const onDatedAxis = host.projection === 'roadmap' && activeAxis(host.settings, host.axisPick) === 'dates';
+	// Whichever axis draws BARS, not the plain dated one: the resources axis draws the
+	// same bars grouped into rows, so a swatch keys exactly what it keys there.
+	const axis = host.projection === 'roadmap' ? activeAxis(host.settings, host.axisPick) : null;
+	const onDatedAxis = axis !== null && drawsGrid(axis);
 	// The class itself is the gate, not a hidden variant of it: a rule that hid an
 	// always-present `.pbl-legend` empty box would still leave the box in the layout
 	// and in `querySelector('.pbl-legend')`'s answer to "is a legend here".
@@ -63,6 +66,10 @@ export function renderLegend(
 	// milestone in the window draws no cyan mark at all, and a swatch left unconditional
 	// here is defect 2 of this pass — the same rule failing the same way as `Other` did.
 	if (drawn.milestone) addSwatch(legendEl, 'pbl-legend-milestone', 'Milestone');
+	// The hatch, on the same rule and reported the same way: `drawn.absence` is the render's
+	// own word for "a stretch drew here", so this appears exactly where the mark does — on
+	// the resources axis, and not for a band the reader has folded shut.
+	if (drawn.absence) addSwatch(legendEl, 'pbl-legend-absence', 'Unavailable');
 }
 
 /**

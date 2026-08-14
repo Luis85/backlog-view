@@ -12,6 +12,13 @@ files:
   - scripts/docs-check.mjs
   - package.json
   - .github/workflows/ci.yml
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Make the register check itself

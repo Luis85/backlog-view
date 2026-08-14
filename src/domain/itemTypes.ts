@@ -1,5 +1,14 @@
 import { BacklogSettings } from './settings';
-import { ALL_TYPES, byName, DELIVERABLE_TYPE, EXTRA_TYPES, LEVELS, MARKER_TYPES, TEST_LEVELS } from './typeVocabulary';
+import {
+	ABSENCE_TYPE,
+	ALL_TYPES,
+	byName,
+	DELIVERABLE_TYPE,
+	EXTRA_TYPES,
+	LEVELS,
+	MARKER_TYPES,
+	TEST_LEVELS,
+} from './typeVocabulary';
 
 /**
  * The type vocabulary: the level ladders, and the types that sit beside them.
@@ -185,6 +194,16 @@ export function isMarkerType(typeName: string | null): boolean {
 	if (typeName === null) return false;
 	const name = typeName.toLowerCase();
 	return MARKER_TYPES.some((t) => t.toLowerCase() === name);
+}
+
+/**
+ * A note this backlog recognizes in order to refuse it — see `ABSENCE_TYPE`. Its own
+ * predicate rather than a widened `isMarkerType`, for that predicate's own reason: the
+ * two answer opposite questions, and the one call site here decides whether a note
+ * becomes an item at all rather than where it ranks once it is one.
+ */
+export function isAbsenceType(typeName: string | null): boolean {
+	return typeName !== null && typeName.toLowerCase() === ABSENCE_TYPE.toLowerCase();
 }
 
 /**

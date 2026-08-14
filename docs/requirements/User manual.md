@@ -5,6 +5,13 @@ order: 75
 status: Open
 created: 2026-08-01
 source: user request
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # User manual

@@ -3,6 +3,13 @@ type: Feature
 parent: "[[Codebase health]]"
 order: 30
 status: Open
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: Alex
 ---
 
 # Module structure

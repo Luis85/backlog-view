@@ -190,8 +190,10 @@ function renderRowLead(
 	drawIcon(grip, 'grip-vertical');
 
 	// The tree refreshes the one subtree it changed; the dated axis's rows share this
-	// control and re-render whole, which is why what to redraw is the caller's.
-	renderChevron(host, row, item, state, () => host.refreshSubtree(item));
+	// control and re-render whole, which is why what to redraw is the caller's — and which
+	// BIT it flips is the caller's for the same reason.
+	const fold = (): void => void host.setCollapsed(item.file.path, !host.isCollapsed(item.file.path));
+	renderChevron(host, row, { ...state, toggle: fold }, () => host.refreshSubtree(item));
 
 	renderBadge(host, row, item);
 
@@ -268,11 +270,30 @@ function renderRowLead(
  * click, which never fires `click` and so never meets the first guard, leaving the row's
  * own `auxclick` to open a note from a control that means something else entirely.
  */
+export interface DisclosureState {
+	hasChildren: boolean;
+	collapsed: boolean;
+	/**
+	 * Present makes this a real `<button>` carrying `aria-expanded` and this name; absent
+	 * draws the tree's plain div, whose `treeitem` row announces the state itself.
+	 */
+	label?: string;
+	/**
+	 * Flip the bit — the CALLER's, never a `setCollapsed` written in here. There are three
+	 * of them now and they do not share a key space: a tree row and a dated-grid row put the
+	 * same note in two different scopes (`collapseKey`), and a resource BAND is not a note
+	 * at all, so its bit is keyed by name and lives beside the shelf's own picks. What every
+	 * disclosure DOES share is this function — the filter override, the real `disabled`
+	 * flag, the middle-click guard and the focus report — and each of those had to be
+	 * discovered twice before it was written once.
+	 */
+	toggle: () => void;
+}
+
 export function renderChevron(
 	host: BacklogViewHost,
 	rowEl: HTMLElement,
-	item: BacklogItem,
-	state: { hasChildren: boolean; collapsed: boolean; label?: string },
+	state: DisclosureState,
 	redraw: (heldFocus: boolean) => void,
 ): void {
 	const cls = 'pbl-chevron' + (state.hasChildren ? '' : ' pbl-leaf');
@@ -299,7 +320,7 @@ export function renderChevron(
 		// assumed from the input: a mouse click does not focus a button in every browser,
 		// and focus already elsewhere must not be dragged away from it.
 		const heldFocus = chevron.ownerDocument.activeElement === chevron;
-		host.setCollapsed(item.file.path, !host.isCollapsed(item.file.path));
+		state.toggle();
 		redraw(heldFocus);
 	});
 }

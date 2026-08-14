@@ -227,6 +227,15 @@ describe('the persisted view mode', () => {
 		expect(stored(vault)['Backlog.base#Backlog']).toBeUndefined();
 	});
 
+	it('reads back a saved resources-axis pick', () => {
+		// Checked separately from `RoadmapAxis` on purpose: stored state is read
+		// defensively against this module's OWN string list, so an axis missing from
+		// that list is silently dropped and reads back as a pick nobody ever made.
+		vault.addFile('Backlog.base');
+		saveCollapseState(vault.app, id, { ...none, axis: 'resources' });
+		expect(loadCollapseState(vault.app, id).axis).toBe('resources');
+	});
+
 	it('drops a stored axis it does not recognize', () => {
 		vault.localStorage.set(STORE_KEY, {
 			'Backlog.base#Backlog': { base: 'Backlog.base', collapsed: [], expanded: [], axis: 'sideways' },

@@ -6,7 +6,7 @@ import { Menu, Notice } from '../helpers/obsidian-mock';
 import { flush, key, makeView, treeOf, useViewHarness } from '../helpers/view';
 import { cardDrag } from '../helpers/dnd';
 import { cardByTitle } from '../helpers/board';
-import { bucketNames, rowFor, shelfTitles } from '../helpers/roadmap';
+import { bucketNames, laneCountOf, laneNames, lanesOf, rowFor, shelfTitles } from '../helpers/roadmap';
 import { legalTargets } from '../../src/view/interactions/dependencies';
 
 /**
@@ -350,6 +350,163 @@ describe('write safety with context rows, across the roadmap’s entry points', 
 		view.showContextMenuFor(view.model?.byPath.get('PBI.md') as never);
 		const offered = Menu.lastShown?.item('Set horizon')?.submenu?.items.map((i) => i.titleText);
 		expect(offered).toEqual(['Now', 'Next', 'Later', 'Clear horizon']);
+	});
+});
+
+describe('write safety with context rows, across the resources axis’s entry points', () => {
+	/**
+	 * The same stress shape on the resources axis: the context PBI names a resource of
+	 * its own and renders inside that row, among live bars.
+	 *
+	 * Its siblings' own three questions: the drag, the paths a keyboard and a menu can take
+	 * that a drag cannot, and the structural refusal behind both. A context row here is
+	 * drawn INSIDE a resource's row rather than beside the frame, so it is also an element
+	 * of that row's band and therefore a drop TARGET — which is safe and worth saying out
+	 * loud: a drop names the ROW, and the write names the DRAGGED note, so landing on a
+	 * context row assigns the dragged item to the resource whose row it is standing in.
+	 */
+	function laneStressView() {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feature B.md', {
+			frontmatter: { type: 'Feature', order: 20, assignee: 'Sam', start: '2026-08-01', due: '2026-08-09' },
+			parentLink: 'Epic',
+		});
+		vault.addFile('PBI.md', {
+			frontmatter: { type: 'PBI', order: 5, assignee: 'Sam', start: '2026-08-02', due: '2026-08-04' },
+			parentLink: 'Feature B',
+		});
+		// Context, between results. Its assignee is on no declared list and on no result,
+		// so a row named for it could only have come from the context row itself.
+		vault.addFile('Mid.md', {
+			frontmatter: { type: 'PBI', order: 10, assignee: 'Ancient', start: '2026-08-03', due: '2026-08-05' },
+			parentLink: 'Feature B',
+		});
+		vault.addFile('Task.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'Mid' });
+		const containerEl = document.body.createDiv();
+		const view = new ProductBacklogView({} as never, containerEl);
+		const anyView = view as unknown as Record<string, unknown>;
+		anyView.app = vault.app;
+		anyView.config = new FakeViewConfig({
+			assigneeProperty: 'note.assignee',
+			startProperty: 'note.start',
+			targetProperty: 'note.due',
+			resourceNames: 'Sam',
+		});
+		anyView.data = { data: vault.entries().filter((e) => !['Epic.md', 'Mid.md'].includes(e.file.path)) };
+		view.onDataUpdated();
+		view.setFocusLevel('PBI');
+		view.setProjection('roadmap');
+		view.setAxisPick('resources');
+		return { view, containerEl, vault };
+	}
+
+	it('never writes to a context card, whatever is dropped wherever', async () => {
+		const { view, containerEl, vault } = laneStressView();
+		expect(view.model?.byPath.get('Mid.md')?.outsideFilter).toBe(true);
+		const cards = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-card'));
+		const bars = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-bar'));
+		const targets = Array.from(
+			containerEl.querySelectorAll<HTMLElement>('.pbl-lane-head, .pbl-timeline-row, .pbl-shelf'),
+		);
+		expect(bars.length).toBeGreaterThan(0);
+
+		// Every source this axis has — a bar and a card — onto every element of every band
+		// and the shelf. The context row is not draggable (never wired), so its own
+		// gestures fall on the floor rather than into a plan.
+		for (const source of [...cards, ...bars]) {
+			for (const target of targets) {
+				cardDrag(source, target);
+				await flush();
+			}
+		}
+		const touched = [...new Set(vault.writeLog.map((w) => w.path))];
+		expect(touched).not.toContain('Mid.md');
+		// Not vacuous: the live bars really were re-assigned along the way.
+		expect(touched).toContain('PBI.md');
+	});
+
+	it('never writes to a context card from the keyboard or the menu either', async () => {
+		const { view, containerEl, vault } = laneStressView();
+		const mid = view.model?.byPath.get('Mid.md');
+		const tree = treeOf(containerEl);
+
+		// Selected as a card and moved with the shortcut: the path a drag cannot take (a
+		// context card is never wired as a draggable) and a keyboard can.
+		view.selectItem(mid as never);
+		key(tree, 'ArrowUp', { altKey: true });
+		key(tree, 'ArrowDown', { altKey: true });
+		await flush();
+
+		// And the menu, the one path that works everywhere: it withholds every entry that
+		// would edit this note — Set assignee included, which on this axis is the drag's
+		// equal and so must be withheld exactly as the drag is.
+		view.showContextMenuFor(mid as never);
+		expect(Menu.lastShown?.item('Set assignee')).toBeUndefined();
+		expect(Menu.lastShown?.item('Set type')).toBeUndefined();
+		expect(vault.writeLog).toEqual([]);
+	});
+
+	it('refuses the whole batch if a resource write ever names a context item', async () => {
+		const { view, vault } = laneStressView();
+		const mid = view.model?.byPath.get('Mid.md');
+
+		// No UI produces this — that is the point: the last line of defence is structural,
+		// so a future entry point cannot reopen the hole by omission.
+		const applied = await view.performResourceMove(mid as never, 'Sam');
+
+		expect(applied).toBe(false);
+		expect(vault.writeLog).toEqual([]);
+		expect(Notice.messages.some((m) => m.includes('outside this base’s filter'))).toBe(true);
+	});
+
+	it('refuses it WHOLE when the move also carries dates', async () => {
+		const { view, vault } = laneStressView();
+		const mid = view.model?.byPath.get('Mid.md');
+
+		// The axis's second dimension does not get its own answer here: both halves ride
+		// one `ItemWrite`, and the gate refuses a batch whole, so there is no arrangement
+		// in which the dates land on an excluded note and the assignee does not.
+		const applied = await view.performResourceMove(mid as never, 'Sam', {
+			plan: { start: '2026-08-08', target: '2026-08-17' },
+			ends: ['start', 'target'],
+		});
+
+		expect(applied).toBe(false);
+		expect(vault.writeLog).toEqual([]);
+	});
+
+	it('never mints a row from a context value, and never counts one', () => {
+		const { view, containerEl } = laneStressView();
+		const mid = view.model?.byPath.get('Mid.md');
+		expect(mid?.outsideFilter).toBe(true);
+
+		// The membership half of the rule: an excluded note's assignee is not this base's
+		// vocabulary, so `Ancient` names no row — and the row it does join counts only
+		// what the Base returned.
+		expect(laneNames(containerEl)).toEqual(['Sam']);
+		const sam = lanesOf(containerEl)[0];
+		expect(laneCountOf(sam)).toBe('1');
+	});
+
+	it('never lets a context value reach the menu the drag cannot reach either', () => {
+		// Both halves, because either one alone would let it back in: `Ancient` mints no
+		// row, and the menu — which leads with the drawn rows and then names what the
+		// RESULTS carry — must not offer it from the other end.
+		const { view } = laneStressView();
+
+		view.showContextMenuFor(view.model?.byPath.get('PBI.md') as never);
+		const offered = Menu.lastShown?.item('Set assignee')?.submenu?.items.map((i) => i.titleText);
+
+		expect(offered).toEqual(['Sam', 'New assignee...', 'Clear assignee']);
+	});
+
+	it('is never shelved, whatever it carries', () => {
+		const { containerEl } = laneStressView();
+
+		// The shelf is a statement about the RESULTS. `Mid` has dates of its own and is
+		// still not on it, because it is not a result at all.
+		expect(shelfTitles(containerEl)).not.toContain('Mid');
 	});
 });
 

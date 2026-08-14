@@ -13,6 +13,13 @@ files:
   - src/view/childrenList.ts
   - src/view/interactions/menu.ts
   - styles/cardChildren.css
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Smoke test the card children in a live vault

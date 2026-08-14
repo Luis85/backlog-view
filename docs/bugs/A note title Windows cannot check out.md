@@ -11,6 +11,13 @@ source: Windows CI on PR #61, checkout step
 files:
   - scripts/docs-check.mjs
   - test/docs/checkerRejects.test.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # A note title Windows cannot check out

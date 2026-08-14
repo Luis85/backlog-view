@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Work item hierarchy]]"
 order: 60
 status: Done
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Broken links still render

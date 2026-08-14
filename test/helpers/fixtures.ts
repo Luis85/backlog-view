@@ -93,10 +93,15 @@ export function demoOptions(): Record<string, unknown> {
 		// The levels are left at the shipped default, so the harness draws the chip against
 		// the vocabulary a vault gets by pressing ✨ rather than one invented here.
 		riskProperty: 'note.risk',
-		// A key and nothing beside it — the whole configuration this property takes, and
-		// the reason the harness can draw its chip against a vocabulary the fixture's own
-		// notes supply rather than one declared here.
+		// A key and nothing beside it — the whole configuration the CHIP takes, and the
+		// reason the harness can draw it against a vocabulary the fixture's own notes
+		// supply rather than one declared here.
 		assigneeProperty: 'note.assignee',
+		// The resources axis, which needs the assignee key above plus the dates it already
+		// has. The roster is optional and is declared anyway, for the case a roster is FOR:
+		// `Priya` is on nothing, so her row draws empty — a resource exists whether or not
+		// work has reached them, and nothing else in the fixture can show that.
+		resourceNames: 'Dana, Kim, Priya',
 		deliverableStateProperty: 'note.docStatus',
 		deliverableStateValues: 'Concept, Draft, In review, Published',
 		deliverableDoneValues: 'Published',
@@ -205,6 +210,15 @@ export function demoVault(layout: Layout = 'flat', extra = 0): FakeVault {
 		{ type: 'PBI', order: 40, status: 'New', start: '2026-10-05', due: '2026-10-20', dependsOn: ['[[Ship 1.0]]', 'Contract signed'] },
 		'Billing',
 	);
+
+	// Two unavailable stretches, which are the resources axis's second SOURCE and are not
+	// work items at all — no parent, no rank, no state. One in a row that already has
+	// bars, so a stretch reads against the work it crosses; one for a resource nobody is
+	// assigned to and no roster names, which MINTS a row of its own, the case where an
+	// absence is the only reason a row is on screen at all. That second one is also the
+	// case whose window the grid used to size without it.
+	add('Dana is at the offsite', { type: 'Absence', assignee: 'Dana', start: '2026-08-10', due: '2026-08-14' });
+	add('Sam is on leave', { type: 'Absence', assignee: 'Sam', start: '2026-09-01', due: '2026-09-18' });
 
 	// A parent the Base excludes, with a child it returns: the context row on screen.
 	// Carries a risk and an assignee too, so the context row draws both STATIC chips beside

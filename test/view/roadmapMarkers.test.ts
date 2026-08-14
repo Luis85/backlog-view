@@ -151,6 +151,27 @@ describe('milestone lines', () => {
 		expect(label?.dataset.tooltip).toBe('Ship a very long milestone title that will not fit');
 	});
 
+	it('hangs the label in the coarse tier, where a label per month is what it can cover', () => {
+		// The label is an opaque 140px box reading rightward from its own date, so it covers
+		// whatever labels its tier carries to the right of it. In the CELL tier that is one
+		// per week and the casualty was certain — seen in a vault as `28 Sep` reading `28 S`
+		// under `Ship the roadmap epic`. In the coarse tier it is one per month, so the same
+		// box usually covers nothing, and the date it used to eat is still spelt out below it.
+		//
+		// Asserted as the TIER the label is in rather than as anything about widths, which is
+		// all jsdom can see: it lays nothing out, so which pixels are covered is a live-vault
+		// question either way. What this refuses is the mount point moving back.
+		const vault = new FakeVault();
+		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10, due: '2026-12-01' } });
+		const { containerEl } = roadmapView(vault, { ...DATES });
+
+		const label = containerEl.querySelector<HTMLElement>('.pbl-milestone-label');
+		expect(label?.parentElement?.classList.contains('pbl-timeline-super')).toBe(true);
+		// Not vacuous: the tier it is NOT in is on screen and carries the day cells.
+		const cells = containerEl.querySelectorAll('.pbl-timeline-track:not(.pbl-timeline-super) > .pbl-timeline-cell');
+		expect(cells.length).toBeGreaterThan(0);
+	});
+
 	it('draws one line naming both when two milestones share a date', () => {
 		// Two lines a pixel apart read as one and quietly misreport the count.
 		const vault = new FakeVault();

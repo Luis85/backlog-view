@@ -11,6 +11,13 @@ source: implementation of the per-column agreements increment
 files:
   - src/domain/viewOptions.ts
   - src/view/render/board.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Smoke test the column agreements

@@ -3,6 +3,13 @@ type: Feature
 parent: "[[Product Backlog]]"
 order: 100
 status: Open
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Item Templates

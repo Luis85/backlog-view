@@ -474,6 +474,13 @@ free of runtime code so imports stay cycle-free.
   PLAN's control: the catalog is built from the unfocused tree and its picker is a static
   label, and `collectFocusRoots` skips catalog members — a catalog `Task` is rung 2 of its
   own ladder, which is `PBI`'s index on the plan's.
+  **What a click on a ROW does is governed on every grid that has rows to fold.**
+  `clickActionApplies` asks `drawsGrid`, not `=== 'dates'` — the resources axis draws bar
+  rows with the same chevron over the same collapse call, so the toggle that governs one
+  has to be offered there too. It stays absent on the horizon axis, whose cards list
+  children on their own face and whose commonest card draws no disclosure at all. A LANE
+  header is not the row this option is about: it holds no note, so a click on it can only
+  ever mean fold.
   **`host.clickFolds` is the plainest member of that family** and the newest (2026-08-11):
   whether a plain click on a row folds it instead of opening the note, stored the same way
   and re-rendering the same way, with no model consequence at all. It reaches `settings`
@@ -519,6 +526,14 @@ free of runtime code so imports stay cycle-free.
   The message names COLUMNS via `columnLabelFor`, never the raw value, so it says what
   is on screen: "No state" rather than a silence, and the yielded "Unset" rather than
   a name a real state has taken.
+  **The resources axis is the one move with two dimensions**, and it is still one method
+  and one sentence: `performResourceMove` takes an optional gesture beside the name,
+  `computeResourceMoveWrites` puts both halves on ONE `ItemWrite`, and
+  `announceResourceMove` appends the landing span to the row sentence rather than
+  announcing twice. One record is not an optimization — two naming the same file capture
+  two inverses, so an undo could return the row and keep the dates, a state the single
+  gesture cannot describe. It is also what makes "the row moved but the dates did not"
+  unreachable under a refusal, since the gate refuses a batch whole.
 - The board's Set state offers `host.board`'s **rendered columns**, not a list rebuilt
   from the settings — that is what makes "every target a drag can reach, the menu can
   too" true by construction rather than by two lists agreeing. `stateMenuValues` alone
@@ -619,13 +634,28 @@ free of runtime code so imports stay cycle-free.
   is focusable or written, so the milestone's own row carries the name and the exact
   dates together in its accessible name, which is where a fact the line shows must also
   be reachable without it.
+- **A drop target's POSITION is part of what it can mean, and that is one method rather
+  than two.** `wireDropTarget` carries the pointer to `plan` and to an optional `onDrag`;
+  a target whose meaning is "this region" ignores the second argument, and one whose
+  meaning is "this region, at this day" reads it. It was `wirePositionalTarget`, folded in
+  on 2026-08-14 for the reason `wireLinkTarget` was folded in before it: a clone differing
+  by one behaviour is a convention, and a target written the ordinary way must inherit the
+  behaviour rather than remember to reach for a second method. Only the dated axis's
+  grid-wide overlay passes `highlight: false` — a highlight over the whole day area says
+  nothing about where a release lands.
 - Both axes are directly manipulable now, but not the same way. The horizon axis's
   buckets and shelf are ordinary drop TARGETS — the board's rule, a region highlights
   and the highlight is the whole signal. The dated axis has no lanes, so a row carries
   no meaning of its own; `renderRoadmap` wires its grid as ONE positional target
   instead (`interactions/timelineDrag.ts`, registered through `CardDragController`
   like every other target), where only the pointer's X says anything and `dayAt` turns
-  it into a date. Two sources reach it: a shelf card, gated by `canSchedule` (a marker
+  it into a date. The **resources axis is both at once**: each element of a band is a
+  target that reads the same X for the same date AND knows its own row, so one release
+  answers who and when. `gestureAt` and `previewer` are what the two grid axes share —
+  what a position means, stated once — and what differs is only what the caller combines
+  the answer with. The band is wired AFTER the render pass rather than during it
+  (`TimelineDrawing.laneElement` reports, `renderGridAxis` wires), because a drop needs
+  the window, the scale and the lead width that pass has not finished producing. Two sources reach it: a shelf card, gated by `canSchedule` (a marker
   with no writable end offers no grip at all), and a bar already placed — its body
   slides by the gesture's delta rather than a position, its end grips resize one end —
   both onto the grid alone. The dated axis's shelf is a drop TARGET too, the mirror of
@@ -716,7 +746,21 @@ free of runtime code so imports stay cycle-free.
   `domain/bars.ts`'s `timelineRows` decides which rows survive and which keep a chevron,
   and it is asked of the bars derived BEFORE any were hidden: computed from what is
   left, a collapsed row would have no children to have and would lose the very control
-  that reopens it. Unlike the tree's, this toggle takes the whole `render()` — the
+  that reopens it. **The resources axis calls it once PER BAND**, and that argument list
+  is the whole of why a fold is safe on an axis whose rows were flat by decision until
+  2026-08-14: membership there is the note's own assignee, so a parent and its child
+  routinely sit in different bands, and `timelineRows`' own `drawn` set — one lane's bars —
+  is what stops a chevron reaching a row it does not sit above. A bar whose children are
+  all in other bands reports `hasChildren: false` and draws the leaf placeholder, which is
+  the honest answer rather than a refusal.
+  **A BAND is a third collapse question and it does not live in that key space.** It is
+  asked of a resource's NAME, and every piece of machinery the collapse keys carry is about
+  PATHS — the flush drops any entry the vault has no file for, the rename migration moves
+  entries when a note moves, `collapseNewParents` settles new parents — so a band key would
+  be pruned on the first save. It is stored beside the shelf's hidden types instead
+  (`collapsedLanes`), reached through `isLaneCollapsed`/`setLaneCollapsed`, and its default
+  is OPEN where a tree parent's is shut: a row that hid its own work until asked would
+  answer the question this axis exists for with nothing. Unlike the tree's, this toggle takes the whole `render()` — the
   window, the gridlines and every full-height mark are derived from the row set it
   changes.
 - A bucket's New button runs the ordinary gated creation flow with the bucket's value as

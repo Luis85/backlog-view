@@ -6,6 +6,13 @@ status: Open
 priority: P3
 created: 2026-08-08
 source: user request
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # A template for a test case

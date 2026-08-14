@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Multilang]]"
 order: 110
 status: Open
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Catalogs stay complete

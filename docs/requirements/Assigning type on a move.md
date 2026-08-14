@@ -5,6 +5,13 @@ order: 40
 status: Done
 closed: 2026-08-11
 source: 2026-08-11 whole-branch review, plus the user's decision on it
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Assigning type on a move

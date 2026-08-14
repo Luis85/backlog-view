@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Theming and styling]]"
 order: 60
 status: Open
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Styling rules are checks

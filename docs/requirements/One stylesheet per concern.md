@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Theming and styling]]"
 order: 10
 status: Done
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # One stylesheet per concern

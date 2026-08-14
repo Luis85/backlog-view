@@ -2,6 +2,8 @@ import { Menu } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { BacklogItem } from '../../domain/model';
 import { sameValue } from '../../domain/noteFields';
+import { mergedValues } from '../../domain/settings';
+import { resolveSettings } from '../../domain/settingsResolve';
 import { computeAssigneeWrites, computeRiskWrites, ItemWrite } from '../../domain/writePlan';
 import { ValuePromptModal } from '../../ui/prompts';
 import { rowVocabulary } from '../projection';
@@ -13,10 +15,11 @@ import { rowVocabulary } from '../projection';
  * in `menu.ts`, which is what the ROW is offered rather than what a label means.
  *
  * Where they differ is the only interesting thing about them, and it is the list: risk's
- * vocabulary is DECLARED in the view options, the assignee's is OBSERVED off the results
- * and extended by typing. That difference is stated in `riskChoices` and
- * `assigneeChoices` and nowhere else — the writes, the checkmarks and the clear entries
- * are the same two rules for both.
+ * vocabulary is DECLARED and nothing else, while the assignee's is a union of everything
+ * that can name a person — an optional roster, the names the results carry, the rows its
+ * own axis draws — and is extended by typing on top of all three. That difference is
+ * stated in `riskChoices` and `assigneeChoices` and nowhere else; the writes, the
+ * checkmarks and the clear entries are the same two rules for both.
  */
 
 /**
@@ -42,15 +45,30 @@ function riskChoices(host: BacklogViewHost, item: BacklogItem): string[] {
 }
 
 /**
- * What Set assignee offers: every name the RESULTS carry, plus the item's own when the
- * base has no other note naming it — the tag menu's rule, over a single value.
+ * What Set assignee offers: the DRAWN rows where its own axis is on screen, then the
+ * DECLARED roster, then every name the RESULTS carry, then the item's own when nothing
+ * else names it — three sources and one list, the horizon menu's union with one more
+ * source in front of it.
  *
- * There is no declared list to prefer here and none to fall back to, which is why the
- * observed names are the whole of it rather than a union like the horizon's: nobody
- * configures who exists. A name this base has never seen is still reachable, through
- * **New assignee...** below, and that is what keeps an empty vocabulary from being an
- * empty menu — the reason this feature needs only a key named, where risk needs a key
- * and a list.
+ * **The roster is optional and is offered wherever it is named**, which is the difference
+ * between this property and the two beside it. Risk offers its declared list and nothing
+ * observed; the assignee offered everything observed and nothing declared, and that was
+ * right only while nobody could declare who exists. `resourceNames` arrived with the
+ * resources axis ([[Showing a resources axis on the roadmap]]) and until 2026-08-14 it
+ * reached this menu on that axis alone, through the drawn rows — so a reader who had
+ * just typed a team into the view options was offered them on the roadmap and not in the
+ * tree, which reads as the setting not working. Naming a resource is naming a resource
+ * wherever the row menu opens.
+ *
+ * The DRAWN rows still lead where the axis draws them — `horizonChoices`' rule for its
+ * buckets, and the board's Set state for its columns — and they are still not redundant
+ * with the roster: a row minted by an observed name or by a logged absence is a target a
+ * drag can reach and nothing declares. Everything else follows it, so what is reachable
+ * never depends on what is on screen.
+ *
+ * A name none of the three carries is still reachable through **New assignee...** below,
+ * and that is what keeps an empty vocabulary from being an empty menu — the reason this
+ * feature needs only a key named, where risk needs a key and a list.
  */
 function assigneeChoices(host: BacklogViewHost, item: BacklogItem): string[] {
 	// Through `rowVocabulary` like the state, horizon and tag menus, and for their reason:
@@ -59,10 +77,89 @@ function assigneeChoices(host: BacklogViewHost, item: BacklogItem): string[] {
 	// is offered on every plan row, and a catalog row cannot reuse a name observed on
 	// another test. Per ROW rather than per projection, because both directions of a
 	// projection-wide answer are wrong: see `rowVocabulary`'s own comment.
-	const values = host.model ? rowVocabulary(host.model, item).observedAssignees : [];
+	//
+	// The DECLARED roster is deliberately NOT scoped that way and needs no equivalent: it
+	// is one statement the view options make about this base, not a fact gathered off a
+	// population, so there is no other projection's names for it to leak.
+	const observed = host.model ? rowVocabulary(host.model, item).observedAssignees : [];
+	const drawn = onResourceAxis(host) ? (host.roadmap?.roadmap.lanes ?? []).map((lane) => lane.name) : [];
+	const values = mergedValues(drawn, host.settings.resourceNames, observed);
 	const current = item.assigneeValue;
 	if (current === null || values.some((v) => sameValue(v, current))) return values;
 	return [...values, current];
+}
+
+/**
+ * Whether the frame on screen is the one whose ROWS this property draws. Asked twice —
+ * for what the menu offers, and for where a pick goes — and stated once, because a menu
+ * offering the drawn rows while its picks bypassed the move would be exactly the
+ * disagreement routing the two together exists to prevent.
+ */
+function onResourceAxis(host: BacklogViewHost): boolean {
+	return host.projection === 'roadmap' && host.roadmap?.roadmap.axis === 'resources';
+}
+
+/**
+ * What picking a name DOES. On the resources axis it takes the DRAG's own path, so a pick
+ * and a drop onto the same row are one write, one gate and — the part only this path can
+ * supply — one announcement, said once by `performResourceMove` rather than by each input
+ * separately. Elsewhere there is no frame to announce into and the planned write goes
+ * straight through the gate. `chooseHorizon` splits on the roadmap for this reason and
+ * `chooseState` on the board.
+ */
+async function chooseAssignee(host: BacklogViewHost, item: BacklogItem, value: string | null): Promise<unknown> {
+	// On-axis the move declares it, so this branch does not — once per path, never twice.
+	if (onResourceAxis(host)) return host.performResourceMove(item, value);
+	const outcome = await host.applySafely(computeAssigneeWrites(item, value));
+	// After the write landed, `performResourceMove`'s own order: a pick the gate refused
+	// must not amend the `.base` behind the refusal, and a no-op re-pick declares nobody.
+	if (outcome?.changed) declareResource(host, value);
+	return outcome;
+}
+
+/**
+ * Put a name the reader has just ASSIGNED onto the declared roster, where it is not there
+ * already. Naming somebody through this view is naming them, so the row they get is a
+ * declared row rather than a stray one carrying "not one of the declared resources" — a
+ * hint that is right about a name the view options have never seen and merely noise about
+ * one the reader typed in a moment ago.
+ *
+ * **A write to the `.base`, and the second in this plugin that is a side effect of an
+ * ordinary action** — `runInit` binds properties, and `createBacklogItem`'s prompt
+ * persists the home folder. The same argument holds for all three: the option exists to be
+ * filled in, and asking the reader to go and fill it in with a value they have already
+ * given is a second statement of one decision. It goes at the END, so the roster keeps
+ * declared ORDER as an order the reader built rather than one this function sorted.
+ *
+ * Guarded four ways, and each guard is a case that reaches here: `null` is a REMOVAL and
+ * declares nobody; a name the roster already carries writes nothing, case-insensitively
+ * through `sameValue` like every other comparison of these values; an unconfigured
+ * assignee key means the property this roster is about is not in use, where writing a
+ * roster would configure half a feature nobody asked for; and a name holding the list
+ * SEPARATOR is refused, because the roster round-trips through one comma-separated
+ * option — `resolveSettings` splits it back on commas, so declaring "Doe, Jane" would
+ * hand the next resolve two entries nobody is called. The note still takes such a name
+ * exactly as typed; only the roster declines it.
+ *
+ * Both callers run this AFTER their write lands, never before it — the ordering
+ * `test/view/resourceRoster.test.ts` states from the rule.
+ *
+ * The list it appends to is read from the CONFIG at commit time, never from
+ * `host.settings` — a snapshot taken at the last data update, while this write lands
+ * after an awaited one, so two declarations between two refreshes had the second replace
+ * the first's name instead of joining it. Through `resolveSettings` rather than a second
+ * reading of the raw option: the split, the trim and the dedupe are that function's, and
+ * parsing the string here would be a second opinion about what the roster is.
+ * **It closes the window it can see, and only that one.** Whether one pane's `set` is
+ * visible to another pane's `get` before its own refresh is an Obsidian internal nothing
+ * here can answer, so two panes declaring two new names in the same instant may still
+ * leave one of them undeclared — a live-vault question, recorded on PR #134.
+ */
+export function declareResource(host: BacklogViewHost, name: string | null): void {
+	if (name === null || name.includes(',') || host.settings.assigneeKey === '') return;
+	const roster = resolveSettings(host.config).resourceNames;
+	if (roster.some((declared) => sameValue(declared, name))) return;
+	host.config.set('resourceNames', [...roster, name].join(', '));
 }
 
 /**
@@ -87,11 +184,20 @@ function addLabelItems(
 		clearTitle: string;
 		/** Drawn after the choices and before the clear entry — the assignee's way to type one. */
 		extra?: () => void;
+		/**
+		 * What a pick DOES, where that is more than handing the plan to the gate — the
+		 * assignee's route through `performResourceMove` while its own axis is drawn. The
+		 * CHECKMARK still asks `writes`, and must: an entry is checked exactly when picking
+		 * it would write nothing, which is a question about the plan and not about who
+		 * applies it.
+		 */
+		apply?: (value: string | null) => void;
 	},
 ): void {
+	const apply = spec.apply ?? ((value: string | null) => void host.applySafely(spec.writes(value)));
 	for (const value of spec.choices) {
 		menu.addItem((si) => {
-			si.setTitle(value).onClick(() => void host.applySafely(spec.writes(value)));
+			si.setTitle(value).onClick(() => apply(value));
 			if (spec.writes(value).length === 0) si.setChecked(true);
 		});
 	}
@@ -102,7 +208,7 @@ function addLabelItems(
 		si
 			.setTitle(spec.clearTitle)
 			.setIcon('eraser')
-			.onClick(() => void host.applySafely(spec.writes(null))),
+			.onClick(() => apply(null)),
 	);
 }
 
@@ -131,6 +237,7 @@ export function addAssigneeItems(host: BacklogViewHost, menu: Menu, item: Backlo
 		writes: (value) => computeAssigneeWrites(item, value),
 		present: item.ownKeys.assignee,
 		clearTitle: 'Clear assignee',
+		apply: (value) => void chooseAssignee(host, item, value),
 		extra: () =>
 			menu.addItem((si) =>
 				si
@@ -141,7 +248,13 @@ export function addAssigneeItems(host: BacklogViewHost, menu: Menu, item: Backlo
 	});
 }
 
-/** Free-text entry, suggesting the names already in use so spellings stay consistent. */
+/**
+ * Free-text entry, suggesting the names already in use so spellings stay consistent.
+ *
+ * Through `chooseAssignee` like every other pick: a name typed here is a fourth input to
+ * the same move, not a second plan beside it, so on the resources axis it announces itself
+ * exactly as a drop into that row would.
+ */
 function promptNewAssignee(host: BacklogViewHost, item: BacklogItem): void {
 	new ValuePromptModal(host.app, {
 		title: 'Assign item',
@@ -149,6 +262,6 @@ function promptNewAssignee(host: BacklogViewHost, item: BacklogItem): void {
 		placeholder: 'Alex',
 		ctaLabel: 'Assign',
 		known: assigneeChoices(host, item),
-		onSubmit: (value) => void host.applySafely(computeAssigneeWrites(item, value.trim())),
+		onSubmit: (value) => void chooseAssignee(host, item, value.trim()),
 	}).open();
 }

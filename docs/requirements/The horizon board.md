@@ -4,6 +4,13 @@ parent: "[[Product Roadmap]]"
 order: 20
 status: Active
 created: 2026-08-01
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # The horizon board

@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Module structure]]"
 order: 10
 status: Open
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # One file per concern

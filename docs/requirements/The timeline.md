@@ -4,6 +4,13 @@ parent: "[[Product Roadmap]]"
 order: 30
 status: Done
 created: 2026-08-01
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # The timeline

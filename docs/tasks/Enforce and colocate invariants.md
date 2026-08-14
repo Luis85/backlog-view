@@ -11,6 +11,13 @@ source: PR #14 maintainability review
 files:
   - CLAUDE.md
   - eslint.config.mjs
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Enforce the invariants that can be enforced, co-locate the rest

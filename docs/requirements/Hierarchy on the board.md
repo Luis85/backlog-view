@@ -4,6 +4,13 @@ parent: "[[Product Kanban]]"
 order: 40
 status: Active
 created: 2026-08-01
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Hierarchy on the board

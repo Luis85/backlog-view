@@ -9,6 +9,13 @@ closed: 2026-08-02
 files:
   - src/domain/settings.ts
   - src/domain/viewOptions.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # WIP limits

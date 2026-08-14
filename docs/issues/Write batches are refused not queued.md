@@ -10,6 +10,13 @@ source: PR #14
 files:
   - src/view/backlogView.ts
   - src/domain/writePlan.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Concurrent write batches are refused rather than queued

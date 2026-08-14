@@ -8,6 +8,13 @@ area: verification
 closed: 2026-08-01
 created: 2026-08-01
 source: 2026-08-01 register review
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Sweep the register against the code for missing use cases

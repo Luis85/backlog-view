@@ -229,8 +229,27 @@ export class FakeVault {
 				// out, so anything read after the await sees the rebuilt board.
 				this.afterWrite?.(file.path);
 			},
+			/**
+			 * Obsidian's link-preserving rename — the API a caller must use rather than
+			 * `vault.rename`, and therefore the one this fake has to offer. Delegates to
+			 * this class's own {@link renameFile}, so a rename driven through the app object
+			 * moves the caches and rewrites the links exactly as one driven by a test does.
+			 */
+			renameFile: async (file: TFile, newPath: string) => {
+				this.renameFile(file.path, newPath);
+			},
+			/** Obsidian's own delete-to-trash, recorded so a test can assert the note went. */
+			trashFile: async (file: TFile) => {
+				this.files.delete(file.path);
+				this.caches.delete(file.path);
+				this.frontmatter.delete(file.path);
+				this.trashed.push(file.path);
+			},
 		},
 	};
+
+	/** Paths `fileManager.trashFile` removed, in the order they went. */
+	readonly trashed: string[] = [];
 
 	/** What Obsidian fires when the theme, the appearance settings or a snippet change. */
 	changeCss(): void {
@@ -407,8 +426,16 @@ export class FakeViewConfig {
 	/** Visible property order, as configured in the Bases properties menu. */
 	order: string[] = [];
 
+	/**
+	 * COPIED, never held by reference. Tests pass a module-level literal —
+	 * `const configured = { assigneeProperty: 'note.assignee' }` is the shape — and a fake
+	 * that wrote into it would let one test's `set` reach every later test sharing that
+	 * object. Invisible until something started writing a key the tests also read: the
+	 * assignee roster, which `declareResource` appends to on every pick, made one test's
+	 * `Sam` appear in the next test's menu.
+	 */
 	constructor(values: Record<string, unknown> = {}) {
-		this.values = values;
+		this.values = { ...values };
 	}
 	get(key: string): unknown {
 		return this.values[key];

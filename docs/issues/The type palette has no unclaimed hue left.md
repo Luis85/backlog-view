@@ -11,6 +11,13 @@ files:
   - styles/badges.css
   - src/view/render/rows.ts
   - src/domain/settings.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # The type palette has no unclaimed hue left

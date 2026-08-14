@@ -47,7 +47,11 @@ class ManualDialog extends Modal {
 		// SECTION currently open and changes as the sidebar is used, so it cannot stand
 		// in for this: a screen reader announcing the dialog needs one name that does not
 		// move under it while its content does.
-		this.titleEl.setText('Product Backlog manual');
+		// Sentence case, which the marketplace rule asks of UI text and `npm run lint` was
+		// warning about: "Product backlog", not the registered view name's "Product Backlog".
+		// The two differ on purpose — `main.ts` registers the plugin's NAME, which is a proper
+		// noun in Obsidian's own view picker, and this is a sentence about it.
+		this.titleEl.setText('Product backlog manual');
 		contentEl.empty();
 		contentEl.addClass('pbl-manual');
 		// Both classes go on the MODAL, not on `contentEl`, and both are needed: Obsidian

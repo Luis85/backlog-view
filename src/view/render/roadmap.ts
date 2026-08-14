@@ -5,15 +5,16 @@ import { RowContext } from './columns';
 import { renderAllDoneState, renderEmptyState, renderFilterEmptyState } from './emptyStates';
 import { renderContextStrip, renderShelf, shelfRemoval } from './shelf';
 import { syncShelfTabStops } from './shelfControls';
-import { renderTimeline } from './timeline';
-import { DrawnColors, RoadmapSnapshot, ScrollBox } from '../host';
+import { barEntries, laneEntries } from './lanes';
+import { renderTimeline, TimelineRender } from './timeline';
+import { BacklogViewHost, DrawnColors, RoadmapSnapshot, ScrollBox } from '../host';
 import { CardDragController } from '../interactions/cardDrag';
 import { newItemType, promptCreateItem } from '../interactions/create';
-import { wireTimelineDrag } from '../interactions/timelineDrag';
+import { gestureAt, previewer, submitGesture, TimelineParts, wireTimelineDrag } from '../interactions/timelineDrag';
 import { StatePalette, statePalettes } from '../../domain/board';
 import { timelineRows } from '../../domain/bars';
 import { BacklogItem } from '../../domain/model';
-import { buildRoadmap, HorizonBucket, RoadmapAxis } from '../../domain/roadmap';
+import { buildRoadmap, HorizonBucket, ResourceLane, RoadmapAxis, RoadmapModel } from '../../domain/roadmap';
 import { scaleFor, TimelineScale, TimelineWindow } from '../../domain/timeline';
 import { CivilDate } from '../../domain/noteFields';
 
@@ -45,7 +46,7 @@ export function renderRoadmap(
 	const model = host.model;
 	if (!model) {
 		return {
-			roadmap: { axis, buckets: [], bars: [], shelf: [], context: [], placedCount: 0 },
+			roadmap: { axis, buckets: [], bars: [], lanes: [], shelf: [], context: [], placedCount: 0 },
 			cards: [],
 			shelfEl: null,
 			todayLeft: null,
@@ -54,7 +55,7 @@ export function renderRoadmap(
 			window: null,
 			scale: null,
 			leadWidth: null,
-			drawn: { done: false, milestone: false, accent: false },
+			drawn: { done: false, milestone: false, accent: false, absence: false },
 			palettes: [],
 		};
 	}
@@ -67,7 +68,7 @@ export function renderRoadmap(
 	let window: TimelineWindow | null = null;
 	let scale: TimelineScale | null = null;
 	let leadWidth: number | null = null;
-	let drawn: DrawnColors = { done: false, milestone: false, accent: false };
+	let drawn: DrawnColors = { done: false, milestone: false, accent: false, absence: false };
 	// The dated axis's own dependency conflicts (see `TimelineRender.dependencyConflicts`)
 	// — empty on the horizon axis, where a shelved dependent's stated START has no
 	// meaning at all.
@@ -82,26 +83,11 @@ export function renderRoadmap(
 		// scrolls nothing, so auto-scroll toward an edge has to watch the box that does.
 		dnd.wireScroller(treeEl);
 	} else {
+		// Both grid axes through ONE call: what differs between them is the entry list and
+		// whether a bar may be taken hold of — never a second grid.
 		const activeScale = scaleFor(host.zoom);
 		palettes = statePalettes(model, host.settings);
-		// The rows the grid draws, which is the bars minus whatever a collapsed bar above
-		// them is holding shut. Asked here rather than inside `buildRoadmap`: collapse is
-		// the view's own state, and the shelf beside the grid is a statement about what the
-		// axis could not place — a row hidden by a disclosure has not become unplaced.
-		const rows = timelineRows(roadmap.bars, (path) => host.isCollapsed(path));
-		const timeline = renderTimeline(ctx, frameEl, rows, {
-			today,
-			scale: activeScale,
-			dnd,
-			shelf: roadmap.shelf,
-			palettes,
-			// The PANE's width, not the frame's or the not-yet-built scroller's: this is
-			// the element `backlogView.ts`'s `ResizeObserver` watches, so a render here and
-			// a resize-driven re-render there measure the same box. They can still read it
-			// a scrollbar apart, since this measurement happens after `treeEl.empty()` —
-			// see `TimelineDrawing.available`, which states what that costs.
-			available: treeEl.clientWidth,
-		});
+		const timeline = renderGridAxis(ctx, frameEl, treeEl, roadmap, { axis, today, dnd, palettes });
 		cards.push(...timeline.cards);
 		todayLeft = timeline.todayLeft;
 		scroller = timeline.scroller;
@@ -110,15 +96,6 @@ export function renderRoadmap(
 		leadWidth = timeline.leadWidth;
 		drawn = timeline.drawn;
 		dependencyConflicts = timeline.dependencyConflicts;
-		wireTimelineDrag(ctx, dnd, {
-			overlay: timeline.overlay,
-			scroller: timeline.scroller,
-			window: timeline.window,
-			scale: activeScale,
-			headerTrack: timeline.headerTrack,
-			tracks: timeline.tracks,
-			leadWidth: timeline.leadWidth,
-		});
 	}
 	// Captured before the shelf renders: collapsing the shelf changes ITS contribution
 	// to `cards` (see `renderShelf`), never the axis's own — this is the true "does the
@@ -151,6 +128,152 @@ export function renderRoadmap(
 	if (advisoryEl) boxes.push({ key: 'advisory', el: advisoryEl });
 
 	return { roadmap, cards, shelfEl: shelf.el, todayLeft, scroller, boxes, window, scale, leadWidth, drawn, palettes };
+}
+
+/** What a grid axis needs to draw — grouped so `renderGridAxis` stays inside max-params. */
+interface GridDrawing {
+	axis: RoadmapAxis;
+	today: CivilDate;
+	dnd: CardDragController;
+	palettes: StatePalette[];
+}
+
+/**
+ * Either axis that draws the dated grid. The window, the day header, the gridlines, the
+ * today line, the milestone lines, the dependency layer and the bar holds are all
+ * `renderTimeline`'s and identical on both; the two differences are stated here and
+ * nowhere else.
+ *
+ * **The entry list.** Both ask `timelineRows` about what a collapsed bar above them is
+ * holding shut — here rather than inside `buildRoadmap`, because collapse is the view's own
+ * state and a row hidden by a disclosure has not become unplaced. The difference is the
+ * ARGUMENT: the dated axis asks it once, of every bar on the grid, and the resources axis
+ * asks it once PER BAND, which is what confines a chevron to its own row.
+ *
+ * **What a release MEANS.** Both axes read the pointer's X as a date, from one module
+ * (`interactions/timelineDrag.ts`); what differs is what that answer is combined with.
+ * The dated axis has one target over the whole day area, so X is the whole message. The
+ * resources axis has a target per band ELEMENT, so a release says two things at once —
+ * the row it landed in and the day it landed on — and the overlay stays undrawn there,
+ * because a layer taking pointer events across the whole grid would swallow every drop
+ * the rows are the target for.
+ *
+ * The band is wired AFTER the render rather than during it, which is why `laneElement`
+ * reports rather than wires: a drop needs the window, the scale and the lead width this
+ * pass drew, and none of them exists until `renderTimeline` returns.
+ */
+function renderGridAxis(
+	ctx: RowContext,
+	frameEl: HTMLElement,
+	treeEl: HTMLElement,
+	roadmap: RoadmapModel,
+	drawing: GridDrawing,
+): TimelineRender {
+	const { axis, today, dnd, palettes } = drawing;
+	const activeScale = scaleFor(ctx.host.zoom);
+	const entries =
+		axis === 'resources'
+			? laneEntries(roadmap.lanes, {
+					lane: (name) => ctx.host.isLaneCollapsed(name),
+					row: (path) => ctx.host.isCollapsed(path),
+				})
+			: barEntries(timelineRows(roadmap.bars, (path) => ctx.host.isCollapsed(path)));
+	const band: { el: HTMLElement; lane: ResourceLane }[] = [];
+	const timeline = renderTimeline(ctx, frameEl, entries, {
+		today,
+		scale: activeScale,
+		dnd,
+		shelf: roadmap.shelf,
+		palettes,
+		laneElement: axis === 'resources' ? (el, lane) => band.push({ el, lane }) : null,
+		// The PANE's width, not the frame's or the not-yet-built scroller's: this is
+		// the element `backlogView.ts`'s `ResizeObserver` watches, so a render here and
+		// a resize-driven re-render there measure the same box. They can still read it
+		// a scrollbar apart, since this measurement happens after `treeEl.empty()` —
+		// see `TimelineDrawing.available`, which states what that costs.
+		available: treeEl.clientWidth,
+	});
+	const parts = (dayOrigin: HTMLElement): TimelineParts => ({
+		dayOrigin,
+		scroller: timeline.scroller,
+		window: timeline.window,
+		scale: activeScale,
+		headerTrack: timeline.headerTrack,
+		tracks: timeline.tracks,
+		leadWidth: timeline.leadWidth,
+	});
+	if (timeline.overlay) wireTimelineDrag(ctx, dnd, parts(timeline.overlay));
+	else {
+		// `wireTimelineDrag` does this for the dated axis; a roster taller than the pane
+		// needs it just as much, and the horizon axis's buckets already have it.
+		dnd.wireScroller(timeline.scroller);
+		for (const element of band) wireLaneDrop(ctx, dnd, parts(timeline.headerTrack), element);
+	}
+	return timeline;
+}
+
+/**
+ * What dropping on a resource's band means: that row's own name into the DRAGGED note's
+ * assignee property, AND the day the pointer named into its dates — one release, both
+ * answers, one batch through the one method every input on this axis lands on. A minted
+ * row is a target like any other — its name is observed vocabulary, and observed
+ * vocabulary is writable, the board's own rule. A context row inside the band is a target
+ * too and is safe as one: the write names the note being carried, never the row it landed
+ * on.
+ *
+ * **A GRIP ignores the row.** `gestureAt` reports what the pointer meant and this decides
+ * what to do with it: resizing an end is not reassigning the work, so a grip dragged into
+ * a neighbour's band writes the date and leaves the assignee alone — the same distinction
+ * the dated axis's shelf makes when it refuses a grip as an unschedule. The BODY and a
+ * shelf card both answer both questions, which is what makes a cross-row slide one
+ * gesture rather than two.
+ *
+ * The day origin is the header's track, not each element's own: every track in this grid
+ * begins after a `--pbl-tl-lead`-wide sticky lead cell in the same flex row
+ * (`styles/timeline.css`), so they share a left edge and one origin answers for the whole
+ * axis. Per-element origins would be four more render signatures for an identical number.
+ *
+ * Wired per ELEMENT rather than per band, because a header, its bars, its absences and the
+ * excluded notes it places are siblings positioned against one shared day grid and there
+ * is no container to wire. What that costs is the highlight — the element under the
+ * pointer lights rather than the whole band — which is a live-vault question either way,
+ * since jsdom paints nothing. A wrapper per row would answer it and would put a box
+ * between every row and the sticky lead column the grid's geometry rests on.
+ */
+function wireLaneDrop(
+	ctx: RowContext,
+	dnd: CardDragController,
+	parts: TimelineParts,
+	band: { el: HTMLElement; lane: ResourceLane },
+): void {
+	const host: BacklogViewHost = ctx.host;
+	const ghost = previewer(host, parts);
+	dnd.wireDropTarget(
+		band.el,
+		(source, pointer) => {
+			ghost.clear();
+			// A gesture that resolved to nothing — off the grid, over the sticky lead column,
+			// or a hold that came back to where it started — still names the row it was
+			// released in, which is a real move and the one this axis has always made.
+			const gesture = gestureAt(host, parts, source, pointer);
+			// **An END GRIP is the dated axis's own gesture, reached from here.** It states a
+			// date and nothing about who is doing the work, so it goes to the method that
+			// writes dates and never names a row at all — resizing something into the space
+			// beside a colleague's bar is not handing it to them. Routing it through the
+			// resource move to then re-state the row the note already holds would be the same
+			// write said twice, with a removal one null away.
+			if (source.hold === 'start' || source.hold === 'end') {
+				submitGesture(host, source, gesture);
+				return;
+			}
+			void host.performResourceMove(
+				source.item,
+				band.lane.name,
+				gesture ? { plan: gesture.plan, ends: source.ends, from: gesture.from } : undefined,
+			);
+		},
+		{ onDrag: (source, pointer) => ghost.draw(source, pointer), onLeave: () => ghost.clear() },
+	);
 }
 
 /**

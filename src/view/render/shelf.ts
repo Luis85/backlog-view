@@ -11,7 +11,7 @@ import { canSchedule, unschedulePlan } from '../interactions/plan';
 import { BacklogItem } from '../../domain/model';
 import { placeItem, ShelfCard, statedEnds, UNSCHEDULED_LABEL, withoutEnds } from '../../domain/bars';
 import { placementEnds } from '../../domain/itemTypes';
-import { RoadmapAxis, SHELF_LABEL } from '../../domain/roadmap';
+import { drawsGrid, RoadmapAxis, SHELF_LABEL } from '../../domain/roadmap';
 import { organizeShelf, ShelfGroup } from '../../domain/shelf';
 
 /** What dropping a card on the shelf MEANS, the words that promise it, and its preview. */
@@ -68,6 +68,28 @@ export function shelfRemoval(host: BacklogViewHost, axis: RoadmapAxis): ShelfRem
 			// A re-drop with nothing to clear already plans zero writes and no-ops.
 			accepts: (source) => source.hold === null,
 			outcome: null,
+			canDrag: () => true,
+		};
+	}
+	if (axis === 'resources') {
+		return {
+			// No gesture rides along: this strip un-places on the axis it draws, which here
+			// means the ASSIGNEE. A bar's dates are untouched — a row is who, and where the
+			// work sits on the calendar is not a fact this drop was asked about.
+			plan: (source) => void host.performResourceMove(source.item, null),
+			tooltip: 'Results this axis cannot place — dropping a card here removes its assignee',
+			// Everything but a GRIP. The horizon axis's rule and its reason for the shelf
+			// card: one already DRAWN here can still carry a name — assigned, with no date to
+			// sit beside — so refusing a re-drop would withhold exactly the cleanup its
+			// shelving reason is asking for, and one with nothing to clear plans zero writes
+			// and no-ops. A bar arrives by its body hold. A grip is refused, the dated axis's
+			// own rule: dragging an end onto the shelf is a resize that overshot, not a
+			// request to un-assign.
+			accepts: (source) => source.hold !== 'start' && source.hold !== 'end',
+			// Nothing to distinguish before the release: a drop here always un-assigns.
+			outcome: null,
+			// Every shelved item can be re-assigned. Unlike the dated axis there is no type
+			// here whose only writable end might be unconfigured, so no gate is needed.
 			canDrag: () => true,
 		};
 	}
@@ -230,7 +252,7 @@ function renderShelfCard(ctx: RowContext, cardsEl: HTMLElement, entry: ShelfCard
 	// one fact wherever it does show. Visible content, like the reason above it, so it
 	// reaches the card's accessible name the same content-derived way.
 	const conflicting = wiring.conflicts.get(entry.item.file.path) ?? NO_CONFLICTS;
-	const waits = wiring.axis === 'dates' ? dependencyNote(entry.item, conflicting) : '';
+	const waits = drawsGrid(wiring.axis) ? dependencyNote(entry.item, conflicting) : '';
 	if (waits) {
 		const dep = card.createDiv({ cls: 'pbl-shelf-dependency' + (conflicting.size > 0 ? ' pbl-shelf-conflict' : '') });
 		drawIcon(dep.createSpan({ cls: 'pbl-shelf-dependency-icon' }), conflicting.size > 0 ? 'alert-triangle' : 'link');

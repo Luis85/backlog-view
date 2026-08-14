@@ -3,6 +3,13 @@ type: Feature
 parent: "[[Cross-cutting concerns]]"
 order: 20
 status: Open
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Theming and styling

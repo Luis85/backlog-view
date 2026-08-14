@@ -6,6 +6,13 @@ status: Done
 area: verification
 created: 2026-08-03
 closed: 2026-08-03
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # A cadence for the checks CI cannot run

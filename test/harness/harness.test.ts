@@ -85,6 +85,22 @@ describe('the browser harness mounts', () => {
 		expect(containerEl.querySelectorAll('.pbl-shelf .pbl-card').length).toBeGreaterThan(0);
 	});
 
+	it('draws the resources axis, with an empty declared row and a row an absence minted', () => {
+		// The axis and its absences reached the fixture late (2026-08-14): until then the one
+		// tool for "what does this look like" could not show the feature at all, which is
+		// how a row whose lead and track stacked as blocks — the stripe drawing on the line
+		// below the name it belongs to — got as far as a vault before anyone saw it.
+		const { view, containerEl } = mount();
+
+		view.setProjection('roadmap');
+		view.setAxisPick('resources');
+
+		const rows = Array.from(containerEl.querySelectorAll('.pbl-lane-head .pbl-lane-name')).map((n) => n.textContent);
+		// Declared and empty, and a row nothing but an absence puts on screen.
+		expect(rows).toEqual(expect.arrayContaining(['Dana', 'Kim', 'Priya', 'Sam']));
+		expect(containerEl.querySelectorAll('.pbl-absence-row')).toHaveLength(2);
+	});
+
 	it('draws the test catalog, with both ladders in one fixture and neither in the other', () => {
 		// The fixture rule, applied: a change that visibly alters the view puts its cases in
 		// the fixture, and this is what asserts they are still there — a deleted note or a

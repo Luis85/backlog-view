@@ -3,6 +3,13 @@ type: Feature
 parent: "[[Product Backlog]]"
 order: 40
 status: Done
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Progress tracking

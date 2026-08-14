@@ -1,21 +1,30 @@
+import { Notice } from 'obsidian';
 import { BacklogItem } from '../domain/model';
 import { placementEnds, PlacementEnd } from '../domain/itemTypes';
-import { placeItem } from '../domain/bars';
+import { Placement, placeItem, plannedEnds } from '../domain/bars';
 import { DropTarget } from '../domain/dropTargets';
-import { horizonSource } from '../domain/roadmap';
+import { horizonSource, resourceSource } from '../domain/roadmap';
 import {
 	computeDeliverableStateWrites,
 	computeDropWrites,
 	computeHorizonWrites,
+	computeResourceMoveWrites,
 	computeScheduleWrites,
 	computeStateWrites,
 	ItemWrite,
+	ScheduleGesture,
 	SchedulePlan,
 } from '../domain/writePlan';
 import { todayStamp } from '../domain/noteFields';
 import { WriteOutcome } from '../storage/frontmatter';
 import { BacklogViewHost } from './host';
-import { announceBoardMove, announceHorizonMove, announceScheduleMove } from './interactions/cardDrag';
+import { declareResource } from './interactions/labels';
+import {
+	announceBoardMove,
+	announceHorizonMove,
+	announceResourceMove,
+	announceScheduleMove,
+} from './interactions/cardDrag';
 
 /**
  * Card-move write orchestration: the `BacklogViewHost` methods a drag, an Alt+arrow
@@ -65,6 +74,66 @@ export class CardMoveController {
 		return this.applyCardMove(item, computeHorizonWrites(item, horizon), () =>
 			announceHorizonMove(buckets, item.title, from, horizon),
 		);
+	}
+
+	/**
+	 * The one method every input on the resources axis lands on — a drop, an Alt+arrow,
+	 * Set assignee, and the shelf's own removal. `when` is the axis's second dimension and
+	 * is absent from three of those four: a row is WHO, and only a gesture on the grid also
+	 * says when. Both halves ride one `ItemWrite` (`computeResourceMoveWrites`), so a
+	 * two-dimensional drag is one batch, one undo and one sentence.
+	 */
+	async performResourceMove(item: BacklogItem, name: string | null, when?: ScheduleGesture): Promise<boolean> {
+		// Both captures before the batch, for `applyCardMove`'s stated reason: the refresh
+		// that ends this write rebuilds `host.roadmap` before the await resolves, and the
+		// row just vacated may be gone with its last bar.
+		const from = resourceSource(item);
+		const lanes = this.host.roadmap?.roadmap;
+		// Asked of the function that decides what DRAWS — `removalOutcome`'s rule on the
+		// dated shelf, for its reason. A row is who and a date is when, so a card with no
+		// date to sit at draws nothing whatever row it names, and extensions 1e and 3c both
+		// ask for that to be said rather than left looking like a bug. Asked of the ends
+		// this GESTURE would leave, never the note's current ones: a drop that supplies a
+		// date is exactly the case that stops being 3c, and reading the note alone would
+		// tell the user to add a date the same release just added. The WORDS are built here
+		// rather than a closure over the item, so what is captured is a string that cannot
+		// go stale behind the write.
+		const stays = name === null ? null : shelvedWords(item, name, placeItem(item, plannedEnds(item, when?.plan ?? {})));
+		const writes = computeResourceMoveWrites(item, name, when ?? null);
+		if (writes.length === 0) {
+			// 1a says nothing: a bar that stayed exactly where the cursor found it already
+			// answers the question. 1e does, because a shelved card that stays shelved does
+			// not — nothing about the card told the user its assignee already matched the row.
+			if (stays) new Notice(stays);
+			return false;
+		}
+		// Which halves this batch carries is asked of the PLAN, never of a comparison
+		// written beside it — the rule the Set menus' checkmarks already keep. The DATE
+		// half is then confirmed against the writer's own report, because a planned date
+		// the note already held lands nothing: `outcome.dates` is null exactly there, and
+		// announcing a span from the plan would name a move that did not happen.
+		const movedRow = writes[0].assignee !== undefined;
+		const outcome = await this.applyMove(item, writes);
+		if (outcome === null || !outcome.changed) return false;
+		// Naming somebody through this view is naming them: the row they land in becomes a
+		// declared one rather than a stray carrying "not one of the declared resources". The
+		// one place every input to this move already lands, so a drag, an Alt+arrow and the
+		// menu cannot disagree about it — see `declareResource`, which no-ops for a removal
+		// and for a name the roster already carries. AFTER the gate, never before: the
+		// roster is written on the same authority as the move, and a refused batch — a
+		// context card, a config problem — must not leave a `.base` amendment behind the
+		// refusal (`test/view/resourceRoster.test.ts` is the test that fails the other way).
+		declareResource(this.host, name);
+		const spoken = placementEnds(item.typeName);
+		const landed = outcome.dates
+			? { change: outcome.dates, placement: placeItem(item, outcome.dates.after), ends: spoken }
+			: undefined;
+		// Both halves in one sentence where both moved; the dated axis's own sentence where
+		// only the dates did, since there is no row change to frame it with.
+		if (movedRow) announceResourceMove(lanes, item.title, from, name, landed);
+		else if (landed) announceScheduleMove(item.title, landed.change, landed.placement, spoken);
+		if (stays) new Notice(stays);
+		return true;
 	}
 
 	async performScheduleMove(
@@ -155,4 +224,26 @@ export class CardMoveController {
 		if (applied === null || !applied.changed) row?.classList.remove('pbl-pending');
 		return applied;
 	}
+}
+
+/**
+ * What to say about a card the move leaves on the shelf, or null where it lands in a row.
+ *
+ * Two shapes, and the difference is whether the axis REFUSED something or was given
+ * nothing: with no dates at all the sentence asks for one, which is extension 3c's own
+ * wording; with an unreadable or reversed pair it repeats the shelf's reason instead,
+ * because telling a reader to add a date they already typed sends them looking for a
+ * missing value rather than at the wrong one they can see.
+ *
+ * The reason is REPEATED, never matched on — the same act `render/shelf.ts` performs
+ * when it draws the card's own reason line, and deliberately not the one
+ * `destinationWords` refuses in `interactions/cardDrag.ts`: deciding anything from that
+ * string would make two modules agree about wording neither owns a type for, while
+ * passing it through leaves `bars.ts` its only author.
+ */
+function shelvedWords(item: BacklogItem, name: string, placement: Placement): string | null {
+	if (placement.kind !== 'shelf') return null;
+	const assigned = `"${item.title}" is assigned to ${name}.`;
+	if (placement.reason === null) return `${assigned} Add a start or target date to place it in the row.`;
+	return `${assigned} ${placement.reason}, so it stays on the shelf.`;
 }

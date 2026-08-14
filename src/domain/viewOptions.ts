@@ -2,7 +2,7 @@ import { BasesAllOptions, BasesOptions, BasesPropertyId, BasesViewConfig } from 
 import { BacklogSettings, columnPolicyKey, DEFAULT_DONE_VALUES, DEFAULT_HORIZON_VALUES, DEFAULT_PROP_COLUMN_WIDTH, DEFAULT_RISK_VALUES, MAX_PROP_COLUMN_WIDTH, MIN_PROP_COLUMN_WIDTH, wipLimitKey } from './settings';
 import { OptionalField, optionalProperty } from './optionalProperties';
 import { resolveSettings } from './settingsResolve';
-import { ALL_TYPES, DEFAULT_HOME_FOLDER, defaultTypeFolder, typeFolderKey } from './typeVocabulary';
+import { ABSENCE_TYPE, ALL_TYPES, DEFAULT_HOME_FOLDER, defaultTypeFolder, typeFolderKey } from './typeVocabulary';
 import { defaultItemHandling, OPEN_TARGETS } from './itemHandling';
 
 /**
@@ -185,7 +185,9 @@ function progressGroup(settings: BacklogSettings): BasesAllOptions {
 			// A property and no list beside it, unlike the state above and the risk
 			// levels below: the names Set assignee offers are the ones the results
 			// already carry, plus whatever the user types, so there is no vocabulary
-			// to declare here and nothing an empty box could turn off.
+			// to declare here and nothing an empty box could turn off. The Roadmap
+			// group's "Resources (in order)" is not that missing list — it declares the
+			// resources AXIS's rows and never narrows what this menu offers.
 			optionalPropertyOption('assignee', 'Assignee property'),
 			{
 				type: 'toggle',
@@ -312,6 +314,16 @@ function roadmapGroup(): BasesAllOptions {
 			},
 			optionalPropertyOption('start', 'Start date property'),
 			optionalPropertyOption('target', 'Target date property'),
+			// The resources axis's ROW list, not a vocabulary: it adds rows nothing has
+			// landed in yet and never narrows what Set assignee offers. No default,
+			// unlike the horizons above — nobody declares who exists, so an empty box is
+			// the configured state rather than a cleared one.
+			{
+				type: 'text',
+				key: 'resourceNames',
+				displayName: 'Resources (in order)',
+				placeholder: 'Optional, comma separated',
+			},
 			optionalPropertyOption('dependsOn', 'Depends-on property'),
 		],
 	};
@@ -353,9 +365,13 @@ function newItemsGroup(homeFolder: string): BasesAllOptions {
 				default: DEFAULT_HOME_FOLDER,
 				placeholder: 'Same folder as existing items',
 			},
-			// A picker per type, in ladder order then the extras. One input each is the
-			// difference between choosing a folder and spelling a mapping correctly.
-			...ALL_TYPES.map(
+			// A picker per type, in ladder order then the extras — and then the absence,
+			// which has a folder like any other note this plugin writes and is a type in
+			// no other sense. One input each is the difference between choosing a folder
+			// and spelling a mapping correctly. `defaultTypeFolder` answers '' for the
+			// absence, so its box shows the home folder as a placeholder and an unset
+			// option files it there.
+			...[...ALL_TYPES, ABSENCE_TYPE].map(
 				(type): BasesOptions => ({
 					type: 'folder',
 					key: typeFolderKey(type),

@@ -154,7 +154,14 @@ function colourProblem(settings: BacklogSettings): string | null {
  * Its own function to keep `settingsInconsistency` inside its complexity budget.
  */
 function listProblem(settings: BacklogSettings): string | null {
-	const vocabularies = ['states', 'deliverableStates', 'testStates', 'startedStates', 'horizonValues'] as const;
+	const vocabularies = [
+		'states',
+		'deliverableStates',
+		'testStates',
+		'startedStates',
+		'horizonValues',
+		'resourceNames',
+	] as const;
 	for (const field of [...vocabularies, 'doneValues', 'deliverableDoneValues', 'testDoneValues'] as const) {
 		const untrimmed = settings[field].find((value) => value.trim() !== value || value === '');
 		if (untrimmed !== undefined) {

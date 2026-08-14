@@ -4,6 +4,13 @@ order: 33
 status: Open
 created: 2026-08-02
 source: user request
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Smoke test the roadmap
@@ -69,6 +76,27 @@ catalog migration and was not part of that run.
 - The legend strip above the grid: one swatch per configured state, then today, then
   the milestone — legible over the header, and a bar's colour actually matches its own
   swatch. **Never checked.**
+- The resources axis's absences, all four of them colour or crowding questions no check here
+  can reach ([[An absence read fainter than the decoration behind it]]): whether the
+  `.pbl-absence-wash` at 18% of `--text-muted` out-reads a themed vault's weekend banding, and
+  whether it still reads as *shading* rather than as a second bar beneath the one it sits
+  under; whether the hatch at `--text-muted` holds against a community theme's background and
+  against a bar it overlaps; whether two glyphs in one lead — the dependency flag and the
+  absence flag, which can both appear on one row — crowd the title at a narrow lead width; and
+  whether the `Unavailable` swatch's finer hatch reads as hatch at 10px rather than as a
+  half-filled square. The stylesheet checks behind these say which token each rule names and
+  nothing about what it resolves to, and per ADR 0020 the harness settles layout and not
+  colour. **Checked in a vault 2026-08-14 at 385 results, in light**: the hatch and the wash
+  both out-read the weekend banding, which is the first question answered and the one the whole
+  increment existed for. It also found the two defects in
+  [[An absence read fainter than the decoration behind it]]'s own closing section — the wash
+  under the bars rather than over them, and a header glyph competing with the Add absence
+  button, and the `Unavailable` swatch reading as a ⊘ among five colour dots — none of which
+  any check here could see. **Still unchecked**: the two glyphs in one lead at a narrow lead
+  width (no row in that vault carried both), and everything in dark. The fixture is pointed at
+  the first of those: `demoVault()`
+  carries Dana's `Single sign-on` (2026-07-20 → 2026-08-15) running straight through her absence
+  (2026-08-10 → 2026-08-14), plus Sam, whose row exists only because he is away.
 - The lead column's resize grip, which is where this feature keeps everything jsdom
   cannot reach: the 6px strip is findable at all (cursor and hover feedback), it shows a
   focus ring when tabbed to, a real touch drag resizes it rather than panning the

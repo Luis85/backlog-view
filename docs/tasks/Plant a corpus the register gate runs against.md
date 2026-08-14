@@ -14,6 +14,13 @@ files:
   - test/docs/checkerAccepts.test.ts
   - test/docs/checkerRejects.test.ts
   - test/docs/checkerRejectsAdrs.test.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Plant a corpus the register gate runs against

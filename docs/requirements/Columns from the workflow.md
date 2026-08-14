@@ -4,6 +4,13 @@ parent: "[[Product Kanban]]"
 order: 20
 status: Active
 created: 2026-08-01
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Columns from the workflow

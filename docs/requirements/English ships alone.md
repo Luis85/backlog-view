@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Multilang]]"
 order: 130
 status: Open
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # English ships alone

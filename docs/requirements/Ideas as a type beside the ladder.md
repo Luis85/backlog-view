@@ -14,6 +14,13 @@ files:
   - src/domain/backlogReadme.ts
   - src/view/render/rows.ts
   - styles/badges.css
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Ideas as a type beside the ladder

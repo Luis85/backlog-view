@@ -6,6 +6,10 @@ created: 2026-08-01
 source: user request
 horizon: Next
 area: product
+started: ""
+finished: ""
+risk: ""
+assignee: Chris
 ---
 
 # Product Kanban

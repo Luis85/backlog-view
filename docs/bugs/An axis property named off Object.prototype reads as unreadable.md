@@ -10,6 +10,13 @@ source: audit during PR #44, after the same hazard was found twice in storage
 files:
   - src/domain/model.ts
   - src/domain/noteFields.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # An axis property named off Object.prototype reads as unreadable

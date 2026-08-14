@@ -21,6 +21,13 @@ files:
   - src/view/render/rows.ts
   - src/view/render/toolbar.ts
   - styles/badges.css
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Milestones as their own type

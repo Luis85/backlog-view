@@ -7,6 +7,13 @@ closed: 2026-08-11
 priority: P2
 created: 2026-08-11
 source: user request, after the dependency connector was reported missing in a base that had never named the property
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Bind a property by using it

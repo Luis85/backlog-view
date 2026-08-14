@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Multilang]]"
 order: 90
 status: Open
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Locale-aware sorting and formatting

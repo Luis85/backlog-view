@@ -9,6 +9,13 @@ created: 2026-08-10
 source: Task 3's fix rounds (2026-08-09-user-manual plan), parked rather than applied
 files:
   - src/view/manual/sections.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Known corrections have no room in sections.ts

@@ -8,6 +8,13 @@ area: verification
 cadence: release
 created: 2026-08-02
 source: Feature Test epic; first looked at in the 2026-08-02 pre-release run
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Roadmap milestone appearance

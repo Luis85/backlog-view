@@ -8,6 +8,13 @@ created: 2026-08-01
 files:
   - src/view/render/board.ts
   - src/view/render/columns.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # What a card shows

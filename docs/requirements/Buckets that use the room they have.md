@@ -7,6 +7,13 @@ priority: P2
 created: 2026-08-04
 files:
   - styles/roadmap.css
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Buckets that use the room they have

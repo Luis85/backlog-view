@@ -16,6 +16,13 @@ files:
   - src/view/collapseState.ts
   - src/storage/collapseStore.ts
   - styles/timeline.css
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # A resizable lead column

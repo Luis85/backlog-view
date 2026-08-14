@@ -61,6 +61,11 @@ describe('settingsInconsistency, and what the only producer guarantees', () => {
 		// under a falling-back key — the resolver would have copied `states` across.
 		expect(settingsInconsistency({ ...base, stateKey: 'status', states: ['New'] })).toContain('deliverableStates');
 		expect(settingsInconsistency({ ...base, tagsKey: 'parent' })).toContain('tagsKey');
+		// The roster is a resolver-produced list like the vocabularies beside it: it goes
+		// through `list()` and `dedupe()`, so a fixture holding what those would have
+		// changed is a fixture the producer could not have emitted.
+		expect(settingsInconsistency({ ...base, resourceNames: [' Alice'] })).toContain('resourceNames');
+		expect(settingsInconsistency({ ...base, resourceNames: ['Alice', 'alice'] })).toContain('resourceNames');
 	});
 
 	it('rejects a per-state map the resolver would have emptied, key or value', () => {

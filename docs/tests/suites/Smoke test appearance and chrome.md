@@ -4,6 +4,13 @@ order: 40
 status: Open
 created: 2026-08-11
 source: Test catalog migration
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Smoke test appearance and chrome

@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Theming and styling]]"
 order: 15
 status: Open
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Nothing pins a physical side

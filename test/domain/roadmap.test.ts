@@ -6,6 +6,9 @@ import {
 	activeAxis,
 	buildRoadmap,
 	configuredAxes,
+	drawsGrid,
+	hasDateAxis,
+	hasResourceAxis,
 	placementLabel,
 	RoadmapAxis,
 	SHELF_LABEL,
@@ -58,6 +61,36 @@ describe('the configured axes', () => {
 		expect(activeAxis(axisSettings({ horizonKey: '' }), 'horizons')).toBe('dates');
 		expect(activeAxis(axisSettings({ startKey: '', targetKey: '' }), 'dates')).toBe('horizons');
 		expect(activeAxis(defaultSettings(), 'dates')).toBeNull();
+	});
+
+	it('puts resources last — a further grouping on top of dates never leads', () => {
+		const all = axisSettings({ assigneeKey: 'assignee' });
+		expect(configuredAxes(all)).toEqual(['horizons', 'dates', 'resources']);
+		// A vault that newly names an assignee property does not have its roadmap change
+		// under it: the axis has to be picked, exactly as dates already has to be.
+		expect(activeAxis(all, null)).toBe('horizons');
+		expect(activeAxis(axisSettings({ assigneeKey: 'assignee', horizonKey: '' }), null)).toBe('dates');
+	});
+
+	it('cannot configure resources alone — it needs the date property the dated axis needs', () => {
+		const configured = axisSettings({ assigneeKey: 'assignee' });
+		expect(hasResourceAxis(configured)).toBe(true);
+		expect(hasResourceAxis(axisSettings({ assigneeKey: 'assignee', startKey: '', targetKey: '' }))).toBe(false);
+		expect(hasResourceAxis(axisSettings({ assigneeKey: '' }))).toBe(false);
+		// Whatever configures this axis configures the dated one too, by construction —
+		// there is no parallel pair of "resource dates" to name.
+		expect(hasDateAxis(configured)).toBe(true);
+	});
+
+	it('falls back the same generic way when the resources axis loses its configuration', () => {
+		expect(activeAxis(axisSettings({ assigneeKey: '' }), 'resources')).toBe('horizons');
+		expect(activeAxis(axisSettings({ assigneeKey: 'assignee', horizonKey: '' }), 'resources')).toBe('resources');
+	});
+
+	it('names the axes that draw the dated grid', () => {
+		expect(drawsGrid('dates')).toBe(true);
+		expect(drawsGrid('resources')).toBe(true);
+		expect(drawsGrid('horizons')).toBe(false);
 	});
 });
 

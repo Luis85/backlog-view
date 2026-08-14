@@ -3,7 +3,7 @@ import { hasColorableStates, openStateColors } from '../interactions/stateColors
 import { BacklogViewHost } from '../host';
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { projectionPopulation, treeShaped } from '../projection';
-import { activeAxis, configuredAxes, RoadmapAxis } from '../../domain/roadmap';
+import { activeAxis, configuredAxes, drawsGrid, RoadmapAxis } from '../../domain/roadmap';
 import { ScaleId } from '../../domain/timeline';
 import { showMenuForClick } from '../interactions/menu';
 import { runInit } from '../interactions/structure';
@@ -218,7 +218,8 @@ export function renderProjectionZone(host: BacklogViewHost, barEl: HTMLElement):
  * the dialog can actually show cannot drift apart.
  */
 function renderStateColorsButton(host: BacklogViewHost, zone: HTMLElement, barEl: HTMLElement): void {
-	if (activeAxis(host.settings, host.axisPick) !== 'dates' || !hasColorableStates(host)) return;
+	const axis = activeAxis(host.settings, host.axisPick);
+	if (axis === null || !drawsGrid(axis) || !hasColorableStates(host)) return;
 	const btn = iconButton(zone, 'palette', 'State colours', 'state-colors');
 	btn.addClass('pbl-state-colors-btn');
 	// Focus is put back at CLOSE time and looked up then, never captured: every change the
@@ -237,6 +238,9 @@ const AXIS_LABEL: Record<RoadmapAxis, { icon: string; text: string }> = {
 	// controls in one row wearing one icon is what the harness mock caught.
 	dates: { icon: 'gantt-chart', text: 'Timeline' },
 	horizons: { icon: 'columns-3', text: 'Horizons' },
+	// `users`, not `user`: the axis is every resource at once, and no other control in
+	// this row wears it.
+	resources: { icon: 'users', text: 'Resources' },
 };
 
 /** Zoom labels, same rule. */
@@ -247,16 +251,23 @@ const ZOOM_LABEL: Record<ScaleId, { icon: string; text: string }> = {
 };
 
 /**
- * Which axis this saved view shows — offered only while both axes are configured: with
+ * Which axis this saved view shows — offered only while more than one is configured: with
  * one there is no choice to make, and the axis that remains always beats guidance. The
  * pick persists the way the mode itself does, and it is retained when its axis loses its
  * configuration, so restoring the cleared property restores the saved choice with it.
+ *
+ * The entries are `configuredAxes` itself, in its own priority order, never a list of
+ * names spelled here: with exactly two axes a literal list was the same thing, and with a
+ * third it stopped being — two configured out of three would have offered the
+ * unconfigured one, whose pick `activeAxis` then falls straight back out of, so the menu
+ * would show a choice that visibly does nothing.
  */
 function renderAxisPicker(host: BacklogViewHost, zone: HTMLElement, barEl: HTMLElement): void {
 	// Two refusals in one line, and the order is the honest one: with no axis at all
 	// there is nothing to NAME, and with one there is nothing to choose between.
 	const active = activeAxis(host.settings, host.axisPick);
-	if (active === null || configuredAxes(host.settings).length < 2) return;
+	const axes = configuredAxes(host.settings);
+	if (active === null || axes.length < 2) return;
 	const btn = menuButton(zone, AXIS_LABEL[active].icon, AXIS_LABEL[active].text, 'axis', `Roadmap axis: ${AXIS_LABEL[active].text}`);
 	setTooltip(btn, 'Roadmap axis');
 	btn.addEventListener('click', (evt) => {
@@ -271,18 +282,19 @@ function renderAxisPicker(host: BacklogViewHost, zone: HTMLElement, barEl: HTMLE
 					// causes, and the bar is what survives it.
 					.onClick(() => pickAndRefocus(barEl, 'axis', () => host.setAxisPick(axis))),
 			);
-		choice('horizons');
-		choice('dates');
+		for (const axis of axes) choice(axis);
 		showMenuForClick(menu, evt);
 	});
 }
 
 /**
- * The zoom picker, jump-to-today and the density toggle, on the dated axis alone — the
- * horizon axis has no density to choose and no today to return to.
+ * The zoom picker, jump-to-today and the density toggle, on whichever axis draws the
+ * GRID — the horizon axis has no density to choose and no today to return to, and the
+ * resources axis has both, being the same grid grouped into rows.
  */
 function renderTimelineControls(host: BacklogViewHost, zone: HTMLElement, barEl: HTMLElement): void {
-	if (activeAxis(host.settings, host.axisPick) !== 'dates') return;
+	const axis = activeAxis(host.settings, host.axisPick);
+	if (axis === null || !drawsGrid(axis)) return;
 	const btn = menuButton(
 		zone,
 		ZOOM_LABEL[host.zoom].icon,
@@ -354,7 +366,13 @@ export function clickActionApplies(host: BacklogViewHost): boolean {
 	// control) failing in the direction it warns about, and the drift that module exists
 	// to stop: it arrived when the toggle merged in beside a projection it had never seen.
 	if (treeShaped(host.projection)) return true;
-	return host.projection === 'roadmap' && activeAxis(host.settings, host.axisPick) === 'dates';
+	// `drawsGrid`, not `=== 'dates'`, since 2026-08-14: the resources axis draws bar rows
+	// with the same chevron over the same collapse call, scoped to one band
+	// (`laneEntries`). A bar row that folds and no toggle to govern it is the failure this
+	// predicate's own comment warns about, reached by the axis rather than by a new call
+	// site. A LANE header is not the row this option is about — it holds no note, so a
+	// click on it can only ever mean fold — and it needs no arm here.
+	return host.projection === 'roadmap' && drawsGrid(activeAxis(host.settings, host.axisPick) ?? 'horizons');
 }
 
 /**

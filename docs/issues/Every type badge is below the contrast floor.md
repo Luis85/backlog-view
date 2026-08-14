@@ -9,6 +9,13 @@ created: 2026-08-08
 source: measured while giving Idea a colour of its own, after Idea and Deliverable collided on green
 files:
   - styles/badges.css
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Every type badge is below the contrast floor

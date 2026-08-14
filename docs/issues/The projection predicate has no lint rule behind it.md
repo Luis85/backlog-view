@@ -21,6 +21,13 @@ files:
   - src/view/interactions/menu.ts
   - src/view/backlogView.ts
   - eslint.config.mjs
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # The projection predicate has no lint rule behind it

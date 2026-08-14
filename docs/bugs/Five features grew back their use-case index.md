@@ -14,6 +14,13 @@ files:
   - docs/requirements/The timeline.md
   - docs/requirements/Scheduling work.md
   - docs/requirements/Hierarchy on the roadmap.md
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Five features grew back their use-case index

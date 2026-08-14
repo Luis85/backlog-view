@@ -12,6 +12,13 @@ files:
   - styles/columns.css
   - styles/tags.css
   - styles/cards.css
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Four other controls still lose to Obsidian's button rule

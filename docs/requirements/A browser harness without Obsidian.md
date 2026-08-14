@@ -6,6 +6,13 @@ status: Done
 area: verification
 created: 2026-08-05
 closed: 2026-08-05
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: Chris
 ---
 
 # A browser harness without Obsidian

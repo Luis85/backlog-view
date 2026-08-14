@@ -1,14 +1,28 @@
 import { setTooltip } from 'obsidian';
 import { drawIcon } from './icons';
+import { renderBarLabel } from './barLabel';
 import { RowContext } from './columns';
+import {
+	drawnSpans,
+	edgeClasses,
+	noteAbsenceClash,
+	renderAbsenceWash,
+	renderLaneAbsence,
+	renderLaneContextRow,
+	renderLaneHead,
+	renderLaneRowDescription,
+	TimelineEntry,
+} from './lanes';
 import { createCard, wireCardActivation } from './board';
 import { foldOnClick, renderBadge, renderChevron, renderTitleText } from './rows';
+import { renderMilestoneLines } from './milestoneLines';
 import { dependencyNote, NO_CONFLICTS, renderDependencyArrows } from './timelineArrows';
 import { CardDragController } from '../interactions/cardDrag';
 import { dependenciesAvailable } from '../interactions/dependencies';
 import { wireBarLink, wireLinkPreview } from '../interactions/linkDrag';
 import { effectiveLeadWidth, renderLeadResize } from '../interactions/timelineLeadResize';
-import { BacklogViewHost, DrawnColors } from '../host';
+import { BacklogViewHost, BarColors, DrawnColors } from '../host';
+import { crossedAbsences } from '../../domain/absences';
 import { BacklogItem } from '../../domain/model';
 import { barHolds, ShelfCard, TimelineBar, TimelineRow } from '../../domain/bars';
 import { dependencyArrows } from '../../domain/dependencies';
@@ -35,6 +49,7 @@ import {
 	TimelineWindow,
 	weekendOffsetDays,
 } from '../../domain/timeline';
+import { ResourceLane } from '../../domain/roadmap';
 import { CivilDate } from '../../domain/noteFields';
 
 /**
@@ -61,19 +76,6 @@ import { CivilDate } from '../../domain/noteFields';
 export const TIMELINE_LEAD_PX = 220;
 
 /**
- * Room reserved for a title beside its bar, in PIXELS — matches the label's CSS
- * budget (max-width 144px + 2×8px padding). Short of this at the window's right
- * edge, the label flips to the bar's left rather than truncating against nothing.
- * Exported for `test/view/timelineBoxing.test.ts`, which reads that budget out of
- * `styles/timelineFurniture.css` and refuses the two drifting apart.
- */
-export const LABEL_RESERVE_PX = 160;
-
-/** `.pbl-bar-milestone` / `.pbl-bar-outside` in `styles/timeline.css` — see `markWidth`. */
-const MILESTONE_MARK_PX = 12;
-const OUTSIDE_MARK_PX = 10;
-
-/**
  * The narrowest an arrow may be drawn, in PIXELS — `MIN_BAR_PX`'s own reasoning (1f of
  * [[Arrows between bars]]): two ends with almost no room to route still draw, and a
  * length rounded to zero would report nothing.
@@ -90,8 +92,12 @@ export interface TimelineRender {
 	content: HTMLElement;
 	/** The window the grid drew, for the drag's px↔date and for the zoom anchor. */
 	window: TimelineWindow;
-	/** The one drop target spanning the day area — see `renderTimeline`'s own comment. */
-	overlay: HTMLElement;
+	/**
+	 * The one drop target spanning the day area — see `renderTimeline`'s own comment.
+	 * Null on an axis that positions nothing by the pointer, which is where drawing it
+	 * would swallow the drops its rows are the targets for.
+	 */
+	overlay: HTMLElement | null;
 	/** The header's day track: where a placement's preview is drawn, having no row yet. */
 	headerTrack: HTMLElement;
 	/** Each drawn row's day track, by path — where a MOVE's preview is drawn, in its own row. */
@@ -152,19 +158,43 @@ export interface TimelineDrawing {
 	 * draws the shelf itself, separately, after this pass.
 	 */
 	shelf: ShelfCard[];
+	/**
+	 * Report one element of a resource's band, and which row it belongs to. Null on the
+	 * dated axis, which has no rows to belong to — and that null is the one thing the two
+	 * grid axes do not share, so everything downstream that differs between them reads
+	 * THIS rather than an axis name: whether the grid-wide drop overlay is drawn, whether
+	 * the full-height marks let events through, and whether a bar is a handle for a row as
+	 * well as for its dates.
+	 *
+	 * It REPORTS rather than wires, because a drop on a band needs the window, the scale
+	 * and the lead width this pass drew and none of them exists while the pass is running.
+	 * What landing on one should write is the caller's either way — this module knows
+	 * which elements belong to which row and nothing else about them. Called per ELEMENT —
+	 * the header, each bar row, each absence stretch, each excluded note's row — because
+	 * they are siblings positioned against one shared day grid and there is no container
+	 * to name.
+	 */
+	laneElement: ((el: HTMLElement, lane: ResourceLane) => void) | null;
 }
 
 export function renderTimeline(
 	ctx: RowContext,
 	containerEl: HTMLElement,
-	rows: TimelineRow[],
+	entries: TimelineEntry[],
 	drawing: TimelineDrawing,
 ): TimelineRender {
 	const { today, scale, dnd, palettes, available, shelf } = drawing;
-	// What a collapsed row hides, it hides from the whole grid: the window is the drawn
-	// spans, exactly as it already is for the spans hiding completed work removes.
-	const bars = rows.map((row) => row.bar);
-	const window = timelineWindow(bars.map((bar) => bar.span), today);
+	// Whether this grid's ROWS mean something. Derived once from the one field that
+	// differs between the axes, so the overlay, the mark's pointer events and a bar's row
+	// handle cannot end up disagreeing about which axis is on screen.
+	const rows = drawing.laneElement !== null;
+	// Every bar this grid will draw, in draw order — the window, the milestone lines and
+	// the dependency arrows are all computed from it and are axis-independent. What a
+	// collapsed row hides, it hides from the whole grid: the window is the drawn spans,
+	// exactly as it already is for the spans hiding completed work removes.
+	const bars = entries.flatMap((entry) => (entry.kind === 'row' ? [entry.row.bar] : []));
+	// Every span this grid DRAWS, which is not the same list as its bars — see `drawnSpans`.
+	const window = timelineWindow(drawnSpans(entries), today);
 	// Resolved ONCE, here, and threaded everywhere `TIMELINE_LEAD_PX` used to be read
 	// directly: the CSS width below and the TS arithmetic that places the today line,
 	// the milestone lines and the gridlines all have to agree on the same number, or a
@@ -183,7 +213,12 @@ export function renderTimeline(
 	// divides there.
 	const grid = containerEl.createDiv({ cls: 'pbl-timeline' });
 	grid.toggleClass('pbl-density-compact', ctx.host.density === 'compact');
-	const content = grid.createDiv({ cls: 'pbl-timeline-content' });
+	// `pbl-timeline-flat` says nothing on this grid is positioned by the pointer, which
+	// is what decides whether the full-height marks may intercept events — see the drop
+	// overlay below, and `.pbl-timeline-flat .pbl-today` in `styles/timeline.css`.
+	const content = grid.createDiv({
+		cls: 'pbl-timeline-content' + (rows ? ' pbl-timeline-flat' : ''),
+	});
 	content.setCssProps({
 		'--pbl-tl-lead': `${leadWidth}px`,
 		'--pbl-tl-days': `${window.days * scale.dayPx}px`,
@@ -201,7 +236,8 @@ export function renderTimeline(
 		const weekend = content.createDiv({ cls: 'pbl-weekend-layer', attr: { 'aria-hidden': 'true' } });
 		weekend.setCssProps({ '--pbl-weekend-offset': `${weekendOffsetDays(window) * scale.dayPx}px` });
 	}
-	const headerTrack = renderCellHeader(ctx, content, window, scale, { width: leadWidth, available });
+	const header = renderCellHeader(ctx, content, window, scale, { width: leadWidth, available });
+	const headerTrack = header.cells;
 	renderGridLines(content, window, scale, leadWidth);
 	// Before the rows, so the bars — positioned elements later in the DOM — paint over
 	// them. A line says what falls either side of a date; a bar is the thing being asked
@@ -210,7 +246,11 @@ export function renderTimeline(
 	// override repaints the diamond green and leaves the line alone, so a grid whose only
 	// marker is done draws cyan that no diamond accounts for. Asking the bars alone left
 	// that line unkeyed.
-	const milestoneLines = renderMilestoneLines({ grid: content, headerTrack }, window, bars, today, { scale, leadWidth });
+	// The label goes in the COARSE tier, never the cell tier — see `renderMilestoneLines`.
+	const milestoneLines = renderMilestoneLines({ grid: content, headerTrack: header.coarse }, window, bars, today, {
+		scale,
+		leadWidth,
+	});
 	const tracks = new Map<string, HTMLElement>();
 	// Computed ONCE, before any row exists, and from `bars`/`shelf` alone — never from
 	// what the arrow layer below goes on to draw. That is what makes both consumers
@@ -241,16 +281,8 @@ export function renderTimeline(
 		palettes,
 		conflictedPrereqs: dependencies.conflicts,
 	};
-	const drawn: DrawnColors = { done: false, milestone: milestoneLines, accent: false };
-	rows.forEach((entry, index) => {
-		const { row, colors } = renderBarRow(ctx, mounts, window, entry, scale);
-		if (colors.done) drawn.done = true;
-		if (colors.milestone) drawn.milestone = true;
-		if (colors.accent) drawn.accent = true;
-		// Assigned at render because CSS has no nth-of-class, and nth-child would
-		// count the header, the lines and the layers interleaved in this container.
-		if (index % 2 === 1) row.addClass('pbl-row-even');
-	});
+	const drawn: DrawnColors = { done: false, milestone: milestoneLines, accent: false, absence: false };
+	drawEntries(entries, { ctx, mounts, window, drawing, drawn });
 	// After every row exists, never before: an edge's arrow anchors on the ROWS the
 	// prerequisite and the dependent actually drew, and its Y comes from where those
 	// rows really landed rather than a guessed row height — see `renderDependencyArrows`,
@@ -270,7 +302,14 @@ export function renderTimeline(
 	// reader and a bar's grips: the empty shelf's own trick — in the DOM so a drop has
 	// somewhere to land, out of the way until a drag needs it — reached by a second
 	// surface. `interactions/timelineDrag.ts` decides what a position on it means.
-	const overlay = content.createDiv({ cls: 'pbl-timeline-drop', attr: { 'aria-hidden': 'true' } });
+	//
+	// Drawn only where a position on the WHOLE GRID means something. On the resources axis
+	// the targets are the rows — each of which reads the same pointer X for the same date,
+	// plus the row it belongs to — and an overlay left standing there would take pointer
+	// events for the entire day area and swallow every one of them. This is not the empty
+	// shelf's case, which stays in the DOM because it can always be dropped on: here it
+	// never can.
+	const overlay = rows ? null : content.createDiv({ cls: 'pbl-timeline-drop', attr: { 'aria-hidden': 'true' } });
 	return {
 		cards: bars.map((bar) => bar.item),
 		todayLeft,
@@ -287,6 +326,85 @@ export function renderTimeline(
 }
 
 /**
+ * Everything the entry walk needs beyond the entries — one object, not six arguments.
+ * `drawing` whole rather than the two fields taken out of it: it already carries both the
+ * scale and `laneTarget`, and naming them here would be a second list to keep in step.
+ */
+interface EntryPass {
+	ctx: RowContext;
+	mounts: BarRowMounts;
+	window: TimelineWindow;
+	drawing: TimelineDrawing;
+	/** Filled as each bar row reports what it painted — see `TimelineRender.drawn`. */
+	drawn: DrawnColors;
+}
+
+/**
+ * Draw every entry the axis handed over, in order — the one place the four entry kinds
+ * are told apart.
+ *
+ * Its own function rather than a loop inside `renderTimeline`, which is at the
+ * complexity budget `npm run analyze` enforces: the grid's own setup (the window, the
+ * header, the lines, the layers, the overlay) and the walk over what it contains are two
+ * jobs, and the fourth entry kind is what made keeping them in one measurably too much.
+ *
+ * **The stripe counts drawn ROWS only.** A lane header is chrome and an absence is the
+ * row's own furniture, so neither reaches the counter — counting either would flip the
+ * parity of every work row beneath it.
+ */
+function drawEntries(entries: TimelineEntry[], pass: EntryPass): void {
+	const { ctx, mounts, window, drawn } = pass;
+	const { scale, laneElement } = pass.drawing;
+	let drawnRows = 0;
+	let lane: ResourceLane | null = null;
+	// Both things a line of a band owes, from the ONE place a line is finished: whose row
+	// it is in (the header is a sibling div and cannot label what follows it) and its
+	// membership of the band, which has no container to name and so is a LIST of siblings.
+	// Together, because separately is how an absence stretch came to draw itself into a
+	// band without joining it and be a dead spot in the middle of its own row — see
+	// `docs/bugs/An absence stretch is a dead spot in its own band.md`. `named` is false
+	// for the header alone, which already carries the resource's name as its own content.
+	const inBand = (el: HTMLElement, named = true): void => {
+		if (!lane) return;
+		if (named) renderLaneRowDescription(el, lane.name);
+		laneElement?.(el, lane);
+	};
+	for (const entry of entries) {
+		if (entry.kind === 'lane') {
+			lane = entry.lane;
+			inBand(renderLaneHead(ctx, mounts.content, entry.lane, entry.collapsed), false);
+			continue;
+		}
+		if (entry.kind === 'absence') {
+			// The legend keys what the grid DREW, and this is the one place a stretch is drawn.
+			drawn.absence = true;
+			inBand(renderLaneAbsence(ctx, mounts.content, entry.absence, { window, scale }));
+			continue;
+		}
+		let row: HTMLElement;
+		if (entry.kind === 'context') {
+			row = renderLaneContextRow(ctx, mounts.content, entry.item);
+		} else {
+			const bar = renderBarRow(ctx, mounts, window, entry.row, scale);
+			row = reportColors(bar, drawn);
+			// The band's unavailable days, shaded behind this row's own bar. A WORK row only:
+			// the stretch's own line already carries the mark, a context row makes no
+			// positional claim at all, and on the dated axis `lane` is null because there is
+			// no band to be a member of.
+			if (lane) {
+				renderAbsenceWash(bar.track, lane.absences, { window, scale });
+				noteAbsenceClash(bar.row, bar.lead, crossedAbsences(entry.row.bar.span, lane.absences));
+			}
+		}
+		inBand(row);
+		// Assigned at render because CSS has no nth-of-class, and nth-child would
+		// count the header, the lines and the layers interleaved in this container.
+		if (drawnRows % 2 === 1) row.addClass('pbl-row-even');
+		drawnRows++;
+	}
+}
+
+/**
  * The cell tiers are presentational, like the tree's column header: every row
  * carries its own dates, so the month/quarter labels add nothing a screen reader
  * needs. The LEAD cell is not: it now carries the resize grip, a real control, so
@@ -294,10 +412,12 @@ export function renderTimeline(
  * `aria-hidden` ancestor removes every focusable descendant from the accessibility
  * tree along with the decoration, and this cell is no longer only decoration.
  *
- * Returns the cell tier alone — `TimelineRender.headerTrack`, where the milestone
- * labels and the drop ghost mount. It once also handed back an empty band reserved
- * for the Today pill; the legend strip above the grid took over naming the today
- * line's colour, so the pill and its band are gone and this is a plain track again.
+ * Returns BOTH tiers, because two different things mount into them and they want opposite
+ * neighbourhoods: the drop ghost belongs beside the dates it is read against (`cells`,
+ * carried out as `TimelineRender.headerTrack`), and a milestone's label belongs where there
+ * is room for it (`coarse`). It once also handed back an empty band reserved for the Today
+ * pill; the legend strip above the grid took over naming the today line's colour, so the
+ * pill and its band are gone and these are plain tracks again.
  */
 function renderCellHeader(
 	ctx: RowContext,
@@ -307,14 +427,14 @@ function renderCellHeader(
 	// `available` rides along only so the grip can state a real `aria-valuemax` — see
 	// `renderLeadResize`.
 	lead: { width: number; available: number },
-): HTMLElement {
+): { coarse: HTMLElement; cells: HTMLElement } {
 	const header = content.createDiv({ cls: 'pbl-timeline-header' });
 	const leadEl = header.createDiv({ cls: 'pbl-timeline-lead' });
 	renderLeadResize(ctx.host, leadEl, content, { current: lead.width, defaultWidth: TIMELINE_LEAD_PX, available: lead.available });
 	// Two stacked tiers in the track slot: the coarser orientation tier, then the cells.
 	const tiers = header.createDiv({ cls: 'pbl-timeline-tiers', attr: { 'aria-hidden': 'true' } });
-	renderHeaderTier(tiers, superCells(window, scale), scale, 'pbl-timeline-super', 'pbl-timeline-cell pbl-timeline-cell-super');
-	return renderHeaderTier(tiers, timelineCells(window, scale), scale, '', 'pbl-timeline-cell');
+	const coarse = renderHeaderTier(tiers, superCells(window, scale), scale, 'pbl-timeline-super', 'pbl-timeline-cell pbl-timeline-cell-super');
+	return { coarse, cells: renderHeaderTier(tiers, timelineCells(window, scale), scale, '', 'pbl-timeline-cell') };
 }
 
 function renderHeaderTier(
@@ -330,64 +450,6 @@ function renderHeaderTier(
 		cellEl.setCssProps({ '--pbl-cell-w': `${cell.days * scale.dayPx}px` });
 	}
 	return track;
-}
-
-/**
- * A line down the whole plan per milestone DATE, behind the bars — a diamond says *when*,
- * a line says *what is on either side of it*, which is the question a deadline is actually
- * asked. The today line is the same shape, drawn once across the grid from a single date,
- * so this is a second instance of something that works rather than a drawing layer.
- *
- * Grouped by day, not by item: two lines a pixel apart read as one and quietly misreport
- * the count, so two milestones on a date are one line naming both. A milestone outside the
- * window draws none — `outside` says so, and a line at the edge would claim a date the
- * milestone does not have. Nothing here is focusable and nothing is written: the line is
- * decoration of a row, and every fact it shows is in that row's accessible name.
- */
-function renderMilestoneLines(
-	mounts: { grid: HTMLElement; headerTrack: HTMLElement },
-	window: TimelineWindow,
-	bars: TimelineBar[],
-	today: CivilDate,
-	// `scale` and `leadWidth` grouped into one param — both are "how a day converts to a
-	// pixel here", and the pair is what keeps this under the five-parameter budget.
-	ruler: { scale: TimelineScale; leadWidth: number },
-): boolean {
-	const { grid, headerTrack } = mounts;
-	const { scale, leadWidth } = ruler;
-	// Insertion order is bar order, which is row order — so a shared line names its
-	// milestones the way the rows read.
-	const byDay = new Map<number, string[]>();
-	for (const bar of bars) {
-		if (!isMarkerType(bar.item.typeName)) continue;
-		const geometry = barGeometry(window, bar.span);
-		if (geometry.outside) continue;
-		byDay.set(geometry.startDay, [...(byDay.get(geometry.startDay) ?? []), bar.item.title]);
-	}
-	const todayDay = daysBetween(window.start, today);
-	for (const [day, names] of byDay) {
-		// Today keeps its position and its place on top: it is the one mark on this grid
-		// that is the reader's own, and no plan may hide *now*. The milestone's line is
-		// what gives way, drawn beside it inside the same day cell — room the grid has,
-		// since a day is wider than either mark.
-		// A sub-day offset, so it is the SCALE's line width and never a constant: two
-		// fixed pixels at two pixels per day is a whole day's displacement, putting the
-		// line and its label in the day after the one they belong to. `dayPx >= 2 *
-		// lineWidth` is what guarantees the step still fits inside the day it steps in.
-		const nudge = day === todayDay ? scale.lineWidth : 0;
-		const line = grid.createDiv({ cls: 'pbl-milestone-line', attr: { 'aria-hidden': 'true' } });
-		line.setCssProps({ '--pbl-milestone-left': `${leadWidth + day * scale.dayPx + nudge}px` });
-		// The label sits in the header band, where the month header already is, and the
-		// full name stays in the tooltip: horizontal space is the scarce resource in an
-		// Obsidian pane, so the line survives the narrowing and the text is what gives way.
-		// Same variable, different origin: the line is positioned in the grid, which
-		// includes the sticky lead column, and the label inside the track, which does not.
-		const label = names.join(' · ');
-		const labelEl = headerTrack.createDiv({ cls: 'pbl-milestone-label', text: label });
-		labelEl.setCssProps({ '--pbl-milestone-left': `${day * scale.dayPx + nudge}px` });
-		setTooltip(labelEl, label);
-	}
-	return byDay.size > 0;
 }
 
 /**
@@ -419,13 +481,21 @@ interface BarRowMounts {
 	palettes: StatePalette[];
 }
 
+/** A bar row's element, with the colours it drew folded into the pass's own report. */
+function reportColors(rendered: { row: HTMLElement; colors: BarColors }, drawn: DrawnColors): HTMLElement {
+	if (rendered.colors.done) drawn.done = true;
+	if (rendered.colors.milestone) drawn.milestone = true;
+	if (rendered.colors.accent) drawn.accent = true;
+	return rendered.row;
+}
+
 function renderBarRow(
 	ctx: RowContext,
 	mounts: BarRowMounts,
 	window: TimelineWindow,
 	entry: TimelineRow,
 	scale: TimelineScale,
-): { row: HTMLElement; colors: DrawnColors } {
+): { row: HTMLElement; colors: BarColors; lead: HTMLElement; track: HTMLElement } {
 	const bar = entry.bar;
 	// The item's OWN workflow, read ONCE and threaded through the three things on this row
 	// that key a colour or say one in words: the slot class, the hidden state words, and
@@ -466,10 +536,15 @@ function renderBarRow(
 	mounts.tracks.set(bar.item.file.path, track);
 	const geometry = barGeometry(window, bar.span);
 	// Asked ONCE, of `barHolds`, shared by the class that advertises a body drag and
-	// the loop that actually wires one — so what the cursor promises and what a drop
+	// the wiring that actually registers one — so what the cursor promises and what a drop
 	// registers cannot disagree. The body hold IS the bar; the grips are its two edges.
 	const holds = barHolds(bar.item, ctx.host.settings, bar);
-	const el = track.createDiv({ cls: barClasses(bar, geometry, holds.includes('body')) });
+	// The same answer on both grids, which is the rule rather than a convenience: a span
+	// the note does not state has no baseline for any gesture to move from, so an inferred
+	// bar is not a drag source on either axis. It is still reassignable — by Set assignee
+	// and by Alt+Up/Down, which name a value rather than displacing one.
+	const holdable = holds.includes('body');
+	const el = track.createDiv({ cls: barClasses(bar, geometry, holdable) });
 	el.setCssProps({
 		'--pbl-bar-left': `${geometry.startDay * scale.dayPx}px`,
 		'--pbl-bar-width': `${Math.max(geometry.spanDays * scale.dayPx, MIN_BAR_PX)}px`,
@@ -477,8 +552,10 @@ function renderBarRow(
 	const dates = spanText(bar);
 	el.setAttribute('aria-label', dates);
 	setTooltip(el, dates);
-	for (const hold of holds) {
-		const grip = hold === 'body' ? el : el.createDiv({ cls: `pbl-bar-grip pbl-bar-grip-${hold}` });
+	// The EDGES only — the body is the bar itself and is wired once below, whichever hold
+	// it turned out to be.
+	for (const hold of holds.filter((one) => one !== 'body')) {
+		const grip = el.createDiv({ cls: `pbl-bar-grip pbl-bar-grip-${hold}` });
 		grip.dataset.pblHold = hold;
 		// A press that never travels far enough to become a drag still fires `click`, and
 		// a grip is a div inside the bar inside the row `wireCardActivation` wired — whose
@@ -494,6 +571,18 @@ function renderBarRow(
 		// The scroller's offset at drag start rides the payload, for the delta a hold
 		// measures — see `CardSource.scrollLeft` and `interactions/timelineDrag.ts`.
 		mounts.dnd.wireCard(grip, bar.item, hold, () => mounts.scroller.scrollLeft);
+	}
+	// The bar ITSELF is the body handle, on both grid axes, wired here rather than in the
+	// grip loop so the bar element is claimed once. The scroller's offset at drag start
+	// rides the payload for the delta a hold measures. The connector below is a nearer
+	// draggable, so a drag begun on it is still a link rather than this. A context row never
+	// reaches this function (`deriveBars` routes one away before a bar exists), and
+	// `wireCard` refuses one anyway.
+	if (holdable) {
+		// Stated on the element like every grip's, and for the grips' own reason: what a
+		// gesture will be resolved AS is readable off the thing the reader takes hold of.
+		el.dataset.pblHold = 'body';
+		mounts.dnd.wireCard(el, bar.item, 'body', () => mounts.scroller.scrollLeft);
 	}
 	renderConnector(ctx, mounts, { row, barEl: el, geometry }, bar);
 	renderBarLabel(track, bar, geometry, scale, window);
@@ -515,14 +604,14 @@ function renderBarRow(
 	// coincident start/target as the same diamond (`timelineFurniture.test.ts`'s "Ship
 	// it"), so this is asked of the geometry alone, never narrowed to marker items.
 	const milestoneDrawn = geometry.milestone && !geometry.outside;
-	const colors: DrawnColors = {
+	const colors: BarColors = {
 		done: own.done,
 		milestone: !own.done && milestoneDrawn,
 		// `paint === null` IS "no slot", and a choice never creates one, so the plain accent
 		// is still exactly the case where the state is outside its own vocabulary.
 		accent: !own.done && paint === null && !milestoneDrawn,
 	};
-	return { row, colors };
+	return { row, colors, lead, track };
 }
 
 /**
@@ -613,7 +702,8 @@ function renderRowChevron(ctx: RowContext, lead: HTMLElement, entry: TimelineRow
 	// exactly as the row menu's own entry, because the row's NAME is the part a screen
 	// reader gets either way and the two surfaces must not describe one act differently.
 	const label = entry.collapsed ? 'Show children' : 'Hide children';
-	renderChevron(host, lead, item, { ...entry, label }, (heldFocus) => {
+	const fold = (): void => void host.setCollapsed(item.file.path, !host.isCollapsed(item.file.path));
+	renderChevron(host, lead, { ...entry, label, toggle: fold }, (heldFocus) => {
 		host.render();
 		if (heldFocus) refocusPane(host);
 	});
@@ -656,29 +746,6 @@ function stateNote(stateKey: string, reading: WorkflowReading): string {
 	if (!stateKey) return '';
 	if (reading.done) return reading.value === null ? 'Done' : `${reading.value} — done`;
 	return reading.value ?? '';
-}
-
-/**
- * How wide the mark actually DRAWS, which is what a label beside it has to clear.
- * `--pbl-bar-width` is not that number for two of the three shapes: `.pbl-bar-milestone`
- * is a 12px diamond and `.pbl-bar-outside` a 10px arrow whatever the span, so a
- * one-day milestone at quarter zoom measures 4px here and would have its title
- * painted across it. Same order of tests as `barClasses`, which is what decides
- * which shape is drawn — keep the two in step, and both in step with
- * `.pbl-bar-milestone` / `.pbl-bar-outside` in `styles/timeline.css`.
- *
- * A WIDTH only: where that width starts is the caller's business, because the two
- * marks do not share an origin. `.pbl-bar-outside` sits at `--pbl-bar-left`, while
- * `.pbl-bar.pbl-bar-milestone` carries `translateX(-50%)` and is centred on it —
- * `markLeft` in `renderBarLabel` is where that difference is applied. The diamond's
- * 45° rotation puts its tips ~2.5px outside this box on each side; the label's own
- * 8px of padding is the clearance, so this stays the CSS width rather than a
- * bounding-box calculation nothing else in the file does.
- */
-function markWidth(geometry: BarGeometry, scale: TimelineScale): number {
-	if (geometry.outside) return OUTSIDE_MARK_PX;
-	if (geometry.milestone) return MILESTONE_MARK_PX;
-	return Math.max(geometry.spanDays * scale.dayPx, MIN_BAR_PX);
 }
 
 /** Where this row's connector is drawn, and what it is drawn against. Grouped rather
@@ -731,59 +798,6 @@ function renderConnector(ctx: RowContext, mounts: BarRowMounts, place: Connector
 }
 
 /**
- * The title where the reader's eye already is — decoration only. The row's
- * accessible name carries the title and the bar's aria-label the dates, so this
- * is aria-hidden; pointer-events die in CSS so the grips never lose a hit.
- */
-function renderBarLabel(
-	track: HTMLElement,
-	bar: TimelineBar,
-	geometry: BarGeometry,
-	scale: TimelineScale,
-	window: TimelineWindow,
-): void {
-	const left = geometry.startDay * scale.dayPx;
-	const width = markWidth(geometry, scale);
-	// The mark's own left edge, which is NOT `--pbl-bar-left` for the diamond: the
-	// milestone rule in `styles/timeline.css` carries `translateX(-50%)`, so a 12px
-	// diamond drawn at `left` occupies `[left - 6, left + 6]`. Placing the label from
-	// `left` instead left the `after` label 6px further out than the reserve intends and
-	// put the `before` label's right edge across the diamond's own left half. Both
-	// offsets below take this edge, so what the label clears is the mark as DRAWN.
-	const markLeft = geometry.milestone && !geometry.outside ? left - width / 2 : left;
-	const trackWidth = window.days * scale.dayPx;
-	const after = markLeft + width + LABEL_RESERVE_PX <= trackWidth;
-	// Dropped whenever there is no room after the mark's right edge AND the mark begins
-	// within the reserve of the track's own left edge, since flipping the label before
-	// such a mark would put it off the track behind the sticky lead column. Three ways
-	// to reach that, and `MAX_TIMELINE_DAYS` is required for none of them:
-	//   - a bar clipped at BOTH window edges;
-	//   - a bar clipped at the right alone that merely BEGINS within `LABEL_RESERVE_PX`
-	//     of the left edge without being clipped there itself;
-	//   - a SHORT TRACK, with no clipping anywhere in it. The reserve is a pixel budget
-	//     while the track is days times `dayPx`, so a backlog whose dates sit near today
-	//     pads out to ~92 days, which at quarter zoom (2px/day) is a 184px track — under
-	//     one reserve plus the other. All that still labels there is the first ~12 days
-	//     (room after) and anything starting past 160px (room before), and both of those
-	//     lie in the padding months `timelineWindow` adds either side, where no bar of
-	//     such a backlog begins. At that zoom the feature is effectively absent, which is
-	//     what `timelineFurniture.test.ts` drives with one bar rather than claiming of
-	//     every position on the track.
-	// Nothing is lost by dropping it — the row's lead carries the same title, which is
-	// what makes this decoration rather than content, and squeezing it over the bar would
-	// only trade a hidden label for an unreadable one.
-	if (!after && markLeft < LABEL_RESERVE_PX) return;
-	const label = track.createDiv({ cls: 'pbl-bar-label', text: bar.item.title, attr: { 'aria-hidden': 'true' } });
-	if (after) {
-		label.addClass('pbl-bar-label-after');
-		label.setCssProps({ '--pbl-label-left': `${markLeft + width}px` });
-	} else {
-		label.addClass('pbl-bar-label-before');
-		label.setCssProps({ '--pbl-label-right': `${trackWidth - markLeft}px` });
-	}
-}
-
-/**
  * A dateless end is styled open — the plan's gap stays visible instead of being
  * filled in — and an end past the window's edge is styled the same way: both say
  * "this continues beyond what is drawn", and the tooltip carries the exact dates.
@@ -802,23 +816,27 @@ function barClasses(bar: TimelineBar, geometry: BarGeometry, hasBodyHold: boolea
 	// does not have, and a diamond IS the claim that this is the date — so the row carries
 	// only the direction it lies past, in the same open-end vocabulary a clipped bar uses.
 	// The exact date is in the bar's tooltip and in the row's accessible name.
+	// What the WINDOW does to this mark is `edgeClasses`, shared with the absence stretch
+	// drawn by the same arithmetic. Everything below is what a BAR adds on top of it.
+	const inferred = bar.inferredStart || bar.inferredEnd ? ' pbl-bar-inferred' : '';
+	const edges = edgeClasses(geometry).join(' ');
 	if (geometry.outside) {
 		// Provenance must not be silently upgraded: an inferred span that lands wholly
 		// past the edge is still inferred, not a date the note stated, so the class
 		// that says so travels with it into this branch too.
-		const inferred = bar.inferredStart || bar.inferredEnd ? ' pbl-bar-inferred' : '';
-		return `pbl-bar pbl-bar-outside ${geometry.clippedStart ? 'pbl-bar-open-start' : 'pbl-bar-open-end'}${inferred}${holdable}`;
+		return `pbl-bar ${edges}${inferred}${holdable}`;
 	}
 	let cls = 'pbl-bar';
 	if (geometry.milestone) cls += ' pbl-bar-milestone';
-	if (bar.span.start === null || geometry.clippedStart) cls += ' pbl-bar-open-start';
-	if (bar.span.target === null || geometry.clippedEnd) cls += ' pbl-bar-open-end';
-	// Distinct from open-end, which also covers a bar with no target date at all. The two
-	// want different connector placement: an open end has an on-screen edge to sit past,
-	// a clamped one does not.
-	if (geometry.clippedEnd) cls += ' pbl-bar-clipped-end';
-	if (bar.inferredStart || bar.inferredEnd) cls += ' pbl-bar-inferred';
-	return cls + holdable;
+	// A bar's open end is the wider claim: a date the note never stated, as well as one
+	// this window cannot reach. `edgeClasses` answers only the second, which is the whole
+	// of what an absence — both ends stated by construction — can have.
+	if (bar.span.start === null) cls += ' pbl-bar-open-start';
+	if (bar.span.target === null) cls += ' pbl-bar-open-end';
+	// `pbl-bar-clipped-end` is distinct from open-end, which also covers a bar with no
+	// target date at all. The two want different connector placement: an open end has an
+	// on-screen edge to sit past, a clamped one does not.
+	return [cls, edges].filter(Boolean).join(' ') + inferred + holdable;
 }
 
 /** One sentence about a span, said identically on the grid and in the drop ghost. */

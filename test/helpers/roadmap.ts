@@ -5,6 +5,13 @@ import { Harness, makeView } from './view';
 /** The horizon axis the roadmap suites configure: `horizon` as the property. */
 const HORIZON_AXIS = { horizonProperty: 'note.horizon' };
 
+/** The three properties the resources axis reads, absences through them as well. */
+const RESOURCE_AXIS = {
+	startProperty: 'note.start',
+	targetProperty: 'note.due',
+	assigneeProperty: 'note.assignee',
+};
+
 /** Three epics across the declared vocabulary, one of them not triaged at all. */
 export function horizonVault(): FakeVault {
 	const vault = new FakeVault();
@@ -60,6 +67,46 @@ export function roadmapView(vault: FakeVault, cfg: Record<string, unknown>, { ba
 	return harness;
 }
 
+/**
+ * A roadmap opened on the RESOURCES axis, with Alice and Bob declared — shared by the two
+ * absence view suites, which must drive the same axis the same way or the wash one asserts
+ * and the mark the other asserts are describing two different grids.
+ *
+ * `only` narrows what the Base returns, so everything else in the vault loads as a context
+ * row, and `focus` is what puts such a row in the roadmap's row set at all — unfocused, that
+ * set is `model.results`, which holds none. Both are working position rather than config
+ * (ADR 0011), so they go to the harness beside `collapsed` and never into the view options.
+ *
+ * `shelf` opens it, which the two MOVE suites need and no absence test does: a shelf card
+ * is a drag source and the shelf itself is the target that un-assigns.
+ *
+ * `resourceLanes.test.ts` keeps a near-twin of this deliberately: that one takes an
+ * `expanded` flag driving the real expand-all control after the axis is picked, which no
+ * suite here wants.
+ */
+export function laneRoadmap(
+	vault: FakeVault,
+	extra: Record<string, unknown> = {},
+	{ only, focus, shelf }: { only?: string[]; focus?: string; shelf?: boolean } = {},
+): Harness {
+	const harness = makeView(vault, { ...RESOURCE_AXIS, resourceNames: 'Alice, Bob', ...extra }, {
+		collapsed: true,
+		only,
+		focus,
+	});
+	harness.view.setProjection('roadmap');
+	harness.view.setAxisPick('resources');
+	if (shelf) harness.view.setShelfCollapsed(false);
+	return harness;
+}
+
+/** The header for a resource, which is one element of that resource's band. */
+export function laneHead(containerEl: HTMLElement, name: string): HTMLElement {
+	const head = lanesOf(containerEl).find((el) => el.querySelector('.pbl-lane-name')?.textContent === name);
+	if (!head) throw new Error(`no row for ${name}`);
+	return head;
+}
+
 export function bucketsOf(containerEl: HTMLElement): HTMLElement[] {
 	return Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-bucket'));
 }
@@ -110,6 +157,32 @@ export function shelfCountOf(containerEl: HTMLElement): string {
 
 export function timelineRows(containerEl: HTMLElement): HTMLElement[] {
 	return Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-timeline-row'));
+}
+
+export function lanesOf(containerEl: HTMLElement): HTMLElement[] {
+	return Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-lane-head'));
+}
+
+export function laneNames(containerEl: HTMLElement): string[] {
+	return lanesOf(containerEl).map((el) => el.querySelector('.pbl-lane-name')?.textContent ?? '');
+}
+
+export function laneCountOf(lane: HTMLElement): string {
+	return lane.querySelector('.pbl-lane-count')?.textContent ?? '';
+}
+
+/**
+ * Every drawn row of the resources axis in order, headers included — what the reader's
+ * eye walks down. A header reads as `lane:<name>` so one assertion can state both the
+ * grouping and the order within a group, which two separate lists cannot.
+ */
+export function laneOrder(containerEl: HTMLElement): string[] {
+	const rows = containerEl.querySelectorAll<HTMLElement>('.pbl-lane-head, .pbl-timeline-row');
+	return Array.from(rows).map((el) =>
+		el.classList.contains('pbl-lane-head')
+			? `lane:${el.querySelector('.pbl-lane-name')?.textContent ?? ''}`
+			: (el.querySelector('.pbl-card-title')?.textContent ?? ''),
+	);
 }
 
 /** The titles the grid drew, in row order — what a disclosure adds to and takes away. */

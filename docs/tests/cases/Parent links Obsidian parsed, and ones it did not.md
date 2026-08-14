@@ -8,6 +8,13 @@ area: verification
 cadence: release
 created: 2026-08-08
 source: measured while hardening the settings fixtures — see [[The fake vault can hold a cache Obsidian would not produce]]
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Parent links Obsidian parsed, and ones it did not

@@ -13,6 +13,13 @@ files:
   - docs/requirements/Drag from the shelf to schedule.md
   - src/domain/timeline.ts
   - src/view/interactions/timelineDrag.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Calendar-cell snapping is refused, and keeps being proposed

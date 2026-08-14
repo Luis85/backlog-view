@@ -10,6 +10,13 @@ source: review of PR #46
 files:
   - src/domain/settings.ts
   - src/domain/roadmap.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # A dormant axis key still gates writes

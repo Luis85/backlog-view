@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Enforced invariants]]"
 order: 10
 status: Done
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Invariants as checks, not conventions

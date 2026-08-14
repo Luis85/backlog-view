@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { STATE_COLOR_SLOTS } from '../../src/domain/settings';
-import { LABEL_RESERVE_PX } from '../../src/view/render/timeline';
+import { LABEL_RESERVE_PX } from '../../src/view/render/barLabel';
 
 /** The declarations of one rule, by selector — good enough for a single-selector rule. */
 function bodyOf(css: string, selector: string, file: string): string {
@@ -46,6 +46,46 @@ describe('the two boxes sized from TypeScript arithmetic', () => {
 		// A point has no width to spend: hung off `--pbl-bar-left` the 12px diamond sits
 		// 6px right of the full-height line drawn for the same milestone on the same day.
 		expect(ruleBody('.pbl-bar.pbl-bar-milestone')).toContain('translateX(-50%)');
+	});
+
+	it('never dims a row that carries the sticky lead column', () => {
+		// `opacity` below 1 on a ROW does two things here and both are wrong: the lead column
+		// it contains goes translucent, so a scrolled-past today line and the gridlines show
+		// through the names; and the row becomes a stacking context, which takes the lead's
+		// `z-index: 2` out of the grid's layer order entirely. Reported from a vault as "the
+		// things underneath the resources columns are shining through". Muting belongs to a
+		// row's CONTENT, and this refuses the shape rather than the symptom — a text check
+		// over the stylesheet, exactly like the box-sizing pair above, which cannot tell you
+		// what the pane looks like and can refuse the declaration that made it look wrong.
+		const lanes = readFileSync(new URL('../../styles/lanes.css', import.meta.url), 'utf8');
+		// Every selector that dims. A ROW selector is one naming a row class and nothing
+		// beneath it — `.pbl-absence-row .pbl-timeline-lead > *` is CONTENT, and is exactly
+		// the shape this rule asks for.
+		const rowClass = /^\.pbl-(absence-row|lane-context|lane-head|timeline-row)\b[^\s>]*$/;
+		const dimmed = [...lanes.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+			.filter((rule) => /opacity:\s*0?\.\d/.test(rule[2]))
+			.flatMap((rule) => rule[1].split(','))
+			.map((selector) => selector.trim().split('\n').pop()?.trim() ?? '');
+
+		expect(dimmed.filter((selector) => rowClass.test(selector))).toEqual([]);
+		// Not vacuous: the muting those rows need is still declared, on their content.
+		expect(dimmed).toContain('.pbl-absence-row .pbl-timeline-lead > *');
+	});
+
+	it('lays a row out from being a ROW, never from being a card', () => {
+		// Every row of this grid is a sticky lead beside a day track, and that geometry has
+		// to come from `.pbl-timeline-row` alone. Attached to `.pbl-card.pbl-timeline-row`
+		// it reached only the rows that are also cards — so an absence stretch, which is
+		// deliberately not a `BacklogItem` and so deliberately not a card, had no flex
+		// context at all: its lead and its track stacked as blocks, and the stripe drew on
+		// the line BELOW the name of the person it belongs to. Reported from a vault, and
+		// invisible to every other test here, since jsdom lays nothing out.
+		//
+		// The reach is a text check, exactly as the box-sizing pair above: it sees the
+		// declaration in the rule and cannot tell you the row came out on one line. What it
+		// refuses is the shape that broke — a layout gated on a class only some rows carry.
+		expect(ruleBody('.pbl-timeline-row')).toContain('display: flex;');
+		expect(bodyOf(css, '.pbl-card.pbl-timeline-row', 'styles/timeline.css')).not.toContain('display');
 	});
 });
 
@@ -270,6 +310,94 @@ describe('the furniture declarations whose comments call them load-bearing', () 
  * nor measure the contrast between them — that stays the live-vault question in
  * `docs/tests/suites/Smoke test the roadmap.md`.
  */
+/**
+ * The stretch a resource is away for is CONTENT, and it was drawn from the palette that
+ * means decoration — `--background-modifier-border`, which is what `.pbl-grid-line` is made
+ * of and the family `.pbl-weekend-layer` draws from. So it could not out-read the shading
+ * behind it, which is exactly how it was reported: a light-mode vault at 382 results, three
+ * stretches fainter than the weekend banding they sat on.
+ *
+ * Text checks, and their reach is exactly that: they read the tokens each rule names. They
+ * cannot tell you what those tokens resolve to in a theme, nor measure the contrast between
+ * them — that is the live-vault question `docs/tests/suites/Smoke test the roadmap.md`
+ * carries.
+ */
+describe('the absence marks are drawn from the content palette', () => {
+	const lanes = readFileSync(new URL('../../styles/lanes.css', import.meta.url), 'utf8');
+	const timeline = readFileSync(new URL('../../styles/timeline.css', import.meta.url), 'utf8');
+
+	/** Every custom property one rule names. */
+	function tokens(css: string, selector: string, file: string): string[] {
+		return [...bodyOf(css, selector, file).matchAll(/var\(\s*(--[\w-]+)/g)].map((match) => match[1]);
+	}
+
+	it('draws the stretch from a text token and never from the decoration palette', () => {
+		const named = tokens(lanes, '.pbl-absence', 'styles/lanes.css');
+		// The instrument's own check, and not a nicety: a pattern that matched nothing would
+		// satisfy the refusal below for any stylesheet at all, including an empty one.
+		expect(named.filter((token) => token.startsWith('--text-')), '.pbl-absence names no text token').not.toHaveLength(0);
+		for (const token of named) {
+			expect(token, `.pbl-absence draws from the decoration palette: ${token}`).not.toMatch(/^--background-modifier/);
+		}
+	});
+
+	it('draws the stretch at the height a bar is drawn at', () => {
+		// 12px against a bar's 14px was saying "lesser" as well as "different", and only the
+		// second was intended: what tells work from the absence of work is the hatch.
+		const height = (css: string, selector: string, file: string) => /height:\s*(\d+)px/.exec(bodyOf(css, selector, file))?.[1];
+		const bar = height(timeline, '.pbl-bar', 'styles/timeline.css');
+		expect(bar, '.pbl-bar states no height').toBeDefined();
+		expect(height(lanes, '.pbl-absence', 'styles/lanes.css')).toBe(bar);
+	});
+
+	it('keys the hatch with the very gradient the stretch draws, not a copy of it', () => {
+		// The strip's whole subject is that a swatch cannot say something the mark does not
+		// draw. The three pairs above check that for the marks whose colour is a `--color-*`
+		// palette entry; this mark is a HATCH, so the thing to pair is the whole gradient —
+		// the token and the period together, because a key drawn at a different period is a
+		// different mark. It was: the swatch halved the period to fit a 10px square and came
+		// out reading as a slashed circle. Widening the swatch is what made one gradient
+		// serve both, so this now asserts what the earlier colour-only pairing could not.
+		const legend = readFileSync(new URL('../../styles/legend.css', import.meta.url), 'utf8');
+		const gradient = (css: string, selector: string, file: string) =>
+			/background-image:\s*([^;]+);/.exec(bodyOf(css, selector, file))?.[1].replace(/\s+/g, ' ');
+		const mark = gradient(lanes, '.pbl-absence', 'styles/lanes.css');
+		expect(mark, '.pbl-absence draws no gradient at all').toBeDefined();
+		expect(gradient(legend, '.pbl-legend-absence', 'styles/legend.css')).toBe(mark);
+		// And the border it sits in, which the gradient does not cover.
+		const inked = (css: string, selector: string, file: string) => tokens(css, selector, file).filter((t) => t.startsWith('--text-'))[0];
+		expect(inked(legend, '.pbl-legend-absence', 'styles/legend.css')).toBe(inked(lanes, '.pbl-absence', 'styles/lanes.css'));
+	});
+
+	it('lets the pointer through the shading, rather than taking the drop the row is the target for', () => {
+		// On this axis each ELEMENT of a band is the drop target (`laneElement` in
+		// `src/view/render/timeline.ts`) — there is no container to wire — so a child of a row
+		// that intercepts the pointer is `docs/bugs/An absence stretch is a dead spot in its
+		// own band.md` reached from inside the row. Every other absolutely positioned
+		// decoration on this grid opts out the same way.
+		expect(bodyOf(lanes, '.pbl-absence-wash', 'styles/lanes.css')).toContain('pointer-events: none;');
+	});
+
+	it('sizes the shading border-box, so its own edges claim no extra day', () => {
+		// `--pbl-bar-width` is a count of DAYS times `dayPx` — the same arithmetic that places
+		// every bar and gridline — so a rule that draws edges on the box has to state
+		// `box-sizing`, or the two 1px borders are ADDED and the shading covers a sliver of a
+		// day nobody is away for. `.pbl-timeline-cell`'s own rule, which the pair at the top of
+		// this file guards for the same reason: the tests there record nine month cells coming
+		// out 153px wider than the days they name.
+		const body = bodyOf(lanes, '.pbl-absence-wash', 'styles/lanes.css');
+		expect(body, 'the shading draws no edges, so nothing depends on box-sizing').toMatch(/border(-inline)?:/);
+		expect(body).toContain('box-sizing: border-box;');
+	});
+
+	it('gives the shading no layer of its own', () => {
+		// It sits over the bar by document order — appended after it — which is the layer
+		// argument `styles/dependencyArrows.css` records, used in the other direction. A
+		// `z-index` on either element competes with the sticky lead column at 2.
+		expect(bodyOf(lanes, '.pbl-absence-wash', 'styles/lanes.css')).not.toContain('z-index');
+	});
+});
+
 describe('the resize grip is ringed in a colour other than its own fill', () => {
 	const css = readFileSync(new URL('../../styles/timeline.css', import.meta.url), 'utf8');
 

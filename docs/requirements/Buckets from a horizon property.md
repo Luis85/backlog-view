@@ -10,6 +10,13 @@ files:
   - src/domain/noteFields.ts
   - src/view/render/roadmap.ts
   - src/view/interactions/create.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Buckets from a horizon property

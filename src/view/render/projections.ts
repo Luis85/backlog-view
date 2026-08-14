@@ -116,11 +116,18 @@ function todayTrackLeft(todayLeft: number | null, roadmap: RoadmapSnapshot | nul
 	return todayLeft == null ? null : todayLeft - resolvedLeadWidth(roadmap);
 }
 
-/** What the render just drew, named finer than the projection: the roadmap's two axes are different content on one frame. */
-function drawnContent(roadmap: RoadmapSnapshot | null, todayLeft: number | null, projection: Projection): string {
-	if (todayLeft != null) return 'dates';
-	if (roadmap) return 'horizons';
-	return projection;
+/**
+ * What the render just drew, named finer than the projection: the roadmap's axes are
+ * different content on one frame.
+ *
+ * The axis ITSELF, taken off the snapshot, rather than a shape guessed from whether a
+ * today line was drawn. That guess was exact while one axis drew one — and stopped being
+ * the moment a second one did: the resources axis draws a today line too, so switching
+ * between the two would have read as unchanged content and left the frame anchored where
+ * the previous axis had scrolled it.
+ */
+function drawnContent(roadmap: RoadmapSnapshot | null, projection: Projection): string {
+	return roadmap ? roadmap.roadmap.axis : projection;
 }
 
 /** One band's own offset, restored by its key — never by its position in the pass. */
@@ -139,7 +146,7 @@ export function restoreScroll(
 	projection: Projection,
 ): ScrollAnchor {
 	const todayLeft = roadmap?.todayLeft ?? null;
-	const drawn = drawnContent(roadmap, todayLeft, projection);
+	const drawn = drawnContent(roadmap, projection);
 	const scale = roadmap?.scale?.id ?? null;
 	// Band identity applies WITHIN the same drawn content, which is the rule that was
 	// already here: both frames have a band called the shelf, holding different cards

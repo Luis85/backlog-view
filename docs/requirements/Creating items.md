@@ -3,6 +3,11 @@ type: Feature
 parent: "[[Product Backlog]]"
 order: 30
 status: Active
+started: ""
+finished: ""
+horizon: ""
+risk: ""
+assignee: Evi
 ---
 
 # Creating items

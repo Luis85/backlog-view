@@ -14,6 +14,13 @@ files:
   - src/storage/frontmatter.ts
   - test/domain/stamps.test.ts
   - test/view/stamps.test.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Stamp when work starts and finishes

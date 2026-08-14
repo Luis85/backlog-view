@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Multilang]]"
 order: 60
 status: Open
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Layout survives translated text

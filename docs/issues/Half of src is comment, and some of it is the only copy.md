@@ -12,6 +12,13 @@ files:
   - src/view/render/toolbarFit.ts
   - src/ui/manualDialog.ts
   - src/domain/settings.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Half of src is comment, and some of it is the only copy

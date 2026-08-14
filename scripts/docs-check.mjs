@@ -360,6 +360,14 @@ for (const file of files) {
 	// first, and the replaced note would be checked for no parent, no order and no use-case
 	// shape while the counts below still looked plausible.
 	if (!claimName(file, name)) continue;
+	// An ABSENCE is deliberately not a work item — no parent, no rank, no status, no ladder
+	// rung (ADR 0028) — so every rule below would fail one, and the plugin writes them into
+	// this very folder the moment somebody uses the feature against `docs/` as a vault.
+	// Exempted by TYPE rather than by path, unlike ADRs and `superpowers/`: where an absence
+	// is filed is a user setting (`Folder for Absence items`), so a path rule here would be
+	// this checker deciding a configuration it cannot see. It still claims its name above,
+	// because a wikilink can still resolve to one.
+	if (type === "Absence") continue;
 	const parent = /^parent:\s*"?\[\[([^\]]+)\]\]"?/m.exec(fm.raw)?.[1] ?? null;
 	// `Number(field ?? 0)` manufactured a rank for a note that has none: a missing `order`
 	// became 0, which is a legal-looking value that no sibling had claimed, so the note

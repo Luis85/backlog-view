@@ -13,6 +13,13 @@ files:
   - styles/timeline.css
   - styles/timelineFurniture.css
   - styles/legend.css
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # State colour and a legend

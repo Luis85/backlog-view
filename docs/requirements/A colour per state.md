@@ -21,6 +21,13 @@ files:
   - src/view/manual/setupSection.ts
   - styles/stateColors.css
   - styles/stateColorsDialog.css
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # A colour per state

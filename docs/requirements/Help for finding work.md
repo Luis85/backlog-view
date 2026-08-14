@@ -9,6 +9,13 @@ files:
   - src/view/render/toolbar.ts
   - src/domain/model.ts
   - src/view/render/emptyStates.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Help for finding work

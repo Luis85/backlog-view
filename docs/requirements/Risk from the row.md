@@ -12,6 +12,13 @@ files:
   - src/view/interactions/menu.ts
   - src/view/render/columns.ts
   - src/view/render/rows.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Risk from the row

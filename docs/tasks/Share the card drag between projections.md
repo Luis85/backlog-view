@@ -13,6 +13,13 @@ files:
   - src/view/render/roadmap.ts
   - test/helpers/dnd.ts
   - test/view/contextCardWrites.test.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Share the card drag between the board and the roadmap

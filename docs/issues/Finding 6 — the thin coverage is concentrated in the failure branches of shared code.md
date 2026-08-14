@@ -8,6 +8,13 @@ priority: P2
 created: 2026-08-03
 closed: 2026-08-03
 source: Review of 0.4.0, finding 6 — docs/superpowers/plans/2026-08-03-codebase-quality-review.md
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: Igmar
 ---
 
 # Finding 6 — the thin coverage is concentrated in the failure branches of shared code

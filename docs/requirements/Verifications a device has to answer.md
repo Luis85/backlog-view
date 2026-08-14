@@ -5,6 +5,13 @@ order: 60
 status: Open
 area: verification
 created: 2026-08-03
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: Alex
 ---
 
 # Verifications a device has to answer

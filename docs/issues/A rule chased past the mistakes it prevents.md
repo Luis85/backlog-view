@@ -10,6 +10,13 @@ source: measured on PR #97 — fifteen review rounds on one six-row table
 files:
   - scripts/docs-check.mjs
   - scripts/docs-markdown.mjs
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # A rule chased past the mistakes it prevents

@@ -12,6 +12,13 @@ files:
   - src/view/render/rows.ts
   - src/domain/backlogReadme.ts
   - styles/badges.css
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Deliverables as a rootable extra type

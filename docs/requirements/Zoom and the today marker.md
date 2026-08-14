@@ -12,6 +12,13 @@ files:
   - src/view/collapseState.ts
   - src/view/render/projections.ts
   - styles/roadmap.css
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Zoom and the today marker

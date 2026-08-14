@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Reordering and reparenting]]"
 order: 30
 status: Done
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Sibling ranking

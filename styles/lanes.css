@@ -1,0 +1,274 @@
+/* The resources axis's row headers, and the bar-less row an excluded note gets inside
+   one. The grid's geometry is `timeline.css`'s and is deliberately not repeated: the
+   header's lead is `.pbl-timeline-lead`, so it sticks and sizes off the same
+   `--pbl-tl-lead` every row's lead does, and its empty `.pbl-timeline-track` is what
+   carries the header band across the day area. */
+
+.pbl-lane-head {
+	display: flex;
+	align-items: stretch;
+	background-color: var(--background-secondary);
+	font-weight: var(--font-semibold);
+}
+
+/* The band's separator, drawn by the header's CHILDREN rather than by the header itself.
+   A `border-bottom` on the header sits outside the box its children stretch to fill, so the
+   lead column — the one thing here that is sticky and above the grid's marks — did not
+   cover it, and a scrolled-past today line drew a red tick through the separator on every
+   band. The line is the same line; which element paints it decides whether the lead can
+   sit over its own segment. */
+.pbl-lane-head > .pbl-timeline-lead,
+.pbl-lane-head > .pbl-timeline-track {
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+/* The band has to reach the header's own lead too, or the sticky lead column keeps
+   `.pbl-timeline-lead`'s `--background-primary` and the header reads as a row with a
+   coloured tail. */
+.pbl-lane-head .pbl-timeline-lead {
+	background-color: var(--background-secondary);
+}
+
+.pbl-lane-head .pbl-timeline-track {
+	min-height: 26px;
+}
+
+.pbl-lane-name {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.pbl-lane-count {
+	color: var(--text-muted);
+	font-weight: var(--font-normal);
+}
+
+/* Outside the declared roster — the bucket axis's own stray marking, in the one form a
+   row can carry it: `.pbl-bucket-undeclared` dims a column header, and this dims a row's. */
+.pbl-lane-undeclared .pbl-lane-name {
+	font-style: italic;
+}
+
+.pbl-lane-stray {
+	display: flex;
+	align-items: center;
+	color: var(--text-muted);
+}
+
+/* Muting is done to a row's CONTENT, never to the row — see `.pbl-absence-row` below for
+   the rule and what breaks without it. A context row draws no bar, so its track is empty on
+   purpose, and the muting is what says the row is here to place its children rather than to
+   be read as a plan. */
+.pbl-lane-context .pbl-timeline-lead > * {
+	opacity: 0.65;
+}
+
+/* A row header's own controls — Add absence, and nothing else since the row's New button
+   went (a resource's row is not where work is created). `.pbl-bucket-add`'s shape in
+   `styles/roadmap.css`, over a row instead of a column, hidden until the row is hovered or
+   the button itself is focused, which is what keeps the header readable at a glance.
+
+   A style hook kept SEPARATE from the identity class (`.pbl-lane-absence-add`) that says
+   which control this is, even now that there is one of them: the pair collided once
+   already — both buttons shared `.pbl-lane-add` and every selector written for one
+   silently reached the other — and the separation is what stops the next control added
+   here from reopening it. */
+.pbl-lane-ctl {
+	flex: 0 0 auto;
+	border: none;
+	box-shadow: none;
+	background-color: transparent;
+	cursor: var(--cursor, pointer);
+	opacity: 0;
+	transition: opacity 120ms ease-in-out;
+}
+
+.pbl-lane-head:hover .pbl-lane-ctl,
+.pbl-lane-ctl:focus-visible {
+	opacity: 1;
+}
+
+.pbl-lane-ctl .svg-icon {
+	width: var(--icon-s);
+	height: var(--icon-s);
+}
+
+/* Reachable without hover, beside the rule it overrides: a row is not a tab stop, so a
+   touch reader who gets neither the hover nor a stop cannot reach this control at all
+   rather than merely not seeing it. */
+@media (hover: none) {
+	.pbl-lane-ctl {
+		opacity: 1;
+	}
+}
+
+/* `.pbl-timeline-flat` is the content layer of a grid that positions nothing by the
+   pointer, which is this axis and only this axis. It draws no `.pbl-timeline-drop`, and
+   that overlay is what used to cover the full-height marks: every other absolutely
+   positioned decoration there already opts out of pointer events (`.pbl-grid-line`,
+   `.pbl-weekend-layer`, `.pbl-milestone-line`, `.pbl-dependency-layer`), but the today
+   line cannot do so unconditionally, because its tooltip is the only place its date is
+   written. Without this it is a 2px dead strip through every row here, swallowing the
+   drop the row beneath it is the target for — the defect `.pbl-milestone-line`'s own
+   comment in `timeline.css` records, reached the other way. Two classes against that
+   file's one, so this wins on SPECIFICITY and its position in `index.css` decides
+   nothing. What jsdom can check is that the class is on the content layer; that it stops
+   a real pointer is a live-vault question, since nothing here hit-tests. */
+.pbl-timeline-flat .pbl-today {
+	pointer-events: none;
+}
+
+/* The drop signal, and the only one: which row a bar lands in is the whole message, so
+   there is no position within a row to indicate. Wired per element rather than per band
+   (`laneDrop` in `src/view/render/roadmap.ts`), so what lights is the header or the row
+   actually under the pointer — whether that reads as "this resource" is a live-vault
+   question this harness cannot answer. The lead column paints its own background and
+   would otherwise cover the highlight across the one part of the row a reader dragging
+   from the left is most likely to be over. */
+.pbl-lane-head.pbl-drop-over,
+.pbl-timeline-row.pbl-drop-over {
+	box-shadow: 0 0 0 1px var(--interactive-accent) inset;
+	background-color: hsla(var(--interactive-accent-hsl), 0.08);
+}
+
+.pbl-lane-head.pbl-drop-over .pbl-timeline-lead,
+.pbl-timeline-row.pbl-drop-over .pbl-timeline-lead {
+	background-color: hsla(var(--interactive-accent-hsl), 0.08);
+}
+
+/* The bar being carried — the tree row's own `.pbl-drag-source` opacity, over the mark
+   that is the drag source on this axis. */
+.pbl-bar.pbl-drag-source {
+	opacity: 0.35;
+}
+
+/* An unavailable stretch. Hatched rather than filled, and never state-coloured: a bar is
+   work somebody planned and this is the absence of any, so the two must not read alike at a
+   glance — the same argument `.pbl-bar-inferred` makes for outlining a span the view derived
+   rather than one a note stated. It carries no state colour, no grip and no connector,
+   because none of those means anything here.
+
+   **Drawn from a TEXT token, never from a `--background-modifier-*` one.** That second
+   palette is what `.pbl-grid-line` is made of and the family `.pbl-weekend-layer` draws
+   from, so a mark built out of it can never out-read the decoration it sits on. That is not
+   a preference: it shipped, and was reported from a light-mode vault at 382 results as three
+   stretches fainter than the weekend shading behind them. An absence is CONTENT. The muting
+   this row still wants belongs to its LEAD, below.
+
+   14px, matching `.pbl-bar`: 12px was saying "lesser" as well as "different" and only the
+   second was intended. How the hatch reads against a themed background, and against a bar
+   it overlaps, is a live-vault check. */
+.pbl-absence {
+	position: absolute;
+	top: 50%;
+	transform: translateY(-50%);
+	left: var(--pbl-bar-left);
+	width: var(--pbl-bar-width);
+	height: 14px;
+	border-radius: var(--radius-s);
+	border: 1px solid var(--text-muted);
+	background-image: repeating-linear-gradient(
+		45deg,
+		var(--text-muted) 0,
+		var(--text-muted) 4px,
+		transparent 4px,
+		transparent 8px
+	);
+}
+
+/* Muted like a context row, and for a related reason: the row is here to say what cannot be
+   taken on, not to be read as part of the plan.
+
+   The MARK is deliberately not in this list any more. It used to be, and it was dimming by a
+   fifth the one thing on the row that has to be seen — muting the row's NAME says "this is
+   furniture", muting the stretch says "this is faint", and only the first was meant.
+
+   **On the row's CONTENT, never on the row.** `opacity` below 1 does two things to a row
+   here and both are wrong: it makes the row's own sticky lead column TRANSLUCENT, so a
+   scrolled-past today line and the gridlines beneath it show through the names; and it
+   creates a stacking context, which takes the lead's `z-index: 2` out of the grid's layer
+   order and drops the whole row beneath the full-height marks. Reported from a vault as
+   "the things underneath the resources columns are shining through", with the today line
+   running straight through three rows of names. The lead column is the one part of this
+   grid that must stay opaque at every scroll position, and a rule that mutes a row is one
+   `opacity` away from making it a window. */
+.pbl-absence-row .pbl-timeline-lead > * {
+	opacity: 0.8;
+}
+
+.pbl-absence-row .pbl-timeline-track {
+	min-height: 22px;
+}
+
+.pbl-absence-icon {
+	display: flex;
+	align-items: center;
+	color: var(--text-muted);
+}
+
+/* The same unavailable days, shaded across the WORK rows of the band — OVER the bars, so a bar
+   and the stretch it crosses are read on one line and the tint lands on the bar itself. Under
+   them it marked the days that are free and hid the ones being looked for, which is how it
+   shipped for a few hours on 2026-08-14. A different token from the weekend layer's
+   `--background-modifier-hover`, and stronger, because being told apart from the weekend
+   banding at a glance is the whole of what was reported.
+
+   `pointer-events: none` is load-bearing rather than housekeeping: on this axis each ELEMENT
+   of a band is the drop target (`laneElement` in `src/view/render/timeline.ts`), since a band
+   has no container to wire — so a child of a row intercepting the pointer is
+   `docs/bugs/An absence stretch is a dead spot in its own band.md` reached from inside the
+   row.
+
+   NO `z-index`. It sits over the bar by being appended after it — see `renderAbsenceWash` —
+   and `styles/dependencyArrows.css` says why a layer on either element is not the alternative
+   it looks like: whichever got one would out-rank the sticky lead column at 2.
+
+   **Two marks, not one, and the EDGES are what carry it.** A flat fill strong enough to read
+   over a saturated bar is also strong enough to look like a second bar, which is the trap the
+   percentage alone cannot escape — so the fill stays a tint and the boundaries are drawn. A
+   reader asking "which days" is looking for two lines, and an eye finds an edge long before it
+   finds a 10% difference in fill. It shipped as a bare 18% fill and read as almost nothing
+   over an orange bar at Months zoom, in a vault, which is what added these.
+
+   `box-sizing` is load-bearing rather than housekeeping, exactly as it is for
+   `.pbl-timeline-cell`: `--pbl-bar-width` is a count of DAYS times `dayPx`, so under the
+   default `content-box` the two edges would add 2px and the shading would claim a sliver of a
+   day nobody is away for. `border-inline` for the pair because it has a logical twin and the
+   two sides are the same mark — [[Nothing pins a physical side]]'s mechanical half.
+
+   The percentages are the tuning knob and nothing in this repository can settle them — jsdom
+   paints nothing and the browser harness draws Obsidian's DEFAULT colours, so whether this
+   out-reads a themed vault's weekend banding, and whether it stays a wash rather than becoming
+   a bar, is a live-vault check. 18% → 28% was one such look; it is not a measurement. */
+.pbl-absence-wash {
+	box-sizing: border-box;
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: var(--pbl-bar-left);
+	width: var(--pbl-bar-width);
+	background-color: color-mix(in srgb, var(--text-muted) 28%, transparent);
+	border-inline: 1px solid color-mix(in srgb, var(--text-muted) 70%, transparent);
+	pointer-events: none;
+}
+
+/* The glyph a bar's own row carries when it is scheduled across days its resource is away —
+   `noteAbsenceClash`. Pinned to the lead's RIGHT edge like `.pbl-timeline-dependency-flag`
+   and for that rule's own reason: left to flow after the title it quietly narrows the column
+   it sits in, and against the right edge a column of flagged rows lands in one x. Both flags
+   can appear on one row and sit side by side there. Muted rather than a warning colour: a
+   plan crossing an absence is a fact to see, not an error to fix. */
+.pbl-away-flag {
+	display: inline-flex;
+	align-items: center;
+	flex: 0 0 auto;
+	margin-left: auto;
+	margin-right: var(--size-4-1);
+	color: var(--text-muted);
+}
+
+.pbl-away-flag .svg-icon {
+	width: var(--icon-s);
+	height: var(--icon-s);
+}

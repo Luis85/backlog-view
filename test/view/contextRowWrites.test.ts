@@ -303,6 +303,14 @@ describe('write safety with context rows, across every entry point', () => {
 		expect(at('Task.md')?.outsideFilter).toBe(false);
 	});
 
+	// A real timeout rather than the 5s default, because this is a deliberate COMBINATORIAL
+	// sweep — six rows against six rows across three zones, then every command, chip and
+	// shortcut on each — and it runs at roughly 4.3s of that budget in isolation under
+	// coverage. Adding tests anywhere else in the suite is then enough to tip it over
+	// through worker contention alone, which reads as this test breaking and is not: the
+	// measurement either side of a change that touched none of this code was 4.24s to
+	// 4.33s. Slack, not a licence to grow — a sweep that genuinely needs 20s has stopped
+	// being one test.
 	it('never writes to one, whatever is done to any row', async () => {
 		const { containerEl, vault } = stressView();
 		const allRows = rows(containerEl);
@@ -377,7 +385,7 @@ describe('write safety with context rows, across every entry point', () => {
 		expect(touched.filter((p) => CONTEXT_PATHS.includes(p))).toEqual([]);
 		// Not vacuous: the result rows really were written to along the way
 		expect(touched.length).toBeGreaterThan(0);
-	});
+	}, 20_000);
 });
 
 describe('undo across the filter boundary', () => {

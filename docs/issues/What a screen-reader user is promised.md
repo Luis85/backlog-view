@@ -7,6 +7,13 @@ area: ux
 priority: P2
 created: 2026-08-03
 source: Review of 0.4.0, finding 14 — the perspective the review under-covered
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # What a screen-reader user is promised

@@ -5,6 +5,12 @@ status: Open
 created: 2026-08-02
 source: user request
 due: 2026-09-30
+started: ""
+finished: ""
+horizon: ""
+start: ""
+risk: ""
+assignee: Igmar
 ---
 
 # Ship the roadmap epic

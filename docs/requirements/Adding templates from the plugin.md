@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Item Templates]]"
 order: 30
 status: Open
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Adding templates from the plugin

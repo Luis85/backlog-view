@@ -8,6 +8,13 @@ created: 2026-08-01
 files:
   - src/domain/board.ts
   - src/domain/settings.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # A column per state

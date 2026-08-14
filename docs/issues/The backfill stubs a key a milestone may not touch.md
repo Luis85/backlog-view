@@ -11,6 +11,13 @@ files:
   - src/domain/writePlan.ts
   - src/view/interactions/plan.ts
   - src/domain/itemTypes.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # The backfill stubs a key a milestone may not touch

@@ -10,6 +10,13 @@ source: implementation of ADR 0023; noticed while making the header ask the fit 
 files:
   - src/view/render/columns.ts
   - styles/propertyColumns.css
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # The rollup is hidden by class and headed by verdict

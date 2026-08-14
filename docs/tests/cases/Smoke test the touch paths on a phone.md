@@ -15,6 +15,13 @@ files:
   - styles/touch.css
   - styles/columns.css
   - styles/roadmap.css
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Smoke test the touch paths on a phone

@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Multilang]]"
 order: 80
 status: Open
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Persisted keys stay as written
