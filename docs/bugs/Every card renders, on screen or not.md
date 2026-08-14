@@ -81,6 +81,37 @@ as the ones that are staying.
 so the suite cannot see that a card is skipped, and the harness asserts nothing. The
 measurement above is a human reading a panel in Chromium.
 
+## The scroll position after a rebuild, asked and answered
+
+Review (Codex) put the sharpest question at this: a data update captures a band's pixel
+`scrollTop`, destroys every card with `treeEl.empty()`, and rebuilds — and the new cards
+have lost `auto`'s remembered heights, so the cards above the fold are 110px placeholders
+and the same offset restored could land the reader somewhere else.
+
+**The mechanism is real and its reach is one band.** `scrollBoxes`
+(`render/projections.ts`) captures the pane and the roadmap's own boxes — the timeline,
+the shelf, the context strip, the advisory. A board column and a horizon bucket are
+scrollers that nothing captures, so their offset already returns to zero on every data
+update, with or without this rule. The shelf is the one card container that is restored,
+and it only SCROLLS on the dated axis, where the band rule caps it at 30% of the frame.
+
+**Measured, and it does not move.** The harness with a throwaway probe: expand the shelf,
+scroll it to 30%, 60% and 90% of its range, note the card at the top, `onDataUpdated()`,
+restore, and ask which card is at the top now. Over a 134-card scrolling shelf, twice per
+stylesheet, the reader lands on the SAME card at all three depths, before and after. The
+placeholders do shrink the band — 5055px of scroll range becomes 4829px, ~1.7px per card
+— and that was not enough to cost a card at any depth tried.
+
+Two stand-ins in that probe, and neither is hidden: the harness pane has no height cap, so
+the horizon shelf was given the dated axis's own `max-height`/`overflow-y` to make it
+scroll at all, and the dated shelf this fixture really draws holds 20 cards rather than
+134. So what is measured is a 134-card scrolling shelf, not this vault's dated one.
+
+The same trade is what the tree has shipped since `content-visibility` arrived there: rows
+are rebuilt on every update under `contain-intrinsic-size: auto 30px`, restored by the same
+pixel offset, through the same function. Fixing it for cards alone would have left the
+projection with the most rows still doing it.
+
 ## Live-vault checks owed
 
 The row's list, asked again of a card — none of it can be answered here.
@@ -91,6 +122,9 @@ The row's list, asked again of a card — none of it can be answered here.
 - **Keyboard and Alt+arrow moves scroll to the right card.** The placeholder is 110px
   until a card has been drawn once, so a jump into never-rendered territory could land
   slightly off before settling.
+- **A deeply scrolled DATED shelf keeps its place across a write batch.** Measured above
+  and unmoved, but over a shelf made to scroll by a probe rather than by this fixture —
+  scroll a real one to its end, drop a card, and see whether it stays put.
 - **A drop still highlights the whole column, bucket or shelf.** The target is the
   container, which takes no containment, and the selected card's ring is the element's
   own `box-shadow` — which paint containment does not clip, verified in Chromium against
