@@ -55,20 +55,31 @@ for (let i = 0; i < argv.length; i++) {
 	else args[key] = 'true';
 }
 
-const notes = args.notes ?? '800';
+/**
+ * A whole number, or a refusal naming the value — the two size knobs share this because
+ * they share the failure. `--notes=abc` reached the page as junk, which `wantedNotes`
+ * reads as "no generated notes", and the run then printed `?notes=abc` over a table of
+ * the curated fixture alone: measurements labelled for a workload nobody ran. `--runs=abc`
+ * printed an empty table and exited 0. Both are this file's own subject — an instrument
+ * answering confidently about something it did not measure. (Codex, PR #137.)
+ */
+function wholeNumber(flag, value, min) {
+	const asked = Number(value);
+	if (Number.isInteger(asked) && asked >= min) return asked;
+	console.error(`--${flag} must be a whole number, at least ${min} — got "${value}".`);
+	process.exit(1);
+}
+
+// Zero is a legitimate ask: the curated fixture on its own, which is what an omitted flag
+// already measures. Junk and fractions are not.
+const notes = String(wholeNumber('notes', args.notes ?? 800, 0));
 const against = args.against ?? null;
 // One run answers "what does it cost"; a COMPARISON off one run each is the mistake this
 // register has now made twice — a difference smaller than the noise of its own terms,
 // read as a finding. So a comparison starts at three and prints both sides' spreads.
-const runs = Number(args.runs ?? (against ? 3 : 1));
-// A whole number of runs, or nothing. `--runs=abc` and `--runs=0` printed an EMPTY table
-// and exited 0 — an instrument answering confidently when it measured nothing, which is
-// the failure this whole file is written against; `2.5` ran three times under a heading
-// saying 2.5, and `Infinity` never came back. (Codex, PR #137.)
-if (!Number.isInteger(runs) || runs < 1) {
-	console.error(`--runs must be a whole number of runs, at least 1 — got "${args.runs}".`);
-	process.exit(1);
-}
+// At least one: zero printed an EMPTY table and exited 0, `2.5` ran three times under a
+// heading saying 2.5, and `Infinity` never came back.
+const runs = wholeNumber('runs', args.runs ?? (against ? 3 : 1), 1);
 // A viewport, because one is load-bearing rather than incidental: `content-visibility`
 // skips what is off screen, so a window twice as tall renders twice as many rows before
 // the browser stops. Chromium's headless default is 800x600; this states a size instead
