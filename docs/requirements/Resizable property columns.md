@@ -107,7 +107,10 @@ width for every column can only ever do.
   itself and widens to a finger-sized target. The timeline's lead grip takes the same
   widening and needs no line: its own column already draws one.
 - **1b — a keyboard reader stepping a column by repeated presses.** Each step re-renders
-  the header and destroys the grip pressed, so focus is put back on its replacement. A
+  the header and destroys the grip pressed, so focus is put back on its replacement —
+  asked of the GRIP's own document, since a view in an Obsidian pop-out window draws into
+  that window's rather than the global one ([[The view reads the main window's document]],
+  which is also where the five places in `view/` that still ask the global are listed). A
   POINTER resize takes no focus at all: `pointerdown` prevents default, so the strip is
   never focused by a mouse, and refocusing regardless would leave the reader's next arrow
   key resizing a column instead of moving the row selection.

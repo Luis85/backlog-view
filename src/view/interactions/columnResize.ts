@@ -114,7 +114,15 @@ export function renderColumnResize(
 		// mouse — and refocusing regardless would hand a separator a focus the reader had
 		// not given it, after which their next arrow key resizes a column instead of moving
 		// the row selection.
-		if (document.activeElement === grip) refocusIndex = index;
+		//
+		// The GRIP's own document, not the global one: a view in an Obsidian pop-out window
+		// draws into that window's document while `document` stays the main window's, so
+		// the comparison would be false for every reader in a pop-out and a keyboard resize
+		// would drop focus after its first step. The jsdom harness has one document and
+		// cannot tell the two spellings apart, so what the suite checks is the main-window
+		// behaviour — see [[The view reads the main window's document]] for the five other
+		// places in `view/` that still ask the global.
+		if (grip.ownerDocument.activeElement === grip) refocusIndex = index;
 		host.setColWidth(prop, width === DEFAULT_PROP_COLUMN_WIDTH ? null : width);
 		// Cleared right here rather than by the render: `setColWidth` renders synchronously,
 		// so the only pass that may claim this focus is the one it just ran — and a pass

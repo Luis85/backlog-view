@@ -109,7 +109,9 @@ export function renderLeadResize(
 		// bails on any event whose target is not the pane itself — the guard checked
 		// at the grip in the "leaves the pane its own keys" test). "A pointer resize
 		// takes no focus" in the same suite is what holds this half.
-		const held = document.activeElement === grip;
+		// The grip's OWN document — see `interactions/columnResize.ts`'s own note: in a
+		// pop-out window the global one belongs to the main window and this is never true.
+		const held = grip.ownerDocument.activeElement === grip;
 		host.setLeadWidth(width === defaultWidth ? null : width);
 		// The write above re-renders the whole projection, destroying THIS element —
 		// the shelf header's own controls hit the identical wall (`shelfControls.ts`'s
