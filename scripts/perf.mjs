@@ -276,7 +276,25 @@ for (const [op, { drew, times }] of left) {
 	table.push(row);
 }
 
-console.log(`\n${search}  ·  ${runs} run${runs === 1 ? '' : 's'}  ·  window ${window}  ·  ${path.basename(browser)}`);
+/**
+ * What the page says it MOUNTED, not what was typed at it.
+ *
+ * `?fixture=edegs` mounts the demo and `?axis=date` picks no axis — the page absorbs both
+ * silently, so a heading built from the query string labelled the table with a workload
+ * nobody ran. The vocabularies stay where they are enforced rather than being copied here
+ * to go stale; the page reports what it resolved and this prints THAT, and says so when
+ * the two disagree. (Codex, PR #137.)
+ */
+const ran = a[0]?.ran;
+const asked = { fixture: args.fixture ?? 'demo', view: args.view, axis: args.axis };
+const ignored = [
+	ran && asked.fixture !== ran.fixture ? `--fixture=${asked.fixture} (mounted ${ran.fixture})` : '',
+	ran && asked.view !== undefined && asked.view !== ran.projection ? `--view=${asked.view} (opened ${ran.projection})` : '',
+	ran && asked.axis !== undefined && asked.axis !== ran.axis ? `--axis=${asked.axis} (axis ${ran.axis ?? 'unpicked'})` : '',
+].filter(Boolean);
+
+const drawn = ran ? `${ran.fixture} · ${ran.projection}${ran.axis ? ` · ${ran.axis}` : ''} · ${notes} notes` : search;
+console.log(`\n${drawn}  ·  ${runs} run${runs === 1 ? '' : 's'}  ·  window ${window}  ·  ${path.basename(browser)}`);
 if (against) console.log(`against ${against} (alternated, A B A B)`);
 console.table(table);
 // Loud, and not a refusal: "did this change cost anything" is a legitimate question to
@@ -285,6 +303,9 @@ console.table(table);
 // someone who never saw that the workloads differed.
 if (unlike.length > 0) {
 	console.log(`\n!! The two builds drew DIFFERENT samples — the delta is not a like-for-like comparison:\n   ${unlike.join('\n   ')}`);
+}
+if (ignored.length > 0) {
+	console.log(`\n!! The page did not use what was asked for — the table is of what it DID draw:\n   ${ignored.join('\n   ')}`);
 }
 if (unmatched.length > 0) {
 	console.log(`\n!! The two builds do not time the same set of ops:\n   ${unmatched.join('\n   ')}`);

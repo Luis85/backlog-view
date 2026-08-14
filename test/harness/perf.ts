@@ -136,6 +136,22 @@ function expandAll(el: HTMLElement): void {
 	);
 }
 
+/**
+ * What the page actually MOUNTED, beside what it cost.
+ *
+ * The runner used to print the query string it had built and call that the heading, so a
+ * typo the page silently absorbed — `?fixture=edegs` mounts the demo, `?axis=date` picks
+ * no axis at all — labelled the table with a workload nobody ran. Three flags had that
+ * shape, and the answer is not three vocabularies copied into the runner, which is a list
+ * that goes stale: the page is the only thing that knows what it resolved, so it says.
+ * (Codex, PR #137.)
+ */
+interface Ran {
+	fixture: string;
+	projection: string;
+	axis: string | null;
+}
+
 /** The id `scripts/perf.mjs` looks the numbers up by — a contract, so keep it stable. */
 export const PERF_DATA_ID = 'pbl-perf-data';
 
@@ -150,7 +166,7 @@ export const PERF_DATA_ID = 'pbl-perf-data';
  * A `<script type="application/json">` rather than an attribute: its content is serialized
  * as raw text, so nothing here depends on how quotes in an op name would be escaped.
  */
-function publish(panel: HTMLElement, data: { samples: number; treeRows: number; rows: Row[] }): void {
+function publish(panel: HTMLElement, data: { samples: number; treeRows: number; ran: Ran; rows: Row[] }): void {
 	panel.createEl('script', { attr: { type: 'application/json', id: PERF_DATA_ID }, text: JSON.stringify(data) });
 }
 
@@ -170,7 +186,7 @@ export function wantedNotes(search: string): number {
  * read them, and `console.table`, so they can be pasted into a note. `.pbl-harness-*` is
  * the namespace the harness owns for its own furniture — see `test/harness/theme.css`.
  */
-export function reportPerf(view: ProductBacklogView, containerEl: HTMLElement, mount: Mount): Row[] {
+export function reportPerf(view: ProductBacklogView, containerEl: HTMLElement, mount: Mount, fixture: string): Row[] {
 	const { rows, treeRows } = measure(view, containerEl, mount);
 	console.table(rows.map((r) => ({ ...r, median: +r.median.toFixed(1), worst: +r.worst.toFixed(1) })));
 
@@ -184,7 +200,14 @@ export function reportPerf(view: ProductBacklogView, containerEl: HTMLElement, m
 		tr.createEl('td', { text: `${row.worst.toFixed(1)} ms`, cls: 'pbl-harness-perf-worst' });
 		tr.createEl('td', { text: `${row.drew} drawn`, cls: 'pbl-harness-perf-drew' });
 	}
-	publish(panel, { samples: SAMPLES, treeRows, rows });
+	// Read AFTER the run, which restores the projection and touches no axis: these are what
+	// the page is showing, which is what the numbers are of.
+	publish(panel, {
+		samples: SAMPLES,
+		treeRows,
+		ran: { fixture, projection: view.projection, axis: view.axisPick },
+		rows,
+	});
 	panel.createEl('p', {
 		text: 'No Bases pass, no metadata cache, no vault I/O, no theme. Not what the plugin costs in a vault.',
 	});

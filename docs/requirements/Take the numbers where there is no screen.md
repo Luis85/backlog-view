@@ -77,6 +77,13 @@ instruments improvised around a browser.
   comparison missing half its rows read as a complete one. Both directions are named under
   the table now, and a column with nothing to compare against prints an em dash rather than
   a number no reading of which is right.
+- **3f — a workload selector the page did not honour.** `--fixture=edegs` mounts the demo,
+  `--axis=date` picks no axis, `--view=bard` opens the tree: the page absorbs each silently,
+  and a heading built from the query string then labelled the table with a workload nobody
+  ran. The runner prints what the page says it MOUNTED — the page publishes it beside the
+  numbers — and names any flag the two disagree on. The vocabularies stay where they are
+  enforced rather than being copied into the runner to go stale, which is the same rule the
+  register applies to any table that enumerates code. (Codex, PR #137.)
 - **3d — the two builds draw different populations.** Then the delta is between unlike
   workloads and reads exactly like a speedup: a baseline from before a change that hides or
   adds cards measures fewer of them. Both sides' counts are printed and a mismatch is called

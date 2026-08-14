@@ -65,4 +65,4 @@ if (AXES.includes(axis as RoadmapAxis)) {
 
 // Last, because the run drives all four projections and restores whichever was open: run
 // first, it would have restored the tree over the projection `?view=` was about to ask for.
-if (perfWanted(window.location.search)) reportPerf(view, containerEl, mount);
+if (perfWanted(window.location.search)) reportPerf(view, containerEl, mount, fixture);

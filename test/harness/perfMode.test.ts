@@ -29,7 +29,12 @@ describe('the perf panel reports the sample it took', () => {
 	}
 
 	/** What the page published for the runner, which is what `scripts/perf.mjs` parses. */
-	function published(): { samples: number; treeRows: number; rows: { op: string; drew: number; median: number }[] } {
+	function published(): {
+		samples: number;
+		treeRows: number;
+		ran: { fixture: string; projection: string; axis: string | null };
+		rows: { op: string; drew: number; median: number }[];
+	} {
 		const el = document.getElementById(PERF_DATA_ID);
 		if (el === null) throw new Error('the panel published no data');
 		return JSON.parse(el.textContent ?? '');
@@ -51,7 +56,7 @@ describe('the perf panel reports the sample it took', () => {
 			// restore — so the check is simply that the band is in the sample.
 			const { view, containerEl, mount: first } = mount();
 
-			reportPerf(view, containerEl, first);
+			reportPerf(view, containerEl, first, 'demo');
 
 			const roadmap = published().rows.find((row) => row.op === 'switch to roadmap');
 			view.setProjection('roadmap');
@@ -67,7 +72,7 @@ describe('the perf panel reports the sample it took', () => {
 		() => {
 			const { view, containerEl, mount: first } = mount();
 
-			const rows = reportPerf(view, containerEl, first);
+			const rows = reportPerf(view, containerEl, first, 'demo');
 
 			// The runner does one `JSON.parse` and no scraping, so what it gets has to BE the
 			// table: a column added for a human to read must not change what a script reads.
@@ -76,6 +81,10 @@ describe('the perf panel reports the sample it took', () => {
 			expect(data.rows.map((row) => row.drew)).toEqual(rows.map((row) => row.drew));
 			expect(data.treeRows).toBe(containerEl.querySelectorAll('.pbl-row').length);
 			expect(data.samples).toBeGreaterThan(0);
+			// What the page MOUNTED, which is what the runner's heading states: a query
+			// string echoed back would have labelled the table with a typo the page had
+			// silently absorbed (`?fixture=edegs` mounts the demo).
+			expect(data.ran).toEqual({ fixture: 'demo', projection: view.projection, axis: view.axisPick });
 
 			const drew = (op: string) => data.rows.find((row) => row.op === op)?.drew ?? 0;
 			// One heading cannot state this: the board excludes Deliverables and the
