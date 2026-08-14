@@ -5,6 +5,7 @@ import { RowContext } from './columns';
 import {
 	drawnSpans,
 	edgeClasses,
+	noteAbsenceClash,
 	renderAbsenceWash,
 	renderLaneAbsence,
 	renderLaneContextRow,
@@ -21,6 +22,7 @@ import { dependenciesAvailable } from '../interactions/dependencies';
 import { wireBarLink, wireLinkPreview } from '../interactions/linkDrag';
 import { effectiveLeadWidth, renderLeadResize } from '../interactions/timelineLeadResize';
 import { BacklogViewHost, BarColors, DrawnColors } from '../host';
+import { crossedAbsences } from '../../domain/absences';
 import { BacklogItem } from '../../domain/model';
 import { barHolds, ShelfCard, TimelineBar, TimelineRow } from '../../domain/bars';
 import { dependencyArrows } from '../../domain/dependencies';
@@ -384,7 +386,10 @@ function drawEntries(entries: TimelineEntry[], pass: EntryPass): void {
 			// the stretch's own line already carries the mark, a context row makes no
 			// positional claim at all, and on the dated axis `lane` is null because there is
 			// no band to be a member of.
-			if (lane) renderAbsenceWash(bar.track, lane.absences, { window, scale });
+			if (lane) {
+				renderAbsenceWash(bar.track, lane.absences, { window, scale });
+				noteAbsenceClash(bar.row, bar.lead, crossedAbsences(entry.row.bar.span, lane.absences));
+			}
 		}
 		inBand(row);
 		// Assigned at render because CSS has no nth-of-class, and nth-child would

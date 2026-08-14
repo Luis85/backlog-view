@@ -103,3 +103,56 @@ describe('the days a band is unavailable, shaded across its work', () => {
 		expect(containerEl.querySelectorAll('.pbl-absence-wash')).toHaveLength(1);
 	});
 });
+
+describe('the mark a bar carries for crossing one', () => {
+	it('marks the bar it crosses, in words as well as in shading', () => {
+		// The wash tells this in colour alone, which WCAG 1.4.1 refuses and which a screen
+		// reader gets nothing of — so the row carries the sentence, and the lead carries the
+		// glyph a sighted reader can scan a column of. The dependency conflict's own shape.
+		const { containerEl } = laneRoadmap(absenceVault());
+		const work = rowFor(containerEl, 'Work');
+		const said = Array.from(work?.querySelectorAll<HTMLElement>('.pbl-sr-only') ?? [])
+			.map((span) => span.textContent ?? '')
+			.filter((text) => text.startsWith('Crosses'));
+
+		expect(said).toEqual(['Crosses an absence: Alice away 2026-08-04 → 2026-08-06']);
+		const flag = work?.querySelector<HTMLElement>('.pbl-timeline-lead .pbl-away-flag');
+		expect(flag).not.toBeNull();
+		expect(flag?.dataset.tooltip).toBe('Crosses an absence: Alice away 2026-08-04 → 2026-08-06');
+	});
+
+	it('leaves a bar that clears the stretch unmarked', () => {
+		const vault = absenceVault();
+		vault.addFile('Clear.md', {
+			frontmatter: { type: 'Epic', order: 20, assignee: 'Alice', start: '2026-08-07', due: '2026-08-09' },
+		});
+		const { containerEl } = laneRoadmap(vault);
+
+		expect(rowFor(containerEl, 'Clear')?.querySelector('.pbl-away-flag')).toBeNull();
+		expect(rowFor(containerEl, 'Work')?.querySelector('.pbl-away-flag')).not.toBeNull();
+	});
+
+	it('marks a crossing the drawn window cannot show', () => {
+		// Computed from DATES, not geometry — the dependency conflict's rule read again: the
+		// row is where the fact lives, so a mark derived from the window would come and go
+		// with the reader's scroll position and the zoom. `Long` is what clamps the window,
+		// the same construction the wash's own outside-window test uses.
+		const vault = clampedVault();
+		vault.addFile('Far work.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2031-01-01', due: '2031-01-31' },
+		});
+		vault.addFile('Near work.md', {
+			frontmatter: { type: 'Epic', order: 20, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
+		});
+		vault.addFile('Far away.md', {
+			frontmatter: { type: 'Absence', assignee: 'Alice', start: '2031-01-04', due: '2031-01-20' },
+		});
+		const { containerEl } = laneRoadmap(vault);
+
+		// The stretch itself is clamped out of the window and shades nothing …
+		expect(containerEl.querySelectorAll('.pbl-absence-wash')).toHaveLength(0);
+		// … and its row still says the crossing.
+		expect(rowFor(containerEl, 'Far work')?.querySelector('.pbl-away-flag')).not.toBeNull();
+		expect(rowFor(containerEl, 'Near work')?.querySelector('.pbl-away-flag')).toBeNull();
+	});
+});

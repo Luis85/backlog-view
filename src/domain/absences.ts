@@ -1,7 +1,7 @@
 import { TFile } from 'obsidian';
 import { CivilDate, ownValue, readDate, readString } from './noteFields';
 import { BacklogSettings } from './settings';
-import { reversedSpan } from './timeline';
+import { DateSpan, daysBetween, reversedSpan } from './timeline';
 
 /**
  * What a resource's own unavailable stretch IS, whether the configuration can carry one,
@@ -70,4 +70,28 @@ export function readAbsence(
 	// this plugin rather than two that must agree.
 	if (reversedSpan(start.value, target.value)) return null;
 	return { file, title: file.basename, resource, start: start.value, target: target.value };
+}
+
+/**
+ * Which of these stretches a span actually crosses — the fact behind the mark a bar carries
+ * when it is scheduled over days nobody should be scheduled across.
+ *
+ * Judged on the days the bar DRAWS: `start ?? target` … `target ?? start`, which is
+ * `barGeometry`'s own borrowing. So a one-ended bar is judged at the single day it renders
+ * rather than treated as unbounded in the direction it has no date for — and a backlog
+ * stating targets and no starts is the ordinary case here rather than an edge one, so that
+ * reading would report a crossing on nearly every stretch behind it.
+ *
+ * From DATES, never from geometry, so a crossing outside the drawn window still marks its
+ * row: `dependencyArrows`' own rule read again — the row is where the fact lives, and a
+ * window-derived mark would narrow it to wherever the reader happens to be scrolled.
+ *
+ * Inclusive at both boundary days: a bar ending on an absence's first day is scheduled across
+ * it.
+ */
+export function crossedAbsences(span: DateSpan, absences: Absence[]): Absence[] {
+	// `deriveBars` admits no fully dateless span, the same fact `spanText` leans on.
+	const start = (span.start ?? span.target) as CivilDate;
+	const end = (span.target ?? span.start) as CivilDate;
+	return absences.filter((absence) => daysBetween(start, absence.target) >= 0 && daysBetween(absence.start, end) >= 0);
 }

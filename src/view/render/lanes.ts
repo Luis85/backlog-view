@@ -367,6 +367,32 @@ export function renderAbsenceWash(
 }
 
 /**
+ * The mark a bar carries when it is scheduled across days its own resource is away — the
+ * dependency conflict's SHAPE reused rather than reinvented: a glyph in the lead, where a
+ * column of them is scannable, and the words it stands for in the row's own content.
+ *
+ * The sentence is not a nicety. The wash behind the bar tells this in colour alone, which
+ * WCAG 1.4.1 refuses and which a screen reader gets nothing of at all. `.pbl-sr-only`
+ * CONTENT rather than an `aria-label`, for `stateNote`'s reason: a label REPLACES the name
+ * the row derives from its badge, its title and its bar's dates.
+ *
+ * No row-level class beside `.pbl-row-conflict`. That one exists because a broken dependency
+ * draws nothing else anywhere; here the wash is already on this very row, so a second accent
+ * would restate what the reader is looking at. Add one when someone can say what it buys.
+ *
+ * The tooltip goes on the GLYPH, not on the lead, which already tooltips the row's title.
+ */
+export function noteAbsenceClash(row: HTMLElement, lead: HTMLElement, crossed: Absence[]): void {
+	if (crossed.length === 0) return;
+	const spans = crossed.map((one) => `${one.title} ${formatCivil(one.start)} → ${formatCivil(one.target)}`).join('; ');
+	const said = `Crosses ${crossed.length === 1 ? 'an absence' : `${crossed.length} absences`}: ${spans}`;
+	row.createSpan({ cls: 'pbl-sr-only', text: said });
+	const flag = lead.createSpan({ cls: 'pbl-away-flag', attr: { 'aria-hidden': 'true' } });
+	drawIcon(flag, 'user-x');
+	setTooltip(flag, said);
+}
+
+/**
  * Whose row this is, on the row itself. A DESCRIPTION rather than a label: a label would
  * replace the content-derived accessible name and cost a reader the badge, the title and
  * the dates — `renderCardBody`'s outside-filter marker makes the same choice for the same

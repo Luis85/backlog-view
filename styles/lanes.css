@@ -234,3 +234,23 @@
 	background-color: color-mix(in srgb, var(--text-muted) 18%, transparent);
 	pointer-events: none;
 }
+
+/* The glyph a bar's own row carries when it is scheduled across days its resource is away —
+   `noteAbsenceClash`. Pinned to the lead's RIGHT edge like `.pbl-timeline-dependency-flag`
+   and for that rule's own reason: left to flow after the title it quietly narrows the column
+   it sits in, and against the right edge a column of flagged rows lands in one x. Both flags
+   can appear on one row and sit side by side there. Muted rather than a warning colour: a
+   plan crossing an absence is a fact to see, not an error to fix. */
+.pbl-away-flag {
+	display: inline-flex;
+	align-items: center;
+	flex: 0 0 auto;
+	margin-left: auto;
+	margin-right: var(--size-4-1);
+	color: var(--text-muted);
+}
+
+.pbl-away-flag .svg-icon {
+	width: var(--icon-s);
+	height: var(--icon-s);
+}
