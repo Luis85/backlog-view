@@ -345,6 +345,23 @@ export function renderLaneContextRow(ctx: RowContext, content: HTMLElement, item
 }
 
 /**
+ * Where a positioned mark's day span goes, in pixels — `--pbl-bar-left` and
+ * `--pbl-bar-width`, the latter floored at `MIN_BAR_PX` so a span too short to reach it
+ * does not vanish. One pair of custom properties, shared by three marks positioned
+ * against the same window and scale in this file — an absence's own mark, a folded
+ * band's load rail, and the wash a bar carries under it — extracted once a fourth copy
+ * of the same two lines was about to land here, this codebase's own threshold for when a
+ * repeat stops being a repeat (`applyLabels` replacing `applyRisk` is the same call made
+ * once already).
+ */
+function placeSpan(el: HTMLElement, geometry: BarGeometry, scale: TimelineScale): void {
+	el.setCssProps({
+		'--pbl-bar-left': `${geometry.startDay * scale.dayPx}px`,
+		'--pbl-bar-width': `${Math.max(geometry.spanDays * scale.dayPx, MIN_BAR_PX)}px`,
+	});
+}
+
+/**
  * One resource's unavailable stretches, drawn in that resource's own header track — which
  * is what makes a band one row per person whatever they have.
  *
@@ -390,11 +407,8 @@ function renderLaneAbsences(
 		for (const absence of sub) {
 			const geometry = barGeometry(ruler.window, { start: absence.start, target: absence.target });
 			const mark = track.createDiv({ cls: ['pbl-absence', ...edgeClasses(geometry)].join(' ') });
-			mark.setCssProps({
-				'--pbl-bar-left': `${geometry.startDay * ruler.scale.dayPx}px`,
-				'--pbl-bar-width': `${Math.max(geometry.spanDays * ruler.scale.dayPx, MIN_BAR_PX)}px`,
-				'--pbl-sublane': String(index),
-			});
+			placeSpan(mark, geometry, ruler.scale);
+			mark.setCssProps({ '--pbl-sublane': String(index) });
 			setTooltip(mark, `${absence.title} — ${formatCivil(absence.start)} → ${formatCivil(absence.target)}`);
 			mark.addEventListener('contextmenu', (evt) => showAbsenceMenu(host, absence, evt));
 		}
@@ -421,10 +435,14 @@ function renderLaneAbsences(
  * `geometry.outside` skips a run wholly past `MAX_TIMELINE_DAYS`' clamp — rare now that
  * `drawnSpans` widens the window for a folded band's own bars, and not gone: a plan too
  * long to draw whole still clips around today, and a run entirely beyond that clip draws
- * no rail at all rather than one pinned to an edge it does not run through. That is the one
- * place this mark and a BAR answer the same question differently — `edgeClasses` styles a
- * clipped bar as running past the edge because part of it is still in view; a rail with none
- * of itself in view has nothing to style and is simply absent.
+ * no rail at all rather than one pinned to an edge it does not run through. A BAR in that
+ * same wholly-outside state still draws something: `edgeClasses` returns `pbl-bar-outside`
+ * for it — not because any part of it is in view (`outside` means none is), but because a
+ * bar can still assert a direction past the edge. This is not the ONE place a rail and a
+ * bar answer the window question differently, either: the other is a run merely CLIPPED,
+ * one edge past the window and one still in it, where a bar's `pbl-bar-open-start` /
+ * `pbl-bar-open-end` marks which edge it runs past and this function applies no
+ * `edgeClasses` at all — a clipped rail draws edge-to-edge with no beyond-the-edge hint.
  */
 function renderLaneRail(
 	track: HTMLElement,
@@ -435,10 +453,7 @@ function renderLaneRail(
 		const geometry = barGeometry(ruler.window, run);
 		if (geometry.outside) continue;
 		const rail = track.createDiv({ cls: 'pbl-lane-rail', attr: { 'aria-hidden': 'true' } });
-		rail.setCssProps({
-			'--pbl-bar-left': `${geometry.startDay * ruler.scale.dayPx}px`,
-			'--pbl-bar-width': `${Math.max(geometry.spanDays * ruler.scale.dayPx, MIN_BAR_PX)}px`,
-		});
+		placeSpan(rail, geometry, ruler.scale);
 	}
 }
 
@@ -476,42 +491,45 @@ export function renderAbsenceWash(
 		const geometry = barGeometry(ruler.window, { start: absence.start, target: absence.target });
 		if (geometry.outside) continue;
 		const wash = track.createDiv({ cls: 'pbl-absence-wash', attr: { 'aria-hidden': 'true' } });
-		wash.setCssProps({
-			'--pbl-bar-left': `${geometry.startDay * ruler.scale.dayPx}px`,
-			'--pbl-bar-width': `${Math.max(geometry.spanDays * ruler.scale.dayPx, MIN_BAR_PX)}px`,
-		});
+		placeSpan(wash, geometry, ruler.scale);
 	}
 }
 
 /**
  * The mark a bar carries when it is scheduled across days its own resource is away — the
- * dependency conflict's SHAPE reused rather than reinvented: a glyph in the lead, where a
+ * dependency conflict's SHAPE reused rather than reinvented: a swatch in the lead, where a
  * column of them is scannable, and the words it stands for in the row's own content.
+ * Hatched in the away key (`--pbl-away`) rather than the `calendar-x` glyph it shipped
+ * with, so the lead mark and the wash it sits beside on the SAME row read as one thing —
+ * a colour rather than a fourth icon competing with the Add absence button, the absence
+ * row's own icon and a resource being away, all of which already spend `user-x`.
  *
  * The sentence is not a nicety. The wash over the bar tells this in colour alone, which
  * WCAG 1.4.1 refuses and which a screen reader gets nothing of at all. `.pbl-sr-only`
  * CONTENT rather than an `aria-label`, for `stateNote`'s reason: a label REPLACES the name
  * the row derives from its badge, its title and its bar's dates.
  *
+ * `cost` is the visible half of the same fact, and it is `aria-hidden`: the `.pbl-sr-only`
+ * sentence above already carries it, and a reader must not hear it twice. `null` is
+ * `clashCost`'s own answer wherever it found no room for the sentence — never decided
+ * here, so this function states no opinion about width at all.
+ *
  * No row-level class beside `.pbl-row-conflict`. That one exists because a broken dependency
  * draws nothing else anywhere; here the wash is already on this very row, so a second accent
  * would restate what the reader is looking at. Add one when someone can say what it buys.
  *
- * The tooltip goes on the GLYPH, not on the lead, which already tooltips the row's title.
+ * The tooltip goes on the SWATCH, not on the lead, which already tooltips the row's title.
  */
-export function noteAbsenceClash(row: HTMLElement, lead: HTMLElement, crossed: Absence[]): void {
+export function noteAbsenceClash(row: HTMLElement, lead: HTMLElement, crossed: Absence[], cost: string | null): void {
 	if (crossed.length === 0) return;
 	const spans = crossed.map((one) => `${one.title} ${formatCivil(one.start)} → ${formatCivil(one.target)}`).join('; ');
 	const said = `Crosses ${crossed.length === 1 ? 'an absence' : `${crossed.length} absences`}: ${spans}`;
 	row.createSpan({ cls: 'pbl-sr-only', text: said });
-	const flag = lead.createSpan({ cls: 'pbl-away-flag', attr: { 'aria-hidden': 'true' } });
-	// `calendar-x`, NOT the `user-x` this shipped with. That glyph already means three things
-	// in one band — the Add absence button, an absence row's own icon, and a resource being
-	// away — so a fourth use for "this bar CROSSES an absence" left the two facts a reader
-	// most needs to tell apart wearing one mark: *this row is an absence* and *this row runs
-	// through one*. `user-x` stays with the person, and the crossing is about DAYS.
-	drawIcon(flag, 'calendar-x');
+	// A hatched swatch in the away key rather than the `calendar-x` glyph it replaced, so the
+	// lead mark and the column it stands for read as one thing — and the legend can key it.
+	const flag = lead.createSpan({ cls: 'pbl-away-flag pbl-away-swatch', attr: { 'aria-hidden': 'true' } });
 	setTooltip(flag, said);
+	if (cost !== null) row.createSpan({ cls: 'pbl-days-lost', text: cost, attr: { 'aria-hidden': 'true' } });
 }
 
 /**

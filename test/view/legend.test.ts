@@ -162,6 +162,48 @@ describe('the roadmap legend', () => {
 		expect(swatchLabels(containerEl)).toContain('Unavailable');
 	});
 
+	it('keys days lost exactly when a clash drew, on the same rule as the hatch beside it', () => {
+		// `drawn.daysLost` is the render's own word for "some row on this grid reported a
+		// cost", asked the same way `drawn.absence` is — never a predicate over
+		// `roadmap.lanes`, which cannot see a fold or a filter taking the clash off screen.
+		const vault = new FakeVault();
+		vault.addFile('Work.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
+		});
+		vault.addFile('Alice away.md', {
+			frontmatter: { type: 'Absence', assignee: 'Alice', start: '2026-08-04', due: '2026-08-06' },
+		});
+		const { view, containerEl } = makeView(
+			vault,
+			{ ...DATE_AXIS, assigneeProperty: 'note.assignee', resourceNames: 'Alice' },
+			{ collapsed: true },
+		);
+		view.setProjection('roadmap');
+
+		// The plain dated axis draws no band and so no clash at all.
+		view.setAxisPick('dates');
+		expect(swatchLabels(containerEl)).not.toContain('Days lost');
+
+		view.setAxisPick('resources');
+		expect(swatchLabels(containerEl)).toContain('Days lost');
+	});
+
+	it('keys no days lost where nothing on the grid crosses a stretch', () => {
+		const vault = new FakeVault();
+		vault.addFile('Clear.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-02' },
+		});
+		const { view, containerEl } = makeView(
+			vault,
+			{ ...DATE_AXIS, assigneeProperty: 'note.assignee', resourceNames: 'Alice' },
+			{ collapsed: true },
+		);
+		view.setProjection('roadmap');
+		view.setAxisPick('resources');
+
+		expect(swatchLabels(containerEl)).not.toContain('Days lost');
+	});
+
 	it('stays under the toolbar and outside the timeline scroller, so it never scrolls away', () => {
 		const { view, containerEl } = makeView(datedVault(), { ...DATE_AXIS, ...WORKFLOW }, { collapsed: true });
 		view.setProjection('roadmap');

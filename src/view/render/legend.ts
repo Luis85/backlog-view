@@ -71,6 +71,12 @@ export function renderLegend(
 	// the resources axis, and stays lit through a fold, since a collapsed band's header
 	// keeps drawing its own stretches (2026-08-14).
 	if (drawn.absence) addSwatch(legendEl, 'pbl-legend-absence', 'Unavailable');
+	// The days-lost swatch, on the same rule as the hatch beside it: `drawn.daysLost` is the
+	// render's own word for "a bar reported a cost somewhere on this grid", keyed exactly
+	// where the mark can appear — never a predicate over `roadmap.lanes`, which is empty on
+	// every axis that draws no bands and so cannot see a fold hiding a clash the model still
+	// lists.
+	if (drawn.daysLost) addSwatch(legendEl, 'pbl-legend-days-lost', 'Days lost');
 }
 
 /**

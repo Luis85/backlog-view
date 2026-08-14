@@ -21,7 +21,7 @@ import { dependenciesAvailable } from '../interactions/dependencies';
 import { wireBarLink, wireLinkPreview } from '../interactions/linkDrag';
 import { effectiveLeadWidth, renderLeadResize } from '../interactions/timelineLeadResize';
 import { BacklogViewHost, BarColors, DrawnColors } from '../host';
-import { crossedAbsences } from '../../domain/absences';
+import { crossedAbsences, daysLost } from '../../domain/absences';
 import { BacklogItem } from '../../domain/model';
 import { barHolds, ShelfCard, TimelineBar, TimelineRow } from '../../domain/bars';
 import { dependencyArrows } from '../../domain/dependencies';
@@ -297,7 +297,7 @@ export function renderTimeline(
 		palettes,
 		conflictedPrereqs: dependencies.conflicts,
 	};
-	const drawn: DrawnColors = { done: false, milestone: milestoneLines, accent: false, absence: false };
+	const drawn: DrawnColors = { done: false, milestone: milestoneLines, accent: false, absence: false, daysLost: false };
 	drawEntries(entries, { ctx, mounts, window, drawing, drawn });
 	// After every row exists, never before: an edge's arrow anchors on the ROWS the
 	// prerequisite and the dependent actually drew, and its Y comes from where those
@@ -407,10 +407,7 @@ function drawEntries(entries: TimelineEntry[], pass: EntryPass): void {
 			// the stretch's own line already carries the mark, a context row makes no
 			// positional claim at all, and on the dated axis `lane` is null because there is
 			// no band to be a member of.
-			if (lane) {
-				renderAbsenceWash(bar.track, lane.absences, { window, scale });
-				noteAbsenceClash(bar.row, bar.lead, crossedAbsences(entry.row.bar.span, lane.absences));
-			}
+			if (lane) drawBandCollision(bar, entry.row, lane, { window, scale }, drawn);
 		}
 		inBand(row);
 		// Assigned at render because CSS has no nth-of-class, and nth-child would
@@ -418,6 +415,59 @@ function drawEntries(entries: TimelineEntry[], pass: EntryPass): void {
 		if (drawnRows % 2 === 1) row.addClass('pbl-row-even');
 		drawnRows++;
 	}
+}
+
+/** What `clashCost` and `drawBandCollision` place a mark against — the window and scale
+ *  pair `renderAbsenceWash` already takes, named once rather than repeated in both. */
+type BarRuler = { window: TimelineWindow; scale: TimelineScale };
+
+/**
+ * Everything a WORK row owes its own band about the stretch it crosses: the shading behind
+ * the bar, the mark and its cost beside it, and the report the legend keys from — three
+ * things that must agree about which stretches this bar actually crosses, so they are
+ * decided together here rather than left as three separate asks inside `drawEntries`, which
+ * is already at the branching budget `npm run analyze` enforces just telling the three entry
+ * kinds apart.
+ */
+function drawBandCollision(bar: { row: HTMLElement; lead: HTMLElement; track: HTMLElement }, row: TimelineRow, lane: ResourceLane, ruler: BarRuler, drawn: DrawnColors): void {
+	renderAbsenceWash(bar.track, lane.absences, ruler);
+	const crossed = crossedAbsences(row.bar.span, lane.absences);
+	noteAbsenceClash(bar.row, bar.lead, crossed, clashCost(row, lane, ruler));
+	if (crossed.length > 0) drawn.daysLost = true;
+}
+
+/**
+ * Width in PIXELS below which a bar's own days-lost sentence draws only into
+ * `.pbl-sr-only`, never as the visible span beside the swatch — a live-vault tuning
+ * knob, the same caveat the wash's own percentages in `styles/lanes.css` carry: jsdom
+ * paints nothing, so nothing here can watch what the sentence actually looks like next
+ * to a bar this narrow. Kept low enough that an ORDINARY bar at the default month zoom
+ * (4px/day) still shows it — a two-day bar is 8px wide there — because suppressing that
+ * case would make the feature invisible on the zoom most vaults open at; a real vault at
+ * a narrower zoom is what would settle a higher number.
+ */
+const MIN_COST_LABEL_PX = 8;
+
+/**
+ * What a bar SAYS about the days it loses, or null where the label has no room.
+ *
+ * A milestone is a point, so there is no arithmetic to do: `crossedAbsences` already
+ * answered whether it lands on an away day, and a count of days would be one either way.
+ *
+ * The threshold is the whole reason this returns null rather than a string every time. The
+ * label is new furniture INSIDE the day track: zoomed out far enough, a bar renders only a
+ * few pixels wide while this sentence is close to 180px, so it would dominate the grid and
+ * run past the bar it is about. The `.pbl-sr-only` sentence in `noteAbsenceClash` is written
+ * unconditionally, so dropping the visible half loses nothing — the toolbar's own rule, shed
+ * the visible thing and never the reachable one.
+ */
+function clashCost(row: TimelineRow, lane: ResourceLane, ruler: BarRuler): string | null {
+	if (isMarkerType(row.bar.item.typeName)) return '· falls on an away day';
+	const geometry = barGeometry(ruler.window, row.bar.span);
+	if (geometry.spanDays * ruler.scale.dayPx < MIN_COST_LABEL_PX) return null;
+	const lost = daysLost(row.bar.span, lane.absences);
+	if (lost === 0) return null;
+	return lost >= geometry.spanDays ? `all ${lost} days lost` : `${lost} days lost to absence`;
 }
 
 /**

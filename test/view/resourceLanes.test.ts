@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { shelfRemoval } from '../../src/view/render/shelf';
 import { clickExpandAll, Harness, makeView, useViewHarness } from '../helpers/view';
-import { cellLabels, gripNames, laneCountOf, laneNames, laneOrder, lanesOf, rowFor, shelfTitles } from '../helpers/roadmap';
+import { gripNames, laneCountOf, laneNames, laneOrder, lanesOf, rowFor, shelfTitles } from '../helpers/roadmap';
 import { resourceVault } from '../helpers/resources';
 import { addDays, formatCivil } from '../../src/domain/timeline';
 import { readDate, todayStamp } from '../../src/domain/noteFields';
@@ -298,11 +298,19 @@ describe('folding on the resources axis', () => {
 		// band's row-collapsed subtree draws nothing at all — not a row, not a rail — so it
 		// must not widen the window either, or eleven months of empty gridlines is exactly
 		// what a reader who folded that one bar away would still have to scroll past.
-		const { containerEl } = laneRoadmap(nearAndFarVault(), { expanded: true });
-		rowChevron(containerEl, 'Epic')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		const harness = laneRoadmap(nearAndFarVault(), { expanded: true });
+		rowChevron(harness.containerEl, 'Epic')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
 		const baseline = laneRoadmap(nearOnlyVault());
-		expect(cellLabels(containerEl).length).toBe(cellLabels(baseline.containerEl).length);
+		// The direct reading `test/view/timelineFurniture.test.ts` and `timelineDrag.test.ts`
+		// already use, rather than a proxy over how many header cells happened to render —
+		// and pinned with a concrete floor rather than compared bare, since an unconfigured
+		// window on both sides (`undefined`) would satisfy an equality just as loudly as an
+		// actual match and say nothing at all. A month padded either side of a five-day span
+		// is comfortably past 30 days on any calendar.
+		const baselineDays = baseline.view.roadmap?.window?.days;
+		expect(baselineDays, 'the baseline drew no window at all').toBeGreaterThan(30);
+		expect(harness.view.roadmap?.window?.days).toBe(baselineDays);
 	});
 
 	it('widens the grid for a folded band whose own bar is far future', () => {
@@ -313,7 +321,8 @@ describe('folding on the resources axis', () => {
 		harness.view.setLaneCollapsed('Alice', true);
 
 		const baseline = laneRoadmap(nearOnlyVault());
-		expect(cellLabels(harness.containerEl).length).toBeGreaterThan(cellLabels(baseline.containerEl).length);
+		// The direct reading, not the header-cell proxy — see the sibling test above.
+		expect(harness.view.roadmap?.window?.days).toBeGreaterThan(baseline.view.roadmap?.window?.days ?? 0);
 	});
 });
 

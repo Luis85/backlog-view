@@ -160,3 +160,67 @@ describe('the mark a bar carries for crossing one', () => {
 		expect(rowFor(containerEl, 'Near work')?.querySelector('.pbl-away-flag')).toBeNull();
 	});
 });
+
+describe('what a bar SAYS it costs to cross an absence', () => {
+	it('says how many of a bar’s days the stretch takes', () => {
+		const { containerEl } = laneRoadmap(absenceVault());
+		const row = rowFor(containerEl, 'Work');
+
+		// `Work` runs 1–10 August and Alice is away 4–6: three days.
+		expect(row?.querySelector('.pbl-days-lost')?.textContent).toBe('3 days lost to absence');
+	});
+
+	it('says so differently when the stretch covers the bar whole', () => {
+		const vault = new FakeVault();
+		vault.addFile('Short.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-04', due: '2026-08-05' },
+		});
+		vault.addFile('Alice away.md', {
+			frontmatter: { type: 'Absence', assignee: 'Alice', start: '2026-08-01', due: '2026-08-20' },
+		});
+		const { containerEl } = laneRoadmap(vault);
+
+		expect(rowFor(containerEl, 'Short')?.querySelector('.pbl-days-lost')?.textContent).toBe('all 2 days lost');
+	});
+
+	it('keeps the sentence reachable even where the visible label is dropped', () => {
+		// The toolbar's own rule: shed the visible thing, never the reachable one. `clashCost`
+		// drops the sentence once a bar is too narrow for it to sit beside; reached here with a
+		// bar too SHORT rather than a zoom too far out. `test/helpers/view.ts` has no zoom
+		// setter narrower than the real `setZoom`, and none of `SCALES` is narrow enough to
+		// suppress this file's own ten-day `Work` bar (`quarter`, the narrowest, still draws it
+		// at 20px) — mocking `scaleFor` to fake a narrower one changes nothing here, since
+		// `renderRoadmap.ts` closes over its own import binding rather than re-reading a
+		// namespace object a spy can intercept. A one-day bar at the default zoom crosses the
+		// threshold on its own dates instead, which is what this fixture is for. The
+		// `.pbl-sr-only` sentence in `noteAbsenceClash` is written unconditionally either way,
+		// so nothing is lost with the visible half.
+		const vault = new FakeVault();
+		vault.addFile('Brief.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-04', due: '2026-08-04' },
+		});
+		vault.addFile('Alice away.md', {
+			frontmatter: { type: 'Absence', assignee: 'Alice', start: '2026-08-04', due: '2026-08-06' },
+		});
+		const { containerEl } = laneRoadmap(vault);
+		const row = rowFor(containerEl, 'Brief');
+
+		expect(row?.querySelector('.pbl-days-lost')).toBeNull();
+		expect(row?.querySelector('.pbl-sr-only')?.textContent).toContain('Crosses an absence');
+	});
+
+	it('says a milestone falls on an away day rather than counting its days', () => {
+		const vault = new FakeVault();
+		vault.addFile('Ship.md', {
+			frontmatter: { type: 'Milestone', order: 10, assignee: 'Alice', due: '2026-08-05' },
+		});
+		vault.addFile('Alice away.md', {
+			frontmatter: { type: 'Absence', assignee: 'Alice', start: '2026-08-04', due: '2026-08-06' },
+		});
+		const { containerEl } = laneRoadmap(vault);
+
+		expect(rowFor(containerEl, 'Ship')?.querySelector('.pbl-days-lost')?.textContent).toBe(
+			'· falls on an away day',
+		);
+	});
+});

@@ -105,6 +105,13 @@ export interface DrawnColors {
 	 * take the narrower `BarColors`: a bar row draws no hatch and has nothing to say here.
 	 */
 	absence: boolean;
+	/**
+	 * A bar reported days lost to an absence somewhere on this grid — the resources axis
+	 * only, since it is the only one whose rows belong to a resource. Reported from the
+	 * RENDER like `absence` beside it, and for the same reason: a collapsed band draws no
+	 * clash, so a predicate over `roadmap.lanes` would key a mark nothing on screen makes.
+	 */
+	daysLost: boolean;
 }
 
 /**
@@ -112,9 +119,11 @@ export interface DrawnColors {
  * draw. Narrower rather than a second vocabulary, the same relation `AxisField` has to the
  * optional-property keys: `reportColors` ORs these three into the pass's own report, and a
  * row literal that had to state `absence: false` would be claiming something about a mark
- * drawn nowhere near it.
+ * drawn nowhere near it. `daysLost` is excluded for the same reason, joining it on
+ * 2026-08-14: a bar row draws neither the hatch nor the clash mark, because both are the
+ * band's business rather than the bar's own colour.
  */
-export type BarColors = Omit<DrawnColors, 'absence'>;
+export type BarColors = Omit<DrawnColors, 'absence' | 'daysLost'>;
 
 /**
  * The roadmap as last rendered: the derived model, and the rendered cards in

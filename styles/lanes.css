@@ -191,12 +191,24 @@
 	);
 }
 
+/* The away key, defined once and used by the wash, the lead swatch and the legend, so the
+   column and the marks that stand for it cannot drift apart. A `--color-*` token mixed with a
+   TEXT token: an absence is CONTENT, so no part of it is drawn from `--background-modifier-*`
+   — the rule `docs/bugs/An absence read fainter than the decoration behind it.md` records.
+
+   Scoped to `.pbl-timeline`, not a `.pbl-timeline-grid` this view never creates: it is the
+   scroll box both axes share (`styles/timeline.css`) and the one ancestor common to a bar
+   row's track, where the wash draws, and its lead, where the swatch draws — a header's own
+   stretch (`.pbl-absence`) and its legend key sit outside this rekey and keep the plain
+   `--text-muted` hatch they always drew. */
+.pbl-timeline {
+	--pbl-away: color-mix(in srgb, var(--color-yellow) 55%, var(--text-muted));
+}
+
 /* The same unavailable days, shaded across the WORK rows of the band — OVER the bars, so a bar
    and the stretch it crosses are read on one line and the tint lands on the bar itself. Under
    them it marked the days that are free and hid the ones being looked for, which is how it
-   shipped for a few hours on 2026-08-14. A different token from the weekend layer's
-   `--background-modifier-hover`, and stronger, because being told apart from the weekend
-   banding at a glance is the whole of what was reported.
+   shipped for a few hours on 2026-08-14.
 
    `pointer-events: none` is load-bearing rather than housekeeping: on this axis each ELEMENT
    of a band is the drop target (`laneElement` in `src/view/render/timeline.ts`), since a band
@@ -212,8 +224,11 @@
    over a saturated bar is also strong enough to look like a second bar, which is the trap the
    percentage alone cannot escape — so the fill stays a tint and the boundaries are drawn. A
    reader asking "which days" is looking for two lines, and an eye finds an edge long before it
-   finds a 10% difference in fill. It shipped as a bare 18% fill and read as almost nothing
-   over an orange bar at Months zoom, in a vault, which is what added these.
+   finds a small difference in fill.
+
+   Hatched in the row's own DARK (`--background-primary`) rather than in `--pbl-away` itself,
+   so the column DARKENS whatever it crosses instead of brightening it — a light hatch over a
+   saturated bar would read as a second bar drawn on top rather than a cost this one is paying.
 
    `box-sizing` is load-bearing rather than housekeeping, exactly as it is for
    `.pbl-timeline-cell`: `--pbl-bar-width` is a count of DAYS times `dayPx`, so under the
@@ -224,7 +239,9 @@
    The percentages are the tuning knob and nothing in this repository can settle them — jsdom
    paints nothing and the browser harness draws Obsidian's DEFAULT colours, so whether this
    out-reads a themed vault's weekend banding, and whether it stays a wash rather than becoming
-   a bar, is a live-vault check. 18% → 28% was one such look; it is not a measurement. */
+   a bar, is a live-vault check. Re-keyed from `--text-muted` to `--pbl-away` on 2026-08-14 so
+   the cost this wash marks reads as the same warm fact the swatch beside it and the legend key
+   both use; the percentages themselves are unmeasured guesses, same as before the rekey. */
 .pbl-absence-wash {
 	box-sizing: border-box;
 	position: absolute;
@@ -232,17 +249,21 @@
 	bottom: 0;
 	left: var(--pbl-bar-left);
 	width: var(--pbl-bar-width);
-	background-color: color-mix(in srgb, var(--text-muted) 28%, transparent);
-	border-inline: 1px solid color-mix(in srgb, var(--text-muted) 70%, transparent);
+	background-color: color-mix(in srgb, var(--pbl-away) 16%, transparent);
+	background-image: repeating-linear-gradient(
+		45deg,
+		color-mix(in srgb, var(--background-primary) 35%, transparent) 0 4px,
+		transparent 4px 8px
+	);
+	border-inline: 1px solid color-mix(in srgb, var(--pbl-away) 85%, transparent);
 	pointer-events: none;
 }
 
-/* The glyph a bar's own row carries when it is scheduled across days its resource is away —
+/* The mark a bar's own row carries when it is scheduled across days its resource is away —
    `noteAbsenceClash`. Pinned to the lead's RIGHT edge like `.pbl-timeline-dependency-flag`
    and for that rule's own reason: left to flow after the title it quietly narrows the column
    it sits in, and against the right edge a column of flagged rows lands in one x. Both flags
-   can appear on one row and sit side by side there. Muted rather than a warning colour: a
-   plan crossing an absence is a fact to see, not an error to fix. */
+   can appear on one row and sit side by side there. */
 .pbl-away-flag {
 	display: inline-flex;
 	align-items: center;
@@ -255,6 +276,37 @@
 .pbl-away-flag .svg-icon {
 	width: var(--icon-s);
 	height: var(--icon-s);
+}
+
+/* The hatched swatch that replaced the `calendar-x` glyph on 2026-08-14 — a small block of
+   the same away key the wash draws, `--pbl-away`, rather than a warning colour: a plan
+   crossing an absence is a fact to see, not an error to fix. Sized off `--icon-s` like the
+   glyph it replaced, so the flag's own width in the lead does not jump. */
+.pbl-away-swatch {
+	width: var(--icon-s);
+	height: var(--icon-s);
+	border-radius: var(--radius-s);
+	border: 1px solid color-mix(in srgb, var(--pbl-away) 85%, transparent);
+	background-color: color-mix(in srgb, var(--pbl-away) 35%, transparent);
+	background-image: repeating-linear-gradient(
+		45deg,
+		color-mix(in srgb, var(--pbl-away) 85%, transparent) 0 2px,
+		transparent 2px 4px
+	);
+}
+
+/* The days-lost sentence beside the swatch — `noteAbsenceClash`'s visible half, dropped by
+   `clashCost` wherever there is no room for it (`src/view/render/timeline.ts`). Muted TEXT,
+   never the away key itself: this is words, not a mark standing for the stretch, so it draws
+   from the same token every other hidden-in-plain-sight row note does. Where it lands relative
+   to the bar it is about is a live-vault question this stylesheet cannot settle — `clashCost`'s
+   own width threshold is the tuning knob for it. */
+.pbl-days-lost {
+	flex: 0 0 auto;
+	margin-left: var(--size-4-2);
+	white-space: nowrap;
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
 }
 
 /* A resource with nothing on screen under them: still a row, because a roster exists to show

@@ -343,6 +343,28 @@ describe('the absence marks are drawn from the content palette', () => {
 		}
 	});
 
+	it('draws the wash from --pbl-away and never from the decoration palette', () => {
+		// The same instrument as the check above and the same reach: it sees the token a
+		// declaration names, it cannot see a later rule overriding it, and it cannot tell
+		// you what any of it looks like against a themed bar — a live-vault question.
+		const named = tokens(lanes, '.pbl-absence-wash', 'styles/lanes.css');
+		expect(named, '.pbl-absence-wash names no --pbl-away token').toContain('--pbl-away');
+		for (const token of named) {
+			expect(token, `.pbl-absence-wash draws from the decoration palette: ${token}`).not.toMatch(/^--background-modifier/);
+		}
+	});
+
+	it('keys the days-lost swatch with the SAME --pbl-away token the wash names, not a copy', () => {
+		// The pairing the hatch test below states for `.pbl-absence`/`.pbl-legend-absence`,
+		// asked of the away key instead: both draw from ONE custom property declared once
+		// (`.pbl-timeline`, `styles/lanes.css`), so the two cannot drift the colour apart —
+		// only the gradient's own period differs, which is why this pairs the token alone
+		// and not the whole gradient the way the hatch pairing below does.
+		const legend = readFileSync(new URL('../../styles/legend.css', import.meta.url), 'utf8');
+		expect(tokens(lanes, '.pbl-absence-wash', 'styles/lanes.css')).toContain('--pbl-away');
+		expect(tokens(legend, '.pbl-legend-days-lost', 'styles/legend.css')).toContain('--pbl-away');
+	});
+
 	it('draws the stretch at the height its sub-lane pitch was sized for', () => {
 		// 12px against a bar's 14px was saying "lesser" as well as "different", and only the
 		// second was intended: what tells work from the absence of work is the hatch. Matching
