@@ -361,6 +361,22 @@ describe('the absence marks are drawn from the content palette', () => {
 		expect(mark, '.pbl-absence names no text token').toBeDefined();
 		expect(inked(legend, '.pbl-legend-absence', 'styles/legend.css')).toBe(mark);
 	});
+
+	it('lets the pointer through the shading, rather than taking the drop the row is the target for', () => {
+		// On this axis each ELEMENT of a band is the drop target (`laneElement` in
+		// `src/view/render/timeline.ts`) — there is no container to wire — so a child of a row
+		// that intercepts the pointer is `docs/bugs/An absence stretch is a dead spot in its
+		// own band.md` reached from inside the row. Every other absolutely positioned
+		// decoration on this grid opts out the same way.
+		expect(bodyOf(lanes, '.pbl-absence-wash', 'styles/lanes.css')).toContain('pointer-events: none;');
+	});
+
+	it('gives the shading no layer of its own', () => {
+		// It sits under the bar by document order — prepended into the track — which is the
+		// sandwich `styles/dependencyArrows.css` records. A `z-index` here, or on `.pbl-bar`
+		// to lift it instead, competes with the sticky lead column at 2.
+		expect(bodyOf(lanes, '.pbl-absence-wash', 'styles/lanes.css')).not.toContain('z-index');
+	});
 });
 
 describe('the resize grip is ringed in a colour other than its own fill', () => {

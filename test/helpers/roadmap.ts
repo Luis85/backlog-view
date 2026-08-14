@@ -5,6 +5,13 @@ import { Harness, makeView } from './view';
 /** The horizon axis the roadmap suites configure: `horizon` as the property. */
 const HORIZON_AXIS = { horizonProperty: 'note.horizon' };
 
+/** The three properties the resources axis reads, absences through them as well. */
+const RESOURCE_AXIS = {
+	startProperty: 'note.start',
+	targetProperty: 'note.due',
+	assigneeProperty: 'note.assignee',
+};
+
 /** Three epics across the declared vocabulary, one of them not triaged at all. */
 export function horizonVault(): FakeVault {
 	const vault = new FakeVault();
@@ -57,6 +64,35 @@ export function roadmapView(vault: FakeVault, cfg: Record<string, unknown>, { ba
 	const harness = makeView(vault, cfg, { collapsed: true, base });
 	harness.view.setProjection('roadmap');
 	harness.view.setShelfCollapsed(false);
+	return harness;
+}
+
+/**
+ * A roadmap opened on the RESOURCES axis, with Alice and Bob declared — shared by the two
+ * absence view suites, which must drive the same axis the same way or the wash one asserts
+ * and the mark the other asserts are describing two different grids.
+ *
+ * `only` narrows what the Base returns, so everything else in the vault loads as a context
+ * row, and `focus` is what puts such a row in the roadmap's row set at all — unfocused, that
+ * set is `model.results`, which holds none. Both are working position rather than config
+ * (ADR 0011), so they go to the harness beside `collapsed` and never into the view options.
+ *
+ * `resourceLanes.test.ts` keeps a near-twin of this deliberately: that one also opens the
+ * shelf and takes an `expanded` flag driving the real expand-all control after the axis is
+ * picked, neither of which any absence test wants.
+ */
+export function laneRoadmap(
+	vault: FakeVault,
+	extra: Record<string, unknown> = {},
+	{ only, focus }: { only?: string[]; focus?: string } = {},
+): Harness {
+	const harness = makeView(vault, { ...RESOURCE_AXIS, resourceNames: 'Alice, Bob', ...extra }, {
+		collapsed: true,
+		only,
+		focus,
+	});
+	harness.view.setProjection('roadmap');
+	harness.view.setAxisPick('resources');
 	return harness;
 }
 

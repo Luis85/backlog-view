@@ -5,6 +5,7 @@ import { RowContext } from './columns';
 import {
 	drawnSpans,
 	edgeClasses,
+	renderAbsenceWash,
 	renderLaneAbsence,
 	renderLaneContextRow,
 	renderLaneHead,
@@ -373,10 +374,18 @@ function drawEntries(entries: TimelineEntry[], pass: EntryPass): void {
 			inBand(renderLaneAbsence(ctx, mounts.content, entry.absence, { window, scale }));
 			continue;
 		}
-		const row =
-			entry.kind === 'context'
-				? renderLaneContextRow(ctx, mounts.content, entry.item)
-				: reportColors(renderBarRow(ctx, mounts, window, entry.row, scale), drawn);
+		let row: HTMLElement;
+		if (entry.kind === 'context') {
+			row = renderLaneContextRow(ctx, mounts.content, entry.item);
+		} else {
+			const bar = renderBarRow(ctx, mounts, window, entry.row, scale);
+			row = reportColors(bar, drawn);
+			// The band's unavailable days, shaded behind this row's own bar. A WORK row only:
+			// the stretch's own line already carries the mark, a context row makes no
+			// positional claim at all, and on the dated axis `lane` is null because there is
+			// no band to be a member of.
+			if (lane) renderAbsenceWash(bar.track, lane.absences, { window, scale });
+		}
 		inBand(row);
 		// Assigned at render because CSS has no nth-of-class, and nth-child would
 		// count the header, the lines and the layers interleaved in this container.
@@ -474,7 +483,7 @@ function renderBarRow(
 	window: TimelineWindow,
 	entry: TimelineRow,
 	scale: TimelineScale,
-): { row: HTMLElement; colors: BarColors } {
+): { row: HTMLElement; colors: BarColors; lead: HTMLElement; track: HTMLElement } {
 	const bar = entry.bar;
 	// The item's OWN workflow, read ONCE and threaded through the three things on this row
 	// that key a colour or say one in words: the slot class, the hidden state words, and
@@ -590,7 +599,7 @@ function renderBarRow(
 		// is still exactly the case where the state is outside its own vocabulary.
 		accent: !own.done && paint === null && !milestoneDrawn,
 	};
-	return { row, colors };
+	return { row, colors, lead, track };
 }
 
 /**

@@ -2,8 +2,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { Menu, Modal, Notice } from '../helpers/obsidian-mock';
-import { flush, Harness, makeView, submitButton, useViewHarness } from '../helpers/view';
-import { laneCountOf, laneNames, lanesOf } from '../helpers/roadmap';
+import { flush, submitButton, useViewHarness } from '../helpers/view';
+import { barFor, laneCountOf, laneNames, laneRoadmap, lanesOf } from '../helpers/roadmap';
+import { absenceVault } from '../helpers/resources';
+import { cardDrag } from '../helpers/dnd';
 
 useViewHarness();
 
@@ -15,30 +17,6 @@ useViewHarness();
  * from — a thing that is not a work item at all, so nothing in that file's vocabulary
  * (a bar, a card, a count) describes one.
  */
-
-const RESOURCES = {
-	startProperty: 'note.start',
-	targetProperty: 'note.due',
-	assigneeProperty: 'note.assignee',
-};
-
-function absenceVault(): FakeVault {
-	const vault = new FakeVault();
-	vault.addFile('Work.md', {
-		frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
-	});
-	vault.addFile('Alice away.md', {
-		frontmatter: { type: 'Absence', assignee: 'Alice', start: '2026-08-04', due: '2026-08-06' },
-	});
-	return vault;
-}
-
-function laneRoadmap(vault: FakeVault, extra: Record<string, unknown> = {}): Harness {
-	const harness = makeView(vault, { ...RESOURCES, resourceNames: 'Alice, Bob', ...extra }, { collapsed: true });
-	harness.view.setProjection('roadmap');
-	harness.view.setAxisPick('resources');
-	return harness;
-}
 
 /**
  * Every drawn line of the band, in order — `laneOrder`'s shape with the one distinction
@@ -127,6 +105,105 @@ describe('an absence on the resources axis', () => {
 		// one work row beneath it is still the first of its band.
 		expect(containerEl.querySelector('.pbl-absence-row')?.classList.contains('pbl-row-even')).toBe(false);
 		expect(containerEl.querySelectorAll('.pbl-row-even')).toHaveLength(0);
+	});
+
+	it('is one element of its band like every other line, and takes the drop as one', async () => {
+		// Stated from the RULE rather than from the list of element kinds that existed when
+		// it was written, which is exactly how this broke: the band has no container to
+		// wire, so it is a list of siblings, and an absence stretch joined the list by
+		// drawing and not by belonging. Every line of Bob's band is driven, so a fifth kind
+		// fails this rather than joining quietly.
+		const vault = absenceVault();
+		vault.addFile('Bob away.md', {
+			frontmatter: { type: 'Absence', assignee: 'Bob', start: '2026-08-04', due: '2026-08-06' },
+		});
+		vault.addFile('Bob work.md', {
+			frontmatter: { type: 'Epic', order: 20, assignee: 'Bob', start: '2026-08-02', due: '2026-08-03' },
+		});
+		const { containerEl } = laneRoadmap(vault);
+		const band = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-lane-head, .pbl-timeline-row')).filter(
+			(el) => el.getAttribute('aria-description') === 'Assigned to Bob' || el.querySelector('.pbl-lane-name')?.textContent === 'Bob',
+		);
+		// The header, the absence stretch and Bob's own work row — three lines, no fewer.
+		expect(band).toHaveLength(3);
+
+		for (const line of band) {
+			vault.fm('Work.md')['assignee'] = 'Alice';
+			cardDrag(barFor(containerEl, 'Work'), line);
+			await flush();
+			expect(vault.fm('Work.md')['assignee']).toBe('Bob');
+		}
+	});
+
+	it('grows the window to hold itself, in a row nothing else draws in', () => {
+		// The window was every drawn BAR and an absence is not one, so a stretch beyond the
+		// bars' reach was clamped to the edge and painted on a day it does not cover. Worst
+		// exactly here — a row minted BY an absence holds no bar, so nothing it exists to
+		// draw had any say in the window it is drawn against.
+		const vault = new FakeVault();
+		vault.addFile('Work.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
+		});
+		vault.addFile('Quinn away.md', {
+			frontmatter: { type: 'Absence', assignee: 'Quinn', start: '2026-11-04', due: '2026-11-20' },
+		});
+		const { containerEl } = laneRoadmap(vault);
+		const away = containerEl.querySelector<HTMLElement>('.pbl-absence');
+
+		// 17 days inclusive, at the scale's own day width — the true span, not the one-day
+		// stripe a clamp leaves. And nothing about it says "beyond what is drawn", because
+		// the window now reaches it.
+		expect(away?.style.getPropertyValue('--pbl-bar-width')).toBe(`${17 * 4}px`);
+		expect(away?.className).toBe('pbl-absence');
+	});
+
+	it('says "beyond what is drawn" where the grid refuses to reach it', () => {
+		// The window grows to hold an absence now, so the only thing that can still put one
+		// outside it is `MAX_TIMELINE_DAYS` — a plan too long to draw whole, clamped around
+		// today. That case is rarer than it was and not gone, which is why the mark reads
+		// its own geometry rather than resting on the window fix: a filled stripe on a
+		// calendar claims THESE are the days, exactly as a bar does.
+		const vault = new FakeVault();
+		vault.addFile('Work.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2020-01-01', due: '2032-01-01' },
+		});
+		vault.addFile('Quinn away.md', {
+			frontmatter: { type: 'Absence', assignee: 'Quinn', start: '2031-01-04', due: '2031-01-20' },
+		});
+		vault.addFile('Early away.md', {
+			frontmatter: { type: 'Absence', assignee: 'Early', start: '2020-02-01', due: '2020-02-10' },
+		});
+		const { containerEl } = laneRoadmap(vault);
+		const marks = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-absence'));
+
+		// Past the far edge and past the near one — the same open-end vocabulary a bar wears,
+		// so the direction it lies in is still readable.
+		expect(marks.map((el) => el.className)).toEqual([
+			'pbl-absence pbl-bar-outside pbl-bar-open-end',
+			'pbl-absence pbl-bar-outside pbl-bar-open-start',
+		]);
+	});
+
+	it('marks a stretch the window cuts through as running past whichever edge it crosses', () => {
+		const vault = new FakeVault();
+		vault.addFile('Work.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2020-01-01', due: '2032-01-01' },
+		});
+		// One straddling the clamped window's far end, one its near end — each has an end
+		// inside the grid and an end past it, in opposite directions.
+		vault.addFile('Quinn away.md', {
+			frontmatter: { type: 'Absence', assignee: 'Quinn', start: '2026-08-01', due: '2031-01-20' },
+		});
+		vault.addFile('Early away.md', {
+			frontmatter: { type: 'Absence', assignee: 'Early', start: '2020-02-01', due: '2026-08-20' },
+		});
+		const { containerEl } = laneRoadmap(vault);
+		const marks = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-absence'));
+
+		expect(marks.map((el) => el.className)).toEqual([
+			'pbl-absence pbl-bar-open-end pbl-bar-clipped-end',
+			'pbl-absence pbl-bar-open-start',
+		]);
 	});
 
 	it('draws nothing at all with one date property configured', () => {
@@ -286,6 +363,106 @@ describe('adding an absence', () => {
 	});
 });
 
+describe('editing a placed absence', () => {
+	function openEdit(containerEl: HTMLElement): void {
+		containerEl
+			.querySelector<HTMLElement>('.pbl-absence-row')
+			?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		Menu.lastShown?.item('Edit absence')?.click();
+	}
+
+	it('opens the SAME form the add flow does, filled with what the stretch says', () => {
+		// One form for both acts, so they cannot come to disagree about what an absence is —
+		// same fields, same validator, same refusals.
+		const { containerEl } = laneRoadmap(absenceVault());
+
+		openEdit(containerEl);
+
+		const inputs = Array.from(Modal.lastOpened?.contentEl.querySelectorAll('input') ?? []);
+		expect(inputs.map((i) => i.value)).toEqual(['Alice', 'Alice away', '2026-08-04', '2026-08-06']);
+	});
+
+	it('rewrites the days it covers and who it is for, in place', async () => {
+		const vault = absenceVault();
+		const { containerEl } = laneRoadmap(vault);
+
+		openEdit(containerEl);
+		expect(submitAbsence({ resource: 'Bob', title: 'Alice away', start: '2026-08-05', target: '2026-08-09' })).toBe(true);
+		await flush();
+
+		const fm = vault.fm('Alice away.md');
+		expect(fm['assignee']).toBe('Bob');
+		expect(fm['start']).toBe('2026-08-05');
+		expect(fm['due']).toBe('2026-08-09');
+		// The same note, edited — not a second one written beside the first.
+		expect(vault.files.has('Alice away.md')).toBe(true);
+	});
+
+	it('renames the note when the title changes, since the title IS its name', async () => {
+		const vault = absenceVault();
+		const { containerEl } = laneRoadmap(vault);
+
+		openEdit(containerEl);
+		submitAbsence({ resource: 'Alice', title: 'Alice at the offsite', start: '2026-08-04', target: '2026-08-06' });
+		await flush();
+
+		expect(vault.files.has('Alice at the offsite.md')).toBe(true);
+		expect(vault.files.has('Alice away.md')).toBe(false);
+		// Through Obsidian's own rename, so the frontmatter travels with the note.
+		expect(vault.fm('Alice at the offsite.md')['assignee']).toBe('Alice');
+	});
+
+	it('refuses a broken range at the form, exactly as adding one does', async () => {
+		const vault = absenceVault();
+		const { containerEl } = laneRoadmap(vault);
+
+		openEdit(containerEl);
+		// The prompt stays open with the values in place: a written absence has no shelf to
+		// land on, so there would be no surface left to show the mistake on.
+		expect(submitAbsence({ title: 'Alice away', start: '2026-08-09', target: '2026-08-04' })).toBe(false);
+		await flush();
+
+		expect(vault.fm('Alice away.md')['start']).toBe('2026-08-04');
+	});
+
+	it('reports a save it could not make, rather than failing silently', async () => {
+		const vault = absenceVault();
+		const { containerEl } = laneRoadmap(vault);
+		vault.failWrites.add('Alice away.md');
+
+		openEdit(containerEl);
+		submitAbsence({ resource: 'Alice', title: 'Alice away', start: '2026-08-05', target: '2026-08-09' });
+		await flush();
+
+		expect(Notice.messages.some((m) => m.startsWith('Could not save the absence'))).toBe(true);
+	});
+
+	it('leaves the note where it is when the title has not changed', async () => {
+		const vault = absenceVault();
+		const { containerEl } = laneRoadmap(vault);
+
+		openEdit(containerEl);
+		submitAbsence({ resource: 'Alice', title: 'Alice away', start: '2026-08-05', target: '2026-08-09' });
+		await flush();
+
+		// A rename to the name a note already has is a needless write, and one Obsidian
+		// would answer by appending a number.
+		expect(vault.files.has('Alice away.md')).toBe(true);
+		expect(vault.fm('Alice away.md')['start']).toBe('2026-08-05');
+	});
+
+	it('is blocked by the config gate before it takes any typing', () => {
+		const { containerEl } = laneRoadmap(absenceVault(), { orderProperty: 'note.parent' });
+
+		openEdit(containerEl);
+
+		// The gate runs BEFORE the form for `promptAddAbsence`'s reason: taking the reader's
+		// typing and then refusing the write leaves them worse off than never opening.
+		expect(Modal.lastOpened).toBeNull();
+		expect(Notice.messages.some((m) => m.startsWith('Fix the view options first'))).toBe(true);
+	});
+});
+
 describe('deleting an absence', () => {
 	function openAbsenceMenu(containerEl: HTMLElement): void {
 		containerEl
@@ -293,14 +470,15 @@ describe('deleting an absence', () => {
 			?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 	}
 
-	it('offers a delete on the stretch’s own context menu, and nothing else', () => {
+	it('offers an edit and a delete on the stretch’s own context menu, and nothing else', () => {
 		const { containerEl } = laneRoadmap(absenceVault());
 
 		openAbsenceMenu(containerEl);
 
 		// Not `buildItemMenu`: every entry in that menu is about a work item — a type, a
-		// state, a parent link, a rank — and an absence has none of them.
-		expect(Menu.lastShown?.items.map((i) => i.titleText)).toEqual(['Delete absence']);
+		// state, a parent link, a rank — and an absence has none of them. What it has is the
+		// two acts a whole note gets: change it, or take it away.
+		expect(Menu.lastShown?.items.map((i) => i.titleText)).toEqual(['Edit absence', 'Delete absence']);
 	});
 
 	it('removes the note through Obsidian’s own delete, not through the gate', async () => {

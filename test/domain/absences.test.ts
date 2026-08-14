@@ -5,6 +5,7 @@ import { ABSENCE_TYPE, ALL_TYPES, typeFolderKey } from '../../src/domain/typeVoc
 import { folderForType } from '../../src/domain/itemTypes';
 import { BacklogSettings } from '../../src/domain/settings';
 import { settingsFrom, settingsWith } from '../helpers/settings';
+import { absenceVault } from '../helpers/resources';
 import { FakeVault } from '../helpers/vault';
 
 /**
@@ -17,18 +18,6 @@ import { FakeVault } from '../helpers/vault';
 /** The axis's own three properties, which an absence reads through as well. */
 function settingsFor(over: Partial<BacklogSettings> = {}): BacklogSettings {
 	return settingsWith({ assigneeKey: 'assignee', startKey: 'start', targetKey: 'due', ...over });
-}
-
-/** One epic, and one absence written the way the prompt writes them. */
-function absenceVault(): FakeVault {
-	const vault = new FakeVault();
-	vault.addFile('Work.md', {
-		frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
-	});
-	vault.addFile('Alice away.md', {
-		frontmatter: { type: 'Absence', assignee: 'Alice', start: '2026-08-04', due: '2026-08-06' },
-	});
-	return vault;
 }
 
 describe('an absence is never a work item', () => {

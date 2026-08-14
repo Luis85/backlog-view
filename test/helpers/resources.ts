@@ -6,7 +6,8 @@
  * NODE suite importing anything from it fails to load. `test/domain/resources.test.ts`
  * and `test/view/resourceLanes.test.ts` both need this vault and must describe the same
  * one — a fixture copied into each is two fixtures free to drift while both claim to be
- * checking one axis.
+ * checking one axis. `absenceVault` joined it for that reason and not a new one: three
+ * suites had asked for the same two notes, two of them holding their own copy.
  */
 import { FakeVault } from './vault';
 
@@ -29,5 +30,21 @@ export function resourceVault(): FakeVault {
 	});
 	vault.addFile('Nobody.md', { frontmatter: { type: 'Epic', order: 40, start: '2026-08-01', due: '2026-08-02' } });
 	vault.addFile('Undated.md', { frontmatter: { type: 'Epic', order: 50, assignee: 'Alice' } });
+	return vault;
+}
+
+/**
+ * One epic, and one absence written the way the prompt writes them — the smallest vault in
+ * which a stretch and the work it crosses are both on screen: `Work` runs 2026-08-01 →
+ * 2026-08-10 and `Alice away` sits inside it, 08-04 → 08-06.
+ */
+export function absenceVault(): FakeVault {
+	const vault = new FakeVault();
+	vault.addFile('Work.md', {
+		frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
+	});
+	vault.addFile('Alice away.md', {
+		frontmatter: { type: 'Absence', assignee: 'Alice', start: '2026-08-04', due: '2026-08-06' },
+	});
 	return vault;
 }

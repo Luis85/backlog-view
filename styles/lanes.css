@@ -206,3 +206,31 @@
 	align-items: center;
 	color: var(--text-muted);
 }
+
+/* The same unavailable days, shaded across the WORK rows of the band — behind the bars, so a
+   bar and the stretch it crosses are read on one line. A different token from the weekend
+   layer's `--background-modifier-hover`, and stronger, because being told apart from the
+   weekend banding at a glance is the whole of what was reported.
+
+   `pointer-events: none` is load-bearing rather than housekeeping: on this axis each ELEMENT
+   of a band is the drop target (`laneElement` in `src/view/render/timeline.ts`), since a band
+   has no container to wire — so a child of a row intercepting the pointer is
+   `docs/bugs/An absence stretch is a dead spot in its own band.md` reached from inside the
+   row.
+
+   NO `z-index`. It sits under the bar by being prepended into the track — see
+   `renderAbsenceWash` — and `styles/dependencyArrows.css` says why a layer on `.pbl-bar` is
+   not the alternative it looks like: the bar would then out-rank the sticky lead column at 2.
+
+   The 18% is the tuning knob and nothing in this repository can settle it — jsdom paints
+   nothing and the browser harness draws Obsidian's DEFAULT colours, so whether this
+   out-reads a themed vault's weekend banding is a live-vault check. */
+.pbl-absence-wash {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: var(--pbl-bar-left);
+	width: var(--pbl-bar-width);
+	background-color: color-mix(in srgb, var(--text-muted) 18%, transparent);
+	pointer-events: none;
+}
