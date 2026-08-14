@@ -29,8 +29,11 @@
 	background-color: var(--background-secondary);
 }
 
+/* `max(30px, …)` rather than a bare formula: one sub-lane wants the floor rather than the
+   27px the pitch alone gives it, and a lane with no stretches at all wants the same 30px so
+   a roster does not stagger. `--pbl-lane-sublanes` is 0 unless a header drew marks. */
 .pbl-lane-head .pbl-timeline-track {
-	min-height: 26px;
+	min-height: max(30px, calc(10px + var(--pbl-lane-sublanes, 0) * 17px));
 }
 
 .pbl-lane-name {
@@ -63,10 +66,10 @@
 	color: var(--text-muted);
 }
 
-/* Muting is done to a row's CONTENT, never to the row — see `.pbl-absence-row` below for
-   the rule and what breaks without it. A context row draws no bar, so its track is empty on
-   purpose, and the muting is what says the row is here to place its children rather than to
-   be read as a plan. */
+/* Muting is done to a row's CONTENT, never to the row — see `.pbl-absence-wash` further
+   down for the rule and what breaks without it. A context row draws no bar, so its track is
+   empty on purpose, and the muting is what says the row is here to place its children rather
+   than to be read as a plan. */
 .pbl-lane-context .pbl-timeline-lead > * {
 	opacity: 0.65;
 }
@@ -165,14 +168,18 @@
 
    14px, matching `.pbl-bar`: 12px was saying "lesser" as well as "different" and only the
    second was intended. How the hatch reads against a themed background, and against a bar
-   it overlaps, is a live-vault check. */
+   it overlaps, is a live-vault check.
+
+   One geometry for every sub-lane count, rather than a centred single and a pitched pair:
+   13px marks on a 17px pitch, the first at 7px. At one sub-lane the mark sits 7 above and 10
+   below inside the 30px floor — near enough to centred that nobody measures it, and it costs
+   a `calc` instead of a branch. */
 .pbl-absence {
 	position: absolute;
-	top: 50%;
-	transform: translateY(-50%);
+	top: calc(7px + var(--pbl-sublane) * 17px);
 	left: var(--pbl-bar-left);
 	width: var(--pbl-bar-width);
-	height: 14px;
+	height: 13px;
 	border-radius: var(--radius-s);
 	border: 1px solid var(--text-muted);
 	background-image: repeating-linear-gradient(
@@ -182,36 +189,6 @@
 		transparent 4px,
 		transparent 8px
 	);
-}
-
-/* Muted like a context row, and for a related reason: the row is here to say what cannot be
-   taken on, not to be read as part of the plan.
-
-   The MARK is deliberately not in this list any more. It used to be, and it was dimming by a
-   fifth the one thing on the row that has to be seen — muting the row's NAME says "this is
-   furniture", muting the stretch says "this is faint", and only the first was meant.
-
-   **On the row's CONTENT, never on the row.** `opacity` below 1 does two things to a row
-   here and both are wrong: it makes the row's own sticky lead column TRANSLUCENT, so a
-   scrolled-past today line and the gridlines beneath it show through the names; and it
-   creates a stacking context, which takes the lead's `z-index: 2` out of the grid's layer
-   order and drops the whole row beneath the full-height marks. Reported from a vault as
-   "the things underneath the resources columns are shining through", with the today line
-   running straight through three rows of names. The lead column is the one part of this
-   grid that must stay opaque at every scroll position, and a rule that mutes a row is one
-   `opacity` away from making it a window. */
-.pbl-absence-row .pbl-timeline-lead > * {
-	opacity: 0.8;
-}
-
-.pbl-absence-row .pbl-timeline-track {
-	min-height: 22px;
-}
-
-.pbl-absence-icon {
-	display: flex;
-	align-items: center;
-	color: var(--text-muted);
 }
 
 /* The same unavailable days, shaded across the WORK rows of the band — OVER the bars, so a bar

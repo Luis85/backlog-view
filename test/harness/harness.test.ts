@@ -99,8 +99,9 @@ describe('the browser harness mounts', () => {
 		// Declared and empty, and a row nothing but an absence puts on screen.
 		expect(rows).toEqual(expect.arrayContaining(['Dana', 'Kim', 'Priya', 'Sam']));
 		// Three stretches: one running, one ahead for the row it mints, and one that has
-		// ENDED — the case the band header's readout must count as nothing.
-		expect(containerEl.querySelectorAll('.pbl-absence-row')).toHaveLength(3);
+		// ENDED — the case the band header's readout must count as nothing. Marks inside
+		// the header's own track now, not rows of their own, since 2026-08-14.
+		expect(containerEl.querySelectorAll('.pbl-lane-head .pbl-absence')).toHaveLength(3);
 	});
 
 	it('draws the test catalog, with both ladders in one fixture and neither in the other', () => {

@@ -185,6 +185,7 @@ function renderGridAxis(
 		dnd,
 		shelf: roadmap.shelf,
 		palettes,
+		lanes: axis === 'resources' ? roadmap.lanes : [],
 		laneElement: axis === 'resources' ? (el, lane) => band.push({ el, lane }) : null,
 		// The PANE's width, not the frame's or the not-yet-built scroller's: this is
 		// the element `backlogView.ts`'s `ResizeObserver` watches, so a render here and

@@ -76,7 +76,9 @@ describe('the days a band is unavailable, shaded across its work', () => {
 		const harness = laneRoadmap(vault, {}, { only: ['Work.md', 'Inside.md', 'Alice away.md'], focus: 'Epic' });
 		expect(harness.containerEl.querySelector('.pbl-lane-context')).not.toBeNull();
 
-		expect(harness.containerEl.querySelector('.pbl-absence-row .pbl-absence-wash')).toBeNull();
+		// The header's own track carries the stretches themselves now, so a wash there would
+		// shade the days twice.
+		expect(harness.containerEl.querySelector('.pbl-lane-head .pbl-absence-wash')).toBeNull();
 		expect(harness.containerEl.querySelector('.pbl-lane-context .pbl-absence-wash')).toBeNull();
 		// Not vacuous: the work row in that same band is shaded.
 		expect(rowFor(harness.containerEl, 'Work')?.querySelector('.pbl-absence-wash')).not.toBeNull();

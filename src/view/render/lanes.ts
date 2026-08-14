@@ -5,7 +5,7 @@ import { drawIcon } from './icons';
 import { renderBadge, renderChevron, renderTitleText } from './rows';
 import { promptAddAbsence, showAbsenceMenu } from '../interactions/absences';
 import { BacklogViewHost } from '../host';
-import { Absence, absencesConfigured, awayWeeks } from '../../domain/absences';
+import { Absence, absencesConfigured, awayWeeks, packAbsences } from '../../domain/absences';
 import { timelineRows, TimelineRow } from '../../domain/bars';
 import { BacklogItem } from '../../domain/model';
 import { CivilDate } from '../../domain/noteFields';
@@ -49,7 +49,6 @@ import {
  */
 export type TimelineEntry =
 	| { kind: 'lane'; lane: ResourceLane; collapsed: boolean }
-	| { kind: 'absence'; absence: Absence }
 	| { kind: 'row'; row: TimelineRow }
 	| { kind: 'context'; item: BacklogItem };
 
@@ -92,16 +91,17 @@ export function barEntries(rows: TimelineRow[]): TimelineEntry[] {
  * had any say in the window it is drawn against. See
  * `docs/bugs/An absence drew at the edge of a window it never widened.md`.
  *
- * Here rather than in `./timeline.ts` because the entry vocabulary is this module's: a
- * kind added to `TimelineEntry` that positions itself against the day grid is answered by
- * editing the one function beside the type, not by remembering a second walk in the
- * renderer.
+ * The stretches come from the LANES rather than from the entries, since 2026-08-14: they
+ * are no longer entries at all, they are drawn in each header's own track. The hazard is
+ * unchanged and so is the fix — a source that stops reaching this list is a window that
+ * stops holding what it draws. The dated axis passes no lanes.
  */
-export function drawnSpans(entries: TimelineEntry[]): DateSpan[] {
-	return entries.flatMap((entry) => {
-		if (entry.kind === 'row') return [entry.row.bar.span];
-		return entry.kind === 'absence' ? [{ start: entry.absence.start, target: entry.absence.target }] : [];
-	});
+export function drawnSpans(entries: TimelineEntry[], lanes: ResourceLane[]): DateSpan[] {
+	const bars = entries.flatMap((entry) => (entry.kind === 'row' ? [entry.row.bar.span] : []));
+	const stretches = lanes.flatMap((lane) =>
+		lane.absences.map((absence) => ({ start: absence.start, target: absence.target })),
+	);
+	return [...bars, ...stretches];
 }
 
 /**
@@ -129,11 +129,9 @@ export function laneEntries(lanes: ResourceLane[], folded: LaneFolds): TimelineE
 		const collapsed = folded.lane(lane.name);
 		entries.push({ kind: 'lane', lane, collapsed });
 		if (collapsed) continue;
-		// Absences lead the band: an unavailable stretch is a fact about the ROW, and the
-		// work in it reads against that rather than the other way round. One entry each —
-		// two overlapping stretches are two lines, never packed into one (4a), because a
-		// packing rule is a second geometry to keep in step with the one the bars use.
-		for (const absence of lane.absences) entries.push({ kind: 'absence', absence });
+		// Header, then rows, then context — the stretches are the header's own furniture
+		// now (`renderLaneAbsences`), drawn in its track whether the band is open or shut,
+		// so there is no entry for them here at all.
 		for (const row of timelineRows(lane.bars, folded.row)) entries.push({ kind: 'row', row });
 		for (const item of lane.context) entries.push({ kind: 'context', item });
 	}
@@ -171,21 +169,28 @@ export interface LaneFolds {
  * Returns the element, so the caller can wire it: this module draws a row's header and
  * has no opinion about what dropping on one should write. Not being a container is what
  * makes that the caller's problem per ELEMENT rather than once per band.
+ *
+ * Four parameters rather than six, and the grouping is not cosmetic: this was at the
+ * `max-params` limit of five when it took `today`, and the header now needs the window and
+ * the scale to place the stretches it draws. Both groupings already exist as shapes — `entry`
+ * is the `TimelineEntry` `'lane'` member without its tag, and `ruler` is what
+ * `renderAbsenceWash` already takes plus the day the readout asks about — so nothing new was
+ * invented to fit under the cap.
  */
 export function renderLaneHead(
 	ctx: RowContext,
 	content: HTMLElement,
-	lane: ResourceLane,
-	collapsed: boolean,
-	today: CivilDate,
+	entry: { lane: ResourceLane; collapsed: boolean },
+	ruler: { window: TimelineWindow; scale: TimelineScale; today: CivilDate },
 ): HTMLElement {
+	const { lane, collapsed } = entry;
 	const head = content.createDiv({
 		cls: 'pbl-lane-head' + (lane.declared ? '' : ' pbl-lane-undeclared') + (collapsed ? ' pbl-lane-collapsed' : ''),
 	});
 	const lead = head.createDiv({ cls: 'pbl-timeline-lead' });
 	renderLaneChevron(ctx.host, lead, lane, collapsed);
 	lead.createSpan({ cls: 'pbl-lane-name', text: lane.name });
-	lead.createSpan({ cls: 'pbl-lane-count', text: laneReadout(lane, today) });
+	lead.createSpan({ cls: 'pbl-lane-count', text: laneReadout(lane, ruler.today) });
 	if (!lane.declared) {
 		const mark = lead.createSpan({ cls: 'pbl-lane-stray' });
 		drawIcon(mark, 'circle-help');
@@ -195,7 +200,7 @@ export function renderLaneHead(
 		);
 	}
 	renderLaneAbsenceAdd(ctx, lead, lane);
-	head.createDiv({ cls: 'pbl-timeline-track' });
+	renderLaneAbsences(ctx, head, lane, ruler);
 	return head;
 }
 
@@ -318,52 +323,61 @@ export function renderLaneContextRow(ctx: RowContext, content: HTMLElement, item
 }
 
 /**
- * One unavailable stretch, drawn where a bar would be drawn and by the same arithmetic —
- * `barGeometry` against the same window, so a stretch and the work it crosses cannot
- * disagree about which day is which.
+ * One resource's unavailable stretches, drawn in that resource's own header track — which
+ * is what makes a band one row per person whatever they have.
  *
- * NOT a card: `createCard` gives a `BacklogItem` its selection, its context styling and
- * its place in the pane's roving walk, and an absence is none of those things — it is not
- * in `roadmap.cards`, cannot be selected, and has no note-opening activation. What it has
- * is a title, a range, and a context menu to delete it
- * (`view/interactions/absences.ts`).
+ * Positioned by `barGeometry` against the same window a bar is, so a stretch and the work it
+ * crosses cannot disagree about which day is which, and packed by `packAbsences` so two that
+ * share a day get two sub-lanes instead of two rows. The sub-lane count goes onto the HEADER
+ * as `--pbl-lane-sublanes` and the stylesheet does the arithmetic: one number crossing the
+ * boundary rather than a height computed here.
  *
- * The dates go in the row's own accessible name rather than on the mark: the mark is a
- * plain div, where ARIA prohibits a name, and a reader who cannot see the stretch needs to
- * be told which days it covers. A note created since 2026-08-14 is NAMED for its dates
- * (`absenceTitle`), so such a row now states them twice — accepted rather than trimmed,
- * because *an absence's title is its basename and nothing else* is the rule the edit path is
- * built on: a hand rename or an older note can leave any string there, and a row that
- * dropped the dates whenever the title looked like it carried them would lose them exactly
- * where the name lies. If the repetition reads badly in a vault the fix is `absenceTitle`,
- * one pure function, and not a second rule about what this row draws. Whose row it is in is
- * `renderLaneRowDescription`'s, exactly as it is for every other row of the band.
+ * **Each mark keeps its pointer events, and that is deliberate in both directions.** It needs
+ * them for the context menu, which is now the ONLY route to Edit and Delete — the row that
+ * used to carry them is gone. And the band's drop still works because a mark is a CHILD of
+ * the header, an element `TimelineDrawing.laneElement` registers, so `dragover` and `drop`
+ * bubble to it. That is exactly what
+ * `docs/bugs/An absence stretch is a dead spot in its own band.md` was: a stretch that drew
+ * into a band as a SIBLING without joining it. A `pointer-events: none` here would kill the
+ * menu; a `stopPropagation` would recreate the dead spot.
+ *
+ * The stretches' names and dates go on the header as one `aria-description`, because none of
+ * them has a row to be named by any more. That is a REGRESSION and not a substitution —
+ * three stretches become one string a reader cannot move within — accepted as the cost of
+ * one row per person and recorded as such in `docs/requirements/Resource absences.md`.
  */
-export function renderLaneAbsence(
+function renderLaneAbsences(
 	ctx: RowContext,
-	content: HTMLElement,
-	absence: Absence,
+	head: HTMLElement,
+	lane: ResourceLane,
 	ruler: { window: TimelineWindow; scale: TimelineScale },
 ): HTMLElement {
-	const { window, scale } = ruler;
+	// Annotated rather than left as `ctx.host`, the fallow gotcha in the root `CLAUDE.md`:
+	// an interface member reached only through a property access reports as an unused class
+	// member even though it is called.
 	const host: BacklogViewHost = ctx.host;
-	const row = content.createDiv({ cls: 'pbl-timeline-row pbl-absence-row' });
-	row.addEventListener('contextmenu', (evt) => showAbsenceMenu(host, absence, evt));
-	const lead = row.createDiv({ cls: 'pbl-timeline-lead' });
-	drawIcon(lead.createSpan({ cls: 'pbl-absence-icon', attr: { 'aria-hidden': 'true' } }), 'user-x');
-	const title = lead.createDiv({ cls: 'pbl-card-title', text: absence.title });
-	setTooltip(title, absence.title);
-	const track = row.createDiv({ cls: 'pbl-timeline-track' });
-	const geometry = barGeometry(window, { start: absence.start, target: absence.target });
-	const mark = track.createDiv({ cls: ['pbl-absence', ...edgeClasses(geometry)].join(' ') });
-	mark.setCssProps({
-		'--pbl-bar-left': `${geometry.startDay * scale.dayPx}px`,
-		'--pbl-bar-width': `${Math.max(geometry.spanDays * scale.dayPx, MIN_BAR_PX)}px`,
+	const track = head.createDiv({ cls: 'pbl-timeline-track' });
+	if (lane.absences.length === 0) return track;
+	const packed = packAbsences(lane.absences);
+	head.setCssProps({ '--pbl-lane-sublanes': String(packed.length) });
+	head.setAttribute(
+		'aria-description',
+		`Unavailable: ${lane.absences.map((one) => `${one.title} ${formatCivil(one.start)} → ${formatCivil(one.target)}`).join('; ')}`,
+	);
+	packed.forEach((sub, index) => {
+		for (const absence of sub) {
+			const geometry = barGeometry(ruler.window, { start: absence.start, target: absence.target });
+			const mark = track.createDiv({ cls: ['pbl-absence', ...edgeClasses(geometry)].join(' ') });
+			mark.setCssProps({
+				'--pbl-bar-left': `${geometry.startDay * ruler.scale.dayPx}px`,
+				'--pbl-bar-width': `${Math.max(geometry.spanDays * ruler.scale.dayPx, MIN_BAR_PX)}px`,
+				'--pbl-sublane': String(index),
+			});
+			setTooltip(mark, `${absence.title} — ${formatCivil(absence.start)} → ${formatCivil(absence.target)}`);
+			mark.addEventListener('contextmenu', (evt) => showAbsenceMenu(host, absence, evt));
+		}
 	});
-	const dates = `${formatCivil(absence.start)} → ${formatCivil(absence.target)}`;
-	setTooltip(mark, dates);
-	row.setAttribute('aria-label', `${absence.title} — unavailable ${dates}`);
-	return row;
+	return track;
 }
 
 /**

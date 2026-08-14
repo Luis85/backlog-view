@@ -19,26 +19,34 @@ useViewHarness();
  */
 
 /**
- * Every drawn line of the band, in order — `laneOrder`'s shape with the one distinction
- * that helper cannot make, since an absence row is not a bar row and its title is not a
- * card's.
+ * Every drawn line of the band, in order. There is no absence ROW any more — a stretch
+ * draws inside its header's own track — so a header reports how many marks it carries
+ * rather than being followed by a line each.
  */
 function bandOrder(containerEl: HTMLElement): string[] {
 	const rows = containerEl.querySelectorAll<HTMLElement>('.pbl-lane-head, .pbl-timeline-row');
 	return Array.from(rows).map((el) => {
-		const title = el.querySelector('.pbl-card-title')?.textContent ?? '';
-		if (el.classList.contains('pbl-lane-head')) return `lane:${el.querySelector('.pbl-lane-name')?.textContent}`;
-		return el.classList.contains('pbl-absence-row') ? `away:${title}` : title;
+		if (!el.classList.contains('pbl-lane-head')) return el.querySelector('.pbl-card-title')?.textContent ?? '';
+		const name = el.querySelector('.pbl-lane-name')?.textContent;
+		return `lane:${name}+${el.querySelectorAll('.pbl-absence').length}`;
 	});
 }
 
 describe('an absence on the resources axis', () => {
-	it('draws in its own resource’s band, above that row’s work', () => {
+	it('draws in its own resource’s header, not in a row of its own', () => {
 		const { containerEl } = laneRoadmap(absenceVault());
 
-		// Absences lead the band: an unavailable stretch is a fact about the ROW, and the
-		// work in it reads against that rather than the other way round.
-		expect(bandOrder(containerEl)).toEqual(['lane:Alice', 'away:Alice away', 'Work', 'lane:Bob']);
+		// One row per person: the stretch is a mark inside the header's track, and Alice's
+		// work follows the header directly.
+		expect(bandOrder(containerEl)).toEqual(['lane:Alice+1', 'Work', 'lane:Bob+0']);
+		expect(containerEl.querySelectorAll('.pbl-absence-row')).toHaveLength(0);
+	});
+
+	it('puts the mark inside the header’s own track', () => {
+		const { containerEl } = laneRoadmap(absenceVault());
+		const track = containerEl.querySelector<HTMLElement>('.pbl-lane-head .pbl-timeline-track');
+
+		expect(track?.querySelectorAll('.pbl-absence')).toHaveLength(1);
 	});
 
 	it('is positioned by the same date math a bar is', () => {
@@ -58,16 +66,6 @@ describe('an absence on the resources axis', () => {
 		expect(away?.style.getPropertyValue('--pbl-bar-width')).toBe(`${3 * 4}px`);
 	});
 
-	it('says whose row it is in and which days it covers', () => {
-		// The mark is a plain div, where ARIA prohibits a name, so the ROW carries it — and
-		// a reader who cannot see the stretch has nothing else on the line that says either.
-		const { containerEl } = laneRoadmap(absenceVault());
-		const row = containerEl.querySelector<HTMLElement>('.pbl-absence-row');
-
-		expect(row?.getAttribute('aria-label')).toBe('Alice away — unavailable 2026-08-04 → 2026-08-06');
-		expect(row?.getAttribute('aria-description')).toBe('Assigned to Alice');
-	});
-
 	it('gives a resource nothing else names a row of its own', () => {
 		const vault = absenceVault();
 		vault.addFile('Quinn away.md', {
@@ -78,22 +76,17 @@ describe('an absence on the resources axis', () => {
 		expect(laneNames(containerEl)).toEqual(['Alice', 'Bob', 'Quinn']);
 	});
 
-	it('stacks rather than packing: one line each, and the band grows', () => {
-		// 4a. Two overlapping absences in one row draw as two lines — no lane-packing, no
-		// second column, nothing moved aside to avoid the other.
+	it('packs two that share a day onto two sub-lanes, and says how many', () => {
+		// 4a's promise kept in its new form: nothing is hidden or merged, the header grows.
 		const vault = absenceVault();
 		vault.addFile('Also away.md', {
 			frontmatter: { type: 'Absence', assignee: 'Alice', start: '2026-08-05', due: '2026-08-08' },
 		});
 		const { containerEl } = laneRoadmap(vault);
+		const head = lanesOf(containerEl)[0];
 
-		expect(bandOrder(containerEl)).toEqual([
-			'lane:Alice',
-			'away:Alice away',
-			'away:Also away',
-			'Work',
-			'lane:Bob',
-		]);
+		expect(head.querySelectorAll('.pbl-absence')).toHaveLength(2);
+		expect(head.style.getPropertyValue('--pbl-lane-sublanes')).toBe('2');
 	});
 
 	it('counts for nothing on the header, and takes no stripe', () => {
@@ -103,38 +96,36 @@ describe('an absence on the resources axis', () => {
 		// because `absenceVault`'s stretch ENDED (2026-08-06) and only pending ones are
 		// counted — the readout's own cases are driven in `resourceLanes.test.ts`.
 		expect(laneCountOf(lanesOf(containerEl)[0])).toBe('1 item');
-		// The stripe alternates over WORK rows: an absence is furniture of the row, so the
-		// one work row beneath it is still the first of its band.
-		expect(containerEl.querySelector('.pbl-absence-row')?.classList.contains('pbl-row-even')).toBe(false);
+		// The stripe alternates over WORK rows: the header (marks included) is chrome, so
+		// the one work row beneath it is still the first of its band.
 		expect(containerEl.querySelectorAll('.pbl-row-even')).toHaveLength(0);
 	});
 
-	it('is one element of its band like every other line, and takes the drop as one', async () => {
-		// Stated from the RULE rather than from the list of element kinds that existed when
-		// it was written, which is exactly how this broke: the band has no container to
-		// wire, so it is a list of siblings, and an absence stretch joined the list by
-		// drawing and not by belonging. Every line of Bob's band is driven, so a fifth kind
-		// fails this rather than joining quietly.
+	it('keeps the context menu on the mark, which is now the only route to it', () => {
+		const { containerEl } = laneRoadmap(absenceVault());
+		const mark = containerEl.querySelector<HTMLElement>('.pbl-lane-head .pbl-absence');
+
+		mark?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+
+		expect(Menu.lastShown?.items.map((i) => i.titleText)).toEqual(['Edit absence', 'Delete absence']);
+	});
+
+	it('lets a drop on the MARK still reach the band it sits in', async () => {
+		// The mark is a CHILD of a registered element rather than a sibling drawing into the
+		// band, so dragover and drop bubble to the header. That is the whole mechanism, and
+		// its absence is `docs/bugs/An absence stretch is a dead spot in its own band.md`.
 		const vault = absenceVault();
 		vault.addFile('Bob away.md', {
 			frontmatter: { type: 'Absence', assignee: 'Bob', start: '2026-08-04', due: '2026-08-06' },
 		});
-		vault.addFile('Bob work.md', {
-			frontmatter: { type: 'Epic', order: 20, assignee: 'Bob', start: '2026-08-02', due: '2026-08-03' },
-		});
 		const { containerEl } = laneRoadmap(vault);
-		const band = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-lane-head, .pbl-timeline-row')).filter(
-			(el) => el.getAttribute('aria-description') === 'Assigned to Bob' || el.querySelector('.pbl-lane-name')?.textContent === 'Bob',
-		);
-		// The header, the absence stretch and Bob's own work row — three lines, no fewer.
-		expect(band).toHaveLength(3);
+		const mark = lanesOf(containerEl)[1].querySelector<HTMLElement>('.pbl-absence');
+		if (mark === null) throw new Error('no mark to drop on');
 
-		for (const line of band) {
-			vault.fm('Work.md')['assignee'] = 'Alice';
-			cardDrag(barFor(containerEl, 'Work'), line);
-			await flush();
-			expect(vault.fm('Work.md')['assignee']).toBe('Bob');
-		}
+		cardDrag(barFor(containerEl, 'Work'), mark);
+		await flush();
+
+		expect(vault.fm('Work.md')['assignee']).toBe('Bob');
 	});
 
 	it('grows the window to hold itself, in a row nothing else draws in', () => {
@@ -206,6 +197,16 @@ describe('an absence on the resources axis', () => {
 			'pbl-absence pbl-bar-open-end pbl-bar-clipped-end',
 			'pbl-absence pbl-bar-open-start',
 		]);
+	});
+
+	it('names every stretch on the header, since none of them has a row any more', () => {
+		// The accessibility cost of one-row-per-person, stated as a check rather than only in
+		// the register: three rows each with a name become one description with three in it.
+		const { containerEl } = laneRoadmap(absenceVault());
+
+		expect(lanesOf(containerEl)[0].getAttribute('aria-description')).toBe(
+			'Unavailable: Alice away 2026-08-04 → 2026-08-06',
+		);
 	});
 
 	it('draws nothing at all with one date property configured', () => {
@@ -415,8 +416,10 @@ describe('adding an absence', () => {
 
 describe('editing a placed absence', () => {
 	function openEdit(containerEl: HTMLElement): void {
+		// The mark, not a row — there is no row any more, and the mark is the only place the
+		// context menu is wired (`renderLaneAbsences`).
 		containerEl
-			.querySelector<HTMLElement>('.pbl-absence-row')
+			.querySelector<HTMLElement>('.pbl-absence')
 			?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 		Menu.lastShown?.item('Edit absence')?.click();
 	}
@@ -613,8 +616,9 @@ describe('editing a placed absence', () => {
 
 describe('deleting an absence', () => {
 	function openAbsenceMenu(containerEl: HTMLElement): void {
+		// The mark, not a row — see `openEdit`'s own comment above.
 		containerEl
-			.querySelector<HTMLElement>('.pbl-absence-row')
+			.querySelector<HTMLElement>('.pbl-absence')
 			?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 	}
 

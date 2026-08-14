@@ -377,16 +377,18 @@ describe('the band header’s readout', () => {
 		expect(laneCountOf(lanesOf(harness.containerEl)[0])).toBe('1 item');
 	});
 
-	it('keeps the readout on a COLLAPSED band, where no stretch is drawn at all', () => {
-		// The one case the header is the only surface for, and the reason this ships at all:
-		// `laneEntries` skips the whole band, so a folded roster shows no hatch anywhere.
-		// Deliberately the opposite of the legend's rule, which keys what the pass PAINTED.
+	it('keeps both the readout and the mark on a COLLAPSED band', () => {
+		// `laneEntries` skips a collapsed band's WORK rows, never its header — and since
+		// 2026-08-14 the stretch is drawn in the header's own track, not in a row `laneEntries`
+		// could skip. So folding takes the work rows off screen and leaves both the readout and
+		// the mark exactly as they were, which is what "one row per person whatever they have"
+		// means for a folded band: the header is never itself hidden.
 		const vault = countingVault([{ title: 'Ahead', start: dayFromToday(5), target: dayFromToday(9) }]);
 		const harness = laneRoadmap(vault);
 
 		harness.view.setLaneCollapsed('Alice', true);
 
-		expect(harness.containerEl.querySelectorAll('.pbl-absence')).toHaveLength(0);
+		expect(harness.containerEl.querySelectorAll('.pbl-absence')).toHaveLength(1);
 		expect(laneCountOf(lanesOf(harness.containerEl)[0])).toBe('1 item / 1 absence');
 	});
 

@@ -68,8 +68,10 @@ describe('the two boxes sized from TypeScript arithmetic', () => {
 			.map((selector) => selector.trim().split('\n').pop()?.trim() ?? '');
 
 		expect(dimmed.filter((selector) => rowClass.test(selector))).toEqual([]);
-		// Not vacuous: the muting those rows need is still declared, on their content.
-		expect(dimmed).toContain('.pbl-absence-row .pbl-timeline-lead > *');
+		// Not vacuous: the muting a context row needs is still declared, on its content —
+		// the absence row's own version of this rule went with the row itself on 2026-08-14,
+		// since a stretch is drawn in its header's track now and has no row to mute.
+		expect(dimmed).toContain('.pbl-lane-context .pbl-timeline-lead > *');
 	});
 
 	it('lays a row out from being a ROW, never from being a card', () => {
@@ -341,13 +343,17 @@ describe('the absence marks are drawn from the content palette', () => {
 		}
 	});
 
-	it('draws the stretch at the height a bar is drawn at', () => {
+	it('draws the stretch at the height its sub-lane pitch was sized for', () => {
 		// 12px against a bar's 14px was saying "lesser" as well as "different", and only the
-		// second was intended: what tells work from the absence of work is the hatch.
+		// second was intended: what tells work from the absence of work is the hatch. Matching
+		// the bar's own height exactly was the check for that, until the mark moved into the
+		// header's own track (2026-08-14) and took on a sub-lane pitch instead — 13px marks on
+		// a 17px pitch, a geometry the bar has no reason to share. What survives is that the
+		// two stay close enough to read as the same KIND of mark, which a fixed value states
+		// more honestly than an equality this design no longer keeps.
 		const height = (css: string, selector: string, file: string) => /height:\s*(\d+)px/.exec(bodyOf(css, selector, file))?.[1];
-		const bar = height(timeline, '.pbl-bar', 'styles/timeline.css');
-		expect(bar, '.pbl-bar states no height').toBeDefined();
-		expect(height(lanes, '.pbl-absence', 'styles/lanes.css')).toBe(bar);
+		expect(height(timeline, '.pbl-bar', 'styles/timeline.css'), '.pbl-bar states no height').toBeDefined();
+		expect(height(lanes, '.pbl-absence', 'styles/lanes.css')).toBe('13');
 	});
 
 	it('keys the hatch with the very gradient the stretch draws, not a copy of it', () => {

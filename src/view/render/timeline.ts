@@ -7,7 +7,6 @@ import {
 	edgeClasses,
 	noteAbsenceClash,
 	renderAbsenceWash,
-	renderLaneAbsence,
 	renderLaneContextRow,
 	renderLaneHead,
 	renderLaneRowDescription,
@@ -159,6 +158,18 @@ export interface TimelineDrawing {
 	 */
 	shelf: ShelfCard[];
 	/**
+	 * The resources axis's own lanes, so the window can be widened to hold every stretch
+	 * they carry (`drawnSpans`) even though a stretch is no longer an entry of its own —
+	 * see that function's doc comment for the bug this exists to keep fixed. Empty on the
+	 * dated axis, which has no lanes and therefore nothing here to widen the window for.
+	 *
+	 * NOT a second way to ask which axis is on screen: `rows` below is still derived from
+	 * `laneElement` alone, so there is only ever one discriminator for that question. A
+	 * dated-axis caller that happened to pass lanes here would widen its own window for
+	 * nothing, since it has no bands to draw them into either way.
+	 */
+	lanes: ResourceLane[];
+	/**
 	 * Report one element of a resource's band, and which row it belongs to. Null on the
 	 * dated axis, which has no rows to belong to — and that null is the one thing the two
 	 * grid axes do not share, so everything downstream that differs between them reads
@@ -194,7 +205,7 @@ export function renderTimeline(
 	// exactly as it already is for the spans hiding completed work removes.
 	const bars = entries.flatMap((entry) => (entry.kind === 'row' ? [entry.row.bar] : []));
 	// Every span this grid DRAWS, which is not the same list as its bars — see `drawnSpans`.
-	const window = timelineWindow(drawnSpans(entries), today);
+	const window = timelineWindow(drawnSpans(entries, drawing.lanes), today);
 	// Resolved ONCE, here, and threaded everywhere `TIMELINE_LEAD_PX` used to be read
 	// directly: the CSS width below and the TS arithmetic that places the today line,
 	// the milestone lines and the gridlines all have to agree on the same number, or a
@@ -340,17 +351,18 @@ interface EntryPass {
 }
 
 /**
- * Draw every entry the axis handed over, in order — the one place the four entry kinds
+ * Draw every entry the axis handed over, in order — the one place the three entry kinds
  * are told apart.
  *
  * Its own function rather than a loop inside `renderTimeline`, which is at the
  * complexity budget `npm run analyze` enforces: the grid's own setup (the window, the
  * header, the lines, the layers, the overlay) and the walk over what it contains are two
- * jobs, and the fourth entry kind is what made keeping them in one measurably too much.
+ * jobs, and telling the entry kinds apart is what made keeping them in one measurably too
+ * much.
  *
- * **The stripe counts drawn ROWS only.** A lane header is chrome and an absence is the
- * row's own furniture, so neither reaches the counter — counting either would flip the
- * parity of every work row beneath it.
+ * **The stripe counts drawn ROWS only.** A lane header is chrome — its own stretches
+ * included, since 2026-08-14 — so it never reaches the counter, and counting it would flip
+ * the parity of every work row beneath it.
  */
 function drawEntries(entries: TimelineEntry[], pass: EntryPass): void {
 	const { ctx, mounts, window, drawn } = pass;
@@ -360,10 +372,8 @@ function drawEntries(entries: TimelineEntry[], pass: EntryPass): void {
 	// Both things a line of a band owes, from the ONE place a line is finished: whose row
 	// it is in (the header is a sibling div and cannot label what follows it) and its
 	// membership of the band, which has no container to name and so is a LIST of siblings.
-	// Together, because separately is how an absence stretch came to draw itself into a
-	// band without joining it and be a dead spot in the middle of its own row — see
-	// `docs/bugs/An absence stretch is a dead spot in its own band.md`. `named` is false
-	// for the header alone, which already carries the resource's name as its own content.
+	// `named` is false for the header alone, which already carries the resource's name as
+	// its own content.
 	const inBand = (el: HTMLElement, named = true): void => {
 		if (!lane) return;
 		if (named) renderLaneRowDescription(el, lane.name);
@@ -372,13 +382,11 @@ function drawEntries(entries: TimelineEntry[], pass: EntryPass): void {
 	for (const entry of entries) {
 		if (entry.kind === 'lane') {
 			lane = entry.lane;
-			inBand(renderLaneHead(ctx, mounts.content, entry.lane, entry.collapsed, today), false);
-			continue;
-		}
-		if (entry.kind === 'absence') {
-			// The legend keys what the grid DREW, and this is the one place a stretch is drawn.
-			drawn.absence = true;
-			inBand(renderLaneAbsence(ctx, mounts.content, entry.absence, { window, scale }));
+			// The legend keys what the grid actually PAINTED, and since 2026-08-14 the header
+			// paints its own resource's stretches whether the band is open or shut — so this is
+			// the one place left to report it from.
+			if (entry.lane.absences.length > 0) drawn.absence = true;
+			inBand(renderLaneHead(ctx, mounts.content, entry, { window, scale, today }), false);
 			continue;
 		}
 		let row: HTMLElement;
