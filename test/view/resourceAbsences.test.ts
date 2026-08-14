@@ -298,6 +298,24 @@ describe('adding an absence', () => {
 		expect(vault.fm('docs/Conference.md')['assignee']).toBe('Quinn');
 	});
 
+	it('files it where the config says at SUBMIT, not where it said when the form opened', async () => {
+		// The same window `refusedByConfig` is re-asked in: Obsidian's options pane stays
+		// reachable while a modal is up, and a folder changed there is the reader's newest
+		// statement of where absences live. `promptCreateItem` resolves at submit for this
+		// reason; the description above the fields is the older answer and says so.
+		const vault = absenceVault();
+		const harness = laneRoadmap(vault, { 'typeFolder.absence': 'docs/absences' });
+
+		addButton(harness.containerEl, 'Bob')?.click();
+		harness.config.values['typeFolder.absence'] = 'docs/away';
+		refresh(harness.view, vault);
+		submitAbsence({ title: 'Conference', start: '2026-09-01', target: '2026-09-04' });
+		await flush();
+
+		expect(vault.files.has('docs/away/Conference.md')).toBe(true);
+		expect(vault.files.has('docs/absences/Conference.md')).toBe(false);
+	});
+
 	it('files it in the home folder when it has no folder of its own', async () => {
 		const vault = absenceVault();
 		const { containerEl } = laneRoadmap(vault, { homeFolder: 'notes' });
@@ -431,6 +449,22 @@ describe('editing a placed absence', () => {
 		expect(vault.files.has('Alice away.md')).toBe(false);
 		// Through Obsidian's own rename, so the frontmatter travels with the note.
 		expect(vault.fm('Alice at the offsite.md')['assignee']).toBe('Alice');
+	});
+
+	it('names the note the rename actually produced, not the title that was asked for', async () => {
+		// `uniqueNotePath` appends a number where the name is taken, so the note the reader
+		// is told to look for has to be the one that exists. The create flow already reports
+		// `file.basename`; this is the same rule on the path that renames instead.
+		const vault = absenceVault();
+		vault.addFile('Offsite.md', { frontmatter: { type: 'Epic', order: 20 } });
+		const { containerEl } = laneRoadmap(vault);
+
+		openEdit(containerEl);
+		submitAbsence({ resource: 'Alice', title: 'Offsite', start: '2026-08-04', target: '2026-08-06' });
+		await flush();
+
+		expect(vault.files.has('Offsite 1.md')).toBe(true);
+		expect(Notice.messages).toContain('Updated "Offsite 1".');
 	});
 
 	it('refuses a broken range at the form, exactly as adding one does', async () => {

@@ -266,6 +266,27 @@ describe('collapse state persistence', () => {
 		expect(makeView(vault, {}, { base: 'Backlog.base', collapsed: true }).view.isLaneCollapsed('Dana')).toBe(false);
 	});
 
+	it('folds a band by the resource, not by the casing the row happened to draw', () => {
+		// A band is one band whatever case names it — `deriveLanes` keys its own map on
+		// `name.toLowerCase()` — while the name DRAWN is whichever source minted the row:
+		// the declared roster, else the first result, else an absence. So the display can
+		// change case with no resource changing, and a fold keyed on it would reopen the
+		// band and strand the old entry where nothing would ever match it again.
+		const vault = fixture();
+		const first = makeView(vault, {}, { base: 'Backlog.base' });
+
+		first.view.setLaneCollapsed('Dana', true);
+		expect(first.view.isLaneCollapsed('dana')).toBe(true);
+		first.view.onunload();
+
+		const second = makeView(vault, {}, { base: 'Backlog.base', collapsed: true });
+		expect(second.view.isLaneCollapsed('DANA')).toBe(true);
+		// And opening it under the other spelling really opens it, rather than adding a
+		// second entry beside the one it could not see.
+		second.view.setLaneCollapsed('dana', false);
+		expect(second.view.isLaneCollapsed('Dana')).toBe(false);
+	});
+
 	/**
 	 * Folding on click stopped being a `.base` option on 2026-08-11, so the toolbar
 	 * toggle is now the only thing that sets it and this is what makes it survive the

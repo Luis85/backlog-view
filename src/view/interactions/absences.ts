@@ -29,7 +29,7 @@ import { createAbsenceNote, deleteAbsenceNote, renameAbsenceNote, updateAbsenceN
  */
 export function promptAddAbsence(host: BacklogViewHost, lane: ResourceLane): void {
 	if (refusedByConfig(host)) return;
-	const folder = folderForType(ABSENCE_TYPE, host.settings) || host.settings.homeFolder;
+	const folder = absenceFolder(host);
 	new AbsencePromptModal(host.app, {
 		heading: 'Add absence',
 		description: `Marks the resource unavailable for a stretch. Filed ${folder ? `in "${folder}"` : 'in the vault root'}.`,
@@ -42,8 +42,26 @@ export function promptAddAbsence(host: BacklogViewHost, lane: ResourceLane): voi
 		// row in hand already covers the case the wider list was for.
 		known: [...new Set([lane.name, ...host.settings.resourceNames])],
 		validate: absenceProblem,
-		onSubmit: (result) => void writeAbsence(host, folder, result),
+		onSubmit: (result) => void writeAbsence(host, result),
 	}).open();
+}
+
+/**
+ * Where an absence is filed: its own configured folder, else the home folder, else the
+ * vault root — `promptCreateItem`'s ladder minus the two rungs an absence has no question
+ * about (no parent, so no folder-mode "beside the parent's folder note", and nothing to
+ * infer from since it is not a work item).
+ *
+ * Asked TWICE on purpose, once to say where the note will go and once to put it there.
+ * The description is what the configuration said when the form opened; the write follows
+ * the configuration at SUBMIT, which is the same rule `refusedByConfig` is re-asked under
+ * — the options pane stays reachable while a modal is up, and the reader's newest
+ * statement of where absences live is the one they meant. The ordinary creation flow
+ * resolves at submit for exactly this reason (`folderFor` in `interactions/create.ts`),
+ * and this one captured the string at open until review pointed at the difference.
+ */
+function absenceFolder(host: BacklogViewHost): string {
+	return folderForType(ABSENCE_TYPE, host.settings) || host.settings.homeFolder;
 }
 
 /**
@@ -171,17 +189,23 @@ async function editAbsence(host: BacklogViewHost, absence: Absence, result: Abse
 			target: result.target,
 		});
 		await renameAbsenceNote(host.app, absence.file, result.title);
-		new Notice(`Updated "${result.title}".`);
+		// The note's OWN name, never the requested one — `uniqueNotePath` sanitizes the
+		// title and appends a number where one is taken, so a rename onto an existing
+		// `Vacation` lands as `Vacation 1` and naming the request would send the reader
+		// looking for a note that does not exist. `writeAbsence` below already reports
+		// `file.basename` for the same reason; a rename mutates the `TFile` in place, so
+		// this reads the name the note now answers to.
+		new Notice(`Updated "${absence.file.basename}".`);
 	} catch (e) {
 		console.error('Product Backlog: failed to edit the absence', e);
 		new Notice('Could not save the absence. See the developer console for details.');
 	}
 }
 
-async function writeAbsence(host: BacklogViewHost, folder: string, result: AbsenceResult): Promise<void> {
+async function writeAbsence(host: BacklogViewHost, result: AbsenceResult): Promise<void> {
 	if (refusedByConfig(host)) return;
 	try {
-		const file = await createAbsenceNote(host.app, host.settings, { folder, ...result });
+		const file = await createAbsenceNote(host.app, host.settings, { folder: absenceFolder(host), ...result });
 		new Notice(`Marked ${result.resource} away — "${file.basename}".`);
 	} catch (e) {
 		console.error('Product Backlog: failed to create the absence', e);

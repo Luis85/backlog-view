@@ -80,6 +80,16 @@ function notePath(key: string): string {
 	return key;
 }
 
+/**
+ * One resource's fold key. Lower-cased for `sameValue`'s reason and `deriveLanes`'
+ * spelling of it — a band is one band whatever case names it, so its fold has to be one
+ * bit. The stored value is this key rather than the display name, which nothing reads
+ * back onto a screen.
+ */
+function laneKey(name: string): string {
+	return name.toLowerCase();
+}
+
 /** The scope prefix a settled key carries, or '' for the tree's own bare path. */
 function scopeOf(key: string): string {
 	if (key.startsWith(TIMELINE_SCOPE)) return TIMELINE_SCOPE;
@@ -306,16 +316,23 @@ export class CollapseState {
 	 * for it, which a resource's name never has. It also needs none of that key space's
 	 * machinery — no rename migration, since nothing renames a resource, and no
 	 * `collapseNewParents` pass, since a band a reader has not ruled on is open.
+	 *
+	 * Keyed by {@link laneKey}, never by the spelling on screen: a band is IDENTIFIED
+	 * case-insensitively (`deriveLanes` maps `name.toLowerCase()` to the lane), while its
+	 * displayed name is whichever source minted the row — the declared roster, else the
+	 * first result, else an absence. So the display can change case with no resource
+	 * changing, and a fold keyed on it would silently reopen and strand its old key.
 	 */
 	isLaneCollapsed(name: string): boolean {
-		return this.foldedLanes.has(name);
+		return this.foldedLanes.has(laneKey(name));
 	}
 
 	/** Returns true when the state actually changed — {@link set}'s own contract. */
 	setLaneCollapsed(name: string, collapsed: boolean): boolean {
-		if (this.foldedLanes.has(name) === collapsed) return false;
-		if (collapsed) this.foldedLanes.add(name);
-		else this.foldedLanes.delete(name);
+		const key = laneKey(name);
+		if (this.foldedLanes.has(key) === collapsed) return false;
+		if (collapsed) this.foldedLanes.add(key);
+		else this.foldedLanes.delete(key);
 		this.scheduleSave();
 		return true;
 	}
@@ -406,7 +423,9 @@ export class CollapseState {
 		this.shelfExpanded = snapshot.shelfExpanded ?? false;
 		this.shelfSortValue = snapshot.shelfSort ?? null;
 		this.hiddenShelfTypes = new Set(snapshot.shelfHiddenTypes ?? []);
-		this.foldedLanes = new Set(snapshot.collapsedLanes ?? []);
+		// Normalized on the way back in as well, so an entry written before the key was
+		// canonical still shuts the band it was about.
+		this.foldedLanes = new Set((snapshot.collapsedLanes ?? []).map(laneKey));
 	}
 
 	/** Write any pending change immediately — closing the view is when that matters most. */
