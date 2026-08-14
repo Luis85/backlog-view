@@ -467,6 +467,22 @@ describe('editing a placed absence', () => {
 		expect(Notice.messages).toContain('Updated "Offsite 1".');
 	});
 
+	it('leaves a title that only differs by a character the disk cannot take', async () => {
+		// `Alice away?` sanitizes back to the basename this note already has, so it is a
+		// title edit that changes nothing. Compared raw, it read as a new name and
+		// `uniqueNotePath` then found the note's own path occupied — renaming `Alice away`
+		// to `Alice away 1` for typing a character the disk was always going to drop.
+		const vault = absenceVault();
+		const { containerEl } = laneRoadmap(vault);
+
+		openEdit(containerEl);
+		submitAbsence({ resource: 'Alice', title: 'Alice away?', start: '2026-08-04', target: '2026-08-06' });
+		await flush();
+
+		expect(vault.files.has('Alice away.md')).toBe(true);
+		expect(vault.files.has('Alice away 1.md')).toBe(false);
+	});
+
 	it('refuses a broken range at the form, exactly as adding one does', async () => {
 		const vault = absenceVault();
 		const { containerEl } = laneRoadmap(vault);

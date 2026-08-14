@@ -692,7 +692,13 @@ export function uniqueNotePath(app: App, folder: string, title: string): string 
 	return path;
 }
 
-function sanitizeTitle(title: string): string {
+/**
+ * What a title becomes on disk, before any collision suffix. Exported for the one caller
+ * that has to ask the question WITHOUT taking a path: a rename asks whether the note
+ * already answers to this name, and comparing the raw title to a basename answers a
+ * different question — `Offsite?` and `Offsite` are one file name and two strings.
+ */
+export function sanitizeTitle(title: string): string {
 	const cleaned = title
 		.replace(/[\\/:*?"<>|#^[\]]/g, '-')
 		.replace(/\s+/g, ' ')
