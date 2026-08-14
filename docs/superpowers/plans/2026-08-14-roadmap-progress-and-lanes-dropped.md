@@ -1106,6 +1106,18 @@ git commit -m "Give the roadmap's matches a keyboard path"
 
 Set `status: Done`. Its `## Where it lives` was rewritten in Task 3.
 
+- [ ] **Step 1b: Judge the two notes Task 2 hollowed out**
+
+`The horizon board.md` and `Drag from the shelf to schedule.md` each carried `status: Active` for one reason: a lane-crossing criterion. Task 2 removed those criteria, so both now read as fully delivered while still saying `Active`. Task 2 was right to leave them — a status flip is a claim about every remaining criterion, not a side effect of deleting one — but the claim is this task's to make.
+
+For each: read its acceptance criteria and its `## Where it lives`, and check every remaining criterion against the code it names. Set `status: Done` only where all of them are met, and say in `## Where it lives` that the lane case went with the design rather than with an implementation. If any criterion is still open, leave the note `Active` and name what it is waiting for — an `Active` note that cannot say what it is waiting for is the thing this step exists to remove.
+
+`Moving between horizons.md` was checked for the same shape and is not hollowed out: it keeps two independent reasons after losing its lane clause. Do not touch it.
+
+- [ ] **Step 1c: Renumber the extensions Task 2 left with a gap**
+
+`Drag from the shelf to schedule.md` reads `2a, 2b, 2c, 2e` after its `2d` was removed. Nothing cites `2d` by letter — that was checked across every note linking to it — so this is readability only: renumber `2e` to `2d`. If any note added since cites a letter in that list, update the citation with it.
+
 - [ ] **Step 2: Test whether `Focus level picks the rows` can close**
 
 Its third outstanding item is inferred spans counting below-focus results. Write one test in `test/domain/roadmap.test.ts`: with a focus level set, a focused row's inferred span covers a dated descendant **below** the focus level.
