@@ -274,7 +274,7 @@ A timeline row is the one surface with no progress on it: `renderCardBody` gives
   ```ts
   // src/view/render/columns.ts — the one definition both renderers read
   export interface RollupReport {
-      /** Face text: "3/8" with a workflow, "8" without one. */
+      /** Face text: "3/8" with a workflow, "8" without one, '' for a leaf. */
       label: string;
       /** Long form for a tooltip, or '' when there is no ratio to state. */
       tooltip: string;
@@ -283,7 +283,9 @@ A timeline row is the one surface with no progress on it: `renderCardBody` gives
   }
   export function rollupReport(host: BacklogViewHost, item: BacklogItem): RollupReport | null
   ```
-  `null` means nothing renders at all — the guard, in one place. Task 3 Step 0 builds it; `renderRollup` is rewritten onto it in the same step.
+  **Two different emptinesses, and they must stay apart.** `null` means the rollup is switched off for this view — no workflow and no counts configured, or a projection with no rollup — and nothing is drawn at all. A report with an **empty `label`** means the rollup is on and this item is a leaf: the tree still draws its `.pbl-meta-col`, empty, so leaf rows stay aligned with the header and with their non-leaf siblings. Collapsing the two would unalign every leaf row in the tree while every test still passed. Found by review, against a draft of this plan that returned `null` for both.
+
+  Task 3 Step 0 builds it; `renderRollup` is rewritten onto it in the same step.
 - Also produces:
   ```ts
   export function renderBarProgress(
@@ -310,13 +312,16 @@ In `src/view/render/columns.ts`, above `renderRollup`:
  * words or about when there is nothing to say, which is what
  * `Progress on the bar` guarantees. Copies of a string are how that guarantee rots.
  *
- * Null means draw nothing: no workflow AND no counts configured, a projection with no
- * rollup, or an item with no descendants. An empty measure is not a zero.
+ * Null means the rollup is OFF for this view — no workflow and no counts configured, or
+ * a projection with no rollup — and nothing is drawn. An empty `label` is the other
+ * emptiness: the rollup is on and this item is a leaf, which the tree still gives an
+ * empty `.pbl-meta-col` so its row stays aligned with the header and with its non-leaf
+ * siblings. An empty measure is not a zero, and it is not an absent column either.
  */
 export function rollupReport(host: BacklogViewHost, item: BacklogItem): RollupReport | null {
 	const settings = host.settings;
 	if ((!settings.stateKey && !settings.showCounts) || !hasRollup(host.projection)) return null;
-	if (item.descendantCount === 0) return null;
+	if (item.descendantCount === 0) return { label: '', tooltip: '', ratio: null };
 	if (!settings.stateKey) return { label: String(item.descendantCount), tooltip: '', ratio: null };
 	return {
 		label: `${item.doneDescendants}/${item.descendantCount}`,
@@ -326,7 +331,16 @@ export function rollupReport(host: BacklogViewHost, item: BacklogItem): RollupRe
 }
 ```
 
-Rewrite `renderRollup` onto it, keeping its DOM and its classes exactly as they are — `.pbl-meta-col`, `.pbl-progress`, `.pbl-progress-bar`, `.pbl-progress-fill`, `.pbl-progress-label`, `.pbl-count`, and the `pbl-complete` class at `ratio === 1`. **This is a refactor with no behaviour change**, so the existing tree tests are the check: they must pass untouched.
+Rewrite `renderRollup` onto it, keeping its DOM and its classes exactly as they are — `.pbl-meta-col`, `.pbl-progress`, `.pbl-progress-bar`, `.pbl-progress-fill`, `.pbl-progress-label`, `.pbl-count`, and the `pbl-complete` class at `ratio === 1`. **Order matters:** the column is created after the null check and BEFORE the empty-label check, exactly as today —
+
+```ts
+	const report = rollupReport(host, item);
+	if (!report) return;
+	const col = row.createDiv({ cls: 'pbl-meta-col' });
+	if (!report.label) return;
+```
+
+— so a leaf still reserves its empty column. **This is a refactor with no behaviour change**, so the existing tree tests are the check: they must pass untouched. Before trusting them, confirm one of them actually asserts the leaf's empty `.pbl-meta-col`; if none does, add that assertion first and watch it fail against a deliberately wrong ordering, because this is the one difference the rewrite could silently swallow.
 
 ```bash
 npx vitest run test/view/ -t 'rollup'
@@ -461,7 +475,9 @@ export function renderBarProgress(
 	item: BacklogItem,
 ): void {
 	const report = rollupReport(host, item);
-	if (!report) return;
+	// An empty label is the tree's leaf case, where it reserves an empty column for
+	// alignment. A timeline row has no column to keep aligned, so it draws nothing.
+	if (!report || !report.label) return;
 	if (mounts.bar && report.ratio !== null) {
 		const track = mounts.bar.createDiv({ cls: 'pbl-bar-progress' });
 		track.createDiv({ cls: 'pbl-bar-progress-fill' }).setCssProps({
