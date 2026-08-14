@@ -405,7 +405,9 @@ The cases, each asserted from the rule rather than from the implementation:
 // The ROW's accessible name includes the count, and the BAR's aria-label is
 // still the dates alone. Progress is announced once per row, from the lead
 // cell, not twice.
-//   expect row.textContent).toContain('1/4')
+//   expect the row to carry a `.pbl-sr-only` span whose text is
+//     '1 of 4 items done' — NOT row.textContent, which is blind to whether
+//     the lead's own tooltip has replaced its subtree in the accessible name
 //   expect barEl.getAttribute('aria-label')).not.toContain('done')
 
 // A context item counts its VISIBLE results only — an outsideFilter parent over
@@ -483,7 +485,7 @@ import { BacklogItem } from '../../domain/model';
  */
 export function renderBarProgress(
 	host: BacklogViewHost,
-	mounts: { bar: HTMLElement | null; lead: HTMLElement },
+	mounts: { row: HTMLElement; bar: HTMLElement | null; lead: HTMLElement },
 	item: BacklogItem,
 ): void {
 	const report = rollupReport(host, item);
@@ -498,6 +500,13 @@ export function renderBarProgress(
 	}
 	const label = mounts.lead.createSpan({ cls: 'pbl-bar-count', text: report.label });
 	if (report.tooltip) setTooltip(label, report.tooltip);
+	// Said again for a screen reader, on the ROW, because the lead cell carries its own
+	// `setTooltip(lead, title)` and a tooltip that becomes an `aria-label` REPLACES the
+	// cell's text in the accessible name — taking this count with it. `renderRowFacts`
+	// already states the row's state and its dependencies this way, for the same reason.
+	// The visible chip above is inside that labelled cell and so is not announced, which
+	// is what keeps this from being a second announcement rather than the only one.
+	mounts.row.createSpan({ cls: 'pbl-sr-only', text: report.tooltip || `${report.label} items` });
 }
 ```
 
@@ -554,7 +563,7 @@ Add to `styles/timeline.css`, below the `.pbl-bar-inferred` rules so the reader 
 In `src/view/render/timeline.ts`, inside `renderBarRow`, after the bar element `el` and its grips exist and after `lead` is populated — put the call immediately before the existing `renderRowFacts(...)` line:
 
 ```ts
-	renderBarProgress(ctx.host, { bar: geometry.milestone || geometry.outside ? null : el, lead }, bar.item);
+	renderBarProgress(ctx.host, { row, bar: geometry.milestone || geometry.outside ? null : el, lead }, bar.item);
 ```
 
 Add the import beside the other `./` imports. **Budget: this is +1 code line of the 10 this file has.** Do not add anything else to this file in this task.
@@ -564,7 +573,7 @@ Add the import beside the other `./` imports. **Budget: this is +1 code line of 
 In `src/view/render/lanes.ts`, inside `renderLaneContextRow`, after `setTooltip(lead, item.title);` and before the empty track is created:
 
 ```ts
-	renderBarProgress(ctx.host, { bar: null, lead }, item);
+	renderBarProgress(ctx.host, { row, bar: null, lead }, item);
 ```
 
 This row has no `.pbl-bar` at all — it is a lead cell and an empty track — so it takes the count and no band, which is the whole reason `bar` is nullable.
@@ -1003,6 +1012,13 @@ Add to `test/view/roadmapMatches.test.ts`:
 // card's own disclosure already lists it, and one card cannot say the same
 // thing twice.
 
+// NO NOTE APPEARS TWICE IN ONE MENU. On a timeline row with children and a
+// direct-child match, collect every entry title and assert the child's title
+// appears once, not once as "Open child" and again as "Open match". This is the
+// assertion that catches the menu reusing the face's policy: the row lists no
+// children on its face but its MENU does, through `cardChildrenShown`, which it
+// joins via the fold chevron.
+
 // A context row's menu offers navigation and no write action — the existing
 // rule, re-asserted here because this task adds entries to that menu.
 ```
@@ -1033,15 +1049,18 @@ In `src/view/childrenList.ts` — the module whose own comment says it exists so
  * subtracting would offer a card's disclosure entries a second time.
  */
 export function matchesFor(host: BacklogViewHost, item: BacklogItem): BacklogItem[] {
+	// The MENU's already-listed set is not the face's. `addChildrenSection` adds an
+	// "Open child" entry for every `listedChildren` whenever the path is in
+	// `cardChildrenShown` — and a timeline row joins that set through its FOLD chevron,
+	// while listing nothing on its face. Reusing the face's policy here would offer one
+	// note twice in one menu: once as a child, once as a match. So the menu asks the
+	// thing that actually lists in a menu.
+	const listed = host.cardChildrenShown.has(item.file.path) ? listedChildren(host, item) : [];
 	const roadmap = host.roadmap;
-	if (roadmap) {
-		const placed = roadmap.placed.get(item.file.path);
-		const listed = placed?.listsChildren ? listedChildren(host, item) : [];
-		return undisclosedMatches(host, item, new Set(roadmap.placed.keys()), listed);
-	}
+	if (roadmap) return undisclosedMatches(host, item, new Set(roadmap.placed.keys()), listed);
 	const board = host.board?.board;
 	if (!board) return [];
-	return undisclosedMatches(host, item, cardPaths(board), listedChildren(host, item));
+	return undisclosedMatches(host, item, cardPaths(board), listed);
 }
 ```
 
