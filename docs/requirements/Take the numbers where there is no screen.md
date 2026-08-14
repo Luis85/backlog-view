@@ -121,9 +121,11 @@ instruments improvised around a browser.
   `drew` does not cover that either, since it counts what was RENDERED and a hidden result
   or a child inside an existing card moves no count. And a COUNT is not the workload either:
   the same number of results can be a different hierarchy, different fields or a different
-  generated shape, so the page publishes a cheap fingerprint of the paths and frontmatter it
-  was handed and that is compared too — the question is "did the workload change", never
-  "what was it". A baseline too old to report any of it
+  generated shape, so the page publishes a cheap fingerprint of what it was handed and that
+  is compared too — the question is "did the workload change", never "what was it". The
+  CONFIGURATION is in that fingerprint beside the notes, one round later and for the same
+  reason: the visible property order, the workflow states, the horizons and the scale all
+  change what a card or a bucket draws while every note stays as it was. A baseline too old to report any of it
   is named as that — "not reported" — rather than assumed to agree. (Codex, PR #137.)
 
 - **3g — a flag that selects nothing the table measures.** `--view` was one: the run

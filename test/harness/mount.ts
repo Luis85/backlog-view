@@ -96,13 +96,16 @@ export interface MountedHarness {
 	containerEl: HTMLElement;
 	mount: Mount;
 	/**
-	 * A fingerprint of those results — their paths and frontmatter, in the order the Base
-	 * returned them.
+	 * A fingerprint of the WORKLOAD — the view options and property order this mount
+	 * configured, then the results' paths and frontmatter in the order the Base returned
+	 * them.
 	 *
 	 * The COUNT is not the workload: two builds can hand the view the same number of notes
 	 * with a different hierarchy, different fields or a different generated shape, and then
 	 * `results` and `drew` both match while the cards and the layout work do not. A run
-	 * comparing them reported no mismatch and presented the delta as like-for-like.
+	 * comparing them reported no mismatch and presented the delta as like-for-like. The
+	 * configuration is in here for the same reason and arrived one round later: the notes
+	 * can be identical while the columns, the workflow or the horizons are not.
 	 * (Codex, PR #137.)
 	 *
 	 * Cheap and non-cryptographic on purpose: this answers "did the workload change", never
@@ -158,14 +161,24 @@ export function mountHarness(root: HTMLElement, fixture: HarnessFixture = 'demo'
 	const view = new ProductBacklogView({} as never, containerEl);
 	const anyView = view as unknown as Record<string, unknown>;
 	anyView.app = vault.app;
-	const config = new FakeViewConfig(fixture === 'folders' ? folderOptions() : demoOptions());
+	const options = fixture === 'folders' ? folderOptions() : demoOptions();
+	const config = new FakeViewConfig(options);
 	// The Bases properties menu is what puts a column on a row, chips included, so the
 	// page has to declare a visible order or it draws a strip with nothing in it.
-	config.order = demoOrder();
+	const order = demoOrder();
+	config.order = order;
 	anyView.config = config;
 	const results = demoResults(vault);
 	anyView.data = { data: results };
-	const contents = fingerprint(results.map((entry) => `${entry.file.path}\u0000${stableJson(vault.frontmatter.get(entry.file.path))}`));
+	// The CONFIGURATION is workload too, not just the notes: the visible property order,
+	// the workflow states, the horizons and the scale all change what each card and bucket
+	// draws while every note stays as it was — and then the counts and the contents match
+	// across two builds that rendered different work. (Codex, PR #137.)
+	const contents = fingerprint([
+		stableJson(options),
+		JSON.stringify(order),
+		...results.map((entry) => `${entry.file.path}\u0000${stableJson(vault.frontmatter.get(entry.file.path))}`),
+	]);
 
 	let settle: ReturnType<typeof setTimeout> | undefined;
 	vault.afterWrite = () => {
