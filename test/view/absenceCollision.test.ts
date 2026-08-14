@@ -7,7 +7,7 @@ import { absenceVault } from '../helpers/resources';
 import { addDays, formatCivil, MAX_TIMELINE_DAYS } from '../../src/domain/timeline';
 import { readDate, todayStamp } from '../../src/domain/noteFields';
 
-/** `clashCost`'s own construction, borrowed rather than re-derived — see its own test. */
+/** `absenceCost`'s own construction, borrowed rather than re-derived — see its own test. */
 const TODAY = readDate(todayStamp()).value;
 if (TODAY === null) throw new Error('todayStamp() did not parse as a date');
 
@@ -179,7 +179,7 @@ describe('what a bar SAYS it costs to cross an absence', () => {
 		const row = rowFor(containerEl, 'Work');
 
 		// `Work` runs 1–10 August and Alice is away 4–6: three days. Short TOKEN, not a
-		// sentence — `.pbl-bar-label`'s content box has no room for one; see `clashCost`.
+		// sentence — `.pbl-bar-label`'s content box has no room for one; see `absenceCost`.
 		expect(row?.querySelector('.pbl-days-lost')?.textContent).toBe('3d lost');
 	});
 

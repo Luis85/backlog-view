@@ -307,20 +307,26 @@
    (`.pbl-bar-label`, `styles/timelineFurniture.css`) rather than positioned as a mark of
    its own. That is what makes this rule almost nothing: no `position`, no `left`, no pair
    of custom properties to place it against — the label it lives inside already carries the
-   position, the `nowrap`, the truncation and the muted colour, all inherited. Two earlier
-   shapes both had to be undone to get here: a sibling of `.pbl-timeline-row` widened every
-   row carrying one to the whole day track's own width, and a sibling of the bar with its
-   own `placeSpan` copy landed squarely on top of the title whenever both existed on the
-   same track (`renderBarLabel` places "after" at the identical edge this used to). A bar
-   too cramped for its own title is now too cramped for this sentence as well, by
-   construction: `drawBandCollision` never reaches for this class at all where
-   `renderBarLabel` returned no label to append it to.
+   position and the muted colour, inherited. Two earlier shapes both had to be undone to get
+   here: a sibling of `.pbl-timeline-row` widened every row carrying one to the whole day
+   track's own width, and a sibling of the bar with its own `placeSpan` copy landed squarely
+   on top of the title whenever both existed on the same track (`renderBarLabel` places
+   "after" at the identical edge this used to). A bar too cramped for its own title is now
+   too cramped for this sentence as well, by construction: `drawBandCollision` never reaches
+   for this class at all where `renderBarLabel` returned no label to append it to.
+
+   `flex: 0 0 auto` is load-bearing, not tidiness: `.pbl-bar-label` is a flex row sharing
+   this token with `.pbl-bar-label-title` (`styles/timelineFurniture.css`), and without a
+   refusal to shrink here the flex algorithm would take space from EITHER child impartially
+   — including this one, which has no `text-overflow` of its own to fall back on and would
+   just clip mid-token. The title is the one built to give up room; this is not.
 
    `margin-left` rather than a leading space baked into the string: a leading space in a
    text node is not reliably preserved (whitespace collapsing) and is invisible to a reader
    of the code either way, where a margin states the gap as what it is. Without it the
    label's own text and this span run together as one word — `Work3d lost`. */
 .pbl-days-lost {
+	flex: 0 0 auto;
 	margin-left: var(--size-4-1);
 	color: var(--text-muted);
 }

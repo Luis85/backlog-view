@@ -464,8 +464,12 @@ function drawBandCollision(bar: { row: HTMLElement; lead: HTMLElement; track: HT
  * 144px`, `box-sizing: border-box`, `padding: 0 8px` plus the `after` variant's own
  * `padding-left: 18px`), and a full sentence never fitted there even with an empty title in
  * front of it — "15 days lost to absence" alone is ~128px at `--font-ui-smaller`. These
- * short forms are ~40–55px, which is what leaves the box any room for a title to ellipsize
- * into; the full form is never lost, only moved off the row itself.
+ * short forms are ~40–55px, small enough that `.pbl-days-lost`'s own `flex: 0 0 auto`
+ * (`styles/lanes.css`) can hold the whole token unshrunk and still leave the title
+ * (`.pbl-bar-label-title`, `min-width: 0`) room to ellipsize into what is left — the flex
+ * row `.pbl-bar-label` became for exactly this reason, since `text-overflow: ellipsis`
+ * truncates at the LINE's end and could not tell the token from the title on its own. The
+ * full form is never lost, only moved off the row itself.
  *
  * The milestone case is answered FIRST, before any arithmetic: a milestone is a point, so
  * `crossedAbsences` already answered whether it lands on an away day and a count of days

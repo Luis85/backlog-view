@@ -98,7 +98,15 @@ export function renderBarLabel(
 	// what makes this decoration rather than content, and squeezing it over the bar would
 	// only trade a hidden label for an unreadable one.
 	if (!after && markLeft < LABEL_RESERVE_PX) return null;
-	const label = track.createDiv({ cls: 'pbl-bar-label', text: bar.item.title, attr: { 'aria-hidden': 'true' } });
+	const label = track.createDiv({ cls: 'pbl-bar-label', attr: { 'aria-hidden': 'true' } });
+	// The title's own child, not text on `label` directly: `label` is a flex row now, and
+	// `drawBandCollision` appends `.pbl-days-lost` as a SECOND child of it — a title long
+	// enough to fill the whole box would otherwise ellipsize the token itself off the end
+	// of the line, since `text-overflow: ellipsis` truncates at the line's end regardless
+	// of which content put it there. `.pbl-bar-label-title` carries `min-width: 0` (a flex
+	// item's default `min-width: auto` refuses to shrink below its own content) plus the
+	// ellipsis this element used to carry — `styles/timelineFurniture.css`.
+	label.createSpan({ cls: 'pbl-bar-label-title', text: bar.item.title });
 	if (after) {
 		label.addClass('pbl-bar-label-after');
 		label.setCssProps({ '--pbl-label-left': `${markLeft + width}px` });

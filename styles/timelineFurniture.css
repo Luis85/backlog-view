@@ -126,19 +126,40 @@
 }
 
 /* max-width + 2×padding = LABEL_RESERVE_PX in render/timeline.ts — the reserve the
-   side flip is decided against. Change them together. */
+   side flip is decided against. Change them together.
+
+   A flex row, not a text box: `.pbl-days-lost` (`styles/lanes.css`) is a second child
+   now, appended after the title span — a plain block/inline layout has no concept of
+   "shrink THIS child's text before truncating THAT one", so a long title's own overflow
+   would ellipsize wherever the line ends, which is exactly the token's own place. `flex:
+   0 0 auto` on the token (`styles/lanes.css`) refuses it any shrinking at all, so
+   `.pbl-bar-label-title` below is the only child able to give up room. `align-items:
+   center` keeps both children vertically centred against each other; `top: 50%` /
+   `transform: translateY(-50%)` still centre the label BOX as a whole against the track,
+   unchanged — a flex container's own position is no different from a block one's. */
 .pbl-bar-label {
 	position: absolute;
 	top: 50%;
 	transform: translateY(-50%);
+	display: flex;
+	align-items: center;
 	max-width: 144px;
 	padding: 0 var(--size-4-2);
 	font-size: var(--font-ui-smaller);
 	color: var(--text-muted);
-	white-space: nowrap;
+	pointer-events: none;
+}
+
+/* The title itself — `nowrap`/`overflow`/`ellipsis` moved here from `.pbl-bar-label`
+   above when that became the flex row both children share. `min-width: 0` is load-bearing
+   and not decoration: a flex item's default `min-width: auto` resolves to its own content
+   size, which refuses to shrink at all — without this, the title would push
+   `.pbl-days-lost` out of the 144px box instead of truncating around it. */
+.pbl-bar-label-title {
 	overflow: hidden;
 	text-overflow: ellipsis;
-	pointer-events: none;
+	white-space: nowrap;
+	min-width: 0;
 }
 
 /* The left gap clears the connector, which sits in exactly the space `.pbl-bar-label`'s

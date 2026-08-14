@@ -523,7 +523,7 @@ export function renderAbsenceWash(
  * `drawBandCollision`'s own business now, appended into the bar's title label rather than
  * placed here, so this function needs no opinion about width or position at all.
  *
- * `costSentence` is `clashCostSentence`'s FULL form of the same fact `.pbl-days-lost`
+ * `costSentence` is `absenceCost`'s FULL form of the same fact `.pbl-days-lost`
  * abbreviates on the row — folded into `said` so the tooltip and the sr-only span always
  * carry the whole count even where the row itself only ever shows the short token, or
  * shows nothing at all because the title's own label was dropped.
