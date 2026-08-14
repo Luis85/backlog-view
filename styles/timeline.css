@@ -311,6 +311,35 @@
 	border-right: none;
 }
 
+/* How far along, INSIDE the bar and inset — see `renderBarProgress`. Not full-height:
+   `.pbl-bar-inferred` is an outline and the open-end rules are gradients. The tree's
+   own two progress colours (`columns.css`), never `--pbl-bar-color` — the bar's own paint. */
+.pbl-bar-progress {
+	position: absolute;
+	inset-inline-start: 2px;
+	inset-inline-end: 2px;
+	bottom: 1px;
+	height: 4px;
+	border-radius: 2px;
+	background-color: var(--background-modifier-border);
+	overflow: hidden;
+	pointer-events: none; /* decoration over the row's name and the drag grips */
+}
+
+.pbl-bar-progress-fill {
+	width: var(--pbl-progress, 0%);
+	height: 100%;
+	border-radius: 2px;
+	background-color: rgb(var(--color-green-rgb));
+}
+
+.pbl-bar-count { /* in the sticky lead cell, the tree's own rollup-label shape */
+	margin-inline-start: auto;
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	flex: 0 0 auto;
+}
+
 /* A point in time is not a span: an equal pair the note states renders as the Gantt diamond.
    CENTRED on its DATE, not started at it: `--pbl-bar-left` is the left edge a span wants,
    but a point has no width to spend, so a 12px diamond hung off that edge sat 6px right of

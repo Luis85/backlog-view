@@ -1,5 +1,6 @@
 import { setTooltip } from 'obsidian';
 import { createCard } from './board';
+import { renderBarProgress } from './barProgress';
 import { RowContext } from './columns';
 import { drawIcon } from './icons';
 import { renderBadge, renderChevron, renderTitleText } from './rows';
@@ -278,6 +279,7 @@ export function renderLaneContextRow(ctx: RowContext, content: HTMLElement, item
 	const title = lead.createDiv({ cls: 'pbl-card-title' });
 	renderTitleText(ctx.host, title, item.title);
 	setTooltip(lead, item.title);
+	renderBarProgress(ctx.host, { row, bar: null, lead }, item);
 	row.createDiv({ cls: 'pbl-timeline-track' });
 	return row;
 }

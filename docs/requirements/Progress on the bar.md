@@ -87,7 +87,30 @@ thing that drifts.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The numbers are the rollup fields
-`src/domain/model.ts` already assigns; the fill is a renderer over them beside the
-rollup column in `src/view/render/columns.ts`, so the roadmap adds a drawing, not a
-second answer to how far along anything is.
+**Built.** `renderBarProgress` in `src/view/render/barProgress.ts` draws both halves —
+the band inside the bar and the count in the lead cell — from the rollup fields
+`src/domain/model.ts` already assigns, in the words `renderRollup` already uses. Its
+own module because `src/view/render/timeline.ts` sits at its 400-line budget, the same
+reason `barLabel.ts` and `lanes.ts` left that file before it.
+
+The band is inset inside the bar rather than washed over it, because a bar's
+background already says whether its span is inferred (`background: none` plus a dashed
+border) and whether either end is unstated (a gradient fading to transparent) — claims
+a full-height child would paint over. It is a track and a fill in the tree's own two
+progress colours rather than the bar's, since `.pbl-bar` is painted in that colour and a
+band wearing it would be invisible on every ordinary span. `renderBarRow` in
+`timeline.ts` passes a null bar for a milestone and for an outside-window arrow, which
+are marks rather than spans, and `renderLaneContextRow` in `lanes.ts` passes null
+because that row draws no bar at all; all three still render their count. No context
+item is banded on any axis, because `deriveBars` routes one to `context` before a
+placement is computed for it. The count is also announced once on the row itself, as a
+`.pbl-sr-only` fact, because both bar rows and the context row already tooltip the lead
+cell with the item's own title — a tooltip that, in the real app, may become an
+`aria-label` replacing the cell's text and taking the count with it. jsdom's `setTooltip`
+mock cannot show that either way, so whether the real app actually does this is a
+live-vault question this suite cannot answer.
+
+Driven in `test/view/barProgress.test.ts`. **Neither the inset nor the contrast is
+checked there** — jsdom computes no layout and resolves no custom property to a colour,
+so a full-height band in the bar's own colour passes every assertion in that file. Both
+are on the live-vault list in the spec, with the compact density's band height.

@@ -1,6 +1,7 @@
 import { setTooltip } from 'obsidian';
 import { drawIcon } from './icons';
 import { renderBarLabel } from './barLabel';
+import { renderBarProgress } from './barProgress';
 import { RowContext } from './columns';
 import {
 	drawnSpans,
@@ -586,6 +587,7 @@ function renderBarRow(
 	}
 	renderConnector(ctx, mounts, { row, barEl: el, geometry }, bar);
 	renderBarLabel(track, bar, geometry, scale, window);
+	renderBarProgress(ctx.host, { row, bar: geometry.milestone || geometry.outside ? null : el, lead }, bar.item);
 	renderRowFacts(row, ctx, bar, { dates, own, conflictedPrereqs: mounts.conflictedPrereqs, lead });
 	// The one caller that passes a fold: this row has a chevron, so "clicking an item
 	// expands or collapses it" means here exactly what it means in the tree. Its two
