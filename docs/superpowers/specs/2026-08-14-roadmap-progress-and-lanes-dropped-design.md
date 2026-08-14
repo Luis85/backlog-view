@@ -135,10 +135,20 @@ every shape, so **no shape needs a special case and none can be forgotten**: the
 prefer it over "skip the fill on inferred and open bars" is that the second is a list, and
 a list is what the review found wrong three times already in this spec.
 
-The band draws in the bar's own colour, one rule for all eight state colours, so a colour
-added to the palette needs nothing here. The bar says *what state it is in* and *how
-certain its dates are*; the band says *how much beneath it is done*. Three claims, three
-channels, none overwriting another.
+**The band is a track and a fill, in the tree's own two colours** — not the bar's colour.
+`.pbl-bar` paints `background-color: var(--pbl-bar-color)`, so a band in that same colour
+would be invisible against the bar at every percentage, and the increment's whole signal
+would vanish on the commonest shape. The tree already solved this in
+`styles/columns.css`: `.pbl-progress-bar` is a neutral track
+(`var(--background-modifier-border)`) and `.pbl-progress-fill` is green
+(`rgb(var(--color-green-rgb))`). The band copies that pair rather than inventing a colour
+rule, so it reads against all eight state colours at once, needs nothing when a ninth is
+added, and looks like the progress this reader already knows from the tree. Found by
+review, against a draft that said "the bar's own colour" and would have drawn nothing
+anyone could see.
+
+The bar says *what state it is in* and *how certain its dates are*; the band says *how
+much beneath it is done*. Three claims, three channels, none overwriting another.
 
 ### The number
 
@@ -169,18 +179,24 @@ done":
   `markWidth` in `src/view/render/barLabel.ts` is where that distinction already lives —
   and a milestone is a leaf by nature anyway.
 
-A **context item that draws a bar** gets a band, and it describes its visible results only.
-Nothing new is needed for that guarantee: `assignAll` walks *through* an `outsideFilter`
-row and never counts it, which the two invariant tests in
-`test/view/contextRowWrites.test.ts` already hold, and the band inherits it by reading the
-same fields.
+**No context item draws a band, because no context item draws a bar.** `deriveBars` in
+`src/domain/bars.ts` routes every `outsideFilter` item straight to `context` before a
+placement is computed for it — its own comment says such a row is never placed by its own
+dates and gets no inferred span either — so it is a strip card on the dated axis, a
+`renderLaneContextRow` with an empty track on the resources axis, and an ordinary card on
+the horizon axis. There is nowhere for a band to be inset.
 
-**A lane context row is the exception, and by absence rather than by rule.**
-`renderLaneContextRow` builds a lead cell and an EMPTY track — there is no `.pbl-bar` on
-it at all — so there is nothing for a band to be inset within. It still carries the
-**count** in its lead cell, exactly as every other row with descendants does, so the
-surface reports what it can and claims nothing it cannot draw. Found by review, against a
-blanket "a context row draws a fill" that one of the five surfaces had no bar to honour.
+What those surfaces report instead is already right, and is what the guarantee attaches
+to: a strip card and a bucket card draw the rollup through `renderCardBody` like any card,
+and a lane context row draws the **count** in its lead cell, as every other row with
+descendants does. Each surface reports what it can draw and claims nothing it cannot.
+
+The guarantee itself — a context item describes its visible results only — needs nothing
+new either way: `assignAll` walks *through* an `outsideFilter` row and never counts it,
+which the two invariant tests in `test/view/contextRowWrites.test.ts` already hold, and
+every count above inherits it by reading the same fields. Found by review twice: against a
+blanket "a context row draws a fill", and then against the narrowed "a context item that
+draws a bar", which named a case the projection cannot produce.
 
 An **inferred span** — a parent with no dates of its own, spanning its dated descendants —
 fills like any other, and is in fact the common case: an item with descendants is exactly
@@ -210,7 +226,7 @@ already narrowed to what draws, and nothing on the board hides part of it afterw
 roadmap is not like that, and the obvious mirror — a pure `placedPaths(roadmap)` — is the
 wrong shape. Two review rounds established it by counting:
 
-- **Five surfaces**, not three: bucket cards, timeline bars, shelf cards, the context strip
+- **Five surfaces**, not three: bucket cards, timeline rows, shelf cards, the context strip
   (`roadmap.context`, drawn by `renderContextStrip`) and **`ResourceLane.context`**, drawn
   by `renderLaneContextRow` on the resources axis, which is a hand-built row using neither
   `renderCardBody` nor `renderRowFacts`.
@@ -261,13 +277,15 @@ only by not drawing at all.
 
 Each registers a mount as it draws, and the second pass calls `renderCardMatches` on it:
 
-- **bucket cards** and **timeline bars** (`src/view/render/roadmap.ts`) — the card itself,
+- **bucket cards** (`src/view/render/roadmap.ts`) — the card itself,
 - **shelf cards** and the **context strip** (`src/view/render/shelf.ts`) — the card itself.
   The strip matters more than its size suggests: a focused `outsideFilter` root on the
   dated axis is routed to `roadmap.context` and drawn there rather than as a bar, which is
   exactly the focused-context case [[Focus level picks the rows]] extension 2b describes,
-- **timeline rows** (`renderRowFacts` in `src/view/render/timeline.ts`) — the sticky lead
-  column, the one text region such a row has,
+- **timeline rows** (`renderBarRow` in `src/view/render/timeline.ts`) — the sticky lead
+  column, the one text region such a row has. A bar is not a sixth surface: it is a child
+  of the row `renderBarRow` builds, so the row registers **once**, and the path-keyed
+  register never has two values competing for one key,
 - **lane context rows** (`renderLaneContextRow` in `src/view/render/lanes.ts`) — its lead
   div. This is the resources axis's own focused-context row, held in `ResourceLane.context`
   rather than `roadmap.context`, and it is hand-built from `createCard` upward, so it
@@ -335,10 +353,10 @@ checks are view-level, in `test/view/`:
   where the failure is worst: the dashed border still dashed, the end fades still fading,
   the band inset within them. Milestones and arrows alone would have passed a design that
   paints an open span shut.
-- A context item's band counting its visible results only, asked from the rule rather than
-  from the implementation, beside the two invariant tests that already state it for
-  writes and rollups — driven on a surface that HAS a bar, with the lane context row
-  asserted separately: no band, and the count present in its lead cell.
+- A context item counting its visible results only, asked from the rule rather than from
+  the implementation, beside the two invariant tests that already state it for writes and
+  rollups. Driven on the two surfaces a context item actually reaches — a strip card's
+  rollup, and a lane context row's count — since no context item draws a bar to band.
 - A filtered roadmap naming a match three levels down on each of its five surfaces —
   bucket card, timeline bar, shelf card, context strip, lane context row — each link
   opening its note, and neither `click` nor `auxclick` reaching the card or row beneath.
