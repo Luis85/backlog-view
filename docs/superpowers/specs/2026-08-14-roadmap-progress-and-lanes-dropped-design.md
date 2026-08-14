@@ -204,9 +204,19 @@ the item a fill has something to say about.
 
 ### What it says out loud
 
-The tooltip and the bar's accessible description use `renderRollup`'s own words —
-*"3 of 8 items done"* — rather than a second phrasing invented here. One item cannot
-report its progress differently per projection, which is the PBI's guarantee.
+The words are `renderRollup`'s own — *"3/8"* on the face and *"3 of 8 items done"* in the
+tooltip — and they are **shared rather than copied**: one helper holds the guard, the
+ratio and both strings, and the tree's renderer and the roadmap's both read it. Two copies
+of a string is how two projections come to disagree, and "one item cannot report its
+progress differently per projection" is the PBI's guarantee, so it is held by one
+definition rather than by two that happen to match today.
+
+**They ride the count, not the bar.** The count sits in the row's lead cell, which is part
+of the row's own accessible name, so a screen reader walking the row hears the progress
+once; its tooltip carries the long form for a pointer. The bar keeps the dates as its
+label, because the dates are what a bar is about — and putting the progress there too
+would announce it twice in one row. An earlier draft promised "the bar's accessible
+description", which this design does not do and should not.
 
 ## 3. Match naming across the roadmap
 

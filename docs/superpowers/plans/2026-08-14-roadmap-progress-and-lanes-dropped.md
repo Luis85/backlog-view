@@ -272,6 +272,20 @@ A timeline row is the one surface with no progress on it: `renderCardBody` gives
 - Consumes: `BacklogItem.doneDescendants` and `.descendantCount` from `src/domain/model.ts`; `hasRollup(projection)` from `src/view/projection.ts`; `BacklogViewHost.settings` (`stateKey`, `showCounts`).
 - Produces:
   ```ts
+  // src/view/render/columns.ts — the one definition both renderers read
+  export interface RollupReport {
+      /** Face text: "3/8" with a workflow, "8" without one. */
+      label: string;
+      /** Long form for a tooltip, or '' when there is no ratio to state. */
+      tooltip: string;
+      /** Done share 0..1, or null when no workflow makes one meaningful. */
+      ratio: number | null;
+  }
+  export function rollupReport(host: BacklogViewHost, item: BacklogItem): RollupReport | null
+  ```
+  `null` means nothing renders at all — the guard, in one place. Task 3 Step 0 builds it; `renderRollup` is rewritten onto it in the same step.
+- Also produces:
+  ```ts
   export function renderBarProgress(
       host: BacklogViewHost,
       mounts: { bar: HTMLElement | null; lead: HTMLElement },
@@ -279,6 +293,47 @@ A timeline row is the one surface with no progress on it: `renderCardBody` gives
   ): void
   ```
   `bar` is `null` where the shape takes no band — a milestone diamond, an outside-window arrow, and the lane context row, which has no `.pbl-bar` at all. Task 4 does not call this.
+
+- [ ] **Step 0: Extract the report both renderers will share**
+
+Decided before execution: the guard, the ratio and both strings live in **one** place, because `.fallowrc.json` runs a `duplicates` rule and because "one item cannot report its progress differently per projection" is a guarantee two copies of a string cannot hold.
+
+In `src/view/render/columns.ts`, above `renderRollup`:
+
+```ts
+/**
+ * What an item's rollup SAYS — the guard, the ratio and both strings, in one place.
+ *
+ * Two renderers read this: the tree's rollup column below, and `renderBarProgress` for
+ * the roadmap's dated rows. They draw different DOM — a meta column, versus a band
+ * inside a bar and a count in a lead cell — but they must never disagree about the
+ * words or about when there is nothing to say, which is what
+ * `Progress on the bar` guarantees. Copies of a string are how that guarantee rots.
+ *
+ * Null means draw nothing: no workflow AND no counts configured, a projection with no
+ * rollup, or an item with no descendants. An empty measure is not a zero.
+ */
+export function rollupReport(host: BacklogViewHost, item: BacklogItem): RollupReport | null {
+	const settings = host.settings;
+	if ((!settings.stateKey && !settings.showCounts) || !hasRollup(host.projection)) return null;
+	if (item.descendantCount === 0) return null;
+	if (!settings.stateKey) return { label: String(item.descendantCount), tooltip: '', ratio: null };
+	return {
+		label: `${item.doneDescendants}/${item.descendantCount}`,
+		tooltip: `${item.doneDescendants} of ${item.descendantCount} items done`,
+		ratio: item.doneDescendants / item.descendantCount,
+	};
+}
+```
+
+Rewrite `renderRollup` onto it, keeping its DOM and its classes exactly as they are — `.pbl-meta-col`, `.pbl-progress`, `.pbl-progress-bar`, `.pbl-progress-fill`, `.pbl-progress-label`, `.pbl-count`, and the `pbl-complete` class at `ratio === 1`. **This is a refactor with no behaviour change**, so the existing tree tests are the check: they must pass untouched.
+
+```bash
+npx vitest run test/view/ -t 'rollup'
+npm run check
+```
+
+Expected: PASS, and the full gate green. Commit this on its own — `git commit -m "Say the rollup once"` — so the behaviour-free refactor is separable from the feature.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -320,6 +375,12 @@ The cases, each asserted from the rule rather than from the implementation:
 
 // An OPEN-ENDED bar at 100% done, likewise: `pbl-bar-open-end` still on the
 // bar, band inside it.
+
+// The ROW's accessible name includes the count, and the BAR's aria-label is
+// still the dates alone. Progress is announced once per row, from the lead
+// cell, not twice.
+//   expect row.textContent).toContain('1/4')
+//   expect barEl.getAttribute('aria-label')).not.toContain('done')
 
 // A context item counts its VISIBLE results only — an outsideFilter parent over
 // 2 results, 1 done, reads 1/2 no matter what the excluded note's own state is.
@@ -384,34 +445,31 @@ import { BacklogItem } from '../../domain/model';
  * surfaces still get their count, so each reports what it can draw and claims nothing
  * it cannot.
  *
- * The words come from `renderRollup` in `./columns.ts` rather than being invented
- * here: one item cannot report its progress differently per projection, which is what
- * `Progress on the bar` guarantees.
+ * The words and the guard are `rollupReport`'s in `./columns.ts`, shared with the tree's
+ * own renderer rather than restated here: one item cannot report its progress
+ * differently per projection, which is what `Progress on the bar` guarantees, and two
+ * copies of a string is how that comes apart.
+ *
+ * The count carries the words, and the BAR does not. A bar's label is its dates, which
+ * is what a bar is about; the count sits in the lead cell, which is part of the row's
+ * own accessible name, so a screen reader walking the row hears the progress once
+ * rather than twice.
  */
 export function renderBarProgress(
 	host: BacklogViewHost,
 	mounts: { bar: HTMLElement | null; lead: HTMLElement },
 	item: BacklogItem,
 ): void {
-	const settings = host.settings;
-	if ((!settings.stateKey && !settings.showCounts) || !hasRollup(host.projection)) return;
-	if (item.descendantCount === 0) return;
-	if (settings.stateKey) {
-		const ratio = item.doneDescendants / item.descendantCount;
-		if (mounts.bar) {
-			const track = mounts.bar.createDiv({ cls: 'pbl-bar-progress' });
-			track.createDiv({ cls: 'pbl-bar-progress-fill' }).setCssProps({
-				'--pbl-progress': `${Math.round(ratio * 100)}%`,
-			});
-		}
-		const label = mounts.lead.createSpan({
-			cls: 'pbl-bar-count',
-			text: `${item.doneDescendants}/${item.descendantCount}`,
+	const report = rollupReport(host, item);
+	if (!report) return;
+	if (mounts.bar && report.ratio !== null) {
+		const track = mounts.bar.createDiv({ cls: 'pbl-bar-progress' });
+		track.createDiv({ cls: 'pbl-bar-progress-fill' }).setCssProps({
+			'--pbl-progress': `${Math.round(report.ratio * 100)}%`,
 		});
-		setTooltip(label, `${item.doneDescendants} of ${item.descendantCount} items done`);
-		return;
 	}
-	mounts.lead.createSpan({ cls: 'pbl-bar-count', text: String(item.descendantCount) });
+	const label = mounts.lead.createSpan({ cls: 'pbl-bar-count', text: report.label });
+	if (report.tooltip) setTooltip(label, report.tooltip);
 }
 ```
 
