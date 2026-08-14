@@ -43,6 +43,8 @@ const SETTLE_MS = 100;
 export interface Mount {
 	ms: number;
 	px: number;
+	/** Rows and cards the first draw put on screen — see `Row.drew` in `perf.ts`. */
+	drew: number;
 }
 
 /**
@@ -139,6 +141,8 @@ export function mountHarness(root: HTMLElement, fixture: HarnessFixture = 'demo'
 	// supposed to include and understated the draw.
 	// See `drawnHeight`: neither container nor scroller `scrollHeight` answers this.
 	const px = drawnHeight(containerEl);
-	const mount = { ms: performance.now() - started, px };
+	// After the clock, like `sample`'s own count: this says what the row is a measurement
+	// OF, and a query inside the measurement would be measuring the query.
+	const mount = { ms: performance.now() - started, px, drew: containerEl.querySelectorAll('.pbl-row, .pbl-card').length };
 	return { view, vault, containerEl, mount };
 }

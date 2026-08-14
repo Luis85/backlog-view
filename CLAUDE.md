@@ -52,6 +52,13 @@ had no baseline at all for a bare `<button>`. Improving the stub narrows the gap
 not close it, so keep saying so honestly rather than letting "faithful" read wider than
 what the stub actually covers.
 
+When the question is what a change COSTS, `npm run perf` runs that same page in a headless
+Chromium and prints its stopwatch — the page still does the timing and nothing asserts one
+(ADR 0020), so this is a way to READ the numbers where there is no display, not a
+benchmark in the gate. Compare two builds with `--against`, which alternates them and
+prints both spreads; a delta between overlapping spreads is this environment's drift,
+which has been mistaken for a finding here twice.
+
 That makes it a way to mock a projection *before* building it, and the offer belongs
 before the implementation rather than after: when a change would visibly alter the view,
 **ask whether to mock it in the harness first**. The cheap version needs no new code at

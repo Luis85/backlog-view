@@ -113,8 +113,28 @@ Obsidian's.
   `?notes=` grows either backlog by that many generated notes (`addBulk`, in the same
   fixture file) and `?perf` times the mount, a data update, a render on its own and each
   projection switch — five samples each, median and worst, into a corner panel and
-  `console.table`. The run switches to the tree and expands it first, or three of its rows
-  would describe different sample sizes under one heading.
+  `console.table`. The run switches to the tree and expands it first, and opens the SHELF,
+  which it had not done until 2026-08-14: a collapsed shelf renders its header and
+  returns, so every roadmap number this panel had ever printed was of a roadmap without
+  the band. It puts the collapse, the axis and the projection back as it found them.
+  **Each row states its own sample** (`drew`), because one heading cannot: the tree draws
+  rows, the card projections draw cards, the board excludes Deliverables and the
+  Deliverables board draws only those.
+- **`npm run perf` runs that page headlessly and prints the table**, for a session with no
+  display — which is most of them. It measures nothing itself: the page publishes its rows
+  as JSON (`PERF_DATA_ID`) and `scripts/perf.mjs` drives Chromium with `--dump-dom`, parses
+  that one element, and does the arithmetic across runs. `--notes`, `--runs`, `--view`,
+  `--axis`, `--window`, and `--against <a second built harness>`, which ALTERNATES the two
+  within one loop and prints both spreads beside the delta — the method
+  [[The render is the whole cost of a data update]] insists on, since this environment's
+  drift is larger than many differences worth reading. Two medians whose spreads overlap
+  have no delta worth reading. It finds a Chromium (`CHROME_PATH`, Playwright's, the PATH)
+  rather than installing one, and it is not part of `npm run check`.
+  For a question the panel does not answer — does a scroll position survive a rebuild,
+  does a handler force layout — `window.__pbl` is `{ view, containerEl }`, so the probe is
+  a paste into a console instead of an edit to `page.ts` and a rebuild. `?axis=dates`
+  opens the roadmap on an axis that is otherwise a toolbar menu, so the timeline is
+  reachable by URL for a screenshot and for the runner.
   **Its two medians are not subtractable.** `update` minus `render only` looks like the
   non-render half of a data update and is not: sampled at different points in one run, each
   swinging by 100 ms+, their difference ranged over an order of magnitude across runs for a
