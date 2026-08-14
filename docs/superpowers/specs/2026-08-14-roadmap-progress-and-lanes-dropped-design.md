@@ -169,10 +169,18 @@ done":
   `markWidth` in `src/view/render/barLabel.ts` is where that distinction already lives —
   and a milestone is a leaf by nature anyway.
 
-A **context row** draws a fill, and it describes its visible results only. Nothing new is
-needed for that: `assignAll` walks *through* an `outsideFilter` row and never counts it,
-which the two invariant tests in `test/view/contextRowWrites.test.ts` already hold. The
-fill inherits the guarantee by reading the same fields.
+A **context item that draws a bar** gets a band, and it describes its visible results only.
+Nothing new is needed for that guarantee: `assignAll` walks *through* an `outsideFilter`
+row and never counts it, which the two invariant tests in
+`test/view/contextRowWrites.test.ts` already hold, and the band inherits it by reading the
+same fields.
+
+**A lane context row is the exception, and by absence rather than by rule.**
+`renderLaneContextRow` builds a lead cell and an EMPTY track — there is no `.pbl-bar` on
+it at all — so there is nothing for a band to be inset within. It still carries the
+**count** in its lead cell, exactly as every other row with descendants does, so the
+surface reports what it can and claims nothing it cannot draw. Found by review, against a
+blanket "a context row draws a fill" that one of the five surfaces had no bar to honour.
 
 An **inferred span** — a parent with no dates of its own, spanning its dated descendants —
 fills like any other, and is in fact the common case: an item with descendants is exactly
@@ -206,10 +214,13 @@ wrong shape. Two review rounds established it by counting:
   (`roadmap.context`, drawn by `renderContextStrip`) and **`ResourceLane.context`**, drawn
   by `renderLaneContextRow` on the resources axis, which is a hand-built row using neither
   `renderCardBody` nor `renderRowFacts`.
-- **At least three pieces of host state** decide whether a modelled item actually draws:
-  `host.shelfCollapsed` (`renderShelf`), `host.shelfHiddenTypes` (passed to
-  `organizeShelf`, which drops whole groups from an EXPANDED shelf) and the lane folds
-  `laneEntries` reads. An active filter overrides none of them.
+- **Host state decides whether a modelled item actually draws**, and — this is the part
+  that makes prediction fragile — **the quick filter overrides some of it and not the
+  rest**. `isLaneCollapsed` returns false outright while a filter runs, so a folded lane
+  reopens and every row in it draws. `renderShelf` has no such term: `host.shelfCollapsed`
+  keeps a shelf shut mid-search, and `host.shelfHiddenTypes` goes on dropping whole groups
+  from an EXPANDED one. Two states that look alike, with opposite answers to the same
+  question, and only the code says which is which.
 
 Every one of those was a separate review finding, each fixed by adding a parameter to a
 pure function — which is the signature of a design that will keep acquiring them. A
@@ -324,17 +335,22 @@ checks are view-level, in `test/view/`:
   where the failure is worst: the dashed border still dashed, the end fades still fading,
   the band inset within them. Milestones and arrows alone would have passed a design that
   paints an open span shut.
-- A context row's band counting its visible results only, asked from the rule rather than
+- A context item's band counting its visible results only, asked from the rule rather than
   from the implementation, beside the two invariant tests that already state it for
-  writes and rollups.
+  writes and rollups — driven on a surface that HAS a bar, with the lane context row
+  asserted separately: no band, and the count present in its lead cell.
 - A filtered roadmap naming a match three levels down on each of its five surfaces —
   bucket card, timeline bar, shelf card, context strip, lane context row — each link
   opening its note, and neither `click` nor `auxclick` reaching the card or row beneath.
-- **The three ways an item is modelled but not drawn**, each asserted as "the ancestor
-  names the match rather than stopping at it": a collapsed shelf, an expanded shelf whose
-  type filter hides the matching group, and a folded lane. These are what the mount map
-  exists to get right, and each was a review finding against a design that predicted the
-  screen instead of reading it.
+- **The two ways an item is modelled but not drawn WHILE A FILTER RUNS**, each asserted as
+  "the ancestor names the match rather than stopping at it": a collapsed shelf, and an
+  expanded shelf whose type filter hides the matching group. Both were review findings
+  against a design that predicted the screen instead of reading it.
+  A folded lane is deliberately **not** a third case: `isLaneCollapsed` returns false
+  while a filter is active, so the state cannot occur where match naming runs, and a test
+  for it would need a host state production cannot reach. Its counterpart is worth
+  asserting instead — **a folded lane reopening under a filter**, so its rows are drawn,
+  registered, and name their own matches.
 - **A DIRECT child as the match, on a timeline row**, which is the case the subtraction
   would silently eat and which a three-levels-down test passes straight over. Paired with
   the card case, where that same child must be named once by the disclosure and not
