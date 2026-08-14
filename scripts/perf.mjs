@@ -326,14 +326,21 @@ const asked = { fixture: args.fixture ?? 'demo', axis: args.axis };
  * assumption this whole block exists to refuse. (Codex, PR #137.)
  */
 const ranAgainst = b[0]?.ran;
-const differs = !against || !ran || !ranAgainst
-	? []
-	: ['fixture', 'projection', 'axis'].filter((key) => ran[key] !== ranAgainst[key]);
+/**
+ * `results` is in this list, not just the fixture NAME: two builds can mount different
+ * populations under one name — a fixture that gained notes between them — and `drew`
+ * does not cover it, since it counts what was RENDERED and a hidden result or a child
+ * inside an existing card moves no count. A field the baseline is too old to publish
+ * reads as "not reported" rather than as agreement. (Codex, PR #137.)
+ */
+const WORKLOAD = ['fixture', 'results', 'projection', 'axis'];
+const show = (value) => (value === undefined ? 'not reported' : String(value));
+const differs = !against || !ran || !ranAgainst ? [] : WORKLOAD.filter((key) => ran[key] !== ranAgainst[key]);
 const baselineWorkload = !against
 	? []
 	: !ranAgainst
 		? ['the baseline does not report what it mounted — it was built before the page said so']
-		: differs.map((key) => `${key}: ${String(ran[key])} here, ${String(ranAgainst[key])} in the baseline`);
+		: differs.map((key) => `${key}: ${show(ran[key])} here, ${show(ranAgainst[key])} in the baseline`);
 const ignored = [
 	ran && asked.fixture !== ran.fixture ? `--fixture=${asked.fixture} (mounted ${ran.fixture})` : '',
 	ran && asked.axis !== undefined && asked.axis !== ran.axis ? `--axis=${asked.axis} (axis ${ran.axis ?? 'unpicked'})` : '',

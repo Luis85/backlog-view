@@ -116,8 +116,11 @@ instruments improvised around a browser.
   given. The BASELINE's resolved workload is
   read the same way and compared: two builds can absorb one flag differently — the newer
   knows an axis the older ignores — and then equal `drew` counts prove nothing, since they
-  can be equal across two different projections. A baseline too old to report it at all is
-  named as that rather than assumed to agree. (Codex, PR #137.)
+  can be equal across two different projections. The POPULATION is compared with it, not
+  just the fixture's name: two builds can mount different populations under one name, and
+  `drew` does not cover that either, since it counts what was RENDERED and a hidden result
+  or a child inside an existing card moves no count. A baseline too old to report any of it
+  is named as that — "not reported" — rather than assumed to agree. (Codex, PR #137.)
 
 - **3g — a flag that selects nothing the table measures.** `--view` was one: the run
   switches to the tree, times `update` and `render only` there, then times a switch to every
