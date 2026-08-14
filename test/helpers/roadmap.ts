@@ -77,14 +77,17 @@ export function roadmapView(vault: FakeVault, cfg: Record<string, unknown>, { ba
  * set is `model.results`, which holds none. Both are working position rather than config
  * (ADR 0011), so they go to the harness beside `collapsed` and never into the view options.
  *
- * `resourceLanes.test.ts` keeps a near-twin of this deliberately: that one also opens the
- * shelf and takes an `expanded` flag driving the real expand-all control after the axis is
- * picked, neither of which any absence test wants.
+ * `shelf` opens it, which the two MOVE suites need and no absence test does: a shelf card
+ * is a drag source and the shelf itself is the target that un-assigns.
+ *
+ * `resourceLanes.test.ts` keeps a near-twin of this deliberately: that one takes an
+ * `expanded` flag driving the real expand-all control after the axis is picked, which no
+ * suite here wants.
  */
 export function laneRoadmap(
 	vault: FakeVault,
 	extra: Record<string, unknown> = {},
-	{ only, focus }: { only?: string[]; focus?: string } = {},
+	{ only, focus, shelf }: { only?: string[]; focus?: string; shelf?: boolean } = {},
 ): Harness {
 	const harness = makeView(vault, { ...RESOURCE_AXIS, resourceNames: 'Alice, Bob', ...extra }, {
 		collapsed: true,
@@ -93,7 +96,15 @@ export function laneRoadmap(
 	});
 	harness.view.setProjection('roadmap');
 	harness.view.setAxisPick('resources');
+	if (shelf) harness.view.setShelfCollapsed(false);
 	return harness;
+}
+
+/** The header for a resource, which is one element of that resource's band. */
+export function laneHead(containerEl: HTMLElement, name: string): HTMLElement {
+	const head = lanesOf(containerEl).find((el) => el.querySelector('.pbl-lane-name')?.textContent === name);
+	if (!head) throw new Error(`no row for ${name}`);
+	return head;
 }
 
 export function bucketsOf(containerEl: HTMLElement): HTMLElement[] {

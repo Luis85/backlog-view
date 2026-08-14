@@ -158,8 +158,9 @@ async function removeAbsence(host: BacklogViewHost, absence: Absence): Promise<v
  * note renamed to describe a stretch it does not hold. This way the worst outcome is the
  * one the reader can see and fix — the right dates under the old name.
  *
- * Stated, not driven: no test injects a failure between the two acts, so the ordering is
- * held by this paragraph and review rather than by a check that fails when they swap.
+ * Driven, not merely stated: `test/view/resourceAbsences.test.ts` refuses the frontmatter
+ * write of an edit that also changes the title, and asserts the note still answers to its
+ * old name — which is exactly what swapping the two acts breaks.
  */
 async function editAbsence(host: BacklogViewHost, absence: Absence, result: AbsenceResult): Promise<void> {
 	if (refusedByConfig(host)) return;

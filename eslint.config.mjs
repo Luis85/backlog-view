@@ -287,6 +287,11 @@ export default defineConfig([
 		// `npm run harness` bundles, `.claude/` is agent tooling. They
 		// were only invisible while `lint` named `src test` — an editor lints the whole
 		// tree, and a type-aware rule on a file outside tsconfig crashes the run.
+		// Prose is not code here. `docs/` is a BACKLOG written in this plugin's own schema
+		// and read by `npm run docs`, whose rules are about the register — hierarchy,
+		// wikilinks, source paths — and nothing a code linter has an opinion about. Stated
+		// even though no config below matches a `.md` today: a markdown-aware plugin added
+		// for the README would otherwise arrive owning three hundred notes.
 		ignores: [
 			'main.js',
 			'node_modules/**',
@@ -296,6 +301,8 @@ export default defineConfig([
 			'.harness/**',
 			'.claude/**',
 			'scripts/**',
+			'docs/**',
+			'**/*.md',
 			'eslint.config.mjs',
 			'vitest.config.mts',
 		],

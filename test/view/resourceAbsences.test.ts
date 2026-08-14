@@ -455,6 +455,25 @@ describe('editing a placed absence', () => {
 		expect(Notice.messages.some((m) => m.startsWith('Could not save the absence'))).toBe(true);
 	});
 
+	it('writes the frontmatter BEFORE the rename, so a refused write leaves the name alone', async () => {
+		const vault = absenceVault();
+		const { containerEl } = laneRoadmap(vault);
+		vault.failWrites.add('Alice away.md');
+		vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+		// Both halves asked for at once, and the first one refused. Renaming first would move
+		// the note and every link naming it, and then fail — leaving a note whose name
+		// describes a stretch it does not hold. This way the worst outcome is the one the
+		// reader can see and fix: the old name, still saying what the note still says.
+		openEdit(containerEl);
+		submitAbsence({ resource: 'Bob', title: 'Alice at the offsite', start: '2026-08-05', target: '2026-08-09' });
+		await flush();
+
+		expect(vault.files.has('Alice at the offsite.md')).toBe(false);
+		expect(vault.files.has('Alice away.md')).toBe(true);
+		expect(vault.fm('Alice away.md')['start']).toBe('2026-08-04');
+	});
+
 	it('leaves the note where it is when the title has not changed', async () => {
 		const vault = absenceVault();
 		const { containerEl } = laneRoadmap(vault);
