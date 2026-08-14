@@ -84,7 +84,11 @@ describe('the perf panel reports the sample it took', () => {
 			// What the page MOUNTED, which is what the runner's heading states: a query
 			// string echoed back would have labelled the table with a typo the page had
 			// silently absorbed (`?fixture=edegs` mounts the demo).
-			expect(data.ran).toEqual({ fixture: 'demo', projection: view.projection, axis: view.axisPick });
+			// The axis the ROADMAP drew, not `view.axisPick`, which is null until someone picks
+			// and would have compared two differently-configured builds as equal.
+			view.setProjection('roadmap');
+			expect(data.ran).toEqual({ fixture: 'demo', projection: 'tree', axis: view.roadmap?.roadmap.axis ?? null });
+			expect(data.ran.axis).not.toBeNull();
 
 			const drew = (op: string) => data.rows.find((row) => row.op === op)?.drew ?? 0;
 			// One heading cannot state this: the board excludes Deliverables and the

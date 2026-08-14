@@ -92,12 +92,20 @@ const runs = wholeNumber('runs', args.runs ?? (against ? 3 : 1), 1);
  * one number this table's own subject depends on, reported as something it was not.
  * (Codex, PR #137.)
  */
-const window = String(args.window ?? '1200,900');
-const size = window.split(',');
-if (size.length !== 2 || !size.every((n) => Number.isInteger(Number(n)) && Number(n) > 0)) {
-	console.error(`--window must be WIDTH,HEIGHT in whole pixels — got "${window}".`);
+const wantedWindow = String(args.window ?? '1200,900');
+const size = wantedWindow.split(',').map(Number);
+if (size.length !== 2 || !size.every((n) => Number.isInteger(n) && n > 0)) {
+	console.error(`--window must be WIDTH,HEIGHT in whole pixels — got "${wantedWindow}".`);
 	process.exit(1);
 }
+/**
+ * NORMALIZED, not the string that was typed. `1e3,900` and `1200.0,900` both pass the
+ * check above — JavaScript reads them as whole numbers — and Chromium then ignores the
+ * token it cannot parse and keeps its own default, under a heading printing what was
+ * asked. Passing the parsed pair means what is printed is what is used, whatever spelling
+ * arrived. (Codex, PR #137.)
+ */
+const window = size.join(',');
 
 const query = new URLSearchParams({ notes, perf: '' });
 if (args.fixture) query.set('fixture', args.fixture);

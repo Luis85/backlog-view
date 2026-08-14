@@ -68,7 +68,10 @@ instruments improvised around a browser.
   same reason: Chromium's switch is `w,h` and it ignores what it cannot parse, so
   `--window=1200x900` — the spelling a person is most likely to type — measured the default
   800x600 under a heading printing 1200x900. The one number this feature's own subject
-  depends on, reported as something it was not. (Codex, PR #137.)
+  depends on, reported as something it was not. What reaches the browser is then the PARSED
+  pair rather than the string typed: `1e3,900` and `1200.0,900` are whole numbers to
+  JavaScript and unparseable to Chromium, so normalizing is what makes the heading and the
+  viewport the same fact for every spelling that gets through. (Codex, PR #137.)
 - **3a — one run per side is compared.** That is how this register produced two retracted
   findings, so `--against` starts at three runs and prints both spreads: two medians whose
   spreads overlap have no delta worth reading, and a reader can only see that if both are

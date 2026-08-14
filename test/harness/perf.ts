@@ -84,7 +84,7 @@ function sample(el: HTMLElement, op: string, run: () => void, prepare?: () => vo
  * [[The render is the whole cost of a data update]]. Time the phase itself if you want
  * the phase.
  */
-function measure(view: ProductBacklogView, el: HTMLElement, mount: Mount): { rows: Row[]; treeRows: number } {
+function measure(view: ProductBacklogView, el: HTMLElement, mount: Mount): { rows: Row[]; treeRows: number; axis: string | null } {
 	// Restored at the end rather than reset to the tree: the run drives all four, and a
 	// `?perf&view=board` page has to be left showing the board it was asked for.
 	const opened = view.projection;
@@ -105,6 +105,9 @@ function measure(view: ProductBacklogView, el: HTMLElement, mount: Mount): { row
 		sample(el, 'update (build + render)', () => view.onDataUpdated()),
 		sample(el, 'render only', () => view.render()),
 	];
+	// The axis is read HERE, in the one moment the roadmap is the projection on screen: the
+	// snapshot is what the render produced, and it is null everywhere else.
+	let axis: string | null = null;
 	for (const projection of PROJECTIONS) {
 		rows.push(
 			sample(
@@ -114,9 +117,10 @@ function measure(view: ProductBacklogView, el: HTMLElement, mount: Mount): { row
 				() => view.setProjection(projection === 'tree' ? 'board' : 'tree'),
 			),
 		);
+		if (projection === 'roadmap') axis = view.roadmap?.roadmap.axis ?? null;
 	}
 	view.setProjection(opened);
-	return { rows, treeRows };
+	return { rows, treeRows, axis };
 }
 
 /**
@@ -149,6 +153,12 @@ function expandAll(el: HTMLElement): void {
 interface Ran {
 	fixture: string;
 	projection: string;
+	/**
+	 * The axis the roadmap DREW, captured while it was on screen — never `view.axisPick`,
+	 * which is the retained pick and stays null until someone chooses. `activeAxis` falls
+	 * back to the first configured axis, so two builds configured differently both reported
+	 * a null pick and compared as if they had drawn the same thing. (Codex, PR #137.)
+	 */
 	axis: string | null;
 }
 
@@ -187,7 +197,7 @@ export function wantedNotes(search: string): number {
  * the namespace the harness owns for its own furniture — see `test/harness/theme.css`.
  */
 export function reportPerf(view: ProductBacklogView, containerEl: HTMLElement, mount: Mount, fixture: string): Row[] {
-	const { rows, treeRows } = measure(view, containerEl, mount);
+	const { rows, treeRows, axis } = measure(view, containerEl, mount);
 	console.table(rows.map((r) => ({ ...r, median: +r.median.toFixed(1), worst: +r.worst.toFixed(1) })));
 
 	const panel = document.body.createDiv('pbl-harness-perf');
@@ -205,7 +215,7 @@ export function reportPerf(view: ProductBacklogView, containerEl: HTMLElement, m
 	publish(panel, {
 		samples: SAMPLES,
 		treeRows,
-		ran: { fixture, projection: view.projection, axis: view.axisPick },
+		ran: { fixture, projection: view.projection, axis },
 		rows,
 	});
 	panel.createEl('p', {
