@@ -1,10 +1,9 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
-import { Modal } from '../helpers/obsidian-mock';
 import { shelfRemoval } from '../../src/view/render/shelf';
-import { Harness, makeView, useViewHarness } from '../helpers/view';
-import { laneCountOf, laneNames, laneOrder, lanesOf, shelfTitles } from '../helpers/roadmap';
+import { clickExpandAll, Harness, makeView, useViewHarness } from '../helpers/view';
+import { gripNames, laneCountOf, laneNames, laneOrder, lanesOf, rowFor, shelfTitles } from '../helpers/roadmap';
 import { resourceVault } from '../helpers/resources';
 
 useViewHarness();
@@ -30,15 +29,22 @@ const RESOURCES = {
  * state and never a config key (ADR 0011), which is why it goes to the harness rather
  * than into the view options beside the roster.
  */
-function laneRoadmap(vault: FakeVault, { only, focus }: { only?: string[]; focus?: string } = {}): Harness {
+function laneRoadmap(
+	vault: FakeVault,
+	{ only, focus, expanded }: { only?: string[]; focus?: string; expanded?: boolean } = {},
+): Harness {
 	const harness = makeView(vault, { ...RESOURCES, resourceNames: 'Alice, Bob' }, {
-		collapsed: true,
+		collapsed: !expanded,
 		only,
 		focus,
 	});
 	harness.view.setProjection('roadmap');
 	harness.view.setAxisPick('resources');
 	harness.view.setShelfCollapsed(false);
+	// AFTER the axis is picked, never in `makeView`: a bar's fold is its own scope, and an
+	// expand-all run while the tree is on screen settles the tree's bits and not this
+	// grid's.
+	if (expanded) clickExpandAll(harness.containerEl);
 	return harness;
 }
 
@@ -91,32 +97,26 @@ describe('the resources axis on screen', () => {
 		expect(rows[2].getAttribute('aria-description')).toBe('Assigned to Zoe');
 	});
 
-	it('offers no date grip on a bar, because a move here writes an assignee', () => {
-		// The bar IS a drag source now, wired as an ordinary card — but a grip writes a
-		// DATE, and this grid registers no positional target for one. What the drag does
-		// instead is `test/view/resourceMoves.test.ts`'s.
+	it('offers the dated axis’s own grips, because a release here also says when', () => {
+		// A bar sits on the same calendar this grid draws for the dated axis, so it takes the
+		// same holds: `barHolds` decides them, and nothing about a row grouping bars by WHO
+		// narrows what may be said about WHEN. What a release then does with the two answers
+		// is `test/view/resourceMoves.test.ts`'s.
 		const harness = laneRoadmap(resourceVault());
-		expect(harness.containerEl.querySelectorAll('.pbl-bar-grip')).toHaveLength(0);
-		expect(harness.containerEl.querySelectorAll('.pbl-bar')).not.toHaveLength(0);
+		expect(harness.containerEl.querySelectorAll('.pbl-bar-grip')).not.toHaveLength(0);
+		expect(gripNames(harness.containerEl, 'Alice dated')).toEqual(['body', 'start', 'end']);
 	});
 
-	it('offers a New button per row, naming the resource it creates for', () => {
+	it('offers no way to create work from a row, and no control but Add absence', () => {
+		// A resource's row is where work is SEEN, never where it is made: creation supplies
+		// no date, so a note created here was assigned and then immediately shelved for want
+		// of one — a click on a specific row producing a card somewhere else entirely.
+		// Removed rather than announced better (2026-08-14).
 		const harness = laneRoadmap(resourceVault());
-		const add = lanesOf(harness.containerEl)[0].querySelector<HTMLButtonElement>('.pbl-lane-add');
-		expect(add).not.toBeNull();
-		// `tabindex="-1"` like the bucket's and the tree's: the pane is one tab stop, and a
-		// row is not a keyboard stop of its own yet.
-		expect(add?.getAttribute('tabindex')).toBe('-1');
-		expect(add?.getAttribute('aria-label')).toBe('New Epic for Alice');
-	});
+		const lead = lanesOf(harness.containerEl)[0];
+		const controls = Array.from(lead.querySelectorAll<HTMLElement>('.pbl-lane-ctl'));
 
-	it('opens the ordinary New flow from a row, for that row’s own resource', () => {
-		const harness = laneRoadmap(resourceVault());
-		lanesOf(harness.containerEl)[0].querySelector<HTMLButtonElement>('.pbl-lane-add')?.click();
-
-		// The same gated prompt the toolbar's New opens — this button adds a placement to
-		// it and changes nothing else about where the note lands.
-		expect(Modal.lastOpened).not.toBeNull();
+		expect(controls.map((el) => el.getAttribute('aria-label'))).toEqual(['Add absence for Alice']);
 	});
 
 	it('offers a shelf that un-assigns, and takes any shelved card as a source', () => {
@@ -127,20 +127,126 @@ describe('the resources axis on screen', () => {
 		const removal = shelfRemoval(harness.view, 'resources');
 		const item = harness.view.model?.byPath.get('Undated.md');
 
-		// A grip released here is not an un-assignment; an ordinary card is.
-		expect(removal.accepts({ item, hold: 'body' } as never)).toBe(false);
+		// A grip released here is not an un-assignment — that is a resize that overshot. A
+		// bar arriving by either body hold is, and so is a shelf card.
+		expect(removal.accepts({ item, hold: 'start' } as never)).toBe(false);
+		expect(removal.accepts({ item, hold: 'end' } as never)).toBe(false);
+		expect(removal.accepts({ item, hold: 'body' } as never)).toBe(true);
 		expect(removal.accepts({ item, hold: null } as never)).toBe(true);
 		expect(removal.canDrag(item as never)).toBe(true);
 		// Nothing to distinguish before the release: a drop here always un-assigns.
 		expect(removal.outcome).toBeNull();
 	});
 
-	it('keeps the dated axis’s own grips, which this axis only withholds for itself', () => {
-		// The control beside the case above: the withholding is per axis, not a deletion.
-		const harness = laneRoadmap(resourceVault());
+	it('withholds every hold from an inferred bar, exactly as the dated axis does', () => {
+		// A bar behaves the same on both grids. `barHolds` withholds every hold from a span
+		// the note does not state — sliding one is a resize wearing a slide's cursor — and
+		// that refusal is not narrowed here just because a row means something: an inferred
+		// bar is not a drag source on either axis. What still moves it between bands is Set
+		// assignee and Alt+Up/Down, which name a value rather than displacing one.
+		const vault = resourceVault();
+		vault.addFile('Rollup.md', { frontmatter: { type: 'Epic', order: 40, assignee: 'Alice' } });
+		vault.addFile('Rollup child.md', {
+			frontmatter: { type: 'Feature', parent: 'Rollup', order: 10, assignee: 'Bob', start: '2026-08-02', due: '2026-08-09' },
+		});
+		const harness = laneRoadmap(vault);
+
+		expect(gripNames(harness.containerEl, 'Rollup')).toEqual([]);
 		// `setAxisPick` re-renders itself — no config was set, so no Bases refresh follows.
 		harness.view.setAxisPick('dates');
-		expect(harness.containerEl.querySelectorAll('.pbl-bar-grip')).not.toHaveLength(0);
+		expect(gripNames(harness.containerEl, 'Rollup')).toEqual([]);
+	});
+});
+
+describe('folding on the resources axis', () => {
+	/** A band whose parent and child are on ONE resource, and a child on another. */
+	function nestedVault(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-20' },
+		});
+		vault.addFile('Same band.md', {
+			frontmatter: { type: 'Feature', order: 10, assignee: 'Alice', start: '2026-08-02', due: '2026-08-05' },
+			parentLink: 'Epic',
+		});
+		vault.addFile('Other band.md', {
+			frontmatter: { type: 'Feature', order: 20, assignee: 'Bob', start: '2026-08-06', due: '2026-08-09' },
+			parentLink: 'Epic',
+		});
+		return vault;
+	}
+
+	/** A BAR row's own disclosure — null where it drew the leaf placeholder instead. */
+	function rowChevron(containerEl: HTMLElement, title: string): HTMLElement | null {
+		return rowFor(containerEl, title)?.querySelector<HTMLElement>('.pbl-chevron:not(.pbl-leaf)') ?? null;
+	}
+
+	function bandChevron(containerEl: HTMLElement, name: string): HTMLButtonElement | null {
+		const head = lanesOf(containerEl).find((el) => el.querySelector('.pbl-lane-name')?.textContent === name);
+		return head?.querySelector<HTMLButtonElement>('.pbl-chevron') ?? null;
+	}
+
+	it('folds a whole band from its header, and says so where a header can', () => {
+		const { containerEl } = laneRoadmap(nestedVault(), { expanded: true });
+		const chevron = bandChevron(containerEl, 'Alice');
+
+		expect(chevron?.getAttribute('aria-expanded')).toBe('true');
+		expect(chevron?.getAttribute('aria-label')).toBe("Hide Alice's work");
+		chevron?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		// The header stays — a folded band is a row you can reopen, not a row that went.
+		expect(laneNames(containerEl)).toEqual(['Alice', 'Bob']);
+		expect(laneOrder(containerEl)).toEqual(['lane:Alice', 'lane:Bob', 'Other band']);
+		expect(bandChevron(containerEl, 'Alice')?.getAttribute('aria-label')).toBe("Show Alice's work");
+	});
+
+	it('puts focus on the pane when the disclosure that held it is folded away', () => {
+		// Folding a band redraws the whole projection, so the button pressed is gone — and a
+		// browser drops focus to the body, where the pane's arrows and menu keys do nothing.
+		// The PANE, never the replacement chevron: `handleRoadmapKeydown` returns on any
+		// event whose target is not the pane itself, so focusing a `tabindex="-1"` control
+		// inside the composite would look right and silently kill the arrow keys.
+		const { containerEl } = laneRoadmap(nestedVault(), { expanded: true });
+		const chevron = bandChevron(containerEl, 'Alice');
+		chevron?.focus();
+
+		chevron?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		expect(document.activeElement).toBe(containerEl.querySelector('.pbl-tree'));
+	});
+
+	it('draws a disclosure on an empty band too, so a long roster still folds away', () => {
+		// A declared resource with nothing on it is exactly the row a roster exists to put on
+		// screen; a control that appeared only once work arrived would move under the reader.
+		const { containerEl } = laneRoadmap(resourceVault());
+
+		expect(bandChevron(containerEl, 'Bob')).not.toBeNull();
+	});
+
+	it('folds a bar’s subtree only as far as its OWN band reaches', () => {
+		// The refusal this axis carried until 2026-08-14, answered rather than kept: a
+		// chevron here is computed per lane, so it can only reach bars drawn in its own row.
+		//
+		// Opened EXPANDED, because this axis now shares the dated one's fold bit and
+		// therefore its default: a parent nobody has ruled on starts shut
+		// (`collapseNewParents`), so the collapsed harness would have nothing left to fold.
+		const { containerEl } = laneRoadmap(nestedVault(), { expanded: true });
+
+		expect(laneOrder(containerEl)).toEqual(['lane:Alice', 'Epic', 'Same band', 'lane:Bob', 'Other band']);
+		rowChevron(containerEl, 'Epic')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		// Its child in Alice's band goes; the one in Bob's stays, because Bob's row is not
+		// something Alice's chevron has any business hiding.
+		expect(laneOrder(containerEl)).toEqual(['lane:Alice', 'Epic', 'lane:Bob', 'Other band']);
+	});
+
+	it('draws no disclosure on a bar whose only children are in another band', () => {
+		const vault = nestedVault();
+		vault.fm('Same band.md')['assignee'] = 'Bob';
+		const { containerEl } = laneRoadmap(vault, { expanded: true });
+
+		// Holding nothing back from where it sits, so it says so: a leaf, not a shut row.
+		expect(rowChevron(containerEl, 'Epic')).toBeNull();
 	});
 });
 

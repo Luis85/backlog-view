@@ -78,7 +78,14 @@ export function pannedGrid(
 	{ rectLeft, scrollLeft }: { rectLeft: number; scrollLeft: number },
 ): (gridOffset: number) => number {
 	const scroller = containerEl.querySelector<HTMLElement>('.pbl-timeline');
-	const overlay = containerEl.querySelector<HTMLElement>('.pbl-timeline-drop');
+	// Whatever this axis measures its days from — the dated axis's one grid-wide overlay, or
+	// the header's own day track, which is what a resources-axis band reads because the
+	// targets there are the rows and no overlay is drawn. One helper either way: they are
+	// the same element in every respect this stub cares about, both positioned in content
+	// coordinates past the same sticky lead column.
+	const overlay =
+		containerEl.querySelector<HTMLElement>('.pbl-timeline-drop') ??
+		containerEl.querySelector<HTMLElement>('.pbl-timeline-tiers > .pbl-timeline-track:not(.pbl-timeline-super)');
 	if (!scroller || !overlay) throw new Error('the timeline is not rendered');
 	scroller.scrollLeft = scrollLeft;
 	Object.defineProperty(scroller, 'clientWidth', { value: 600, configurable: true });

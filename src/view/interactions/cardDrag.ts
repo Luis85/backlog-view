@@ -45,6 +45,15 @@ function kindOf(data: Record<string, unknown>): DragKind {
 }
 
 /**
+ * The adapter's own location, reduced to the two coordinates a positional gesture reads.
+ * One place, so a target that measures a delta and one that reads a position cannot end
+ * up taking their baseline from different fields of the same event.
+ */
+function at(location: DragLocationHistory): PointerAt {
+	return { clientX: location.current.input.clientX, originX: location.initial.input.clientX };
+}
+
+/**
  * Say what a move changed, to assistive technology, from the polite live region
  * (`role="status"`) the drag library owns. It lives with the drag because this
  * module creates and cleans that region up — but every card move announces through
@@ -58,8 +67,8 @@ function kindOf(data: Record<string, unknown>): DragKind {
  * taken, the shelf rather than a horizon nothing shows. No projection on screen, no
  * announcement: there is no vocabulary to say it in.
  */
-function announceMove(title: string, from: string, to: string): void {
-	announce(`Moved "${title}" from ${from} to ${to}`);
+function announceMove(title: string, from: string, to: string, also = ''): void {
+	announce(`Moved "${title}" from ${from} to ${to}${also}`);
 }
 
 export function announceBoardMove(
@@ -93,15 +102,29 @@ export function announceHorizonMove(
  * The resources axis's own pair, asked of two functions for the same reason the horizon
  * axis has two — what the note SAID and where the user SENT it are different questions,
  * and answering them once cost a cleanup being reported as no change.
+ *
+ * `landed` is the axis's second dimension, and it is optional because it is genuinely
+ * absent from most moves here: a pick from the menu, an Alt+arrow and a purely vertical
+ * drag all answer WHO and say nothing about when. Where a gesture answered both, both are
+ * in ONE sentence rather than two announcements — a live region is read in order, and two
+ * messages about one gesture are two events to a screen-reader user, who then has to
+ * decide whether their single drag did two things.
+ *
+ * The date half is the DESTINATION alone, not a second "from … to …": the frame is
+ * already spent on the row, and `destinationWords` is the same answer
+ * `announceScheduleMove` gives, from the writer's own tri-state and the placement that
+ * actually drew — so the two axes cannot describe one landing differently.
  */
 export function announceResourceMove(
 	roadmap: RoadmapModel | null | undefined,
 	title: string,
 	from: ResourceSource,
 	to: string | null,
+	landed?: { change: DateChange; placement: Placement | null; ends: PlacementEnd[] },
 ): void {
 	if (!roadmap) return;
-	announceMove(title, resourcePlacementLabel(roadmap, from), resourceTargetLabel(roadmap, to));
+	const also = landed ? `, ${destinationWords(landed.change.after, landed.placement, landed.ends)}` : '';
+	announceMove(title, resourcePlacementLabel(roadmap, from), resourceTargetLabel(roadmap, to), also);
 }
 
 /**
@@ -140,16 +163,44 @@ function statedSpan(item: BacklogItem): DateSpan {
 }
 
 /**
+ * Where the pointer is, for a target whose POSITION is part of the message. Both
+ * coordinates always, because they answer different questions and no handler should have
+ * to capture one for itself: `clientX` is where the pointer IS, which a placing gesture
+ * reads absolutely, and `originX` is where the drag STARTED, which a relative gesture
+ * measures its delta from.
+ */
+export interface PointerAt {
+	clientX: number;
+	originX: number;
+}
+
+/**
  * What a region does beyond taking the drop. All optional: a bucket needs none of them,
- * while the dated shelf needs both — it honours one hold and previews what its removal
- * would leave. The hooks carry the RESOLVED source, which the highlight-only contract
- * never had to expose and a hover preview cannot do without.
+ * while the dated shelf needs two — it honours one hold and previews what its removal
+ * would leave — and the grid axes need `onDrag`, since a ghost that follows the pointer
+ * cannot be drawn from an enter event alone. The hooks carry the RESOLVED source, which
+ * the highlight-only contract never had to expose and a hover preview cannot do without.
  */
 export interface DropHooks {
 	/** Which sources this region honours. Refusing withholds the highlight too. */
 	accepts?: (source: CardSource) => boolean;
 	onEnter?: (source: CardSource) => void;
+	/**
+	 * Every frame the pointer is over this region, and once SYNCHRONOUSLY on entry — the
+	 * adapter's own `onDrag` is throttled to an animation frame, so without the entry call
+	 * the pointer's first position goes unshown until the next one. Registered only where
+	 * a caller asks for it: a region target would otherwise resolve its source out of the
+	 * model on every frame of every drag to hand it to nobody.
+	 */
+	onDrag?: (source: CardSource, at: PointerAt) => void;
 	onLeave?: () => void;
+	/**
+	 * False for a target that is a COORDINATE rather than a place — the dated axis's
+	 * grid-wide overlay, where the pointer's X is the whole message and a highlight over
+	 * the entire day area would say nothing about where the release lands. Everything
+	 * else highlights, because the highlight is its only drop signal.
+	 */
+	highlight?: boolean;
 }
 
 /**
@@ -359,8 +410,33 @@ export class CardDragController {
 	 * method somebody has to know to reach for.
 	 * `test/view/cardDrag.test.ts`'s "a link-kind payload is refused by an ordinary drop
 	 * target" drives exactly the default path, undefended by any `accepts` of its own.
+	 *
+	 * **A POSITION on the region is part of what a drop can mean**, and that is why there
+	 * is no second method for it. `plan` and `hooks.onDrag` carry the pointer, so a target
+	 * whose meaning is "this region" ignores the second argument exactly as every existing
+	 * caller does, and one whose meaning is "this region, at this day" reads it. This was
+	 * `wirePositionalTarget`, identical but for the highlight and the coordinates — the
+	 * same clone `wireLinkTarget` was, folded in for the same reason: a target written the
+	 * ordinary way must INHERIT the behaviour rather than remember to reach for a second
+	 * method. It is what lets a resources-axis band be one target that answers both
+	 * questions instead of two that each answer half.
 	 */
-	wireDropTarget(el: HTMLElement, plan: (source: CardSource) => void, hooks: DropHooks = {}, kind: DragKind = 'move'): void {
+	wireDropTarget(
+		el: HTMLElement,
+		plan: (source: CardSource, at: PointerAt) => void,
+		hooks: DropHooks = {},
+		kind: DragKind = 'move',
+	): void {
+		// ONE function object, handed to the adapter's `onDrag` and called from
+		// `onDragEnter` — the shape `wirePositionalTarget` had, kept for its reason: the
+		// enter must report SYNCHRONOUSLY (see `DropHooks.onDrag`) and a second closure
+		// beside it would be a second place the source is resolved.
+		const report = hooks.onDrag
+			? ({ source, location }: { source: { data: Record<string, unknown> }; location: DragLocationHistory }): void => {
+					const resolved = this.resolve(source.data);
+					if (resolved) hooks.onDrag?.(resolved, at(location));
+				}
+			: undefined;
 		this.cleanups.push(
 			dropTargetForElements({
 				element: el,
@@ -374,67 +450,28 @@ export class CardDragController {
 					const resolved = this.resolve(source.data);
 					return resolved !== null && (!hooks.accepts || hooks.accepts(resolved));
 				},
-				onDragEnter: ({ source }) => {
-					el.addClass(DROP_OVER);
-					const resolved = this.resolve(source.data);
+				onDragEnter: (event) => {
+					if (hooks.highlight !== false) el.addClass(DROP_OVER);
+					const resolved = this.resolve(event.source.data);
 					if (resolved) hooks.onEnter?.(resolved);
+					// SYNCHRONOUS, unlike the adapter's own throttled `onDrag` below.
+					report?.(event);
 				},
+				// Registered only where a caller asked for it: resolving the source out of
+				// the model on every frame is work a region target has no use for.
+				onDrag: report,
 				onDragLeave: () => {
 					el.removeClass(DROP_OVER);
 					hooks.onLeave?.();
 				},
-				onDrop: ({ source }) => {
+				onDrop: ({ source, location }) => {
 					el.removeClass(DROP_OVER);
 					hooks.onLeave?.();
 					// The host owns the write AND the announcement: a drop is one of three
 					// inputs to the same move, and three callers announcing separately is
 					// how they come to say different things about the same change.
 					const resolved = this.resolve(source.data);
-					if (resolved) plan(resolved);
-				},
-			}),
-		);
-	}
-
-	/**
-	 * A region where the POSITION of the pointer is the message, not merely the region
-	 * — the timeline's grid. Registered through this controller like every other
-	 * target, so it gates on the same private token and keeps the same
-	 * resolve-at-drop-time rule: the stakes here are the RECEIVING view's date keys, so
-	 * a card crossing between two split panes would write a different property than the
-	 * gesture showed.
-	 *
-	 * What a position MEANS is the caller's, exactly as `plan` is for a region target.
-	 */
-	wirePositionalTarget(
-		el: HTMLElement,
-		handlers: {
-			onDrag: (source: CardSource, clientX: number, originX: number) => void;
-			onDrop: (source: CardSource, clientX: number, originX: number) => void;
-			onLeave: () => void;
-		},
-	): void {
-		const report = ({ source, location }: { source: { data: Record<string, unknown> }; location: DragLocationHistory }) => {
-			const resolved = this.resolve(source.data);
-			// Both coordinates, always: `initial` is where the drag STARTED, which a
-			// delta read needs and no handler should have to capture for itself.
-			if (resolved) handlers.onDrag(resolved, location.current.input.clientX, location.initial.input.clientX);
-		};
-		this.cleanups.push(
-			dropTargetForElements({
-				element: el,
-				canDrop: ({ source }) => this.mine(source.data, 'move'),
-				// `onDragEnter` fires SYNCHRONOUSLY (a hierarchy change), so the preview
-				// paints on the very first frame a drag crosses onto the overlay — the
-				// adapter's own `onDrag` is throttled to one animation frame, which would
-				// otherwise leave the pointer's first position unshown until the next one.
-				onDragEnter: report,
-				onDrag: report,
-				onDragLeave: () => handlers.onLeave(),
-				onDrop: ({ source, location }) => {
-					handlers.onLeave();
-					const resolved = this.resolve(source.data);
-					if (resolved) handlers.onDrop(resolved, location.current.input.clientX, location.initial.input.clientX);
+					if (resolved) plan(resolved, at(location));
 				},
 			}),
 		);

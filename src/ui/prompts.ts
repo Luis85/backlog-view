@@ -353,6 +353,13 @@ export interface AbsencePromptOptions extends Refusable<AbsenceResult> {
 	resource: string;
 	/** Names to suggest, so spellings stay consistent with the roster the view options name. */
 	known: string[];
+	/**
+	 * The stretch being EDITED, pre-filling the other three fields. Absent when adding one,
+	 * which is what makes this one form for both acts rather than two that can disagree
+	 * about what an absence is — the validator, the field list and the refusal rules are
+	 * the same questions whether the note exists yet or not.
+	 */
+	editing?: { title: string; start: string; target: string };
 }
 
 /**
@@ -370,7 +377,13 @@ export interface AbsencePromptOptions extends Refusable<AbsenceResult> {
 export class AbsencePromptModal extends PromptModal<AbsencePromptOptions> {
 	onOpen(): void {
 		this.titleEl.setText(this.options.heading);
-		const values: AbsenceResult = { resource: this.options.resource, title: '', start: '', target: '' };
+		const editing = this.options.editing;
+		const values: AbsenceResult = {
+			resource: this.options.resource,
+			title: editing?.title ?? '',
+			start: editing?.start ?? '',
+			target: editing?.target ?? '',
+		};
 
 		const { errorEl, submit } = refusableBody(this, this.options, () => ({
 			resource: values.resource.trim(),

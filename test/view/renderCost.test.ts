@@ -43,6 +43,13 @@ function lookupsFor(items: number): { order: number; displayName: number; render
 }
 
 describe('render cost', () => {
+	// A real budget rather than the 5s default, the reason `test/view/contextRowWrites.ts`
+	// has one: this case builds and renders a 400-row backlog TWICE, which is 2.3s of test
+	// time in isolation under coverage, so adding tests anywhere else in the suite is
+	// enough to tip it over through worker contention alone. That reads as this test
+	// breaking and is not — it is measuring lookups per render, not elapsed time, and a
+	// timing-based check here was refused twice in the register on the ground that it would
+	// be measuring the runner.
 	it('resolves the column config once per pass, not once per row', () => {
 		const small = lookupsFor(20);
 		const large = lookupsFor(400);
@@ -64,7 +71,7 @@ describe('render cost', () => {
 		// than asking again — which is what retired the three fixed chip headers this
 		// bound used to leave room for.
 		expect(large.displayName).toBeLessThanOrEqual(COLUMNS.length);
-	});
+	}, 20_000);
 
 	/**
 	 * A REGRESSION GUARD, not the statement of the invariant. "No interaction scans the

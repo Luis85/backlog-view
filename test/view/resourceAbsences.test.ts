@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { Menu, Modal, Notice } from '../helpers/obsidian-mock';
-import { flush, submitButton, useViewHarness } from '../helpers/view';
+import { flush, refresh, submitButton, useViewHarness } from '../helpers/view';
 import { barFor, laneCountOf, laneNames, laneRoadmap, lanesOf } from '../helpers/roadmap';
 import { absenceVault } from '../helpers/resources';
 import { cardDrag } from '../helpers/dnd';
@@ -360,6 +360,24 @@ describe('adding an absence', () => {
 		await flush();
 
 		expect(Notice.messages.some((m) => m.startsWith('Could not create the absence'))).toBe(true);
+	});
+
+	it('re-asks the gate at submit, so a config narrowed under the open form writes nothing', async () => {
+		// The render gate withholds the button, but the form outlives the config it opened
+		// under: Obsidian's options pane stays reachable while a modal is up. Without the
+		// re-check the write below reaches `setOwn(fm, '', ...)` — a key nobody configured.
+		const vault = absenceVault();
+		const harness = laneRoadmap(vault);
+		const before = vault.files.size;
+
+		addButton(harness.containerEl, 'Alice')?.click();
+		harness.config.values['targetProperty'] = undefined;
+		refresh(harness.view, vault);
+		submitAbsence({ title: 'Away', start: '2026-09-01', target: '2026-09-04' });
+		await flush();
+
+		expect(vault.files.size).toBe(before);
+		expect(Notice.messages.some((m) => m.startsWith('Name the assignee and both date properties'))).toBe(true);
 	});
 });
 

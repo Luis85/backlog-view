@@ -167,11 +167,26 @@
 	border-left: 1px dashed var(--background-modifier-border);
 }
 
-/* A timeline row is a card wearing the row layout: the shell keeps the card's
-   selection and context styling while the geometry goes horizontal. */
-.pbl-card.pbl-timeline-row {
+/* Every row of this grid, whatever KIND of row it is: a sticky lead column beside a day
+   track, side by side and stretched to the same height.
+
+   On `.pbl-timeline-row` alone, never on `.pbl-card.pbl-timeline-row`, and that is the
+   whole of what this rule has to get right. Gated on the card class it reached only the
+   rows that are also cards — and an absence stretch is deliberately neither a
+   `BacklogItem` nor a card (`renderLaneAbsence` in `src/view/render/lanes.ts` says why),
+   so it had no flex context at all: its lead and its track stacked as blocks and the
+   hatched stripe drew on the line BELOW the name of the person it belongs to. A layout
+   every row needs cannot be attached to a class only some rows carry. */
+.pbl-timeline-row {
+	display: flex;
 	flex-direction: row;
 	align-items: stretch;
+}
+
+/* A timeline row that is ALSO a card: the shell keeps the card's selection and context
+   styling, and this takes off the chrome that came with it. Nothing about the geometry
+   is here — see above. */
+.pbl-card.pbl-timeline-row {
 	gap: 0;
 	padding: 0;
 	border: none;
@@ -352,47 +367,4 @@
 	z-index: 1;
 	background-color: var(--color-red);
 	opacity: 0.55;
-}
-
-/* A milestone's line runs the grid's full height at its date, behind the bars. Same
-   shape as .pbl-today and deliberately a lower layer: today stays on top because it is
-   the reader's own mark, and the two sit side by side inside one day cell. Cyan to match
-   the milestone badge (--color-cyan-rgb) — purple is already .pbl-lvl-1 (Feature). */
-.pbl-milestone-line {
-	position: absolute;
-	top: 0;
-	bottom: 0;
-	left: var(--pbl-milestone-left);
-	width: var(--pbl-tl-line);
-	/* Centred, the same shift as `.pbl-today` — what puts this through the middle of its
-	   own diamond. The LABEL is not shifted: it reads rightward from the date. */
-	transform: translateX(-50%);
-	z-index: 0;
-	background-color: var(--color-cyan);
-	opacity: 0.55;
-	/* A timeline row sets no `position`, so it paints in the non-positioned layers
-	   while this line — absolute, with a z-index — paints above them. Hit-testing
-	   follows paint order, so without this the line is the event target wherever it
-	   crosses a row: a 2px dead strip through every row, per milestone, swallowing
-	   the row's activation and context menu. The line is aria-hidden decoration and
-	   its tooltip lives on the header label, so it wants no events at all. */
-	pointer-events: none;
-}
-
-/* In the header band, so the name reads where the months do. Backed, because it sits
-   over the month labels; truncating, because the full name is one hover away — which
-   needs the label itself to receive the hover, so the presentational month cells and
-   the bars (a different row entirely) never needed the pointer to pass through it. */
-.pbl-milestone-label {
-	position: absolute;
-	top: 0;
-	left: var(--pbl-milestone-left);
-	max-width: 140px;
-	padding: var(--size-4-1);
-	font-size: var(--font-ui-smaller);
-	color: var(--color-cyan);
-	background-color: var(--background-primary);
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
 }

@@ -247,6 +247,25 @@ describe('collapse state persistence', () => {
 		expect(second.view.shelfHiddenTypes).toEqual(new Set(['Task']));
 	});
 
+	it('persists a folded resource band, and forgets it when the reader opens it again', () => {
+		const vault = fixture();
+		const first = makeView(vault, {}, { base: 'Backlog.base' });
+		first.view.setLaneCollapsed('Dana', true);
+		// Folding one already folded is not a change and must not schedule a save.
+		first.view.setLaneCollapsed('Dana', true);
+		first.view.onunload();
+
+		const second = makeView(vault, {}, { base: 'Backlog.base', collapsed: true });
+		expect(second.view.isLaneCollapsed('Dana')).toBe(true);
+		expect(second.view.isLaneCollapsed('Kim')).toBe(false);
+
+		// A band is a NAME, not a path, so nothing prunes it when the vault has no such
+		// file — and nothing has to, since opening it again is what takes the entry away.
+		second.view.setLaneCollapsed('Dana', false);
+		second.view.onunload();
+		expect(makeView(vault, {}, { base: 'Backlog.base', collapsed: true }).view.isLaneCollapsed('Dana')).toBe(false);
+	});
+
 	/**
 	 * Folding on click stopped being a `.base` option on 2026-08-11, so the toolbar
 	 * toggle is now the only thing that sets it and this is what makes it survive the

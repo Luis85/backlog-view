@@ -111,6 +111,24 @@ observation this note exists to distrust. They are the same mechanism rather tha
 question, and the only thing resting on them is whether two lines of `linkpathFromRawValue`
 could be deleted — which is not worth a third vault session.
 
+## A second way the fake differs from a vault, found 2026-08-14
+
+Not a cache this time but a REFERENCE: `FakeViewConfig` held the values object a test
+handed it, rather than a copy. Tests share a module-level literal —
+`const configured = { assigneeProperty: 'note.assignee' }` is the shape — so a `config.set`
+in one test mutated that literal and every later test in the file inherited the value.
+
+Invisible for as long as nothing wrote a key the tests also read, which is most of this
+suite's history. It surfaced the day assigning somebody started appending them to the
+resource roster: one test picked `Sam`, and the next test's Set assignee menu opened with
+`Sam` in it and the note's own `sam` gone, in a fixture that names neither in its options.
+Passing alone, failing in file order — the signature of shared state, and the reason it is
+worth writing down beside the cache cases above: **a fake that stores what it is given is a
+fake two tests can reach through.**
+
+Fixed by copying (`{ ...values }`). What it cost before that was one confusing hour, not a
+shipped defect — the leak is the harness's, and no vault has one config object per view.
+
 ## What is left
 
 The fixtures still model a cache no vault hands out, and the cost of that is now known

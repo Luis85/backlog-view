@@ -6,6 +6,7 @@ status: Done
 priority: P2
 created: 2026-08-09
 files:
+  - src/view/render/afterContent.ts
   - src/view/render/toolbar.ts
   - src/view/render/toolbarBusy.ts
   - src/view/render/toolbarStatus.ts
@@ -210,6 +211,14 @@ today's icon size, add up to.
   `host.projection` somewhere else in the row.
 
 ## Where it lives
+
+The measurement and the ladder are `src/view/render/toolbarFit.ts`, and WHEN it runs is
+`syncAfterContent` in `src/view/render/afterContent.ts` — the one place everything that
+reads what a content render just produced is called from, and where this is deliberately
+LAST: the count label is one of the things being measured, so it has to have been written
+already. Four paths call it separately for the reason step 2 gives, none of them a content
+render — revealing or collapsing the filter, the busy indicator appearing or going, a pane
+resize, and a theme or font change.
 
 The toolbar's control vocabulary, the projection-zone dispatch and the `⋯` overflow are
 `src/view/render/toolbarControls.ts`. `renderProjectionZone` is the one place the

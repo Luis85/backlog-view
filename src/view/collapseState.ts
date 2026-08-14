@@ -178,6 +178,8 @@ export class CollapseState {
 	/** null means 'tree' (sibling order), the default. */
 	private shelfSortValue: string | null = null;
 	private hiddenShelfTypes = new Set<string>();
+	/** Resource bands folded shut, by name — see {@link isLaneCollapsed}. */
+	private foldedLanes = new Set<string>();
 	private id: ViewIdentity | null = null;
 	private restored = false;
 	/** Kept so the identity can be re-resolved when the base is renamed under us. */
@@ -296,6 +298,28 @@ export class CollapseState {
 		this.scheduleSave();
 	}
 
+	/**
+	 * Whether one resource's whole band is folded shut, asked of the NAME.
+	 *
+	 * Its own set rather than a scope in {@link set}'s key space, and the reason is the
+	 * flush: everything in there is a note PATH and is dropped when the vault has no file
+	 * for it, which a resource's name never has. It also needs none of that key space's
+	 * machinery — no rename migration, since nothing renames a resource, and no
+	 * `collapseNewParents` pass, since a band a reader has not ruled on is open.
+	 */
+	isLaneCollapsed(name: string): boolean {
+		return this.foldedLanes.has(name);
+	}
+
+	/** Returns true when the state actually changed — {@link set}'s own contract. */
+	setLaneCollapsed(name: string, collapsed: boolean): boolean {
+		if (this.foldedLanes.has(name) === collapsed) return false;
+		if (collapsed) this.foldedLanes.add(name);
+		else this.foldedLanes.delete(name);
+		this.scheduleSave();
+		return true;
+	}
+
 	/** Returns true when the state actually changed. */
 	set(key: string, collapsed: boolean): boolean {
 		const changed = collapsed ? !this.collapsed.has(key) : this.collapsed.delete(key);
@@ -382,6 +406,7 @@ export class CollapseState {
 		this.shelfExpanded = snapshot.shelfExpanded ?? false;
 		this.shelfSortValue = snapshot.shelfSort ?? null;
 		this.hiddenShelfTypes = new Set(snapshot.shelfHiddenTypes ?? []);
+		this.foldedLanes = new Set(snapshot.collapsedLanes ?? []);
 	}
 
 	/** Write any pending change immediately — closing the view is when that matters most. */
@@ -458,6 +483,7 @@ export class CollapseState {
 			shelfExpanded: this.shelfExpanded,
 			shelfSort: this.shelfSortValue,
 			shelfHiddenTypes: [...this.hiddenShelfTypes],
+			collapsedLanes: [...this.foldedLanes],
 		});
 	}
 }

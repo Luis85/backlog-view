@@ -22,12 +22,17 @@ say who is on it, picked from the names already in this backlog or typed when th
 new, **so that** "who has this" is answered where the work is instead of in a standup
 nobody minuted.
 
-Who exists is not a vocabulary anybody declares. That is the one thing this property does
-not share with [[Setting the risk on an item]]: risk is a short list the reader writes
+Who exists is not a vocabulary anybody has to declare. That is the one thing this property
+does not share with [[Setting the risk on an item]]: risk is a short list the reader writes
 down once, while a team is a set that grows by one person at a time and is already
 written on the notes. So the menu offers what the RESULTS carry — the same rule the tag
 menu follows, over a single value — and `New assignee...` is what makes a name nobody
-carries yet reachable. Everything else is machinery this plugin already has: one more of
+carries yet reachable. **Has to** rather than **can**, since 2026-08-14: the resources
+axis added an optional roster ([[Showing a resources axis on the roadmap]]) and a name
+typed into it now leads this menu wherever the menu opens. That widens the list and
+changes none of the reasoning above — a roster is a recommendation and an observed name is
+still a fact, so nothing declared can hide or overrule one, and the key alone is still
+enough to draw the chip. Everything else is machinery this plugin already has: one more of
 the optional properties the ✨ button sets up and backfills
 ([[Backfill missing properties]]), one more menu whose checkmark is asked of the plan,
 and one more chip in the property column the base already shows.
@@ -104,9 +109,11 @@ and one more chip in the property column the base already shows.
   companion list.
 - ✨ binds `assignee` when the option was never touched, and creates that key empty on
   every result lacking it — leaving every existing value untouched.
-- **Set assignee** offers exactly the names the results carry plus the item's own, checks
-  an entry exactly when picking it would write nothing, and always carries
-  **New assignee...**.
+- **Set assignee** offers the declared roster, then the names the results carry, then the
+  item's own — one entry per name in the first spelling of it that appears, matched
+  case-insensitively — checks an entry exactly when picking it would write nothing, and
+  always carries **New assignee...**. With no roster declared that is exactly the observed
+  names, which is what it was before one could be.
 - A name typed into the prompt is written trimmed; a blank submission writes nothing.
 - Picking a name writes only the assignee key; clearing deletes it; both are one undoable
   batch.
@@ -127,7 +134,14 @@ rather than in a group of its own: one property with no list is not a section.
 
 The vocabulary is `collectObservedAssignees` in `src/domain/vocabulary.ts`, which is where
 extension 3c holds rather than at the menu — that module states the "a context row
-contributes nothing" rule once for every vocabulary at once. What the note itself says is
+contributes nothing" rule once for every vocabulary at once. It is no longer the WHOLE
+list: `assigneeChoices` merges it with the declared roster and, on the resources axis, with
+the rows that axis draws, through `mergedValues` in `src/domain/settings.ts` — the same
+first-seen-casing union `horizonMenuValues` already was, generalised to take three sources
+rather than two rather than written a second time beside it. The scoping rule stops at the
+observed half deliberately, and `assigneeChoices` says why: a roster is one statement the
+view options make about this base, not a fact gathered off a population, so there is no
+other projection's names for it to leak. What the note itself says is
 read into `assigneeValue` by `src/domain/readItems.ts`, the tolerant way the workflow
 state and the risk level are read, and carried on the model by `src/domain/model.ts`.
 

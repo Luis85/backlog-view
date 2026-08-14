@@ -100,7 +100,9 @@ instead.
   card leaves the view on the refresh, announced with a notice naming what happened and
   offering to open the note. Undo still takes it back.
 - **3c — the card has an assignee but no date, so it stays shelved whichever resource it
-  is dropped onto** ([[Showing a resources axis on the roadmap]] extension 3c — a row is
+  is dropped onto.** *(Reached by a DRAG only where the release could name no day —
+  [[Scheduling inside a resource's row]] gives the same drop a date, so this is now the
+  menu's, the keyboard's, and the case where the item's type has no writable end at all.)* ([[Showing a resources axis on the roadmap]] extension 3c — a row is
   who, a date is when, and this write only ever answers who). The write still lands —
   the assignee changes — but nothing visibly enters a row, so it is announced the same
   way 3b announces a write whose visible effect is not the obvious one: naming the
@@ -153,22 +155,28 @@ Unplaced" about a note that plainly says Alice. `announceResourceMove` in
 `src/view/interactions/cardDrag.ts` says it, in the live region every card move already
 shares.
 
-The gesture is the drag layer both card projections share. On this axis a bar is an
-ordinary card SOURCE — hold `null`, no span baseline, no ends — because what it is dropped
-ON is the whole message; the date holds stay withheld (`TimelineDrawing.hold` in
-`src/view/render/timeline.ts`, which replaced the read-only increment's `grips` flag). A
-resource's band is wired **element by element** — the header, each bar row, each excluded
-note's row — through `TimelineDrawing.laneTarget`, a hook the grid takes from
-`renderGridAxis` in `src/view/render/roadmap.ts` (`laneDrop`) exactly as `wireDropTarget`
-takes its `plan`: the grid knows which elements belong to which row and nothing about what
-landing on one should write. Per element because there is no container to wire — every row
-is a flat sibling positioned against one shared day grid — and the cost is that the
-highlight is the element under the pointer rather than the whole band. A wrapper per row
-would fix that and would put a box between every row and the sticky lead column the
-geometry rests on; either way the highlight is a live-vault check.
+The gesture is the drag layer both card projections share. A resource's band is wired
+**element by element** — the header, each bar row, each absence stretch, each excluded
+note's row — because there is no container to wire: every line is a flat sibling
+positioned against one shared day grid. The grid REPORTS which element belongs to which
+row (`TimelineDrawing.laneElement`) and `renderGridAxis` in `src/view/render/roadmap.ts`
+does the wiring after the pass, since a drop needs geometry the pass has not finished
+producing. The cost is that the highlight is the element under the pointer rather than the
+whole band. A wrapper per row would fix that and would put a box between every row and the
+sticky lead column the geometry rests on; either way the highlight is a live-vault check.
+
+**A bar carried no date hold when this PBI shipped, and does now** — a release on a band
+answers both questions since [[Scheduling inside a resource's row]], and the paragraph
+above said the opposite until 2026-08-14. What is unchanged is this note's own guarantee:
+dragging between rows changes only who the item is assigned to. It survives because the
+row half and the date half are planned from different facts — the row from where the
+release landed, the dates from how far the pointer travelled — so a purely vertical drag
+still displaces nothing and still writes one value. What changed is that a drag which
+*also* moves sideways is no longer silently discarding the sideways part.
 
 **One thing had to be un-drawn for any of it to work**, and it is the finding worth
-keeping. `.pbl-timeline-drop` — the dated axis's one positional target — takes pointer
+keeping — and still true now that the rows read a position too, because each row reads it
+for ITSELF. `.pbl-timeline-drop` — the dated axis's one positional target — takes pointer
 events across the whole day area while a drag is live, so left in place it would swallow
 every drop the rows are the target for. It is therefore drawn only where a POSITION on it
 means something. That exposed the one decoration it used to cover: `.pbl-today` is the
@@ -183,7 +191,10 @@ since nothing here hit-tests.
 The shelf is `shelfRemoval`'s `'resources'` branch in `src/view/render/shelf.ts`, which
 went from accepting nothing to the horizon axis's own removal over a different key —
 including its re-drop rule, since a card already drawn there can still carry a name with
-no date to sit beside. The keyboard is `handleResourceMoveKey` in
+no date to sit beside. It accepts everything but a GRIP now
+([[Scheduling inside a resource's row]] extension 3c): a bar arriving by either body hold
+un-assigns and keeps its dates, while an end dragged onto the strip is a resize that
+overshot and is refused, the dated axis's own rule. The keyboard is `handleResourceMoveKey` in
 `src/view/interactions/keyboard.ts`, on **Alt+Up/Down**: resources are rows, and
 Left/Right on this grid is reserved for a future scheduling gesture, which is what
 `horizonStops` answering null on the dated axis has been holding open. The two ladders

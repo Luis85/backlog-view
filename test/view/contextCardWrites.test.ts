@@ -460,6 +460,22 @@ describe('write safety with context rows, across the resources axis’s entry po
 		expect(Notice.messages.some((m) => m.includes('outside this base’s filter'))).toBe(true);
 	});
 
+	it('refuses it WHOLE when the move also carries dates', async () => {
+		const { view, vault } = laneStressView();
+		const mid = view.model?.byPath.get('Mid.md');
+
+		// The axis's second dimension does not get its own answer here: both halves ride
+		// one `ItemWrite`, and the gate refuses a batch whole, so there is no arrangement
+		// in which the dates land on an excluded note and the assignee does not.
+		const applied = await view.performResourceMove(mid as never, 'Sam', {
+			plan: { start: '2026-08-08', target: '2026-08-17' },
+			ends: ['start', 'target'],
+		});
+
+		expect(applied).toBe(false);
+		expect(vault.writeLog).toEqual([]);
+	});
+
 	it('never mints a row from a context value, and never counts one', () => {
 		const { view, containerEl } = laneStressView();
 		const mid = view.model?.byPath.get('Mid.md');

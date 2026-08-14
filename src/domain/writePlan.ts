@@ -339,10 +339,59 @@ export function computeAssigneeWrites(item: BacklogItem, value: string | null): 
 	return [{ file: item.file, assignee: value }];
 }
 
+/**
+ * A move on the resources axis, where a release answers TWO questions at once: which row
+ * it landed in, and which day. Both halves are the existing planners' — this function
+ * adds no rule of its own about either — and what it does is put them on ONE `ItemWrite`,
+ * which is the whole point rather than an optimization.
+ *
+ * One record, because a gesture is one thing to take back. Two records naming the same
+ * file would apply as two writes and capture two inverses, so an undo would return the
+ * row and leave the dates, or the reverse — a state the user's single gesture cannot
+ * describe and cannot reach again. It also makes "the row moved but the dates did not"
+ * unreachable under a refusal: the gate refuses a batch whole, and this batch is one
+ * write.
+ *
+ * Either half may be empty, and both routinely are: a vertical drag plans no dates, a
+ * slide inside one row plans no assignee, and a gesture that expressed neither plans
+ * nothing at all — which is what keeps the undo slot for the move before it.
+ */
+export function computeResourceMoveWrites(
+	item: BacklogItem,
+	name: string | null,
+	schedule: ScheduleGesture | null,
+): ItemWrite[] {
+	const who = computeAssigneeWrites(item, name);
+	const when = schedule ? computeScheduleWrites(item, schedule.plan, schedule.ends, schedule.from) : [];
+	if (who.length === 0 && when.length === 0) return [];
+	// Spread rather than assigned field by field: each planner owns which of its own
+	// fields it names, and a list here would be a second statement of that going stale
+	// the next time either grows one.
+	return [{ ...(who[0] ?? { file: item.file }), ...(when[0] ?? {}) }];
+}
+
 /** What a schedule entry asks for: a date per end, null to unschedule that end. */
 export interface SchedulePlan {
 	start?: string | null;
 	target?: string | null;
+}
+
+/**
+ * A date gesture, whole — what it asks for plus the two expectations it was made under.
+ * One object because the three travel together and always have: `performScheduleMove`
+ * takes them as three parameters and has to say in a paragraph that neither of the last
+ * two may be recomputed from the item. A caller that carries the group cannot drop half
+ * of it, which is the failure that paragraph is guarding against.
+ *
+ * `ends` is the placement SHAPE the gesture was planned under and `from` the dates it was
+ * measured from — both checked by the writer against what the note now holds, so a type
+ * or a date that changed mid-drag refuses the batch rather than walking a concurrent edit
+ * backwards. `from` is absent where the gesture is absolute and had no base to be stale.
+ */
+export interface ScheduleGesture {
+	plan: SchedulePlan;
+	ends: PlacementEnd[];
+	from?: Partial<Record<PlacementEnd, string | null>>;
 }
 
 /**

@@ -25,13 +25,6 @@ files:
   - src/view/render/timeline.ts
   - styles/lanes.css
   - styles/legend.css
-started: ""
-finished: ""
-horizon: ""
-start: ""
-due: ""
-risk: ""
-assignee: ""
 ---
 
 # Resource absences
@@ -237,6 +230,10 @@ already looks.
   type, the same dependency every other declared type here already has on the Base
   returning it.
 - A resource named only by an absence still gets a row.
+- An absence renders whatever the quick filter says. The filter chooses among WORK — its
+  two sets are matches and their subtrees — and a stretch is furniture of the row rather
+  than a result it could match or hide, so a band minted only by an absence stays on
+  screen while a filter narrows the work around it.
 - Overlapping bars and absences in one row stack, with no lane-packing.
 - Deleting an absence removes the note through Obsidian's own delete.
 - Renaming the configured type-key property after absences already exist is not

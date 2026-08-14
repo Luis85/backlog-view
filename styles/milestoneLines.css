@@ -1,0 +1,52 @@
+/* The one full-height mark on this grid that comes from the PLAN rather than from the
+   reader — a line down every row per milestone date, and its name in the header band.
+   Its own partial beside `src/view/render/milestoneLines.ts`, which drew it out of
+   `render/timeline.ts` for the same reason: `timeline.css` is at the 400-line cap, and
+   this is the piece with the least to do with the rest of it.
+
+   Imported directly after `timeline.css`, which is where these rules used to sit: two
+   rules of equal specificity are decided by which came last, so the position preserves
+   the cascade rather than restating the order in a comment. */
+
+/* A milestone's line runs the grid's full height at its date, behind the bars. Same
+   shape as .pbl-today and deliberately a lower layer: today stays on top because it is
+   the reader's own mark, and the two sit side by side inside one day cell. Cyan to match
+   the milestone badge (--color-cyan-rgb) — purple is already .pbl-lvl-1 (Feature). */
+.pbl-milestone-line {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: var(--pbl-milestone-left);
+	width: var(--pbl-tl-line);
+	/* Centred, the same shift as `.pbl-today` — what puts this through the middle of its
+	   own diamond. The LABEL is not shifted: it reads rightward from the date. */
+	transform: translateX(-50%);
+	z-index: 0;
+	background-color: var(--color-cyan);
+	opacity: 0.55;
+	/* A timeline row sets no `position`, so it paints in the non-positioned layers
+	   while this line — absolute, with a z-index — paints above them. Hit-testing
+	   follows paint order, so without this the line is the event target wherever it
+	   crosses a row: a 2px dead strip through every row, per milestone, swallowing
+	   the row's activation and context menu. The line is aria-hidden decoration and
+	   its tooltip lives on the header label, so it wants no events at all. */
+	pointer-events: none;
+}
+
+/* In the header band, so the name reads where the months do. Backed, because it sits
+   over the month labels; truncating, because the full name is one hover away — which
+   needs the label itself to receive the hover, so the presentational month cells and
+   the bars (a different row entirely) never needed the pointer to pass through it. */
+.pbl-milestone-label {
+	position: absolute;
+	top: 0;
+	left: var(--pbl-milestone-left);
+	max-width: 140px;
+	padding: var(--size-4-1);
+	font-size: var(--font-ui-smaller);
+	color: var(--color-cyan);
+	background-color: var(--background-primary);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}

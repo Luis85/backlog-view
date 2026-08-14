@@ -73,13 +73,19 @@ export function shelfRemoval(host: BacklogViewHost, axis: RoadmapAxis): ShelfRem
 	}
 	if (axis === 'resources') {
 		return {
+			// No gesture rides along: this strip un-places on the axis it draws, which here
+			// means the ASSIGNEE. A bar's dates are untouched — a row is who, and where the
+			// work sits on the calendar is not a fact this drop was asked about.
 			plan: (source) => void host.performResourceMove(source.item, null),
 			tooltip: 'Results this axis cannot place — dropping a card here removes its assignee',
-			// The horizon axis's rule and its reason: a card already DRAWN here can still
-			// carry a name — assigned, with no date to sit beside — so refusing a re-drop
-			// would withhold exactly the cleanup its shelving reason is asking for. A
-			// re-drop with nothing to clear plans zero writes and no-ops.
-			accepts: (source) => source.hold === null,
+			// Everything but a GRIP. The horizon axis's rule and its reason for the shelf
+			// card: one already DRAWN here can still carry a name — assigned, with no date to
+			// sit beside — so refusing a re-drop would withhold exactly the cleanup its
+			// shelving reason is asking for, and one with nothing to clear plans zero writes
+			// and no-ops. A bar arrives by its body hold. A grip is refused, the dated axis's
+			// own rule: dragging an end onto the shelf is a resize that overshot, not a
+			// request to un-assign.
+			accepts: (source) => source.hold !== 'start' && source.hold !== 'end',
 			// Nothing to distinguish before the release: a drop here always un-assigns.
 			outcome: null,
 			// Every shelved item can be re-assigned. Unlike the dated axis there is no type

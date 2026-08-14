@@ -63,6 +63,7 @@
 @import "./cardChildren.css";
 @import "./roadmap.css";
 @import "./timeline.css";
+@import "./milestoneLines.css";
 /* Position IS load-bearing: the row header borrows `.pbl-timeline-lead`, and its own
    background rule for that element has the same specificity as `timeline.css`'s, so it
    only wins by coming after it. Moved above and a header's sticky lead column keeps the

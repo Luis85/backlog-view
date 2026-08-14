@@ -1,11 +1,11 @@
-import { CardDragController, CardSource } from './cardDrag';
+import { CardDragController, CardSource, PointerAt } from './cardDrag';
 import { RowContext } from '../render/columns';
 import { spanText } from '../render/timeline';
 import { BacklogViewHost } from '../host';
-import { BarHold, placeItem, statedEnds, StatedEnds } from '../../domain/bars';
+import { BarHold, placeItem, plannedEnds } from '../../domain/bars';
 import { PlacementEnd, placementEnds } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
-import { absentReading, CivilDate, FieldReading, readDate } from '../../domain/noteFields';
+import { CivilDate } from '../../domain/noteFields';
 import { BacklogSettings } from '../../domain/settings';
 import { optionalKeyFor } from '../../domain/optionalProperties';
 import {
@@ -34,6 +34,13 @@ import { SchedulePlan } from '../../domain/writePlan';
  * `host.performScheduleMove`, which is the only place a date batch is planned and the
  * only place it is announced.
  *
+ * **Both grid axes ask it, and only one of them registers here.** `wireTimelineDrag` is
+ * the dated axis's own wiring, over its one grid-wide overlay. The resources axis wires a
+ * target per band element instead — which row a release lands in is half of its message —
+ * so `render/roadmap.ts` does that registration and asks THIS module the other half,
+ * through `gestureAt` and `previewer`. What a position means is stated once either way;
+ * what differs is what the caller combines the answer with.
+ *
  * Two gestures, two rules: a shelf card has no origin to move from, so `shelfPlan`
  * reads the pointer's POSITION. A hold on a bar already placed reads a DELTA instead —
  * `holdPlan` — because a rendered edge is not always its date (a span shorter than
@@ -44,7 +51,15 @@ import { SchedulePlan } from '../../domain/writePlan';
 
 /** Everything a gesture on the grid measures against. */
 export interface TimelineParts {
-	overlay: HTMLElement;
+	/**
+	 * The element whose left edge IS day 0 — what every pointer X is measured from. The
+	 * dated axis hands over its one grid-wide overlay; the resources axis hands over the
+	 * `.pbl-timeline-track` of the band element being wired, because there the target is
+	 * a row rather than the grid and each row already draws a track at exactly that
+	 * offset. Naming the origin rather than the overlay is what lets both read days from
+	 * one function without either assuming where the lead column ends.
+	 */
+	dayOrigin: HTMLElement;
 	scroller: HTMLElement;
 	window: TimelineWindow;
 	scale: TimelineScale;
@@ -56,47 +71,102 @@ export interface TimelineParts {
 	leadWidth: number;
 }
 
-export function wireTimelineDrag(ctx: RowContext, dnd: CardDragController, parts: TimelineParts): void {
-	// Annotated rather than inferred from `ctx.host` — fallow resolves interface
-	// members through an explicit type, not a property access. See the root CLAUDE.md.
-	const host: BacklogViewHost = ctx.host;
-	// What the last frame drew, held here rather than searched for: the preview now
-	// mounts into a row that is full of other elements, so clearing it is a removal of
-	// known nodes and never a query over the grid on every frame of a drag.
+/**
+ * What a gesture on this grid resolved to, or null where it expressed nothing. One
+ * function so the dated axis's overlay and a resource row's band cannot disagree about
+ * what a release at a coordinate means — they differ only in what they do with the
+ * answer, which is the row half neither the date math nor the preview has an opinion
+ * about.
+ *
+ * Null where the reader pointed at nothing: the sticky lead column (whose day is not the
+ * one they are looking at), or a hold that wandered back to where it started. Both write
+ * nothing and neither consumes the undo slot.
+ */
+export function gestureAt(
+	host: BacklogViewHost,
+	parts: TimelineParts,
+	source: CardSource,
+	pointer: PointerAt,
+): GesturePlan | null {
+	// Refused before any date math: the origin's own rect drifts left of the STICKY lead
+	// column once panned (see `overLeadColumn`), so a release physically over a row's
+	// title would otherwise resolve to whatever day that drifted geometry names — a
+	// coordinate the reader never pointed at the grid to choose.
+	if (overLeadColumn(parts, pointer.clientX)) return null;
+	return planFor(host, parts, source, pointer.clientX, pointer.originX);
+}
+
+/**
+ * A ghost that follows the pointer, and the handle that takes it away again. Shared by
+ * both grid axes for the same reason `gestureAt` is: the preview must be drawn from the
+ * plan the release will submit, and a second drawing beside it is exactly how a preview
+ * comes to promise a write nobody makes.
+ *
+ * Where it draws is `previewMount`'s, on both axes: the dragged item's own row, or the
+ * header's track for a card that has none. A resources-axis band could name the row a
+ * release would LAND in instead, and deliberately does not — the band's own drop highlight
+ * already says which row that is, and the ghost's job is the dates.
+ */
+export function previewer(
+	host: BacklogViewHost,
+	parts: TimelineParts,
+): { clear: () => void; draw: (source: CardSource, pointer: PointerAt) => void } {
+	// What the last frame drew, held here rather than searched for: the preview mounts
+	// into a row that is full of other elements, so clearing it is a removal of known
+	// nodes and never a query over the grid on every frame of a drag.
 	let drawn: HTMLElement[] = [];
 	const clear = (): void => {
 		clearPreview(drawn);
 		drawn = [];
 	};
-	dnd.wirePositionalTarget(parts.overlay, {
-		onDrag: (source, clientX, originX) => {
+	return {
+		clear,
+		draw: (source: CardSource, pointer: PointerAt): void => {
 			clear();
-			// A pointer over the sticky lead column previews nothing: the day under it
-			// (see `overLeadColumn`) is not what the reader is looking at.
-			if (!overLeadColumn(parts, clientX)) drawn = preview(host, parts, source, clientX, originX);
+			// A pointer over the sticky lead column previews nothing, the same refusal
+			// `gestureAt` makes of the release itself.
+			if (!overLeadColumn(parts, pointer.clientX)) drawn = preview(host, parts, source, pointer);
 		},
-		onLeave: () => clear(),
-		onDrop: (source, clientX, originX) => {
-			clear();
-			// Refused before any date math: the overlay's own rect drifts left of the
-			// STICKY lead column once panned (see `overLeadColumn`), so it wins hit-testing
-			// there and a release physically over a row's title would otherwise resolve to
-			// whatever day that drifted geometry names — a coordinate the reader never
-			// pointed at the grid to choose.
-			if (overLeadColumn(parts, clientX)) return;
-			// A drag ending nowhere meaningful — off the grid, or a hold that wandered
-			// back to where it started — writes nothing and does not consume the undo
-			// slot: `planFor` returns null for both, which is the same refusal restated
-			// for any entry point that reaches the overlay some other way.
-			const plan = planFor(host, parts, source, clientX, originX);
-			// `ends` rides along only for a RELATIVE gesture (`plan.from` set): the shape
-			// the hold was planned under, which may disagree with the item's CURRENT type
-			// by the time the writer sees it. A shelf drop is absolute and states no
-			// baseline, so it states no shape either — the writer falls back to the
-			// item's own, which is exactly right for a plan made against it a moment ago.
-			if (plan) void host.performScheduleMove(source.item, plan.plan, plan.from, plan.from ? source.ends : undefined);
+	};
+}
+
+/**
+ * Submit a date gesture — the ONE call either grid axis makes when a release means a date
+ * and nothing else. The dated axis's every release is this; the resources axis's END GRIPS
+ * are, since a grip states a date and nothing about who is doing the work.
+ *
+ * `ends` rides along only for a RELATIVE gesture (`from` set): the shape the hold was
+ * planned under, which may disagree with the item's CURRENT type by the time the writer
+ * sees it. A shelf drop is absolute and states no baseline, so it states no shape either —
+ * the writer falls back to the item's own, which is exactly right for a plan made against
+ * it a moment ago. That conditional is the reason this is a function rather than a line
+ * copied twice: written out at a second call site it came back without the condition, which
+ * is a plan submitted under a shape it was not made with.
+ */
+export function submitGesture(host: BacklogViewHost, source: CardSource, gesture: GesturePlan | null): void {
+	if (!gesture) return;
+	void host.performScheduleMove(source.item, gesture.plan, gesture.from, gesture.from ? source.ends : undefined);
+}
+
+export function wireTimelineDrag(ctx: RowContext, dnd: CardDragController, parts: TimelineParts): void {
+	// Annotated rather than inferred from `ctx.host` — fallow resolves interface
+	// members through an explicit type, not a property access. See the root CLAUDE.md.
+	const host: BacklogViewHost = ctx.host;
+	const ghost = previewer(host, parts);
+	dnd.wireDropTarget(
+		parts.dayOrigin,
+		(source, pointer) => {
+			ghost.clear();
+			submitGesture(host, source, gestureAt(host, parts, source, pointer));
 		},
-	});
+		{
+			// The pointer's X is the whole message here, so a highlight over the entire day
+			// area would say nothing about where the release lands — see `DropHooks.highlight`.
+			highlight: false,
+			onDrag: (source, pointer) => ghost.draw(source, pointer),
+			onLeave: () => ghost.clear(),
+		},
+	);
 	// Auto-scroll is opt-in per element, and the element to register is the one that
 	// actually scrolls: here the timeline's own scroller, because
 	// [[Zoom and the today marker]] requires the scrolling to stay inside the view and
@@ -107,8 +177,8 @@ export function wireTimelineDrag(ctx: RowContext, dnd: CardDragController, parts
 
 /**
  * The day under the pointer. `dayAt` takes an offset from the window's first day while
- * the adapter reports a VIEWPORT `clientX`, so the overlay's own bounding rect is
- * subtracted — the overlay is positioned in CONTENT coordinates, so its rect scrolls
+ * the adapter reports a VIEWPORT `clientX`, so the day origin's own bounding rect is
+ * subtracted — the origin is positioned in CONTENT coordinates, so its rect scrolls
  * with the grid and this subtraction stays correct at any pan. It is NOT past the
  * sticky lead column at every scroll position, only unscrolled — see `overLeadColumn`,
  * which every caller here checks first, for the column that guards instead.
@@ -118,20 +188,21 @@ export function wireTimelineDrag(ctx: RowContext, dnd: CardDragController, parts
  * schedule another.
  */
 function dropDay(parts: TimelineParts): (clientX: number) => CivilDate {
-	return (clientX) => dayAt(parts.window, parts.scale, clientX - parts.overlay.getBoundingClientRect().left);
+	return (clientX) => dayAt(parts.window, parts.scale, clientX - parts.dayOrigin.getBoundingClientRect().left);
 }
 
 /**
  * True when a viewport `clientX` sits under the STICKY lead column rather than the grid.
- * `.pbl-timeline-drop` is positioned in CONTENT coordinates (`left: var(--pbl-tl-lead)`
- * inside the scrolling `.pbl-timeline-content`), so its own rect drifts left with the
+ * Both day origins are positioned in CONTENT coordinates — `.pbl-timeline-drop` at
+ * `left: var(--pbl-tl-lead)`, a row's `.pbl-timeline-track` after its own lead cell,
+ * both inside the scrolling `.pbl-timeline-content` — so their rects drift left with the
  * pan; `.pbl-timeline-lead` is `position: sticky; left: 0` against the SCROLLER and never
- * moves. Past `parts.leadWidth` of scroll the overlay's rect has drifted under the lead
+ * moves. Past `parts.leadWidth` of scroll the origin's rect has drifted under the lead
  * column, and — later in the row's markup, same z-index — it wins hit-testing there: a
  * release physically over a row's title would otherwise resolve through `dropDay` to
- * whatever day the overlay's drifted geometry names, a coordinate the reader never
+ * whatever day that drifted geometry names, a coordinate the reader never
  * pointed at the grid to choose. Checked against the SCROLLER's own rect, which — unlike
- * the overlay's — does not move with its own internal scroll, exactly as a sticky
+ * the origin's — does not move with its own internal scroll, exactly as a sticky
  * sibling's position does not.
  *
  * `parts.leadWidth` — the width THIS render actually drew, resized or not — never
@@ -147,7 +218,7 @@ function overLeadColumn(parts: TimelineParts, clientX: number): boolean {
  * hold's, set by `holdPlan`. Absent on a shelf drop, which is absolute and states no
  * baseline because it measured against nothing.
  */
-interface GesturePlan {
+export interface GesturePlan {
 	plan: SchedulePlan;
 	from?: Partial<Record<PlacementEnd, string | null>>;
 }
@@ -349,10 +420,9 @@ function preview(
 	host: BacklogViewHost,
 	parts: TimelineParts,
 	source: CardSource,
-	clientX: number,
-	originX: number,
+	pointer: PointerAt,
 ): HTMLElement[] {
-	const plan = planFor(host, parts, source, clientX, originX);
+	const plan = planFor(host, parts, source, pointer.clientX, pointer.originX);
 	if (!plan) return [];
 	const placement = placeItem(source.item, plannedEnds(source.item, plan.plan));
 	// A drop that shelves draws no ghost on the grid; the shelf's own indicator says so.
@@ -387,6 +457,12 @@ function preview(
  *   header's track, the strip that means "when". Inventing a row for it would claim a
  *   position in an order the drop does not decide.
  *
+ * **This is the DATED axis's answer, not the shared one** — see `previewer`, which takes
+ * the mount from its caller. It is the best answer available to a target that spans the
+ * whole grid: the release names a day and nothing about a row, so the source's own row is
+ * the only honest place for it. A resources-axis band knows the destination and says so
+ * instead.
+ *
  * Drawn into the overlay instead, as it was, the ghost took that layer's full-grid box
  * and `top: 50%` put it at the vertical middle of the WHOLE timeline: never in the
  * dragged row, never anywhere meaningful, and reported from a live vault as a preview
@@ -403,20 +479,4 @@ function previewMount(parts: TimelineParts, source: CardSource): HTMLElement {
  */
 function clearPreview(drawn: HTMLElement[]): void {
 	for (const el of drawn) el.remove();
-}
-
-/**
- * The ends a plan WOULD leave stated on this item: the ones it names, over the ones the
- * note already states. This is only half of a placement, which is why nothing draws
- * from it directly — `preview` hands it straight to `placeItem`, the same call
- * `deriveBars` makes.
- */
-function plannedEnds(item: BacklogItem, plan: SchedulePlan): StatedEnds {
-	const stated = statedEnds(item);
-	const end = (field: PlacementEnd): FieldReading<CivilDate> => {
-		const requested = plan[field];
-		if (requested === undefined) return stated[field];
-		return requested === null ? absentReading() : readDate(requested);
-	};
-	return { start: end('start'), target: end('target') };
 }

@@ -18,14 +18,23 @@ import { setOwn } from './ownProperty';
  * names `trashFile` the way `no-restricted-syntax` names `vault.create`.
  */
 
-/** What an absence note is written from — four facts, and where to put them. */
-export interface AbsenceSpec {
-	folder: string;
-	title: string;
+/**
+ * What an absence SAYS — the three facts that live in its frontmatter. Split from the two
+ * that decide where the note is (its folder and its title, which is its basename) because
+ * an edit changes only these: a signature asking an update for a folder it will not use is
+ * a caller passing a value that means nothing, which is how a field comes to be read.
+ */
+export interface AbsenceFacts {
 	resource: string;
 	/** Both ends as `YYYY-MM-DD`, already validated: this module writes, it does not judge. */
 	start: string;
 	target: string;
+}
+
+/** Everything a NEW absence note needs: what it says, plus where it goes and what it is called. */
+export interface AbsenceSpec extends AbsenceFacts {
+	folder: string;
+	title: string;
 }
 
 /**
@@ -53,6 +62,55 @@ export async function createAbsenceNote(app: App, settings: BacklogSettings, spe
 	setOwn(fm, settings.startKey, spec.start);
 	setOwn(fm, settings.targetKey, spec.target);
 	return app.vault.create(path, `---\n${stringifyYaml(fm)}---\n`);
+}
+
+/**
+ * Rewrite one absence in place: who it is for, and the days it covers.
+ *
+ * The three facts are set through `setOwn` on the SAME keys `createAbsenceNote` writes, so
+ * a note written by one and edited by the other cannot end up with two spellings of one
+ * fact. `processFrontMatter` rather than a re-create, for the reason the whole storage
+ * boundary exists: this is an edit of a note the reader already has links and history to,
+ * not a new one.
+ *
+ * The TITLE is not here, because it is not frontmatter — an absence's title is its
+ * basename, so changing it is a RENAME and belongs to {@link renameAbsenceNote}. Two acts
+ * rather than one, since only one of them can fail on a name collision and only one has to
+ * carry every link that names the note with it.
+ *
+ * Outside `applyWrites` like the create and the delete beside it: an absence is not a
+ * write target of this backlog, so there is no batch, no captured inverse and no undo
+ * slot. What takes an edit back is Obsidian's own file history.
+ */
+export async function updateAbsenceNote(
+	app: App,
+	settings: BacklogSettings,
+	file: TFile,
+	spec: AbsenceFacts,
+): Promise<void> {
+	await app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
+		setOwn(fm, settings.assigneeKey, spec.resource);
+		setOwn(fm, settings.startKey, spec.start);
+		setOwn(fm, settings.targetKey, spec.target);
+	});
+}
+
+/**
+ * Give the note a new name, which is what changing an absence's TITLE means.
+ *
+ * Through `fileManager.renameFile`, never `vault.rename`: the former updates every link
+ * that names this note, which matters here for the same reason it matters anywhere —
+ * nothing stops a reader linking to an absence from a planning note.
+ *
+ * A no-op where the name has not changed, checked against the file's own basename rather
+ * than against what the form was opened with: those differ the moment two edits race, and
+ * a rename to the name a note already has is a needless write that `uniqueNotePath` would
+ * answer by appending a number.
+ */
+export async function renameAbsenceNote(app: App, file: TFile, title: string): Promise<void> {
+	if (title === file.basename) return;
+	const folder = file.parent?.path ?? '';
+	await app.fileManager.renameFile(file, uniqueNotePath(app, folder === '/' ? '' : folder, title));
 }
 
 /**

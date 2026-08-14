@@ -1,6 +1,6 @@
 import { isMarkerType, PlacementEnd, placementEnds } from './itemTypes';
 import { BacklogItem } from './model';
-import { absentReading, CivilDate, FieldReading } from './noteFields';
+import { absentReading, CivilDate, FieldReading, readDate } from './noteFields';
 import { BacklogSettings } from './settings';
 import { optionalKeyFor } from './optionalProperties';
 import { DateSpan, daysBetween, reversedSpan } from './timeline';
@@ -53,6 +53,28 @@ export function withoutEnds(stated: StatedEnds, ends: PlacementEnd[]): StatedEnd
 		start: ends.includes('start') ? absentReading() : stated.start,
 		target: ends.includes('target') ? absentReading() : stated.target,
 	};
+}
+
+/**
+ * The ends a plan WOULD leave stated on this item: the ones it names, over the ones the
+ * note already states. This is only HALF of a placement, which is why nothing draws from
+ * it directly — every caller hands it straight to `placeItem`, the same call `deriveBars`
+ * makes, so the marker reduction, the unreadable and reversed refusals and the rollup
+ * inference all stay behind one function.
+ *
+ * It sits beside `withoutEnds` because they are the same question asked two ways: what a
+ * gesture would leave. The plan is typed as a bare per-end record rather than
+ * `SchedulePlan` so this module never has to import the planner — `domain/writePlan.ts`
+ * reads this layer, and an import back the other way is a cycle `npm run analyze` refuses.
+ */
+export function plannedEnds(item: BacklogItem, plan: Partial<Record<PlacementEnd, string | null>>): StatedEnds {
+	const stated = statedEnds(item);
+	const end = (field: PlacementEnd): FieldReading<CivilDate> => {
+		const requested = plan[field];
+		if (requested === undefined) return stated[field];
+		return requested === null ? absentReading() : readDate(requested);
+	};
+	return { start: end('start'), target: end('target') };
 }
 
 /** Where one item lands on this axis. */
@@ -208,7 +230,18 @@ function inferSpan(
 	};
 }
 
-/** What a gesture may take hold of on a drawn bar. */
+/**
+ * What a gesture may take hold of on a drawn bar — decided by `barHolds` below, and by
+ * nothing else. Every one of them writes a DATE, so every one needs a baseline the note
+ * itself states.
+ *
+ * There is deliberately no hold meaning "the whole bar, for its row alone". One existed
+ * for a day (2026-08-14) so a bar with no baseline could still be carried between the
+ * resources axis's bands, and it was taken back out: a bar behaves the same on both grids,
+ * so a span the note does not state is not something a gesture picks up ANYWHERE. What
+ * moves such an item between rows is Set assignee and Alt+Up/Down, which need no baseline
+ * because they name a value rather than displacing one.
+ */
 export type BarHold = 'body' | 'start' | 'end';
 
 /**

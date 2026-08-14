@@ -125,6 +125,19 @@ export interface CollapseSnapshot {
 	shelfSort?: string | null;
 	/** Types currently hidden by the shelf's own type filter; absent or empty means none. */
 	shelfHiddenTypes?: string[] | null;
+	/**
+	 * Resource bands the reader has folded shut, by NAME. Absent or empty means every band
+	 * is open, which is the default a fresh view gets.
+	 *
+	 * Beside the shelf's hidden types rather than in the `collapsed` path set, and that is
+	 * the whole reason it is a field of its own: everything in that set is a NOTE PATH, and
+	 * the flush prunes any entry the vault has no file for. A resource is a name somebody
+	 * typed into the view options or wrote on a note — never a file — so a band's key would
+	 * be dropped on the first save. The same fact makes it need no rename migration: nothing
+	 * renames a resource, and a roster edited in the options is the reader saying which rows
+	 * exist.
+	 */
+	collapsedLanes?: string[] | null;
 }
 
 /** Which base view an entry belongs to. */
@@ -173,6 +186,8 @@ interface StoredEntry {
 	shelfSort?: string;
 	/** Absent or empty means nothing hidden. */
 	shelfHiddenTypes?: string[];
+	/** Absent or empty means every resource band is open. */
+	collapsedLanes?: string[];
 }
 
 type StoredMap = Record<string, StoredEntry>;
@@ -265,11 +280,14 @@ function viewNameOf(key: string): string | null {
 	}
 }
 
-function defaultShelf(entry: StoredEntry | undefined): Pick<CollapseSnapshot, 'shelfExpanded' | 'shelfSort' | 'shelfHiddenTypes'> {
+function defaultShelf(
+	entry: StoredEntry | undefined,
+): Pick<CollapseSnapshot, 'shelfExpanded' | 'shelfSort' | 'shelfHiddenTypes' | 'collapsedLanes'> {
 	return {
 		shelfExpanded: entry?.shelfExpanded ?? false,
 		shelfSort: entry?.shelfSort ?? null,
 		shelfHiddenTypes: entry?.shelfHiddenTypes ?? [],
+		collapsedLanes: entry?.collapsedLanes ?? [],
 	};
 }
 
@@ -292,10 +310,20 @@ function defaultPicks(
 	};
 }
 
-function writeShelf(entry: StoredEntry, expanded: boolean, sort: string | null, types: string[]): void {
-	if (expanded) entry.shelfExpanded = true;
-	if (sort !== null) entry.shelfSort = sort;
-	if (types.length > 0) entry.shelfHiddenTypes = types;
+function writeShelf(entry: StoredEntry, shelf: ShelfState): void {
+	if (shelf.expanded) entry.shelfExpanded = true;
+	if (shelf.sort !== null) entry.shelfSort = shelf.sort;
+	if (shelf.types.length > 0) entry.shelfHiddenTypes = shelf.types;
+	if (shelf.lanes.length > 0) entry.collapsedLanes = shelf.lanes;
+}
+
+/** The frame's own display picks, grouped so `writeShelf` stays under max-params. */
+interface ShelfState {
+	expanded: boolean;
+	sort: string | null;
+	types: string[];
+	/** Resource bands folded shut — beside the shelf's because both are per-view name sets. */
+	lanes: string[];
 }
 
 /**
@@ -339,7 +367,12 @@ export function saveCollapseState(app: App, id: ViewIdentity, snapshot: Collapse
 	const expanded = [...snapshot.expanded].slice(0, MAX_PATHS - collapsed.length);
 	const entry: StoredEntry = { base: id.base, collapsed, expanded };
 	writePicks(entry, snapshot);
-	writeShelf(entry, snapshot.shelfExpanded ?? false, snapshot.shelfSort ?? null, snapshot.shelfHiddenTypes ?? []);
+	writeShelf(entry, {
+		expanded: snapshot.shelfExpanded ?? false,
+		sort: snapshot.shelfSort ?? null,
+		types: snapshot.shelfHiddenTypes ?? [],
+		lanes: snapshot.collapsedLanes ?? [],
+	});
 	// A view at its defaults — nothing settled, the tree, no pick, shelf untouched —
 	// needs no entry. That is the same question the read side asks of a stored entry, so
 	// it is asked with the same function: a field added to one and forgotten in the other
@@ -425,6 +458,10 @@ function readShelfFields(record: Record<string, unknown>, entry: StoredEntry): v
 	if (sort !== undefined) entry.shelfSort = sort;
 	const types = readPaths(record.shelfHiddenTypes);
 	if (types.length > 0) entry.shelfHiddenTypes = types;
+	// `readPaths` reads a list of strings defensively; that these are names rather than
+	// paths changes nothing it checks.
+	const lanes = readPaths(record.collapsedLanes);
+	if (lanes.length > 0) entry.collapsedLanes = lanes;
 }
 
 function entryHasContent(entry: StoredEntry): boolean {
@@ -440,7 +477,8 @@ function entryHasContent(entry: StoredEntry): boolean {
 		entry.clickFolds !== undefined ||
 		entry.shelfExpanded !== undefined ||
 		entry.shelfSort !== undefined ||
-		entry.shelfHiddenTypes !== undefined
+		entry.shelfHiddenTypes !== undefined ||
+		entry.collapsedLanes !== undefined
 	);
 }
 

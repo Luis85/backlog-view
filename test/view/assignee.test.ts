@@ -135,6 +135,38 @@ describe('Set assignee', () => {
 		expect(assigneeMenu(containerEl, 'Epic A')?.items.map((i) => i.titleText)).toEqual(['New assignee...']);
 	});
 
+	it('offers the declared roster wherever the menu opens, not only where its axis draws', () => {
+		// Reported from a vault: names typed into `Resources (in order)` showed up on the
+		// roadmap's resources axis and nowhere else, because they reached this menu only
+		// through the rows that axis DRAWS. A tree row's Set assignee offered the observed
+		// names alone, which reads as the setting not working.
+		const vault = assignedVault();
+		const { containerEl } = makeView(vault, { ...configured, resourceNames: 'Robin, Sam' });
+
+		// Declared first, then the observed names the roster does not already name — one
+		// spelling of each, and `Sam` is on both lists without appearing twice.
+		expect(assigneeMenu(containerEl, 'Epic A')?.items.map((i) => i.titleText)).toEqual([
+			'Robin',
+			'Sam',
+			'Alex',
+			'New assignee...',
+		]);
+	});
+
+	it('keeps the roster’s own spelling when a note spells the same name differently', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, assignee: 'sam' } });
+		const { containerEl } = makeView(vault, { ...configured, resourceNames: 'Sam' });
+		const menu = assigneeMenu(containerEl, 'Epic A');
+
+		// One entry, in the casing the view options gave it — the roster is the statement
+		// this base makes about the name, and a second entry differing only in case would
+		// offer a write that changes nothing but the spelling. Checked, because
+		// `computeAssigneeWrites` compares case-insensitively and so plans nothing.
+		expect(menu?.items.map((i) => i.titleText)).toEqual(['Sam', 'New assignee...', 'Clear assignee']);
+		expect(menu?.items[0].checked).toBe(true);
+	});
+
 	it('is absent when no assignee property is named', () => {
 		const { containerEl } = makeView(assignedVault(), {});
 

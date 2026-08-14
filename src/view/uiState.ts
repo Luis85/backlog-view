@@ -123,6 +123,19 @@ export class UiStateController {
 		this.hooks.renderTreeContent();
 	}
 
+	isLaneCollapsed(name: string): boolean {
+		return this.collapse.isLaneCollapsed(name);
+	}
+
+	/**
+	 * Folding a band takes the WHOLE content render, not a targeted refresh: the window,
+	 * the gridlines and every full-height mark are derived from the row set it changes —
+	 * the same reason a bar row's own chevron redraws the projection.
+	 */
+	setLaneCollapsed(name: string, collapsed: boolean): void {
+		if (this.collapse.setLaneCollapsed(name, collapsed)) this.hooks.renderTreeContent();
+	}
+
 	get zoom(): ScaleId {
 		return scaleFor(this.collapse.zoomPick()).id;
 	}

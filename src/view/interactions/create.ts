@@ -32,8 +32,6 @@ export function newItemType(settings: BacklogSettings, model: BacklogModel): str
  */
 export interface CreatePlacement {
 	horizon?: string;
-	/** The resource's row it was created in — written as the note's own assignee. */
-	assignee?: string;
 }
 
 /**
@@ -110,7 +108,6 @@ export function promptCreateItem(
 				folder: askFolder ? folder ?? '' : folderFor(typeName),
 				persistFolder: askFolder,
 				horizon: placement.horizon,
-				assignee: placement.assignee,
 			});
 		},
 	}).open();
@@ -129,7 +126,6 @@ interface CreateRequest {
 	folder: string;
 	persistFolder: boolean;
 	horizon?: string;
-	assignee?: string;
 }
 
 async function createFromPrompt(host: BacklogViewHost, request: CreateRequest): Promise<void> {
@@ -153,19 +149,8 @@ async function createFromPrompt(host: BacklogViewHost, request: CreateRequest): 
 			// Parentless items rank among the real top level, not the focus rows.
 			order: endOfSiblingsOrder(parentItem ? parentItem.children : host.model?.realRoots ?? []),
 			horizon: request.horizon,
-			assignee: request.assignee,
 		});
-		// A bucket's write PLACES the note; a resource row's does not. Creation supplies no
-		// date and nothing else here does either, so the note is exactly the
-		// "assigned, nothing to position it at" case the moment it is read back, and it
-		// shelves on the same refresh that created it. Said out loud rather than left to
-		// look like a bug: a click on a specific row must not silently produce a card that
-		// renders somewhere else entirely.
-		new Notice(
-			request.assignee
-				? `Created "${file.basename}" for ${request.assignee}. Add a start or target date to place it in the row.`
-				: `Created "${file.basename}".`,
-		);
+		new Notice(`Created "${file.basename}".`);
 	} catch (e) {
 		console.error('Product Backlog: failed to create item', e);
 		new Notice('Could not create the item. See the developer console for details.');

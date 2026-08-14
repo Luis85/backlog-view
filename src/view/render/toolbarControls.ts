@@ -366,7 +366,13 @@ export function clickActionApplies(host: BacklogViewHost): boolean {
 	// control) failing in the direction it warns about, and the drift that module exists
 	// to stop: it arrived when the toggle merged in beside a projection it had never seen.
 	if (treeShaped(host.projection)) return true;
-	return host.projection === 'roadmap' && activeAxis(host.settings, host.axisPick) === 'dates';
+	// `drawsGrid`, not `=== 'dates'`, since 2026-08-14: the resources axis draws bar rows
+	// with the same chevron over the same collapse call, scoped to one band
+	// (`laneEntries`). A bar row that folds and no toggle to govern it is the failure this
+	// predicate's own comment warns about, reached by the axis rather than by a new call
+	// site. A LANE header is not the row this option is about — it holds no note, so a
+	// click on it can only ever mean fold — and it needs no arm here.
+	return host.projection === 'roadmap' && drawsGrid(activeAxis(host.settings, host.axisPick) ?? 'horizons');
 }
 
 /**

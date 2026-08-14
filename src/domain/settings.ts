@@ -115,9 +115,11 @@ export interface BacklogSettings extends ItemHandling {
 	 * Declared resource names, in roadmap row order. Ships EMPTY, unlike
 	 * `horizonValues`: nobody declares who exists, so the resources axis is configured
 	 * by its assignee property and a date property alone, and this list only ever adds
-	 * rows nothing has landed in yet. It is not a vocabulary — it never narrows what
-	 * Set assignee offers — and it is not `clearable`, because absence is the shipped
-	 * state rather than a cleared default.
+	 * rows nothing has landed in yet. It never NARROWS what Set assignee offers — an
+	 * observed name is a fact and no roster overrules it — but it does lead that menu's
+	 * list wherever it opens, which it did not until 2026-08-14: naming a team here and
+	 * being offered them on one projection only reads as the setting not working. Not
+	 * `clearable`, because absence is the shipped state rather than a cleared default.
 	 */
 	resourceNames: string[];
 	/**
@@ -154,10 +156,12 @@ export interface BacklogSettings extends ItemHandling {
 	riskValues: string[];
 	/**
 	 * Frontmatter key holding who the item is assigned to, or '' when no assignee
-	 * property is named. No companion list, unlike risk and the horizon: the names a
-	 * menu offers are the ones the RESULTS carry (`observedAssignees`) plus whatever
-	 * the user types, so there is no vocabulary to declare and nothing to clear —
-	 * which is why a named key alone is enough to draw the chip.
+	 * property is named. Its companion list is OPTIONAL where risk's and the horizon's
+	 * are required — `resourceNames`, which the resources axis declares rows from and
+	 * `assigneeChoices` offers wherever the row menu opens, joined to the names the
+	 * RESULTS carry (`observedAssignees`) and to whatever the user types. So a named key
+	 * alone is still enough to draw the chip and fill its menu, and a roster is a
+	 * recommendation on top rather than the vocabulary.
 	 */
 	assigneeKey: string;
 }
@@ -338,8 +342,32 @@ export function isStartedValue(settings: BacklogSettings, state: string | null):
  * this, so the current horizon always renders checked.
  */
 export function horizonMenuValues(settings: BacklogSettings, observedHorizons: string[]): string[] {
-	const declared = new Set(settings.horizonValues.map((v) => v.toLowerCase()));
-	return [...settings.horizonValues, ...observedHorizons.filter((v) => !declared.has(v.toLowerCase()))];
+	return mergedValues(settings.horizonValues, observedHorizons);
+}
+
+/**
+ * One vocabulary out of several sources, in the order they are given, with the FIRST
+ * spelling of a name winning and matches made case-insensitively — `sameValue`'s rule
+ * applied to a list rather than to a pair.
+ *
+ * Two menus ask it and they ask it of different sources, which is why it takes lists
+ * rather than a settings object: the horizon's is declared then observed, the assignee's
+ * is drawn then declared then observed. What they share is that a declared value is a
+ * recommendation and an observed one is a fact, and neither may hide the other or turn up
+ * twice in two casings.
+ */
+export function mergedValues(...lists: readonly string[][]): string[] {
+	const seen = new Set<string>();
+	const merged: string[] = [];
+	for (const list of lists) {
+		for (const value of list) {
+			const key = value.toLowerCase();
+			if (seen.has(key)) continue;
+			seen.add(key);
+			merged.push(value);
+		}
+	}
+	return merged;
 }
 
 /**

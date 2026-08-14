@@ -55,16 +55,21 @@ describe('the projection zone', () => {
 		expect(drawn?.querySelector('.pbl-today-btn')).not.toBeNull();
 	});
 
-	it('withholds the row-fold toggle on the resources axis, because a row folds nothing', () => {
+	it('offers the row-fold toggle on BOTH grid axes, because a bar row folds on each', () => {
 		const vault = fixture();
 		const { view, containerEl } = makeView(vault, { ...bothAxes, assigneeProperty: 'note.assignee' });
 
 		view.setProjection('roadmap');
 		view.setAxisPick('dates');
 		expect(containerEl.querySelector('.pbl-click-action-toggle')).not.toBeNull();
-		// Resource rows are flat — no chevron, no ancestry collapse — so a click on one
-		// has nothing to fold and the control must not sit there offering it.
+		// Withheld here until 2026-08-14, when resource rows stopped being flat: a bar row
+		// folds its own band's subtree now, so a click on one has something to fold and a
+		// toggle that governed it everywhere else would be the one input going quiet.
 		view.setAxisPick('resources');
+		expect(containerEl.querySelector('.pbl-click-action-toggle')).not.toBeNull();
+		// Still withheld where nothing folds at all: a bucket is a card, and a card's
+		// disclosure lists children on its own face.
+		view.setAxisPick('horizons');
 		expect(containerEl.querySelector('.pbl-click-action-toggle')).toBeNull();
 	});
 
