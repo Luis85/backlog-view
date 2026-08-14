@@ -96,6 +96,13 @@ population for the advisory rather than the cards it drew.
 name, and hides the cards, the New button and the stray mark. What that looks like in a
 themed vault is a `npm run test-build` check, as ever — jsdom lays nothing out.
 
+**A selection inside a folded bucket goes dormant**, exactly as one inside a collapsed
+tree parent has always done: the path is kept so re-opening restores your place, and the
+active descendant goes with the row. Found by review on the board's fold (Codex, PR #140)
+and neither new nor the fold's — [[A selection the frame did not draw]] measures it on the
+tree and states the three ways out, all of which belong to `resyncAfterRender` rather than
+to a fold.
+
 **The keyboard gap is real and is not this note's to close.** A bucket is not a keyboard
 stop, so nothing selects one to act on and the disclosure is reachable by pointer and by
 assistive tech alone — where a board column's fold has the column stop's own menu behind

@@ -147,6 +147,10 @@ arrive with it. Its keyboard path is the column's own menu, which moved to
 withheld from a column with nothing agreed, and every column has a fold now, so it is
 unconditional and `menu.ts` — which is about an ITEM — stopped being its home.
 
+**A selection inside a folded column goes dormant** rather than being cleared — the tree's
+own behaviour when a parent above the selected row is collapsed, reached more easily here.
+Recorded, not fixed: [[A selection the frame did not draw]].
+
 **Appearance.** `.pbl-board-collapsed` shares `.pbl-board-strip`'s rules in
 `styles/board.css`, so a fold and the empty no-state column cannot drift to different
 widths. jsdom lays nothing out, so what the strip looks like in a themed vault is still a
