@@ -181,11 +181,6 @@ describe('what a bar SAYS it costs to cross an absence', () => {
 	});
 
 	it('says so differently when the stretch covers the bar whole', () => {
-		// Three days, not two: `MIN_COST_LABEL_PX` is 8, and a two-day bar at the default
-		// zoom (4px/day) draws exactly 8px — the constant's OWN boundary, derived from this
-		// shape of fixture rather than an independent number. Three days (12px) clears it
-		// with a day of margin, so this fixture tests "the stretch covers the bar whole"
-		// and not, incidentally, "exactly at the width threshold" as well.
 		const vault = new FakeVault();
 		vault.addFile('Short.md', {
 			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-04', due: '2026-08-06' },
@@ -199,27 +194,18 @@ describe('what a bar SAYS it costs to cross an absence', () => {
 	});
 
 	it('keeps the sentence reachable even where the visible label is dropped', () => {
-		// The toolbar's own rule: shed the visible thing, never the reachable one. `clashCost`
-		// drops the sentence once a bar is too narrow for it to sit beside; reached here with a
-		// bar too SHORT rather than a zoom too far out. `test/helpers/view.ts` has no zoom
-		// setter narrower than the real `setZoom`, and none of `SCALES` is narrow enough to
-		// suppress this file's own ten-day `Work` bar (`quarter`, the narrowest, still draws it
-		// at 20px) — mocking `scaleFor` to fake a narrower one changes nothing here, since
-		// `renderRoadmap.ts` closes over its own import binding rather than re-reading a
-		// namespace object a spy can intercept. A one-day bar at the default zoom crosses the
-		// threshold on its own dates instead, which is what this fixture is for. The
-		// `.pbl-sr-only` sentence in `noteAbsenceClash` is written unconditionally either way,
-		// so nothing is lost with the visible half.
-		const vault = new FakeVault();
-		vault.addFile('Brief.md', {
-			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-04', due: '2026-08-04' },
-		});
-		vault.addFile('Alice away.md', {
-			frontmatter: { type: 'Absence', assignee: 'Alice', start: '2026-08-04', due: '2026-08-06' },
-		});
-		const { containerEl } = laneRoadmap(vault);
-		const row = rowFor(containerEl, 'Brief');
+		// The toolbar's own rule: shed the visible thing, never the reachable one. There is no
+		// width check of this feature's own any more — the cost lands INSIDE the bar's title
+		// label (`renderBarLabel`), so it is dropped exactly where the title is: a near-term
+		// backlog at quarter zoom, `timelineFurniture.test.ts`'s own "draws no bar label at all
+		// on a track shorter than twice the reserve" construction, reused here rather than
+		// re-derived. The `.pbl-sr-only` sentence in `noteAbsenceClash` is written
+		// unconditionally either way, so nothing is lost with the visible half.
+		const harness = laneRoadmap(absenceVault());
+		harness.view.setZoom('quarter');
+		const row = rowFor(harness.containerEl, 'Work');
 
+		expect(row?.querySelector('.pbl-bar-label')).toBeNull();
 		expect(row?.querySelector('.pbl-days-lost')).toBeNull();
 		expect(row?.querySelector('.pbl-sr-only')?.textContent).toContain('Crosses an absence');
 	});

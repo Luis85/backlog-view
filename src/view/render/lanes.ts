@@ -352,9 +352,9 @@ export function renderLaneContextRow(ctx: RowContext, content: HTMLElement, item
  * mark, a folded band's load rail, and the wash a bar carries under it — on the review
  * instruction that three is where this codebase consolidates rather than copies again
  * (`applyLabels` replacing `applyRisk` is the same call made once already). The days-lost
- * sentence beside a bar (`noteAbsenceClash`) is the fourth caller, added afterwards for
- * the same reason the first three were: it needs the identical pair, positioned against
- * the identical bar geometry.
+ * sentence beside a bar briefly used this too, positioned as a sibling of the bar; it now
+ * lands inside the bar's own title label instead (`drawBandCollision`,
+ * `render/timeline.ts`), which needs no position of its own, so this is back to three.
  */
 function placeSpan(el: HTMLElement, geometry: BarGeometry, scale: TimelineScale): void {
 	el.setCssProps({
@@ -509,17 +509,9 @@ export function renderAbsenceWash(
  * The sentence is not a nicety. The wash over the bar tells this in colour alone, which
  * WCAG 1.4.1 refuses and which a screen reader gets nothing of at all. `.pbl-sr-only`
  * CONTENT rather than an `aria-label`, for `stateNote`'s reason: a label REPLACES the name
- * the row derives from its badge, its title and its bar's dates.
- *
- * `cost` is the visible half of the same fact, and it is `aria-hidden`: the `.pbl-sr-only`
- * sentence above already carries it, and a reader must not hear it twice. `null` is
- * `clashCost`'s own answer wherever it found no room for the sentence — never decided
- * here, so this function states no opinion about width at all. Drawn into the TRACK,
- * beside the bar rather than after the whole day grid: this used to land on `row` itself,
- * a third flex item after the lead and the (window-wide) track, which put it up to ~7300px
- * right of the lead at the default zoom and widened `.pbl-timeline-content` for every row
- * carrying one. `placeSpan` against the SAME `geometry`/`scale` the bar itself was placed
- * with is what anchors it at the bar's own right edge instead.
+ * the row derives from its badge, its title and its bar's dates. Written unconditionally —
+ * never gated on room the way the VISIBLE cost is — so a reader always gets the fact even
+ * where `drawBandCollision` finds no label to hang the cost sentence on.
  *
  * No row-level class beside `.pbl-row-conflict`. That one exists because a broken dependency
  * draws nothing else anywhere; here the wash is already on this very row, so a second accent
@@ -527,17 +519,12 @@ export function renderAbsenceWash(
  *
  * The tooltip goes on the SWATCH, not on the lead, which already tooltips the row's title.
  *
- * Returns whether the VISIBLE sentence actually drew — `cost !== null` and a crossing to
- * draw it on — which is what `drawn.daysLost` (`DrawnColors`) has to key, never a crossing
- * alone: the caller would otherwise need its own copy of this same check.
+ * Draws only the sr-only sentence and the lead swatch — the VISIBLE cost is
+ * `drawBandCollision`'s own business now, appended into the bar's title label rather than
+ * placed here, so this function needs no opinion about width or position at all.
  */
-export function noteAbsenceClash(
-	bar: { row: HTMLElement; lead: HTMLElement; track: HTMLElement },
-	crossed: Absence[],
-	cost: string | null,
-	place: { geometry: BarGeometry; scale: TimelineScale },
-): boolean {
-	if (crossed.length === 0) return false;
+export function noteAbsenceClash(bar: { row: HTMLElement; lead: HTMLElement }, crossed: Absence[]): void {
+	if (crossed.length === 0) return;
 	const spans = crossed.map((one) => `${one.title} ${formatCivil(one.start)} → ${formatCivil(one.target)}`).join('; ');
 	const said = `Crosses ${crossed.length === 1 ? 'an absence' : `${crossed.length} absences`}: ${spans}`;
 	bar.row.createSpan({ cls: 'pbl-sr-only', text: said });
@@ -545,17 +532,6 @@ export function noteAbsenceClash(
 	// lead mark and the column it stands for read as one thing — and the legend can key it.
 	const flag = bar.lead.createSpan({ cls: 'pbl-away-flag pbl-away-swatch', attr: { 'aria-hidden': 'true' } });
 	setTooltip(flag, said);
-	if (cost === null) return false;
-	// A plain in-flow child of the track, exactly `.pbl-bar-label`'s own shape when it
-	// draws "after" a bar — including that label's `pointer-events: none`, so this cannot
-	// reopen `docs/bugs/An absence stretch is a dead spot in its own band.md` any more than
-	// that established label already does: neither sits over the bar itself (the wash's own
-	// case, which DOES need to let the pointer through to the grips beneath it), and the
-	// row-level drop target resolves through DOM containment, which a plain descendant with
-	// no listener of its own does not disturb.
-	const costEl = bar.track.createSpan({ cls: 'pbl-days-lost', text: cost, attr: { 'aria-hidden': 'true' } });
-	placeSpan(costEl, place.geometry, place.scale);
-	return true;
 }
 
 /**

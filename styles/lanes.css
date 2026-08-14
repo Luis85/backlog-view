@@ -302,36 +302,21 @@
 	);
 }
 
-/* The days-lost sentence beside the bar — `noteAbsenceClash`'s visible half, dropped by
-   `clashCost` wherever there is no room for it (`src/view/render/timeline.ts`). Muted TEXT,
-   never the away key itself: this is words, not a mark standing for the stretch, so it draws
-   from the same token every other hidden-in-plain-sight row note does.
-
-   A child of the TRACK, not of the row, and positioned off the SAME `--pbl-bar-left` /
-   `--pbl-bar-width` pair `placeSpan` set on it (its own copies, not the bar's — a sibling
-   cannot read custom properties an element beside it declared) — `.pbl-bar-label`'s own
-   shape when it draws "after" a bar, including that label's `pointer-events: none`: this
-   text sits to the right of the bar, never over it, so it carries none of the wash's own
-   reason to let the pointer through to the grips beneath.
-
-   It used to be a THIRD flex child of `.pbl-timeline-row` itself, after the lead and the
-   (window-wide) track — up to ~7300px right of the lead at the default zoom, and wide
-   enough on `.pbl-timeline-content`'s `width: max-content` to widen every row carrying one.
-   Anchoring it in the track against the bar's own geometry is what fixed both.
-
-   How far past the bar's right edge this can run, and whether it collides with anything
-   drawn further along the same track, is a live-vault question this stylesheet cannot
-   settle — `clashCost`'s own width threshold decides only whether the bar itself is wide
-   enough to draw this at all, not what sits beside it. */
+/* The days-lost sentence — `drawBandCollision`'s visible half of a crossing
+   (`src/view/render/timeline.ts`), appended as a plain child of the bar's OWN title label
+   (`.pbl-bar-label`, `styles/timelineFurniture.css`) rather than positioned as a mark of
+   its own. That is what makes this rule almost nothing: no `position`, no `left`, no pair
+   of custom properties to place it against — the label it lives inside already carries the
+   position, the `nowrap`, the truncation and the muted colour, all inherited. Two earlier
+   shapes both had to be undone to get here: a sibling of `.pbl-timeline-row` widened every
+   row carrying one to the whole day track's own width, and a sibling of the bar with its
+   own `placeSpan` copy landed squarely on top of the title whenever both existed on the
+   same track (`renderBarLabel` places "after" at the identical edge this used to). A bar
+   too cramped for its own title is now too cramped for this sentence as well, by
+   construction: `drawBandCollision` never reaches for this class at all where
+   `renderBarLabel` returned no label to append it to. */
 .pbl-days-lost {
-	position: absolute;
-	top: 50%;
-	transform: translateY(-50%);
-	left: calc(var(--pbl-bar-left) + var(--pbl-bar-width) + var(--size-4-2));
-	white-space: nowrap;
-	font-size: var(--font-ui-smaller);
 	color: var(--text-muted);
-	pointer-events: none;
 }
 
 /* A resource with nothing on screen under them: still a row, because a roster exists to show

@@ -431,64 +431,47 @@ function drawEntries(entries: TimelineEntry[], pass: EntryPass): void {
  * twice for one row and left the two answers free to disagree if the band's own absences
  * ever changed between the calls.
  *
- * `drawn.daysLost` is set from `cost !== null` — whether a VISIBLE sentence actually drew —
- * not from `crossed.length > 0`: a crossing with no room for the label (`clashCost`'s own
- * width threshold) still flags the lead swatch, but the legend's "Days lost" key is about
- * the SENTENCE, and keying it for a crossing that drew no sentence anywhere is the exact
- * "keys a mark nothing on screen makes" defect `DrawnColors.daysLost`'s own comment warns
- * against for `absence` beside it.
+ * The cost text is appended HERE, as a plain child of `bar.label` — the very element
+ * `renderBarLabel` already decided has room for a title, or dropped — rather than
+ * positioned as a sibling of the bar with its own width check. A bar too cramped for its
+ * own title is too cramped for a sentence about it, by the SAME reserve, so there is no
+ * second "is there room" to keep in step and no second offset to compute: `bar.label ===
+ * null` is the whole suppression rule now. `drawn.daysLost` follows from whether that
+ * append actually happened — a crossing with a dropped title still flags the lead swatch,
+ * but the legend's "Days lost" key is about the SENTENCE, and keying it where none landed
+ * anywhere is the exact "keys a mark nothing on screen makes" defect `DrawnColors.daysLost`'s
+ * own comment warns against for `absence` beside it.
  */
-function drawBandCollision(bar: { row: HTMLElement; lead: HTMLElement; track: HTMLElement }, row: TimelineRow, lane: ResourceLane, ruler: { window: TimelineWindow; scale: TimelineScale }, drawn: DrawnColors): void {
+function drawBandCollision(bar: { row: HTMLElement; lead: HTMLElement; track: HTMLElement; label: HTMLElement | null }, row: TimelineRow, lane: ResourceLane, ruler: { window: TimelineWindow; scale: TimelineScale }, drawn: DrawnColors): void {
 	renderAbsenceWash(bar.track, lane.absences, ruler);
 	const crossed = crossedAbsences(row.bar.span, lane.absences);
 	if (crossed.length === 0) return;
-	const geometry = barGeometry(ruler.window, row.bar.span);
-	const cost = clashCost(row, crossed, geometry, ruler.scale);
-	if (noteAbsenceClash(bar, crossed, cost, { geometry, scale: ruler.scale })) drawn.daysLost = true;
+	noteAbsenceClash(bar, crossed);
+	if (bar.label === null) return;
+	bar.label.createSpan({ cls: 'pbl-days-lost', text: clashCost(row, crossed), attr: { 'aria-hidden': 'true' } });
+	drawn.daysLost = true;
 }
 
 /**
- * Width in PIXELS below which a bar's own days-lost sentence draws only into
- * `.pbl-sr-only`, never as the visible span beside the swatch — a live-vault tuning
- * knob, the same caveat the wash's own percentages in `styles/lanes.css` carry: jsdom
- * paints nothing, so nothing here can watch what the sentence actually looks like next
- * to a bar this narrow. Kept low enough that an ORDINARY bar at the default month zoom
- * (4px/day) still shows it — a two-day bar is 8px wide there — because suppressing that
- * case would make the feature invisible on the zoom most vaults open at.
- *
- * What 8 buys and no more: a FLOOR, not a fit — it drops the label only where the bar
- * itself draws narrower than the swatch beside it (`.pbl-away-swatch`, `--icon-s`). Every
- * bar that clears it still gets the sentence, which can then run up to ~172px past the
- * bar's own right edge; whether THAT collides with anything else on the grid is a
- * live-vault question this number does not answer, same as the wash's own percentages.
- */
-const MIN_COST_LABEL_PX = 8;
-
-/**
- * What a bar SAYS about the days it loses, or null where the label has no room. `crossed`
- * is the caller's own answer to "which stretches does this bar cross" — passed rather than
- * re-derived from `lane.absences`, so the count below can only ever agree with the sentence
- * and the swatch built from the same list.
+ * What a bar SAYS about the days it loses. `crossed` is the caller's own answer to "which
+ * stretches does this bar cross" — passed rather than re-derived from `lane.absences`, so
+ * the count below can only ever agree with the sentence and the swatch built from the
+ * same list.
  *
  * A milestone is a point, so there is no arithmetic to do: `crossedAbsences` already
  * answered whether it lands on an away day, and a count of days would be one either way.
  *
- * The threshold is the whole reason this returns null rather than a string every time. The
- * label is new furniture INSIDE the day track: zoomed out far enough, a bar renders only a
- * few pixels wide while this sentence is close to 180px, so it would dominate the grid and
- * run past the bar it is about. The `.pbl-sr-only` sentence in `noteAbsenceClash` is written
- * unconditionally, so dropping the visible half loses nothing — the toolbar's own rule, shed
- * the visible thing and never the reachable one.
+ * No width check here any more — `drawBandCollision`'s own `bar.label === null` guard is
+ * what decides whether this string is ever asked for, so this states no opinion about room.
  *
- * `lost` is real calendar days, off the note's own span; `geometry.spanDays` is that same
- * span CLAMPED into the drawn window, which is a narrower number for a bar clipped at the
- * window's edge. Comparing `lost` against the clamped count would call a few days lost off
- * a sliver of a decades-long plan "all" of it — the unclamped total below, taken from
- * `row.bar.span` directly rather than from `geometry`, is what "all" has to mean.
+ * `lost` is real calendar days, off the note's own span; `geometry.spanDays` (used to be
+ * compared against here) is that same span CLAMPED into the drawn window, a narrower
+ * number for a bar clipped at the window's edge. Comparing `lost` against the clamped
+ * count would call a few days lost off a sliver of a decades-long plan "all" of it — the
+ * unclamped total below, taken from `row.bar.span` directly, is what "all" has to mean.
  */
-function clashCost(row: TimelineRow, crossed: Absence[], geometry: BarGeometry, scale: TimelineScale): string | null {
+function clashCost(row: TimelineRow, crossed: Absence[]): string {
 	if (isMarkerType(row.bar.item.typeName)) return '· falls on an away day';
-	if (geometry.spanDays * scale.dayPx < MIN_COST_LABEL_PX) return null;
 	const lost = daysLost(row.bar.span, crossed);
 	const realSpanDays = daysBetween((row.bar.span.start ?? row.bar.span.target) as CivilDate, (row.bar.span.target ?? row.bar.span.start) as CivilDate) + 1;
 	return lost >= realSpanDays ? `all ${lost} days lost` : `${lost} days lost to absence`;
@@ -585,7 +568,7 @@ function renderBarRow(
 	window: TimelineWindow,
 	entry: TimelineRow,
 	scale: TimelineScale,
-): { row: HTMLElement; colors: BarColors; lead: HTMLElement; track: HTMLElement } {
+): { row: HTMLElement; colors: BarColors; lead: HTMLElement; track: HTMLElement; label: HTMLElement | null } {
 	const bar = entry.bar;
 	// The item's OWN workflow, read ONCE and threaded through the three things on this row
 	// that key a colour or say one in words: the slot class, the hidden state words, and
@@ -675,7 +658,7 @@ function renderBarRow(
 		mounts.dnd.wireCard(el, bar.item, 'body', () => mounts.scroller.scrollLeft);
 	}
 	renderConnector(ctx, mounts, { row, barEl: el, geometry }, bar);
-	renderBarLabel(track, bar, geometry, scale, window);
+	const label = renderBarLabel(track, bar, geometry, scale, window);
 	renderRowFacts(row, ctx, bar, { dates, own, conflictedPrereqs: mounts.conflictedPrereqs, lead });
 	// The one caller that passes a fold: this row has a chevron, so "clicking an item
 	// expands or collapses it" means here exactly what it means in the tree. Its two
@@ -701,7 +684,7 @@ function renderBarRow(
 		// is still exactly the case where the state is outside its own vocabulary.
 		accent: !own.done && paint === null && !milestoneDrawn,
 	};
-	return { row, colors, lead, track };
+	return { row, colors, lead, track, label };
 }
 
 /**

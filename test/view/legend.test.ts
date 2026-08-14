@@ -162,6 +162,18 @@ describe('the roadmap legend', () => {
 		expect(swatchLabels(containerEl)).toContain('Unavailable');
 	});
 
+	it('sits inside the ancestor --pbl-away is actually scoped to', () => {
+		// The stylesheet-text pairing in `timelineBoxing.test.ts` supplies `.pbl-roadmap-dates`
+		// as the scope selector by hand, so it would catch a REGRESSION back to the old wrong
+		// scope but not a future move to a different wrong-but-updated selector. This is the
+		// DOM half: the legend really is a descendant of the element that class lands on.
+		const { view, containerEl } = makeView(datedVault(), { ...DATE_AXIS, ...WORKFLOW }, { collapsed: true });
+		view.setProjection('roadmap');
+
+		const legend = legendEl(containerEl);
+		expect(legend?.closest('.pbl-roadmap-dates')).not.toBeNull();
+	});
+
 	it('keys days lost exactly when a clash drew, on the same rule as the hatch beside it', () => {
 		// `drawn.daysLost` is the render's own word for "some row on this grid reported a
 		// cost", asked the same way `drawn.absence` is — never a predicate over
@@ -205,13 +217,16 @@ describe('the roadmap legend', () => {
 	});
 
 	it('keys no days lost for a crossing whose own sentence never drew', () => {
-		// `drawn.daysLost` is `cost !== null`, not `crossed.length > 0` — a defect this
-		// pass had until review: a bar too narrow for `clashCost`'s own width threshold
-		// still crosses (its lead swatch draws) but states no `.pbl-days-lost` sentence
-		// anywhere, and the legend must not claim a key for a mark nothing on screen makes.
+		// `drawn.daysLost` is set from the append into the bar's title label actually
+		// happening, not from `crossed.length > 0` — a defect this pass had until review: a
+		// bar whose title label is dropped (`renderBarLabel`) still crosses (its lead swatch
+		// draws) but has nowhere to put a `.pbl-days-lost` sentence, and the legend must not
+		// claim a key for a mark nothing on screen makes. Reached the same way
+		// `absenceCollision.test.ts` reaches it: a near-term backlog at quarter zoom, where
+		// `timelineFurniture.test.ts` already establishes every bar's label is dropped.
 		const vault = new FakeVault();
-		vault.addFile('Brief.md', {
-			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-04', due: '2026-08-04' },
+		vault.addFile('Work.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
 		});
 		vault.addFile('Alice away.md', {
 			frontmatter: { type: 'Absence', assignee: 'Alice', start: '2026-08-04', due: '2026-08-06' },
@@ -223,8 +238,11 @@ describe('the roadmap legend', () => {
 		);
 		view.setProjection('roadmap');
 		view.setAxisPick('resources');
+		view.setZoom('quarter');
 
-		// The crossing itself still shows — the lead swatch draws regardless of width.
+		// The crossing itself still shows — the lead swatch draws regardless of the title's
+		// own room — and the title itself really is the thing that dropped.
+		expect(containerEl.querySelector('.pbl-bar-label')).toBeNull();
 		expect(containerEl.querySelector('.pbl-away-swatch')).not.toBeNull();
 		expect(containerEl.querySelector('.pbl-days-lost')).toBeNull();
 		expect(swatchLabels(containerEl)).not.toContain('Days lost');
