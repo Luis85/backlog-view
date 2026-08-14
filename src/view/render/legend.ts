@@ -71,12 +71,13 @@ export function renderLegend(
 	// the resources axis, and stays lit through a fold, since a collapsed band's header
 	// keeps drawing its own stretches (2026-08-14).
 	if (drawn.absence) addSwatch(legendEl, 'pbl-legend-absence', 'Unavailable');
-	// The days-lost swatch keys the SENTENCE, not the crossing: `drawn.daysLost` is
-	// `cost !== null` from the render (`DrawnColors.daysLost`'s own doc), so a row that
-	// crosses a stretch but drew no visible label — `clashCost`'s width threshold found
-	// no room for it — leaves this unlit even though that row's lead swatch still shows.
+	// The days-lost swatch keys the TOKEN, not the crossing: `drawn.daysLost` is whether
+	// `drawBandCollision` actually appended `.pbl-days-lost` (`DrawnColors.daysLost`'s own
+	// doc), so a row that crosses a stretch but whose title label was DROPPED —
+	// `renderBarLabel`'s own reserve-and-flip decision, not a width check of this
+	// feature's own — leaves this unlit even though that row's lead swatch still shows.
 	// Never a predicate over `roadmap.lanes` either, for `drawn.absence`'s own reason: a
-	// fold or a filter taking the sentence off screen must take the key with it.
+	// fold or a filter taking the token off screen must take the key with it.
 	if (drawn.daysLost) addSwatch(legendEl, 'pbl-legend-days-lost', 'Days lost');
 }
 

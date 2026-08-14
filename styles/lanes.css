@@ -302,7 +302,7 @@
 	);
 }
 
-/* The days-lost sentence — `drawBandCollision`'s visible half of a crossing
+/* The days-lost TOKEN — `drawBandCollision`'s visible half of a crossing
    (`src/view/render/timeline.ts`), appended as a plain child of the bar's OWN title label
    (`.pbl-bar-label`, `styles/timelineFurniture.css`) rather than positioned as a mark of
    its own. That is what makes this rule almost nothing: no `position`, no `left`, no pair
@@ -314,8 +314,14 @@
    same track (`renderBarLabel` places "after" at the identical edge this used to). A bar
    too cramped for its own title is now too cramped for this sentence as well, by
    construction: `drawBandCollision` never reaches for this class at all where
-   `renderBarLabel` returned no label to append it to. */
+   `renderBarLabel` returned no label to append it to.
+
+   `margin-left` rather than a leading space baked into the string: a leading space in a
+   text node is not reliably preserved (whitespace collapsing) and is invisible to a reader
+   of the code either way, where a margin states the gap as what it is. Without it the
+   label's own text and this span run together as one word — `Work3d lost`. */
 .pbl-days-lost {
+	margin-left: var(--size-4-1);
 	color: var(--text-muted);
 }
 

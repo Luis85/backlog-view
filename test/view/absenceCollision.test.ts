@@ -59,9 +59,9 @@ describe('the days a band is unavailable, shaded across its work', () => {
 		// OVER the bar, and by document order alone — no `z-index` anywhere, which is the
 		// whole layer story (see `renderAbsenceWash`). AFTER the bar in the track it is in, so
 		// the unavailable days tint the bar crossing them rather than being covered by it —
-		// not necessarily the LAST child any more: `.pbl-days-lost` (`noteAbsenceClash`) can
-		// land after it in the same track, and does not disturb this ordering since it sits
-		// past the bar's own right edge rather than over it.
+		// not necessarily the LAST child any more: `.pbl-bar-label` (`renderBarLabel`), with
+		// `.pbl-days-lost` as its own grandchild now, can land after it in the same track,
+		// and does not disturb this ordering since neither sits over the bar itself.
 		const track = washes[0].parentElement;
 		const children = Array.from(track?.children ?? []);
 		const barIndex = children.findIndex((el) => el.classList.contains('pbl-bar'));
@@ -129,10 +129,12 @@ describe('the mark a bar carries for crossing one', () => {
 			.map((span) => span.textContent ?? '')
 			.filter((text) => text.startsWith('Crosses'));
 
-		expect(said).toEqual(['Crosses an absence: Alice away 2026-08-04 → 2026-08-06']);
+		// `Work` runs 1–10 August and Alice is away 4–6: three days, folded into the same
+		// sentence the swatch tooltips with — the full form behind the row's short token.
+		expect(said).toEqual(['Crosses an absence, 3 days lost to absence: Alice away 2026-08-04 → 2026-08-06']);
 		const flag = work?.querySelector<HTMLElement>('.pbl-timeline-lead .pbl-away-flag');
 		expect(flag).not.toBeNull();
-		expect(flag?.dataset.tooltip).toBe('Crosses an absence: Alice away 2026-08-04 → 2026-08-06');
+		expect(flag?.dataset.tooltip).toBe('Crosses an absence, 3 days lost to absence: Alice away 2026-08-04 → 2026-08-06');
 	});
 
 	it('leaves a bar that clears the stretch unmarked', () => {
@@ -176,8 +178,9 @@ describe('what a bar SAYS it costs to cross an absence', () => {
 		const { containerEl } = laneRoadmap(absenceVault());
 		const row = rowFor(containerEl, 'Work');
 
-		// `Work` runs 1–10 August and Alice is away 4–6: three days.
-		expect(row?.querySelector('.pbl-days-lost')?.textContent).toBe('3 days lost to absence');
+		// `Work` runs 1–10 August and Alice is away 4–6: three days. Short TOKEN, not a
+		// sentence — `.pbl-bar-label`'s content box has no room for one; see `clashCost`.
+		expect(row?.querySelector('.pbl-days-lost')?.textContent).toBe('3d lost');
 	});
 
 	it('says so differently when the stretch covers the bar whole', () => {
@@ -190,7 +193,7 @@ describe('what a bar SAYS it costs to cross an absence', () => {
 		});
 		const { containerEl } = laneRoadmap(vault);
 
-		expect(rowFor(containerEl, 'Short')?.querySelector('.pbl-days-lost')?.textContent).toBe('all 3 days lost');
+		expect(rowFor(containerEl, 'Short')?.querySelector('.pbl-days-lost')?.textContent).toBe('all 3d');
 	});
 
 	it('keeps the sentence reachable even where the visible label is dropped', () => {
@@ -245,10 +248,10 @@ describe('what a bar SAYS it costs to cross an absence', () => {
 
 		const said = rowFor(containerEl, 'Ancient')?.querySelector('.pbl-days-lost')?.textContent ?? '';
 		expect(said, 'a sliver of a decades-long plan is not "all" of it').not.toMatch(/^all /);
-		expect(said).toMatch(/^\d+ days lost to absence$/);
+		expect(said).toMatch(/^\d+d lost$/);
 	});
 
-	it('says a milestone falls on an away day rather than counting its days', () => {
+	it('says a milestone is just away, not a day count', () => {
 		const vault = new FakeVault();
 		vault.addFile('Ship.md', {
 			frontmatter: { type: 'Milestone', order: 10, assignee: 'Alice', due: '2026-08-05' },
@@ -258,8 +261,10 @@ describe('what a bar SAYS it costs to cross an absence', () => {
 		});
 		const { containerEl } = laneRoadmap(vault);
 
-		expect(rowFor(containerEl, 'Ship')?.querySelector('.pbl-days-lost')?.textContent).toBe(
-			'· falls on an away day',
+		expect(rowFor(containerEl, 'Ship')?.querySelector('.pbl-days-lost')?.textContent).toBe('· away');
+		// The full form still says it in words, in the sentence a reader or a tooltip reaches.
+		expect(rowFor(containerEl, 'Ship')?.querySelector('.pbl-sr-only')?.textContent).toContain(
+			'falls on an away day',
 		);
 	});
 });

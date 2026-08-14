@@ -522,11 +522,16 @@ export function renderAbsenceWash(
  * Draws only the sr-only sentence and the lead swatch — the VISIBLE cost is
  * `drawBandCollision`'s own business now, appended into the bar's title label rather than
  * placed here, so this function needs no opinion about width or position at all.
+ *
+ * `costSentence` is `clashCostSentence`'s FULL form of the same fact `.pbl-days-lost`
+ * abbreviates on the row — folded into `said` so the tooltip and the sr-only span always
+ * carry the whole count even where the row itself only ever shows the short token, or
+ * shows nothing at all because the title's own label was dropped.
  */
-export function noteAbsenceClash(bar: { row: HTMLElement; lead: HTMLElement }, crossed: Absence[]): void {
+export function noteAbsenceClash(bar: { row: HTMLElement; lead: HTMLElement }, crossed: Absence[], costSentence: string): void {
 	if (crossed.length === 0) return;
 	const spans = crossed.map((one) => `${one.title} ${formatCivil(one.start)} → ${formatCivil(one.target)}`).join('; ');
-	const said = `Crosses ${crossed.length === 1 ? 'an absence' : `${crossed.length} absences`}: ${spans}`;
+	const said = `Crosses ${crossed.length === 1 ? 'an absence' : `${crossed.length} absences`}, ${costSentence}: ${spans}`;
 	bar.row.createSpan({ cls: 'pbl-sr-only', text: said });
 	// A hatched swatch in the away key rather than the `calendar-x` glyph it replaced, so the
 	// lead mark and the column it stands for read as one thing — and the legend can key it.

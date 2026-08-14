@@ -425,11 +425,10 @@ function drawEntries(entries: TimelineEntry[], pass: EntryPass): void {
  * is already at the branching budget `npm run analyze` enforces just telling the three entry
  * kinds apart.
  *
- * `crossed` is computed once, here, and threaded into both `clashCost` (for the day count)
- * and `noteAbsenceClash` (for the sentence and the swatch) — passed rather than each asking
- * `crossedAbsences` again over the band's full `absences` list, which used to run that walk
- * twice for one row and left the two answers free to disagree if the band's own absences
- * ever changed between the calls.
+ * `crossed` is computed once, here, and threaded into `absenceCost` and `noteAbsenceClash`
+ * — passed rather than each asking `crossedAbsences` again over the band's full `absences`
+ * list, which used to run that walk twice for one row and left the answers free to
+ * disagree if the band's own absences ever changed between the calls.
  *
  * The cost text is appended HERE, as a plain child of `bar.label` — the very element
  * `renderBarLabel` already decided has room for a title, or dropped — rather than
@@ -438,7 +437,7 @@ function drawEntries(entries: TimelineEntry[], pass: EntryPass): void {
  * second "is there room" to keep in step and no second offset to compute: `bar.label ===
  * null` is the whole suppression rule now. `drawn.daysLost` follows from whether that
  * append actually happened — a crossing with a dropped title still flags the lead swatch,
- * but the legend's "Days lost" key is about the SENTENCE, and keying it where none landed
+ * but the legend's "Days lost" key is about the TOKEN, and keying it where none landed
  * anywhere is the exact "keys a mark nothing on screen makes" defect `DrawnColors.daysLost`'s
  * own comment warns against for `absence` beside it.
  */
@@ -446,35 +445,43 @@ function drawBandCollision(bar: { row: HTMLElement; lead: HTMLElement; track: HT
 	renderAbsenceWash(bar.track, lane.absences, ruler);
 	const crossed = crossedAbsences(row.bar.span, lane.absences);
 	if (crossed.length === 0) return;
-	noteAbsenceClash(bar, crossed);
+	const cost = absenceCost(row, crossed);
+	noteAbsenceClash(bar, crossed, cost.full);
 	if (bar.label === null) return;
-	bar.label.createSpan({ cls: 'pbl-days-lost', text: clashCost(row, crossed), attr: { 'aria-hidden': 'true' } });
+	bar.label.createSpan({ cls: 'pbl-days-lost', text: cost.short, attr: { 'aria-hidden': 'true' } });
 	drawn.daysLost = true;
 }
 
 /**
- * What a bar SAYS about the days it loses. `crossed` is the caller's own answer to "which
- * stretches does this bar cross" — passed rather than re-derived from `lane.absences`, so
- * the count below can only ever agree with the sentence and the swatch built from the
- * same list.
+ * What a crossing costs — the SHORT token for the row and the FULL sentence for the
+ * tooltip and the sr-only span, computed together so the two can never disagree about the
+ * number. Two strings rather than `clashCost` and a `clashCostSentence` beside it, because
+ * both need the SAME `lost`/`whole` arithmetic and a caller asking for one alone was the
+ * shape that risked the two drifting apart, the same reason `crossed` above is computed once
+ * for both this and `noteAbsenceClash`.
  *
- * A milestone is a point, so there is no arithmetic to do: `crossedAbsences` already
- * answered whether it lands on an away day, and a count of days would be one either way.
+ * The short form exists because `.pbl-bar-label`'s content box measures 118px (`max-width:
+ * 144px`, `box-sizing: border-box`, `padding: 0 8px` plus the `after` variant's own
+ * `padding-left: 18px`), and a full sentence never fitted there even with an empty title in
+ * front of it — "15 days lost to absence" alone is ~128px at `--font-ui-smaller`. These
+ * short forms are ~40–55px, which is what leaves the box any room for a title to ellipsize
+ * into; the full form is never lost, only moved off the row itself.
  *
- * No width check here any more — `drawBandCollision`'s own `bar.label === null` guard is
- * what decides whether this string is ever asked for, so this states no opinion about room.
+ * The milestone case is answered FIRST, before any arithmetic: a milestone is a point, so
+ * `crossedAbsences` already answered whether it lands on an away day and a count of days
+ * would be one either way.
  *
- * `lost` is real calendar days, off the note's own span; `geometry.spanDays` (used to be
- * compared against here) is that same span CLAMPED into the drawn window, a narrower
- * number for a bar clipped at the window's edge. Comparing `lost` against the clamped
- * count would call a few days lost off a sliver of a decades-long plan "all" of it — the
- * unclamped total below, taken from `row.bar.span` directly, is what "all" has to mean.
+ * `lost` is real calendar days, off the note's own span; the unnamed unclamped total below
+ * is that same span's REAL length, which is what "whole" has to mean — `geometry.spanDays`
+ * is the window-CLAMPED width and a narrower number for a bar clipped at the window's edge,
+ * so comparing against it would call a few days lost off a sliver of a decades-long plan
+ * "all" of it.
  */
-function clashCost(row: TimelineRow, crossed: Absence[]): string {
-	if (isMarkerType(row.bar.item.typeName)) return '· falls on an away day';
+function absenceCost(row: TimelineRow, crossed: Absence[]): { short: string; full: string } {
+	if (isMarkerType(row.bar.item.typeName)) return { short: '· away', full: 'falls on an away day' };
 	const lost = daysLost(row.bar.span, crossed);
-	const realSpanDays = daysBetween((row.bar.span.start ?? row.bar.span.target) as CivilDate, (row.bar.span.target ?? row.bar.span.start) as CivilDate) + 1;
-	return lost >= realSpanDays ? `all ${lost} days lost` : `${lost} days lost to absence`;
+	const whole = lost >= daysBetween((row.bar.span.start ?? row.bar.span.target) as CivilDate, (row.bar.span.target ?? row.bar.span.start) as CivilDate) + 1;
+	return whole ? { short: `all ${lost}d`, full: `all ${lost} days lost` } : { short: `${lost}d lost`, full: `${lost} days lost to absence` };
 }
 
 /**
