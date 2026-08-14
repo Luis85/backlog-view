@@ -372,9 +372,9 @@ describe('the absence marks are drawn from the content palette', () => {
 	});
 
 	it('gives the shading no layer of its own', () => {
-		// It sits under the bar by document order — prepended into the track — which is the
-		// sandwich `styles/dependencyArrows.css` records. A `z-index` here, or on `.pbl-bar`
-		// to lift it instead, competes with the sticky lead column at 2.
+		// It sits over the bar by document order — appended after it — which is the layer
+		// argument `styles/dependencyArrows.css` records, used in the other direction. A
+		// `z-index` on either element competes with the sticky lead column at 2.
 		expect(bodyOf(lanes, '.pbl-absence-wash', 'styles/lanes.css')).not.toContain('z-index');
 	});
 });

@@ -40,12 +40,11 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 - **An absence is readable against the work it crosses** — the stretch is drawn in a text
   colour instead of the one the gridlines and the weekend banding are made of, so it no longer
   reads fainter than the shading behind it, and at the same height as a bar. The same days are
-  now shaded behind the bars of that person's own rows, so a plan running through an absence is
-  one line to read rather than two to compare; the named stretch stays where it was, with its
-  title, its dates and its menu. A bar scheduled across one carries a marker in its row header
-  naming which absence and which days, and the legend gains an **Unavailable** key wherever a
-  stretch is actually on screen. A row header whose person is away says so beside the count,
-  which still counts work.
+  now shaded across that person's own rows and over the bars in them, so a plan running through
+  an absence is one line to read rather than two to compare; the named stretch stays where it
+  was, with its title, its dates and its menu. A bar scheduled across one carries a marker in
+  its row header naming which absence and which days, and the legend gains an **Unavailable**
+  key wherever a stretch is actually on screen.
 
 - **Schedule from a resource's row** — a bar in someone's row now behaves like a bar on
   the plain timeline: drag its body to move it in time, drag either end to change how long

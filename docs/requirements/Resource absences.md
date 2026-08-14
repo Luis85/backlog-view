@@ -120,7 +120,7 @@ already looks.
   while this way the worst outcome is the right dates under the old name — visible, and
   fixable from the same menu.
 - **4k — the stretch also shades the band's own work rows** (added 2026-08-14). The same
-  unavailable days are drawn behind the bars of every work row in that band, so a bar and
+  unavailable days are drawn over the bars of every work row in that band, so a bar and
   the stretch it crosses are read on one line rather than two — which is what the user story
   above asks for and what a line of its own could not give: the collision was the hardest
   thing on the band to see. **4a is unchanged**: both still draw, stacked, and nothing moves
@@ -324,13 +324,15 @@ names and nothing about what they resolve to. See
 **The wash (4k) is `renderAbsenceWash`, beside `renderLaneAbsence`**, called from
 `drawEntries`' own row branch — a WORK row only, since the stretch's own line already carries
 the mark, a context row makes no positional claim at all, and on the dated axis there is no
-band to be a member of. It is PREPENDED into the row's day track, and that is the whole layer
-story: appended it paints over the bar, and giving `.pbl-bar` a `z-index` to lift it instead
-would out-rank the sticky lead column at 2, since the track establishes no stacking context.
-A per-ROW wash rather than a band-height one because a band has no container element — its
-top and height are knowable only by measuring after the render, the layout read
-`src/view/CLAUDE.md` forbids and the reason `TimelineDrawing.laneElement` reports per element
-rather than wiring a band.
+band to be a member of. It is APPENDED into the row's day track, so it sits over the bar, and
+that is the whole layer story: it shipped *under* the bars and was corrected the same day from
+a live vault, because a wash a bar paints over marks the days that are free and hides exactly
+the ones the reader is looking for. What must not be reached for either way is a `z-index`:
+the track establishes no stacking context, so a layer on either element would out-rank the
+sticky lead column at 2. A per-ROW wash rather than a band-height one because a band has no
+container element — its top and height are knowable only by measuring after the render, the
+layout read `src/view/CLAUDE.md` forbids and the reason `TimelineDrawing.laneElement` reports
+per element rather than wiring a band.
 
 **`crossedAbsences` in `src/domain/absences.ts` is the one place "does this bar cross a
 stretch" is answered.** It judges the overlap on the days the bar DRAWS — `start ?? target` …
@@ -344,12 +346,13 @@ reports it is `noteAbsenceClash`, the dependency conflict's shape reused — a g
 lead plus the words it stands for as `.pbl-sr-only` content, because the wash tells this in
 colour alone and WCAG 1.4.1 refuses that.
 
-**The band header's own glyph** (`renderLaneHead`) qualifies the count rather than changing
-what it counts: `lane.bars.length` is RESULT bars and stays so, the rule a bucket's count
-already keeps, which had left a band whose only content is an absence reading `0`. It is
-`aria-hidden`, and that is honest rather than a gap — each stretch's own row below carries
-`<title> — unavailable <dates>` as its accessible name, so this is a second route for a
-sighted reader rather than the only route to the fact.
+**The band header carries NO glyph saying the band holds an absence, and that is a refusal
+rather than an omission.** One was built on 2026-08-14 — `lane.bars.length` is RESULT bars and
+stays so, the rule a bucket's count already keeps, which leaves a band whose only content is an
+absence reading `0` — and it was removed the same day, from the vault it was built for: the
+stretch's own hatched row is directly beneath the header, so the `0` is never read alone, and a
+fourth `user-x` in one lead competed with the Add absence button that reveals on hover in the
+same place. The reading of `0` is the accepted cost, and the row below is what pays it.
 
 Creating one is `AbsencePromptModal` in `src/ui/prompts.ts` (`SchedulePromptModal`'s shape,
 with no per-field clear button — an empty end is not a real answer here) opened by
@@ -389,14 +392,13 @@ a plain div carrying its own `aria-label` and the same `aria-description` every 
 band gets; and the delete's confirmation behaviour under the user's own "deleted files"
 setting.
 
-The 2026-08-14 readability increment adds four to that list, none of them answerable here and
-only three of them answerable by `npm run harness`, which draws Obsidian's DEFAULT colours
-while a themed vault replaces exactly the tokens this change turns on: whether 18% of
-`--text-muted` actually out-reads a themed vault's weekend shading, and whether it still reads
-as shading rather than as a second bar under the one it sits beneath; whether the hatch at
-`--text-muted` holds against a community theme's background and against a bar it overlaps —
-the check above, now with a different token in it; whether two glyphs in one lead crowd the
-title at a narrow lead width; and whether the `Unavailable` swatch's finer hatch reads as
-hatch at 10px. The demo fixture is already pointed at the first three: `demoVault()` carries
-Dana's `Single sign-on` (2026-07-20 → 2026-08-15) running straight through her absence
-(2026-08-10 → 2026-08-14), plus Sam, whose row exists only because he is away.
+The 2026-08-14 readability increment added four to that list and **the first two are now
+answered**: checked in a vault at 385 results, in light, the hatch and the wash both out-read
+the weekend banding, and the wash reads as shading rather than as a second bar — once it was
+drawn OVER the bars rather than under them, which is what that look found. What stays owed:
+whether two glyphs in one lead (a dependency flag and an absence flag, which can both land on
+one row) crowd the title at a narrow lead width; whether the `Unavailable` swatch's finer hatch
+reads as hatch at 10px rather than as a slashed circle; and all of it in dark. The demo fixture
+is pointed at the first: `demoVault()` carries Dana's `Single sign-on` (2026-07-20 →
+2026-08-15) running straight through her absence (2026-08-10 → 2026-08-14), plus Sam, whose row
+exists only because he is away.

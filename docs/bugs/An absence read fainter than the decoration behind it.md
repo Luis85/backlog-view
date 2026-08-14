@@ -55,9 +55,9 @@ colour problem:
   about to drop work into already shows the days nobody should be scheduled across", and a
   reader had to compare two lines by eye to get it.
 
-Two smaller findings came out of the same reading, both folded in: a band whose only content
-is an absence rendered `0` beside a row that plainly had something in it, and nothing marked
-a bar that was scheduled straight across one.
+Two smaller findings came out of the same reading. Nothing marked a bar that was scheduled
+straight across an absence, which is fixed below. The other — a band whose only content is an
+absence rendering `0` — was fixed and then unfixed: see **What the vault said** at the end.
 
 ## Why
 
@@ -104,11 +104,11 @@ view test drives a band folded shut and watches the entry go with it, which is r
 because `laneEntries` skips a collapsed band whole. A bar's own report is the narrower
 `BarColors`, so no row literal claims anything about a mark drawn nowhere near it.
 
-**A `.pbl-absence-wash` is prepended into each work row's day track**, positioned by the same
+**A `.pbl-absence-wash` is appended into each work row's day track**, positioned by the same
 `barGeometry` the mark is, so the shading and the stretch cannot disagree about which day is
-which. Prepended rather than layered, and that is the whole layer story: the track
-establishes no stacking context, so a `z-index` on `.pbl-bar` to lift it instead would
-out-rank the sticky lead column at 2. It is a per-ROW wash and not a band-height one because
+which. Document order and no `z-index` anywhere, which is the whole layer story: the track
+establishes no stacking context, so a layer on either element would out-rank the sticky lead
+column at 2. It is a per-ROW wash and not a band-height one because
 a band has no container element — its height is knowable only by measuring after the render,
 the layout read `src/view/CLAUDE.md` forbids. `pointer-events: none` is load-bearing, not
 housekeeping: each element of a band is its own drop target, so a child that intercepted the
@@ -130,8 +130,8 @@ scannable, and the words it stands for as `.pbl-sr-only` content in the row, bec
 tells this in colour alone and WCAG 1.4.1 refuses that.
 
 **The band header's count still counts result bars** — the rule a bucket's count already
-keeps, and the one its own test asserts — and a glyph beside it qualifies the number instead
-of changing what it counts.
+keeps, and the one its own test asserts. A glyph beside it qualified the number for a few
+hours; see below.
 
 **What each check reaches, and what it does not.** The stylesheet checks are text over the
 partials: they read the tokens each rule names, and they cannot say what those resolve to in
@@ -142,3 +142,28 @@ part of this with a real unit check behind it, because it is the one part that i
 rather than an appearance. The four questions this still owes a live vault are on
 [[Resource absences]], and `npm run harness` answers three of them at Obsidian's default
 colours only.
+
+## What the vault said
+
+The increment shipped without a look — no browser was available to the session that built it —
+and the maintainer opened it in a vault at 385 results the same day. **The contrast question is
+answered: the hatch and the wash both out-read the weekend banding**, in a real theme, which is
+the first of the four this note said it owed. Two things were wrong, and both are the kind only
+looking finds:
+
+**The wash was UNDER the bars, and that is backwards.** It was built that way deliberately, on
+the reasoning that a bar is the thing being asked about and must not be obscured by the
+question — the argument the milestone line and the arrow layer both keep. It does not transfer:
+a full-height wash a bar paints over marks the days that are FREE and hides exactly the ones the
+reader is looking for, so the wider the bar the less of the collision survives. It is appended
+now, over the bar, and the tint lands on the bar itself. The layer rule is unchanged and is the
+part worth keeping: document order decides it and neither element takes a `z-index`, because
+the track establishes no stacking context and whichever got one would out-rank the sticky lead
+column at 2.
+
+**The header glyph was noise.** `user-x` already means three things in this band — the Add
+absence button, an absence row's own icon, and a bar's crossing flag — and a fourth beside the
+count competed with the Add absence button, which reveals on hover in the same place. The `0`
+it was meant to qualify is never read alone: the stretch's own hatched row is directly beneath
+the header. Removed with its two tests, and recorded as a refusal on
+[[Resource absences]] so it is not proposed again from the finding alone.

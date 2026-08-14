@@ -33,7 +33,7 @@ function clampedVault(): FakeVault {
 }
 
 describe('the days a band is unavailable, shaded across its work', () => {
-	it('shades the same days across the band’s work rows, behind the bars', () => {
+	it('shades the same days across the band’s work rows, over the bars', () => {
 		// The feature's own user story is "a row I am about to drop work into already shows
 		// the days nobody should be scheduled across", and with the stretch on a line of its
 		// own the collision was the hardest thing on the band to see. The named line above is
@@ -50,11 +50,13 @@ describe('the days a band is unavailable, shaded across its work', () => {
 		expect(washes[0].style.getPropertyValue('--pbl-bar-left')).toBe(mark?.style.getPropertyValue('--pbl-bar-left'));
 		expect(washes[0].style.getPropertyValue('--pbl-bar-width')).toBe(mark?.style.getPropertyValue('--pbl-bar-width'));
 
-		// UNDER the bar, and by document order alone — no `z-index` anywhere, which is the
-		// whole layer story (see `renderAbsenceWash`). First child of the track it is in.
+		// OVER the bar, and by document order alone — no `z-index` anywhere, which is the
+		// whole layer story (see `renderAbsenceWash`). Last child of the track it is in, so the
+		// unavailable days tint the bar crossing them rather than being covered by it.
 		const track = washes[0].parentElement;
-		expect(Array.from(track?.children ?? []).indexOf(washes[0])).toBe(0);
-		expect(track?.querySelector('.pbl-bar')).not.toBeNull();
+		const children = Array.from(track?.children ?? []);
+		expect(children.indexOf(washes[0])).toBe(children.length - 1);
+		expect(children.findIndex((el) => el.classList.contains('pbl-bar'))).toBeLessThan(children.length - 1);
 	});
 
 	it('shades no line that makes no positional claim, and no band on the dated axis', () => {

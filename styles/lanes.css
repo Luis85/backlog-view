@@ -207,10 +207,12 @@
 	color: var(--text-muted);
 }
 
-/* The same unavailable days, shaded across the WORK rows of the band — behind the bars, so a
-   bar and the stretch it crosses are read on one line. A different token from the weekend
-   layer's `--background-modifier-hover`, and stronger, because being told apart from the
-   weekend banding at a glance is the whole of what was reported.
+/* The same unavailable days, shaded across the WORK rows of the band — OVER the bars, so a bar
+   and the stretch it crosses are read on one line and the tint lands on the bar itself. Under
+   them it marked the days that are free and hid the ones being looked for, which is how it
+   shipped for a few hours on 2026-08-14. A different token from the weekend layer's
+   `--background-modifier-hover`, and stronger, because being told apart from the weekend
+   banding at a glance is the whole of what was reported.
 
    `pointer-events: none` is load-bearing rather than housekeeping: on this axis each ELEMENT
    of a band is the drop target (`laneElement` in `src/view/render/timeline.ts`), since a band
@@ -218,9 +220,9 @@
    `docs/bugs/An absence stretch is a dead spot in its own band.md` reached from inside the
    row.
 
-   NO `z-index`. It sits under the bar by being prepended into the track — see
-   `renderAbsenceWash` — and `styles/dependencyArrows.css` says why a layer on `.pbl-bar` is
-   not the alternative it looks like: the bar would then out-rank the sticky lead column at 2.
+   NO `z-index`. It sits over the bar by being appended after it — see `renderAbsenceWash` —
+   and `styles/dependencyArrows.css` says why a layer on either element is not the alternative
+   it looks like: whichever got one would out-rank the sticky lead column at 2.
 
    The 18% is the tuning knob and nothing in this repository can settle it — jsdom paints
    nothing and the browser harness draws Obsidian's DEFAULT colours, so whether this
@@ -250,16 +252,6 @@
 	color: var(--text-muted);
 }
 
-/* The band header's own word for "this resource is away at some point" — `renderLaneHead`.
-   Beside the count it qualifies, not pinned right like the row flag: it belongs to the
-   number, and a header has no title for it to narrow. */
-.pbl-lane-away {
-	display: inline-flex;
-	align-items: center;
-	color: var(--text-muted);
-}
-
-.pbl-lane-away .svg-icon,
 .pbl-away-flag .svg-icon {
 	width: var(--icon-s);
 	height: var(--icon-s);

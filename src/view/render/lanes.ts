@@ -178,18 +178,13 @@ export function renderLaneHead(ctx: RowContext, content: HTMLElement, lane: Reso
 	const lead = head.createDiv({ cls: 'pbl-timeline-lead' });
 	renderLaneChevron(ctx.host, lead, lane, collapsed);
 	lead.createSpan({ cls: 'pbl-lane-name', text: lane.name });
+	// The count is RESULT bars, and there is deliberately NO glyph beside it saying the band
+	// holds an absence. One was built on 2026-08-14 and removed the same day, on the reason it
+	// was reported for: the stretch's own hatched row is directly beneath the header, so the
+	// "0" is never read alone, and a fourth `user-x` in one lead competed with the Add absence
+	// button that reveals on hover in the same place. Do not add it back without a reason the
+	// row below does not already give.
 	lead.createSpan({ cls: 'pbl-lane-count', text: String(lane.bars.length) });
-	// The count is RESULT bars and stays so — the rule a bucket's count already keeps —
-	// which leaves a band whose only content is an absence reading "0" beside a row that
-	// plainly has something in it. This qualifies the number rather than changing what it
-	// counts. `aria-hidden`, and that is honest rather than a gap: each stretch's own row
-	// below carries `<title> — unavailable <dates>` as its accessible name, so this is a
-	// second route for a sighted reader and not the only route to the fact.
-	if (lane.absences.length > 0) {
-		const away = lead.createSpan({ cls: 'pbl-lane-away', attr: { 'aria-hidden': 'true' } });
-		drawIcon(away, 'user-x');
-		setTooltip(away, lane.absences.length === 1 ? '1 absence' : `${lane.absences.length} absences`);
-	}
 	if (!lane.declared) {
 		const mark = lead.createSpan({ cls: 'pbl-lane-stray' });
 		drawIcon(mark, 'circle-help');
@@ -332,28 +327,24 @@ export function renderLaneAbsence(
 }
 
 /**
- * The days one resource is unavailable, shaded across a WORK row of their own band — behind
- * the bars, so a bar and the stretch it crosses are read on one line rather than two. The
- * band's own named line (`renderLaneAbsence`) still leads it and is where the title, the
- * dates and the menu live; this is the same fact where the collision actually happens, which
- * is what this feature's user story asks for and what a line of its own could not give.
+ * The days one resource is unavailable, shaded across a WORK row of their own band — OVER the
+ * bars, so a bar and the stretch it crosses are read on one line rather than two. The band's
+ * own named line (`renderLaneAbsence`) still leads it and is where the title, the dates and
+ * the menu live; this is the same fact where the collision actually happens, which is what
+ * this feature's user story asks for and what a line of its own could not give.
  *
  * `barGeometry` against the same window the mark is placed against, so the shading and the
  * stretch cannot disagree about which day is which.
  *
- * **PREPENDED into the track, and that is the whole layer story.** Appended after the bar it
- * paints over it, and giving `.pbl-bar` a `z-index` to lift it instead is the trap
- * `styles/dependencyArrows.css` records: the track is `position: relative` with
- * `z-index: auto` and so establishes no stacking context, so a layer on the bar would
- * compete with the sticky lead column at 2. Document order decides it, exactly as it decides
- * the arrow layer's sandwich.
- *
- * `track.prepend` rather than `createDiv({ prepend: true })`: Obsidian's `DomElementInfo`
- * does carry that option and `test/helpers/dom.ts` does not implement it, so the option would
- * append in the suite and prepend in a vault — the test asserting this sits under the bar
- * would fail here while the vault was right. The faithful-fake hazard `test/CLAUDE.md`
- * records for `createSvg`, reached from the kinder direction; the native call has no fake
- * surface at all.
+ * **Appended, and that is the whole layer story: no `z-index` anywhere.** It shipped
+ * *under* the bars on 2026-08-14 and was corrected the same day from a live vault — a wash a
+ * bar paints over marks the days that are free and hides exactly the ones the reader is
+ * looking for. Over it, the tint lands on the bar itself. What must NOT be reached for is a
+ * `z-index` on either element: the track is `position: relative` with `z-index: auto` and so
+ * establishes no stacking context, so a layer here would compete with the sticky lead column
+ * at 2 — the trap `styles/dependencyArrows.css` records. Document order decides it, exactly
+ * as it decides the arrow layer's sandwich, and this drawer runs after `renderBarRow` has
+ * finished the row.
  *
  * A stretch wholly outside the window draws nothing. `barGeometry` CLAMPS one, so shading it
  * would colour days it does not cover — the mark can say "past this edge" because
@@ -373,7 +364,6 @@ export function renderAbsenceWash(
 			'--pbl-bar-left': `${geometry.startDay * ruler.scale.dayPx}px`,
 			'--pbl-bar-width': `${Math.max(geometry.spanDays * ruler.scale.dayPx, MIN_BAR_PX)}px`,
 		});
-		track.prepend(wash);
 	}
 }
 
@@ -382,7 +372,7 @@ export function renderAbsenceWash(
  * dependency conflict's SHAPE reused rather than reinvented: a glyph in the lead, where a
  * column of them is scannable, and the words it stands for in the row's own content.
  *
- * The sentence is not a nicety. The wash behind the bar tells this in colour alone, which
+ * The sentence is not a nicety. The wash over the bar tells this in colour alone, which
  * WCAG 1.4.1 refuses and which a screen reader gets nothing of at all. `.pbl-sr-only`
  * CONTENT rather than an `aria-label`, for `stateNote`'s reason: a label REPLACES the name
  * the row derives from its badge, its title and its bar's dates.

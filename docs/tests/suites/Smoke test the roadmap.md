@@ -86,12 +86,16 @@ catalog migration and was not part of that run.
   whether the `Unavailable` swatch's finer hatch reads as hatch at 10px rather than as a
   half-filled square. The stylesheet checks behind these say which token each rule names and
   nothing about what it resolves to, and per ADR 0020 the harness settles layout and not
-  colour. **Never checked, in the harness or in a vault** — the increment that owed the look
-  shipped without one, and says so rather than smoothing it over. The fixture is already
-  pointed at the first three: `demoVault()` carries Dana's `Single sign-on` (2026-07-20 →
-  2026-08-15) running straight through her absence (2026-08-10 → 2026-08-14), plus Sam, whose
-  row exists only because he is away, so `npm run harness` with the resources axis picked
-  answers them at default colours whenever someone opens it.
+  colour. **Checked in a vault 2026-08-14 at 385 results, in light**: the hatch and the wash
+  both out-read the weekend banding, which is the first question answered and the one the whole
+  increment existed for. It also found the two defects in
+  [[An absence read fainter than the decoration behind it]]'s own closing section — the wash
+  under the bars rather than over them, and a header glyph competing with the Add absence
+  button — neither of which any check here could see. **Still unchecked**: the two glyphs in one
+  lead at a narrow lead width (no row in that vault carried both), the `Unavailable` swatch at
+  10px, and everything in dark. The fixture is pointed at the first of those: `demoVault()`
+  carries Dana's `Single sign-on` (2026-07-20 → 2026-08-15) running straight through her absence
+  (2026-08-10 → 2026-08-14), plus Sam, whose row exists only because he is away.
 - The lead column's resize grip, which is where this feature keeps everything jsdom
   cannot reach: the 6px strip is findable at all (cursor and hover feedback), it shows a
   focus ring when tabbed to, a real touch drag resizes it rather than panning the
