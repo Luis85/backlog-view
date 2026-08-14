@@ -17,24 +17,41 @@ the status column does:
   [[Lanes on the roadmap]], [[Progress on the bar]] and [[Focus level picks the rows]].
 
 Lanes are refused by decision (below). What remains of the other two is smaller than
-either note reads, because `renderCardBody` in `src/view/render/board.ts` already gives
-board cards, roadmap bucket cards and shelf cards the rollup fill **and** the quick
-filter's match links. Its own comment names the exception:
+either note reads, but the two halves are not the same size, and an early draft of this
+spec got that wrong. Read the two seams separately:
+
+**The rollup** is on every card already. `renderCardBody` in `src/view/render/board.ts`
+draws it, and its own comment names the one surface that misses out:
 
 > One call, three surfaces: board cards, roadmap bucket cards and shelf cards all come
 > through here. Timeline rows never do — they use the card SHELL with a bar-grid row
 > layout.
 
-So the increment is one sentence: **give the timeline row the two things every card
-already has.** That closes [[Progress on the bar]] whole, and closes the two of
-[[Focus level picks the rows]]'s three remaining items that this projection owes — the
-fill counting below-focus results, and the quick filter's descendant naming.
+**The match links are on the board alone.** `renderCardMatches` is called from
+`renderCard` in the board's column path, never from the shared body, and the comment at
+that call site is explicit that this was deliberate:
+
+> The board's own addition to the shared body: which items already have a card is a
+> question only the board can answer, so the roadmap does not get this.
+
+That was true when it was written. It is not true now: `RoadmapModel` knows which items
+become buckets, shelf cards and timeline rows before anything renders, exactly as
+`BoardModel` does. So the roadmap's gap is a whole projection wide — no bucket card, no
+shelf card and no timeline row names a match — and `addMatchSection` in
+`src/view/interactions/menu.ts` misses all three the same way, because `activeBoard`
+returns null off the board and the function exits before adding anything.
+
+So the increment is two sentences. **The timeline row gets the rollup fill every card
+already has**, which closes [[Progress on the bar]]. **The roadmap gets match naming on
+all three of its surfaces, on the face and in the menu**, which closes the second of the
+items [[Focus level picks the rows]] still owes.
 
 ## What ships
 
 1. **Lanes are dropped**, with a `Dropped` status added to the register's vocabulary.
 2. **A progress fill inside a timeline bar**, from the rollups the tree already shows.
-3. **Match links in a timeline row's lead column**, from the walk the board already uses.
+3. **Match naming on all three roadmap surfaces**, on the face and in the menu, from the
+   walk the board already uses.
 
 ### The statuses this leaves behind
 
@@ -143,39 +160,71 @@ The tooltip and the bar's accessible description use `renderRollup`'s own words 
 *"3 of 8 items done"* — rather than a second phrasing invented here. One item cannot
 report its progress differently per projection, which is the PBI's guarantee.
 
-## 3. Match links in a timeline row's lead column
+## 3. Match naming across the roadmap
 
-A timeline row has no card face, so a search match three levels beneath it is currently
-found, counted in the fill this increment adds, and impossible to reach. That is the gap
-[[Focus level picks the rows]] extension 3b names, and the board already solved it.
+On the roadmap, a search match beneath a rendered item is currently found, counted in the
+fill this increment adds, and impossible to reach — on a bucket card, on a shelf card and
+on a timeline row alike, from the face and from the menu both. That is the gap
+[[Focus level picks the rows]] extension 3b names, and it is where a focused roadmap hurts
+most: the only rows are the focus level's, so a match three levels down has nothing
+anywhere that opens it.
 
-`undisclosedMatches` in `src/view/childrenList.ts` answers "what did the filter find
-under this row that has no row of its own", already bounded by the projection's own
-visibility predicate. The timeline row calls it unchanged and renders the same
-`tabindex="-1"` link buttons the board card renders, in `renderRowFacts` in
-`src/view/render/timeline.ts`, under the title in the sticky lead column — the one text
-region a timeline row has.
+Fixing this on the timeline row alone would patch one caller of a gap with three. The fix
+goes where all of them route through.
 
-Two rules carried over rather than re-decided:
+### One question, asked of the model
 
-- **The row stays one tab stop.** The links are `tabindex="-1"`, reached the way every
-  per-row control here is reached, with the row menu's existing `addMatchSection` as the
-  keyboard path.
-- **Each link stops `click` *and* `auxclick`.** A middle click never fires `click`, so
-  stopping the primary event alone still opened the row's own note in a new tab. The
-  board learned this once; the roadmap does not get to learn it again.
+`cardPaths(board)` in `src/domain/board.ts` answers "which items already have something of
+their own on screen" from the **model**, not from the DOM, which is why the board can
+render a card's matches inline during the same pass. The roadmap gets the mirror of it:
+`placedPaths(roadmap)` in `src/domain/roadmap.ts`, over the buckets, the shelf and the
+rows — pure, node-testable beside the derivations already there, and available before the
+first element is created. It is deliberately not read off the rendered snapshot: none of
+`host.roadmap` exists while the pass that builds it is running, a constraint
+`src/view/render/timeline.ts` already states about its own published fields.
 
-The lead column is the reader's to size ([[A resizable lead column]]), so a narrow column
-wraps the links rather than reserving room for them.
+A collapsed shelf contributes nothing, matching `RoadmapSnapshot.cards`, which already
+excludes one for the keyboard walk: an item behind a collapsed disclosure is not a route
+to anything, which is the same reason `hiddenMatches` takes a `drawn` predicate at all.
+
+### On the face
+
+`renderCardMatches` moves out of the board's private path and is called by the roadmap's
+bucket and shelf cards (`src/view/render/roadmap.ts`, `src/view/render/shelf.ts`) and by
+the timeline row, with `placedPaths` supplying what `cardPaths` supplies on the board. The
+function itself is unchanged — including the `fromRowControl` arrangement that keeps a
+link's click and the card's own handler from both firing, and the `auxclick` handler
+without which a middle click still opened the card's note instead of the match's.
+
+On a timeline row the links render in `renderRowFacts` in `src/view/render/timeline.ts`,
+under the title in the sticky lead column — the one text region such a row has. The lead
+column is the reader's to size ([[A resizable lead column]]), so a narrow column wraps
+them rather than reserving room.
+
+### In the menu
+
+`addMatchSection` currently bails whenever `activeBoard(host)` is null, which is every
+roadmap render. It stops asking for a board and asks for **the active projection's placed
+paths** — the board's when a board drew, the roadmap's when the roadmap did — leaving
+`host.isFiltering()` as the only other gate. This is what makes the `tabindex="-1"` links
+legitimate rather than a pointer-only feature: the board's own comment calls the menu
+"their keyboard path rather than an extra", and on the roadmap that path does not exist
+today. Found by review on this spec's first draft, which claimed the menu already covered
+it.
+
+The Deliverables board reaches this through `host.board` like any other board and needs
+nothing of its own.
 
 ## Line budgets
 
 `src/view/render/timeline.ts` is at or near the 400-line cap that `eslint.config.mjs`
-enforces, and both halves of this increment land in it. The implementation plan measures
-first and extracts if it must — the same move `barLabel.ts` and `lanes.ts` already made
-out of this file, and for the same reason. The likely seam is the fill, which is a
-function of the rollup fields and the bar geometry and of nothing else the grid holds.
-`styles/timeline.css` is under the same 400-line rule via `styles-assemble.mjs`.
+enforces, and both the fill and the row's match links land in it. The implementation plan
+measures first and extracts if it must — the same move `barLabel.ts` and `lanes.ts`
+already made out of this file, and for the same reason. The likely seam is the fill, which
+is a function of the rollup fields and the bar geometry and of nothing else the grid
+holds. `src/view/interactions/menu.ts` and `src/view/render/board.ts` gain a few lines
+each and lose none, so they are measured too. `styles/timeline.css` is under the same
+400-line rule via `styles-assemble.mjs`.
 
 ## Testing
 
@@ -187,8 +236,14 @@ checks are view-level, in `test/view/`:
 - A context row's fill counting its visible results only, asked from the rule rather than
   from the implementation, beside the two invariant tests that already state it for
   writes and rollups.
-- A filtered timeline row naming a match three levels down, each link opening its note,
-  and neither `click` nor `auxclick` reaching the row beneath.
+- `placedPaths` in `test/domain/roadmap.test.ts` — buckets, shelf and rows counted, a
+  collapsed shelf contributing nothing — beside the derivations already driven there.
+- A filtered roadmap naming a match three levels down on each of its three surfaces —
+  bucket card, shelf card, timeline row — each link opening its note, and neither `click`
+  nor `auxclick` reaching the card or row beneath.
+- The same matches in the row menu on the roadmap, which is the check that would have
+  caught the first draft's claim: it is asserted at `addMatchSection` on a roadmap
+  render, not inferred from the board's passing test.
 - `test/docs/checkerAccepts.test.ts` accepting `Dropped`, and
   `test/docs/checkerRejects.test.ts` still refusing a status outside the set.
 
