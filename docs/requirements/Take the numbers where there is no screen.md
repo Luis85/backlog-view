@@ -71,25 +71,6 @@ instruments improvised around a browser.
   on the page. Its `median` averaged nothing and took the upper middle of an even sample
   until review caught it — `--runs=4` is this file's own documented form, so every number
   the change that introduced this tool had published was biased on both sides.
-- **3e — one build times an op the other does not**, because a row was added or renamed
-  between them. The baseline's median came out `NaN` and its delta `NaN%` with nothing
-  said, and an op only the BASELINE had was dropped from the table altogether — so a
-  comparison missing half its rows read as a complete one. Both directions are named under
-  the table now, and a column with nothing to compare against prints an em dash rather than
-  a number no reading of which is right.
-- **3f — a workload selector the page did not honour.** `--fixture=edegs` mounts the demo,
-  `--axis=date` picks no axis, `--view=bard` opens the tree: the page absorbs each silently,
-  and a heading built from the query string then labelled the table with a workload nobody
-  ran. The runner prints what the page says it MOUNTED — the page publishes it beside the
-  numbers — and names any flag the two disagree on. The vocabularies stay where they are
-  enforced rather than being copied into the runner to go stale, which is the same rule the
-  register applies to any table that enumerates code. (Codex, PR #137.)
-- **3d — the two builds draw different populations.** Then the delta is between unlike
-  workloads and reads exactly like a speedup: a baseline from before a change that hides or
-  adds cards measures fewer of them. Both sides' counts are printed and a mismatch is called
-  out by name under the table. Loud rather than refused — "did this change cost anything" is
-  a legitimate question to ask of two such builds, and only the person running it knows which
-  question this run is. (Codex, PR #137, on a comparison this branch really did make.)
 - **3b — one heading states the sample for every row.** It cannot. The tree draws rows,
   the four card projections draw cards, the board excludes Deliverables and the
   Deliverables board draws only those — so each row carries its own count, and
@@ -102,6 +83,30 @@ instruments improvised around a browser.
   moot the same day by [[Drop the shelf's collapse option]], which left nothing to open.
   The instrument is honest about its sample either way; only one of the two answers needed
   code.
+- **3d — the two builds draw different populations.** Then the delta is between unlike
+  workloads and reads exactly like a speedup: a baseline from before a change that hides or
+  adds cards measures fewer of them. Both sides' counts are printed and a mismatch is called
+  out by name under the table. Loud rather than refused — "did this change cost anything" is
+  a legitimate question to ask of two such builds, and only the person running it knows which
+  question this run is. (Codex, PR #137, on a comparison this branch really did make.)
+- **3e — one build times an op the other does not**, because a row was added or renamed
+  between them. The baseline's median came out `NaN` and its delta `NaN%` with nothing
+  said, and an op only the BASELINE had was dropped from the table altogether — so a
+  comparison missing half its rows read as a complete one. Both directions are named under
+  the table now, and a column with nothing to compare against prints an em dash rather than
+  a number no reading of which is right.
+- **3f — a workload selector the page did not honour.** `--fixture=edegs` mounts the demo,
+  `--axis=date` picks no axis, `--view=bard` opens the tree: the page absorbs each silently,
+  and a heading built from the query string then labelled the table with a workload nobody
+  ran. The runner prints what the page says it MOUNTED — the page publishes it beside the
+  numbers — and names any flag the two disagree on. The vocabularies stay where they are
+  enforced rather than being copied into the runner to go stale, which is the same rule the
+  register applies to any table that enumerates code. The BASELINE's resolved workload is
+  read the same way and compared: two builds can absorb one flag differently — the newer
+  knows an axis the older ignores — and then equal `drew` counts prove nothing, since they
+  can be equal across two different projections. A baseline too old to report it at all is
+  named as that rather than assumed to agree. (Codex, PR #137.)
+
 - **4a — the runner checks out the ref to compare against.** Refused: that would move the
   tree someone is working in. Building the other side is one command in a git worktree,
   and stays the human's.

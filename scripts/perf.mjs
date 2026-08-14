@@ -287,6 +287,23 @@ for (const [op, { drew, times }] of left) {
  */
 const ran = a[0]?.ran;
 const asked = { fixture: args.fixture ?? 'demo', view: args.view, axis: args.axis };
+/**
+ * And the BASELINE's own resolved workload, which is a second question with the same
+ * shape: the two builds can absorb one flag differently — the newer knows an axis the
+ * older ignores — and then equal `drew` counts prove nothing, because they can be equal
+ * across two different projections. Its absence is reported too: a baseline built before
+ * the page reported this at all cannot say what it drew, and silence there is exactly the
+ * assumption this whole block exists to refuse. (Codex, PR #137.)
+ */
+const ranAgainst = b[0]?.ran;
+const differs = !against || !ran || !ranAgainst
+	? []
+	: ['fixture', 'projection', 'axis'].filter((key) => ran[key] !== ranAgainst[key]);
+const baselineWorkload = !against
+	? []
+	: !ranAgainst
+		? ['the baseline does not report what it mounted — it was built before the page said so']
+		: differs.map((key) => `${key}: ${String(ran[key])} here, ${String(ranAgainst[key])} in the baseline`);
 const ignored = [
 	ran && asked.fixture !== ran.fixture ? `--fixture=${asked.fixture} (mounted ${ran.fixture})` : '',
 	ran && asked.view !== undefined && asked.view !== ran.projection ? `--view=${asked.view} (opened ${ran.projection})` : '',
@@ -306,6 +323,9 @@ if (unlike.length > 0) {
 }
 if (ignored.length > 0) {
 	console.log(`\n!! The page did not use what was asked for — the table is of what it DID draw:\n   ${ignored.join('\n   ')}`);
+}
+if (baselineWorkload.length > 0) {
+	console.log(`\n!! The two builds did not mount the same workload — the delta compares unlike things:\n   ${baselineWorkload.join('\n   ')}`);
 }
 if (unmatched.length > 0) {
 	console.log(`\n!! The two builds do not time the same set of ops:\n   ${unmatched.join('\n   ')}`);
