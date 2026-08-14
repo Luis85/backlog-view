@@ -213,8 +213,10 @@ async function writeAbsence(host: BacklogViewHost, result: AbsenceResult): Promi
 	if (refusedByConfig(host)) return;
 	try {
 		// The spread comes FIRST, so the derived name wins over anything the form's own
-		// result might one day carry under that key — and the annotation is what makes an
-		// excess property an error rather than a silent extra field.
+		// result might one day carry under that key. That ORDER is the whole guarantee: the
+		// annotation pins the fields `AbsenceSpec` requires, and excess-property checking
+		// does NOT reach a key arriving through a spread — checked against this repo's own
+		// compiler rather than assumed, since the opposite was written here first.
 		const spec: AbsenceSpec = { ...result, folder: absenceFolder(host), title: absenceTitle(result) };
 		const file = await createAbsenceNote(host.app, host.settings, spec);
 		new Notice(`Marked ${result.resource} away — "${file.basename}".`);
