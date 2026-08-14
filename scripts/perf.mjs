@@ -81,9 +81,24 @@ if (args.view) query.set('view', args.view);
 if (args.axis) query.set('axis', args.axis);
 const search = `?${query.toString().replace(/=$/, '').replace(/=&/, '&')}`;
 
-/** Playwright's own builds, newest first — `headless_shell` before the full Chrome. */
-const BUNDLED = ['chrome-linux/headless_shell', 'chrome-linux/chrome', 'chrome-mac/Chromium.app/Contents/MacOS/Chromium'];
-const INSTALLED = ['chromium', 'chromium-browser', 'google-chrome', 'google-chrome-stable'];
+/**
+ * Playwright's own builds, newest first — `headless_shell` before the full Chrome, and
+ * every platform's spelling of both. Windows was absent from all three lists until review
+ * pointed it out: its Playwright builds live under `chrome-win` with `.exe` names, in a
+ * cache root neither of the two here, and a PATH lookup for `chromium` finds nothing
+ * without the extension. So `npm run perf` reported "No Chromium found" on a machine that
+ * had one by either advertised route. UNVERIFIED — there is no Windows here to run it on,
+ * and CI does not run this script. (Codex, PR #137.)
+ */
+const BUNDLED = [
+	'chrome-linux/headless_shell',
+	'chrome-linux/chrome',
+	'chrome-mac/Chromium.app/Contents/MacOS/Chromium',
+	'chrome-win/headless_shell.exe',
+	'chrome-win/chrome.exe',
+];
+const NAMES = ['chromium', 'chromium-browser', 'google-chrome', 'google-chrome-stable'];
+const INSTALLED = process.platform === 'win32' ? NAMES.map((name) => `${name}.exe`) : NAMES;
 
 const runnable = (file) => {
 	try {
@@ -104,13 +119,19 @@ const under = (dir) => (existsSync(dir) ? readdirSync(dir).sort().reverse() : []
  * this file `npm run analyze` failed on, at 12 cyclomatic and no coverage, for a job whose
  * whole content is "these places, in this order".
  */
+const HOME = process.env.HOME ?? process.env.USERPROFILE ?? '';
+/** Where Playwright puts its downloads, per platform — this container's first. */
+const PW_ROOTS = [
+	'/opt/pw-browsers',
+	path.join(HOME, '.cache/ms-playwright'),
+	path.join(process.env.LOCALAPPDATA ?? path.join(HOME, 'AppData/Local'), 'ms-playwright'),
+];
+const PATH_DIRS = (process.env.PATH ?? '').split(path.delimiter);
+
 function candidates() {
 	if (process.env.CHROME_PATH) return [process.env.CHROME_PATH];
-	const roots = ['/opt/pw-browsers', path.join(process.env.HOME ?? '', '.cache/ms-playwright')];
-	const bundled = roots.flatMap(under).flatMap((dir) => BUNDLED.map((leaf) => path.join(dir, leaf)));
-	const onPath = (process.env.PATH ?? '')
-		.split(path.delimiter)
-		.flatMap((dir) => INSTALLED.map((name) => path.join(dir, name)));
+	const bundled = PW_ROOTS.flatMap(under).flatMap((dir) => BUNDLED.map((leaf) => path.join(dir, leaf)));
+	const onPath = PATH_DIRS.flatMap((dir) => INSTALLED.map((name) => path.join(dir, name)));
 	return [...bundled, ...onPath];
 }
 
@@ -204,21 +225,34 @@ const left = collect(a);
 const right = collect(b);
 /** Ops where the two builds did not draw the same thing — see the warning below. */
 const unlike = [];
+/**
+ * Ops one build has and the other does not — a renamed or added row. The baseline's
+ * median was `NaN` and its delta `NaN%` with nothing said, and an op only the BASELINE
+ * has was dropped from the table entirely, so the comparison read as complete.
+ * (Codex, PR #137.)
+ */
+const unmatched = !against
+	? []
+	: [
+			...[...left.keys()].filter((op) => !right.has(op)).map((op) => `${op} (only in this build)`),
+			...[...right.keys()].filter((op) => !left.has(op)).map((op) => `${op} (only in the baseline)`),
+		];
 for (const [op, { drew, times }] of left) {
 	const row = { op, drew, ms: +median(times).toFixed(1), spread: spread(times) };
 	if (against) {
 		const other = right.get(op);
-		const base = other ? median(other.times) : NaN;
-		row.against = +base.toFixed(1);
+		// An em dash rather than a number wherever there is nothing to compare with: `NaN%`
+		// in a delta column is a value a reader has to interpret, and every reading is wrong.
+		row.against = other ? +median(other.times).toFixed(1) : '—';
 		// Beside the delta, never behind it: two medians whose spreads overlap have no
 		// delta worth reading, and the only way a reader can see that is if both are here.
-		row.againstSpread = other ? spread(other.times) : '';
+		row.againstSpread = other ? spread(other.times) : '—';
 		// And the baseline's own SAMPLE, for the same reason one level up: two builds can
 		// draw different populations — one before a change that adds or hides cards — and
 		// a delta between unlike workloads reads exactly like a speedup. (Codex, PR #137.)
-		row.againstDrew = other ? other.drew : 0;
+		row.againstDrew = other ? other.drew : '—';
+		row.delta = other ? `${(((row.ms - row.against) / row.against) * 100).toFixed(0)}%` : '—';
 		if (other && other.drew !== drew) unlike.push(`${op} (${drew} vs ${other.drew})`);
-		row.delta = `${(((row.ms - base) / base) * 100).toFixed(0)}%`;
 	}
 	table.push(row);
 }
@@ -232,6 +266,9 @@ console.table(table);
 // someone who never saw that the workloads differed.
 if (unlike.length > 0) {
 	console.log(`\n!! The two builds drew DIFFERENT samples — the delta is not a like-for-like comparison:\n   ${unlike.join('\n   ')}`);
+}
+if (unmatched.length > 0) {
+	console.log(`\n!! The two builds do not time the same set of ops:\n   ${unmatched.join('\n   ')}`);
 }
 console.log('No Bases pass, no metadata cache, no vault I/O, no theme. Not what the plugin costs in a vault.');
 console.log('`drew` is that row’s own sample — rows and cards on screen after the op, which differs per projection.');

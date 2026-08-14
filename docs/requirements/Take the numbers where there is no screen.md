@@ -53,7 +53,11 @@ instruments improvised around a browser.
 **Extensions**
 
 - **1a — no Chromium anywhere.** The script says so and names the two ways to supply one,
-  rather than failing inside a browser invocation nobody can read.
+  rather than failing inside a browser invocation nobody can read. It said it on WINDOWS
+  too, with a browser installed by either route: Playwright's builds there are `chrome-win`
+  and `.exe`, under a cache root neither of the two the search knew, and a PATH lookup for
+  `chromium` needs the extension. All three are in the lists now and none of it is verified
+  — there is no Windows here, and this script is not what CI runs on one.
 - **1b — the viewport is left to the browser's default.** It was, and it is
   load-bearing: `content-visibility` skips what is off screen, so window size decides how
   much of a tree is rendered at all. `--window` states one and every table prints it,
@@ -64,6 +68,12 @@ instruments improvised around a browser.
   on the page. Its `median` averaged nothing and took the upper middle of an even sample
   until review caught it — `--runs=4` is this file's own documented form, so every number
   the change that introduced this tool had published was biased on both sides.
+- **3e — one build times an op the other does not**, because a row was added or renamed
+  between them. The baseline's median came out `NaN` and its delta `NaN%` with nothing
+  said, and an op only the BASELINE had was dropped from the table altogether — so a
+  comparison missing half its rows read as a complete one. Both directions are named under
+  the table now, and a column with nothing to compare against prints an em dash rather than
+  a number no reading of which is right.
 - **3d — the two builds draw different populations.** Then the delta is between unlike
   workloads and reads exactly like a speedup: a baseline from before a change that hides or
   adds cards measures fewer of them. Both sides' counts are printed and a mismatch is called
