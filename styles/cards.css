@@ -11,6 +11,37 @@
 	cursor: pointer;
 }
 
+/*
+ * The card's half of the rule `.pbl-row` states in `tree.css`: the browser skips layout
+ * and paint for a card scrolled out of its column, its bucket or the shelf. Measured in
+ * the harness at ~800 notes, interleaved A/B on this rule alone, medians of three:
+ * the board switch 368ms → 138ms, the roadmap switch 418ms → 154ms, the deliverables
+ * board 35ms → 27ms. What is left is building the DOM, which this does not touch.
+ *
+ * It holds only while NOTHING measures a card during a render — a layout read on a
+ * skipped card lays that card out by itself, which is the trap `tree.css` records at
+ * 5320ms against 12ms. That is why this names the three CONTAINERS instead of `.pbl-card`
+ * itself: the timeline's lead rows are cards too, and `render/timelineArrows.ts` reads
+ * `getBoundingClientRect()` on them to draw a dependency arrow between two bars. Those
+ * lanes get no containment until that read is gone.
+ *
+ * `auto` on the intrinsic size for the reason `tree.css` gives — the first draw records
+ * the card's real height and the placeholder uses it afterwards, so a column's scrollbar
+ * does not lie once cards with tags or a rollup have been seen. 110px is the median
+ * drawn height at ~800 notes, the fallback for a card nobody has scrolled to yet.
+ *
+ * No opt-out beside it, unlike the row's: a card is never a drop target of its own — the
+ * column, the bucket and the shelf are — so nothing here paints outside itself the way
+ * the insertion line does. The selected card's ring is the element's OWN box-shadow,
+ * which paint containment does not clip (verified in Chromium, not in jsdom).
+ */
+.pbl-board-col-cards > .pbl-card,
+.pbl-bucket-cards > .pbl-card,
+.pbl-shelf-cards > .pbl-card {
+	content-visibility: auto;
+	contain-intrinsic-size: auto 110px;
+}
+
 .pbl-card:hover {
 	border-color: var(--background-modifier-border-hover);
 }
