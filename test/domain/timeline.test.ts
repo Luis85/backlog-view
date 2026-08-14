@@ -5,6 +5,7 @@ import {
 	barGeometry,
 	cellSpan,
 	dayAt,
+	DateSpan,
 	daysBetween,
 	DEFAULT_SCALE_ID,
 	dependencyAnchor,
@@ -12,11 +13,13 @@ import {
 	formatCivil,
 	latest,
 	MAX_TIMELINE_DAYS,
+	mergeSpans,
 	SCALES,
 	scaleFor,
 	superCells,
 	timelineCells,
 	timelineWindow,
+	unionDays,
 	weekendOffsetDays,
 } from '../../src/domain/timeline';
 
@@ -343,5 +346,56 @@ describe('the weekend phase', () => {
 		expect(weekendOffsetDays(timelineWindow([], d(2026, 8, 15)))).toBe(3);
 		// timelineWindow([], 2026-09-15) starts 2026-08-01, itself a Saturday.
 		expect(weekendOffsetDays(timelineWindow([], d(2026, 9, 15)))).toBe(0);
+	});
+});
+
+describe('combining overlapping day ranges', () => {
+	const span = (start: CivilDate, target: CivilDate): DateSpan => ({ start, target });
+	const shown = (spans: Array<{ start: CivilDate; target: CivilDate }>): string[] =>
+		spans.map((one) => `${formatCivil(one.start)}→${formatCivil(one.target)}`);
+
+	it('leaves ranges that share no day alone, in date order', () => {
+		expect(shown(mergeSpans([span(d(2026, 8, 10), d(2026, 8, 12)), span(d(2026, 8, 1), d(2026, 8, 3))]))).toEqual([
+			'2026-08-01→2026-08-03',
+			'2026-08-10→2026-08-12',
+		]);
+	});
+
+	it('merges two that overlap into the range they cover together', () => {
+		expect(shown(mergeSpans([span(d(2026, 8, 1), d(2026, 8, 5)), span(d(2026, 8, 4), d(2026, 8, 9))]))).toEqual([
+			'2026-08-01→2026-08-09',
+		]);
+	});
+
+	it('merges two that merely touch, and two that are adjacent', () => {
+		// Inclusive at both ends, `crossedAbsences`' own boundary rule: 1–5 and 5–9 share the
+		// 5th. Adjacent ranges (1–5, 6–9) cover a continuous run of days and merge too — that
+		// one changes no COUNT, only how many ranges come back.
+		expect(shown(mergeSpans([span(d(2026, 8, 1), d(2026, 8, 5)), span(d(2026, 8, 5), d(2026, 8, 9))]))).toEqual([
+			'2026-08-01→2026-08-09',
+		]);
+		expect(shown(mergeSpans([span(d(2026, 8, 1), d(2026, 8, 5)), span(d(2026, 8, 6), d(2026, 8, 9))]))).toEqual([
+			'2026-08-01→2026-08-09',
+		]);
+	});
+
+	it('swallows a range wholly inside another', () => {
+		expect(shown(mergeSpans([span(d(2026, 8, 1), d(2026, 8, 20)), span(d(2026, 8, 5), d(2026, 8, 6))]))).toEqual([
+			'2026-08-01→2026-08-20',
+		]);
+	});
+
+	it('borrows the stated end for a one-ended range, as the geometry does', () => {
+		expect(shown(mergeSpans([{ start: null, target: d(2026, 8, 4) }]))).toEqual(['2026-08-04→2026-08-04']);
+		expect(shown(mergeSpans([{ start: d(2026, 8, 4), target: null }]))).toEqual(['2026-08-04→2026-08-04']);
+	});
+
+	it('counts days inclusively, and counts a shared day once', () => {
+		expect(unionDays([span(d(2026, 8, 1), d(2026, 8, 3))])).toBe(3);
+		// 1–5 is five days and 4–9 is six; together they cover nine, not eleven. Counting the
+		// sum instead is the defect this exists to prevent.
+		expect(unionDays([span(d(2026, 8, 1), d(2026, 8, 5)), span(d(2026, 8, 4), d(2026, 8, 9))])).toBe(9);
+		expect(unionDays([span(d(2026, 8, 1), d(2026, 8, 3)), span(d(2026, 8, 10), d(2026, 8, 12))])).toBe(6);
+		expect(unionDays([])).toBe(0);
 	});
 });
