@@ -844,6 +844,33 @@ and in `src/view/render/timeline.ts`, where the entry pass builds its result, in
 
 A row's mount is its `lead` — the sticky lead column, the one text region such a row has. A card's mount is the card.
 
+- [ ] **Step 6b: Give the lead column its own sizing for the list**
+
+The card's styles do not carry over, and assuming they did was a review finding against this plan. `.pbl-timeline-lead` in `styles/timeline.css` is `display: flex` with `align-items: center` and **no `flex-wrap`** — a single non-wrapping row of badge, title and count. `.pbl-card-matches` is itself a wrap container, but as a flex ITEM in that row it gets no sizing, so its content-based minimum can push past the column's fixed `width: var(--pbl-tl-lead)` and spill over the day track. Each `.pbl-card-match` is `white-space: nowrap` with `max-width: 100%`, so a long title ellipsizes only once its container is actually constrained.
+
+Add to `styles/timeline.css`, beside the other `.pbl-timeline-lead` rules:
+
+```css
+/* The match list is a second LINE in the lead, not a fourth item on its one row: the
+   lead is a nowrap flex row sized to `--pbl-tl-lead`, and a list of titles beside the
+   title would push past the column into the day track. Wrapping the lead lets the list
+   take a row of its own, and `min-width: 0` is what lets it shrink far enough for
+   `.pbl-card-match`'s own ellipsis to engage — a flex item's automatic minimum is its
+   content otherwise, which is the whole failure. */
+.pbl-timeline-lead {
+	flex-wrap: wrap;
+}
+
+.pbl-timeline-lead .pbl-card-matches {
+	flex: 1 1 100%;
+	min-width: 0;
+}
+```
+
+`flex-wrap: wrap` on the lead is inert for every row that has no match list, because badge, title and count already fit on one line — but confirm that in the harness rather than assuming it, since it is a change to every dated row.
+
+**This is layout, so jsdom cannot check it and the suite must not pretend to.** `npm run harness` CAN: the partials write these rules themselves, which is what the harness is faithful about. Run it, filter the roadmap on the dated axis so a row keeps a match, and drag the lead's resize grip to its narrowest. Record what you saw in the report. Add the narrow-lead case to the live-vault list too — a themed vault changes the font metrics this depends on.
+
 - [ ] **Step 7: Run the second pass**
 
 In `src/view/render/roadmap.ts`, after `renderContextStrip` and before `syncShelfTabStops` — every surface has drawn by then, which is the whole point:
