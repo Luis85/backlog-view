@@ -9,8 +9,17 @@ closed: 2026-08-02
 source: user request
 files:
   - src/domain/timeline.ts
+  - src/view/render/milestoneLines.ts
   - src/view/render/timeline.ts
+  - styles/milestoneLines.css
   - styles/timeline.css
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # A milestone line across the plan
@@ -124,13 +133,32 @@ reads it in `barClasses`: an outside bar carries `pbl-bar-outside` plus the open
 for the side it lies past, in the same open-end vocabulary a clipped bar already used,
 instead of drawing the clamped diamond the old code produced.
 
-The line itself is `renderMilestoneLines`, called once per render before the bar rows so
-the bars paint over it. It groups bars by `geometry.startDay` (1b — two milestones on one
+The line itself is `renderMilestoneLines` in `src/view/render/milestoneLines.ts`, called
+once per render before the bar rows so the bars paint over it. Its own module since
+2026-08-14 — it lived in `src/view/render/timeline.ts` until the resources axis's second
+dimension pushed that file past its 400-line budget, and this is the piece with the least
+to do with the rest of it: the grid draws rows, and this draws one mark ACROSS all of them
+from a list of dates. The same move `src/view/render/barLabel.ts` and
+`src/view/render/lanes.ts` already made, for the same reason and with no change to what it
+does, and its rules moved to `styles/milestoneLines.css` beside it — imported directly
+after `timeline.css`, which is where they used to sit, so the cascade is preserved by
+position rather than by a comment asking a reader to remember. It groups bars by `geometry.startDay` (1b — two milestones on one
 date collect into one entry) after skipping every non-marker bar and every `outside` one,
 then draws one full-height `.pbl-milestone-line` per day and one truncating label in the
-header track beside the month names, both positioned from the same `--pbl-milestone-left`
-custom property so the line and its label never drift apart. 1d's collision is `TODAY_NUDGE_PX`
-(2px): a milestone sharing today's day steps its line aside by that amount rather than
+header, both positioned from the same `--pbl-milestone-left`
+custom property so the line and its label never drift apart. **The label goes in the COARSE
+tier — the month and year names — and not the day-and-week tier below it**, which is a choice
+made on 2026-08-14 from a vault look rather than the arrangement it inherited: the label is an
+opaque 140px box reading rightward from its own date, so it covers whatever its tier carries to
+the right, and the cell tier carries one heading per week — meaning it covered the heading of
+the milestone's own date every time (`28 Sep` reading `28 S`). The coarse tier carries one label
+per month, so the same box usually covers nothing. `renderCellHeader` returns both tracks for
+that reason, since the drop ghost wants the opposite neighbourhood — beside the dates it is
+read against. What this did NOT fix is
+[[Nearby milestone labels cover each other]], which is label versus label and stays open.
+1d's collision is one LINE WIDTH of the active scale — not a constant, since two fixed pixels
+at two pixels per day is a whole day's displacement: a milestone sharing today's day steps its
+line aside by that amount rather than
 either mark being suppressed, and the day cell is wide enough to hold both — the styling is
 in `styles.css`, beside `.pbl-today`, with a comment naming the badge's cyan
 (`--color-cyan-rgb`) rather than the purple that is already `.pbl-lvl-1` (Feature). The row's

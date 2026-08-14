@@ -224,16 +224,32 @@
    and `styles/dependencyArrows.css` says why a layer on either element is not the alternative
    it looks like: whichever got one would out-rank the sticky lead column at 2.
 
-   The 18% is the tuning knob and nothing in this repository can settle it — jsdom paints
-   nothing and the browser harness draws Obsidian's DEFAULT colours, so whether this
-   out-reads a themed vault's weekend banding is a live-vault check. */
+   **Two marks, not one, and the EDGES are what carry it.** A flat fill strong enough to read
+   over a saturated bar is also strong enough to look like a second bar, which is the trap the
+   percentage alone cannot escape — so the fill stays a tint and the boundaries are drawn. A
+   reader asking "which days" is looking for two lines, and an eye finds an edge long before it
+   finds a 10% difference in fill. It shipped as a bare 18% fill and read as almost nothing
+   over an orange bar at Months zoom, in a vault, which is what added these.
+
+   `box-sizing` is load-bearing rather than housekeeping, exactly as it is for
+   `.pbl-timeline-cell`: `--pbl-bar-width` is a count of DAYS times `dayPx`, so under the
+   default `content-box` the two edges would add 2px and the shading would claim a sliver of a
+   day nobody is away for. `border-inline` for the pair because it has a logical twin and the
+   two sides are the same mark — [[Nothing pins a physical side]]'s mechanical half.
+
+   The percentages are the tuning knob and nothing in this repository can settle them — jsdom
+   paints nothing and the browser harness draws Obsidian's DEFAULT colours, so whether this
+   out-reads a themed vault's weekend banding, and whether it stays a wash rather than becoming
+   a bar, is a live-vault check. 18% → 28% was one such look; it is not a measurement. */
 .pbl-absence-wash {
+	box-sizing: border-box;
 	position: absolute;
 	top: 0;
 	bottom: 0;
 	left: var(--pbl-bar-left);
 	width: var(--pbl-bar-width);
-	background-color: color-mix(in srgb, var(--text-muted) 18%, transparent);
+	background-color: color-mix(in srgb, var(--text-muted) 28%, transparent);
+	border-inline: 1px solid color-mix(in srgb, var(--text-muted) 70%, transparent);
 	pointer-events: none;
 }
 

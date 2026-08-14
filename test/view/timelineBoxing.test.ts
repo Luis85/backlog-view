@@ -378,6 +378,18 @@ describe('the absence marks are drawn from the content palette', () => {
 		expect(bodyOf(lanes, '.pbl-absence-wash', 'styles/lanes.css')).toContain('pointer-events: none;');
 	});
 
+	it('sizes the shading border-box, so its own edges claim no extra day', () => {
+		// `--pbl-bar-width` is a count of DAYS times `dayPx` — the same arithmetic that places
+		// every bar and gridline — so a rule that draws edges on the box has to state
+		// `box-sizing`, or the two 1px borders are ADDED and the shading covers a sliver of a
+		// day nobody is away for. `.pbl-timeline-cell`'s own rule, which the pair at the top of
+		// this file guards for the same reason: the tests there record nine month cells coming
+		// out 153px wider than the days they name.
+		const body = bodyOf(lanes, '.pbl-absence-wash', 'styles/lanes.css');
+		expect(body, 'the shading draws no edges, so nothing depends on box-sizing').toMatch(/border(-inline)?:/);
+		expect(body).toContain('box-sizing: border-box;');
+	});
+
 	it('gives the shading no layer of its own', () => {
 		// It sits over the bar by document order — appended after it — which is the layer
 		// argument `styles/dependencyArrows.css` records, used in the other direction. A

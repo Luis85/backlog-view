@@ -6,10 +6,18 @@ status: Open
 priority: P3
 area: limitation
 created: 2026-08-02
-source: 2026-08-02 Codex review of PR #56; independently confirmed a known follow-up
+source: 2026-08-02 Codex review of PR
 files:
+  - src/view/render/milestoneLines.ts
   - src/view/render/timeline.ts
-  - styles/timeline.css
+  - styles/milestoneLines.css
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Nearby milestone labels cover each other
@@ -61,6 +69,31 @@ Choosing between these from a static reading of the CSS is how a fix trades a vi
 problem for an invisible one. [[Roadmap milestone appearance]] carries the smoke-test
 item that asks for the look, with this exact mechanism written into it.
 
+## What changed on 2026-08-14, and what did not
+
+A LOOK finally happened — a vault at 385 results, Months zoom — and it found the adjacent
+defect rather than this one: with a single milestone on the grid, the label covered the day
+heading of its own date (`28 Sep` reading as `28 S` beneath `Ship the roadmap epic`). Label
+versus DATE, not label versus label, and certain rather than occasional: the cell tier carries
+one heading per week, so an opaque 140px box reading rightward from a date always lands on one.
+
+That is fixed by moving the label's mount to the COARSE tier — the month and year headings —
+where the same box usually covers nothing, since that tier carries one label per month. One
+mount point, no extra header row, and `renderCellHeader` now returns both tracks because two
+things want opposite neighbourhoods: the drop ghost belongs beside the dates it is read
+against, the label belongs where there is room. `roadmapMarkers.test.ts` pins the tier, which
+is all jsdom can see — it lays nothing out, so which pixels a 140px box covers stays a
+live-vault question either way.
+
+**None of the three candidates above was taken, and this issue stays open.** Two milestones
+with long titles inside about five weeks of each other still overlap, in row order, and the
+move makes that no better: the coarse tier is emptier but a label is the same width, and two
+labels at the same date-ish position collide there exactly as they did below. What the move
+did change is the DENOMINATOR — the common case (one milestone, covering a date heading) is
+gone, and what is left is the case this note was always about. Candidate 2 (extra header rows)
+is still the one that reads best and still crowds the sticky band; candidate 1 (clamp to the
+gap) and candidate 3 (paint in date order) are still cheaper and still unmeasured.
+
 ## What it is not
 
 Not an accessibility failure. The header band is `aria-hidden="true"`, so no assistive
@@ -71,7 +104,11 @@ only when two milestones with long titles fall inside about five weeks of each o
 
 ## Where it lives
 
-`renderMilestoneLines` in `src/view/render/timeline.ts` builds the by-day map and appends
-each label; the geometry is `.pbl-milestone-label` in `styles.css`. The header band it
-crowds is the same one [[The today line swallows a row's clicks]] proposes adding a label
-to, which is why those two want deciding together.
+`renderMilestoneLines` in `src/view/render/milestoneLines.ts` builds the by-day map and appends
+each label into the track `renderTimeline` hands it — the coarse tier since 2026-08-14, for the
+reason above; the geometry is `.pbl-milestone-label` in `styles/milestoneLines.css`. (This note
+said `src/view/render/timeline.ts` and `styles.css` until then: both were true when it was
+written, and both are what the "address code by name, not by position" rule is about — the
+module was split out and the stylesheet became partials, and a path outlives neither.) The
+header band it crowds is the same one [[The today line swallows a row's clicks]] proposes adding
+a label to, which is why those two want deciding together.

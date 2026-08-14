@@ -236,7 +236,8 @@ export function renderTimeline(
 		const weekend = content.createDiv({ cls: 'pbl-weekend-layer', attr: { 'aria-hidden': 'true' } });
 		weekend.setCssProps({ '--pbl-weekend-offset': `${weekendOffsetDays(window) * scale.dayPx}px` });
 	}
-	const headerTrack = renderCellHeader(ctx, content, window, scale, { width: leadWidth, available });
+	const header = renderCellHeader(ctx, content, window, scale, { width: leadWidth, available });
+	const headerTrack = header.cells;
 	renderGridLines(content, window, scale, leadWidth);
 	// Before the rows, so the bars — positioned elements later in the DOM — paint over
 	// them. A line says what falls either side of a date; a bar is the thing being asked
@@ -245,7 +246,11 @@ export function renderTimeline(
 	// override repaints the diamond green and leaves the line alone, so a grid whose only
 	// marker is done draws cyan that no diamond accounts for. Asking the bars alone left
 	// that line unkeyed.
-	const milestoneLines = renderMilestoneLines({ grid: content, headerTrack }, window, bars, today, { scale, leadWidth });
+	// The label goes in the COARSE tier, never the cell tier — see `renderMilestoneLines`.
+	const milestoneLines = renderMilestoneLines({ grid: content, headerTrack: header.coarse }, window, bars, today, {
+		scale,
+		leadWidth,
+	});
 	const tracks = new Map<string, HTMLElement>();
 	// Computed ONCE, before any row exists, and from `bars`/`shelf` alone — never from
 	// what the arrow layer below goes on to draw. That is what makes both consumers
@@ -407,10 +412,12 @@ function drawEntries(entries: TimelineEntry[], pass: EntryPass): void {
  * `aria-hidden` ancestor removes every focusable descendant from the accessibility
  * tree along with the decoration, and this cell is no longer only decoration.
  *
- * Returns the cell tier alone — `TimelineRender.headerTrack`, where the milestone
- * labels and the drop ghost mount. It once also handed back an empty band reserved
- * for the Today pill; the legend strip above the grid took over naming the today
- * line's colour, so the pill and its band are gone and this is a plain track again.
+ * Returns BOTH tiers, because two different things mount into them and they want opposite
+ * neighbourhoods: the drop ghost belongs beside the dates it is read against (`cells`,
+ * carried out as `TimelineRender.headerTrack`), and a milestone's label belongs where there
+ * is room for it (`coarse`). It once also handed back an empty band reserved for the Today
+ * pill; the legend strip above the grid took over naming the today line's colour, so the
+ * pill and its band are gone and these are plain tracks again.
  */
 function renderCellHeader(
 	ctx: RowContext,
@@ -420,14 +427,14 @@ function renderCellHeader(
 	// `available` rides along only so the grip can state a real `aria-valuemax` — see
 	// `renderLeadResize`.
 	lead: { width: number; available: number },
-): HTMLElement {
+): { coarse: HTMLElement; cells: HTMLElement } {
 	const header = content.createDiv({ cls: 'pbl-timeline-header' });
 	const leadEl = header.createDiv({ cls: 'pbl-timeline-lead' });
 	renderLeadResize(ctx.host, leadEl, content, { current: lead.width, defaultWidth: TIMELINE_LEAD_PX, available: lead.available });
 	// Two stacked tiers in the track slot: the coarser orientation tier, then the cells.
 	const tiers = header.createDiv({ cls: 'pbl-timeline-tiers', attr: { 'aria-hidden': 'true' } });
-	renderHeaderTier(tiers, superCells(window, scale), scale, 'pbl-timeline-super', 'pbl-timeline-cell pbl-timeline-cell-super');
-	return renderHeaderTier(tiers, timelineCells(window, scale), scale, '', 'pbl-timeline-cell');
+	const coarse = renderHeaderTier(tiers, superCells(window, scale), scale, 'pbl-timeline-super', 'pbl-timeline-cell pbl-timeline-cell-super');
+	return { coarse, cells: renderHeaderTier(tiers, timelineCells(window, scale), scale, '', 'pbl-timeline-cell') };
 }
 
 function renderHeaderTier(

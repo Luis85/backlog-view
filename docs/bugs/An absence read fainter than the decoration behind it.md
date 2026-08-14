@@ -176,3 +176,14 @@ the square was the wrong shape rather than the period the wrong number. The swat
 wide now and draws the mark's own gradient, so the key and the mark are one declaration
 compared as one fact — a strictly stronger check than the colour-only pairing it replaces,
 which could not have caught this at all.
+
+A second look, once the shading was over the bars, added two more. **The wash was too faint
+over a saturated bar**: 18% of `--text-muted` over an orange Epic at Months zoom is close to
+nothing, and the answer is not only a bigger number — a flat fill strong enough to read over a
+bar is also strong enough to read as a second bar. So the fill went to 28% and the RANGE
+gained edges, which is what an eye actually finds; `box-sizing: border-box` keeps those two
+1px borders from claiming a day nobody is away for, `.pbl-timeline-cell`'s own rule. And **the
+crossing flag wore `user-x`**, the glyph that already marks the Add absence button, an absence
+row and a resource being away — four uses of one mark, of which the two a reader most needs to
+tell apart are "this row IS an absence" and "this row RUNS THROUGH one". It is `calendar-x`
+now: the person stays with `user-x`, and a crossing is about days.

@@ -332,7 +332,10 @@ the track establishes no stacking context, so a layer on either element would ou
 sticky lead column at 2. A per-ROW wash rather than a band-height one because a band has no
 container element — its top and height are knowable only by measuring after the render, the
 layout read `src/view/CLAUDE.md` forbids and the reason `TimelineDrawing.laneElement` reports
-per element rather than wiring a band.
+per element rather than wiring a band. It is **two marks, a tint and its two EDGES**, which is
+the shape rather than the numbers: a flat fill strong enough to read over a saturated bar is
+also strong enough to read as a second bar, and an eye finds an edge long before it finds a
+difference in fill. The percentages behind it are a tuning knob nothing here can settle.
 
 **`crossedAbsences` in `src/domain/absences.ts` is the one place "does this bar cross a
 stretch" is answered.** It judges the overlap on the days the bar DRAWS — `start ?? target` …
@@ -344,7 +347,11 @@ crossing outside the drawn window still marks its row: the row is where the fact
 window-derived mark would narrow it to wherever the reader happens to be scrolled. What
 reports it is `noteAbsenceClash`, the dependency conflict's shape reused — a glyph in the
 lead plus the words it stands for as `.pbl-sr-only` content, because the wash tells this in
-colour alone and WCAG 1.4.1 refuses that.
+colour alone and WCAG 1.4.1 refuses that. The glyph is `calendar-x` and deliberately NOT the
+`user-x` every other absence control wears: that mark already means the Add absence button, an
+absence row, and a resource being away, and the two facts a reader most needs to tell apart on
+this axis are "this row is an absence" and "this row runs through one". A crossing is about
+DAYS.
 
 **The band header carries NO glyph saying the band holds an absence, and that is a refusal
 rather than an omission.** One was built on 2026-08-14 — `lane.bars.length` is RESULT bars and

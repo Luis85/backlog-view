@@ -389,7 +389,12 @@ export function noteAbsenceClash(row: HTMLElement, lead: HTMLElement, crossed: A
 	const said = `Crosses ${crossed.length === 1 ? 'an absence' : `${crossed.length} absences`}: ${spans}`;
 	row.createSpan({ cls: 'pbl-sr-only', text: said });
 	const flag = lead.createSpan({ cls: 'pbl-away-flag', attr: { 'aria-hidden': 'true' } });
-	drawIcon(flag, 'user-x');
+	// `calendar-x`, NOT the `user-x` this shipped with. That glyph already means three things
+	// in one band — the Add absence button, an absence row's own icon, and a resource being
+	// away — so a fourth use for "this bar CROSSES an absence" left the two facts a reader
+	// most needs to tell apart wearing one mark: *this row is an absence* and *this row runs
+	// through one*. `user-x` stays with the person, and the crossing is about DAYS.
+	drawIcon(flag, 'calendar-x');
 	setTooltip(flag, said);
 }
 

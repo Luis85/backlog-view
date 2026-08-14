@@ -40,11 +40,12 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 - **An absence is readable against the work it crosses** — the stretch is drawn in a text
   colour instead of the one the gridlines and the weekend banding are made of, so it no longer
   reads fainter than the shading behind it, and at the same height as a bar. The same days are
-  now shaded across that person's own rows and over the bars in them, so a plan running through
-  an absence is one line to read rather than two to compare; the named stretch stays where it
-  was, with its title, its dates and its menu. A bar scheduled across one carries a marker in
-  its row header naming which absence and which days, and the legend gains an **Unavailable**
-  key wherever a stretch is actually on screen.
+  now shaded across that person's own rows and over the bars in them, edge to edge with a line
+  down each end of the range, so a plan running through an absence is one line to read rather
+  than two to compare; the named stretch stays where it was, with its title, its dates and its
+  menu. A bar scheduled across one carries a marker in its row header naming which absence and
+  which days, and the legend gains an **Unavailable** key wherever a stretch is actually on
+  screen.
 
 - **Schedule from a resource's row** — a bar in someone's row now behaves like a bar on
   the plain timeline: drag its body to move it in time, drag either end to change how long
@@ -109,6 +110,11 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 - **An absence now draws in the row that names it.** The hatched band was rendering on the
   line *below* its own title, against nothing — so on the one axis whose subject is whose
   row this is, no stretch sat beside the person it belongs to.
+
+- **A milestone's label no longer covers the date it sits on.** The label hung in the row of
+  day and week headings, where it is an opaque box reading rightward from its own date, so it
+  ate the very heading naming the day the milestone falls on. It sits in the month and year
+  row above instead, which carries one label where the row below carries a dozen.
 
 - **An absence stretch is a drop target like the rest of its row.** Dropping work onto the
   blocked band inside someone's row did nothing at all — no highlight, no write — even
