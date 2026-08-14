@@ -321,8 +321,13 @@ describe('folding on the resources axis', () => {
 		harness.view.setLaneCollapsed('Alice', true);
 
 		const baseline = laneRoadmap(nearOnlyVault());
-		// The direct reading, not the header-cell proxy — see the sibling test above.
-		expect(harness.view.roadmap?.window?.days).toBeGreaterThan(baseline.view.roadmap?.window?.days ?? 0);
+		// The direct reading, not the header-cell proxy — see the sibling test above. Pinned
+		// the same way: `?? 0` here would let an unconfigured baseline (`undefined`) satisfy
+		// the comparison as soon as the harness drew ANY window at all, which is the carried
+		// fix the sibling test above got and this one did not.
+		const baselineDays = baseline.view.roadmap?.window?.days;
+		expect(baselineDays, 'the baseline drew no window at all').toBeGreaterThan(30);
+		expect(harness.view.roadmap?.window?.days).toBeGreaterThan(baselineDays as number);
 	});
 });
 

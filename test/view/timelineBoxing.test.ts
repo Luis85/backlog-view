@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { STATE_COLOR_SLOTS } from '../../src/domain/settings';
 import { LABEL_RESERVE_PX } from '../../src/view/render/barLabel';
+import { BODY_SELECTORS, declarations, resolvesValue } from '../helpers/cssVars';
 
 /** The declarations of one rule, by selector — good enough for a single-selector rule. */
 function bodyOf(css: string, selector: string, file: string): string {
@@ -357,12 +358,38 @@ describe('the absence marks are drawn from the content palette', () => {
 	it('keys the days-lost swatch with the SAME --pbl-away token the wash names, not a copy', () => {
 		// The pairing the hatch test below states for `.pbl-absence`/`.pbl-legend-absence`,
 		// asked of the away key instead: both draw from ONE custom property declared once
-		// (`.pbl-timeline`, `styles/lanes.css`), so the two cannot drift the colour apart —
-		// only the gradient's own period differs, which is why this pairs the token alone
+		// (`.pbl-roadmap-dates`, `styles/lanes.css`), so the two cannot drift the colour apart
+		// — only the gradient's own period differs, which is why this pairs the token alone
 		// and not the whole gradient the way the hatch pairing below does.
 		const legend = readFileSync(new URL('../../styles/legend.css', import.meta.url), 'utf8');
 		expect(tokens(lanes, '.pbl-absence-wash', 'styles/lanes.css')).toContain('--pbl-away');
 		expect(tokens(legend, '.pbl-legend-days-lost', 'styles/legend.css')).toContain('--pbl-away');
+	});
+
+	it('resolves a colour for the days-lost swatch, not just a name it declares', () => {
+		// The pairing above is honest about the NAME and blind to whether any element
+		// actually inherits the value — exactly how this shipped once: `--pbl-away` was
+		// declared on `.pbl-timeline`, the grid itself, while the legend is a SIBLING of
+		// `.pbl-tree` (both direct children of `.pbl-view`, `src/view/backlogView.ts`) —
+		// so a legend swatch naming the right custom property still computed to nothing,
+		// because inheritance runs down the tree and the grid is not the legend's ancestor.
+		// `test/helpers/cssVars.ts` follows a value's own `var()` references rather than
+		// checking that a name is declared somewhere in the file, which is what catches
+		// that a real theme's tokens plus `--pbl-away`'s OWN declared scope resolve.
+		const obsidian = readFileSync(new URL('../harness/obsidian.css', import.meta.url), 'utf8');
+		const legend = readFileSync(new URL('../../styles/legend.css', import.meta.url), 'utf8');
+		const values = new Map([
+			...declarations(obsidian, 'dark', BODY_SELECTORS),
+			// `.pbl-roadmap-dates` is the ancestor `--pbl-away` is actually scoped to — see
+			// its own comment in `styles/lanes.css` for why `.pbl-timeline` was the wrong one.
+			...declarations(lanes, 'dark', new Set(['.pbl-roadmap-dates'])),
+		]);
+		const body = bodyOf(legend, '.pbl-legend-days-lost', 'styles/legend.css');
+		for (const property of ['background-color', 'border']) {
+			const value = new RegExp(`${property}:\\s*([^;]+);`).exec(body)?.[1];
+			expect(value, `.pbl-legend-days-lost states no ${property}`).toBeDefined();
+			expect(resolvesValue(value as string, values), `${property}: ${value} does not resolve`).toBe(true);
+		}
 	});
 
 	it('draws the stretch at the height its sub-lane pitch was sized for', () => {

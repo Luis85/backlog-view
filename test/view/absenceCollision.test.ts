@@ -4,6 +4,12 @@ import { FakeVault } from '../helpers/vault';
 import { useViewHarness } from '../helpers/view';
 import { laneRoadmap, rowFor } from '../helpers/roadmap';
 import { absenceVault } from '../helpers/resources';
+import { addDays, formatCivil, MAX_TIMELINE_DAYS } from '../../src/domain/timeline';
+import { readDate, todayStamp } from '../../src/domain/noteFields';
+
+/** `clashCost`'s own construction, borrowed rather than re-derived — see its own test. */
+const TODAY = readDate(todayStamp()).value;
+if (TODAY === null) throw new Error('todayStamp() did not parse as a date');
 
 useViewHarness();
 
@@ -51,12 +57,16 @@ describe('the days a band is unavailable, shaded across its work', () => {
 		expect(washes[0].style.getPropertyValue('--pbl-bar-width')).toBe(mark?.style.getPropertyValue('--pbl-bar-width'));
 
 		// OVER the bar, and by document order alone — no `z-index` anywhere, which is the
-		// whole layer story (see `renderAbsenceWash`). Last child of the track it is in, so the
-		// unavailable days tint the bar crossing them rather than being covered by it.
+		// whole layer story (see `renderAbsenceWash`). AFTER the bar in the track it is in, so
+		// the unavailable days tint the bar crossing them rather than being covered by it —
+		// not necessarily the LAST child any more: `.pbl-days-lost` (`noteAbsenceClash`) can
+		// land after it in the same track, and does not disturb this ordering since it sits
+		// past the bar's own right edge rather than over it.
 		const track = washes[0].parentElement;
 		const children = Array.from(track?.children ?? []);
-		expect(children.indexOf(washes[0])).toBe(children.length - 1);
-		expect(children.findIndex((el) => el.classList.contains('pbl-bar'))).toBeLessThan(children.length - 1);
+		const barIndex = children.findIndex((el) => el.classList.contains('pbl-bar'));
+		expect(barIndex).toBeGreaterThanOrEqual(0);
+		expect(children.indexOf(washes[0])).toBeGreaterThan(barIndex);
 	});
 
 	it('shades no line that makes no positional claim, and no band on the dated axis', () => {
@@ -171,16 +181,21 @@ describe('what a bar SAYS it costs to cross an absence', () => {
 	});
 
 	it('says so differently when the stretch covers the bar whole', () => {
+		// Three days, not two: `MIN_COST_LABEL_PX` is 8, and a two-day bar at the default
+		// zoom (4px/day) draws exactly 8px — the constant's OWN boundary, derived from this
+		// shape of fixture rather than an independent number. Three days (12px) clears it
+		// with a day of margin, so this fixture tests "the stretch covers the bar whole"
+		// and not, incidentally, "exactly at the width threshold" as well.
 		const vault = new FakeVault();
 		vault.addFile('Short.md', {
-			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-04', due: '2026-08-05' },
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-04', due: '2026-08-06' },
 		});
 		vault.addFile('Alice away.md', {
 			frontmatter: { type: 'Absence', assignee: 'Alice', start: '2026-08-01', due: '2026-08-20' },
 		});
 		const { containerEl } = laneRoadmap(vault);
 
-		expect(rowFor(containerEl, 'Short')?.querySelector('.pbl-days-lost')?.textContent).toBe('all 2 days lost');
+		expect(rowFor(containerEl, 'Short')?.querySelector('.pbl-days-lost')?.textContent).toBe('all 3 days lost');
 	});
 
 	it('keeps the sentence reachable even where the visible label is dropped', () => {
@@ -207,6 +222,44 @@ describe('what a bar SAYS it costs to cross an absence', () => {
 
 		expect(row?.querySelector('.pbl-days-lost')).toBeNull();
 		expect(row?.querySelector('.pbl-sr-only')?.textContent).toContain('Crosses an absence');
+	});
+
+	it('says a PARTIAL cost for a bar clipped at the window edge, never "all" of the wrong length', () => {
+		// `barGeometry.spanDays` is the VISIBLE width, clamped into the drawn window;
+		// `daysLost` counts real calendar days off the note's own span. A bar clipped at the
+		// window's edge draws a narrow sliver whose clamped width can be smaller than the
+		// days actually lost — comparing `lost` against THAT number said "all" of a
+		// decades-long plan for losing a handful of days near the edge, which is exactly the
+		// shape that forced deriving "all" from `row.bar.span` directly instead of from
+		// `geometry`.
+		const vault = clampedVault();
+		const windowStart = addDays(TODAY, -Math.floor(MAX_TIMELINE_DAYS / 2));
+		// `Ancient` states a real span from 2000 to just inside the clamped window's own
+		// left edge, so its CLAMPED visible width is a couple of days while its REAL span is
+		// decades. The absence sits at that same edge, entirely within `Ancient`'s real span,
+		// so it crosses regardless of where the window is actually drawn.
+		vault.addFile('Ancient.md', {
+			frontmatter: {
+				type: 'Epic',
+				order: 10,
+				assignee: 'Alice',
+				start: '2000-01-01',
+				due: formatCivil(addDays(windowStart, 1)),
+			},
+		});
+		vault.addFile('Edge away.md', {
+			frontmatter: {
+				type: 'Absence',
+				assignee: 'Alice',
+				start: formatCivil(addDays(windowStart, -2)),
+				due: formatCivil(addDays(windowStart, 1)),
+			},
+		});
+		const { containerEl } = laneRoadmap(vault);
+
+		const said = rowFor(containerEl, 'Ancient')?.querySelector('.pbl-days-lost')?.textContent ?? '';
+		expect(said, 'a sliver of a decades-long plan is not "all" of it').not.toMatch(/^all /);
+		expect(said).toMatch(/^\d+ days lost to absence$/);
 	});
 
 	it('says a milestone falls on an away day rather than counting its days', () => {

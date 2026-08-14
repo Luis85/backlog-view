@@ -196,12 +196,24 @@
    TEXT token: an absence is CONTENT, so no part of it is drawn from `--background-modifier-*`
    — the rule `docs/bugs/An absence read fainter than the decoration behind it.md` records.
 
-   Scoped to `.pbl-timeline`, not a `.pbl-timeline-grid` this view never creates: it is the
-   scroll box both axes share (`styles/timeline.css`) and the one ancestor common to a bar
-   row's track, where the wash draws, and its lead, where the swatch draws — a header's own
-   stretch (`.pbl-absence`) and its legend key sit outside this rekey and keep the plain
-   `--text-muted` hatch they always drew. */
-.pbl-timeline {
+   Scoped to `.pbl-roadmap-dates`, not `.pbl-timeline`. `.pbl-timeline` looked right and is
+   wrong: it is the grid itself, nested inside `.pbl-tree` — and `.pbl-tree` and the legend
+   are SIBLINGS, both direct children of `.pbl-view` (`backlogView.ts`), so a custom property
+   declared on the grid never reached a legend swatch sitting outside it. Inheritance runs
+   DOWN the tree only; a shared ancestor has to be an ancestor of both, not of one.
+   `.pbl-roadmap-dates` is the class `backlogView.ts` already toggles on `.pbl-view` itself
+   exactly when a grid axis draws (`drawsGrid`) — the same selector `styles/roadmap.css`
+   already scopes the timeline's own layout rules through — so it is an ancestor of the
+   legend AND of the bar row's track and lead where the wash and the swatch draw. A header's
+   own stretch (`.pbl-absence`) and its legend key sit outside this rekey and keep the plain
+   `--text-muted` hatch they always drew, so neither needed to move.
+
+   `test/view/timelineBoxing.test.ts`'s "resolves a colour for the days-lost swatch" is the
+   check that would have caught the wrong scope: the token-name pairing beside it reads only
+   whether both rules NAME `--pbl-away`, which is honest about the name and blind to whether
+   any element actually inherits the value — exactly how this shipped invisible the first
+   time. */
+.pbl-roadmap-dates {
 	--pbl-away: color-mix(in srgb, var(--color-yellow) 55%, var(--text-muted));
 }
 
@@ -273,11 +285,6 @@
 	color: var(--text-muted);
 }
 
-.pbl-away-flag .svg-icon {
-	width: var(--icon-s);
-	height: var(--icon-s);
-}
-
 /* The hatched swatch that replaced the `calendar-x` glyph on 2026-08-14 — a small block of
    the same away key the wash draws, `--pbl-away`, rather than a warning colour: a plan
    crossing an absence is a fact to see, not an error to fix. Sized off `--icon-s` like the
@@ -295,18 +302,36 @@
 	);
 }
 
-/* The days-lost sentence beside the swatch — `noteAbsenceClash`'s visible half, dropped by
+/* The days-lost sentence beside the bar — `noteAbsenceClash`'s visible half, dropped by
    `clashCost` wherever there is no room for it (`src/view/render/timeline.ts`). Muted TEXT,
    never the away key itself: this is words, not a mark standing for the stretch, so it draws
-   from the same token every other hidden-in-plain-sight row note does. Where it lands relative
-   to the bar it is about is a live-vault question this stylesheet cannot settle — `clashCost`'s
-   own width threshold is the tuning knob for it. */
+   from the same token every other hidden-in-plain-sight row note does.
+
+   A child of the TRACK, not of the row, and positioned off the SAME `--pbl-bar-left` /
+   `--pbl-bar-width` pair `placeSpan` set on it (its own copies, not the bar's — a sibling
+   cannot read custom properties an element beside it declared) — `.pbl-bar-label`'s own
+   shape when it draws "after" a bar, including that label's `pointer-events: none`: this
+   text sits to the right of the bar, never over it, so it carries none of the wash's own
+   reason to let the pointer through to the grips beneath.
+
+   It used to be a THIRD flex child of `.pbl-timeline-row` itself, after the lead and the
+   (window-wide) track — up to ~7300px right of the lead at the default zoom, and wide
+   enough on `.pbl-timeline-content`'s `width: max-content` to widen every row carrying one.
+   Anchoring it in the track against the bar's own geometry is what fixed both.
+
+   How far past the bar's right edge this can run, and whether it collides with anything
+   drawn further along the same track, is a live-vault question this stylesheet cannot
+   settle — `clashCost`'s own width threshold decides only whether the bar itself is wide
+   enough to draw this at all, not what sits beside it. */
 .pbl-days-lost {
-	flex: 0 0 auto;
-	margin-left: var(--size-4-2);
+	position: absolute;
+	top: 50%;
+	transform: translateY(-50%);
+	left: calc(var(--pbl-bar-left) + var(--pbl-bar-width) + var(--size-4-2));
 	white-space: nowrap;
 	font-size: var(--font-ui-smaller);
 	color: var(--text-muted);
+	pointer-events: none;
 }
 
 /* A resource with nothing on screen under them: still a row, because a roster exists to show

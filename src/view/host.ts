@@ -106,10 +106,16 @@ export interface DrawnColors {
 	 */
 	absence: boolean;
 	/**
-	 * A bar reported days lost to an absence somewhere on this grid — the resources axis
-	 * only, since it is the only one whose rows belong to a resource. Reported from the
-	 * RENDER like `absence` beside it, and for the same reason: a collapsed band draws no
-	 * clash, so a predicate over `roadmap.lanes` would key a mark nothing on screen makes.
+	 * A bar drew its VISIBLE days-lost sentence (`.pbl-days-lost`) somewhere on this grid —
+	 * the resources axis only, since it is the only one whose rows belong to a resource.
+	 * Asked of `clashCost`'s own answer (`cost !== null`, `render/timeline.ts`), never of a
+	 * crossing alone: a bar can cross a stretch and still draw no sentence at all when
+	 * `clashCost`'s width threshold has no room for it (the lead's hatched swatch still
+	 * draws either way, which is a DIFFERENT fact this field does not key). Reported from
+	 * the RENDER like `absence` beside it, and for the same reason: a collapsed band draws
+	 * no clash, so a predicate over `roadmap.lanes` would key a mark nothing on screen makes
+	 * — and a crossing with a suppressed label is the same mistake reached the other way,
+	 * which is what this field existed to fix once already.
 	 */
 	daysLost: boolean;
 }

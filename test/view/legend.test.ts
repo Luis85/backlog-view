@@ -204,6 +204,32 @@ describe('the roadmap legend', () => {
 		expect(swatchLabels(containerEl)).not.toContain('Days lost');
 	});
 
+	it('keys no days lost for a crossing whose own sentence never drew', () => {
+		// `drawn.daysLost` is `cost !== null`, not `crossed.length > 0` — a defect this
+		// pass had until review: a bar too narrow for `clashCost`'s own width threshold
+		// still crosses (its lead swatch draws) but states no `.pbl-days-lost` sentence
+		// anywhere, and the legend must not claim a key for a mark nothing on screen makes.
+		const vault = new FakeVault();
+		vault.addFile('Brief.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-04', due: '2026-08-04' },
+		});
+		vault.addFile('Alice away.md', {
+			frontmatter: { type: 'Absence', assignee: 'Alice', start: '2026-08-04', due: '2026-08-06' },
+		});
+		const { view, containerEl } = makeView(
+			vault,
+			{ ...DATE_AXIS, assigneeProperty: 'note.assignee', resourceNames: 'Alice' },
+			{ collapsed: true },
+		);
+		view.setProjection('roadmap');
+		view.setAxisPick('resources');
+
+		// The crossing itself still shows — the lead swatch draws regardless of width.
+		expect(containerEl.querySelector('.pbl-away-swatch')).not.toBeNull();
+		expect(containerEl.querySelector('.pbl-days-lost')).toBeNull();
+		expect(swatchLabels(containerEl)).not.toContain('Days lost');
+	});
+
 	it('stays under the toolbar and outside the timeline scroller, so it never scrolls away', () => {
 		const { view, containerEl } = makeView(datedVault(), { ...DATE_AXIS, ...WORKFLOW }, { collapsed: true });
 		view.setProjection('roadmap');
