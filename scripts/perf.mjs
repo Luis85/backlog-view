@@ -80,11 +80,24 @@ const against = args.against ?? null;
 // At least one: zero printed an EMPTY table and exited 0, `2.5` ran three times under a
 // heading saying 2.5, and `Infinity` never came back.
 const runs = wholeNumber('runs', args.runs ?? (against ? 3 : 1), 1);
-// A viewport, because one is load-bearing rather than incidental: `content-visibility`
-// skips what is off screen, so a window twice as tall renders twice as many rows before
-// the browser stops. Chromium's headless default is 800x600; this states a size instead
-// of inheriting one, and prints it, so a number can be reproduced.
-const window = args.window ?? '1200,900';
+/**
+ * A viewport, because one is load-bearing rather than incidental: `content-visibility`
+ * skips what is off screen, so a window twice as tall renders twice as many rows before
+ * the browser stops. Chromium's headless default is 800x600; this states a size instead
+ * of inheriting one, and prints it, so a number can be reproduced.
+ *
+ * Which is exactly why the value is checked. Chromium's switch is `w,h` and it IGNORES
+ * anything it cannot parse — so `--window=1200x900`, the spelling a person is most likely
+ * to type, silently measured the default 800x600 while the heading printed 1200x900. The
+ * one number this table's own subject depends on, reported as something it was not.
+ * (Codex, PR #137.)
+ */
+const window = String(args.window ?? '1200,900');
+const size = window.split(',');
+if (size.length !== 2 || !size.every((n) => Number.isInteger(Number(n)) && Number(n) > 0)) {
+	console.error(`--window must be WIDTH,HEIGHT in whole pixels — got "${window}".`);
+	process.exit(1);
+}
 
 const query = new URLSearchParams({ notes, perf: '' });
 if (args.fixture) query.set('fixture', args.fixture);

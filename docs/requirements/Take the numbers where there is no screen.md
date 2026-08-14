@@ -64,7 +64,11 @@ instruments improvised around a browser.
 - **1b — the viewport is left to the browser's default.** It was, and it is
   load-bearing: `content-visibility` skips what is off screen, so window size decides how
   much of a tree is rendered at all. `--window` states one and every table prints it,
-  because a number nobody can reproduce is not a measurement.
+  because a number nobody can reproduce is not a measurement. It is also CHECKED, for the
+  same reason: Chromium's switch is `w,h` and it ignores what it cannot parse, so
+  `--window=1200x900` — the spelling a person is most likely to type — measured the default
+  800x600 under a heading printing 1200x900. The one number this feature's own subject
+  depends on, reported as something it was not. (Codex, PR #137.)
 - **3a — one run per side is compared.** That is how this register produced two retracted
   findings, so `--against` starts at three runs and prints both spreads: two medians whose
   spreads overlap have no delta worth reading, and a reader can only see that if both are
