@@ -56,8 +56,11 @@ instruments improvised around a browser.
   rather than failing inside a browser invocation nobody can read. It said it on WINDOWS
   too, with a browser installed by either route: Playwright's builds there are `chrome-win`
   and `.exe`, under a cache root neither of the two the search knew, and a PATH lookup for
-  `chromium` needs the extension. All three are in the lists now and none of it is verified
-  — there is no Windows here, and this script is not what CI runs on one.
+  `chromium` needs the extension — and macOS caches under `~/Library/Caches/ms-playwright`,
+  whose LEAF was in the list from the start while its ROOT was not, which is how a list like
+  this hides a gap: the entry looks covered because its other half is there. All of it is in
+  the lists now and none of it is verified — this container is the only platform the search
+  has been run on, and CI does not run this script.
 - **1b — the viewport is left to the browser's default.** It was, and it is
   load-bearing: `content-visibility` skips what is off screen, so window size decides how
   much of a tree is rendered at all. `--window` states one and every table prints it,

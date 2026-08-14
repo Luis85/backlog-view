@@ -87,8 +87,9 @@ const search = `?${query.toString().replace(/=$/, '').replace(/=&/, '&')}`;
  * pointed it out: its Playwright builds live under `chrome-win` with `.exe` names, in a
  * cache root neither of the two here, and a PATH lookup for `chromium` finds nothing
  * without the extension. So `npm run perf` reported "No Chromium found" on a machine that
- * had one by either advertised route. UNVERIFIED — there is no Windows here to run it on,
- * and CI does not run this script. (Codex, PR #137.)
+ * had one by either advertised route. UNVERIFIED, here and for macOS beside it — this
+ * container is the only platform the search has ever been run on, and CI does not run this
+ * script at all. (Codex, PR #137.)
  */
 const BUNDLED = [
 	'chrome-linux/headless_shell',
@@ -120,10 +121,17 @@ const under = (dir) => (existsSync(dir) ? readdirSync(dir).sort().reverse() : []
  * whole content is "these places, in this order".
  */
 const HOME = process.env.HOME ?? process.env.USERPROFILE ?? '';
-/** Where Playwright puts its downloads, per platform — this container's first. */
+/**
+ * Where Playwright puts its downloads, per platform — this container's first, then the
+ * Linux, macOS and Windows defaults its own docs name. Two of the three arrived only
+ * because review asked for them in turn: the macOS LEAF was in `BUNDLED` from the start
+ * while its ROOT was missing, which is the shape of gap a list like this hides — the
+ * entry looks covered because its other half is there. (Codex, PR #137.)
+ */
 const PW_ROOTS = [
 	'/opt/pw-browsers',
 	path.join(HOME, '.cache/ms-playwright'),
+	path.join(HOME, 'Library/Caches/ms-playwright'),
 	path.join(process.env.LOCALAPPDATA ?? path.join(HOME, 'AppData/Local'), 'ms-playwright'),
 ];
 const PATH_DIRS = (process.env.PATH ?? '').split(path.delimiter);
