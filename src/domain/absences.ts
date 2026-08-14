@@ -95,3 +95,23 @@ export function crossedAbsences(span: DateSpan, absences: Absence[]): Absence[] 
 	const end = (span.target ?? span.start) as CivilDate;
 	return absences.filter((absence) => daysBetween(start, absence.target) >= 0 && daysBetween(absence.start, end) >= 0);
 }
+
+/**
+ * How many of these stretches have not ended — the count a band's header reports beside its
+ * item count.
+ *
+ * **"Upcoming or currently active" is ONE comparison, not two.** A stretch whose target is
+ * today or later has either not started or not finished, and there is no third case; written
+ * as two conditions it invites a reader to "fix" a missing start comparison that would then
+ * drop every running absence. Inclusive at today, `crossedAbsences`' own boundary rule, so
+ * one absence does not mean two different things on one row.
+ *
+ * From DATES, never from geometry, which is that function's other rule read again: a stretch
+ * outside the drawn window still counts, or the number would change as the reader scrolls.
+ *
+ * `today` is a parameter because nothing in this layer reads a clock — `todayCivil()` is
+ * computed in the view and injected, which is what lets a test say which day today is.
+ */
+export function pendingAbsences(absences: Absence[], today: CivilDate): number {
+	return absences.filter((absence) => daysBetween(today, absence.target) >= 0).length;
+}

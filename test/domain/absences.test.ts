@@ -1,7 +1,7 @@
 import { TFile } from 'obsidian';
 import { describe, expect, it } from 'vitest';
 import { buildModel } from '../../src/domain/model';
-import { Absence, absencesConfigured, crossedAbsences } from '../../src/domain/absences';
+import { Absence, absencesConfigured, crossedAbsences, pendingAbsences } from '../../src/domain/absences';
 import { CivilDate, readDate } from '../../src/domain/noteFields';
 import { ABSENCE_TYPE, ALL_TYPES, typeFolderKey } from '../../src/domain/typeVocabulary';
 import { folderForType } from '../../src/domain/itemTypes';
@@ -20,6 +20,16 @@ import { FakeVault } from '../helpers/vault';
 /** The axis's own three properties, which an absence reads through as well. */
 function settingsFor(over: Partial<BacklogSettings> = {}): BacklogSettings {
 	return settingsWith({ assigneeKey: 'assignee', startKey: 'start', targetKey: 'due', ...over });
+}
+
+function civil(text: string): CivilDate {
+	const read = readDate(text).value;
+	if (read === null) throw new Error(`not a date: ${text}`);
+	return read;
+}
+
+function away(title: string, start: string, target: string): Absence {
+	return { file: {} as TFile, title, resource: 'Alice', start: civil(start), target: civil(target) };
 }
 
 describe('an absence is never a work item', () => {
@@ -123,16 +133,6 @@ describe('where an absence is filed', () => {
 });
 
 describe('a bar scheduled across an absence', () => {
-	function civil(text: string): CivilDate {
-		const read = readDate(text).value;
-		if (read === null) throw new Error(`not a date: ${text}`);
-		return read;
-	}
-
-	function away(title: string, start: string, target: string): Absence {
-		return { file: {} as TFile, title, resource: 'Alice', start: civil(start), target: civil(target) };
-	}
-
 	const AUGUST = away('Alice away', '2026-08-04', '2026-08-06');
 
 	it('crosses a stretch its span runs through', () => {
@@ -171,5 +171,39 @@ describe('a bar scheduled across an absence', () => {
 
 	it('crosses nothing when the resource has no stretches', () => {
 		expect(crossedAbsences({ start: civil('2026-08-01'), target: civil('2026-08-10') }, [])).toEqual([]);
+	});
+});
+
+describe('how many stretches are still to come', () => {
+	// Fixed rather than derived from the clock: this function TAKES today, which is the
+	// whole reason it can be asked about a day the test chooses.
+	const TODAY = civil('2026-08-14');
+
+	it('counts one that has not ended — running or still ahead', () => {
+		// One comparison, not two: a stretch whose target is today or later has either not
+		// started or not finished, and there is no third case.
+		expect(pendingAbsences([away('Running', '2026-08-10', '2026-08-20')], TODAY)).toBe(1);
+		expect(pendingAbsences([away('Ahead', '2026-09-01', '2026-09-05')], TODAY)).toBe(1);
+	});
+
+	it('counts the day it ends, and not the day after', () => {
+		// Inclusive at today, `crossedAbsences`' own boundary rule — one absence must not
+		// mean two different things on one row.
+		expect(pendingAbsences([away('Ends today', '2026-08-01', '2026-08-14')], TODAY)).toBe(1);
+		expect(pendingAbsences([away('Ended yesterday', '2026-08-01', '2026-08-13')], TODAY)).toBe(0);
+	});
+
+	it('counts only the pending ones out of a mixed list', () => {
+		const list = [
+			away('Old', '2026-01-01', '2026-01-05'),
+			away('Running', '2026-08-10', '2026-08-20'),
+			away('Next', '2026-12-01', '2026-12-05'),
+		];
+
+		expect(pendingAbsences(list, TODAY)).toBe(2);
+	});
+
+	it('counts nothing for a resource with no stretches at all', () => {
+		expect(pendingAbsences([], TODAY)).toBe(0);
 	});
 });
