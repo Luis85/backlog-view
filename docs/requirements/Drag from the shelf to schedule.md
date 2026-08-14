@@ -44,7 +44,7 @@ the keys rather than blanking them.
 | **Actor** | Backlog owner |
 | **Trigger** | Dropping a shelf item onto the timeline grid, or a bar onto the shelf |
 | **Preconditions** | Roadmap mode is on with the timeline axis |
-| **Guarantee** | What a drop writes is exactly what its target means: the configured date properties, within the item's own lane — plus the reparent, in the same one batch, when the drop lands in another lane — one undo either way, and a drop nowhere meaningful writes nothing. |
+| **Guarantee** | What a drop writes is exactly what its target means: the configured date properties, one undo either way, and a drop nowhere meaningful writes nothing. |
 
 **Main flow**
 
@@ -82,9 +82,6 @@ the keys rather than blanking them.
   duration only where a span is written; a one-ended plan takes the drop day** — never
   offset by the zoom's cell the way a two-ended plan is. Nothing is ever written to an
   unconfigured key — the state write's rule, which the date writes join.
-- **2d — lanes are on and the drop lands in another lane's row.** The reparent rides the
-  same batch as the dates — the combined write [[Lanes on the roadmap]] specifies — one
-  gate, one undo, and one notice if the destination leaves the filter.
 - **2e — the dragged item is a marker.** A milestone takes the **target alone**, anchored
   at the day under the pointer, and no start is written however many date properties are
   configured; a milestone dropped back on the shelf loses that key alone, leaving any
@@ -112,8 +109,7 @@ the keys rather than blanking them.
   under the pointer and target the zoom's cell further on, minus a day, or the single one
   configured anchored at the drop day itself with no `cellSpan` offset — one batch, one
   undo; the highlight states the dates before the drop commits them, and nothing is ever
-  written to an unconfigured key. A drop into another lane's row carries the reparent in
-  the same batch ([[Lanes on the roadmap]]).
+  written to an unconfigured key.
 - A marker is target-only on both gestures: dropped on the grid it takes the target
   anchored at the day under the pointer, with no `cellSpan` offset and no start, and
   dropped back on the shelf it loses the target key alone, whatever else the note carries
@@ -163,12 +159,3 @@ indicator that says which placement a removal would leave, and `barHolds`, which
 where a gesture may take hold in the first place, are both `src/domain/bars.ts`, asking
 `placeItem`/`withoutEnds`
 rather than a second opinion beside them.
-
-**Status stays `Active`, not `Done`.** Both gestures ship, but the note's guarantee and
-extension 2d say a drop into another lane's row carries the reparent in the same batch,
-and this increment excludes lanes by name — so `Done` would report an unmet requirement
-as delivered, which is the register lying about itself. The criterion is not narrowed
-away either: the combined batch is genuinely wanted and [[Lanes on the roadmap]] is the
-note that delivers it, so deleting it here would lose a requirement to make a status look
-tidy. `Active` with the reason stated is exactly what [[The horizon board]] already does,
-and for the same missing feature.

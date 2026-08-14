@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[Hierarchy on the roadmap]]"
 order: 10
-status: Open
+status: Dropped
 priority: P2
 created: 2026-08-01
 files:
@@ -90,8 +90,8 @@ crosses a lane and a column does.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** A lane crossing is the drop-onto plan
-`src/domain/writePlan.ts` already builds, refused where `src/domain/dropTargets.ts`
-already refuses cycles; lane collapse joins the per-screen state in
-`src/storage/collapseStore.ts`. The board's lanes and the roadmap's are one design in
-two projections.
+**Why it was dropped.** Built, tried and refused on 2026-08-14. Lanes are not coming back
+to either projection, so this note is kept as the record of a design already considered
+rather than as work waiting to be done. It stays in the tree so every
+`[[wikilink]]` to it still resolves and nobody proposes lanes again from the
+code alone.

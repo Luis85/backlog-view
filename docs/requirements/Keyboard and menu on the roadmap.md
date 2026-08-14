@@ -51,9 +51,8 @@ rather than deferred behind it.
    one-tab-stop rule unchanged, shelf included.
 2. Space lifts the selected item — Enter stays what it is in every projection:
    activation, opening the note ([[Opening the work]]). Arrows preview the move —
-   across buckets on the horizon axis, along the grid by whole cells on the timeline,
-   and, with lanes on, up and down across lanes, so one lift can cross lane and axis
-   together and commit the combined batch [[Lanes on the roadmap]] specifies. On a
+   across buckets on the horizon axis, along the grid by whole cells on the timeline.
+   On a
    bar, Tab shifts the grip between the holds the pointer may take — the whole bar
    where every end it renders is the note's own, stated or open, and each end that
    can take a write ([[Move and resize a bar]]) — announced with the selection, so
@@ -62,16 +61,13 @@ rather than deferred behind it.
 3. Space drops, committing the batch the drag would write; Escape cancels with nothing
    written.
 4. The context menu offers the moves in words — set horizon, schedule, unschedule,
-   clear horizon, and, with lanes on, move to lane, offering every legal lane under
-   the drag's own cycle rules — beside the item's existing actions. Schedule opens
+   clear horizon — beside the item's existing actions. Schedule opens
    the dates for entry, prefilled with the dates the note itself states — an inferred
    endpoint arrives blank, because an inference is display and confirming a prompt
    must not be the write that materializes it — or, for an unscheduled item, with
    today spanning one zoom cell, the shelf drop's own default; confirming writes the
    same shaped batch the gestures write. Each
-   menu action is one dimension and one small undoable batch; the combined
-   lane-plus-axis move's non-pointer path is the lift, which holds both dimensions
-   before one drop.
+   menu action is one dimension and one small undoable batch.
 
 **Extensions**
 
@@ -115,19 +111,15 @@ rather than deferred behind it.
   Escape — the grip reaching every hold the pointer may take: the whole bar where
   every rendered end is the note's own (stated or open), each writable end — a marker's
   diamond having none, so its lift moves its target alone — so a
-  resize is a keyboard move too, and
-  up and down crossing lanes when lanes are on, so one drop can carry the combined
-  lane-plus-axis batch; the committed batch is identical to the drag's, and Escape
-  always exits with nothing written.
+  resize is a keyboard move too; the committed batch is identical to the drag's, and
+  Escape always exits with nothing written.
 - Enter opens the selected note in roadmap mode exactly as in every other projection,
   context rows included ([[Opening the work]]); the lift never takes it over.
 - The context menu offers set horizon (declared plus observed values), schedule — a
   date entry prefilled with the dates the note states, an inferred endpoint blank,
   or with today spanning one zoom cell for an unscheduled item — unschedule, clear
-  horizon and, with lanes on, move to
-  lane under the drag's own cycle rules, each writing the batch shape the gestures
-  write — one dimension and one small undoable batch each, the combined
-  lane-plus-axis move's non-pointer path being the lift; on context rows it offers
+  horizon, each writing the batch shape the gestures
+  write — one dimension and one small undoable batch each; on context rows it offers
   no write action, and each action appears only while its axis property is
   configured — a removal action only while the note carries the key it would remove —
   never inert, never writing an unconfigured key.
@@ -156,13 +148,13 @@ reaches the same place), only the one-gesture path.
 What remains is everything this note is actually about. The **lift** — Space, arrows,
 Space, Escape, with Tab shifting the grip along a bar — is a state machine that has no
 code yet and joins `src/view/interactions/keyboard.ts` beside the tree's navigation;
-Alt+arrow is a single-dimension shortcut, not a lift, and cannot carry the combined
-lane-plus-axis move. The **date entry** is a prompt beside the new-item prompts in
+Alt+arrow is a single-dimension shortcut, not a lift. The **date entry** is a prompt
+beside the new-item prompts in
 `src/ui/prompts.ts`, and schedule, unschedule and clear horizon are menu actions in
 `src/view/interactions/menu.ts` — the removal pair gated on the note carrying the key
-(4a), which the current Set horizon expresses only as its shelf entry. Move to lane
-waits on [[Lanes on the roadmap]]. `Schedule` and `Unschedule` already give the dated
+(4a), which the current Set horizon expresses only as its shelf entry. `Schedule` and
+`Unschedule` already give the dated
 axis's single-dimension writes a non-pointer path, and the drags shipped by
 [[Move and resize a bar]] and [[Drag from the shelf to schedule]] give it pointer ones
 too — so WCAG 2.2 SC 2.5.7 is satisfied the day the drags land, and what the lift still
-owes is the combined lane-plus-axis move and the ergonomic path, not compliance.
+owes is the ergonomic path, not compliance.

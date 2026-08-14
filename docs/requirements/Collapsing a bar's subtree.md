@@ -230,6 +230,6 @@ vocabulary, the projection-zone dispatch and the `⋯` overflow — is
 [[A toolbar that fits one row]].
 
 **Not built: indentation.** The rows are still a flat list with a chevron in it — the
-badge names the level and nothing draws the ancestry. Showing that on the roadmap is
-[[Lanes on the roadmap]]'s design, which makes a parent a region rather than an indent,
-and a per-row indent added here would be a second answer to the same question.
+badge names the level and nothing draws the ancestry. [[Lanes on the roadmap]] would have
+shown it as a region rather than an indent, but that design was dropped, so a per-row
+indent is still unanswered.

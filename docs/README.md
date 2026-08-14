@@ -100,9 +100,9 @@ completion there is a question the Deliverable workflow answers, not the require
 one; its own toolbar creates only Deliverables — and its focus control, briefly
 clear-only while an inherited focus still narrowed this board like any other, was
 later reversed to ignore the focus level outright, since no level narrows this board
-and there is never anything left to clear. What remains under the epic — lanes,
+and there is never anything left to clear. What remains under the epic —
 creation from a column, column collapse, and the touch verdict a device has to
-answer — is still design.
+answer — is still design; lanes were tried and refused ([[Swimlanes by parent]]).
 
 Those use cases are the argument for writing a PBI *before* building it rather than
 after. The ones still open say **nothing yet** (or **partly built**, naming exactly
@@ -116,7 +116,7 @@ paragraph of prose before the shape asked the question.
 specified across six features and 20 use cases — the projection toggle grown to three
 positions, Now-Next-Later buckets from a horizon property, a dated timeline whose
 parents span their children, scheduling as gated date writes, milestones as a type of
-their own, and lanes, focus and rollups carried over. Three features are built. The
+their own, and focus and rollups carried over. Three features are built. The
 first was the projection: the toggle's roadmap position, the declared axis with its
 collision checks, both frames read-only — buckets and stated bars — the unplaced shelf,
 and the roadmap's empty states. The second gave the horizon axis its writes: a card
@@ -129,8 +129,9 @@ creation write. A later PBI made the shelf usable at scale — collapsible, grou
 type, sortable and filterable, its controls in its own header — and gave the horizon
 buckets the width a wide pane actually has, cards reflowing into multiple columns as the
 space allows. The dated axis's own moves were the one write this epic still owed —
-lanes and the milestone type's own lift are still design, and named as
-[[Lanes on the roadmap]]'s and [[Keyboard and menu on the roadmap]]'s to deliver — but it
+the milestone type's own lift is still design, named as
+[[Keyboard and menu on the roadmap]]'s to deliver, and lanes were tried and refused
+([[Lanes on the roadmap]]) — but it
 already showed the tree rather than only its stated bars: a parent with no dates of its
 own spans its dated descendants, endpoint by endpoint, drawn as the inference it is and
 written nowhere. Two decisions organize the epic: the axis is declared in the
