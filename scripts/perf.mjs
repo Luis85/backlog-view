@@ -38,13 +38,19 @@ import { pathToFileURL } from 'node:url';
  * `--k=v`, and `--k v` too: the space form is how a path gets typed and how this file's
  * own examples read, and a parser that took only the first silently resolved `--against`
  * to the string "true" and then looked for a directory called that.
+ *
+ * The FIRST `=` only. A value may contain one — `--against=/tmp/build=control/.harness` is
+ * a legal path — and splitting on every delimiter kept `/tmp/build`, which either fails to
+ * load or measures a different directory that happens to exist. (Codex, PR #137.)
  */
 const args = {};
 const argv = process.argv.slice(2);
 for (let i = 0; i < argv.length; i++) {
-	const [key, value] = argv[i].replace(/^--/, '').split('=');
+	const flag = argv[i].replace(/^--/, '');
+	const eq = flag.indexOf('=');
+	const key = eq === -1 ? flag : flag.slice(0, eq);
 	const next = argv[i + 1];
-	if (value !== undefined) args[key] = value;
+	if (eq !== -1) args[key] = flag.slice(eq + 1);
 	else if (next !== undefined && !next.startsWith('--')) args[key] = argv[++i];
 	else args[key] = 'true';
 }
