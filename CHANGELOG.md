@@ -11,6 +11,8 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-08-14
+
 ### Added
 
 - **A resources axis on the roadmap** — a third choice beside Horizons and Timeline, drawn
