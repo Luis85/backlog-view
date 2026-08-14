@@ -514,6 +514,33 @@ free of runtime code so imports stay cycle-free.
   lookup trusted without the comparison accepts a delete-and-recreate under the same name
   and writes to a note nobody picked up. Same fact `src/storage/CLAUDE.md` leans on for
   the dependency undo, used here for the other direction.
+- **A column can be FOLDED, and the fold is a fourth collapse question** — `columnCollapsed`
+  / `setColumnCollapsed`, asked of a scope and the column's own value rather than of a
+  path, `isLaneCollapsed`'s reason exactly. Three things about it are worth knowing before
+  touching either card projection:
+  **The snapshot is where the fold is said.** A folded column contributes no cards to
+  `BoardSnapshot.board`, and a folded bucket returns none from `renderBucket` — one line
+  each, and between them they keep `boardPosition`, `nextBoardPosition`, Alt+arrow, the
+  roadmap's linear walk and the pane's `listbox` role honest without any of those asking
+  about a fold. Skipping the DOM alone would leave the keyboard resting a selection on a
+  card nobody can see.
+  **Both advisories keep asking the UNFOLDED population.** `renderBoardAdvisory` reads the
+  model's own columns and `renderRoadmapAdvisory` counts the buckets, never the cards
+  drawn — a board with every column folded is not a board with nothing on it, and telling
+  the reader their work was all done or all filtered away is the collapsed shelf's mistake
+  one projection over.
+  **The default is the board's alone.** `col.done && !col.openWork` folds a done column
+  once, and `openWork` is measured over the POPULATION (`domain/board.ts`), so a quick
+  filter cannot make a stage look finished and fold work the reader was holding. A bucket
+  passes `false`: an axis has no notion of finished. The once-only part is
+  `collapseNewParents`' rule reached lazily — a column does not exist in the model, so the
+  render is the first moment there is anything to settle.
+  The disclosure itself is `renderChevron` on both surfaces (`renderColumnFold`, exported
+  from `render/board.ts`), so the filter override, the real `disabled` flag and the focus
+  report come with it. Its keyboard path on the BOARD is the column stop's own menu, which
+  is why that menu is now unconditional and lives in `interactions/columnMenu.ts`; a bucket
+  has no such path, and that gap is [[Folding a horizon bucket]]'s own last paragraph
+  rather than something to fix beside a fold.
 - The whole column is the drop target and the highlight is the only drop signal —
   within-column order is derived from the Base's sort, so there is no between-cards
   edge, no hitbox package, and deliberately no Alt+Up/Down rank shortcut.

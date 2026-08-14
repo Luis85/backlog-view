@@ -126,25 +126,54 @@
 }
 
 /* The empty no-state column shrinks to a leading drop strip: clearing a state by
-   drag stays possible without a permanently empty column taking a column's room. */
-.pbl-board-strip {
+   drag stays possible without a permanently empty column taking a column's room. A
+   column the reader folded takes the same width by the same rules — one shape, so the
+   two cannot drift — and differs in what it keeps: the strip is empty by definition
+   while a fold has to go on saying what it is holding. */
+.pbl-board-strip,
+.pbl-board-collapsed {
 	flex: 0 0 44px;
 	/* Undoes the growing column's floor: the strip is the one column that must stay narrow. */
 	min-width: 0;
+}
+
+.pbl-board-strip {
 	background-color: transparent;
 	border-style: dashed;
 }
 
-.pbl-board-strip .pbl-board-col-header {
+.pbl-board-strip .pbl-board-col-header,
+.pbl-board-collapsed .pbl-board-col-header {
 	flex-direction: column;
 	gap: var(--size-4-2);
 	padding: var(--size-4-3) 0;
 }
 
-.pbl-board-strip .pbl-board-col-name {
+.pbl-board-strip .pbl-board-col-name,
+.pbl-board-collapsed .pbl-board-col-name {
 	writing-mode: vertical-rl;
-	color: var(--text-faint);
 	font-size: var(--font-ui-smaller);
+}
+
+.pbl-board-strip .pbl-board-col-name {
+	color: var(--text-faint);
+}
+
+/* Turned upright again: the count and the limit are digits, and a rotated number is
+   read letter by letter. `margin-left: auto` pushes to the right in a row and to the
+   bottom in a column, which is what the header has become — reset so the count sits
+   under the name instead of at the foot of a full-height strip. */
+.pbl-board-collapsed .pbl-board-col-count,
+.pbl-board-collapsed .pbl-board-col-limit {
+	writing-mode: horizontal-tb;
+	margin-left: 0;
+}
+
+/* Its cards are gone, so the box that held them must not keep its own floor open —
+   `min-height` on `.pbl-board-col-cards` would leave a folded column with an empty
+   tail below the name. */
+.pbl-board-collapsed .pbl-board-col-cards {
+	display: none;
 }
 
 /* The region highlight is the only drop signal a card drag gives — within a column

@@ -2,13 +2,19 @@
 type: PBI
 parent: "[[Columns from the workflow]]"
 order: 40
-status: Open
+status: Done
 priority: P2
 created: 2026-08-01
 files:
+  - src/domain/board.ts
   - src/storage/collapseStore.ts
-started: ""
-finished: ""
+  - src/view/collapseState.ts
+  - src/view/uiState.ts
+  - src/view/render/board.ts
+  - src/view/interactions/columnMenu.ts
+  - styles/board.css
+started: "2026-08-14"
+finished: "2026-08-14"
 horizon: ""
 start: ""
 due: ""
@@ -92,9 +98,46 @@ filter, not a place cards are moved to.
 
 ## Where it lives
 
-**Partly built.** The hiding slice shipped with the board: "Show completed items" off
-hides `subtreeDone` cards through the same row-visibility rule the tree uses, the
+**Built, 2026-08-14.** The hiding slice shipped with the board: "Show completed items"
+off hides `subtreeDone` cards through the same row-visibility rule the tree uses, the
 column always renders, and the quick filter overrides — driven in
-`test/view/boardMoves.test.ts`. Still design: column collapse itself, which belongs in
-`src/storage/collapseStore.ts` with the tree's row collapse — vault-scoped, per
-device, pruned — and explicitly not in the `.base`, for the reason ADR 0011 gives.
+`test/view/boardMoves.test.ts`. The collapse itself is now beside it, and it reaches the
+horizon buckets too ([[Folding a horizon bucket]]).
+
+**The state.** `collapsedColumns` and `expandedColumns` in
+`src/storage/collapseStore.ts`, held by `src/view/collapseState.ts` and reached through
+`src/view/uiState.ts` like every other UI-state pick — vault-scoped, per device, and
+explicitly not in the `.base`, for the reason ADR 0011 gives. A PAIR rather than one
+list, exactly as the row sets are: unlike a resource band, a column has a DEFAULT worth
+suppressing, so the two together say what the reader has ruled on. They are fields of the
+entry and not keys in the collapse set, the argument `collapsedLanes` already made — the
+flush drops any key the vault has no file for, and a state value is not a file. The key is
+scoped and lower-cased (`columnKey`), because both boards and the horizon axis can hold a
+`Done` and each identifies its columns case-insensitively.
+
+**The default.** `BoardColumn.openWork` (`src/domain/board.ts`), computed in the same
+population pass `fullCount` is — with the quick filter lifted, which is the load-bearing
+half: measured over the drawn cards, a search that hid every open card in Done would
+report the stage finished and fold a column holding retained work. The fold default is
+`col.done && !col.openWork`, taken once, in `renderBoard`.
+
+**What a fold removes.** A folded column contributes no cards to the `BoardSnapshot`, and
+that one line is what keeps the keyboard honest — `boardPosition`, `nextBoardPosition` and
+Alt+arrow all walk that snapshot, so nothing selects a card the fold took off screen. Both
+advisories keep asking the unfolded population, or a fully folded board would be told its
+work was all done.
+
+**The surfaces.** The header's disclosure is `renderChevron`, the control every other fold
+in the plugin draws, so the filter override, the real `disabled` flag and the focus report
+arrive with it. Its keyboard path is the column's own menu, which moved to
+`src/view/interactions/columnMenu.ts` when the fold joined it: the menu used to be
+withheld from a column with nothing agreed, and every column has a fold now, so it is
+unconditional and `menu.ts` — which is about an ITEM — stopped being its home.
+
+**Appearance.** `.pbl-board-collapsed` shares `.pbl-board-strip`'s rules in
+`styles/board.css`, so a fold and the empty no-state column cannot drift to different
+widths. jsdom lays nothing out, so what the strip looks like in a themed vault is still a
+`npm run test-build` check.
+
+Age-based hiding stays out of scope until [[Stamp when work starts and finishes]] gives it
+a date to read.

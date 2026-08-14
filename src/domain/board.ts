@@ -56,6 +56,18 @@ export interface BoardColumn {
 	limit: number | null;
 	/** The working agreement written on this stage in the view options, or ''. */
 	policy: string;
+	/**
+	 * True while any card in this column's POPULATION still carries unfinished work —
+	 * the question a done column's fold default is decided on, so a column of finished
+	 * subtrees can start shut and one holding a retained card cannot.
+	 *
+	 * Measured over the same pass {@link BoardColumn.fullCount} is, with the quick filter
+	 * lifted, and that is load-bearing rather than a detail of where the loop sits: read
+	 * off `cards`, a search that hid every open card in Done would report the stage
+	 * finished and fold it, so a user would have searched their board into a different
+	 * shape. Results only, like `count` — a context card is placement, not work.
+	 */
+	openWork: boolean;
 }
 
 export interface BoardModel {
@@ -428,7 +440,11 @@ export function boardColumns(
 	// The population each filtered count is "of": the same candidates through the same
 	// placement, with only the filter lifted. Results only, exactly as `count` is.
 	for (const card of candidates) {
-		if (!card.outsideFilter && population(card)) columnFor(card).fullCount += 1;
+		if (card.outsideFilter || !population(card)) continue;
+		const col = columnFor(card);
+		col.fullCount += 1;
+		// Asked here rather than of `col.cards` on purpose — see `BoardColumn.openWork`.
+		if (!card.subtreeDone) col.openWork = true;
 	}
 	let cardCount = 0;
 	for (const col of columns) {
@@ -473,6 +489,7 @@ function workflowColumns(
 		// legitimately contain a state called `constructor`.
 		limit: byName(workflow.wipLimits, state) ?? null,
 		policy: byName(workflow.columnPolicies, state) ?? '',
+		openWork: false,
 	});
 	const noState = column(null, false);
 	const columns = [noState, ...workflow.values.map((s) => column(s, false))];

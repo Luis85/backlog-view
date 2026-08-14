@@ -536,3 +536,68 @@ describe('boardColumns with the Deliverables workflow', () => {
 	});
 });
 
+describe('a column reports whether it still holds open work', () => {
+	/**
+	 * Two done items in Done, one of which still carries an unfinished Task — so the
+	 * column is finished-looking and is not finished, which is the whole distinction
+	 * `openWork` exists to draw for the fold default in `render/board.ts`.
+	 */
+	function doneVault(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Shipped.md', { frontmatter: { type: 'Epic', order: 10, status: 'Done' } });
+		vault.addFile('Retained.md', { frontmatter: { type: 'Epic', order: 20, status: 'Done' } });
+		vault.addFile('Loose end.md', {
+			frontmatter: { type: 'Task', order: 10, status: 'Active' },
+			parentLink: 'Retained',
+		});
+		return vault;
+	}
+
+	it('is false where every card in the column is a finished subtree', () => {
+		const vault = new FakeVault();
+		vault.addFile('Shipped.md', { frontmatter: { type: 'Epic', order: 10, status: 'Done' } });
+		const model = buildModel(vault.app, vault.entries(), settings);
+		const board = boardColumns(requirementsWorkflow(model, settings), model.results, everything);
+
+		expect(board.columns.find((c) => c.label === 'Done')?.openWork).toBe(false);
+		// And it is a question about THIS column, never about the board: the item in a
+		// not-done column is open work and says nothing about Done.
+		expect(board.columns.find((c) => c.label === 'Active')?.openWork).toBe(false);
+	});
+
+	it('is true where a done card still carries unfinished work below it', () => {
+		const vault = doneVault();
+		const model = buildModel(vault.app, vault.entries(), settings);
+		const board = boardColumns(requirementsWorkflow(model, settings), model.results, everything);
+
+		expect(board.columns.find((c) => c.label === 'Done')?.openWork).toBe(true);
+	});
+
+	it('reads the POPULATION, so a filter that hid the open card cannot say the column is finished', () => {
+		// The failure this pins: measured over `cards`, a search matching only the tidy
+		// item would report Done as finished, and the board would fold a column holding a
+		// retained card — the user searching their board into a different shape. The
+		// second predicate is the filter; the third is the population it is measured
+		// against, which is exactly what `fullCount` already borrows.
+		const vault = doneVault();
+		const model = buildModel(vault.app, vault.entries(), settings);
+		const matched = (item: BacklogItem) => item.title === 'Shipped';
+		const board = boardColumns(requirementsWorkflow(model, settings), model.results, matched, everything);
+
+		const done = board.columns.find((c) => c.label === 'Done');
+		expect(done?.cards.map((c) => c.title)).toEqual(['Shipped']);
+		expect(done?.openWork).toBe(true);
+	});
+
+	it('ignores a context card, which is placement rather than work', () => {
+		// The context-row rule, asked of one more derived quantity: an excluded note's own
+		// state must not decide whether this board folds a column.
+		const vault = doneVault();
+		const model = buildModel(vault.app, only(vault, 'Shipped.md', 'Loose end.md'), settings);
+		const board = boardColumns(requirementsWorkflow(model, settings), model.results, everything);
+
+		// "Retained" is on screen as context in Done, and its unfinished Task is a result
+		// in Active — so Done itself holds nothing unfinished of its own.
+		expect(board.columns.find((c) => c.label === 'Done')?.openWork).toBe(false);
+	});
+});

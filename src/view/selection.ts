@@ -102,6 +102,20 @@ export class SelectionController {
 	}
 
 	/**
+	 * Carry a held column stop across a render pass: released when the frame drew no board
+	 * — board state must not outlive the projection it points into — and otherwise clamped
+	 * to the columns that are left.
+	 *
+	 * Here rather than in the render method that used to hold it: a column stop is this
+	 * controller's own state, and the clamp is the column half of the card selection's
+	 * `resyncAfterRender` beside it.
+	 */
+	resyncBoardColumn(columns: number | null): void {
+		if (columns === null) this.selectBoardColumn(null);
+		else if (this.selectedBoardColumn !== null) this.selectBoardColumn(Math.min(this.selectedBoardColumn, columns - 1));
+	}
+
+	/**
 	 * Rest the board selection on a column itself; null releases it. The active
 	 * descendant is the column's `.pbl-board-col-stop` — an option-like element the
 	 * board render puts in each header — never the column container: that is a

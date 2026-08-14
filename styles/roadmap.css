@@ -130,6 +130,42 @@
 	border-style: dashed;
 }
 
+/* Folded: the board column's own strip width and rotated name, so one fold looks like
+   one fold whichever projection drew it. `min-width: 0` undoes the growing bucket's
+   floor — flex-basis is not a floor, and without this the fold would win back nothing. */
+.pbl-bucket-collapsed {
+	flex: 0 0 44px;
+	min-width: 0;
+}
+
+.pbl-bucket-collapsed .pbl-bucket-header {
+	flex-direction: column;
+	gap: var(--size-4-2);
+	padding: var(--size-4-3) 0;
+}
+
+.pbl-bucket-collapsed .pbl-bucket-name {
+	writing-mode: vertical-rl;
+	font-size: var(--font-ui-smaller);
+}
+
+/* Upright: a count is digits, and a rotated number is read one digit per line. The
+   `margin-left: auto` that pushes it right in a row pushes it to the FOOT in a column,
+   so it is reset to sit under the name. */
+.pbl-bucket-collapsed .pbl-bucket-count {
+	writing-mode: horizontal-tb;
+	margin-left: 0;
+}
+
+/* The New button and the stray mark both need the bucket's full name to make sense of
+   themselves, and neither survives the rotation legibly. The capability is not lost:
+   both come back the moment the bucket is opened, and the fold is one click away. */
+.pbl-bucket-collapsed .pbl-bucket-add,
+.pbl-bucket-collapsed .pbl-bucket-stray,
+.pbl-bucket-collapsed .pbl-bucket-cards {
+	display: none;
+}
+
 .pbl-bucket-stray {
 	display: flex;
 	align-items: center;

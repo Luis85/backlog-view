@@ -9,11 +9,12 @@ import {
 	renderFilterEmptyState,
 	renderNoDeliverablesState,
 } from './emptyStates';
-import { fromRowControl, renderBadge, renderTitleText } from './rows';
-import { BacklogViewHost, BoardSnapshot } from '../host';
+import { fromRowControl, renderBadge, renderChevron, renderTitleText } from './rows';
+import { BacklogViewHost, BoardSnapshot, ColumnScope } from '../host';
 import { uniqueElementId } from '../selection';
 import { CardDragController } from '../interactions/cardDrag';
-import { showColumnMenu, showItemMenu } from '../interactions/menu';
+import { showColumnMenu } from '../interactions/columnMenu';
+import { showItemMenu } from '../interactions/menu';
 import {
 	boardColumns,
 	BoardColumn,
@@ -31,6 +32,8 @@ import { undisclosedMatches } from '../childrenList';
 
 /** What differs between the two board-shaped projections' render passes. */
 interface BoardRenderOptions {
+	/** Which screen these columns are drawn on, so two boards' `Done` are two folds. */
+	scope: ColumnScope;
 	move: (item: BacklogItem, state: string | null) => void;
 	// `root` is `boardEl` — the STABLE element this whole render pass was handed, never
 	// `aside` itself: `aside` is the fresh `.pbl-board-advisory` div this same pass just
@@ -61,6 +64,15 @@ interface ColumnRenderCtx {
 	opts: BoardRenderOptions;
 }
 
+/** What the column's own header draws differently, decided by `renderBoard` and passed down. */
+interface ColumnFrame {
+	/** The empty no-state column's leading drop strip — see `renderColumn`. */
+	strip: boolean;
+	/** Folded to that same strip by the reader, or by the done column's own default. */
+	folded: boolean;
+	filtering: boolean;
+}
+
 /**
  * The board projection: the same model the tree renders, projected onto the
  * workflow's columns. A card is a result row wearing a different layout — badge,
@@ -77,13 +89,28 @@ function renderBoard(
 ): BoardSnapshot {
 	renderBoardInstructions(boardEl);
 	const colsEl = boardEl.createDiv({ cls: 'pbl-board-cols' });
+	// A done column holding no open work folds itself the first time that is true of it —
+	// the tree's own once-only default, asked of the column rather than of a parent. The
+	// answer is asked once here and carried down, never re-derived per header: the getter
+	// SETTLES on the way past (see `columnCollapsed` in `view/collapseState.ts`).
+	const folds = board.columns.map((col) => ctx.host.columnCollapsed(opts.scope, col.state, col.done && !col.openWork));
+	// A folded column draws no cards, and the SNAPSHOT is where that is said, because the
+	// keyboard reads the snapshot: `boardPosition`, `nextBoardPosition` and Alt+arrow all
+	// walk `snapshot.board.columns[].cards`, so emptying the list here is what stops the
+	// selection landing on a card no longer on screen — without any of them asking about a
+	// fold. `renderShelf` contributes to the roadmap's own card list the same way.
+	const drawn: BoardModel = { ...board, columns: board.columns.map((col, i) => (folds[i] ? { ...col, cards: [] } : col)) };
 	// Which items have a card of their own, so a card naming the matches below it can
-	// skip the ones already on screen. Built once per pass rather than searched per card.
-	const render: ColumnRenderCtx = { dnd, carded: cardPaths(board), opts };
-	const colEls = board.columns.map((col) => renderColumn(ctx, colsEl, col, render));
+	// skip the ones already on screen. Built once per pass rather than searched per card,
+	// and off the DRAWN board: a match folded away is not on screen and may be named again.
+	const render: ColumnRenderCtx = { dnd, carded: cardPaths(drawn), opts };
+	const colEls = drawn.columns.map((col, i) => renderColumn(ctx, colsEl, col, render, folds[i]));
 	dnd.wireScroller(boardEl);
+	// The UNFOLDED board: "why has this board no cards" must never be answered about a
+	// board whose cards are merely folded away, or a fully folded board would be told
+	// that everything is done or that nothing matches.
 	renderBoardAdvisory(ctx, boardEl, board, opts.drawEmpty);
-	return { board, colEls };
+	return { board: drawn, colEls, scope: opts.scope };
 }
 
 /** The requirements board — `renderBoard`'s original, only caller until now. */
@@ -93,7 +120,7 @@ export function renderRequirementsBoard(ctx: RowContext, boardEl: HTMLElement, d
 	// explicit type and not through a property access. See the root CLAUDE.md.
 	const host: BacklogViewHost = ctx.host;
 	const model = host.model;
-	if (!model) return { board: { columns: [], cardCount: 0 }, colEls: [] };
+	if (!model) return { board: { columns: [], cardCount: 0 }, colEls: [], scope: 'board' };
 	// Deliverables are managed on their own board now — never a REAL card, never a
 	// stray column and never counted here, whatever state they carry. Their Task
 	// children are untouched: Task-typed, so this predicate does not reach them, and
@@ -116,6 +143,7 @@ export function renderRequirementsBoard(ctx: RowContext, boardEl: HTMLElement, d
 		(item) => !host.isRowHiddenUnfiltered(item) && !isDeliverableType(item.typeName),
 	);
 	return renderBoard(ctx, boardEl, dnd, board, {
+		scope: 'board',
 		move: (item, state) => void host.performBoardMove(item, state),
 		stateOptionLabel: 'Workflow states (in order)',
 		drawEmpty: (h, aside, root) => {
@@ -153,7 +181,7 @@ export function renderRequirementsBoard(ctx: RowContext, boardEl: HTMLElement, d
 export function renderDeliverablesBoard(ctx: RowContext, boardEl: HTMLElement, dnd: CardDragController): BoardSnapshot {
 	const host: BacklogViewHost = ctx.host;
 	const model = host.model;
-	if (!model) return { board: { columns: [], cardCount: 0 }, colEls: [] };
+	if (!model) return { board: { columns: [], cardCount: 0 }, colEls: [], scope: 'deliverables' };
 	const board = boardColumns(
 		deliverablesWorkflow(model, host.settings),
 		model.deliverableResults,
@@ -161,6 +189,7 @@ export function renderDeliverablesBoard(ctx: RowContext, boardEl: HTMLElement, d
 		() => true,
 	);
 	return renderBoard(ctx, boardEl, dnd, board, {
+		scope: 'deliverables',
 		move: (item, state) => void host.performDeliverablesBoardMove(item, state),
 		stateOptionLabel: 'Deliverable workflow states (in order)',
 		drawEmpty: (h, aside, root) => {
@@ -222,25 +251,38 @@ function renderBoardAdvisory(
 	drawEmpty(ctx.host, boardEl.createDiv({ cls: 'pbl-board-advisory' }), boardEl);
 }
 
-function renderColumn(ctx: RowContext, colsEl: HTMLElement, col: BoardColumn, render: ColumnRenderCtx): HTMLElement {
+function renderColumn(
+	ctx: RowContext,
+	colsEl: HTMLElement,
+	col: BoardColumn,
+	render: ColumnRenderCtx,
+	folded: boolean,
+): HTMLElement {
 	// The no-state column earns its room only while it holds cards; empty, it
 	// shrinks to a leading drop strip so clearing a state by drag stays possible
 	// without a permanently empty column. "Empty" is about the POPULATION, not the
 	// matches: a filter that hid every stateless card would otherwise collapse the
 	// column to a strip, which says the work is gone rather than merely unmatched —
 	// a stronger lie than the "0" the pair counts exist to prevent.
-	const strip = col.state === null && col.cards.length === 0 && col.fullCount === 0;
-	const filtering = ctx.host.isFiltering();
+	// A folded column reaches the strip WITHOUT being one: `strip` is the empty no-state
+	// column's own case and suppresses the count, while a fold keeps name and count
+	// visible. Two states, one width — see `.pbl-board-collapsed` in `styles/board.css`.
+	const frame: ColumnFrame = {
+		strip: col.state === null && col.cards.length === 0 && col.fullCount === 0 && !folded,
+		folded,
+		filtering: ctx.host.isFiltering(),
+	};
 	const colEl = colsEl.createDiv({
 		cls:
 			'pbl-board-col' +
 			(col.done ? ' pbl-col-done' : '') +
 			(col.outsideWorkflow ? ' pbl-col-outside' : '') +
 			(col.state === null ? ' pbl-col-nostate' : '') +
-			(strip ? ' pbl-board-strip' : ''),
-		attr: { role: 'group', 'aria-label': columnLabel(col, filtering) },
+			(frame.strip ? ' pbl-board-strip' : '') +
+			(folded ? ' pbl-board-collapsed' : ''),
+		attr: { role: 'group', 'aria-label': columnLabel(col, frame.filtering) },
 	});
-	renderColumnHeader(colEl, col, strip, filtering, render.opts.stateOptionLabel);
+	renderColumnHeader(ctx, colEl, col, frame, render.opts);
 	const cardsEl = colEl.createDiv({ cls: 'pbl-board-col-cards' });
 	for (const card of col.cards) renderCard(ctx, cardsEl, card, render);
 	// What a drop on this column MEANS is the board's; the controller only resolves
@@ -269,12 +311,13 @@ function columnLabel(col: BoardColumn, filtering: boolean): string {
 }
 
 function renderColumnHeader(
+	ctx: RowContext,
 	colEl: HTMLElement,
 	col: BoardColumn,
-	strip: boolean,
-	filtering: boolean,
-	stateOptionLabel: string,
+	frame: ColumnFrame,
+	opts: BoardRenderOptions,
 ): void {
+	const { strip, filtering } = frame;
 	// The header doubles as the column's keyboard stop: an option-like element the
 	// selection can make the listbox's active descendant, because the column itself
 	// is a group and a group is not a valid active item — a screen reader told to
@@ -283,39 +326,102 @@ function renderColumnHeader(
 		cls: 'pbl-board-col-header pbl-board-col-stop',
 		attr: { role: 'option', 'aria-selected': 'false', 'aria-label': columnLabel(col, filtering) },
 	});
+	// The empty no-state strip is the one header with nothing to fold: it holds no card
+	// in any filter state, so a disclosure there would offer to shut what is already shut.
+	if (!strip) renderColumnFold(ctx.host, header, opts.scope, col.state, { folded: frame.folded, label: col.label });
 	if (col.done) drawIcon(header.createSpan({ cls: 'pbl-board-col-icon' }), 'circle-check');
 	if (col.state === null) drawIcon(header.createSpan({ cls: 'pbl-board-col-icon' }), 'circle-dashed');
 	header.createSpan({ cls: 'pbl-board-col-name', text: col.label });
-	if (!strip) {
-		// A column is a stage of the workflow, not a search result: while the filter
-		// narrows the cards the header says how many of the stage's work it matched, so
-		// nobody reads a filtered board as a column that emptied.
-		const count = filtering ? `${col.count} of ${col.fullCount}` : String(col.count);
-		header.createSpan({ cls: 'pbl-board-col-count' + (filtering ? ' pbl-board-col-count-filtered' : ''), text: count });
-		if (col.limit !== null) {
-			header.createSpan({ cls: 'pbl-board-col-limit', text: `/ ${col.limit}` });
-			// More than colour alone: the class carries the colour, the icon carries the
-			// shape, and `columnLabel` carries the words.
-			if (overBy(col) > 0) {
-				header.addClass('pbl-board-col-over');
-				drawIcon(header.createSpan({ cls: 'pbl-board-col-over-icon' }), 'triangle-alert');
-			}
-		}
-	}
+	if (!strip) renderColumnCount(header, col, filtering);
+	renderColumnHints(colEl, header, col, strip, opts.stateOptionLabel);
+	renderColumnPolicy(header, col);
+	// On the header rather than inside `renderColumnPolicy`, because the menu is no longer
+	// the policy's: every column has a fold to offer, so every column has a menu — which
+	// is also what makes the fold's keyboard path the one the column stop already answers.
+	header.addEventListener('contextmenu', (evt) => showColumnMenu(ctx.host, evt, opts.scope, col));
+}
+
+/**
+ * How many cards, and how many the stage agreed to. A column is a stage of the workflow,
+ * not a search result: while the filter narrows the cards the header says how many of the
+ * stage's work it matched, so nobody reads a filtered board as a column that emptied.
+ */
+function renderColumnCount(header: HTMLElement, col: BoardColumn, filtering: boolean): void {
+	const count = filtering ? `${col.count} of ${col.fullCount}` : String(col.count);
+	header.createSpan({ cls: 'pbl-board-col-count' + (filtering ? ' pbl-board-col-count-filtered' : ''), text: count });
+	if (col.limit === null) return;
+	header.createSpan({ cls: 'pbl-board-col-limit', text: `/ ${col.limit}` });
+	// More than colour alone: the class carries the colour, the icon carries the shape,
+	// and `columnLabel` carries the words.
+	if (overBy(col) === 0) return;
+	header.addClass('pbl-board-col-over');
+	drawIcon(header.createSpan({ cls: 'pbl-board-col-over-icon' }), 'triangle-alert');
+}
+
+/**
+ * What this column is, said in a tooltip: a value outside the agreed workflow, or the
+ * one column whose drop REMOVES rather than writes — which has to say so somewhere a
+ * real state named like it cannot. The strip says what the full column says; same target,
+ * different size.
+ */
+function renderColumnHints(
+	colEl: HTMLElement,
+	header: HTMLElement,
+	col: BoardColumn,
+	strip: boolean,
+	stateOptionLabel: string,
+): void {
 	if (col.outsideWorkflow) {
-		const mark = header.createSpan({ cls: 'pbl-board-col-stray' });
-		drawIcon(mark, 'circle-help');
+		drawIcon(header.createSpan({ cls: 'pbl-board-col-stray' }), 'circle-help');
 		setTooltip(
 			colEl,
 			`"${col.label}" is not one of the configured workflow states. Add it to "${stateOptionLabel}" in the view options, or move its cards.`,
 		);
 	}
 	if (strip) setTooltip(colEl, 'Drop a card here to clear its state');
-	// The full column says what the strip says: same target, different size — and
-	// the one column whose drop REMOVES rather than writes has to say so somewhere
-	// a real state named like it cannot.
 	else if (col.state === null) setTooltip(colEl, 'Items without the state property — dropping a card here removes it');
-	renderColumnPolicy(header, col);
+}
+
+/**
+ * A column's own disclosure — `renderChevron`, the control every other fold in this plugin
+ * draws, so the filter override, the real `disabled` flag, the middle click and the focus
+ * report all arrive with it rather than being remembered here.
+ *
+ * Exported because a horizon bucket's header is the same control over the same host method
+ * (`render/roadmap.ts`): what differs between a column and a bucket is the scope it keys
+ * under, which is a parameter.
+ *
+ * A `label` is passed, so this is the BUTTON form carrying `aria-expanded` — the board's
+ * header already claims `role="option"`, which does not support that state, exactly the
+ * position the timeline's row chevron is in. The deviation is the one
+ * `docs/issues/A disclosure nested in an option role.md` records; no new argument here.
+ */
+export function renderColumnFold(
+	host: BacklogViewHost,
+	headerEl: HTMLElement,
+	scope: ColumnScope,
+	value: string | null,
+	col: { folded: boolean; label: string },
+): void {
+	const state = {
+		hasChildren: true,
+		collapsed: col.folded,
+		label: `${col.folded ? 'Expand' : 'Collapse'} ${col.label}`,
+		toggle: () => host.setColumnCollapsed(scope, value, !col.folded),
+	};
+	// Focus to the PANE and never to the replacement control, `render/shelfControls.ts`'
+	// rule: the projection is rebuilt whole by the toggle, and the pane's key handler
+	// ignores any event whose target is not the pane itself, so focus on a `tabindex="-1"`
+	// control inside it would look right and silently kill the arrow keys.
+	//
+	// Resolved NOW rather than in the callback: by then this header is detached and
+	// `closest` answers null from a node with no parents. The pane itself survives — a
+	// content render empties `treeEl`, it does not replace it — so the reference is still
+	// the element on screen.
+	const pane = headerEl.closest<HTMLElement>('.pbl-tree');
+	renderChevron(host, headerEl, state, (heldFocus) => {
+		if (heldFocus) pane?.focus();
+	});
 }
 
 /**
@@ -324,6 +430,10 @@ function renderColumnHeader(
  * speech input target a column by a paragraph. Extension 3a keeps it off the tab
  * order — the affordance is a span, and the keyboard path is the column's menu.
  * A column with nothing agreed gets no affordance at all (extension 1a).
+ *
+ * The menu itself is no longer wired here. It was, while the policy was the only thing in
+ * it and a column without one had no menu at all; the fold made every column worth a menu,
+ * so the listener moved to `renderColumnHeader` where it is attached unconditionally.
  */
 function renderColumnPolicy(header: HTMLElement, col: BoardColumn): void {
 	if (!col.policy) return;
@@ -333,7 +443,6 @@ function renderColumnPolicy(header: HTMLElement, col: BoardColumn): void {
 	const affordance = header.createSpan({ cls: 'pbl-board-col-policy' });
 	drawIcon(affordance, 'info');
 	setTooltip(affordance, col.policy);
-	header.addEventListener('contextmenu', (evt) => showColumnMenu(evt, col.policy));
 }
 
 function renderCard(ctx: RowContext, cardsEl: HTMLElement, item: BacklogItem, render: ColumnRenderCtx): void {

@@ -7,9 +7,41 @@ import { TIMELINE_LEAD_PX } from './timeline';
 import { BoardSnapshot, Projection, RoadmapSnapshot, ScrollBox } from '../host';
 import { CardDragController } from '../interactions/cardDrag';
 import { CivilDate } from '../../domain/noteFields';
-import { activeAxis } from '../../domain/roadmap';
+import { activeAxis, drawsGrid, RoadmapAxis } from '../../domain/roadmap';
 import { resolvedDeliverableStateKey } from '../../domain/optionalProperties';
 import { daysBetween, dayAt } from '../../domain/timeline';
+
+/**
+ * Centre the dated grid on today, or do nothing when nothing dated is drawn. Here rather
+ * than in the view class for {@link syncProjectionClasses}' reason: it is entirely a
+ * question about the frame this module's fork produced.
+ *
+ * `leadWidth` is in the guard beside `todayLeft` rather than defaulted below it:
+ * `renderRoadmap` sets both in the dated branch and neither anywhere else, so the term
+ * costs nothing and it is what narrows `leadWidth` to a number.
+ */
+export function scrollToToday(roadmap: RoadmapSnapshot | null): void {
+	const box = roadmap?.scroller;
+	if (!box || !roadmap || roadmap.todayLeft === null || roadmap.leadWidth === null) return;
+	box.scrollLeft = centreOnToday(roadmap.todayLeft, box.clientWidth, roadmap.leadWidth);
+}
+
+/**
+ * Which mode the pane is IN, said as classes on the view element so the stylesheet can
+ * answer without asking a script. Beside the fork it mirrors rather than in the view
+ * class: both are one reading of the projection, and the two coming apart is how a board
+ * would draw under the tree's layout.
+ *
+ * The `pbl-roadmap-dates` NAME stays what it is: it turns on the GRID's layout, which the
+ * resources axis needs in full, and every rule in `styles/` plus every test already names
+ * it — renaming would be a diff across the stylesheet for no behaviour. What it is asked
+ * about is `drawsGrid`, not the plain dated axis.
+ */
+export function syncProjectionClasses(viewEl: HTMLElement, projection: Projection, axis: RoadmapAxis | null): void {
+	viewEl.toggleClass('pbl-board-mode', projection === 'board' || projection === 'deliverables');
+	viewEl.toggleClass('pbl-roadmap-mode', projection === 'roadmap');
+	viewEl.toggleClass('pbl-roadmap-dates', axis !== null && drawsGrid(axis));
+}
 
 /**
  * The content-pane fork: which projection draws into the scroller, and what the
@@ -96,7 +128,7 @@ export function captureScroll(treeEl: HTMLElement, roadmap: RoadmapSnapshot | nu
  * than the lead itself, where the best available answer is the first visible pixel of
  * day.
  */
-export function centreOnToday(todayLeft: number, viewport: number, leadWidth: number): number {
+function centreOnToday(todayLeft: number, viewport: number, leadWidth: number): number {
 	const band = Math.max(viewport - leadWidth, 0);
 	return Math.max(todayLeft - leadWidth - band / 2, 0);
 }

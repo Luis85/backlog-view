@@ -29,8 +29,11 @@ describe('the board columns use the room they have', () => {
 		expect(body, 'nothing stops a column shrinking past its stated minimum').toMatch(/min-width:\s*260px/);
 	});
 
-	it('leaves the empty no-state column its narrow strip', () => {
-		const body = ruleBody('.pbl-board-strip');
+	it('leaves the empty no-state column, and a folded one, the same narrow strip', () => {
+		// ONE rule for both, so a fold and the empty no-state column cannot drift to
+		// different widths — the selector list is half the assertion.
+		expect(css).toContain('.pbl-board-strip,\n.pbl-board-collapsed {');
+		const body = ruleBody('.pbl-board-collapsed');
 
 		expect(body, 'the strip no longer overrides the growing column').toMatch(/flex:\s*0 0 44px/);
 		// Inherited from `.pbl-board-col`, the 260px floor would blow the strip up to a
