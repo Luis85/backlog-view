@@ -46,10 +46,10 @@ export function columnWidthVar(index: number): string {
  * values line up down a column, and no one number fits every vault: a title property
  * wants far more room than a risk chip, and both used to take one slider's word for it.
  *
- * The gesture is the timeline lead column's, and now literally so — the pointer half is
- * `wireResizeDrag` (`interactions/resizeDrag.ts`), shared by both grips. What stays here
- * is what this boundary MEANS: which width is being moved, what bounds it, and what a
- * commit does to the store.
+ * The gesture is the timeline lead column's, and now literally so — pointer and keyboard
+ * both are `wireResizeGrip` (`interactions/resizeDrag.ts`), shared by both grips. What
+ * stays here is what this boundary MEANS: which width is being moved, what bounds it, and
+ * what a commit does to the store.
  *
  * `tabindex="0"` — a real tab stop inside a pane whose rows are reached by arrow keys —
  * for the reason the lead grip has one: it is chrome fixed to the header's geometry, it

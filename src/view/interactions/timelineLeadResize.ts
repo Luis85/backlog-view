@@ -12,7 +12,7 @@ import { MAX_TIMELINE_LEAD_PX, MIN_TIMELINE_LEAD_PX } from '../../storage/collap
  *
  * Not `CardDragController`: that controller's whole shape is a `BacklogItem` picked
  * up and dropped somewhere (`cardDrag.ts`'s own preamble), and a column boundary is
- * neither a card nor a drop target. The pointer half is `wireResizeDrag`
+ * neither a card nor a drop target. The gesture itself is `wireResizeGrip`
  * (`interactions/resizeDrag.ts`) — the delta-then-clamp shape `timelineDrag.ts`'s holds
  * already use, without forcing a fake item through machinery built for one — and it is
  * shared with the tree's property-column grip (`interactions/columnResize.ts`), which
