@@ -58,10 +58,17 @@ items [[Focus level picks the rows]] still owes.
 goes `Done`. [[Focus level picks the rows]] is the one to judge at the end rather than
 promise now: this increment closes two of the three items its **Where it lives** still
 owes, and the third — inferred spans counting below-focus results — may already be met by
-[[Spans roll up the tree]], whose walk does not ask about focus. The plan verifies that
-with a test before the note is retyped; if the walk turns out to have a focus-shaped hole,
-the note stays `Open` and names it. Either way [[Hierarchy on the roadmap]] holds no
-unbuilt design when this lands, which is what the milestone needs.
+[[Spans roll up the tree]], whose walk does not ask about focus. The plan probes that with
+a test before the note is retyped.
+
+**What that leaves [[Hierarchy on the roadmap]] holding depends on the probe, and this
+spec does not get to promise otherwise.** If the probe passes, the feature is empty and
+the milestone can close on it. If it fails, the note stays `Open` carrying one unbuilt
+criterion, the feature is **not** empty, and the milestone is owed a further increment —
+a small one, in `domain/`, where this increment deliberately does not go. Saying "either
+way the feature holds no unbuilt design" would be a status report written before the thing
+it reports on was measured, which is the failure this register keeps notes to avoid.
+Found by review.
 
 ## 1. Lanes are dropped
 
