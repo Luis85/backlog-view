@@ -194,18 +194,23 @@ Lanes were tried and refused, in the roadmap and on the board. Both notes stay i
 
 In `docs/requirements/Lanes on the roadmap.md` and `docs/requirements/Swimlanes by parent.md`, change the frontmatter line to `status: Dropped`.
 
-- [ ] **Step 2: Say why, in each note**
+- [ ] **Step 2: Say why, inside the section the gate requires**
 
-Replace each note's `## Where it lives` section with:
+**Keep the `## Where it lives` heading.** `docs-check.mjs` runs
+`checkSections(note.file, text, USE_CASE_SECTIONS, "use case")` for every note with
+`type: PBI`, with no status gate, and `## Where it lives` is one of those seven required
+headings. Renaming it to `## Why it was dropped` fails `npm run docs` and the task cannot
+be committed. Found by review, against a draft of this plan that said to replace it.
+
+So the rationale goes **inside** that section, replacing its body:
 
 ```markdown
-## Why it was dropped
+## Where it lives
 
-Built, tried and refused on 2026-08-14. Lanes are not coming back to either
-projection, so this note is kept as the record of a design already considered
-rather than as work waiting to be done. It stays in the tree so every
-`[[wikilink]]` to it still resolves and nobody proposes lanes again from the
-code alone.
+**Why it was dropped.** Built, tried and refused on 2026-08-14. Lanes are not coming
+back to either projection, so this note is kept as the record of a design already
+considered rather than as work waiting to be done. It stays in the tree so every
+`[[wikilink]]` to it still resolves and nobody proposes lanes again from the code alone.
 ```
 
 Keep each note's story, its use case and its acceptance criteria exactly as they are: they are what was refused, and a record with its content removed records nothing.
