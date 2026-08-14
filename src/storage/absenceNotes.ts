@@ -1,4 +1,5 @@
 import { App, stringifyYaml, TFile } from 'obsidian';
+import { AbsenceFacts } from '../domain/absences';
 import { BacklogSettings } from '../domain/settings';
 import { vaultFolder } from '../domain/settingsResolve';
 import { ABSENCE_TYPE } from '../domain/typeVocabulary';
@@ -17,19 +18,6 @@ import { setOwn } from './ownProperty';
  * is in this directory, which is why the delete is here too even though no lint rule
  * names `trashFile` the way `no-restricted-syntax` names `vault.create`.
  */
-
-/**
- * What an absence SAYS — the three facts that live in its frontmatter. Split from the two
- * that decide where the note is (its folder and its title, which is its basename) because
- * an edit changes only these: a signature asking an update for a folder it will not use is
- * a caller passing a value that means nothing, which is how a field comes to be read.
- */
-export interface AbsenceFacts {
-	resource: string;
-	/** Both ends as `YYYY-MM-DD`, already validated: this module writes, it does not judge. */
-	start: string;
-	target: string;
-}
 
 /** Everything a NEW absence note needs: what it says, plus where it goes and what it is called. */
 export interface AbsenceSpec extends AbsenceFacts {

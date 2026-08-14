@@ -1,7 +1,7 @@
 import { TFile } from 'obsidian';
 import { describe, expect, it } from 'vitest';
 import { buildModel } from '../../src/domain/model';
-import { Absence, absencesConfigured, crossedAbsences, pendingAbsences } from '../../src/domain/absences';
+import { Absence, absencesConfigured, absenceTitle, crossedAbsences, pendingAbsences } from '../../src/domain/absences';
 import { CivilDate, readDate } from '../../src/domain/noteFields';
 import { ABSENCE_TYPE, ALL_TYPES, typeFolderKey } from '../../src/domain/typeVocabulary';
 import { folderForType } from '../../src/domain/itemTypes';
@@ -205,5 +205,25 @@ describe('how many stretches are still to come', () => {
 
 	it('counts nothing for a resource with no stretches at all', () => {
 		expect(pendingAbsences([], TODAY)).toBe(0);
+	});
+});
+
+describe('what an absence note is called', () => {
+	it('names the resource and both ends, so two never collide', () => {
+		// Both dates, so `uniqueNotePath` never has to append a number: `Alice away 1` and
+		// `Alice away 2` are two names that say nothing apart, and a filename is read in the
+		// explorer, in search and in a link, where no row is there to supply the dates.
+		expect(absenceTitle({ resource: 'Alice', start: '2026-08-04', target: '2026-08-06' })).toBe(
+			'Alice away 2026-08-04 → 2026-08-06',
+		);
+	});
+
+	it('is the one producer, so both acts derive the same name from the same facts', () => {
+		// Stated as the property rather than trusted: the create path and the edit path each
+		// call this, which is what stops them disagreeing about what an absence is called.
+		const facts = { resource: 'Bob', start: '2026-09-01', target: '2026-09-04' };
+
+		expect(absenceTitle(facts)).toBe(absenceTitle({ ...facts }));
+		expect(absenceTitle(facts)).toBe('Bob away 2026-09-01 → 2026-09-04');
 	});
 });

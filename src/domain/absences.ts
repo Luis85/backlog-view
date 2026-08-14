@@ -28,6 +28,26 @@ export interface Absence {
 }
 
 /**
+ * What an absence SAYS — the three facts that reach its frontmatter, as strings, straight
+ * from the form that produced them and already validated.
+ *
+ * Here rather than in `storage/`, where it was declared until 2026-08-14: it is what an
+ * absence IS, this layer is where that is defined, and `absenceTitle` below consumes it —
+ * a type belongs with the code that produces it, and `domain/` may not import `storage/`
+ * to reach one. `AbsenceSpec` in `src/storage/absenceNotes.ts` still extends it with the
+ * two facts that decide where the note IS rather than what it says.
+ *
+ * Distinct from `Absence` and deliberately so: that one holds parsed `CivilDate`s and a
+ * `TFile`, and is what reading a note back produces.
+ */
+export interface AbsenceFacts {
+	resource: string;
+	/** Both ends as `YYYY-MM-DD` — this is a request to write, not a reading. */
+	start: string;
+	target: string;
+}
+
+/**
  * Whether the configuration can carry an absence at all: BOTH date properties, and the
  * assignee that says whose row it is.
  *
@@ -114,4 +134,29 @@ export function crossedAbsences(span: DateSpan, absences: Absence[]): Absence[] 
  */
 export function pendingAbsences(absences: Absence[], today: CivilDate): number {
 	return absences.filter((absence) => daysBetween(today, absence.target) >= 0).length;
+}
+
+/**
+ * What an absence note is CALLED, derived from the facts it holds — so recording one asks
+ * for the dates and nothing else.
+ *
+ * The one producer, which is the point rather than tidiness: creating an absence and editing
+ * one already share a single form, a single validator and a single set of refusals, and a
+ * name computed separately in each act is exactly how the two would come to disagree about
+ * what an absence is.
+ *
+ * Both dates are in it so two absences never collide and `uniqueNotePath` never appends a
+ * number — `Alice away 1` beside `Alice away 2` is two names that say nothing apart, and a
+ * basename is read in the explorer, in search and in a link, none of which has a row beside
+ * it to supply the dates. Every character here survives `sanitizeTitle`, which replaces
+ * `\/:*?"<>|#^[]` and leaves the arrow and the hyphens alone.
+ *
+ * **A hand rename does not survive the next edit**, and that is the accepted cost of the
+ * name being a function of the facts rather than a defect: rename the note in Obsidian, edit
+ * a date, and it takes the derived name back. The alternative — comparing against the name
+ * this would have produced for the OLD facts — is a second rule whose failure mode is a note
+ * that silently stops following its own dates.
+ */
+export function absenceTitle(facts: AbsenceFacts): string {
+	return `${facts.resource} away ${facts.start} → ${facts.target}`;
 }
