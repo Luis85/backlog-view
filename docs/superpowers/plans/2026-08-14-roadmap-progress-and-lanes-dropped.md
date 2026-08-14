@@ -1114,7 +1114,15 @@ Its third outstanding item is inferred spans counting below-focus results. Write
 npx vitest run test/domain/roadmap.test.ts -t 'below-focus'
 ```
 
-If it passes, `Spans roll up the tree` already met the requirement — set `status: Done` and say so in `## Where it lives`. **If it fails, the note stays `Open`** and its `## Where it lives` names the hole precisely. Do not fix it here: it is a domain change and this increment's scope is the view.
+This is a **probe**, and the two outcomes are handled differently:
+
+- **It passes.** `Spans roll up the tree` already met the requirement. Keep the test — it is now a real check of a real guarantee — set `Focus level picks the rows` to `status: Done`, and say in its `## Where it lives` that the span case is covered and where.
+
+- **It fails.** The note stays `Open`. **Delete the probe** — do not commit it, and do not leave it as `it.skip` or `it.todo`. `npm run check` in Step 4 must be green, and this task stages `test/domain/roadmap.test.ts`, so a red test cannot be committed; a skipped one is worse, because this repository already holds that a rule stated but not checked is the defect (`docs/issues/A comment that states a rule is not a check.md`), and a permanently skipped test is exactly that with a green tick beside it.
+
+  Record the gap where the register keeps gaps instead: paste the probe's code and its actual failure output into `Focus level picks the rows`' `## Where it lives`, naming precisely what the walk does with a below-focus dated descendant. That is evidence a later increment can act on, and it costs nothing to keep. Do not fix the walk here — it is a domain change and this increment's scope is the view.
+
+Found by review: the plan's failing branch previously left a red test staged into a task that has to run the full gate.
 
 - [ ] **Step 3: Add the changelog entry**
 
@@ -1151,6 +1159,8 @@ npm run check
 - [ ] **Step 5: Commit**
 
 ```bash
+# `test/domain/roadmap.test.ts` only if the probe PASSED and you kept it —
+# on the failing branch it was deleted, and `git status` should show it unmodified.
 git add docs/ CHANGELOG.md test/domain/roadmap.test.ts
 git commit -m "Close what this increment finished"
 ```
