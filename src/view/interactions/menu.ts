@@ -22,7 +22,7 @@ import { promptCreateItem } from './create';
 import { addHorizonItems, canSchedule, carriesDates, promptSchedule, unschedule } from './plan';
 import { addTagItems, tagsColumnVisible } from './tags';
 import { addDependencyItems, dependenciesAvailable } from './dependencies';
-import { listedChildren, undisclosedMatches } from '../childrenList';
+import { matchesUnderCard } from '../childrenList';
 import { offerableTypes, retypeChoices, rowVocabulary, treeShaped } from '../projection';
 
 /**
@@ -348,12 +348,17 @@ export const showTagMenu = (host: BacklogViewHost, evt: MouseEvent, item: Backlo
  * prevent: found, counted in the rollup, and impossible to get to. Offered whether or
  * not the card itself matched, for the same reason the face names them: a match below
  * a matching card is a second result, and it has no card of its own to be reached by.
+ *
+ * `matchesUnderCard`, not `undisclosedMatches`: a match the card's own disclosure is
+ * showing belongs here too, since this menu stopped naming the children themselves
+ * (2026-08-14) and those list entries are `tabindex="-1"`. The card FACE keeps the
+ * subtraction, because there the two lists sit inches apart — see `childrenList.ts`.
  */
 function addMatchSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
 	const board = activeBoard(host);
 	if (!board || !host.isFiltering()) return;
 	const carded = cardPaths(board);
-	const matches = undisclosedMatches(host, item, carded);
+	const matches = matchesUnderCard(host, item, carded);
 	if (matches.length === 0) return;
 	menu.addSeparator();
 	for (const match of matches) {
@@ -367,10 +372,17 @@ function addMatchSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): 
 }
 
 /**
- * The children this card is showing, offered where a pointer is not available. Each
- * card projection is one tab stop, so the disclosure's entries are `tabindex="-1"`
- * buttons and this is their keyboard path — the same answer the tree gives for the add
- * button and the state chip.
+ * Folding the children this card is showing, offered where a pointer is not available.
+ * Each card projection is one tab stop, so the disclosure is a `tabindex="-1"` button and
+ * this is its keyboard path — the same answer the tree gives for the add button and the
+ * state chip.
+ *
+ * The TOGGLE only. This section used to end with an `Open child "…"` entry per child,
+ * which was removed on request (2026-08-14): the children are already on the card, each
+ * one already opens on a click, and a menu that grew a row per child pushed everything
+ * else in it off the bottom on exactly the items with the most of everything. Nothing is
+ * lost from the keyboard by that — opening a child is the tree's own job, and the
+ * disclosure below is what a pointerless reader could not otherwise reach.
  *
  * The gate is `cardChildrenShown`, filled by the render, and not the projection: a card
  * whose children have all hidden draws no disclosure and a dated-axis timeline row draws
@@ -408,14 +420,6 @@ function addChildrenSection(host: BacklogViewHost, menu: Menu, item: BacklogItem
 					else host.setCardCollapsed(item.file.path, !collapsed);
 					host.render();
 				}),
-		);
-	}
-	for (const child of listedChildren(host, item)) {
-		menu.addItem((mi) =>
-			mi
-				.setTitle(`Open child "${child.title}"`)
-				.setIcon('corner-left-down')
-				.onClick((evt) => host.openItem(child, evt)),
 		);
 	}
 }
@@ -630,9 +634,9 @@ export function addShelfTypeItems(host: BacklogViewHost, menu: Menu, shelf: Shel
  * The shelf's controls, reachable without a pointer. Its header buttons are
  * `tabindex="-1"` like every control in the one-tab-stop pane, so this menu is their
  * keyboard path — the same answer the board's hidden-match links give, and for the same
- * reason stated there: without it the shelf's collapse, sort and filter would be
- * pointer-only and the feature would fail at its own purpose. `syncShelfTabStops` covers
- * the one case this cannot, where no card renders and there is no menu to open.
+ * reason stated there: without it the shelf's sort and filter would be pointer-only and
+ * the feature would fail at its own purpose. `syncShelfTabStops` covers the one case this
+ * cannot, where no card renders and there is no menu to open.
  *
  * On the roadmap only, and only while the shelf holds something — an entry for a region
  * that is not on screen is the defect in the other direction.
@@ -642,16 +646,6 @@ function addShelfSection(host: BacklogViewHost, menu: Menu): void {
 	const shelf = host.roadmap?.roadmap.shelf ?? [];
 	if (shelf.length === 0) return;
 	menu.addSeparator();
-	const collapsed = host.shelfCollapsed;
-	menu.addItem((mi) =>
-		mi
-			.setTitle(`${collapsed ? 'Expand' : 'Collapse'} unplaced (${shelf.length})`)
-			.setIcon('inbox')
-			.onClick(() => host.setShelfCollapsed(!collapsed)),
-	);
-	// Nothing to order or narrow while the cards are shut away — the header withholds
-	// the same two pickers for the same reason.
-	if (collapsed) return;
 	menu.addItem((mi) => {
 		mi.setTitle('Sort unplaced').setIcon('arrow-up-down');
 		addShelfSortItems(host, submenuOf(mi));

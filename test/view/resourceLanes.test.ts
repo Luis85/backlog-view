@@ -40,7 +40,6 @@ function laneRoadmap(
 	});
 	harness.view.setProjection('roadmap');
 	harness.view.setAxisPick('resources');
-	harness.view.setShelfCollapsed(false);
 	// AFTER the axis is picked, never in `makeView`: a bar's fold is its own scope, and an
 	// expand-all run while the tree is on screen settles the tree's bits and not this
 	// grid's.
@@ -256,7 +255,6 @@ describe('the assignee chip on this axis', () => {
 		const harness = laneRoadmap(resourceVault());
 		harness.config.order = ['note.assignee'];
 		harness.view.onDataUpdated();
-		harness.view.setShelfCollapsed(false);
 		return harness;
 	}
 

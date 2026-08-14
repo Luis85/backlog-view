@@ -88,13 +88,6 @@ function measure(view: ProductBacklogView, el: HTMLElement, mount: Mount): { row
 	// Restored at the end rather than reset to the tree: the run drives all four, and a
 	// `?perf&view=board` page has to be left showing the board it was asked for.
 	const opened = view.projection;
-	// The shelf opens COLLAPSED, and a collapsed shelf renders its header and returns —
-	// so every roadmap number this panel has ever printed was of a roadmap with no shelf
-	// in it, under a heading that named neither the omission nor the shelf. Opened for the
-	// run and put back exactly as found, the way the projection already is: a measurement
-	// mode must not leave the reader's own view rearranged.
-	const openedShelf = view.shelfCollapsed;
-	view.setShelfCollapsed(false);
 	// Switched to the tree BEFORE expanding, because `?perf` composes with `?view=board`
 	// and the expand control is disabled on a projection that drew no disclosure. Expanding
 	// there did nothing, counted zero rows, and left every later sample rendering a
@@ -122,7 +115,6 @@ function measure(view: ProductBacklogView, el: HTMLElement, mount: Mount): { row
 			),
 		);
 	}
-	view.setShelfCollapsed(openedShelf);
 	view.setProjection(opened);
 	return { rows, treeRows };
 }

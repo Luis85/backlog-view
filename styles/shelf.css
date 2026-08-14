@@ -30,13 +30,6 @@
 	border-style: dashed;
 }
 
-/* Collapsed keeps its footprint minimal: the header carries the name, the count and
-   the disclosure, so nothing else is on screen until it is opened. */
-.pbl-shelf-collapsed {
-	padding-block: var(--size-4-1);
-	min-height: 0;
-}
-
 .pbl-shelf-header {
 	display: flex;
 	align-items: center;
@@ -148,33 +141,7 @@
 	height: 12px;
 }
 
-/* The shelf's own controls, in its own header. The disclosure carries the icon, the
-   name and the count, so it is a text-bearing button rather than the lone glyph
-   `clickable-icon` sizes for — the padding and the auto width are what stop it
-   rendering as a square with the label spilling out of it. */
-.pbl-shelf-disclosure {
-	display: flex;
-	align-items: center;
-	gap: var(--size-4-1);
-	width: auto;
-	height: auto;
-	padding: var(--size-2-1) var(--size-4-1);
-	font-size: var(--font-ui-small);
-	font-weight: var(--font-medium);
-	color: var(--text-normal);
-}
-
-.pbl-shelf-collapse-icon {
-	display: flex;
-	align-items: center;
-	color: var(--text-muted);
-}
-
-.pbl-shelf-collapse-icon .svg-icon {
-	width: 14px;
-	height: 14px;
-}
-
+/* The shelf's own controls, in its own header. */
 /* The two pickers sit together, left of the outcome line's `margin-inline-start: auto`. */
 .pbl-shelf-sort,
 .pbl-shelf-filter {

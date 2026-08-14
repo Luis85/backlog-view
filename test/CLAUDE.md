@@ -113,10 +113,11 @@ Obsidian's.
   `?notes=` grows either backlog by that many generated notes (`addBulk`, in the same
   fixture file) and `?perf` times the mount, a data update, a render on its own and each
   projection switch — five samples each, median and worst, into a corner panel and
-  `console.table`. The run switches to the tree and expands it first, and opens the SHELF,
-  which it had not done until 2026-08-14: a collapsed shelf renders its header and
-  returns, so every roadmap number this panel had ever printed was of a roadmap without
-  the band. It puts the collapse, the axis and the projection back as it found them.
+  `console.table`. The run switches to the tree and expands it first, and puts the
+  projection back as it found it. Its roadmap rows described a shelf-less roadmap until
+  2026-08-14 — the shelf opened collapsed and a collapsed shelf drew its header and
+  returned. The run opened it for a day; then the collapse option was removed outright
+  and the band is simply always there.
   **Each row states its own sample** (`drew`), because one heading cannot: the tree draws
   rows, the card projections draw cards, the board excludes Deliverables and the
   Deliverables board draws only those.

@@ -319,10 +319,6 @@ export interface BacklogViewHost {
 	readonly clickFolds: boolean;
 	/** Flip what a click does and re-render; the collapse store persists the pick. */
 	setClickFolds(value: boolean): void;
-	/** Whether the shelf is collapsed for this saved view; collapsed is the default. */
-	readonly shelfCollapsed: boolean;
-	/** Toggle the shelf's collapse state and re-render the content pane. */
-	setShelfCollapsed(collapsed: boolean): void;
 	/** The shelf's display-only sort pick; 'tree' (sibling order) is the default. */
 	readonly shelfSort: ShelfSort;
 	setShelfSort(sort: ShelfSort): void;

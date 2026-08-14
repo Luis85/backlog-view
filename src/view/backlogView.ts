@@ -220,14 +220,6 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.ui.setClickFolds(value);
 	}
 
-	get shelfCollapsed(): boolean {
-		return this.ui.shelfCollapsed;
-	}
-
-	setShelfCollapsed(collapsed: boolean): void {
-		this.ui.setShelfCollapsed(collapsed);
-	}
-
 	get shelfSort(): ShelfSort {
 		return this.ui.shelfSort;
 	}

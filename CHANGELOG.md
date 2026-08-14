@@ -11,6 +11,19 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+### Removed
+
+- **The shelf no longer collapses** — it always shows what it holds. The disclosure, the
+  card menu's **Expand/Collapse unplaced**, and the stored collapse state are gone, and the
+  shelf's sort and type filter are always available. It opened shut by default, so the band
+  that says how much of your backlog is unplanned only answered that after a click. An
+  earlier version's stored setting is ignored.
+
+- **The card's right-click menu no longer lists the children one by one** — the
+  **Show/Hide children** toggle stays, and so does the list on the card itself. A card with
+  many children no longer pushes the rest of its menu off the screen. A child that matches
+  the quick filter is still offered in the menu, as a match.
+
 ### Changed
 
 - **The board and the shelf only draw the cards you can see** — a column, a horizon bucket

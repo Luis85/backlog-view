@@ -119,8 +119,6 @@ export interface CollapseSnapshot {
 	 * the `.base`: the only thing that reads it is a toggle.
 	 */
 	clickFolds?: boolean;
-	/** True only once the user has explicitly expanded the shelf; absent means collapsed, the default. */
-	shelfExpanded?: boolean;
 	/** Absent or null means 'tree' (sibling order), the default. */
 	shelfSort?: string | null;
 	/** Types currently hidden by the shelf's own type filter; absent or empty means none. */
@@ -178,10 +176,8 @@ interface StoredEntry {
 	 * in the `.base`.
 	 */
 	focus?: string;
-	/** Absent means a click opens the note, the default; stored only as `true`, like `shelfExpanded`. */
+	/** Absent means a click opens the note, the default; only ever stored as `true`. */
 	clickFolds?: boolean;
-	/** Absent means collapsed, the default; only ever stored as `true`, since `false` needs no entry. */
-	shelfExpanded?: boolean;
 	/** Absent means 'tree', the default. */
 	shelfSort?: string;
 	/** Absent or empty means nothing hidden. */
@@ -282,9 +278,8 @@ function viewNameOf(key: string): string | null {
 
 function defaultShelf(
 	entry: StoredEntry | undefined,
-): Pick<CollapseSnapshot, 'shelfExpanded' | 'shelfSort' | 'shelfHiddenTypes' | 'collapsedLanes'> {
+): Pick<CollapseSnapshot, 'shelfSort' | 'shelfHiddenTypes' | 'collapsedLanes'> {
 	return {
-		shelfExpanded: entry?.shelfExpanded ?? false,
 		shelfSort: entry?.shelfSort ?? null,
 		shelfHiddenTypes: entry?.shelfHiddenTypes ?? [],
 		collapsedLanes: entry?.collapsedLanes ?? [],
@@ -311,7 +306,6 @@ function defaultPicks(
 }
 
 function writeShelf(entry: StoredEntry, shelf: ShelfState): void {
-	if (shelf.expanded) entry.shelfExpanded = true;
 	if (shelf.sort !== null) entry.shelfSort = shelf.sort;
 	if (shelf.types.length > 0) entry.shelfHiddenTypes = shelf.types;
 	if (shelf.lanes.length > 0) entry.collapsedLanes = shelf.lanes;
@@ -319,7 +313,6 @@ function writeShelf(entry: StoredEntry, shelf: ShelfState): void {
 
 /** The frame's own display picks, grouped so `writeShelf` stays under max-params. */
 interface ShelfState {
-	expanded: boolean;
 	sort: string | null;
 	types: string[];
 	/** Resource bands folded shut — beside the shelf's because both are per-view name sets. */
@@ -368,7 +361,6 @@ export function saveCollapseState(app: App, id: ViewIdentity, snapshot: Collapse
 	const entry: StoredEntry = { base: id.base, collapsed, expanded };
 	writePicks(entry, snapshot);
 	writeShelf(entry, {
-		expanded: snapshot.shelfExpanded ?? false,
 		sort: snapshot.shelfSort ?? null,
 		types: snapshot.shelfHiddenTypes ?? [],
 		lanes: snapshot.collapsedLanes ?? [],
@@ -453,7 +445,6 @@ function readLeadWidth(value: unknown): number | undefined {
 }
 
 function readShelfFields(record: Record<string, unknown>, entry: StoredEntry): void {
-	if (typeof record.shelfExpanded === 'boolean' && record.shelfExpanded) entry.shelfExpanded = true;
 	const sort = readEnum(record.shelfSort, SHELF_SORT_VALUES);
 	if (sort !== undefined) entry.shelfSort = sort;
 	const types = readPaths(record.shelfHiddenTypes);
@@ -475,7 +466,6 @@ function entryHasContent(entry: StoredEntry): boolean {
 		entry.leadWidth !== undefined ||
 		entry.focus !== undefined ||
 		entry.clickFolds !== undefined ||
-		entry.shelfExpanded !== undefined ||
 		entry.shelfSort !== undefined ||
 		entry.shelfHiddenTypes !== undefined ||
 		entry.collapsedLanes !== undefined

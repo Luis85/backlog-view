@@ -77,8 +77,11 @@ card — and a count is the half of it that cannot be acted on.
   what is under this item, and that does not change with where else the item is drawn.
 - **3c — a child matched the quick filter.** The card's match list stops naming it, since
   the disclosure does. One card cannot say the same thing twice.
-- **4a — the user has no pointer.** The card menu offers the same children, from the same
-  list. A disclosure nobody without a mouse can reach is not a list of children.
+- **4a — the user has no pointer.** The card menu offers the TOGGLE, from the same gate.
+  A disclosure nobody without a mouse can reach is not a list of children. It offered one
+  `Open child "…"` entry per child as well until 2026-08-14, when those were removed on
+  request — see [[Drop the per-child entries from the card menu]], which also records the
+  match-list consequence and the fix it needed.
 - **5a — the item is a context row.** It gets the disclosure like any other card. Nothing
   here writes, so the rule that governs it is not in question.
 
@@ -105,8 +108,8 @@ card — and a count is the half of it that cannot be acted on.
   either roadmap axis, Deliverables), since "is this item's card open" is one question
   about the note and not one per screen that happens to draw it as a card.
   While the quick filter runs the toggle is disabled.
-- The card menu offers the same children, on a right-click and on the menu key, and does
-  not offer them on a surface that drew no disclosure.
+- The card menu offers the toggle, on a right-click and on the menu key, and offers it on
+  no surface that drew no disclosure.
 - Nothing in the feature writes to a note.
 
 ## Where it lives
@@ -129,9 +132,12 @@ disclosure for, and so does that one; the view publishes the set as
 `menu.ts`'s `addChildrenSection` reads it — the same list and the same gate, reached
 through `buildItemMenu` on both the pointer path (`showItemMenu`) and the keyboard path
 (`showContextMenuFor`) — so neither re-derives an answer the screen already has.
-`undisclosedMatches` is read the same way, by `renderCardMatches` in
-`src/view/render/board.ts` for the card face and by `addMatchSection` in `menu.ts` for
-its menu, so the two surfaces cannot both name a match the disclosure already listed.
+The match walk is shared the same way and its subtraction is now per SURFACE:
+`renderCardMatches` in `src/view/render/board.ts` reads `undisclosedMatches` for the card
+face, where the disclosure's list sits inches from the match links, and `addMatchSection`
+in `menu.ts` reads `matchesUnderCard` — the same walk without that subtraction, because
+the menu stopped naming the children themselves and a match the face lists would
+otherwise be reachable by pointer alone.
 
 The expansion bit itself is `CARD_SCOPE` in `src/view/collapseState.ts`, a prefix
 alongside `TIMELINE_SCOPE`, read and written through `BacklogViewHost.isCardCollapsed`/

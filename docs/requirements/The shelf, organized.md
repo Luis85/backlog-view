@@ -39,6 +39,13 @@ vault surfaced uneven card widths, a shelf flush against the pane's edges, and a
 horizontal scrollbar the shelf itself was forcing. This PBI is that comfort pass,
 alongside the same visual fixes.
 
+> **The collapse half of this note no longer describes the plugin.** The disclosure, the
+> collapsed-by-default opening, the stored `shelfExpanded` and the card menu's
+> expand/collapse entry were all removed on 2026-08-14 — the shelf is always drawn. Read
+> every "collapsed" sentence below as a record of what shipped and was then taken out, and
+> see [[Drop the shelf's collapse option]] for what replaced each of them. The grouping,
+> the sort pick and the type filter are untouched and still current.
+
 ## Use case
 
 | | |
@@ -132,7 +139,8 @@ board's hidden-match links, whose absence would leave them "pointer-only and the
 would fail at its own purpose". The entries come from the same two item builders the
 header buttons call, so the two surfaces cannot drift about what is offered or what is
 checked, the reason the horizon chip and its menu already share one builder. Three host
-methods (`setShelfCollapsed`/`setShelfSort`/`setShelfHiddenTypes`) each write through
+methods (`setShelfSort`/`setShelfHiddenTypes`, and a `setShelfCollapsed` until it was
+removed) each write through
 `CollapseState` and re-render the content pane alone — never the whole toolbar — so a
 keyboard user's focus survives the control they just used, the same reason `setFilter`
 does not call a full `render()` either.

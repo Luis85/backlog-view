@@ -111,8 +111,12 @@ if (browser === null) {
 	process.exit(1);
 }
 
-/** Build unless told not to — `--no-build` when alternating against a tree already built. */
-if (args.build !== 'false') {
+/**
+ * Build unless told not to, in either spelling: `--no-build` is what this file's own
+ * examples used while the code read `--build`, so the documented flag rebuilt `.harness`
+ * anyway — over whatever had deliberately been put there to measure. (Codex, PR #137.)
+ */
+if (args.build !== 'false' && args['no-build'] === undefined) {
 	execFileSync(process.execPath, ['scripts/harness.mjs'], { stdio: 'inherit' });
 }
 

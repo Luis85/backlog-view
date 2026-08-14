@@ -67,10 +67,28 @@ export function undisclosedMatches(
 	carded: Set<string>,
 ): BacklogItem[] {
 	const listed = new Set(listedChildren(host, item).map((child) => child.file.path));
+	return matchesUnderCard(host, item, carded).filter((match) => !listed.has(match.file.path));
+}
+
+/**
+ * The same walk WITHOUT that last subtraction, for the card menu.
+ *
+ * The dedup above is about one surface saying one thing twice, and the two surfaces stopped
+ * agreeing on what "twice" means when the menu's `Open child "…"` entries were removed
+ * (2026-08-14). On the card FACE the disclosure's list and a match link sit inches apart,
+ * so naming an item in both is a repetition. In the MENU nothing else names the children
+ * at all any more — so subtracting them there withheld the one keyboard path to a match
+ * the card was showing, which is precisely the failure `src/view/CLAUDE.md` records for
+ * the board's hidden-match links: the disclosure's own entries are `tabindex="-1"`.
+ *
+ * `carded` is still subtracted in both: an item with a card of its own is reachable at
+ * that card, and offering it here would point at something already on screen.
+ */
+export function matchesUnderCard(host: BacklogViewHost, item: BacklogItem, carded: Set<string>): BacklogItem[] {
 	return hiddenMatches(
 		item,
 		(child) => host.isFilterMatch(child),
 		carded,
 		(child) => !host.isRowHidden(child),
-	).filter((match) => !listed.has(match.file.path));
+	);
 }

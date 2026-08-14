@@ -6,11 +6,15 @@ import { ShelfCard } from '../../domain/bars';
 import { SHELF_LABEL } from '../../domain/roadmap';
 
 /**
- * The shelf's own header chrome: the disclosure that names it, counts it and opens it,
- * and — while it is open — a sort pick and a type filter. It lives in the shelf rather
- * than in the view's toolbar because that is where a reader working through unplaced
- * work is already looking; a control for the shelf, three regions away from it, was a
- * control nobody found.
+ * The shelf's own header chrome: the label that names it and counts it, a sort pick and a
+ * type filter. It lives in the shelf rather than in the view's toolbar because that is
+ * where a reader working through unplaced work is already looking; a control for the
+ * shelf, three regions away from it, was a control nobody found.
+ *
+ * The label was a disclosure until 2026-08-14, and the shelf opened SHUT — so the band
+ * that says how much of the backlog is unplanned answered that question only after a
+ * click nobody had to make. Removed on request: the shelf is always open, and what used
+ * to be the one control every reader had to find first is now a heading.
  *
  * Both pickers open an Obsidian `Menu` from a `tabindex="-1"` button rather than
  * rendering a `<select>` or checkboxes inline. That is not decoration: the roadmap pane
@@ -26,34 +30,12 @@ import { SHELF_LABEL } from '../../domain/roadmap';
  * answering the question the shelf exists to answer.
  */
 export function renderShelfControls(host: BacklogViewHost, headerEl: HTMLElement, shelf: ShelfCard[]): void {
-	// An empty shelf is a bare label: it renders only so a drag has somewhere to land,
-	// and a disclosure over nothing would offer to open what has no content.
-	if (shelf.length === 0) {
-		setIcon(headerEl.createSpan({ cls: 'pbl-shelf-icon' }), 'inbox');
-		headerEl.createSpan({ cls: 'pbl-shelf-name', text: SHELF_LABEL });
-		return;
-	}
-	const collapsed = host.shelfCollapsed;
-	const disclosure = headerEl.createEl('button', {
-		cls: 'pbl-shelf-disclosure clickable-icon',
-		attr: { type: 'button', tabindex: '-1', 'aria-expanded': String(!collapsed) },
-	});
-	setIcon(disclosure.createSpan({ cls: 'pbl-shelf-collapse-icon' }), collapsed ? 'chevron-right' : 'chevron-down');
-	setIcon(disclosure.createSpan({ cls: 'pbl-shelf-icon' }), 'inbox');
-	disclosure.createSpan({ cls: 'pbl-shelf-name', text: SHELF_LABEL });
-	disclosure.createSpan({ cls: 'pbl-shelf-count', text: String(shelf.length) });
-	// `aria-expanded` carries the state an icon and a chevron only show: without it a
-	// screen-reader user at this button cannot tell a shut shelf from an open one.
-	const action = `${collapsed ? 'Expand' : 'Collapse'} ${SHELF_LABEL} (${shelf.length})`;
-	disclosure.setAttribute('aria-label', action);
-	setTooltip(disclosure, action);
-	disclosure.addEventListener('click', () => {
-		host.setShelfCollapsed(!collapsed);
-		refocus(host, '.pbl-shelf-disclosure');
-	});
-	// Nothing to order or narrow while the cards are shut away, and a control that
-	// visibly does nothing is worse than none — the toolbar's own expand/collapse rule.
-	if (collapsed) return;
+	setIcon(headerEl.createSpan({ cls: 'pbl-shelf-icon' }), 'inbox');
+	headerEl.createSpan({ cls: 'pbl-shelf-name', text: SHELF_LABEL });
+	// An empty shelf is a bare label: it renders only so a drag has somewhere to land, and
+	// a count of nothing beside two pickers with nothing to pick is chrome over an absence.
+	if (shelf.length === 0) return;
+	headerEl.createSpan({ cls: 'pbl-shelf-count', text: String(shelf.length) });
 	renderSortPicker(host, headerEl);
 	renderTypeFilter(host, headerEl, shelf);
 }

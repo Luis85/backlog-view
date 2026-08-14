@@ -144,16 +144,20 @@ function removalOutcome(item: BacklogItem): string {
  * dated axis's empty shelf really did promise a write it could not make and stayed out
  * of the DOM for exactly that reason.
  *
- * Collapsing contributes zero cards, exactly as an empty shelf already did, so the
- * caller's keyboard-walk array and the pane's listbox/region role stay correct with no
- * extra logic for either case. The drop target and its preview are wired BEFORE the
- * collapsed/empty check below, never after: collapsing is a view convenience and must
- * never gate the one thing that un-places.
+ * An empty shelf contributes zero cards, so the caller's keyboard-walk array and the
+ * pane's listbox/region role stay correct with no extra logic for that case. The drop
+ * target and its preview are wired BEFORE the empty check below, never after: an empty
+ * shelf is exactly when the target that un-places has to exist.
  *
- * The header renders unconditionally — collapsed, expanded or empty — because it is the
- * ONE label a user sees while their attention and cursor are actually over the shelf
- * mid-drag, and because it carries the disclosure that opens a shut shelf: controls for
- * the shelf live in it (`renderShelfControls`), not in the view's toolbar.
+ * The header renders unconditionally — occupied or empty — because it is the ONE label a
+ * user sees while their attention and cursor are actually over the shelf mid-drag, and
+ * because it carries the sort and type controls: controls for the shelf live in it
+ * (`renderShelfControls`), not in the view's toolbar.
+ *
+ * There is no collapsed state here since 2026-08-14. The shelf used to open shut behind a
+ * disclosure, which meant the count of unplanned work was withheld until a click; the
+ * whole option was removed on request rather than re-defaulted, so the band is what it
+ * says it is on every render.
  */
 export function renderShelf(
 	ctx: RowContext,
@@ -165,9 +169,8 @@ export function renderShelf(
 	const host = ctx.host;
 	const shelfCards = shelf.cards;
 	const empty = shelfCards.length === 0;
-	const collapsed = !empty && host.shelfCollapsed;
 	const shelfEl = frameEl.createDiv({
-		cls: 'pbl-shelf' + (empty ? ' pbl-shelf-empty' : '') + (collapsed ? ' pbl-shelf-collapsed' : ''),
+		cls: 'pbl-shelf' + (empty ? ' pbl-shelf-empty' : ''),
 		attr: {
 			role: 'group',
 			'aria-label': `${SHELF_LABEL}, ${shelfCards.length} item${shelfCards.length === 1 ? '' : 's'}`,
@@ -190,7 +193,7 @@ export function renderShelf(
 		onEnter: (source) => outcomeEl?.setText(removal.outcome?.(source.item) ?? ''),
 		onLeave: () => outcomeEl?.setText(''),
 	});
-	if (empty || collapsed) return { cards: [], el: shelfEl };
+	if (empty) return { cards: [], el: shelfEl };
 
 	// `dnd` and `removal` travel together to every card below, and now so does which
 	// of them is in conflict (2b) and which axis is drawing — grouped once here rather
