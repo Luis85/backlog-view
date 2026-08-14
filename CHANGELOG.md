@@ -11,6 +11,21 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+### Added
+
+- **A resource band's header says how many absences are still to come** — `2 items / 1
+  absence`, counting only the stretches that are running or ahead, so a finished one no
+  longer has to be told apart from the today line by eye. It stays on a folded band, which
+  is where nothing else on screen says it.
+
+### Changed
+
+- **Recording an absence asks for the dates alone.** The note is named
+  `<resource> away <start> → <end>` from the facts you enter, so there is no title to think
+  of — and editing a date renames the note to match. An absence that already exists keeps
+  its name until you edit it; a name you set by hand in Obsidian is replaced the next time
+  you edit the stretch.
+
 ## [0.8.0] - 2026-08-14
 
 ### Added

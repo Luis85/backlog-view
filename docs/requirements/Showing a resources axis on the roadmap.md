@@ -206,6 +206,14 @@ import each other. `src/view/render/roadmap.ts` dispatches the three axes and ho
 bar may be taken hold of. `styles/lanes.css` carries the header's band, imported after
 `timeline.css` because it overrides `.pbl-timeline-lead` at equal specificity.
 
+**The header's count became a labelled readout on 2026-08-14** — `2 items / 1 absence`,
+`laneReadout` in `src/view/render/lanes.ts`. The item half is unchanged in meaning and is
+still result bars; what is new is the words and the second half, whose reasons belong to
+[[Resource absences]] and are recorded there. `.pbl-lane-count` refuses to shrink
+(`styles/lanes.css`), so the resource NAME ellipsizes into the label at a narrow lead
+width rather than the label being measured and shortened — a third fit mechanism beside
+`columnFit` and `syncToolbarFit` was refused.
+
 **The axis was read-only in this increment, and that was a decision rather than an
 omission.** No grip on a bar, no drop target on the grid, and a shelf that accepted nothing
 (`shelfRemoval`'s own `'resources'` branch): every move here writes an assignee, which is

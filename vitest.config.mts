@@ -75,6 +75,17 @@ export default defineConfig({
 			// Merged with main after main re-accumulated ledger entries this branch had
 			// removed. The entries are not restored — git holds them — but main's
 			// THRESHOLDS are taken whole, because they are higher and a floor only rises.
+			//
+			// A FIFTH sample, from the absence-counts-and-derived-names increment
+			// (2026-08-14): four local runs split 98.54/94.89 and 98.56/94.91
+			// (statements/branches), one covered statement and one covered branch apart —
+			// the exact single-count swing
+			// `docs/issues/The coverage figure is not reproducible to a hundredth.md`
+			// already names, reproduced again rather than assumed. Both samples clear this
+			// floor, but by less than one flipped count would cost, so per that issue's own
+			// policy this increment declines the rise too rather than pin a number a clean
+			// tree could fail. Functions and lines held at 99.81 and 99.6 across all four
+			// runs — nothing to raise there either.
 			thresholds: {
 				statements: 98.52,
 				branches: 94.83,

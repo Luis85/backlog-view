@@ -60,11 +60,12 @@ already looks.
 **Main flow**
 
 1. The user opens Add absence from a resource's row header.
-2. The prompt asks for the resource, pre-filled from the row, a title, a start date and
-   an end date.
+2. The prompt asks for the resource, pre-filled from the row, a start date and an end
+   date.
 3. Submitting writes a new note carrying the resource's name in the assignee property,
-   the two dates in the start and target properties, its own declared type (`Absence`),
-   and the title as its own — nothing else.
+   the two dates in the start and target properties, and its own declared type
+   (`Absence`) — nothing else stored, and no title typed: the note's name is derived
+   from those three facts by `absenceTitle`.
 4. The row draws it as a blocked stretch, positioned exactly as a bar would be, in that
    resource's row only.
 
@@ -102,11 +103,11 @@ already looks.
 - **4i — editing one already placed** (added 2026-08-14). Beside the delete on that same
   menu, opening the SAME form Add absence opens, pre-filled: one field list, one validator,
   one set of refusals, so the two acts cannot come to disagree about what an absence is.
-  Changing the resource or either date rewrites the frontmatter in place; changing the
-  TITLE renames the note, because an absence's title is its basename and nothing else —
-  through Obsidian's own rename, so any link naming it follows. Outside the gate for 4c's
-  reason, and so outside the undo: what takes an edit back is the file history every other
-  note has.
+  Changing the resource or either date rewrites the frontmatter in place and renames the
+  note to match — because the note's name is derived from exactly those three facts (4l),
+  so an edit to any of them IS a rename. Through Obsidian's own rename, so any link naming
+  it follows. Outside the gate for 4c's reason, and so outside the undo: what takes an edit
+  back is the file history every other note has.
 - **4j — an edit whose write fails.** Reported, never silent, the shape 4c's own failure
   already has. The frontmatter is written BEFORE the rename, deliberately: a rename that
   landed first and then failed would leave a note named for a stretch it does not hold,
@@ -123,6 +124,22 @@ already looks.
   nothing in it to act on. A stretch the drawn window cannot reach shades nothing at all,
   since the shading would then colour days it does not cover. See
   [[An absence read fainter than the decoration behind it]].
+- **4l — the title is derived, not asked for** (added 2026-08-14). The form asks for the
+  resource, a start and an end, and the note is named `<resource> away <start> → <end>`
+  (`absenceTitle` in `src/domain/absences.ts`, the one producer, so the create path and the
+  edit path cannot disagree). Both dates are in it so two absences never collide and
+  `uniqueNotePath` never appends a number — a basename is read in the explorer, in search
+  and in a link, none of which has a row beside it to supply the dates. **A hand rename does
+  not survive the next edit**: rename the note in Obsidian, change a date, and it takes the
+  derived name back. Accepted rather than engineered around — the alternative is comparing
+  against the name the OLD facts would have produced, a second rule whose failure mode is a
+  note that silently stops following its own dates. Nothing is retroactive: an absence that
+  already exists keeps its name until it is edited, and `readAbsence` never required a
+  derived one.
+- **4m — the band header counts the stretches still to come** (added 2026-08-14). Its
+  readout is `2 items / 1 absence`, the absence half counting only those whose end is today
+  or later, and dropped entirely at zero. See the refusal paragraph under
+  `## Where it lives` for why this is not the removed glyph returning.
 - **4d — the configuration narrows to one date property, or none, after absences already
   exist.** They stop rendering, all of them, silently — the same gate 1a already puts in
   front of creating one applies to reading them too: the reader checks both properties
@@ -189,8 +206,8 @@ already looks.
 - A placed stretch offers Edit and Delete on its own context menu and nothing else: it is
   not a work item, so none of the type, state, parent-link or rank entries belong to it.
 - Editing opens the same form adding one does, pre-filled and refusing the same ranges;
-  it rewrites the note in place, renames it when the title changes, and reports a write it
-  could not make.
+  it rewrites the note in place, renames it when the facts change — the name is derived
+  from them, never typed — and reports a write it could not make.
 - Add absence offers itself only when both date properties are configured — the
   resources axis's own precondition (either property alone) is not enough, since an
   absence cannot infer a missing end.
@@ -204,9 +221,9 @@ already looks.
   reversed range does not render either, since a hand edit can produce the exact
   invalid shapes the prompt was built to refuse, and this plugin cannot intercept that
   edit to catch it any earlier.
-- Submitting the prompt with a resource, a title and both dates writes one new note
-  carrying exactly those facts — no parent, no order, and its own declared type
-  (`Absence`) rather than one from the ladder.
+- Submitting the prompt with a resource and both dates writes one new note carrying exactly
+  those facts — no parent, no order, and its own declared type (`Absence`) rather than one
+  from the ladder — named `<resource> away <start> → <end>`, derived rather than typed.
 - That type is recognized and the note excluded from the model unconditionally — before
   `RawItem` is built, whether or not `hierarchyOnly` is on — never relying on lacking a
   parent or a supported type the way an ordinary untyped note is excluded.
@@ -221,7 +238,8 @@ already looks.
   this vocabulary has always changed what that name means — accepted rather than
   engineered around, and worth a release-note callout naming the newly reserved value.
 - A blank resource, start or end writes nothing; an end before the start writes nothing
-  either, caught at the prompt rather than left to a render with nowhere to show it.
+  either, caught at the prompt rather than left to a render with nowhere to show it. There is
+  no title to leave blank — the form has three fields.
 - The note lives in its own configured folder, falling back to the backlog's home
   folder when unset.
 - The absence renders as a blocked stretch in its own resource's row, positioned by the
@@ -229,6 +247,9 @@ already looks.
   query actually returns; a Base whose query narrows by type has to include the absence
   type, the same dependency every other declared type here already has on the Base
   returning it.
+- A band header reports its result bars and, when there is one, the absences whose end is
+  today or later — a collapsed band included, since it is then the only surface saying so.
+  A finished stretch is counted by nothing.
 - A resource named only by an absence still gets a row.
 - An absence renders whatever the quick filter says. The filter chooses among WORK — its
   two sets are matches and their subtrees — and a stretch is furniture of the row rather
@@ -357,6 +378,20 @@ absence reading `0` — and it was removed the same day, from the vault it was b
 stretch's own hatched row is directly beneath the header, so the `0` is never read alone, and a
 fourth `user-x` in one lead competed with the Add absence button that reveals on hover in the
 same place. The reading of `0` is the accepted cost, and the row below is what pays it.
+
+**What the header DOES carry, since 2026-08-14, is a labelled readout** — `2 items / 1
+absence`, `laneReadout` in `src/view/render/lanes.ts` over `pendingAbsences` in
+`src/domain/absences.ts`. That is not the refusal reversed: words are not the fourth
+`user-x`, so the reason above about the Add absence button is untouched, and the item half
+is still RESULT bars, so a band whose only content is an absence still reads `0 items`.
+What words buy that the mark could not is the two things the row below cannot say. The
+count is FILTERED on today — the band draws every stretch a resource ever had, so a
+finished one is exactly what must not be counted, and the reader would otherwise compare
+each hatch to the today line one at a time. And it survives FOLDING, where `laneEntries`
+skips the whole band and the header is the only surface left. The absence half is dropped
+at zero rather than reading `0 absences`. Deliberately the opposite of the legend's rule,
+which keys what the pass PAINTED and so must not key a collapsed band's swatch: the
+readout is a fact about the band, and the header is drawn either way.
 
 Creating one is `AbsencePromptModal` in `src/ui/prompts.ts` (`SchedulePromptModal`'s shape,
 with no per-field clear button — an empty end is not a real answer here) opened by

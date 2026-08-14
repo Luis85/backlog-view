@@ -97,6 +97,16 @@ catalog migration and was not part of that run.
   the first of those: `demoVault()`
   carries Dana's `Single sign-on` (2026-07-20 → 2026-08-15) running straight through her absence
   (2026-08-10 → 2026-08-14), plus Sam, whose row exists only because he is away.
+- The band header's readout (`laneReadout`, added 2026-08-14) at the default lead width on
+  a real roster: whether `2 items / 1 absence` crowds the resource name, and where the
+  ellipsis falls — `.pbl-lane-count` refuses to shrink, so the name is what gives. **Never
+  checked.**
+- The long derived absence name (`absenceTitle`, added 2026-08-14) in an absence row's own
+  lead, beside the dates the bar already states — whether the two together crowd each other
+  at a narrow lead width. **Never checked.**
+- Whether a screen reader reads the readout usefully: the header claims no role of its own
+  and labels its rows by proximity alone, so what the readout adds to that announcement, if
+  anything, is unverified. **Never checked.**
 - The lead column's resize grip, which is where this feature keeps everything jsdom
   cannot reach: the 6px strip is findable at all (cursor and hover feedback), it shows a
   focus ring when tabbed to, a real touch drag resizes it rather than panning the
