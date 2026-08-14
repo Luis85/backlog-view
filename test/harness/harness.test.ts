@@ -98,7 +98,9 @@ describe('the browser harness mounts', () => {
 		const rows = Array.from(containerEl.querySelectorAll('.pbl-lane-head .pbl-lane-name')).map((n) => n.textContent);
 		// Declared and empty, and a row nothing but an absence puts on screen.
 		expect(rows).toEqual(expect.arrayContaining(['Dana', 'Kim', 'Priya', 'Sam']));
-		expect(containerEl.querySelectorAll('.pbl-absence-row')).toHaveLength(2);
+		// Three stretches: one running, one ahead for the row it mints, and one that has
+		// ENDED — the case the band header's readout must count as nothing.
+		expect(containerEl.querySelectorAll('.pbl-absence-row')).toHaveLength(3);
 	});
 
 	it('draws the test catalog, with both ladders in one fixture and neither in the other', () => {
