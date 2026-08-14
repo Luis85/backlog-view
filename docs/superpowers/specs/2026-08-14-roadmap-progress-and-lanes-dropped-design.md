@@ -117,10 +117,28 @@ done — the story [[Progress on the bar]] states, now on the one surface that l
 one more child: a div whose width is a custom property the renderer sets, so the shape is
 CSS and the arithmetic is one division.
 
-The done share draws solid in the bar's own colour and the remainder at reduced opacity —
-**one rule for all eight state colours**, no per-state tuning, so a colour added to the
-palette needs nothing here. The bar's colour still says *what state it is in* and the
-fill says *how much beneath it is done*; the two never compete for the same channel.
+**It is a thin band inset inside the bar, never a full-height wash over it** — and that is
+the whole design, not a styling preference. A bar's own BACKGROUND is already carrying
+meaning, three ways at once, all of them in `styles/timeline.css`:
+
+- `.pbl-bar-inferred` is `background: none` with a dashed border, because an inference is
+  a summary the view drew rather than a plan somebody made,
+- `.pbl-bar-open-end` and `.pbl-bar-open-start` are gradients fading to transparent, which
+  is how an unstated endpoint says it is unstated,
+- and the compound of the two has its own rule, with a specificity comment explaining why.
+
+A solid child spanning the bar's height would paint over every one of them. At 100% done
+it would cover the bar edge to edge, so an open-ended span would read as stated and closed
+and a dashed inference would read as a plan — the two claims those styles exist to keep
+apart. Inset vertically, the band leaves the border, the dashes and both fades visible on
+every shape, so **no shape needs a special case and none can be forgotten**: the reason to
+prefer it over "skip the fill on inferred and open bars" is that the second is a list, and
+a list is what the review found wrong three times already in this spec.
+
+The band draws in the bar's own colour, one rule for all eight state colours, so a colour
+added to the palette needs nothing here. The bar says *what state it is in* and *how
+certain its dates are*; the band says *how much beneath it is done*. Three claims, three
+channels, none overwriting another.
 
 ### The number
 
@@ -137,9 +155,16 @@ done":
 
 - **A leaf.** No descendants, no fill, no counts — the tree's own rule for the rollup
   column, unchanged.
-- **No state property configured.** There is no *done* to count. A fill would report
+- **No state property configured.** There is no *done* to count. A band would report
   every subtree as unstarted, which is a claim nobody made. The descendant count is the
-  whole report, exactly as in the tree in this configuration.
+  whole report, exactly as in the tree in this configuration — **and the count has to
+  actually render**, which is a second thing to build rather than a consequence of the
+  first. A timeline row calls `renderRollup` nowhere, so a design that only adds a band
+  would leave this configuration with no report at all while promising the tree's. The
+  count therefore renders as text in the row's lead column wherever an item has
+  descendants — with a workflow it sits beside the band, without one it is the whole
+  report — and it says the same words `renderRollup` says. Found by review, on a draft
+  that inherited the PBI's promise and specified only its other half.
 - **A milestone diamond and an outside-window arrow.** Both are points rather than spans —
   `markWidth` in `src/view/render/barLabel.ts` is where that distinction already lives —
   and a milestone is a leaf by nature anyway.
@@ -194,10 +219,19 @@ and the match under it would be named by nobody.
 **So the set is collected by the render, where the answer is a fact rather than a
 prediction.** Each surface, as it draws an item, registers the element its matches belong
 on: a card registers the card, a timeline row and a lane context row register their lead
-div. That gives one `Map<string, HTMLElement>` in the roadmap render pass whose **keys are
-the placed paths and whose values are the mount points** — one structure answering both
-questions the feature asks, and membership in it is the visibility answer, so a surface
-cannot be counted as a route without having drawn.
+div. That gives one map in the roadmap render pass whose **keys are the placed paths**,
+and whose value is the mount point plus one boolean: whether that surface lists the item's
+children itself. Membership is the visibility answer, so a surface cannot be counted as a
+route without having drawn.
+
+**The boolean is not bookkeeping — the menu cannot work without it.** Once the
+already-listed set became the caller's to supply, `addMatchSection` had no way to choose:
+`buildItemMenu` is handed an item and no surface, so a menu that always subtracted would
+lose a timeline row's direct-child match — the bug moved rather than fixed — and one that
+never subtracted would offer a bucket card's disclosure entries a second time as matches.
+Recording the policy where the surface is known, at the moment it draws, is what lets one
+lookup answer for a caller that rendered nothing. Found by review, on the draft that made
+the subtraction caller-specific and left the menu with nothing to read it from.
 
 This is the same accumulation `RoadmapSnapshot.cards` already performs — "the NAVIGABLE
 cards, in reading order", built by pushing what each surface returned, a collapsed shelf
@@ -281,9 +315,16 @@ each and lose none, so they are measured too. `styles/timeline.css` is under the
 The domain is unchanged — every number already exists and is already tested — so the new
 checks are view-level, in `test/view/`:
 
-- The fill's ratio against a known subtree, and its four absences: a leaf, no state
-  property configured, a milestone, an outside arrow.
-- A context row's fill counting its visible results only, asked from the rule rather than
+- The band's ratio against a known subtree, and its absences: a leaf, a milestone, an
+  outside arrow.
+- **The count's VALUE with no state property configured** — not merely that the band is
+  absent. The band's absence and the count's presence are two claims, and only the second
+  is what the tree promises in that configuration.
+- **An inferred bar and an open-ended bar keeping their own geometry**, at 100% done,
+  where the failure is worst: the dashed border still dashed, the end fades still fading,
+  the band inset within them. Milestones and arrows alone would have passed a design that
+  paints an open span shut.
+- A context row's band counting its visible results only, asked from the rule rather than
   from the implementation, beside the two invariant tests that already state it for
   writes and rollups.
 - A filtered roadmap naming a match three levels down on each of its five surfaces —
@@ -300,7 +341,9 @@ checks are view-level, in `test/view/`:
   twice.
 - The same matches in the row menu on the roadmap, which is the check that would have
   caught the first draft's claim: it is asserted at `addMatchSection` on a roadmap
-  render, not inferred from the board's passing test.
+  render, not inferred from the board's passing test — **and both disclosure policies
+  through it**: a direct-child match reaching a timeline row's menu, and a bucket card's
+  menu not offering as a match a child its own disclosure already lists.
 - `test/docs/checkerAccepts.test.ts` accepting `Dropped`, and
   `test/docs/checkerRejects.test.ts` still refusing a status outside the set.
 
@@ -327,8 +370,9 @@ Coverage thresholds in `vitest.config.mts` only ever go up.
 Obsidian cannot run in this repository's test environment. Two claims here are jsdom's
 blind spot and are owed a vault check before the increment is called done:
 
-- **The fill reading against all eight state colours**, in light and dark themes, and
-  against a themed vault's own accent. `npm run harness` answers the layout and
+- **The band reading against all eight state colours**, in light and dark themes, and
+  against a themed vault's own accent — and, at the compact density, whether an inset
+  band still has the height to be seen. `npm run harness` answers the layout and
   Obsidian's *default* colours with the real stylesheet; it cannot answer a theme.
 - **The link buttons in a narrow lead column** — whether wrapping reads as intended at
   the smallest width the resize grip allows.
