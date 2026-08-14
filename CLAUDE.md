@@ -379,3 +379,5 @@ change that was fixing the previous instance.
   `superpowers/` the same way it exempts `adrs/` and the index pages, so a generic spec or
   plan needs none of the `type`/`order`/`status` frontmatter a backlog note would. See
   `docs/README.md`'s folder table and rule 1.
+
+Try to stick to ASD-STE100 Simplified Technical English, keep answers short and to the point.
