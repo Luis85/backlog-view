@@ -91,11 +91,15 @@ export interface DrawnColors {
 	 * Not a colour override like the three above, and the interface is wider than its name
 	 * because of it: what this reports is which MARKS a pass drew that the key has to
 	 * explain, and a hatch is one. Reported from the render for the same reason the others
-	 * are — a lane the axis is not drawing at all (the dated axis, or a projection with no
-	 * roadmap open) still has absences sitting in `roadmap.lanes`, so a predicate over the
-	 * MODEL would key a stretch nothing on screen draws. A collapsed band is not such a
-	 * case: its header still draws its own stretches since 2026-08-14, so this and the
-	 * legend key both stay lit through a fold.
+	 * are, but the shape of the risk differs: a bar's own colours are reported from the
+	 * render because a fold hides a bar the model still lists, where `roadmap.lanes` is
+	 * empty by construction on any axis that draws no bands at all (`RoadmapModel.lanes`) —
+	 * so there is no STALE model data for a predicate to see wrongly here. What there is
+	 * instead is a DRIFT risk: `entry.lane.absences.length > 0` would be a second statement
+	 * of the exact condition `renderLaneAbsences`' own early return already decides, kept in
+	 * step by hand rather than read off what it actually drew. Asking the header's own DOM
+	 * after `renderLaneHead` returns (`drawEntries`) removes the second copy instead of
+	 * trusting it to agree.
 	 *
 	 * The three above are a BAR's own report, which is why `reportColors` and `renderBarRow`
 	 * take the narrower `BarColors`: a bar row draws no hatch and has nothing to say here.
