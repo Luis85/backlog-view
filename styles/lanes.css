@@ -256,3 +256,31 @@
 	width: var(--icon-s);
 	height: var(--icon-s);
 }
+
+/* A resource with nothing on screen under them: still a row, because a roster exists to show
+   who is on it, but one step quieter than one that has something to say. CONTRAST rather than
+   opacity — see the context row's muting above for what a row-level opacity costs. */
+.pbl-lane-quiet .pbl-timeline-lead,
+.pbl-lane-quiet {
+	background-color: var(--background-primary-alt);
+}
+
+.pbl-lane-quiet .pbl-lane-name {
+	color: var(--text-muted);
+	font-weight: var(--font-normal);
+}
+
+/* Where a folded band's work lies. Decoration only, so `opacity` here dims nothing that
+   carries meaning — the rule it looks like it breaks is about a ROW's opacity taking the
+   sticky lead column with it. */
+.pbl-lane-rail {
+	position: absolute;
+	bottom: 0;
+	left: var(--pbl-bar-left);
+	width: var(--pbl-bar-width);
+	height: 3px;
+	border-radius: var(--radius-s);
+	background-color: var(--text-accent);
+	opacity: 0.75;
+	pointer-events: none;
+}

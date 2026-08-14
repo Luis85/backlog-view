@@ -15,6 +15,7 @@ import {
 	barGeometry,
 	DateSpan,
 	formatCivil,
+	mergeSpans,
 	MIN_BAR_PX,
 	TimelineScale,
 	TimelineWindow,
@@ -95,13 +96,21 @@ export function barEntries(rows: TimelineRow[]): TimelineEntry[] {
  * are no longer entries at all, they are drawn in each header's own track. The hazard is
  * unchanged and so is the fix — a source that stops reaching this list is a window that
  * stops holding what it draws. The dated axis passes no lanes.
+ *
+ * A folded band's own bars carry the identical hazard since the load rail
+ * (`renderLaneRail`, 2026-08-14): `laneEntries` drops a collapsed lane's bar rows from
+ * `entries` entirely, so a band folded over work whose only span is far away would narrow
+ * the window out from under the very rail meant to show where that work lies. `lanes` is
+ * read a second time here for exactly that reason — same fix, same principle, a different
+ * mark now needs it.
  */
 export function drawnSpans(entries: TimelineEntry[], lanes: ResourceLane[]): DateSpan[] {
 	const bars = entries.flatMap((entry) => (entry.kind === 'row' ? [entry.row.bar.span] : []));
+	const laneBars = lanes.flatMap((lane) => lane.bars.map((bar) => bar.span));
 	const stretches = lanes.flatMap((lane) =>
 		lane.absences.map((absence) => ({ start: absence.start, target: absence.target })),
 	);
-	return [...bars, ...stretches];
+	return [...bars, ...laneBars, ...stretches];
 }
 
 /**
@@ -184,8 +193,13 @@ export function renderLaneHead(
 	ruler: { window: TimelineWindow; scale: TimelineScale; today: CivilDate },
 ): HTMLElement {
 	const { lane, collapsed } = entry;
+	const quiet = lane.bars.length === 0 && lane.absences.length === 0 && lane.context.length === 0;
 	const head = content.createDiv({
-		cls: 'pbl-lane-head' + (lane.declared ? '' : ' pbl-lane-undeclared') + (collapsed ? ' pbl-lane-collapsed' : ''),
+		cls:
+			'pbl-lane-head' +
+			(lane.declared ? '' : ' pbl-lane-undeclared') +
+			(collapsed ? ' pbl-lane-collapsed' : '') +
+			(quiet ? ' pbl-lane-quiet' : ''),
 	});
 	const lead = head.createDiv({ cls: 'pbl-timeline-lead' });
 	renderLaneChevron(ctx.host, lead, lane, collapsed);
@@ -200,7 +214,8 @@ export function renderLaneHead(
 		);
 	}
 	renderLaneAbsenceAdd(ctx, lead, lane);
-	renderLaneAbsences(ctx, head, lane, ruler);
+	const track = renderLaneAbsences(ctx, head, lane, ruler);
+	if (collapsed) renderLaneRail(track, lane, ruler);
 	return head;
 }
 
@@ -378,6 +393,38 @@ function renderLaneAbsences(
 		}
 	});
 	return track;
+}
+
+/**
+ * Where a folded band's work LIES, as one thin strip per continuous run of days.
+ *
+ * Only while the band is folded: an open one draws its own bars, and a rail beneath them
+ * would restate what the reader is already looking at. It is decoration and nothing else —
+ * `aria-hidden`, no pointer events, no tooltip — because everything it stands for is one
+ * click away and the band's own count already says how much there is.
+ *
+ * `mergeSpans` rather than one strip per bar, so two bars that overlap read as the one run
+ * they are: drawn per bar, a busy fortnight is a row of seams.
+ *
+ * **The `opacity` on this is exempt from the rule beside it, and the exemption is why it is
+ * stated here.** `styles/lanes.css` says muting is done to a row's CONTENT and never to the
+ * row, because a row-level `opacity` takes the sticky lead column down with it. This is an
+ * aria-hidden decorative child inside one track, so it dims nothing that carries meaning.
+ */
+function renderLaneRail(
+	track: HTMLElement,
+	lane: ResourceLane,
+	ruler: { window: TimelineWindow; scale: TimelineScale },
+): void {
+	for (const run of mergeSpans(lane.bars.map((bar) => bar.span))) {
+		const geometry = barGeometry(ruler.window, run);
+		if (geometry.outside) continue;
+		const rail = track.createDiv({ cls: 'pbl-lane-rail', attr: { 'aria-hidden': 'true' } });
+		rail.setCssProps({
+			'--pbl-bar-left': `${geometry.startDay * ruler.scale.dayPx}px`,
+			'--pbl-bar-width': `${Math.max(geometry.spanDays * ruler.scale.dayPx, MIN_BAR_PX)}px`,
+		});
+	}
 }
 
 /**

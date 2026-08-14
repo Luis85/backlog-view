@@ -406,4 +406,57 @@ describe('the band header’s readout', () => {
 
 		expect(laneCountOf(lanesOf(harness.containerEl)[1])).toBe('0 items / 1 absence');
 	});
+
+	it('draws a lane with nothing at all as a quiet row', () => {
+		const harness = laneRoadmap(countingVault([]));
+		const bob = lanesOf(harness.containerEl)[1];
+
+		// Contrast, not opacity: a row-level `opacity` would dim the sticky lead column with
+		// it, which is the trap `styles/lanes.css` records at the context row's own muting.
+		expect(bob.classList.contains('pbl-lane-quiet')).toBe(true);
+		expect(lanesOf(harness.containerEl)[0].classList.contains('pbl-lane-quiet')).toBe(false);
+	});
+
+	it('is not quiet when the only thing it holds is a stretch', () => {
+		const vault = countingVault([{ title: 'Ahead', start: dayFromToday(5), target: dayFromToday(9) }]);
+		const harness = laneRoadmap(vault);
+
+		expect(lanesOf(harness.containerEl)[0].classList.contains('pbl-lane-quiet')).toBe(false);
+	});
+
+	it('draws a load rail for a band folded over work, and none for an open one', () => {
+		const harness = laneRoadmap(countingVault([]));
+
+		expect(lanesOf(harness.containerEl)[0].querySelectorAll('.pbl-lane-rail')).toHaveLength(0);
+		harness.view.setLaneCollapsed('Alice', true);
+		expect(lanesOf(harness.containerEl)[0].querySelectorAll('.pbl-lane-rail')).toHaveLength(1);
+	});
+
+	it('draws one rail per continuous run, not one per bar', () => {
+		const vault = countingVault([]);
+		// Two bars that share days, and one far away: two runs, three bars.
+		vault.addFile('Overlapping.md', {
+			frontmatter: { type: 'Epic', order: 20, assignee: 'Alice', start: '2026-08-05', due: '2026-08-15' },
+		});
+		vault.addFile('Later.md', {
+			frontmatter: { type: 'Epic', order: 30, assignee: 'Alice', start: '2026-10-01', due: '2026-10-10' },
+		});
+		const harness = laneRoadmap(vault);
+		harness.view.setLaneCollapsed('Alice', true);
+
+		expect(lanesOf(harness.containerEl)[0].querySelectorAll('.pbl-lane-rail')).toHaveLength(2);
+	});
+
+	it('renders the same rows folded and open when a lane holds no work', () => {
+		// The check under a REFUSAL: "no work → folded by default" was asked for and declined
+		// as inert, because a lane with no bars has nothing beneath its header either way.
+		// If that stops being true this fails, and the refusal gets re-decided rather than
+		// quietly outliving its reason.
+		const harness = laneRoadmap(countingVault([]));
+		const rowsWhenOpen = harness.containerEl.querySelectorAll('.pbl-lane-head, .pbl-timeline-row').length;
+
+		harness.view.setLaneCollapsed('Bob', true);
+
+		expect(harness.containerEl.querySelectorAll('.pbl-lane-head, .pbl-timeline-row')).toHaveLength(rowsWhenOpen);
+	});
 });
