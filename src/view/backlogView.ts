@@ -27,7 +27,7 @@ import { resolveColumns, rowContext, RowContext } from './render/columns';
 import { renderLoadingState } from './render/emptyStates';
 import { syncAfterContent } from './render/afterContent';
 import { syncToolbarFit } from './render/toolbarFit';
-import { captureScroll, centreOnToday, renderProjectionContent, restoreScroll, ScrollAnchor } from './render/projections';
+import { captureScroll, renderProjectionContent, restoreScroll, ScrollAnchor, scrollToToday } from './render/projections';
 import { refreshRowChildren, wireRowEvents } from './render/rows';
 import { BacklogSettings, defaultSettings } from '../domain/settings';
 import { adoptableProperties, notePropertyId, OptionalField, OptionalProperty } from '../domain/optionalProperties';
@@ -87,7 +87,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	/** Card-move write orchestration: plans, applies and announces board/horizon/schedule moves. */
 	private readonly cardMoves: CardMoveController;
 	/** The collapse-store-backed UI state — projection, axis pick, focus, shelf, zoom,
-	 * density, lead width — see `uiState.ts`. */
+	 * density, lead width, column widths — see `uiState.ts`. */
 	private readonly ui: UiStateController;
 	/** When to re-measure the pane and re-run the column-fit ladder — see `resize.ts`. */
 	private readonly resize: ResizePolicy;
@@ -125,10 +125,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// `renderLegend` itself, which is also what makes it absent (not merely hidden)
 		// off the dated axis.
 		this.legendEl = this.viewEl.createDiv();
-		this.treeEl = this.viewEl.createDiv({
-			cls: 'pbl-tree',
-			attr: { role: 'tree', tabindex: '0' },
-		});
+		this.treeEl = this.viewEl.createDiv({ cls: 'pbl-tree', attr: { role: 'tree', tabindex: '0' } });
 		// Nothing to render until Bases delivers the first result set — say what is
 		// happening instead of showing an empty pane.
 		renderLoadingState(this.treeEl);
@@ -278,13 +275,16 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.ui.setLeadWidth(value);
 	}
 
+	get colWidths(): Readonly<Record<string, number>> {
+		return this.ui.colWidths;
+	}
+
+	setColWidth(prop: string, value: number | null): void {
+		this.ui.setColWidth(prop, value);
+	}
+
 	jumpToToday(): void {
-		const roadmap = this.roadmap;
-		// `leadWidth` is in the guard beside `todayLeft` rather than defaulted below it:
-		// `renderRoadmap` sets both in the dated branch and neither anywhere else, so the
-		// term costs nothing and it is what narrows `leadWidth` to a number.
-		if (!roadmap?.scroller || roadmap.todayLeft === null || roadmap.leadWidth === null) return;
-		roadmap.scroller.scrollLeft = centreOnToday(roadmap.todayLeft, roadmap.scroller.clientWidth, roadmap.leadWidth);
+		scrollToToday(this.roadmap);
 	}
 
 	onDataUpdated(): void {

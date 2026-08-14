@@ -10,6 +10,7 @@ import { badgeStyleFor } from './badges';
 import { BacklogItem } from '../../domain/model';
 import { childTypeChoices, displayType } from '../../domain/itemTypes';
 import { ownWorkflowReading } from '../../domain/board';
+import { columnWidth, columnWidthVar } from '../interactions/columnResize';
 import {
 	INDENT_PER_DEPTH,
 	META_COL_WIDTH,
@@ -27,15 +28,18 @@ export function renderTree(ctx: RowContext, treeEl: HTMLElement): void {
 	const model = ctx.host.model;
 	if (!model) return;
 	// Column widths are the same for every row, so they live on the scroller and
-	// are inherited — including by the subtrees a targeted refresh re-renders.
+	// are inherited — including by the subtrees a targeted refresh re-renders, and by
+	// the grip that writes one of them straight back mid-drag.
 	// Geometry lives in one place: columnFit budgets with these numbers and the
 	// stylesheet lays out with them, so the two cannot drift apart.
-	treeEl.setCssProps({
-		'--pbl-prop-col': `${ctx.host.settings.propColumnWidth}px`,
-		'--pbl-prop-count': String(ctx.columns.length),
+	const widths: Record<string, string> = {
 		'--pbl-meta-col': `${META_COL_WIDTH}px`,
 		'--pbl-indent': `${INDENT_PER_DEPTH}px`,
-	});
+	};
+	for (const [index, column] of ctx.columns.entries()) {
+		widths[columnWidthVar(index)] = `${columnWidth(ctx.host, column.prop)}px`;
+	}
+	treeEl.setCssProps(widths);
 	// THIS projection's population, on all three lines. Both decisions below used to read
 	// the shared arrays, which hold every item the model kept: a base returning twelve
 	// test notes and no plan work would be told "All 12 items are done and hidden", with a

@@ -180,6 +180,12 @@ export class CollapseState {
 	private density: string | null = null;
 	/** The retained timeline lead-column width, in pixels; null means `TIMELINE_LEAD_PX`, the default. */
 	private leadWidth: number | null = null;
+	/**
+	 * The tree's resized property columns by Bases property id; a property with no entry
+	 * draws at `DEFAULT_PROP_COLUMN_WIDTH`. `Object.create(null)` for the reason
+	 * `readColWidths` uses it — a column named `constructor` is a plain key here.
+	 */
+	private colWidths: Record<string, number> = Object.create(null) as Record<string, number>;
 	/** The focused type name; null means the whole tree, the default. */
 	private focus: string | null = null;
 	/** Whether a plain click on a row folds it; false means it opens the note, the default. */
@@ -265,6 +271,18 @@ export class CollapseState {
 
 	setLeadWidth(value: number | null): void {
 		this.leadWidth = value;
+		this.scheduleSave();
+	}
+
+	/** The retained property-column widths for this saved view; a column absent from it is at the default. */
+	columnWidths(): Readonly<Record<string, number>> {
+		return this.colWidths;
+	}
+
+	/** null clears the pick, which is what a column dragged back to the default stores. */
+	setColumnWidth(prop: string, value: number | null): void {
+		if (value === null) delete this.colWidths[prop];
+		else this.colWidths[prop] = value;
 		this.scheduleSave();
 	}
 
@@ -418,6 +436,7 @@ export class CollapseState {
 		this.zoom = snapshot.zoom ?? null;
 		this.density = snapshot.density ?? null;
 		this.leadWidth = snapshot.leadWidth ?? null;
+		this.colWidths = Object.assign(Object.create(null) as Record<string, number>, snapshot.colWidths ?? {});
 		this.focus = snapshot.focus ?? null;
 		this.clickFoldsValue = snapshot.clickFolds ?? false;
 		this.shelfExpanded = snapshot.shelfExpanded ?? false;
@@ -497,6 +516,7 @@ export class CollapseState {
 			zoom: this.zoom,
 			density: this.density,
 			leadWidth: this.leadWidth,
+			colWidths: this.colWidths,
 			focus: this.focus,
 			clickFolds: this.clickFoldsValue,
 			shelfExpanded: this.shelfExpanded,

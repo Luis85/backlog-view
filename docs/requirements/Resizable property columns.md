@@ -1,0 +1,160 @@
+---
+type: PBI
+parent: "[[View state]]"
+order: 30
+status: Done
+priority: P2
+created: 2026-08-14
+files:
+  - src/view/interactions/columnResize.ts
+  - src/view/interactions/resizeDrag.ts
+  - src/view/interactions/timelineLeadResize.ts
+  - src/view/render/columns.ts
+  - src/view/render/rows.ts
+  - src/view/host.ts
+  - src/view/backlogView.ts
+  - src/view/uiState.ts
+  - src/view/collapseState.ts
+  - src/storage/collapseStore.ts
+  - src/domain/viewOptions.ts
+  - styles/propertyColumns.css
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
+---
+
+# Resizable property columns
+
+**As** someone reading a backlog whose columns hold very different things, **I want** to
+drag each property column to the width it needs, **so that** a title or an assignee is not
+cut off at the same number of pixels a risk chip is padded out to — which is what one
+width for every column can only ever do.
+
+## Use case
+
+| | |
+| --- | --- |
+| **Actor** | Backlog owner |
+| **Trigger** | The reader drags the grip at a column header's trailing edge, or focuses it and presses an arrow key or Home |
+| **Preconditions** | Tree mode, with at least one property column drawn |
+| **Guarantee** | Each width is UI state — per column, per saved view, per device, beside the collapse state — never the `.base` and never a frontmatter write. What a column is DRAWN at, what the fit ladder budgets with and what the grip announces are one number, so a resize can never leave the header and the rows disagreeing. |
+
+**Main flow**
+
+1. Every drawn column's header cell carries a resize grip at its trailing edge:
+   `role="separator"`, a real tab stop, `aria-orientation="vertical"`, an `aria-label`
+   naming that column, and `aria-valuenow`/`aria-valuemin`/`aria-valuemax` stating the
+   current width and its bounds.
+2. Dragging it resizes that column live — the published custom property alone, so nothing
+   re-renders mid-gesture — and releasing persists the settled width once.
+3. Focused, ArrowLeft/ArrowRight step the width by a fixed increment and persist each
+   step immediately; Home returns that column to the default width.
+4. The width is published once per render as one custom property per column, and every
+   cell of that column on every row reads it — which is what makes a drag move the whole
+   column rather than only its header.
+5. The fit ladder SUMS the drawn widths instead of dividing the room by one of them, so
+   widening a column can drop the one after it, and narrowing it brings that one back.
+6. The picks come back across a reopen, per saved view per device, exactly like the
+   collapse state and the timeline's own lead width.
+
+**Extensions**
+
+- **2a — dragged past either bound.** Clamped to `MIN_PROP_COLUMN_WIDTH` /
+  `MAX_PROP_COLUMN_WIDTH`, the same range the separator announces, so no gesture can draw
+  or store a number the next read would refuse.
+- **3a — a step (or a drag) lands back on the default width.** Stores nothing: the key is
+  removed rather than set to the number that means the same thing, so a view where nothing
+  has been resized keeps no field at all.
+- **2b — the platform cancels the gesture.** Palm rejection, an orientation change or
+  another gesture taking over ends the drag with `pointercancel`, and the width it had
+  reached is one nobody chose: the column goes back to where the gesture found it and
+  nothing is stored. Only a release commits.
+- **1a — two contacts on the grip at once.** A boundary is dragged by ONE pointer: a
+  second `pointerdown` while a gesture is in flight is refused outright, and every move,
+  release and cancel answers only to the contact that started it.
+- **2c — a gesture that changes nothing.** A tap, a drag ending where it began, or a drag
+  or arrow key pushing further into a bound the column already sits at: all commit
+  nothing, so none of them costs a write or a render.
+- **5a — a column widened past what the pane can hold.** It drops, exactly as a column
+  has always dropped when the row will not fit, and the stored width is untouched — so
+  widening the pane brings it back at the width the reader picked. Recovery is the pane,
+  not the grip: with every column dropped there is no header and so nothing left to drag,
+  which is the accepted cost of NOT clamping against the pane the way the timeline's lead
+  column does. That one had to, because it covers the grid it labels rather than dropping.
+- **6a — a stored width this plugin never wrote, or one outside the bounds.** Read
+  defensively and dropped — but per column: one unusable number is one column back at the
+  default, never every column reset. A `colWidths` that is not an object at all is no
+  widths.
+- **1b — a keyboard reader stepping a column by repeated presses.** Each step re-renders
+  the header and destroys the grip pressed, so focus is put back on its replacement. A
+  POINTER resize takes no focus at all: `pointerdown` prevents default, so the strip is
+  never focused by a mouse, and refocusing regardless would leave the reader's next arrow
+  key resizing a column instead of moving the row selection.
+
+## Acceptance criteria
+
+- Each grip carries `role="separator"`, `aria-orientation="vertical"`, a real
+  `tabindex="0"`, an `aria-label` naming its own column, and the three `aria-value*`
+  matching the width drawn and the storable bounds.
+- Dragging updates only the published custom property until release: `config.setCalls` and
+  the vault's write log stay empty through the whole gesture, and exactly one width is
+  persisted, at its end.
+- A drag on one column's grip moves that column and no other.
+- ArrowLeft/ArrowRight on the focused grip step the width and persist each step
+  immediately; Home returns that column to the default and clears its stored pick;
+  neither touches a note or the `.base`.
+- A stored width outside `MIN_PROP_COLUMN_WIDTH..MAX_PROP_COLUMN_WIDTH`, or one that is
+  not a finite number, reads back as absent for THAT column while the others survive.
+- Widening one column past what the pane can hold drops the column after it, and clearing
+  the width brings it back.
+- The header strip is not `aria-hidden` any more — it carries the grips — while every
+  label inside it still is, so no reader hears a property name twice.
+- Never written to the `.base`: UI state per saved view per device. The
+  `propertyColumnWidth` view option is GONE rather than kept as a shared default beside
+  it ([ADR 0011](../adrs/0011-keep-collapse-state-out-of-the-base-file.md) — a value is
+  configuration or working position, never both).
+
+## Where it lives
+
+The grip's markup, its keyboard wiring and what a commit means are
+`src/view/interactions/columnResize.ts`, mounted from `renderColumnHeader` in
+`src/view/render/columns.ts`. That module also owns `columnWidth` — one column's stored
+pick or `DEFAULT_PROP_COLUMN_WIDTH`, asked by the header, the cells and the fit ladder
+alike — and `columnWidthVar`, the per-column custom property the width is published on.
+Both live with the gesture rather than with the render for the reason `effectiveLeadWidth`
+lives in `src/view/interactions/timelineLeadResize.ts`: the gesture decides a width, and a
+render module owning it would have to import the interaction back, which is a cycle
+`npm run analyze` fails on.
+
+The POINTER half is `src/view/interactions/resizeDrag.ts` — press, drag, release, cancel,
+one contact only, riding `setPointerCapture` — shared with the timeline's lead-column grip,
+which this one arrived as a copy of. What each grip keeps is only what its boundary MEANS:
+`widthAt` clamps against the pane for the lead column and against the storable bounds here.
+
+`renderTree` in `src/view/render/rows.ts` publishes one width per drawn column onto the
+tree element, and `sizeCell` (`render/columns.ts`) points each cell at its own column's
+property — which is what lets a drag move every row's cell by rewriting one declaration
+rather than walking the rows, the scan `src/view/CLAUDE.md` bans. `columnFit` in the same
+file sums those widths instead of dividing the pane by one of them.
+
+The picks are stored as a `colWidths` map in `src/storage/collapseStore.ts` — keyed by
+Bases property id, each value validated against `MIN_PROP_COLUMN_WIDTH`/
+`MAX_PROP_COLUMN_WIDTH` and dropped alone if it fails — held in
+`src/view/collapseState.ts`, exposed through `src/view/uiState.ts` and
+`BacklogViewHost.colWidths`/`setColWidth` in `src/view/host.ts` and
+`src/view/backlogView.ts`. The `propertyColumnWidth` slider is gone from
+`src/domain/viewOptions.ts` and its resolver from `src/domain/settingsResolve.ts`. The
+grip's styling, beside the columns', is `styles/propertyColumns.css`.
+
+Driven in `test/view/columnResize.test.ts` and `test/storage/collapseStore.test.ts`;
+`test/view/columns.test.ts` drives the fit ladder against per-column widths, seeded
+through `makeView`'s own `widths` option — working position set through the view, never a
+view option.
+
+Not answerable here: how the grip reads in a themed vault, and how a screen reader in
+Obsidian's own Chromium announces a separator inside a `tree`. Both are live-vault checks,
+and they are the same open question the lead column's grip already records.

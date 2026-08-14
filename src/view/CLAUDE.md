@@ -210,15 +210,18 @@ free of runtime code so imports stay cycle-free.
   for the columns**: the add button is last in it, and a row that can hold nothing
   withholds the control but reserves its width (`renderAddSpacer`, which the header uses
   for the same reason), because an element skipped from an end-anchored strip does not
-  leave a gap where it was — everything before it slides into its width. Widths live on the tree element as `--pbl-prop-col` /
-  `--pbl-prop-count` (one set per render pass, inherited by targeted subtree refreshes),
-  and `.pbl-cols` is the presentational (`aria-hidden`) header naming the columns; row
-  cells carry the property name in their tooltip and `aria-label` instead of repeating
-  it as visible text. The header is not a row: `renderTree` checks for a rendered
+  leave a gap where it was — everything before it slides into its width. Widths live on the tree element as one custom property PER
+  COLUMN (`columnWidthVar`, set once per render pass and inherited by targeted subtree
+  refreshes), and each cell points at its own column's — which is what lets a resize drag
+  move every row's cell by rewriting one declaration rather than walking the rows.
+  `.pbl-cols` is the header naming the columns; it is no longer `aria-hidden` because it
+  carries the resize grips, but every label inside it is, and row cells carry the property
+  name in their tooltip and `aria-label` instead of repeating it as visible text. The header is not a row: `renderTree` checks for a rendered
   `.pbl-row` before falling back to the empty states. Columns never shrink (a shrunk
   column no longer sits under its header), so a pane too narrow for them drops them
-  whole: `columnFit` derives the threshold from the *configured* width and count — a
-  fixed CSS breakpoint would clip two 280px columns in a 700px pane — and
+  whole: `columnFit` SUMS the drawn columns' own widths — a fixed CSS breakpoint would
+  clip two 280px columns in a 700px pane, and a division by one width answers for none of
+  them once each column carries its own — and
   `syncColumnFit` beside it applies the verdict, which is a COUNT plus one bit for the
   rollup (`host.columnFit`, stored as ONE object so the rows and the header cannot end up
   describing different frames) rather than a ladder of classes: columns
@@ -258,10 +261,9 @@ free of runtime code so imports stay cycle-free.
   min-width, the orphan and outside markers, spacer, add button) so it can be checked
   against `styles.css`, the badge carries a `max-width` for that reason, indent is added
   per rendered depth, and the tree's own padding is subtracted because `clientWidth`
-  includes it while rows live in the content box. The numbers TS owns — the two column
-  widths and the indent step — are *published* to CSS as custom properties by
-  `renderTree`, the same way `--pbl-prop-col` already was, so the stylesheet reads them
-  instead of repeating them. The terms that are Obsidian's (`--size-4-1` gaps, the tree
+  includes it while rows live in the content box. The numbers TS owns — every column's own
+  width, the rollup's and the indent step — are *published* to CSS as custom properties by
+  `renderTree`, so the stylesheet reads them instead of repeating them. The terms that are Obsidian's (`--size-4-1` gaps, the tree
   padding) cannot be owned that way and stay as constants; a theme that redefines them
   moves the threshold by a few pixels, which is the accepted cost of not measuring. A term that grows without a bound, or
   one left out of the sum, comes back as a clipped row rather than a dropped column. It
@@ -328,26 +330,30 @@ free of runtime code so imports stay cycle-free.
   chip) are buttons with `tabindex="-1"`: activatable by assistive tech, invisible to
   Tab, with the context menu as the documented keyboard path. A `div` with an
   `aria-label` and a click handler is the thing to avoid in either zone.
-- **One control inside a composite pane is a real tab stop, and it is chrome rather
+- **A resize grip is a real tab stop wherever it appears, and it is chrome rather
   than content**: the dated axis's lead-resize grip (`renderLeadResize` in
-  `interactions/timelineLeadResize.ts`), a `role="separator"` with `tabindex="0"`
-  mounted in the timeline header. What earns it is that it cannot compete with the
-  roving selection the pane owns — it is fixed to the grid's own geometry, it never
-  renders among the cards, and `handleRoadmapKeydown` returns on any event whose target
-  is not the pane itself (`evt.target !== evt.currentTarget`), so the grip's arrow keys
-  stay the grip's. The per-row answer does not fit it either: a continuous "hold the
+  `interactions/timelineLeadResize.ts`) and one per property column in the tree's header
+  (`renderColumnResize` in `interactions/columnResize.ts`), both a `role="separator"` with
+  `tabindex="0"`, and both driving the same pointer gesture (`wireResizeDrag` in
+  `interactions/resizeDrag.ts`) over their own idea of what a width may be. What earns it is that it cannot compete with the
+  roving selection the pane owns — it is fixed to the header's own geometry, it never
+  renders among the cards or rows, and both `handleRoadmapKeydown` and `handleTreeKeydown`
+  return on any event whose target is not the pane itself
+  (`evt.target !== evt.currentTarget`), so the grip's arrow keys stay the grip's. The per-row answer does not fit it either: a continuous "hold the
   arrow key" resize has no menu to be the keyboard path.
-  The **ARIA cost is real and unresolved.** While cards render the pane is a `listbox`
-  (`render/projections.ts`), so the grip is a focusable non-`option` inside it, which
-  the composite pattern does not sanction. It is a known, accepted deviation rather
-  than a clean case: the alternatives were a pointer-only grip, which this plugin
-  cannot ship because it is not desktop-only, or no resize at all. What is checked is
-  narrower than the claim — `test/view/timelineLeadResize.test.ts` asserts what the
-  grip ANNOUNCES (`role`, `aria-orientation`, the three `aria-value*`, the real tab
+  The **ARIA cost is real and unresolved, and it is now paid twice.** While cards render
+  the pane is a `listbox` (`render/projections.ts`), so the lead grip is a focusable
+  non-`option` inside it; the tree is a `tree`, so a column grip is a focusable
+  non-`treeitem` inside that. Neither is what the composite pattern sanctions. It is a
+  known, accepted deviation rather than a clean case: the alternatives were a
+  pointer-only grip, which this plugin cannot ship because it is not desktop-only, or no
+  resize at all. What is checked is narrower than the claim —
+  `test/view/timelineLeadResize.test.ts` and `test/view/columnResize.test.ts` assert what
+  each grip ANNOUNCES (`role`, `aria-orientation`, the three `aria-value*`, the real tab
   stop), that its own arrow keys resize, and the guard itself at the forbidden thing:
   an ArrowDown, a key the grip does not claim and so lets bubble, dispatched at the
-  focused grip moves no card selection. What nothing here can say is how a screen
-  reader reads a separator in that position. That one is a live-vault item in
+  focused grip moves no selection. What nothing here can say is how a screen
+  reader reads a separator in either position. That one is a live-vault item in
   `docs/tests/suites/Smoke test the roadmap.md`.
 - **An SVG node's `cls` is an ARRAY, never a space-separated string**, and that is a lint
   rule (`no-restricted-syntax`) rather than a habit. `addClass` lives on `HTMLElement`, so

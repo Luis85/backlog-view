@@ -364,6 +364,15 @@ export interface BacklogViewHost {
 	readonly leadWidth: number | null;
 	/** Resize the lead column and re-render; the collapse store persists the pick. */
 	setLeadWidth(value: number | null): void;
+	/**
+	 * The tree's resized property columns in pixels, by Bases property id. A column with
+	 * no entry draws at `DEFAULT_PROP_COLUMN_WIDTH` — UI state exactly like the lead
+	 * width above, and per column rather than one number for all of them because each is
+	 * dragged on its own.
+	 */
+	readonly colWidths: Readonly<Record<string, number>>;
+	/** Resize one property column and re-render; null restores it to the default. */
+	setColWidth(prop: string, value: number | null): void;
 	/** Put today back in the middle of the timeline's scroller, from any position. */
 	jumpToToday(): void;
 	/**

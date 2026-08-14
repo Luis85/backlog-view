@@ -12,13 +12,14 @@
    put its values somewhere other than under their header, which is the whole point
    of the layout — the title truncates instead, and a column the pane cannot hold is
    not rendered at all (`columnFit` in src/view/render/columns.ts decides how many
-   are). `--pbl-prop-count` is that drawn count, so this box is always exactly as
-   wide as the cells inside it. */
+   are). No width of its own: the cells inside carry theirs one by one now, so a
+   shrink-to-fit box is exactly as wide as they are whatever the reader has dragged
+   them to — a `calc()` of one width times a count could only be right while every
+   column was the same size. */
 .pbl-props {
 	display: flex;
 	align-items: center;
 	flex: 0 0 auto;
-	width: calc(var(--pbl-prop-col, 132px) * var(--pbl-prop-count, 0));
 	overflow: hidden;
 }
 
@@ -29,12 +30,16 @@
 	display: none;
 }
 
+/* `--pbl-prop-w` is set on the cell by `sizeCell` (src/view/render/columns.ts) and
+   resolves the width the tree element publishes for THIS column, so a drag moves the
+   whole column by rewriting one declaration. The literal here is the default a
+   stylesheet loaded without a render falls back to, never a second opinion about it. */
 .pbl-prop {
 	display: flex;
 	align-items: center;
 	gap: var(--size-2-1);
-	flex: 0 0 var(--pbl-prop-col, 132px);
-	width: var(--pbl-prop-col, 132px);
+	flex: 0 0 var(--pbl-prop-w, 132px);
+	width: var(--pbl-prop-w, 132px);
 	min-width: 0;
 	padding-inline-end: var(--size-4-2);
 	overflow: hidden;
@@ -69,6 +74,7 @@
 }
 
 .pbl-col-label {
+	position: relative;
 	font-size: var(--font-ui-smaller);
 	color: var(--text-faint);
 	text-transform: uppercase;
@@ -76,4 +82,43 @@
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+}
+
+/* The name itself, so a long one clips at the column boundary rather than pushing the
+   grip beside it out of the cell. `min-width: 0` is what lets it: a flex item refuses
+   to shrink below its content otherwise, and the ellipsis never appears. */
+.pbl-col-name {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* The resize grip, pinned INSIDE the column's own trailing edge — the same 6px strip
+   and the same colours as the timeline's lead grip (styles/timeline.css), because it is
+   the same gesture on a different boundary. That one straddles its edge and this one
+   cannot: the cell it sits in clips its overflow (a value has to end at the column, not
+   trail into the next one), so a strip hanging 3px past the edge is a strip 3px wide. */
+.pbl-col-grip {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	inset-inline-end: 0;
+	width: 6px;
+	cursor: col-resize;
+	z-index: 1;
+	/* Otherwise the browser reads a touch drag here as a pan of the scroller beneath it
+	   and the pointermove stream this grip needs never arrives. */
+	touch-action: none;
+}
+
+.pbl-col-grip:hover,
+.pbl-col-grip:focus-visible {
+	background-color: var(--interactive-accent);
+}
+
+/* The ring has to contrast with the strip it rings — see the lead grip's own note:
+   an accent outline on an accent-filled 6px strip is invisible. */
+.pbl-col-grip:focus-visible {
+	outline: 2px solid var(--text-on-accent);
+	outline-offset: -1px;
 }

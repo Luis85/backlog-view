@@ -96,9 +96,24 @@ export function captureScroll(treeEl: HTMLElement, roadmap: RoadmapSnapshot | nu
  * than the lead itself, where the best available answer is the first visible pixel of
  * day.
  */
-export function centreOnToday(todayLeft: number, viewport: number, leadWidth: number): number {
+function centreOnToday(todayLeft: number, viewport: number, leadWidth: number): number {
 	const band = Math.max(viewport - leadWidth, 0);
 	return Math.max(todayLeft - leadWidth - band / 2, 0);
+}
+
+/**
+ * Put today back in the middle of the timeline's scroller, from any position — the
+ * toolbar's Jump to today, and the whole of what `BacklogViewHost.jumpToToday` does.
+ * Here rather than in the view because the arithmetic above is here: which element gets
+ * scrolled and what it gets scrolled to are one decision.
+ *
+ * `leadWidth` is in the guard beside `todayLeft` rather than defaulted below it:
+ * `renderRoadmap` sets both in the dated branch and neither anywhere else, so the term
+ * costs nothing and it is what narrows `leadWidth` to a number.
+ */
+export function scrollToToday(roadmap: RoadmapSnapshot | null): void {
+	if (!roadmap?.scroller || roadmap.todayLeft === null || roadmap.leadWidth === null) return;
+	roadmap.scroller.scrollLeft = centreOnToday(roadmap.todayLeft, roadmap.scroller.clientWidth, roadmap.leadWidth);
 }
 
 /**

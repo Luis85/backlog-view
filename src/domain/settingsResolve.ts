@@ -4,8 +4,6 @@ import { colorableStates, stateColor, stateColorKey } from './stateColors';
 import {
 	BacklogSettings,
 	columnPolicyKey,
-	MAX_PROP_COLUMN_WIDTH,
-	MIN_PROP_COLUMN_WIDTH,
 	defaultSettings,
 	nameTable,
 	parseWipLimit,
@@ -201,14 +199,6 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		const v = config.get(key);
 		return typeof v === 'boolean' ? v : def;
 	};
-	// A slider stores a number, but a hand-edited .base file can hold anything;
-	// clamp so a stray value cannot collapse the columns to nothing.
-	const width = (key: string, def: number): number => {
-		const v = config.get(key);
-		const n = typeof v === 'number' ? v : Number.parseFloat(typeof v === 'string' ? v : '');
-		if (!Number.isFinite(n)) return def;
-		return Math.min(Math.max(Math.round(n), MIN_PROP_COLUMN_WIDTH), MAX_PROP_COLUMN_WIDTH);
-	};
 	const list = (key: string): string[] =>
 		str(key)
 			.split(',')
@@ -280,7 +270,6 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		focusLevel: fallback.focusLevel,
 		...optionalKeys,
 		tagsKey: tagsKey(),
-		propColumnWidth: width('propertyColumnWidth', fallback.propColumnWidth),
 		doneValues: effectiveDoneValues,
 		wipLimits: nameTable(limitedStates, (s) => parseWipLimit(str(wipLimitKey(s)))),
 		columnPolicies: nameTable(states, (s) => str(columnPolicyKey(s)).trim() || null),

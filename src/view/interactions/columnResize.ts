@@ -1,0 +1,166 @@
+import { BasesPropertyId, setTooltip } from 'obsidian';
+import { BacklogViewHost } from '../host';
+import { wireResizeDrag } from './resizeDrag';
+import {
+	DEFAULT_PROP_COLUMN_WIDTH,
+	MAX_PROP_COLUMN_WIDTH,
+	MIN_PROP_COLUMN_WIDTH,
+} from '../../storage/collapseStore';
+
+/**
+ * The width one property column draws at: its reader's own stored pick, or the default
+ * until they resize it. Asked by everything that needs a number — the fit ladder, the
+ * header and the grip below — so the budget and the layout cannot name different widths.
+ *
+ * Here rather than in `render/columns.ts` beside its callers, for the reason
+ * `effectiveLeadWidth` sits in `timelineLeadResize.ts` rather than in `render/timeline.ts`:
+ * the gesture is what decides a width, so the answer belongs with it — and a render module
+ * that owned it would have to import this one back, which is a cycle rather than a
+ * preference (`npm run analyze` fails on it).
+ *
+ * A plain record lookup, so it stays out of `RowContext`: what that snapshot exists to
+ * keep off the per-row path is the Bases CONFIG calls, which cost a great deal more than
+ * reading a key.
+ */
+export function columnWidth(host: BacklogViewHost, prop: BasesPropertyId): number {
+	return host.colWidths[prop] ?? DEFAULT_PROP_COLUMN_WIDTH;
+}
+
+/**
+ * Where column `index`'s width is published: one custom property per column on the tree
+ * element, inherited by the header cell and by that column's cell on every row.
+ *
+ * That indirection is what makes a drag show anything. Nothing re-renders mid-gesture
+ * (the lead column's rule, for the lead column's reason), so the only way every row can
+ * follow the pointer is for all of their cells to read ONE declaration — and a width
+ * written onto each cell would need every row walked to change it, which is the scan
+ * `src/view/CLAUDE.md` bans outright.
+ */
+export function columnWidthVar(index: number): string {
+	return `--pbl-prop-w-${index}`;
+}
+
+/**
+ * One property column's drag handle, mounted on its own header cell
+ * (`render/columns.ts`'s `renderColumnHeader`). The tree's columns are fixed-width so
+ * values line up down a column, and no one number fits every vault: a title property
+ * wants far more room than a risk chip, and both used to take one slider's word for it.
+ *
+ * The gesture is the timeline lead column's, and now literally so — the pointer half is
+ * `wireResizeDrag` (`interactions/resizeDrag.ts`), shared by both grips. What stays here
+ * is what this boundary MEANS: which width is being moved, what bounds it, and what a
+ * commit does to the store.
+ *
+ * `tabindex="0"` — a real tab stop inside a pane whose rows are reached by arrow keys —
+ * for the reason the lead grip has one: it is chrome fixed to the header's geometry, it
+ * never renders among rows, and `handleTreeKeydown` ignores any event whose target is not
+ * the tree itself (`interactions/keyboard.ts`), so a focused grip keeps its own arrow keys
+ * and the row selection stays where it was. There is no menu a continuous "hold the arrow
+ * key" gesture would fit inside either, which is what the per-row controls use instead.
+ */
+export function renderColumnResize(
+	host: BacklogViewHost,
+	cell: HTMLElement,
+	// The element the widths are published on — `renderTree`'s own scroller. Passed rather
+	// than walked up to from the cell: the publisher and the reader of `columnWidthVar` are
+	// then the same element by construction.
+	treeEl: HTMLElement,
+	column: { prop: BasesPropertyId; label: string; index: number },
+): void {
+	const { prop, label, index } = column;
+	const current = columnWidth(host, prop);
+	const grip = cell.createDiv({
+		cls: 'pbl-col-grip',
+		attr: {
+			role: 'separator',
+			'aria-orientation': 'vertical',
+			// The column's own display name, not "this column": two grips are on screen
+			// whenever two columns are, and a reader tabbing onto one has nothing else to
+			// tell them apart by.
+			'aria-label': `Resize the ${label} column`,
+			// The storable bounds, unqualified by the pane — unlike the lead column, whose
+			// range narrows with the room it has. A property column too wide for the pane is
+			// DROPPED by the fit ladder rather than covering what it labels, so there is no
+			// width here that draws differently from the one announced.
+			'aria-valuemin': String(MIN_PROP_COLUMN_WIDTH),
+			'aria-valuemax': String(MAX_PROP_COLUMN_WIDTH),
+			'aria-valuenow': String(current),
+			tabindex: '0',
+		},
+	});
+	setTooltip(grip, 'Drag to resize, or focus and use the arrow keys (Home resets it)');
+
+	// Live feedback is the published custom property alone — the header cell and this
+	// column's cell on every row all read it, so one declaration moves the whole column
+	// and nothing re-renders while the pointer is down.
+	const live = (width: number): void => {
+		treeEl.setCssProps({ [columnWidthVar(index)]: `${width}px` });
+		grip.setAttribute('aria-valuenow', String(width));
+	};
+
+	const commit = (width: number): void => {
+		// Asked BEFORE the write, which re-renders the header and destroys this element:
+		// focus is restored only to a grip that actually held it. A pointer gesture never
+		// does — `pointerdown` calls `preventDefault()`, so the strip is never focused by a
+		// mouse — and refocusing regardless would hand a separator a focus the reader had
+		// not given it, after which their next arrow key resizes a column instead of moving
+		// the row selection.
+		if (document.activeElement === grip) refocusIndex = index;
+		host.setColWidth(prop, width === DEFAULT_PROP_COLUMN_WIDTH ? null : width);
+		// Cleared right here rather than by the render: `setColWidth` renders synchronously,
+		// so the only pass that may claim this focus is the one it just ran — and a pass
+		// that dropped the column (a width the pane can no longer hold) draws no grip to
+		// claim it at all.
+		refocusIndex = null;
+	};
+
+	// Commit only a width that DIFFERS from the one on screen — the lead grip's rule, and
+	// here it is what makes ArrowRight at the ceiling, ArrowLeft at the floor and a drag
+	// that ends where it began all cost nothing: no write, no render, and no undoing of a
+	// focus the reader still has.
+	const commitIfChanged = (width: number): void => {
+		if (width !== current) commit(width);
+	};
+
+	if (refocusIndex === index) grip.focus();
+	wireResizeDrag(grip, {
+		widthAt: (deltaX) => clampColumnWidth(current + deltaX),
+		startWidth: current,
+		live,
+		commit: commitIfChanged,
+	});
+	grip.addEventListener('keydown', (evt) => {
+		if (evt.key === 'ArrowLeft' || evt.key === 'ArrowRight') {
+			evt.preventDefault();
+			commitIfChanged(clampColumnWidth(current + (evt.key === 'ArrowRight' ? KEY_STEP_PX : -KEY_STEP_PX)));
+		} else if (evt.key === 'Home') {
+			// An explicit reset, so it does not go through `commitIfChanged`: pressing it on
+			// a column already at the default is a reader saying "the default", and clearing
+			// a pick that is already clear costs one no-op write.
+			evt.preventDefault();
+			commit(DEFAULT_PROP_COLUMN_WIDTH);
+		}
+	});
+}
+
+/**
+ * The column whose grip must take focus when the header is next drawn, or null between
+ * commits. Module state rather than a member, because the two ends of it are one
+ * synchronous call apart: `commit` sets it, the render it triggers reads it, and `commit`
+ * clears it before returning. A keyboard reader stepping a column by repeated presses is
+ * otherwise dropped back to the document body after the very first press — the wall the
+ * shelf's own controls hit, and the lead grip after them.
+ */
+let refocusIndex: number | null = null;
+
+/** How far one arrow-key press moves the boundary, in pixels. */
+const KEY_STEP_PX = 10;
+
+/**
+ * A width clamped to what may be stored, which is also the range the separator announces:
+ * a gesture can never draw or persist a number `readColWidths` would refuse on the way
+ * back in, and `aria-valuenow` can never leave the range beside it.
+ */
+function clampColumnWidth(width: number): number {
+	return Math.min(Math.max(Math.round(width), MIN_PROP_COLUMN_WIDTH), MAX_PROP_COLUMN_WIDTH);
+}
