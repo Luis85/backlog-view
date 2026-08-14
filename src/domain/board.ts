@@ -66,6 +66,10 @@ export interface BoardColumn {
 	 * off `cards`, a search that hid every open card in Done would report the stage
 	 * finished and fold it, so a user would have searched their board into a different
 	 * shape. Results only, like `count` — a context card is placement, not work.
+	 *
+	 * "Finished" is THIS column's verdict, never `item.subtreeDone`: that field is built on
+	 * `item.done`, the requirements reading, which is the wrong workflow on the Deliverables
+	 * board and on the catalog. See the comment at the assignment.
 	 */
 	openWork: boolean;
 }
@@ -444,7 +448,17 @@ export function boardColumns(
 		const col = columnFor(card);
 		col.fullCount += 1;
 		// Asked here rather than of `col.cards` on purpose — see `BoardColumn.openWork`.
-		if (!card.subtreeDone) col.openWork = true;
+		//
+		// And asked of the COLUMN rather than of `card.subtreeDone`, which is a different
+		// mistake with the same shape: `item.done` is the REQUIREMENTS reading, so a
+		// Deliverable finished in its own workflow reports open work unless its
+		// requirements status happens to agree, and the fold default never fires on that
+		// board at all. `ownWorkflowReading` is this codebase's answer to that question and
+		// `col.done` is the same answer arrived at more cheaply — the card is in this column
+		// because `workflow.stateOf` put it there, so the column IS the active workflow's
+		// verdict on it and the two cannot drift. The descendants keep the rollup's own
+		// reading, exactly as `subtreeDone` does.
+		if (!col.done || card.doneDescendants !== card.descendantCount) col.openWork = true;
 	}
 	let cardCount = 0;
 	for (const col of columns) {

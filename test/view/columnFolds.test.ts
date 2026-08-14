@@ -140,6 +140,30 @@ describe('folding a board column', () => {
 		expect(folded(columnByName(containerEl, 'Done'))).toBe(true);
 	});
 
+	it('offers no fold from the menu while a filter runs, because the button offers none', () => {
+		// Found by review (Codex, PR #140). The disclosure is disabled while filtering and
+		// this entry was not, so a folded column — which the filter override reports as
+		// open — offered an enabled Collapse that wrote a fold nothing on screen could
+		// show, and clearing the search revealed a fold the reader never watched happen.
+		// Two surfaces over one action have to be AVAILABLE at the same times, not only
+		// agree about the state.
+		const { view, containerEl } = makeBoard(openVault());
+		view.setFilter('Epic');
+
+		expect(foldButton(columnByName(containerEl, 'New')).disabled).toBe(true);
+		columnByName(containerEl, 'New')
+			.querySelector('.pbl-board-col-header')
+			?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const entry = Menu.lastShown?.item('Collapse New');
+		expect(entry?.disabled).toBe(true);
+
+		// Disabled AND inert: clicking it anyway writes no fold, so lifting the filter
+		// leaves the column exactly as the reader left it.
+		entry?.click();
+		view.setFilter('');
+		expect(folded(columnByName(containerEl, 'New'))).toBe(false);
+	});
+
 	it('is remembered per board, so two boards’ “Done” are two folds', () => {
 		// The scope in the key. Without it, folding Done on the requirements board would
 		// fold the Deliverables board's own Done, which no reader asked about.

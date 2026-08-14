@@ -21,7 +21,9 @@ import { showMenuForClick } from './menu';
  * disclosure is a `tabindex="-1"` button like every per-row control, so without an entry
  * here the fold would be pointer-only on a stop the arrows already reach. One builder behind
  * both surfaces, so the button and the entry cannot disagree about which way the column
- * currently sits.
+ * currently sits — and, since a review found them disagreeing about something else, they
+ * now go dark together while a filter runs. Sharing the STATE was never the whole of
+ * agreeing.
  *
  * A policy is text, not an action, so its entry stays disabled: the menu makes the policy
  * reachable without a pointer, and an entry that looked clickable would promise a command
@@ -36,12 +38,23 @@ export function buildColumnMenu(host: BacklogViewHost, scope: ColumnScope, col: 
 	// render that drew the column this menu is being opened on — see `columnCollapsed`
 	// in `view/collapseState.ts`.
 	const folded = host.columnCollapsed(scope, col.state, false);
-	menu.addItem((mi) =>
-		mi
-			.setTitle(folded ? `Expand ${col.label}` : `Collapse ${col.label}`)
+	// Disabled while a filter runs, because the DISCLOSURE is — `renderChevron` passes
+	// `disabled: host.isFiltering()` and reads the flag again on the click. Two surfaces
+	// over one action have to be available at the same times as well as agree about the
+	// state, and this pair did not: the filter override makes `columnCollapsed` answer
+	// false, so a folded column offered an enabled Collapse that wrote a fold nothing on
+	// screen could show, and clearing the search then revealed a fold the reader never saw
+	// themselves make. Found by review (Codex, PR #140).
+	const filtering = host.isFiltering();
+	menu.addItem((mi) => {
+		mi.setTitle(folded ? `Expand ${col.label}` : `Collapse ${col.label}`)
 			.setIcon(folded ? 'chevron-down' : 'chevron-right')
-			.onClick(() => host.setColumnCollapsed(scope, col.state, !folded)),
-	);
+			.setDisabled(filtering);
+		// Guarded as well as disabled, `renderChevron`'s own belt and braces: what a
+		// disabled `MenuItem` does with a click is Obsidian's business, and this side can
+		// answer for itself in one term.
+		if (!filtering) mi.onClick(() => host.setColumnCollapsed(scope, col.state, !folded));
+	});
 	if (col.policy) menu.addItem((mi) => mi.setTitle(col.policy).setIcon('info').setDisabled(true));
 	return menu;
 }

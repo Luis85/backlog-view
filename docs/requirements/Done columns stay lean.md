@@ -121,6 +121,19 @@ half: measured over the drawn cards, a search that hid every open card in Done w
 report the stage finished and fold a column holding retained work. The fold default is
 `col.done && !col.openWork`, taken once, in `renderBoard`.
 
+Finished is asked of the COLUMN, never of `item.subtreeDone`. That field is built on
+`item.done`, the requirements reading, so on the Deliverables board a Deliverable finished
+in its own workflow reported open work unless its `status` happened to agree, and this
+default never fired there at all — the third appearance of the trap `ownWorkflowReading`
+exists for, found by review (Codex, PR #140). `col.done` is the same answer arrived at
+more cheaply and it cannot drift: `workflow.stateOf` is what put the card in the column.
+
+**The two surfaces go dark together.** The disclosure disables itself while a filter runs
+(`renderChevron`), and so does the menu entry. They shared a builder and still came apart
+on this, because the filter override makes `columnCollapsed` answer false: a folded column
+offered an enabled Collapse that wrote a fold nothing on screen could show, discovered only
+when the search was cleared. Same review.
+
 **What a fold removes.** A folded column contributes no cards to the `BoardSnapshot`, and
 that one line is what keeps the keyboard honest — `boardPosition`, `nextBoardPosition` and
 Alt+arrow all walk that snapshot, so nothing selects a card the fold took off screen. Both
