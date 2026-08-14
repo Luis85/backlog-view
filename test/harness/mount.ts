@@ -75,13 +75,15 @@ export interface MountedHarness {
 	containerEl: HTMLElement;
 	mount: Mount;
 	/**
-	 * Generated notes this mount actually ADDED, which is not always the number asked for:
-	 * the edge-case fixture ignores the knob. `?perf`'s heading printed the request, so
-	 * `--fixture=edges` reported an 800-note workload over a handful of curated cases.
-	 * Taken from the value handed to the vault, so the two cannot disagree.
-	 * (Codex, PR #137.)
+	 * How many results the view was HANDED — the population every number is of.
+	 *
+	 * Not the `?notes=` request, which the edge-case fixture ignores entirely, and not the
+	 * generated extras either: `edges` mounts curated cases and would have reported "0
+	 * notes" while drawing four, and the demo's own curated notes are in every measurement
+	 * beside the generated ones. Counted off the array actually given to the view, which is
+	 * the only number that cannot disagree with what was drawn. (Codex, PR #137.)
 	 */
-	notes: number;
+	results: number;
 }
 
 /**
@@ -111,8 +113,9 @@ export function mountHarness(root: HTMLElement, fixture: HarnessFixture = 'demo'
 	drawIcons();
 	root.empty();
 
-	const notes = fixture === 'edges' ? 0 : extra;
-	const vault = fixture === 'edges' ? edgeCaseVault() : demoVault(fixture === 'folders' ? 'folders' : 'flat', notes);
+	// The edge-case fixture ignores `extra`: a thousand more awkward cases is not a bigger
+	// question. What the run reports is the population below, never this request.
+	const vault = fixture === 'edges' ? edgeCaseVault() : demoVault(fixture === 'folders' ? 'folders' : 'flat', extra);
 	const leafEl = root.createDiv('pbl-harness-leaf');
 	const containerEl = leafEl.createDiv();
 	vault.addLeaf(new FileView(vault.addFile('Demo.base'), leafEl));
@@ -125,7 +128,8 @@ export function mountHarness(root: HTMLElement, fixture: HarnessFixture = 'demo'
 	// page has to declare a visible order or it draws a strip with nothing in it.
 	config.order = demoOrder();
 	anyView.config = config;
-	anyView.data = { data: demoResults(vault) };
+	const results = demoResults(vault);
+	anyView.data = { data: results };
 
 	let settle: ReturnType<typeof setTimeout> | undefined;
 	vault.afterWrite = () => {
@@ -152,5 +156,5 @@ export function mountHarness(root: HTMLElement, fixture: HarnessFixture = 'demo'
 	// After the clock, like `sample`'s own count: this says what the row is a measurement
 	// OF, and a query inside the measurement would be measuring the query.
 	const mount = { ms: performance.now() - started, px, drew: containerEl.querySelectorAll('.pbl-row, .pbl-card').length };
-	return { view, vault, containerEl, mount, notes };
+	return { view, vault, containerEl, mount, results: results.length };
 }

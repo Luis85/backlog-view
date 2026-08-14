@@ -54,9 +54,9 @@ describe('the perf panel reports the sample it took', () => {
 			// collapse option existed no more: it opened shut, and a shut shelf drew its
 			// header and returned. Nothing restores anything now — there is no state to
 			// restore — so the check is simply that the band is in the sample.
-			const { view, containerEl, mount: first } = mount();
+			const { view, containerEl, mount: first, results } = mount();
 
-			reportPerf(view, containerEl, first, { fixture: 'demo', notes: 0 });
+			reportPerf(view, containerEl, first, { fixture: 'demo', results });
 
 			const roadmap = published().rows.find((row) => row.op === 'switch to roadmap');
 			view.setProjection('roadmap');
@@ -70,9 +70,9 @@ describe('the perf panel reports the sample it took', () => {
 	it(
 		'gives every row its own sample size, and publishes exactly what the panel shows',
 		() => {
-			const { view, containerEl, mount: first } = mount();
+			const { view, containerEl, mount: first, results } = mount();
 
-			const rows = reportPerf(view, containerEl, first, { fixture: 'demo', notes: 0 });
+			const rows = reportPerf(view, containerEl, first, { fixture: 'demo', results });
 
 			// The runner does one `JSON.parse` and no scraping, so what it gets has to BE the
 			// table: a column added for a human to read must not change what a script reads.
@@ -87,7 +87,10 @@ describe('the perf panel reports the sample it took', () => {
 			// The axis the ROADMAP drew, not `view.axisPick`, which is null until someone picks
 			// and would have compared two differently-configured builds as equal.
 			view.setProjection('roadmap');
-			expect(data.ran).toEqual({ fixture: 'demo', notes: 0, projection: 'tree', axis: view.roadmap?.roadmap.axis ?? null });
+			// The POPULATION the view was handed, not the `?notes=` request: the edge-case
+			// fixture ignores that request and the demo's curated notes are in every number.
+			expect(results).toBeGreaterThan(0);
+			expect(data.ran).toEqual({ fixture: 'demo', results, projection: 'tree', axis: view.roadmap?.roadmap.axis ?? null });
 			expect(data.ran.axis).not.toBeNull();
 
 			const drew = (op: string) => data.rows.find((row) => row.op === op)?.drew ?? 0;

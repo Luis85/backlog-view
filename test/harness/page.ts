@@ -14,7 +14,7 @@ const fixture = wantedFixture === 'edges' || wantedFixture === 'folders' ? wante
 // `mount` is measured INSIDE `mountHarness`, around the view's own first draw — see
 // `Mount` there. Timed from out here it counted the fixture generation and the harness
 // chrome, which scale with `?notes=` and are not the view.
-const { view, containerEl, mount, notes } = mountHarness(document.body, fixture, wantedNotes(window.location.search));
+const { view, containerEl, mount, results } = mountHarness(document.body, fixture, wantedNotes(window.location.search));
 
 // After the mount: the toggle is the harness's own furniture and is appended to the
 // body, which `mountHarness` empties.
@@ -65,4 +65,4 @@ if (AXES.includes(axis as RoadmapAxis)) {
 
 // Last, because the run drives all four projections and restores whichever was open: run
 // first, it would have restored the tree over the projection `?view=` was about to ask for.
-if (perfWanted(window.location.search)) reportPerf(view, containerEl, mount, { fixture, notes });
+if (perfWanted(window.location.search)) reportPerf(view, containerEl, mount, { fixture, results });

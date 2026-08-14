@@ -21,7 +21,7 @@ import { pathToFileURL } from 'node:url';
  *
  *   npm run perf                            one run at ?notes=800
  *   npm run perf -- --notes=1600 --runs=4   a bigger tree, four runs
- *   npm run perf -- --view=board --axis=dates
+ *   npm run perf -- --axis=dates           the roadmap's dated grid rather than its buckets
  *   npm run perf -- --against ../base/.harness    two builds, alternated
  *
  * **`--against` is what makes a comparison honest here**, and it takes a built harness
@@ -107,9 +107,18 @@ if (size.length !== 2 || !size.every((n) => Number.isInteger(n) && n > 0)) {
  */
 const window = size.join(',');
 
+/**
+ * No `--view`: it selected nothing this table measures.
+ *
+ * The run switches to the tree, times `update` and `render only` there, and then times a
+ * switch to every projection in turn — so the projection a page opened on changed no
+ * number in the table while heading it as though it had. `?view=` stays a PAGE knob, for
+ * looking and for screenshots, which is what it was built for. `--axis` is different and
+ * stays: the roadmap row draws whichever axis is active, so it really is the workload.
+ * (Codex, PR #137.)
+ */
 const query = new URLSearchParams({ notes, perf: '' });
 if (args.fixture) query.set('fixture', args.fixture);
-if (args.view) query.set('view', args.view);
 if (args.axis) query.set('axis', args.axis);
 const search = `?${query.toString().replace(/=$/, '').replace(/=&/, '&')}`;
 
@@ -307,7 +316,7 @@ for (const [op, { drew, times }] of left) {
  * the two disagree. (Codex, PR #137.)
  */
 const ran = a[0]?.ran;
-const asked = { fixture: args.fixture ?? 'demo', view: args.view, axis: args.axis };
+const asked = { fixture: args.fixture ?? 'demo', axis: args.axis };
 /**
  * And the BASELINE's own resolved workload, which is a second question with the same
  * shape: the two builds can absorb one flag differently — the newer knows an axis the
@@ -327,13 +336,12 @@ const baselineWorkload = !against
 		: differs.map((key) => `${key}: ${String(ran[key])} here, ${String(ranAgainst[key])} in the baseline`);
 const ignored = [
 	ran && asked.fixture !== ran.fixture ? `--fixture=${asked.fixture} (mounted ${ran.fixture})` : '',
-	ran && asked.view !== undefined && asked.view !== ran.projection ? `--view=${asked.view} (opened ${ran.projection})` : '',
 	ran && asked.axis !== undefined && asked.axis !== ran.axis ? `--axis=${asked.axis} (axis ${ran.axis ?? 'unpicked'})` : '',
 ].filter(Boolean);
 
 // `ran.notes`, not the flag: the edge-case fixture ignores the size knob, so a request for
 // 800 was printed over a handful of curated cases. (Codex, PR #137.)
-const drawn = ran ? `${ran.fixture} · ${ran.projection}${ran.axis ? ` · ${ran.axis}` : ''} · ${ran.notes} notes` : search;
+const drawn = ran ? `${ran.fixture}${ran.axis ? ` · ${ran.axis}` : ''} · ${ran.results} results` : search;
 console.log(`\n${drawn}  ·  ${runs} run${runs === 1 ? '' : 's'}  ·  window ${window}  ·  ${path.basename(browser)}`);
 if (against) console.log(`against ${against} (alternated, A B A B)`);
 console.table(table);

@@ -102,21 +102,29 @@ instruments improvised around a browser.
   comparison missing half its rows read as a complete one. Both directions are named under
   the table now, and a column with nothing to compare against prints an em dash rather than
   a number no reading of which is right.
-- **3f — a workload selector the page did not honour.** `--fixture=edegs` mounts the demo,
-  `--axis=date` picks no axis, `--view=bard` opens the tree: the page absorbs each silently,
+- **3f — a workload selector the page did not honour.** `--fixture=edegs` mounts the demo
+  and `--axis=date` picks no axis: the page absorbs each silently,
   and a heading built from the query string then labelled the table with a workload nobody
   ran. The runner prints what the page says it MOUNTED — the page publishes it beside the
   numbers — and names any flag the two disagree on. The vocabularies stay where they are
   enforced rather than being copied into the runner to go stale, which is the same rule the
-  register applies to any table that enumerates code. The note COUNT is the same question
-  once more: the edge-case fixture ignores the size knob deliberately, so `--fixture=edges`
-  headed the table with the 800 that was asked for over a handful of curated cases. The
-  mount reports what it handed the vault. The BASELINE's resolved workload is
+  register applies to any table that enumerates code. The POPULATION is the same question
+  once more, and took two passes: the edge-case fixture ignores the size knob deliberately,
+  so `--fixture=edges` headed the table with the 800 that was asked for — and reporting the
+  generated extras instead still said "0 notes" over four curated cases it really drew. What
+  is printed is the number of RESULTS the view was handed, counted off the array it was
+  given. The BASELINE's resolved workload is
   read the same way and compared: two builds can absorb one flag differently — the newer
   knows an axis the older ignores — and then equal `drew` counts prove nothing, since they
   can be equal across two different projections. A baseline too old to report it at all is
   named as that rather than assumed to agree. (Codex, PR #137.)
 
+- **3g — a flag that selects nothing the table measures.** `--view` was one: the run
+  switches to the tree, times `update` and `render only` there, then times a switch to every
+  projection in turn — so the projection a page opened on changed no number while heading
+  the table as though it had. Removed from the runner rather than made to select, since
+  `?view=` exists for LOOKING and the table already covers every projection. `--axis` stays,
+  because the roadmap row really does draw whichever axis is active. (Codex, PR #137.)
 - **4a — the runner checks out the ref to compare against.** Refused: that would move the
   tree someone is working in. Building the other side is one command in a git worktree,
   and stays the human's.

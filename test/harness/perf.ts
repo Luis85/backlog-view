@@ -152,8 +152,8 @@ function expandAll(el: HTMLElement): void {
  */
 interface Ran {
 	fixture: string;
-	/** Generated notes the mount really added — see `MountedHarness.notes`. */
-	notes: number;
+	/** Results the view was handed — the population these numbers are of. */
+	results: number;
 	projection: string;
 	/**
 	 * The axis the roadmap DREW, captured while it was on screen — never `view.axisPick`,
@@ -202,7 +202,7 @@ export function reportPerf(
 	view: ProductBacklogView,
 	containerEl: HTMLElement,
 	mount: Mount,
-	mounted: { fixture: string; notes: number },
+	mounted: { fixture: string; results: number },
 ): Row[] {
 	const { rows, treeRows, axis } = measure(view, containerEl, mount);
 	console.table(rows.map((r) => ({ ...r, median: +r.median.toFixed(1), worst: +r.worst.toFixed(1) })));
@@ -222,7 +222,7 @@ export function reportPerf(
 	publish(panel, {
 		samples: SAMPLES,
 		treeRows,
-		ran: { fixture: mounted.fixture, notes: mounted.notes, projection: view.projection, axis },
+		ran: { fixture: mounted.fixture, results: mounted.results, projection: view.projection, axis },
 		rows,
 	});
 	panel.createEl('p', {
