@@ -188,6 +188,8 @@ for (let run = 0; run < runs; run++) {
 
 const left = collect(a);
 const right = collect(b);
+/** Ops where the two builds did not draw the same thing — see the warning below. */
+const unlike = [];
 for (const [op, { drew, times }] of left) {
 	const row = { op, drew, ms: +median(times).toFixed(1), spread: spread(times) };
 	if (against) {
@@ -197,6 +199,11 @@ for (const [op, { drew, times }] of left) {
 		// Beside the delta, never behind it: two medians whose spreads overlap have no
 		// delta worth reading, and the only way a reader can see that is if both are here.
 		row.againstSpread = other ? spread(other.times) : '';
+		// And the baseline's own SAMPLE, for the same reason one level up: two builds can
+		// draw different populations — one before a change that adds or hides cards — and
+		// a delta between unlike workloads reads exactly like a speedup. (Codex, PR #137.)
+		row.againstDrew = other ? other.drew : 0;
+		if (other && other.drew !== drew) unlike.push(`${op} (${drew} vs ${other.drew})`);
 		row.delta = `${(((row.ms - base) / base) * 100).toFixed(0)}%`;
 	}
 	table.push(row);
@@ -205,5 +212,12 @@ for (const [op, { drew, times }] of left) {
 console.log(`\n${search}  ·  ${runs} run${runs === 1 ? '' : 's'}  ·  window ${window}  ·  ${path.basename(browser)}`);
 if (against) console.log(`against ${against} (alternated, A B A B)`);
 console.table(table);
+// Loud, and not a refusal: "did this change cost anything" is a legitimate question to
+// ask of two builds that draw different amounts, and only the person asking knows which
+// question this run is. What must not happen is the delta being read as a speedup by
+// someone who never saw that the workloads differed.
+if (unlike.length > 0) {
+	console.log(`\n!! The two builds drew DIFFERENT samples — the delta is not a like-for-like comparison:\n   ${unlike.join('\n   ')}`);
+}
 console.log('No Bases pass, no metadata cache, no vault I/O, no theme. Not what the plugin costs in a vault.');
 console.log('`drew` is that row’s own sample — rows and cards on screen after the op, which differs per projection.');

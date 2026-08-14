@@ -61,7 +61,15 @@ instruments improvised around a browser.
 - **3a — one run per side is compared.** That is how this register produced two retracted
   findings, so `--against` starts at three runs and prints both spreads: two medians whose
   spreads overlap have no delta worth reading, and a reader can only see that if both are
-  on the page.
+  on the page. Its `median` averaged nothing and took the upper middle of an even sample
+  until review caught it — `--runs=4` is this file's own documented form, so every number
+  the change that introduced this tool had published was biased on both sides.
+- **3d — the two builds draw different populations.** Then the delta is between unlike
+  workloads and reads exactly like a speedup: a baseline from before a change that hides or
+  adds cards measures fewer of them. Both sides' counts are printed and a mismatch is called
+  out by name under the table. Loud rather than refused — "did this change cost anything" is
+  a legitimate question to ask of two such builds, and only the person running it knows which
+  question this run is. (Codex, PR #137, on a comparison this branch really did make.)
 - **3b — one heading states the sample for every row.** It cannot. The tree draws rows,
   the four card projections draw cards, the board excludes Deliverables and the
   Deliverables board draws only those — so each row carries its own count, and
