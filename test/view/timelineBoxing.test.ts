@@ -349,6 +349,18 @@ describe('the absence marks are drawn from the content palette', () => {
 		expect(bar, '.pbl-bar states no height').toBeDefined();
 		expect(height(lanes, '.pbl-absence', 'styles/lanes.css')).toBe(bar);
 	});
+
+	it('keys the hatch in the colour the stretch draws it in', () => {
+		// The strip's whole subject is that a swatch cannot say a colour the mark does not
+		// draw. The three pairs above check that for the marks whose colour is a `--color-*`
+		// palette entry; the hatch names a text token instead, so it needs this pairing rather
+		// than that helper. The PERIOD is deliberately not compared — see `.pbl-legend-absence`.
+		const legend = readFileSync(new URL('../../styles/legend.css', import.meta.url), 'utf8');
+		const inked = (css: string, selector: string, file: string) => tokens(css, selector, file).filter((t) => t.startsWith('--text-'))[0];
+		const mark = inked(lanes, '.pbl-absence', 'styles/lanes.css');
+		expect(mark, '.pbl-absence names no text token').toBeDefined();
+		expect(inked(legend, '.pbl-legend-absence', 'styles/legend.css')).toBe(mark);
+	});
 });
 
 describe('the resize grip is ringed in a colour other than its own fill', () => {

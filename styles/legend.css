@@ -87,3 +87,24 @@
    where something actually draws it: a state the vocabulary does not list, or no state
    at all. */
 .pbl-legend-other { background-color: var(--interactive-accent); }
+
+/* The hatch `.pbl-absence` draws (`styles/lanes.css`), in the same colour token — checked as
+   one fact in `test/view/timelineBoxing.test.ts` — and at a FINER period, which is this
+   element's own business rather than a drift: one 4px stripe inside a 10px square reads as
+   half-filled, not as hatch, so the period is halved.
+
+   ORDER IS BEHAVIOUR here as it is for the four rules above: this sets a background-IMAGE
+   over `.pbl-legend-swatch`'s background-color, which resolves to nothing on a swatch
+   carrying no slot class. `transparent` is stated rather than left to that, so the square is
+   the hatch and its border and nothing else. */
+.pbl-legend-absence {
+	background-color: transparent;
+	border: 1px solid var(--text-muted);
+	background-image: repeating-linear-gradient(
+		45deg,
+		var(--text-muted) 0,
+		var(--text-muted) 2px,
+		transparent 2px,
+		transparent 4px
+	);
+}

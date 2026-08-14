@@ -66,6 +66,10 @@ export function renderLegend(
 	// milestone in the window draws no cyan mark at all, and a swatch left unconditional
 	// here is defect 2 of this pass — the same rule failing the same way as `Other` did.
 	if (drawn.milestone) addSwatch(legendEl, 'pbl-legend-milestone', 'Milestone');
+	// The hatch, on the same rule and reported the same way: `drawn.absence` is the render's
+	// own word for "a stretch drew here", so this appears exactly where the mark does — on
+	// the resources axis, and not for a band the reader has folded shut.
+	if (drawn.absence) addSwatch(legendEl, 'pbl-legend-absence', 'Unavailable');
 }
 
 /**

@@ -130,6 +130,37 @@ describe('the roadmap legend', () => {
 		expect(containerEl.querySelector('.pbl-timeline-row.pbl-done .pbl-bar')).not.toBeNull();
 	});
 
+	it('keys the hatch where a stretch drew, and loses it when the band folds shut', () => {
+		// The rule every swatch here keeps, asked of the one mark that is not a colour: the
+		// report comes off the RENDER, so a band folded shut draws no stretch and the key has
+		// to lose the entry with it. A predicate over `roadmap.lanes` would go on claiming a
+		// mark nothing on screen makes — the mistake the done and milestone swatches each
+		// made once.
+		const vault = new FakeVault();
+		vault.addFile('Work.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
+		});
+		vault.addFile('Alice away.md', {
+			frontmatter: { type: 'Absence', assignee: 'Alice', start: '2026-08-04', due: '2026-08-06' },
+		});
+		const { view, containerEl } = makeView(
+			vault,
+			{ ...DATE_AXIS, assigneeProperty: 'note.assignee', resourceNames: 'Alice' },
+			{ collapsed: true },
+		);
+		view.setProjection('roadmap');
+
+		// The plain dated axis draws bars and no stretch at all, so it keys none.
+		view.setAxisPick('dates');
+		expect(swatchLabels(containerEl)).not.toContain('Unavailable');
+
+		view.setAxisPick('resources');
+		expect(swatchLabels(containerEl)).toContain('Unavailable');
+
+		view.setLaneCollapsed('Alice', true);
+		expect(swatchLabels(containerEl)).not.toContain('Unavailable');
+	});
+
 	it('stays under the toolbar and outside the timeline scroller, so it never scrolls away', () => {
 		const { view, containerEl } = makeView(datedVault(), { ...DATE_AXIS, ...WORKFLOW }, { collapsed: true });
 		view.setProjection('roadmap');

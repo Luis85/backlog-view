@@ -6,7 +6,7 @@ import { RoadmapAxis, RoadmapModel } from '../domain/roadmap';
 import { ShelfSort } from '../domain/shelf';
 import { PlacementEnd } from '../domain/itemTypes';
 import { ScaleId, TimelineScale, TimelineWindow } from '../domain/timeline';
-import { ItemWrite, SchedulePlan } from '../domain/writePlan';
+import { ItemWrite, ScheduleGesture, SchedulePlan } from '../domain/writePlan';
 import { BacklogSettings } from '../domain/settings';
 import { OptionalField, OptionalProperty } from '../domain/optionalProperties';
 import { OpenTarget } from '../domain/itemHandling';
@@ -84,7 +84,30 @@ export interface DrawnColors {
 	milestone: boolean;
 	/** A bar with none of the above: no slot, no done override, no milestone cyan. */
 	accent: boolean;
+	/**
+	 * An unavailable stretch drew somewhere on this grid (`.pbl-absence`) — the resources
+	 * axis only, since it is the only axis whose entry list holds one.
+	 *
+	 * Not a colour override like the three above, and the interface is wider than its name
+	 * because of it: what this reports is which MARKS a pass drew that the key has to
+	 * explain, and a hatch is one. Reported from the render for the same reason the others
+	 * are — `laneEntries` skips a collapsed band whole, so a predicate over `roadmap.lanes`
+	 * would key a stretch nothing on screen draws.
+	 *
+	 * The three above are a BAR's own report, which is why `reportColors` and `renderBarRow`
+	 * take the narrower `BarColors`: a bar row draws no hatch and has nothing to say here.
+	 */
+	absence: boolean;
 }
+
+/**
+ * What one BAR reports about its own colour — `DrawnColors` minus the marks a bar cannot
+ * draw. Narrower rather than a second vocabulary, the same relation `AxisField` has to the
+ * optional-property keys: `reportColors` ORs these three into the pass's own report, and a
+ * row literal that had to state `absence: false` would be claiming something about a mark
+ * drawn nowhere near it.
+ */
+export type BarColors = Omit<DrawnColors, 'absence'>;
 
 /**
  * The roadmap as last rendered: the derived model, and the rendered cards in
@@ -307,6 +330,19 @@ export interface BacklogViewHost {
 	readonly shelfHiddenTypes: ReadonlySet<string>;
 	setShelfHiddenTypes(types: ReadonlySet<string>): void;
 	/**
+	 * Whether one resource's whole BAND is folded shut on the resources axis — its bars,
+	 * its absences and the notes it places, leaving the header.
+	 *
+	 * A third collapse question beside {@link isCollapsed} and {@link isCardCollapsed}, and
+	 * a third because it is asked of a NAME: a resource is not a note, so it has no path to
+	 * key a bit under and none of the machinery that key space carries (the vault-existence
+	 * prune, the rename migration, the collapse-new-parents pass) applies to it. A band a
+	 * reader has not ruled on is OPEN, unlike a tree parent — a row that hid its own work
+	 * until asked would answer the question this axis exists for with nothing.
+	 */
+	isLaneCollapsed(name: string): boolean;
+	setLaneCollapsed(name: string, collapsed: boolean): void;
+	/**
 	 * Which density the dated axis draws at. UI state like the mode and the axis pick:
 	 * per saved view, per device, in the collapse store — never in the `.base`, because
 	 * pane width is a property of the screen in front of you and not of the base.
@@ -371,8 +407,15 @@ export interface BacklogViewHost {
 	 * nothing and resolves false, leaving the undo slot untouched — but a card with no
 	 * date to be placed at still says so out loud, since nothing on screen would
 	 * otherwise tell the reader the drop landed at all.
+	 *
+	 * `when` is this axis's SECOND dimension, and it is what makes this one method rather
+	 * than two: a release on a band answers who by the row it landed in and when by the
+	 * pointer's X, and both halves ride one `ItemWrite` so the pair is one batch, one undo
+	 * and one sentence. Absent from every input that answers only who — Set assignee,
+	 * Alt+Up/Down, the shelf's removal — and absent from a vertical drag too, which plans
+	 * no dates because it displaced none.
 	 */
-	performResourceMove(item: BacklogItem, name: string | null): Promise<boolean>;
+	performResourceMove(item: BacklogItem, name: string | null, when?: ScheduleGesture): Promise<boolean>;
 
 	/**
 	 * Plan and apply the date batch a schedule move means — the ends the item's own
