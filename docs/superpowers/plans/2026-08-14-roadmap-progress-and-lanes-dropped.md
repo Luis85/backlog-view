@@ -821,6 +821,19 @@ One line per surface, at the point where it has both the item and the element it
 	ctx.placed.set(item.file.path, { item, mount: lead, listsChildren: false });
 ```
 
+**And in the same edit, make that row reachable — it is not today.** `renderLaneContextRow` never calls `wireCardActivation`, and `renderTimeline` publishes `cards: bars.map((bar) => bar.item)`, which excludes `lane.context` entirely. So a lane context row cannot be selected, cannot be opened with Enter, and has no menu — while `Opening the work` says Enter opens the note in every projection, **context rows included**, and `Keyboard and menu on the roadmap` extension 2a says the same. That is a pre-existing bug in the resources axis, not something this increment introduces; but this increment is what makes it bite, because match links are `tabindex="-1"` and the menu is their only keyboard route. Adding pointer-only links to an unreachable row would be the exact failure section 3 exists to prevent.
+
+Two changes, both small:
+
+```ts
+	// in renderLaneContextRow, beside the placed registration
+	wireCardActivation(ctx, row, item);
+```
+
+and in `src/view/render/timeline.ts`, where the entry pass builds its result, include the `context` entries' items in `cards` alongside the bars', in the order they draw. Read `drawEntries` and the `cards:` construction at `renderTimeline` before editing: the order of `cards` is the roving keyboard walk's reading order, so a context row must land where it draws, not appended at the end.
+
+**File the bug.** Add `docs/bugs/A lane context row could not be reached.md` in this task's commit, stating what was wrong, the criterion it broke (`Opening the work`), how it was found (review of this increment's plan), and the two call sites. `docs-check.mjs` requires a `type`, `order`, `status` and a parent — model it on an existing note in `docs/bugs/` and hang it under `Showing a resources axis on the roadmap`.
+
 `src/view/render/timeline.ts`, in `renderBarRow`, beside the `renderBarProgress` call Task 3 added:
 
 ```ts
@@ -955,7 +968,7 @@ Add to `test/view/roadmapMatches.test.ts`:
 // rule, re-asserted here because this task adds entries to that menu.
 ```
 
-Drive `buildItemMenu` the way `test/view/roadmapMoves.test.ts` drives it; do not reach into `addMatchSection` directly, or the test proves nothing about the menu a user opens.
+**Drive the menu the way a user opens it, not by calling the builder.** Dispatch `contextmenu` on the row or card and take the menu from `Menu.lastShown`, as `test/view/roadmapMoves.test.ts` does. Calling `buildItemMenu` directly would pass for a surface a keyboard user cannot even select — which is exactly what a lane context row was before Task 4 wired its activation, so this is the assertion that keeps that fix honest. For the lane context row, additionally assert it is in the roadmap's navigable `cards` and that Enter opens its note, so "the menu exists" and "the menu is reachable" are two checks rather than one hope.
 
 - [ ] **Step 2: Run the tests and watch them fail**
 
