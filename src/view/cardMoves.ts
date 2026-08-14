@@ -1,7 +1,7 @@
 import { Notice } from 'obsidian';
 import { BacklogItem } from '../domain/model';
 import { placementEnds, PlacementEnd } from '../domain/itemTypes';
-import { placeItem, plannedEnds } from '../domain/bars';
+import { Placement, placeItem, plannedEnds } from '../domain/bars';
 import { DropTarget } from '../domain/dropTargets';
 import { horizonSource, resourceSource } from '../domain/roadmap';
 import {
@@ -98,10 +98,7 @@ export class CardMoveController {
 		// tell the user to add a date the same release just added. The WORDS are built here
 		// rather than a closure over the item, so what is captured is a string that cannot
 		// go stale behind the write.
-		const stays =
-			name !== null && placeItem(item, plannedEnds(item, when?.plan ?? {})).kind === 'shelf'
-				? `"${item.title}" is assigned to ${name}. Add a start or target date to place it in the row.`
-				: null;
+		const stays = name === null ? null : shelvedWords(item, name, placeItem(item, plannedEnds(item, when?.plan ?? {})));
 		const writes = computeResourceMoveWrites(item, name, when ?? null);
 		if (writes.length === 0) {
 			// 1a says nothing: a bar that stayed exactly where the cursor found it already
@@ -227,4 +224,26 @@ export class CardMoveController {
 		if (applied === null || !applied.changed) row?.classList.remove('pbl-pending');
 		return applied;
 	}
+}
+
+/**
+ * What to say about a card the move leaves on the shelf, or null where it lands in a row.
+ *
+ * Two shapes, and the difference is whether the axis REFUSED something or was given
+ * nothing: with no dates at all the sentence asks for one, which is extension 3c's own
+ * wording; with an unreadable or reversed pair it repeats the shelf's reason instead,
+ * because telling a reader to add a date they already typed sends them looking for a
+ * missing value rather than at the wrong one they can see.
+ *
+ * The reason is REPEATED, never matched on — the same act `render/shelf.ts` performs
+ * when it draws the card's own reason line, and deliberately not the one
+ * `destinationWords` refuses in `interactions/cardDrag.ts`: deciding anything from that
+ * string would make two modules agree about wording neither owns a type for, while
+ * passing it through leaves `bars.ts` its only author.
+ */
+function shelvedWords(item: BacklogItem, name: string, placement: Placement): string | null {
+	if (placement.kind !== 'shelf') return null;
+	const assigned = `"${item.title}" is assigned to ${name}.`;
+	if (placement.reason === null) return `${assigned} Add a start or target date to place it in the row.`;
+	return `${assigned} ${placement.reason}, so it stays on the shelf.`;
 }

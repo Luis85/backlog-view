@@ -108,6 +108,12 @@ instead.
   way 3b announces a write whose visible effect is not the obvious one: naming the
   resource now on the note and that a date is what is still missing to place it. Undo
   still takes the assignee back as one batch.
+- **3d — the card has an assignee and dates the axis REFUSES, so it stays shelved for a
+  reason of its own.** An unreadable end or a target before the start is not the missing
+  date 3c is about: both values are there and one of them is wrong, so the sentence
+  repeats the shelf card's own reason instead of asking for a date the reader already
+  typed. Same write, same undo, same silence about a row nothing entered — only the
+  half that says why is different.
 
 ## Acceptance criteria
 
@@ -117,6 +123,9 @@ instead.
   nothing and keeps the previous undo, but — unlike the bar case — is announced anyway,
   naming the resource and that a date is still missing, since a shelved card that stays
   shelved gives the user no other way to tell the drop landed on an unchanged value.
+- A card that stays shelved because its dates are unreadable or reversed is announced
+  with the shelf's own reason for it, never with 3c's "add a date" — both dates are
+  there, and one of them is the thing to fix.
 - Dragging between rows changes only the assignee; the bar's own dates never change as a
   side effect of which row it lands in.
 - Shelf to row writes the resource's name; row to shelf removes the key rather than

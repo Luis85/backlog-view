@@ -105,6 +105,26 @@ describe('the one method a resource move lands on', () => {
 		);
 	});
 
+	it('names the reason the card is shelved, where the axis refused a date rather than lacking one', async () => {
+		const vault = resourceVault();
+		vault.addFile('Backwards.md', {
+			frontmatter: { type: 'Epic', order: 60, start: '2026-08-10', due: '2026-08-01' },
+		});
+		vault.addFile('Garbled.md', { frontmatter: { type: 'Epic', order: 70, start: 'soon', due: '2026-08-05' } });
+		const { view } = laneRoadmap(vault);
+
+		await view.performResourceMove(view.model?.byPath.get('Backwards.md') as never, 'Bob');
+		await view.performResourceMove(view.model?.byPath.get('Garbled.md') as never, 'Bob');
+
+		// Both dates are there, so "add a start or target date" would send the reader
+		// looking for a value they already typed instead of at the one they can see. The
+		// wording is the shelf card's own reason, repeated rather than restated.
+		expect(Notice.messages).toContain(
+			'"Backwards" is assigned to Bob. Target date precedes the start date, so it stays on the shelf.',
+		);
+		expect(Notice.messages).toContain('"Garbled" is assigned to Bob. Unreadable start date, so it stays on the shelf.');
+	});
+
 	it('says nothing at all when a placed bar is dropped on its own row', async () => {
 		const vault = resourceVault();
 		const { view } = laneRoadmap(vault);
