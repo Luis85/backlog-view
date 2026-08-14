@@ -152,7 +152,16 @@ function measure(dir) {
 	});
 }
 
-const median = (values) => [...values].sort((a, b) => a - b)[values.length >> 1];
+/**
+ * Both middle samples when there are two of them. `--runs=4` is this file's own documented
+ * form, and picking the upper middle there reported 500 for 100/101/500/501 — biasing each
+ * side of an `--against` comparison and the delta between them. (Codex, PR #137.)
+ */
+const median = (values) => {
+	const sorted = [...values].sort((a, b) => a - b);
+	const mid = sorted.length >> 1;
+	return sorted.length % 2 === 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+};
 const spread = (values) => `${Math.min(...values).toFixed(0)}–${Math.max(...values).toFixed(0)}`;
 
 /** Op → the per-run medians, in the order the runs happened. */

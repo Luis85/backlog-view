@@ -29,8 +29,8 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 - **The board and the shelf only draw the cards you can see** — a column, a horizon bucket
   and the shelf now let the browser skip the layout and paint of cards scrolled out of
   view, which the tree's rows have done since 0.7. Measured over ~800 notes in the
-  development harness, switching to the board went from 362ms to 135ms and to the roadmap
-  from 550ms to 198ms. Nothing about what is on screen changes, and the timeline's rows are
+  development harness, switching to the board went from 330ms to 126ms and to the roadmap
+  from 557ms to 203ms. Nothing about what is on screen changes, and the timeline's rows are
   deliberately left as they were — its dependency arrows have to measure them.
 
 ## [0.8.0] - 2026-08-14

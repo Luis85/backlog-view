@@ -14,9 +14,9 @@
 /*
  * The card's half of the rule `.pbl-row` states in `tree.css`: the browser skips layout
  * and paint for a card scrolled out of its column, its bucket or the shelf. Measured with
- * `npm run perf` at ~800 notes, two builds alternated, medians of four: the board switch
- * 362ms → 135ms, the roadmap switch 550ms → 198ms, the deliverables board 35ms → 27ms.
- * What is left is building the DOM, which this does not touch.
+ * `npm run perf` at ~800 notes, two builds one rule apart and alternated, medians of four:
+ * the board switch 330ms → 126ms, the roadmap switch 557ms → 203ms, the deliverables board
+ * 38ms → 28ms. What is left is building the DOM, which this does not touch.
  *
  * It holds only while NOTHING measures a card during a render — a layout read on a
  * skipped card lays that card out by itself, which is the trap `tree.css` records at

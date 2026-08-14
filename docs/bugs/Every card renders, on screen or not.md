@@ -33,35 +33,39 @@ shelf.
 
 ## Measured
 
-`npm run perf -- --notes=800 --runs=4 --against <the harness built before this change>`:
-~800 generated notes over the demo fixture, the two builds **alternated within one loop**
-— the method [[The render is the whole cost of a data update]] insists on, and for its
-reason: this environment's run-to-run swing is larger than several of the numbers below.
-Window 1200×900, which is load-bearing rather than incidental, since what
-`content-visibility` skips is decided by the viewport.
+`npm run perf -- --notes=800 --runs=4 --against <a harness built one rule apart>`: ~800
+generated notes over the demo fixture, the two builds **alternated within one loop** — the
+method [[The render is the whole cost of a data update]] insists on, and for its reason:
+this environment's run-to-run swing is larger than several of the numbers below. Window
+1200×900, which is load-bearing rather than incidental, since what `content-visibility`
+skips is decided by the viewport.
 
 | op | before | after | delta |
 | --- | --- | --- | --- |
-| switch to board | 362 ms (317–369) | **135 ms** (115–145) | −63% |
-| switch to roadmap (buckets + shelf) | 550 ms (515–551) | **198 ms** (180–210) | −64% |
-| switch to deliverables board | 34.9 ms (33–41) | **26.8 ms** (26–27) | −23% |
+| switch to board | 330 ms (319–366) | **126 ms** (120–137) | −62% |
+| switch to roadmap (buckets + shelf) | 557 ms (540–583) | **203 ms** (175–213) | −64% |
+| switch to deliverables board | 38.4 ms (36–41) | **28.0 ms** (27–33) | −27% |
 
 Spreads in brackets, because a delta between two overlapping ones is drift rather than an
-effect — which is exactly what the other rows are. `mount` (+14%), `update` (+11%) and
-`render only` (−9%) all have spreads that cover their own difference, and none of them
+effect — which is exactly what the other rows are. `mount` (−5%), `update` (−2%) and
+`render only` (+2%) all have spreads that cover their own difference, and none of them
 draws a card at all.
 
-**`switch to tree` is the one row that moved without overlapping**: 298 ms (281–304) to
-221 ms (209–242), −26%, on a projection this rule cannot touch. The explanation is the
+**`switch to tree` is the one row that moved without overlapping**: 293 ms (282–338) to
+232 ms (215–253), −21%, on a projection this rule cannot touch. The explanation is the
 sample's own shape rather than the tree: `switch to tree` is prepared by switching to the
 BOARD, untimed, and the timed render's height read then flushes whatever layout that board
 left pending. With its cards skipped there is less of it to finish. So the row is partly a
 measurement of the board it was prepared from, and it is left in the table as what it is.
 
-An earlier revision of this note reported 368/418/35 ms against 138/154/27 ms from a
-hand-rolled loop at the browser's default 800×600 window and with the shelf collapsed —
-the same three findings, on a smaller sample, by an instrument nobody else could re-run.
-`npm run perf` is what replaced it, and the table above is its output.
+**Three revisions of this table, and each instrument was wrong in a smaller way than the
+last.** The first was a hand-rolled shell loop at the browser's default 800×600 window with
+the shelf collapsed. The second was `npm run perf`, whose `median` picked the upper middle
+of an even sample — so every number in a `--runs=4` comparison was biased upward on both
+sides (Codex, PR #137). The third is the table above: same tool, both middles averaged, and
+the baseline is now the SAME bundle with this one rule stripped rather than an older build.
+The finding survived all three, which is the only reason the earlier ones read as sloppy
+rather than as a retraction.
 
 **Still linear, still every card built.** This removes the LAYOUT and PAINT half for a
 card nobody can see and none of the DOM-building half; the board at ~800 cards still
