@@ -129,6 +129,9 @@ export function crossedAbsences(span: DateSpan, absences: Absence[]): Absence[] 
  * Private, and it was `pendingAbsences` — an exported COUNT — until the band header stopped
  * reporting one (2026-08-14). What the header shows now is weeks, so the count had no caller
  * left and only the filter survived.
+ *
+ * `today` is a parameter because nothing in this layer reads a clock — `todayCivil()` is
+ * computed in the view and injected, which is what lets a test say which day today is.
  */
 function isPending(absence: Absence, today: CivilDate): boolean {
 	return daysBetween(today, absence.target) >= 0;
@@ -169,13 +172,13 @@ export function absenceTitle(facts: AbsenceFacts): string {
  * **This is not the lane-packing extension 4a refused, and the difference is the whole
  * argument.** That refusal's reason was "a packing rule is a second geometry to keep in step
  * with the one the bars use". This returns `Absence[][]` and computes no pixel: it runs over
- * ABSENCES only and never over bars, so every bar is still placed by `barGeometry` against
- * the same window, one row per `timelineRows` row, with nothing moved aside for anything.
- * There is one geometry and a grouping decided before it.
+ * ABSENCES only and never over bars, and calls neither `barGeometry` nor anything that draws.
  *
- * What 4a was protecting survives in a sharper form: nothing is ever hidden or merged by
- * packing. Two stretches that share a day get two sub-lanes and the header grows to hold
- * them both.
+ * What 4a was protecting is therefore a commitment owed by whatever renders this, not a fact
+ * about this function: the drawer must still place every bar by `barGeometry` against the
+ * one shared window, unmoved by any absence grouping, and must give two stretches that share
+ * a day two sub-lanes rather than hiding or merging either. Nothing here checks that yet —
+ * `packAbsences` has no caller outside its own test as of this commit.
  *
  * Greedy FIRST-fit rather than best-fit, deliberately: a long stretch then holds sub-lane 0
  * and everything short slots in beneath it, instead of each new stretch pushing the pile

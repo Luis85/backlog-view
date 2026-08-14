@@ -223,6 +223,11 @@ export function renderLaneHead(
  */
 function laneReadout(lane: ResourceLane, today: CivilDate): string {
 	const items = `${lane.bars.length} item${lane.bars.length === 1 ? '' : 's'}`;
+	// Known-wrong stopgap, not a finished readout: `away` is now WEEKS (`awayWeeks`), but the
+	// label below still says "absence" — stale from when `away` counted stretches. Reads as a
+	// correct string on every fixture today, which is what makes it worth flagging rather than
+	// leaving to be noticed: the task that rewrites this whole readout into an item count and
+	// an away-weeks pill (`${away} wk away`) replaces this line and the string together.
 	const away = lane.absences.length === 0 ? 0 : awayWeeks(lane.absences, today);
 	if (away === 0) return items;
 	return `${items} / ${away} absence${away === 1 ? '' : 's'}`;
