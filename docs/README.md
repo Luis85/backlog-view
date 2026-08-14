@@ -525,7 +525,7 @@ each was rejected, where "simpler" is not a reason and "cost N and bought a rena
   | `type` | every backlog note | One of the vocabulary's fixed names. ADRs carry none |
   | `parent` | everything but a root — an `Epic` by position, a `Milestone` by nature | A wikilink, `"[[Note name]]"`, quoted so YAML keeps it |
   | `order` | every backlog note | The rank among siblings. Unique within a group — the register must not demonstrate the one ranking limitation the plugin has |
-  | `status` | every backlog note | `Open`, `Active` or `Done` |
+  | `status` | every backlog note | `Open`, `Active`, `Done`, or `Dropped` — refused, kept for the record |
   | `priority` | Tasks, Issues, Bugs | `P1`–`P3`. Absent means nobody has judged it |
   | `area` | Tasks, Issues, Bugs | Where the work sits: `testing`, `design`, `verification`, … |
   | `created` / `closed` | Tasks, Issues, Bugs | Dates, `YYYY-MM-DD` |
