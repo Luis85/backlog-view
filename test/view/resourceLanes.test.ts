@@ -5,6 +5,8 @@ import { shelfRemoval } from '../../src/view/render/shelf';
 import { clickExpandAll, Harness, makeView, useViewHarness } from '../helpers/view';
 import { gripNames, laneCountOf, laneNames, laneOrder, lanesOf, rowFor, shelfTitles } from '../helpers/roadmap';
 import { resourceVault } from '../helpers/resources';
+import { addDays, formatCivil } from '../../src/domain/timeline';
+import { readDate, todayStamp } from '../../src/domain/noteFields';
 
 useViewHarness();
 
@@ -22,6 +24,28 @@ const RESOURCES = {
 	targetProperty: 'note.due',
 	assigneeProperty: 'note.assignee',
 };
+
+/**
+ * `todayCivil()` reads the live clock and no test fakes it, so a fixture that has to be
+ * "before today" or "after today" is built from the same clock — the pattern
+ * `test/view/timelineLeadGeometry.test.ts` uses for the today line.
+ */
+const TODAY = readDate(todayStamp()).value ?? { year: 2026, month: 1, day: 1 };
+const dayFromToday = (offset: number): string => formatCivil(addDays(TODAY, offset));
+
+/** One resource with one bar, plus whichever stretches a test wants to count. */
+function countingVault(stretches: Array<{ title: string; start: string; target: string }>): FakeVault {
+	const vault = new FakeVault();
+	vault.addFile('Work.md', {
+		frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
+	});
+	for (const one of stretches) {
+		vault.addFile(`${one.title}.md`, {
+			frontmatter: { type: 'Absence', assignee: 'Alice', start: one.start, due: one.target },
+		});
+	}
+	return vault;
+}
 
 /**
  * A roadmap opened on the resources axis, with Alice and Bob declared. `only` narrows
@@ -80,8 +104,8 @@ describe('the resources axis on screen', () => {
 	it('counts result bars on the header, and shelves what has no row to sit in', () => {
 		const harness = laneRoadmap(resourceVault());
 		const [alice, bob] = lanesOf(harness.containerEl);
-		expect(laneCountOf(alice)).toBe('2');
-		expect(laneCountOf(bob)).toBe('0');
+		expect(laneCountOf(alice)).toBe('2 items');
+		expect(laneCountOf(bob)).toBe('0 items');
 		// `Nobody` names no resource; `Undated` names one and has no date to be placed at.
 		expect(shelfTitles(harness.containerEl).sort()).toEqual(['Nobody', 'Undated']);
 	});
@@ -313,7 +337,56 @@ describe('a context row inside a resource row', () => {
 		const harness = laneRoadmap(contextVault(), { only: ['Result.md'], focus: 'Epic' });
 
 		// Placement, not population — the bucket axis's rule over a different property.
-		expect(laneCountOf(lanesOf(harness.containerEl)[0])).toBe('0');
+		expect(laneCountOf(lanesOf(harness.containerEl)[0])).toBe('0 items');
 		expect(shelfTitles(harness.containerEl)).toEqual([]);
+	});
+});
+
+describe('the band header’s readout', () => {
+	it('names the pending absences beside the items, and only the pending ones', () => {
+		// The filter on today is the whole reason this readout exists: the rows below draw
+		// every stretch a resource ever had, so a finished one is exactly what the reader
+		// does not want counted.
+		const vault = countingVault([
+			{ title: 'Over', start: dayFromToday(-20), target: dayFromToday(-10) },
+			{ title: 'Ahead', start: dayFromToday(5), target: dayFromToday(9) },
+		]);
+		const harness = laneRoadmap(vault);
+
+		expect(laneCountOf(lanesOf(harness.containerEl)[0])).toBe('1 item / 1 absence');
+	});
+
+	it('pluralizes each half on its own count', () => {
+		const vault = countingVault([
+			{ title: 'Ahead', start: dayFromToday(5), target: dayFromToday(9) },
+			{ title: 'Later', start: dayFromToday(20), target: dayFromToday(24) },
+		]);
+		vault.addFile('More work.md', {
+			frontmatter: { type: 'Epic', order: 20, assignee: 'Alice', start: '2026-08-02', due: '2026-08-04' },
+		});
+		const harness = laneRoadmap(vault);
+
+		expect(laneCountOf(lanesOf(harness.containerEl)[0])).toBe('2 items / 2 absences');
+	});
+
+	it('drops the absence half entirely with nothing pending', () => {
+		// `0 absences` reports nothing the reader needed and would sit on nearly every band.
+		const vault = countingVault([{ title: 'Over', start: dayFromToday(-20), target: dayFromToday(-10) }]);
+		const harness = laneRoadmap(vault);
+
+		expect(laneCountOf(lanesOf(harness.containerEl)[0])).toBe('1 item');
+	});
+
+	it('keeps the readout on a COLLAPSED band, where no stretch is drawn at all', () => {
+		// The one case the header is the only surface for, and the reason this ships at all:
+		// `laneEntries` skips the whole band, so a folded roster shows no hatch anywhere.
+		// Deliberately the opposite of the legend's rule, which keys what the pass PAINTED.
+		const vault = countingVault([{ title: 'Ahead', start: dayFromToday(5), target: dayFromToday(9) }]);
+		const harness = laneRoadmap(vault);
+
+		harness.view.setLaneCollapsed('Alice', true);
+
+		expect(harness.containerEl.querySelectorAll('.pbl-absence')).toHaveLength(0);
+		expect(laneCountOf(lanesOf(harness.containerEl)[0])).toBe('1 item / 1 absence');
 	});
 });

@@ -5,9 +5,10 @@ import { drawIcon } from './icons';
 import { renderBadge, renderChevron, renderTitleText } from './rows';
 import { promptAddAbsence, showAbsenceMenu } from '../interactions/absences';
 import { BacklogViewHost } from '../host';
-import { Absence, absencesConfigured } from '../../domain/absences';
+import { Absence, absencesConfigured, pendingAbsences } from '../../domain/absences';
 import { timelineRows, TimelineRow } from '../../domain/bars';
 import { BacklogItem } from '../../domain/model';
+import { CivilDate } from '../../domain/noteFields';
 import { ResourceLane } from '../../domain/roadmap';
 import {
 	BarGeometry,
@@ -171,20 +172,20 @@ export interface LaneFolds {
  * has no opinion about what dropping on one should write. Not being a container is what
  * makes that the caller's problem per ELEMENT rather than once per band.
  */
-export function renderLaneHead(ctx: RowContext, content: HTMLElement, lane: ResourceLane, collapsed: boolean): HTMLElement {
+export function renderLaneHead(
+	ctx: RowContext,
+	content: HTMLElement,
+	lane: ResourceLane,
+	collapsed: boolean,
+	today: CivilDate,
+): HTMLElement {
 	const head = content.createDiv({
 		cls: 'pbl-lane-head' + (lane.declared ? '' : ' pbl-lane-undeclared') + (collapsed ? ' pbl-lane-collapsed' : ''),
 	});
 	const lead = head.createDiv({ cls: 'pbl-timeline-lead' });
 	renderLaneChevron(ctx.host, lead, lane, collapsed);
 	lead.createSpan({ cls: 'pbl-lane-name', text: lane.name });
-	// The count is RESULT bars, and there is deliberately NO glyph beside it saying the band
-	// holds an absence. One was built on 2026-08-14 and removed the same day, on the reason it
-	// was reported for: the stretch's own hatched row is directly beneath the header, so the
-	// "0" is never read alone, and a fourth `user-x` in one lead competed with the Add absence
-	// button that reveals on hover in the same place. Do not add it back without a reason the
-	// row below does not already give.
-	lead.createSpan({ cls: 'pbl-lane-count', text: String(lane.bars.length) });
+	lead.createSpan({ cls: 'pbl-lane-count', text: laneReadout(lane, today) });
 	if (!lane.declared) {
 		const mark = lead.createSpan({ cls: 'pbl-lane-stray' });
 		drawIcon(mark, 'circle-help');
@@ -196,6 +197,35 @@ export function renderLaneHead(ctx: RowContext, content: HTMLElement, lane: Reso
 	renderLaneAbsenceAdd(ctx, lead, lane);
 	head.createDiv({ cls: 'pbl-timeline-track' });
 	return head;
+}
+
+/**
+ * What a band's header reports: its result bars, and the absences that have not ended.
+ *
+ * **The item half is RESULT bars and stays so**, the rule a bucket's count already keeps —
+ * a context row placed here is placement, not population, and an absence is furniture of
+ * the row. Only its spelling changed on 2026-08-14; a band whose only content is an absence
+ * still reads `0 items`.
+ *
+ * **The absence half is a glyph's refusal answered in words.** One was built on 2026-08-14
+ * and removed the same day, for two reasons that still hold: the stretch's own hatched row
+ * sits directly beneath the header, and a fourth `user-x` in this lead competed with the
+ * Add absence button that reveals on hover in the same place. The glyph stays refused. What
+ * words buy that the mark could not is the two things the rows below cannot say — a
+ * FILTER on today, since the band draws every stretch a resource ever had, and a count that
+ * survives folding, since `laneEntries` skips a collapsed band's absences entirely.
+ *
+ * It is dropped at zero rather than reading `0 absences`, which would sit on nearly every
+ * band reporting nothing anyone asked for.
+ *
+ * Plurals inline, this codebase's own idiom at eleven other call sites rather than a shared
+ * helper for two words.
+ */
+function laneReadout(lane: ResourceLane, today: CivilDate): string {
+	const items = `${lane.bars.length} item${lane.bars.length === 1 ? '' : 's'}`;
+	const away = pendingAbsences(lane.absences, today);
+	if (away === 0) return items;
+	return `${items} / ${away} absence${away === 1 ? '' : 's'}`;
 }
 
 /**

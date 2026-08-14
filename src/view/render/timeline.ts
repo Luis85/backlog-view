@@ -354,7 +354,7 @@ interface EntryPass {
  */
 function drawEntries(entries: TimelineEntry[], pass: EntryPass): void {
 	const { ctx, mounts, window, drawn } = pass;
-	const { scale, laneElement } = pass.drawing;
+	const { scale, laneElement, today } = pass.drawing;
 	let drawnRows = 0;
 	let lane: ResourceLane | null = null;
 	// Both things a line of a band owes, from the ONE place a line is finished: whose row
@@ -372,7 +372,7 @@ function drawEntries(entries: TimelineEntry[], pass: EntryPass): void {
 	for (const entry of entries) {
 		if (entry.kind === 'lane') {
 			lane = entry.lane;
-			inBand(renderLaneHead(ctx, mounts.content, entry.lane, entry.collapsed), false);
+			inBand(renderLaneHead(ctx, mounts.content, entry.lane, entry.collapsed, today), false);
 			continue;
 		}
 		if (entry.kind === 'absence') {

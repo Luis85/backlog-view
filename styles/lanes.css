@@ -39,7 +39,14 @@
 	white-space: nowrap;
 }
 
+/* The label is much wider than the bare number it replaced, in a lead column the user can
+   resize (`renderLeadResize`). Refusing to shrink is the whole of "the name truncates
+   first": `.pbl-lane-name` above already ellipsizes and shrinks at the flex default, so no
+   breakpoint and no measurement is needed — and a third fit mechanism beside `columnFit`
+   and `syncToolbarFit` was refused for exactly that reason. */
 .pbl-lane-count {
+	flex: 0 0 auto;
+	white-space: nowrap;
 	color: var(--text-muted);
 	font-weight: var(--font-normal);
 }

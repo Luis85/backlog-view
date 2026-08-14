@@ -99,8 +99,10 @@ describe('an absence on the resources axis', () => {
 	it('counts for nothing on the header, and takes no stripe', () => {
 		const { containerEl } = laneRoadmap(absenceVault());
 
-		// Result bars only, the rule a context row already keeps.
-		expect(laneCountOf(lanesOf(containerEl)[0])).toBe('1');
+		// Result bars only, the rule a context row already keeps. No absence half here
+		// because `absenceVault`'s stretch ENDED (2026-08-06) and only pending ones are
+		// counted — the readout's own cases are driven in `resourceLanes.test.ts`.
+		expect(laneCountOf(lanesOf(containerEl)[0])).toBe('1 item');
 		// The stripe alternates over WORK rows: an absence is furniture of the row, so the
 		// one work row beneath it is still the first of its band.
 		expect(containerEl.querySelector('.pbl-absence-row')?.classList.contains('pbl-row-even')).toBe(false);

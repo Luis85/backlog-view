@@ -486,7 +486,7 @@ describe('write safety with context rows, across the resources axis’s entry po
 		// what the Base returned.
 		expect(laneNames(containerEl)).toEqual(['Sam']);
 		const sam = lanesOf(containerEl)[0];
-		expect(laneCountOf(sam)).toBe('1');
+		expect(laneCountOf(sam)).toBe('1 item');
 	});
 
 	it('never lets a context value reach the menu the drag cannot reach either', () => {
