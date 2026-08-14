@@ -183,6 +183,22 @@ describe('what a bar SAYS it costs to cross an absence', () => {
 		expect(row?.querySelector('.pbl-days-lost')?.textContent).toBe('3d lost');
 	});
 
+	it('puts the token INSIDE the title label, not beside the bar with its own position', () => {
+		// Every assertion above queries `.pbl-days-lost` from the ROW, which the shape this
+		// feature carried and rejected two rounds ago — an absolutely-positioned SIBLING of
+		// the bar with its own `placeSpan` copy — would satisfy unchanged: that element was
+		// a row descendant too. The whole "no second width check, `renderBarLabel` dropping
+		// its label is the entire suppression rule" argument rests on this containment
+		// specifically, so it is asked of the LABEL, not the row.
+		const { containerEl } = laneRoadmap(absenceVault());
+		const label = rowFor(containerEl, 'Work')?.querySelector<HTMLElement>('.pbl-bar-label');
+		if (!label) throw new Error('no bar label on Work');
+
+		const token = label.querySelector('.pbl-days-lost');
+		expect(token, '.pbl-days-lost is not a descendant of .pbl-bar-label').not.toBeNull();
+		expect(token?.closest('.pbl-bar-label')).toBe(label);
+	});
+
 	it('says so differently when the stretch covers the bar whole', () => {
 		const vault = new FakeVault();
 		vault.addFile('Short.md', {

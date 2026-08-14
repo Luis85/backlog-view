@@ -294,6 +294,50 @@ describe('the furniture declarations whose comments call them load-bearing', () 
 		expect(Number(maxWidth[1]) + 2 * Number(padding[1]) * 4).toBe(LABEL_RESERVE_PX);
 	});
 
+	it('lays the label out as a flex row, not a block the ellipsis can only apply to as a whole', () => {
+		// Text check, same reach as the pair above: it sees the declaration in the rule, it
+		// cannot see a later rule overriding it, and it cannot tell you what the label
+		// actually renders as. Without `display: flex` the title and the token
+		// (`.pbl-bar-label-title`, `.pbl-days-lost`) share one line box, and
+		// `text-overflow: ellipsis` truncates at the LINE's end regardless of which child
+		// put it there — the defect a long title reproduced by evicting the token
+		// entirely, `drawn.daysLost` still true for a mark nothing on screen made.
+		expect(ruleBody('.pbl-bar-label')).toContain('display: flex;');
+	});
+
+	it('gives the title all four declarations a truncating flex child needs — min-width: 0 above all', () => {
+		// The other three (`overflow`, `text-overflow`, `white-space`) are what make a
+		// truncating label a truncating label at all; `min-width: 0` is the one whose
+		// ABSENCE silently reproduces the eviction bug, because a flex item's default
+		// `min-width: auto` resolves to its own content size and refuses to shrink below
+		// it — the title would then push `.pbl-days-lost` out of the box instead of
+		// truncating around it, and nothing else here would say why it came back.
+		const body = ruleBody('.pbl-bar-label-title');
+		for (const declaration of ['overflow: hidden;', 'text-overflow: ellipsis;', 'white-space: nowrap;', 'min-width: 0;']) {
+			expect(body, `.pbl-bar-label-title states no ${declaration}`).toContain(declaration);
+		}
+	});
+
+	it('ties the 118px content box absenceCost’s own comment names to the declarations that produce it', () => {
+		// `.pbl-bar-label` states no `box-sizing` of its own — Obsidian's own global reset
+		// (`* { box-sizing: border-box }`, real app.css) is what makes it border-box, so
+		// `max-width` already INCLUDES the padding rather than adding to it. For the
+		// `after` variant: 144 (max-width) − 18 (its own `padding-left`, which overrides
+		// the base rule's left side) − 8 (the base rule's `padding: 0 var(--size-4-2)`,
+		// unchanged on the right) = 118 — the number `absenceCost`'s own comment
+		// (`src/view/render/timeline.ts`) spends on the short tokens' whole budget.
+		// Nothing before this tied that number to the three declarations that produce it,
+		// so changing any one of them would leave the comment wrong with nothing red.
+		const maxWidth = /max-width:\s*(\d+)px/.exec(ruleBody('.pbl-bar-label'));
+		const padding = /padding:\s*0\s+var\(--size-4-(\d+)\)/.exec(ruleBody('.pbl-bar-label'));
+		const afterPaddingLeft = /padding-left:\s*(\d+)px/.exec(ruleBody('.pbl-bar-label-after'));
+		if (!maxWidth || !padding || !afterPaddingLeft) {
+			throw new Error('missing max-width, base padding, or the after variant’s own padding-left');
+		}
+		const contentBox = Number(maxWidth[1]) - Number(afterPaddingLeft[1]) - Number(padding[1]) * 4;
+		expect(contentBox).toBe(118);
+	});
+
 	it('takes the labels off the grid while a drag is live', () => {
 		// The other half of `timelineFurniture.test.ts`'s "declutters while a drop is
 		// being aimed": that one drives the class onto the view, this one is the rule the
@@ -390,6 +434,18 @@ describe('the absence marks are drawn from the content palette', () => {
 			expect(value, `.pbl-legend-days-lost states no ${property}`).toBeDefined();
 			expect(resolvesValue(value as string, values), `${property}: ${value} does not resolve`).toBe(true);
 		}
+	});
+
+	it('refuses the days-lost token any shrink, load-bearing twice over', () => {
+		// `.pbl-bar-label` is a flex row now (`styles/timelineFurniture.css`) shared with
+		// `.pbl-bar-label-title`, and this is the OTHER child's own refusal — without it
+		// the flex algorithm would take space from either child impartially, including
+		// this one, which has no `text-overflow` of its own to fall back on and would
+		// just clip mid-token. Load-bearing a second way too: `white-space: nowrap` moved
+		// off the label onto the title span when the two split, so this `flex: 0 0 auto`
+		// is now the only thing stopping the token's own short text wrapping across two
+		// lines in a narrow flex row.
+		expect(bodyOf(lanes, '.pbl-days-lost', 'styles/lanes.css')).toMatch(/flex\s*:\s*0\s+0\s+auto/);
 	});
 
 	it('draws the stretch at the height its sub-lane pitch was sized for', () => {
