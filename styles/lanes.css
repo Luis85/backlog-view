@@ -8,8 +8,18 @@
 	display: flex;
 	align-items: stretch;
 	background-color: var(--background-secondary);
-	border-bottom: 1px solid var(--background-modifier-border);
 	font-weight: var(--font-semibold);
+}
+
+/* The band's separator, drawn by the header's CHILDREN rather than by the header itself.
+   A `border-bottom` on the header sits outside the box its children stretch to fill, so the
+   lead column — the one thing here that is sticky and above the grid's marks — did not
+   cover it, and a scrolled-past today line drew a red tick through the separator on every
+   band. The line is the same line; which element paints it decides whether the lead can
+   sit over its own segment. */
+.pbl-lane-head > .pbl-timeline-lead,
+.pbl-lane-head > .pbl-timeline-track {
+	border-bottom: 1px solid var(--background-modifier-border);
 }
 
 /* The band has to reach the header's own lead too, or the sticky lead column keeps
@@ -46,21 +56,24 @@
 	color: var(--text-muted);
 }
 
-/* A context row in a lane draws no bar, so its track is empty on purpose — the muting is
-   what says the row is here to place its children rather than to be read as a plan. */
-.pbl-lane-context {
+/* Muting is done to a row's CONTENT, never to the row — see `.pbl-absence-row` below for
+   the rule and what breaks without it. A context row draws no bar, so its track is empty on
+   purpose, and the muting is what says the row is here to place its children rather than to
+   be read as a plan. */
+.pbl-lane-context .pbl-timeline-lead > * {
 	opacity: 0.65;
 }
 
-/* A row header's own controls — New, and Add absence — `.pbl-bucket-add`'s pair in
-   `styles/roadmap.css`, over a row instead of a column. Hidden until the row is hovered or
+/* A row header's own controls — Add absence, and nothing else since the row's New button
+   went (a resource's row is not where work is created). `.pbl-bucket-add`'s shape in
+   `styles/roadmap.css`, over a row instead of a column, hidden until the row is hovered or
    the button itself is focused, which is what keeps the header readable at a glance.
 
-   A style hook shared by both, deliberately separate from the identity classes
-   (`.pbl-lane-add`, `.pbl-lane-absence-add`) that say WHICH control this is. They were one
-   class until Add absence arrived, and every selector naming `.pbl-lane-add` then matched
-   two different buttons — which is a real defect and not only a test's problem: the next
-   selector written for "the row's New button" would silently reach the other one too. */
+   A style hook kept SEPARATE from the identity class (`.pbl-lane-absence-add`) that says
+   which control this is, even now that there is one of them: the pair collided once
+   already — both buttons shared `.pbl-lane-add` and every selector written for one
+   silently reached the other — and the separation is what stops the next control added
+   here from reopening it. */
 .pbl-lane-ctl {
 	flex: 0 0 auto;
 	border: none;
@@ -130,33 +143,57 @@
 	opacity: 0.35;
 }
 
-/* An unavailable stretch. Hatched rather than filled, and muted rather than coloured: a
-   bar is work somebody planned and this is the absence of any, so the two must not read
-   alike at a glance — the same argument `.pbl-bar-inferred` makes for outlining a span
-   the view derived rather than one a note stated. It carries no state colour, no grip and
-   no connector, because none of those means anything here. How it reads against a themed
-   background, and against a bar it overlaps, is a live-vault check. */
+/* An unavailable stretch. Hatched rather than filled, and never state-coloured: a bar is
+   work somebody planned and this is the absence of any, so the two must not read alike at a
+   glance — the same argument `.pbl-bar-inferred` makes for outlining a span the view derived
+   rather than one a note stated. It carries no state colour, no grip and no connector,
+   because none of those means anything here.
+
+   **Drawn from a TEXT token, never from a `--background-modifier-*` one.** That second
+   palette is what `.pbl-grid-line` is made of and the family `.pbl-weekend-layer` draws
+   from, so a mark built out of it can never out-read the decoration it sits on. That is not
+   a preference: it shipped, and was reported from a light-mode vault at 382 results as three
+   stretches fainter than the weekend shading behind them. An absence is CONTENT. The muting
+   this row still wants belongs to its LEAD, below.
+
+   14px, matching `.pbl-bar`: 12px was saying "lesser" as well as "different" and only the
+   second was intended. How the hatch reads against a themed background, and against a bar
+   it overlaps, is a live-vault check. */
 .pbl-absence {
 	position: absolute;
 	top: 50%;
 	transform: translateY(-50%);
 	left: var(--pbl-bar-left);
 	width: var(--pbl-bar-width);
-	height: 12px;
+	height: 14px;
 	border-radius: var(--radius-s);
-	border: 1px solid var(--background-modifier-border);
+	border: 1px solid var(--text-muted);
 	background-image: repeating-linear-gradient(
 		45deg,
-		var(--background-modifier-border) 0,
-		var(--background-modifier-border) 4px,
+		var(--text-muted) 0,
+		var(--text-muted) 4px,
 		transparent 4px,
 		transparent 8px
 	);
 }
 
-/* Muted like a context row, and for a related reason: it is here to say what the row
-   cannot take, not to be read as part of the plan. */
-.pbl-absence-row {
+/* Muted like a context row, and for a related reason: the row is here to say what cannot be
+   taken on, not to be read as part of the plan.
+
+   The MARK is deliberately not in this list any more. It used to be, and it was dimming by a
+   fifth the one thing on the row that has to be seen — muting the row's NAME says "this is
+   furniture", muting the stretch says "this is faint", and only the first was meant.
+
+   **On the row's CONTENT, never on the row.** `opacity` below 1 does two things to a row
+   here and both are wrong: it makes the row's own sticky lead column TRANSLUCENT, so a
+   scrolled-past today line and the gridlines beneath it show through the names; and it
+   creates a stacking context, which takes the lead's `z-index: 2` out of the grid's layer
+   order and drops the whole row beneath the full-height marks. Reported from a vault as
+   "the things underneath the resources columns are shining through", with the today line
+   running straight through three rows of names. The lead column is the one part of this
+   grid that must stay opaque at every scroll position, and a rule that mutes a row is one
+   `opacity` away from making it a window. */
+.pbl-absence-row .pbl-timeline-lead > * {
 	opacity: 0.8;
 }
 

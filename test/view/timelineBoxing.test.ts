@@ -47,6 +47,46 @@ describe('the two boxes sized from TypeScript arithmetic', () => {
 		// 6px right of the full-height line drawn for the same milestone on the same day.
 		expect(ruleBody('.pbl-bar.pbl-bar-milestone')).toContain('translateX(-50%)');
 	});
+
+	it('never dims a row that carries the sticky lead column', () => {
+		// `opacity` below 1 on a ROW does two things here and both are wrong: the lead column
+		// it contains goes translucent, so a scrolled-past today line and the gridlines show
+		// through the names; and the row becomes a stacking context, which takes the lead's
+		// `z-index: 2` out of the grid's layer order entirely. Reported from a vault as "the
+		// things underneath the resources columns are shining through". Muting belongs to a
+		// row's CONTENT, and this refuses the shape rather than the symptom — a text check
+		// over the stylesheet, exactly like the box-sizing pair above, which cannot tell you
+		// what the pane looks like and can refuse the declaration that made it look wrong.
+		const lanes = readFileSync(new URL('../../styles/lanes.css', import.meta.url), 'utf8');
+		// Every selector that dims. A ROW selector is one naming a row class and nothing
+		// beneath it — `.pbl-absence-row .pbl-timeline-lead > *` is CONTENT, and is exactly
+		// the shape this rule asks for.
+		const rowClass = /^\.pbl-(absence-row|lane-context|lane-head|timeline-row)\b[^\s>]*$/;
+		const dimmed = [...lanes.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+			.filter((rule) => /opacity:\s*0?\.\d/.test(rule[2]))
+			.flatMap((rule) => rule[1].split(','))
+			.map((selector) => selector.trim().split('\n').pop()?.trim() ?? '');
+
+		expect(dimmed.filter((selector) => rowClass.test(selector))).toEqual([]);
+		// Not vacuous: the muting those rows need is still declared, on their content.
+		expect(dimmed).toContain('.pbl-absence-row .pbl-timeline-lead > *');
+	});
+
+	it('lays a row out from being a ROW, never from being a card', () => {
+		// Every row of this grid is a sticky lead beside a day track, and that geometry has
+		// to come from `.pbl-timeline-row` alone. Attached to `.pbl-card.pbl-timeline-row`
+		// it reached only the rows that are also cards — so an absence stretch, which is
+		// deliberately not a `BacklogItem` and so deliberately not a card, had no flex
+		// context at all: its lead and its track stacked as blocks, and the stripe drew on
+		// the line BELOW the name of the person it belongs to. Reported from a vault, and
+		// invisible to every other test here, since jsdom lays nothing out.
+		//
+		// The reach is a text check, exactly as the box-sizing pair above: it sees the
+		// declaration in the rule and cannot tell you the row came out on one line. What it
+		// refuses is the shape that broke — a layout gated on a class only some rows carry.
+		expect(ruleBody('.pbl-timeline-row')).toContain('display: flex;');
+		expect(bodyOf(css, '.pbl-card.pbl-timeline-row', 'styles/timeline.css')).not.toContain('display');
+	});
 });
 
 /**
@@ -270,6 +310,47 @@ describe('the furniture declarations whose comments call them load-bearing', () 
  * nor measure the contrast between them — that stays the live-vault question in
  * `docs/tests/suites/Smoke test the roadmap.md`.
  */
+/**
+ * The stretch a resource is away for is CONTENT, and it was drawn from the palette that
+ * means decoration — `--background-modifier-border`, which is what `.pbl-grid-line` is made
+ * of and the family `.pbl-weekend-layer` draws from. So it could not out-read the shading
+ * behind it, which is exactly how it was reported: a light-mode vault at 382 results, three
+ * stretches fainter than the weekend banding they sat on.
+ *
+ * Text checks, and their reach is exactly that: they read the tokens each rule names. They
+ * cannot tell you what those tokens resolve to in a theme, nor measure the contrast between
+ * them — that is the live-vault question `docs/tests/suites/Smoke test the roadmap.md`
+ * carries.
+ */
+describe('the absence marks are drawn from the content palette', () => {
+	const lanes = readFileSync(new URL('../../styles/lanes.css', import.meta.url), 'utf8');
+	const timeline = readFileSync(new URL('../../styles/timeline.css', import.meta.url), 'utf8');
+
+	/** Every custom property one rule names. */
+	function tokens(css: string, selector: string, file: string): string[] {
+		return [...bodyOf(css, selector, file).matchAll(/var\(\s*(--[\w-]+)/g)].map((match) => match[1]);
+	}
+
+	it('draws the stretch from a text token and never from the decoration palette', () => {
+		const named = tokens(lanes, '.pbl-absence', 'styles/lanes.css');
+		// The instrument's own check, and not a nicety: a pattern that matched nothing would
+		// satisfy the refusal below for any stylesheet at all, including an empty one.
+		expect(named.filter((token) => token.startsWith('--text-')), '.pbl-absence names no text token').not.toHaveLength(0);
+		for (const token of named) {
+			expect(token, `.pbl-absence draws from the decoration palette: ${token}`).not.toMatch(/^--background-modifier/);
+		}
+	});
+
+	it('draws the stretch at the height a bar is drawn at', () => {
+		// 12px against a bar's 14px was saying "lesser" as well as "different", and only the
+		// second was intended: what tells work from the absence of work is the hatch.
+		const height = (css: string, selector: string, file: string) => /height:\s*(\d+)px/.exec(bodyOf(css, selector, file))?.[1];
+		const bar = height(timeline, '.pbl-bar', 'styles/timeline.css');
+		expect(bar, '.pbl-bar states no height').toBeDefined();
+		expect(height(lanes, '.pbl-absence', 'styles/lanes.css')).toBe(bar);
+	});
+});
+
 describe('the resize grip is ringed in a colour other than its own fill', () => {
 	const css = readFileSync(new URL('../../styles/timeline.css', import.meta.url), 'utf8');
 
