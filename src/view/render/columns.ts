@@ -481,27 +481,60 @@ function renderTagCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogIt
 	return item.tags.length > 0;
 }
 
+/** What an item's rollup says, in one place — see {@link rollupReport}. */
+export interface RollupReport {
+	/** Face text: "3/8" with a workflow, "8" without one, '' for a leaf. */
+	label: string;
+	/** Long form for a tooltip, or '' when there is no ratio to state. */
+	tooltip: string;
+	/** Done share 0..1, or null when no workflow makes one meaningful. */
+	ratio: number | null;
+}
+
+/**
+ * What an item's rollup SAYS — the guard, the ratio and both strings, in one place.
+ *
+ * Two renderers read this: the tree's rollup column below, and `renderBarProgress` for
+ * the roadmap's dated rows. They draw different DOM — a meta column, versus a band
+ * inside a bar and a count in a lead cell — but they must never disagree about the
+ * words or about when there is nothing to say, which is what
+ * `Progress on the bar` guarantees. Copies of a string are how that guarantee rots.
+ *
+ * Null means the rollup is OFF for this view — no workflow and no counts configured, or
+ * a projection with no rollup — and nothing is drawn. An empty `label` is the other
+ * emptiness: the rollup is on and this item is a leaf, which the tree still gives an
+ * empty `.pbl-meta-col` so its row stays aligned with the header and with its non-leaf
+ * siblings. An empty measure is not a zero, and it is not an absent column either.
+ */
+export function rollupReport(host: BacklogViewHost, item: BacklogItem): RollupReport | null {
+	const settings = host.settings;
+	if ((!settings.stateKey && !settings.showCounts) || !hasRollup(host.projection)) return null;
+	if (item.descendantCount === 0) return { label: '', tooltip: '', ratio: null };
+	if (!settings.stateKey) return { label: String(item.descendantCount), tooltip: '', ratio: null };
+	return {
+		label: `${item.doneDescendants}/${item.descendantCount}`,
+		tooltip: `${item.doneDescendants} of ${item.descendantCount} items done`,
+		ratio: item.doneDescendants / item.descendantCount,
+	};
+}
+
 /** Progress rollup or descendant count, in a column of its own so both align. */
 export function renderRollup(host: BacklogViewHost, row: HTMLElement, item: BacklogItem): void {
-	const settings = host.settings;
-	if ((!settings.stateKey && !settings.showCounts) || !hasRollup(host.projection)) return;
+	const report = rollupReport(host, item);
+	if (!report) return;
 	const col = row.createDiv({ cls: 'pbl-meta-col' });
-	if (item.descendantCount === 0) return;
+	if (!report.label) return;
 
-	if (settings.stateKey) {
-		const ratio = item.doneDescendants / item.descendantCount;
-		const progress = col.createDiv({ cls: 'pbl-progress' + (ratio === 1 ? ' pbl-complete' : '') });
+	if (report.ratio !== null) {
+		const progress = col.createDiv({ cls: 'pbl-progress' + (report.ratio === 1 ? ' pbl-complete' : '') });
 		const bar = progress.createDiv({ cls: 'pbl-progress-bar' });
 		bar.createDiv({ cls: 'pbl-progress-fill' }).setCssProps({
-			'--pbl-progress': `${Math.round(ratio * 100)}%`,
+			'--pbl-progress': `${Math.round(report.ratio * 100)}%`,
 		});
-		progress.createSpan({
-			cls: 'pbl-progress-label',
-			text: `${item.doneDescendants}/${item.descendantCount}`,
-		});
-		setTooltip(progress, `${item.doneDescendants} of ${item.descendantCount} items done`);
-	} else if (settings.showCounts) {
-		col.createSpan({ cls: 'pbl-count', text: String(item.descendantCount) });
+		progress.createSpan({ cls: 'pbl-progress-label', text: report.label });
+		setTooltip(progress, report.tooltip);
+	} else {
+		col.createSpan({ cls: 'pbl-count', text: report.label });
 	}
 }
 
