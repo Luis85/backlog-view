@@ -69,11 +69,46 @@ export function drawnHeight(containerEl: HTMLElement): number {
 	return Math.round(last.getBoundingClientRect().bottom - scroller.getBoundingClientRect().top + scroller.scrollTop);
 }
 
+/**
+ * FNV-1a over the lines, as eight hex digits. Nothing here needs collision resistance —
+ * the question is whether two builds handed the view the same thing, and a hash that
+ * differs when they differ answers it. `crypto.subtle` is async and wants a secure
+ * context, which a `file://` page is not.
+ */
+function fingerprint(lines: string[]): string {
+	let hash = 0x811c9dc5;
+	for (const char of lines.join('\u0001')) {
+		hash ^= char.codePointAt(0) ?? 0;
+		hash = Math.imul(hash, 0x01000193) >>> 0;
+	}
+	return hash.toString(16).padStart(8, '0');
+}
+
+/** Keys in sorted order, so an object literal's own ordering cannot move the fingerprint. */
+function stableJson(value: Record<string, unknown> | undefined): string {
+	if (!value) return '';
+	return JSON.stringify(Object.keys(value).sort().map((key) => [key, value[key]]));
+}
+
 export interface MountedHarness {
 	view: ProductBacklogView;
 	vault: FakeVault;
 	containerEl: HTMLElement;
 	mount: Mount;
+	/**
+	 * A fingerprint of those results — their paths and frontmatter, in the order the Base
+	 * returned them.
+	 *
+	 * The COUNT is not the workload: two builds can hand the view the same number of notes
+	 * with a different hierarchy, different fields or a different generated shape, and then
+	 * `results` and `drew` both match while the cards and the layout work do not. A run
+	 * comparing them reported no mismatch and presented the delta as like-for-like.
+	 * (Codex, PR #137.)
+	 *
+	 * Cheap and non-cryptographic on purpose: this answers "did the workload change", never
+	 * "what was it", and it is computed before the mount's own clock starts.
+	 */
+	contents: string;
 	/**
 	 * How many results the view was HANDED — the population every number is of.
 	 *
@@ -130,6 +165,7 @@ export function mountHarness(root: HTMLElement, fixture: HarnessFixture = 'demo'
 	anyView.config = config;
 	const results = demoResults(vault);
 	anyView.data = { data: results };
+	const contents = fingerprint(results.map((entry) => `${entry.file.path}\u0000${stableJson(vault.frontmatter.get(entry.file.path))}`));
 
 	let settle: ReturnType<typeof setTimeout> | undefined;
 	vault.afterWrite = () => {
@@ -156,5 +192,5 @@ export function mountHarness(root: HTMLElement, fixture: HarnessFixture = 'demo'
 	// After the clock, like `sample`'s own count: this says what the row is a measurement
 	// OF, and a query inside the measurement would be measuring the query.
 	const mount = { ms: performance.now() - started, px, drew: containerEl.querySelectorAll('.pbl-row, .pbl-card').length };
-	return { view, vault, containerEl, mount, results: results.length };
+	return { view, vault, containerEl, mount, results: results.length, contents };
 }

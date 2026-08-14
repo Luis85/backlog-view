@@ -330,10 +330,13 @@ const ranAgainst = b[0]?.ran;
  * `results` is in this list, not just the fixture NAME: two builds can mount different
  * populations under one name — a fixture that gained notes between them — and `drew`
  * does not cover it, since it counts what was RENDERED and a hidden result or a child
- * inside an existing card moves no count. A field the baseline is too old to publish
- * reads as "not reported" rather than as agreement. (Codex, PR #137.)
+ * inside an existing card moves no count. `contents` is in the list for the same reason
+ * one level down: the same NUMBER of results can be a different hierarchy, different
+ * fields or a different generated shape, and then every count matches while the work does
+ * not. A field the baseline is too old to publish reads as "not reported" rather than as
+ * agreement. (Codex, PR #137.)
  */
-const WORKLOAD = ['fixture', 'results', 'projection', 'axis'];
+const WORKLOAD = ['fixture', 'results', 'contents', 'projection', 'axis'];
 const show = (value) => (value === undefined ? 'not reported' : String(value));
 const differs = !against || !ran || !ranAgainst ? [] : WORKLOAD.filter((key) => ran[key] !== ranAgainst[key]);
 const baselineWorkload = !against

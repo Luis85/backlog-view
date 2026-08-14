@@ -154,6 +154,8 @@ interface Ran {
 	fixture: string;
 	/** Results the view was handed — the population these numbers are of. */
 	results: number;
+	/** What those results WERE — see `MountedHarness.contents`. */
+	contents: string;
 	projection: string;
 	/**
 	 * The axis the roadmap DREW, captured while it was on screen — never `view.axisPick`,
@@ -202,7 +204,7 @@ export function reportPerf(
 	view: ProductBacklogView,
 	containerEl: HTMLElement,
 	mount: Mount,
-	mounted: { fixture: string; results: number },
+	mounted: { fixture: string; results: number; contents: string },
 ): Row[] {
 	const { rows, treeRows, axis } = measure(view, containerEl, mount);
 	console.table(rows.map((r) => ({ ...r, median: +r.median.toFixed(1), worst: +r.worst.toFixed(1) })));
@@ -222,7 +224,13 @@ export function reportPerf(
 	publish(panel, {
 		samples: SAMPLES,
 		treeRows,
-		ran: { fixture: mounted.fixture, results: mounted.results, projection: view.projection, axis },
+		ran: {
+			fixture: mounted.fixture,
+			results: mounted.results,
+			contents: mounted.contents,
+			projection: view.projection,
+			axis,
+		},
 		rows,
 	});
 	panel.createEl('p', {

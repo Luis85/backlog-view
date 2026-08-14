@@ -119,7 +119,11 @@ instruments improvised around a browser.
   can be equal across two different projections. The POPULATION is compared with it, not
   just the fixture's name: two builds can mount different populations under one name, and
   `drew` does not cover that either, since it counts what was RENDERED and a hidden result
-  or a child inside an existing card moves no count. A baseline too old to report any of it
+  or a child inside an existing card moves no count. And a COUNT is not the workload either:
+  the same number of results can be a different hierarchy, different fields or a different
+  generated shape, so the page publishes a cheap fingerprint of the paths and frontmatter it
+  was handed and that is compared too — the question is "did the workload change", never
+  "what was it". A baseline too old to report any of it
   is named as that — "not reported" — rather than assumed to agree. (Codex, PR #137.)
 
 - **3g — a flag that selects nothing the table measures.** `--view` was one: the run
