@@ -56,7 +56,7 @@ describe('the perf panel reports the sample it took', () => {
 			// restore — so the check is simply that the band is in the sample.
 			const { view, containerEl, mount: first } = mount();
 
-			reportPerf(view, containerEl, first, 'demo');
+			reportPerf(view, containerEl, first, { fixture: 'demo', notes: 0 });
 
 			const roadmap = published().rows.find((row) => row.op === 'switch to roadmap');
 			view.setProjection('roadmap');
@@ -72,7 +72,7 @@ describe('the perf panel reports the sample it took', () => {
 		() => {
 			const { view, containerEl, mount: first } = mount();
 
-			const rows = reportPerf(view, containerEl, first, 'demo');
+			const rows = reportPerf(view, containerEl, first, { fixture: 'demo', notes: 0 });
 
 			// The runner does one `JSON.parse` and no scraping, so what it gets has to BE the
 			// table: a column added for a human to read must not change what a script reads.
@@ -87,7 +87,7 @@ describe('the perf panel reports the sample it took', () => {
 			// The axis the ROADMAP drew, not `view.axisPick`, which is null until someone picks
 			// and would have compared two differently-configured builds as equal.
 			view.setProjection('roadmap');
-			expect(data.ran).toEqual({ fixture: 'demo', projection: 'tree', axis: view.roadmap?.roadmap.axis ?? null });
+			expect(data.ran).toEqual({ fixture: 'demo', notes: 0, projection: 'tree', axis: view.roadmap?.roadmap.axis ?? null });
 			expect(data.ran.axis).not.toBeNull();
 
 			const drew = (op: string) => data.rows.find((row) => row.op === op)?.drew ?? 0;

@@ -152,6 +152,8 @@ function expandAll(el: HTMLElement): void {
  */
 interface Ran {
 	fixture: string;
+	/** Generated notes the mount really added — see `MountedHarness.notes`. */
+	notes: number;
 	projection: string;
 	/**
 	 * The axis the roadmap DREW, captured while it was on screen — never `view.axisPick`,
@@ -196,7 +198,12 @@ export function wantedNotes(search: string): number {
  * read them, and `console.table`, so they can be pasted into a note. `.pbl-harness-*` is
  * the namespace the harness owns for its own furniture — see `test/harness/theme.css`.
  */
-export function reportPerf(view: ProductBacklogView, containerEl: HTMLElement, mount: Mount, fixture: string): Row[] {
+export function reportPerf(
+	view: ProductBacklogView,
+	containerEl: HTMLElement,
+	mount: Mount,
+	mounted: { fixture: string; notes: number },
+): Row[] {
 	const { rows, treeRows, axis } = measure(view, containerEl, mount);
 	console.table(rows.map((r) => ({ ...r, median: +r.median.toFixed(1), worst: +r.worst.toFixed(1) })));
 
@@ -215,7 +222,7 @@ export function reportPerf(view: ProductBacklogView, containerEl: HTMLElement, m
 	publish(panel, {
 		samples: SAMPLES,
 		treeRows,
-		ran: { fixture, projection: view.projection, axis },
+		ran: { fixture: mounted.fixture, notes: mounted.notes, projection: view.projection, axis },
 		rows,
 	});
 	panel.createEl('p', {

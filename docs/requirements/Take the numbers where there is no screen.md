@@ -108,7 +108,10 @@ instruments improvised around a browser.
   ran. The runner prints what the page says it MOUNTED — the page publishes it beside the
   numbers — and names any flag the two disagree on. The vocabularies stay where they are
   enforced rather than being copied into the runner to go stale, which is the same rule the
-  register applies to any table that enumerates code. The BASELINE's resolved workload is
+  register applies to any table that enumerates code. The note COUNT is the same question
+  once more: the edge-case fixture ignores the size knob deliberately, so `--fixture=edges`
+  headed the table with the 800 that was asked for over a handful of curated cases. The
+  mount reports what it handed the vault. The BASELINE's resolved workload is
   read the same way and compared: two builds can absorb one flag differently — the newer
   knows an axis the older ignores — and then equal `drew` counts prove nothing, since they
   can be equal across two different projections. A baseline too old to report it at all is

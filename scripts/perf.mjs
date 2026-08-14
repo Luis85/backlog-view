@@ -331,7 +331,9 @@ const ignored = [
 	ran && asked.axis !== undefined && asked.axis !== ran.axis ? `--axis=${asked.axis} (axis ${ran.axis ?? 'unpicked'})` : '',
 ].filter(Boolean);
 
-const drawn = ran ? `${ran.fixture} · ${ran.projection}${ran.axis ? ` · ${ran.axis}` : ''} · ${notes} notes` : search;
+// `ran.notes`, not the flag: the edge-case fixture ignores the size knob, so a request for
+// 800 was printed over a handful of curated cases. (Codex, PR #137.)
+const drawn = ran ? `${ran.fixture} · ${ran.projection}${ran.axis ? ` · ${ran.axis}` : ''} · ${ran.notes} notes` : search;
 console.log(`\n${drawn}  ·  ${runs} run${runs === 1 ? '' : 's'}  ·  window ${window}  ·  ${path.basename(browser)}`);
 if (against) console.log(`against ${against} (alternated, A B A B)`);
 console.table(table);

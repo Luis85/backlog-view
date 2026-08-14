@@ -74,6 +74,14 @@ export interface MountedHarness {
 	vault: FakeVault;
 	containerEl: HTMLElement;
 	mount: Mount;
+	/**
+	 * Generated notes this mount actually ADDED, which is not always the number asked for:
+	 * the edge-case fixture ignores the knob. `?perf`'s heading printed the request, so
+	 * `--fixture=edges` reported an 800-note workload over a handful of curated cases.
+	 * Taken from the value handed to the vault, so the two cannot disagree.
+	 * (Codex, PR #137.)
+	 */
+	notes: number;
 }
 
 /**
@@ -103,8 +111,8 @@ export function mountHarness(root: HTMLElement, fixture: HarnessFixture = 'demo'
 	drawIcons();
 	root.empty();
 
-	const vault =
-		fixture === 'edges' ? edgeCaseVault() : demoVault(fixture === 'folders' ? 'folders' : 'flat', extra);
+	const notes = fixture === 'edges' ? 0 : extra;
+	const vault = fixture === 'edges' ? edgeCaseVault() : demoVault(fixture === 'folders' ? 'folders' : 'flat', notes);
 	const leafEl = root.createDiv('pbl-harness-leaf');
 	const containerEl = leafEl.createDiv();
 	vault.addLeaf(new FileView(vault.addFile('Demo.base'), leafEl));
@@ -144,5 +152,5 @@ export function mountHarness(root: HTMLElement, fixture: HarnessFixture = 'demo'
 	// After the clock, like `sample`'s own count: this says what the row is a measurement
 	// OF, and a query inside the measurement would be measuring the query.
 	const mount = { ms: performance.now() - started, px, drew: containerEl.querySelectorAll('.pbl-row, .pbl-card').length };
-	return { view, vault, containerEl, mount };
+	return { view, vault, containerEl, mount, notes };
 }
