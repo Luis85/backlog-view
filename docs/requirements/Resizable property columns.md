@@ -18,6 +18,7 @@ files:
   - src/storage/collapseStore.ts
   - src/domain/viewOptions.ts
   - styles/propertyColumns.css
+  - styles/timeline.css
 started: ""
 finished: ""
 horizon: ""
@@ -89,6 +90,18 @@ width for every column can only ever do.
   defensively and dropped — but per column: one unusable number is one column back at the
   default, never every column reset. A `colWidths` that is not an object at all is no
   widths.
+- **1c — a right-to-left layout.** The grip is pinned with `inset-inline-end`, so it
+  moves to the column's LEFT edge while `clientX` stays physical — the mismatch
+  [[Nothing pins a physical side]] names as its third group, in miniature. One sign, read
+  off the header cell's own computed direction once per render (never inside the gesture),
+  mirrors the pointer delta and both arrow keys: dragging the boundary outward widens the
+  column whichever way outward is, and Arrow Right always moves the boundary physically
+  right, as the separator pattern says it should.
+- **1d — a device with no hover.** The grip paints only on hover or focus, which on a
+  phone is never — and a boundary has no menu entry to be found by instead, which is what
+  the tree's other hidden controls have. Under `hover: none` it draws the column boundary
+  itself and widens to a finger-sized target. The timeline's lead grip takes the same
+  widening and needs no line: its own column already draws one.
 - **1b — a keyboard reader stepping a column by repeated presses.** Each step re-renders
   the header and destroys the grip pressed, so focus is put back on its replacement. A
   POINTER resize takes no focus at all: `pointerdown` prevents default, so the strip is
@@ -113,6 +126,11 @@ width for every column can only ever do.
   the width brings it back.
 - The header strip is not `aria-hidden` any more — it carries the grips — while every
   label inside it still is, so no reader hears a property name twice.
+- In a right-to-left layout the pointer drag and both arrow keys mirror, so no gesture
+  shrinks the column it is being pulled outward from.
+- Both resize grips carry a `hover: none` presentation, written AFTER the rule it
+  overrides — `test/view/rendering.test.ts` pins that ordering, which is the hazard
+  `styles/touch.css` records.
 - Never written to the `.base`: UI state per saved view per device. The
   `propertyColumnWidth` view option is GONE rather than kept as a shared default beside
   it ([ADR 0011](../adrs/0011-keep-collapse-state-out-of-the-base-file.md) — a value is
@@ -130,10 +148,14 @@ lives in `src/view/interactions/timelineLeadResize.ts`: the gesture decides a wi
 render module owning it would have to import the interaction back, which is a cycle
 `npm run analyze` fails on.
 
-The POINTER half is `src/view/interactions/resizeDrag.ts` — press, drag, release, cancel,
-one contact only, riding `setPointerCapture` — shared with the timeline's lead-column grip,
-which this one arrived as a copy of. What each grip keeps is only what its boundary MEANS:
-`widthAt` clamps against the pane for the lead column and against the storable bounds here.
+The GESTURE — pointer and keyboard both — is `src/view/interactions/resizeDrag.ts`: press,
+drag, release, cancel, one contact only, riding `setPointerCapture`, with the arrow keys
+and Home over the same `widthAt`. It is shared with the timeline's lead-column grip, which
+this one arrived as a copy of. What each grip keeps is only what its boundary MEANS:
+`widthAt` clamps against the pane for the lead column, and against the storable bounds —
+mirrored by the cell's own computed direction — here. The keys going through that one
+function is what stops the right-to-left sign being applied in two places, one of which is
+the one somebody forgets.
 
 `renderTree` in `src/view/render/rows.ts` publishes one width per drawn column onto the
 tree element, and `sizeCell` (`render/columns.ts`) points each cell at its own column's
@@ -148,7 +170,9 @@ Bases property id, each value validated against `MIN_PROP_COLUMN_WIDTH`/
 `BacklogViewHost.colWidths`/`setColWidth` in `src/view/host.ts` and
 `src/view/backlogView.ts`. The `propertyColumnWidth` slider is gone from
 `src/domain/viewOptions.ts` and its resolver from `src/domain/settingsResolve.ts`. The
-grip's styling, beside the columns', is `styles/propertyColumns.css`.
+grip's styling, beside the columns', is `styles/propertyColumns.css` — including its
+hoverless presentation, which `styles/timeline.css` gained beside the lead grip in the same
+change for the same reason.
 
 Driven in `test/view/columnResize.test.ts` and `test/storage/collapseStore.test.ts`;
 `test/view/columns.test.ts` drives the fit ladder against per-column widths, seeded

@@ -1,6 +1,6 @@
 import { setTooltip } from 'obsidian';
 import { BacklogViewHost } from '../host';
-import { wireResizeDrag } from './resizeDrag';
+import { wireResizeGrip } from './resizeDrag';
 import { MAX_TIMELINE_LEAD_PX, MIN_TIMELINE_LEAD_PX } from '../../storage/collapseStore';
 
 /**
@@ -119,7 +119,7 @@ export function renderLeadResize(
 		if (held) host.roadmap?.scroller?.querySelector<HTMLElement>('.pbl-timeline-lead-grip')?.focus();
 	};
 
-	wireResizeDrag(grip, {
+	wireResizeGrip(grip, {
 		// The gesture's baseline is where the grip VISUALLY is — `current`, the effective
 		// width this render drew — never `host.leadWidth` directly: on a pane too narrow for
 		// the stored pick those two disagree, and starting from the stored one would jump
@@ -128,22 +128,11 @@ export function renderLeadResize(
 		startWidth: current,
 		live,
 		commit: commitIfChanged,
-	});
-
-	grip.addEventListener('keydown', (evt) => {
-		if (evt.key === 'ArrowLeft' || evt.key === 'ArrowRight') {
-			evt.preventDefault();
-			const step = evt.key === 'ArrowRight' ? KEY_STEP_PX : -KEY_STEP_PX;
-			commitIfChanged(effectiveLeadWidth(current + step, available));
-		} else if (evt.key === 'Home') {
-			evt.preventDefault();
-			commit(defaultWidth);
-		}
+		// Home stays an explicit reset and does not come through `commitIfChanged`: it
+		// clears the pick whatever is on screen.
+		reset: () => commit(defaultWidth),
 	});
 }
-
-/** How far one arrow-key press moves the column, in pixels. */
-const KEY_STEP_PX = 10;
 
 /**
  * Room reserved for the day track when the pane is too narrow to also hold the

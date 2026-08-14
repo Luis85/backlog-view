@@ -334,8 +334,12 @@ free of runtime code so imports stay cycle-free.
   than content**: the dated axis's lead-resize grip (`renderLeadResize` in
   `interactions/timelineLeadResize.ts`) and one per property column in the tree's header
   (`renderColumnResize` in `interactions/columnResize.ts`), both a `role="separator"` with
-  `tabindex="0"`, and both driving the same pointer gesture (`wireResizeDrag` in
-  `interactions/resizeDrag.ts`) over their own idea of what a width may be. What earns it is that it cannot compete with the
+  `tabindex="0"`, and both driving the same gesture — pointer AND keyboard
+  (`wireResizeGrip` in `interactions/resizeDrag.ts`) — over their own idea of what a
+  movement means: the lead clamps against the pane, a property column against the storable
+  bounds and mirrored in a right-to-left layout. The keys go through that same `widthAt`
+  rather than repeating the arithmetic, so a caller's clamp or sign cannot be applied to
+  one input and forgotten on the other. What earns it is that it cannot compete with the
   roving selection the pane owns — it is fixed to the header's own geometry, it never
   renders among the cards or rows, and both `handleRoadmapKeydown` and `handleTreeKeydown`
   return on any event whose target is not the pane itself

@@ -147,6 +147,43 @@ describe('the property-column resize grip', () => {
 		});
 	});
 
+	describe('a right-to-left layout', () => {
+		// The grip is pinned with `inset-inline-end`, so it moves to the column's LEFT edge
+		// while `clientX` stays physical — the mismatch the register's own RTL note calls
+		// its third group. Dragging the boundary outward has to widen the column either
+		// way, and the arrow keys move it in the physical direction the separator pattern
+		// says they do.
+		const rtl = (): void => document.documentElement.setAttribute('dir', 'rtl');
+		const ltr = (): void => document.documentElement.removeAttribute('dir');
+
+		it('widens as the boundary is dragged outward, whichever way that is', () => {
+			rtl();
+			try {
+				const { view, containerEl } = makeView(fixture(), {}, COLUMNS);
+				const el = grip(containerEl);
+				el.dispatchEvent(pointer('pointerdown', 0));
+				el.dispatchEvent(pointer('pointermove', -40));
+				// Outward here is to the LEFT, and the column follows live.
+				expect(drawn(containerEl)).toBe(`${DEFAULT_PROP_COLUMN_WIDTH + 40}px`);
+				el.dispatchEvent(pointer('pointerup', -40));
+				expect(view.colWidths['note.points']).toBe(DEFAULT_PROP_COLUMN_WIDTH + 40);
+			} finally {
+				ltr();
+			}
+		});
+
+		it('moves the boundary the way the arrow key points, not the way the column grows', () => {
+			rtl();
+			try {
+				const { view, containerEl } = makeView(fixture(), {}, COLUMNS);
+				grip(containerEl).dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+				expect(view.colWidths['note.points']).toBe(DEFAULT_PROP_COLUMN_WIDTH + 10);
+			} finally {
+				ltr();
+			}
+		});
+	});
+
 	describe('the keyboard', () => {
 		it('steps the width with the arrow keys and resets it with Home', () => {
 			const { view, containerEl } = makeView(fixture(), {}, COLUMNS);

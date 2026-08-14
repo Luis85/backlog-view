@@ -1,6 +1,6 @@
 import { BasesPropertyId, setTooltip } from 'obsidian';
 import { BacklogViewHost } from '../host';
-import { wireResizeDrag } from './resizeDrag';
+import { wireResizeGrip } from './resizeDrag';
 import {
 	DEFAULT_PROP_COLUMN_WIDTH,
 	MAX_PROP_COLUMN_WIDTH,
@@ -69,6 +69,15 @@ export function renderColumnResize(
 ): void {
 	const { prop, label, index } = column;
 	const current = columnWidth(host, prop);
+	// Which way the boundary widens. The grip is pinned with `inset-inline-end`, so in a
+	// right-to-left layout it sits at the column's LEFT edge and a drag toward the left is
+	// what makes the column bigger — while `clientX` stays physical whichever way the text
+	// runs. That mismatch is the hazard `docs/requirements/Nothing pins a physical side.md`
+	// names as its third group: a logical CSS edge whose offset TypeScript goes on
+	// computing physically. One sign covers the pointer and both arrow keys, and it agrees
+	// with the separator pattern either way — Arrow Right moves the boundary physically
+	// right, which widens the column in one direction and narrows it in the other.
+	const widen = mirrored(cell) ? -1 : 1;
 	const grip = cell.createDiv({
 		cls: 'pbl-col-grip',
 		attr: {
@@ -123,23 +132,15 @@ export function renderColumnResize(
 	};
 
 	if (refocusIndex === index) grip.focus();
-	wireResizeDrag(grip, {
-		widthAt: (deltaX) => clampColumnWidth(current + deltaX),
+	wireResizeGrip(grip, {
+		widthAt: (deltaX) => clampColumnWidth(current + widen * deltaX),
 		startWidth: current,
 		live,
 		commit: commitIfChanged,
-	});
-	grip.addEventListener('keydown', (evt) => {
-		if (evt.key === 'ArrowLeft' || evt.key === 'ArrowRight') {
-			evt.preventDefault();
-			commitIfChanged(clampColumnWidth(current + (evt.key === 'ArrowRight' ? KEY_STEP_PX : -KEY_STEP_PX)));
-		} else if (evt.key === 'Home') {
-			// An explicit reset, so it does not go through `commitIfChanged`: pressing it on
-			// a column already at the default is a reader saying "the default", and clearing
-			// a pick that is already clear costs one no-op write.
-			evt.preventDefault();
-			commit(DEFAULT_PROP_COLUMN_WIDTH);
-		}
+		// Home does NOT go through `commitIfChanged`: pressing it on a column already at
+		// the default is a reader saying "the default", and clearing a pick that is
+		// already clear costs one no-op write.
+		reset: () => commit(DEFAULT_PROP_COLUMN_WIDTH),
 	});
 }
 
@@ -153,8 +154,24 @@ export function renderColumnResize(
  */
 let refocusIndex: number | null = null;
 
-/** How far one arrow-key press moves the boundary, in pixels. */
-const KEY_STEP_PX = 10;
+/**
+ * Whether this column runs right to left, asked of the cell the grip is mounted on rather
+ * than of the document: a pane can be given its own direction, and the answer that matters
+ * is the one for the strip actually being dragged.
+ *
+ * Read once per render, never inside the gesture — a style read in a `pointermove` stream
+ * is the shape of cost `src/view/CLAUDE.md` bans, and the direction cannot change while a
+ * finger is down without a render in between. A cell not yet in a document (the harness
+ * builds one that way) has no computed style to read and is treated as left to right,
+ * which is what it draws as.
+ */
+function mirrored(cell: HTMLElement): boolean {
+	// `ownerDocument.defaultView`, not Obsidian's own `el.win`: the jsdom harness
+	// implements the first and not the second, and a reader that answers "left to right"
+	// because the property it asks for is missing would take this whole rule out of every
+	// test while looking like it held.
+	return cell.ownerDocument.defaultView?.getComputedStyle(cell).direction === 'rtl';
+}
 
 /**
  * A width clamped to what may be stored, which is also the range the separator announces:

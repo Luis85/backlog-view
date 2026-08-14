@@ -1,14 +1,19 @@
 /**
- * The pointer half of a column-boundary resize: press, drag, release to keep, and a
- * platform cancel that puts the boundary back. Shared by the two grips that have one —
+ * A column-boundary resize gesture, pointer and keyboard: press, drag, release to keep, a
+ * platform cancel that puts the boundary back, arrow keys that step the boundary and Home
+ * that resets it. Shared by the two grips that have one —
  * the timeline's lead column (`interactions/timelineLeadResize.ts`) and the tree's
  * property columns (`interactions/columnResize.ts`).
  *
- * What differs between them is only what a pointer position MEANS: the lead grip clamps
- * against the pane it draws in, a property column clamps against what may be stored. That
- * is the whole of `widthAt`, and it is why this takes a function rather than bounds — the
- * two do not share a range, and a helper carrying the pane's availability would have one
- * caller with nothing to pass for it.
+ * What differs between them is only what a MOVEMENT means: the lead grip clamps against
+ * the pane it draws in, a property column clamps against what may be stored and mirrors
+ * the delta in a right-to-left layout. That is the whole of `widthAt`, and it is why this
+ * takes a function rather than bounds — the two do not share a range, and a helper
+ * carrying the pane's availability would have one caller with nothing to pass for it.
+ *
+ * The keys go through that same function, which is not tidiness: a caller whose delta
+ * needs a sign (right to left) or a clamp would otherwise apply it twice, in two places,
+ * one of which is the one somebody forgets.
  *
  * Pointer events (not `mousedown`/`mousemove`/`mouseup`) with `setPointerCapture`: capture
  * re-targets every later event at the grip regardless of where the pointer physically is,
@@ -19,10 +24,10 @@
  * so the two capture calls go through an optional chain: real browsers use them, tests
  * dispatch on the grip directly and never need them to do anything.
  */
-export function wireResizeDrag(
+export function wireResizeGrip(
 	grip: HTMLElement,
 	gesture: {
-		/** The width the pointer names, this far from where the gesture started, clamped. */
+		/** The width a movement of this many pixels names, clamped — and mirrored, if the caller mirrors. */
 		widthAt: (deltaX: number) => number;
 		/** The width the gesture found, restored when the platform cancels it. */
 		startWidth: number;
@@ -30,8 +35,11 @@ export function wireResizeDrag(
 		live: (width: number) => void;
 		/** Keep a width, if it differs from the one already on screen. */
 		commit: (width: number) => void;
+		/** Home: an explicit return to the default, which is a commit whatever is on screen. */
+		reset: () => void;
 	},
 ): void {
+	wireKeys(grip, gesture);
 	// The pointer that owns the gesture in flight, or null between gestures. A boundary is
 	// dragged by ONE contact: a second finger landing on the grip mid-drag used to install
 	// a second set of handlers with its own origin, after which every move fed both and
@@ -81,3 +89,30 @@ export function wireResizeDrag(
 		grip.addEventListener('pointercancel', onCancel);
 	});
 }
+
+/**
+ * Arrow keys step the boundary; Home puts it back. Both go through the caller's own
+ * `widthAt`, so the keyboard and the pointer cannot disagree about which direction is
+ * wider or where the bounds are.
+ *
+ * `preventDefault` on all three: the pane beneath scrolls on arrows and jumps to the top
+ * on Home, and a resize that also scrolled the tree would move the row under the reader's
+ * eyes while they sized a column.
+ */
+function wireKeys(
+	grip: HTMLElement,
+	gesture: { widthAt: (deltaX: number) => number; commit: (width: number) => void; reset: () => void },
+): void {
+	grip.addEventListener('keydown', (evt) => {
+		if (evt.key === 'ArrowLeft' || evt.key === 'ArrowRight') {
+			evt.preventDefault();
+			gesture.commit(gesture.widthAt(evt.key === 'ArrowRight' ? KEY_STEP_PX : -KEY_STEP_PX));
+		} else if (evt.key === 'Home') {
+			evt.preventDefault();
+			gesture.reset();
+		}
+	});
+}
+
+/** How far one arrow-key press moves the boundary, in pixels. */
+const KEY_STEP_PX = 10;

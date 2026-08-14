@@ -111,6 +111,25 @@
 	touch-action: none;
 }
 
+/* A touch device produces no hover, so a strip that only paints when hovered is a
+   control nobody can find — and unlike the tree's other hidden controls this one has no
+   menu entry to be found by instead. It draws the column boundary itself there: a line
+   nothing else in this header draws, which is the ordinary way a resizable column says
+   so. Wider too, because 6px is a mouse target and not a finger's.
+
+   Beside the rules it overrides rather than in `styles/touch.css`'s shared block, for
+   the reason that file states: a media query adds no specificity, so an override written
+   above what it undoes loses the cascade. Nothing here ties — the hover rule cannot match
+   on a hoverless device — but a reveal that sits after what it changes cannot start
+   tying either, and `test/view/rendering.test.ts` pins the order. */
+@media (hover: none) {
+	.pbl-col-grip {
+		box-sizing: border-box;
+		width: 20px;
+		border-inline-end: 2px solid var(--background-modifier-border);
+	}
+}
+
 .pbl-col-grip:hover,
 .pbl-col-grip:focus-visible {
 	background-color: var(--interactive-accent);
