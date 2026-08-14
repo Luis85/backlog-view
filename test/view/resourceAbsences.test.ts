@@ -107,6 +107,38 @@ describe('an absence on the resources axis', () => {
 		expect(containerEl.querySelectorAll('.pbl-row-even')).toHaveLength(0);
 	});
 
+	it('says the band holds a stretch, without changing what the count counts', () => {
+		// The count stays RESULT bars — the rule a bucket's count already keeps — which left a
+		// band whose only content is an absence reading "0" beside a row that plainly has
+		// something in it. The glyph qualifies the number rather than changing it.
+		const vault = absenceVault();
+		vault.addFile('Bob away.md', {
+			frontmatter: { type: 'Absence', assignee: 'Bob', start: '2026-08-04', due: '2026-08-06' },
+		});
+		vault.addFile('Carol away.md', {
+			frontmatter: { type: 'Absence', assignee: 'Bob', start: '2026-08-11', due: '2026-08-12' },
+		});
+		const { containerEl } = laneRoadmap(vault);
+		const [alice, bob] = lanesOf(containerEl);
+
+		expect(laneCountOf(alice)).toBe('1');
+		expect(alice.querySelector<HTMLElement>('.pbl-lane-away')?.dataset.tooltip).toBe('1 absence');
+
+		// Bob's row exists for the roster and holds no work at all.
+		expect(laneCountOf(bob)).toBe('0');
+		expect(bob.querySelector<HTMLElement>('.pbl-lane-away')?.dataset.tooltip).toBe('2 absences');
+	});
+
+	it('draws no such glyph on a band with nothing to be away for', () => {
+		const vault = new FakeVault();
+		vault.addFile('Work.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
+		});
+		const { containerEl } = laneRoadmap(vault);
+
+		expect(containerEl.querySelectorAll('.pbl-lane-away')).toHaveLength(0);
+	});
+
 	it('is one element of its band like every other line, and takes the drop as one', async () => {
 		// Stated from the RULE rather than from the list of element kinds that existed when
 		// it was written, which is exactly how this broke: the band has no container to

@@ -179,6 +179,17 @@ export function renderLaneHead(ctx: RowContext, content: HTMLElement, lane: Reso
 	renderLaneChevron(ctx.host, lead, lane, collapsed);
 	lead.createSpan({ cls: 'pbl-lane-name', text: lane.name });
 	lead.createSpan({ cls: 'pbl-lane-count', text: String(lane.bars.length) });
+	// The count is RESULT bars and stays so — the rule a bucket's count already keeps —
+	// which leaves a band whose only content is an absence reading "0" beside a row that
+	// plainly has something in it. This qualifies the number rather than changing what it
+	// counts. `aria-hidden`, and that is honest rather than a gap: each stretch's own row
+	// below carries `<title> — unavailable <dates>` as its accessible name, so this is a
+	// second route for a sighted reader and not the only route to the fact.
+	if (lane.absences.length > 0) {
+		const away = lead.createSpan({ cls: 'pbl-lane-away', attr: { 'aria-hidden': 'true' } });
+		drawIcon(away, 'user-x');
+		setTooltip(away, lane.absences.length === 1 ? '1 absence' : `${lane.absences.length} absences`);
+	}
 	if (!lane.declared) {
 		const mark = lead.createSpan({ cls: 'pbl-lane-stray' });
 		drawIcon(mark, 'circle-help');

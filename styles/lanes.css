@@ -250,6 +250,16 @@
 	color: var(--text-muted);
 }
 
+/* The band header's own word for "this resource is away at some point" — `renderLaneHead`.
+   Beside the count it qualifies, not pinned right like the row flag: it belongs to the
+   number, and a header has no title for it to narrow. */
+.pbl-lane-away {
+	display: inline-flex;
+	align-items: center;
+	color: var(--text-muted);
+}
+
+.pbl-lane-away .svg-icon,
 .pbl-away-flag .svg-icon {
 	width: var(--icon-s);
 	height: var(--icon-s);
