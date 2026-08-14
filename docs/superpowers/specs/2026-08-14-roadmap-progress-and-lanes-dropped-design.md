@@ -35,22 +35,22 @@ that call site is explicit that this was deliberate:
 > question only the board can answer, so the roadmap does not get this.
 
 That was true when it was written. It is not true now: `RoadmapModel` knows which items
-become buckets, shelf cards and timeline rows before anything renders, exactly as
-`BoardModel` does. So the roadmap's gap is a whole projection wide — no bucket card, no
-shelf card and no timeline row names a match — and `addMatchSection` in
-`src/view/interactions/menu.ts` misses all three the same way, because `activeBoard`
-returns null off the board and the function exits before adding anything.
+become buckets, bars, shelf cards and context cards before anything renders, exactly as
+`BoardModel` does. So the roadmap's gap is a whole projection wide — none of its four
+surfaces names a match — and `addMatchSection` in `src/view/interactions/menu.ts` misses
+all four the same way, because `activeBoard` returns null off the board and the function
+exits before adding anything.
 
 So the increment is two sentences. **The timeline row gets the rollup fill every card
 already has**, which closes [[Progress on the bar]]. **The roadmap gets match naming on
-all three of its surfaces, on the face and in the menu**, which closes the second of the
+all four of its surfaces, on the face and in the menu**, which closes the second of the
 items [[Focus level picks the rows]] still owes.
 
 ## What ships
 
 1. **Lanes are dropped**, with a `Dropped` status added to the register's vocabulary.
 2. **A progress fill inside a timeline bar**, from the rollups the tree already shows.
-3. **Match naming on all three roadmap surfaces**, on the face and in the menu, from the
+3. **Match naming on all four roadmap surfaces**, on the face and in the menu, from the
    walk the board already uses.
 
 ### The statuses this leaves behind
@@ -177,29 +177,61 @@ goes where all of them route through.
 `cardPaths(board)` in `src/domain/board.ts` answers "which items already have something of
 their own on screen" from the **model**, not from the DOM, which is why the board can
 render a card's matches inline during the same pass. The roadmap gets the mirror of it:
-`placedPaths(roadmap)` in `src/domain/roadmap.ts`, over the buckets, the shelf and the
-rows — pure, node-testable beside the derivations already there, and available before the
-first element is created. It is deliberately not read off the rendered snapshot: none of
-`host.roadmap` exists while the pass that builds it is running, a constraint
-`src/view/render/timeline.ts` already states about its own published fields.
+`placedPaths(roadmap, shelfCollapsed)` in `src/domain/roadmap.ts`, over the buckets, the
+bars, the shelf and the **context strip** — pure, node-testable beside the derivations
+already there, and available before the first element is created. It is deliberately not
+read off the rendered snapshot: none of `host.roadmap` exists while the pass that builds
+it is running, a constraint `src/view/render/timeline.ts` already states about its own
+published fields.
 
-A collapsed shelf contributes nothing, matching `RoadmapSnapshot.cards`, which already
-excludes one for the keyboard walk: an item behind a collapsed disclosure is not a route
-to anything, which is the same reason `hiddenMatches` takes a `drawn` predicate at all.
+**A collapsed shelf contributes nothing, and that is why the function takes a second
+argument.** `RoadmapModel.shelf` holds every shelved item whatever the screen shows;
+whether those cards render is `host.shelfCollapsed`, which `renderShelf` reads and which —
+unlike a row or a lane fold — an active filter does **not** override. So the model alone
+cannot answer this, and a function that pretended to would report hidden cards as routes:
+`hiddenMatches` would stop at a path the reader cannot reach, and the match under it would
+be named by nobody. One boolean in, the function stays pure, and the claim stays true.
+The same reasoning is why `hiddenMatches` takes a `drawn` predicate at all — an item
+behind a collapsed disclosure is not a route to anything. Found by review, on a first
+draft that asserted the exclusion and gave it nothing to read.
 
-### On the face
+### On the face — four surfaces, not three
 
-`renderCardMatches` moves out of the board's private path and is called by the roadmap's
-bucket and shelf cards (`src/view/render/roadmap.ts`, `src/view/render/shelf.ts`) and by
-the timeline row, with `placedPaths` supplying what `cardPaths` supplies on the board. The
-function itself is unchanged — including the `fromRowControl` arrangement that keeps a
-link's click and the card's own handler from both firing, and the `auxclick` handler
-without which a middle click still opened the card's note instead of the match's.
+`renderCardMatches` moves out of the board's private path and is called by every roadmap
+surface that puts an item on screen, with `placedPaths` supplying what `cardPaths` supplies
+on the board:
 
-On a timeline row the links render in `renderRowFacts` in `src/view/render/timeline.ts`,
-under the title in the sticky lead column — the one text region such a row has. The lead
-column is the reader's to size ([[A resizable lead column]]), so a narrow column wraps
-them rather than reserving room.
+- **bucket cards** and **timeline bars** (`src/view/render/roadmap.ts`),
+- **shelf cards** and the **context strip** (`src/view/render/shelf.ts`) — the strip is
+  the fourth surface, and the one that matters most here: a focused `outsideFilter` root
+  on the dated axis is routed to `roadmap.context` and rendered by `renderContextStrip`
+  rather than as a bar, which is exactly the focused-context case
+  [[Focus level picks the rows]] extension 2b describes. It draws through `renderCardBody`
+  like any card, so it takes the links the same way,
+- **timeline rows**, whose links render in `renderRowFacts` in
+  `src/view/render/timeline.ts`, under the title in the sticky lead column — the one text
+  region such a row has. The lead column is the reader's to size
+  ([[A resizable lead column]]), so a narrow column wraps them rather than reserving room.
+
+`renderCardMatches`'s own body is unchanged, including the `fromRowControl` arrangement
+that keeps a link's click and the card's own handler from both firing, and the `auxclick`
+handler without which a middle click still opened the card's note instead of the match's.
+
+### The subtraction belongs to the caller
+
+`undisclosedMatches` currently ends by removing `listedChildren` — right on a board card,
+which lists those children in its own disclosure, and **wrong on a timeline row**, which
+draws no disclosure at all (`renderCardChildren` is a card-path call, and the board's own
+comment says timeline rows are why). Left as it is, a focused row whose IMMEDIATE child is
+the match loses it: the child has no placed row, so nothing else names it, and the
+subtraction removes it anyway. That is the below-focus result this increment exists to
+make reachable, so the bug would land inside its own fix.
+
+The rule is that a surface should not name twice what it already shows, and only the
+surface knows what it shows. So the already-listed set becomes a **parameter**: card
+callers pass `listedChildren(host, item)`, the timeline row passes nothing. One
+signature, both callers explicit, and no function carrying a hidden assumption about who
+called it. Found by review.
 
 ### In the menu
 
@@ -236,11 +268,16 @@ checks are view-level, in `test/view/`:
 - A context row's fill counting its visible results only, asked from the rule rather than
   from the implementation, beside the two invariant tests that already state it for
   writes and rollups.
-- `placedPaths` in `test/domain/roadmap.test.ts` — buckets, shelf and rows counted, a
-  collapsed shelf contributing nothing — beside the derivations already driven there.
-- A filtered roadmap naming a match three levels down on each of its three surfaces —
-  bucket card, shelf card, timeline row — each link opening its note, and neither `click`
-  nor `auxclick` reaching the card or row beneath.
+- `placedPaths` in `test/domain/roadmap.test.ts` — buckets, bars, shelf and context strip
+  counted, and a collapsed shelf contributing nothing — beside the derivations already
+  driven there.
+- A filtered roadmap naming a match three levels down on each of its four surfaces —
+  bucket card, shelf card, context strip, timeline row — each link opening its note, and
+  neither `click` nor `auxclick` reaching the card or row beneath.
+- **A DIRECT child as the match, on a timeline row**, which is the case the subtraction
+  would silently eat and which a three-levels-down test passes straight over. Paired with
+  the card case, where that same child must be named once by the disclosure and not
+  twice.
 - The same matches in the row menu on the roadmap, which is the check that would have
   caught the first draft's claim: it is asserted at `addMatchSection` on a roadmap
   render, not inferred from the board's passing test.
