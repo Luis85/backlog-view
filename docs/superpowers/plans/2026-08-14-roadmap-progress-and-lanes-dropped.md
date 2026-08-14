@@ -347,7 +347,14 @@ npx vitest run test/view/ -t 'rollup'
 npm run check
 ```
 
-Expected: PASS, and the full gate green. Commit this on its own — `git commit -m "Say the rollup once"` — so the behaviour-free refactor is separable from the feature.
+Expected: PASS, and the full gate green. Commit this on its own, so the behaviour-free refactor is separable from the feature:
+
+```bash
+git add src/view/render/columns.ts
+git commit -m "Say the rollup once"
+```
+
+Stage it explicitly. `columns.ts` appears in no other commit in this plan, so a `git commit` with nothing staged would leave the whole refactor in the working tree while every later check passed against it — the shape of a defect review already found once in Task 4.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -954,7 +961,7 @@ The inferred spans remain, which is why this note stays open.
 - [ ] **Step 12: Commit**
 
 ```bash
-git add src/view/ test/view/roadmapMatches.test.ts docs/requirements/
+git add src/view/ styles/timeline.css test/view/roadmapMatches.test.ts docs/
 git commit -m "Let every roadmap surface name what the search found under it"
 ```
 
