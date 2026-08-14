@@ -199,12 +199,17 @@ export function renderTimeline(
 	// differs between the axes, so the overlay, the mark's pointer events and a bar's row
 	// handle cannot end up disagreeing about which axis is on screen.
 	const rows = drawing.laneElement !== null;
-	// Every bar this grid will draw, in draw order — the window, the milestone lines and
-	// the dependency arrows are all computed from it and are axis-independent. What a
-	// collapsed row hides, it hides from the whole grid: the window is the drawn spans,
-	// exactly as it already is for the spans hiding completed work removes.
+	// Every bar THIS LIST draws, in draw order — the milestone lines and the dependency
+	// arrows are both computed from it and are axis-independent. What a collapsed row
+	// hides, it hides from this list: a row-collapsed subtree's bar is off it, exactly as
+	// the state filter hiding completed work already takes one off it.
 	const bars = entries.flatMap((entry) => (entry.kind === 'row' ? [entry.row.bar] : []));
-	// Every span this grid DRAWS, which is not the same list as its bars — see `drawnSpans`.
+	// Every span this grid DRAWS, which is NOT the list above — see `drawnSpans`. A folded
+	// BAND's own bars are in it even though none of its rows are in `entries`, because the
+	// rail draws them where the entries list draws nothing; a row-collapsed SUBTREE inside
+	// an open band draws nothing either way and is correctly absent from both lists. A mark
+	// the window was never widened for is clamped to the edge and painted on days it does
+	// not cover.
 	const window = timelineWindow(drawnSpans(entries, drawing.lanes), today);
 	// Resolved ONCE, here, and threaded everywhere `TIMELINE_LEAD_PX` used to be read
 	// directly: the CSS width below and the TS arithmetic that places the today line,

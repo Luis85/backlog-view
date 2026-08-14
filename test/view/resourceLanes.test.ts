@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { shelfRemoval } from '../../src/view/render/shelf';
 import { clickExpandAll, Harness, makeView, useViewHarness } from '../helpers/view';
-import { gripNames, laneCountOf, laneNames, laneOrder, lanesOf, rowFor, shelfTitles } from '../helpers/roadmap';
+import { cellLabels, gripNames, laneCountOf, laneNames, laneOrder, lanesOf, rowFor, shelfTitles } from '../helpers/roadmap';
 import { resourceVault } from '../helpers/resources';
 import { addDays, formatCivil } from '../../src/domain/timeline';
 import { readDate, todayStamp } from '../../src/domain/noteFields';
@@ -205,6 +205,25 @@ describe('folding on the resources axis', () => {
 		return rowFor(containerEl, title)?.querySelector<HTMLElement>('.pbl-chevron:not(.pbl-leaf)') ?? null;
 	}
 
+	/** Alice's own near-dated parent, alone — the window this fixture would draw with no far bar at all. */
+	function nearOnlyVault(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: dayFromToday(0), due: dayFromToday(5) },
+		});
+		return vault;
+	}
+
+	/** The same parent, plus a child a year out — far enough to widen the grid if anything draws it. */
+	function nearAndFarVault(): FakeVault {
+		const vault = nearOnlyVault();
+		vault.addFile('Far child.md', {
+			frontmatter: { type: 'Feature', order: 10, assignee: 'Alice', start: dayFromToday(400), due: dayFromToday(405) },
+			parentLink: 'Epic',
+		});
+		return vault;
+	}
+
 	function bandChevron(containerEl: HTMLElement, name: string): HTMLButtonElement | null {
 		const head = lanesOf(containerEl).find((el) => el.querySelector('.pbl-lane-name')?.textContent === name);
 		return head?.querySelector<HTMLButtonElement>('.pbl-chevron') ?? null;
@@ -271,6 +290,30 @@ describe('folding on the resources axis', () => {
 
 		// Holding nothing back from where it sits, so it says so: a leaf, not a shut row.
 		expect(rowChevron(containerEl, 'Epic')).toBeNull();
+	});
+
+	it('does not widen the grid for a row-collapsed subtree whose child is far future', () => {
+		// The narrower half of `drawnSpans`' fix: it reads a folded BAND's bars from the
+		// LANE ENTRY's own `collapsed`, never from `lane.bars` unconditionally. An open
+		// band's row-collapsed subtree draws nothing at all — not a row, not a rail — so it
+		// must not widen the window either, or eleven months of empty gridlines is exactly
+		// what a reader who folded that one bar away would still have to scroll past.
+		const { containerEl } = laneRoadmap(nearAndFarVault(), { expanded: true });
+		rowChevron(containerEl, 'Epic')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		const baseline = laneRoadmap(nearOnlyVault());
+		expect(cellLabels(containerEl).length).toBe(cellLabels(baseline.containerEl).length);
+	});
+
+	it('widens the grid for a folded band whose own bar is far future', () => {
+		// The other half of the same fix: a folded BAND draws no rows either, but it does
+		// draw a rail — so unlike the row-collapsed case above, its bars must still reach
+		// the window or the rail it needs them for has nothing to draw into.
+		const harness = laneRoadmap(nearAndFarVault(), { expanded: true });
+		harness.view.setLaneCollapsed('Alice', true);
+
+		const baseline = laneRoadmap(nearOnlyVault());
+		expect(cellLabels(harness.containerEl).length).toBeGreaterThan(cellLabels(baseline.containerEl).length);
 	});
 });
 
@@ -454,6 +497,10 @@ describe('the band header’s readout', () => {
 		// quietly outliving its reason.
 		const harness = laneRoadmap(countingVault([]));
 		const rowsWhenOpen = harness.containerEl.querySelectorAll('.pbl-lane-head, .pbl-timeline-row').length;
+		// Pinned rather than left to `rowsWhenOpen` alone: a fixture that stopped rendering
+		// anything would pass this at 0 === 0 and the refusal would go unchecked in silence.
+		// lane:Alice, Work's own row, lane:Bob.
+		expect(rowsWhenOpen).toBe(3);
 
 		harness.view.setLaneCollapsed('Bob', true);
 

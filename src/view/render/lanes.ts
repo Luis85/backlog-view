@@ -97,16 +97,23 @@ export function barEntries(rows: TimelineRow[]): TimelineEntry[] {
  * unchanged and so is the fix — a source that stops reaching this list is a window that
  * stops holding what it draws. The dated axis passes no lanes.
  *
- * A folded band's own bars carry the identical hazard since the load rail
+ * A folded BAND's own bars carry the identical hazard since the load rail
  * (`renderLaneRail`, 2026-08-14): `laneEntries` drops a collapsed lane's bar rows from
  * `entries` entirely, so a band folded over work whose only span is far away would narrow
- * the window out from under the very rail meant to show where that work lies. `lanes` is
- * read a second time here for exactly that reason — same fix, same principle, a different
- * mark now needs it.
+ * the window out from under the very rail meant to show where that work lies. Read from
+ * `entries` rather than from `lanes` directly, and gated on the lane entry's own
+ * `collapsed` — an OPEN band's bars already arrive through their own `'row'` entries, and
+ * widening for them a second time from `lanes` is how a row-collapsed SUBTREE inside an
+ * open band (its bar correctly missing from `entries`, `timelineRows`' own fold) would
+ * still have widened the window for a mark that draws nowhere. Absences stay read from
+ * `lanes` directly beside this, because a stretch draws in its header's track whether the
+ * band is open or shut — `lanes` earns its keep for that reason alone now.
  */
 export function drawnSpans(entries: TimelineEntry[], lanes: ResourceLane[]): DateSpan[] {
 	const bars = entries.flatMap((entry) => (entry.kind === 'row' ? [entry.row.bar.span] : []));
-	const laneBars = lanes.flatMap((lane) => lane.bars.map((bar) => bar.span));
+	const laneBars = entries.flatMap((entry) =>
+		entry.kind === 'lane' && entry.collapsed ? entry.lane.bars.map((bar) => bar.span) : [],
+	);
 	const stretches = lanes.flatMap((lane) =>
 		lane.absences.map((absence) => ({ start: absence.start, target: absence.target })),
 	);
@@ -410,6 +417,14 @@ function renderLaneAbsences(
  * stated here.** `styles/lanes.css` says muting is done to a row's CONTENT and never to the
  * row, because a row-level `opacity` takes the sticky lead column down with it. This is an
  * aria-hidden decorative child inside one track, so it dims nothing that carries meaning.
+ *
+ * `geometry.outside` skips a run wholly past `MAX_TIMELINE_DAYS`' clamp — rare now that
+ * `drawnSpans` widens the window for a folded band's own bars, and not gone: a plan too
+ * long to draw whole still clips around today, and a run entirely beyond that clip draws
+ * no rail at all rather than one pinned to an edge it does not run through. That is the one
+ * place this mark and a BAR answer the same question differently — `edgeClasses` styles a
+ * clipped bar as running past the edge because part of it is still in view; a rail with none
+ * of itself in view has nothing to style and is simply absent.
  */
 function renderLaneRail(
 	track: HTMLElement,
