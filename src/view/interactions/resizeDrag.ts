@@ -71,7 +71,16 @@ export function wireResizeGrip(
 		const onUp = (upEvt: PointerEvent): void => {
 			if (!mine(upEvt)) return;
 			end(upEvt);
-			gesture.commit(gesture.widthAt(upEvt.clientX - startX));
+			// DRAWN before it is committed, and unconditionally — a release carries its own
+			// position and needs no `pointermove` before it, so the last width drawn is not
+			// necessarily the width being released at. A gesture that wanders out and comes
+			// back commits nothing (rightly: the stored pick has not changed), and without
+			// this line the column would keep the last move's width on screen, and the
+			// separator would go on announcing it, until something else happened to
+			// re-render. Free when the commit does render: it writes the same number back.
+			const width = gesture.widthAt(upEvt.clientX - startX);
+			gesture.live(width);
+			gesture.commit(width);
 		};
 		// A cancel is the platform saying the gesture stopped being the user's — palm
 		// rejection, an orientation change, another gesture taking it over. The width it

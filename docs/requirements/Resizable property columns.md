@@ -79,7 +79,11 @@ width for every column can only ever do.
   release and cancel answers only to the contact that started it.
 - **2c — a gesture that changes nothing.** A tap, a drag ending where it began, or a drag
   or arrow key pushing further into a bound the column already sits at: all commit
-  nothing, so none of them costs a write or a render.
+  nothing, so none of them costs a write or a render. They still DRAW: a release carries
+  its own position and needs no `pointermove` before it, so a drag that wanders out and
+  comes back would otherwise leave the excursion's width on screen — and in the
+  separator's `aria-valuenow` — until some later render corrected it. The release applies
+  its width live first and commits after.
 - **5a — a column widened past what the pane can hold.** It drops, exactly as a column
   has always dropped when the row will not fit, and the stored width is untouched — so
   widening the pane brings it back at the width the reader picked. Recovery is the pane,
@@ -117,6 +121,8 @@ width for every column can only ever do.
   the vault's write log stay empty through the whole gesture, and exactly one width is
   persisted, at its end.
 - A drag on one column's grip moves that column and no other.
+- A drag released at a width already stored still leaves that width drawn and announced,
+  rather than the last width the pointer passed through.
 - ArrowLeft/ArrowRight on the focused grip step the width and persist each step
   immediately; Home returns that column to the default and clears its stored pick;
   neither touches a note or the `.base`.

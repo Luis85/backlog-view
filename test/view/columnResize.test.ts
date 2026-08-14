@@ -129,6 +129,26 @@ describe('the property-column resize grip', () => {
 			expect(view.colWidths['note.points']).toBe(DEFAULT_PROP_COLUMN_WIDTH + 20);
 		});
 
+		it('draws the width it was released at, even when that width is stored already', () => {
+			// A release carries its own position and needs no `pointermove` before it, so the
+			// last width DRAWN is not necessarily the width being released at. Wander out and
+			// come back: the pick has not changed and nothing should be stored — but the
+			// column has to be back where it started on screen, and the separator has to be
+			// announcing that, rather than keeping the excursion's width until some later
+			// render happens to correct it. In `interactions/resizeDrag.ts`, so it holds for
+			// the timeline's lead grip too.
+			const { view, containerEl } = makeView(fixture(), {}, COLUMNS);
+
+			const el = grip(containerEl);
+			el.dispatchEvent(pointer('pointerdown', 0));
+			el.dispatchEvent(pointer('pointermove', 80));
+			el.dispatchEvent(pointer('pointerup', 0));
+
+			expect(drawn(containerEl)).toBe(`${DEFAULT_PROP_COLUMN_WIDTH}px`);
+			expect(el.getAttribute('aria-valuenow')).toBe(String(DEFAULT_PROP_COLUMN_WIDTH));
+			expect(view.colWidths['note.points']).toBeUndefined();
+		});
+
 		it('stores nothing for a gesture that changes no width', () => {
 			// A tap, a drag that ends where it began, and a drag pushing further into a
 			// bound the column already sits at. None of them is a new pick, and committing
