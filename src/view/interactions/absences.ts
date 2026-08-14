@@ -2,7 +2,7 @@ import { Menu, Notice } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { showMenuForClick } from './menu';
 import { AbsencePromptModal, AbsenceResult } from '../../ui/prompts';
-import { Absence, absencesConfigured } from '../../domain/absences';
+import { Absence, absencesConfigured, absenceTitle } from '../../domain/absences';
 import { formatCivil } from '../../domain/timeline';
 import { folderForType } from '../../domain/itemTypes';
 import { ResourceLane } from '../../domain/roadmap';
@@ -80,9 +80,9 @@ function promptEditAbsence(host: BacklogViewHost, absence: Absence): void {
 	if (refusedByConfig(host)) return;
 	new AbsencePromptModal(host.app, {
 		heading: 'Edit absence',
-		description: 'Changes who is away and for how long. Renaming it renames the note.',
+		description: 'Changes who is away and for how long. The note is renamed to match.',
 		resource: absence.resource,
-		editing: { title: absence.title, start: formatCivil(absence.start), target: formatCivil(absence.target) },
+		editing: { start: formatCivil(absence.start), target: formatCivil(absence.target) },
 		known: [...new Set([absence.resource, ...host.settings.resourceNames])],
 		validate: absenceProblem,
 		onSubmit: (result) => void editAbsence(host, absence, result),
@@ -125,7 +125,6 @@ function refusedByConfig(host: BacklogViewHost): boolean {
  */
 function absenceProblem(result: AbsenceResult): string | null {
 	if (!result.resource) return 'Name the resource this absence is for.';
-	if (!result.title) return 'Give the absence a title.';
 	if (!result.start || !result.target) return 'An absence needs both a start and an end date.';
 	if (result.target < result.start) return 'The end date is before the start date.';
 	return null;
@@ -174,11 +173,13 @@ async function removeAbsence(host: BacklogViewHost, absence: Absence): Promise<v
  * That order is deliberate and not an implementation detail. A rename moves the file and
  * every link naming it; doing it first and then failing on the frontmatter would leave a
  * note renamed to describe a stretch it does not hold. This way the worst outcome is the
- * one the reader can see and fix — the right dates under the old name.
+ * one the reader can see and fix — the right dates under the old name. Both halves now
+ * follow from one edit rather than from two fields: the three facts decide the frontmatter
+ * AND the derived name, so a new date is what moves both.
  *
  * Driven, not merely stated: `test/view/resourceAbsences.test.ts` refuses the frontmatter
- * write of an edit that also changes the title, and asserts the note still answers to its
- * old name — which is exactly what swapping the two acts breaks.
+ * write of an edit that also changes the derived name, and asserts the note still answers
+ * to its old name — which is exactly what swapping the two acts breaks.
  */
 async function editAbsence(host: BacklogViewHost, absence: Absence, result: AbsenceResult): Promise<void> {
 	if (refusedByConfig(host)) return;
@@ -188,7 +189,7 @@ async function editAbsence(host: BacklogViewHost, absence: Absence, result: Abse
 			start: result.start,
 			target: result.target,
 		});
-		await renameAbsenceNote(host.app, absence.file, result.title);
+		await renameAbsenceNote(host.app, absence.file, absenceTitle(result));
 		// The note's OWN name, never the requested one — `uniqueNotePath` sanitizes the
 		// title and appends a number where one is taken, so a rename onto an existing
 		// `Vacation` lands as `Vacation 1` and naming the request would send the reader
@@ -205,7 +206,8 @@ async function editAbsence(host: BacklogViewHost, absence: Absence, result: Abse
 async function writeAbsence(host: BacklogViewHost, result: AbsenceResult): Promise<void> {
 	if (refusedByConfig(host)) return;
 	try {
-		const file = await createAbsenceNote(host.app, host.settings, { folder: absenceFolder(host), ...result });
+		const spec = { folder: absenceFolder(host), title: absenceTitle(result), ...result };
+		const file = await createAbsenceNote(host.app, host.settings, spec);
 		new Notice(`Marked ${result.resource} away — "${file.basename}".`);
 	} catch (e) {
 		console.error('Product Backlog: failed to create the absence', e);
