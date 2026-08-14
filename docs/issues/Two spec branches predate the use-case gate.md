@@ -7,6 +7,13 @@ priority: P1
 area: process
 created: 2026-08-01
 source: 2026-08-01, on merging PR #24 — and what happened in the three hours after
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Two spec branches predate the use-case gate

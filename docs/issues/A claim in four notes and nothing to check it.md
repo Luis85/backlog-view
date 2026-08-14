@@ -9,6 +9,13 @@ created: 2026-08-01
 source: 2026-08-01 review of PR #24
 files:
   - scripts/docs-check.mjs
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # A claim in four notes and nothing to check it

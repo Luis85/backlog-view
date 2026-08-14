@@ -9,6 +9,13 @@ files:
   - src/view/writeGate.ts
   - src/storage/frontmatter.ts
   - src/domain/settings.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Help for safe writes and undo

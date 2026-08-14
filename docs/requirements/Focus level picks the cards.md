@@ -8,6 +8,13 @@ created: 2026-08-01
 files:
   - src/domain/board.ts
   - src/domain/itemTypes.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Focus level picks the cards

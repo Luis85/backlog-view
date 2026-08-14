@@ -11,6 +11,13 @@ files:
   - test/docs/surfaces.test.ts
   - test/view/rendering.test.ts
   - src/domain/settings.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Read the vocabulary instead of reciting it

@@ -10,6 +10,13 @@ source: Structure pass on 0.4.0, recorded in docs/superpowers/plans/2026-08-03-c
 files:
   - src/domain/settings.ts
   - src/domain/itemTypes.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Give the type vocabulary its own leaf

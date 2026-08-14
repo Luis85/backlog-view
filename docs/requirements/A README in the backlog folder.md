@@ -14,6 +14,13 @@ files:
   - src/storage/readmeFile.ts
   - src/commands/readme.ts
   - src/view/registry.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # A README in the backlog folder

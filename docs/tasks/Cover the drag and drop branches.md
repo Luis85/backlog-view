@@ -10,6 +10,13 @@ source: PR #14 maintainability review
 files:
   - src/view/interactions/dragDrop.ts
   - test/view/dragDrop.test.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Close the drag-and-drop coverage gap

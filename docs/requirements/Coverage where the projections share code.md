@@ -7,6 +7,13 @@ area: testing
 priority: P2
 created: 2026-08-03
 closed: 2026-08-03
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Coverage where the projections share code

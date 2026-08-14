@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Multilang]]"
 order: 30
 status: Open
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Plurals and interpolation

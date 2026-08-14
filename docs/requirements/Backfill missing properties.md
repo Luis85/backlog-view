@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Creating items]]"
 order: 30
 status: Done
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Backfill missing properties

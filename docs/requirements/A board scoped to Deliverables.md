@@ -27,6 +27,13 @@ files:
   - src/view/cardMoves.ts
   - README.md
   - eslint.config.mjs
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # A board scoped to Deliverables

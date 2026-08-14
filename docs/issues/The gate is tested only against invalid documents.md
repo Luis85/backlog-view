@@ -12,6 +12,13 @@ files:
   - scripts/docs-check.mjs
   - test/docs/checkerAccepts.test.ts
   - test/docs/checkerRejects.test.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # The gate is tested only against invalid documents

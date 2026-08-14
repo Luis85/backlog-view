@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Theming and styling]]"
 order: 40
 status: Open
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # A documented restyling surface

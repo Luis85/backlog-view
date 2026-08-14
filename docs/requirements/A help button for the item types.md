@@ -11,6 +11,13 @@ files:
   - src/ui/prompts.ts
   - src/domain/itemTypes.ts
   - src/domain/settings.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # A help button for the item types

@@ -4,6 +4,13 @@ parent: "[[Codebase health]]"
 order: 10
 status: Done
 closed: 2026-08-03
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: Igmar
 ---
 
 # Test harness and coverage

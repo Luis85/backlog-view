@@ -4,6 +4,13 @@ parent: "[[Product Roadmap]]"
 order: 50
 status: Open
 created: 2026-08-01
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Hierarchy on the roadmap

@@ -7,6 +7,13 @@ priority: P2
 created: 2026-08-09
 files:
   - styles/board.css
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Columns that use the room they have

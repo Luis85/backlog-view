@@ -10,6 +10,13 @@ files:
   - src/domain/viewOptions.ts
   - src/domain/roadmap.ts
   - src/storage/collapseStore.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Horizons or dates

@@ -17,6 +17,13 @@ files:
   - src/view/render/roadmap.ts
   - src/view/render/timeline.ts
   - src/view/render/emptyStates.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Smoke-test the visual changes in a real vault

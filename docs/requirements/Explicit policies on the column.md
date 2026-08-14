@@ -8,6 +8,13 @@ created: 2026-08-01
 closed: 2026-08-02
 files:
   - src/domain/viewOptions.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Explicit policies on the column

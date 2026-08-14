@@ -10,6 +10,13 @@ files:
   - src/domain/folderNotes.ts
   - src/ui/prompts.ts
   - src/commands/scaffold.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Help for creating and filing

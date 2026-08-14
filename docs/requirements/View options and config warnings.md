@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Multilang]]"
 order: 50
 status: Open
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # View options and config warnings

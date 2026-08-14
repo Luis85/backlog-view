@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Theming and styling]]"
 order: 50
 status: Open
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Light, dark and reduced motion

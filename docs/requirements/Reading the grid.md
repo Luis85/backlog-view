@@ -12,6 +12,13 @@ files:
   - src/storage/collapseStore.ts
   - src/view/collapseState.ts
   - styles/timelineFurniture.css
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Reading the grid

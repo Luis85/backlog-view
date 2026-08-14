@@ -15,6 +15,13 @@ files:
   - src/view/writeGate.ts
   - src/view/render/toolbar.ts
   - src/domain/viewOptions.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Undo and redo the last few backlog changes

@@ -13,6 +13,13 @@ files:
   - src/domain/board.ts
   - src/view/render/board.ts
   - test/view/boardFilter.test.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # The quick filter on the board

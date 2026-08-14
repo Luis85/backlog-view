@@ -5,6 +5,13 @@ order: 20
 status: Open
 created: 2026-08-08
 source: user request
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Test coverage

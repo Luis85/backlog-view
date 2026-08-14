@@ -6,6 +6,13 @@ status: Done
 area: performance
 created: 2026-08-12
 closed: 2026-08-12
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # A row costs its content, not its wiring

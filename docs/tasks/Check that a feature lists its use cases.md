@@ -11,6 +11,13 @@ source: drift found while syncing PR #27 against main
 files:
   - scripts/docs-check.mjs
   - docs/README.md
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Check that a feature lists its use cases

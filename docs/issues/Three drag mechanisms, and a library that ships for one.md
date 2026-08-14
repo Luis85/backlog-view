@@ -14,6 +14,13 @@ files:
   - src/view/interactions/linkDrag.ts
   - src/view/interactions/timelineLeadResize.ts
   - src/domain/dropTargets.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Three drag mechanisms, and a library that ships for one

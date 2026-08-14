@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Work item hierarchy]]"
 order: 40
 status: Done
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Folder note hierarchy

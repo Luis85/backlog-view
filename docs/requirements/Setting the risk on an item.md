@@ -12,6 +12,13 @@ files:
   - src/domain/writePlan.ts
   - src/storage/frontmatter.ts
   - src/view/interactions/menu.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Setting the risk on an item

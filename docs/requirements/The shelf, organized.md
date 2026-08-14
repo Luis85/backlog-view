@@ -17,6 +17,13 @@ files:
   - src/view/render/roadmap.ts
   - styles/shelf.css
   - styles/roadmap.css
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # The shelf, organized

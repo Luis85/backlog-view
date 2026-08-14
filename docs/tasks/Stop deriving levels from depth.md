@@ -10,6 +10,13 @@ created: 2026-07-31
 source: PR #14 maintainability review
 files:
   - src/domain/writePlan.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # `computeTypeChanges` derives levels from depth

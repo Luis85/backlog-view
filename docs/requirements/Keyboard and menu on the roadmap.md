@@ -9,6 +9,13 @@ files:
   - src/view/interactions/keyboard.ts
   - src/view/interactions/menu.ts
   - src/ui/prompts.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Keyboard and menu on the roadmap

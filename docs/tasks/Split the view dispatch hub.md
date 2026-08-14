@@ -12,6 +12,13 @@ files:
   - src/view/backlogView.ts
   - src/view/writeGate.ts
   - src/view/interactions/keyboard.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Split the view dispatch hub

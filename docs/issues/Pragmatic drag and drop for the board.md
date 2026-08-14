@@ -7,6 +7,13 @@ priority: P2
 area: design
 created: 2026-08-01
 source: user request
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Pragmatic drag and drop is the board's interaction engine

@@ -8,6 +8,13 @@ area: verification
 cadence: release
 created: 2026-08-08
 source: built in [[A Deliverable is coloured by its own workflow]]; the colour half is the part no harness can answer
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Roadmap legend with two workflows

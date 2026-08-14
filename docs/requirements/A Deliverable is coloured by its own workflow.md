@@ -18,6 +18,13 @@ files:
   - src/view/render/cardChildren.ts
   - styles/legend.css
   - styles/timeline.css
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # A Deliverable is coloured by its own workflow

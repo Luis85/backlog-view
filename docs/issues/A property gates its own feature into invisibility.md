@@ -11,6 +11,13 @@ files:
   - src/domain/optionalProperties.ts
   - src/view/interactions/labels.ts
   - src/view/interactions/plan.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # A property gates its own feature into invisibility

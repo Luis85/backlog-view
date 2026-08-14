@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Creating items]]"
 order: 20
 status: Done
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Where new items are filed

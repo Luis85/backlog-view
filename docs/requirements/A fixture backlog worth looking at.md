@@ -10,6 +10,13 @@ files:
   - test/helpers/fixtures.ts
   - test/harness/mount.ts
   - test/harness/harness.test.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # A fixture backlog worth looking at

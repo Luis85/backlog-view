@@ -11,6 +11,13 @@ source: Codex review on PR #61, verified against the source
 files:
   - src/view/interactions/dragDrop.ts
   - src/view/CLAUDE.md
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # The drag cleanup scans the whole tree

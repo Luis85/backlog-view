@@ -10,6 +10,13 @@ source: 2026-08-01 review of PR #24
 files:
   - scripts/docs-check.mjs
   - src/domain/noteFields.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # The checker reads frontmatter its own way

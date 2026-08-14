@@ -10,6 +10,13 @@ source: CLAUDE.md, pre-existing
 files:
   - src/domain/dropTargets.ts
   - src/domain/writePlan.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # A partially filtered sibling group can produce duplicate orders

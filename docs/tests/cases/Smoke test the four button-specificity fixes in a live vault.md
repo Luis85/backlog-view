@@ -12,6 +12,13 @@ files:
   - styles/columns.css
   - styles/tags.css
   - styles/cards.css
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Smoke test the four button-specificity fixes in a live vault

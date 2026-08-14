@@ -10,6 +10,13 @@ files:
   - src/domain/settings.ts
   - src/commands/scaffold.ts
   - src/view/render/columns.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Help for setting up the view

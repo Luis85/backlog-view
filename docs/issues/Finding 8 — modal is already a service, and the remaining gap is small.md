@@ -7,6 +7,13 @@ area: architecture
 priority: P3
 created: 2026-08-03
 source: Review of 0.4.0, finding 8 — docs/superpowers/plans/2026-08-03-codebase-quality-review.md
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Finding 8 — modal is already a service, and the remaining gap is small

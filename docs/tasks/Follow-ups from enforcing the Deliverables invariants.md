@@ -11,6 +11,13 @@ files:
   - eslint.config.mjs
   - src/view/render/toolbar.ts
   - test/view/deliverableWorkflowByType.test.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Follow-ups from enforcing the Deliverables invariants

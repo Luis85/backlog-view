@@ -8,6 +8,13 @@ priority: P2
 created: 2026-08-03
 closed: 2026-08-03
 source: Review of 0.4.0, finding 12 — docs/superpowers/plans/2026-08-03-codebase-quality-review.md
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Finding 12 — the model rebuild has no cost check

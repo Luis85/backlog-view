@@ -4,6 +4,11 @@ parent: "[[Product Roadmap]]"
 order: 40
 status: Open
 created: 2026-08-01
+started: ""
+finished: ""
+horizon: ""
+risk: ""
+assignee: Chris
 ---
 
 # Scheduling work

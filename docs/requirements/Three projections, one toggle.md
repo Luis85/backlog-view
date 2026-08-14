@@ -9,6 +9,13 @@ files:
   - src/storage/collapseStore.ts
   - src/view/backlogView.ts
   - src/view/render/toolbar.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Three projections, one toggle

@@ -8,6 +8,13 @@ created: 2026-08-01
 files:
   - src/domain/writePlan.ts
   - src/domain/dropTargets.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Swimlanes by parent

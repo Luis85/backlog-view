@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Test harness and coverage]]"
 order: 10
 status: Done
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # A test suite that can be navigated

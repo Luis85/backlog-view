@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Multilang]]"
 order: 20
 status: Open
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # The string catalog

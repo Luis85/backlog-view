@@ -10,6 +10,13 @@ files:
   - src/domain/timeline.ts
   - src/domain/roadmap.ts
   - src/view/render/timeline.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Spans roll up the tree

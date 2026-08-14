@@ -6,6 +6,13 @@ status: Done
 area: testing
 created: 2026-08-03
 closed: 2026-08-03
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: Chris
 ---
 
 # The render path states its costs as checks

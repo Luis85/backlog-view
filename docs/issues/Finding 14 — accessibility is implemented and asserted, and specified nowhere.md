@@ -7,6 +7,13 @@ area: ux
 priority: P2
 created: 2026-08-03
 source: Review of 0.4.0, finding 14 — docs/superpowers/plans/2026-08-03-codebase-quality-review.md
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Finding 14 — accessibility is implemented and asserted, and specified nowhere

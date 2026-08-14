@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Finding work]]"
 order: 20
 status: Done
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Focus level

@@ -5,6 +5,13 @@ order: 20
 status: Done
 closed: 2026-08-01
 source: automated review of PR #22
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Nested extra type lost its pinned rank

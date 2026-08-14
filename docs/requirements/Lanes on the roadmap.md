@@ -9,6 +9,13 @@ files:
   - src/domain/writePlan.ts
   - src/domain/dropTargets.ts
   - src/storage/collapseStore.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Lanes on the roadmap

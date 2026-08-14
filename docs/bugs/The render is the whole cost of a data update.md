@@ -10,6 +10,13 @@ source: Measured in Chromium through the browser harness, against a user report 
 files:
   - src/view/backlogView.ts
   - src/view/render/rows.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # The render is the whole cost of a data update

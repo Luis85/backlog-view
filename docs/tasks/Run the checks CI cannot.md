@@ -10,6 +10,13 @@ source: docs/superpowers/specs/2026-08-09-user-manual-and-round-close-design.md 
 files:
   - src/ui/manualDialog.ts
   - styles/manual.css
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Run the checks CI cannot

@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Item Templates]]"
 order: 20
 status: Open
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Creating an item from a template

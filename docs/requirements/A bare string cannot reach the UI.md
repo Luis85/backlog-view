@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Multilang]]"
 order: 100
 status: Open
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # A bare string cannot reach the UI

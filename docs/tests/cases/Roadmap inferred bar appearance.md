@@ -8,6 +8,13 @@ area: verification
 cadence: release
 created: 2026-08-02
 source: Feature Test epic; still owed from the previous roadmap increment
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Roadmap inferred bar appearance

@@ -10,6 +10,13 @@ source: 2026-08-02 Codex review of PR #56, found while fixing the milestone line
 files:
   - src/view/render/timeline.ts
   - styles/timeline.css
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # The today line swallows a row's clicks

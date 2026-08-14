@@ -4,6 +4,13 @@ parent: "[[Product Roadmap]]"
 order: 10
 status: Done
 created: 2026-08-01
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # A third projection

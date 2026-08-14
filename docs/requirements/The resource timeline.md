@@ -5,6 +5,13 @@ order: 80
 status: Open
 created: 2026-08-13
 source: user request
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # The resource timeline

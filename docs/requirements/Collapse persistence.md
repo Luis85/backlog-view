@@ -3,6 +3,13 @@ type: PBI
 parent: "[[View state]]"
 order: 10
 status: Done
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Collapse persistence

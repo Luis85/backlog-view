@@ -9,6 +9,13 @@ area: domain
 source: automated review of PR #22
 files:
   - src/domain/model.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Parentless extra type dropped from the model

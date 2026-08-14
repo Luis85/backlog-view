@@ -11,6 +11,13 @@ source: PR #47 — six of seven review rounds landed inside one unspecified mech
 files:
   - docs/requirements/New cards in place.md
   - docs/requirements/Moving between horizons.md
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # The outcome report was built from one sentence

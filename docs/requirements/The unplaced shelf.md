@@ -16,6 +16,13 @@ files:
   - test/helpers/obsidian-mock.ts
   - test/helpers/vault.ts
   - test/view/shelfUx.test.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # The unplaced shelf

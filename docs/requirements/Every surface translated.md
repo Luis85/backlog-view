@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Multilang]]"
 order: 40
 status: Open
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Every surface translated

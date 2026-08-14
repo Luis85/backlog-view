@@ -4,6 +4,13 @@ parent: "[[Product Kanban]]"
 order: 70
 status: Done
 created: 2026-08-06
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # A Deliverables board

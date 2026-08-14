@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Work item hierarchy]]"
 order: 50
 status: Done
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # What counts as a work item

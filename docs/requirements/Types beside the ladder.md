@@ -13,6 +13,13 @@ files:
   - src/domain/model.ts
   - src/domain/writePlan.ts
   - src/ui/prompts.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Issue and Bug: types that sit beside the ladder

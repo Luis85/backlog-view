@@ -10,6 +10,13 @@ created: 2026-07-31
 source: PR #14 maintainability review
 files:
   - src/view/render/rows.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Lift the empty states out of `rows.ts`

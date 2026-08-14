@@ -16,6 +16,13 @@ files:
   - test/domain/settings.test.ts
   - test/domain/board.test.ts
   - test/domain/stamps.test.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # A hand-built fixture can model a state the producer cannot produce

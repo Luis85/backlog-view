@@ -17,6 +17,13 @@ files:
   - src/view/interactions/menu.ts
   - styles/tree.css
   - styles/timelineFurniture.css
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Collapsing a bar's subtree

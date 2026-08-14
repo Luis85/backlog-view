@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Finding work]]"
 order: 30
 status: Done
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Filtered bases keep their tree

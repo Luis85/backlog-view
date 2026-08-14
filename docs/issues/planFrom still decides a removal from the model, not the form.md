@@ -13,6 +13,13 @@ files:
   - src/domain/writePlan.ts
   - src/storage/frontmatter.ts
   - docs/requirements/Horizon and dates from the row.md
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # planFrom still decides a removal from the model, not the form

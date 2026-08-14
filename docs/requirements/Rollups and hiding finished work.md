@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Progress tracking]]"
 order: 20
 status: Done
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Rollups and hiding finished work

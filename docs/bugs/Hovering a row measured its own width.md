@@ -12,6 +12,13 @@ files:
   - src/view/render/rows.ts
   - src/view/resize.ts
   - src/view/CLAUDE.md
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Hovering a row measured its own width

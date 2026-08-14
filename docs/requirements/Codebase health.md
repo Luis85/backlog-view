@@ -5,6 +5,10 @@ status: Open
 area: meta
 created: 2026-07-31
 horizon: Later
+started: ""
+finished: ""
+risk: ""
+assignee: Igmar
 ---
 
 # Codebase health

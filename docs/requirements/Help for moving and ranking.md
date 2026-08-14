@@ -10,6 +10,13 @@ files:
   - src/view/interactions/dragDrop.ts
   - src/view/interactions/keyboard.ts
   - src/view/interactions/menu.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Help for moving and ranking

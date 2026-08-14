@@ -13,6 +13,13 @@ files:
   - .github/workflows/ci.yml
   - scripts/docs-check.mjs
   - test/docs/checkerAccepts.test.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Unfreeze the compiler config and run CI on Windows

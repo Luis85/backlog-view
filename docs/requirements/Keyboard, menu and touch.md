@@ -13,6 +13,13 @@ files:
   - src/view/backlogView.ts
   - src/view/cardMoves.ts
   - src/view/selection.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Keyboard, menu and touch

@@ -7,6 +7,13 @@ priority: P2
 created: 2026-08-01
 files:
   - src/view/interactions/create.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # New cards in place

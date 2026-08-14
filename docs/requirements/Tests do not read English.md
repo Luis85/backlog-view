@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Multilang]]"
 order: 120
 status: Open
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Tests do not read English

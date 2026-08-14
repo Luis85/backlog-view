@@ -18,6 +18,13 @@ files:
   - src/view/collapseState.ts
   - styles/roadmap.css
   - styles/timeline.css
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Smoke test the writable timeline

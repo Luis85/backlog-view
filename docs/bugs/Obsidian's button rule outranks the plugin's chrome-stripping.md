@@ -7,14 +7,20 @@ area: styling
 priority: P2
 created: 2026-08-08
 closed: 2026-08-08
-source: Card children expansion increment, verified in the harness against the real
-  Obsidian stylesheet (test/harness/obsidian.css), task-10-report.md
+source: Card children expansion increment, verified in the harness against the real Obsidian stylesheet (test/harness/obsidian.css), task-10-report.md
 files:
   - styles/cardChildren.css
   - styles/columns.css
   - styles/tags.css
   - styles/cards.css
   - test/harness/obsidian.css
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Obsidian's button rule outranks the plugin's chrome-stripping

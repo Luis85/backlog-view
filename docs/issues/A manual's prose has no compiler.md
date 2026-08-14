@@ -10,6 +10,13 @@ source: the first merge with main after the manual shipped — 2026-08-09-user-m
 files:
   - src/view/manual/sections.ts
   - test/docs/surfaces.test.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # A manual's prose has no compiler

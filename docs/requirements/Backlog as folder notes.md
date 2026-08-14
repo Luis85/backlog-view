@@ -12,6 +12,13 @@ files:
   - src/domain/itemTypes.ts
   - src/domain/settings.ts
   - src/domain/viewOptions.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Backlog as folder notes

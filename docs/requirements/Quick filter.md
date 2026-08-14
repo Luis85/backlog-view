@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Finding work]]"
 order: 10
 status: Done
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Quick filter

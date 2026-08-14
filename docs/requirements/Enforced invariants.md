@@ -3,6 +3,13 @@ type: Feature
 parent: "[[Codebase health]]"
 order: 20
 status: Done
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: Ben
 ---
 
 # Enforced invariants

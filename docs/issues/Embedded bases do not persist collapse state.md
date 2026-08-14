@@ -9,6 +9,13 @@ created: 2026-07-31
 source: PR #14, third Codex review
 files:
   - src/storage/collapseStore.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # A base embedded in a note keeps collapse state for the session only

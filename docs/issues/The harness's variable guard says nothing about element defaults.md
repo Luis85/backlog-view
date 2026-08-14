@@ -11,6 +11,13 @@ files:
   - test/harness/harness.test.ts
   - test/harness/obsidian.css
   - test/harness/theme.css
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # The harness's variable guard says nothing about element defaults

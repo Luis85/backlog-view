@@ -13,6 +13,13 @@ files:
   - src/view/cardMoves.ts
   - src/view/writeGate.ts
   - src/view/interactions/cardDrag.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Drag a card to a new state

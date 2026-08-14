@@ -16,6 +16,13 @@ files:
   - src/view/interactions/plan.ts
   - src/view/render/columns.ts
   - src/ui/prompts.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Horizon and dates from the row

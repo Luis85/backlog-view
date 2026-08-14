@@ -7,6 +7,13 @@ priority: P1
 created: 2026-08-01
 files:
   - src/domain/board.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Every card has a column

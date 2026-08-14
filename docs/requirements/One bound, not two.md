@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Theming and styling]]"
 order: 30
 status: Open
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # One bound, not two

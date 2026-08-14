@@ -7,13 +7,19 @@ area: styling
 priority: P2
 created: 2026-08-08
 closed: 2026-08-08
-source: User report — "the columns of a milestone are not aligned with the rest of the
-  backlog, every column is displaced to the right"
+source: User report — "the columns of a milestone are not aligned with the rest of the backlog, every column is displaced to the right"
 files:
   - src/view/render/rows.ts
   - src/view/render/columns.ts
   - styles/columns.css
   - test/view/rendering.test.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # A milestone's columns sat clear of the backlog

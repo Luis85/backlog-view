@@ -5,8 +5,6 @@ order: 20
 status: Done
 priority: P2
 created: 2026-08-01
-start: 2026-08-10
-due: 2026-09-25
 files:
   - src/view/interactions/timelineDrag.ts
   - src/domain/bars.ts
@@ -14,6 +12,11 @@ files:
   - src/view/host.ts
   - src/view/backlogView.ts
   - src/view/cardMoves.ts
+started: ""
+finished: ""
+horizon: ""
+risk: ""
+assignee: Chris
 ---
 
 # Move and resize a bar

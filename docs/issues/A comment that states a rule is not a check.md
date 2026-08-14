@@ -12,6 +12,13 @@ files:
   - src/view/backlogView.ts
   - styles/columns.css
   - src/view/interactions/keyboard.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # A comment that states a rule is not a check

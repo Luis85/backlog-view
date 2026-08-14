@@ -5,6 +5,10 @@ status: Open
 area: meta
 created: 2026-08-01
 horizon: Later
+started: ""
+finished: ""
+risk: ""
+assignee: Igmar
 ---
 
 # Cross-cutting concerns

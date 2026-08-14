@@ -4,6 +4,10 @@ order: 10
 status: Active
 horizon: Now
 area: product
+started: ""
+finished: ""
+risk: ""
+assignee: Alex
 ---
 
 # Product Backlog

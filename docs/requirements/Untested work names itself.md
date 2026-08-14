@@ -6,6 +6,13 @@ status: Open
 priority: P2
 created: 2026-08-08
 source: user request
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Untested work names itself

@@ -10,6 +10,13 @@ closed: 2026-08-11
 source: 2026-08-01 review of PR #24, found four times in four files
 files:
   - src/domain/writePlan.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # The dragged item is retyped, its descendants are not

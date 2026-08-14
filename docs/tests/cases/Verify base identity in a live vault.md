@@ -11,6 +11,13 @@ created: 2026-07-31
 source: PR #14, collapse-state persistence
 files:
   - src/storage/collapseStore.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Verify base identity resolves in a live vault

@@ -3,6 +3,13 @@ type: PBI
 parent: "[[Progress tracking]]"
 order: 10
 status: Done
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Workflow state

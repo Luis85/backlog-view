@@ -8,6 +8,13 @@ area: verification
 cadence: release
 created: 2026-08-01
 source: Product Kanban epic design
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Smoke test the board in a live vault

@@ -9,6 +9,13 @@ created: 2026-08-01
 source: Product Kanban epic design
 files:
   - src/domain/writePlan.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Within a column, cards rank by the base's sort, not by hand

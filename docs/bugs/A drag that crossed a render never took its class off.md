@@ -7,12 +7,17 @@ area: view
 priority: P1
 created: 2026-08-11
 closed: 2026-08-11
-source: Reported from a vault while drawing dependencies on the timeline — "suddenly all
-  hover events were not working anymore and the circle didn't appear on hover", with the
-  root-drop strip stuck on screen. Not reproducible by the reporter.
+source: Reported from a vault while drawing dependencies on the timeline — "suddenly all hover events were not working anymore and the circle didn't appear on hover", with the root-drop strip stuck on screen. Not reproducible by the reporter.
 files:
   - src/view/interactions/cardDrag.ts
   - test/view/cardDrag.test.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # A drag that crossed a render never took its class off
