@@ -389,4 +389,19 @@ describe('the band header’s readout', () => {
 		expect(harness.containerEl.querySelectorAll('.pbl-absence')).toHaveLength(0);
 		expect(laneCountOf(lanesOf(harness.containerEl)[0])).toBe('1 item / 1 absence');
 	});
+
+	it('reads as absence alone on a band with no work at all', () => {
+		// The case a band header exists to answer: `Sam` in the demo fixture is a row whose
+		// only reason to be on screen is that someone is away, with no work of their own.
+		// `countingVault` always seeds `Work.md` for Alice, so this fixture puts the
+		// absence on Bob instead — declared in the roster (`laneRoadmap`'s own
+		// `resourceNames: 'Alice, Bob'`) but never assigned any bar.
+		const vault = countingVault([]);
+		vault.addFile('Away.md', {
+			frontmatter: { type: 'Absence', assignee: 'Bob', start: dayFromToday(5), due: dayFromToday(9) },
+		});
+		const harness = laneRoadmap(vault);
+
+		expect(laneCountOf(lanesOf(harness.containerEl)[1])).toBe('0 items / 1 absence');
+	});
 });
