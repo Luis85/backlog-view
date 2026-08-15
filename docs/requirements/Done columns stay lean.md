@@ -115,20 +115,29 @@ flush drops any key the vault has no file for, and a state value is not a file. 
 scoped and lower-cased (`columnKey`), because both boards and the horizon axis can hold a
 `Done` and each identifies its columns case-insensitively.
 
-**The default.** `BoardColumn.openWork` (`src/domain/board.ts`), computed in the same
-population pass `fullCount` is — with the quick filter lifted, which is the load-bearing
-half: measured over the drawn cards, a search that hid every open card in Done would
-report the stage finished and fold a column holding retained work. The fold default is
-`col.done && col.fullCount > 0 && !col.openWork`, taken once, in `renderBoard`.
+**The default.** `col.done && col.held > 0 && !col.openWork`, taken once, in `renderBoard`.
+The two terms beside `done` ask different questions and are measured differently — every
+review finding against this default was one of them measured the other's way.
 
-That middle term is the same load-bearing half read from the other side, and it was
-missing until review: settling is permanent, so a default taken while the column holds
-NOTHING is a default taken on no evidence. A board drawn before its results arrive — a
-Bases pass that has not warmed up, a filter narrowed to nothing — has an empty Done like
-every other column, and without the term it shut Done for good and handed the work back
-folded when it turned up. That is `collapseNewParents`' own "a model that has not loaded
-is not a vault with no notes", one projection over. It also states the requirement
-honestly: this note is about finished work taking a stage's room, and no work takes none.
+`BoardColumn.openWork` (`src/domain/board.ts`) asks whether anything in the stage is
+unfinished, computed in the same population pass `fullCount` is, with the quick filter
+lifted. That is the load-bearing half of it: measured over the drawn cards instead, a
+search that hid every open card in Done would report the stage finished and fold a column
+holding retained work.
+
+`BoardColumn.held` asks whether the stage holds anything at all, and is deliberately NOT
+population-based — it is counted through `owned`, a predicate carrying neither the filter
+nor the completed-items toggle. No count can serve, because the toggle lives in the
+population predicate: with finished work hidden, a done column full of finished work
+reports `fullCount === 0`, reads as empty, and refuses the fold in exactly the
+configuration extension 3b is about. The term is needed all the same, because settling is
+permanent and a default taken while the column holds NOTHING is a default taken on no
+evidence — a board drawn before its results arrive, or a filter narrowed to nothing, has
+an empty Done like every other column, and without the term it shut Done for good and
+handed the work back folded when it turned up. That is `collapseNewParents`' own "a model
+that has not loaded is not a vault with no notes", one projection over. It also states
+this note honestly: it is about finished work taking a stage's room, and no work takes
+none.
 
 Finished is asked of the COLUMN, never of `item.subtreeDone`. That field is built on
 `item.done`, the requirements reading, so on the Deliverables board a Deliverable finished
@@ -162,15 +171,6 @@ arrive with it. Its keyboard path is the column's own menu, which moved to
 `src/view/interactions/columnMenu.ts` when the fold joined it: the menu used to be
 withheld from a column with nothing agreed, and every column has a fold now, so it is
 unconditional and `menu.ts` — which is about an ITEM — stopped being its home.
-
-**The evidence that a stage HOLDS something is `col.held`, never a count.** Settling is
-permanent, so a default taken on an empty column is taken on no evidence — a board drawn
-before its results arrive would shut Done for good. But `count` and `fullCount` are both
-measured through the population predicate, and the completed-items toggle lives in that:
-with finished work hidden, a done column full of finished work reports zero and reads as
-empty, refusing the fold in exactly the configuration extension 3b is about. `held` is
-counted through `owned`, which asks only whether the card is this board's at all. Found by
-review (Codex, PR #140), on the term's first spelling.
 
 **A context card speaks for the results below it and for nothing else.** It joins no
 count, and its own state is no part of this board's verdict — the context-row rule — but

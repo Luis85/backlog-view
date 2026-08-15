@@ -529,19 +529,23 @@ free of runtime code so imports stay cycle-free.
   drawn — a board with every column folded is not a board with nothing on it, and telling
   the reader their work was all done or all filtered away is the collapsed shelf's mistake
   one projection over.
-  **The default is the board's alone.** `col.done && col.fullCount > 0 && !col.openWork`
-  folds a done column once, and both the count and `openWork` are measured over the
-  POPULATION (`domain/board.ts`), so a quick
-  filter cannot make a stage look finished and fold work the reader was holding. The
-  population term is the same guard read the other way and it was missing until review:
-  settling is permanent, so a default taken while the column holds NOTHING — a board drawn
-  before its results arrive, a filter narrowed to nothing — shut Done for good and handed
-  the work back folded. `collapseNewParents` states that hazard for an unloaded model; a
-  default settled lazily at the render meets it a second time. The evidence that the
-  column holds anything at all is `col.held` and never a count: `count` and `fullCount` are
-  measured through the population predicate, which carries the completed-items toggle, so
-  with finished work hidden a done column FULL of it reports zero and reads as empty. It is
-  the
+  **The default is the board's alone**: `col.done && col.held > 0 && !col.openWork`, taken
+  once. The two terms beside `done` ask different questions and are deliberately measured
+  DIFFERENTLY (`domain/board.ts`) — every review finding against this default was one of
+  them measured the other's way.
+  `openWork` asks whether anything here is unfinished, over the POPULATION with the quick
+  filter lifted, so a search that hid every open card cannot make a stage look finished and
+  fold work the reader was holding.
+  `held` asks whether the stage holds anything at all, and is NOT population-based: it is
+  counted through `owned`, which carries neither the filter nor the completed-items toggle.
+  A count cannot serve — the toggle lives in the population predicate, so with finished work
+  hidden a done column FULL of finished work reports zero and reads as empty, refusing the
+  fold in the one configuration the feature exists for. The term is needed all the same,
+  because settling is permanent: a default taken while the column holds NOTHING — a board
+  drawn before its results arrive, a filter narrowed to nothing — shut Done for good and
+  handed the work back folded. `collapseNewParents` states that hazard for an unloaded
+  model; a default settled lazily at the render meets it a second time.
+  `openWork` is the
   one derived quantity a CONTEXT card contributes to, and only through its rollup: under a
   focus such a card can be the only thing standing for the results below it, so a column
   folded on its silence takes them off the board — with no advisory, since the board does
