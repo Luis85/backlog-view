@@ -312,9 +312,15 @@ describe('rendering', () => {
 		expect(ruleAt('.pbl-cols .pbl-props', 'align-self: stretch;')).toBeGreaterThan(-1);
 		expect(ruleAt('.pbl-cols .pbl-props', 'overflow: visible;')).toBeGreaterThan(-1);
 		expect(ruleAt('.pbl-col-grip', 'inset-block: calc(-1 * var(--size-4-2)) calc(-1 * var(--size-2-2));')).toBeGreaterThan(-1);
-		// The label cell has to stop clipping too, and it is the LATER rule of the pair that
-		// ties with `.pbl-prop` on specificity.
-		expect(ruleAt('.pbl-col-label', 'overflow: visible;')).toBeGreaterThan(ruleAt('.pbl-prop', 'overflow: hidden;'));
+		// The cell is spared `.pbl-prop`'s clip by that same (0,2,0) strip rule, which is
+		// what the second pin above covers — its selector list names the cell too. There is
+		// deliberately no pin on `.pbl-col-label` here: one was written, asserting an
+		// `overflow: visible` inside that rule, and the declaration decided NOTHING (a
+		// later `overflow: hidden` in the same rule outranked it by position). A text pin
+		// cannot decide a cascade — it can only say a declaration is present — so what it
+		// pins has to be the rule that actually governs, and the browser is what says which
+		// one that is.
+		expect(ruleAt('.pbl-col-label', 'overflow:')).toBe(-1);
 	});
 
 	it('reveals the connector on the keyboard-selected row, which is the only reveal that path gets', () => {

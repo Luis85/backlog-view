@@ -89,6 +89,19 @@ was asking the browser what is HIT-TESTABLE down the boundary, pixel by pixel, w
 same question the reader's eye asks. A rectangle read back from the element that was just
 sized is a measurement of the instruction rather than of the result.
 
+**A declaration that decided nothing, and a pin that checked it.** The first attempt at
+sparing the header cell from `.pbl-prop`'s clip wrote `overflow: visible` INSIDE
+`.pbl-col-label` — where a later `overflow: hidden` in the same rule outranked it by
+position, so it never applied. The cell was spared anyway, by the strip rule at (0,2,0),
+which is what actually governs; the dead declaration and the equally dead
+`overflow: hidden`/`text-overflow` pair beside it are gone, and the name truncates on its
+own span (measured: a 50-character name ellipsizes and stops 8px inside the cell). What
+makes this worth recording is the CHECK: a pin asserted that dead declaration was present
+and passed, and would have gone on passing with the header cells clipped, because **a text
+pin over a stylesheet can say a declaration exists and can never say it wins.** The pin now
+names the rule that governs, and asserts `.pbl-col-label` declares no `overflow` at all —
+which is a thing text CAN decide. (Codex, PR #144.)
+
 **The instrument was wrong before the rule was.** `ruleAt` in that suite escapes the
 SELECTOR it is handed and did not escape the DECLARATION, so `var(--x)`'s parentheses read
 as a capture group and the pattern searched for `var--x`. Every pin naming a `var()` value
