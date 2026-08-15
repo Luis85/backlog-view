@@ -10,7 +10,7 @@ import { ScaleId, scaleFor } from '../domain/timeline';
  * in `backlogView.ts`'s own comments (a re-render, a content-only re-render, or a
  * model rebuild).
  */
-export interface UiStateHooks {
+export interface ViewStateHooks {
 	/** No config was set, so no Bases refresh is coming: this render IS the change. */
 	render(): void;
 	/** Content only, like the quick filter — the toolbar keeps its own focus and DOM. */
@@ -47,7 +47,7 @@ export interface UiStateHooks {
 export class ViewStateController {
 	constructor(
 		private readonly state: ViewState,
-		private readonly hooks: UiStateHooks,
+		private readonly hooks: ViewStateHooks,
 	) {}
 
 	get projection(): Projection {

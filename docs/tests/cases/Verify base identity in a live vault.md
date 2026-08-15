@@ -26,7 +26,7 @@ assignee: ""
 
 ## Why this exists
 
-Collapse-state persistence keys on the `.base` file the view belongs to. The Bases API
+View-state persistence keys on the `.base` file the view belongs to. The Bases API
 hands a view **no reference to its own file**, so `resolveViewIdentity` finds it by
 walking `app.workspace.iterateAllLeaves()` for the `FileView` whose `containerEl`
 contains the view's element, and requiring `view.file.extension === 'base'`.
