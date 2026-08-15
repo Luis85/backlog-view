@@ -308,7 +308,7 @@ Each registers a mount as it draws, and the second pass calls `renderCardMatches
   rather than `roadmap.context`, and it is hand-built from `createCard` upward, so it
   shares no body with the other four and has to register for itself.
 
-**A row's face draws a COUNT, not the titles.** The two lead-cell surfaces — the timeline
+**A row's face SUBSTITUTES a count for its progress, rather than adding one.** The two lead-cell surfaces — the timeline
 row and the lane context row — show one small affordance saying how many matches are under
 this row, and the row menu lists them. Cards keep the titles: a card has room, and the
 board has drawn them that way since the feature existed.
@@ -319,10 +319,17 @@ column, so they shrink together, and at the **default** 220px lead the five rows
 matches rendered as `O… 4/17 ⌕O…`, `S… 3/8 ⌕A…`, `B 1/6 ⌕D. U.. R` — one character of the
 row's own name — while rows without matches showed their titles in full. Each link got
 11–30px of the 56–148 it wanted. A row that gains matches must not lose its identity, and
-a match abbreviated to `O…` was never reachable-by-reading anyway. A fixed ~20px count
-costs the title a known constant instead of a variable share, and it also removes the
-3.31px spill the same run found at the 160px floor, where the list's own flex gap was what
-overflowed.
+a match abbreviated to `O…` was never reachable-by-reading anyway. A fixed-width chip was tried next and measured too: it
+still cost the title 34px at the default width, and because an unshrinkable item cannot
+yield it hung 28.95px out of the column at the 160px floor.
+
+The rule both runs found is that **a fixed-width column's only shrinkable item is the
+title, so anything added to the lead is taken from the row's name.** So the affordance is
+not added. The lead already carries a count slot — the rollup — and matches only exist
+while the filter runs, so the slot shows the match count while filtering and the rollup
+otherwise. Never both. The width budget does not move, and it is the more useful number
+during a search besides: a rollup counts every descendant regardless of what the filter
+narrowed to.
 
 The lead column is the reader's to size ([[A resizable lead column]]), and this is what
 makes that setting affordable: the count costs the same at every width. **A timeline row must not change height**:

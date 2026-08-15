@@ -865,36 +865,34 @@ and in `src/view/render/timeline.ts`, where the entry pass builds its result, in
 
 A row's mount is its `lead` — the sticky lead column, the one text region such a row has. A card's mount is the card.
 
-- [ ] **Step 6b: A row's face draws a count, not the titles**
+- [ ] **Step 6b: While filtering, a row's count slot says MATCHES instead of progress**
 
-**Decided from measurement, after the harness run.** The two lead-cell surfaces — the timeline row and the lane context row — must NOT render `.pbl-card-matches` with titles. `.pbl-card-title` and `.pbl-card-matches` are the only shrinkable items in that column, so they shrink together: at the **default** 220px lead, rows with matches rendered `O… 4/17 ⌕O…` and `B 1/6 ⌕D. U.. R` — one character of the row's own name — while rows without matches showed their titles in full. Links got 11–30px of the 56–148 they wanted. A row that gains matches must not lose its identity.
+**Twice measured, twice wrong, and the second measurement found the rule.** Drawing match titles in the lead let them shrink against the title and left one character of the row's name at the default width. Replacing them with a fixed-width chip (`flex: 0 0 auto`) still cost the title 34px at 220px — and, because an unshrinkable item cannot yield, it overflowed the lead by **28.95px** at the 160px floor where the old list managed 3.31px.
 
-Cards are unaffected: bucket cards, shelf cards and the context strip keep the full link list, because a card has the width and the board has drawn it that way since the feature existed. **This step changes the two row surfaces only.**
+The rule underneath both: **a fixed-width column's only shrinkable item is the title, so anything ADDED to the lead is taken from the row's name.** The affordance therefore must not be an addition.
 
-Render, on a row, one element instead of the list — a search icon and the match count, as a `tabindex="-1"` button that opens the row's own menu (`showItemMenu`), so the affordance and the list it stands for are one gesture apart:
+It is a **substitution**. The lead already carries a count slot — `.pbl-bar-count`, the rollup Task 3 put there. Matches only exist while the quick filter is active, so:
 
-```ts
-// on a ROW surface: the face says how many, the menu says which. A fixed cost in a
-// column the reader sizes, rather than a variable share taken from the row's name.
-const chip = mount.createEl('button', {
-    cls: 'pbl-row-matches',
-    attr: { type: 'button', tabindex: '-1', 'aria-label': `${matches.length} search ${matches.length === 1 ? 'match' : 'matches'} below` },
-});
-drawIcon(chip.createSpan({ cls: 'pbl-row-matches-icon' }), 'search');
-chip.createSpan({ text: String(matches.length) });
-setTooltip(chip, `${matches.length} search ${matches.length === 1 ? 'match' : 'matches'} under this row — open the menu to reach them`);
-chip.addEventListener('click', (evt) => { evt.stopPropagation(); showItemMenu(ctx.host, evt, item, childTypeChoices(item)); });
-```
+- **filter inactive** → that slot shows the rollup, exactly as today;
+- **filter active** → the same slot shows the match affordance instead.
 
-Give it a fixed footprint so it cannot take the title's width, in `styles/cards.css` beside the rules Task 4 already put there:
+Never both, so the lead's width budget is unchanged and the title keeps what it had. It is also the more useful number during a search: the rollup counts every descendant regardless of the filter, which is not what a reader narrowing the view is asking about.
+
+Two consequences to build:
+
+1. `renderBarProgress` is not the right owner any more — the choice depends on the filter and on the match walk, which run later. Have the second pass **replace** the lead's `.pbl-bar-count` content for a row that has matches, rather than appending beside it. Keep the `.pbl-sr-only` progress span as it is: it is on the row, costs no width, and the marker-label fix from round 1 stays.
+
+2. **The affordance must be able to shrink**, so it can never do what round 1's chip did:
 
 ```css
-/* A row's match affordance: a COUNT, never titles. `flex: 0 0 auto` is the whole point —
-   the lead is a fixed-width column whose only shrinkable items are the title and this, so
-   a variable-width list here is taken out of the row's own name. Measured at the default
-   lead width, titles-in-the-lead left one character of the row's identity. */
+/* Occupies the count slot while a filter runs — a substitution, not an addition, because
+   the lead's only shrinkable item is the row's title and anything added comes out of the
+   row's name. Shrinkable itself, down to the icon alone: an unshrinkable chip hung 28.95px
+   out of the column at the 160px floor, measured. */
 .pbl-row-matches {
-	flex: 0 0 auto;
+	flex: 0 1 auto;
+	min-width: 0;
+	overflow: hidden;
 	display: inline-flex;
 	align-items: center;
 	gap: var(--size-2-1);
@@ -908,9 +906,12 @@ Give it a fixed footprint so it cannot take the title's width, in `styles/cards.
 }
 ```
 
-Delete the `.pbl-timeline-lead .pbl-card-matches` rule added earlier in this task — no row renders that element any more, and a rule for markup nothing produces is dead CSS that `npm run check` is right to flag.
+Cards are untouched by all of this: bucket cards, shelf cards and the context strip keep the full link list, because a card has the width and the board has drawn it that way since the feature existed.
 
-**Re-run the harness after this change** and re-measure the same three questions at 160 / 220 / 480: row height equal with and without the chip, nothing past the lead's right edge at the 160px floor, and — the one this step exists for — **a row's title rendering the same as a row without matches at the same width**. Put the numbers in the report.
+**Re-measure at 160 / 220 / 480, and the pass conditions are now:**
+1. Row height equal, chip and no chip, in the same render. (Passed twice; keep it passing.)
+2. **Nothing past the lead's right edge at 160px** — this is the one round 1 regressed, so measure it first.
+3. **A chip row's `.pbl-card-title` width within a few px of a non-chip row's at the same width.** This is now achievable, because the slot was already spent on the rollup. If it still fails, stop and report the numbers — do not reach for a third shape without me.
 
 - [ ] **Step 7: Run the second pass**
 
