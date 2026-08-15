@@ -140,6 +140,16 @@ instruments improvised around a browser.
   the table as though it had. Removed from the runner rather than made to select, since
   `?view=` exists for LOOKING and the table already covers every projection. `--axis` stays,
   because the roadmap row really does draw whichever axis is active. (Codex, PR #137.)
+- **3h — the flag is misspelled.** Refused, naming it and listing what is known. A typo
+  was stored under its own key and ignored, so the run went ahead and printed a plausible
+  table for a command nobody meant: `--rums=4` measured once under a heading saying
+  `1 run`, and `--no-buid` REBUILT `.harness` over a build deliberately put there — the
+  one thing `--no-build` exists to prevent. It is the last door this failure came through:
+  every check above validates a value that already reached the right key, and none of them
+  fires when the key itself is wrong. The known set is a hand-written list, which this
+  register warns about — accepted because `args` is a plain object and "which keys does
+  this file read" cannot be asked of it, while a Proxy recording reads would only refuse
+  after the work it should have prevented. (Codex, PR #137.)
 - **4a — the runner checks out the ref to compare against.** Refused: that would move the
   tree someone is working in. Building the other side is one command in a git worktree,
   and stays the human's.

@@ -56,6 +56,31 @@ for (let i = 0; i < argv.length; i++) {
 }
 
 /**
+ * Every flag this file reads, and a refusal for anything else.
+ *
+ * A typo used to be stored under its own key and ignored, so the run continued and
+ * printed a plausible table for a command nobody meant: `--rums=4` measured once and
+ * headed the table `1 run`, and `--no-buid` REBUILT `.harness` — over whatever had
+ * deliberately been put there, which is the single thing `--no-build` exists to prevent.
+ * Both are this file's own subject once more, and this is the last door it came through:
+ * every earlier fix checked a value that had reached the right key. (Codex, PR #137.)
+ *
+ * A list rather than a derivation, and it is the one kind of list this register warns
+ * about — it goes stale if a flag is added without touching it. That is accepted here
+ * because the alternative is worse: `args` is a plain object, so "which keys are read"
+ * cannot be asked of it, and a Proxy recording reads would refuse a typo only after the
+ * work it should have prevented. The five lines below are the flags, in the order they
+ * are read.
+ */
+const KNOWN = new Set(['notes', 'runs', 'against', 'window', 'fixture', 'axis', 'build', 'no-build']);
+const unknown = Object.keys(args).filter((key) => !KNOWN.has(key));
+if (unknown.length > 0) {
+	console.error(`Unknown flag${unknown.length > 1 ? 's' : ''}: ${unknown.map((k) => `--${k}`).join(', ')}`);
+	console.error(`Known: ${[...KNOWN].map((k) => `--${k}`).join(', ')}`);
+	process.exit(1);
+}
+
+/**
  * A whole number, or a refusal naming the value — the two size knobs share this because
  * they share the failure. `--notes=abc` reached the page as junk, which `wantedNotes`
  * reads as "no generated notes", and the run then printed `?notes=abc` over a table of
