@@ -309,7 +309,11 @@ Each registers a mount as it draws, and the second pass calls `renderCardMatches
   shares no body with the other four and has to register for itself.
 
 The lead column is the reader's to size ([[A resizable lead column]]), so a narrow one
-wraps the links rather than reserving room for them.
+ellipsises the list rather than wrapping it. **A timeline row must not change height**:
+`renderDependencyArrows` snapshots every row's rectangle into fixed SVG coordinates before
+matches are named, so a row that grew would leave every arrow pointing between stale
+positions. The face therefore says *that* matches are there and the row menu says *which*
+— which is why the menu is a requirement of this design rather than a convenience.
 
 `renderCardMatches`'s own body is unchanged, including the `fromRowControl` arrangement
 that keeps a link's click and the card's own handler from both firing, and the `auxclick`
@@ -425,8 +429,9 @@ blind spot and are owed a vault check before the increment is called done:
   against a themed vault's own accent — and, at the compact density, whether an inset
   band still has the height to be seen. `npm run harness` answers the layout and
   Obsidian's *default* colours with the real stylesheet; it cannot answer a theme.
-- **The link buttons in a narrow lead column** — whether wrapping reads as intended at
-  the smallest width the resize grip allows.
+- **The link buttons in a narrow lead column** — whether an ellipsised list still reads as
+  "there are matches here" at the smallest width the resize grip allows, and whether the
+  row's height is visibly unchanged beside a row without matches.
 
 `npm run test-build` installs the plugin into this repository so
 `docs/Product Backlog.base` can be opened as the check's own fixture: the register is a

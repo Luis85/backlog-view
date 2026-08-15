@@ -869,26 +869,27 @@ A row's mount is its `lead` — the sticky lead column, the one text region such
 
 The card's styles do not carry over, and assuming they did was a review finding against this plan. `.pbl-timeline-lead` in `styles/timeline.css` is `display: flex` with `align-items: center` and **no `flex-wrap`** — a single non-wrapping row of badge, title and count. `.pbl-card-matches` is itself a wrap container, but as a flex ITEM in that row it gets no sizing, so its content-based minimum can push past the column's fixed `width: var(--pbl-tl-lead)` and spill over the day track. Each `.pbl-card-match` is `white-space: nowrap` with `max-width: 100%`, so a long title ellipsizes only once its container is actually constrained.
 
-Add to `styles/timeline.css`, beside the other `.pbl-timeline-lead` rules:
+**The row's height must not change**, which decides the shape of the fix. `.pbl-timeline-row .pbl-timeline-track` sets `min-height: 34px` — a floor, not a fixed height — and the row is `display: flex; align-items: stretch`, so a lead that wraps onto a second line makes the whole row taller. `renderDependencyArrows` runs inside `renderTimeline`, well before this second pass, and it snapshots row rectangles into fixed SVG path coordinates ("where rows really landed rather than a guessed row height", says its own call site). A row that grows afterwards shifts itself and every row below it, and every arrow then points between stale positions. Found by review.
+
+So the list stays on **one line**, ellipsised, and does not wrap:
 
 ```css
-/* The match list is a second LINE in the lead, not a fourth item on its one row: the
-   lead is a nowrap flex row sized to `--pbl-tl-lead`, and a list of titles beside the
-   title would push past the column into the day track. Wrapping the lead lets the list
-   take a row of its own, and `min-width: 0` is what lets it shrink far enough for
-   `.pbl-card-match`'s own ellipsis to engage — a flex item's automatic minimum is its
-   content otherwise, which is the whole failure. */
-.pbl-timeline-lead {
-	flex-wrap: wrap;
-}
-
+/* The match list shares the lead's single line and never adds one. A timeline row's
+   height is content-driven (`min-height` on the track is a floor, and the row stretches),
+   and `renderDependencyArrows` has already measured every row rectangle by the time
+   matches are named — so a list that wrapped would move the rows out from under the
+   arrows. `min-width: 0` is what lets it shrink far enough for `.pbl-card-match`'s own
+   ellipsis to engage; a flex item's automatic minimum is its content otherwise, which is
+   how the list would otherwise push past the column into the day track. */
 .pbl-timeline-lead .pbl-card-matches {
-	flex: 1 1 100%;
+	flex: 0 1 auto;
 	min-width: 0;
+	flex-wrap: nowrap;
+	overflow: hidden;
 }
 ```
 
-`flex-wrap: wrap` on the lead is inert for every row that has no match list, because badge, title and count already fit on one line — but confirm that in the harness rather than assuming it, since it is a change to every dated row.
+**The full set stays reachable through the row menu**, which Task 5 gives this surface and which lists every match rather than as many as fit. That is what makes an ellipsised face honest rather than lossy: the face says "there are matches here", the menu says which.
 
 **This is layout, so jsdom cannot check it and the suite must not pretend to.** `npm run harness` CAN: the partials write these rules themselves, which is what the harness is faithful about. Run it, filter the roadmap on the dated axis so a row keeps a match, and drag the lead's resize grip to its narrowest. Record what you saw in the report. Add the narrow-lead case to the live-vault list too — a themed vault changes the font metrics this depends on.
 
@@ -1004,20 +1005,24 @@ The links are `tabindex="-1"`, so the menu is their keyboard path rather than an
 Add to `test/view/roadmapMatches.test.ts`:
 
 ```ts
-// The row menu on a TIMELINE ROW offers "Open match …" for a match three levels
-// down, and for a DIRECT child — the row lists no children, so nothing is
-// subtracted.
+// The row menu on a TIMELINE ROW offers "Open match …" for a match three
+// levels down.
+//
+// A DIRECT child of that row is offered ONCE, as "Open child" — not as a
+// match. The row lists no children on its FACE, so the face names the child as
+// a match; its MENU lists children through `cardChildrenShown`, so the menu
+// names it as a child. Two surfaces, two policies, one entry each. Asserting
+// "Open match" here would contradict the no-duplicate case below.
 
 // The row menu on a BUCKET CARD does NOT offer a direct child as a match: the
 // card's own disclosure already lists it, and one card cannot say the same
 // thing twice.
 
-// NO NOTE APPEARS TWICE IN ONE MENU. On a timeline row with children and a
-// direct-child match, collect every entry title and assert the child's title
-// appears once, not once as "Open child" and again as "Open match". This is the
-// assertion that catches the menu reusing the face's policy: the row lists no
-// children on its face but its MENU does, through `cardChildrenShown`, which it
-// joins via the fold chevron.
+// NO NOTE APPEARS TWICE IN ONE MENU. On that same row, collect every entry
+// title and assert the child's title appears exactly once. This is what
+// catches the menu reusing the face's policy — the row lists no children on
+// its face but its menu does, through `cardChildrenShown`, which it joins via
+// the fold chevron.
 
 // A context row's menu offers navigation and no write action — the existing
 // rule, re-asserted here because this task adds entries to that menu.
