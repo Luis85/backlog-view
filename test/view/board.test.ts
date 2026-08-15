@@ -13,7 +13,7 @@ const WORKFLOW = { stateProperty: 'note.status', stateValues: 'New, Active, Done
 
 /**
  * A view flipped to the board through the toolbar's own path. The mode is UI
- * state in the collapse store, not a base setting, so tests set it the way the
+ * state in the view-state store, not a base setting, so tests set it the way the
  * user does — through the host — never through the config.
  */
 function boardView(

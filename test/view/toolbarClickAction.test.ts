@@ -14,7 +14,7 @@ useViewHarness();
  *
  * It is the ONLY surface for the value since 2026-08-11 — it was the **Handling items**
  * group's `clickAction` dropdown too until then, and is now working position in the
- * collapse store — so what this file asserts is the toggle's own loop: that pressing it
+ * view-state store — so what this file asserts is the toggle's own loop: that pressing it
  * changes what the button reports about itself, and that the `⋯` says the same thing.
  * Two things belong elsewhere and are not repeated here: that the value SURVIVES the view
  * (`test/view/persistence.test.ts`), and that a click actually folds — asserted in

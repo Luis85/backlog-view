@@ -52,7 +52,7 @@ filter, not a place cards are moved to.
    ruled on.
 3. Collapsed, the column keeps its name and its count visible and stays a drop target,
    as Trello's collapsed lists and Linear's hidden columns both do.
-4. An explicit expand or collapse is remembered per device in the collapse store, never
+4. An explicit expand or collapse is remembered per device in the view-state store, never
    in the `.base`.
 
 **Extensions**
@@ -81,7 +81,7 @@ filter, not a place cards are moved to.
   a board renders it — the same once-only default the tree applies to a parent nobody
   has ruled on. One still carrying open work starts expanded: the collapse default
   exists for noise, and a retained card's rollup is not noise. An explicit expand or
-  collapse is remembered per device in the collapse store, never in the `.base`.
+  collapse is remembered per device in the view-state store, never in the `.base`.
 - A collapsed column keeps its name and count visible and stays a drop target, as
   Trello's collapsed lists and Linear's hidden columns both do.
 - "Show completed items" off hides what it hides in the tree: cards whose whole

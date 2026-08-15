@@ -85,7 +85,7 @@ nothing is written, and no rendering decision changes what places or what shelve
   bar — a bar clipped at both window edges, and also a bar clipped at the right alone
   that starts within the reserve of the track's left edge — and hide while a drag is
   live.
-- The density pick round-trips through the collapse store, renders only on the dated
+- The density pick round-trips through the view-state store, renders only on the dated
   axis, and an unrecognized stored value reads as comfortable. The toggle's accessible
   name never changes; `aria-pressed` is what carries the state.
 - No mark is focusable and nothing here writes: the furniture is derived at render

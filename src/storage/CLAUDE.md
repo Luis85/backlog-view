@@ -1,6 +1,6 @@
 # storage/ — the only place anything is persisted
 
-Frontmatter, new notes, the `.base` file, collapse state. Everything upstream decides
+Frontmatter, new notes, the `.base` file, view state. Everything upstream decides
 what a change should be and hands the plan here.
 
 That boundary is enforced, not described: `no-restricted-syntax` bans
@@ -189,7 +189,7 @@ Following a rename replaces the link's TARGET only: the `#heading` and the `|ali
 what the user meant by the link and are none of a rename's business, and rebuilding the
 whole thing from the file resolved correctly while silently dropping both.
 
-## Collapse state, and the view mode beside it
+## View state: the folds, and every pick beside them
 
 - The rule that decides where anything persists: **base settings are saved on the view
   (the `.base` options); UI state is saved in vault-scoped localStorage.** What that

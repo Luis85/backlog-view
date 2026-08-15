@@ -381,7 +381,7 @@ export function clickActionApplies(host: BacklogViewHost): boolean {
  * one value and a menu that re-derived any of the three could offer the opposite of what
  * the button was offering. The same rule the entries below already keep by reading
  * `disabled` off the button they mirror, kept here at the source instead, since this
- * value lives in the collapse store rather than on an element.
+ * value lives in the view-state store rather than on an element.
  *
  * `host.clickFolds` and not a setting: this is working position, per saved view and per
  * device (ADR 0011), so `setClickFolds` both persists it and re-renders — no Bases

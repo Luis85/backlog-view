@@ -120,7 +120,7 @@ and the board's, under the same one-file-per-concern budgets; the only writer st
 `storage/frontmatter.ts`, gaining date and horizon writes plus their key removals (the
 mirror of `removeParentKey`) under the same key-collision checks; the mode itself is
 the persisted option [[Switching projections]] already defines, one value wider. Zoom
-is a per-screen working position and goes to the collapse store, never
+is a per-screen working position and goes to the view-state store, never
 the `.base`.
 
 ## Evidence

@@ -104,7 +104,7 @@ keyed by `displayType(item)` (never raw `typeName`, which would misgroup an unty
 child carrying an inferred level and any differently-cased declared type), driven in
 `test/domain/shelf.test.ts`.
 
-Persistence is three fields on the collapse store's existing per-view entry
+Persistence is three fields on the view-state store's existing per-view entry
 (`src/storage/viewStateStore.ts`), read as defensively as `mode`/`axis` already are, with
 matching accessors on `src/view/viewState.ts`.
 

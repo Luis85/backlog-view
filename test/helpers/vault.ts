@@ -419,7 +419,7 @@ function parseMockFrontmatter(content: string): Record<string, unknown> {
 
 /** In-memory BasesViewConfig double that records set() calls. */
 export class FakeViewConfig {
-	/** User-facing view name — part of the key the collapse store is written under. */
+	/** User-facing view name — part of the key the view-state store is written under. */
 	name = 'Backlog';
 	values: Record<string, unknown>;
 	setCalls: { key: string; value: unknown }[] = [];

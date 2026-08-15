@@ -38,7 +38,7 @@ function optionalPropertyOption(field: OptionalField, displayName: string): Base
  * Options shown in the Bases toolbar "view options" menu. The focus level is
  * deliberately absent, and now doubly so: it lives in the view's own toolbar, next to
  * the New button whose level it changes, and it is not a base setting at all — working
- * position, stored beside the collapse state.
+ * position, stored in the view-state store.
  */
 export function getViewOptions(config: BasesViewConfig): BasesAllOptions[] {
 	// The type list is fixed, but each type's DEFAULT folder sits under this view's home
@@ -74,7 +74,7 @@ export function getViewOptions(config: BasesViewConfig): BasesAllOptions[] {
  *
  * **Whether a plain click opens the note or folds the row was the group's other option
  * until 2026-08-11.** It is not configuration any more: it is flipped while working, on
- * the screen in front of you, so it lives in the collapse store with the projection and
+ * the screen in front of you, so it lives in the view-state store with the projection and
  * the focus level (ADR 0011) and is reached only from the toolbar toggle. Nothing here
  * reads a `clickAction` key, so one left in a `.base` written before the move is inert.
  */

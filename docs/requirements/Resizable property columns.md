@@ -42,7 +42,7 @@ width for every column can only ever do.
 | **Actor** | Backlog owner |
 | **Trigger** | The reader drags the grip at a column header's trailing edge, double clicks it, or focuses it and presses an arrow key or Home |
 | **Preconditions** | Tree mode, with at least one property column drawn |
-| **Guarantee** | Each width is UI state — per column, per saved view, per device, beside the collapse state — never the `.base` and never a frontmatter write. What a column is DRAWN at, what the fit ladder budgets with and what the grip announces are one number, so a resize can never leave the header and the rows disagreeing. |
+| **Guarantee** | Each width is UI state — per column, per saved view, per device, in the view-state store — never the `.base` and never a frontmatter write. What a column is DRAWN at, what the fit ladder budgets with and what the grip announces are one number, so a resize can never leave the header and the rows disagreeing. |
 
 **Main flow**
 

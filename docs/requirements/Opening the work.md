@@ -53,7 +53,7 @@ found. Every row is a real note; the view is a lens on it, not a replacement for
   card is for.
 
   It stopped being a view OPTION on 2026-08-11 and is now working position, held per
-  saved view and per device in the collapse store under ADR 0011's rule — the toolbar
+  saved view and per device in the view-state store under ADR 0011's rule — the toolbar
   toggle is the only surface for it, and the **Handling items** group holds `openIn`
   alone. What decided it is that this is flipped while reading rather than while setting
   a view up, and a `.base` is shared: one person's habit of clicking to fold does not
@@ -79,7 +79,7 @@ found. Every row is a real note; the view is a lens on it, not a replacement for
   tree opens a node in the backlog, and neither reaches a card's own `CARD_SCOPE`.
 - **1g — the toggle is where it is flipped, and the only place** (`renderClickActionToggle`).
   A toggle beside the completed-items eye, writing through `host.setClickFolds` to the
-  collapse store: this is the thing a reader changes while working rather than while
+  view-state store: this is the thing a reader changes while working rather than while
   setting the view up, and the view options panel is four clicks away. One surface over one
   value — there is no dropdown left for it to agree with, which is what removed the whole
   question of two surfaces drifting apart. Nothing is written to the `.base`, so no Bases

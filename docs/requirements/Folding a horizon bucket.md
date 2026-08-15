@@ -47,7 +47,7 @@ finished and so has no default to take.
    strip a folded board column takes, because one fold should look like one fold.
 3. Folded, the bucket keeps its name and its count and stays a drop target: a horizon
    nobody can move work into is a missing horizon, not a folded one.
-4. The fold is remembered in the collapse store, never in the `.base`.
+4. The fold is remembered in the view-state store, never in the `.base`.
 
 **Extensions**
 
@@ -68,7 +68,7 @@ finished and so has no default to take.
 - Every horizon bucket carries a disclosure that folds it to the board's own strip
   width, keeping the name, the count and the drop target.
 - A bucket is open until the reader folds it — no default, on any bucket, ever.
-- The fold is remembered per saved view and per device in the collapse store, and a
+- The fold is remembered per saved view and per device in the view-state store, and a
   bucket's fold is separate from a board column that happens to be spelled the same.
 - A folded bucket contributes no cards to the roadmap's keyboard walk, and the pane's
   `listbox`/`region` role follows the cards that are actually drawn.

@@ -27,7 +27,7 @@ flow" of one set of notes without maintaining two of anything.
 A toolbar toggle switches the view between backlog and board. The mode is working
 position, not configuration — the rule that splits the two: base settings are saved on
 the view (the options in the `.base`), UI state in vault-scoped localStorage. So the
-choice persists beside the collapse state, keyed per saved view and held per device,
+choice persists in the view-state store, keyed per saved view and held per device,
 and never touches the `.base` (ADR 0011's reasoning, applied again: the `.base` is
 shared configuration, and which projection I am looking at is mine).
 
@@ -50,8 +50,8 @@ of a shared file.
 **Main flow**
 
 1. The user clicks the toggle.
-2. The view stores the new mode in the collapse store — vault-scoped localStorage,
-   under the same per-view identity the collapse state uses — and re-renders.
+2. The view stores the new mode in the view-state store — vault-scoped localStorage,
+   under the same per-view identity the folds use — and re-renders.
 3. The board renders from the model already in hand: same results, same undo slot, same
    quick filter, no re-query.
 4. The choice survives a restart on this device, and belongs to that saved view alone.
@@ -76,7 +76,7 @@ of a shared file.
 
 ## Acceptance criteria
 
-- The toggle persists per saved view in the collapse store's vault-scoped
+- The toggle persists per saved view in the view-state store's vault-scoped
   localStorage and survives a restart on the same device. Nothing about the mode is
   ever written to the `.base`: base settings are saved on the view, UI state in
   localStorage.
@@ -89,14 +89,14 @@ of a shared file.
 
 ## Where it lives
 
-The mode is the `mode` field of the collapse store's per-view entry
+The mode is the `mode` pref of the view-state store's per-view entry
 (`src/storage/viewStateStore.ts`), restored and debounce-saved by
 `src/view/viewState.ts` with the collapse sets it lives beside — so base renames
 and view renames migrate it for free. The toolbar toggle (`renderModeToggle` in
 `src/view/render/toolbar.ts` — three positions since the roadmap joined,
 [[Three projections, one toggle]]) sets it through `setProjection` on the host, which
 `src/view/viewStateController.ts`'s `ViewStateController` implements — the read/write against the
-collapse store plus the render-depth choice, the same shape for the seven sibling
+view-state store plus the render-depth choice, the same shape for the seven sibling
 accessors it also holds (the roadmap-axis pick, focus, the shelf's own
 collapse/sort/type-filter, and the dated axis's zoom, density and lead width; each is
 UI state by the same rule this PBI states). `src/view/backlogView.ts` still declares

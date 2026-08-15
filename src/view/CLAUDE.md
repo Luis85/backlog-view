@@ -455,7 +455,7 @@ free of runtime code so imports stay cycle-free.
   tree's — entering board mode resets the verdict to null and clears `pbl-hide-meta`, or a
   narrow-pane decision from tree mode would strip cells off cards.
 - The mode is `host.projection` — five of them now — backed by the
-  collapse store (UI state, per saved view, per device) — never `settings` and never
+  view-state store (UI state, per saved view, per device) — never `settings` and never
   the `.base`: base settings are saved on the view, working position in localStorage.
   **What a projection IS is meant to be asked, never compared**: `view/projection.ts`
   holds `treeShaped`, `hidesCompleted`, `filterScopeFor`, `projectionPopulation`,
@@ -904,7 +904,7 @@ free of runtime code so imports stay cycle-free.
   It is `tabindex="-1"` like the tree's `.pbl-add`: the pane is one tab stop and a bucket
   is not yet a keyboard stop of its own.
 - The axis is resolved per render (`activeAxis(settings, axisPick)`), never stored
-  resolved: the pick is retained in the collapse store even while its axis is
+  resolved: the pick is retained in the view-state store even while its axis is
   unconfigured, so restoring the configuration restores the choice. The picker renders
   only in roadmap mode with BOTH axes configured — with one there is no choice to make.
 - Roles are earned, not assumed: the pane is a `listbox` only while cards render

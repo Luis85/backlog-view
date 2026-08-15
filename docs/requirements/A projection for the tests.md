@@ -33,7 +33,7 @@ The column half stopped being an absence when the catalog got a workflow of its 
 ([[A workflow for the tests]]): it now has states a board could column, and none is built —
 which is a scope decision to argue with rather than a shape the data forbids.
 
-The position is **UI state** — vault-scoped localStorage beside the collapse state — never
+The position is **UI state** — the view-state store's vault-scoped localStorage — never
 a `.base` setting, exactly as the mode, the roadmap axis and the focus level already are:
 base settings are saved on the view, working position on the device.
 

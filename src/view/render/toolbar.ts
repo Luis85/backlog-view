@@ -363,7 +363,7 @@ function renderCompletedToggle(host: BacklogViewHost, barEl: HTMLElement, model:
  * Whether a click on a row folds it, on the row beside the completed toggle — and the
  * ONLY surface for it. It was the **Handling items** group's `clickAction` option until
  * 2026-08-11, on this toggle and in the view options both; it is now working position in
- * the collapse store (ADR 0011, `host.clickFolds`), per saved view and per device, so
+ * the view-state store (ADR 0011, `host.clickFolds`), per saved view and per device, so
  * there is no second surface for this one to agree with and no `.base` carrying one
  * reader's habit to everyone the base is shared with.
  *
@@ -430,7 +430,7 @@ const INERT_FOCUS: Partial<Record<Projection, { label: string; tip: string }>> =
 };
 
 function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: BacklogModel): void {
-	// Working position, not configuration: the collapse store persists it and the view
+	// Working position, not configuration: the view-state store persists it and the view
 	// rebuilds itself, because no Bases refresh follows a change it was not told about.
 	// Through `pickAndRefocus` because that rebuild happens while focus is in the menu,
 	// where `capturedFocusKey` cannot see it.
@@ -503,8 +503,8 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 /**
  * The projection toggle — one view, read as a tree, a board or a roadmap. The
  * mode is working position, not configuration: base settings are saved on the
- * view, UI state in vault-scoped localStorage, so the choice persists beside the
- * collapse state — per saved view, per device — and never touches the `.base`.
+ * view, UI state in vault-scoped localStorage, so the choice persists in the
+ * view-state store — per saved view, per device — and never touches the `.base`.
  */
 function renderModeToggle(host: BacklogViewHost, barEl: HTMLElement): void {
 	const wrap = barEl.createDiv({

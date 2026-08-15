@@ -27,7 +27,7 @@ language never silently resets my configuration.
 | | |
 | --- | --- |
 | **Actor** | Anyone whose vault outlives one language setting |
-| **Trigger** | Any write: frontmatter, a `.base` file, a created note, collapse state |
+| **Trigger** | Any write: frontmatter, a `.base` file, a created note, view state |
 | **Preconditions** | The translation layer exists |
 | **Guarantee** | Nothing the plugin writes changes with the locale. A vault created in one language is fully readable in every other. |
 
@@ -48,8 +48,8 @@ language never silently resets my configuration.
   correct, not an exemption from checking.
 - **3a — the write is the scaffold.** The generated `.base` content and the created file
   path are identical to the English run, byte for byte.
-- **3b — the write is collapse state.** The base's identity key does not vary by locale,
-  or a language switch drops everyone's collapse state.
+- **3b — the write is view state.** The base's identity key does not vary by locale,
+  or a language switch drops everyone's view state.
 
 ## What is covered
 
@@ -100,7 +100,7 @@ one of the two things this repository cannot test.
 - A test asserts the full view-option key set is identical across every locale, fixtures
   included. Restricting it to *shipped* locales makes it a one-element comparison in this
   round, which proves nothing.
-- The collapse-store key for a given base is identical across locales.
+- The view-state store key for a given base is identical across locales.
 - No frontmatter value written by `applyWrites`, `applyRestores` or `createBacklogItem`
   differs by locale. Those are the **three** functions that put frontmatter on disk —
   `processFrontMatter` at `frontmatter.ts:70` and `:155`, and `vault.create` at `:262` —
@@ -122,7 +122,7 @@ one of the two things this repository cannot test.
 **Nothing yet — this note is design.** `src/storage/frontmatter.ts` holds all three
 writers — `applyWrites`, `applyRestores` and
 `createBacklogItem` · `src/storage/baseFile.ts` writes the scaffolded `.base` and owns the
-`docs` and `Product Backlog` defaults · `src/storage/viewStateStore.ts` keys collapse state
+`docs` and `Product Backlog` defaults · `src/storage/viewStateStore.ts` keys the view state
 on the base's path · `src/domain/typeVocabulary.ts` derives `typeFolderKey` from a type name.
 Tests: `test/storage/frontmatter.test.ts`, `test/storage/restore.test.ts`,
 `test/storage/baseFile.test.ts`, `test/storage/viewStateStore.test.ts`.
