@@ -274,6 +274,19 @@ describe('rendering', () => {
 		expect(ruleAt('.pbl-timeline-row.pbl-selected .pbl-bar-connector', 'opacity: 1;')).toBeGreaterThan(-1);
 	});
 
+	it('reveals the connector on a milestone diamond, which has no row to reveal it', () => {
+		// Every reveal above is triggered by a `.pbl-timeline-row`, and a marker on the
+		// resources axis has none: it draws into the milestones' shared header track
+		// (`drawMarkerDiamonds`), so the dot it now carries was drawn, wired, and
+		// permanently `opacity: 0` on every device with a pointer. The MARK is the
+		// trigger instead. Existence rather than order: four classes put it at (0,4,0),
+		// well past the (0,1,1) hide.
+		//
+		// What this cannot say is the same thing the checks above cannot — whether the dot
+		// clears the rotated diamond it hangs off, which is a live-vault look.
+		expect(ruleAt('.pbl-lane-markers .pbl-bar:hover .pbl-bar-connector', 'opacity: 1;')).toBeGreaterThan(-1);
+	});
+
 	it('gives the link drag’s source row a mark of its own, so the class is not decoration', () => {
 		// `begin` marks the source row with `pbl-link-source` and EXCLUDES it from the
 		// illegal dimming — deliberately, since the preview line comes out of that bar and

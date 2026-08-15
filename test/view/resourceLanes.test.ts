@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { shelfRemoval } from '../../src/view/render/shelf';
 import { clickExpandAll, Harness, makeView, useViewHarness } from '../helpers/view';
-import { gripNames, laneAwayOf, laneCountOf, laneNames, laneOrder, lanesOf, rowFor, shelfTitles } from '../helpers/roadmap';
+import { barFor, gripNames, laneAwayOf, laneCountOf, laneNames, laneOrder, lanesOf, rowFor, shelfTitles } from '../helpers/roadmap';
+import { gridDrag } from '../helpers/dnd';
 import { resourceVault } from '../helpers/resources';
 import { addDays, formatCivil } from '../../src/domain/timeline';
 import { readDate, todayStamp } from '../../src/domain/noteFields';
@@ -570,5 +571,88 @@ describe('the milestones row', () => {
 
 		expect(markers.querySelector('.pbl-lane-absence-add')).toBeNull();
 		expect(alice.querySelector('.pbl-lane-absence-add')).not.toBeNull();
+	});
+
+	/** Each drawn diamond's sub-lane index, by the title its accessible name leads with. */
+	function sublanesOf(containerEl: HTMLElement): Map<string, string> {
+		const marks = lanesOf(containerEl)[0].querySelectorAll<HTMLElement>('.pbl-bar-milestone');
+		return new Map(
+			Array.from(marks, (el) => [
+				(el.getAttribute('aria-label') ?? '').split(' — ')[0],
+				el.style.getPropertyValue('--pbl-sublane'),
+			]),
+		);
+	}
+
+	it('stacks two markers that land on the same day, so neither can hide the other', () => {
+		// One row for all of them means `barGeometry` gives two markers on one date the
+		// same `left` in the same track, and a diamond is 12px of opaque mark — so the
+		// later one covered the earlier outright, taking its tooltip, its click and its
+		// drag with it. A row apiece could never produce that, which is why it arrived
+		// with the shared row.
+		const vault = countingVault([]);
+		vault.addFile('Ship.md', { frontmatter: { type: 'Milestone', order: 20, due: '2026-08-07' } });
+		vault.addFile('Demo.md', { frontmatter: { type: 'Milestone', order: 30, due: '2026-08-07' } });
+		vault.addFile('Launch.md', { frontmatter: { type: 'Milestone', order: 40, due: '2026-08-20' } });
+		const harness = laneRoadmap(vault, { expanded: true });
+
+		const sublanes = sublanesOf(harness.containerEl);
+		expect(sublanes.get('Ship')).toBe('0');
+		expect(sublanes.get('Demo')).toBe('1');
+		// A day of its own takes the first sub-lane back: the stack is per POSITION, not a
+		// running index, or one collision would step every later mark down the row.
+		expect(sublanes.get('Launch')).toBe('0');
+		// What the header grows by — the same property an absence packs with.
+		expect(lanesOf(harness.containerEl)[0].style.getPropertyValue('--pbl-lane-sublanes')).toBe('2');
+	});
+
+	it('draws a dependency handle on each diamond, the one route to making anything wait on a date', () => {
+		// `addDependencyItems` refuses both menu entries for a marker — a point in time
+		// waits for nothing — so the connector is not one input of three here, it is the
+		// only one. Without it this axis could not express what the dated axis can.
+		const harness = laneRoadmap(markerVault(), { expanded: true });
+		const diamonds = lanesOf(harness.containerEl)[0].querySelectorAll<HTMLElement>('.pbl-bar-milestone');
+
+		expect(diamonds).toHaveLength(2);
+		for (const diamond of diamonds) expect(diamond.querySelector('.pbl-bar-connector')).not.toBeNull();
+	});
+
+	it('does not open the note when that handle is clicked without a drag', () => {
+		// The diamond's own click handler is what opens the note here, and the connector is
+		// a child of it — the identical defect `fromRowControl` was written for on a bar
+		// row, arriving again on the one mark that wires its click by hand.
+		const vault = markerVault();
+		const harness = laneRoadmap(vault, { expanded: true });
+		const diamond = lanesOf(harness.containerEl)[0].querySelector<HTMLElement>('.pbl-bar-milestone');
+		const dot = diamond?.querySelector<HTMLElement>('.pbl-bar-connector');
+
+		dot?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+		expect(vault.opened).toEqual([]);
+
+		// The control beside the defect: the mark itself still opens, so the guard is a
+		// filter on the handle and not a click the row stopped answering.
+		diamond?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+		expect(vault.opened.map((one) => one.path)).toEqual(['Ship.md']);
+	});
+
+	it('marks a milestone the held drag may not land on, and clears it when the drag ends', () => {
+		// Work already waits for Ship, so dropping Work onto Ship would close a loop. The
+		// sweep marks ROWS, and a marker on this axis has none — the mark is the only
+		// element that is one milestone's, so it is what carries the path and the class.
+		// Unmarked, every date read as a legal target and the drop was refused after
+		// release: [[Draw a dependency between bars]] 2a's own refusal.
+		const vault = countingVault([]);
+		vault.addFile('Ship.md', { frontmatter: { type: 'Milestone', order: 20, due: '2026-08-07' } });
+		vault.fm('Work.md')['dependsOn'] = ['[[Ship]]'];
+		const harness = laneRoadmap(vault, { expanded: true });
+		const diamond = lanesOf(harness.containerEl)[0].querySelector<HTMLElement>('.pbl-bar-milestone');
+		const source = barFor(harness.containerEl, 'Work').querySelector<HTMLElement>('.pbl-bar-connector');
+		if (!diamond || !source) throw new Error('no diamond, or no connector to drag from');
+
+		const gesture = gridDrag.start(source);
+		expect(diamond.classList.contains('pbl-link-illegal')).toBe(true);
+
+		gesture.cancel();
+		expect(diamond.classList.contains('pbl-link-illegal')).toBe(false);
 	});
 });

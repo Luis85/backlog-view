@@ -2,9 +2,10 @@ import { setTooltip } from 'obsidian';
 import { createCard } from './board';
 import { RowContext } from './columns';
 import { drawIcon } from './icons';
-import { renderBadge, renderChevron, renderTitleText } from './rows';
+import { fromRowControl, renderBadge, renderChevron, renderTitleText } from './rows';
 import { promptAddAbsence, showAbsenceMenu } from '../interactions/absences';
 import { CardDragController } from '../interactions/cardDrag';
+import { wireBarLink } from '../interactions/linkDrag';
 import { BacklogViewHost, DrawnColors } from '../host';
 import { Absence, absencesConfigured, absenceTitle, awayWeeks, crossedAbsences, daysLost, packAbsences } from '../../domain/absences';
 import { barHolds, timelineRows, TimelineBar, TimelineRow } from '../../domain/bars';
@@ -76,13 +77,15 @@ export type TimelineEntry =
  * a second copy is what drifts the next time a mark learns a fourth edge state.
  */
 /**
- * What `drawMarkerDiamonds` needs of the grid it draws into — the three fields of
+ * What `drawMarkerDiamonds` needs of the grid it draws into — the four fields of
  * `BarRowMounts` a diamond actually uses, named structurally rather than imported, so this
  * module stays reachable from `./timeline.ts` and never back.
  */
 export interface MarkerMounts {
 	tracks: Map<string, HTMLElement>;
 	scroller: HTMLElement;
+	/** The scrolling box the link gesture draws its preview line into. */
+	content: HTMLElement;
 	dnd: CardDragController;
 }
 
@@ -686,24 +689,55 @@ export function renderLaneRowDescription(row: HTMLElement, name: string): void {
  * whose `pbl-done` sits on the row: the row here is shared by every marker and one of them
  * being finished says nothing about the next. `styles/timeline.css` carries the matching
  * rule beside the row-level one.
+ *
+ * **Everything else a bar ROW carries has to be asked of the mark here, and two of them
+ * were missed when the row went (2026-08-15).** Both are on the diamond because the row is
+ * shared and a fact about one marker is not a fact about the next:
+ *
+ * - The dependency handle. `wireBarLink` draws it and wires both halves — a marker refuses
+ *   both menu entries by design (`addDependencyItems`: a point in time waits for nothing),
+ *   so the connector is the ONLY route by which anything comes to wait on a date, and
+ *   without it the axis that draws a calendar per person was the one where nothing could.
+ *   `row` is the diamond itself rather than the track, or a drag from one date would
+ *   outline every date on the plan as its origin. That makes the mark a control's parent,
+ *   so the click below has to ask `fromRowControl` — the identical guard
+ *   `wireCardActivation` gives a bar row, and the identical defect (a handle that opened
+ *   the note) it was written for.
+ * - A sub-lane per mark, where two markers land on the same drawn day. `barGeometry` gives
+ *   both the same `left` and a diamond is 12px of opaque mark, so the later one covered the
+ *   earlier outright — its tooltip, its click and its drag all unreachable, which a row
+ *   apiece could never produce. Counted by drawn POSITION rather than by date, so two dates
+ *   that resolve to one pixel column stack too; what it does NOT answer is marks a day or
+ *   two apart at a coarse zoom, which overlap partially and are the "spacing of marks that
+ *   fall close together" a live vault still owes an opinion on. The stack is the header's
+ *   own `--pbl-lane-sublanes` mechanism, unchanged — the same two custom properties an
+ *   absence packs with (`renderLaneAbsences`), so the row grows by the same pitch.
  */
 export function drawMarkerDiamonds(
 	ctx: RowContext,
 	mounts: MarkerMounts,
-	band: { track: HTMLElement; lane: ResourceLane },
+	band: { head: HTMLElement; track: HTMLElement; lane: ResourceLane },
 	ruler: { window: TimelineWindow; scale: TimelineScale },
 	drawn: DrawnColors,
 ): void {
 	const track = band.track;
+	const stacked = new Map<number, number>();
 	for (const bar of band.lane.bars) {
 		const geometry = barGeometry(ruler.window, bar.span);
 		const holdable = barHolds(bar.item, ctx.host.settings, bar).includes('body');
 		const done = ownWorkflowReading(bar.item).done;
 		const el = track.createDiv({ cls: barClasses(bar, geometry, holdable) + (done ? ' pbl-done' : '') });
 		placeSpan(el, geometry, ruler.scale);
+		const sublane = stacked.get(geometry.startDay) ?? 0;
+		stacked.set(geometry.startDay, sublane + 1);
+		el.setCssProps({ '--pbl-sublane': String(sublane) });
 		const said = `${bar.item.title} — ${spanText(bar)}`;
 		el.setAttribute('aria-label', said);
 		setTooltip(el, said);
+		// The path on the MARK, which is where every other grid puts it (`renderBarRow` puts
+		// it on the row): the link drag's own sweep reads it back to mark what a held gesture
+		// may not be dropped on, and here the mark is the only element that is one marker's.
+		el.dataset.pblPath = bar.item.file.path;
 		mounts.tracks.set(bar.item.file.path, track);
 		if (holdable) {
 			// The body hold IS the diamond, the grid's own rule — and the only hold a marker
@@ -712,13 +746,20 @@ export function drawMarkerDiamonds(
 			el.dataset.pblHold = 'body';
 			mounts.dnd.wireCard(el, bar.item, 'body', () => mounts.scroller.scrollLeft);
 		}
+		// `row` is the diamond itself — see `BarLinkParts.row`, and 2d in the note above.
+		wireBarLink(ctx, { dnd: mounts.dnd, content: mounts.content, row: el, barEl: el, outside: geometry.outside, item: bar.item });
 		// The row is not a card, so `wireCardActivation` has nothing to wire: the diamond is
 		// the whole of what a reader can click here, and opening the note is what a click on a
-		// bar already does everywhere else on this grid.
-		el.addEventListener('click', (evt) => ctx.host.openItem(bar.item, evt));
+		// bar already does everywhere else on this grid. Its filter is not, though — the
+		// connector above is a control inside this element and a click on it must not open
+		// the note, which is what `fromRowControl` answers for every other row on the grid.
+		el.addEventListener('click', (evt) => {
+			if (!fromRowControl(evt)) ctx.host.openItem(bar.item, evt);
+		});
 		if (done) drawn.done = true;
 		else if (!geometry.outside) drawn.milestone = true;
 	}
+	band.head.setCssProps({ '--pbl-lane-sublanes': String(Math.max(0, ...stacked.values())) });
 }
 
 /**

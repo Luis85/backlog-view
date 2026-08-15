@@ -18,7 +18,6 @@ import { foldOnClick, renderBadge, renderChevron, renderTitleText } from './rows
 import { renderMilestoneLines } from './milestoneLines';
 import { dependencyNote, NO_CONFLICTS, renderDependencyArrows } from './timelineArrows';
 import { CardDragController } from '../interactions/cardDrag';
-import { dependenciesAvailable } from '../interactions/dependencies';
 import { wireBarLink, wireLinkPreview } from '../interactions/linkDrag';
 import { effectiveLeadWidth, renderLeadResize } from '../interactions/timelineLeadResize';
 import { BacklogViewHost, BarColors, DrawnColors } from '../host';
@@ -35,7 +34,6 @@ import {
 	WorkflowReading,
 } from '../../domain/board';
 import {
-	BarGeometry,
 	barGeometry,
 	daysBetween,
 	formatCivil,
@@ -402,7 +400,7 @@ function drawBand(entry: { lane: ResourceLane; collapsed: boolean }, pass: Entry
 	const { scale, today } = pass.drawing;
 	const { head, track } = renderLaneHead(ctx, mounts.content, entry, { window, scale, today });
 	if (head.querySelector('.pbl-absence') !== null) drawn.absence = true;
-	if (entry.lane.markers) drawMarkerDiamonds(ctx, mounts, { track, lane: entry.lane }, { window, scale }, drawn);
+	if (entry.lane.markers) drawMarkerDiamonds(ctx, mounts, { head, track, lane: entry.lane }, { window, scale }, drawn);
 	return head;
 }
 
@@ -630,7 +628,7 @@ function renderBarRow(
 		el.dataset.pblHold = 'body';
 		mounts.dnd.wireCard(el, bar.item, 'body', () => mounts.scroller.scrollLeft);
 	}
-	renderConnector(ctx, mounts, { row, barEl: el, geometry }, bar);
+	wireBarLink(ctx, { dnd: mounts.dnd, content: mounts.content, row, barEl: el, outside: geometry.outside, item: bar.item });
 	const label = renderBarLabel(track, bar, geometry, scale, window);
 	renderRowFacts(row, ctx, bar, { dates, own, conflictedPrereqs: mounts.conflictedPrereqs, lead });
 	// The one caller that passes a fold: this row has a chevron, so "clicking an item
@@ -792,55 +790,6 @@ function stateNote(stateKey: string, reading: WorkflowReading): string {
 	if (!stateKey) return '';
 	if (reading.done) return reading.value === null ? 'Done' : `${reading.value} — done`;
 	return reading.value ?? '';
-}
-
-/** Where this row's connector is drawn, and what it is drawn against. Grouped rather
- *  than passed flat: `max-params` is 5 and this would be the sixth. */
-interface ConnectorPlace {
-	row: HTMLElement;
-	barEl: HTMLElement;
-	geometry: BarGeometry;
-}
-
-/**
- * The dependency connector — a HANDLE, not a grip, and the distinction decides both of
- * its rules. `barHolds` withholds a grip wherever no end is the note's own, because a
- * grip writes a DATE and needs a baseline to move from; this writes a link and claims no
- * date, so an inferred bar offers one and a bar clipped by the window offers one at the
- * clamped edge. A handle can sit at a boundary without asserting anything is there,
- * which is what a diamond cannot do.
- *
- * The draw condition (`dependenciesAvailable && !geometry.outside`) is a strict subset of
- * `wireBarLink`'s own gate (`dependenciesAvailable`): a bar can never draw a connector
- * without a target being wired for it. The feature being off refuses both;
- * `geometry.outside` is the one case where a target is still wired for a bar with no dot
- * — a bar wholly outside the window has no on-screen end to draw one from, but is still
- * something another bar's link may legitimately point at. An `outsideFilter` row needs no
- * guard: `deriveBars` routes it to context before any span is computed, so it never has a
- * bar to hang one on — the same reason [[Arrows between bars]] 1c needs none.
- *
- * What that predicate MEANS changed on 2026-08-11 and the shape did not. It used to be
- * the bound key, so an unnamed property meant no connector anywhere
- * ([[Draw a dependency between bars]] 1c) — which made the gesture unreachable in exactly
- * the base that had never named the property, since Obsidian's picker cannot offer a
- * property no note carries. The write binds the key now, so the handle is what leads to a
- * bound property rather than something a bound property leads to
- * ([[Bind a property by using it]]).
- *
- * `tabindex="-1"` like every other per-row control: the pane is one tab stop and the
- * arrows move the selection. The context menu's Depends on… is the keyboard path, which
- * is what SC 2.5.7 requires of a gesture and is why it shipped first.
- */
-function renderConnector(ctx: RowContext, mounts: BarRowMounts, place: ConnectorPlace, bar: TimelineBar): void {
-	const { row, barEl, geometry } = place;
-	const dot =
-		!dependenciesAvailable(ctx.host) || geometry.outside
-			? null
-			: barEl.createEl('button', {
-					cls: 'pbl-bar-connector',
-					attr: { 'aria-label': `Draw a dependency from ${bar.item.title}`, tabindex: '-1' },
-				});
-	wireBarLink(ctx, { dnd: mounts.dnd, content: mounts.content, row, barEl, connector: dot, item: bar.item });
 }
 
 

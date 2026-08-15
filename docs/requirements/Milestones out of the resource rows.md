@@ -7,10 +7,13 @@ created: 2026-08-15
 source: user request
 files:
   - src/domain/roadmap.ts
+  - src/view/interactions/linkDrag.ts
   - src/view/render/lanes.ts
   - src/view/render/roadmap.ts
   - src/view/render/timeline.ts
+  - styles/lanes.css
   - styles/timeline.css
+  - styles/timelineFurniture.css
 ---
 
 # Milestones out of the resource rows
@@ -93,6 +96,32 @@ can fold them away.
   retyped: a move never writes a type, at any level, and the row a bar is released in has
   never been a claim about what that bar IS. On the next render it is back in its own
   resource's band, which is where its assignee puts it.
+- **2d — a dependency drawn from a diamond.** The mark carries the connector every bar on
+  the grid carries, and the drag from it is the dated axis's, unchanged. This is not one
+  input of three here: `addDependencyItems` refuses both menu entries for a marker — a
+  point in time waits for nothing — so the connector is the ONLY route by which anything
+  comes to wait on a date, and the row that used to draw it was the bar row this axis no
+  longer gives a marker. It shipped missing for that reason (2026-08-15, caught in review),
+  which made the one axis that draws a calendar per person the one where a date could not
+  be depended on. The handle is drawn by the same function that wires it now, so a mark
+  that is a drag SOURCE cannot again be one without it. Two things are the diamond's rather
+  than a row's, both because the row is shared and neither is a fact about the next marker:
+  what wears `pbl-link-source` while a drag is held, and what wears `pbl-link-illegal` while
+  one is refused — unmarked, every date on the plan read as a legal target and the drop was
+  refused after release, which [[Draw a dependency between bars]] 2a says a held gesture
+  must not do. The mark becoming a control's parent is what makes the click on it ask
+  `fromRowControl`, the guard every other row on the grid already has.
+- **2e — two markers on the same day.** They stack, one per sub-lane, and the row grows by
+  the pitch a packed absence grows a band by ([[Resource absences]]) — the same two custom
+  properties, since the milestones' row is a header track like any other. One row for all
+  of them is what makes this a case at all: `barGeometry` gives both the same position and a
+  diamond is 12px of opaque mark, so the later one covered the earlier outright and took its
+  tooltip, its click and its drag with it. A row apiece could not produce it, so it arrived
+  with the shared row (2026-08-15, caught in review). Counted by drawn POSITION rather than
+  by date, so two dates that resolve to one pixel column stack too. What it does **not**
+  answer is marks a day or two apart at a coarse zoom: those overlap partially and stay the
+  "spacing of marks that fall close together" this note already owes a live vault an opinion
+  on.
 - **3a — the row's absence control.** Absent. The row stands for nobody, so there is
   nobody to be away, and [[Resource absences]]' Add button is withheld rather than opening
   a form whose resource would be a caption.
@@ -105,7 +134,9 @@ can fold them away.
   absence is still in its own band; what is gone is the plugin drawing the line between
   them.
 - **3c — the keyboard walk.** A marker is not one of this axis's card stops, and that is
-  the second stated cost. A diamond in a shared header is not an `option` and has no
+  the second stated cost. It is the reason 2d's connector is not merely a convenience:
+  with no card stop there is no row menu either, so nothing else on this axis can say that
+  one item waits for a date. A diamond in a shared header is not an `option` and has no
   element the roving selection could point `aria-activedescendant` at, so listing one would
   put the walk on a stop that does not exist. Its name and date are still announced on the
   mark itself, and the plain dated axis still draws every marker as its own selectable row
@@ -140,6 +171,11 @@ can fold them away.
 - Each diamond names itself: its title and its exact date on the mark, with a click that
   opens its note. Its full-height line still crosses the grid and still carries the title
   above it.
+- Every diamond is reachable: two markers on one day never draw on top of one another, and
+  no mark's tooltip, click or drag is behind another's.
+- A dependency can be drawn FROM a milestone on this axis, since nothing else here can say
+  it — the same handle, the same refusals marked while the drag is held, and a click on that
+  handle opens no note.
 - A marker is counted as placed and reported among the axis's drawn bars in row order, so
   the axis's own "placed plus shelved equals the visible result rows" still holds, and a
   dependency arrow drawn to a milestone still anchors on the row it is drawn in.
@@ -169,6 +205,21 @@ parent for the Y and takes the X from `dependencyAnchor`, so several markers sha
 is the right answer rather than a compromise: they genuinely share the row). `drawnSpans`
 widens the window from the lane for the marker row exactly as it does for a folded band —
 see [[Folding a resource's band]], which states that gate.
+
+**Everything a bar ROW carried has to be asked of the mark instead, and two of them were
+missed** — 2d and 2e, both found in review the day the row landed. The pattern is one
+sentence: the row was the element that was ONE bar's, and the track is not. So the
+diamond takes `data-pbl-path`, the `pbl-link-source` and `pbl-link-illegal` classes
+(`begin` in `src/view/interactions/linkDrag.ts` sweeps `.pbl-timeline-row` and the marks
+beside it), the `fromRowControl` filter on its click, and a `--pbl-sublane` index; the
+header takes `--pbl-lane-sublanes`, which is why `renderLaneHead`'s `head` is handed to
+`drawMarkerDiamonds` beside its track. `wireBarLink` DRAWS the connector now rather than
+being handed one — `renderConnector` moved out of `src/view/render/timeline.ts` into it,
+because a handle drawn in the row renderer is a handle no other projection can have, and
+this axis is the projection that proved it. `styles/lanes.css` places the stacked mark
+(one rule, `top` only, so the diamond's own rotation is untouched) and
+`styles/timelineFurniture.css` reveals the connector off the MARK's hover, since every
+existing reveal is triggered by a row this mark does not have.
 
 **Four functions moved into that file with it**, and the move is the point rather than
 housekeeping: `barClasses` and `spanText` (a mark's classes and the sentence about its
@@ -202,11 +253,18 @@ a branch nothing can reach is a claim nothing keeps.
 Driven in `test/domain/resources.test.ts` (the row's position, the two assignee cases, the
 context rule, the minting rule and the placed count), `test/view/resourceLanes.test.ts` (one
 row of diamonds and no rows of their own, no disclosure where a band has one, each diamond
-named, no absence control), `test/view/resourceScheduling.test.ts` (the slide, both
-directions of 2b, the click, and done on the mark) and `test/view/absenceCollision.test.ts`,
-where the away-day case now asserts 3b from the rule rather than the old mark. The domain
-cases and the two structural view cases were watched failing with the change disabled.
+named, no absence control, plus 2d's handle, its click guard and its held-drag marking, and
+2e's stack), `test/view/resourceScheduling.test.ts` (the slide, both directions of 2b, the
+click, and done on the mark) and `test/view/absenceCollision.test.ts`, where the away-day
+case now asserts 3b from the rule rather than the old mark. The domain cases, the two
+structural view cases and all four of 2d/2e's were watched failing with the change disabled.
+`test/view/rendering.test.ts` asks the STYLESHEET whether the mark's reveal exists at all,
+which is the half no view test can see: the dot was drawn, wired and asserted present while
+computing `opacity: 0` on every device with a pointer.
 
 **Not checked here**: how the row of diamonds reads in a live vault — the spacing of marks
-that fall close together most of all, which jsdom cannot see. That is the standing limit on
-every appearance claim; see `docs/tests/suites/Smoke test the roadmap.md`.
+that fall close together most of all, which jsdom cannot see, and which 2e narrows without
+closing (it separates marks on ONE day; two days apart at a coarse zoom still overlap).
+Whether the connector clears the rotated diamond it hangs off is the same kind of claim.
+That is the standing limit on every appearance claim; see
+`docs/tests/suites/Smoke test the roadmap.md`.

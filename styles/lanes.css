@@ -213,6 +213,18 @@
 	);
 }
 
+/* A milestone's diamond in the milestones' own header track, stacked where two land on the
+   same drawn day — the absence sub-lane above, read by the one other mark that shares a
+   track. Only `top` is restated: `.pbl-bar`'s own `translateY(-50%)` still centres the mark
+   on it, and the diamond's `rotate(45deg)` rides in the transform this rule does not touch.
+   15px is the centre of the 30px floor, so one sub-lane draws exactly where `top: 50%` put
+   it and nothing moves on the ordinary row; each further mark takes the same 17px pitch the
+   header's `min-height` grows by. Two classes, so it outranks `.pbl-bar` wherever the two
+   files load. */
+.pbl-lane-markers .pbl-bar {
+	top: calc(15px + var(--pbl-sublane, 0) * 17px);
+}
+
 /* The away key, defined once and used by the wash, the lead swatch and the legend, so the
    column and the marks that stand for it cannot drift apart. A `--color-*` token mixed with a
    TEXT token: an absence is CONTENT, so no part of it is drawn from `--background-modifier-*`

@@ -252,6 +252,17 @@ button.pbl-bar-connector {
 	opacity: 1;
 }
 
+/* The same reveal where there is no row to do it: every marker on the resources axis draws
+   into ONE shared header track, so the row-level trigger above would light every date on
+   the plan at once. The MARK is the trigger there instead, which the paragraph above rules
+   out for a bar and not for this one — a diamond is the whole of what a reader can point
+   at here, already its click and drag target, and never six pixels wide. Hover survives the
+   move onto the dot, which is the diamond's own child. Four classes, so it outranks the
+   `button.pbl-bar-connector` it undoes without an element qualifier of its own. */
+.pbl-lane-markers .pbl-bar:hover .pbl-bar-connector {
+	opacity: 1;
+}
+
 /* Immediately after the `opacity: 0` it undoes, and deliberately NOT in
    `styles/touch.css`: a media query adds no specificity, so any later rule for the same
    selector would get between the pair and this would silently reveal nothing. `.pbl-add`
@@ -318,7 +329,13 @@ button.pbl-bar-connector {
    scarce thing is the one worth a mark. Three classes deep, which is what makes this
    outrank every single- and double-class `.pbl-bar-*` rule in `timeline.css` regardless
    of which file loads last. */
-.pbl-linking .pbl-link-illegal .pbl-bar {
+   The second selector is a milestone on the resources axis, where the class lands on the
+   MARK because that axis gives a marker no row of its own — the same substitution
+   `BarLinkParts.row` makes. Descendant and self cannot be one selector, and the pair ties
+   on specificity, so both spellings state the same thing rather than one overriding the
+   other. */
+.pbl-linking .pbl-link-illegal .pbl-bar,
+.pbl-linking .pbl-bar.pbl-link-illegal {
 	opacity: 0.25;
 	filter: grayscale(1);
 }
@@ -340,7 +357,10 @@ button.pbl-bar-connector {
    target under the pointer are never one look — the two rules tie on specificity and
    cannot co-occur anyway (`accepts` refuses the source), so the distinction is the dash
    and the weight, not the cascade. */
-.pbl-linking .pbl-link-source .pbl-bar {
+   Two selectors for the reason the illegal rule above carries two: on the resources axis a
+   marker's mark IS what wears the class. */
+.pbl-linking .pbl-link-source .pbl-bar,
+.pbl-linking .pbl-bar.pbl-link-source {
 	outline: 1px dashed var(--interactive-accent);
 	outline-offset: 2px;
 }

@@ -223,9 +223,20 @@ construction, with no accepts filter of its own", which wires a bare `wireDropTa
 no `accepts` of its own — the everyday shape — and drags a real link source onto it
 directly, no shelf or grid involved.
 
-The connector itself is drawn by `renderConnector` in `src/view/render/timeline.ts`, which
-also gives every `pbl-timeline-row` its `data-pbl-path` — what the legality sweep marks
-rows by, since a title is not an identity. Its own reveal and the `(hover: none)` block that
+The connector itself is drawn by `wireBarLink` in `src/view/interactions/linkDrag.ts`,
+which is also what wires it — one function since 2026-08-15, where it was `renderConnector`
+in `src/view/render/timeline.ts` calling `wireBarLink` beside it. The draw condition was
+always a strict subset of the wiring's, so nothing about either half changed; what changed
+is that the handle stopped being a bar ROW's property. That is what had made it unreachable
+for a milestone on the resources axis, which draws as a diamond in a shared header track
+and never through `renderBarRow` — see [[Milestones out of the resource rows]] 2d, and note
+that a marker refuses both menu entries by design (`addDependencyItems`), so its connector
+is the ONLY input this gesture has from a marker rather than one of three.
+
+`src/view/render/timeline.ts` still gives every `pbl-timeline-row` its `data-pbl-path` —
+what the legality sweep marks rows by, since a title is not an identity — and
+`drawMarkerDiamonds` puts the same attribute on each diamond, which is the element the
+sweep marks where a row is shared. Its own reveal and the `(hover: none)` block that
 undoes it, from extension 1e above, are in `styles/timelineFurniture.css`
 — not `styles/timeline.css`, which reached its 400-line cap building the grid this note
 draws on — and the drag-state rules (the illegal dimming, the drop-over outline, the

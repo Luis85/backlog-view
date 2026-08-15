@@ -122,6 +122,18 @@ catalog migration and was not part of that run.
   pitch in the header track's `min-height` — and `test/view/timelineBoxing.test.ts` ties the
   two together, with `test/view/resourceAbsences.test.ts` asserting the index each mark
   actually carries. A look would answer it more slowly and less reliably than the suite does.
+- The milestones' own row (added 2026-08-15, [[Milestones out of the resource rows]]), which
+  is the same packing question asked of a mark that is 12px and rotated: whether two
+  diamonds stacked on one day read as two dates rather than as one mark drawn oddly, and
+  whether a mark a day or two from its neighbour at a coarse zoom — which stacks NOT, by
+  decision — still reads as two. That second one is the open half of 2e and the reason it is
+  written here rather than left to the suite. **Never checked.**
+- A milestone's own connector on that row, which is the only route this axis has to making
+  anything wait on a date (2d): whether the dot clears the rotated diamond it hangs off
+  rather than sitting inside its tip, whether hovering a 12px mark is enough to find a
+  control that is invisible until then, and whether a diamond marked `pbl-link-illegal`
+  mid-drag reads as refused at that size — the dimming was tuned against a full-width bar.
+  **Never checked.**
 - The 16% `--pbl-away` wash (re-keyed from `--text-muted` on 2026-08-14) over a saturated
   bar, in both schemes: whether it still reads as shading rather than as a second bar now
   that it is keyed to a warm colour instead of a neutral one, and whether the two edges
