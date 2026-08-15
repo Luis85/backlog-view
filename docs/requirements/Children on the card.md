@@ -79,9 +79,11 @@ card — and a count is the half of it that cannot be acted on.
   the disclosure does. One card cannot say the same thing twice.
 - **4a — the user has no pointer.** The card menu offers the TOGGLE, from the same gate.
   A disclosure nobody without a mouse can reach is not a list of children. It offered one
-  `Open child "…"` entry per child as well until 2026-08-14, when those were removed on
-  request — see [[Drop the per-child entries from the card menu]], which also records the
-  match-list consequence and the fix it needed.
+  `Open child "…"` entry per child as well, unconditionally, until 2026-08-14; those were
+  removed on request and came back the next day narrowed to the children with **no card
+  of their own**, which is empty on an unfocused projection and is the whole keyboard path
+  under a focus. See [[Drop the per-child entries from the card menu]], which also records
+  the match-list consequence and the fix it needed.
 - **5a — the item is a context row.** It gets the disclosure like any other card. Nothing
   here writes, so the rule that governs it is not in question.
 
@@ -137,7 +139,13 @@ The match walk is shared the same way and its subtraction is now per SURFACE:
 face, where the disclosure's list sits inches from the match links, and `addMatchSection`
 in `menu.ts` reads `matchesUnderCard` — the same walk without that subtraction, because
 the menu stopped naming the children themselves and a match the face lists would
-otherwise be reachable by pointer alone.
+otherwise be reachable by pointer alone. `unreachableChildren` beside them is the third
+subtraction and the narrowest: the listed children with no card of their own, which is
+what the menu's `Open child "…"` entries are built from. It takes the same `carded` set,
+answered per projection by `cardedPaths` in `menu.ts`, since the board and the roadmap
+each know their own cards and the two are not the same list.
+The board is the only projection that draws matches on a card FACE at all —
+[[The roadmap names no matches under a card]].
 
 The expansion bit itself is `CARD_SCOPE` in `src/view/collapseState.ts`, a prefix
 alongside `TIMELINE_SCOPE`, read and written through `BacklogViewHost.isCardCollapsed`/

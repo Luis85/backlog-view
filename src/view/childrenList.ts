@@ -25,6 +25,28 @@ export function listedChildren(host: BacklogViewHost, item: BacklogItem): Backlo
 }
 
 /**
+ * The listed children with no card of their own — the ones a pointer can reach on this
+ * card's face and a keyboard cannot reach anywhere.
+ *
+ * `carded` is the same "already on screen" set `matchesUnderCard` subtracts, and it is
+ * the whole of the rule: unfocused, every result gets a card of its own on both card
+ * projections, so this is empty and the menu grows nothing. Under a FOCUS the cards are
+ * the focus level's alone, so a card's children are drawn only as its own
+ * `tabindex="-1"` list entries — and the menu's `Open child "…"` was their keyboard path
+ * until it was removed on 2026-08-14 to shorten that menu. Removing it wholesale was
+ * measured wrong the next day: an unfocused board is where a menu grew a row per child,
+ * and a focused one is where those rows were the only route. Subtracting `carded` is what
+ * separates those two, so the clutter stays gone where it was clutter.
+ */
+export function unreachableChildren(
+	host: BacklogViewHost,
+	item: BacklogItem,
+	carded: Set<string>,
+): BacklogItem[] {
+	return listedChildren(host, item).filter((child) => !carded.has(child.file.path));
+}
+
+/**
  * What the disclosure calls them. Naming the type is worth more than a bare count — a
  * board of Epics says "3 features" — but only while they agree on one, since a mixed
  * set has no true name. Compared and named by `displayType`, the same function the

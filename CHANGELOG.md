@@ -22,7 +22,9 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 - **The card's right-click menu no longer lists the children one by one** — the
   **Show/Hide children** toggle stays, and so does the list on the card itself. A card with
   many children no longer pushes the rest of its menu off the screen. A child that matches
-  the quick filter is still offered in the menu, as a match.
+  the quick filter is still offered in the menu, as a match. **While a focus level is
+  set**, where a child has no card of its own, the menu still offers **Open child** for it
+  — otherwise the only way to it would be a mouse.
 
 ### Changed
 

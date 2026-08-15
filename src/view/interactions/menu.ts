@@ -22,7 +22,7 @@ import { promptCreateItem } from './create';
 import { addHorizonItems, canSchedule, carriesDates, promptSchedule, unschedule } from './plan';
 import { addTagItems, tagsColumnVisible } from './tags';
 import { addDependencyItems, dependenciesAvailable } from './dependencies';
-import { matchesUnderCard } from '../childrenList';
+import { matchesUnderCard, unreachableChildren } from '../childrenList';
 import { offerableTypes, retypeChoices, rowVocabulary, treeShaped } from '../projection';
 
 /**
@@ -377,12 +377,17 @@ function addMatchSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): 
  * this is its keyboard path — the same answer the tree gives for the add button and the
  * state chip.
  *
- * The TOGGLE only. This section used to end with an `Open child "…"` entry per child,
- * which was removed on request (2026-08-14): the children are already on the card, each
- * one already opens on a click, and a menu that grew a row per child pushed everything
- * else in it off the bottom on exactly the items with the most of everything. Nothing is
- * lost from the keyboard by that — opening a child is the tree's own job, and the
- * disclosure below is what a pointerless reader could not otherwise reach.
+ * The toggle, and then `Open child "…"` for the children with **no card of their own**.
+ * That per-child list used to be unconditional, was removed on request (2026-08-14)
+ * because a menu growing a row per child pushed everything else in it off the bottom on
+ * exactly the items with the most of everything, and came back the next day narrowed:
+ * "nothing is lost from the keyboard by that" was a claim, and it was wrong under a
+ * FOCUS. Unfocused, every result has a card of its own on both card projections and this
+ * list is empty — which is the state the clutter was reported in. Focused, the cards are
+ * the focus level's alone, and a child appears only as a `tabindex="-1"` entry on its
+ * parent's face, so these entries are the whole keyboard path to it. `unreachableChildren`
+ * is where that subtraction lives; `cardedPaths` is what each projection answers it with.
+ * (Codex, PR #137, pointing at the roadmap half of it.)
  *
  * The gate is `cardChildrenShown`, filled by the render, and not the projection: a card
  * whose children have all hidden draws no disclosure and a dated-axis timeline row draws
@@ -420,6 +425,14 @@ function addChildrenSection(host: BacklogViewHost, menu: Menu, item: BacklogItem
 					else host.setCardCollapsed(item.file.path, !collapsed);
 					host.render();
 				}),
+		);
+	}
+	for (const child of unreachableChildren(host, item, cardedPaths(host))) {
+		menu.addItem((mi) =>
+			mi
+				.setTitle(`Open child "${child.title}"`)
+				.setIcon('corner-down-right')
+				.onClick((evt) => host.openItem(child, evt)),
 		);
 	}
 }
@@ -649,6 +662,21 @@ export function addShelfTypeItems(host: BacklogViewHost, menu: Menu, shelf: Shel
  * On the roadmap only, and only while the shelf holds something — an entry for a region
  * that is not on screen is the defect in the other direction.
  */
+/**
+ * Every path this card projection drew a card for — the "already on screen" test.
+ *
+ * Asked of whichever projection is drawing, because both answer it and they answer it
+ * differently: the board from its columns, the roadmap from the snapshot its own
+ * keyboard walk is built from (buckets or bars, then the shelf, then context). On the
+ * tree it is empty, which is correct rather than a fallback — nothing here calls it
+ * outside a card's own menu.
+ */
+function cardedPaths(host: BacklogViewHost): Set<string> {
+	const board = activeBoard(host);
+	if (board) return cardPaths(board);
+	return new Set((host.roadmap?.cards ?? []).map((card) => card.file.path));
+}
+
 function addShelfSection(host: BacklogViewHost, menu: Menu): void {
 	if (host.projection !== 'roadmap') return;
 	const shelf = host.roadmap?.roadmap.shelf ?? [];

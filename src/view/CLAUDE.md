@@ -591,7 +591,17 @@ free of runtime code so imports stay cycle-free.
   impossible to get to. The links are `tabindex="-1"` buttons like every other per-row
   control, so the card MENU carries the same matches — that is their keyboard path, the
   same answer the tree gives for the add button and the state chip, and without it the
-  links would be pointer-only and the feature would fail at its own purpose. They need
+  links would be pointer-only and the feature would fail at its own purpose.
+  **A focus is what makes the card's own CHILD list the same question**, and it takes the
+  same `carded` subtraction: `unreachableChildren` (`childrenList.ts`) is the listed
+  children with no card of their own, and it is what `addChildrenSection`'s
+  `Open child "…"` entries are built from. Unfocused it is empty on both card
+  projections, because every result is a card — which is why deleting those entries
+  outright looked free and was not (2026-08-14, corrected the next day). `cardedPaths` in
+  `interactions/menu.ts` is the one place a projection is asked which cards it drew: the
+  board from its columns, the roadmap from the snapshot its own keyboard walk is built
+  from. Note that only the BOARD draws matches at all — see
+  [[The roadmap names no matches under a card]]. They need
   no guard of their own against the card beneath — see the row-activation filter below.
 - The board is one tab stop and its shortcuts are invisible, so it carries hidden
   instructions (`.pbl-sr-only`, attached with `aria-describedby`). The id is minted by

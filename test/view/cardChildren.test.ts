@@ -456,6 +456,35 @@ describe('children on the card', () => {
 		expect(titles).toContain('Open match "Feature B1"');
 	});
 
+	// The per-child entries, back where nothing else can reach the child and gone where
+	// something can. Focus is what separates the two: unfocused, every result has a card
+	// of its own, which is the state the clutter these were removed for was reported in.
+	it.each([
+		['board under a focus', (v: FakeVault) => makeBoard(v, {}, { focus: 'Epic' }), true],
+		['board unfocused', (v: FakeVault) => makeBoard(v), false],
+		// The roadmap draws no match links on a card face at all, so its menu has no
+		// second route the board's `Open match` could stand in as — the projection Codex
+		// pointed at on PR #137.
+		['roadmap under a focus', (v: FakeVault) => makeRoadmap(v, {}, { focus: 'Epic' }), true],
+		['roadmap unfocused', (v: FakeVault) => makeRoadmap(v), false],
+	] as const)('offers Open child only where the child has no card of its own — %s', (_name, mount, offered) => {
+		const vault = boardVault();
+		const { containerEl } = mount(vault);
+		cardByTitle(containerEl, 'Epic B').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+
+		const menu = Menu.lastShown;
+		const titles = menu?.items.map((i) => i.titleText) ?? [];
+		expect(titles.includes('Open child "Feature B1"')).toBe(offered);
+		// Never a second one either: the card face lists BOTH children, and where they
+		// have cards of their own the menu pointing at them names what is already there.
+		expect(titles.filter((t) => t.startsWith('Open child')).length).toBe(offered ? 2 : 0);
+		// And the entry opens the CHILD — the whole of what it is for. Asked of the vault
+		// rather than of the title, since a wrong item would still be a plausible name.
+		if (!offered) return;
+		menu?.items.find((i) => i.titleText === 'Open child "Feature B1"')?.click();
+		expect(vault.opened.at(-1)?.path).toBe('Feature B1.md');
+	});
+
 	/**
 	 * The dated axis, drawing both surfaces at once: `Dated epic` has two dates so it
 	 * gets a timeline ROW (the card shell in a bar-grid layout, never `renderCardBody`),
