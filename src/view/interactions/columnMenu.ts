@@ -1,6 +1,6 @@
 import { Menu } from 'obsidian';
 import { BacklogViewHost, ColumnScope } from '../host';
-import { BoardColumn } from '../../domain/board';
+import { BoardColumn, emptyNoState } from '../../domain/board';
 import { showMenuForClick } from './menu';
 
 /**
@@ -38,13 +38,38 @@ export function buildColumnMenu(host: BacklogViewHost, scope: ColumnScope, col: 
 	// render that drew the column this menu is being opened on — see `columnCollapsed`
 	// in `view/collapseState.ts`.
 	const folded = host.columnCollapsed(scope, col.state, false);
-	// Disabled while a filter runs, because the DISCLOSURE is — `renderChevron` passes
-	// `disabled: host.isFiltering()` and reads the flag again on the click. Two surfaces
-	// over one action have to be available at the same times as well as agree about the
-	// state, and this pair did not: the filter override makes `columnCollapsed` answer
-	// false, so a folded column offered an enabled Collapse that wrote a fold nothing on
-	// screen could show, and clearing the search then revealed a fold the reader never saw
-	// themselves make. Found by review (Codex, PR #140).
+	// The empty no-state strip has no fold to offer, and the header draws it no disclosure
+	// for the same reason: it is ALREADY a 44px strip with nothing in it, so folding would
+	// swap its dashed frame for a solid one, persist a fold nobody could watch themselves
+	// make, and shut the first stateless card that arrives out of sight. `emptyNoState` is
+	// one predicate serving both surfaces rather than a second reading beside the first.
+	const foldable = folded || !emptyNoState(col);
+	if (foldable) addFoldItem(host, menu, scope, { col, folded });
+	if (col.policy) menu.addItem((mi) => mi.setTitle(col.policy).setIcon('info').setDisabled(true));
+	// Nothing to say: back to reporting no menu, so the keyboard leaves the key to whoever
+	// else wants it rather than swallowing it on a stop where nothing happens.
+	return foldable || col.policy ? menu : null;
+}
+
+/**
+ * Disabled while a filter runs, because the DISCLOSURE is — `renderChevron` passes
+ * `disabled: host.isFiltering()` and reads the flag again on the click.
+ *
+ * **Two surfaces over one action have to be AVAILABLE at the same times**, which is a
+ * second question from agreeing about the state, and this pair has now come apart on it
+ * twice: once on the filter (the override makes `columnCollapsed` answer false, so a
+ * folded column offered an enabled Collapse that wrote a fold nothing on screen could
+ * show), and once on the empty strip above. Both found by review, PR #140. That is why the
+ * strip's test is a shared predicate and this one reads `isFiltering` rather than being
+ * told: a condition copied here is a condition that can drift from the control it mirrors.
+ */
+function addFoldItem(
+	host: BacklogViewHost,
+	menu: Menu,
+	scope: ColumnScope,
+	column: { col: BoardColumn; folded: boolean },
+): void {
+	const { col, folded } = column;
 	const filtering = host.isFiltering();
 	menu.addItem((mi) => {
 		mi.setTitle(folded ? `Expand ${col.label}` : `Collapse ${col.label}`)
@@ -55,8 +80,6 @@ export function buildColumnMenu(host: BacklogViewHost, scope: ColumnScope, col: 
 		// answer for itself in one term.
 		if (!filtering) mi.onClick(() => host.setColumnCollapsed(scope, col.state, !folded));
 	});
-	if (col.policy) menu.addItem((mi) => mi.setTitle(col.policy).setIcon('info').setDisabled(true));
-	return menu;
 }
 
 /** The pointer path onto that menu. */

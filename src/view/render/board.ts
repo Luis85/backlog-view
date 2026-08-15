@@ -21,6 +21,7 @@ import {
 	BoardModel,
 	cardPaths,
 	deliverablesWorkflow,
+	emptyNoState,
 	overBy,
 	ownWorkflowReading,
 	requirementsFocusRoots,
@@ -291,7 +292,7 @@ function renderColumn(
 	// column's own case and suppresses the count, while a fold keeps name and count
 	// visible. Two states, one width — see `.pbl-board-collapsed` in `styles/board.css`.
 	const frame: ColumnFrame = {
-		strip: col.state === null && col.cards.length === 0 && col.fullCount === 0 && !folded,
+		strip: emptyNoState(col) && !folded,
 		folded,
 		filtering: ctx.host.isFiltering(),
 	};

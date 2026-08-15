@@ -153,6 +153,26 @@ describe('folding a board column', () => {
 		expect(folded(columnByName(containerEl, 'Done'))).toBe(true);
 	});
 
+	it('offers no fold on the empty no-state strip, because it draws no disclosure either', () => {
+		// Found by review (Codex, PR #140), and the SECOND time this pair came apart on
+		// availability rather than on state. The strip is already a 44px box with nothing
+		// in it, so a Collapse would swap its dashed frame for a solid one, persist a fold
+		// nobody could watch themselves make, and shut out the first stateless card to
+		// arrive. One predicate answers for both surfaces now.
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'New' } });
+		const { containerEl } = makeBoard(vault);
+		const strip = columnByName(containerEl, 'No state');
+		expect(strip.classList.contains('pbl-board-strip')).toBe(true);
+		expect(strip.querySelector('.pbl-chevron')).toBeNull();
+
+		strip.querySelector('.pbl-board-col-header')?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+
+		// No policy either, so there is nothing to open at all — and the keyboard path
+		// leaves the key alone rather than swallowing it on a stop where nothing happens.
+		expect(Menu.lastShown).toBeNull();
+	});
+
 	it('offers no fold from the menu while a filter runs, because the button offers none', () => {
 		// Found by review (Codex, PR #140). The disclosure is disabled while filtering and
 		// this entry was not, so a folded column — which the filter override reports as

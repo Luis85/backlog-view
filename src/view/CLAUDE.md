@@ -565,12 +565,18 @@ free of runtime code so imports stay cycle-free.
   rather than something to fix beside a fold.
   **Two surfaces over one action have to be AVAILABLE at the same times, and that is a
   second question from agreeing about the state.** These two shared a builder and still
-  came apart on it: `renderChevron` disables itself while a filter runs, the menu entry did
-  not, and since the filter override makes `columnCollapsed` answer false, a folded column
-  offered an enabled Collapse that wrote a fold nothing on screen could show — the reader
-  finding it only when they cleared the search. Found by review (Codex, PR #140). Ask it of
-  any second surface: not just "does it say the same thing", but "is it offered exactly
-  when the first one is".
+  came apart on it TWICE, which is why it is written as a rule rather than as two fixes.
+  Once on the quick filter: `renderChevron` disables itself while one runs, the menu entry
+  did not, and since the filter override makes `columnCollapsed` answer false, a folded
+  column offered an enabled Collapse that wrote a fold nothing on screen could show. Once
+  on the empty no-state strip: the header draws it no disclosure, and the menu went on
+  offering one, so a reader could fold a 44px box that was already a 44px box and shut out
+  the first stateless card to arrive. Both found by review (Codex, PR #140).
+  What the second fix does that the first did not is remove the chance of a third: the
+  strip's test is `emptyNoState` in `domain/board.ts`, asked by the header and by the menu,
+  rather than a condition copied into each. Ask it of any second surface — not just "does
+  it say the same thing", but "is it offered exactly when the first one is", and then put
+  the answer somewhere both read.
 - The whole column is the drop target and the highlight is the only drop signal —
   within-column order is derived from the Base's sort, so there is no between-cards
   edge, no hitbox package, and deliberately no Alt+Up/Down rank shortcut.

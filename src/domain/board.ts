@@ -520,6 +520,24 @@ export function boardColumns(
 }
 
 /**
+ * The empty no-state column, which draws as a bare 44px drop strip rather than as a
+ * column: clearing a state by drag has to stay possible without a permanently empty stage
+ * taking a stage's room.
+ *
+ * Asked by two surfaces and therefore stated in one place. It decides what the header
+ * DRAWS — no count, and no disclosure, since there is nothing in it to fold — and what
+ * that column's menu OFFERS, and the two coming apart is exactly how the strip came to
+ * carry a Collapse action with no control on screen for it (found by review, PR #140).
+ *
+ * "Empty" is about the POPULATION and not the matches, the same reading `count`/`fullCount`
+ * already keep apart: a filter that hid every stateless card must not collapse the column
+ * to a strip, which would say the work is gone rather than merely unmatched.
+ */
+export function emptyNoState(col: BoardColumn): boolean {
+	return col.state === null && col.cards.length === 0 && col.fullCount === 0;
+}
+
+/**
  * How many cards this column holds beyond what was agreed — 0 at the limit, under it,
  * or with no limit at all. Reads {@link BoardColumn.fullCount}, never `count`: a filter
  * that made an over-limit column look under its limit would turn a search into a lie

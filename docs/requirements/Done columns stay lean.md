@@ -137,6 +137,13 @@ default never fired there at all — the third appearance of the trap `ownWorkfl
 exists for, found by review (Codex, PR #140). `col.done` is the same answer arrived at
 more cheaply and it cannot drift: `workflow.stateOf` is what put the card in the column.
 
+**The empty no-state strip is offered no fold, by either surface.** It is already a 44px
+box with nothing in it, so a fold would swap its dashed frame for a solid one, persist a
+choice nobody could watch themselves make, and shut out the first stateless card to arrive.
+`emptyNoState` (`src/domain/board.ts`) is the one test, asked by the header and by the
+menu. Found by review (Codex, PR #140), and the second time these two surfaces disagreed
+about availability — which is what turned the shared condition into a shared predicate.
+
 **The two surfaces go dark together.** The disclosure disables itself while a filter runs
 (`renderChevron`), and so does the menu entry. They shared a builder and still came apart
 on this, because the filter override makes `columnCollapsed` answer false: a folded column
