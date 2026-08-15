@@ -119,7 +119,16 @@ scoped and lower-cased (`columnKey`), because both boards and the horizon axis c
 population pass `fullCount` is — with the quick filter lifted, which is the load-bearing
 half: measured over the drawn cards, a search that hid every open card in Done would
 report the stage finished and fold a column holding retained work. The fold default is
-`col.done && !col.openWork`, taken once, in `renderBoard`.
+`col.done && col.fullCount > 0 && !col.openWork`, taken once, in `renderBoard`.
+
+That middle term is the same load-bearing half read from the other side, and it was
+missing until review: settling is permanent, so a default taken while the column holds
+NOTHING is a default taken on no evidence. A board drawn before its results arrive — a
+Bases pass that has not warmed up, a filter narrowed to nothing — has an empty Done like
+every other column, and without the term it shut Done for good and handed the work back
+folded when it turned up. That is `collapseNewParents`' own "a model that has not loaded
+is not a vault with no notes", one projection over. It also states the requirement
+honestly: this note is about finished work taking a stage's room, and no work takes none.
 
 Finished is asked of the COLUMN, never of `item.subtreeDone`. That field is built on
 `item.done`, the requirements reading, so on the Deliverables board a Deliverable finished

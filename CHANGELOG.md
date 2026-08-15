@@ -20,10 +20,11 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   offers the same fold, which is the keyboard path to it.
 
 - **A done column of finished work opens folded** — the first time a board draws a done
-  column holding nothing but finished subtrees, it starts shut, the same once-only default
+  column holding finished work and nothing else, it starts shut, the same once-only default
   the tree applies to a parent nobody has ruled on. One still carrying open work opens
-  normally, and once you open a folded column it stays open. Horizon buckets have no such
-  default: an axis has no notion of finished, so a bucket is open until you shut it.
+  normally, an empty one is left alone, and once you open a folded column it stays open.
+  Horizon buckets have no such default: an axis has no notion of finished, so a bucket is
+  open until you shut it.
 
   A running quick filter opens every fold, so a search can still find what is inside one.
 

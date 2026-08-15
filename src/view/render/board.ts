@@ -89,11 +89,23 @@ function renderBoard(
 ): BoardSnapshot {
 	renderBoardInstructions(boardEl);
 	const colsEl = boardEl.createDiv({ cls: 'pbl-board-cols' });
-	// A done column holding no open work folds itself the first time that is true of it —
-	// the tree's own once-only default, asked of the column rather than of a parent. The
-	// answer is asked once here and carried down, never re-derived per header: the getter
-	// SETTLES on the way past (see `columnCollapsed` in `view/collapseState.ts`).
-	const folds = board.columns.map((col) => ctx.host.columnCollapsed(opts.scope, col.state, col.done && !col.openWork));
+	// A done column holding finished work and nothing else folds itself the first time that
+	// is true of it — the tree's own once-only default, asked of the column rather than of
+	// a parent. The answer is asked once here and carried down, never re-derived per
+	// header: the getter SETTLES on the way past (see `columnCollapsed` in
+	// `view/collapseState.ts`).
+	//
+	// `fullCount > 0` is the load-bearing term and not a tidy-up: settling is permanent, so
+	// a default taken while the column holds NOTHING is a default taken on no evidence. A
+	// board drawn before its results arrive — a Bases pass that has not warmed up, a filter
+	// the reader has just narrowed to nothing — has an empty Done like every other column,
+	// and without this term it would shut Done for good and hand the work back folded. Same
+	// hazard `collapseNewParents` states for a model that has not loaded, one projection
+	// over. An empty column is also nothing to hide: "done columns stay lean" is about
+	// finished work taking a stage's room, and no work takes none.
+	const folds = board.columns.map((col) =>
+		ctx.host.columnCollapsed(opts.scope, col.state, col.done && col.fullCount > 0 && !col.openWork),
+	);
 	// A folded column draws no cards, and the SNAPSHOT is where that is said, because the
 	// keyboard reads the snapshot: `boardPosition`, `nextBoardPosition` and Alt+arrow all
 	// walk `snapshot.board.columns[].cards`, so emptying the list here is what stops the
@@ -280,7 +292,7 @@ function renderColumn(
 			(col.state === null ? ' pbl-col-nostate' : '') +
 			(frame.strip ? ' pbl-board-strip' : '') +
 			(folded ? ' pbl-board-collapsed' : ''),
-		attr: { role: 'group', 'aria-label': columnLabel(col, frame.filtering) },
+		attr: { role: 'group', 'aria-label': columnLabel(col, frame) },
 	});
 	renderColumnHeader(ctx, colEl, col, frame, render.opts);
 	const cardsEl = colEl.createDiv({ cls: 'pbl-board-col-cards' });
@@ -292,7 +304,7 @@ function renderColumn(
 	return colEl;
 }
 
-function columnLabel(col: BoardColumn, filtering: boolean): string {
+function columnLabel(col: BoardColumn, frame: ColumnFrame): string {
 	// Always col.label, never the constant: the synthetic column yields its name
 	// when a real state claims it, and an accessible name that kept the old text
 	// would disagree with the screen — unreachable by the very speech input that
@@ -300,14 +312,21 @@ function columnLabel(col: BoardColumn, filtering: boolean): string {
 	const label = col.state === null ? `${col.label} — dropping here clears the state` : col.label;
 	// Filtered, the count is a pair and has to be spoken as one: "2 cards" in a column
 	// of eleven would tell a screen-reader user the stage had emptied.
-	const counts = filtering
+	const counts = frame.filtering
 		? `${col.count} of ${col.fullCount} cards match`
 		: `${col.count} card${col.count === 1 ? '' : 's'}`;
-	if (col.limit === null) return `${label}, ${counts}`;
+	// The fold is spoken HERE and not left to the disclosure's own `aria-expanded`, which
+	// nothing on the keyboard path reaches: this string is the stop's `aria-label`, and an
+	// accessible name overrides the children it is set on, so a reader arriving by
+	// `aria-activedescendant` hears the name, the count, and no button at all. Without the
+	// word, a folded column announces cards it is not showing — the one thing a count that
+	// deliberately survives the fold makes worse rather than better.
+	const said = frame.folded ? `${label}, collapsed` : label;
+	if (col.limit === null) return `${said}, ${counts}`;
 	// The overage is spoken because the icon beside it is not: an over-limit column
 	// has to say so to someone who cannot see either the colour or the shape.
 	const over = overBy(col);
-	return `${label}, ${counts}, limit ${col.limit}${over > 0 ? `, over by ${over}` : ''}`;
+	return `${said}, ${counts}, limit ${col.limit}${over > 0 ? `, over by ${over}` : ''}`;
 }
 
 function renderColumnHeader(
@@ -324,7 +343,7 @@ function renderColumnHeader(
 	// rest on one may announce nothing. See `.pbl-board-col-stop` in selection.ts.
 	const header = colEl.createDiv({
 		cls: 'pbl-board-col-header pbl-board-col-stop',
-		attr: { role: 'option', 'aria-selected': 'false', 'aria-label': columnLabel(col, filtering) },
+		attr: { role: 'option', 'aria-selected': 'false', 'aria-label': columnLabel(col, frame) },
 	});
 	// The empty no-state strip is the one header with nothing to fold: it holds no card
 	// in any filter state, so a disclosure there would offer to shut what is already shut.

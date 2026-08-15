@@ -529,9 +529,15 @@ free of runtime code so imports stay cycle-free.
   drawn — a board with every column folded is not a board with nothing on it, and telling
   the reader their work was all done or all filtered away is the collapsed shelf's mistake
   one projection over.
-  **The default is the board's alone.** `col.done && !col.openWork` folds a done column
-  once, and `openWork` is measured over the POPULATION (`domain/board.ts`), so a quick
-  filter cannot make a stage look finished and fold work the reader was holding. It is the
+  **The default is the board's alone.** `col.done && col.fullCount > 0 && !col.openWork`
+  folds a done column once, and both the count and `openWork` are measured over the
+  POPULATION (`domain/board.ts`), so a quick
+  filter cannot make a stage look finished and fold work the reader was holding. The
+  population term is the same guard read the other way and it was missing until review:
+  settling is permanent, so a default taken while the column holds NOTHING — a board drawn
+  before its results arrive, a filter narrowed to nothing — shut Done for good and handed
+  the work back folded. `collapseNewParents` states that hazard for an unloaded model; a
+  default settled lazily at the render meets it a second time. It is the
   one derived quantity a CONTEXT card contributes to, and only through its rollup: under a
   focus such a card can be the only thing standing for the results below it, so a column
   folded on its silence takes them off the board — with no advisory, since the board does
@@ -542,7 +548,14 @@ free of runtime code so imports stay cycle-free.
   render is the first moment there is anything to settle.
   The disclosure itself is `renderChevron` on both surfaces (`renderColumnFold`, exported
   from `render/board.ts`), so the filter override, the real `disabled` flag and the focus
-  report come with it. Its keyboard path on the BOARD is the column stop's own menu, which
+  report come with it. **Its `aria-expanded` is not what SAYS the fold, though**, and the
+  reason is the same one that makes the disclosure a `tabindex="-1"` button: an accessible
+  name overrides the children it is set on, so a reader arriving at the column stop by
+  `aria-activedescendant` hears `columnLabel` and no button at all. The word is therefore
+  in the label — `columnLabel` for a column, the bucket's own `aria-label` for a bucket —
+  which is a claim about a COUNT rather than about a chevron: the count deliberately
+  survives the fold, so a label that stayed silent would announce cards the column is not
+  showing. Its keyboard path on the BOARD is the column stop's own menu, which
   is why that menu is now unconditional and lives in `interactions/columnMenu.ts`; a bucket
   has no such path, and that gap is [[Folding a horizon bucket]]'s own last paragraph
   rather than something to fix beside a fold.

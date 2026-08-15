@@ -101,13 +101,15 @@ export function renderRoadmap(
 	// to `cards` (see `renderShelf`), never the axis's own — this is the true "does the
 	// roadmap have anything to show" count, including context cards already placed in
 	// a bucket, which no domain-model counter answers on its own.
-	const axisCardCount = cards.length;
-	// What the axis HOLDS, which since buckets could be folded is no longer what it drew.
-	// The advisory asks this one: a roadmap whose every bucket is shut is not a roadmap
-	// with nothing on it, and telling the reader their work was all done or all filtered
-	// away would be the same lie the collapsed shelf already had to be kept out of.
+	// What the axis HOLDS, which since a bucket can be folded is no longer what it drew:
+	// the buckets are counted rather than the cards pushed above. A roadmap whose every
+	// bucket is shut is not a roadmap with nothing on it, and telling the reader their work
+	// was all done or all filtered away would be the same lie the collapsed shelf already
+	// had to be kept out of. The grid axes fold nothing, so there `cards` still is the
+	// population — and it is read HERE, before the shelf renders, because collapsing the
+	// shelf changes ITS contribution and never the axis's own.
 	const axisPopulation =
-		axis === 'horizons' ? roadmap.buckets.reduce((n, bucket) => n + bucket.cards.length, 0) : axisCardCount;
+		axis === 'horizons' ? roadmap.buckets.reduce((n, bucket) => n + bucket.cards.length, 0) : cards.length;
 	const removal = shelfRemoval(host, axis);
 	const shelf = renderShelf(ctx, frameEl, { cards: roadmap.shelf, conflicts: dependencyConflicts, axis }, dnd, removal);
 	cards.push(...shelf.cards);
@@ -302,7 +304,13 @@ function renderBucket(
 			'pbl-bucket' +
 			(bucket.declared ? '' : ' pbl-bucket-undeclared') +
 			(folded ? ' pbl-bucket-collapsed' : ''),
-		attr: { role: 'group', 'aria-label': `${bucket.value}, ${bucket.count} item${bucket.count === 1 ? '' : 's'}` },
+		attr: {
+			role: 'group',
+			// Folded is said in the NAME, `columnLabel`'s reason on the board: the count
+			// deliberately survives the fold, so a bucket that stayed silent about it would
+			// announce items it is not drawing.
+			'aria-label': `${bucket.value}${folded ? ', collapsed' : ''}, ${bucket.count} item${bucket.count === 1 ? '' : 's'}`,
+		},
 	});
 	const header = colEl.createDiv({ cls: 'pbl-bucket-header' });
 	renderColumnFold(ctx.host, header, 'horizons', bucket.value, { folded, label: bucket.value });

@@ -78,6 +78,19 @@ describe('folding a board column', () => {
 		expect(folded(columnByName(containerEl, 'Done'))).toBe(false);
 	});
 
+	it('says it is folded where the keyboard path can hear it', () => {
+		// The stop's `aria-label` overrides its children, so the disclosure's own
+		// `aria-expanded` reaches nobody arriving by `aria-activedescendant` — and the count
+		// survives the fold, so a silent label announces cards the column is not showing.
+		const { containerEl } = makeBoard(openVault());
+		const stop = () => columnByName(containerEl, 'Done').querySelector('.pbl-board-col-stop');
+		expect(stop()?.getAttribute('aria-label')).toBe('Done, 1 card');
+
+		foldButton(columnByName(containerEl, 'Done')).click();
+
+		expect(stop()?.getAttribute('aria-label')).toBe('Done, collapsed, 1 card');
+	});
+
 	it('is off the tab order, like every other per-row control', () => {
 		const { containerEl } = makeBoard(openVault());
 		expect(foldButton(columnByName(containerEl, 'Done')).getAttribute('tabindex')).toBe('-1');
@@ -199,6 +212,24 @@ describe('the done column’s own default', () => {
 		expect(folded(columnByName(containerEl, 'Done'))).toBe(false);
 	});
 
+	it('takes no default while the column holds nothing at all', () => {
+		// Settling is permanent, so a default taken on an empty board is a default taken on
+		// no evidence. A board drawn before its results arrive has an empty Done like every
+		// other column; without the population term it shut Done for good and handed the
+		// work back folded when it turned up. Found by review, PR #140.
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'New' } });
+		vault.addFile('Shipped.md', { frontmatter: { type: 'Epic', order: 20, status: 'Done' } });
+		const { view, containerEl } = makeView(vault, BOARD_WORKFLOW, { collapsed: true, only: [] });
+		view.setProjection('board');
+		expect(folded(columnByName(containerEl, 'Done'))).toBe(false);
+
+		refresh(view, vault);
+
+		// And the default is still there to be taken the moment there IS evidence for it.
+		expect(folded(columnByName(containerEl, 'Done'))).toBe(true);
+	});
+
 	it('never folds again once the reader has opened it', () => {
 		// The tree's own rule: a default applies to what nobody has ruled on. Without the
 		// second list the next data update would shut the column in front of the user who
@@ -253,6 +284,15 @@ describe('folding a horizon bucket', () => {
 		cardDrag(bucketByName(containerEl, 'Later').querySelector<HTMLElement>('.pbl-card') ?? shut, shut);
 		await flush();
 		expect(vault.fm('Later item.md')['horizon']).toBe('Now');
+	});
+
+	it('says it is folded, the column stop’s own reason', () => {
+		const { containerEl } = makeRoadmap(horizonVault());
+		expect(bucketByName(containerEl, 'Now').getAttribute('aria-label')).toBe('Now, 1 item');
+
+		foldButton(bucketByName(containerEl, 'Now')).click();
+
+		expect(bucketByName(containerEl, 'Now').getAttribute('aria-label')).toBe('Now, collapsed, 1 item');
 	});
 
 	it('never folds itself, whatever the cards in it say', () => {
