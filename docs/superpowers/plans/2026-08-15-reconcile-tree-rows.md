@@ -702,15 +702,21 @@ export function renderInputs(host: BacklogViewHost): string {
 /**
  * Whether this column set allows reuse at all.
  *
- * `note.*` is covered by the frontmatter term in `rowSignature`. `file.mtime`,
- * `file.size` and a `formula.*` are not: a body edit changes `file.mtime` with the
- * frontmatter untouched, so the cell would go stale while its signature matched — the one
- * failure direction that is not acceptable.
+ * `file.mtime`, `file.size` and a `formula.*` are refused: a body edit changes
+ * `file.mtime` with the frontmatter untouched, so the cell would go stale while its
+ * signature matched — the one failure direction that is not acceptable.
  *
- * ponytail: a whole-pass refusal, where a per-cell rule would keep the win for these
- * vaults. Upgrade path is re-rendering the non-frontmatter cells alone on a kept row,
- * which costs a second reuse rule; take it when a vault that shows one of these columns
- * complains about the pause.
+ * **This is the source of the value, not the value's rendering, and it is only half the
+ * question.** A `note.*` value goes through `Value.renderTo` in `renderValue`, which for a
+ * wikilink draws a link whose text belongs to ANOTHER note. Rename that note and this
+ * row's own frontmatter is unchanged. The prefix cannot see that, and the second half is
+ * answered per row at render time instead — see the volatility rule in
+ * `render/rows.ts`, which asks the cell what it actually drew rather than predicting it.
+ *
+ * ponytail: a whole-pass refusal for the non-frontmatter columns, where a per-cell rule
+ * would keep the win for those vaults. Upgrade path is re-rendering those cells alone on
+ * a kept row, which costs a second reuse rule; take it when a vault that shows one of
+ * these columns complains about the pause.
  */
 export function reusableColumns(columns: Column[]): boolean {
 	return columns.every((column) => column.prop.startsWith('note.'));
@@ -1097,7 +1103,59 @@ function renderForest(ctx: RowContext, containerEl: HTMLElement, siblings: Backl
 
   Extract the claim-or-create into a small helper beside `childGroupEl` rather than inlining three branches into `renderItem`; `childGroupEl` becomes its create arm, and the depth write is then stated once for both arms instead of once per caller.
 - `forgetElement` drops the detached element's path **and every path in its group** from `ctx.rows` and `ctx.sigs` — the job `forgetSubtree` does today, reached from the DOM rather than from the model, because the model no longer describes what is on screen at that point.
-- Every claim and every build writes `ctx.sigs.set(path, sig)`, so the next pass compares against what this pass actually drew.
+- Every claim and every build writes `ctx.sigs.set(path, sig)`, so the next pass compares against what this pass actually drew — **except a volatile row**, below.
+
+- [ ] **Step 6c: A row that drew someone else's content can never be claimed**
+
+The column gate asks where a value comes FROM. It cannot ask what the value renders INTO, and that is a second hole: `renderValue` hands the value to `Value.renderTo`, so a `note.related` holding `[[Other note]]` draws a link whose text belongs to another note, and an embed draws that note's content outright. Change the other note and this row's frontmatter — and so its signature — is identical.
+
+This is not hypothetical: it is the exact scenario of the live-vault check in Task 7. Written as it stands, the guard would call that column reusable and the check would find a stale cell. A design whose own verification contradicts it is wrong at the design, not at the verification.
+
+Predicting which values do this is the losing move — it means reimplementing Bases' renderer in a predicate. **Ask the cell what it actually drew.** `renderValue` already inspects `valueEl` after `renderTo` (it reads `textContent` to decide emptiness), so the question goes where the looking already happens:
+
+```ts
+	// Did this cell draw something belonging to ANOTHER note? A link's text is the
+	// target's, an embed's content is the target's outright, and neither moves this
+	// note's frontmatter when it changes. Asked of the rendered DOM rather than of the
+	// value, because predicting what Bases' renderer produces means reimplementing it.
+	const external = valueEl.querySelector('a, .internal-embed, img') !== null;
+```
+
+Thread that answer up: `renderCell` and `renderPropCells` return it alongside what they already return, and `renderItem` uses it in one line:
+
+```ts
+	// A volatile row is indexed — selection and subtree refresh still need to find it —
+	// but never SIGNED, so the next pass's `sigs.get(path) === sig` can never match and
+	// the row is rebuilt. One line, and no second structure to keep in step with `sigs`.
+	if (volatile) ctx.sigs.delete(item.file.path);
+	else ctx.sigs.set(item.file.path, sig);
+```
+
+Note what this costs, in the report and in the ADR: a vault whose columns are all link-valued gets no reuse at all, and pays one `querySelector` per cell for the privilege. A vault whose value columns are text, numbers and dates — which includes the harness fixture Task 6 measures with — keeps the whole win. If Task 6 shows the reconcile never activating on a realistic column set, that is the signal that this rule is too blunt, and the per-cell refresh named in `reusableColumns` is the upgrade.
+
+Add to `test/view/rowReuse.test.ts`:
+
+```ts
+	it('never keeps a row whose value cell drew a link', () => {
+		const vault = backlog();
+		vault.setFrontmatter('Alpha.md', {
+			type: 'Feature', order: 10, status: 'Open', parent: '[[Epic]]', related: '[[Gamma]]',
+		});
+		const { view, containerEl, config } = makeView(vault, { stateKey: 'status' });
+		config.order = ['note.related'];
+		view.onDataUpdated();
+		const before = rowByTitle(containerEl, 'Alpha');
+		const other = rowByTitle(containerEl, 'Beta');
+
+		view.onDataUpdated();
+
+		expect(rowByTitle(containerEl, 'Alpha')).not.toBe(before);
+		// And only that row: a link in one cell must not cost the whole pass its reuse.
+		expect(rowByTitle(containerEl, 'Beta')).toBe(other);
+	});
+```
+
+Whether the fake entry's `renderTo` produces an anchor at all is a harness question — read `test/helpers/` and check. **If it does not, this test cannot be written honestly here**: say so in the report, drop the test rather than asserting against a stub that cannot reproduce the case, and make the live-vault check in Task 7 carry it instead. Do not weaken the source rule to match what jsdom can show.
 
 - [ ] **Step 6b: Let the drag controller clean up after itself**
 
