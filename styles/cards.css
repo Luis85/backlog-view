@@ -272,6 +272,9 @@ button.pbl-card-match {
 .pbl-card .pbl-prop {
 	flex: 0 1 auto;
 	width: auto;
+	/* No leading gutter either: that one is the aligned strip's, for a boundary a card
+	   has no columns to draw. */
+	padding-inline-start: 0;
 	max-width: 100%;
 }
 

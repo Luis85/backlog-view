@@ -340,7 +340,15 @@ free of runtime code so imports stay cycle-free.
   bounds and mirrored in a right-to-left layout. The keys go through that same `widthAt`
   rather than repeating the arithmetic, so a caller's clamp or sign cannot be applied to
   one input and forgotten on the other; a double click resets, because `pointerdown`
-  prevents default and so a mouse can never focus the strip to press Home. Two rules that
+  prevents default and so a mouse can never focus the strip to press Home. **The property
+  column's grip is a hit area and a MARK rather than one strip**, and both halves answer
+  the same finding: the hit area is the cell's whole trailing gutter, while the 2px mark
+  inside it is inset off the boundary — flush cells put the next label at that boundary,
+  so anything drawn on it reads as that label's decoration — and the mark is revealed by
+  hovering the column NAME, faintly, before the grip confirms it in the accent. The two
+  reveals paint one box, so the confirm is written through the label as well to tie their
+  specificity and let document order decide; `test/view/rendering.test.ts` pins that order,
+  because unscoped it lost and the mark under the pointer stayed faint. Two rules that
   were a copy in each grip live in the shared module rather than beside either: it writes
   `aria-valuenow` wherever a width is drawn, and it never passes on a width equal to the
   one the gesture found — the clamp a bound produces, which written back over a wider
