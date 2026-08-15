@@ -56,10 +56,11 @@ the moment the populations diverged, which is exactly what happened.
 
 1. In board mode the toolbar draws a scope picker beside the projection toggle, naming
    `Product` and every `Iteration` note in the model.
-2. Choosing an iteration stores the projection **and** the chosen note's path — the same
-   per-view collapse-store entry the roadmap axis uses, vault-scoped localStorage, per
-   device, never the `.base` — and re-renders from the model already in hand. Choosing
-   `Product` stores the ordinary board projection, so the two can never disagree.
+2. Choosing an iteration stores the chosen note's path — the same per-view collapse-store
+   entry the roadmap axis uses, vault-scoped localStorage, per device, never the `.base` —
+   and re-renders from the model already in hand. The stored MODE does not distinguish the
+   two boards; the scope does, and choosing `Product` clears it. So the two values cannot
+   contradict each other rather than being kept in step by a guard.
 3. The cards are the results whose iteration link resolves to that note, and no others:
    carriers only, never a descendant that did not say so itself — whatever their type,
    `Deliverable` included (3e).
@@ -139,6 +140,16 @@ the moment the populations diverged, which is exactly what happened.
   this board never shows, and it drops the Deliverables this board deliberately includes.
   It is one function precisely so the count label and the completed toggle's "(N hidden)"
   cannot disagree, so the scope belongs inside it rather than beside it.
+- **1f — the reader leaves for the tree or the roadmap and comes back to `Board`.** They
+  return to **the iteration they left**, exactly as the roadmap returns them to the axis
+  they left. The scope is retained state, and retained state that is not restored is a
+  choice quietly discarded.
+
+  This is why the stored mode does not name which board it is. Storing the two
+  independently needs a guard on every way IN to `Board` to keep them in step, and one
+  guard was written for the already-pressed click and did nothing for this route —
+  `Sprint 12 → Tree → Board` would have rendered the product board under a picker still
+  naming Sprint 12. Values that cannot disagree need no guard on any route.
 - **1d — the `Board` toggle position is clicked while it is already pressed and an
   iteration is chosen.** Nothing happens. It looks like a no-op and is not one unless the
   click asks the same question the pressed state does: the position is `Board` while the
@@ -368,6 +379,8 @@ the moment the populations diverged, which is exactly what happened.
   it.
 - Choosing a scope leaves the picker on screen and the `Board` position pressed, checked
   by picking one and inspecting the rebuilt toolbar.
+- Leaving `Board` and returning restores the iteration that was showing, and the stored
+  mode and scope cannot describe different boards.
 - An item created from this board carries the iteration it was created on, written in the
   same create as its type and parent — spelled from the NEW note's own path, so two
   iterations sharing a basename still get distinct links — and so it appears as a card

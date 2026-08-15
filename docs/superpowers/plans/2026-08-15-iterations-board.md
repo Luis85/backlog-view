@@ -1383,6 +1383,42 @@ control decision true: `toolbarPosition('iteration') === 'board'`. The zone swit
 that, and so does the toggle's pressed state. This is a real cost of the split, not a
 free consequence of it — worth paying for the compile-checked gates, and worth naming.
 
+**The stored mode does not distinguish the two board projections — the scope does.**
+`PROJECTION_MODE` maps BOTH `'board'` and `'iteration'` to the same stored `BOARD_MODE`,
+and the effective projection is derived from that mode plus the retained scope. This is
+the shape that removes the whole class of "the stored pair disagrees" rather than guarding
+each way in:
+
+- Choosing an iteration stores the scope. The mode is already `BOARD_MODE`.
+- Choosing `Product` clears the scope to `null`.
+- Leaving for the tree and coming back stores `BOARD_MODE` again and **derives
+  `'iteration'` from the retained scope** — the reader returns to the sprint they left, the
+  way the roadmap's retained axis pick already returns them to the axis they left.
+
+An earlier revision stored the two independently and guarded the click that could
+desynchronise them. That guard only fires while the current position IS `Board`, so the
+round trip `Sprint 12 → Tree → Board` walked straight past it: `setProjection('board')`
+with a retained scope still naming Sprint 12, product cards under a picker naming an
+iteration. One guard per way in is the enumeration mistake this plan keeps finding; making
+the two values incapable of disagreeing is the fix.
+
+```ts
+it('returns to the iteration it left after a trip through the tree', () => {
+	const host = hostWith({ projection: 'iteration', boardScope: sprint12 });
+	host.setProjection('tree');
+	host.setProjection('board');
+	expect(host.projection).toBe('iteration');
+	expect(host.boardScope).toBe(sprint12);
+});
+
+it('returns to the product board when the scope was cleared', () => {
+	const host = hostWith({ projection: 'board', boardScope: null });
+	host.setProjection('tree');
+	host.setProjection('board');
+	expect(host.projection).toBe('board');
+});
+```
+
 **The pressed state is not the only comparison in that helper.** `position()`'s click
 handler calls `host.setProjection(mode)`, so with the effective projection `'iteration'`,
 clicking the **already-pressed** `Board` button is not the no-op it looks like: it sets the
@@ -1464,9 +1500,11 @@ Two values, and the distinction is the whole of it:
 
 - the **stored** scope, raw, which is user data and is never rewritten — a path whose note
   is gone stays exactly as written, so restoring the note restores the choice;
-- the **effective** projection, resolved once from that value against the model **and the
-  settings**: `'iteration'` while the iteration property is configured *and* the path names
-  an `Iteration` result, `'board'` otherwise.
+- the **effective** projection, resolved once from the stored mode, that value, the model
+  **and** the settings: `'iteration'` while the stored mode is `BOARD_MODE`, the iteration
+  property is configured, and the path names an `Iteration` result; `'board'` otherwise.
+  The mode alone never says which of the two boards this is — see step 3 — so the two
+  stored values cannot contradict each other.
 
 Both halves. With `iterationProperty` cleared, every item reads a null iteration, so the
 path still names a note but no card can ever match it — and Task 9's picker is gone
