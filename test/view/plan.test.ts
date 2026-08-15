@@ -2,7 +2,16 @@
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { Menu, MenuItem, Modal } from '../helpers/obsidian-mock';
-import { clickExpandAll, flush, makeView, rowByTitle, useViewHarness } from '../helpers/view';
+import {
+	clickExpandAll,
+	flush,
+	makeView,
+	promptButton,
+	rowByTitle,
+	scheduleInputs,
+	submitSchedule,
+	useViewHarness,
+} from '../helpers/view';
 
 useViewHarness();
 
@@ -51,33 +60,6 @@ function click(items: MenuItem[], title: string): void {
 	const item = items.find((i) => i.titleText === title);
 	if (!item) throw new Error(`no menu entry ${title}`);
 	item.click();
-}
-
-/** The date fields of the open schedule prompt, in the order it asks for them. */
-function scheduleInputs(): HTMLInputElement[] {
-	const modal = Modal.lastOpened;
-	if (!modal) throw new Error('schedule prompt not opened');
-	return Array.from(modal.contentEl.querySelectorAll('input'));
-}
-
-/** A button of the open prompt, by its label — the clear buttons sit beside the fields. */
-function promptButton(label: string): HTMLElement {
-	const modal = Modal.lastOpened;
-	const found = Array.from(modal?.contentEl.querySelectorAll('button') ?? []).find(
-		(btn) => btn.textContent === label || btn.getAttribute('aria-label') === label,
-	);
-	if (!found) throw new Error(`no prompt button ${label}`);
-	return found;
-}
-
-/** Fill the open schedule prompt (start, then target) and press Save. */
-function submitSchedule(values: string[]): void {
-	const inputs = scheduleInputs();
-	values.forEach((value, i) => {
-		inputs[i].value = value;
-		inputs[i].dispatchEvent(new Event('input', { bubbles: true }));
-	});
-	promptButton('Save').dispatchEvent(new MouseEvent('click', { bubbles: true }));
 }
 
 describe('setting a horizon from the row', () => {

@@ -236,7 +236,7 @@ describe('write safety with context rows, across every entry point', () => {
 		// the sweep only reaches them if the base shows their properties. Without this
 		// the state, horizon and risk chips are absent and each `?.dispatchEvent` below
 		// drives nothing while still passing.
-		config.order = ['note.tags', 'note.status', 'note.horizon', 'note.risk', 'note.assignee'];
+		config.order = ['note.tags', 'note.status', 'note.horizon', 'note.risk', 'note.assignee', 'note.start', 'note.due'];
 		anyView.config = config;
 		anyView.data = {
 			data: vault.entries().filter((e) => !CONTEXT_PATHS.includes(e.file.path)),
@@ -345,6 +345,15 @@ describe('write safety with context rows, across every entry point', () => {
 					await flush();
 				}
 			}
+			// The DATE chips open a prompt rather than a menu, and there are two of them on
+			// a row, so they are swept separately and by `querySelectorAll`. A context row's
+			// is a static div that opens nothing, which `confirmSchedulePrompt` reports by
+			// finding no Schedule modal to confirm.
+			for (const chip of row.querySelectorAll<HTMLElement>('.pbl-date-chip')) {
+				chipsDriven.add('.pbl-date-chip');
+				chip.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+				await confirmSchedulePrompt();
+			}
 			// Every tag control on the row: the add menu and each remove button
 			row.querySelector<HTMLElement>('.pbl-tag-add')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 			for (const tag of Menu.lastShown?.items ?? []) {
@@ -363,6 +372,7 @@ describe('write safety with context rows, across every entry point', () => {
 		}
 		expect([...chipsDriven].sort()).toEqual([
 			'.pbl-assignee-chip',
+			'.pbl-date-chip',
 			'.pbl-horizon-chip',
 			'.pbl-risk-chip',
 			'.pbl-state-chip',

@@ -223,6 +223,33 @@ export function submitButton(modal: Modal): HTMLButtonElement | undefined {
 	);
 }
 
+/** The date fields of the open schedule prompt, in the order it asks for them. */
+export function scheduleInputs(): HTMLInputElement[] {
+	const modal = Modal.lastOpened;
+	if (!modal) throw new Error('schedule prompt not opened');
+	return Array.from(modal.contentEl.querySelectorAll('input'));
+}
+
+/** A button of the open prompt, by its label — the clear buttons sit beside the fields. */
+export function promptButton(label: string): HTMLElement {
+	const modal = Modal.lastOpened;
+	const found = Array.from(modal?.contentEl.querySelectorAll('button') ?? []).find(
+		(btn) => btn.textContent === label || btn.getAttribute('aria-label') === label,
+	);
+	if (!found) throw new Error(`no prompt button ${label}`);
+	return found;
+}
+
+/** Fill the open schedule prompt (start, then target) and press Save. */
+export function submitSchedule(values: string[]): void {
+	const inputs = scheduleInputs();
+	values.forEach((value, i) => {
+		inputs[i].value = value;
+		inputs[i].dispatchEvent(new Event('input', { bubbles: true }));
+	});
+	promptButton('Save').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+}
+
 /** Fill the currently open prompt and submit it. */
 export function submitPrompt(fields: { title: string; folder?: string }): void {
 	const modal = Modal.lastOpened;

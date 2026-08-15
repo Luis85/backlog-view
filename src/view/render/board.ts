@@ -562,8 +562,23 @@ export function renderCardBody(ctx: RowContext, card: HTMLElement, item: Backlog
 	// scope). Filtered from the ONE resolved list rather than resolved a second time —
 	// two derivations of "what is on screen" is how the tag menu once came to offer
 	// editing for a column the renderer had skipped.
+	//
+	// The DATE ends are here too, and they are the case that shows the rule above is about
+	// REPETITION rather than about which kinds are chips. A board column already is a
+	// card's state and a bucket already is its horizon, so those chips would say twice what
+	// the card's position says once — but no board column and no bucket says anything about
+	// WHEN, so a date on a card is the only place that value appears. Dropping them was a
+	// silent regression the moment `columnKind` stopped calling them `value` (found by
+	// review, PR #152): they had always drawn on cards, as values, and nothing about this
+	// feature was a reason to take them away. `renderCell` is what keeps them read-only
+	// there — see its own note on the projection.
 	const cardColumns = ctx.columns.filter(
-		(column) => column.kind === 'value' || column.kind === 'tags' || column.kind === 'assignee',
+		(column) =>
+			column.kind === 'value' ||
+			column.kind === 'tags' ||
+			column.kind === 'assignee' ||
+			column.kind === 'start' ||
+			column.kind === 'target',
 	);
 	// Cards stack their cells and size each to content (`styles/cards.css`) rather than
 	// sharing the tree's fixed-width, header-aligned columns, so a cell with nothing to
