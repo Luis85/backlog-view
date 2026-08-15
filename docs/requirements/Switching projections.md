@@ -91,11 +91,11 @@ of a shared file.
 
 The mode is the `mode` field of the collapse store's per-view entry
 (`src/storage/viewStateStore.ts`), restored and debounce-saved by
-`src/view/collapseState.ts` with the collapse sets it lives beside — so base renames
+`src/view/viewState.ts` with the collapse sets it lives beside — so base renames
 and view renames migrate it for free. The toolbar toggle (`renderModeToggle` in
 `src/view/render/toolbar.ts` — three positions since the roadmap joined,
 [[Three projections, one toggle]]) sets it through `setProjection` on the host, which
-`src/view/uiState.ts`'s `UiStateController` implements — the read/write against the
+`src/view/viewStateController.ts`'s `ViewStateController` implements — the read/write against the
 collapse store plus the render-depth choice, the same shape for the seven sibling
 accessors it also holds (the roadmap-axis pick, focus, the shelf's own
 collapse/sort/type-filter, and the dated axis's zoom, density and lead width; each is

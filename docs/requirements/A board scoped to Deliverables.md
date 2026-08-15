@@ -21,7 +21,7 @@ files:
   - src/view/interactions/keyboard.ts
   - src/view/interactions/menu.ts
   - src/storage/viewStateStore.ts
-  - src/view/collapseState.ts
+  - src/view/viewState.ts
   - src/view/render/projections.ts
   - src/domain/backlogReadme.ts
   - src/view/cardMoves.ts
@@ -570,7 +570,7 @@ resolves through `activeBoard` too instead of returning early on every projectio
 `src/storage/viewStateStore.ts` — a `DELIVERABLES_MODE` constant beside
 `BOARD_MODE`/`ROADMAP_MODE`, added to `readEntry`'s stored-mode allowlist, or the
 projection is silently dropped on read like any unrecognised value.
-`src/view/collapseState.ts` — `CollapseState.projection()` and its write-back
+`src/view/viewState.ts` — `ViewState.projection()` and its write-back
 counterpart map `'deliverables'` to and from `DELIVERABLES_MODE`, the same round trip
 `board`/`roadmap` already get.
 `src/domain/backlogReadme.ts` — `fieldRows` gates its Deliverable row on

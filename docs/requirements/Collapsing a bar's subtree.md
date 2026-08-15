@@ -7,7 +7,7 @@ priority: P2
 created: 2026-08-08
 files:
   - src/domain/bars.ts
-  - src/view/collapseState.ts
+  - src/view/viewState.ts
   - src/view/backlogView.ts
   - src/view/render/timeline.ts
   - src/view/render/rows.ts
@@ -162,7 +162,7 @@ of it comes for free.
 
 WHICH bit that predicate lands on is `collapseKey` in `src/view/backlogView.ts`, the one
 place the ROW's OWN scope is decided: on the dated axis the path is prefixed with
-`TIMELINE_SCOPE` (`src/view/collapseState.ts`), and everywhere else it is the path
+`TIMELINE_SCOPE` (`src/view/viewState.ts`), and everywhere else it is the path
 itself. `isCollapsed`/`setCollapsed` both route through it, so the chevron, the row menu,
 the keyboard and the toolbar's bulk controls follow the projection without any of them
 asking what they are looking at. A card's own disclosure — the shelf's, a context card's,
@@ -172,7 +172,7 @@ question and is `CARD_SCOPE` unconditionally, through the second host pair
 let the toolbar's bulk controls stop filtering cards out of their own population
 (2026-08-09, `src/view/render/toolbarControls.ts`): a card's bit is a scope those buttons'
 `host.setCollapsed` cannot reach by construction, not a set of paths they have to remember
-to skip. `CollapseState` therefore holds KEYS rather than paths: `notePath` strips the
+to skip. `ViewState` therefore holds KEYS rather than paths: `notePath` strips the
 scope back off for the two operations that are about the note rather than about the
 question — pruning a key whose file is gone, and following a rename — and
 `collapseNewParents` settles all three scopes in one pass over the model, since it runs on

@@ -231,7 +231,7 @@ whole thing from the file resolved correctly while silently dropping both.
   has ruled on. A **view** rename moves the stored entry, which is why `dispose` flushes
   on an identity change even with nothing pending — the state is unchanged and yet
   belongs elsewhere. A **base** rename moves every entry naming it (`rekeyBase`, wired in
-  `main.ts`, covering bases with no view open) while `flushCollapseState` re-resolves its
+  `main.ts`, covering bases with no view open) while `flushViewState` re-resolves its
   own identity (covering the view watching it happen). And a rename is never only the
   thing renamed: `movedPath` carries everything beneath the old path, because moving a
   *folder* reports the folder — not the base inside it, nor the notes under it — so
@@ -253,7 +253,7 @@ whole thing from the file resolved correctly while silently dropping both.
 - Persisted state changes what pruning may key on. `collapseNewParents` must NOT drop
   paths that are missing from the model — a query that has not warmed up yet, or a
   filter the user just narrowed, would read as "these notes are gone" and throw away a
-  session they still want. `flushCollapseState` is the only place that forgets a path,
+  session they still want. `flushViewState` is the only place that forgets a path,
   and it asks the vault, not the model. Growth is bounded there and by `MAX_FOLDS`, which
   counts KEYS rather than notes — a parent settles once per scope — so a scope added is a
   cap to raise with it, or the headroom it promises in notes quietly halves.

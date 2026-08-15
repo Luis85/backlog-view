@@ -9,13 +9,13 @@ source: User request — "resource rows should be collapsible", with the toolbar
 files:
   - src/storage/viewStateStore.ts
   - src/view/backlogView.ts
-  - src/view/collapseState.ts
+  - src/view/viewState.ts
   - src/view/host.ts
   - src/view/render/lanes.ts
   - src/view/render/rows.ts
   - src/view/render/timeline.ts
   - src/view/render/toolbarControls.ts
-  - src/view/uiState.ts
+  - src/view/viewStateController.ts
 ---
 
 # Folding a resource's band

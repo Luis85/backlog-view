@@ -147,12 +147,14 @@ function seedCardScope(collapsed: Set<string>, settled: Set<string>): void {
 }
 
 /**
- * The view's working position, remembered across sessions: which rows are shut,
+ * The view's working position, remembered across sessions — which rows are shut,
  * which projection — tree, board or roadmap — the view is showing, which roadmap
- * axis it shows when both are configured, and which type the tree is focused on.
- * All of it is UI state, so it goes to the view-state store's vault-scoped
- * localStorage and never to the `.base`: base settings are saved on the view,
- * working position on the device.
+ * axis it shows when both are configured, which type the tree is focused on — and
+ * this device's own preferences beside it. All of it is UI state, so it goes to the
+ * view-state store's vault-scoped localStorage and never to the `.base`: base
+ * settings are saved on the view, working position and per-device preferences on
+ * the device. That is what makes it a view state rather than a collapse state: the
+ * folds are only part of what it holds.
  *
  * Two sets, not one: `collapsed` is what is shut right now, and `settled` is every
  * key the user has ruled on either way. A parent that is in neither has never been
@@ -164,7 +166,7 @@ function seedCardScope(collapsed: Set<string>, settled: Set<string>): void {
  * asks in, and the quick filter's override while it is active — and delegates the
  * bookkeeping here.
  */
-export class CollapseState {
+export class ViewState {
 	private readonly host: BacklogViewHost;
 	private collapsed = new Set<string>();
 	/** Paths already ruled on, so the initial state is applied to each exactly once. */

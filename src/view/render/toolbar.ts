@@ -87,7 +87,7 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	renderFocusPicker(host, barEl, model);
 	// Expand and collapse drive the tree's rows and a dated-axis timeline row's chevron —
 	// never a card's own children disclosure, which lives on a separate bit
-	// (`CARD_SCOPE`, `collapseState.ts`) these buttons never write to at all. They are not
+	// (`CARD_SCOPE`, `viewState.ts`) these buttons never write to at all. They are not
 	// gated on the projection — but they ARE gated on the screen having something to
 	// collapse: see `syncCollapseCtls`, which runs after the content render because that is
 	// what fills the set it reads.

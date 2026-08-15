@@ -1,4 +1,4 @@
-import { CollapseState } from './collapseState';
+import { ViewState } from './viewState';
 import { Projection } from './host';
 import { RoadmapAxis } from '../domain/roadmap';
 import { ShelfSort } from '../domain/shelf';
@@ -29,12 +29,12 @@ export interface UiStateHooks {
 }
 
 /**
- * The collapse-store-backed UI state `BacklogViewHost` exposes: the projection, the
+ * The view-state-backed UI state `BacklogViewHost` exposes: the projection, the
  * retained roadmap-axis pick, the focus level, what a plain click on a row does, the
  * shelf's own collapse/sort/type filter, and the dated axis's zoom, density and lead
  * width. One shape repeated for
- * each — read the collapse store, write it back, ask for the render depth the change
- * needs — extracted for the reason `WriteGate` was: state (here, the collapse store
+ * each — read the view state, write it back, ask for the render depth the change
+ * needs — extracted for the reason `WriteGate` was: state (here, the view state
  * plus the render-depth choice) that only this cluster of methods touches, in the one
  * file every projection increment has to add a line to. See [[Switching projections]]
  * for the projection half; the rest follow the identical pattern.
@@ -44,47 +44,47 @@ export interface UiStateHooks {
  * `WriteGate`'s three write methods already use — so the interface still resolves to
  * one class.
  */
-export class UiStateController {
+export class ViewStateController {
 	constructor(
-		private readonly collapse: CollapseState,
+		private readonly state: ViewState,
 		private readonly hooks: UiStateHooks,
 	) {}
 
 	get projection(): Projection {
-		return this.collapse.projection();
+		return this.state.projection();
 	}
 
 	setProjection(mode: Projection): void {
 		if (mode === this.projection) return;
-		this.collapse.setProjection(mode);
+		this.state.setProjection(mode);
 		// Before the render, not after: the render is what reads the index.
 		this.hooks.recomputeFilter();
 		this.hooks.render();
 	}
 
 	get axisPick(): string | null {
-		return this.collapse.axisPick();
+		return this.state.axisPick();
 	}
 
 	setAxisPick(axis: RoadmapAxis): void {
 		if (axis === this.axisPick) return;
-		this.collapse.setAxisPick(axis);
+		this.state.setAxisPick(axis);
 		this.hooks.render();
 	}
 
 	setFocusLevel(level: string): void {
-		if (level === this.collapse.focusLevel()) return;
-		this.collapse.setFocusLevel(level);
+		if (level === this.state.focusLevel()) return;
+		this.state.setFocusLevel(level);
 		this.hooks.refreshFromData();
 	}
 
 	get clickFolds(): boolean {
-		return this.collapse.clickFolds();
+		return this.state.clickFolds();
 	}
 
 	setClickFolds(value: boolean): void {
 		if (value === this.clickFolds) return;
-		this.collapse.setClickFolds(value);
+		this.state.setClickFolds(value);
 		// A full render, like the projection and the zoom beside it: no Bases refresh
 		// follows a change it was not told about, and the toolbar's own toggle is what
 		// has to come back saying the new value.
@@ -92,12 +92,12 @@ export class UiStateController {
 	}
 
 	get shelfCollapsed(): boolean {
-		return this.collapse.shelfCollapsed();
+		return this.state.shelfCollapsed();
 	}
 
 	setShelfCollapsed(collapsed: boolean): void {
 		if (collapsed === this.shelfCollapsed) return;
-		this.collapse.setShelfCollapsed(collapsed);
+		this.state.setShelfCollapsed(collapsed);
 		// Does NOT spare the control that asked for it — the shelf's disclosure lives
 		// in the content pane and is rebuilt by this very call, which is why it hands
 		// focus to its replacement itself (`renderShelfControls`).
@@ -105,26 +105,26 @@ export class UiStateController {
 	}
 
 	get shelfSort(): ShelfSort {
-		return this.collapse.shelfSort();
+		return this.state.shelfSort();
 	}
 
 	setShelfSort(sort: ShelfSort): void {
 		if (sort === this.shelfSort) return;
-		this.collapse.setShelfSort(sort);
+		this.state.setShelfSort(sort);
 		this.hooks.renderTreeContent();
 	}
 
 	get shelfHiddenTypes(): ReadonlySet<string> {
-		return this.collapse.shelfHiddenTypes();
+		return this.state.shelfHiddenTypes();
 	}
 
 	setShelfHiddenTypes(types: ReadonlySet<string>): void {
-		this.collapse.setShelfHiddenTypes(types);
+		this.state.setShelfHiddenTypes(types);
 		this.hooks.renderTreeContent();
 	}
 
 	isLaneCollapsed(name: string): boolean {
-		return this.collapse.isLaneCollapsed(name);
+		return this.state.isLaneCollapsed(name);
 	}
 
 	/**
@@ -133,36 +133,36 @@ export class UiStateController {
 	 * the same reason a bar row's own chevron redraws the projection.
 	 */
 	setLaneCollapsed(name: string, collapsed: boolean): void {
-		if (this.collapse.setLaneCollapsed(name, collapsed)) this.hooks.renderTreeContent();
+		if (this.state.setLaneCollapsed(name, collapsed)) this.hooks.renderTreeContent();
 	}
 
 	get zoom(): ScaleId {
-		return scaleFor(this.collapse.zoomPick()).id;
+		return scaleFor(this.state.zoomPick()).id;
 	}
 
 	setZoom(id: ScaleId): void {
 		if (id === this.zoom) return;
-		this.collapse.setZoom(id);
+		this.state.setZoom(id);
 		this.hooks.render();
 	}
 
 	get density(): string | null {
-		return this.collapse.densityPick();
+		return this.state.densityPick();
 	}
 
 	setDensity(value: string | null): void {
 		if (value === this.density) return;
-		this.collapse.setDensity(value);
+		this.state.setDensity(value);
 		this.hooks.render();
 	}
 
 	get leadWidth(): number | null {
-		return this.collapse.leadWidthPick();
+		return this.state.leadWidthPick();
 	}
 
 	setLeadWidth(value: number | null): void {
 		if (value === this.leadWidth) return;
-		this.collapse.setLeadWidth(value);
+		this.state.setLeadWidth(value);
 		this.hooks.render();
 	}
 }

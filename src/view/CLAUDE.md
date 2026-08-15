@@ -103,7 +103,7 @@ free of runtime code so imports stay cycle-free.
 ## What is rendered, and what is merely hidden
 
 - The quick filter is ephemeral view state, owned by `filterState.ts` (the shape
-  `collapseState.ts` already has): while active, `isCollapsed` reports false
+  `viewState.ts` already has): while active, `isCollapsed` reports false
   (everything on a match path renders expanded), rows are not draggable (visual
   neighbors are not real siblings), and `setFilter` re-renders the tree only so the
   toolbar input keeps focus. It keeps TWO sets — `visible` (a match plus its ancestors

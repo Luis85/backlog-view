@@ -13,7 +13,7 @@ files:
   - src/view/render/projections.ts
   - src/view/host.ts
   - src/view/backlogView.ts
-  - src/view/collapseState.ts
+  - src/view/viewState.ts
   - src/storage/viewStateStore.ts
   - styles/timeline.css
 started: ""
@@ -180,7 +180,7 @@ fresh measurement against exactly what was last drawn. The pick is stored exactl
 `density`'s own shape — a `leadWidth` field in `src/storage/viewStateStore.ts`, validated as
 a finite number inside `MIN_TIMELINE_LEAD_PX..MAX_TIMELINE_LEAD_PX` rather than checked
 against an enum, since it is the first stored pick that is a number rather than a name —
-held in `src/view/collapseState.ts` and exposed through
+held in `src/view/viewState.ts` and exposed through
 `BacklogViewHost.leadWidth`/`setLeadWidth` in `src/view/host.ts` and
 `src/view/backlogView.ts`. The grip's own styling, beside the lead column's, is
 `styles/timeline.css`. Driven in `test/view/timelineLeadResize.test.ts` and

@@ -70,7 +70,7 @@ describe('the zoom control', () => {
 	});
 
 	it('comes back at the scale it was left, across a reopen', () => {
-		// A round trip, not a store call: `CollapseState` is what holds this, and a
+		// A round trip, not a store call: `ViewState` is what holds this, and a
 		// store-only change gives a picker that works all session and reverts the moment
 		// the view is reopened — nothing fails until someone comes back the next day.
 		const vault = datedVault();

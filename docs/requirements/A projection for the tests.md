@@ -444,7 +444,7 @@ need no fourth mechanism — `endOfSiblingsOrder` was already handed the real gr
 
 **The stored round trip was fixed rather than extended.** `PROJECTION_MODES` in
 `src/storage/viewStateStore.ts` is the one list `readEntry` allows, and `projectionFor` in
-`src/view/collapseState.ts` inverts `PROJECTION_MODE` instead of the `if` chain that ended
+`src/view/viewState.ts` inverts `PROJECTION_MODE` instead of the `if` chain that ended
 in an unguarded `return 'tree'` — the direction that would have left the toggle doing
 nothing the moment it was clicked.
 
@@ -569,5 +569,5 @@ gains `renderCatalogEmptyState`, which offers creation and never configuration;
 `src/view/render/toolbarStatus.ts` where the toolbar split put it; `src/view/render/toolbarControls.ts`'s
 `collapsiblePopulation` takes the catalog's items by name, deliberately not behind
 `treeShaped`, since it decides what a bulk collapse TOUCHES rather than whether a button is
-enabled; and `UiStateController.setProjection` (`src/view/uiState.ts`) recomputes the
+enabled; and `ViewStateController.setProjection` (`src/view/viewStateController.ts`) recomputes the
 filter index through a hook of its own, which no gate anywhere would have caught.

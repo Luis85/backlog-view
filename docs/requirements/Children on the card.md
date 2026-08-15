@@ -7,7 +7,7 @@ priority: P2
 created: 2026-08-07
 files:
   - src/view/render/cardChildren.ts
-  - src/view/collapseState.ts
+  - src/view/viewState.ts
   - src/view/backlogView.ts
   - src/view/interactions/menu.ts
 started: ""
@@ -133,7 +133,7 @@ through `buildItemMenu` on both the pointer path (`showItemMenu`) and the keyboa
 `src/view/render/board.ts` for the card face and by `addMatchSection` in `menu.ts` for
 its menu, so the two surfaces cannot both name a match the disclosure already listed.
 
-The expansion bit itself is `CARD_SCOPE` in `src/view/collapseState.ts`, a prefix
+The expansion bit itself is `CARD_SCOPE` in `src/view/viewState.ts`, a prefix
 alongside `TIMELINE_SCOPE`, read and written through `BacklogViewHost.isCardCollapsed`/
 `setCardCollapsed` (`src/view/backlogView.ts`) — a second pair of host methods beside
 `isCollapsed`/`setCollapsed` rather than a scope the existing pair infers from the

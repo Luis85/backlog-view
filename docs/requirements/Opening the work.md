@@ -171,10 +171,10 @@ the option applies, and what its toolbar toggle says) ·
 `src/view/interactions/menu.ts` · `src/domain/itemHandling.ts` (`openIn`: its offered
 vocabulary and the defensive read of a hand-edited value) ·
 `src/domain/viewOptions.ts` (the **Handling items** group, which is `openIn` alone) ·
-`src/storage/viewStateStore.ts` and `src/view/collapseState.ts` (`clickFolds`, stored
-beside the collapse sets) · `src/view/uiState.ts` (the pick, and the render it asks for).
+`src/storage/viewStateStore.ts` and `src/view/viewState.ts` (`clickFolds`, stored
+beside the collapse sets) · `src/view/viewStateController.ts` (the pick, and the render it asks for).
 Tests: `test/view/rendering.test.ts`, `test/view/keyboard.test.ts`,
 `test/view/menu.test.ts`, `test/view/opening.test.ts` — asserted through `vault.opened`,
 and where a stale `clickAction` key is shown to change nothing — `test/view/toolbarClickAction.test.ts`
-for the toggle and the dated axis's fold, and `test/view/persistence.test.ts` for the
+for the toggle and the dated axis's fold, and `test/view/viewStatePersistence.test.ts` for the
 reopen.

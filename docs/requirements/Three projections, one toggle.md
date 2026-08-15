@@ -81,7 +81,7 @@ the third layout a separate product.
 
 The mode is the collapse-store entry's `mode` field grown a roadmap value
 (`src/storage/viewStateStore.ts`), restored and debounce-saved by
-`src/view/collapseState.ts` with the collapse sets it lives beside. The toggle is a
+`src/view/viewState.ts` with the collapse sets it lives beside. The toggle is a
 three-position group (`renderModeToggle` in `src/view/render/toolbar.ts`) driving
 `setProjection`; `src/view/backlogView.ts` dispatches the keyboard on the projection
 it reads and applies the content fork in `src/view/render/projections.ts` — which

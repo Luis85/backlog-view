@@ -8,7 +8,7 @@ created: 2026-08-04
 files:
   - src/domain/shelf.ts
   - src/storage/viewStateStore.ts
-  - src/view/collapseState.ts
+  - src/view/viewState.ts
   - src/view/host.ts
   - src/view/backlogView.ts
   - src/view/render/shelf.ts
@@ -106,7 +106,7 @@ child carrying an inferred level and any differently-cased declared type), drive
 
 Persistence is three fields on the collapse store's existing per-view entry
 (`src/storage/viewStateStore.ts`), read as defensively as `mode`/`axis` already are, with
-matching accessors on `src/view/collapseState.ts`.
+matching accessors on `src/view/viewState.ts`.
 
 The interactive controls — the disclosure that names, counts and opens the shelf, plus
 the sort and type-filter pickers it carries while open — are the SHELF's own header
@@ -133,7 +133,7 @@ would fail at its own purpose". The entries come from the same two item builders
 header buttons call, so the two surfaces cannot drift about what is offered or what is
 checked, the reason the horizon chip and its menu already share one builder. Three host
 methods (`setShelfCollapsed`/`setShelfSort`/`setShelfHiddenTypes`) each write through
-`CollapseState` and re-render the content pane alone — never the whole toolbar — so a
+`ViewState` and re-render the content pane alone — never the whole toolbar — so a
 keyboard user's focus survives the control they just used, the same reason `setFilter`
 does not call a full `render()` either.
 

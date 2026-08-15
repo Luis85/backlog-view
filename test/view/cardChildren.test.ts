@@ -4,7 +4,7 @@ import { boardVault, BOARD_WORKFLOW, cardByTitle, makeBoard } from '../helpers/b
 import { makeView, refresh, rowByTitle, titlesOf, useViewHarness } from '../helpers/view';
 import { FakeVault } from '../helpers/vault';
 import { childrenLabel, listedChildren } from '../../src/view/childrenList';
-import { TIMELINE_SCOPE } from '../../src/view/collapseState';
+import { TIMELINE_SCOPE } from '../../src/view/viewState';
 import { Menu } from '../helpers/obsidian-mock';
 import { makeRoadmap, roadmapView, rowFor } from '../helpers/roadmap';
 

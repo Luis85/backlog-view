@@ -31,7 +31,7 @@ const LEGACY_KEY = 'product-backlog:collapse';
  * state, and a lane is one per resource rather than one per note.
  *
  * A fold key is a note path under one scope, and a parent settles under every scope it
- * has (the tree's, the dated axis's and a card's own — see `view/collapseState.ts`), so
+ * has (the tree's, the dated axis's and a card's own — see `view/viewState.ts`), so
  * this is up to three times the note count it bounds. It has grown with each scope added
  * for exactly that reason: leaving it at a lower multiple would quietly halve the
  * headroom in NOTES this has always promised, and the first thing lost at saturation is
@@ -54,7 +54,7 @@ export const CATALOG_MODE = 'catalog';
  * It runs storage → view and never the reverse, because `storage/` may not import
  * `view/` and lint fails the build on it; the constants already live here, so this is the
  * direction that works. What it buys is that the round trip stops being three independent
- * statements. `PROJECTION_MODE` (`view/collapseState.ts`) is a `Record<Projection, …>`
+ * statements. `PROJECTION_MODE` (`view/viewState.ts`) is a `Record<Projection, …>`
  * and so cannot compile without a case for a new projection; the OTHER two directions —
  * reading a stored value back into a projection, and deciding which stored values are
  * trusted — were a hand-written `if` chain with an unguarded `return 'tree'` and a
@@ -66,7 +66,7 @@ export const CATALOG_MODE = 'catalog';
 const PROJECTION_MODES = [BOARD_MODE, ROADMAP_MODE, DELIVERABLES_MODE, CATALOG_MODE] as const;
 /**
  * One of those values, and the whole of what crosses the layer boundary.
- * `view/collapseState.ts` types its `Projection → constant` map to this, which makes the
+ * `view/viewState.ts` types its `Projection → constant` map to this, which makes the
  * agreement a COMPILE error rather than a promise: a projection mapped to a constant this
  * list does not hold would be stored, refused on the way back in, and read as the tree —
  * the exact silence this pair exists to prevent. The list itself stays private, because
