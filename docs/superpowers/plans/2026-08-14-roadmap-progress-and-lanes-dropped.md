@@ -1123,6 +1123,14 @@ npm run check
 
 Expected: all five steps pass. A `max-lines` failure on `menu.ts` means Step 4 grew the file — move more of the question into `childrenList.ts`, which has 372 lines of headroom.
 
+- [ ] **Step 6b: Ask the lane context row the context-row questions**
+
+Task 4 gave that row a context menu — a **new entry point onto an `outsideFilter` item** — and `test/view/contextCardWrites.test.ts` was not extended to drive it. This repository's own rule is that each card projection's entry points get asked the same three questions, which is why that file exists. Add the lane context row to it: its menu offers no write action, its Set-type / Set-state / parent-link entries are absent, and nothing it can reach writes to the excluded note. Watch each fail against a deliberately permissive guard before trusting it.
+
+- [ ] **Step 6c: Make the reachability claim mechanical**
+
+Task 4's tests say in prose that a roadmap row's matches are unreachable until this task lands. Prose does not fail. Now that the menu names them, replace that comment with an assertion: on a timeline row and on a lane context row, with a filter active and a match below, the row menu contains an `Open match` entry for it. That is the check that would have caught this task never landing, and it is this repository's own rule — a rule stated in a comment is not a check.
+
 - [ ] **Step 7: Specify it**
 
 Update the `## Where it lives` section that currently describes `addMatchSection` (find it with `grep -rn addMatchSection docs/`), saying that the menu now asks `matchesFor` in `src/view/childrenList.ts`, which answers for whichever projection drew and carries the disclosure policy with it.
