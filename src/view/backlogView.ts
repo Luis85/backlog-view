@@ -28,7 +28,7 @@ import { resolveColumns, rowContext, RowContext } from './render/columns';
 import { renderLoadingState } from './render/emptyStates';
 import { syncToolbarFit } from './render/toolbarFit';
 import { ScrollAnchor, scrollToToday } from './render/projections';
-import { refreshRowChildren, wireRowEvents } from './render/rows';
+import { refreshRowChildren, wireChipEvents, wireRowEvents } from './render/rows';
 import { BacklogSettings, defaultSettings } from '../domain/settings';
 import { adoptableProperties, notePropertyId, OptionalField, OptionalProperty } from '../domain/optionalProperties';
 import { resolveSettings } from '../domain/settingsResolve';
@@ -156,6 +156,9 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 		// The tree's row activation, once for the pane — rows are resolved per event, so
 		// nothing about them is captured at render (`wireRowEvents` in `render/rows.ts`).
 		wireRowEvents(this, this.treeEl);
+		// Every per-item chip, delegated for the same reason the row's own activation is
+		// — and for one more: a delegated chip is what lets a render keep a row.
+		wireChipEvents(this, this.treeEl);
 		this.registerDomEvent(document, 'dragend', () => this.dnd.clearDragState());
 		// Which columns fit depends on the pane, which changes without a data update.
 		if (typeof ResizeObserver !== 'undefined') {

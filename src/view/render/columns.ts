@@ -3,8 +3,6 @@ import { drawIcon } from './icons';
 import { BacklogViewHost, Column, ColumnFit, ColumnKind, PlacedMount } from '../host';
 import { columnWidth, columnWidthVar, renderColumnResize, widenSign } from '../interactions/columnResize';
 import { dateChipFor, LABEL_CHIPS, renderDateChip, renderHorizonChip, renderLabelChip, renderStateChip } from './chips';
-import { showTagMenu } from '../interactions/menu';
-import { removeTag } from '../interactions/tags';
 import { DEFAULT_PROP_COLUMN_WIDTH } from '../../storage/viewStateStore';
 import { BacklogItem } from '../../domain/model';
 import { hasHorizonAxis } from '../../domain/roadmap';
@@ -533,14 +531,12 @@ function renderTagCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogIt
 			cls: 'pbl-tag-remove',
 			attr: { type: 'button', tabindex: '-1', 'aria-label': `Remove tag ${tag}` },
 		});
+		// The tag this button removes, read back by the delegated handler
+		// (`wireChipEvents` in `render/rows.ts`) rather than parsed off the rendered
+		// `#${tag}` text.
+		remove.dataset.tag = tag;
 		drawIcon(remove, 'x');
 		setTooltip(remove, `Remove #${tag}`);
-		remove.addEventListener('click', (evt) => {
-			// `preventDefault` only: a tag pill is a link-shaped control, and the row's own
-			// handler already ignores it (`fromRowControl`).
-			evt.preventDefault();
-			removeTag(host, item, tag);
-		});
 	}
 	if (item.tags.length > 0) setTooltip(cell, `${column.label}: ${item.tags.map((t) => `#${t}`).join(', ')}`);
 	if (!editable) return item.tags.length > 0;
@@ -551,7 +547,6 @@ function renderTagCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogIt
 	});
 	drawIcon(add, 'plus');
 	setTooltip(add, 'Add tag');
-	add.addEventListener('click', (evt) => showTagMenu(host, evt, item));
 	return item.tags.length > 0;
 }
 

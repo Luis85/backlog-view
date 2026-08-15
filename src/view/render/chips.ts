@@ -1,8 +1,7 @@
 import { setTooltip } from 'obsidian';
 import { drawIcon } from './icons';
 import { BacklogViewHost, Column } from '../host';
-import { showAssigneeMenu, showHorizonMenu, showRiskMenu, showStateMenu } from '../interactions/menu';
-import { promptSchedule } from '../interactions/plan';
+import { showAssigneeMenu, showRiskMenu } from '../interactions/menu';
 import { ownWorkflowReading, stateKeyFor } from '../../domain/board';
 import { PlacementEnd, placementEnds } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
@@ -91,7 +90,6 @@ export function renderStateChip(host: BacklogViewHost, col: HTMLElement, item: B
 	});
 	fillStateChip(chip, done, value);
 	setTooltip(chip, 'Change state');
-	chip.addEventListener('click', (evt) => showStateMenu(host, evt, item));
 	return true;
 }
 
@@ -145,7 +143,6 @@ export function renderHorizonChip(host: BacklogViewHost, col: HTMLElement, item:
 	});
 	fillHorizonChip(chip, value);
 	setTooltip(chip, reason ?? 'Change horizon');
-	chip.addEventListener('click', (evt) => showHorizonMenu(host, evt, item));
 	return true;
 }
 
@@ -226,7 +223,6 @@ export function renderLabelChip(host: BacklogViewHost, col: HTMLElement, item: B
 	});
 	fillLabelChip(chip, value, spec);
 	setTooltip(chip, `Change ${spec.noun}`);
-	chip.addEventListener('click', (evt) => spec.showMenu(host, evt, item));
 	return true;
 }
 
@@ -285,10 +281,11 @@ interface DateChip {
  * set where the backlog is actually read rather than only on the timeline or through a
  * two-field dialog.
  *
- * Pressing it opens the row menu's own entry narrowed to this end
- * (`promptSchedule(host, item, [end])`), which lands on `host.performScheduleMove` like
- * the grid drag, the grips and Unschedule — so a chip cannot plan a write beside them,
- * and `test/view/planAgreement.test.ts` holds it to the same batch.
+ * Pressing it opens the row menu's own entry narrowed to this end — the delegated
+ * handler (`wireChipEvents` in `render/rows.ts`) calls `promptSchedule(host, item,
+ * [end])`, which lands on `host.performScheduleMove` like the grid drag, the grips and
+ * Unschedule — so a chip cannot plan a write beside them, and
+ * `test/view/planAgreement.test.ts` holds it to the same batch.
  *
  * Drawn on the end's KEY alone, never on `hasDateAxis`: the entry behind this chip needs
  * no declared vocabulary, so there is no second half to pair with — the assignee's own
@@ -329,11 +326,11 @@ export function renderDateChip(host: BacklogViewHost, col: HTMLElement, item: Ba
 	});
 	fillDateChip(chip, value, label);
 	setTooltip(chip, reason ?? `Change ${spec.noun}`);
-	// No `chipMenu` here, because there is no menu: the entry is a modal, and a modal
-	// needs no anchoring. Nothing stops the event either — `fromRowControl` asks whether
-	// an activation began on a control, and a `<button>` is one, so the row below cannot
-	// open its note behind this press.
-	chip.addEventListener('click', () => promptSchedule(host, item, [spec.end]));
+	// Which end this chip writes, read back by the delegated handler
+	// (`wireChipEvents` in `render/rows.ts`) — a modal takes no event to carry it, so
+	// it travels on the element instead. Not inferred from the label: the label is the
+	// column's own display name and says nothing about which of the two ends this is.
+	chip.dataset.end = spec.end;
 	return true;
 }
 

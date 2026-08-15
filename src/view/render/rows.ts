@@ -2,11 +2,14 @@ import { Keymap, setTooltip } from 'obsidian';
 import { drawIcon } from './icons';
 import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
 import { promptCreateItem } from '../interactions/create';
-import { showItemMenu } from '../interactions/menu';
+import { showItemMenu, showHorizonMenu, showStateMenu, showTagMenu } from '../interactions/menu';
+import { promptSchedule } from '../interactions/plan';
+import { removeTag } from '../interactions/tags';
 import { offerableTypes, projectionMember } from '../projection';
 import { renderAllDoneState, renderEmptyState, renderFilterEmptyState } from './emptyStates';
 import { projectionPopulation } from '../projection';
 import { badgeStyleFor } from './badges';
+import { LABEL_CHIPS } from './chips';
 import { BacklogItem } from '../../domain/model';
 import { childTypeChoices, displayType } from '../../domain/itemTypes';
 import { ownWorkflowReading } from '../../domain/board';
@@ -550,5 +553,83 @@ export function wireRowEvents(host: BacklogViewHost, treeEl: HTMLElement): void 
 	treeEl.addEventListener('contextmenu', (evt) => {
 		const item = rowItem(host, evt);
 		if (item) showItemMenu(host, evt, item, offerableTypes(host, childTypeChoices(item)));
+	});
+}
+
+/**
+ * The item any row- or card-aimed event is about, or null off both. Resolved at EVENT
+ * time from `data-path` against the current model, never captured at render — which is
+ * what lets a render KEEP a row element instead of rebuilding it. A chip that closed
+ * over its item would point into the previous model the moment an update landed.
+ *
+ * `[data-path]` rather than `.pbl-row`: `renderPropCells` is shared with both card
+ * projections, whose mount is `.pbl-card`, so narrowing to the tree's own row class
+ * would leave every card chip inert. `rowItem` above keeps its narrower selector — it
+ * is the tree's own row activation, not a chip.
+ *
+ * Exported ahead of a consumer in THIS task: the resolver is one half of the plan's
+ * produced interface, and the sibling task delegating the row's remaining controls
+ * (the add button, the tag pills' own container) is what imports it next.
+ */
+// fallow-ignore-next-line unused-export
+export function itemForEvent(host: BacklogViewHost, evt: Event): BacklogItem | null {
+	const el = evt.target instanceof Element ? evt.target.closest('[data-path]') : null;
+	const path = el instanceof HTMLElement ? el.dataset.path : undefined;
+	return path ? (host.model?.byPath.get(path) ?? null) : null;
+}
+
+/**
+ * Every selector is prefixed `button`, and that is load-bearing rather than tidy.
+ *
+ * A context row's five property chips are the SAME classes on a `div` — every chip in
+ * `render/chips.ts` builds `pbl-state-static` alongside the chip's own class on that
+ * `div` — and a selector matching the class alone would open an edit menu on a
+ * read-only value that the write gate would then refuse: a control offering what it
+ * cannot do, the context-row rule this codebase says every past bug in it forgot. The
+ * two tag buttons take the other route to the same end: `renderTagCell` renders no
+ * button at all for a context row, so the `button` prefix costs them nothing and the
+ * selector still needs it — a bare `.pbl-tag-remove` would match nothing there either
+ * way, but naming the rule once for all seven chips is cheaper than remembering which
+ * ones happen to need it. `button` is also the rule `fromRowControl` already states for
+ * the same question, so this is the existing answer rather than a second one.
+ */
+const CHIPS =
+	'button.pbl-state-chip, button.pbl-horizon-chip, button.pbl-risk-chip,' +
+	' button.pbl-assignee-chip, button.pbl-date-chip, button.pbl-tag-add, button.pbl-tag-remove';
+
+/**
+ * Every per-item chip, on one delegated handler for the whole pane. Both card
+ * projections and the tree render into `treeEl` (`renderProjectionContent`), so this one
+ * listener serves the tree's rows and every card alike — the same reach `wireRowEvents`
+ * has, for the same reason.
+ *
+ * The date chip is the one entry that does not open a menu: `promptSchedule` is a modal
+ * and takes no event, so it needs none of the anchoring the other five carry through
+ * their `MouseEvent`. Which end it writes travels on the chip's own `dataset.end`
+ * (`renderDateChip` in `render/chips.ts`), never inferred from the label — the label is
+ * the column's own display name and says nothing about which end this is.
+ */
+export function wireChipEvents(host: BacklogViewHost, treeEl: HTMLElement): void {
+	treeEl.addEventListener('click', (evt) => {
+		const target = evt.target instanceof Element ? evt.target : null;
+		const chip = target?.closest(CHIPS);
+		if (!(chip instanceof HTMLElement)) return;
+		const item = itemForEvent(host, evt);
+		if (!item) return;
+		if (chip.hasClass('pbl-state-chip')) return void showStateMenu(host, evt, item);
+		if (chip.hasClass('pbl-horizon-chip')) return void showHorizonMenu(host, evt, item);
+		if (chip.hasClass('pbl-risk-chip')) return void LABEL_CHIPS.risk.showMenu(host, evt, item);
+		if (chip.hasClass('pbl-assignee-chip')) return void LABEL_CHIPS.assignee.showMenu(host, evt, item);
+		if (chip.hasClass('pbl-date-chip')) {
+			const end = chip.dataset.end;
+			if (end === 'start' || end === 'target') promptSchedule(host, item, [end]);
+			return;
+		}
+		if (chip.hasClass('pbl-tag-add')) return void showTagMenu(host, evt, item);
+		// `preventDefault` only: the row's own handler already ignores a click on a
+		// `button` (`fromRowControl`).
+		evt.preventDefault();
+		const tag = chip.dataset.tag;
+		if (tag) removeTag(host, item, tag);
 	});
 }
