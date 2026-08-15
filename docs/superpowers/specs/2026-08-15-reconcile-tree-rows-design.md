@@ -230,9 +230,21 @@ parent, order and type keys are all skipped as columns before the list is built.
 
 `npm run perf -- --against <baseline>`, folder fixture, 832 rows, tree expanded,
 alternating builds, medians of the panel's medians — the protocol the bug note settled on
-after two instruments lied about this same quantity. The claim to prove is a change in the
-**class**: `update` after a one-note write should fall toward the cost of one row build
-plus the walk, rather than 832 row builds.
+after two instruments lied about this same quantity.
+
+The claim to prove is a **constant-factor cut, not a change of class**, and saying
+otherwise would set a criterion nothing here can meet. `renderForest` visits every visible
+item and `rowSignature` serializes each one's frontmatter whether the row is kept or not,
+so `update` stays linear in the rows — and that walk is inherent, since skipping it needs
+to know what changed, which is exactly what `onDataUpdated()` cannot say. Only
+virtualisation changes the class, which is why it is refused *for now* above rather than
+outright.
+
+So the number to report is the **per-row** cost: `update` divided by the row count, at
+several sizes, before and after. It should fall and then stay roughly flat across sizes. A
+per-row figure that falls at 200 rows and climbs again at 1600 is the signature walk eating
+its own saving — that is risk 4 below arriving, and the reference comparison named there is
+the answer.
 
 Two honesty notes travel with the numbers into the register:
 

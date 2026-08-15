@@ -667,6 +667,11 @@ describe('rowSignature', () => {
 			[{ n: null }, { n: NaN }],
 			[{ n: NaN }, { n: Infinity }],
 			[{ d: new Date('2026-01-01T00:00:00.000Z') }, { d: '2026-01-01T00:00:00.000Z' }],
+			// The tagging must not create a collision of its own: an authored string that
+			// spells a sentinel is escaped out of that namespace.
+			[{ n: NaN }, { n: '#num:NaN' }],
+			[{ d: new Date('2026-01-01T00:00:00.000Z') }, { d: '#date:2026-01-01T00:00:00.000Z' }],
+			[{ s: '#num:NaN' }, { s: '##num:NaN' }],
 		];
 		for (const [left, right] of collisions) {
 			expect(sigOf(left)).not.toBe(sigOf(right));
@@ -795,12 +800,19 @@ export function reusableColumns(columns: Column[]): boolean {
  * It reads `this[key]` rather than the `value` argument because `toJSON` runs FIRST: by
  * the time the replacer sees a `Date` it is already a string. The holder is where the
  * type still exists.
+ *
+ * **Ordinary strings beginning `#` are escaped**, and that is what keeps the tagging
+ * injective rather than trading one collision for another: without it a note literally
+ * containing the text `#num:NaN` would serialize exactly as a real `NaN` does. Escaping
+ * moves every user string out of the sentinel namespace — `#num:NaN` becomes
+ * `##num:NaN`, `##x` becomes `###x` — so no authored value can spell a tag.
  */
 function distinctly(this: Record<string, unknown>, key: string, value: unknown): unknown {
 	const raw = this[key];
 	if (raw instanceof Date) return `#date:${raw.toISOString()}`;
 	if (typeof raw === 'number' && !Number.isFinite(raw)) return `#num:${String(raw)}`;
 	if (raw === undefined && key !== '') return '#undefined';
+	if (typeof raw === 'string' && raw.startsWith('#')) return `#${raw}`;
 	return value;
 }
 
