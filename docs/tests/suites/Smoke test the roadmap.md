@@ -68,6 +68,19 @@ catalog migration and was not part of that run.
   line at 488px, milestone line and label and diamond centre all 704px.** The Today
   label this measured no longer exists — [[State colour and a legend]] replaced it with
   a legend strip, **never checked in Chromium**.
+- **A narrowed lead column holding match links.** While the quick filter is running, a
+  dated or resources row names the matches hiding under it in its own sticky lead cell
+  (`nameMatches` in `src/view/render/roadmap.ts`). That cell is a nowrap flex row fixed to
+  `--pbl-tl-lead`, so the list has to share the ONE line and ellipsise, never wrap: a row's
+  height is content-driven, and `renderDependencyArrows` has already snapshotted every row
+  rectangle before the links exist, so a second line would leave every arrow pointing
+  between stale positions. Filter the demo backlog on the dated axis (`npm run harness`,
+  `?view=roadmap`; any common letter names several — "u" reaches "Survey the storage APIs"),
+  then drag the lead's resize grip to its narrowest and check three things: the row does not
+  grow, nothing spills over the day track, and a long title ellipsises rather than being
+  clipped mid-word. `test/view/timelineBoxing.test.ts` refuses the declarations' deletion and
+  can say nothing about the result; the font metrics this leans on are a THEME's, so the
+  harness does not close it either. **Never checked.**
 - The dated axis's grid butts against the chrome above it — no blank strip between the
   toolbar or the legend and the header, where the lead column's border and the first
   gridline would otherwise simply stop. The horizon axis keeps its top gutter, so check

@@ -110,6 +110,28 @@ export interface DrawnColors {
 export type BarColors = Omit<DrawnColors, 'absence'>;
 
 /**
+ * A surface that put an item on screen, and where that item's match links go: the card
+ * itself, or a row's sticky lead cell.
+ *
+ * `listsChildren` is whether that surface shows the item's children on its own face,
+ * which decides whether a match already on the card is named twice. It cannot be read off
+ * `RowContext.cardKids`: a timeline row joins that set for its FOLD chevron, which lists
+ * nothing.
+ *
+ * Declared HERE, beside `RoadmapSnapshot` and beside `DrawnColors` above, for that type's
+ * own reason rather than a new one: the render modules produce it, but they all reach
+ * `host.ts` (through `RowContext`), so an import the other way turns the whole
+ * `columns.ts` ↔ `menu.ts` ↔ `host.ts` web into sixteen cycles `npm run analyze` refuses.
+ * Measured, not assumed — it was written in `render/columns.ts` first and fallow named
+ * every one of them.
+ */
+export interface PlacedMount {
+	item: BacklogItem;
+	mount: HTMLElement;
+	listsChildren: boolean;
+}
+
+/**
  * The roadmap as last rendered: the derived model, and the rendered cards in
  * reading order — axis first, then the shelf, then the context strip — which is
  * the order the keyboard walks.
@@ -122,6 +144,14 @@ export interface RoadmapSnapshot {
 	 * the keyboard walk and `aria-activedescendant` never reach past what is on screen.
 	 */
 	cards: BacklogItem[];
+	/**
+	 * What the pass drew, by path — the register `nameMatches` built, kept so the row
+	 * menu can offer the same matches the faces do. The menu is handed an item and no
+	 * surface, so `listsChildren` has to travel with the mount or the menu would have
+	 * to guess: always subtracting loses a row's direct-child match, never subtracting
+	 * offers a card's disclosure entries a second time.
+	 */
+	placed: ReadonlyMap<string, PlacedMount>;
 	/**
 	 * The shelf's own element for THIS render. Carried so a control that rebuilt the
 	 * pane can find its own replacement afterwards — the pressed button is gone by

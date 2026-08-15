@@ -98,6 +98,18 @@ when focused, every result otherwise — and a focused context item places only 
 bucket that already exists, or stands beside the shelf apart from its count, never on
 the timeline by its own dates (driven in `test/domain/roadmap.test.ts` and
 `test/view/roadmapFrame.test.ts`). Which types rank beside a level is
-`src/domain/itemTypes.ts`, already shared. The inferred spans, the fills counting
-below-focus results, and the quick filter's descendant naming remain this note's work,
-which is why it stays open.
+`src/domain/itemTypes.ts`, already shared.
+
+The quick filter's descendant naming is `nameMatches` in `src/view/render/roadmap.ts`,
+over `RowContext.placed` in `src/view/render/columns.ts` — a register each surface fills
+as it draws, holding where an item's match links go and whether that surface lists its
+children. It is read rather than predicted because the roadmap's model is not what it
+draws: `RoadmapModel.shelf` holds every shelved item whether `host.shelfCollapsed` shows
+them or not, and `organizeShelf` drops whole groups from an expanded shelf through
+`host.shelfHiddenTypes`. Neither is overridden by an active filter; a lane fold is. The
+walk itself is `hiddenMatches` in `src/domain/board.ts`, unchanged, through
+`undisclosedMatches` in `src/view/childrenList.ts` — which now takes the already-listed
+set from its caller, since a timeline row draws no disclosure and subtracting one would
+delete a direct-child match. Driven in `test/view/roadmapMatches.test.ts`.
+
+The inferred spans remain, which is why this note stays open.

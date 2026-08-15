@@ -27,7 +27,7 @@ import {
 } from '../../domain/board';
 import { childTypeChoices, focusTarget, isDeliverableType } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
-import { undisclosedMatches } from '../childrenList';
+import { listedChildren, undisclosedMatches } from '../childrenList';
 
 /** What differs between the two board-shaped projections' render passes. */
 interface BoardRenderOptions {
@@ -339,10 +339,13 @@ function renderColumnPolicy(header: HTMLElement, col: BoardColumn): void {
 function renderCard(ctx: RowContext, cardsEl: HTMLElement, item: BacklogItem, render: ColumnRenderCtx): void {
 	const card = createCard(ctx, cardsEl, item);
 	renderCardBody(ctx, card, item);
-	// The board's own addition to the shared body: which items already have a card is
-	// a question only the board can answer, so the roadmap does not get this and the
-	// shared body stays the thing both projections agree on.
-	renderCardMatches(ctx, card, item, render.carded);
+	// Called INLINE here and not from the shared body, because "which items already have
+	// a card" is answerable now on this projection alone: a `BoardModel` is already
+	// narrowed to what draws, so `cardPaths` is the whole answer. The roadmap's model is
+	// not, so it names its own matches in a second pass once every surface has drawn
+	// (`nameMatches` in `render/roadmap.ts`). `true` is this surface's own answer: a board
+	// card lists its children on its face, so the disclosure's entries are subtracted.
+	renderCardMatches(ctx, card, item, render.carded, true);
 	wireCardActivation(ctx, card, item);
 	render.dnd.wireCard(card, item);
 }
@@ -477,25 +480,38 @@ export function wireCardActivation(
 }
 
 /**
- * The matches the search found beneath this card, named on its face so they can be
- * opened. Whether the card ITSELF matched makes no difference: a match below it is a
- * second, distinct result, and one card cannot stand for two. Suppressing these
- * because the card matched too is how the deeper one becomes unreachable — the exact
+ * The matches the search found beneath this item, named on the surface that drew it so
+ * they can be opened. Whether the surface's own item matched makes no difference: a match
+ * below it is a second, distinct result, and one card cannot stand for two. Suppressing
+ * these because the card matched too is how the deeper one becomes unreachable — the exact
  * failure this exists to prevent. Nothing is rendered when nothing hides below,
  * which is the ordinary case and needs no special test.
  *
- * Buttons with `tabindex="-1"`, exactly as the tree's per-row controls are — the board
- * is one tab stop, so Tab keeps skipping past the whole projection. That makes the
- * card MENU their keyboard path rather than an extra: `addMatchSection` offers the
+ * Exported, because it is not the board's alone: every roadmap surface calls it through
+ * `nameMatches` (`render/roadmap.ts`), which is why `mount` is an element rather than a
+ * card — a row's links go in its sticky lead cell — and why `listsChildren` is the
+ * caller's answer. A board card lists its children and passes `true`; a timeline row draws
+ * no disclosure at all and passes `false`, or the subtraction would delete its one
+ * direct-child match.
+ *
+ * Buttons with `tabindex="-1"`, exactly as the tree's per-row controls are — a card
+ * projection is one tab stop, so Tab keeps skipping past the whole projection. That makes
+ * the row MENU their keyboard path rather than an extra: `addMatchSection` offers the
  * same matches, from the same walk. Pointer-only links would fail this feature at its
  * own purpose, which is that a found match can be reached.
  */
-function renderCardMatches(ctx: RowContext, card: HTMLElement, item: BacklogItem, carded: Set<string>): void {
+export function renderCardMatches(
+	ctx: RowContext,
+	mount: HTMLElement,
+	item: BacklogItem,
+	carded: Set<string>,
+	listsChildren: boolean,
+): void {
 	const host: BacklogViewHost = ctx.host;
 	if (!host.isFiltering()) return;
-	const matches = undisclosedMatches(host, item, carded);
+	const matches = undisclosedMatches(host, item, carded, listsChildren ? listedChildren(host, item) : []);
 	if (matches.length === 0) return;
-	const list = card.createDiv({ cls: 'pbl-card-matches' });
+	const list = mount.createDiv({ cls: 'pbl-card-matches' });
 	drawIcon(list.createSpan({ cls: 'pbl-card-matches-icon' }), 'search');
 	for (const match of matches) {
 		const link = list.createEl('button', {

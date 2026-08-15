@@ -94,6 +94,24 @@
 	font-size: var(--font-ui-smaller);
 }
 
+/* A TIMELINE ROW's lead cell is the other mount, and the card's sizing does not carry
+   over: `.pbl-timeline-lead` is a nowrap flex row fixed to `--pbl-tl-lead`, where this
+   list is a flex item with no sizing of its own. So it shares the lead's single line and
+   never adds one — a row's height is content-driven (`min-height` on the track is a
+   floor, and the row stretches), and `renderDependencyArrows` has already measured every
+   row rectangle by the time matches are named, so a list that wrapped would move the rows
+   out from under the arrows. `min-width: 0` is what lets it shrink far enough for
+   `.pbl-card-match`'s own ellipsis to engage; a flex item's automatic minimum is its
+   content otherwise, which is how the list would push past the column into the day track.
+   The full set stays reachable through the row menu, which lists every match rather than
+   as many as fit — that is what makes an ellipsised face honest rather than lossy. */
+.pbl-timeline-lead .pbl-card-matches {
+	flex: 0 1 auto;
+	min-width: 0;
+	flex-wrap: nowrap;
+	overflow: hidden;
+}
+
 .pbl-card-matches-icon {
 	display: flex;
 	align-items: center;

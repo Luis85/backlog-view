@@ -353,7 +353,10 @@ function addMatchSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): 
 	const board = activeBoard(host);
 	if (!board || !host.isFiltering()) return;
 	const carded = cardPaths(board);
-	const matches = undisclosedMatches(host, item, carded);
+	// A board card is the only surface this section serves today, and it lists its
+	// children on its own face — so what the disclosure already shows is subtracted here
+	// exactly as it is on the card.
+	const matches = undisclosedMatches(host, item, carded, listedChildren(host, item));
 	if (matches.length === 0) return;
 	menu.addSeparator();
 	for (const match of matches) {

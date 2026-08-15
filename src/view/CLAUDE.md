@@ -708,6 +708,26 @@ free of runtime code so imports stay cycle-free.
   cannot look different per projection. Timeline rows reuse the card SHELL (selection,
   context styling) with a row layout — `.pbl-card.pbl-timeline-row` overrides the
   card's column geometry in CSS.
+- **The roadmap names its hidden matches from a REGISTER it reads, never a model it
+  predicts.** Every surface that puts an item on screen fills `RowContext.placed` as it
+  draws — the item, the element its match links belong on, and whether that surface lists
+  its children — and `nameMatches` (`render/roadmap.ts`) runs `renderCardMatches` over it
+  once they all have. The board can afford the inline call the roadmap cannot, and the
+  difference is a fact about the models rather than a preference: a `BoardModel` is
+  already narrowed to what draws, so `cardPaths` answers "already on screen", while
+  `RoadmapModel.shelf` holds every shelved item whether `host.shelfCollapsed` shows them
+  or not and `organizeShelf` drops whole groups from an expanded shelf through
+  `host.shelfHiddenTypes`. Neither of those is overridden by an active filter; a lane
+  fold IS (`isLaneCollapsed` is `!filter.active && …`), so two states that look alike
+  answer the same question oppositely and only the render knows which happened.
+  `listsChildren` travels with the mount for the same reason it cannot be read off
+  `cardKids`: a timeline row joins that set for its FOLD chevron, which lists nothing, so
+  a matching direct child IS named there while a bucket card's disclosure already shows
+  it. That is why `undisclosedMatches` takes the already-listed set from its caller —
+  only the surface knows what it shows. `PlacedMount` is declared in `host.ts` beside
+  `DrawnColors` and for that type's reason: a `render/` type imported back into `host.ts`
+  turns the `columns.ts` ↔ `menu.ts` ↔ `host.ts` web into sixteen cycles `npm run
+  analyze` refuses — measured, after writing it the other way first.
 - **A timeline row's chevron folds ROWS, and a card's disclosure lists children on its
   face; they are two bits, two host method pairs, and one register (2026-08-09).** A row
   goes through `isCollapsed`/`setCollapsed`, and `collapseKey` is the ONE place that

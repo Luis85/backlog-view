@@ -1,5 +1,5 @@
 import { setTooltip } from 'obsidian';
-import { createCard } from './board';
+import { createCard, wireCardActivation } from './board';
 import { renderBarProgress } from './barProgress';
 import { RowContext } from './columns';
 import { drawIcon } from './icons';
@@ -101,6 +101,24 @@ export function drawnSpans(entries: TimelineEntry[]): DateSpan[] {
 	return entries.flatMap((entry) => {
 		if (entry.kind === 'row') return [entry.row.bar.span];
 		return entry.kind === 'absence' ? [{ start: entry.absence.start, target: entry.absence.target }] : [];
+	});
+}
+
+/**
+ * Every item this grid gives a selectable row to, in DRAW order — the reading order the
+ * pane's roving keyboard walk uses, so a kind is inserted where it draws and never
+ * appended at the end.
+ *
+ * Beside `drawnSpans` and for its reason: the entry vocabulary is this module's, so a
+ * kind added to `TimelineEntry` that puts a note on screen is answered by editing the one
+ * function beside the type. It used to be `bars.map(...)` in `renderTimeline`, which is
+ * how a lane's context row came to draw a `role="option"` nothing could ever select —
+ * see [[A lane context row could not be reached]].
+ */
+export function drawnCards(entries: TimelineEntry[]): BacklogItem[] {
+	return entries.flatMap((entry) => {
+		if (entry.kind === 'row') return [entry.row.bar.item];
+		return entry.kind === 'context' ? [entry.item] : [];
 	});
 }
 
@@ -269,6 +287,16 @@ function renderLaneAbsenceAdd(ctx: RowContext, lead: HTMLElement, lane: Resource
  * this one derives from never draws a context row's dates either — `deriveBars` routes
  * one to the context collection before `placeItem` is asked about it. So there is no
  * "what if it has no date" case to answer separately here.
+ *
+ * It IS a card in every other respect, which is what `wireCardActivation` states: the row
+ * carries `role="option"` from `createCard`, so a click opens it, Enter opens it, and the
+ * row menu — the keyboard path behind every `tabindex="-1"` control this row now carries,
+ * its match links included — opens on it. That was missing until 2026-08-15; see
+ * [[A lane context row could not be reached]].
+ *
+ * The mount for its matches is the LEAD, the one text region such a row has, and it lists
+ * no children of its own — `listsChildren: false`, so a matching direct child is named
+ * here rather than subtracted against a disclosure this row never draws.
  */
 export function renderLaneContextRow(ctx: RowContext, content: HTMLElement, item: BacklogItem): HTMLElement {
 	const row = createCard(ctx, content, item);
@@ -281,6 +309,8 @@ export function renderLaneContextRow(ctx: RowContext, content: HTMLElement, item
 	setTooltip(lead, item.title);
 	renderBarProgress(ctx.host, { row, bar: null, lead }, item);
 	row.createDiv({ cls: 'pbl-timeline-track' });
+	ctx.placed.set(item.file.path, { item, mount: lead, listsChildren: false });
+	wireCardActivation(ctx, row, item);
 	return row;
 }
 

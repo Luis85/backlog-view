@@ -4,6 +4,7 @@ import { renderBarLabel } from './barLabel';
 import { renderBarProgress } from './barProgress';
 import { RowContext } from './columns';
 import {
+	drawnCards,
 	drawnSpans,
 	edgeClasses,
 	noteAbsenceClash,
@@ -312,7 +313,7 @@ export function renderTimeline(
 	// never can.
 	const overlay = rows ? null : content.createDiv({ cls: 'pbl-timeline-drop', attr: { 'aria-hidden': 'true' } });
 	return {
-		cards: bars.map((bar) => bar.item),
+		cards: drawnCards(entries),
 		todayLeft,
 		scroller: grid,
 		content,
@@ -532,6 +533,9 @@ function renderBarRow(
 	const title = lead.createDiv({ cls: 'pbl-card-title' });
 	renderTitleText(ctx.host, title, bar.item.title);
 	setTooltip(lead, bar.item.title);
+	// The lead is where this row's match links go — the one text region it has. It lists
+	// no children on its face (the chevron folds ROWS), so `listsChildren` is false.
+	ctx.placed.set(bar.item.file.path, { item: bar.item, mount: lead, listsChildren: false });
 
 	const track = row.createDiv({ cls: 'pbl-timeline-track' });
 	mounts.tracks.set(bar.item.file.path, track);
