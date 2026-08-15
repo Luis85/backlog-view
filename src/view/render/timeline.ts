@@ -275,6 +275,7 @@ export function renderTimeline(
 		leadWidth,
 	});
 	const tracks = new Map<string, HTMLElement>();
+	const anchors = new Map<string, HTMLElement>();
 	// Computed ONCE, before any row exists, and from `bars`/`shelf` alone — never from
 	// what the arrow layer below goes on to draw. That is what makes both consumers
 	// window-independent: `dependencyArrows` never filters by the drawn window, so an
@@ -301,6 +302,7 @@ export function renderTimeline(
 		scroller: grid,
 		dnd,
 		tracks,
+		anchors,
 		palettes,
 		conflictedPrereqs: dependencies.conflicts,
 	};
@@ -310,7 +312,7 @@ export function renderTimeline(
 	// prerequisite and the dependent actually drew, and its Y comes from where those
 	// rows really landed rather than a guessed row height — see `renderDependencyArrows`,
 	// which draws from the same `dependencies.arrows` list computed above.
-	renderDependencyArrows({ layer: arrowLayer, content, tracks }, window, dependencies.arrows, { scale, leadWidth });
+	renderDependencyArrows({ layer: arrowLayer, content, anchors }, window, dependencies.arrows, { scale, leadWidth });
 	const todayLeft = leadWidth + todayOffset(window, today, scale);
 	const line = content.createDiv({ cls: 'pbl-today', attr: { 'aria-hidden': 'true' } });
 	line.setCssProps({ '--pbl-today-left': `${todayLeft}px` });
@@ -523,6 +525,16 @@ interface BarRowMounts {
 	dnd: CardDragController;
 	/** Filled as each row draws, so a move's preview can be mounted in its own row. */
 	tracks: Map<string, HTMLElement>;
+	/**
+	 * What an item OCCUPIES vertically, by path — the element `renderDependencyArrows`
+	 * reads a Y off. A second map beside `tracks` rather than the track's own parent,
+	 * because the two questions have one answer on a bar row and two on the milestones'
+	 * row: a bar row's track is its own, so its parent IS the row, while every marker
+	 * shares one header track and each diamond sits on its own sub-lane inside it. Read
+	 * through the track there, every arrow anchored on the header's centre — between two
+	 * stacked diamonds and on neither.
+	 */
+	anchors: Map<string, HTMLElement>;
 	/** Which of a dependent's prerequisites conflict, by the dependent's path — see `DependencyArrows.conflicts`. */
 	conflictedPrereqs: ReadonlyMap<string, ReadonlySet<string>>;
 	/** See `TimelineDrawing.palettes`. */
@@ -586,6 +598,10 @@ function renderBarRow(
 
 	const track = row.createDiv({ cls: 'pbl-timeline-track' });
 	mounts.tracks.set(bar.item.file.path, track);
+	// A bar row occupies the whole row, so the row is what an arrow anchors on — the same
+	// element the track's parent used to supply, said directly now that the milestones'
+	// row needs a different answer. See `BarRowMounts.anchors`.
+	mounts.anchors.set(bar.item.file.path, row);
 	const geometry = barGeometry(window, bar.span);
 	// Asked ONCE, of `barHolds`, shared by the class that advertises a body drag and
 	// the wiring that actually registers one — so what the cursor promises and what a drop

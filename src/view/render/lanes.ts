@@ -84,6 +84,8 @@ export type TimelineEntry =
  */
 export interface MarkerMounts {
 	tracks: Map<string, HTMLElement>;
+	/** Where a dependency arrow anchors, per path — see `BarRowMounts.anchors`. */
+	anchors: Map<string, HTMLElement>;
 	scroller: HTMLElement;
 	/** The scrolling box the link gesture draws its preview line into. */
 	content: HTMLElement;
@@ -490,6 +492,10 @@ function placeSpan(el: HTMLElement, geometry: BarGeometry, scale: TimelineScale)
  * as `--pbl-lane-sublanes` and the stylesheet does the arithmetic: one number crossing the
  * boundary rather than a height computed here.
  *
+ * **The pack answers about DAYS and the draw happens in PIXELS**, and where the window
+ * clamps a mark those two stop agreeing — the case the loop below adds a line for, stated
+ * at the line that adds it.
+ *
  * **The count is not the mechanism — `--pbl-sublane` per MARK is.** The header's count only
  * grows the track; the index each mark carries is what puts it on its own line, so 4a's
  * "two stretches that share a day are two marks on two lines" rests on that one
@@ -529,21 +535,41 @@ function renderLaneAbsences(
 	const track = head.createDiv({ cls: 'pbl-timeline-track' });
 	if (lane.absences.length === 0) return track;
 	const packed = packAbsences(lane.absences);
-	head.setCssProps({ '--pbl-lane-sublanes': String(packed.length) });
 	head.setAttribute(
 		'aria-description',
 		`Unavailable: ${packed.flat().map(absenceSaid).join('; ')}`,
 	);
-	packed.forEach((sub, index) => {
-		for (const absence of sub) {
-			const geometry = barGeometry(ruler.window, { start: absence.start, target: absence.target });
-			const mark = track.createDiv({ cls: ['pbl-absence', ...edgeClasses(geometry)].join(' ') });
-			placeSpan(mark, geometry, ruler.scale);
-			mark.setCssProps({ '--pbl-sublane': String(index) });
-			setTooltip(mark, absenceSaid(absence));
-			mark.addEventListener('contextmenu', (evt) => showAbsenceMenu(host, absence, evt));
-		}
-	});
+	const marks = packed.flatMap((sub, index) =>
+		sub.map((absence) => ({
+			absence,
+			index,
+			geometry: barGeometry(ruler.window, { start: absence.start, target: absence.target }),
+		})),
+	);
+	// **The pack's line is where a mark GOES; a clamped mark has to be given one instead.**
+	// A wholly-outside stretch draws at the window's EDGE rather than at its dates, so the
+	// pack cannot separate it from anything: two beyond one edge do not overlap in days,
+	// share a sub-lane, and land as one `MIN_BAR_PX` stripe on one pixel — the later
+	// covering the earlier outright, taking its tooltip and the only route to Edit and
+	// Delete with it. A stretch merely CLIPPED at that same edge collides with them the
+	// same way. So each takes a line nothing else uses, counted from the last line an
+	// inside mark actually occupies rather than from `packed.length`: a sub-lane whose
+	// only member was clamped away is a blank line at the top of the band otherwise.
+	// It still over-allocates by one per mark past OPPOSITE edges, which never touched —
+	// the cheap direction, since it takes a plan past `MAX_TIMELINE_DAYS` for any of this
+	// to arise and the alternative is a second pack over the DRAWN day-index intervals
+	// kept in step with `packAbsences`' civil-date one.
+	let sublanes = Math.max(0, ...marks.filter((one) => !one.geometry.outside).map((one) => one.index + 1));
+	for (const { absence, index, geometry } of marks) {
+		const mark = track.createDiv({ cls: ['pbl-absence', ...edgeClasses(geometry)].join(' ') });
+		placeSpan(mark, geometry, ruler.scale);
+		mark.setCssProps({ '--pbl-sublane': String(geometry.outside ? sublanes++ : index) });
+		setTooltip(mark, absenceSaid(absence));
+		mark.addEventListener('contextmenu', (evt) => showAbsenceMenu(host, absence, evt));
+	}
+	// After the loop, not before it: a clamped mark adds a line the pack did not know about,
+	// and a header grown for fewer lines than it drew overlaps the marks it holds.
+	head.setCssProps({ '--pbl-lane-sublanes': String(sublanes) });
 	return track;
 }
 
@@ -712,11 +738,14 @@ export function renderLaneRowDescription(row: HTMLElement, name: string): void {
  * diamond's own tooltip and `aria-label` — because a line's label is a different element
  * from the mark and the two are read at opposite ends of the grid.
  *
- * `mounts.tracks` is registered per marker PATH against this one shared track, so a
- * dependency arrow drawn to a milestone anchors on this row exactly as it anchors on any
- * other: `renderDependencyArrows` reads the track's parent for the Y and takes the X from
- * `dependencyAnchor`, so several markers sharing one track is the right answer rather than
- * a compromise — they genuinely share the row.
+ * **A marker registers TWO mounts and they are deliberately different elements.**
+ * `mounts.tracks` takes this one shared track, because that is where a move's drag preview
+ * belongs — it is the positioned box every `--pbl-bar-left` on this row is measured from.
+ * `mounts.anchors` takes the DIAMOND, because that is what a dependency arrow reads a Y
+ * off, and a sub-lane belongs to one marker where the track holds every one of them. Both
+ * were the track until 2026-08-15, which was right while markers could not stack and wrong
+ * the moment they could: two on one day put both arrows on the header's centre, on neither
+ * diamond and exactly on top of each other. The X is `dependencyAnchor`'s either way.
  *
  * Done is asked per DIAMOND and lands on the diamond, unlike every other bar on this grid,
  * whose `pbl-done` sits on the row: the row here is shared by every marker and one of them
@@ -772,6 +801,11 @@ export function drawMarkerDiamonds(
 		// may not be dropped on, and here the mark is the only element that is one marker's.
 		el.dataset.pblPath = bar.item.file.path;
 		mounts.tracks.set(bar.item.file.path, track);
+		// The TRACK is where a move's preview mounts, and it is this one shared box; the
+		// ANCHOR an arrow reads a Y off is the diamond, because a sub-lane is one marker's
+		// and the track holds every one of them. Registering the track for both put both
+		// arrows on the header's centre — see `BarRowMounts.anchors`.
+		mounts.anchors.set(bar.item.file.path, el);
 		if (holdable) {
 			// The body hold IS the diamond, the grid's own rule — and the only hold a marker
 			// has, since a point has no end to resize. The scroller's offset rides the payload
@@ -789,8 +823,14 @@ export function drawMarkerDiamonds(
 		el.addEventListener('click', (evt) => {
 			if (!fromRowControl(evt)) ctx.host.openItem(bar.item, evt);
 		});
+		// `barClasses` gives a wholly-outside mark no `pbl-bar-milestone`, so it draws the
+		// plain accent rather than the cyan diamond — the legend has to key what was
+		// actually painted, which is `Other` and not `Milestone`. Reported here rather than
+		// recomputed in the legend, `reportColors`' own rule: a copy of `barClasses`'
+		// precedence is exactly what missed this case on the dated axis once already.
 		if (done) drawn.done = true;
-		else if (!geometry.outside) drawn.milestone = true;
+		else if (geometry.outside) drawn.accent = true;
+		else drawn.milestone = true;
 	}
 	band.head.setCssProps({ '--pbl-lane-sublanes': String(Math.max(0, ...stacked.values())) });
 }

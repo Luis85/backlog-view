@@ -259,6 +259,30 @@ export function horizonSource(item: BacklogItem): HorizonSource {
 /** A key that is there and names nobody — the stub the backfill leaves. */
 const EMPTY_ASSIGNEE_LABEL = 'an empty assignee';
 
+/**
+ * The drawn rows whose name is a RESOURCE — every one but the milestones', which is a fact
+ * about the plan and not somebody a note can be assigned to.
+ *
+ * One list, read by every input that turns a drawn row into an assignee value: the Alt+arrow
+ * ladder (`resourceStops`) and Set assignee's own choices (`assigneeChoices`). Both mapped
+ * `roadmap.lanes` straight through until 2026-08-15, so Alt+Up off the first resource, and
+ * a pick in the menu, wrote `Milestones` onto ordinary work — which then minted a SECOND row
+ * of that name beside the synthetic one, since `deriveLanes` builds its lookup from the
+ * resources alone. The drop already refused it (`band.lane.markers`, in `render/roadmap.ts`),
+ * which is what makes this the "one move, three inputs" rule failing by omission: no input
+ * disagreed about the write, two just offered a target the third would not.
+ *
+ * Asked of `markers` rather than of the NAME, and that is the whole reason it is a field:
+ * a resource genuinely called Milestones is a resource, and comparing against the constant
+ * would take a legitimate roster entry off the ladder.
+ *
+ * Takes the model as optional because one caller has a roadmap that may not be drawn at all
+ * — a row menu opens in every projection — and an empty list is the right answer there.
+ */
+export function assignableLanes(roadmap: RoadmapModel | undefined): ResourceLane[] {
+	return (roadmap?.lanes ?? []).filter((lane) => !lane.markers);
+}
+
 /** The drawn row a name belongs to, matched as the bars were placed. */
 function laneFor(roadmap: RoadmapModel, value: string): string | null {
 	return roadmap.lanes.find((lane) => sameValue(lane.name, value))?.name ?? null;

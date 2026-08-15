@@ -149,6 +149,10 @@ catalog migration and was not part of that run.
   control that is invisible until then, and whether a diamond marked `pbl-link-illegal`
   mid-drag reads as refused at that size — the dimming was tuned against a full-width bar.
   **Never checked.**
+- An arrow drawn TO a stacked milestone (added 2026-08-15, 2e): whether it visibly meets the
+  diamond it names rather than the one beside it. jsdom measures nothing, so the suite can
+  only say which ELEMENT the layer reads a Y off — the picture at 17px of separation, with
+  two arrows to two marks on one day, is a vault's answer. **Never checked.**
 - The 16% `--pbl-away` wash (re-keyed from `--text-muted` on 2026-08-14) over a saturated
   bar, in both schemes: whether it still reads as shading rather than as a second bar now
   that it is keyed to a warm colour instead of a neutral one, and whether the two edges

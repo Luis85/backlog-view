@@ -106,6 +106,18 @@ already looks.
 
   An absence overlapping a BAR is not this case and never was — the bar keeps its own row
   and the stretch shades it (4k).
+
+  **The pack answers about DAYS and the marks are drawn in PIXELS**, and a CLAMPED mark is
+  where those two stop agreeing: a stretch wholly beyond the window's edge draws at that
+  edge rather than at its dates, so two of them months apart do not overlap, share a
+  sub-lane, and land as one minimum-width stripe on one pixel — the later burying the
+  earlier outright, with its tooltip and the only route to Edit and Delete underneath. Each
+  such mark takes a line nothing else uses, counted from the last line an unclamped mark
+  occupies so a band grows no blank one. Found in review (2026-08-15) and reachable only
+  past `MAX_TIMELINE_DAYS`, since the window otherwise widens to hold every stretch it
+  draws — which is why the fix is one line per clamped mark rather than a second pack over
+  the drawn intervals kept in step with this one. It over-allocates by a line for two marks
+  past OPPOSITE edges, which never touched.
 - **4b — the resource an absence names is not on the declared roster and has nothing
   assigned to it.** It still gets a row — an absence can be the first reason a
   resource's row exists, extending
@@ -317,7 +329,9 @@ already looks.
   than a result it could match or hide, so a band minted only by an absence stays on
   screen while a filter narrows the work around it.
 - Overlapping stretches pack into sub-lanes inside one header, growing it; nothing is hidden
-  or merged. A bar keeps its own row whatever crosses it.
+  or merged, and no mark is ever drawn on top of another — including two the window clamps
+  to one edge, which the day-based pack cannot separate. A bar keeps its own row whatever
+  crosses it.
 - Deleting an absence removes the note through Obsidian's own delete.
 - Renaming the configured type-key property after absences already exist is not
   migrated — the same non-guarantee every declared type's recognition already carries —

@@ -34,6 +34,26 @@ export function resourceVault(): FakeVault {
 	return vault;
 }
 
+/**
+ * One resource with one dated bar, plus whichever stretches the caller wants counted.
+ *
+ * Here rather than in a suite for this file's own stated reason: `resourceLanes.test.ts`
+ * counts absences against it and `milestonesRow.test.ts` draws diamonds over it, and two
+ * copies of one vault are two vaults free to drift while both claim to describe the axis.
+ */
+export function countingVault(stretches: Array<{ title: string; start: string; target: string }> = []): FakeVault {
+	const vault = new FakeVault();
+	vault.addFile('Work.md', {
+		frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
+	});
+	for (const one of stretches) {
+		vault.addFile(`${one.title}.md`, {
+			frontmatter: { type: 'Absence', assignee: 'Alice', start: one.start, due: one.target },
+		});
+	}
+	return vault;
+}
+
 /** The one absence in `absenceVault`, at the path the create path would actually file it under. */
 export const ALICE_AWAY = absenceTitle({ resource: 'Alice', start: '2026-08-04', target: '2026-08-06' });
 export const ALICE_AWAY_PATH = `${ALICE_AWAY}.md`;

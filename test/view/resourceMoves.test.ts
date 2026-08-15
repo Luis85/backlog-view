@@ -5,7 +5,7 @@ import { Menu, Notice } from '../helpers/obsidian-mock';
 import { Harness, flush, key, makeView, refresh, treeOf, useViewHarness } from '../helpers/view';
 import { announced, cardDrag } from '../helpers/dnd';
 import { cardByTitle } from '../helpers/board';
-import { barFor, laneHead, laneOrder, laneRoadmap as bareLaneRoadmap, shelfOf, shelfTitles } from '../helpers/roadmap';
+import { barFor, laneHead, laneNames, laneOrder, laneRoadmap as bareLaneRoadmap, shelfOf, shelfTitles } from '../helpers/roadmap';
 import { resourceVault } from '../helpers/resources';
 
 useViewHarness();
@@ -437,6 +437,24 @@ describe('moving between resources without a drag', () => {
 		expect(vault.writeLog).toHaveLength(1);
 	});
 
+	it('steps past the milestones row, which is a stop on nobody’s ladder', async () => {
+		// The synthetic row leads the roster, so it was stop 1 and the shelf was stop 0:
+		// Alt+Up off Alice landed on `Milestones` and wrote it as an assignee. What the
+		// ladder must do is what it does with the row absent — reach the shelf, and
+		// un-assign. Same list the menu reads (`assignableLanes`), asserted at both inputs
+		// because they are the two that offered it.
+		const vault = resourceVault();
+		vault.addFile('Ship.md', { frontmatter: { type: 'Milestone', order: 5, due: '2026-08-07' } });
+		const { view, containerEl } = laneRoadmap(vault);
+		expect(laneNames(containerEl)[0]).toBe('Milestones');
+
+		view.selectItem(view.model?.byPath.get('Alice dated.md') as never);
+		key(treeOf(containerEl), 'ArrowUp', { altKey: true });
+		await flush();
+
+		expect('assignee' in vault.fm('Alice dated.md')).toBe(false);
+	});
+
 	it('Alt+Up off the first row un-assigns, and off the shelf does nothing', async () => {
 		const vault = resourceVault();
 		const { view, containerEl } = laneRoadmap(vault);
@@ -541,6 +559,30 @@ describe('Set assignee on this axis', () => {
 			'Clear assignee',
 		]);
 		expect(submenu?.item('Alice')?.checked).toBe(true);
+	});
+
+	it('leaves the milestones row out — it is drawn on this axis and is nobody', () => {
+		// The synthetic row leads the roster, so it was the first name in this list and the
+		// first stop on the ladder. Picking it wrote `Milestones` onto ordinary work, which
+		// then minted a SECOND row of that name beside it. The drop already refused
+		// (`band.lane.markers`), so two inputs offered a target the third would not take.
+		const vault = resourceVault();
+		vault.addFile('Ship.md', { frontmatter: { type: 'Milestone', order: 5, due: '2026-08-07' } });
+		const { view, containerEl } = laneRoadmap(vault);
+		// The control beside the assertion: the row IS on screen and leads the roster, so
+		// this states the exclusion rather than a fixture that never drew one.
+		expect(laneNames(containerEl)[0]).toBe('Milestones');
+
+		view.showContextMenuFor(view.model?.byPath.get('Alice dated.md') as never);
+		const submenu = Menu.lastShown?.item('Set assignee')?.submenu;
+
+		expect(submenu?.items.map((i) => i.titleText)).toEqual([
+			'Alice',
+			'Bob',
+			'Zoe',
+			'New assignee...',
+			'Clear assignee',
+		]);
 	});
 
 	it('routes a pick through the one method, so a pick and a drop say one sentence', async () => {

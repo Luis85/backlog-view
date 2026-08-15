@@ -121,7 +121,24 @@ can fold them away.
   by date, so two dates that resolve to one pixel column stack too. What it does **not**
   answer is marks a day or two apart at a coarse zoom: those overlap partially and stay the
   "spacing of marks that fall close together" this note already owes a live vault an opinion
-  on.
+  on. **A dependency arrow anchors on the DIAMOND once they can stack**, not on the row: the
+  arrow layer reads a Y off the element the item occupies, and the shared track's is the
+  header's centre — between two stacked marks and on neither, with two edges to two markers
+  on one day landing exactly on top of each other. Found in review the pass after 2e landed,
+  which is the shape of it: the stack is what made "they genuinely share the row" stop being
+  true of everything.
+- **2f — the row's own name offered as somebody to assign work to.** Never, by any input.
+  The caption is not a resource, so a value written from it names nobody — and
+  `deriveLanes` builds its roster index from the resources alone, so the write then mints a
+  SECOND row of that name beside the synthetic one. The drop already refused it (2b); the
+  Alt+arrow ladder and Set assignee both offered it until 2026-08-15, which is "one move,
+  three inputs" failing by omission rather than by disagreement — no input wrote a
+  different thing, two just offered a target the third would not take. Both read one list
+  now, and it is asked of the row's `markers` flag rather than of its name: a resource
+  genuinely called Milestones (1a) is a resource, and comparing against the constant would
+  take a legitimate roster entry off the ladder. This is not 2b read wider — a note may
+  still record who owns a date, and Set assignee still writes one; what is refused is the
+  synthetic row's caption becoming a value.
 - **3a — the row's absence control.** Absent. The row stands for nobody, so there is
   nobody to be away, and [[Resource absences]]' Add button is withheld rather than opening
   a form whose resource would be a caption.
@@ -152,6 +169,13 @@ can fold them away.
   The class is on the **mark** and not on the row, which is the one place this row departs
   from the grid's own rule: the row is shared by every marker, and one of them being
   finished says nothing about the next.
+- **6b — a milestone beyond the drawn window.** The legend keys `Other`, not `Milestone`.
+  A mark with nothing of itself in view draws no cyan diamond — it is an edge indicator in
+  the plain accent, `barClasses`' own rule — so keying the diamond's colour would name one
+  the grid is not painting and leave the one it is unexplained. This row's report was
+  written fresh beside the dated axis's and repeated the exact defect that one was fixed
+  for; found in review (2026-08-15). It is reported from what the render DREW, never
+  recomputed from the results, which is the rule [[A colour per state]]'s legend keeps.
 
 ## Acceptance criteria
 
@@ -178,8 +202,12 @@ can fold them away.
   handle opens no note.
 - A marker is counted as placed and reported among the axis's drawn bars in row order, so
   the axis's own "placed plus shelved equals the visible result rows" still holds, and a
-  dependency arrow drawn to a milestone still anchors on the row it is drawn in.
-- The row draws no absence control and adds nothing to the declared roster.
+  dependency arrow drawn to a milestone anchors on that milestone's own diamond — two
+  markers on one day take two arrows to two marks, never one line between them.
+- The colour a marker actually draws is the colour the legend keys, the wholly-outside
+  case included.
+- The row draws no absence control, adds nothing to the declared roster, and its name is
+  offered by no input as a value to assign work to.
 - No mark on the axis claims a collision whose evidence is not in the same row.
 
 ## Where it lives
@@ -199,10 +227,18 @@ rows for it, which is what makes step 4 structural rather than a withheld contro
 `renderLaneHead` has no chevron to draw because there is nothing under it. `drawMarkerDiamonds`
 draws each mark into the track that header hands back — `renderLaneHead` returns
 `{ head, track }` now, so nothing has to find the element again and no unreachable null
-branch is carried for it — and registers every marker path against that one shared track,
-which is what keeps a dependency arrow anchored (`renderDependencyArrows` reads the track's
-parent for the Y and takes the X from `dependencyAnchor`, so several markers sharing a track
-is the right answer rather than a compromise: they genuinely share the row). `drawnSpans`
+branch is carried for it.
+
+**A marker registers TWO mounts against that track, and they are different elements.**
+`tracks` takes the shared track, which is where a move's drag preview belongs — the
+positioned box every `--pbl-bar-left` on the row is measured from. `anchors` takes the
+DIAMOND, which is what `renderDependencyArrows` reads a Y off. Both were the track until
+2026-08-15 and the arrow layer took its parent, which is the row for a bar and the shared
+header here: right while markers could not stack, wrong the moment 2e let them. The X is
+`dependencyAnchor`'s either way, so two markers on one day differ in nothing BUT that Y.
+`BarRowMounts.anchors` in `src/view/render/timeline.ts` is where the pair is named, and a
+bar row fills it with its row — the element the arrow layer used to reach through the
+track, said directly now that one caller needs a different answer. `drawnSpans`
 widens the window from the lane for the marker row exactly as it does for a folded band —
 see [[Folding a resource's band]], which states that gate.
 
@@ -251,13 +287,19 @@ for a row in a band, and no band holds a marker any more, so the branch was unre
 a branch nothing can reach is a claim nothing keeps.
 
 Driven in `test/domain/resources.test.ts` (the row's position, the two assignee cases, the
-context rule, the minting rule and the placed count), `test/view/resourceLanes.test.ts` (one
+context rule, the minting rule and the placed count), `test/view/milestonesRow.test.ts` (one
 row of diamonds and no rows of their own, no disclosure where a band has one, each diamond
-named, no absence control, plus 2d's handle, its click guard and its held-drag marking, and
-2e's stack), `test/view/resourceScheduling.test.ts` (the slide, both directions of 2b, the
-click, and done on the mark) and `test/view/absenceCollision.test.ts`, where the away-day
-case now asserts 3b from the rule rather than the old mark. The domain cases, the two
-structural view cases and all four of 2d/2e's were watched failing with the change disabled.
+named, no absence control, plus 2d's handle, its click guard and its held-drag marking,
+2e's stack and its arrow anchor, and 6b's swatch), `test/view/resourceMoves.test.ts` (2f, at
+both inputs that offered it), `test/view/resourceScheduling.test.ts` (the slide, both
+directions of 2b, the click, and done on the mark) and `test/view/absenceCollision.test.ts`,
+where the away-day case now asserts 3b from the rule rather than the old mark. The domain
+cases, the two structural view cases and every one of 2d, 2e, 2f and 6b's were watched
+failing with the change disabled. That first view file is its own suite as of 2026-08-15,
+split out of `test/view/resourceLanes.test.ts` when the row's cases took it past the
+`test/**` line budget: one file is about a row per RESOURCE and this row stands for nobody.
+2e's arrow case stubs the diamonds' boxes from the stylesheet's own rule, since jsdom
+measures nothing — what it asserts is which ELEMENT the layer reads, never the arithmetic.
 `test/view/rendering.test.ts` asks the STYLESHEET whether the mark's reveal exists at all,
 which is the half no view test can see: the dot was drawn, wired and asserted present while
 computing `opacity: 0` on every device with a pointer.

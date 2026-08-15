@@ -2,7 +2,7 @@ import { BacklogViewHost, BoardSnapshot, RoadmapSnapshot } from '../host';
 import { isDeliverableType } from '../../domain/itemTypes';
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { sameValue } from '../../domain/noteFields';
-import { RoadmapModel } from '../../domain/roadmap';
+import { assignableLanes, RoadmapModel } from '../../domain/roadmap';
 import { indent, moveWithinSiblings, outdent } from './structure';
 import { projectionPopulation } from '../projection';
 
@@ -405,10 +405,14 @@ function horizonStops(roadmap: RoadmapModel): (string | null)[] | null {
  * leads for that ladder's own stated reason.
  *
  * Null on the other two axes, so this handler swallows no key it does not act on.
+ *
+ * The milestones' row is not a stop: `assignableLanes` is what says so, shared with Set
+ * assignee's own list rather than filtered here, since a ladder and a menu offering
+ * different targets is the drift that rule exists to stop.
  */
 function resourceStops(roadmap: RoadmapModel): (string | null)[] | null {
 	if (roadmap.axis !== 'resources') return null;
-	return [null, ...roadmap.lanes.map((lane) => lane.name)];
+	return [null, ...assignableLanes(roadmap).map((lane) => lane.name)];
 }
 
 /**
