@@ -1,7 +1,8 @@
 import { BacklogItem } from '../domain/model';
 import { BacklogSettings } from '../domain/settings';
 import { FilterState } from './filterState';
-import { FilterScope } from './projection';
+import { Projection } from './host';
+import { FilterScope, filterScopeFor, hidesCompleted, projectionMember } from './projection';
 
 /**
  * Row visibility, with the quick filter itself optionally lifted. One predicate
@@ -46,6 +47,29 @@ export interface VisibilityRule {
 	 * count taken over the same walk.
 	 */
 	inProjection: (item: BacklogItem) => boolean;
+}
+
+/**
+ * The rule assembled for one projection, with the filter optionally lifted — the two
+ * arguments `BacklogViewHost.isRowHidden` and `isRowHiddenUnfiltered` differ by, and
+ * nothing else. Here rather than in the view for the reason the rule itself is here: the
+ * three projection-derived answers above are read from `projection.ts` in one place, so a
+ * caller cannot assemble a rule that asks one of them a different way.
+ */
+export function visibilityRule(
+	filter: FilterState,
+	settings: BacklogSettings,
+	projection: Projection,
+	applyFilter: boolean,
+): VisibilityRule {
+	return {
+		filter,
+		settings,
+		applyFilter,
+		scope: filterScopeFor(projection),
+		hideCompleted: hidesCompleted(projection),
+		inProjection: projectionMember(projection),
+	};
 }
 
 export function rowHidden(item: BacklogItem, rule: VisibilityRule): boolean {

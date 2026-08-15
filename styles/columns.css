@@ -12,12 +12,13 @@
    already that width: `metaColWidth` sizes it from this tree's widest label and
    `columnFit` budgets with the same call, so the layout and the fit cannot describe
    different rows.
-   The second term is the guarantee under that arithmetic rather than a second opinion:
-   TS budgets a digit at a ceiling of 8px, which holds at the default 12px label and can
-   be exceeded where a phone's text size lifts `--font-ui-smaller` past it. `ch` is exact
-   for whatever font is actually in front of the reader, so `max()` keeps the bars on one
-   line there too — with the fit a few pixels optimistic, which is the direction that
-   costs a little slack rather than a clipped row. */
+   The second term keeps the label FITTING beside the bar, which is all it has to do now
+   that the bar is pinned (see `.pbl-progress` below): TS budgets a digit at a ceiling of
+   8px, and `ch` is exact for whatever font is in front of the reader. They agree at the
+   12px default and at Obsidian's 16px mobile text size (a figure is ~7.7px there); they
+   part only above about 17px of interface text, where the lane grows past what
+   `columnFit` set aside and the fit is a few pixels optimistic at an exact boundary. The
+   bars stay level either way — that is the pinning's job, not this term's. */
 .pbl-meta-col {
 	display: flex;
 	align-items: center;
@@ -72,12 +73,26 @@
 	opacity: 0.6;
 }
 
-/* Rollup progress on parent rows when a state property is configured */
+/* Rollup progress on parent rows when a state property is configured.
+
+   **The group FILLS the lane and the bar is pinned to its start.** That is what makes
+   every bar in the column share one x, and it is the second design of this: the first
+   reserved the label's width instead, so the bar's position was whatever the label left
+   over. A reservation can only ever be as good as the metric it is stated in — and the
+   label's own metric is not constant, because `.pbl-complete` below draws it at
+   `--font-medium` and a font's medium figures need not have its regular figures' advance
+   (Codex, PR #153). With the bar pinned, the label's width stops deciding anything: it
+   can be any weight, any font, any number of digits, and the bar has not moved.
+   The lane's own width is the same for every row (`--pbl-meta-col`, from `metaColWidth`),
+   so "pinned to the start of the lane" IS "aligned down the column". What the label's
+   width still has to do is fit — which is the `max()` above, not a reservation here. */
 .pbl-progress {
 	display: flex;
 	align-items: center;
 	gap: var(--size-4-1);
-	flex: 0 0 auto;
+	flex: 1 1 auto;
+	justify-content: space-between;
+	min-width: 0;
 }
 
 .pbl-progress-bar {
@@ -95,17 +110,14 @@
 	background-color: rgb(var(--color-green-rgb));
 }
 
-/* Tabular figures are what make the `ch` reservation exact rather than approximate —
-   `ch` is the advance of "0", and with `tabular-nums` every digit has that same advance,
-   so `<widest label>ch` holds every label in this tree. `text-align: end` so a shorter
-   label grows leftwards inside the reservation instead of pushing the bar. The 28px
-   fallback is for a stylesheet loaded without a render, not a second opinion: with a
-   render, the width is the widest label the tree actually draws. */
+/* No width reservation here, deliberately: the bar is pinned by the rule above, so the
+   label's own box decides nothing about it. Tabular figures stay, for the label's own
+   sake rather than the bar's — the group's end is fixed, so without them a rollup ticking
+   from `9/17` to `10/17` would reflow its own digits. */
 .pbl-progress-label {
 	font-size: var(--font-ui-smaller);
 	font-variant-numeric: tabular-nums;
 	color: var(--text-muted);
-	min-width: var(--pbl-rollup-label, 28px);
 	text-align: end;
 }
 
@@ -179,10 +191,12 @@
 .pbl-horizon-chip,
 .pbl-risk-chip,
 .pbl-assignee-chip,
+.pbl-date-chip,
 button.pbl-state-chip,
 button.pbl-horizon-chip,
 button.pbl-risk-chip,
-button.pbl-assignee-chip {
+button.pbl-assignee-chip,
+button.pbl-date-chip {
 	appearance: none;
 	display: inline-flex;
 	align-items: center;
@@ -209,7 +223,8 @@ button.pbl-assignee-chip {
 .pbl-state-chip:not(.pbl-state-static):hover,
 .pbl-horizon-chip:not(.pbl-state-static):hover,
 .pbl-risk-chip:not(.pbl-state-static):hover,
-.pbl-assignee-chip:not(.pbl-state-static):hover {
+.pbl-assignee-chip:not(.pbl-state-static):hover,
+.pbl-date-chip:not(.pbl-state-static):hover {
 	background-color: var(--background-modifier-hover);
 	color: var(--text-normal);
 }
@@ -225,7 +240,8 @@ button.pbl-assignee-chip {
 .pbl-state-chip:focus-visible,
 .pbl-horizon-chip:focus-visible,
 .pbl-risk-chip:focus-visible,
-.pbl-assignee-chip:focus-visible {
+.pbl-assignee-chip:focus-visible,
+.pbl-date-chip:focus-visible {
 	outline: 1px solid var(--interactive-accent);
 	outline-offset: -1px;
 }
@@ -239,7 +255,8 @@ button.pbl-assignee-chip {
 .pbl-state-chip .svg-icon,
 .pbl-horizon-chip .svg-icon,
 .pbl-risk-chip .svg-icon,
-.pbl-assignee-chip .svg-icon {
+.pbl-assignee-chip .svg-icon,
+.pbl-date-chip .svg-icon {
 	width: var(--icon-xs);
 	height: var(--icon-xs);
 }
@@ -262,7 +279,15 @@ button.pbl-assignee-chip {
 .pbl-state-chip.pbl-state-unset,
 .pbl-horizon-chip.pbl-horizon-unset,
 .pbl-risk-chip.pbl-risk-unset,
-.pbl-assignee-chip.pbl-assignee-unset {
+.pbl-assignee-chip.pbl-assignee-unset,
+.pbl-date-chip.pbl-date-unset {
 	color: var(--text-faint);
 	border-style: dashed;
 }
+
+/* Five chip classes now appear in each of the five lists above, and the next chip makes
+   it six in each. That is an enumeration, and it is kept deliberately rather than
+   collapsed onto a shared marker class: doing so means adding a class in every chip
+   renderer and re-checking every test that asserts on chip markup, which is a larger and
+   riskier change than the one it would save. Collapse it when a chip is added for a
+   reason of its own, not on the way past. */

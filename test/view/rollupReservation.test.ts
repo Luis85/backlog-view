@@ -1,9 +1,46 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { fixture, makeView, rowByTitle, treeOf, useViewHarness } from '../helpers/view';
 
 useViewHarness();
+
+/**
+ * What actually holds the bars on one line, and the reason it is a text check.
+ *
+ * The bar is pinned to the START of a lane every row shares, so its x is the lane's and
+ * nothing about the label can move it. The first design reserved the LABEL's width
+ * instead, which made the bar's position whatever the label left over — and a reservation
+ * is only as good as its metric: `.pbl-complete` draws the label at `--font-medium`, and
+ * a font's medium figures need not share its regular figures' advance, so two equal
+ * reservations could come out different widths (Codex, PR #153).
+ *
+ * jsdom computes no layout, so this cannot see a bar's x. Its reach is exactly the two
+ * declarations that pin it — it fails if someone drops them, which is the failure that
+ * would silently bring the drift back, and it cannot tell you the bars came out level.
+ * A browser is what answers that: `?fixture=edges` in the harness.
+ */
+describe('the declarations that pin the bar', () => {
+	const css = readFileSync('styles/columns.css', 'utf8');
+	const rule = (selector: string): string => {
+		const at = css.indexOf(`\n${selector} {`);
+		if (at === -1) throw new Error(`no rule for ${selector}`);
+		return css.slice(css.indexOf('{', at) + 1, css.indexOf('}', at));
+	};
+
+	it('fills the lane and pins the bar to its start', () => {
+		expect(rule('.pbl-progress')).toContain('justify-content: space-between');
+		expect(rule('.pbl-progress')).toContain('flex: 1 1 auto');
+	});
+
+	it('reserves nothing on the label, whose weight the complete state changes', () => {
+		// The pairing IS the check: the completion rule may go on setting a weight exactly
+		// because no width here is stated in a metric that weight could move.
+		expect(rule('.pbl-progress-label')).not.toContain('min-width');
+		expect(rule('.pbl-progress.pbl-complete .pbl-progress-label')).toContain('font-weight');
+	});
+});
 
 /**
  * The rollup lane's own geometry — split out of `columns.test.ts` when that file reached

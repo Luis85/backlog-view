@@ -315,8 +315,14 @@ export class ExtraButtonComponent {
 	constructor(containerEl: HTMLElement) {
 		this.extraSettingsEl = containerEl.createEl('button', { cls: 'extra-setting-button' });
 	}
+	// Through the free `setIcon`, not `dataset.icon` directly: Obsidian's own component
+	// draws the glyph, and setting the attribute alone left every extra-setting button
+	// blank in the BROWSER harness while the suite — which asserts `data-icon` and
+	// installs no renderer — could not see it. The schedule entry's two clear buttons are
+	// the case that found it: a control the acceptance criteria require to be pressable in
+	// one press, drawn in the tool built for looking as an empty grey square.
 	setIcon(icon: string): this {
-		this.extraSettingsEl.dataset.icon = icon;
+		setIcon(this.extraSettingsEl, icon);
 		return this;
 	}
 	setTooltip(tooltip: string): this {

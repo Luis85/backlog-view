@@ -21,6 +21,8 @@ finished: ""
 horizon: ""
 risk: ""
 assignee: Ben
+start: ""
+due: ""
 ---
 
 # Drag from the shelf to schedule

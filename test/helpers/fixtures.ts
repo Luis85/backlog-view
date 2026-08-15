@@ -136,7 +136,16 @@ export function demoOptions(): Record<string, unknown> {
  * the point of the page is that a chip sits wherever the menu puts it.
  */
 export function demoOrder(): string[] {
-	return ['note.status', 'note.horizon', 'note.risk', 'note.assignee', 'note.points', 'note.tags'];
+	// The two date ends are here so the page draws their chips at all, and they sit
+	// between the assignee and the tags rather than at either end for the reason above.
+	// `demoVault()` already carries every face they have — a note with both dates, one
+	// with neither, a milestone whose start cell must draw NOTHING, and the context row —
+	// so no note had to be added to show them.
+	//
+	// `note.points` is the one column here that is NOT one of ours: a plain Bases value,
+	// which is what `renderCell` falls through to and what every vault has. Nothing in any
+	// fixture drew that branch until 2026-08-15.
+	return ['note.status', 'note.horizon', 'note.risk', 'note.assignee', 'note.start', 'note.due', 'note.points', 'note.tags'];
 }
 
 /**

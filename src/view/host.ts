@@ -22,14 +22,19 @@ export const PRODUCT_BACKLOG_VIEW_TYPE = 'product-backlog';
 export type Projection = 'tree' | 'board' | 'roadmap' | 'deliverables' | 'catalog';
 
 /**
- * Which screen a folded column was folded on. Three words that are almost the projection
- * and deliberately not it: the horizon buckets are one AXIS of the roadmap, and the two
- * grid axes have rows and bands rather than columns. Nothing here folds by projection, so
- * a union of the screens that actually draw a column is the honest spelling — and it is
- * what keeps a requirements `Done`, a Deliverables `Done` and a horizon called `Done`
- * three separate folds. See `columnKey` in `view/viewState.ts`.
+ * Which screen a folded column was folded on. Four words that are almost the projection
+ * and deliberately not it: the horizon buckets are one AXIS of the roadmap, the shelf's
+ * type groups are a BAND of it drawn on every axis, and the two grid axes have rows and
+ * bands rather than columns. Nothing here folds by projection, so a union of the screens
+ * that actually draw a foldable stack of cards is the honest spelling — and it is what
+ * keeps a requirements `Done`, a Deliverables `Done` and a horizon called `Done` three
+ * separate folds. See `columnKey` in `view/viewState.ts`.
+ *
+ * `shelf` is keyed by a TYPE name rather than a state value, which changes nothing about
+ * the mechanism: the key space is "a word on one screen", and a type is a word the same
+ * way a column's state is.
  */
-export type ColumnScope = 'board' | 'deliverables' | 'horizons';
+export type ColumnScope = 'board' | 'deliverables' | 'horizons' | 'shelf';
 
 /**
  * A column of the trailing strip: the property id to read, the label the header shows,
@@ -38,7 +43,7 @@ export type ColumnScope = 'board' | 'deliverables' | 'horizons';
  * it. Declared here with the other view state the host exposes, so the interface every
  * module depends on depends on nothing itself.
  */
-export type ColumnKind = 'value' | 'tags' | 'state' | 'horizon' | 'risk' | 'assignee';
+export type ColumnKind = 'value' | 'tags' | 'state' | 'horizon' | 'risk' | 'assignee' | 'start' | 'target';
 
 export interface Column {
 	prop: BasesPropertyId;
@@ -407,6 +412,14 @@ export interface BacklogViewHost {
 	readonly clickFolds: boolean;
 	/** Flip what a click does and re-render; the view-state store persists the pick. */
 	setClickFolds(value: boolean): void;
+	/**
+	 * Whether a horizon bucket lays its cards out as a responsive grid — the default —
+	 * rather than one card per row. UI state exactly like the density beside it: how wide
+	 * the pane in front of you is, per saved view and per device, never the `.base`.
+	 */
+	readonly bucketGrid: boolean;
+	/** Flip the bucket layout and re-render; the view-state store persists the pick. */
+	setBucketGrid(grid: boolean): void;
 	/** Whether the shelf is collapsed for this saved view; collapsed is the default. */
 	readonly shelfCollapsed: boolean;
 	/** Toggle the shelf's collapse state and re-render the content pane. */

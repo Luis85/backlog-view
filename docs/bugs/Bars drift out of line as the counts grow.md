@@ -50,8 +50,21 @@ size. The case existed only in real vaults.
 
 ## The fix
 
-Every row reserves the widest label THIS TREE draws, so all the labels occupy one width
-and every bar starts in one place. `rollupChars` (`view/render/columns.ts`) asks
+**The bar is pinned to the start of a lane every row shares** — `.pbl-progress` fills the
+lane and puts its two children at either end — so the bar's x is the lane's and nothing
+about the label can move it.
+
+That is the second design of it, and the first is worth recording because it looked
+right: every row RESERVED the widest label's width, which made the bar's position whatever
+the label left over. Review pointed out that a reservation is only as good as the metric
+it is stated in, and this one is not constant — `.pbl-complete` draws the label at
+`--font-medium`, and a font's medium figures need not share its regular figures' advance,
+so two equal reservations can be two different widths (Codex, PR #153). With the bar
+pinned the question does not arise: the label can be any weight, any font and any number
+of digits.
+
+What the reservation still does is keep the label FITTING beside the bar, which is a
+question about the lane's width rather than the bar's place. `rollupChars` (`view/render/columns.ts`) asks
 `rollupReport` for each label the projection would show and takes the longest —
 `isRowHidden`, so a filter or the completed toggle narrows it, and not "what this pass
 drew", so expanding a row never moves the bars beside it — `renderTree` publishes it as

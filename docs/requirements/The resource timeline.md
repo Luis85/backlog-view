@@ -1,7 +1,7 @@
 ---
 type: Feature
 parent: "[[Product Roadmap]]"
-order: 80
+order: -5
 status: Open
 created: 2026-08-13
 source: user request

@@ -5,6 +5,7 @@ import { applyPlatform } from './theme';
 import { applyWantedFilter, openWantedDialog } from './knobs';
 import { Modal } from '../helpers/obsidian-mock';
 import { installObsidianDom } from '../helpers/dom';
+import { ExtraButtonComponent } from '../helpers/obsidian-mock';
 import { clickExpandAll, projectionButton, submitPrompt } from '../helpers/view';
 import { barFor, gripNames } from '../helpers/roadmap';
 import { demoVault } from '../helpers/fixtures';
@@ -548,6 +549,25 @@ describe('the harness draws every icon the view asks for', () => {
 		// release's and are mapped in `icons.ts`; a rename lucide makes later lands
 		// here rather than as a silently blank control on the page.
 		expect([...sweepIcons().missing]).toEqual([]);
+	});
+
+	it('draws through the COMPONENT wrappers too, not only the free setIcon', () => {
+		// Checked at the component rather than by sweeping the surfaces that use one,
+		// because the surfaces are exactly what the sweep above cannot reach: an
+		// `ExtraButtonComponent` lives in a Modal, which the mock appends outside
+		// `containerEl`. `ExtraButtonComponent.setIcon` set `data-icon` and stopped, so
+		// the suite — which installs no renderer and asserts that attribute — was green
+		// while every extra-setting button on the page drew as an empty square. Found by
+		// looking at the schedule entry's two clear buttons in Chromium, which the
+		// acceptance criteria require to be pressable in one press.
+		mountHarness(document.body.createDiv());
+		const host = document.body.createDiv();
+		new ExtraButtonComponent(host).setIcon('x');
+
+		const drawn = host.querySelector('button.extra-setting-button');
+		expect(drawn?.getAttribute('data-icon')).toBe('x');
+		expect(drawn?.querySelector('svg.svg-icon')).not.toBeNull();
+		expect(drawn?.getAttribute('data-icon-missing')).toBeNull();
 	});
 
 	it('measures something — the instrument is checked before its verdict is trusted', () => {

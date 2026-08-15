@@ -13,6 +13,13 @@ files:
   - src/storage/frontmatter.ts
   - src/view/interactions/labels.ts
   - src/view/render/columns.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Setting the assignee on an item

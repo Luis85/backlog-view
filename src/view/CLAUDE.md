@@ -274,9 +274,13 @@ free of runtime code so imports stay cycle-free.
   (`--pbl-rollup-label`, from `rollupReservation`): the lane is anchored at its end, so a
   label wider than its reservation moves the BAR rather than being clipped, and a flat
   28px held `9/99` and not `44/136` — bars at three different x in a vault of 800-odd PBIs
-  ([[Bars drift out of line as the counts grow]]). Every row reserves the widest label the
-  tree draws, in `ch` under `tabular-nums`, which is `syncBusyCount`'s reservation exactly
-  and for its reasons. **`columnFit` sums it like every other term**, through the same
+  ([[Bars drift out of line as the counts grow]]). **What holds them level is that the bar
+  is PINNED to the start of a lane every row shares** (`.pbl-progress` fills it and puts
+  its children at either end), never a width reserved for the label: a reservation is only
+  as good as its metric, and `.pbl-complete` changes the label's font weight, which can
+  change a figure's advance. The `ch` reservation that remains keeps the label FITTING
+  beside the bar — the lane's width, not the bar's place — in `ch` under `tabular-nums`,
+  which is `syncBusyCount`'s reservation exactly and for its reasons. **`columnFit` sums it like every other term**, through the same
   `metaColWidth` call the stylesheet's own width comes from — the first version of this
   left the fit on the flat constant and called the difference slack, which it is not at a
   fit boundary: the flexible middle is already at zero there and `.pbl-tree` is
