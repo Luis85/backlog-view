@@ -127,6 +127,60 @@ describe('the resources axis', () => {
 	});
 });
 
+/**
+ * The one row that is not a resource. A milestone is a fact about the plan rather than
+ * about a person, so it leaves the bands entirely — [[Milestones out of the resource rows]].
+ */
+describe('the milestones’ own row', () => {
+	function markerVault(assignee?: string): FakeVault {
+		const vault = resourceVault();
+		vault.addFile('Ship.md', { frontmatter: { type: 'Milestone', order: 60, assignee, due: '2026-08-07' } });
+		return vault;
+	}
+
+	it('draws first, ahead of every declared resource', () => {
+		const settings = resourceSettings({ resourceNames: ['Alice', 'Bob'] });
+		const roadmap = laneOf(markerVault('Alice'), settings);
+
+		expect(roadmap.lanes.map((lane) => lane.name)).toEqual(['Milestones', 'Alice', 'Bob', 'Zoe']);
+		expect(roadmap.lanes[0].markers).toBe(true);
+		expect(roadmap.lanes.slice(1).every((lane) => !lane.markers)).toBe(true);
+	});
+
+	it('takes the marker out of its assignee’s band, and reads that assignee for nothing', () => {
+		const settings = resourceSettings({ resourceNames: ['Alice'] });
+		const assigned = laneOf(markerVault('Alice'), settings);
+		const unassigned = laneOf(markerVault(), settings);
+
+		expect(titles(assigned.lanes[0].bars)).toEqual(['Ship']);
+		expect(titles(assigned.lanes[1].bars)).not.toContain('Ship');
+		// An unassigned milestone DRAWS rather than shelving: there is no assignee left to
+		// be missing, which is the rule "a row is who" applied to a row that is nobody's.
+		expect(titles(unassigned.lanes[0].bars)).toEqual(['Ship']);
+		expect(unassigned.shelf.map((card) => card.item.title)).not.toContain('Ship');
+	});
+
+	it('is absent from a roadmap whose markers none of them place', () => {
+		const settings = resourceSettings({ resourceNames: ['Alice'] });
+		const vault = resourceVault();
+		// A marker with no readable date shelves like anything else, and a row is minted by
+		// the bar that lands in it — never by an item that had one to shelve.
+		vault.addFile('No date.md', { frontmatter: { type: 'Milestone', order: 60, assignee: 'Alice' } });
+		const roadmap = laneOf(vault, settings);
+
+		expect(roadmap.lanes.map((lane) => lane.name)).not.toContain('Milestones');
+		expect(roadmap.shelf.map((card) => card.item.title)).toContain('No date');
+	});
+
+	it('counts a marker among the placed, and reports it on `bars` in row order', () => {
+		const settings = resourceSettings({ resourceNames: ['Alice'] });
+		const roadmap = laneOf(markerVault('Alice'), settings);
+
+		expect(titles(roadmap.bars)).toEqual(['Ship', 'Alice dated', 'Cased', 'Stray']);
+		expect(roadmap.placedCount).toBe(4);
+	});
+});
+
 describe('absences in the row list', () => {
 	/** The shared vault, plus one absence written the way the prompt writes them. */
 	function withAbsence(resource: string): FakeVault {
@@ -234,6 +288,25 @@ describe('a context row on the resources axis', () => {
 		expect(alice.bars).toEqual([]);
 		expect(roadmap.shelf).toEqual([]);
 		expect(roadmap.placedCount).toBe(0);
+	});
+
+	it('falls to the undifferentiated context when it is a marker, whatever it names', () => {
+		// [[Milestones out of the resource rows]] 4a: "a milestone is in no resource's row" is
+		// a rule about the ROW, so the one path that positions nothing has to keep it too —
+		// Alice's row exists here and the excluded marker still does not join it.
+		const settings = resourceSettings({ resourceNames: ['Alice'] });
+		const vault = new FakeVault();
+		vault.addFile('Outside ship.md', { frontmatter: { type: 'Milestone', order: 10, assignee: 'Alice' } });
+		vault.addFile('Result.md', {
+			frontmatter: { type: 'Feature', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-02' },
+			parentLink: 'Outside ship',
+		});
+		const entries = vault.entries().filter((entry) => entry.file.path !== 'Outside ship.md');
+		const focused = { ...settings, focusLevel: 'Milestone' };
+		const roadmap = buildRoadmap(buildModel(vault.app, entries, focused), focused, () => true, 'resources');
+
+		expect(roadmap.context.map((item) => item.title)).toEqual(['Outside ship']);
+		expect(roadmap.lanes.flatMap((lane) => lane.context.map((item) => item.title))).toEqual([]);
 	});
 
 	it('never mints a row of its own, and falls to the undifferentiated context', () => {

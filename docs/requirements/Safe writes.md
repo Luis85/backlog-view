@@ -6,10 +6,10 @@ status: Done
 started: ""
 finished: ""
 horizon: ""
-start: ""
-due: ""
+start: 2026-09-10
+due: 2026-09-16
 risk: ""
-assignee: ""
+assignee: Evi
 ---
 
 # Safe writes

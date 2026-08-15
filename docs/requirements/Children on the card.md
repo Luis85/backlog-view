@@ -7,7 +7,7 @@ priority: P2
 created: 2026-08-07
 files:
   - src/view/render/cardChildren.ts
-  - src/view/collapseState.ts
+  - src/view/viewState.ts
   - src/view/backlogView.ts
   - src/view/interactions/menu.ts
 started: ""
@@ -160,7 +160,7 @@ narrowing together, in `childrenList.ts` beside the walk, so the loop that adds 
 entries and the walk that subtracts them cannot come apart. `cardedPaths` is the one
 place a projection is asked which cards it drew, and both read it.
 
-The expansion bit itself is `CARD_SCOPE` in `src/view/collapseState.ts`, a prefix
+The expansion bit itself is `CARD_SCOPE` in `src/view/viewState.ts`, a prefix
 alongside `TIMELINE_SCOPE`, read and written through `BacklogViewHost.isCardCollapsed`/
 `setCardCollapsed` (`src/view/backlogView.ts`) — a second pair of host methods beside
 `isCollapsed`/`setCollapsed` rather than a scope the existing pair infers from the

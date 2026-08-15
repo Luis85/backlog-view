@@ -10,7 +10,7 @@ closed: 2026-08-01
 created: 2026-07-31
 source: PR #14, collapse-state persistence
 files:
-  - src/storage/collapseStore.ts
+  - src/storage/viewStateStore.ts
 started: ""
 finished: ""
 horizon: ""
@@ -26,8 +26,8 @@ assignee: ""
 
 ## Why this exists
 
-Collapse-state persistence keys on the `.base` file the view belongs to. The Bases API
-hands a view **no reference to its own file**, so `collapseStoreIdentity` finds it by
+View-state persistence keys on the `.base` file the view belongs to. The Bases API
+hands a view **no reference to its own file**, so `resolveViewIdentity` finds it by
 walking `app.workspace.iterateAllLeaves()` for the `FileView` whose `containerEl`
 contains the view's element, and requiring `view.file.extension === 'base'`.
 
@@ -38,7 +38,7 @@ repo** — Obsidian cannot run in the jsdom harness.
 ## Why it matters
 
 The failure mode is safe but silent. If the assumption does not hold,
-`collapseStoreIdentity` returns `null`, the view falls back to session-only collapse
+`resolveViewIdentity` returns `null`, the view falls back to session-only collapse
 state — exactly the behaviour before persistence existed, nothing breaks — and **the
 feature simply never works**, with no error and no log line.
 
@@ -57,14 +57,20 @@ one. Point a Base at `docs/issues/` (see [codebase-health](../../requirements/Co
 2. Expand several rows.
 3. Close the tab and reopen the Base (or restart Obsidian).
 4. The rows should come back **open**. If everything is collapsed, the assumption failed.
+5. On the FIRST open after an upgrade from 0.8, the view is at its defaults — the tree,
+   collapsed, no axis or zoom pick. That reset is the decision, not a failure: the old key
+   is not read. State carried across instead means somebody built the migration ADR 0011
+   says there is not.
 
 To confirm directly, inspect the vault's local storage for the key
-`product-backlog:collapse` — it should hold one entry per base view, keyed
-`<percent-encoded base path>#<percent-encoded view name>`.
+`product-backlog:view-state` — it should hold one entry per base view, keyed
+`<percent-encoded base path>#<percent-encoded view name>`. The old key
+`product-backlog:collapse` must be absent after that first save; an entry still there
+means the new store never wrote.
 
 ## If it fails
 
-The seam is `collapseStoreIdentity` in `src/storage/collapseStore.ts`; nothing else
+The seam is `resolveViewIdentity` in `src/storage/viewIdentity.ts`; nothing else
 needs to change. Options in order of preference:
 
 1. Find the correct public handle on the leaf's view and use it.
@@ -90,7 +96,7 @@ with `npm run test-build`: rows expanded, the tab closed and reopened, and the r
 back open.
 
 That single observation is decisive, because the fallback is session-only — had
-`collapseStoreIdentity` returned `null`, closing the tab would have dropped the state and
+`resolveViewIdentity` returned `null`, closing the tab would have dropped the state and
 everything would have come back collapsed. Rows surviving a tab close means the walk over
 `iterateAllLeaves` found the leaf, that the leaf presented as a `FileView`, that `.file`
 was set, and that its extension was `base`. Every link in the chain the feature rests on

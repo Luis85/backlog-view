@@ -6,6 +6,7 @@ status: Done
 priority: P2
 created: 2026-08-01
 files:
+  - src/domain/roadmap.ts
   - src/view/render/emptyStates.ts
   - src/view/render/roadmap.ts
 started: ""
@@ -86,6 +87,19 @@ names the option or the action it points at.
   advisory rather than shown, the same report the tree and board make — and it renders
   beside the frame, never instead of it. An empty roadmap is an empty frame, never no
   frame.
+- **3b — the axis is holding work it drew no selectable row for.** No advisory. What is
+  counted is what the axis HOLDS and never what it drew, on all three axes, because the two
+  stopped being the same thing three separate times: a folded bucket
+  ([[Folding a horizon bucket]]) contributes no card, a folded band
+  ([[Folding a resource's band]]) contributes no row, and a milestone in the shared header
+  track is deliberately no `option` at all ([[Milestones out of the resource rows]] 3c). Each
+  of those puts work on screen that the drawn count reads as zero, so the reader was told
+  every item was done and hidden while their own plan sat in front of them — the collapsed
+  shelf's mistake, reached from three directions. The buckets were counted from the model
+  when the first one arrived; the two grid axes kept the drawn count until 2026-08-15, with a
+  comment beside it saying they fold nothing, which was true when it was written. A count
+  read off the render is a count that goes wrong the next time something learns to fold, so
+  the question is asked of the model once, for every axis, rather than per axis at the render.
 
 ## Acceptance criteria
 
@@ -100,6 +114,8 @@ names the option or the action it points at.
 - A declared bucket with nothing in it still renders its column.
 - The all-shelved state renders the empty frame beside the full shelf and lets the
   count speak; the view suggests no placement the user has not made.
+- No advisory renders while the axis holds anything, whether or not a row was drawn for it:
+  every bucket folded, every band folded, or a milestone as the one visible note.
 
 ## Where it lives
 
@@ -107,8 +123,12 @@ Built. The no-axis guidance — missing-half wording included, and the setup pre
 (`renderSetupCta`, which runs `runInit` in `src/view/interactions/structure.ts`) — is
 `renderRoadmapNoAxisState` in `src/view/render/emptyStates.ts`, beside the tree's and
 the board's answers; the frame-beside-advisory rule is `renderRoadmapAdvisory` in
-`src/view/render/roadmap.ts`. Driven in `test/view/roadmap.test.ts` and
-`test/view/roadmapFrame.test.ts`. "Every region a drop target and every bucket a
+`src/view/render/roadmap.ts`. What it is asked ABOUT is 3b's, and it is a model question
+rather than a render one — `axisPopulation` in `src/domain/roadmap.ts`, one answer for the
+three axes. Driven in `test/view/roadmap.test.ts` and
+`test/view/roadmapFrame.test.ts`, with 3b's two grid cases beside the features that
+produced them — `test/view/resourceLanes.test.ts` for the folded band and
+`test/view/milestonesRow.test.ts` for the lone milestone. "Every region a drop target and every bucket a
 creation target" arrived across three increments — [[Moving between horizons]] on the
 horizon axis, the bucket's New flow ([[Buckets from a horizon property]]), and now
 [[Drag from the shelf to schedule]] and [[Move and resize a bar]] on the timeline, whose

@@ -48,7 +48,7 @@ export interface BacklogSettings extends ItemHandling {
 	/**
 	 * Level name to use as the top of the tree, or '' to show the full hierarchy. The
 	 * one field here that is NOT read from the `.base`: focus is working position, so it
-	 * is stored beside the collapse state and injected by the view (`refreshFromData`).
+	 * is stored in the view-state store and injected by the view (`refreshFromData`).
 	 * It rides in these settings anyway because it is an input to the model build, which
 	 * is what this object is.
 	 */

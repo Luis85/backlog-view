@@ -9,8 +9,8 @@ files:
   - src/domain/timeline.ts
   - src/view/render/timeline.ts
   - src/view/render/toolbar.ts
-  - src/storage/collapseStore.ts
-  - src/view/collapseState.ts
+  - src/storage/viewStateStore.ts
+  - src/view/viewState.ts
   - styles/timelineFurniture.css
 started: ""
 finished: ""
@@ -85,7 +85,7 @@ nothing is written, and no rendering decision changes what places or what shelve
   bar — a bar clipped at both window edges, and also a bar clipped at the right alone
   that starts within the reserve of the track's left edge — and hide while a drag is
   live.
-- The density pick round-trips through the collapse store, renders only on the dated
+- The density pick round-trips through the view-state store, renders only on the dated
   axis, and an unrecognized stored value reads as comfortable. The toggle's accessible
   name never changes; `aria-pressed` is what carries the state.
 - No mark is focusable and nothing here writes: the furniture is derived at render
@@ -98,7 +98,7 @@ nothing is written, and no rendering decision changes what places or what shelve
 and bar labels — dropped when neither side has room — in `src/view/render/timeline.ts`
 (the today band it once also drew is gone; see [[State colour and a legend]]); the
 density toggle in `src/view/render/toolbar.ts` over
-a `density` field beside `zoom` in `src/storage/collapseStore.ts`, held in
-`src/view/collapseState.ts` exactly like the zoom beside it; the rules in
+a `density` field beside `zoom` in `src/storage/viewStateStore.ts`, held in
+`src/view/viewState.ts` exactly like the zoom beside it; the rules in
 `styles/timelineFurniture.css`. Driven in `test/domain/timeline.test.ts`,
 `test/view/timelineFurniture.test.ts` and `test/view/timelineZoom.test.ts`.

@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { STATE_COLOR_SLOTS } from '../../src/domain/settings';
 import { LABEL_RESERVE_PX } from '../../src/view/render/barLabel';
+import { BODY_SELECTORS, declarations, resolvesValue } from '../helpers/cssVars';
 
 /** The declarations of one rule, by selector — good enough for a single-selector rule. */
 function bodyOf(css: string, selector: string, file: string): string {
@@ -59,17 +60,19 @@ describe('the two boxes sized from TypeScript arithmetic', () => {
 		// what the pane looks like and can refuse the declaration that made it look wrong.
 		const lanes = readFileSync(new URL('../../styles/lanes.css', import.meta.url), 'utf8');
 		// Every selector that dims. A ROW selector is one naming a row class and nothing
-		// beneath it — `.pbl-absence-row .pbl-timeline-lead > *` is CONTENT, and is exactly
+		// beneath it — `.pbl-lane-context .pbl-timeline-lead > *` is CONTENT, and is exactly
 		// the shape this rule asks for.
-		const rowClass = /^\.pbl-(absence-row|lane-context|lane-head|timeline-row)\b[^\s>]*$/;
+		const rowClass = /^\.pbl-(lane-context|lane-head|timeline-row)\b[^\s>]*$/;
 		const dimmed = [...lanes.matchAll(/([^{}]+)\{([^}]*)\}/g)]
 			.filter((rule) => /opacity:\s*0?\.\d/.test(rule[2]))
 			.flatMap((rule) => rule[1].split(','))
 			.map((selector) => selector.trim().split('\n').pop()?.trim() ?? '');
 
 		expect(dimmed.filter((selector) => rowClass.test(selector))).toEqual([]);
-		// Not vacuous: the muting those rows need is still declared, on their content.
-		expect(dimmed).toContain('.pbl-absence-row .pbl-timeline-lead > *');
+		// Not vacuous: the muting a context row needs is still declared, on its content —
+		// the absence row's own version of this rule went with the row itself on 2026-08-14,
+		// since a stretch is drawn in its header's track now and has no row to mute.
+		expect(dimmed).toContain('.pbl-lane-context .pbl-timeline-lead > *');
 	});
 
 	it('lets a row’s match affordance YIELD rather than cross the column boundary', () => {
@@ -117,6 +120,21 @@ describe('the two boxes sized from TypeScript arithmetic', () => {
 		// refuses is the shape that broke — a layout gated on a class only some rows carry.
 		expect(ruleBody('.pbl-timeline-row')).toContain('display: flex;');
 		expect(bodyOf(css, '.pbl-card.pbl-timeline-row', 'styles/timeline.css')).not.toContain('display');
+	});
+
+	it.each(['.pbl-drop-ghost', '.pbl-drop-ghost-dates'])('lets the pointer through %s, the one decoration that MOVES under it', (selector) => {
+		// The preview is drawn into the dragged bar's own row track and the drop target is
+		// somewhere else — a band element on the resources axis, the grid-wide overlay on the
+		// dated one — so a preview that takes the pointer answers the release with the row the
+		// bar came FROM. On the resources axis that is the whole message: the bar keeps its
+		// assignee, the band under the pointer never highlights, and the gesture reads as one
+		// that did not register.
+		//
+		// Stated at the forbidden thing, like the absence wash below it and for the same
+		// reason: jsdom hit-tests nothing, so every drop test in this suite stays green
+		// through exactly this declaration being absent — which is how it shipped. The reach
+		// is the declaration in this rule, not a later one overriding it.
+		expect(ruleBody(selector)).toContain('pointer-events: none;');
 	});
 });
 
@@ -322,6 +340,55 @@ describe('the furniture declarations whose comments call them load-bearing', () 
 		expect(Number(maxWidth[1]) + 2 * Number(padding[1]) * 4).toBe(LABEL_RESERVE_PX);
 	});
 
+	it('lays the label out as a flex row, not a block the ellipsis can only apply to as a whole', () => {
+		// Text check, same reach as the pair above: it sees the declaration in the rule, it
+		// cannot see a later rule overriding it, and it cannot tell you what the label
+		// actually renders as. Without `display: flex` the title and the token
+		// (`.pbl-bar-label-title`, `.pbl-days-lost`) share one line box, and
+		// `text-overflow: ellipsis` truncates at the LINE's end regardless of which child
+		// put it there — the defect a long title reproduced by evicting the token
+		// entirely, `drawn.daysLost` still true for a mark nothing on screen made.
+		expect(ruleBody('.pbl-bar-label')).toContain('display: flex;');
+	});
+
+	it('gives the title all four declarations a truncating flex child needs — min-width: 0 above all', () => {
+		// The other three (`overflow`, `text-overflow`, `white-space`) are what make a
+		// truncating label a truncating label at all; `min-width: 0` is the one whose
+		// ABSENCE silently reproduces the eviction bug, because a flex item's default
+		// `min-width: auto` resolves to its own content size and refuses to shrink below
+		// it — the title would then push `.pbl-days-lost` out of the box instead of
+		// truncating around it, and nothing else here would say why it came back.
+		const body = ruleBody('.pbl-bar-label-title');
+		for (const declaration of ['overflow: hidden;', 'text-overflow: ellipsis;', 'white-space: nowrap;', 'min-width: 0;']) {
+			expect(body, `.pbl-bar-label-title states no ${declaration}`).toContain(declaration);
+		}
+	});
+
+	it('ties the 118px content box absenceCost’s own comment names to the declarations that produce it', () => {
+		// `.pbl-bar-label` states no `box-sizing` of its own — Obsidian's own global reset
+		// (`* { box-sizing: border-box }`, real app.css) is what makes it border-box, so
+		// `max-width` already INCLUDES the padding rather than adding to it. For the
+		// `after` variant: 144 (max-width) − 18 (its own `padding-left`, which overrides
+		// the base rule's left side) − 8 (the base rule's `padding: 0 var(--size-4-2)`,
+		// unchanged on the right) = 118 — the number `absenceCost`'s own comment
+		// (`src/view/render/timeline.ts`) spends on the short tokens' whole budget.
+		// Nothing before this tied that number to the three declarations that produce it,
+		// so changing any one of them would leave the comment wrong with nothing red.
+		// The premise before the arithmetic: a stray `box-sizing: content-box` here would leave
+		// every number below unchanged and the box model diverged — `max-width` would stop
+		// including the padding, so the real content box becomes 144 rather than 118 and this
+		// test stays green through it. Asked of the declaration that must NOT be there.
+		expect(ruleBody('.pbl-bar-label'), '.pbl-bar-label states a box-sizing of its own').not.toContain('box-sizing');
+		const maxWidth = /max-width:\s*(\d+)px/.exec(ruleBody('.pbl-bar-label'));
+		const padding = /padding:\s*0\s+var\(--size-4-(\d+)\)/.exec(ruleBody('.pbl-bar-label'));
+		const afterPaddingLeft = /padding-left:\s*(\d+)px/.exec(ruleBody('.pbl-bar-label-after'));
+		if (!maxWidth || !padding || !afterPaddingLeft) {
+			throw new Error('missing max-width, base padding, or the after variant’s own padding-left');
+		}
+		const contentBox = Number(maxWidth[1]) - Number(afterPaddingLeft[1]) - Number(padding[1]) * 4;
+		expect(contentBox).toBe(118);
+	});
+
 	it('takes the labels off the grid while a drag is live', () => {
 		// The other half of `timelineFurniture.test.ts`'s "declutters while a drop is
 		// being aimed": that one drives the class onto the view, this one is the rule the
@@ -372,13 +439,111 @@ describe('the absence marks are drawn from the content palette', () => {
 		}
 	});
 
-	it('draws the stretch at the height a bar is drawn at', () => {
+	it('draws the wash from --pbl-away and never from the decoration palette', () => {
+		// The same instrument as the check above and the same reach: it sees the token a
+		// declaration names, it cannot see a later rule overriding it, and it cannot tell
+		// you what any of it looks like against a themed bar — a live-vault question.
+		const named = tokens(lanes, '.pbl-absence-wash', 'styles/lanes.css');
+		expect(named, '.pbl-absence-wash names no --pbl-away token').toContain('--pbl-away');
+		for (const token of named) {
+			expect(token, `.pbl-absence-wash draws from the decoration palette: ${token}`).not.toMatch(/^--background-modifier/);
+		}
+	});
+
+	it('keys the days-lost swatch with the SAME --pbl-away token the wash names, not a copy', () => {
+		// The pairing the hatch test below states for `.pbl-absence`/`.pbl-legend-absence`,
+		// asked of the away key instead: both draw from ONE custom property declared once
+		// (`.pbl-roadmap-dates`, `styles/lanes.css`), so the two cannot drift the colour apart
+		// — only the gradient's own period differs, which is why this pairs the token alone
+		// and not the whole gradient the way the hatch pairing below does.
+		const legend = readFileSync(new URL('../../styles/legend.css', import.meta.url), 'utf8');
+		expect(tokens(lanes, '.pbl-absence-wash', 'styles/lanes.css')).toContain('--pbl-away');
+		expect(tokens(legend, '.pbl-legend-days-lost', 'styles/legend.css')).toContain('--pbl-away');
+	});
+
+	it('resolves a colour for the days-lost swatch, not just a name it declares', () => {
+		// The pairing above is honest about the NAME and blind to whether any element
+		// actually inherits the value — exactly how this shipped once: `--pbl-away` was
+		// declared on `.pbl-timeline`, the grid itself, while the legend is a SIBLING of
+		// `.pbl-tree` (both direct children of `.pbl-view`, `src/view/backlogView.ts`) —
+		// so a legend swatch naming the right custom property still computed to nothing,
+		// because inheritance runs down the tree and the grid is not the legend's ancestor.
+		// `test/helpers/cssVars.ts` follows a value's own `var()` references rather than
+		// checking that a name is declared somewhere in the file, which is what catches
+		// that a real theme's tokens plus `--pbl-away`'s OWN declared scope resolve.
+		const obsidian = readFileSync(new URL('../harness/obsidian.css', import.meta.url), 'utf8');
+		const legend = readFileSync(new URL('../../styles/legend.css', import.meta.url), 'utf8');
+		const values = new Map([
+			...declarations(obsidian, 'dark', BODY_SELECTORS),
+			// `.pbl-roadmap-dates` is the ancestor `--pbl-away` is actually scoped to — see
+			// its own comment in `styles/lanes.css` for why `.pbl-timeline` was the wrong one.
+			...declarations(lanes, 'dark', new Set(['.pbl-roadmap-dates'])),
+		]);
+		const body = bodyOf(legend, '.pbl-legend-days-lost', 'styles/legend.css');
+		for (const property of ['background-color', 'border']) {
+			const value = new RegExp(`${property}:\\s*([^;]+);`).exec(body)?.[1];
+			expect(value, `.pbl-legend-days-lost states no ${property}`).toBeDefined();
+			expect(resolvesValue(value as string, values), `${property}: ${value} does not resolve`).toBe(true);
+		}
+	});
+
+	it('refuses the days-lost token any shrink, load-bearing twice over', () => {
+		// `.pbl-bar-label` is a flex row now (`styles/timelineFurniture.css`) shared with
+		// `.pbl-bar-label-title`, and this is the OTHER child's own refusal — without it
+		// the flex algorithm would take space from either child impartially, including
+		// this one, which has no `text-overflow` of its own to fall back on and would
+		// just clip mid-token. Load-bearing a second way too: `white-space: nowrap` moved
+		// off the label onto the title span when the two split, so this `flex: 0 0 auto`
+		// is now the only thing stopping the token's own short text wrapping across two
+		// lines in a narrow flex row.
+		expect(bodyOf(lanes, '.pbl-days-lost', 'styles/lanes.css')).toMatch(/flex\s*:\s*0\s+0\s+auto/);
+	});
+
+	it('draws the stretch at the height its sub-lane pitch was sized for', () => {
 		// 12px against a bar's 14px was saying "lesser" as well as "different", and only the
-		// second was intended: what tells work from the absence of work is the hatch.
+		// second was intended: what tells work from the absence of work is the hatch. Matching
+		// the bar's own height exactly was the check for that, until the mark moved into the
+		// header's own track (2026-08-14) and took on a sub-lane pitch instead — 13px marks on
+		// a 17px pitch, a geometry the bar has no reason to share. What survives is that the
+		// two stay close enough to read as the same KIND of mark, which a fixed value states
+		// more honestly than an equality this design no longer keeps.
 		const height = (css: string, selector: string, file: string) => /height:\s*(\d+)px/.exec(bodyOf(css, selector, file))?.[1];
-		const bar = height(timeline, '.pbl-bar', 'styles/timeline.css');
-		expect(bar, '.pbl-bar states no height').toBeDefined();
-		expect(height(lanes, '.pbl-absence', 'styles/lanes.css')).toBe(bar);
+		expect(height(timeline, '.pbl-bar', 'styles/timeline.css'), '.pbl-bar states no height').toBeDefined();
+		expect(height(lanes, '.pbl-absence', 'styles/lanes.css')).toBe('13');
+	});
+
+	it('ties the sub-lane pitch to the height the header grows by, since the two must agree', () => {
+		// One number in two rules, exactly as the 118px content box is tied to the three
+		// declarations that produce it. `.pbl-absence` steps each mark down by its own
+		// `--pbl-sublane` index; the header's track grows by the sub-lane COUNT. A pitch
+		// changed in one of them alone either overlaps the marks or leaves a gap under the
+		// last one, and nothing else here could say so — jsdom lays nothing out.
+		const pitch = (selector: string) => /var\(--pbl-(?:lane-)?sublanes?[^)]*\)\s*\*\s*(\d+)px/.exec(bodyOf(lanes, selector, 'styles/lanes.css'))?.[1];
+		expect(pitch('.pbl-absence'), '.pbl-absence steps by no sub-lane pitch at all').toBeDefined();
+		expect(pitch('.pbl-lane-head .pbl-timeline-track')).toBe(pitch('.pbl-absence'));
+	});
+
+	it('keeps the mark’s border inside the width the pack was handed', () => {
+		// `packLanes` separates the marks that would overlap, and it is handed `spanBox`'s
+		// `--pbl-bar-width` — so the RENDERED extent has to be that width and not that width
+		// plus two 1px borders, or two marks the pack judged to touch would overlap by 2px.
+		// Obsidian's app.css does set `* { box-sizing: border-box }`, which is why no vault
+		// has ever drawn the overlap; this states it in the plugin's own stylesheet instead of
+		// resting the pack's premise on the host's reset — the same reason `.pbl-absence-wash`
+		// and `.pbl-timeline-cell` beside it declare it rather than inherit it. Raised in
+		// review (2026-08-15) as an overlap, which it is not; the assumption was real.
+		expect(bodyOf(lanes, '.pbl-absence', 'styles/lanes.css')).toContain('box-sizing: border-box');
+	});
+
+	it('leaves the mark its pointer events, which are now the only route to Edit and Delete', () => {
+		// Stated at the FORBIDDEN thing rather than by driving the paths that would break.
+		// The mark's context menu is the only way to either act since the stretch lost its own
+		// row, and the band's drop reaches it by bubbling — so `pointer-events: none` here
+		// breaks the feature twice. jsdom dispatches events whatever the stylesheet says, so
+		// the drop test and the menu test both stay green through exactly that declaration:
+		// this is the one check that can see it. Its reach is the declaration in this rule,
+		// not a later one overriding it.
+		expect(bodyOf(lanes, '.pbl-absence', 'styles/lanes.css')).not.toContain('pointer-events');
 	});
 
 	it('keys the hatch with the very gradient the stretch draws, not a copy of it', () => {
@@ -430,7 +595,11 @@ describe('the absence marks are drawn from the content palette', () => {
 });
 
 describe('the resize grip is ringed in a colour other than its own fill', () => {
-	const css = readFileSync(new URL('../../styles/timeline.css', import.meta.url), 'utf8');
+	// The grip's own partial since 2026-08-15 — it left `styles/timeline.css` when that
+	// file reached its 400-line cap. Read from ONE file on purpose: the question is
+	// whether the two declarations name the same token, which only holds if both are
+	// where this looks.
+	const css = readFileSync(new URL('../../styles/timelineLeadResize.css', import.meta.url), 'utf8');
 
 	/** The colour tokens one property names, across every rule that styles the focused grip. */
 	function tokens(property: string): string[] {

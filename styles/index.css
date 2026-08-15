@@ -63,6 +63,9 @@
 @import "./cardChildren.css";
 @import "./roadmap.css";
 @import "./timeline.css";
+/* Position NOT load-bearing — see the partial's own header. It came out of `timeline.css`
+   at the 400-line cap and sits here because that is where its rules were. */
+@import "./timelineLeadResize.css";
 @import "./barProgress.css";
 @import "./milestoneLines.css";
 /* Position IS load-bearing: the row header borrows `.pbl-timeline-lead`, and its own

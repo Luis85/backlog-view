@@ -142,6 +142,24 @@ describe('bar labels', () => {
 		expect(label()?.classList.contains('pbl-bar-label-before')).toBe(true);
 	});
 
+	it('gives the title its own child span, not text on the label div directly', () => {
+		// `label()?.textContent` above passes whether the title is a bare text node, a
+		// span, or a span three levels deep — reverting `renderBarLabel` to
+		// `createDiv({ cls: 'pbl-bar-label', text: bar.item.title })` turns nothing red
+		// there. This is the structural check that would: `.pbl-bar-label` became a flex
+		// row so `.pbl-days-lost` (`drawBandCollision`) could be appended as a SECOND
+		// child beside the title without the two running together or one evicting the
+		// other, and that only works if the title is its own element in the first place.
+		const vault = new FakeVault();
+		vault.addFile('Far off.md', { frontmatter: { type: 'PBI', order: 10, start: '2030-06-01', due: '2030-06-15' } });
+		const { containerEl } = datedRoadmap(vault);
+
+		const title = containerEl.querySelector<HTMLElement>('.pbl-bar-label-title');
+		expect(title, 'no .pbl-bar-label-title element at all').not.toBeNull();
+		expect(title?.textContent).toBe('Far off');
+		expect(title?.parentElement?.classList.contains('pbl-bar-label')).toBe(true);
+	});
+
 	it('clears the mark the stylesheet draws, not the one the span implies', () => {
 		const vault = new FakeVault();
 		// A milestone: one day of span, so 4px of --pbl-bar-width — and a 12px diamond

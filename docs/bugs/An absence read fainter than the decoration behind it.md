@@ -91,7 +91,9 @@ where the collision happens.
 Five increments, each with its own rule rather than its own diff.
 
 **The mark is drawn from a TEXT token, never a `--background-modifier-*` one**, at 14px, and
-the row's muting stays on its lead where it was meant. That is the rule the check states:
+the row's muting stays on its lead where it was meant. (It is 13px since the mark moved into
+the header's own track and took a sub-lane pitch — near enough to a bar's 14px to read as the
+same kind of mark, which is all this increment ever wanted from the number.) That is the rule the check states:
 `test/view/timelineBoxing.test.ts` reads every custom property `.pbl-absence` names, refuses
 any from the decoration palette, and requires at least one `--text-*` — the second half being
 the instrument's own check, since a pattern matching nothing would satisfy the refusal for an
@@ -100,9 +102,11 @@ empty stylesheet.
 **`DrawnColors` gained a fourth field, and is now wider than its name**: it reports which
 MARKS a pass drew that the key has to explain, and a hatch is one. `drawEntries` sets it at
 the one place a stretch is drawn, so the swatch appears exactly where the mark does — the
-view test drives a band folded shut and watches the entry go with it, which is reachable only
-because `laneEntries` skips a collapsed band whole. A bar's own report is the narrower
-`BarColors`, so no row literal claims anything about a mark drawn nowhere near it.
+view test drove a band folded shut and watched the entry go with it, which was reachable then
+because `laneEntries` skipped a collapsed band whole; since 2026-08-14 the stretch draws in
+the header instead, and `test/view/legend.test.ts` now asserts the swatch STAYS when the band
+folds shut (4n in [[Resource absences]]). A bar's own report is the narrower `BarColors`, so
+no row literal claims anything about a mark drawn nowhere near it.
 
 **A `.pbl-absence-wash` is appended into each work row's day track**, positioned by the same
 `barGeometry` the mark is, so the shading and the stretch cannot disagree about which day is
@@ -161,12 +165,20 @@ part worth keeping: document order decides it and neither element takes a `z-ind
 the track establishes no stacking context and whichever got one would out-rank the sticky lead
 column at 2.
 
-**The header glyph was noise.** `user-x` already means three things in this band — the Add
-absence button, an absence row's own icon, and a bar's crossing flag — and a fourth beside the
-count competed with the Add absence button, which reveals on hover in the same place. The `0`
-it was meant to qualify is never read alone: the stretch's own hatched row is directly beneath
-the header. Removed with its two tests, and recorded as a refusal on
-[[Resource absences]] so it is not proposed again from the finding alone.
+**The header glyph was noise.** `user-x` meant three things in this band when this was
+written — the Add absence button, an absence row's own icon, and a bar's crossing flag — and a
+fourth beside the count competed with the Add absence button, which reveals on hover in the
+same place. The `0` it was meant to qualify is never read alone: the stretch's own hatched
+mark was directly beneath the header then, in a row of its own. Removed with its two tests,
+and recorded as a refusal on [[Resource absences]] so it is not proposed again from the
+finding alone.
+
+**One of those three is left** (2026-08-15). The absence row's own icon went with the row
+when the stretch moved into the header's track ([[Resource absences]] 4n), and the crossing
+flag is a hatched swatch rather than a glyph (below), so the Add absence button is the only
+`user-x` in this band now. The reasoning above is unchanged — a glyph beside the count would
+still compete with the button that reveals in the same place — but the count of what it
+competes with is one, not three.
 
 **The `Unavailable` swatch read as a ⊘ symbol.** This one the spec asked outright — "whether
 the swatch's finer hatch reads as hatch at 10px" — and the answer is no: a 10px square with a
@@ -182,8 +194,21 @@ over a saturated bar**: 18% of `--text-muted` over an orange Epic at Months zoom
 nothing, and the answer is not only a bigger number — a flat fill strong enough to read over a
 bar is also strong enough to read as a second bar. So the fill went to 28% and the RANGE
 gained edges, which is what an eye actually finds; `box-sizing: border-box` keeps those two
-1px borders from claiming a day nobody is away for, `.pbl-timeline-cell`'s own rule. And **the
-crossing flag wore `user-x`**, the glyph that already marks the Add absence button, an absence
-row and a resource being away — four uses of one mark, of which the two a reader most needs to
-tell apart are "this row IS an absence" and "this row RUNS THROUGH one". It is `calendar-x`
-now: the person stays with `user-x`, and a crossing is about days.
+1px borders from claiming a day nobody is away for, `.pbl-timeline-cell`'s own rule. **The
+fill is 16% of `--pbl-away` now** — re-keyed off `--text-muted` onto the away key later the
+same day so the wash, the lead swatch and the legend read as one warm fact, at a percentage
+picked for that colour rather than carried over from the neutral one. Nothing here can settle
+either number: `docs/tests/suites/Smoke test the roadmap.md` carries the re-keyed wash as
+never checked.
+
+And **the crossing flag wore `user-x`**, the glyph that already marked the Add absence
+button, an absence row and a resource being away — four uses of one mark, of which the two a
+reader most needs to tell apart are "this row IS an absence" and "this row RUNS THROUGH one".
+It became `calendar-x` for a day and is a **hatched swatch in `--pbl-away`** now, drawing from
+the same KEY the wash and the legend swatch draw from — not the same gradient, which is what
+this said until 2026-08-15: three rules hatch three ways, and each is tuned to the box it
+fills. The swatch stripes `--pbl-away` itself over a 35% fill at a 4px period, the wash
+stripes the row's own `--background-primary` over 16% at 8px so it darkens what it crosses,
+and `.pbl-legend-days-lost` halves the wash's period to fit a full stripe in a 10px square —
+`styles/legend.css` says so at the rule. What the key buys is a colour rather than a fifth
+icon, so the flag in the lead and the shading on the row beside it read as one thing.

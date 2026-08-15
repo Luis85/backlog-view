@@ -522,7 +522,7 @@ That is the same re-rooting the tree does, and it is usually what you want from 
 one card per thing you are tracking, at the altitude you are tracking it.
 
 **The projection is working position, not configuration.** Which of the four a view is
-showing is remembered per saved view, per device, beside the collapse state — it is never
+showing is remembered per saved view, per device, in the view-state store — it is never
 written to the `.base`, so opening the same backlog on another machine does not move
 anyone else's view.
 
@@ -817,7 +817,7 @@ nothing above:
 | | |
 | --- | --- |
 | `domain/` | What a backlog *is*: tree building, ranking, drop-target math, the view-options schema. Reads the vault, never writes it, never touches the DOM. |
-| `storage/` | The only place anything is persisted: frontmatter and its inverses, new notes, the `.base` file, collapse state. |
+| `storage/` | The only place anything is persisted: frontmatter and its inverses, new notes, the `.base` file, view state. |
 | `view/` | The Bases view itself — rendering, drag & drop, keyboard, menus, undo. |
 | `commands/`, `ui/` | The "Create backlog" command, and the shared prompts. |
 

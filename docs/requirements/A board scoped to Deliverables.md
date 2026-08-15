@@ -20,8 +20,8 @@ files:
   - src/view/interactions/cardDrag.ts
   - src/view/interactions/keyboard.ts
   - src/view/interactions/menu.ts
-  - src/storage/collapseStore.ts
-  - src/view/collapseState.ts
+  - src/storage/viewStateStore.ts
+  - src/view/viewState.ts
   - src/view/render/projections.ts
   - src/domain/backlogReadme.ts
   - src/view/cardMoves.ts
@@ -567,10 +567,10 @@ rather than falling through to the requirements-keyed `computeStateWrites`; and
 `addMatchSection`, the keyboard path to a quick-filter match hidden under a card, now
 resolves through `activeBoard` too instead of returning early on every projection but
 `'board'`.
-`src/storage/collapseStore.ts` — a `DELIVERABLES_MODE` constant beside
+`src/storage/viewStateStore.ts` — a `DELIVERABLES_MODE` constant beside
 `BOARD_MODE`/`ROADMAP_MODE`, added to `readEntry`'s stored-mode allowlist, or the
 projection is silently dropped on read like any unrecognised value.
-`src/view/collapseState.ts` — `CollapseState.projection()` and its write-back
+`src/view/viewState.ts` — `ViewState.projection()` and its write-back
 counterpart map `'deliverables'` to and from `DELIVERABLES_MODE`, the same round trip
 `board`/`roadmap` already get.
 `src/domain/backlogReadme.ts` — `fieldRows` gates its Deliverable row on

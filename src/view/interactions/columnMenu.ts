@@ -36,7 +36,7 @@ export function buildColumnMenu(host: BacklogViewHost, scope: ColumnScope, col: 
 	const menu = new Menu();
 	// `false`: this asks, it must not settle. The default has already been taken by the
 	// render that drew the column this menu is being opened on — see `columnCollapsed`
-	// in `view/collapseState.ts`.
+	// in `view/viewState.ts`.
 	const folded = host.columnCollapsed(scope, col.state, false);
 	// The empty no-state strip has no fold to offer, and the header draws it no disclosure
 	// for the same reason: it is ALREADY a 44px strip with nothing in it, so folding would

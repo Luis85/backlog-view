@@ -10,6 +10,8 @@ started: ""
 finished: ""
 risk: ""
 assignee: Chris
+start: 2026-08-11
+due: 2026-08-28
 ---
 
 # Product Kanban
@@ -112,7 +114,7 @@ budgets, with Atlassian's Pragmatic drag and drop as the drag layer
 ([[Pragmatic drag and drop for the board]]); the only writer stays `storage/frontmatter.ts`, gaining a remove-the-state-key
 write (the mirror of `removeParentKey`) and the optional transition stamps; and the
 mode itself is working position, toggled from the toolbar and held per saved view in
-the collapse store's vault-scoped localStorage — the rule throughout: base settings
+the view-state store's vault-scoped localStorage — the rule throughout: base settings
 are saved on the view, UI state in localStorage. Column collapse goes to the same
 store, never the `.base`.
 

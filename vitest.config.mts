@@ -75,6 +75,39 @@ export default defineConfig({
 			// Merged with main after main re-accumulated ledger entries this branch had
 			// removed. The entries are not restored — git holds them — but main's
 			// THRESHOLDS are taken whole, because they are higher and a floor only rises.
+			//
+			// A FIFTH sample, from the absence-counts-and-derived-names increment
+			// (2026-08-14): four local runs split 98.54/94.89 and 98.56/94.91
+			// (statements/branches), one covered statement and one covered branch apart —
+			// the exact single-count swing
+			// `docs/issues/The coverage figure is not reproducible to a hundredth.md`
+			// already names, reproduced again rather than assumed. Both samples clear this
+			// floor by more than one count: a statement is 0.0147pp of 6810 and a branch
+			// 0.0227pp of 4407, so the 0.02–0.04pp of headroom on statements is one to three
+			// of them, and the 0.06–0.08pp on branches is two to four. The rise is declined
+			// anyway, and the margin is not the reason — the reason is the one this comment
+			// already gives: a rise needs a figure the suite REPRODUCES, and this increment
+			// measured two. Pinning either would be pinning a sample. Functions and lines held
+			// at 99.81 and 99.6 across all four runs — nothing to raise there either.
+			//
+			// A SIXTH sample, from closing the one-row-per-resource plan (2026-08-14): four
+			// local runs — the coverage step of a full `npm run check` plus three standalone
+			// `npm run test:coverage` runs afterward — measured the IDENTICAL figure all four
+			// times: 98.54/94.86/99.82/99.61 (statements/branches/functions/lines), same
+			// denominators every run (6780/6880, 4233/4462, 1678/1681, 5647/5669). Declined
+			// anyway, on review, for two reasons neither of which is the margin. First, the
+			// flake this file already documents is exactly one covered statement and one
+			// covered branch — so raising to the exact measured figure leaves under one COUNT
+			// of headroom on all four (0.45/0.35/0.03/0.11 counts by the same arithmetic as
+			// the fifth sample), and functions and lines were never sampled for the flake at
+			// all while sitting pinned tightest of the four. Second, four agreeing runs is not
+			// evidence a flake is gone: if the low figure lands one run in three, P(four
+			// agree) = (2/3)^4 + (1/3)^4 = 17/81 ≈ 21% — a one-in-five event on its own,
+			// exactly what a real 1-in-3 flake looks like now and then. Rejecting a 1/3 rate
+			// at 95% confidence needs eight consecutive agreeing runs, and these four ran on
+			// one OS while CI gates two. A rise still needs the diagnosis the note already
+			// asks for — diffing `coverage/coverage-final.json` per file across two runs —
+			// not a run count, however large.
 			thresholds: {
 				statements: 98.52,
 				branches: 94.83,

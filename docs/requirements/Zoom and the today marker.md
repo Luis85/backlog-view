@@ -8,8 +8,8 @@ created: 2026-08-01
 files:
   - src/domain/timeline.ts
   - src/view/render/toolbar.ts
-  - src/storage/collapseStore.ts
-  - src/view/collapseState.ts
+  - src/storage/viewStateStore.ts
+  - src/view/viewState.ts
   - src/view/render/projections.ts
   - styles/roadmap.css
 started: ""
@@ -72,7 +72,7 @@ is what makes a drag mean whole units ([[Move and resize a bar]]).
   decides this — a stored pick does. Nothing clips under a header — the tree's rule of dropping
   whole regions applies to decoration, not to results — embedded bases included.
 - **4a — a second device.** Its own zoom. Per-screen working positions never travel
-  through the vault — the collapse store's rule, which this state joins.
+  through the vault — the view-state store's rule, which this state joins.
 
 ## Acceptance criteria
 
@@ -86,7 +86,7 @@ is what makes a drag mean whole units ([[Move and resize a bar]]).
   and a narrow or embedded pane degrades by yielding decoration, not by clipping — the
   shelf shows its labelled count, one action from open in its own header, and never
   disappears.
-- The zoom choice persists per device in the collapse store — never in the `.base` —
+- The zoom choice persists per device in the view-state store — never in the `.base` —
   and zooming, panning and opening write nothing to any note or to the `.base`: the
   one thing written is that per-device memory, where collapse state already lives.
 
@@ -98,10 +98,10 @@ so the same dates reach at every zoom — are `src/domain/timeline.ts`. The zoom
 jump-to-today are `src/view/render/toolbar.ts`, beside the focus level; the shelf's own
 disclosure is its header's (`src/view/render/shelfControls.ts`), the toolbar toggle and
 its `syncShelfToggle` having been retired with the width-measured compaction they served. The per-device zoom memory is
-kept in both halves of the same store, under the collapse state's own identity and
+kept in both halves of the same store, under the view state's own identity and
 pruning rules and its own session-only exception for an embedded base:
-`src/storage/collapseStore.ts` validates the persisted value, and
-`src/view/collapseState.ts` is what actually holds it as a private field, reads it on
+`src/storage/viewStateStore.ts` validates the persisted value, and
+`src/view/viewState.ts` is what actually holds it as a private field, reads it on
 restore and writes it into the snapshot that gets saved. The date anchor carried across
 a scale change — the civil date at the viewport's leading edge, not the pixel offset a
 zoom redefines — and the per-band scroll offsets keyed by identity rather than position

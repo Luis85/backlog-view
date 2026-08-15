@@ -8,7 +8,7 @@ a kanban **board** whose columns are the configured workflow states, and a
 card can be moved between, or a read-only timeline from two date properties) with
 everything unplaceable on a counted shelf that is also the target that un-places. The
 mode, the roadmap-axis pick, the focus level and whether a click on a row folds it are UI
-state (vault-scoped localStorage, beside the collapse state), never a `.base` setting: base
+state (the view-state store's vault-scoped localStorage), never a `.base` setting: base
 settings are saved on the view, working position on the device. That last one was a view
 option until 2026-08-11 and moving it out is what ADR 0011 costs — a value is one or the
 other, never a stored override beside a shared default.
@@ -171,7 +171,7 @@ working there rather than read as one wall:
 | | |
 | --- | --- |
 | [`src/domain/CLAUDE.md`](src/domain/CLAUDE.md) | levels and depth, scope, focus mode, ranking and orders, folder mode, cycles, orphans |
-| [`src/storage/CLAUDE.md`](src/storage/CLAUDE.md) | the write boundary, collapse-store identity, renames, pruning |
+| [`src/storage/CLAUDE.md`](src/storage/CLAUDE.md) | the write boundary, view-state store identity, renames, pruning |
 | [`src/view/CLAUDE.md`](src/view/CLAUDE.md) | render cost, what is hidden vs absent, tab stops, controls, view lifecycle |
 
 What stays here is what belongs to no single layer.

@@ -30,7 +30,7 @@ Uncovered branches by file, from `coverage/coverage-final.json`:
 | `src/view/interactions/dragDrop.ts` | **21** |
 | `src/view/render/rows.ts` | 15 |
 | `src/view/backlogView.ts` | 11 |
-| `src/storage/collapseStore.ts` | 8 |
+| `src/storage/viewStateStore.ts` | 8 |
 
 Overall branch coverage is 92.3%, so this is not a thin suite — the gap is concentrated.
 

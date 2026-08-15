@@ -116,3 +116,18 @@
 		transparent 8px
 	);
 }
+
+/* `.pbl-days-lost`'s own key — the wash's colours (`--pbl-away`, `styles/lanes.css`) rather
+   than a copy of them, so the two cannot drift the way `.pbl-legend-done` and its override
+   once did. NOT the same gradient the absence swatch above pairs exactly: this one stays
+   the plain 10px square rather than widening to 20px, so its period is halved to fit a full
+   stripe inside it — a period tuned for the wider box would show less than one. */
+.pbl-legend-days-lost {
+	background-color: color-mix(in srgb, var(--pbl-away) 16%, transparent);
+	border: 1px solid color-mix(in srgb, var(--pbl-away) 85%, transparent);
+	background-image: repeating-linear-gradient(
+		45deg,
+		color-mix(in srgb, var(--background-primary) 35%, transparent) 0 2px,
+		transparent 2px 4px
+	);
+}

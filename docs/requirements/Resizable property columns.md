@@ -13,12 +13,12 @@ files:
   - src/view/render/rows.ts
   - src/view/host.ts
   - src/view/backlogView.ts
-  - src/view/uiState.ts
-  - src/view/collapseState.ts
-  - src/storage/collapseStore.ts
+  - src/view/viewStateController.ts
+  - src/view/viewState.ts
+  - src/storage/viewStateStore.ts
   - src/domain/viewOptions.ts
   - styles/propertyColumns.css
-  - styles/timeline.css
+  - styles/timelineLeadResize.css
 started: ""
 finished: ""
 horizon: ""
@@ -42,7 +42,7 @@ width for every column can only ever do.
 | **Actor** | Backlog owner |
 | **Trigger** | The reader drags the grip at a column header's trailing edge, double clicks it, or focuses it and presses an arrow key or Home |
 | **Preconditions** | Tree mode, with at least one property column drawn |
-| **Guarantee** | Each width is UI state — per column, per saved view, per device, beside the collapse state — never the `.base` and never a frontmatter write. What a column is DRAWN at, what the fit ladder budgets with and what the grip announces are one number, so a resize can never leave the header and the rows disagreeing. |
+| **Guarantee** | Each width is UI state — per column, per saved view, per device, in the view-state store — never the `.base` and never a frontmatter write. What a column is DRAWN at, what the fit ladder budgets with and what the grip announces are one number, so a resize can never leave the header and the rows disagreeing. |
 
 **Main flow**
 
@@ -204,10 +204,11 @@ property — which is what lets a drag move every row's cell by rewriting one de
 rather than walking the rows, the scan `src/view/CLAUDE.md` bans. `columnFit` in the same
 file sums those widths instead of dividing the pane by one of them.
 
-The picks are stored as a `colWidths` map in `src/storage/collapseStore.ts` — keyed by
-Bases property id, each value validated against `MIN_PROP_COLUMN_WIDTH`/
-`MAX_PROP_COLUMN_WIDTH` and dropped alone if it fails — held in
-`src/view/collapseState.ts`, exposed through `src/view/uiState.ts` and
+The picks are stored as a `colWidths` map in `src/storage/viewStateStore.ts` — a `prefs`
+value rather than a fold, because a key is a Bases property id and never a note path, so
+neither the prune nor the rename reaches it. Each value is validated against
+`MIN_PROP_COLUMN_WIDTH`/`MAX_PROP_COLUMN_WIDTH` and dropped alone if it fails — held in
+`src/view/viewState.ts`, exposed through `src/view/viewStateController.ts` and
 `BacklogViewHost.colWidths`/`setColWidth` in `src/view/host.ts` and
 `src/view/backlogView.ts`. The `propertyColumnWidth` slider is gone from
 `src/domain/viewOptions.ts` and its resolver from `src/domain/settingsResolve.ts`. The
@@ -215,7 +216,7 @@ grip's styling, beside the columns', is `styles/propertyColumns.css` — includi
 hoverless presentation, which `styles/timeline.css` gained beside the lead grip in the same
 change for the same reason.
 
-Driven in `test/view/columnResize.test.ts` and `test/storage/collapseStore.test.ts`;
+Driven in `test/view/columnResize.test.ts` and `test/storage/viewStateColumns.test.ts`;
 `test/view/columns.test.ts` drives the fit ladder against per-column widths, seeded
 through `makeView`'s own `widths` option — working position set through the view, never a
 view option.

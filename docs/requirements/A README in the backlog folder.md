@@ -308,7 +308,7 @@ the view options can rename.
   configure different property keys, and a folder holds one contract at a time — the
   failure worth preventing is not the replacement, it is a replacement nobody is told
   about. The marker therefore names its source (the base path and the view name, the
-  identity the collapse store already resolves, joined so the join can be undone — both
+  identity the view-state store is keyed on, joined so the join can be undone — both
   halves are free text, and a view named with the separator would otherwise share an
   identity with a different base — and an embedded base, which no leaf can name, escapes
   its lone view name the same way, since everything the notice decodes has to be something

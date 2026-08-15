@@ -8,7 +8,7 @@ area: limitation
 created: 2026-07-31
 source: PR #14, third Codex review
 files:
-  - src/storage/collapseStore.ts
+  - src/storage/viewStateStore.ts
 started: ""
 finished: ""
 horizon: ""
@@ -23,7 +23,7 @@ assignee: ""
 ## The limitation
 
 When a `.base` is embedded in a Markdown note, the view is drawn inside the *host note's*
-leaf. The only file `collapseStoreIdentity` can see there is the note, not the base — so
+leaf. The only file `resolveViewIdentity` can see there is the note, not the base — so
 it declines to key anything, and the view falls back to session-only collapse state.
 
 ## Why it is deliberate
@@ -46,7 +46,7 @@ deliberately gives a view no reference to its own file, and reaching into intern
 cannot be verified in this repository (Obsidian does not run here), so guessing would
 mean shipping an assumption as a guarantee.
 
-If such an API appears, `collapseStoreIdentity` is the only function that changes.
+If such an API appears, `resolveViewIdentity` is the only function that changes.
 
 ## Impact
 

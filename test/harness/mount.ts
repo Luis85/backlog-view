@@ -167,7 +167,7 @@ export type HarnessFixture = 'demo' | 'edges' | 'folders';
  *
  * The Bases leaf is real nesting on purpose: the
  * view identifies its base through the leaf showing the `.base` file, and without it
- * the collapse store — projection, expanded rows, shelf state — has no identity to key
+ * the view-state store — projection, expanded rows, shelf state — has no identity to key
  * on and nothing survives a reload.
  */
 export function mountHarness(root: HTMLElement, fixture: HarnessFixture = 'demo', extra = 0): MountedHarness {

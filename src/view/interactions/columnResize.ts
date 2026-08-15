@@ -5,7 +5,7 @@ import {
 	DEFAULT_PROP_COLUMN_WIDTH,
 	MAX_PROP_COLUMN_WIDTH,
 	MIN_PROP_COLUMN_WIDTH,
-} from '../../storage/collapseStore';
+} from '../../storage/viewStateStore';
 
 /**
  * The width one property column draws at: its reader's own stored pick, or the default

@@ -4,7 +4,7 @@ import { boardVault, BOARD_WORKFLOW, cardByTitle, makeBoard } from '../helpers/b
 import { makeView, refresh, rowByTitle, titlesOf, useViewHarness } from '../helpers/view';
 import { FakeVault } from '../helpers/vault';
 import { childrenLabel, listedChildren } from '../../src/view/childrenList';
-import { TIMELINE_SCOPE } from '../../src/view/collapseState';
+import { TIMELINE_SCOPE } from '../../src/view/viewState';
 import { Menu } from '../helpers/obsidian-mock';
 import { makeRoadmap, roadmapView, rowFor } from '../helpers/roadmap';
 
@@ -270,8 +270,12 @@ describe('children on the card', () => {
 		// first open after the upgrade finds the card's scope unsettled and applies the
 		// default to all of it, closing every card the reader had left open.
 		const vault = boardVault();
-		vault.localStorage.set('product-backlog:collapse', {
-			'Backlog.base#Backlog': { base: 'Backlog.base', collapsed: [], expanded: ['Epic B.md'] },
+		vault.localStorage.set('product-backlog:view-state', {
+			'Backlog.base#Backlog': {
+				base: 'Backlog.base',
+				folds: { collapsed: [], expanded: ['Epic B.md'], lanes: [] },
+				prefs: {},
+			},
 		});
 
 		const { containerEl, view } = makeView(vault, { ...BOARD_WORKFLOW }, { base: 'Backlog.base' });
@@ -288,11 +292,11 @@ describe('children on the card', () => {
 		const vault = new FakeVault();
 		vault.addFile('Shelf item.md', { frontmatter: { type: 'Epic', order: 10 } });
 		vault.addFile('Shelf child.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Shelf item' });
-		vault.localStorage.set('product-backlog:collapse', {
+		vault.localStorage.set('product-backlog:view-state', {
 			'Backlog.base#Backlog': {
 				base: 'Backlog.base',
-				collapsed: [],
-				expanded: [`${TIMELINE_SCOPE}Shelf item.md`],
+				folds: { collapsed: [], expanded: [`${TIMELINE_SCOPE}Shelf item.md`], lanes: [] },
+				prefs: {},
 			},
 		});
 
@@ -313,11 +317,11 @@ describe('children on the card', () => {
 	// board card the reader had left open.
 	it('keeps a board card’s real expand even though its dated-axis bit is only the untouched default', () => {
 		const vault = boardVault();
-		vault.localStorage.set('product-backlog:collapse', {
+		vault.localStorage.set('product-backlog:view-state', {
 			'Backlog.base#Backlog': {
 				base: 'Backlog.base',
-				collapsed: [`${TIMELINE_SCOPE}Epic B.md`],
-				expanded: ['Epic B.md'],
+				folds: { collapsed: [`${TIMELINE_SCOPE}Epic B.md`], expanded: ['Epic B.md'], lanes: [] },
+				prefs: {},
 			},
 		});
 

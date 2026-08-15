@@ -7,7 +7,9 @@ area: product
 started: ""
 finished: ""
 risk: ""
-assignee: Alex
+assignee: Evi
+start: 2026-09-03
+due: 2026-10-02
 ---
 
 # Product Backlog

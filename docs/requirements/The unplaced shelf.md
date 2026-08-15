@@ -106,7 +106,7 @@ into `shelf.ts` for the bands beside them — driven in `test/domain/roadmap.tes
 `test/helpers/roadmap.ts`).
 
 The shelf's own header picks (`host.shelfCollapsed`, `shelfSort`, `shelfHiddenTypes`,
-persisted UI state beside the collapse store) are what `renderShelf` now consults:
+persisted UI state in the view-state store) are what `renderShelf` now consults:
 collapsed contributes zero cards to the DOM (the drop target and its outcome preview
 are wired before that check, never after, so collapsing can never disable the one thing
 that un-places), and an expanded shelf groups its cards through `organizeShelf` — by
