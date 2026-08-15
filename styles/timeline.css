@@ -45,7 +45,23 @@
 }
 
 /* The preview: a ghost bar and the dates it means, so the drop states its contract
-   before it commits it. */
+   before it commits it.
+
+   `pointer-events: none` on both is load-bearing rather than housekeeping, and it is the
+   rule `styles/lanes.css` states for the marks inside a band, read onto the one element
+   that MOVES under the pointer. Both are drawn into the dragged bar's own row track
+   (`previewMount`) while the drop target is somewhere else — the resources axis's band
+   elements, the dated axis's grid-wide overlay — so a preview that takes the pointer
+   answers the release with the row it came FROM. On the resources axis that is the whole
+   message: `wireLaneDrop` reads its own `band.lane`, so the bar keeps its assignee, the
+   band under the pointer never highlights, and the drag reads as one that did not
+   register. Body-specific by construction, which is how it was found — a grip is routed
+   to the dated axis's own gesture and never asks which band it landed in.
+
+   The geometry is why it bites rather than a near miss: the ghost is the dragged bar
+   REDRAWN at the delta, so a body slide keeps the pointer inside it at the same offset it
+   was grabbed at, and the dates label hangs a row's-worth below the middle of its own row,
+   over the band beneath. */
 .pbl-drop-ghost {
 	position: absolute;
 	top: 50%;
@@ -56,6 +72,7 @@
 	border-radius: var(--radius-s);
 	border: 1px dashed var(--interactive-accent);
 	background-color: var(--background-modifier-hover);
+	pointer-events: none;
 }
 
 .pbl-drop-ghost-dates {
@@ -67,6 +84,7 @@
 	color: var(--text-muted);
 	background-color: var(--background-primary);
 	white-space: nowrap;
+	pointer-events: none;
 }
 
 .pbl-timeline-header {
@@ -111,45 +129,8 @@
 	white-space: nowrap;
 }
 
-/* The lead column's own resize grip — a thin strip pinned to the column's right edge,
-   `.pbl-bar-grip`'s pattern over a column boundary instead of a bar's. `position: sticky`
-   on `.pbl-timeline-lead` establishes its containing block, so `right` resolves against
-   that column's own box regardless of scroll. */
-.pbl-timeline-lead-grip {
-	position: absolute;
-	top: 0;
-	bottom: 0;
-	right: -3px;
-	width: 6px;
-	cursor: col-resize;
-	z-index: 1;
-	/* Otherwise the browser reads a touch drag here as a pan of the scroller beneath
-	   it and the pointermove stream this grip needs never arrives. */
-	touch-action: none;
-}
-/* The same 6px mouse target, on a device with fingers and no hover. It needs no line of
-   its own — `.pbl-timeline-lead`'s own border already draws this boundary, which is the
-   difference from the property columns' grip (styles/propertyColumns.css), where nothing
-   else marks where a column ends. */
-@media (hover: none) {
-	.pbl-timeline-lead-grip {
-		width: 20px;
-		right: -10px;
-	}
-}
-.pbl-timeline-lead-grip:hover,
-.pbl-timeline-lead-grip:focus-visible {
-	background-color: var(--interactive-accent);
-}
-/* The ring has to contrast with the strip it rings. Both were `--interactive-accent`,
-   which on a 6px strip filled with that same accent is an indicator drawn in the colour
-   of the thing it indicates — invisible, on the one control here that has to say where
-   the keyboard is. `--text-on-accent` is the token a theme guarantees legible against
-   the accent it fills with, which is exactly the question being asked. */
-.pbl-timeline-lead-grip:focus-visible {
-	outline: 2px solid var(--text-on-accent);
-	outline-offset: -1px;
-}
+/* The lead column's own resize grip is `styles/timelineLeadResize.css` — moved out when
+   this file reached its 400-line cap, like `timelineFurniture.css` before it. */
 
 .pbl-timeline-track {
 	position: relative;
@@ -182,11 +163,12 @@
 
    On `.pbl-timeline-row` alone, never on `.pbl-card.pbl-timeline-row`, and that is the
    whole of what this rule has to get right. Gated on the card class it reached only the
-   rows that are also cards — and an absence stretch is deliberately neither a
-   `BacklogItem` nor a card (`renderLaneAbsence` in `src/view/render/lanes.ts` says why),
-   so it had no flex context at all: its lead and its track stacked as blocks and the
-   hatched stripe drew on the line BELOW the name of the person it belongs to. A layout
-   every row needs cannot be attached to a class only some rows carry. */
+   rows that are also cards — and an absence stretch, while it drew as a row of its own
+   (before it moved into its resource's header track on 2026-08-14; `renderLaneAbsence`,
+   since deleted, said why it was deliberately neither a `BacklogItem` nor a card), had no
+   flex context at all: its lead and its track stacked as blocks and the hatched stripe
+   drew on the line BELOW the name of the person it belonged to. A layout every row needs
+   cannot be attached to a class only some rows carry. */
 .pbl-timeline-row {
 	display: flex;
 	flex-direction: row;
@@ -254,6 +236,16 @@
    always wins regardless of source order — the same reasoning that already decided
    `.pbl-bar-open-start.pbl-bar-open-end.pbl-bar-inferred` further down this file. */
 .pbl-timeline-row.pbl-done .pbl-bar {
+	--pbl-bar-color: var(--color-green);
+	opacity: 0.7;
+}
+
+/* The same override where there is no row to carry it: every marker on the resources axis
+   draws into ONE shared header track (`drawMarkerDiamonds`, render/timeline.ts), so done is
+   a fact about the diamond and the class goes on the diamond. Two classes here against the
+   two `.pbl-bar.pbl-bar-milestone` carries, so this must come AFTER it to win — which is
+   why it is not written beside the rule above. */
+.pbl-bar.pbl-done {
 	--pbl-bar-color: var(--color-green);
 	opacity: 0.7;
 }

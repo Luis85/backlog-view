@@ -22,6 +22,26 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Added
 
+- **Every milestone in one row above the roster.** On the resources axis a milestone is no
+  longer filed under whoever is named on it — where folding that person's band took the
+  date off screen — and one naming nobody no longer waits on the shelf. Every placed
+  milestone draws as a diamond in a single row above the first resource, nothing can fold
+  it away, and two milestones on the same day stack instead of hiding one another. Drag
+  from a diamond to make something wait for that date, exactly as on the plain dated axis.
+
+- **One row per resource, whatever they have.** An absence used to draw a blocked line of
+  its own beneath its resource's header; it draws inside the header itself now, and two that
+  share a day pack into their own sub-lanes rather than either one hiding the other. The
+  header's own pill says how many weeks of it are still ahead — counted from today, so a
+  stretch already under way reports what is left of it rather than its whole length:
+  `3 wk away`, dropped entirely once nothing is left, and called out when the same person
+  also has work booked —
+  beside an item count that disappears the same way when a row has nothing in it. A bar
+  scheduled straight across a stretch now says what that costs right in its own title,
+  `15d lost` or `all 10d` when the crossing swallows the whole bar, with the full sentence
+  for a screen reader and a **Days lost** key on the legend wherever the token is actually
+  on screen.
+
 - **Fold a board column or a horizon bucket** — press the chevron in its header and the
   column narrows to a strip, keeping its name, its count and its ability to take a drop.
   The choice is remembered per saved view and per device, beside the rows you have
@@ -66,11 +86,37 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   once and set it up again; nothing in your `.base` files and nothing in your notes is
   touched.
 
+- **Recording an absence asks for the dates alone.** The note is named
+  `<resource> away <start> → <end>` from the facts you enter, so there is no title to think
+  of — and editing a date renames the note to match. An absence that already exists keeps
+  its name until you edit it; a name you set by hand in Obsidian is replaced the next time
+  you edit the stretch.
+
 - **State colours no longer offer a done state.** A finished bar is drawn green whatever
   is stored against it, so the swatch for a done state could never change anything on the
   grid or in the legend. The dialog now lists the open states only, and says so; a colour
   a `.base` still holds for a done state is ignored. Done is read per workflow, so a value
   only one of your two workflows finishes on still gets a swatch for the other.
+
+### Fixed
+
+- **Folding every resource row no longer reports the plan as empty.** The roadmap counted
+  the rows it had drawn, and a folded band draws none — so shutting the last open band
+  answered with "all your items are done and hidden" beside the headers, counts and rails
+  still on screen. It counts what the axis holds now, which also covers a plan whose only
+  visible note is a milestone.
+
+- **A bar drag or resize no longer loses its release.** If the vault changed while a bar was
+  in the air — which happens most often in the first minutes after a view is opened, while
+  the query is still settling — the release could write nothing at all: the ghost showed the
+  dates it meant, the bar snapped back, and nothing was said about it. The view now waits for
+  the gesture to finish before it rebuilds.
+
+- **Dragging a bar into someone else's row lands there.** The drag preview itself was taking
+  the release: it is drawn in the row the bar came from, so a body drag — whose pointer sits
+  inside the ghost by construction — was answered with the row it started in, leaving the
+  bar with its original owner and never lighting up the row it was aimed at. End grips were
+  unaffected, since a resize never asks which row it landed in.
 
 - **Lanes will not be built** on the roadmap or the board. They were tried and refused.
 

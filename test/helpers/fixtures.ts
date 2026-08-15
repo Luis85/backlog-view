@@ -211,14 +211,19 @@ export function demoVault(layout: Layout = 'flat', extra = 0): FakeVault {
 		'Billing',
 	);
 
-	// Two unavailable stretches, which are the resources axis's second SOURCE and are not
-	// work items at all — no parent, no rank, no state. One in a row that already has
-	// bars, so a stretch reads against the work it crosses; one for a resource nobody is
-	// assigned to and no roster names, which MINTS a row of its own, the case where an
-	// absence is the only reason a row is on screen at all. That second one is also the
-	// case whose window the grid used to size without it.
+	// Four unavailable stretches, which are the resources axis's second SOURCE and are not
+	// work items at all — no parent, no rank, no state. One in a row that already has bars,
+	// so a stretch reads against the work it crosses; one for a resource nobody is assigned
+	// to and no roster names, which MINTS a row of its own, the case where an absence is the
+	// only reason a row is on screen at all — also the case whose window the grid used to
+	// size without it. One that has ENDED, the case the band header's readout must count as
+	// nothing: a fixed past date rather than a today-relative one, so it stays past as the
+	// clock moves. And a fourth, overlapping the offsite, so the harness draws a two-sub-lane
+	// header — the case `packLanes` exists for.
 	add('Dana is at the offsite', { type: 'Absence', assignee: 'Dana', start: '2026-08-10', due: '2026-08-14' });
 	add('Sam is on leave', { type: 'Absence', assignee: 'Sam', start: '2026-09-01', due: '2026-09-18' });
+	add('Dana was at a conference', { type: 'Absence', assignee: 'Dana', start: '2026-07-06', due: '2026-07-10' });
+	add('Dana has a training week', { type: 'Absence', assignee: 'Dana', start: '2026-08-12', due: '2026-08-18' });
 
 	// A parent the Base excludes, with a child it returns: the context row on screen.
 	// Carries a risk and an assignee too, so the context row draws both STATIC chips beside

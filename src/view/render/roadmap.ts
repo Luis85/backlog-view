@@ -13,8 +13,9 @@ import { newItemType, promptCreateItem } from '../interactions/create';
 import { gestureAt, previewer, submitGesture, TimelineParts, wireTimelineDrag } from '../interactions/timelineDrag';
 import { StatePalette, statePalettes } from '../../domain/board';
 import { timelineRows } from '../../domain/bars';
+import { isMarkerType } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
-import { buildRoadmap, HorizonBucket, ResourceLane, RoadmapAxis, RoadmapModel } from '../../domain/roadmap';
+import { axisPopulation, buildRoadmap, HorizonBucket, ResourceLane, RoadmapAxis, RoadmapModel } from '../../domain/roadmap';
 import { scaleFor, TimelineScale, TimelineWindow } from '../../domain/timeline';
 import { CivilDate } from '../../domain/noteFields';
 
@@ -56,7 +57,7 @@ export function renderRoadmap(
 			window: null,
 			scale: null,
 			leadWidth: null,
-			drawn: { done: false, milestone: false, accent: false, absence: false },
+			drawn: { done: false, milestone: false, accent: false, absence: false, daysLost: false },
 			palettes: [],
 		};
 	}
@@ -69,7 +70,7 @@ export function renderRoadmap(
 	let window: TimelineWindow | null = null;
 	let scale: TimelineScale | null = null;
 	let leadWidth: number | null = null;
-	let drawn: DrawnColors = { done: false, milestone: false, accent: false, absence: false };
+	let drawn: DrawnColors = { done: false, milestone: false, accent: false, absence: false, daysLost: false };
 	// The dated axis's own dependency conflicts (see `TimelineRender.dependencyConflicts`)
 	// — empty on the horizon axis, where a shelved dependent's stated START has no
 	// meaning at all.
@@ -98,19 +99,15 @@ export function renderRoadmap(
 		drawn = timeline.drawn;
 		dependencyConflicts = timeline.dependencyConflicts;
 	}
-	// Captured before the shelf renders: collapsing the shelf changes ITS contribution
-	// to `cards` (see `renderShelf`), never the axis's own — this is the true "does the
-	// roadmap have anything to show" count, including context cards already placed in
-	// a bucket, which no domain-model counter answers on its own.
-	// What the axis HOLDS, which since a bucket can be folded is no longer what it drew:
-	// the buckets are counted rather than the cards pushed above. A roadmap whose every
-	// bucket is shut is not a roadmap with nothing on it, and telling the reader their work
-	// was all done or all filtered away would be the same lie the collapsed shelf already
-	// had to be kept out of. The grid axes fold nothing, so there `cards` still is the
-	// population — and it is read HERE, before the shelf renders, because collapsing the
-	// shelf changes ITS contribution and never the axis's own.
-	const axisPopulation =
-		axis === 'horizons' ? roadmap.buckets.reduce((n, bucket) => n + bucket.cards.length, 0) : cards.length;
+	// What the axis HOLDS, which is no longer what it drew on any of the three:
+	// `axisPopulation` (`domain/roadmap.ts`) counts the model rather than the cards pushed
+	// above. A roadmap whose every bucket is shut, whose every band is folded, or whose only
+	// visible note is a milestone in the shared header track is not a roadmap with nothing on
+	// it, and telling the reader their work was all done or all filtered away would be the
+	// same lie the collapsed shelf already had to be kept out of. This was the buckets alone
+	// until 2026-08-15, with `cards.length` for the grid axes and a sentence beside it saying
+	// they fold nothing — true when it was written and untrue since bands learnt to.
+	const population = axisPopulation(roadmap);
 	const removal = shelfRemoval(host, axis);
 	const shelf = renderShelf(ctx, frameEl, { cards: roadmap.shelf, conflicts: dependencyConflicts, axis }, dnd, removal);
 	cards.push(...shelf.cards);
@@ -124,7 +121,7 @@ export function renderRoadmap(
 	const advisoryEl = renderRoadmapAdvisory(
 		ctx,
 		frameEl,
-		axisPopulation + roadmap.shelf.length + roadmap.context.length,
+		population + roadmap.shelf.length + roadmap.context.length,
 		treeEl,
 	);
 
@@ -225,6 +222,7 @@ function renderGridAxis(
 		dnd,
 		shelf: roadmap.shelf,
 		palettes,
+		lanes: axis === 'resources' ? roadmap.lanes : [],
 		laneElement: axis === 'resources' ? (el, lane) => band.push({ el, lane }) : null,
 		// The PANE's width, not the frame's or the not-yet-built scroller's: this is
 		// the element `backlogView.ts`'s `ResizeObserver` watches, so a render here and
@@ -302,7 +300,17 @@ function wireLaneDrop(
 			// beside a colleague's bar is not handing it to them. Routing it through the
 			// resource move to then re-state the row the note already holds would be the same
 			// write said twice, with a removal one null away.
-			if (source.hold === 'start' || source.hold === 'end') {
+			// **A MARKER is the dated axis's own gesture too, and the test is asked of BOTH
+			// ends of the release.** The milestones' row stands for nobody, so a release IN it
+			// says when and never who — writing its header's caption into an assignee property
+			// would invent a resource out of a row's name. And a marker released in somebody
+			// ELSE's band is the same answer from the other side: it draws in the milestones'
+			// row whatever its assignee says ([[Milestones out of the resource rows]]), so a
+			// row write there would be a change the reader is never shown, spent from the one
+			// undo slot. `Set assignee` still writes one — a note may record who owns a date;
+			// what may not happen is a POSITIONAL gesture writing a value this axis does not
+			// read.
+			if (band.lane.markers || isMarkerType(source.item.typeName) || source.hold === 'start' || source.hold === 'end') {
 				submitGesture(host, source, gesture);
 				return;
 			}

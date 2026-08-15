@@ -6,10 +6,10 @@ status: Done
 started: ""
 finished: ""
 horizon: ""
-start: ""
-due: ""
+start: 2026-09-21
+due: 2026-09-27
 risk: ""
-assignee: ""
+assignee: Alex
 ---
 
 # View state

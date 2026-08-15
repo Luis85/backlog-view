@@ -18,7 +18,7 @@ files:
   - src/storage/viewStateStore.ts
   - src/domain/viewOptions.ts
   - styles/propertyColumns.css
-  - styles/timeline.css
+  - styles/timelineLeadResize.css
 started: ""
 finished: ""
 horizon: ""

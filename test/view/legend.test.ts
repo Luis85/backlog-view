@@ -130,12 +130,13 @@ describe('the roadmap legend', () => {
 		expect(containerEl.querySelector('.pbl-timeline-row.pbl-done .pbl-bar')).not.toBeNull();
 	});
 
-	it('keys the hatch where a stretch drew, and loses it when the band folds shut', () => {
+	it('keys the hatch where a stretch drew, and keeps it when the band folds shut', () => {
 		// The rule every swatch here keeps, asked of the one mark that is not a colour: the
-		// report comes off the RENDER, so a band folded shut draws no stretch and the key has
-		// to lose the entry with it. A predicate over `roadmap.lanes` would go on claiming a
-		// mark nothing on screen makes — the mistake the done and milestone swatches each
-		// made once.
+		// report comes off the RENDER rather than a predicate over `roadmap.lanes` — the
+		// mistake the done and milestone swatches each made once. What that means changed on
+		// 2026-08-14: a stretch draws in its resource's HEADER now, and a header draws whether
+		// its band is open or shut, so folding no longer takes the mark off screen — unlike
+		// before, when it was a row of its own that a fold's `laneEntries` skipped whole.
 		const vault = new FakeVault();
 		vault.addFile('Work.md', {
 			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
@@ -158,7 +159,93 @@ describe('the roadmap legend', () => {
 		expect(swatchLabels(containerEl)).toContain('Unavailable');
 
 		view.setLaneCollapsed('Alice', true);
-		expect(swatchLabels(containerEl)).not.toContain('Unavailable');
+		expect(swatchLabels(containerEl)).toContain('Unavailable');
+	});
+
+	it('sits inside the ancestor --pbl-away is actually scoped to', () => {
+		// The stylesheet-text pairing in `timelineBoxing.test.ts` supplies `.pbl-roadmap-dates`
+		// as the scope selector by hand, so it would catch a REGRESSION back to the old wrong
+		// scope but not a future move to a different wrong-but-updated selector. This is the
+		// DOM half: the legend really is a descendant of the element that class lands on.
+		const { view, containerEl } = makeView(datedVault(), { ...DATE_AXIS, ...WORKFLOW }, { collapsed: true });
+		view.setProjection('roadmap');
+
+		const legend = legendEl(containerEl);
+		expect(legend?.closest('.pbl-roadmap-dates')).not.toBeNull();
+	});
+
+	it('keys days lost exactly when a clash drew, on the same rule as the hatch beside it', () => {
+		// `drawn.daysLost` is the render's own word for "some row on this grid reported a
+		// cost", asked the same way `drawn.absence` is — never a predicate over
+		// `roadmap.lanes`, which cannot see a fold or a filter taking the clash off screen.
+		const vault = new FakeVault();
+		vault.addFile('Work.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
+		});
+		vault.addFile('Alice away.md', {
+			frontmatter: { type: 'Absence', assignee: 'Alice', start: '2026-08-04', due: '2026-08-06' },
+		});
+		const { view, containerEl } = makeView(
+			vault,
+			{ ...DATE_AXIS, assigneeProperty: 'note.assignee', resourceNames: 'Alice' },
+			{ collapsed: true },
+		);
+		view.setProjection('roadmap');
+
+		// The plain dated axis draws no band and so no clash at all.
+		view.setAxisPick('dates');
+		expect(swatchLabels(containerEl)).not.toContain('Days lost');
+
+		view.setAxisPick('resources');
+		expect(swatchLabels(containerEl)).toContain('Days lost');
+	});
+
+	it('keys no days lost where nothing on the grid crosses a stretch', () => {
+		const vault = new FakeVault();
+		vault.addFile('Clear.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-02' },
+		});
+		const { view, containerEl } = makeView(
+			vault,
+			{ ...DATE_AXIS, assigneeProperty: 'note.assignee', resourceNames: 'Alice' },
+			{ collapsed: true },
+		);
+		view.setProjection('roadmap');
+		view.setAxisPick('resources');
+
+		expect(swatchLabels(containerEl)).not.toContain('Days lost');
+	});
+
+	it('keys no days lost for a crossing whose own sentence never drew', () => {
+		// `drawn.daysLost` is set from the append into the bar's title label actually
+		// happening, not from `crossed.length > 0` — a defect this pass had until review: a
+		// bar whose title label is dropped (`renderBarLabel`) still crosses (its lead swatch
+		// draws) but has nowhere to put a `.pbl-days-lost` sentence, and the legend must not
+		// claim a key for a mark nothing on screen makes. Reached the same way
+		// `absenceCollision.test.ts` reaches it: a near-term backlog at quarter zoom, where
+		// `timelineFurniture.test.ts` already establishes every bar's label is dropped.
+		const vault = new FakeVault();
+		vault.addFile('Work.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
+		});
+		vault.addFile('Alice away.md', {
+			frontmatter: { type: 'Absence', assignee: 'Alice', start: '2026-08-04', due: '2026-08-06' },
+		});
+		const { view, containerEl } = makeView(
+			vault,
+			{ ...DATE_AXIS, assigneeProperty: 'note.assignee', resourceNames: 'Alice' },
+			{ collapsed: true },
+		);
+		view.setProjection('roadmap');
+		view.setAxisPick('resources');
+		view.setZoom('quarter');
+
+		// The crossing itself still shows — the lead swatch draws regardless of the title's
+		// own room — and the title itself really is the thing that dropped.
+		expect(containerEl.querySelector('.pbl-bar-label')).toBeNull();
+		expect(containerEl.querySelector('.pbl-away-swatch')).not.toBeNull();
+		expect(containerEl.querySelector('.pbl-days-lost')).toBeNull();
+		expect(swatchLabels(containerEl)).not.toContain('Days lost');
 	});
 
 	it('stays under the toolbar and outside the timeline scroller, so it never scrolls away', () => {

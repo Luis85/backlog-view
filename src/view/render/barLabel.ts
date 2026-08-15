@@ -52,6 +52,13 @@ function markWidth(geometry: BarGeometry, scale: TimelineScale): number {
  * The title where the reader's eye already is — decoration only. The row's
  * accessible name carries the title and the bar's aria-label the dates, so this
  * is aria-hidden; pointer-events die in CSS so the grips never lose a hit.
+ *
+ * Returns the element it created, or `null` where it dropped the label instead — the
+ * one other thing this file decides that a caller needs back. `drawBandCollision`
+ * (`render/timeline.ts`) is that caller: the days-lost sentence lands INSIDE this same
+ * label rather than beside the bar with its own position, so a bar too cramped for its
+ * own title is too cramped for the sentence about it as well, by construction rather
+ * than by a second width check repeating this one.
  */
 export function renderBarLabel(
 	track: HTMLElement,
@@ -59,7 +66,7 @@ export function renderBarLabel(
 	geometry: BarGeometry,
 	scale: TimelineScale,
 	window: TimelineWindow,
-): void {
+): HTMLElement | null {
 	const left = geometry.startDay * scale.dayPx;
 	const width = markWidth(geometry, scale);
 	// The mark's own left edge, which is NOT `--pbl-bar-left` for the diamond: the
@@ -90,8 +97,16 @@ export function renderBarLabel(
 	// Nothing is lost by dropping it — the row's lead carries the same title, which is
 	// what makes this decoration rather than content, and squeezing it over the bar would
 	// only trade a hidden label for an unreadable one.
-	if (!after && markLeft < LABEL_RESERVE_PX) return;
-	const label = track.createDiv({ cls: 'pbl-bar-label', text: bar.item.title, attr: { 'aria-hidden': 'true' } });
+	if (!after && markLeft < LABEL_RESERVE_PX) return null;
+	const label = track.createDiv({ cls: 'pbl-bar-label', attr: { 'aria-hidden': 'true' } });
+	// The title's own child, not text on `label` directly: `label` is a flex row now, and
+	// `drawBandCollision` appends `.pbl-days-lost` as a SECOND child of it — a title long
+	// enough to fill the whole box would otherwise ellipsize the token itself off the end
+	// of the line, since `text-overflow: ellipsis` truncates at the line's end regardless
+	// of which content put it there. `.pbl-bar-label-title` carries `min-width: 0` (a flex
+	// item's default `min-width: auto` refuses to shrink below its own content) plus the
+	// ellipsis this element used to carry — `styles/timelineFurniture.css`.
+	label.createSpan({ cls: 'pbl-bar-label-title', text: bar.item.title });
 	if (after) {
 		label.addClass('pbl-bar-label-after');
 		label.setCssProps({ '--pbl-label-left': `${markLeft + width}px` });
@@ -99,4 +114,5 @@ export function renderBarLabel(
 		label.addClass('pbl-bar-label-before');
 		label.setCssProps({ '--pbl-label-right': `${trackWidth - markLeft}px` });
 	}
+	return label;
 }

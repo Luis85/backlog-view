@@ -2,6 +2,7 @@ import { Menu } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { BacklogItem } from '../../domain/model';
 import { sameValue } from '../../domain/noteFields';
+import { assignableLanes } from '../../domain/roadmap';
 import { mergedValues } from '../../domain/settings';
 import { resolveSettings } from '../../domain/settingsResolve';
 import { computeAssigneeWrites, computeRiskWrites, ItemWrite } from '../../domain/writePlan';
@@ -82,7 +83,10 @@ function assigneeChoices(host: BacklogViewHost, item: BacklogItem): string[] {
 	// is one statement the view options make about this base, not a fact gathered off a
 	// population, so there is no other projection's names for it to leak.
 	const observed = host.model ? rowVocabulary(host.model, item).observedAssignees : [];
-	const drawn = onResourceAxis(host) ? (host.roadmap?.roadmap.lanes ?? []).map((lane) => lane.name) : [];
+	// `assignableLanes`, not the lanes: the milestones' row is drawn on this axis and is
+	// nobody, so offering it would assign ordinary work to a synthetic row. Shared with the
+	// Alt+arrow ladder, which offered it too.
+	const drawn = onResourceAxis(host) ? assignableLanes(host.roadmap?.roadmap).map((lane) => lane.name) : [];
 	const values = mergedValues(drawn, host.settings.resourceNames, observed);
 	const current = item.assigneeValue;
 	if (current === null || values.some((v) => sameValue(v, current))) return values;

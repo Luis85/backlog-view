@@ -683,20 +683,38 @@ function wikilinkTo(app: App, target: TFile, sourcePath: string): string {
  * there. Shared by both creators in this directory, so an absence and a work item cannot
  * disagree about what a title becomes on disk or about what happens when the name is
  * taken.
+ *
+ * `self` is the file being RENAMED, and its own path is free rather than taken. A creator
+ * passes nothing — there is no file yet — but a rename asks this question about a note
+ * that is already on disk, and counting its own path as occupied appends a number to a
+ * name it already answers to. That is not a hypothetical: a derived name collides once,
+ * lands at `X 1`, and every later rename to the same derived name then finds `X` taken and
+ * `X 1` taken by the note itself, so the suffix ratchets (`X 2`, `X 3`) with every edit and
+ * rewrites every link naming it. Driven by "leaves a note that already landed on a collided
+ * name where it is" in `test/view/resourceAbsences.test.ts`.
  */
-export function uniqueNotePath(app: App, folder: string, title: string): string {
+export function uniqueNotePath(app: App, folder: string, title: string, self?: TFile): string {
 	const base = sanitizeTitle(title);
 	const filePath = (name: string) => (folder ? normalizePath(`${folder}/${name}.md`) : `${name}.md`);
+	const taken = (path: string) => path !== self?.path && app.vault.getAbstractFileByPath(path) !== null;
 	let path = filePath(base);
-	for (let i = 1; app.vault.getAbstractFileByPath(path) !== null; i++) path = filePath(`${base} ${i}`);
+	for (let i = 1; taken(path); i++) path = filePath(`${base} ${i}`);
 	return path;
 }
 
 /**
- * What a title becomes on disk, before any collision suffix. Exported for the one caller
- * that has to ask the question WITHOUT taking a path: a rename asks whether the note
- * already answers to this name, and comparing the raw title to a basename answers a
- * different question — `Offsite?` and `Offsite` are one file name and two strings.
+ * What a title becomes on disk, before any collision suffix.
+ *
+ * Exported for the one caller that has to ask the question WITHOUT taking a path:
+ * `absenceSaid` (`view/render/lanes.ts`) compares a note's BASENAME against the name
+ * `absenceTitle` derives from its facts, and those are two strings for one file name the
+ * moment a resource holds a character this replaces — `A/B away …` is filed as `A-B away
+ * …`. Sanitizing the derived side is what makes that comparison ask about the name the
+ * note actually has.
+ *
+ * `view/` may reach `storage/` (the layering is main → commands → view → storage →
+ * domain, and `eslint.config.mjs` forbids only view → commands); `domain/` may not, which
+ * is why this question is asked in the view rather than beside `absenceTitle`.
  */
 export function sanitizeTitle(title: string): string {
 	const cleaned = title

@@ -1,10 +1,12 @@
-// @vitest-environment jsdom
+﻿// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { shelfRemoval } from '../../src/view/render/shelf';
 import { clickExpandAll, Harness, makeView, useViewHarness } from '../helpers/view';
-import { gripNames, laneCountOf, laneNames, laneOrder, lanesOf, rowFor, shelfTitles } from '../helpers/roadmap';
-import { resourceVault } from '../helpers/resources';
+import { gripNames, laneAwayOf, laneCountOf, laneNames, laneOrder, lanesOf, rowFor, shelfTitles } from '../helpers/roadmap';
+import { countingVault, resourceVault } from '../helpers/resources';
+import { addDays, formatCivil } from '../../src/domain/timeline';
+import { readDate, todayStamp } from '../../src/domain/noteFields';
 
 useViewHarness();
 
@@ -24,6 +26,14 @@ const RESOURCES = {
 };
 
 /**
+ * `todayCivil()` reads the live clock and no test fakes it, so a fixture that has to be
+ * "before today" or "after today" is built from the same clock — the pattern
+ * `test/view/timelineLeadGeometry.test.ts` uses for the today line.
+ */
+const TODAY = readDate(todayStamp()).value ?? { year: 2026, month: 1, day: 1 };
+const dayFromToday = (offset: number): string => formatCivil(addDays(TODAY, offset));
+
+/**
  * A roadmap opened on the resources axis, with Alice and Bob declared. `only` narrows
  * what the Base returns, so everything else in the vault loads as context; `focus` is UI
  * state and never a config key (ADR 0011), which is why it goes to the harness rather
@@ -31,9 +41,9 @@ const RESOURCES = {
  */
 function laneRoadmap(
 	vault: FakeVault,
-	{ only, focus, expanded }: { only?: string[]; focus?: string; expanded?: boolean } = {},
+	{ only, focus, expanded, config }: { only?: string[]; focus?: string; expanded?: boolean; config?: Record<string, unknown> } = {},
 ): Harness {
-	const harness = makeView(vault, { ...RESOURCES, resourceNames: 'Alice, Bob' }, {
+	const harness = makeView(vault, { ...RESOURCES, resourceNames: 'Alice, Bob', ...config }, {
 		collapsed: !expanded,
 		only,
 		focus,
@@ -80,8 +90,8 @@ describe('the resources axis on screen', () => {
 	it('counts result bars on the header, and shelves what has no row to sit in', () => {
 		const harness = laneRoadmap(resourceVault());
 		const [alice, bob] = lanesOf(harness.containerEl);
-		expect(laneCountOf(alice)).toBe('2');
-		expect(laneCountOf(bob)).toBe('0');
+		expect(laneCountOf(alice)).toBe('2 items');
+		expect(laneCountOf(bob)).toBe('');
 		// `Nobody` names no resource; `Undated` names one and has no date to be placed at.
 		expect(shelfTitles(harness.containerEl).sort()).toEqual(['Nobody', 'Undated']);
 	});
@@ -181,6 +191,25 @@ describe('folding on the resources axis', () => {
 		return rowFor(containerEl, title)?.querySelector<HTMLElement>('.pbl-chevron:not(.pbl-leaf)') ?? null;
 	}
 
+	/** Alice's own near-dated parent, alone — the window this fixture would draw with no far bar at all. */
+	function nearOnlyVault(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: dayFromToday(0), due: dayFromToday(5) },
+		});
+		return vault;
+	}
+
+	/** The same parent, plus a child a year out — far enough to widen the grid if anything draws it. */
+	function nearAndFarVault(): FakeVault {
+		const vault = nearOnlyVault();
+		vault.addFile('Far child.md', {
+			frontmatter: { type: 'Feature', order: 10, assignee: 'Alice', start: dayFromToday(400), due: dayFromToday(405) },
+			parentLink: 'Epic',
+		});
+		return vault;
+	}
+
 	function bandChevron(containerEl: HTMLElement, name: string): HTMLButtonElement | null {
 		const head = lanesOf(containerEl).find((el) => el.querySelector('.pbl-lane-name')?.textContent === name);
 		return head?.querySelector<HTMLButtonElement>('.pbl-chevron') ?? null;
@@ -198,6 +227,22 @@ describe('folding on the resources axis', () => {
 		expect(laneNames(containerEl)).toEqual(['Alice', 'Bob']);
 		expect(laneOrder(containerEl)).toEqual(['lane:Alice', 'lane:Bob', 'Other band']);
 		expect(bandChevron(containerEl, 'Alice')?.getAttribute('aria-label')).toBe("Show Alice's work");
+	});
+
+	it('does not report the plan empty when every band that holds work is folded', () => {
+		// A folded band draws its header, its count and its rail, and produces no `'row'`
+		// entry at all — so the advisory's population, read off what the axis DREW, went
+		// to zero and told the reader every item was done and hidden while their work sat
+		// on screen behind a chevron they could reopen. The horizons axis was given the
+		// model's own count for exactly this reason when a bucket learnt to fold; this
+		// axis kept the drawn one after its bands learnt the same trick.
+		const { containerEl } = laneRoadmap(nestedVault(), { expanded: true });
+		for (const name of ['Alice', 'Bob'])
+			bandChevron(containerEl, name)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		// The premise beside the conclusion: nothing on the grid is a row any more.
+		expect(rowFor(containerEl, 'Epic')).toBeNull();
+		expect(containerEl.querySelector('.pbl-board-advisory')).toBeNull();
 	});
 
 	it('puts focus on the pane when the disclosure that held it is folded away', () => {
@@ -247,6 +292,44 @@ describe('folding on the resources axis', () => {
 
 		// Holding nothing back from where it sits, so it says so: a leaf, not a shut row.
 		expect(rowChevron(containerEl, 'Epic')).toBeNull();
+	});
+
+	it('does not widen the grid for a row-collapsed subtree whose child is far future', () => {
+		// The narrower half of `drawnSpans`' fix: it reads a folded BAND's bars from the
+		// LANE ENTRY's own `collapsed`, never from `lane.bars` unconditionally. An open
+		// band's row-collapsed subtree draws nothing at all — not a row, not a rail — so it
+		// must not widen the window either, or eleven months of empty gridlines is exactly
+		// what a reader who folded that one bar away would still have to scroll past.
+		const harness = laneRoadmap(nearAndFarVault(), { expanded: true });
+		rowChevron(harness.containerEl, 'Epic')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		const baseline = laneRoadmap(nearOnlyVault());
+		// The direct reading `test/view/timelineFurniture.test.ts` and `timelineDrag.test.ts`
+		// already use, rather than a proxy over how many header cells happened to render —
+		// and pinned with a concrete floor rather than compared bare, since an unconfigured
+		// window on both sides (`undefined`) would satisfy an equality just as loudly as an
+		// actual match and say nothing at all. A month padded either side of a five-day span
+		// is comfortably past 30 days on any calendar.
+		const baselineDays = baseline.view.roadmap?.window?.days;
+		expect(baselineDays, 'the baseline drew no window at all').toBeGreaterThan(30);
+		expect(harness.view.roadmap?.window?.days).toBe(baselineDays);
+	});
+
+	it('widens the grid for a folded band whose own bar is far future', () => {
+		// The other half of the same fix: a folded BAND draws no rows either, but it does
+		// draw a rail — so unlike the row-collapsed case above, its bars must still reach
+		// the window or the rail it needs them for has nothing to draw into.
+		const harness = laneRoadmap(nearAndFarVault(), { expanded: true });
+		harness.view.setLaneCollapsed('Alice', true);
+
+		const baseline = laneRoadmap(nearOnlyVault());
+		// The direct reading, not the header-cell proxy — see the sibling test above. Pinned
+		// the same way: `?? 0` here would let an unconfigured baseline (`undefined`) satisfy
+		// the comparison as soon as the harness drew ANY window at all, which is the carried
+		// fix the sibling test above got and this one did not.
+		const baselineDays = baseline.view.roadmap?.window?.days;
+		expect(baselineDays, 'the baseline drew no window at all').toBeGreaterThan(30);
+		expect(harness.view.roadmap?.window?.days).toBeGreaterThan(baselineDays as number);
 	});
 });
 
@@ -313,7 +396,130 @@ describe('a context row inside a resource row', () => {
 		const harness = laneRoadmap(contextVault(), { only: ['Result.md'], focus: 'Epic' });
 
 		// Placement, not population — the bucket axis's rule over a different property.
-		expect(laneCountOf(lanesOf(harness.containerEl)[0])).toBe('0');
+		expect(laneCountOf(lanesOf(harness.containerEl)[0])).toBe('');
 		expect(shelfTitles(harness.containerEl)).toEqual([]);
+	});
+});
+
+describe('the band header’s readout', () => {
+	it('reports the items and the weeks away as two separate things', () => {
+		const vault = countingVault([
+			{ title: 'Over', start: dayFromToday(-20), target: dayFromToday(-10) },
+			{ title: 'Ahead', start: dayFromToday(5), target: dayFromToday(11) },
+		]);
+		const harness = laneRoadmap(vault);
+		const alice = lanesOf(harness.containerEl)[0];
+
+		expect(laneCountOf(alice)).toBe('1 item');
+		// The ended stretch is not counted — the filter is the whole reason the pill exists.
+		expect(laneAwayOf(alice)).toBe('1 wk away');
+	});
+
+	it('drops the item count entirely at zero rather than reading a zero', () => {
+		const vault = countingVault([{ title: 'Ahead', start: dayFromToday(5), target: dayFromToday(9) }]);
+		vault.addFile('Away.md', {
+			frontmatter: { type: 'Absence', assignee: 'Bob', start: dayFromToday(5), due: dayFromToday(9) },
+		});
+		const harness = laneRoadmap(vault);
+		const bob = lanesOf(harness.containerEl)[1];
+
+		expect(laneCountOf(bob)).toBe('');
+		expect(laneAwayOf(bob)).toBe('1 wk away');
+	});
+
+	it('drops the pill when nothing is still to come', () => {
+		const vault = countingVault([{ title: 'Over', start: dayFromToday(-20), target: dayFromToday(-10) }]);
+		const harness = laneRoadmap(vault);
+
+		expect(laneCountOf(lanesOf(harness.containerEl)[0])).toBe('1 item');
+		expect(laneAwayOf(lanesOf(harness.containerEl)[0])).toBe('');
+	});
+
+	it('weights the pill up where the resource also holds work', () => {
+		// A busy-and-away row is the loudest thing in the column, because it is the one a
+		// planner has to do something about.
+		const vault = countingVault([{ title: 'Ahead', start: dayFromToday(5), target: dayFromToday(9) }]);
+		vault.addFile('Away.md', {
+			frontmatter: { type: 'Absence', assignee: 'Bob', start: dayFromToday(5), due: dayFromToday(9) },
+		});
+		const harness = laneRoadmap(vault);
+
+		expect(lanesOf(harness.containerEl)[0].querySelector('.pbl-lane-away')?.className).toContain('pbl-lane-away-busy');
+		expect(lanesOf(harness.containerEl)[1].querySelector('.pbl-lane-away')?.className).not.toContain(
+			'pbl-lane-away-busy',
+		);
+	});
+
+	it('keeps both the readout and the mark on a COLLAPSED band', () => {
+		// `laneEntries` skips a collapsed band's WORK rows, never its header — and since
+		// 2026-08-14 the stretch is drawn in the header's own track, not in a row `laneEntries`
+		// could skip. So folding takes the work rows off screen and leaves both the readout and
+		// the mark exactly as they were, which is what "one row per person whatever they have"
+		// means for a folded band: the header is never itself hidden.
+		const vault = countingVault([{ title: 'Ahead', start: dayFromToday(5), target: dayFromToday(9) }]);
+		const harness = laneRoadmap(vault);
+
+		harness.view.setLaneCollapsed('Alice', true);
+
+		expect(harness.containerEl.querySelectorAll('.pbl-absence')).toHaveLength(1);
+		expect(laneCountOf(lanesOf(harness.containerEl)[0])).toBe('1 item');
+		expect(laneAwayOf(lanesOf(harness.containerEl)[0])).toBe('1 wk away');
+	});
+
+	it('draws a lane with nothing at all as a quiet row', () => {
+		const harness = laneRoadmap(countingVault([]));
+		const bob = lanesOf(harness.containerEl)[1];
+
+		// Contrast, not opacity: a row-level `opacity` would dim the sticky lead column with
+		// it, which is the trap `styles/lanes.css` records at the context row's own muting.
+		expect(bob.classList.contains('pbl-lane-quiet')).toBe(true);
+		expect(lanesOf(harness.containerEl)[0].classList.contains('pbl-lane-quiet')).toBe(false);
+	});
+
+	it('is not quiet when the only thing it holds is a stretch', () => {
+		const vault = countingVault([{ title: 'Ahead', start: dayFromToday(5), target: dayFromToday(9) }]);
+		const harness = laneRoadmap(vault);
+
+		expect(lanesOf(harness.containerEl)[0].classList.contains('pbl-lane-quiet')).toBe(false);
+	});
+
+	it('draws a load rail for a band folded over work, and none for an open one', () => {
+		const harness = laneRoadmap(countingVault([]));
+
+		expect(lanesOf(harness.containerEl)[0].querySelectorAll('.pbl-lane-rail')).toHaveLength(0);
+		harness.view.setLaneCollapsed('Alice', true);
+		expect(lanesOf(harness.containerEl)[0].querySelectorAll('.pbl-lane-rail')).toHaveLength(1);
+	});
+
+	it('draws one rail per continuous run, not one per bar', () => {
+		const vault = countingVault([]);
+		// Two bars that share days, and one far away: two runs, three bars.
+		vault.addFile('Overlapping.md', {
+			frontmatter: { type: 'Epic', order: 20, assignee: 'Alice', start: '2026-08-05', due: '2026-08-15' },
+		});
+		vault.addFile('Later.md', {
+			frontmatter: { type: 'Epic', order: 30, assignee: 'Alice', start: '2026-10-01', due: '2026-10-10' },
+		});
+		const harness = laneRoadmap(vault);
+		harness.view.setLaneCollapsed('Alice', true);
+
+		expect(lanesOf(harness.containerEl)[0].querySelectorAll('.pbl-lane-rail')).toHaveLength(2);
+	});
+
+	it('renders the same rows folded and open when a lane holds no work', () => {
+		// The check under a REFUSAL: "no work → folded by default" was asked for and declined
+		// as inert, because a lane with no bars has nothing beneath its header either way.
+		// If that stops being true this fails, and the refusal gets re-decided rather than
+		// quietly outliving its reason.
+		const harness = laneRoadmap(countingVault([]));
+		const rowsWhenOpen = harness.containerEl.querySelectorAll('.pbl-lane-head, .pbl-timeline-row').length;
+		// Pinned rather than left to `rowsWhenOpen` alone: a fixture that stopped rendering
+		// anything would pass this at 0 === 0 and the refusal would go unchecked in silence.
+		// lane:Alice, Work's own row, lane:Bob.
+		expect(rowsWhenOpen).toBe(3);
+
+		harness.view.setLaneCollapsed('Bob', true);
+
+		expect(harness.containerEl.querySelectorAll('.pbl-lane-head, .pbl-timeline-row')).toHaveLength(rowsWhenOpen);
 	});
 });

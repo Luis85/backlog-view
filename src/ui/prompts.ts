@@ -339,10 +339,8 @@ export class SchedulePromptModal extends PromptModal<SchedulePromptOptions> {
 	}
 }
 
-/** The four facts an absence is: who is away, what to call it, and both ends of the range. */
 export interface AbsenceResult {
 	resource: string;
-	title: string;
 	start: string;
 	target: string;
 }
@@ -354,12 +352,15 @@ export interface AbsencePromptOptions extends Refusable<AbsenceResult> {
 	/** Names to suggest, so spellings stay consistent with the roster the view options name. */
 	known: string[];
 	/**
-	 * The stretch being EDITED, pre-filling the other three fields. Absent when adding one,
+	 * The stretch being EDITED, pre-filling the two date fields. Absent when adding one,
 	 * which is what makes this one form for both acts rather than two that can disagree
-	 * about what an absence is — the validator, the field list and the refusal rules are
-	 * the same questions whether the note exists yet or not.
+	 * about what an absence is — the validator, the field list and the refusal rules are the
+	 * same questions whether the note exists yet or not.
+	 *
+	 * No title among them since 2026-08-14: the note's name is derived from the three facts
+	 * (`absenceTitle`), so there is nothing here to pre-fill it with.
 	 */
-	editing?: { title: string; start: string; target: string };
+	editing?: { start: string; target: string };
 }
 
 /**
@@ -380,14 +381,12 @@ export class AbsencePromptModal extends PromptModal<AbsencePromptOptions> {
 		const editing = this.options.editing;
 		const values: AbsenceResult = {
 			resource: this.options.resource,
-			title: editing?.title ?? '',
 			start: editing?.start ?? '',
 			target: editing?.target ?? '',
 		};
 
 		const { errorEl, submit } = refusableBody(this, this.options, () => ({
 			resource: values.resource.trim(),
-			title: values.title.trim(),
 			start: values.start.trim(),
 			target: values.target.trim(),
 		}));
@@ -401,13 +400,14 @@ export class AbsencePromptModal extends PromptModal<AbsencePromptOptions> {
 					errorEl.setText('');
 				});
 				setup(text.inputEl);
-				submitOnEnter(text.inputEl, submit, key === 'title');
+				submitOnEnter(text.inputEl, submit, key === 'start');
 			});
 		};
 
 		field('Resource', 'resource', (input) => new KnownValueSuggest(this.app, input, this.options.known));
-		// Autofocused rather than the resource, which the row above already answered.
-		field('Title', 'title', (input) => (input.placeholder = 'Away'));
+		// Autofocused rather than the resource, which the row this was opened on already
+		// answered — and there is no title field to claim it since the name became a
+		// function of these three facts.
 		field('Start', 'start', (input) => (input.type = 'date'));
 		field('End', 'target', (input) => (input.type = 'date'));
 

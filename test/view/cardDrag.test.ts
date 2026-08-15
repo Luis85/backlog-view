@@ -136,7 +136,7 @@ describe('a link-kind payload against an ordinary drop target', () => {
 		const item = { file: { path: 'Alpha.md' } } as unknown as BacklogItem;
 		const host = { model: { byPath: new Map([['Alpha.md', item]]) } } as unknown as BacklogViewHost;
 		const viewEl = document.body.createDiv();
-		const dnd = new CardDragController(host, viewEl);
+		const dnd = new CardDragController(host, viewEl, () => {});
 		const source = viewEl.createDiv();
 		const target = viewEl.createDiv();
 		const plan = vi.fn();
@@ -178,7 +178,7 @@ describe('a link-kind payload against an ordinary drop target', () => {
 		const byPath = new Map([['Alpha.md', item]]);
 		const host = { model: { byPath } } as unknown as BacklogViewHost;
 		const viewEl = document.body.createDiv();
-		const dnd = new CardDragController(host, viewEl);
+		const dnd = new CardDragController(host, viewEl, () => {});
 		const card = viewEl.createDiv();
 		const target = viewEl.createDiv();
 		const plan = vi.fn();
@@ -219,7 +219,7 @@ describe('a link-kind payload against an ordinary drop target', () => {
 		const byPath = new Map([['Alpha.md', item]]);
 		const host = { model: { byPath } } as unknown as BacklogViewHost;
 		const viewEl = document.body.createDiv();
-		const dnd = new CardDragController(host, viewEl);
+		const dnd = new CardDragController(host, viewEl, () => {});
 		const card = viewEl.createDiv();
 		const target = viewEl.createDiv();
 		const plan = vi.fn();
@@ -253,9 +253,13 @@ describe('a Bases update that re-renders mid-gesture', () => {
 		// draggable this controller registered, and pragmatic resolves a source's own
 		// callbacks out of its registry AT DISPATCH TIME ("a draggable can be … removed
 		// completely"), so the `draggable`'s `onDrop` is skipped for a gesture that
-		// crossed a render. The drop itself still lands — the target under the pointer is
-		// a live element the new pass registered — which is exactly why the stale class
-		// goes unnoticed until the pane stops responding.
+		// crossed a render.
+		//
+		// The render is driven DIRECTLY rather than through a data update, and that is the
+		// point rather than a convenience: a data update is deferred while a gesture is in
+		// flight now (see the test below), so driving one here would no longer cross a
+		// render at all and this would assert nothing. A resize still can, so the monitor
+		// is still what owns this class.
 		const vault = new FakeVault();
 		vault.addFile('Planned.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-04', target: '2026-08-10' } });
 		const { view, containerEl } = makeView(vault, { startProperty: 'note.start', targetProperty: 'note.target' }, { collapsed: true });
@@ -267,12 +271,46 @@ describe('a Bases update that re-renders mid-gesture', () => {
 		gesture.over(overlayOf(containerEl), { clientX: 300 });
 		expect(viewEl.classList.contains('pbl-dragging')).toBe(true);
 
-		refresh(view, vault);
+		view.render();
 		// The overlay is re-queried on purpose: the one the gesture entered was destroyed
 		// by that render, and the drop lands on the element the new pass drew.
 		gesture.drop(overlayOf(containerEl), { clientX: 300 });
 		await flush();
 
 		expect(viewEl.classList.contains('pbl-dragging')).toBe(false);
+	});
+
+	it('still writes what the release named — the update waits for the drop', async () => {
+		// The failure this is the check for: a release that wrote NOTHING, said nothing and
+		// left the note as it found it, intermittently and most often in the first minutes
+		// after a view opened. The same render pass above unhooks every DROP TARGET too,
+		// and pragmatic looks one up in its registry at dispatch time exactly as it does a
+		// source — so the release is dispatched at a record whose element is no longer
+		// registered and reaches no `onDrop`. Nothing reports it: the write path is never
+		// entered, so there is no batch for the gate to refuse and no notice to show.
+		//
+		// So a data update waits for the gesture. The drop is dispatched at the element the
+		// drag ENTERED, with no `dragover` in between, which is the release a stationary
+		// pointer actually makes — re-querying the overlay here would model a gesture that
+		// moved again after the render and hide the case.
+		const vault = new FakeVault();
+		vault.addFile('Planned.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-04', target: '2026-08-10' } });
+		const { view, containerEl } = makeView(vault, { startProperty: 'note.start', targetProperty: 'note.target' }, { collapsed: true });
+		view.setProjection('roadmap');
+		const at = pannedGrid(containerEl, { rectLeft: 220, scrollLeft: 0 });
+		const overlay = overlayOf(containerEl);
+
+		const gesture = gridDrag.start(gripOf(containerEl, 'Planned', 'body'), { clientX: at(400) });
+		gesture.over(overlay, { clientX: at(500) });
+
+		refresh(view, vault);
+		gesture.drop(overlay, { clientX: at(500) });
+		await flush();
+
+		expect(vault.fm('Planned.md')['start']).toBe('2026-08-29');
+		// And the update the gesture held back is not lost with it: the frame the reader is
+		// left looking at is the one that has the write in it. Deferring for ever would
+		// pass the assertion above and leave the view showing the old dates.
+		expect(containerEl.querySelector('.pbl-bar')?.getAttribute('aria-label')).toContain('2026-08-29');
 	});
 });
