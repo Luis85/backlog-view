@@ -85,6 +85,13 @@ the moment the populations diverged, which is exactly what happened.
   restoring the note restores the saved scope. Stored state is user data, dropped rather
   than guessed at — the rule [[Horizons or dates]] extension 3a already states for the
   axis pick.
+- **2e — the chosen `Iteration` note, or a folder above it, is renamed.** The stored scope
+  **follows it**, and the board keeps showing the same iteration. This is the first UI
+  state whose value is a PATH, so it is the first that has to be migrated on a rename;
+  without it the stored path would go stale on a rename and drop the reader to `Product`
+  — a choice silently undone, which is the opposite of what 2a's "retained, not rewritten"
+  rule exists to protect. A folder rename counts, so the migration matches the path or its
+  `oldPath/` prefix rather than the renamed path alone.
 - **2b — the base holds several saved views.** The store keys by base plus view name, so
   one base can hold a product board beside an iteration board over the same notes. That
   is why the scope is per saved view rather than per base.
@@ -254,6 +261,8 @@ the moment the populations diverged, which is exactly what happened.
 - The scope persists per saved view in the collapse store's vault-scoped localStorage,
   survives a restart on that device, and never touches the `.base`. A stale stored scope
   renders `Product` and is retained rather than rewritten.
+- Renaming the chosen `Iteration` note — or a folder above it — carries the stored scope
+  with it, so the board keeps showing the same iteration.
 - Switching scope is a render decision: same model, same results, same undo slot, no
   re-query. The quick filter carries over.
 - Cards are exactly the results whose iteration link resolves to the chosen note,

@@ -343,7 +343,11 @@ cadence a team runs."
 
 **Interfaces:**
 - Consumes: `settings.iterationKey` from Task 2.
-- Produces: `BacklogItem.iterationPath: string | null` — the resolved note path of the linked Iteration, or `null`. Later tasks match on this, never on the raw string.
+- Produces: `BacklogItem.iterationLink: LinkEntry | null` — the `{ raw, file }` pair
+  `noteFields.ts` already defines, or `null` when the key holds nothing. Derived:
+  `iterationPath = item.iterationLink?.file?.path ?? null`. Population matching uses the
+  PATH; the plan (Task 4) needs the whole entry, because a link that resolved to nothing
+  is not the same as no link at all.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -365,8 +369,15 @@ describe('the iteration link', () => {
 		expect(readOne({ iteration: '[[Sprint 12]]' }, { iterationKey: '' }).iterationPath).toBe(null);
 	});
 
-	it('keeps a broken link as null rather than repairing it', () => {
-		expect(readOne({ iteration: '[[Gone]]' }, { iterationKey: 'iteration' }).iterationPath).toBe(null);
+	it('keeps a broken link rather than repairing it, and does not read as absent', () => {
+		const item = readOne({ iteration: '[[Gone]]' }, { iterationKey: 'iteration' });
+		expect(item.iterationPath).toBe(null);
+		// The distinction Task 4 needs: unresolved is NOT unset.
+		expect(item.iterationLink?.raw).toBe('[[Gone]]');
+	});
+
+	it('reads no entry at all when the key is absent', () => {
+		expect(readOne({}, { iterationKey: 'iteration' }).iterationLink).toBe(null);
 	});
 });
 ```
@@ -383,12 +394,21 @@ In `src/domain/readItems.ts`, beside where `deliverableStateValue` is read (arou
 ```ts
 	// Through the metadata cache like `parent` and `dependsOn`, never a string compare:
 	// a wikilink, an alias and a bare name all name one note, and only the cache knows
-	// which. A link naming nothing stays null and is NEVER repaired by a write — see
+	// which. A link naming nothing keeps its `raw` and is NEVER repaired by a write — see
 	// [[Broken links still render]].
-	const iterationPath = settings.iterationKey ? resolveLinkPath(app, fm, settings.iterationKey, path) : null;
+	//
+	// The whole ENTRY, not just the resolved path. `LinkEntry.raw` exists for exactly this
+	// case, and its own comment says so: it is "what a removal matches on for an entry
+	// that resolved to nothing". Collapsing an unresolved link to `null` would make it
+	// indistinguishable from an unset key, and the Set menu would then tick `None` on a
+	// note whose frontmatter still holds a broken link — offering as current an action
+	// that cannot be taken. That is the same defect the horizon menu shipped once.
+	const iterationLink = settings.iterationKey ? readLinkEntry(app, file, cache, settings.iterationKey) : null;
 ```
 
-Add `iterationPath: string | null` to the item interface and `iterationPath` to the returned object.
+Add `iterationLink: LinkEntry | null` to the item interface, plus a derived
+`iterationPath: string | null` (`iterationLink?.file?.path ?? null`) so the population
+filter in Task 7 stays a plain path compare.
 
 - [ ] **Step 4: Run the tests**
 
@@ -438,8 +458,18 @@ describe('computeIterationWrites', () => {
 
 	it('plans a delete for None', () => {
 		expect(computeIterationWrites(pbiInSprint12, null)).toEqual([
-			{ path: pbi.path, iteration: null },
+			{ path: pbi.path, file: pbi.file, iteration: null },
 		]);
+	});
+
+	it('plans a delete for None even when the link resolved to nothing', () => {
+		// Unresolved is not unset. Without this the menu ticks None and the broken
+		// value can never be cleared.
+		expect(computeIterationWrites(pbiWithBrokenLink, null)).toHaveLength(1);
+	});
+
+	it('plans nothing for None when the key is genuinely absent', () => {
+		expect(computeIterationWrites(pbi, null)).toEqual([]);
 	});
 });
 ```
@@ -472,7 +502,11 @@ In `src/domain/writePlan.ts`, beside `computeAssigneeWrites`:
  * of the two Obsidian picks.
  */
 export function computeIterationWrites(item: BacklogItem, target: TFile | null): ItemWrite[] {
-	if ((target?.path ?? null) === item.iterationPath) return [];
+	// `None` clears whatever the key holds, INCLUDING a link that resolved to nothing.
+	// Asking `iterationPath` alone would read a broken link as no link, tick `None` as
+	// current, and leave the user unable to clear the very value they can see.
+	if (target === null) return item.iterationLink === null ? [] : [{ path: item.path, file: item.file, iteration: null }];
+	if (target.path === item.iterationPath) return [];
 	return [{ path: item.path, file: item.file, iteration: target }];
 }
 ```
@@ -843,6 +877,14 @@ describe('an iteration board population', () => {
 			.not.toContain('Deferred'); // carried only in Sprint 13
 	});
 
+	it('observes the ITERATION state, not the product one, when the keys differ', () => {
+		const s = { ...base, stateKey: 'status', iterationStateKey: 'sprintState' };
+		// The card carries status: Blocked and sprintState: Started.
+		const observed = iterationWorkflow(inIteration(model, sprint12), s).observedValues;
+		expect(observed).toContain('Started');
+		expect(observed).not.toContain('Blocked');
+	});
+
 	describe('immune to the focus level', () => {
 		for (const level of ALL_TYPES) {
 			it(`is not narrowed by ${level} focus`, () => {
@@ -928,7 +970,7 @@ In `src/domain/board.ts`, beside `deliverablesWorkflow`:
  * the override.
  */
 export function iterationWorkflow(population: BacklogItem[], settings: BacklogSettings): Workflow {
-	const observed = collectObservedStates(population, settings);
+	const observed = collectObservedIterationStates(population, settings);
 	return {
 		stateOf: (item) => item.iterationStateValue,
 		values: menuValues(settings.iterationStates, settings.iterationDoneValues, observed),
@@ -937,6 +979,25 @@ export function iterationWorkflow(population: BacklogItem[], settings: BacklogSe
 		wipLimits: {},
 		columnPolicies: {},
 	};
+}
+```
+
+It takes the **population**, not the model, and that is the whole fix for the merged
+vocabulary: there is no model-wide list a scope could disagree with, because the only list
+is built from the cards this board holds.
+
+**`collectObservedStates` is the wrong collector**, and reaching for it is the obvious
+mistake. It hard-codes `item.stateValue` and `settings.doneValues`
+(`src/domain/vocabulary.ts`), so with a distinct `iterationStateProperty` it reads the
+PRODUCT state off every card: in-scope iteration values mint no column, and unrelated
+product values mint bogus ones. Add a sibling beside it, the way `collectObservedAssignees`
+already sits beside it:
+
+```ts
+/** Every iteration state this board's own cards carry, open ones first then done. */
+export function collectObservedIterationStates(all: VocabularySource[], settings: BacklogSettings): string[] {
+	const values = firstSeen(all, (item) => (item.iterationStateValue === null ? [] : [item.iterationStateValue]));
+	return sortOpenThenDone(values, settings.iterationDoneValues);
 }
 ```
 
@@ -998,6 +1059,18 @@ describe('the board scope', () => {
 		store.setBoardScope(null);
 		expect(rawEntry(store)).not.toHaveProperty('boardScope');
 	});
+
+	it('follows the note when it is renamed', () => {
+		store.setBoardScope('docs/iterations/Sprint 12.md');
+		store.renamePath('docs/iterations/Sprint 12.md', 'docs/iterations/Sprint 12 (Q3).md');
+		expect(store.boardScope()).toBe('docs/iterations/Sprint 12 (Q3).md');
+	});
+
+	it('follows the note when a FOLDER above it is renamed', () => {
+		store.setBoardScope('docs/iterations/Sprint 12.md');
+		store.renamePath('docs/iterations', 'docs/sprints');
+		expect(store.boardScope()).toBe('docs/sprints/Sprint 12.md');
+	});
 });
 ```
 
@@ -1016,12 +1089,29 @@ In `src/storage/collapseStore.ts`, add `boardScope?: string | null` to both the 
 
 `boardScope()` / `setBoardScope()` in `collapseState.ts` beside `axisPick()` / `setAxisPick()`; the accessor pair in `uiState.ts` beside `axisPick`, asking `hooks.render()` — a full render, like the projection: no Bases refresh follows a change it was not told about. Declare both on `BacklogViewHost` in `host.ts` and forward in one line from `backlogView.ts`.
 
-- [ ] **Step 5: Run the tests**
+- [ ] **Step 5: Migrate it on a rename**
+
+This is the step the other UI-state picks did not need and this one does, because it is
+the first pick whose VALUE is a path. `CollapseState.renamePath` migrates the collapsed
+and settled row keys and nothing else, so without this a renamed sprint note leaves the
+stored scope pointing at the old path, resolution reads it as stale, and the user is
+silently dropped to Product — a rename quietly undoing a choice, which is the opposite of
+the "retained, not rewritten" rule the stale case exists to keep.
+
+Run the value through `movedPath(this.scope, oldPath, newPath)` in the same loop, and set
+`changed` when it moves. `movedPath` is what makes the folder case work for free: it
+matches the exact path OR the `oldPath + '/'` prefix, so a renamed *folder* carries the
+note inside it. A comparison against the renamed path alone would leave it behind — the
+mistake `renamePath`'s own comment records for the row keys.
+
+Both cases are covered by the two tests in Step 1.
+
+- [ ] **Step 6: Run the tests**
 
 Run: `npx vitest run test/storage/collapseStore.test.ts`
-Expected: PASS.
+Expected: PASS, including both rename cases.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 npm run check
@@ -1032,7 +1122,12 @@ Vault-scoped localStorage, per saved view, per device, never the .base —
 ADR 0011's rule applied again. Stored as a plain string rather than through
 readEnum: a note path is not a closed vocabulary, so there is no list to check
 against, and resolution rather than storage decides that a stale path renders
-Product. That split is what keeps a stale scope retained instead of rewritten."
+Product. That split is what keeps a stale scope retained instead of rewritten.
+
+It is the first UI-state pick whose value is a PATH, so it is also the first that has to
+be migrated on a rename — through `movedPath`, which carries a note whose FOLDER was
+renamed as well as one renamed directly. Without it a rename would silently drop the
+reader to Product, which is a choice undone rather than retained."
 ```
 
 ---

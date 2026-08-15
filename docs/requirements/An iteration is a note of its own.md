@@ -102,6 +102,14 @@ declared name owes: a default subfolder, an icon and a badge colour.
   `parent` and `dependsOn` already are, through the metadata cache: a broken link is kept
   and rendered, never silently dropped and never repaired by a write nobody asked for
   ([[Broken links still render]]).
+
+  **Unresolved is not unset**, and the two must not collapse into one answer. The read
+  keeps the entry the note spells as well as whatever it resolved to — the `raw`/`file`
+  pair `noteFields.ts` already defines, whose own comment says `raw` is what a removal
+  matches on for an entry that resolved to nothing. Collapsing an unresolved link to "no
+  value" would tick `None` as the current choice on a note whose frontmatter visibly holds
+  a link, and leave the reader no way to clear the very value they can see — the horizon
+  menu's defect, reached by a different road.
 - **4b — two `Iteration` notes share a basename in different folders.** The link written
   still names the chosen one, because the plan carries the target FILE and the writer
   spells the link from the editing note's own path — the same path-aware generation the
@@ -127,6 +135,8 @@ declared name owes: a default subfolder, an icon and a badge colour.
 - The value is a wikilink to the Iteration note, read through the same link handling
   `parent` and `dependsOn` use, and WRITTEN through the same path-aware generation the
   parent link uses — so two iterations sharing a basename still get distinct links.
+- A link that resolves to nothing is distinguishable from an absent key: `None` clears the
+  broken value rather than reading as already chosen.
 - `Set iteration` appears on the row and card menus of **plan** rows, offers every
   `Iteration` note plus `None` **whatever focus level is active**, checks its entries from
   the plan, and is absent on a context row, on a catalog member and on an `Iteration` row.
