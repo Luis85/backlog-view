@@ -1,0 +1,146 @@
+---
+type: PBI
+parent: "[[An Iterations board]]"
+order: 30
+status: Open
+priority: P3
+created: 2026-08-15
+source: user request
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
+---
+
+# An iteration draws as a bar or a line
+
+**As** someone reading the roadmap, **I want** to choose whether a sprint shows as a bar
+across its two weeks or as a line at its end date, **so that** the axis answers "what is
+this sprint holding" or "when does it close" without me keeping two kinds of note.
+
+An iteration is a marker **structurally** — no rung, no children, and no *outgoing*
+dependency edge, though like any marker it may still be waited **for**
+([[An iteration is a note of its own]]) — and that is settled. What is not settled by the
+type is how it is **drawn**: a milestone is a point because a milestone *is* a point, but
+a sprint has two ends and the reader decides which reading they want.
+
+Today one predicate answers both questions, because `Milestone` is the only marker and it
+happens to need them fused. Widening that predicate to a second name would make it mean
+two things at eight call sites — the defect `src/domain/typeVocabulary.ts` already records
+for `isExtraType`, quoted there as the reason a marker is not in `EXTRA_TYPES`. So the
+questions split before the second name arrives, not after:
+
+| Predicate | Means | Unchanged by this work |
+| --- | --- | --- |
+| `isMarkerType` | no rung, no children, no prerequisites of its own | yes — its callers keep their meaning |
+| `drawsAsPoint` | drawn at one date, not across two, and holdable at neither end | no — this is the new one |
+
+**Every caller is named, and one of them is easy to miss.** `barHolds` in
+`src/domain/bars.ts` asks *both* predicates in the same function — `placementEnds` for
+which ends are writable, and then `isMarkerType` on its own line to return a body hold
+and nothing else. So it is not enough to widen `placementEnds` and let the rest follow:
+that branch would keep the old meaning silently, `iterationBars` would be on, the bar
+would draw, and neither grip would appear. It is the third question the one predicate
+answers today — what a *gesture* may take hold of — and it is why this note lists the
+call sites rather than trusting a rule to reach them.
+
+## Use case
+
+| | |
+| --- | --- |
+| **Actor** | Backlog owner |
+| **Trigger** | Setting "Draw iterations as bars" in the view options, or scheduling an iteration on the dated axis |
+| **Preconditions** | Roadmap mode, the dated axis, and an iteration carrying a date the mode can use — a **target** date in line mode, since a point IS its target (3b); **either** date in bar mode, since one date places an open-ended bar (4a) |
+| **Guarantee** | The option decides which date keys a placement may touch, so a drag can never write a start onto an iteration the option says is a point. Changing the option rewrites nothing on any note. |
+
+**Main flow**
+
+1. The user sets `iterationBars` in the `Iterations` options group. It is a `.base`
+   setting, saved on the view.
+2. `drawsAsPoint` answers `false` for an `Iteration` while the option is on, and `true`
+   while it is off — `isMarkerType` alone still answering for every other marker.
+3. With the option **off**, an iteration draws a boundary line at its target date and a
+   diamond, exactly as a milestone does, and its start is ignored rather than deleted.
+4. With the option **on**, it draws a start→target bar and no boundary line, placed by
+   the same span rules every other item is placed by ([[Bars from two dates]]).
+5. Scheduling by drag, by grip or from the row menu writes only the ends the option
+   admits, because the writer asks the same predicate the renderer does.
+
+**Extensions**
+
+- **1a — the option is left at its default.** Iterations draw as lines, which is the
+  reading that cannot over-promise: a line claims one date and a bar claims two, and a
+  vault that has not said which it means should not be shown the stronger claim.
+- **2a — the vault has no `Iteration` notes.** The option changes nothing visible and is
+  still offered, like every other view option whose subject a base may not hold.
+- **3a — the iteration carries a start date while the option is off.** The start is
+  **ignored, never rewritten**. Ignoring a value and deleting it are different acts, and
+  only the first is specified — the rule `placeItem` already keeps for a milestone with a
+  stale start.
+- **3b — the option is off and the iteration carries no target date.** It goes to the
+  shelf with every other unplaceable card, counted there, and the shelf is the target
+  that un-places it ([[The unplaced shelf]]). A point IS its target date, so a point
+  without one is nothing to draw. **Scoped to line mode deliberately**: the same
+  iteration in bar mode places on its start alone (4a), and an earlier draft of this note
+  said the option changed nothing here — two rules over one state, which no
+  implementation and no test could have satisfied at once.
+- **4a — the option is on and the iteration has only one of the two dates.** It places on
+  the date it has, as an open-ended bar, exactly as every other item with one date does
+  — [[Horizons or dates]] extension 2b states the rule and `inferSpan` already keeps it.
+  A closed span simply needs both. This owns bar mode; 3b owns line mode, and the two do
+  not overlap.
+- **4b — the option is on and the target precedes the start.** It shelves with the reason
+  every reversed span shelves with. An iteration is not exempt from the span rules; it is
+  only exempt from being forced into a point.
+- **5a — the write path is reached with the option off.** `placementEnds` answers
+  `target` alone, so no start key is written and none is deleted. This is why the option
+  is a `.base` setting and not UI state: the writer resolves it from settings, and
+  `storage/` cannot reach the localStorage the working position lives in without breaking
+  the layer rule.
+- **5b — the option is on but only one date property is configured.** The end without a
+  configured key is not writable and gets no grip, whatever the option says. The two
+  questions are independent and both must pass: `drawsAsPoint` says which ends this
+  **type** admits, `optionalKeyFor` says which the **configuration** can store, and
+  `barHolds` already takes the intersection. This option widens the first and must never
+  be read as widening the second.
+
+## Acceptance criteria
+
+- `drawsAsPoint` exists as its own predicate and is what the placement and drawing paths
+  ask; `isMarkerType` keeps its structural meaning and its callers are unchanged.
+- `iterationBars` is a view option in the `Iterations` group, saved on the view, and
+  defaults to off — iterations draw as lines until the user says otherwise.
+- With it off, an `Iteration` draws a boundary line and a diamond, and its start date is
+  ignored rather than written or deleted.
+- With it on, an `Iteration` draws a start→target bar, draws no boundary line, and obeys
+  every ordinary span rule — the reversed-span shelving, and the open-ended bar a single
+  date gives every other item.
+- With it on, **each grip is on the bar wherever its own date property is configured**,
+  which means `barHolds` asks the new predicate on its own line rather than keeping its
+  `isMarkerType` branch. Both halves are load-bearing and they pull opposite ways. Without
+  the first, `placementEnds` widens and that branch still returns a body hold, so the bar
+  draws and nobody can resize it. Without the second, a base configured with a target
+  property and no start property would offer a start grip whose drag writes an
+  unconfigured key — which `barHolds` already refuses through `optionalKeyFor`, and which
+  no new predicate may talk it out of. The type decides whether an end is *drawable*; the
+  configuration decides whether it is *writable*; a grip needs both.
+- Every path that places a date — the row's Schedule and Unschedule, the shelf drop, the
+  body slide, both grips, and the writer — narrows by asking the predicate, never by
+  restating it.
+- Changing the option rewrites nothing on any note.
+
+## Where it lives
+
+The predicate joins `src/domain/itemTypes.ts` beside `isMarkerType` and `placementEnds`,
+which is where it has to be for `src/storage/frontmatter.ts` to reach it without the
+layer rule being broken. `src/domain/bars.ts` asks it **twice** — once in `placeItem`,
+which decides point or span, and once in `barHolds`, which decides what a gesture may
+take hold of and today reaches for `isMarkerType` on a line of its own. The drawing paths
+ask it in `src/view/render/timeline.ts` and `src/view/render/milestoneLines.ts`. The option
+is declared in `src/domain/viewOptions.ts` and resolved in `src/domain/settings.ts`. The
+callers that pass the settings through are `src/view/interactions/timelineDrag.ts` and
+`src/view/interactions/plan.ts`. Driven in `test/domain/bars.test.ts` and
+`test/view/roadmap.test.ts`.
