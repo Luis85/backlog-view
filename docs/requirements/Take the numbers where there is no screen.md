@@ -186,6 +186,18 @@ instruments improvised around a browser.
   magnitude, because the spread is read AGAINST the median and two columns rounded
   differently cannot be compared by eye. The published tables above are unaffected —
   hundreds of milliseconds, where the first decimal changes no reading. (Codex, PR #137.)
+- **3m — the axis is named but the GRID it drew is not.** It was not, and the axis alone
+  does not pin the workload on either grid axis: the window is derived from the reader's
+  own calendar date, so the same build measured on two dates — or one `--against` run
+  crossing midnight — draws a different span and clamps differently while every other
+  field compares equal. The drawn window is published as `grid` and joins the workload
+  comparison and the heading. **Published rather than FROZEN**, of the two available
+  fixes: the reader's date is an INPUT the view injects (`render/projections.ts`; nothing
+  in `domain/` reads a clock), so pinning it for benchmark runs would measure something
+  the plugin does not do. And it is the window rather than the date, because the window is
+  what the render produced and what actually varies — a zoom, a lead width or one note's
+  dates move it too. Named `grid` because `--window` in the runner is the VIEWPORT.
+  (Codex, PR #137.)
 - **4a — the runner checks out the ref to compare against.** Refused: that would move the
   tree someone is working in. Building the other side is one command in a git worktree,
   and stays the human's.

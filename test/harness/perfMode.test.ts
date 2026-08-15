@@ -32,7 +32,7 @@ describe('the perf panel reports the sample it took', () => {
 	function published(): {
 		samples: number;
 		treeRows: number;
-		ran: { fixture: string; projection: string; axis: string | null };
+		ran: { fixture: string; projection: string; axis: string | null; grid: string | null };
 		rows: { op: string; drew: number; median: number }[];
 	} {
 		const el = document.getElementById(PERF_DATA_ID);
@@ -72,6 +72,25 @@ describe('the perf panel reports the sample it took', () => {
 		RUN_MS,
 	);
 
+	/**
+	 * The grid is published because the axis alone does not pin the workload: both grid
+	 * axes derive their span from the reader's own calendar date, so one build measured on
+	 * two dates draws two different windows with every other field equal. Asserted as a
+	 * SHAPE rather than a value — the value moves every day, which is the whole point.
+	 */
+	it(
+		'publishes the grid a dated axis drew, where the horizon axis has none',
+		() => {
+			const { view, containerEl, mount: first, results, contents } = mount();
+			view.setAxisPick('dates');
+
+			reportPerf(view, containerEl, first, { fixture: 'demo', results, contents });
+
+			expect(published().ran.grid).toMatch(/^\d{4}-\d{1,2}-\d{1,2}\+\d+d$/);
+		},
+		RUN_MS,
+	);
+
 	it(
 		'gives every row its own sample size, and publishes exactly what the panel shows',
 		() => {
@@ -95,7 +114,20 @@ describe('the perf panel reports the sample it took', () => {
 			// The POPULATION the view was handed, not the `?notes=` request: the edge-case
 			// fixture ignores that request and the demo's curated notes are in every number.
 			expect(results).toBeGreaterThan(0);
-			expect(data.ran).toEqual({ fixture: 'demo', results, contents, projection: 'tree', axis: view.roadmap?.roadmap.axis ?? null });
+			// `toEqual` on the WHOLE object, not per field: a published key the runner
+			// compares is worth nothing if the publisher silently drops it, which is exactly
+			// what happened to `grid` — added to the type, assigned in the run, and left out
+			// of this literal by a patch that matched no line.
+			expect(data.ran).toEqual({
+				fixture: 'demo',
+				results,
+				contents,
+				projection: 'tree',
+				axis: view.roadmap?.roadmap.axis ?? null,
+				// The demo opens on horizons, which draws no grid. The dated axis's own value
+				// is the next case.
+				grid: null,
+			});
 			expect(data.ran.axis).not.toBeNull();
 
 			const drew = (op: string) => data.rows.find((row) => row.op === op)?.drew ?? 0;

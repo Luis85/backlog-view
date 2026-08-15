@@ -436,7 +436,11 @@ const ranAgainst = b[0]?.ran;
  * not. A field the baseline is too old to publish reads as "not reported" rather than as
  * agreement. (Codex, PR #137.)
  */
-const WORKLOAD = ['fixture', 'results', 'contents', 'projection', 'axis'];
+// `grid` is here because the two grid axes derive their span from the reader's own
+// calendar date: the same build measured on two dates, or one A/B run crossing midnight,
+// draws a different grid while every other field compares equal. It is `grid` and not
+// `window`, which in this file is the viewport flag. (Codex, PR #137.)
+const WORKLOAD = ['fixture', 'results', 'contents', 'projection', 'axis', 'grid'];
 const show = (value) => (value === undefined ? 'not reported' : String(value));
 const differs = !against || !ran || !ranAgainst ? [] : WORKLOAD.filter((key) => ran[key] !== ranAgainst[key]);
 const baselineWorkload = !against
@@ -451,7 +455,13 @@ const ignored = [
 
 // `ran.notes`, not the flag: the edge-case fixture ignores the size knob, so a request for
 // 800 was printed over a handful of curated cases. (Codex, PR #137.)
-const drawn = ran ? `${ran.fixture}${ran.axis ? ` · ${ran.axis}` : ''} · ${ran.results} results` : search;
+// The GRID joins the heading on a dated or resources axis, and only there: it is derived
+// from the reader's own calendar date, so it is a reproducibility fact rather than a
+// detail — a table taken today and one taken next month are of different spans. Null on
+// the horizon axis, which has no grid, so that heading is unchanged. (Codex, PR #137.)
+const drawn = ran
+	? `${ran.fixture}${ran.axis ? ` · ${ran.axis}` : ''}${ran.grid ? ` · ${ran.grid}` : ''} · ${ran.results} results`
+	: search;
 console.log(`\n${drawn}  ·  ${runs} run${runs === 1 ? '' : 's'}  ·  window ${window}  ·  ${path.basename(browser)}`);
 if (against) console.log(`against ${against} (alternated, A B A B)`);
 console.table(table);

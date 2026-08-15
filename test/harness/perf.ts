@@ -84,7 +84,11 @@ function sample(el: HTMLElement, op: string, run: () => void, prepare?: () => vo
  * [[The render is the whole cost of a data update]]. Time the phase itself if you want
  * the phase.
  */
-function measure(view: ProductBacklogView, el: HTMLElement, mount: Mount): { rows: Row[]; treeRows: number; axis: string | null } {
+function measure(
+	view: ProductBacklogView,
+	el: HTMLElement,
+	mount: Mount,
+): { rows: Row[]; treeRows: number; axis: string | null; grid: string | null } {
 	// Restored at the end rather than reset to the tree: the run drives all four, and a
 	// `?perf&view=board` page has to be left showing the board it was asked for.
 	const opened = view.projection;
@@ -112,9 +116,10 @@ function measure(view: ProductBacklogView, el: HTMLElement, mount: Mount): { row
 		sample(el, 'update (build + render)', () => view.onDataUpdated()),
 		sample(el, 'render only', () => view.render()),
 	];
-	// The axis is read HERE, in the one moment the roadmap is the projection on screen: the
-	// snapshot is what the render produced, and it is null everywhere else.
+	// The axis and the window are read HERE, in the one moment the roadmap is the projection
+	// on screen: the snapshot is what the render produced, and it is null everywhere else.
 	let axis: string | null = null;
+	let grid: string | null = null;
 	for (const projection of PROJECTIONS) {
 		rows.push(
 			sample(
@@ -124,11 +129,15 @@ function measure(view: ProductBacklogView, el: HTMLElement, mount: Mount): { row
 				() => view.setProjection(projection === 'tree' ? 'board' : 'tree'),
 			),
 		);
-		if (projection === 'roadmap') axis = view.roadmap?.roadmap.axis ?? null;
+		if (projection === 'roadmap') {
+			axis = view.roadmap?.roadmap.axis ?? null;
+			const drawn = view.roadmap?.window ?? null;
+			grid = drawn && `${drawn.start.year}-${drawn.start.month}-${drawn.start.day}+${drawn.days}d`;
+		}
 	}
 	view.setShelfCollapsed(openedShelf);
 	view.setProjection(opened);
-	return { rows, treeRows, axis };
+	return { rows, treeRows, axis, grid };
 }
 
 /**
@@ -172,6 +181,24 @@ interface Ran {
 	 * a null pick and compared as if they had drawn the same thing. (Codex, PR #137.)
 	 */
 	axis: string | null;
+	/**
+	 * The GRID the roadmap drew, as `start+days` — null off a dated grid, where there is
+	 * none to draw.
+	 *
+	 * The axis alone does not pin the workload on the two grid axes: the window is derived
+	 * from `todayCivil()`, so the same build measured on two calendar dates — or one A/B
+	 * run spanning midnight — draws a different span and clamps differently, and every
+	 * other field compares equal. Published rather than FROZEN, of the two fixes: the
+	 * reader's own date is an input to the view (`render/projections.ts` injects it and
+	 * nothing in `domain/` reads a clock), so pinning it here would measure a thing the
+	 * plugin does not do. And it is the WINDOW rather than the date, because the window is
+	 * what the render produced and what actually varies — a zoom, a lead width or one
+	 * note's dates move it too, and the date is only the commonest reason. (Codex, PR #137.)
+	 *
+	 * Named `grid` and not `window`: the runner already has a `--window`, which is the
+	 * VIEWPORT, and a mismatch warning naming both would be unreadable.
+	 */
+	grid: string | null;
 }
 
 /** The id `scripts/perf.mjs` looks the numbers up by — a contract, so keep it stable. */
@@ -214,7 +241,7 @@ export function reportPerf(
 	mount: Mount,
 	mounted: { fixture: string; results: number; contents: string },
 ): Row[] {
-	const { rows, treeRows, axis } = measure(view, containerEl, mount);
+	const { rows, treeRows, axis, grid } = measure(view, containerEl, mount);
 	console.table(rows.map((r) => ({ ...r, median: +r.median.toFixed(1), worst: +r.worst.toFixed(1) })));
 
 	const panel = document.body.createDiv('pbl-harness-perf');
@@ -238,6 +265,7 @@ export function reportPerf(
 			contents: mounted.contents,
 			projection: view.projection,
 			axis,
+			grid,
 		},
 		rows,
 	});
