@@ -68,7 +68,7 @@ Everything here implements:
 | `src/domain/readItems.ts` | `iterationStateValue` |
 | `src/domain/model.ts` | `iterationResults`, `observedIterationStates` |
 | `src/domain/board.ts` | `iterationWorkflow` |
-| `src/view/host.ts` | `Projection` **and** `ColumnScope` each gain `'iteration'` |
+| `src/view/host.ts` | `Projection` gains `'iteration'`; `ColumnScope` gains a per-iteration value |
 | `src/storage/collapseStore.ts` | `ITERATION_MODE`, and the `boardScope` path field |
 | `src/view/projection.ts` | the seven projection questions answered for it |
 | `src/view/collapseState.ts` | the `PROJECTION_MODE` row, `boardScope()` / `setBoardScope()` |
@@ -1033,8 +1033,16 @@ describe('an iteration board population', () => {
 		expect(paths(inIteration(model, sprint12))).not.toContain('test-case-login.md');
 	});
 
-	it('excludes context rows', () => {
+	it('excludes context rows from the POPULATION', () => {
 		expect(paths(inIteration(model, sprint12))).not.toContain('excluded-epic.md');
+	});
+
+	it('still renders an excluded ancestor as an inert context card', () => {
+		// Counted nowhere, a column source nowhere, a write target nowhere — but on
+		// screen, because the carrier below it needs the placement.
+		const board = renderScope(model, sprint12);
+		expect(contextCardPaths(board)).toContain('excluded-epic.md');
+		expect(sum(board.columns.map((c) => c.count))).toBe(4); // the carriers alone
 	});
 
 	it('excludes an Iteration that names another iteration', () => {
@@ -1495,6 +1503,13 @@ describe('the board scope picker', () => {
 		expect(scopePicker(render(noIterations))).toBe(null);
 	});
 
+	it('qualifies two iterations that share a basename', () => {
+		// The write is path-aware (Tasks 4 and 11); the PICKER has to be too, or the
+		// reader chooses between two identical labels.
+		expect(scopeChoices(render(withDuplicateNames)))
+			.toEqual(['Product', 'q3/Sprint 12', 'q4/Sprint 12']);
+	});
+
 	it('does not render with the iteration property unconfigured', () => {
 		// Both halves. With no configured property nothing can join a scope, so every
 		// entry the picker offered would draw an empty board.
@@ -1529,6 +1544,14 @@ projection that grows a control adds a case, not a guard somewhere else in the r
 Write `renderBoardScopePicker` against `renderAxisPicker` beside it, using `menuButton`,
 `showMenuForClick` and `pickAndRefocus(barEl, 'scope', …)`. Pass `barEl`, never `zone`:
 the zone is destroyed by the rebuild the pick causes.
+
+**Labels must disambiguate.** Tasks 4 and 11 go to real trouble keeping two `Sprint 12`
+notes in different folders distinct in the WRITE; a picker offering two identical entries
+undoes that at the only point where a human chooses. Qualify a colliding basename with
+enough of its path to separate it — and only a colliding one, since qualifying every entry
+would make the common case unreadable to fix a rare one. The value behind each entry stays
+the note itself, never the label. `Set iteration` (Task 5) shows the same list and needs
+the same treatment.
 
 - [ ] **Step 4: Run the tests**
 
@@ -1636,20 +1659,30 @@ export function renderIterationBoard(
 ): BoardSnapshot {
 	const host: BacklogViewHost = ctx.host;
 	const model = host.model;
-	if (!model) return { board: { columns: [], cardCount: 0 }, colEls: [], scope: 'iteration' };
+	if (!model) return { board: { columns: [], cardCount: 0 }, colEls: [], scope: `iteration:${scope}` };
 	const population = model.iterationResults.filter((item) => item.iterationPath === scope);
+	// CANDIDATES are not the population. `boardColumns` needs the context ancestors an
+	// in-scope carrier hangs from, or an `outsideFilter` parent is gone before the board
+	// can draw it as an inert context card — extension 3a, and the context-row rule the
+	// whole epic keeps. The candidate list is the carriers PLUS their `outsideFilter`
+	// ancestors; the counted population, the workflow vocabulary and every write target
+	// stay the carriers alone. A context row renders, it parents, and that is all.
+	const candidates = withContextAncestors(population, model);
 	const board = boardColumns(
 		iterationWorkflow(population, host.settings),
-		population,
-		(item) => !host.isRowHidden(item),
-		() => true,
+		candidates,
+		(item) => !host.isRowHidden(item) && (item.outsideFilter || population.includes(item)),
+		(item) => !host.isRowHiddenUnfiltered(item) && !item.outsideFilter,
 	);
 	return renderBoard(ctx, boardEl, dnd, board, {
-		// Its OWN fold scope, not `'board'`. `ColumnScope` is what keeps identically named
-		// columns on different boards from sharing collapse state — reusing `'board'`
-		// would make folding `Done` here fold Product's `Done` too. Widen the union in
-		// `src/view/host.ts`: `'board' | 'deliverables' | 'horizons' | 'iteration'`.
-		scope: 'iteration',
+		// Its own fold scope, and it carries the CHOSEN ITERATION. `ColumnScope` is what
+		// keeps identically named columns on different boards from sharing collapse
+		// state: `'board'` would fold Product's `Done` with this one, and a constant
+		// `'iteration'` would fold Sprint 13's `Done` when the reader folds Sprint 12's —
+		// the same defect one level in, and exactly what extension 2h forbids. Widen the
+		// union in `src/view/host.ts` to a per-iteration value:
+		// `'board' | 'deliverables' | 'horizons' | \`iteration:${string}\``.
+		scope: `iteration:${scope}`,
 		move: (item, state) => void host.performIterationBoardMove(item, state),
 		stateOptionLabel: 'Iteration workflow states (in order)',
 		drawEmpty: (h, aside, root) => {

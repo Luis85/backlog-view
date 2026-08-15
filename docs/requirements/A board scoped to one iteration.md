@@ -74,6 +74,13 @@ the moment the populations diverged, which is exactly what happened.
 
 **Extensions**
 
+- **1e — two `Iteration` notes share a basename.** The picker names them apart, using
+  enough of each path to separate them, and only where they collide — qualifying every
+  entry would make the ordinary case unreadable to fix a rare one. The value behind each
+  entry is the note, never its label. `Set iteration` shows the same list and does the
+  same. Anything less asks the reader to choose between two identical words while the
+  write underneath goes to real trouble to keep them distinct
+  ([[An iteration is a note of its own]] extension 4b).
 - **1a — no `Iteration` note is in the model.** The picker does not render at all. With
   nothing to choose between there is no choice to offer — the refusal the axis picker
   already makes with a single configured axis, and the reason board mode is unchanged for
@@ -102,10 +109,11 @@ the moment the populations diverged, which is exactly what happened.
   path still names a real note that nothing can match, the picker is gone (1b) and the
   pressed `Board` position is a deliberate no-op (1d) — leaving the reader stranded on a
   permanently empty board with no control to leave it.
-- **2h — a column is folded on an iteration board.** It folds **here only**. Columns are
-  keyed by a fold scope of this board's own, so `Done` folded on Sprint 12 leaves `Done`
-  open on the product board and on every other iteration. Sharing the product board's
-  scope would make two boards' identically named columns one control.
+- **2h — a column is folded on an iteration board.** It folds **on that iteration only**.
+  The fold identity carries the chosen iteration, not merely the fact that this is an
+  iteration board: a scope shared by all of them would leave `Done` folded on Sprint 13
+  because the reader folded it on Sprint 12, which is the product board's own collision
+  one level in. `Done` on the product board is untouched either way.
 - **2e — the chosen `Iteration` note, or a folder above it, is renamed.** The stored scope
   **follows it**, and the board keeps showing the same iteration. This is the first UI
   state whose value is a PATH, so it is the first that has to be migrated on a rename;
@@ -164,6 +172,12 @@ the moment the populations diverged, which is exactly what happened.
   as on the product board: it renders as a breadcrumb, a lane header or an inert context
   card, and that is all — never a card to drag, never a write target, never counted,
   never a source of this board's column vocabulary.
+
+  So the board's CANDIDATES are not its population. An in-scope carrier hanging from an
+  excluded ancestor needs that ancestor drawn to be placed at all, and a candidate list
+  built from the carriers alone deletes it before the board can draw it. The carriers plus
+  their excluded ancestors are what the board is built from; the carriers alone are what
+  is counted, what supplies the vocabulary, and what may be written to.
 - **3b — the iteration holds no items.** Every column renders empty and the board says
   **"No items in this iteration yet"** — never the product board's "All N items are done
   and hidden", which cannot tell an empty base from an empty scope. The same distinction
