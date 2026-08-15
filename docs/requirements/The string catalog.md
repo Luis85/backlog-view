@@ -2,9 +2,9 @@
 type: PBI
 parent: "[[Multilang]]"
 order: 20
-status: Open
-started: ""
-finished: ""
+status: Done
+started: "2026-08-15"
+finished: "2026-08-15"
 horizon: ""
 start: ""
 due: ""
@@ -78,12 +78,26 @@ a generated key union is an open design question — but it is a question this P
 rather than discovers, because `npm run check` passing is the definition of done and the
 coverage thresholds only ever go up.
 
+## How the keys came to be typed
+
+The answer to `## Two mechanical hazards worth planning for` turned out to need neither a
+fallow override nor a generated key union, and the reason is worth recording because it
+also settles the parameter question in one move: the catalog is one `as const` object, so
+**the key set and each message's parameters are read out of the catalog text itself** by
+template-literal types. `t('emptyState.ignored', { count })` does not compile because the
+message says `{topLevel}` — no codegen, no key list to keep in step, and nothing for
+fallow to see but one exported object that `t.ts` uses.
+
+The English catalog is the only one in the round, so the duplication rule has nothing to
+compare yet; a second locale file is what will actually test it, and that is one of the
+things `Catalogs stay complete` still owes.
+
 ## Where it lives
 
-**Nothing yet — this note is design.** The catalog is the data half of the leaf module
-`Multilang` places below every layer.
+`src/i18n/en.ts` is the catalog — data, no imports, no logic — and `src/i18n/t.ts` is
+everything that reads it: the key and parameter types derived from `en`, the plural
+selection, the substitution, and `list()`. The 400-line cap in `eslint.config.mjs` applies
+to `en.ts` like any other file, so it splits by surface rather than growing an exception.
 
-Two mechanical constraints come from the existing build rather than from taste: the
-400-line cap in `eslint.config.mjs` applies to it like any other file, so the catalog
-splits by surface rather than growing an exception; and `.fallowrc.json` gates dead code
-and duplication, which is the shape parallel locale files take by construction.
+`test/i18n/locale.test.ts` drives it; `test/i18n/fixtures.ts` holds the catalogs a second
+language would be.

@@ -1,3 +1,4 @@
+import { t } from '../i18n/t';
 import { BacklogViewHost } from './host';
 import { BacklogItem } from '../domain/model';
 import { cardPaths, hiddenMatches } from '../domain/board';
@@ -64,9 +65,9 @@ export function childrenLabel(children: BacklogItem[]): string {
 	const count = children.length;
 	const type = children[0] ? displayType(children[0]) : '';
 	if (type !== '' && children.every((child) => displayType(child) === type)) {
-		return `${count} ${type.toLowerCase()}${count === 1 ? '' : 's'}`;
+		return t('count.childrenOfType', { count, type: type.toLowerCase() });
 	}
-	return `${count} child${count === 1 ? '' : 'ren'}`;
+	return t('count.children', { count });
 }
 
 /**

@@ -1,4 +1,5 @@
 import { BacklogSettings } from './settings';
+import { t } from '../i18n/t';
 import { ownedProperties } from './optionalProperties';
 import { colorableStates, stateColor } from './stateColors';
 
@@ -234,7 +235,10 @@ export function configProblems(settings: BacklogSettings): string[] {
 	for (const [key, users] of keys) {
 		if (users.every((label) => WORKFLOW_STATE_LABELS.has(label))) continue;
 		if (users.length > 1) {
-			problems.push(`The ${users.join(' and ')} properties share the key "${key}".`);
+			// The array, not a joined string: `t` joins it in the locale of the message it
+			// lands in, which this call site cannot know — the message may have fallen back
+			// to English while the active catalog is another language.
+			problems.push(t('settings.sharedKey', { properties: users, key }));
 		}
 	}
 	return problems;

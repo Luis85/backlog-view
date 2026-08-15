@@ -1,4 +1,5 @@
 import { setTooltip } from 'obsidian';
+import { t } from '../../i18n/t';
 import { drawIcon } from './icons';
 import { createCard, renderCardBody, renderCardMatches, renderColumnFold, wireCardActivation } from './board';
 import { RowContext } from './columns';
@@ -354,7 +355,10 @@ function renderBucket(
 			// Folded is said in the NAME, `columnLabel`'s reason on the board: the count
 			// deliberately survives the fold, so a bucket that stayed silent about it would
 			// announce items it is not drawing.
-			'aria-label': `${bucket.value}${folded ? ', collapsed' : ''}, ${bucket.count} item${bucket.count === 1 ? '' : 's'}`,
+			'aria-label': t(folded ? 'roadmap.groupLabelCollapsed' : 'roadmap.groupLabel', {
+				name: bucket.value,
+				count: bucket.count,
+			}),
 		},
 	});
 	const header = colEl.createDiv({ cls: 'pbl-bucket-header' });

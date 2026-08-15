@@ -1,4 +1,5 @@
 import { setTooltip } from 'obsidian';
+import { t } from '../../i18n/t';
 import { drawIcon } from './icons';
 import { renderCardChildren } from './cardChildren';
 import { renderPropCells, renderRollup, RowContext } from './columns';
@@ -325,8 +326,8 @@ function columnLabel(col: BoardColumn, frame: ColumnFrame): string {
 	// Filtered, the count is a pair and has to be spoken as one: "2 cards" in a column
 	// of eleven would tell a screen-reader user the stage had emptied.
 	const counts = frame.filtering
-		? `${col.count} of ${col.fullCount} cards match`
-		: `${col.count} card${col.count === 1 ? '' : 's'}`;
+		? t('count.cardsMatching', { count: col.count, total: col.fullCount })
+		: t('count.cards', { count: col.count });
 	// The fold is spoken HERE and not left to the disclosure's own `aria-expanded`, which
 	// nothing on the keyboard path reaches: this string is the stop's `aria-label`, and an
 	// accessible name overrides the children it is set on, so a reader arriving by
@@ -718,7 +719,7 @@ export function renderCardMatches(ctx: RowContext, carded: Set<string>, placed: 
  * handler — a per-control guard here would be the eleventh of the ten that rule replaced.
  */
 function renderMatchCount(ctx: RowContext, mount: HTMLElement, item: BacklogItem, count: number): void {
-	const said = `${count} search ${count === 1 ? 'match' : 'matches'} below`;
+	const said = t('row.searchMatches', { count });
 	const chip = mount.createEl('button', {
 		cls: 'pbl-row-matches',
 		attr: { type: 'button', tabindex: '-1', 'aria-label': said },

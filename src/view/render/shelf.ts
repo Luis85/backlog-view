@@ -1,4 +1,5 @@
 import { setTooltip } from 'obsidian';
+import { t } from '../../i18n/t';
 import { drawIcon } from './icons';
 import { createCard, renderCardBody, renderColumnFold, wireCardActivation } from './board';
 import { RowContext } from './columns';
@@ -170,7 +171,7 @@ export function renderShelf(
 		cls: 'pbl-shelf' + (empty ? ' pbl-shelf-empty' : '') + (collapsed ? ' pbl-shelf-collapsed' : ''),
 		attr: {
 			role: 'group',
-			'aria-label': `${SHELF_LABEL}, ${shelfCards.length} item${shelfCards.length === 1 ? '' : 's'}`,
+			'aria-label': t('roadmap.groupLabel', { name: SHELF_LABEL, count: shelfCards.length }),
 		},
 	});
 	const header = shelfEl.createDiv({ cls: 'pbl-shelf-header' });
@@ -241,7 +242,10 @@ function renderShelfGroup(ctx: RowContext, shelfEl: HTMLElement, group: ShelfGro
 			// Folded is said in the NAME, the bucket's reason exactly: the count survives the
 			// fold, so a group that stayed silent about it would announce cards it is not
 			// drawing.
-			'aria-label': `${group.type}${folded ? ', collapsed' : ''}, ${group.cards.length} item${group.cards.length === 1 ? '' : 's'}`,
+			'aria-label': t(folded ? 'roadmap.groupLabelCollapsed' : 'roadmap.groupLabel', {
+				name: group.type,
+				count: group.cards.length,
+			}),
 		},
 	});
 	const header = groupEl.createDiv({ cls: 'pbl-shelf-group-header' });

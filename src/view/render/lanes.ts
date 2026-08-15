@@ -1,4 +1,5 @@
 import { setTooltip } from 'obsidian';
+import { t } from '../../i18n/t';
 import { createCard, wireCardActivation } from './board';
 import { renderBarProgress } from './barProgress';
 import { RowContext } from './columns';
@@ -272,7 +273,7 @@ export function renderLaneHead(
 	if (!lane.markers) renderLaneChevron(ctx.host, lead, lane, collapsed);
 	lead.createSpan({ cls: 'pbl-lane-name', text: lane.name });
 	if (lane.bars.length > 0) {
-		lead.createSpan({ cls: 'pbl-lane-count', text: `${lane.bars.length} item${lane.bars.length === 1 ? '' : 's'}` });
+		lead.createSpan({ cls: 'pbl-lane-count', text: t('count.items', { count: lane.bars.length }) });
 	}
 	renderAwayPill(lead, lane, ruler.today);
 	if (!lane.declared) {
@@ -704,7 +705,7 @@ function renderAbsenceWash(
 function noteAbsenceClash(bar: { row: HTMLElement; lead: HTMLElement }, crossed: Absence[], costSentence: string): void {
 	if (crossed.length === 0) return;
 	const spans = crossed.map(absenceSaid).join('; ');
-	const said = `Crosses ${crossed.length === 1 ? 'an absence' : `${crossed.length} absences`}, ${costSentence}: ${spans}`;
+	const said = t('lane.absenceClash', { count: crossed.length, cost: costSentence, spans });
 	bar.row.createSpan({ cls: 'pbl-sr-only', text: said });
 	// A hatched swatch in the away key rather than the `calendar-x` glyph it replaced, so the
 	// lead mark and the column it stands for read as one thing — and the legend can key it.

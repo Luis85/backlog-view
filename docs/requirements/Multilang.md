@@ -109,6 +109,16 @@ The layer lands whole before the sweep — `Locale resolution and fallback`,
 `The string catalog` and `Plurals and interpolation` first. A half-built layer means a
 hundred strings get moved against an interface that then changes.
 
+**Those three are done (2026-08-15).** `src/i18n/` is the leaf, with `en.ts` as the
+catalog, `locale.ts` as the pure resolution and `t.ts` as the lookup — plus the fixture
+catalogs that let a one-locale layer fail a test. Roughly eighteen call sites moved with
+it: every inline plural ternary in `src/view/`, and the `' and '` joiner. The remaining
+~120 sites are the sweep, which is `Every surface translated` onwards, and the honest
+count of catalog keys so far is **21**.
+
+The branding spike `A bare string cannot reach the UI` asks for has also run, and its
+result is recorded there: the design holds unchanged, and no nominal wrapper is needed.
+
 ## Definition of done
 
 - No user-facing string is spelled at the place it is used; a bare literal reaching the

@@ -2,9 +2,9 @@
 type: PBI
 parent: "[[Multilang]]"
 order: 10
-status: Open
-started: ""
-finished: ""
+status: Done
+started: "2026-08-15"
+finished: "2026-08-15"
 horizon: ""
 start: ""
 due: ""
@@ -56,13 +56,16 @@ string is merely English instead of missing.
 
 - **1a — the code is empty or malformed.** `getLanguage()` documents a default of `en`, but
   the resolver does not rely on that: an unusable code resolves to English rather than
-  propagating. See `Locale-aware sorting and formatting` for why the *raw* code still needs
-  validating before `Intl` sees it.
+  propagating. **Malformed is judged of the WHOLE tag, before any base is taken** — see
+  `One judgement about a tag, asked twice` below. See `Locale-aware sorting and formatting`
+  for why the *raw* code still needs validating before `Intl` sees it.
 - **2a — the code is regional.** `pt-BR` finds the `pt` catalog before falling to English,
   matched case-insensitively.
 - **2b — no catalog matches.** English, which always exists.
-- **3a — the key is missing from the active catalog.** The English text renders. Never the
-  key, never an empty string: a gap in a translation must not read as a broken view.
+- **3a — the key is missing from the active catalog.** The English text renders, **with
+  English grammar**. Never the key, never an empty string: a gap in a translation must not
+  read as a broken view. The grammar half is the part that is easy to miss, and it was
+  missed here first — see `Grammar follows the message, not the reader` below.
 - **3b — the key is missing from English.** A build failure, not a runtime fallback.
   English is the source, so a gap there is a bug rather than an untranslated string.
 
@@ -84,11 +87,75 @@ string is merely English instead of missing.
   number formatting, so a French user with no French catalog still sorts and counts in
   French. See `Locale-aware sorting and formatting`, which states the dividing line.
 
+## Grammar follows the message, not the reader
+
+The rule everywhere else in this feature is written as *"grammar follows the catalog"*,
+and that sentence has a hole in it exactly where this note's fallback lives: **which**
+catalog. Implemented as "the ACTIVE catalog" it is right on every path except the one the
+fallback exists for, and there it is wrong in a way that reads as a bug in the
+translation:
+
+| Active catalog | Message from | Renders |
+| --- | --- | --- |
+| `ru`, missing the key | English `{one, other}` | `Intl.PluralRules('ru').select(21)` is `one`, so `21 item` |
+| `fr`, missing the key | English `{one, other}` | `select(0)` is `one`, so `0 item` |
+| `de`, missing the key | English, with a list | `state, parent und order` inside an English sentence |
+
+So the rule is **grammar follows the catalog that supplied THIS message**, which is the
+active one until the key is missing and English's from then on. A translation gap must
+degrade to English, not to broken English.
+
+The list half of it has a second consequence worth stating, because it decides an
+interface rather than a line: a list joined at the CALL SITE cannot obey this rule at all,
+since the caller does not know which catalog the message will come from. So a list is
+passed to `t()` as an array parameter and joined during rendering — the same "format
+inside the module that owns it" move `A bare string cannot reach the UI` arrived at
+independently for `Intl` output, which is a good sign it is the right shape.
+
+Found by review (Codex, PR #151), against an implementation whose own comment stated the
+narrower rule correctly and then used the wrong noun.
+
+## One judgement about a tag, asked twice
+
+The two answers this note asks for — which catalog, and which locale for `Intl` — are
+deliberately different questions, and that made it easy to give them **different ideas of
+what a valid tag is**. Both defects below are that one mistake, seen from each end:
+
+| Code | Catalog said | `Intl` said | Why |
+| --- | --- | --- | --- |
+| `pt_BR` | `pt` — the resolver split on `_` | `en` — `getCanonicalLocales` throws on `_` | Portuguese text, English numbers |
+| `pt-!!!` | `pt` — the base subtag is real | `en` — refused | A corrupted host locale renders an unasked-for translation |
+
+Neither is reachable from Obsidian, whose language list holds well-formed codes; both are
+reachable from a caller, and the second is the one that would matter once a second catalog
+ships.
+
+So there is **one validator, and both callers go through it**:
+`Intl.getCanonicalLocales` is the judge — the same judgement every `Intl` constructor
+makes, rather than a pattern of our own that could disagree with them — with underscores
+normalized to hyphens before it, so an underscore tag is the same tag to both callers.
+It returns null rather than a fallback, because the two callers fall back to different
+things.
+
+The property to assert is the PAIR, not either answer: a code yields a catalog and a
+number locale together, or neither. A tag one accepts and the other refuses renders
+translated text with the source language's numbers, which reads as a broken translation
+rather than as a rejected tag. Found by review (Codex, PR #151).
+
 ## Where it lives
 
-**Nothing yet — this note is design.** The resolver belongs in the new leaf `Multilang`
-describes, below every layer that needs it, importing none of them.
+`src/i18n/locale.ts` is the resolution itself, and it is **pure**: `resolveCatalog` narrows
+a language code to a shipped catalog, `intlLocale` makes the raw code safe for `Intl`, and
+neither knows which catalogs exist — the registry sits with the catalogs, so a test can ask
+this module any question without a reload. `src/i18n/t.ts` holds the resolved locale and
+the formatters built from it, reads `getLanguage()` from `obsidian` in `initLocale`, and
+exposes `setLocale` — whose catalogs argument is the seam fixture locales come through.
+`src/main.ts` calls `initLocale()` first in `onload`, before it registers the view name and
+the command name.
 
-It reads `getLanguage()` from `obsidian`, and it is the module `src/main.ts` must consult
-before it registers the view name and the command name — both of which are spelled at
-`onload` today and cannot react to a later change anyway.
+`i18n/` is the new leaf `Multilang` describes: `eslint.config.mjs` gives it a `forbidden`
+entry listing every other directory, so it cannot grow an edge back up.
+
+The fallback chain is exercised by `test/i18n/locale.test.ts` against the fixture catalogs
+in `test/i18n/fixtures.ts`, because against the shipped registry every code resolves to
+English and none of it could fail. `test/helpers/obsidian-mock.ts` supplies `getLanguage`.
