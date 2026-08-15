@@ -223,6 +223,23 @@ describe('the property-column resize grip', () => {
 			expect(drawn(containerEl)).toBe(`${DEFAULT_PROP_COLUMN_WIDTH}px`);
 		});
 
+		it('resets on a double click, which is the only reset a pointer has', () => {
+			// `pointerdown` prevents default, so a mouse never focuses the strip: without
+			// this, Home is a key the reader has to Tab onto the grip to press. The two taps
+			// underneath commit nothing on their own, so this arrives on a column exactly
+			// where it was.
+			const { view, containerEl } = makeView(fixture(), {}, { ...COLUMNS, widths: { 'note.points': 210 } });
+
+			const el = grip(containerEl);
+			el.dispatchEvent(pointer('pointerdown', 0));
+			el.dispatchEvent(pointer('pointerup', 0));
+			expect(view.colWidths['note.points']).toBe(210);
+
+			el.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+			expect(view.colWidths['note.points']).toBeUndefined();
+			expect(drawn(containerEl)).toBe(`${DEFAULT_PROP_COLUMN_WIDTH}px`);
+		});
+
 		it('keeps focus on the grip across the render its own keypress caused', () => {
 			// The write rebuilds the header and destroys the element pressed. Without the
 			// restore, a reader stepping a column by repeated presses is dropped back to

@@ -339,7 +339,12 @@ free of runtime code so imports stay cycle-free.
   movement means: the lead clamps against the pane, a property column against the storable
   bounds and mirrored in a right-to-left layout. The keys go through that same `widthAt`
   rather than repeating the arithmetic, so a caller's clamp or sign cannot be applied to
-  one input and forgotten on the other. What earns it is that it cannot compete with the
+  one input and forgotten on the other; a double click resets, because `pointerdown`
+  prevents default and so a mouse can never focus the strip to press Home. Two rules that
+  were a copy in each grip live in the shared module rather than beside either: it writes
+  `aria-valuenow` wherever a width is drawn, and it never passes on a width equal to the
+  one the gesture found — the clamp a bound produces, which written back over a wider
+  stored pick loses a choice made in a wider pane. What earns it is that it cannot compete with the
   roving selection the pane owns — it is fixed to the header's own geometry, it never
   renders among the cards or rows, and both `handleRoadmapKeydown` and `handleTreeKeydown`
   return on any event whose target is not the pane itself

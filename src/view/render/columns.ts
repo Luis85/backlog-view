@@ -1,7 +1,7 @@
 import { BasesPropertyId, NullValue, setTooltip } from 'obsidian';
 import { drawIcon } from './icons';
 import { BacklogViewHost, Column, ColumnFit, ColumnKind } from '../host';
-import { columnWidth, columnWidthVar, renderColumnResize } from '../interactions/columnResize';
+import { columnWidth, columnWidthVar, renderColumnResize, widenSign } from '../interactions/columnResize';
 import { showAssigneeMenu, showHorizonMenu, showRiskMenu, showStateMenu, showTagMenu } from '../interactions/menu';
 import { removeTag } from '../interactions/tags';
 import { DEFAULT_PROP_COLUMN_WIDTH } from '../../storage/collapseStore';
@@ -274,6 +274,8 @@ export function renderColumnHeader(ctx: RowContext, containerEl: HTMLElement): v
 	header.createDiv({ cls: 'pbl-row-spacer' });
 
 	const props = header.createDiv({ cls: 'pbl-props' });
+	// One style read for the whole strip, not one per grip — see `widenSign`.
+	const widen = widenSign(props);
 	for (const [index, column] of ctx.columns.entries()) {
 		const cell = props.createDiv({ cls: 'pbl-prop pbl-col-label' });
 		sizeCell(cell, index);
@@ -284,7 +286,7 @@ export function renderColumnHeader(ctx: RowContext, containerEl: HTMLElement): v
 		// column from exactly the readers who cannot drag one.
 		const name = cell.createSpan({ cls: 'pbl-col-name', text: column.label, attr: { 'aria-hidden': 'true' } });
 		setTooltip(name, column.label);
-		renderColumnResize(ctx.host, cell, containerEl, { prop: column.prop, label: column.label, index });
+		renderColumnResize(ctx.host, cell, containerEl, { prop: column.prop, label: column.label, index, widen });
 	}
 	if (rollup) {
 		header.createDiv({
@@ -387,8 +389,9 @@ export function renderPropCells(
  * Which of the five renderings this column asked for.
  *
  * Every one of them is handed the COLUMN's own display name, because that is the only
- * thing on the row that says which property the cell is: the header
- * (`renderColumnHeader`) is `aria-hidden`, so a chip whose accessible name says only
+ * thing on the row that says which property the cell is: the header's column NAME is
+ * `aria-hidden` (`renderColumnHeader` — the strip itself is not, since it carries the
+ * resize grips), so a chip whose accessible name says only
  * "Change state" is unidentifiable — and two state columns are legal now, so two such
  * chips can be on screen at once naming different properties. The chips put the name in
  * the accessible name and keep the TOOLTIP a plain statement of what pressing does: a

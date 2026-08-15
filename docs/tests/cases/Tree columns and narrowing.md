@@ -64,7 +64,8 @@ the repository is open as a vault with `docs/Product Backlog.base` showing the t
   drag it and confirm every row's cell in that column follows the pointer, live, with the
   header still above its own values when you let go. Reopen the base and confirm the
   width came back. Then Tab into the tree, confirm the grips are reachable in order,
-  step one with the arrow keys, and press Home to put it back.
+  step one with the arrow keys, and press Home to put it back. Then resize one by pointer
+  again and double click the same grip, which is the reset a mouse has.
 - A theme is what this last part is really for: the grip borrows `--interactive-accent`
   and `--text-on-accent`, and whether it reads as a handle against a themed header is not
   a question the browser harness can answer.

@@ -146,8 +146,9 @@ export const SETUP: ManualSection = {
 			term: 'Presentation',
 			text:
 				'Whether descendant counts show. The WIDTH of a property column is not here: drag ' +
-				'the grip at its header, and the width is kept per view on this device, like the ' +
-				'projection and the focus level, rather than in the base.',
+				'the grip at its header (double click it to put it back), and the width is kept ' +
+				'per view on this device, like the projection and the focus level, rather than ' +
+				'in the base.',
 			keys: ['showCounts'],
 		},
 		{
@@ -163,7 +164,8 @@ export const SETUP: ManualSection = {
 				"columns are the Base's own settings, reached from the same toolbar — its " +
 				'properties menu is the only switch for what a row shows, and in what order. ' +
 				'Their WIDTH is this view\'s, and the reader\'s: drag the grip on a column ' +
-				'header. Columns still drop when the row will not fit.',
+				'header, or double click it to reset. Columns still drop when the row will ' +
+				'not fit.',
 		},
 		{
 			term: "What this view ignores, and what it can't work around",

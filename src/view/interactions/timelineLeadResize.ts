@@ -63,7 +63,7 @@ export function renderLeadResize(
 			tabindex: '0',
 		},
 	});
-	setTooltip(grip, 'Drag to resize, or focus and use the arrow keys (Home resets it)');
+	setTooltip(grip, 'Drag to resize, or double click to reset. Focus it for the arrow keys and Home');
 
 	// Live feedback is the CSS custom property alone — nothing re-renders mid-gesture,
 	// and that splits the frame in two while the gesture lasts. Everything laid out AFTER
@@ -77,28 +77,17 @@ export function renderLeadResize(
 	// today's mark is off by the gesture's delta. Taken because `commit` below re-renders
 	// at the settled width and it is gone the instant the pointer releases; redoing that
 	// arithmetic on every `pointermove` is the upgrade path.
+	// Announcing the width is `wireResizeGrip`'s, not this function's — see its own note.
 	const live = (width: number): void => {
 		content.setCssProps({ '--pbl-tl-lead': `${width}px` });
-		grip.setAttribute('aria-valuenow', String(width));
 	};
 
 	// Persisted once, here — never from `live` — so a drag's `mousemove` stream and a
 	// held arrow key both cost one write to the collapse store, not one per pixel or
 	// per repeat event. `defaultWidth` back to `null` is `density`'s own rule: the
 	// default needs no stored entry, so dragging back to it clears the pick rather than
-	// writing the number that means the same thing.
-	// Commit only a width that DIFFERS from the one on screen. Asked here, once, rather
-	// than by each gesture in its own way — three separate versions of this question have
-	// now been wrong. It is not "did the pointer move": at a pane boundary a real drag
-	// (or ArrowRight at the ceiling) produces a delta whose clamped target is the width
-	// already drawn, and committing that writes the CLAMP back over a wider stored pick,
-	// losing a choice made in a wider pane for good. What matters is only what would
-	// change. Home stays an explicit reset and does not come through here.
-	const commitIfChanged = (width: number): void => {
-		if (width === current) return;
-		commit(width);
-	};
-
+	// writing the number that means the same thing. A width equal to the one on screen
+	// never reaches here at all — `wireResizeGrip` refuses it against `startWidth` below.
 	const commit = (width: number): void => {
 		// Asked BEFORE the write below, which destroys this element and with it the
 		// answer: focus is restored only to a grip that actually held it. A pointer
@@ -127,11 +116,12 @@ export function renderLeadResize(
 		// the stored pick those two disagree, and starting from the stored one would jump
 		// the column the instant the pointer moved a single pixel.
 		widthAt: (deltaX) => effectiveLeadWidth(current + deltaX, available),
+		// Also the width the gesture will not commit back — at a pane boundary a drag or an
+		// arrow key clamps straight onto it, and writing that clamp back over a wider stored
+		// pick loses a choice made in a wider pane for good.
 		startWidth: current,
 		live,
-		commit: commitIfChanged,
-		// Home stays an explicit reset and does not come through `commitIfChanged`: it
-		// clears the pick whatever is on screen.
+		commit,
 		reset: () => commit(defaultWidth),
 	});
 }

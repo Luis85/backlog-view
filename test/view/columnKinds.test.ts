@@ -119,7 +119,7 @@ describe('the columns are the properties menu, in its order', () => {
 	});
 
 	it('gives each chip its own column’s name, so two state columns do not announce alike', () => {
-		// The header is aria-hidden, so the chip's accessible name is the only thing that
+		// The header's column name is aria-hidden, so the chip's accessible name is the only
 		// says which property it writes. Both workflows hold the SAME value here, so a
 		// name built from the kind rather than from the column is two identical
 		// announcements for two different properties.

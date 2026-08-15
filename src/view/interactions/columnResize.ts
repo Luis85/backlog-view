@@ -65,19 +65,12 @@ export function renderColumnResize(
 	// than walked up to from the cell: the publisher and the reader of `columnWidthVar` are
 	// then the same element by construction.
 	treeEl: HTMLElement,
-	column: { prop: BasesPropertyId; label: string; index: number },
+	// `widen` is which way this boundary grows — see {@link widenSign}, which the caller
+	// asks ONCE for the whole strip.
+	column: { prop: BasesPropertyId; label: string; index: number; widen: number },
 ): void {
-	const { prop, label, index } = column;
+	const { prop, label, index, widen } = column;
 	const current = columnWidth(host, prop);
-	// Which way the boundary widens. The grip is pinned with `inset-inline-end`, so in a
-	// right-to-left layout it sits at the column's LEFT edge and a drag toward the left is
-	// what makes the column bigger — while `clientX` stays physical whichever way the text
-	// runs. That mismatch is the hazard `docs/requirements/Nothing pins a physical side.md`
-	// names as its third group: a logical CSS edge whose offset TypeScript goes on
-	// computing physically. One sign covers the pointer and both arrow keys, and it agrees
-	// with the separator pattern either way — Arrow Right moves the boundary physically
-	// right, which widens the column in one direction and narrows it in the other.
-	const widen = mirrored(cell) ? -1 : 1;
 	const grip = cell.createDiv({
 		cls: 'pbl-col-grip',
 		attr: {
@@ -97,14 +90,15 @@ export function renderColumnResize(
 			tabindex: '0',
 		},
 	});
-	setTooltip(grip, 'Drag to resize, or focus and use the arrow keys (Home resets it)');
+	setTooltip(grip, 'Drag to resize, or double click to reset. Focus it for the arrow keys and Home');
 
 	// Live feedback is the published custom property alone — the header cell and this
 	// column's cell on every row all read it, so one declaration moves the whole column
-	// and nothing re-renders while the pointer is down.
+	// and nothing re-renders while the pointer is down. Announcing the width is
+	// `wireResizeGrip`'s, not this function's: the two halves of showing one cannot be
+	// half-written if only one place writes them.
 	const live = (width: number): void => {
 		treeEl.setCssProps({ [columnWidthVar(index)]: `${width}px` });
-		grip.setAttribute('aria-valuenow', String(width));
 	};
 
 	const commit = (width: number): void => {
@@ -131,23 +125,16 @@ export function renderColumnResize(
 		refocusIndex = null;
 	};
 
-	// Commit only a width that DIFFERS from the one on screen — the lead grip's rule, and
-	// here it is what makes ArrowRight at the ceiling, ArrowLeft at the floor and a drag
-	// that ends where it began all cost nothing: no write, no render, and no undoing of a
-	// focus the reader still has.
-	const commitIfChanged = (width: number): void => {
-		if (width !== current) commit(width);
-	};
-
 	if (refocusIndex === index) grip.focus();
 	wireResizeGrip(grip, {
 		widthAt: (deltaX) => clampColumnWidth(current + widen * deltaX),
+		// Also what the gesture will not commit back: `wireResizeGrip` refuses a width
+		// equal to this one, which is what makes ArrowRight at the ceiling, ArrowLeft at
+		// the floor and a drag that ends where it began all cost nothing — no write, no
+		// render, and no undoing of a focus the reader still has.
 		startWidth: current,
 		live,
-		commit: commitIfChanged,
-		// Home does NOT go through `commitIfChanged`: pressing it on a column already at
-		// the default is a reader saying "the default", and clearing a pick that is
-		// already clear costs one no-op write.
+		commit,
 		reset: () => commit(DEFAULT_PROP_COLUMN_WIDTH),
 	});
 }
@@ -163,22 +150,31 @@ export function renderColumnResize(
 let refocusIndex: number | null = null;
 
 /**
- * Whether this column runs right to left, asked of the cell the grip is mounted on rather
- * than of the document: a pane can be given its own direction, and the answer that matters
- * is the one for the strip actually being dragged.
+ * Which way a boundary in this strip widens: +1 left to right, -1 right to left. The grip
+ * is pinned with `inset-inline-end`, so in a right-to-left layout it sits at the column's
+ * LEFT edge and a drag toward the left is what makes the column bigger — while `clientX`
+ * stays physical whichever way the text runs. That mismatch is the hazard
+ * `docs/requirements/Nothing pins a physical side.md` names as its third group: a logical
+ * CSS edge whose offset TypeScript goes on computing physically. One sign covers the
+ * pointer and both arrow keys, and it agrees with the separator pattern either way —
+ * Arrow Right moves the boundary physically right, which widens the column in one
+ * direction and narrows it in the other.
  *
- * Read once per render, never inside the gesture — a style read in a `pointermove` stream
- * is the shape of cost `src/view/CLAUDE.md` bans, and the direction cannot change while a
- * finger is down without a render in between. A cell not yet in a document (the harness
- * builds one that way) has no computed style to read and is treated as left to right,
- * which is what it draws as.
+ * Asked of the header STRIP rather than of the document: a pane can be given its own
+ * direction, and the answer that matters is the one where the grips actually are. Asked
+ * once per render for all of them — `direction` is inherited, so every cell in the strip
+ * answers the same, and `getComputedStyle` is a forced style flush that has no business
+ * running once per column, let alone inside a `pointermove` stream (the shape of cost
+ * `src/view/CLAUDE.md` bans). The direction cannot change while a finger is down without
+ * a render in between. An element not yet in a document (the harness builds one that way)
+ * has no computed style to read and is treated as left to right, which is what it draws as.
  */
-function mirrored(cell: HTMLElement): boolean {
+export function widenSign(strip: HTMLElement): number {
 	// `ownerDocument.defaultView`, not Obsidian's own `el.win`: the jsdom harness
 	// implements the first and not the second, and a reader that answers "left to right"
 	// because the property it asks for is missing would take this whole rule out of every
 	// test while looking like it held.
-	return cell.ownerDocument.defaultView?.getComputedStyle(cell).direction === 'rtl';
+	return strip.ownerDocument.defaultView?.getComputedStyle(strip).direction === 'rtl' ? -1 : 1;
 }
 
 /**

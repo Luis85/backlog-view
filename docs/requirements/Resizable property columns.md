@@ -40,7 +40,7 @@ width for every column can only ever do.
 | | |
 | --- | --- |
 | **Actor** | Backlog owner |
-| **Trigger** | The reader drags the grip at a column header's trailing edge, or focuses it and presses an arrow key or Home |
+| **Trigger** | The reader drags the grip at a column header's trailing edge, double clicks it, or focuses it and presses an arrow key or Home |
 | **Preconditions** | Tree mode, with at least one property column drawn |
 | **Guarantee** | Each width is UI state — per column, per saved view, per device, beside the collapse state — never the `.base` and never a frontmatter write. What a column is DRAWN at, what the fit ladder budgets with and what the grip announces are one number, so a resize can never leave the header and the rows disagreeing. |
 
@@ -53,7 +53,8 @@ width for every column can only ever do.
 2. Dragging it resizes that column live — the published custom property alone, so nothing
    re-renders mid-gesture — and releasing persists the settled width once.
 3. Focused, ArrowLeft/ArrowRight step the width by a fixed increment and persist each
-   step immediately; Home returns that column to the default width.
+   step immediately; Home returns that column to the default width, and so does a double
+   click on the grip.
 4. The width is published once per render as one custom property per column, and every
    cell of that column on every row reads it — which is what makes a drag move the whole
    column rather than only its header.
@@ -94,11 +95,19 @@ width for every column can only ever do.
   defensively and dropped — but per column: one unusable number is one column back at the
   default, never every column reset. A `colWidths` that is not an object at all is no
   widths.
+- **3b — a pointer with no way back to the default.** `pointerdown` prevents default, so
+  a mouse never focuses the strip and Home is a key the reader would first have to Tab
+  onto the grip to press. A double click on the boundary resets it — what every column of
+  every table has meant by that for thirty years — and the two taps under it commit
+  nothing on their own, so it arrives on a boundary still exactly where it was. Shared
+  with the timeline's lead grip, which had the same gap.
 - **1c — a right-to-left layout.** The grip is pinned with `inset-inline-end`, so it
   moves to the column's LEFT edge while `clientX` stays physical — the mismatch
   [[Nothing pins a physical side]] names as its third group, in miniature. One sign, read
-  off the header cell's own computed direction once per render (never inside the gesture),
-  mirrors the pointer delta and both arrow keys: dragging the boundary outward widens the
+  off the header STRIP's own computed direction once per render and shared by every grip
+  in it (`direction` is inherited, and `getComputedStyle` is a forced style flush that has
+  no business running per column — let alone inside the gesture), mirrors the pointer delta
+  and both arrow keys: dragging the boundary outward widens the
   column whichever way outward is, and Arrow Right always moves the boundary physically
   right, as the separator pattern says it should.
 - **1d — a device with no hover.** The grip paints only on hover or focus, which on a
@@ -129,6 +138,8 @@ width for every column can only ever do.
 - ArrowLeft/ArrowRight on the focused grip step the width and persist each step
   immediately; Home returns that column to the default and clears its stored pick;
   neither touches a note or the `.base`.
+- A double click on either grip clears its stored pick, so a pointer has a reset without
+  first having to Tab onto a strip a mouse cannot focus.
 - A stored width outside `MIN_PROP_COLUMN_WIDTH..MAX_PROP_COLUMN_WIDTH`, or one that is
   not a finite number, reads back as absent for THAT column while the others survive.
 - Widening one column past what the pane can hold drops the column after it, and clearing
@@ -158,11 +169,17 @@ render module owning it would have to import the interaction back, which is a cy
 `npm run analyze` fails on.
 
 The GESTURE — pointer and keyboard both — is `src/view/interactions/resizeDrag.ts`: press,
-drag, release, cancel, one contact only, riding `setPointerCapture`, with the arrow keys
-and Home over the same `widthAt`. It is shared with the timeline's lead-column grip, which
+drag, release, cancel, one contact only, riding `setPointerCapture`, with the arrow keys,
+Home and a double click over the same `widthAt` and the same reset. Two rules that were a
+copy in each grip live there now as well: `aria-valuenow` is written wherever a width is
+drawn, so what is announced cannot fall behind what is on screen; and a width equal to the
+one the gesture found is never committed at all, measured against the `startWidth` each
+grip already passes for the cancel restore. It is shared with the timeline's lead-column grip, which
 this one arrived as a copy of. What each grip keeps is only what its boundary MEANS:
 `widthAt` clamps against the pane for the lead column, and against the storable bounds —
-mirrored by the cell's own computed direction — here. The keys going through that one
+mirrored by `widenSign`, which `renderColumnHeader` asks ONCE of the header strip rather
+than per grip, since `direction` is inherited and `getComputedStyle` is a forced style
+flush — here. The keys going through that one
 function is what stops the right-to-left sign being applied in two places, one of which is
 the one somebody forgets.
 
