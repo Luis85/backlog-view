@@ -198,6 +198,18 @@ instruments improvised around a browser.
   what the render produced and what actually varies — a zoom, a lead width or one note's
   dates move it too. Named `grid` because `--window` in the runner is the VIEWPORT.
   (Codex, PR #137.)
+- **3n — the workload is checked once, on run 1.** It was, on each side: `ran` is the
+  FIRST result's, so a multi-run comparison crossing midnight after its first pair drew a
+  different grid from then on, pooled every timing into one median, and headed the table
+  with the span the run started on. Trusting each build to be constant within itself while
+  checking the two against each other is the same assumption the rest of this block exists
+  to refuse, one level in. Every run's `ran` is now compared against its own side's first
+  and the first run that MOVED is named, with what moved. Against run 1 rather than
+  pairwise, because the drift is chronological: n comparisons say it where n² repeat it.
+  Loud rather than a refusal, like every warning above it. Watched firing on both sides,
+  against a bundle patched to report a grid that moves per page load — which is what
+  crossing midnight does and what nothing in this repository's history can supply.
+  (Codex, PR #137.)
 - **4a — the runner checks out the ref to compare against.** Refused: that would move the
   tree someone is working in. Building the other side is one command in a git worktree,
   and stays the human's.

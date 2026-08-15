@@ -448,6 +448,27 @@ const baselineWorkload = !against
 	: !ranAgainst
 		? ['the baseline does not report what it mounted — it was built before the page said so']
 		: differs.map((key) => `${key}: ${show(ran[key])} here, ${show(ranAgainst[key])} in the baseline`);
+/**
+ * The same comparison ACROSS runs, on each side, because run 1 is not the run.
+ *
+ * `ran` and `ranAgainst` are the first result's, and a multi-run comparison can cross
+ * midnight after its first pair: later samples then draw a different grid, every timing is
+ * pooled into one median, and the heading states the span the run STARTED on. Checking two
+ * builds against each other while trusting each to be constant within itself is the same
+ * assumption this whole block exists to refuse, one level in. (Codex, PR #137.)
+ *
+ * Against run 1 rather than pairwise: the drift is chronological, so naming the first run
+ * that moved is what a reader needs, and n comparisons say it where n² would repeat it.
+ */
+const drift = (results, side) =>
+	results.flatMap((result, i) => {
+		if (i === 0) return [];
+		const moved = WORKLOAD.filter((key) => result.ran?.[key] !== results[0].ran?.[key]);
+		if (moved.length === 0) return [];
+		const said = moved.map((key) => `${key} ${show(results[0].ran?.[key])} → ${show(result.ran?.[key])}`);
+		return [`${side} run ${i + 1}: ${said.join(', ')}`];
+	});
+const drifted = [...drift(a, 'this build'), ...(against ? drift(b, 'the baseline') : [])];
 const ignored = [
 	ran && asked.fixture !== ran.fixture ? `--fixture=${asked.fixture} (mounted ${ran.fixture})` : '',
 	ran && asked.axis !== undefined && asked.axis !== ran.axis ? `--axis=${asked.axis} (axis ${ran.axis ?? 'unpicked'})` : '',
@@ -474,6 +495,9 @@ if (unlike.length > 0) {
 }
 if (ignored.length > 0) {
 	console.log(`\n!! The page did not use what was asked for — the table is of what it DID draw:\n   ${ignored.join('\n   ')}`);
+}
+if (drifted.length > 0) {
+	console.log(`\n!! The workload CHANGED between runs — every timing above is pooled across both:\n   ${drifted.join('\n   ')}`);
 }
 if (baselineWorkload.length > 0) {
 	console.log(`\n!! The two builds did not mount the same workload — the delta compares unlike things:\n   ${baselineWorkload.join('\n   ')}`);
