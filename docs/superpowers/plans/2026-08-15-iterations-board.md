@@ -524,7 +524,7 @@ describe('computeIterationWrites', () => {
 	it('carries the target FILE, so the writer can spell a path-aware link', () => {
 		// NOT a serialized string: `[[Sprint 12]]` cannot say WHICH Sprint 12.
 		expect(computeIterationWrites(pbi, sprint12File)).toEqual([
-			{ path: pbi.path, file: pbi.file, iteration: sprint12File },
+			{ file: pbi.file, iteration: sprint12File },
 		]);
 	});
 
@@ -534,7 +534,7 @@ describe('computeIterationWrites', () => {
 
 	it('plans a delete for None', () => {
 		expect(computeIterationWrites(pbiInSprint12, null)).toEqual([
-			{ path: pbi.path, file: pbi.file, iteration: null },
+			{ file: pbi.file, iteration: null },
 		]);
 	});
 
@@ -581,9 +581,9 @@ export function computeIterationWrites(item: BacklogItem, target: TFile | null):
 	// `None` clears whatever the key holds, INCLUDING a link that resolved to nothing.
 	// Asking `iterationPath` alone would read a broken link as no link, tick `None` as
 	// current, and leave the user unable to clear the very value they can see.
-	if (target === null) return item.iterationLink === null ? [] : [{ path: item.path, file: item.file, iteration: null }];
+	if (target === null) return item.iterationLink === null ? [] : [{ file: item.file, iteration: null }];
 	if (target.path === item.iterationPath) return [];
-	return [{ path: item.path, file: item.file, iteration: target }];
+	return [{ file: item.file, iteration: target }];
 }
 ```
 
@@ -1039,7 +1039,8 @@ opposite landed."
 **Interfaces:**
 - Consumes: `iterationPath` (Task 3), `resolvedIterationStateKey` (Task 6).
 - Produces: `model.iterationResults: BacklogItem[]`,
-  `withContextAncestors(population, model): BacklogItem[]` (Task 10 calls it), and
+  `withContextAncestors(population): BacklogItem[]` (Task 10 calls it — it walks
+  `item.parent` and needs no model), and
   `iterationWorkflow(population: BacklogItem[], settings: BacklogSettings): Workflow` —
   the **population**, not the model, so there is no model-wide observed list for a scope
   to disagree with.
@@ -1237,7 +1238,7 @@ belongs in `src/domain/board.ts` beside `requirementsFocusRoots`, which is the e
  * context rows already. A population filtered by a LINK does not, which is why this
  * exists here and nowhere else.
  */
-export function withContextAncestors(population: BacklogItem[], model: BacklogModel): BacklogItem[] {
+export function withContextAncestors(population: BacklogItem[]): BacklogItem[] {
 	const seen = new Set(population.map((item) => item.file.path));
 	const out = [...population];
 	for (const item of population) {
@@ -1258,15 +1259,15 @@ not this board's business.
 
 ```ts
 it('adds an excluded parent once for two carriers beneath it', () => {
-	expect(withContextAncestors([taskA, taskB], model).filter((i) => i === excludedEpic)).toHaveLength(1);
+	expect(withContextAncestors([taskA, taskB]).filter((i) => i === excludedEpic)).toHaveLength(1);
 });
 
 it('adds a whole chain of excluded ancestors', () => {
-	expect(paths(withContextAncestors([deepTask], model))).toContain('excluded-feature.md');
+	expect(paths(withContextAncestors([deepTask]))).toContain('excluded-feature.md');
 });
 
 it('adds nothing when every ancestor is in the filter', () => {
-	expect(withContextAncestors([plainPbi], model)).toEqual([plainPbi]);
+	expect(withContextAncestors([plainPbi])).toEqual([plainPbi]);
 });
 ```
 
@@ -1845,7 +1846,7 @@ export function renderIterationBoard(
 	// whole epic keeps. The candidate list is the carriers PLUS their `outsideFilter`
 	// ancestors; the counted population, the workflow vocabulary and every write target
 	// stay the carriers alone. A context row renders, it parents, and that is all.
-	const candidates = withContextAncestors(population, model); // defined in Task 7
+	const candidates = withContextAncestors(population); // defined in Task 7
 	// A context ancestor is visible when a carrier IN THIS SCOPE below it is — never by
 	// `isRowHidden`, which recurses over the ancestor's WHOLE subtree and so answers for
 	// descendants in other iterations. Sprint 12 would otherwise draw a context card whose
@@ -2034,7 +2035,21 @@ Expected: FAIL.
 - [ ] **Step 3: Route the three inputs — and for the menu, routing is not enough**
 
 `cardDrag.ts` and `keyboard.ts` (Alt+Left/Right) each gain a branch selecting this method
-in the `'iteration'` projection, beside the Deliverables board's own branches.
+in the `'iteration'` projection — and in `keyboard.ts` that branch goes **before** the
+type branch, not beside it. `handleBoardMoveKey` tests `isDeliverableType(card.typeName)`
+first and calls `performDeliverablesBoardMove`, so a Deliverable moved with Alt+arrow on
+an iteration board would write the Deliverables key while sitting in an iteration column.
+
+This is the same projection-before-type rule the menu needs below, and the same defect in
+a second input. Its test must use a **Deliverable**: a PBI takes the right path either
+way, which is why the menu's own PBI-only tests did not catch this one.
+
+```ts
+it('moves a Deliverable by keyboard through the ITERATION workflow', async () => {
+	await altArrow(deliverableInSprint12, 'Right');
+	expect(written(deliverableInSprint12)).toEqual({ sprintState: 'Shipped' });
+});
+```
 
 `menu.ts` needs **three** changes, not one, and routing the click is only the third:
 

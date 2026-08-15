@@ -264,7 +264,10 @@ the moment the populations diverged, which is exactly what happened.
   its `Set state` entries and its checkmark. Every routing question on this board is
   answered by the PROJECTION before it is answered by the item's type; asking the type
   first would give a Deliverable card another board's states while it sits in this board's
-  column. One board
+  column. Every input, not just the menu: the keyboard's own move handler tests the type
+  first today, so a Deliverable moved with Alt+arrow here would write the Deliverables key.
+  A PBI takes the right path under either order, which is why the rule has to be checked
+  with a Deliverable on each input rather than once. One board
   has one column list; a board that columned some cards by one vocabulary and some by
   another would not be a board.
 - **3g — the same card's FINISHED STYLING is asked for.** It comes from the item's **own**
