@@ -224,12 +224,15 @@ function oneItem(state: string): FakeVault {
 
 describe('row controls after a data update', () => {
 	it('opens the state menu for the item the model holds now, not the one captured at render', () => {
-		const { view, containerEl, vault } = makeView(oneItem('Open'), { stateKey: 'status' });
+		const { view, containerEl } = makeView(oneItem('Open'), { stateKey: 'status' });
 		view.onDataUpdated();
 		const before = view.model?.byPath.get('Alpha.md');
 
-		// A data update rebuilds the model, so every BacklogItem is a NEW object.
-		vault.setFrontmatter('Alpha.md', { type: 'PBI', order: 10, status: 'Doing' });
+		// An UNCHANGED update, deliberately. `buildModel` runs every pass, so the model's
+		// object for this path is new while the row's signature is identical — and that is
+		// the only shape that exercises a KEPT row once Task 5 lands. Changing the
+		// frontmatter would change the signature, rebuild the row, and install a fresh
+		// closure, which proves nothing about delegation either before or after.
 		view.onDataUpdated();
 
 		const spy = vi.spyOn(menu, 'showStateMenu').mockImplementation(() => {});
@@ -248,12 +251,16 @@ If `vault.setFrontmatter` is not the helper's name, read `test/helpers/vault.ts`
 
 If `.pbl-state-chip` is not the chip's class, read `renderStateChip` in `src/view/render/columns.ts` and use the class it builds. Do not guess.
 
-- [ ] **Step 2: Run it and watch it fail**
+- [ ] **Step 2: Run it, and understand why it passes**
 
 Run: `npx vitest run test/view/rowControls.test.ts`
-Expected: FAIL on the last assertion — the chip passes the object captured at the first render, so `passed` **is** `before`.
+Expected: **PASS**, before you have changed any source.
 
-This failure is the whole finding. Read it before fixing it.
+That is not a broken test, and do not "fix" it by making it fail. A full rebuild replaces the chip along with the row, so the captured item is always fresh — which means **no test can distinguish a captured item from a delegated one until rows are kept**. The capture is a latent defect today and a live one after Task 5.
+
+This is the same situation as Task 3's disclosure test, and the human has ruled on both: they are written now, from the rule, rather than after Task 5 from the code. The comment in the test says so. What Task 2 buys is the delegation itself; what this test buys is that Task 5 cannot land the capture back.
+
+Do not skip running it. A test that fails here means the harness or a selector is wrong, and you want to know that before touching `columns.ts`.
 
 - [ ] **Step 3: Add the resolver and the delegated handler**
 
@@ -408,18 +415,25 @@ Append to `test/view/rowControls.test.ts`:
 		const vault = new FakeVault();
 		vault.addFile('Parent.md', { frontmatter: { type: 'Feature', order: 10 } });
 		vault.addFile('Child A.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Parent' });
+		vault.addFile('Child B.md', { frontmatter: { type: 'PBI', order: 20 }, parentLink: 'Parent' });
 		const { view, containerEl } = makeView(vault);
 		view.onDataUpdated();
+		expect(titlesOf(containerEl)).toEqual(['Parent', 'Child A', 'Child B']);
 
-		// A second child arrives. The parent's own frontmatter is untouched.
-		vault.addFile('Child B.md', { frontmatter: { type: 'PBI', order: 20 }, parentLink: 'Parent' });
+		// The children REORDER. Adding one would not do: `descendantCount` is a signature
+		// term, so a new child rebuilds the parent's row and its closure with it, and the
+		// test would prove nothing about a kept disclosure. A swap leaves every one of the
+		// parent's own terms equal — same frontmatter, same count, same done count, same
+		// visible-children answer — so the parent's row is KEPT and its captured child
+		// list is the only thing that could be stale.
+		vault.setFrontmatter('Child A.md', { type: 'PBI', order: 30, parent: '[[Parent]]' });
 		view.onDataUpdated();
 
 		const row = rowByTitle(containerEl, 'Parent');
 		row.querySelector<HTMLElement>('.pbl-chevron')?.click(); // collapse
 		row.querySelector<HTMLElement>('.pbl-chevron')?.click(); // expand
 
-		expect(titlesOf(containerEl)).toContain('Child B');
+		expect(titlesOf(containerEl)).toEqual(['Parent', 'Child B', 'Child A']);
 	});
 ```
 
@@ -436,7 +450,12 @@ This one cannot be watched failing yet. It is the regression guard for Task 5, w
 		// Passes today because every update rebuilds the row. It is here for Task 5,
 		// where the row is KEPT and the disclosure's closure is what would go stale —
 		// the case a signature cannot catch, since the parent's own frontmatter and
-		// rollup can both be unchanged while its child list is not.
+		// rollup are both unchanged by a reorder while its child list is not.
+		//
+		// The reorder is load-bearing, not incidental: this test was first written as
+		// "a child ARRIVES", which changes `descendantCount` — a signature term — so the
+		// parent's row would have been rebuilt and nothing about a kept disclosure would
+		// have been exercised. Do not simplify it back.
 ```
 
 - [ ] **Step 3: Delegate the two controls**
