@@ -805,19 +805,29 @@ export function renderInputs(host: BacklogViewHost): string {
  * while the frontmatter — and so every row signature — is identical. The columns list
  * cannot see it either; the property id did not change.
  *
- * One entry is enough, and that is a fact about the hazard rather than a shortcut: a type
- * belongs to the PROPERTY, vault-wide, so it cannot differ between two notes in the same
- * column. Probing per row would cost N and learn the same thing.
+ * A type belongs to the PROPERTY, vault-wide, so it cannot differ between two notes in
+ * one column — which is what makes a probe exact rather than a sample. But the sample
+ * must be **per column**: one entry chosen for all of them reports nothing for a column
+ * that entry happens to leave empty, and keeps reporting nothing as the registry changes
+ * underneath a later row that does have a value. So each column finds its own first
+ * populated entry, and a column no result populates contributes nothing because there is
+ * nothing on screen to go stale.
+ *
+ * `results`, not `items`: a context row is never a source of anything derived from the
+ * Base's results.
  */
 function valueKinds(host: BacklogViewHost): string[] {
-	const sample = host.model?.results.find((item) => item.entry)?.entry;
-	if (!sample) return [];
+	const results = host.model?.results ?? [];
 	return host.columns.map((column) => {
-		try {
-			return sample.getValue(column.prop)?.constructor.name ?? '';
-		} catch {
-			return '';
+		for (const item of results) {
+			try {
+				const value = item.entry?.getValue(column.prop);
+				if (value != null) return value.constructor.name;
+			} catch {
+				// This entry cannot answer for this property; the next one may.
+			}
 		}
+		return '';
 	});
 }
 
@@ -920,6 +930,14 @@ export function rowSignature(
 ```
 
 Check every member against the file that defines it before trusting this list — `BacklogItem` in `src/domain/model.ts`, the host in `src/view/host.ts`. A field named here that does not exist fails the build; a field that exists and is missing from the list ships a stale row, and the build says nothing.
+
+**On `valueKinds`' cost.** It scans results until each column finds a value, so a column no result populates walks the whole list — O(results × empty columns) in the worst case, once per pass rather than per row. That is fine at the sizes measured and it is the kind of thing that stops being fine quietly, so note the figure in Task 6 if the per-row number does not move as expected.
+
+```ts
+// ponytail: linear scan per empty column, once per pass. If a wide base with mostly
+// empty columns ever shows up in the numbers, cache the resolved kinds and invalidate
+// them on a column-list change.
+```
 
 - [ ] **Step 3b: Re-derive the list with an instrument, and reconcile it against the code**
 
