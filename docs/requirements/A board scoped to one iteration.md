@@ -197,6 +197,13 @@ the moment the populations diverged, which is exactly what happened.
   built from the carriers alone deletes it before the board can draw it. The carriers plus
   their excluded ancestors are what the board is built from; the carriers alone are what
   is counted, what supplies the vocabulary, and what may be written to.
+
+  And a context row is drawn because it **parents something on this board** — never
+  because something anywhere below it is visible. An excluded ancestor can parent work in
+  several iterations at once, so asking the tree whether it has a visible descendant would
+  draw it on Sprint 12 for a match that only exists in Sprint 13, and would suppress
+  Sprint 12's own "nothing matches" advisory while none of its carriers match. What is on
+  screen is this board's population, so that is the set the question has to be asked of.
 - **3b — the iteration holds no items.** Every column renders empty and the board says
   **"No items in this iteration yet"** — never the product board's "All N items are done
   and hidden", which cannot tell an empty base from an empty scope. The same distinction

@@ -1066,6 +1066,14 @@ describe('an iteration board population', () => {
 		expect(paths(inIteration(model, sprint12))).not.toContain('excluded-epic.md');
 	});
 
+	it('drops a context ancestor whose only match is in another iteration', () => {
+		// excluded-epic parents work in Sprint 12 AND Sprint 13; the filter matches only
+		// the Sprint 13 child. Sprint 12 shows no context card and says nothing matches.
+		const board = renderScope(model, sprint12, { filter: 'sprint-13-only' });
+		expect(contextCardPaths(board)).not.toContain('excluded-epic.md');
+		expect(emptyText(board)).toContain('No matches');
+	});
+
 	it('still renders an excluded ancestor as an inert context card', () => {
 		// Counted nowhere, a column source nowhere, a write target nowhere — but on
 		// screen, because the carrier below it needs the placement.
@@ -1838,11 +1846,21 @@ export function renderIterationBoard(
 	// ancestors; the counted population, the workflow vocabulary and every write target
 	// stay the carriers alone. A context row renders, it parents, and that is all.
 	const candidates = withContextAncestors(population, model); // defined in Task 7
+	// A context ancestor is visible when a carrier IN THIS SCOPE below it is — never by
+	// `isRowHidden`, which recurses over the ancestor's WHOLE subtree and so answers for
+	// descendants in other iterations. Sprint 12 would otherwise draw a context card whose
+	// only matching descendant is in Sprint 13, and suppress its own "nothing matches"
+	// advisory while none of its own carriers match. The rule is the context-row rule
+	// itself, asked correctly: a context row renders because it PARENTS something on
+	// screen, so what is on screen has to be this board's population and not the tree's.
+	const inScope = new Set(population.map((item) => item.file.path));
+	const visibleCarrier = (item: BacklogItem): boolean =>
+		inScope.has(item.file.path) && !host.isRowHidden(item);
 	const board = boardColumns(
 		iterationWorkflow(population, host.settings),
 		candidates,
-		(item) => !host.isRowHidden(item) && (item.outsideFilter || population.includes(item)),
-		(item) => !host.isRowHiddenUnfiltered(item) && !item.outsideFilter,
+		(item) => (item.outsideFilter ? population.some((c) => descendsFrom(c, item) && visibleCarrier(c)) : visibleCarrier(item)),
+		(item) => !item.outsideFilter && inScope.has(item.file.path) && !host.isRowHiddenUnfiltered(item),
 	);
 	return renderBoard(ctx, boardEl, dnd, board, {
 		// Its own fold scope, and it carries the CHOSEN ITERATION. `ColumnScope` is what
