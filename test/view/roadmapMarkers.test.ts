@@ -48,7 +48,6 @@ describe('a marker on the dated axis', () => {
 		expect(row?.getAttribute('aria-label')).toContain('1 of 1 items done');
 	});
 
-
 	it('draws no diamond for a milestone past the window edge, only the direction it lies past', () => {
 		const vault = new FakeVault();
 		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10, due: '2200-01-01' } });

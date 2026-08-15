@@ -202,16 +202,10 @@ export function baseRegister(): Register {
 }
 
 /** A backlog note: the three required fields, then whatever body is passed. */
-export function note(
-	type: string,
-	order: number | string,
-	parent: string | null,
-	body: string,
-	status = 'Open',
-): string {
+export function note(type: string, order: number | string, parent: string | null, body: string): string {
 	const lines = ['---', `type: ${type}`, `order: ${order}`];
 	if (parent !== null) lines.push(`parent: "[[${parent}]]"`);
-	lines.push(`status: ${status}`, '---', '', body);
+	lines.push('status: Open', '---', '', body);
 	return lines.join('\n');
 }
 

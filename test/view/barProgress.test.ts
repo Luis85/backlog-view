@@ -189,8 +189,18 @@ describe('how the count is announced', () => {
 	});
 });
 
+/** The lane context row for one title — a fixture may put more than one on the grid. */
+function laneContextFor(containerEl: HTMLElement, title: string): HTMLElement | null {
+	const rows = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-lane-context'));
+	return rows.find((row) => row.querySelector('.pbl-card-title')?.textContent === title) ?? null;
+}
+
 describe('a context row on the resources axis', () => {
-	it('counts its visible results only, whatever the excluded note’s own state is', () => {
+	// Named for what the fixture can prove. "Whatever its OWN state is" was the name until
+	// review: `assignAll` computes `self` per CHILD, so a context row's own status can
+	// never enter its own count by construction and no fixture can make it fail — a name
+	// promising it reads as a check that is not there.
+	it('counts the results beneath it and never an excluded note on the way', () => {
 		const vault = new FakeVault();
 		// Named to match `demoResults`' own excluded note, so the helper's filter is a
 		// real filter here rather than a no-op.
@@ -201,13 +211,25 @@ describe('a context row on the resources axis', () => {
 			frontmatter: { type: 'Feature', order: 10, assignee: 'Dana', status: 'Done', start: '2026-08-01', due: '2026-08-02' },
 			parentLink: 'Retired platform',
 		});
-		vault.addFile('Result B.md', {
-			frontmatter: { type: 'Feature', order: 20, assignee: 'Dana', status: 'Active', start: '2026-08-03', due: '2026-08-04' },
+		// The excluded CHILD — the only excluded note a count can actually be wrong about.
+		// It is `Done` too, so counting it would read `2/3`. It exists in the model at all
+		// because it is `Result B`'s parent: `loadOutsideParents`
+		// pulls in ancestors of results and nothing else, so an excluded LEAF child could
+		// not be built at all.
+		vault.addFile('Excluded branch.md', {
+			frontmatter: { type: 'Feature', order: 20, status: 'Done' },
 			parentLink: 'Retired platform',
 		});
-		const only = demoResults(vault).map((entry) => entry.file.path);
-		// `Dana` has to be a DECLARED resource: with focus at Epic level neither Feature
-		// result is itself a root, so no result ever mints her lane the way a card would —
+		vault.addFile('Result B.md', {
+			frontmatter: { type: 'PBI', order: 10, assignee: 'Dana', status: 'Active', start: '2026-08-03', due: '2026-08-04' },
+			parentLink: 'Excluded branch',
+		});
+		// `demoResults` knows the one excluded name, so the branch is dropped here.
+		const only = demoResults(vault)
+			.map((entry) => entry.file.path)
+			.filter((path) => path !== 'Excluded branch.md');
+		// `Dana` has to be a DECLARED resource: with focus at Epic level neither result is
+		// itself a root, so no result ever mints her lane the way a card would —
 		// only a declared name pre-exists for the context row to join.
 		const harness = laneRoadmap(
 			vault,
@@ -215,7 +237,7 @@ describe('a context row on the resources axis', () => {
 			{ only, focus: 'Epic' },
 		);
 
-		const context = harness.containerEl.querySelector('.pbl-lane-context');
+		const context = laneContextFor(harness.containerEl, 'Retired platform');
 		expect(context?.querySelector('.pbl-bar-progress')).toBeNull();
 		expect(context?.querySelector('.pbl-bar-count')?.textContent).toBe('1/2');
 	});

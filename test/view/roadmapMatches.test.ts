@@ -171,17 +171,34 @@ describe('every roadmap surface names what the filter found under it', () => {
 });
 
 describe('a row SUBSTITUTES its count slot, never adds to it', () => {
-	/** A dated epic with two children, one of them the filter's match. */
+	/**
+	 * A dated epic with two children, one of them the filter's match — and a BROKEN
+	 * prerequisite, which is what puts a `.pbl-timeline-dependency-flag` in the same lead
+	 * after the count slot. Without it nothing is ever drawn after that slot, and the
+	 * placement case below cannot tell a moved chip from an appended one.
+	 */
 	function countedVault(): FakeVault {
 		const vault = new FakeVault();
-		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, start: '2026-08-01', due: '2026-08-10' } });
+		vault.addFile('Epic A.md', {
+			frontmatter: { type: 'Epic', order: 10, start: '2026-08-01', due: '2026-08-10', dependsOn: 'Ghost' },
+		});
 		vault.addFile('Feature A1.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic A' });
 		vault.addFile('PBI Login.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature A1' });
 		return vault;
 	}
 
+	/** The dated axis with the dependency property named, so that broken entry is read. */
+	const FLAGGED = { ...DATES, dependsOnProperty: 'note.dependsOn' };
+
+	/** What the lead draws around its count slot, in DOM order. */
+	function leadOrder(row: HTMLElement | null | undefined): string[] {
+		return Array.from(row?.querySelector('.pbl-timeline-lead')?.children ?? [])
+			.map((el) => el.className)
+			.filter((cls) => cls === 'pbl-row-matches' || cls === 'pbl-timeline-dependency-flag');
+	}
+
 	it('shows the rollup with no filter running, exactly as before', () => {
-		const { containerEl } = roadmap(countedVault(), { ...DATES }, { focus: 'Epic' });
+		const { containerEl } = roadmap(countedVault(), { ...FLAGGED }, { focus: 'Epic' });
 
 		const row = rowFor(containerEl, 'Epic A');
 		expect(row?.querySelector('.pbl-bar-count')?.textContent).toBe('2');
@@ -194,22 +211,24 @@ describe('a row SUBSTITUTES its count slot, never adds to it', () => {
 		// browser harness, at 34px of title and at a 28.95px overflow. The affordance is
 		// therefore a substitution: the count slot is already spent, and a rollup counting
 		// every descendant is not what a reader narrowing the view is asking about.
-		const { containerEl, view } = roadmap(countedVault(), { ...DATES }, { focus: 'Epic' });
+		const { containerEl, view } = roadmap(countedVault(), { ...FLAGGED }, { focus: 'Epic' });
 		view.setFilter('Login');
 
 		const row = rowFor(containerEl, 'Epic A');
 		expect(matchCountOn(row)).toBe('1');
 		expect(row?.querySelector('.pbl-bar-count')).toBeNull();
 		// In the slot's own place, not appended after it: everything in the lead is
-		// anchored by that slot's `margin-inline-start: auto`, and a dependency flag drawn
-		// after it would otherwise be left where the rollup used to push it from.
-		expect(row?.querySelector('.pbl-timeline-lead')?.lastElementChild?.className).toContain('pbl-row-matches');
+		// anchored by that slot's `margin-inline-start: auto`, and the dependency flag this
+		// fixture's broken entry draws after it would otherwise be left where the rollup
+		// used to push it from. Asked of the flag, never of "is it last": a chip appended
+		// to a lead that draws nothing after the slot is last either way.
+		expect(leadOrder(row)).toEqual(['pbl-row-matches', 'pbl-timeline-dependency-flag']);
 	});
 
 	it('keeps announcing the rollup on the row, which costs no width', () => {
 		// The visible slot is spent, so the words are the sr-only span's alone — the one
 		// place the progress stays reachable while a filter narrows the view.
-		const { containerEl, view } = roadmap(countedVault(), { ...DATES }, { focus: 'Epic' });
+		const { containerEl, view } = roadmap(countedVault(), { ...FLAGGED }, { focus: 'Epic' });
 		view.setFilter('Login');
 
 		const said = Array.from(rowFor(containerEl, 'Epic A')?.querySelectorAll('.pbl-sr-only') ?? []).map(
@@ -222,7 +241,7 @@ describe('a row SUBSTITUTES its count slot, never adds to it', () => {
 		// With the rollup off altogether — no workflow and no counts — `rollupReport`
 		// returns null and nothing draws the slot, so there is nothing to substitute and
 		// the affordance is simply the last thing in the lead.
-		const { containerEl, view } = roadmap(countedVault(), { ...DATES, showCounts: false }, { focus: 'Epic' });
+		const { containerEl, view } = roadmap(countedVault(), { ...FLAGGED, showCounts: false }, { focus: 'Epic' });
 		view.setFilter('Login');
 
 		const row = rowFor(containerEl, 'Epic A');
