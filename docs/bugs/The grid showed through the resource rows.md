@@ -11,6 +11,13 @@ source: User report with a screenshot — "the things underneath the resources c
 files:
   - styles/lanes.css
   - test/view/timelineBoxing.test.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # The grid showed through the resource rows

@@ -6,10 +6,17 @@ status: Done
 priority: P3
 area: verification
 created: 2026-08-08
-source: measured while hardening the settings fixtures — PR #94
+source: measured while hardening the settings fixtures — PR
 files:
   - test/helpers/vault.ts
   - src/domain/noteFields.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # The fake vault can hold a cache Obsidian would not produce

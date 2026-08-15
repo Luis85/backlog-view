@@ -6,8 +6,6 @@ status: Done
 started: ""
 finished: ""
 horizon: ""
-start: 2026-09-10
-due: 2026-09-16
 risk: ""
 assignee: Evi
 ---

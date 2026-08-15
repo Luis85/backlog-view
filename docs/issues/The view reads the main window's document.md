@@ -6,13 +6,20 @@ status: Open
 priority: P3
 area: design
 created: 2026-08-14
-source: Codex review on PR #139, on the resize grip's focus check; the other five sites were found by the sweep it prompted
+source: Codex review on PR
 files:
   - src/view/render/toolbarControls.ts
   - src/view/render/toolbarFit.ts
   - src/view/render/toolbarBusy.ts
   - src/view/render/toolbarFilter.ts
   - src/view/interactions/stateColors.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # The view reads the main window's document

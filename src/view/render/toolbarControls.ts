@@ -194,6 +194,7 @@ export function renderProjectionZone(host: BacklogViewHost, barEl: HTMLElement):
 	switch (host.projection) {
 		case 'roadmap':
 			renderAxisPicker(host, zone, barEl);
+			renderBucketGridToggle(host, zone);
 			renderTimelineControls(host, zone, barEl);
 			renderStateColorsButton(host, zone, barEl);
 			break;
@@ -285,6 +286,43 @@ function renderAxisPicker(host: BacklogViewHost, zone: HTMLElement, barEl: HTMLE
 		for (const axis of axes) choice(axis);
 		showMenuForClick(menu, evt);
 	});
+}
+
+/**
+ * What the bucket-layout toggle says, looks like saying and does — one statement for the
+ * toolbar button and its `⋯` entry, `clickActionToggle`'s rule below: two inputs on one
+ * value, never two derivations of it.
+ *
+ * The setting is named for the GRID, which is the default, so `aria-pressed` is true until
+ * the reader turns it off. The stored pick is the other way round (`viewState.ts` keeps
+ * that inversion, since the store writes nothing for a default), and nothing above the
+ * store has to know.
+ */
+const BUCKET_GRID_LABEL = 'Grid in buckets';
+
+function bucketGridToggle(host: BacklogViewHost): { grid: boolean; icon: string; flip: () => void } {
+	const grid = host.bucketGrid;
+	return { grid, icon: grid ? 'layout-grid' : 'rows-3', flip: () => host.setBucketGrid(!grid) };
+}
+
+/**
+ * How a bucket lays its cards out, on the one axis that draws buckets. A wide bucket
+ * reflows its cards into several columns, which is what [[Buckets that use the room they
+ * have]] built and what most panes want; one card per row is the other reading of the same
+ * width, and which one a reader wants is a habit rather than a property of the base — so it
+ * is working position (ADR 0011) beside the density toggle the grid axes get.
+ *
+ * Absent on every other screen for the density toggle's reason: a control that changes
+ * nothing on the screen in front of you is worse than one that is not there.
+ */
+function renderBucketGridToggle(host: BacklogViewHost, zone: HTMLElement): void {
+	if (activeAxis(host.settings, host.axisPick) !== 'horizons') return;
+	const { grid, icon, flip } = bucketGridToggle(host);
+	const btn = iconButton(zone, icon, BUCKET_GRID_LABEL);
+	btn.addClass('pbl-bucket-grid-toggle');
+	btn.toggleClass('is-active', grid);
+	btn.setAttribute('aria-pressed', String(grid));
+	btn.addEventListener('click', flip);
 }
 
 /**
@@ -526,7 +564,17 @@ interface OverflowEntry {
 function overflowEntries(host: BacklogViewHost, barEl: HTMLElement): OverflowEntry[] {
 	const compact = host.density === 'compact';
 	const clickAction = clickActionToggle(host);
+	const bucketGrid = bucketGridToggle(host);
 	const all: OverflowEntry[] = [
+		{
+			// First, where the horizon axis's own toggle sits in the row. It never shares a
+			// screen with the two below it — they are the grid axes' — so the order between
+			// them is nominal.
+			title: BUCKET_GRID_LABEL,
+			icon: bucketGrid.icon,
+			cls: 'pbl-bucket-grid-toggle',
+			run: bucketGrid.flip,
+		},
 		{
 			title: 'Compact rows',
 			icon: compact ? 'rows-2' : 'rows-4',
