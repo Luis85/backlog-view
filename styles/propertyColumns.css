@@ -41,7 +41,12 @@
 	flex: 0 0 var(--pbl-prop-w, 132px);
 	width: var(--pbl-prop-w, 132px);
 	min-width: 0;
-	padding-inline-end: var(--size-4-2);
+	/* A gutter at BOTH ends, which is what makes the resize mark read as belonging to the
+	   column it resizes. Cells sit flush, so with a leading edge of zero the next column's
+	   value started exactly where the previous column ended and any mark in between was
+	   nearer the next label than its own — measured in the harness, and the reason the
+	   grip's own inset alone could not fix it. */
+	padding-inline: var(--size-4-1) var(--size-4-2);
 	overflow: hidden;
 	white-space: nowrap;
 	font-size: var(--font-ui-smaller);
@@ -56,6 +61,23 @@
 .pbl-prop-value p {
 	margin: 0;
 	display: inline;
+}
+
+/* The header's own cells fill its content box rather than being centred in it. Nothing
+   about the NAMES moves — each cell centres its own content — but the boundary marks
+   inside them can then reach the strip's top edge and its bottom border by backing out
+   the padding alone. Centred cells leave a slack of their own on each end, which is not a
+   constant anything could subtract: it is whatever the strip's height minus the line box
+   happens to be. */
+.pbl-cols .pbl-props,
+.pbl-cols .pbl-prop {
+	align-self: stretch;
+	/* And the strip's own clip is lifted with it, or the grip is cropped back to the box it
+	   is trying to escape — the layout box still measures the full height while the PAINT
+	   stops at the content edge, which is a thing to check by asking what is hit-testable
+	   down the boundary rather than by reading a rectangle. What the clip is for is a ROW's
+	   values ending at their column; a header cell's name clips itself (`.pbl-col-name`). */
+	overflow: visible;
 }
 
 /* The column names, once at the top of the scroller instead of on every row */
@@ -73,6 +95,13 @@
 	background-color: var(--background-primary);
 }
 
+/* No clip of its own, and no ellipsis: the NAME clips itself (`.pbl-col-name` below), and
+   what a clip here would cost is the grip, whose mark spans the header strip rather than
+   this cell's 16px line box. The cell is spared `.pbl-prop`'s clip by the strip rule
+   above, at (0,2,0) — not by anything written here, which is worth saying because a
+   `overflow: visible` WAS written here first and decided nothing: a later `overflow:
+   hidden` in this same rule outranked it by position, and the strip rule outranked both.
+   (Codex, PR #144.) */
 .pbl-col-label {
 	position: relative;
 	font-size: var(--font-ui-smaller);
@@ -80,8 +109,6 @@
 	text-transform: uppercase;
 	letter-spacing: 0.04em;
 	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
 }
 
 /* The name itself, so a long one clips at the column boundary rather than pushing the
@@ -93,22 +120,59 @@
 	text-overflow: ellipsis;
 }
 
-/* The resize grip, pinned INSIDE the column's own trailing edge — the same 6px strip
-   and the same colours as the timeline's lead grip (styles/timeline.css), because it is
-   the same gesture on a different boundary. That one straddles its edge and this one
-   cannot: the cell it sits in clips its overflow (a value has to end at the column, not
-   trail into the next one), so a strip hanging 3px past the edge is a strip 3px wide. */
+/* The resize grip: a wide hit area pinned inside the column's own trailing edge, with
+   the MARK it draws a separate box inside it (`::before` below).
+
+   Two boxes rather than one strip, because the two want different widths. Cells sit
+   flush — cell N's trailing edge IS cell N+1's leading edge, and the next label starts
+   there with no padding of its own — so a visible strip AT the edge touches the next
+   column's first character and reads as its decoration rather than as this column's
+   handle. The mark is therefore inset into this column's own trailing gutter, while the
+   part a pointer has to hit stays as wide as the gutter: a 6px target was small even for
+   a mouse, and shrinking the mark to move it would have made it smaller still.
+
+   It cannot straddle the boundary the way the timeline's lead grip does: the cell clips
+   its overflow (a value has to end at the column rather than trail into the next one),
+   so a strip hanging past the edge is a strip cut off at it. */
 .pbl-col-grip {
 	position: absolute;
-	top: 0;
-	bottom: 0;
+	/* The header STRIP's height, not the cell's: `.pbl-cols`' own padding backed out, so
+	   the grip meets the strip's top edge and its bottom border. Written as the tokens that
+	   rule sets so the two move together. A taller hit area is the second thing it buys. */
+	inset-block: calc(-1 * var(--size-4-2)) calc(-1 * var(--size-2-2));
 	inset-inline-end: 0;
-	width: 6px;
+	width: var(--size-4-3);
 	cursor: col-resize;
 	z-index: 1;
 	/* Otherwise the browser reads a touch drag here as a pan of the scroller beneath it
 	   and the pointermove stream this grip needs never arrives. */
 	touch-action: none;
+}
+
+/* The mark: transparent until something says the handle is there, and as tall as the grip
+   it sits in — which is the whole header strip, not the label's own 16px line box. A
+   boundary that stops short at both ends reads as a tick beside the name; one running the
+   full bar reads as where the column ends. */
+.pbl-col-grip::before {
+	content: '';
+	position: absolute;
+	inset-block: 0;
+	inset-inline-end: var(--size-4-1);
+	width: 2px;
+	border-radius: 1px;
+	background-color: transparent;
+	transition: background-color 120ms ease-in-out;
+}
+
+/* **Hovering the column NAME is what says a handle is there at all.** A 12px strip
+   nobody knows to point at is not discoverable by being hittable, and this control has
+   no menu entry to be found by instead — the reason the hoverless rule below exists is
+   the same one, one device further along. So the header cell hints (a border colour,
+   which says "a boundary you could move") and the grip itself confirms (the accent,
+   which says "this is the control"). Two strengths, one for finding it and one for
+   being on it. */
+.pbl-col-label:hover .pbl-col-grip::before {
+	background-color: var(--background-modifier-border-hover);
 }
 
 /* A touch device produces no hover, so a strip that only paints when hovered is a
@@ -124,20 +188,32 @@
    tying either, and `test/view/rendering.test.ts` pins the order. */
 @media (hover: none) {
 	.pbl-col-grip {
-		box-sizing: border-box;
 		width: 20px;
-		border-inline-end: 2px solid var(--background-modifier-border);
+	}
+
+	.pbl-col-grip::before {
+		background-color: var(--background-modifier-border);
 	}
 }
 
-.pbl-col-grip:hover,
-.pbl-col-grip:focus-visible {
+/* Scoped through the label for one reason and one only: SPECIFICITY. The hint above is
+   `.pbl-col-label:hover .pbl-col-grip::before` at (0,3,0), and a pointer on the grip is a
+   pointer on the label too, so the unscoped `.pbl-col-grip:hover::before` at (0,2,0) lost
+   to it and the confirm never painted — measured in the harness, where the mark under the
+   pointer stayed the hint's colour. Written as the same shape as the rule it has to beat,
+   after it, rather than as a `!important` or a third colour nobody asked for. */
+.pbl-col-label .pbl-col-grip:hover::before,
+.pbl-col-label .pbl-col-grip:focus-visible::before {
 	background-color: var(--interactive-accent);
 }
 
-/* The ring has to contrast with the strip it rings — see the lead grip's own note:
-   an accent outline on an accent-filled 6px strip is invisible. */
+/* The ring goes on the STRIP and the accent on the mark inside it, so the two never draw
+   in the same colour on the same box — the lead grip's own note, which had to say this
+   because an accent outline on an accent-filled strip is invisible. Here they are
+   separate boxes, and the ring is what shows how much of the header the keyboard is
+   holding. */
 .pbl-col-grip:focus-visible {
-	outline: 2px solid var(--text-on-accent);
+	outline: 1px solid var(--interactive-accent);
 	outline-offset: -1px;
+	border-radius: var(--radius-s);
 }
