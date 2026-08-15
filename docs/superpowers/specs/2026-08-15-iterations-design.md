@@ -116,7 +116,15 @@ A host accessor pair `boardScope` / `setBoardScope` joins the siblings in
 | Scope | Cards | Columns |
 | --- | --- | --- |
 | `Product` | unchanged | `requirementsWorkflow` |
-| An iteration | `model.results` whose `iteration` link resolves to that note | `iterationWorkflow` |
+| An iteration | the non-`Deliverable` results whose `iteration` link resolves to that note | `iterationWorkflow` |
+
+**Deliverables are excluded**, matching the product board's own `!isDeliverableType`
+filter. `model.results` includes them, so this is a filter that has to be written, not an
+absence that comes for free. Without it the argument for a scope picker collapses: the
+claim is that every card on an iteration board is also a card on the product board, and
+the product board refuses Deliverables. A Deliverable admitted here would also sit under
+a *third* column vocabulary and take a *third* state property from a move. It may still
+name an iteration; it simply draws no card here, exactly as it draws none there.
 
 `iterationWorkflow(model, settings, iteration)` sits in `src/domain/board.ts` beside
 `deliverablesWorkflow` — a third instance of the `Workflow` interface, which already has
@@ -189,11 +197,20 @@ The split:
 | Predicate | Means | Asked by |
 | --- | --- | --- |
 | `isMarkerType` | no rung, no children, no dependencies | `childTypeChoices`, `src/domain/dependencies.ts` and `src/view/interactions/dependencies.ts` — unchanged |
-| `drawsAsPoint(typeName, settings)` | drawn at one date, not across two | `placementEnds`, `src/domain/bars.ts`, `src/view/render/timeline.ts`, `src/view/render/milestoneLines.ts` |
+| `drawsAsPoint(typeName, settings)` | drawn at one date, and holdable at neither end | `placementEnds`, `placeItem` **and `barHolds`** in `src/domain/bars.ts`, `src/view/render/timeline.ts`, `src/view/render/milestoneLines.ts` |
 
 `drawsAsPoint` is `isMarkerType(t) && !(isIterationType(t) && settings.iterationBars)`.
 Toggle off, an iteration draws a boundary line exactly as a Milestone does. Toggle on,
-it draws a start→target bar and no line.
+it draws a bar from the dates it has and no line — closed with both, open-ended with one,
+exactly as `inferSpan` already places every other item.
+
+`barHolds` is the call site to name rather than leave to a rule. It asks **both**
+predicates inside one function — `placementEnds` for which ends are writable, then
+`isMarkerType` on a line of its own to return a body hold and nothing else. Widening
+`placementEnds` alone leaves that branch meaning what it meant before: `iterationBars`
+on, the bar drawn, and neither grip there. It is the third question the single predicate
+answers today — what a *gesture* may take hold of — and finding it is what turned a
+two-way split into a three-way one.
 
 **The toggle is a `.base` view option** (`iterationBars`, in the Iterations group), not
 UI state. That is not a preference call: `placementEnds` is read by the **writer** in

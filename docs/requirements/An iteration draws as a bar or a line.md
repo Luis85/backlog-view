@@ -35,7 +35,16 @@ questions split before the second name arrives, not after:
 | Predicate | Means | Unchanged by this work |
 | --- | --- | --- |
 | `isMarkerType` | no rung, no children, no dependencies | yes — its callers keep their meaning |
-| `drawsAsPoint` | drawn at one date, not across two | no — this is the new one |
+| `drawsAsPoint` | drawn at one date, not across two, and holdable at neither end | no — this is the new one |
+
+**Every caller is named, and one of them is easy to miss.** `barHolds` in
+`src/domain/bars.ts` asks *both* predicates in the same function — `placementEnds` for
+which ends are writable, and then `isMarkerType` on its own line to return a body hold
+and nothing else. So it is not enough to widen `placementEnds` and let the rest follow:
+that branch would keep the old meaning silently, `iterationBars` would be on, the bar
+would draw, and neither grip would appear. It is the third question the one predicate
+answers today — what a *gesture* may take hold of — and it is why this note lists the
+call sites rather than trusting a rule to reach them.
 
 ## Use case
 
@@ -70,12 +79,18 @@ questions split before the second name arrives, not after:
   **ignored, never rewritten**. Ignoring a value and deleting it are different acts, and
   only the first is specified — the rule `placeItem` already keeps for a milestone with a
   stale start.
-- **3b — the iteration carries no target date.** It goes to the shelf with every other
-  unplaceable card, counted there, and the shelf is the target that un-places it
-  ([[The unplaced shelf]]). The option does not change that.
-- **4a — the option is on and the iteration has only one of the two dates.** One date is
-  enough to place at a point, exactly as [[Horizons or dates]] extension 2b states for
-  every other item. A bar simply needs both.
+- **3b — the option is off and the iteration carries no target date.** It goes to the
+  shelf with every other unplaceable card, counted there, and the shelf is the target
+  that un-places it ([[The unplaced shelf]]). A point IS its target date, so a point
+  without one is nothing to draw. **Scoped to line mode deliberately**: the same
+  iteration in bar mode places on its start alone (4a), and an earlier draft of this note
+  said the option changed nothing here — two rules over one state, which no
+  implementation and no test could have satisfied at once.
+- **4a — the option is on and the iteration has only one of the two dates.** It places on
+  the date it has, as an open-ended bar, exactly as every other item with one date does
+  — [[Horizons or dates]] extension 2b states the rule and `inferSpan` already keeps it.
+  A closed span simply needs both. This owns bar mode; 3b owns line mode, and the two do
+  not overlap.
 - **4b — the option is on and the target precedes the start.** It shelves with the reason
   every reversed span shelves with. An iteration is not exempt from the span rules; it is
   only exempt from being forced into a point.
@@ -94,7 +109,11 @@ questions split before the second name arrives, not after:
 - With it off, an `Iteration` draws a boundary line and a diamond, and its start date is
   ignored rather than written or deleted.
 - With it on, an `Iteration` draws a start→target bar, draws no boundary line, and obeys
-  every ordinary span rule including the reversed-span and missing-date shelvings.
+  every ordinary span rule — the reversed-span shelving, and the open-ended bar a single
+  date gives every other item.
+- With it on, **both grips are on the bar**, which means `barHolds` asks the new predicate
+  on its own line rather than keeping its `isMarkerType` branch. A criterion satisfied by
+  `placementEnds` alone would ship a bar nobody can resize.
 - Every path that places a date — the row's Schedule and Unschedule, the shelf drop, the
   body slide, both grips, and the writer — narrows by asking the predicate, never by
   restating it.
@@ -104,8 +123,10 @@ questions split before the second name arrives, not after:
 
 The predicate joins `src/domain/itemTypes.ts` beside `isMarkerType` and `placementEnds`,
 which is where it has to be for `src/storage/frontmatter.ts` to reach it without the
-layer rule being broken. Placement asks it in `src/domain/bars.ts`; the drawing paths ask
-it in `src/view/render/timeline.ts` and `src/view/render/milestoneLines.ts`. The option
+layer rule being broken. `src/domain/bars.ts` asks it **twice** — once in `placeItem`,
+which decides point or span, and once in `barHolds`, which decides what a gesture may
+take hold of and today reaches for `isMarkerType` on a line of its own. The drawing paths
+ask it in `src/view/render/timeline.ts` and `src/view/render/milestoneLines.ts`. The option
 is declared in `src/domain/viewOptions.ts` and resolved in `src/domain/settings.ts`. The
 callers that pass the settings through are `src/view/interactions/timelineDrag.ts` and
 `src/view/interactions/plan.ts`. Driven in `test/domain/bars.test.ts` and
