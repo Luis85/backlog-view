@@ -114,7 +114,16 @@ cell with the item's own title — a tooltip that, in the real app, may become a
 mock cannot show that either way, so whether the real app actually does this is a
 live-vault question this suite cannot answer.
 
+The two elements are styled in `styles/barProgress.css`, a partial of its own for the
+module's own reason: `styles/timeline.css` was one line under its 400-line cap with them
+in it. Position in `styles/index.css` is not load-bearing — both selectors are new and
+neither overrides a rule that file makes.
+
 Driven in `test/view/barProgress.test.ts`. **Neither the inset nor the contrast is
 checked there** — jsdom computes no layout and resolves no custom property to a colour,
 so a full-height band in the bar's own colour passes every assertion in that file. Both
-are on the live-vault list in the spec, with the compact density's band height.
+are on the live-vault list in the spec. The **compact density** was on that list too and
+comes off it: nothing about the band changes with density, because nothing about the bar
+does — `.pbl-density-compact` sets a track `min-height` and drops the lead's padding, and
+`.pbl-bar` is 14px in both. What stays a vault question is narrower and is the same one
+the default density already asks: whether a 4px band is legible at all.

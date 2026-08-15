@@ -109,10 +109,34 @@ describe('every roadmap surface names what the filter found under it', () => {
 		expect(matchesOn(row)).toEqual([]);
 		expect(matchCountOn(row)).toBe('1');
 		const titles = chipMenu(row).items.map((i) => i.titleText);
+		// The chip is a real `<button>`, so `fromRowControl` keeps its click out of the
+		// row's own activation — the ten per-control `stopPropagation` guards that rule
+		// replaced were forgotten twice, and both times shipped a handle that opened the
+		// note. It is a match link's own bargain, asserted here as it is there.
+		expect(vault.opened).toEqual([]);
 		expect(titles).toContain('Open in new tab');
 		// The count chip's own reachability claim: the menu it opens actually names the
 		// match it counted, not merely a menu with something else in it.
 		expect(titles).toContain('Open match "PBI Login"');
+	});
+
+	it('anchors that menu to the chip, because Enter on it carries no pointer', () => {
+		// The chip is `tabindex="-1"`, so assistive tech activates it and the click it
+		// synthesizes reports (0, 0) — `showAtMouseEvent` would drop the menu in the
+		// viewport corner, away from the row the reader is standing on. The row menu is
+		// the ONLY route from this chip to the matches it counts, so a menu that opens
+		// somewhere else fails the count's whole reachability claim.
+		const vault = deepVault({ start: '2026-08-01', due: '2026-08-10' });
+		const { containerEl, view } = roadmap(vault, { ...DATES }, { focus: 'Epic' });
+		view.setFilter('Login');
+
+		const chip = rowFor(containerEl, 'Epic A')?.querySelector<HTMLElement>('.pbl-row-matches');
+		if (!chip) throw new Error('no match count chip drawn');
+		chip.getBoundingClientRect = () =>
+			({ left: 44, bottom: 26, top: 0, right: 0, width: 0, height: 0, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect;
+		chip.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		expect(Menu.lastPosition).toEqual({ x: 44, y: 26 });
 	});
 
 	it('a shelf card', () => {

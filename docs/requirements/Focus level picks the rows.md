@@ -113,7 +113,13 @@ walk itself is `hiddenMatches` in `src/domain/board.ts`, unchanged, through
 set from its caller, since a timeline row draws no disclosure and subtracting one would
 delete a direct-child match. A CARD names each match as a link; a ROW — the timeline's
 and the lane's — puts a count in the slot its ROLLUP occupies, opening its own menu, and
-gives the rollup back the moment the filter clears. A substitution rather than an
+gives the rollup back the moment the filter clears. That menu is the chip's ONLY route to
+what it counted, so `showItemMenu` in `src/view/interactions/menu.ts` opens it through
+`showMenuForClick` rather than `showAtMouseEvent`: the chip is a button, Enter or Space on
+it synthesizes a click at (0, 0), and a menu anchored there lands in the viewport corner.
+Found by review 2026-08-15 — the chip was the first BUTTON caller that function ever had,
+every other one being a `contextmenu` from a real pointer, so the rule the repository
+already keeps for every other menu had never been asked of it. A substitution rather than an
 addition, because a sticky lead column's only shrinkable item is the row's title, so
 anything added to it is taken from the row's own name. Measured in the browser harness,
 twice, not preferred.

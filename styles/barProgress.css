@@ -1,0 +1,40 @@
+/* How far along a dated row's subtree is — the two elements `renderBarProgress`
+   (`src/view/render/barProgress.ts`) draws, in a partial of its own for that module's
+   reason: it is one concern, and `styles/timeline.css` is the partial everything about
+   this grid otherwise lands in.
+
+   Position in `index.css` is NOT load-bearing: both selectors below are new, declared by
+   no other partial, and neither overrides a rule `timeline.css` makes.
+
+   `.pbl-row-matches` in `cards.css` is the third element of the same feature and stays
+   there, because it is a card-face affordance that a ROW substitutes into this slot —
+   see `renderMatchCount`. */
+
+/* How far along, INSIDE the bar and inset — see `renderBarProgress`. Not full-height:
+   `.pbl-bar-inferred` is an outline and the open-end rules are gradients. The tree's
+   own two progress colours (`columns.css`), never `--pbl-bar-color` — the bar's own paint. */
+.pbl-bar-progress {
+	position: absolute;
+	inset-inline-start: 2px;
+	inset-inline-end: 2px;
+	bottom: 1px;
+	height: 4px;
+	border-radius: 2px;
+	background-color: var(--background-modifier-border);
+	overflow: hidden;
+	pointer-events: none; /* decoration over the row's name and the drag grips */
+}
+
+.pbl-bar-progress-fill {
+	width: var(--pbl-progress, 0%);
+	height: 100%;
+	border-radius: 2px;
+	background-color: rgb(var(--color-green-rgb));
+}
+
+.pbl-bar-count { /* in the sticky lead cell, the tree's own rollup-label shape */
+	margin-inline-start: auto;
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	flex: 0 0 auto;
+}

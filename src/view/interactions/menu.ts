@@ -62,11 +62,22 @@ export function showColumnMenu(evt: MouseEvent, policy: string): void {
 	showMenuForClick(menu, evt);
 }
 
-/** Context menu for a backlog row (mouse path). */
+/**
+ * The row menu for a click on the row — a `contextmenu` from a pointer, or a plain click
+ * on one of the two BUTTONS that open it (the state chip's sibling, the match count).
+ *
+ * Through `showMenuForClick` for that second kind, and it is the rule rather than this
+ * caller's precaution: a button's Enter or Space synthesizes a click at (0, 0), which
+ * `showAtMouseEvent` reads as a position and honours, dropping the menu in the viewport
+ * corner. A real pointer never reports that, so the pointer path is unchanged. It shipped
+ * that way on the match count chip, whose menu is the ONLY route to the matches it counts
+ * (`renderMatchCount`, `render/board.ts`) — so the corner was the whole of that
+ * affordance's keyboard path.
+ */
 export function showItemMenu(host: BacklogViewHost, evt: MouseEvent, item: BacklogItem, childTypes: string[]): void {
 	evt.preventDefault();
 	const menu = buildItemMenu(host, item, childTypes);
-	menu?.showAtMouseEvent(evt);
+	if (menu) showMenuForClick(menu, evt);
 }
 
 /** Assemble the row menu; the caller decides where to show it. */

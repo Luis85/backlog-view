@@ -92,7 +92,8 @@ describe('the two boxes sized from TypeScript arithmetic', () => {
 		expect(chip).toContain('min-width: 0;');
 		expect(chip).toContain('overflow: hidden;');
 		// The slot it replaces anchors the end of the lead; the replacement has to too.
-		expect(ruleBody('.pbl-bar-count')).toContain('margin-inline-start: auto;');
+		const band = readFileSync(new URL('../../styles/barProgress.css', import.meta.url), 'utf8');
+		expect(bodyOf(band, '.pbl-bar-count', 'styles/barProgress.css')).toContain('margin-inline-start: auto;');
 		expect(chip).toContain('margin-inline-start: auto;');
 		// Not vacuous, and the pairing is the point: a CARD has the room, so its own list
 		// still wraps to as many titles as it holds. Only the ROW trades them for a count.
