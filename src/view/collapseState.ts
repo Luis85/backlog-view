@@ -6,13 +6,11 @@ import {
 	DELIVERABLES_MODE,
 	ProjectionMode,
 	ROADMAP_MODE,
-	collapseStoreIdentity,
 	dropCollapseState,
 	loadCollapseState,
-	movedPath,
 	saveCollapseState,
-	ViewIdentity,
 } from '../storage/collapseStore';
+import { movedPath, resolveViewIdentity, ViewIdentity } from '../storage/viewIdentity';
 import { BacklogViewHost, Projection } from './host';
 
 /**
@@ -404,7 +402,7 @@ export class CollapseState {
 		if (this.restored) return;
 		this.restored = true;
 		this.viewEl = viewEl;
-		this.id = collapseStoreIdentity(this.host.app, viewEl, this.host.config.name);
+		this.id = resolveViewIdentity(this.host.app, viewEl, this.host.config.name);
 		// No identifiable base: session-only, exactly as before this was persisted.
 		if (this.id === null) return;
 		const snapshot = loadCollapseState(this.host.app, this.id);
@@ -446,7 +444,7 @@ export class CollapseState {
 	/** The identity as it stands now, or null when it no longer differs from the stored one. */
 	private currentIdentity(): ViewIdentity | null {
 		if (this.viewEl === null || this.id === null) return null;
-		const now = collapseStoreIdentity(this.host.app, this.viewEl, this.host.config.name);
+		const now = resolveViewIdentity(this.host.app, this.viewEl, this.host.config.name);
 		if (now === null) return null;
 		return now.base === this.id.base && now.view === this.id.view ? null : now;
 	}

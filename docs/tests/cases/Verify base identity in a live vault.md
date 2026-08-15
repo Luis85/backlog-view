@@ -27,7 +27,7 @@ assignee: ""
 ## Why this exists
 
 Collapse-state persistence keys on the `.base` file the view belongs to. The Bases API
-hands a view **no reference to its own file**, so `collapseStoreIdentity` finds it by
+hands a view **no reference to its own file**, so `resolveViewIdentity` finds it by
 walking `app.workspace.iterateAllLeaves()` for the `FileView` whose `containerEl`
 contains the view's element, and requiring `view.file.extension === 'base'`.
 
@@ -38,7 +38,7 @@ repo** — Obsidian cannot run in the jsdom harness.
 ## Why it matters
 
 The failure mode is safe but silent. If the assumption does not hold,
-`collapseStoreIdentity` returns `null`, the view falls back to session-only collapse
+`resolveViewIdentity` returns `null`, the view falls back to session-only collapse
 state — exactly the behaviour before persistence existed, nothing breaks — and **the
 feature simply never works**, with no error and no log line.
 
@@ -64,7 +64,7 @@ To confirm directly, inspect the vault's local storage for the key
 
 ## If it fails
 
-The seam is `collapseStoreIdentity` in `src/storage/collapseStore.ts`; nothing else
+The seam is `resolveViewIdentity` in `src/storage/viewIdentity.ts`; nothing else
 needs to change. Options in order of preference:
 
 1. Find the correct public handle on the leaf's view and use it.
@@ -90,7 +90,7 @@ with `npm run test-build`: rows expanded, the tab closed and reopened, and the r
 back open.
 
 That single observation is decisive, because the fallback is session-only — had
-`collapseStoreIdentity` returned `null`, closing the tab would have dropped the state and
+`resolveViewIdentity` returned `null`, closing the tab would have dropped the state and
 everything would have come back collapsed. Rows surviving a tab close means the walk over
 `iterateAllLeaves` found the leaf, that the leaf presented as a `FileView`, that `.file`
 was set, and that its extension was `base`. Every link in the chain the feature rests on

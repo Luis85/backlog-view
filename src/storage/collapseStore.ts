@@ -1,4 +1,5 @@
-import { App, FileView } from 'obsidian';
+import { App } from 'obsidian';
+import { movedPath, ViewIdentity, viewNameOf, viewStateKey } from './viewIdentity';
 
 /**
  * Persistence for the state that is purely the user's working position: which
@@ -140,14 +141,6 @@ export interface CollapseSnapshot {
 	collapsedLanes?: string[] | null;
 }
 
-/** Which base view an entry belongs to. */
-export interface ViewIdentity {
-	/** Path of the `.base` file. */
-	base: string;
-	/** The view's name within that base. */
-	view: string;
-}
-
 interface StoredEntry {
 	/**
 	 * The base this entry belongs to, carried rather than parsed back out of the key.
@@ -193,43 +186,6 @@ interface StoredEntry {
 type StoredMap = Record<string, StoredEntry>;
 
 /**
- * The map key. It only has to be unique, never parsed — both halves are encoded so
- * no pair of base path and view name can collide with a different pair.
- */
-function mapKey(id: ViewIdentity): string {
-	return `${encodeURIComponent(id.base)}#${encodeURIComponent(id.view)}`;
-}
-
-/**
- * Which base view this is, as a storage key — or null when that cannot be answered.
- *
- * The Bases API hands a view no reference to its own file, but the leaf rendering it
- * does have one: the view element lives inside some `FileView`'s container, and that
- * view knows its file. The view's own name disambiguates several views of one base.
- *
- * Null means session-only, exactly as before persistence existed. Falling back to a
- * shared key would be worse than not persisting: two bases would inherit each other's
- * open rows and prune each other's paths.
- */
-export function collapseStoreIdentity(app: App, el: HTMLElement, viewName: string): ViewIdentity | null {
-	// An array rather than a nullable local: the callback runs synchronously, but
-	// narrowing after a closure assignment does not survive the type checker.
-	const owner: string[] = [];
-	app.workspace.iterateAllLeaves((leaf) => {
-		if (owner.length > 0) return;
-		const view = leaf.view;
-		if (!(view instanceof FileView) || !view.file || !view.containerEl.contains(el)) return;
-		// It must be the `.base` itself. A base embedded in a note is drawn inside that
-		// note's leaf, so the file here would be the host note — and every base embedded
-		// in it, plus every view of each, would answer to one key and overwrite each
-		// other. That is the sharing this function exists to refuse, so an embedded base
-		// keeps its collapse state for the session and no longer.
-		if (view.file.extension === 'base') owner.push(view.file.path);
-	});
-	return owner.length > 0 ? { base: owner[0], view: viewName } : null;
-}
-
-/**
  * Follow a `.base` that was renamed or moved — directly, or by moving a folder above
  * it. The path is half the key, so without this an ordinary bit of vault tidying
  * would orphan every entry for that base: never found again under the new path, and
@@ -249,35 +205,10 @@ export function rekeyBase(app: App, oldPath: string, newPath: string): void {
 		const view = viewNameOf(key);
 		if (view === null) continue;
 		delete map[key];
-		map[mapKey({ base, view })] = { ...entry, base };
+		map[viewStateKey({ base, view })] = { ...entry, base };
 		moved = true;
 	}
 	if (moved) writeMap(app, map);
-}
-
-/**
- * Where `path` ends up when `oldPath` becomes `newPath`, or null when it is unaffected.
- * A rename moves the thing itself and everything beneath it, so a folder carries its
- * whole subtree — which is the only way a `.base` inside a moved folder is noticed.
- */
-export function movedPath(path: string, oldPath: string, newPath: string): string | null {
-	if (path === oldPath) return newPath;
-	return path.startsWith(`${oldPath}/`) ? newPath + path.slice(oldPath.length) : null;
-}
-
-/**
- * The view name back out of a key. Only possible because both halves are encoded,
- * so the single literal `#` is always the separator — the property that
- * `pruneMissingBases` deliberately does not rely on, but that a rename needs.
- */
-function viewNameOf(key: string): string | null {
-	const parts = key.split('#');
-	if (parts.length !== 2) return null;
-	try {
-		return decodeURIComponent(parts[1]);
-	} catch {
-		return null;
-	}
 }
 
 function defaultShelf(
@@ -346,7 +277,7 @@ function writePicks(entry: StoredEntry, snapshot: CollapseSnapshot): void {
 }
 
 export function loadCollapseState(app: App, id: ViewIdentity): CollapseSnapshot {
-	const entry = readMap(app)[mapKey(id)];
+	const entry = readMap(app)[viewStateKey(id)];
 	return {
 		collapsed: new Set(entry?.collapsed ?? []),
 		expanded: new Set(entry?.expanded ?? []),
@@ -362,7 +293,7 @@ export function loadCollapseState(app: App, id: ViewIdentity): CollapseSnapshot 
  */
 export function saveCollapseState(app: App, id: ViewIdentity, snapshot: CollapseSnapshot): void {
 	const map = readMap(app);
-	const key = mapKey(id);
+	const key = viewStateKey(id);
 	const collapsed = [...snapshot.collapsed].slice(0, MAX_PATHS);
 	const expanded = [...snapshot.expanded].slice(0, MAX_PATHS - collapsed.length);
 	const entry: StoredEntry = { base: id.base, collapsed, expanded };
@@ -386,8 +317,8 @@ export function saveCollapseState(app: App, id: ViewIdentity, snapshot: Collapse
 /** Forget one view's entry — used when its state has just been written elsewhere. */
 export function dropCollapseState(app: App, id: ViewIdentity): void {
 	const map = readMap(app);
-	if (!(mapKey(id) in map)) return;
-	delete map[mapKey(id)];
+	if (!(viewStateKey(id) in map)) return;
+	delete map[viewStateKey(id)];
 	writeMap(app, map);
 }
 
