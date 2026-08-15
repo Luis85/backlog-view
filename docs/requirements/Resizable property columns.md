@@ -46,7 +46,10 @@ width for every column can only ever do.
 
 **Main flow**
 
-1. Every drawn column's header cell carries a resize grip at its trailing edge:
+1. Every drawn column's header cell carries a resize grip in its trailing gutter — the
+   whole gutter is the hit area, running the header strip's full height, with a 2px mark
+   inset off the boundary so it reads as this column's handle rather than as the next
+   column's leading edge:
    `role="separator"`, a real tab stop, `aria-orientation="vertical"`, an `aria-label`
    naming that column, and `aria-valuenow`/`aria-valuemin`/`aria-valuemax` stating the
    current width and its bounds.
@@ -110,11 +113,17 @@ width for every column can only ever do.
   and both arrow keys: dragging the boundary outward widens the
   column whichever way outward is, and Arrow Right always moves the boundary physically
   right, as the separator pattern says it should.
+- **1e — a reader who does not know the handle is there.** Painting only under the
+  pointer already on it answers a question that reader has not asked. Hovering the column
+  NAME reveals the mark faintly and the grip confirms it in the accent — two strengths,
+  one for finding it and one for being on it ([[A handle nobody could find, glued to the
+  wrong column]], which is also where the specificity trap under those two rules is
+  recorded).
 - **1d — a device with no hover.** The grip paints only on hover or focus, which on a
   touch device is never — and a boundary has no menu entry to be found by instead, which
-  is what the tree's other hidden controls have. Under `hover: none` it draws the column
-  boundary itself and widens to a finger-sized target. The timeline's lead grip takes the
-  same widening and needs no line: its own column already draws one.
+  is what the tree's other hidden controls have. Under `hover: none` its mark paints
+  unconditionally and the hit area widens to a finger-sized target. The timeline's lead
+  grip takes the same widening and needs no mark: its own column already draws a border.
   **On a PHONE-width pane this is moot, and that is worth saying rather than implying
   otherwise**: the fit ladder drops every property column well before a phone's width, so
   there is no column to resize and no grip to find — measured in the browser harness at

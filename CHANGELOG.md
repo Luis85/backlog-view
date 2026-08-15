@@ -11,6 +11,15 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+### Changed
+
+- **The column resize handle is easier to find, and no longer looks like it belongs to
+  the next column.** Hovering a column's name shows a faint mark at its trailing edge, and
+  the handle itself lights up when you point at it. The mark runs the full height of the
+  header row and sits in the gap rather than against the next column's first letter —
+  property columns gained a small leading gutter to make that gap real — and the area you
+  can grab is now the whole gutter, top to bottom, rather than a 6px strip.
+
 ### Added
 
 - **Every milestone in one row above the roster.** On the resources axis a milestone is no
