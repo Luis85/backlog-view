@@ -1,6 +1,6 @@
 import { BacklogSettings } from './settings';
 import { ownedProperties } from './optionalProperties';
-import { stateColor } from './stateColors';
+import { colorableStates, stateColor } from './stateColors';
 
 /**
  * Whether a `BacklogSettings` is one `resolveSettings` could have produced.
@@ -114,9 +114,10 @@ function secondaryWorkflowProblem(name: string, key: string, doneValues: string[
 
 /**
  * The third per-state map, and the one that is NOT `named`: `stateColors` is built over
- * both vocabularies at once (`states` and `deliverableStates`), because the colours are
- * keyed by the state VALUE — so its allowed key set is the union, and reusing the limit
- * and policy maps' predicate would reject a legitimately coloured Deliverable state.
+ * both vocabularies at once, because the colours are keyed by the state VALUE — so reusing
+ * the limit and policy maps' predicate would reject a legitimately coloured Deliverable
+ * state. Its allowed key set is `colorableStates`, the resolver's own list rather than a
+ * second reading of it, which is what keeps the done states out of both at once.
  *
  * Key AND value, together, for the reason the two maps above already record twice: a key
  * rule with no value rule beside it is a rule someone reads as covering both. Here the
@@ -130,9 +131,9 @@ function secondaryWorkflowProblem(name: string, key: string, doneValues: string[
  * Its own function for `listProblem`'s reason — the complexity budget on the predicate above.
  */
 function colourProblem(settings: BacklogSettings): string | null {
-	const colourable = new Set([...settings.states, ...settings.deliverableStates].map((state) => state.toLowerCase()));
+	const colourable = new Set(colorableStates(settings).map((state) => state.toLowerCase()));
 	const strayColour = Object.keys(settings.stateColors).find((key) => !colourable.has(key));
-	if (strayColour !== undefined) return `stateColors names ${strayColour}, which is not a configured state`;
+	if (strayColour !== undefined) return `stateColors names ${strayColour}, which is not a colourable state`;
 	const badColour = Object.entries(settings.stateColors).find(([, name]) => stateColor(name) !== name);
 	if (badColour) {
 		return `stateColors sets ${badColour[0]} to ${JSON.stringify(badColour[1])}, which stateColor would discard`;
