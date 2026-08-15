@@ -148,7 +148,15 @@ already looks.
   none of which has a row beside it to supply the dates. Not "never collides": the same
   resource over the same days derives the same name, and so does a note already sitting at
   it, so `uniqueNotePath` still appends a number sometimes — and a rename asks it about the
-  note's OWN path, or a note that landed at `… 1` would ratchet to `… 2` on the next edit. **A hand rename does
+  note's OWN path, or a note that landed at `… 1` would ratchet to `… 2` on the next edit.
+  **The other direction is wanted and is not a ratchet**: once whatever occupied the plain
+  name goes away, the next edit moves the note back onto it. A suffix is the mark of a
+  collision rather than part of the name, so a note left at `… 1` after the collision ended
+  would be a filename that no longer states its facts — which is the whole of what deriving
+  it buys. Raised twice in review (2026-08-14, 2026-08-15) as a needless rename, and refused
+  both times: the rename is not needless, it is the name catching up, and the only way to
+  suppress it is to parse the suffix back off the basename — string-shape reasoning about a
+  name, which is what asking `absenceTitle` exists to avoid. **A hand rename does
   not survive the next edit**: rename the note in Obsidian, change a date, and it takes the
   derived name back. Accepted rather than engineered around — the alternative is comparing
   against the name the OLD facts would have produced, a second rule whose failure mode is a
