@@ -22,6 +22,16 @@ export const PRODUCT_BACKLOG_VIEW_TYPE = 'product-backlog';
 export type Projection = 'tree' | 'board' | 'roadmap' | 'deliverables' | 'catalog';
 
 /**
+ * Which screen a folded column was folded on. Three words that are almost the projection
+ * and deliberately not it: the horizon buckets are one AXIS of the roadmap, and the two
+ * grid axes have rows and bands rather than columns. Nothing here folds by projection, so
+ * a union of the screens that actually draw a column is the honest spelling — and it is
+ * what keeps a requirements `Done`, a Deliverables `Done` and a horizon called `Done`
+ * three separate folds. See `columnKey` in `view/collapseState.ts`.
+ */
+export type ColumnScope = 'board' | 'deliverables' | 'horizons';
+
+/**
  * A column of the trailing strip: the property id to read, the label the header shows,
  * and WHICH RENDERING it gets. Membership and order belong to the Bases properties
  * menu alone — a kind never decides whether a column exists, only what is drawn inside
@@ -61,8 +71,20 @@ export interface BusyState {
  * the elements to put the focus outline and `aria-activedescendant` there.
  */
 export interface BoardSnapshot {
+	/**
+	 * What was DRAWN, which since a column can be folded is no longer the whole model: a
+	 * folded column's `cards` list is empty here, and that is what stops the keyboard
+	 * selecting a card no longer on screen — `boardPosition`, `nextBoardPosition` and
+	 * Alt+arrow all walk this. Every count on a column is still the real one.
+	 */
 	board: BoardModel;
 	colEls: HTMLElement[];
+	/**
+	 * Which board this is, carried so nothing downstream has to re-derive it from the
+	 * projection. The column menu needs it to key a fold, and the render that produced
+	 * these columns is the one thing that cannot be wrong about which board they are.
+	 */
+	scope: ColumnScope;
 }
 
 /** One scroll box the frame owns, keyed by WHICH BAND IT IS rather than by position. */
@@ -343,6 +365,19 @@ export interface BacklogViewHost {
 	isLaneCollapsed(name: string): boolean;
 	setLaneCollapsed(name: string, collapsed: boolean): void;
 	/**
+	 * Whether one board column or horizon bucket is folded to its strip, asked of the
+	 * screen it is drawn on and its own value.
+	 *
+	 * A fourth collapse question, and a fourth for {@link isLaneCollapsed}'s reason: a
+	 * column is a VALUE, not a note, so it keys nothing in the path space. What is new here
+	 * is `autoCollapse` — the answer a column nobody has ruled on gets, which is `false`
+	 * everywhere except a done board column holding no open work. Passing it in keeps the
+	 * default a fact about the screen drawing the column, and `columnCollapsed` in
+	 * `view/collapseState.ts` is what makes taking it a once-only event.
+	 */
+	columnCollapsed(scope: ColumnScope, value: string | null, autoCollapse: boolean): boolean;
+	setColumnCollapsed(scope: ColumnScope, value: string | null, collapsed: boolean): void;
+	/**
 	 * Which density the dated axis draws at. UI state like the mode and the axis pick:
 	 * per saved view, per device, in the collapse store — never in the `.base`, because
 	 * pane width is a property of the screen in front of you and not of the base.
@@ -453,9 +488,13 @@ export interface BacklogViewHost {
 	showContextMenuFor(item: BacklogItem): void;
 	/**
 	 * Open the column's own menu, anchored to the column that index names. False when
-	 * there was nothing to open — a column with nothing agreed offers no menu — so the
-	 * keyboard path can leave the key to whoever else wants it rather than swallowing
-	 * it on a stop where nothing happens. The pointer path already worked that way.
+	 * there was nothing to open, so the keyboard path can leave the key to whoever else
+	 * wants it rather than swallowing it on a stop where nothing happens; the pointer
+	 * path already worked that way.
+	 *
+	 * That case is now only an index naming no column. It used to be the ordinary state of
+	 * a column with no working agreement, and stopped being one when the fold joined the
+	 * menu: every column can be folded, so every column has something to offer.
 	 */
 	showColumnMenuFor(index: number): boolean;
 

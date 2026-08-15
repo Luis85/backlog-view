@@ -44,16 +44,20 @@ describe('a column carries its policy', () => {
 		expect(header.hasAttribute('aria-describedby')).toBe(false);
 	});
 
-	it('opens the policy from the header context menu', () => {
+	it('opens the policy from the header context menu, under the fold every column has', () => {
 		const { containerEl } = makeBoard(boardVault(), POLICY);
 		headerOf(containerEl, 'Active').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
-		expect(Menu.lastShown?.items.map((i) => i.titleText)).toEqual(['Someone is actually on it']);
+		expect(Menu.lastShown?.items.map((i) => i.titleText)).toEqual(['Collapse Active', 'Someone is actually on it']);
 	});
 
-	it('offers no menu at all on a column with no policy', () => {
+	it('offers the fold alone on a column with no policy', () => {
+		// This menu used to be withheld entirely here, and that was right while the policy
+		// was all it held. The fold is an action every column has, so the menu is now
+		// unconditional — and it is the KEYBOARD path to the fold, since the header's own
+		// disclosure is a `tabindex="-1"` button like every other per-row control.
 		const { containerEl } = makeBoard(boardVault(), POLICY);
 		headerOf(containerEl, 'New').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
-		expect(Menu.lastShown).toBeNull();
+		expect(Menu.lastShown?.items.map((i) => i.titleText)).toEqual(['Collapse New']);
 	});
 });
 
@@ -64,17 +68,31 @@ describe('the keyboard reaches the column menu', () => {
 		const { containerEl, view } = makeBoard(boardVault(), POLICY);
 		view.selectBoardColumn(columnNames(containerEl).indexOf('Active'));
 		const evt = key(treeOf(containerEl), 'ContextMenu');
-		expect(Menu.lastShown?.items.map((i) => i.titleText)).toEqual(['Someone is actually on it']);
+		expect(Menu.lastShown?.items.map((i) => i.titleText)).toEqual(['Collapse Active', 'Someone is actually on it']);
 		expect(evt.defaultPrevented).toBe(true);
 	});
 
-	it('opens nothing from a column with no policy, and leaves the key alone', () => {
-		// The pointer path only consumes the event once it HAS a menu; the keyboard path
-		// consumed it first and unconditionally, so ContextMenu on a column with nothing
-		// agreed was a dead end — no menu of ours, and none of Obsidian's either. The
-		// same claim, twice: nothing opens, and nothing was swallowed to open it.
+	it('folds the column from the stop, which is the fold’s whole keyboard path', () => {
+		// The board is one tab stop, so the header disclosure is `tabindex="-1"` and Tab
+		// never reaches it. Without this entry the fold would be pointer-only.
 		const { containerEl, view } = makeBoard(boardVault(), POLICY);
-		view.selectBoardColumn(columnNames(containerEl).indexOf('New'));
+		view.selectBoardColumn(columnNames(containerEl).indexOf('Active'));
+		key(treeOf(containerEl), 'ContextMenu');
+		Menu.lastShown?.item('Collapse Active')?.click();
+		expect(columnByName(containerEl, 'Active').classList.contains('pbl-board-collapsed')).toBe(true);
+		// And the entry names the way back, off the same builder rather than a second
+		// reading of the state.
+		headerOf(containerEl, 'Active').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		expect(Menu.lastShown?.items.map((i) => i.titleText)).toEqual(['Expand Active', 'Someone is actually on it']);
+	});
+
+	it('still leaves the key alone when the stop names no column at all', () => {
+		// The keyboard path used to consume the event unconditionally, so ContextMenu on a
+		// column with nothing agreed was a dead end — no menu of ours and none of
+		// Obsidian's. Every column has a fold now, so the surviving case is an index past
+		// the end; the claim is the same one, twice: nothing opens, nothing was swallowed.
+		const { containerEl, view } = makeBoard(boardVault(), POLICY);
+		view.selectBoardColumn(columnNames(containerEl).length);
 		const evt = key(treeOf(containerEl), 'ContextMenu');
 		expect(Menu.lastShown).toBeNull();
 		expect(evt.defaultPrevented).toBe(false);

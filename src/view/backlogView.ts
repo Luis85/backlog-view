@@ -1,14 +1,15 @@
 import { BasesView, QueryController } from 'obsidian';
 import { CARD_SCOPE, CollapseState, TIMELINE_SCOPE } from './collapseState';
 import { FilterState } from './filterState';
-import { BacklogViewHost, BoardSnapshot, Column, ColumnFit, PRODUCT_BACKLOG_VIEW_TYPE, Projection, RoadmapSnapshot } from './host';
+import { BacklogViewHost, BoardSnapshot, Column, ColumnFit, ColumnScope, PRODUCT_BACKLOG_VIEW_TYPE, Projection, RoadmapSnapshot } from './host';
 import { OpenController } from './openTarget';
 import { WriteGate } from './writeGate';
 import { CardMoveController } from './cardMoves';
 import { CardDragController } from './interactions/cardDrag';
 import { DragDropController } from './interactions/dragDrop';
 import { handleProjectionKeydown } from './interactions/keyboard';
-import { buildColumnMenu, buildItemMenu, showMenuAtElement } from './interactions/menu';
+import { buildColumnMenu } from './interactions/columnMenu';
+import { buildItemMenu, showMenuAtElement } from './interactions/menu';
 import { BacklogItem, BacklogModel, buildModel } from '../domain/model';
 import { childTypeChoices, PlacementEnd } from '../domain/itemTypes';
 import { DropTarget } from '../domain/dropTargets';
@@ -27,7 +28,7 @@ import { resolveColumns, rowContext, RowContext } from './render/columns';
 import { renderLoadingState } from './render/emptyStates';
 import { syncAfterContent } from './render/afterContent';
 import { syncToolbarFit } from './render/toolbarFit';
-import { captureScroll, centreOnToday, renderProjectionContent, restoreScroll, ScrollAnchor } from './render/projections';
+import { captureScroll, renderProjectionContent, restoreScroll, ScrollAnchor, scrollToToday, syncProjectionClasses } from './render/projections';
 import { refreshRowChildren, wireRowEvents } from './render/rows';
 import { BacklogSettings, defaultSettings } from '../domain/settings';
 import { adoptableProperties, notePropertyId, OptionalField, OptionalProperty } from '../domain/optionalProperties';
@@ -254,6 +255,17 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.ui.setLaneCollapsed(name, collapsed);
 	}
 
+	columnCollapsed(scope: ColumnScope, value: string | null, autoCollapse: boolean): boolean {
+		// The filter overrides this fold like every other, and short-circuiting BEFORE the
+		// controller is what keeps a narrowed board from settling a default: while a search
+		// runs, a column is open because the search says so and not because anyone ruled.
+		return !this.filter.active && this.ui.columnCollapsed(scope, value, autoCollapse);
+	}
+
+	setColumnCollapsed(scope: ColumnScope, value: string | null, collapsed: boolean): void {
+		this.ui.setColumnCollapsed(scope, value, collapsed);
+	}
+
 	get zoom(): ScaleId {
 		return this.ui.zoom;
 	}
@@ -279,12 +291,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	}
 
 	jumpToToday(): void {
-		const roadmap = this.roadmap;
-		// `leadWidth` is in the guard beside `todayLeft` rather than defaulted below it:
-		// `renderRoadmap` sets both in the dated branch and neither anywhere else, so the
-		// term costs nothing and it is what narrows `leadWidth` to a number.
-		if (!roadmap?.scroller || roadmap.todayLeft === null || roadmap.leadWidth === null) return;
-		roadmap.scroller.scrollLeft = centreOnToday(roadmap.todayLeft, roadmap.scroller.clientWidth, roadmap.leadWidth);
+		scrollToToday(this.roadmap);
 	}
 
 	onDataUpdated(): void {
@@ -492,7 +499,11 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	}
 
 	showColumnMenuFor(index: number): boolean {
-		return showMenuAtElement(buildColumnMenu(this.board?.board.columns[index]?.policy ?? ''), this.board?.colEls[index] ?? null);
+		// The scope comes off the snapshot rather than being re-derived from the projection:
+		// the render that drew these columns is the one thing that cannot be wrong about
+		// which board they belong to.
+		const board = this.board;
+		return showMenuAtElement(board && buildColumnMenu(this, board.scope, board.board.columns[index]), board?.colEls[index] ?? null);
 	}
 
 	private rowElFor(item: BacklogItem): HTMLElement | null {
@@ -535,14 +546,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		const model = this.model;
 		if (!model) return;
 		const projection = this.projection;
-		this.viewEl.toggleClass('pbl-board-mode', projection === 'board' || projection === 'deliverables');
-		this.viewEl.toggleClass('pbl-roadmap-mode', projection === 'roadmap');
-		// The class NAME stays what it is: it turns on the GRID's layout, which the
-		// resources axis needs in full, and every rule in `styles/` plus every test
-		// already names it — renaming it would be a diff across the stylesheet for no
-		// behaviour. What it is asked about is `drawsGrid`, not the plain dated axis.
-		const axis = projection === 'roadmap' ? activeAxis(this.settings, this.axisPick) : null;
-		this.viewEl.toggleClass('pbl-roadmap-dates', axis !== null && drawsGrid(axis));
+		syncProjectionClasses(this.viewEl, projection, projection === 'roadmap' ? activeAxis(this.settings, this.axisPick) : null);
 		// The keyboard instructions belong to the board and are rebuilt with it below;
 		// dropped here so the attribute never outlives the element it points at — a
 		// dangling `aria-describedby` is read as no description at all.
@@ -574,10 +578,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// Column stops are board state: without a board on screen a held stop would
 		// point at a projection that no longer exists, so it is released; with one,
 		// it is clamped to the columns left, the way the card selection is carried.
-		if (content.board === null) this.selectBoardColumn(null);
-		else if (this.selectedBoardColumn !== null) {
-			this.selectBoardColumn(Math.min(this.selectedBoardColumn, content.board.colEls.length - 1));
-		}
+		this.selection.resyncBoardColumn(content.board?.colEls.length ?? null);
 		// Both offsets belong to the content that made them — restored, corrected,
 		// reset or replaced by the anchor policy `restoreScroll` states beside the
 		// fork that decides what was drawn.

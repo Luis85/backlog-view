@@ -459,14 +459,22 @@ describe('children on the card', () => {
 	// The per-child entries, back where nothing else can reach the child and gone where
 	// something can. Focus is what separates the two: unfocused, every result has a card
 	// of its own, which is the state the clutter these were removed for was reported in.
+	const BOTH = ['Open child "Feature B1"', 'Open child "Feature B2"'];
 	it.each([
-		['board under a focus', (v: FakeVault) => makeBoard(v, {}, { focus: 'Epic' }), true],
-		['board unfocused', (v: FakeVault) => makeBoard(v), false],
+		['board under a focus', (v: FakeVault) => makeBoard(v, {}, { focus: 'Epic' }), BOTH],
+		['board unfocused', (v: FakeVault) => makeBoard(v), []],
+		// A FOLD is the second way a child loses its card, and it needs no focus: the Done
+		// column starts shut over `Feature B1` alone, so that card is in the model and not
+		// on screen while its stateless sibling still has one — which is why this case
+		// expects ONE entry and is worth its own row. It composes with no code of its own
+		// because `renderBoard` publishes the DRAWN board as the snapshot, folded columns
+		// emptied, and `cardedPaths` reads that rather than the model.
+		['board with the child’s column folded', (v: FakeVault) => makeBoard(v, {}, { foldedColumns: true }), [BOTH[0]]],
 		// The roadmap draws no match links on a card face at all, so its menu has no
 		// second route the board's `Open match` could stand in as — the projection Codex
 		// pointed at on PR #137.
-		['roadmap under a focus', (v: FakeVault) => makeRoadmap(v, {}, { focus: 'Epic' }), true],
-		['roadmap unfocused', (v: FakeVault) => makeRoadmap(v), false],
+		['roadmap under a focus', (v: FakeVault) => makeRoadmap(v, {}, { focus: 'Epic' }), BOTH],
+		['roadmap unfocused', (v: FakeVault) => makeRoadmap(v), []],
 	] as const)('offers Open child only where the child has no card of its own — %s', (_name, mount, offered) => {
 		const vault = boardVault();
 		const { containerEl } = mount(vault);
@@ -474,13 +482,12 @@ describe('children on the card', () => {
 
 		const menu = Menu.lastShown;
 		const titles = menu?.items.map((i) => i.titleText) ?? [];
-		expect(titles.includes('Open child "Feature B1"')).toBe(offered);
-		// Never a second one either: the card face lists BOTH children, and where they
-		// have cards of their own the menu pointing at them names what is already there.
-		expect(titles.filter((t) => t.startsWith('Open child')).length).toBe(offered ? 2 : 0);
+		// The whole list, not a membership test: the card face lists BOTH children, and a
+		// child that HAS a card must not be named here as well as there.
+		expect(titles.filter((t) => t.startsWith('Open child'))).toEqual(offered);
 		// And the entry opens the CHILD — the whole of what it is for. Asked of the vault
 		// rather than of the title, since a wrong item would still be a plausible name.
-		if (!offered) return;
+		if (offered.length === 0) return;
 		menu?.items.find((i) => i.titleText === 'Open child "Feature B1"')?.click();
 		expect(vault.opened.at(-1)?.path).toBe('Feature B1.md');
 	});

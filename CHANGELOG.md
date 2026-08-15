@@ -11,6 +11,23 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+### Added
+
+- **Fold a board column or a horizon bucket** — press the chevron in its header and the
+  column narrows to a strip, keeping its name, its count and its ability to take a drop.
+  The choice is remembered per saved view and per device, beside the rows you have
+  collapsed, and never written to the `.base`. On a board the column's own context menu
+  offers the same fold, which is the keyboard path to it.
+
+- **A done column of finished work opens folded** — the first time a board draws a done
+  column holding finished work and nothing else, it starts shut, the same once-only default
+  the tree applies to a parent nobody has ruled on. One still carrying open work opens
+  normally, an empty one is left alone, and once you open a folded column it stays open.
+  Horizon buckets have no such default: an axis has no notion of finished, so a bucket is
+  open until you shut it.
+
+  A running quick filter opens every fold, so a search can still find what is inside one.
+
 ### Removed
 
 - **The card's right-click menu no longer offers Expand/Collapse unplaced** — the shelf
