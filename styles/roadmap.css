@@ -142,11 +142,25 @@
 	flex-direction: column;
 	gap: var(--size-4-2);
 	padding: var(--size-4-3) 0;
+	/* See the board column's own folded header. The pair does LESS here and is kept for
+	   the same reason: this row has no definite height to clip against — it stretches to
+	   its tallest member — so a long horizon grows the band rather than ellipsising, and
+	   the count stays inside the box the whole way. Measured in the browser harness: a
+	   51-character name took the band from 220px to 383px with the count still in view.
+	   That is what a tall card does too, so it is left alone; what the pair still buys is
+	   the same clipping the moment anything above ever does cap this row. */
+	min-height: 0;
+	overflow: hidden;
 }
+
 
 .pbl-bucket-collapsed .pbl-bucket-name {
 	writing-mode: vertical-rl;
 	font-size: var(--font-ui-smaller);
+	/* See `.pbl-board-collapsed .pbl-board-col-name` — rotated, the name grows along the
+	   height and a flex item will not shrink below its content, so a long horizon carried
+	   the count out of the strip. */
+	min-height: 0;
 }
 
 /* Upright: a count is digits, and a rotated number is read one digit per line. The

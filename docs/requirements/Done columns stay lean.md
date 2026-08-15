@@ -181,8 +181,24 @@ Recorded, not fixed: [[A selection the frame did not draw]].
 
 **Appearance.** `.pbl-board-collapsed` shares `.pbl-board-strip`'s rules in
 `styles/board.css`, so a fold and the empty no-state column cannot drift to different
-widths. jsdom lays nothing out, so what the strip looks like in a themed vault is still a
-`npm run test-build` check.
+widths.
+
+Measured in the browser harness (`npm run harness`, Chromium, both schemes) rather than
+guessed from the markup, and it found a defect reading alone had missed. The folded column
+is 44px against the open 260px, the rotated name and the upright count are legible in dark
+and light, six folded strips sit side by side with no advisory, and the done column of the
+demo backlog folds itself on first render. But a LONG state value overflowed: rotated, the
+name grows along the column's height, and a flex item will not shrink below its content —
+so at a 220px pane `Waiting on the external review board to sign it off` ran 145px past the
+column's bottom and pushed the count outside the box, breaking this note's own "keeps its
+name and count visible". `min-height: 0` plus `overflow: hidden` on the folded header is
+the fix: the count declares `flex: 0 0 auto`, so the name absorbs the shrink and
+ellipsises. `test/view/boardColumnWidth.test.ts` pins the pair as rule TEXT, which is all
+a jsdom suite can reach — the layout itself was checked by measuring the rendered page.
+
+What the harness still cannot answer is a themed vault: a community theme replaces these
+colours and its own spacing tokens move the geometry. That check is `npm run test-build`
+and remains owed (ADR 0020).
 
 Age-based hiding stays out of scope until [[Stamp when work starts and finishes]] gives it
 a date to read.

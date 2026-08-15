@@ -93,8 +93,17 @@ list is the keyboard's walk and what the `listbox` role is decided from, the rul
 population for the advisory rather than the cards it drew.
 
 `.pbl-bucket-collapsed` (`styles/roadmap.css`) takes the board strip's width and rotated
-name, and hides the cards, the New button and the stray mark. What that looks like in a
-themed vault is a `npm run test-build` check, as ever — jsdom lays nothing out.
+name, and hides the cards, the New button and the stray mark.
+
+Measured in the browser harness: folding `Now` in the demo backlog narrows it to the same
+44px strip and the remaining buckets grow to take the width back, which is the whole point.
+A long horizon behaves DIFFERENTLY from a board column and is left alone — this row has no
+definite height to clip against, so a 51-character name grew the band from 220px to 383px
+with the count still inside the box, exactly as a tall card would. The board's own overflow
+(see [[Done columns stay lean]]) was a real defect because a column caps at the pane and
+the count was pushed out of it; nothing is pushed out here.
+
+A themed vault is still unanswerable here, as ever — `npm run test-build` (ADR 0020).
 
 **A selection inside a folded bucket goes dormant**, exactly as one inside a collapsed
 tree parent has always done: the path is kept so re-opening restores your place, and the

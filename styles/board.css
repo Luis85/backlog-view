@@ -147,12 +147,28 @@
 	flex-direction: column;
 	gap: var(--size-4-2);
 	padding: var(--size-4-3) 0;
+	/* Both terms are load-bearing and neither works alone. The column caps at the pane's
+	   height, but a flex item will not shrink below its own content, so the header ran
+	   past that cap and took the count with it — and clipping it needs somewhere for the
+	   overflow to go. Shrinking lands on the NAME rather than the count, which is what
+	   makes this the right place to allow it: the count declares `flex: 0 0 auto`, so the
+	   rotated name absorbs the whole reduction and ellipsises. */
+	min-height: 0;
+	overflow: hidden;
 }
 
 .pbl-board-strip .pbl-board-col-name,
 .pbl-board-collapsed .pbl-board-col-name {
 	writing-mode: vertical-rl;
 	font-size: var(--font-ui-smaller);
+	/* Rotated, the name grows along the column's HEIGHT, and a flex item's `min-height:
+	   auto` will not let it shrink — so a long state value pushed the header past the
+	   column and carried the count out with it, which is the one thing a folded column
+	   promises to keep showing. `min-height: 0` is what lets the ellipsis the rule above
+	   already asks for actually happen. Measured in the browser harness at a 220px pane:
+	   `Waiting on the external review board to sign it off` ran 145px past the bottom and
+	   left the count outside the box entirely. */
+	min-height: 0;
 }
 
 .pbl-board-strip .pbl-board-col-name {
