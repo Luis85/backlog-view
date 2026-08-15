@@ -369,15 +369,6 @@ describe('children on the card', () => {
 		expect(view.isCardCollapsed('Epic B.md')).toBe(false);
 	});
 
-	it('offers the same children in the card menu, on a right-click', () => {
-		const { containerEl } = makeBoard(boardVault());
-		cardByTitle(containerEl, 'Epic B').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
-
-		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
-		expect(titles).toContain('Open child "Feature B1"');
-		expect(titles).toContain('Open child "Feature B2"');
-	});
-
 	// The card menu's toggle has to write the same bit the card's own disclosure reads —
 	// `isCardCollapsed`, never `isCollapsed` — or the two would disagree about whether
 	// the card is open. `addChildrenSection` serves both a card's toggle and a dated-axis
@@ -396,7 +387,7 @@ describe('children on the card', () => {
 	// The menu key is the case the section exists for — and it reaches buildItemMenu
 	// through showContextMenuFor, never through the render's wiring. A discriminator
 	// that lived on the pointer path would pass the test above and fail here.
-	it('offers them on the menu key too', () => {
+	it('offers the toggle on the menu key too', () => {
 		const { containerEl, view } = makeBoard(boardVault());
 		const card = cardByTitle(containerEl, 'Epic B');
 		card.click();
@@ -405,18 +396,7 @@ describe('children on the card', () => {
 			view.model!.items.find((i) => i.file.path === card.dataset.path)!,
 		);
 
-		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
-		expect(titles).toContain('Open child "Feature B1"');
-	});
-
-	it('opens the child from the menu entry', () => {
-		const vault = boardVault();
-		const { containerEl } = makeBoard(vault);
-		cardByTitle(containerEl, 'Epic B').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
-
-		Menu.lastShown?.item('Open child "Feature B1"')?.clickHandler?.();
-
-		expect(vault.opened.map((o) => o.path)).toEqual(['Feature B1.md']);
+		expect(Menu.lastShown?.items.map((i) => i.titleText)).toContain('Show children');
 	});
 
 	it('offers nothing on a card that drew no disclosure', () => {
@@ -424,7 +404,8 @@ describe('children on the card', () => {
 		cardByTitle(containerEl, 'Epic A').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 
 		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
-		expect(titles.some((t) => t.startsWith('Open child'))).toBe(false);
+		expect(titles).not.toContain('Show children');
+		expect(titles).not.toContain('Hide children');
 	});
 
 	// FOCUSED on Epic, and that is load-bearing rather than incidental. On an unfocused
@@ -461,20 +442,58 @@ describe('children on the card', () => {
 		expect(matches).toContain('Task B1a');
 	});
 
-	// The keyboard path for the same dedup: `addMatchSection` is a second reader of
-	// `undisclosedMatches`, and nothing else in this suite drives it — the card-face
-	// tests above assert `.pbl-card-match` in the DOM, which the menu never touches.
-	it('does not name a matched child twice in the card menu either', () => {
+	// The menu's side of the same question. It must name the child ONCE — the disclosure's
+	// own entries are `tabindex="-1"`, so a matched child the face lists needs a menu
+	// entry — and never twice. Both sections can reach for it here: it matches, and it has
+	// no card under this focus. The match walk subtracts what the disclosure lists, so the
+	// child section is the one that owns it, and there is only one walk to disagree with.
+	it('names a matched child in the card menu exactly once', () => {
 		const { containerEl, view } = makeBoard(boardVault(), {}, { focus: 'Epic' });
 		view.setFilter('Feature B1');
 		const card = cardByTitle(containerEl, 'Epic B');
 		card.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 
+		// The face lists it …
+		expect(kidTitles(card)).toContain('Feature B1');
+		// … and the menu names it, once, under whichever section owns it.
 		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
-		// The disclosure's entry …
-		expect(titles).toContain('Open child "Feature B1"');
-		// … so the match section must not offer it too.
-		expect(titles).not.toContain('Open match "Feature B1"');
+		expect(titles.filter((t) => t.endsWith('"Feature B1"'))).toEqual(['Open child "Feature B1"']);
+	});
+
+	// The per-child entries, back where nothing else can reach the child and gone where
+	// something can. Focus is what separates the two: unfocused, every result has a card
+	// of its own, which is the state the clutter these were removed for was reported in.
+	const BOTH = ['Open child "Feature B1"', 'Open child "Feature B2"'];
+	it.each([
+		['board under a focus', (v: FakeVault) => makeBoard(v, {}, { focus: 'Epic' }), BOTH],
+		['board unfocused', (v: FakeVault) => makeBoard(v), []],
+		// A FOLD is the second way a child loses its card, and it needs no focus: the Done
+		// column starts shut over `Feature B1` alone, so that card is in the model and not
+		// on screen while its stateless sibling still has one — which is why this case
+		// expects ONE entry and is worth its own row. It composes with no code of its own
+		// because `renderBoard` publishes the DRAWN board as the snapshot, folded columns
+		// emptied, and `cardedPaths` reads that rather than the model.
+		['board with the child’s column folded', (v: FakeVault) => makeBoard(v, {}, { foldedColumns: true }), [BOTH[0]]],
+		// The roadmap draws no match links on a card face at all, so its menu has no
+		// second route the board's `Open match` could stand in as — the projection Codex
+		// pointed at on PR #137.
+		['roadmap under a focus', (v: FakeVault) => makeRoadmap(v, {}, { focus: 'Epic' }), BOTH],
+		['roadmap unfocused', (v: FakeVault) => makeRoadmap(v), []],
+	] as const)('offers Open child only where the child has no card of its own — %s', (_name, mount, offered) => {
+		const vault = boardVault();
+		const { containerEl } = mount(vault);
+		cardByTitle(containerEl, 'Epic B').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+
+		const menu = Menu.lastShown;
+		const titles = menu?.items.map((i) => i.titleText) ?? [];
+		// The whole list, not a membership test: the card face lists BOTH children, and a
+		// child that HAS a card must not be named here as well as there.
+		expect(titles.filter((t) => t.startsWith('Open child'))).toEqual(offered);
+		// And the entry opens the CHILD — the whole of what it is for. Asked of the vault
+		// rather than of the title, since a wrong item would still be a plausible name.
+		if (offered.length === 0) return;
+		menu?.items.find((i) => i.titleText === 'Open child "Feature B1"')?.click();
+		expect(vault.opened.at(-1)?.path).toBe('Feature B1.md');
 	});
 
 	/**
@@ -501,7 +520,8 @@ describe('children on the card', () => {
 		rowFor(containerEl, 'Dated epic')?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 
 		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
-		expect(titles.some((t) => t.startsWith('Open child'))).toBe(false);
+		expect(titles).not.toContain('Show children');
+		expect(titles).not.toContain('Hide children');
 	});
 
 	it('keeps a shelf card’s disclosure with the AXIS, not with the tree', () => {
@@ -519,11 +539,10 @@ describe('children on the card', () => {
 		expect(titlesOf(containerEl)).toEqual(['Dated epic', 'Feature X']);
 	});
 
-	it('still offers them on a shelf card in the same projection', () => {
+	it('still offers the toggle on a shelf card in the same projection', () => {
 		const { containerEl } = makeRoadmap(datedVault(), DATED_AXIS);
 		cardByTitle(containerEl, 'Feature X').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 
-		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
-		expect(titles).toContain('Open child "Task X1"');
+		expect(Menu.lastShown?.items.map((i) => i.titleText)).toContain('Show children');
 	});
 });

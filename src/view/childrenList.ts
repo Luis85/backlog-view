@@ -25,6 +25,31 @@ export function listedChildren(host: BacklogViewHost, item: BacklogItem): Backlo
 }
 
 /**
+ * The listed children with no card of their own — the ones a pointer can reach on this
+ * card's face and a keyboard cannot reach anywhere.
+ *
+ * `carded` is the same "already on screen" set `undisclosedMatches` subtracts, and it is
+ * the whole of the rule: unfocused, every result gets a card of its own on both card
+ * projections, so this is empty and the menu grows nothing. Under a FOCUS the cards are
+ * the focus level's alone, so a card's children are drawn only as its own
+ * `tabindex="-1"` list entries — and the menu's `Open child "…"` was their keyboard path
+ * until it was removed on 2026-08-14 to shorten that menu. Removing it wholesale was
+ * measured wrong the next day: an unfocused board is where a menu grew a row per child,
+ * and a focused one is where those rows were the only route. Subtracting `carded` is what
+ * separates those two, so the clutter stays gone where it was clutter.
+ *
+ * Not exported: `menuChildren` below is the only caller and the only honest one, since
+ * this answer is meaningless without the gate it pairs with.
+ */
+function unreachableChildren(
+	host: BacklogViewHost,
+	item: BacklogItem,
+	carded: Set<string>,
+): BacklogItem[] {
+	return listedChildren(host, item).filter((child) => !carded.has(child.file.path));
+}
+
+/**
  * What the disclosure calls them. Naming the type is worth more than a bare count — a
  * board of Epics says "3 features" — but only while they agree on one, since a mixed
  * set has no true name. Compared and named by `displayType`, the same function the
@@ -84,26 +109,49 @@ export function undisclosedMatches(
 }
 
 /**
+ * Every path this projection drew a card for — the "already on screen" test.
+ *
+ * A board asks its model: a `BoardModel` is already narrowed to what draws (a folded
+ * column's cards are emptied in the snapshot), so `cardPaths` is honest there. The
+ * roadmap asks the register its render filled, because its model is not what it draws.
+ * Empty on the tree, which is correct rather than a fallback — both callers below are
+ * about a card.
+ */
+export function cardedPaths(host: BacklogViewHost): Set<string> {
+	const roadmap = host.roadmap;
+	if (roadmap) return new Set(roadmap.placed.keys());
+	const board = host.board?.board;
+	return board ? cardPaths(board) : new Set();
+}
+
+/**
+ * What the row MENU will list as `Open child "…"` — the gate and the narrowing together,
+ * so the two surfaces below cannot disagree about it.
+ *
+ * `cardChildrenShown` is the gate `addChildrenSection` opens on, and a timeline row joins
+ * that set through its FOLD chevron while listing nothing on its face — which is why the
+ * menu's already-listed set is not the face's, and why this is asked rather than reusing
+ * `listedChildren`. `unreachableChildren` is the second half: the menu names only a child
+ * with no card of its own.
+ */
+export function menuChildren(host: BacklogViewHost, item: BacklogItem, carded: Set<string>): BacklogItem[] {
+	return host.cardChildrenShown.has(item.file.path) ? unreachableChildren(host, item, carded) : [];
+}
+
+/**
  * The matches to offer for this item, asked of whichever projection drew it.
  *
- * A board asks its model: a `BoardModel` is already narrowed to what draws, so
- * `cardPaths` is honest there. The roadmap asks the register its render filled, because
- * its model is not what it draws — and that register is also where the disclosure
- * policy is, which the menu cannot work out for itself: it is handed an item and no
- * surface, so always subtracting would lose a row's direct-child match and never
- * subtracting would offer a card's disclosure entries a second time.
+ * The menu is handed an item and no surface, so the disclosure policy has to be looked
+ * up rather than assumed: always subtracting would lose a row's direct-child match, and
+ * never subtracting would offer a card's disclosure entries a second time. It subtracts
+ * `menuChildren` — what this menu will itself list — rather than `listedChildren`, so a
+ * child the menu is NOT naming (it has a card of its own) can still be named as a match,
+ * and one it IS naming is named once. Those two sets came apart on 2026-08-15, when the
+ * per-child entries were narrowed to the unreachable ones; subtracting the wider set
+ * would silently drop a match, which is the failure this whole feature exists against.
  */
 export function matchesFor(host: BacklogViewHost, item: BacklogItem): BacklogItem[] {
-	// The MENU's already-listed set is not the face's. `addChildrenSection` adds an
-	// "Open child" entry for every `listedChildren` whenever the path is in
-	// `cardChildrenShown` — and a timeline row joins that set through its FOLD chevron,
-	// while listing nothing on its face. Reusing the face's policy here would offer one
-	// note twice in one menu: once as a child, once as a match. So the menu asks the
-	// thing that actually lists in a menu.
-	const listed = host.cardChildrenShown.has(item.file.path) ? listedChildren(host, item) : [];
-	const roadmap = host.roadmap;
-	if (roadmap) return undisclosedMatches(host, item, new Set(roadmap.placed.keys()), listed);
-	const board = host.board?.board;
-	if (!board) return [];
-	return undisclosedMatches(host, item, cardPaths(board), listed);
+	if (!host.roadmap && !host.board) return [];
+	const carded = cardedPaths(host);
+	return undisclosedMatches(host, item, carded, menuChildren(host, item, carded));
 }

@@ -11,15 +11,6 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
-### Changed
-
-- **The column resize handle is easier to find, and no longer looks like it belongs to
-  the next column.** Hovering a column's name shows a faint mark at its trailing edge, and
-  the handle itself lights up when you point at it. The mark runs the full height of the
-  header row and sits in the gap rather than against the next column's first letter —
-  property columns gained a small leading gutter to make that gap real — and the area you
-  can grab is now the whole gutter, top to bottom, rather than a 6px strip.
-
 ### Added
 
 - **Every milestone in one row above the roster.** On the resources axis a milestone is no
@@ -79,6 +70,20 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Changed
 
+- **The column resize handle is easier to find, and no longer looks like it belongs to
+  the next column.** Hovering a column's name shows a faint mark at its trailing edge, and
+  the handle itself lights up when you point at it. The mark runs the full height of the
+  header row and sits in the gap rather than against the next column's first letter —
+  property columns gained a small leading gutter to make that gap real — and the area you
+  can grab is now the whole gutter, top to bottom, rather than a 6px strip.
+
+- **The board and the shelf only draw the cards you can see** — a column, a horizon bucket
+  and the shelf now let the browser skip the layout and paint of cards scrolled out of
+  view, which the tree's rows have done since 0.7. Measured over ~800 notes in the
+  development harness, switching to the board went from 330ms to 126ms and to the roadmap
+  from 557ms to 203ms. Nothing about what is on screen changes, and the timeline's rows are
+  deliberately left as they were — its dependency arrows have to measure them.
+
 - **Your working position resets once on upgrade.** Which rows, bands and columns were
   folded, the projection each view was showing, the roadmap axis, zoom, density and lead
   width, the property-column widths, the focus level, the click behaviour and the shelf's
@@ -137,6 +142,21 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   configuration or working position, never both). A base written with a
   `propertyColumnWidth` key keeps a setting nothing reads; every column starts at the
   same 132px it did and moves from there.
+
+### Removed
+
+- **The card's right-click menu no longer offers Expand/Collapse unplaced** — the shelf
+  still collapses, from its own header, which is where the control has always been. Its
+  sort and type filter stay on the menu whenever the shelf is open. The header's
+  disclosure is now reachable with Tab, so the shelf can still be opened and shut without
+  a pointer.
+
+- **The card's right-click menu no longer lists the children one by one** — the
+  **Show/Hide children** toggle stays, and so does the list on the card itself. A card with
+  many children no longer pushes the rest of its menu off the screen. A child that matches
+  the quick filter is still offered in the menu, as a match. **While a focus level is
+  set**, where a child has no card of its own, the menu still offers **Open child** for it
+  — otherwise the only way to it would be a mouse.
 
 ## [0.8.0] - 2026-08-14
 

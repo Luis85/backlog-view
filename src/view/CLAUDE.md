@@ -24,7 +24,13 @@ free of runtime code so imports stay cycle-free.
   — and that holds only while nothing MEASURES a row during a render: a `scrollWidth` read
   on a skipped row lays that row out by itself, which is why both tooltips are set
   unconditionally rather than when needed. The rule is stated at the declaration in
-  `styles/tree.css` because that is where someone about to break it will be standing. `refreshRowChildren` must prune the subtree it removes
+  `styles/tree.css` because that is where someone about to break it will be standing.
+  **A card carries it too**, and the same sentence decides WHERE: the board's columns, the
+  horizon buckets and the shelf take it (330ms to 126ms for a board switch at ~800 notes,
+  557ms to 203ms for the roadmap's), and the timeline's lead rows do not, because
+  `render/timelineArrows.ts` measures them to draw an arrow. So the declaration in
+  `styles/cards.css` names the three CONTAINERS rather than `.pbl-card` — see
+  [[Every card renders, on screen or not]]. `refreshRowChildren` must prune the subtree it removes
   from `rowEls`. The row and drag listeners live on the PANE, one delegated set for the
   view (`wireRowEvents` in `render/rows.ts`, `wireTree` in `interactions/dragDrop.ts`),
   resolving their row by `data-path` against the current model per event — so nothing
@@ -358,10 +364,12 @@ free of runtime code so imports stay cycle-free.
   return on any event whose target is not the pane itself
   (`evt.target !== evt.currentTarget`), so the grip's arrow keys stay the grip's. The per-row answer does not fit it either: a continuous "hold the
   arrow key" resize has no menu to be the keyboard path.
-  The **ARIA cost is real and unresolved, and it is now paid twice.** While cards render
-  the pane is a `listbox` (`render/projections.ts`), so the lead grip is a focusable
-  non-`option` inside it; the tree is a `tree`, so a column grip is a focusable
-  non-`treeitem` inside that. Neither is what the composite pattern sanctions. It is a
+  The **ARIA cost is real and unresolved, and it is now paid three times.** While cards
+  render the pane is a `listbox` (`render/projections.ts`), so the lead grip is a focusable
+  non-`option` inside it — as is the shelf's disclosure, which is not a grip at all and
+  earns its stop the same way (see the roadmap section below); the tree is a `tree`, so a
+  column grip is a focusable non-`treeitem` inside that. None is what the composite
+  pattern sanctions. It is a
   known, accepted deviation rather than a clean case: the alternatives were a
   pointer-only grip, which this plugin cannot ship because it is not desktop-only, or no
   resize at all. What is checked is narrower than the claim —
@@ -675,7 +683,23 @@ free of runtime code so imports stay cycle-free.
   impossible to get to. The links are `tabindex="-1"` buttons like every other per-row
   control, so the card MENU carries the same matches — that is their keyboard path, the
   same answer the tree gives for the add button and the state chip, and without it the
-  links would be pointer-only and the feature would fail at its own purpose. They need
+  links would be pointer-only and the feature would fail at its own purpose.
+  **A focus is what makes the card's own CHILD list the same question**, and it takes the
+  same `carded` subtraction: `unreachableChildren` (`childrenList.ts`) is the listed
+  children with no card of their own, and it is what `addChildrenSection`'s
+  `Open child "…"` entries are built from. Unfocused it is empty on both card
+  projections, because every result is a card — which is why deleting those entries
+  outright looked free and was not (2026-08-14, corrected the next day). `cardedPaths` in
+  `interactions/menu.ts` is the one place a projection is asked which cards it drew: the
+  board from its columns, the roadmap from the snapshot its own keyboard walk is built
+  from. Note that only the BOARD draws matches at all — see
+  [[The roadmap names no matches under a card]].
+  **The two lists must not both claim one note**, and the check is a COUNT rather than a
+  name: exactly one menu entry ends in a matched child's title. A `matchesUnderCard` — the
+  match walk without its `listedChildren` subtraction — existed for one day, for the day
+  the menu named no children, and offered every matched uncarded child as both
+  `Open match` and `Open child`. Which section owns such a child has moved three times
+  now, so assert the count and let the owner move. They need
   no guard of their own against the card beneath — see the row-activation filter below.
 - The board is one tab stop and its shortcuts are invisible, so it carries hidden
   instructions (`.pbl-sr-only`, attached with `aria-describedby`). The id is minted by
@@ -780,19 +804,29 @@ free of runtime code so imports stay cycle-free.
   until a drag is live. A target that exists only while it is occupied is one nothing can
   ever reach. Whether it actually appears under a dragged card is a vault check.
 - The shelf's own header carries its controls — a disclosure, a sort pick, a type
-  filter — and they follow the per-row control rule exactly: `tabindex="-1"` buttons
-  opening a `Menu`, never form controls, with the card menu's shelf section as the
-  keyboard path (`addShelfSection`). One builder feeds both surfaces. The one case a
+  filter — and the two PICKERS follow the per-row control rule exactly: `tabindex="-1"`
+  buttons opening a `Menu`, never form controls, with the card menu's shelf section as
+  the keyboard path (`addShelfSection`). One builder feeds both surfaces. The one case a
   menu cannot cover is an all-shelved, collapsed roadmap, where no card renders and so
   no card menu opens: there the pane is a `region` rather than a composite, and
-  `syncShelfTabStops` puts EVERY header control back in the tab order, decided from the
-  same final card count the role is. Every one, not the disclosure alone — hiding the
-  last visible type empties the pane by itself, and rescuing only the disclosure leaves
-  the filter that caused it unreachable. Using any of them rebuilds the pane and destroys
+  `syncShelfTabStops` puts every picker back in the tab order, decided from the
+  same final card count the role is. Both, not one — hiding the
+  last visible type empties the pane by itself, and rescuing only the sort leaves
+  the filter that caused it unreachable. Using either rebuilds the pane and destroys
   the button pressed, so `refocus` puts focus back — on the PANE where cards remain, on
   the control's replacement where none do. Not interchangeable: the pane's key handler
   ignores any event whose target is not the pane itself, so focusing a `tabindex="-1"`
   control inside a composite silently kills the arrows while looking correct.
+  **The DISCLOSURE is out of that rule and is a permanent tab stop** (2026-08-15), on the
+  same terms the resize grips above are — chrome fixed to the frame, never among the
+  cards, unable to compete with a roving selection the pane only hears about through
+  itself. It is the THIRD control to earn one and the first that is not a grip, so the
+  accepted ARIA deviation stated up there is paid a third time: a focusable
+  non-`option` inside the roadmap's `listbox`. What earned it is that the card menu
+  stopped carrying the collapse toggle, and a collapsed shelf draws no card to menu from,
+  so `-1` would have been a shelf no keyboard could reopen. It is therefore its own way
+  back too: `refocus` gives it its replacement in BOTH pane shapes, where the pickers
+  take the pane. See [[Drop the shelf's toggle from the card menu]].
 - A roadmap card is the board's card: `createCard` / `renderCardBody` /
   `wireCardActivation` are exported from `render/board.ts` and shared, so an item
   cannot look different per projection. Timeline rows reuse the card SHELL (selection,

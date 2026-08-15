@@ -8,6 +8,7 @@
     "build": "tsc -noEmit -skipLibCheck && node scripts/esbuild.config.mjs production",
     "test-build": "tsc -noEmit -skipLibCheck && node scripts/test-build.mjs",
     "harness": "node scripts/harness.mjs",
+    "perf": "node scripts/perf.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

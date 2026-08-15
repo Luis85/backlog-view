@@ -22,7 +22,7 @@ import { promptCreateItem } from './create';
 import { addHorizonItems, canSchedule, carriesDates, promptSchedule, unschedule } from './plan';
 import { addTagItems, tagsColumnVisible } from './tags';
 import { addDependencyItems, dependenciesAvailable } from './dependencies';
-import { listedChildren, matchesFor } from '../childrenList';
+import { matchesFor, menuChildren, cardedPaths } from '../childrenList';
 import { offerableTypes, retypeChoices, rowVocabulary, treeShaped } from '../projection';
 
 /**
@@ -337,6 +337,15 @@ export const showTagMenu = (host: BacklogViewHost, evt: MouseEvent, item: Backlo
  * prevent: found, counted in the rollup, and impossible to get to. Offered whether or
  * not the card itself matched, for the same reason the face names them: a match below
  * a matching card is a second result, and it has no card of its own to be reached by.
+ *
+ * `matchesFor` — the same walk the faces use, asked of whichever projection drew this
+ * item and subtracting what THIS menu will itself list. That subtraction is
+ * `menuChildren`, not `listedChildren`: the two came apart when the per-child entries
+ * were narrowed to the unreachable ones, so a child the menu is not naming can still be
+ * named as a match here, and one it is naming is named once. Both directions have been
+ * broken here within two days — a walk without the subtraction offered a note twice, and
+ * a subtraction of the wider set would drop a match silently. What each surface DRAWS
+ * differs; what counts as saying a thing twice does not.
  */
 function addMatchSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
 	if (!host.isFiltering()) return;
@@ -354,10 +363,23 @@ function addMatchSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): 
 }
 
 /**
- * The children this card is showing, offered where a pointer is not available. Each
- * card projection is one tab stop, so the disclosure's entries are `tabindex="-1"`
- * buttons and this is their keyboard path — the same answer the tree gives for the add
- * button and the state chip.
+ * Folding the children this card is showing, offered where a pointer is not available.
+ * Each card projection is one tab stop, so the disclosure is a `tabindex="-1"` button and
+ * this is its keyboard path — the same answer the tree gives for the add button and the
+ * state chip.
+ *
+ * The toggle, and then `Open child "…"` for the children with **no card of their own**.
+ * That per-child list used to be unconditional, was removed on request (2026-08-14)
+ * because a menu growing a row per child pushed everything else in it off the bottom on
+ * exactly the items with the most of everything, and came back the next day narrowed:
+ * "nothing is lost from the keyboard by that" was a claim, and it was wrong under a
+ * FOCUS. Unfocused, every result has a card of its own on both card projections and this
+ * list is empty — which is the state the clutter was reported in. Focused, the cards are
+ * the focus level's alone, and a child appears only as a `tabindex="-1"` entry on its
+ * parent's face, so these entries are the whole keyboard path to it. `menuChildren` is
+ * that narrowing plus this section's own gate, stated once in `childrenList.ts` so
+ * `matchesFor` can subtract exactly what this loop adds; `cardedPaths` is what each
+ * projection answers it with. (Codex, PR #137, pointing at the roadmap half of it.)
  *
  * The gate is `cardChildrenShown`, filled by the render, and not the projection: a card
  * whose children have all hidden draws no disclosure and a dated-axis timeline row draws
@@ -397,11 +419,11 @@ function addChildrenSection(host: BacklogViewHost, menu: Menu, item: BacklogItem
 				}),
 		);
 	}
-	for (const child of listedChildren(host, item)) {
+	for (const child of menuChildren(host, item, cardedPaths(host))) {
 		menu.addItem((mi) =>
 			mi
 				.setTitle(`Open child "${child.title}"`)
-				.setIcon('corner-left-down')
+				.setIcon('corner-down-right')
 				.onClick((evt) => host.openItem(child, evt)),
 		);
 	}
@@ -617,9 +639,17 @@ export function addShelfTypeItems(host: BacklogViewHost, menu: Menu, shelf: Shel
  * The shelf's controls, reachable without a pointer. Its header buttons are
  * `tabindex="-1"` like every control in the one-tab-stop pane, so this menu is their
  * keyboard path — the same answer the board's hidden-match links give, and for the same
- * reason stated there: without it the shelf's collapse, sort and filter would be
- * pointer-only and the feature would fail at its own purpose. `syncShelfTabStops` covers
- * the one case this cannot, where no card renders and there is no menu to open.
+ * reason stated there: without it the shelf's sort and filter would be pointer-only and
+ * the feature would fail at its own purpose. `syncShelfTabStops` covers the one case this
+ * cannot, where no card renders and there is no menu to open.
+ *
+ * The collapse toggle is NOT here. It was, until it was removed on request to shorten
+ * this menu (2026-08-15): the shelf's own header carries the disclosure, which is where a
+ * reader working through unplaced work is already looking, and the menu is a longer list
+ * for every card on screen. The keyboard path moved with it rather than going — the
+ * disclosure is a real tab stop now, in every state, which is what makes removing this
+ * entry a decluttering rather than a pointer-only shelf. See
+ * [[Drop the shelf's toggle from the card menu]].
  *
  * On the roadmap only, and only while the shelf holds something — an entry for a region
  * that is not on screen is the defect in the other direction.
@@ -628,17 +658,10 @@ function addShelfSection(host: BacklogViewHost, menu: Menu): void {
 	if (host.projection !== 'roadmap') return;
 	const shelf = host.roadmap?.roadmap.shelf ?? [];
 	if (shelf.length === 0) return;
+	// Nothing to order or narrow while the cards are shut away — the header withholds the
+	// same two pickers for the same reason.
+	if (host.shelfCollapsed) return;
 	menu.addSeparator();
-	const collapsed = host.shelfCollapsed;
-	menu.addItem((mi) =>
-		mi
-			.setTitle(`${collapsed ? 'Expand' : 'Collapse'} unplaced (${shelf.length})`)
-			.setIcon('inbox')
-			.onClick(() => host.setShelfCollapsed(!collapsed)),
-	);
-	// Nothing to order or narrow while the cards are shut away — the header withholds
-	// the same two pickers for the same reason.
-	if (collapsed) return;
 	menu.addItem((mi) => {
 		mi.setTitle('Sort unplaced').setIcon('arrow-up-down');
 		addShelfSortItems(host, submenuOf(mi));

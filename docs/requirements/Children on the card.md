@@ -77,8 +77,13 @@ card — and a count is the half of it that cannot be acted on.
   what is under this item, and that does not change with where else the item is drawn.
 - **3c — a child matched the quick filter.** The card's match list stops naming it, since
   the disclosure does. One card cannot say the same thing twice.
-- **4a — the user has no pointer.** The card menu offers the same children, from the same
-  list. A disclosure nobody without a mouse can reach is not a list of children.
+- **4a — the user has no pointer.** The card menu offers the TOGGLE, from the same gate.
+  A disclosure nobody without a mouse can reach is not a list of children. It offered one
+  `Open child "…"` entry per child as well, unconditionally, until 2026-08-14; those were
+  removed on request and came back the next day narrowed to the children with **no card
+  of their own**, which is empty on an unfocused projection and is the whole keyboard path
+  under a focus. See [[Drop the per-child entries from the card menu]], which also records
+  the match-list consequence and the fix it needed.
 - **5a — the item is a context row.** It gets the disclosure like any other card. Nothing
   here writes, so the rule that governs it is not in question.
 
@@ -105,8 +110,8 @@ card — and a count is the half of it that cannot be acted on.
   either roadmap axis, Deliverables), since "is this item's card open" is one question
   about the note and not one per screen that happens to draw it as a card.
   While the quick filter runs the toggle is disabled.
-- The card menu offers the same children, on a right-click and on the menu key, and does
-  not offer them on a surface that drew no disclosure.
+- The card menu offers the toggle, on a right-click and on the menu key, and offers it on
+  no surface that drew no disclosure.
 - Nothing in the feature writes to a note.
 
 ## Where it lives
@@ -145,6 +150,15 @@ OWN disclosure lists (`listsChildren` on the `PlacedMount` a surface registers,
 its fold chevron while listing nothing on its own face, so a direct child match that the
 face still names on a row would be offered twice in the menu were the two policies not
 kept apart.
+
+`matchesFor` subtracts `menuChildren` and not `listedChildren`, and the two are the same
+set only until the per-child entries are narrowed — which they were on 2026-08-15
+([[Drop the per-child entries from the card menu]]): the menu names a listed child only
+where it has **no card of its own**, so subtracting the wider set would silently drop a
+match that the menu is not otherwise naming. `menuChildren` states that gate and that
+narrowing together, in `childrenList.ts` beside the walk, so the loop that adds the
+entries and the walk that subtracts them cannot come apart. `cardedPaths` is the one
+place a projection is asked which cards it drew, and both read it.
 
 The expansion bit itself is `CARD_SCOPE` in `src/view/viewState.ts`, a prefix
 alongside `TIMELINE_SCOPE`, read and written through `BacklogViewHost.isCardCollapsed`/

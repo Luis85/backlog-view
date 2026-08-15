@@ -19,7 +19,14 @@ import { drawnHeight, type Mount } from './mount';
 /** Samples per row. Enough that one GC pause moves the worst column and not the median. */
 const SAMPLES = 5;
 
-const PROJECTIONS: Projection[] = ['tree', 'board', 'roadmap', 'deliverables'];
+/**
+ * Every projection, once — the run times a switch to each in turn, and `?view=` picks
+ * one to open on. Exported because `page.ts` had its own copy: the two came apart, this
+ * one missing `catalog`, so the table said "every projection" over four of five while
+ * the URL knob offered the fifth. One list, or the claim goes stale on the next
+ * projection too.
+ */
+export const PROJECTIONS: Projection[] = ['tree', 'board', 'roadmap', 'deliverables', 'catalog'];
 
 interface Row {
 	op: string;
@@ -27,6 +34,18 @@ interface Row {
 	worst: number;
 	/** Rendered height after the op — the layout read that forces the browser to do the work. */
 	px: number;
+	/**
+	 * Rows and cards on screen after the op — every row's OWN sample size.
+	 *
+	 * One heading cannot state it for the whole table: the tree draws `.pbl-row`, the four
+	 * card projections draw `.pbl-card`, and they are not the same population — the board
+	 * excludes Deliverables, the Deliverables board draws only those, and the roadmap's
+	 * count moves with whether the shelf is open. A table under "832 rows expanded" invited
+	 * exactly the reading that every row measured 832 of something.
+	 *
+	 * Counted after the clock stops, so the query is not in the measurement.
+	 */
+	drew: number;
 }
 
 /**
@@ -51,8 +70,9 @@ function sample(el: HTMLElement, op: string, run: () => void, prepare?: () => vo
 		px = drawnHeight(el);
 		times.push(performance.now() - started);
 	}
+	const drew = el.querySelectorAll('.pbl-row, .pbl-card').length;
 	times.sort((a, b) => a - b);
-	return { op, median: times[times.length >> 1] ?? 0, worst: times[times.length - 1] ?? 0, px };
+	return { op, median: times[times.length >> 1] ?? 0, worst: times[times.length - 1] ?? 0, px, drew };
 }
 
 /**
@@ -71,10 +91,21 @@ function sample(el: HTMLElement, op: string, run: () => void, prepare?: () => vo
  * [[The render is the whole cost of a data update]]. Time the phase itself if you want
  * the phase.
  */
-function measure(view: ProductBacklogView, el: HTMLElement, mount: Mount): { rows: Row[]; treeRows: number } {
+function measure(
+	view: ProductBacklogView,
+	el: HTMLElement,
+	mount: Mount,
+): { rows: Row[]; treeRows: number; axis: string | null; grid: string | null } {
 	// Restored at the end rather than reset to the tree: the run drives all four, and a
 	// `?perf&view=board` page has to be left showing the board it was asked for.
 	const opened = view.projection;
+	// The shelf opens COLLAPSED, and a collapsed shelf renders its header and returns — so
+	// every roadmap number this panel printed before 2026-08-14 was of a roadmap with no
+	// shelf in it, under a heading that named neither the omission nor the shelf. Opened for
+	// the run and put back exactly as found, the way the projection already is: a
+	// measurement mode must not leave the reader's own view rearranged.
+	const openedShelf = view.shelfCollapsed;
+	view.setShelfCollapsed(false);
 	// Switched to the tree BEFORE expanding, because `?perf` composes with `?view=board`
 	// and the expand control is disabled on a projection that drew no disclosure. Expanding
 	// there did nothing, counted zero rows, and left every later sample rendering a
@@ -88,10 +119,14 @@ function measure(view: ProductBacklogView, el: HTMLElement, mount: Mount): { row
 		// Both numbers are taken inside `mountHarness`, around the view's first draw and
 		// before `?view=` or the expansion — see `Mount` in `mount.ts`.
 		// Labelled so it cannot be read as a row of the same sample as the four below it.
-		{ op: 'mount (collapsed, as it opens)', median: mount.ms, worst: mount.ms, px: mount.px },
+		{ op: 'mount (collapsed, as it opens)', median: mount.ms, worst: mount.ms, px: mount.px, drew: mount.drew },
 		sample(el, 'update (build + render)', () => view.onDataUpdated()),
 		sample(el, 'render only', () => view.render()),
 	];
+	// The axis and the window are read HERE, in the one moment the roadmap is the projection
+	// on screen: the snapshot is what the render produced, and it is null everywhere else.
+	let axis: string | null = null;
+	let grid: string | null = null;
 	for (const projection of PROJECTIONS) {
 		rows.push(
 			sample(
@@ -101,9 +136,15 @@ function measure(view: ProductBacklogView, el: HTMLElement, mount: Mount): { row
 				() => view.setProjection(projection === 'tree' ? 'board' : 'tree'),
 			),
 		);
+		if (projection === 'roadmap') {
+			axis = view.roadmap?.roadmap.axis ?? null;
+			const drawn = view.roadmap?.window ?? null;
+			grid = drawn && `${drawn.start.year}-${drawn.start.month}-${drawn.start.day}+${drawn.days}d`;
+		}
 	}
+	view.setShelfCollapsed(openedShelf);
 	view.setProjection(opened);
-	return { rows, treeRows };
+	return { rows, treeRows, axis, grid };
 }
 
 /**
@@ -123,6 +164,68 @@ function expandAll(el: HTMLElement): void {
 	);
 }
 
+/**
+ * What the page actually MOUNTED, beside what it cost.
+ *
+ * The runner used to print the query string it had built and call that the heading, so a
+ * typo the page silently absorbed — `?fixture=edegs` mounts the demo, `?axis=date` picks
+ * no axis at all — labelled the table with a workload nobody ran. Three flags had that
+ * shape, and the answer is not three vocabularies copied into the runner, which is a list
+ * that goes stale: the page is the only thing that knows what it resolved, so it says.
+ * (Codex, PR #137.)
+ */
+interface Ran {
+	fixture: string;
+	/** Results the view was handed — the population these numbers are of. */
+	results: number;
+	/** What those results WERE — see `MountedHarness.contents`. */
+	contents: string;
+	projection: string;
+	/**
+	 * The axis the roadmap DREW, captured while it was on screen — never `view.axisPick`,
+	 * which is the retained pick and stays null until someone chooses. `activeAxis` falls
+	 * back to the first configured axis, so two builds configured differently both reported
+	 * a null pick and compared as if they had drawn the same thing. (Codex, PR #137.)
+	 */
+	axis: string | null;
+	/**
+	 * The GRID the roadmap drew, as `start+days` — null off a dated grid, where there is
+	 * none to draw.
+	 *
+	 * The axis alone does not pin the workload on the two grid axes: the window is derived
+	 * from `todayCivil()`, so the same build measured on two calendar dates — or one A/B
+	 * run spanning midnight — draws a different span and clamps differently, and every
+	 * other field compares equal. Published rather than FROZEN, of the two fixes: the
+	 * reader's own date is an input to the view (`render/projections.ts` injects it and
+	 * nothing in `domain/` reads a clock), so pinning it here would measure a thing the
+	 * plugin does not do. And it is the WINDOW rather than the date, because the window is
+	 * what the render produced and what actually varies — a zoom, a lead width or one
+	 * note's dates move it too, and the date is only the commonest reason. (Codex, PR #137.)
+	 *
+	 * Named `grid` and not `window`: the runner already has a `--window`, which is the
+	 * VIEWPORT, and a mismatch warning naming both would be unreadable.
+	 */
+	grid: string | null;
+}
+
+/** The id `scripts/perf.mjs` looks the numbers up by — a contract, so keep it stable. */
+export const PERF_DATA_ID = 'pbl-perf-data';
+
+/**
+ * The same numbers again, as JSON, so a headless browser can be ASKED rather than scraped.
+ *
+ * `scripts/perf.mjs` runs this page with `--dump-dom` and reads this one element; without
+ * it the runner would have to parse the table above, and a column added for a human to
+ * read would silently change what a script measured. The panel is for eyes, this is for
+ * the runner, and both come from the same `rows`.
+ *
+ * A `<script type="application/json">` rather than an attribute: its content is serialized
+ * as raw text, so nothing here depends on how quotes in an op name would be escaped.
+ */
+function publish(panel: HTMLElement, data: { samples: number; treeRows: number; ran: Ran; rows: Row[] }): void {
+	panel.createEl('script', { attr: { type: 'application/json', id: PERF_DATA_ID }, text: JSON.stringify(data) });
+}
+
 /** `?perf` — whether the page should time itself at all. */
 export function perfWanted(search: string): boolean {
 	return new URLSearchParams(search).has('perf');
@@ -139,8 +242,13 @@ export function wantedNotes(search: string): number {
  * read them, and `console.table`, so they can be pasted into a note. `.pbl-harness-*` is
  * the namespace the harness owns for its own furniture — see `test/harness/theme.css`.
  */
-export function reportPerf(view: ProductBacklogView, containerEl: HTMLElement, mount: Mount): Row[] {
-	const { rows, treeRows } = measure(view, containerEl, mount);
+export function reportPerf(
+	view: ProductBacklogView,
+	containerEl: HTMLElement,
+	mount: Mount,
+	mounted: { fixture: string; results: number; contents: string },
+): Row[] {
+	const { rows, treeRows, axis, grid } = measure(view, containerEl, mount);
 	console.table(rows.map((r) => ({ ...r, median: +r.median.toFixed(1), worst: +r.worst.toFixed(1) })));
 
 	const panel = document.body.createDiv('pbl-harness-perf');
@@ -151,7 +259,23 @@ export function reportPerf(view: ProductBacklogView, containerEl: HTMLElement, m
 		tr.createEl('td', { text: row.op });
 		tr.createEl('td', { text: `${row.median.toFixed(1)} ms` });
 		tr.createEl('td', { text: `${row.worst.toFixed(1)} ms`, cls: 'pbl-harness-perf-worst' });
+		tr.createEl('td', { text: `${row.drew} drawn`, cls: 'pbl-harness-perf-drew' });
 	}
+	// Read AFTER the run, which restores the projection and touches no axis: these are what
+	// the page is showing, which is what the numbers are of.
+	publish(panel, {
+		samples: SAMPLES,
+		treeRows,
+		ran: {
+			fixture: mounted.fixture,
+			results: mounted.results,
+			contents: mounted.contents,
+			projection: view.projection,
+			axis,
+			grid,
+		},
+		rows,
+	});
 	panel.createEl('p', {
 		text: 'No Bases pass, no metadata cache, no vault I/O, no theme. Not what the plugin costs in a vault.',
 	});

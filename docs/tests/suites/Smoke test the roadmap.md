@@ -184,6 +184,15 @@ catalog migration and was not part of that run.
   as it moves, and whether a focusable separator inside the pane's `listbox` confuses
   the reader — the accepted deviation recorded in `src/view/CLAUDE.md`. **Never
   checked.**
+- **The shelf's disclosure, which pays that same deviation without being a separator**
+  (2026-08-15): a `<button aria-expanded>` that is a real tab stop inside the same
+  `listbox`, because the card menu no longer carries the collapse toggle and a shut shelf
+  offers no card to menu from. What a reader can check here and jsdom cannot: Tab reaches
+  it in a pane full of cards, it shows a focus ring, pressing it moves focus to its own
+  replacement rather than to the pane, and the arrow keys still walk the cards once focus
+  is back on the pane. Then the screen-reader half — how a focusable non-`option` button
+  is announced in that position, and whether "Expand unplaced (n)" survives it. **Never
+  checked.**
 - The four state-colour slots under a real theme, light and dark: each reads as distinct
   from the others and from the four colours that already mean something — the red, cyan
   and green of today, a milestone and done, and the ACCENT, which `.pbl-bar` falls back

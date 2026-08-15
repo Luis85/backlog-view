@@ -53,12 +53,13 @@ describe('the shelf\'s own header controls', () => {
 		expect(toolbarOf(containerEl).querySelector('.pbl-shelf-toggle')).toBeNull();
 	});
 
-	it('are reachable by pointer but never a second tab stop in the listbox', () => {
+	it('keeps the two pickers out of the listbox tab order, and never renders a form control', () => {
 		const { containerEl } = makeRoadmap(horizonVault());
-		// The pane is one tab stop and the shelf sits inside it, so every control it
-		// carries has to be `tabindex="-1"` — a focusable form control here would be a
-		// second stop in a composite that has exactly one.
-		for (const sel of ['.pbl-shelf-disclosure', '.pbl-shelf-sort', '.pbl-shelf-filter']) {
+		// The pane is one tab stop and the shelf sits inside it, so the pickers have to be
+		// `tabindex="-1"` — a focusable form control here would be a second stop in a
+		// composite that has exactly one. The disclosure is the documented exception and
+		// is asserted on its own below.
+		for (const sel of ['.pbl-shelf-sort', '.pbl-shelf-filter']) {
 			const btn = containerEl.querySelector<HTMLElement>(sel);
 			expect(btn, sel).not.toBeNull();
 			expect(btn?.getAttribute('tabindex'), sel).toBe('-1');
@@ -98,24 +99,30 @@ describe('the shelf\'s own header controls', () => {
 		expect(disclosureOf(containerEl)?.getAttribute('tabindex')).toBe('0');
 	});
 
-	it('gives the pane the focus when opening the shelf leaves cards to arrow through', () => {
+	it('keeps the disclosure the focus even when opening the shelf makes the pane a composite', () => {
 		const vault = new FakeVault();
 		vault.addFile('Untriaged.md', { frontmatter: { type: 'Epic', order: 10 } });
 		const { containerEl, view } = makeRoadmap(vault, {}, { shelfCollapsed: true });
-		const tree = containerEl.querySelector<HTMLElement>('.pbl-tree');
-		disclosureOf(containerEl)?.focus();
+		const before = disclosureOf(containerEl);
+		before?.focus();
 
-		disclosureOf(containerEl)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		before?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
 		// The press rebuilt the pane and destroyed the button, so focus has to go
-		// SOMEWHERE — and inside a composite it cannot go to the replacement. The pane's
-		// key handler ignores any event whose target is not the pane itself, so focus on
-		// a `tabindex="-1"` control within it leaves the arrows dead while looking fine.
+		// SOMEWHERE. The two pickers hand it to the pane here, because they are
+		// `tabindex="-1"` inside a composite; the disclosure is a real tab stop in both
+		// states, so it keeps its own focus — and with the card menu no longer carrying
+		// this toggle, a hand-off to the pane would leave a keyboard user a Shift+Tab away
+		// from the only control that shuts the shelf again.
 		expect(containerEl.querySelector('.pbl-tree')?.getAttribute('role')).toBe('listbox');
-		expect(document.activeElement).toBe(tree);
-		// The consequence, not just the mechanism: the walk still works.
-		key(tree as HTMLElement, 'ArrowDown');
-		expect(view.selectedPath).toBe('Untriaged.md');
+		const after = disclosureOf(containerEl);
+		expect(after).not.toBe(before);
+		expect(document.activeElement).toBe(after);
+		// The consequence, not just the mechanism: the toggle works twice running, without
+		// a pointer and without Tabbing back.
+		after?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(view.shelfCollapsed).toBe(true);
+		expect(document.activeElement).toBe(disclosureOf(containerEl));
 	});
 
 	it('gives the control the focus when nothing is left to arrow through', () => {
@@ -158,19 +165,20 @@ describe('the shelf\'s own header controls', () => {
 		}
 	});
 
-	it('leaves the tab order again as soon as the pane has cards to arrow through', () => {
+	it('keeps the disclosure a tab stop even where the pane is a composite', () => {
 		const { containerEl } = makeRoadmap(horizonVault(), {}, { shelfCollapsed: true });
-		// Two placed epics still render, so the pane IS a composite and its one stop is
-		// the pane itself — the disclosure goes back to being reachable by arrow and by
-		// assistive tech, never by Tab.
+		// Two placed epics still render, so the pane IS a composite and everything else it
+		// carries leaves the tab order. The disclosure does not: the card menu stopped
+		// carrying this toggle on 2026-08-15, and a collapsed shelf draws no card of its
+		// own to open a menu from, so a `-1` here is a shelf no keyboard can reopen.
 		expect(containerEl.querySelector('.pbl-tree')?.getAttribute('role')).toBe('listbox');
-		expect(disclosureOf(containerEl)?.getAttribute('tabindex')).toBe('-1');
+		expect(disclosureOf(containerEl)?.getAttribute('tabindex')).toBe('0');
 	});
 
-	it('takes the pickers out of the tab order too, wherever the pane is a composite', () => {
+	it('takes the pickers out of the tab order wherever the pane is a composite', () => {
 		const { containerEl } = makeRoadmap(horizonVault());
 		expect(containerEl.querySelector('.pbl-tree')?.getAttribute('role')).toBe('listbox');
-		for (const sel of ['.pbl-shelf-disclosure', '.pbl-shelf-sort', '.pbl-shelf-filter']) {
+		for (const sel of ['.pbl-shelf-sort', '.pbl-shelf-filter']) {
 			expect(containerEl.querySelector(sel)?.getAttribute('tabindex'), sel).toBe('-1');
 		}
 	});
@@ -258,23 +266,25 @@ describe('the shelf\'s own header controls', () => {
 		expect(shelfGroupHeaders(containerEl)).toEqual(['Epic', 'Task']);
 	});
 
-	it('puts its actions on the card menu, the keyboard path its tabindex="-1" owes', () => {
+	it('offers no shelf section at all while the shelf is shut', () => {
 		const vault = horizonVault();
 		vault.addFile('A Task.md', { frontmatter: { type: 'Task', order: 40 } });
 		const { containerEl } = makeRoadmap(vault, {}, { shelfCollapsed: true });
-		// A composite pane, so the header's controls are correctly out of the tab order —
-		// which is exactly the state that owes a keyboard path. Without this section the
-		// shelf would be pointer-only here, the failure `src/view/CLAUDE.md` names for
-		// the board's own hidden-match links.
-		expect(disclosureOf(containerEl)?.getAttribute('tabindex')).toBe('-1');
 
 		Menu.lastShown = null;
 		cardByTitle(containerEl, 'Now item').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 		const menu = Menu.lastShown;
 		if (!menu) throw new Error('no card menu opened');
 
-		itemNamed(menu, 'Expand unplaced (2)').click();
-		expect(shelfTitles(containerEl)).toEqual(['Untriaged', 'A Task']);
+		// Nothing to order or narrow while the cards are shut away — the header withholds
+		// the same two pickers for the same reason, and an entry that visibly does nothing
+		// is worse than none. The toggle that WOULD open it is deliberately not here
+		// either: the disclosure is its keyboard path, and it is a real tab stop for that.
+		const titles = menu.items.map((i) => i.titleText);
+		expect(titles).not.toContain('Sort unplaced');
+		expect(titles).not.toContain('Filter unplaced by type');
+		expect(titles.filter((t) => t.includes('unplaced'))).toEqual([]);
+		expect(disclosureOf(containerEl)?.getAttribute('tabindex')).toBe('0');
 	});
 
 	it('offers the same sort and filter choices to the keyboard as to the pointer', () => {
