@@ -48,6 +48,9 @@ the one I am working in.
 - **3a — a note, a view or a base is renamed.** The stored state is **migrated** rather
   than orphaned, so a rename does not silently reset the tree.
 - **3b — stored paths no longer exist.** They are pruned, so the entry cannot grow forever.
+- **3c — the vault cannot answer whether a path exists.** Nothing is pruned at all. The
+  prune deletes other views' entries, and "I cannot see it" is only evidence when the
+  reader can see anything — which is asked of the base this very view is drawing.
 
 ## Acceptance criteria
 
@@ -57,6 +60,10 @@ the one I am working in.
 - Renaming a note, a view or a base migrates the state rather than orphaning it.
 - When the base cannot be identified the state is session-only — never a shared key.
 - A malformed stored value is read defensively and discarded, not thrown on.
+- A save made while the vault cannot resolve its own base prunes nothing.
+- An entry carries the shape it was written in, so the next shape change can migrate it
+  rather than reset it. A shape this version does not know is dropped; an unstamped entry
+  is this shape.
 
 ## Where it lives
 
