@@ -461,9 +461,10 @@ In `test/domain/writePlan.test.ts`:
 
 ```ts
 describe('computeIterationWrites', () => {
-	it('writes a wikilink to the chosen note', () => {
-		expect(computeIterationWrites(pbi, sprint12)).toEqual([
-			{ path: pbi.path, iteration: '[[Sprint 12]]' },
+	it('carries the target FILE, so the writer can spell a path-aware link', () => {
+		// NOT a serialized string: `[[Sprint 12]]` cannot say WHICH Sprint 12.
+		expect(computeIterationWrites(pbi, sprint12File)).toEqual([
+			{ path: pbi.path, file: pbi.file, iteration: sprint12File },
 		]);
 	});
 
@@ -1192,7 +1193,7 @@ file:
 | `hasRollup` | as `board` | same card shell |
 | `projectionMember` | `!inCatalog` | a board in the plan projection |
 | `filterScopeFor` | `'whole'` | the population ignores the focus, so the match index must too |
-| `byProjectionType` | **every** type, `Deliverable` included | this board shows them, so `Set type` and creation must offer them |
+| `byProjectionType` | every type **except `Iteration`**, `Deliverable` included | offer exactly what this board can show — no more, no less |
 | `projectionPopulation` | the scope's carriers | one population, so counts and cards cannot disagree |
 
 **`toolbarPosition` is the price of splitting internal identity from control identity**,
@@ -1229,29 +1230,76 @@ Drive the first through the *interaction*, not the state: pick an iteration from
 picker, let the rebuild happen, then look for the picker in the rebuilt toolbar. A test
 that renders the end state directly passes while the round trip is broken.
 
-`byProjectionType` is the one to read twice. It strips `Deliverable` for `'board'` and
-keeps only `Deliverable` for `'deliverables'`; an iteration board shows both, so it must
-strip neither — otherwise `Set type` and the creation menus withhold a type the board is
-displaying.
+`byProjectionType` is the one to read twice, and **"every type" is the wrong answer** —
+it was the answer an earlier revision of this plan gave, and it is wrong in the opposite
+direction from the product board's. The rule is one sentence: **a board offers exactly the
+types it can show.**
+
+It strips `Deliverable` for `'board'` and keeps only `Deliverable` for `'deliverables'`.
+An iteration board shows both, so it strips neither — withholding a type a board displays
+is the defect. But it also shows no `Iteration`, because Task 7's population rejects one
+(an iteration is the scope, never a card in it). Offering `Iteration` would let a reader
+create one here, or retype a visible card to one, and **watch it vanish from the board it
+was created on** — the same defect through the other door.
 
 ```ts
-it('offers every work-item type on an iteration board, Deliverable included', () => {
+it('offers exactly what an iteration board can show', () => {
 	expect(byProjectionType('iteration', ALL_TYPES)).toContain('Deliverable');
+	expect(byProjectionType('iteration', ALL_TYPES)).not.toContain('Iteration');
 	expect(byProjectionType('board', ALL_TYPES)).not.toContain('Deliverable');
 });
 ```
 
-- [ ] **Step 4: Store the scope path**
+Both menus, since `offerableTypes` feeds `Set type` and the creation choices alike.
+
+- [ ] **Step 4: Resolve a stale scope ONCE, not at the render**
+
+`host.projection` is what every projection-dependent question consults. So the stale-scope
+fallback cannot live in `renderProjectionContent`: resolving it there draws product-board
+content while the projection still reads `'iteration'`, and `hidesCompleted`,
+`filterScopeFor`, `countedPopulation`, the focus-control suppression and the offered types
+all keep iteration behaviour. The reader would see **product cards under a zero-item
+iteration count, with no completed toggle** — every gate individually consistent and the
+screen incoherent.
+
+Two values, and the distinction is the whole of it:
+
+- the **stored** scope, raw, which is user data and is never rewritten — a path whose note
+  is gone stays exactly as written, so restoring the note restores the choice;
+- the **effective** projection, resolved once from that value against the model:
+  `'iteration'` while the path names an `Iteration` result, `'board'` otherwise.
+
+`host.projection` returns the effective one. Nothing downstream asks the question twice,
+and nothing downstream can answer it differently.
+
+```ts
+it('reads as the ordinary board everywhere while the scope is stale', () => {
+	const host = hostWith({ storedScope: 'docs/iterations/Gone.md' });
+	expect(host.projection).toBe('board');
+	expect(countLabel(renderToolbar(host))).toBe(productCount);
+	expect(completedToggle(renderToolbar(host))).not.toBe(null);
+});
+
+it('keeps the stored value, so restoring the note restores the choice', () => {
+	const host = hostWith({ storedScope: 'docs/iterations/Gone.md' });
+	expect(rawStoredScope(host)).toBe('docs/iterations/Gone.md');
+});
+```
+
+This is the same lesson as the toolbar's, one layer up: **resolution belongs at one point
+upstream of every consumer**, never at the last one that happens to need it.
+
+- [ ] **Step 5: Store the scope path**
 
 In `src/storage/collapseStore.ts`, add `boardScope?: string | null` to both the snapshot and `StoredEntry`, a line in `defaultPicks` and one in `writePicks`.
 
 **Read it as a plain string, not through `readEnum`.** `AXIS_VALUES` and `ZOOM_VALUES` are closed vocabularies; a note path is not, so there is no list to check against. Validate only that it is a non-empty string, and let *resolution* — not storage — decide that a path naming no Iteration renders Product. That split is what keeps the value user data: a stale path stays stored, and restoring the note restores the choice.
 
-- [ ] **Step 5: Expose it**
+- [ ] **Step 6: Expose it**
 
 `boardScope()` / `setBoardScope()` in `collapseState.ts` beside `axisPick()` / `setAxisPick()`; the accessor pair in `uiState.ts` beside `axisPick`, asking `hooks.render()` — a full render, like the projection: no Bases refresh follows a change it was not told about. Declare both on `BacklogViewHost` in `host.ts` and forward in one line from `backlogView.ts`.
 
-- [ ] **Step 6: Migrate it on a rename**
+- [ ] **Step 7: Migrate it on a rename**
 
 This is the step the other UI-state picks did not need and this one does, because it is
 the first pick whose VALUE is a path. `CollapseState.renamePath` migrates the collapsed
@@ -1268,12 +1316,12 @@ mistake `renamePath`'s own comment records for the row keys.
 
 Both cases are covered by the two tests in Step 1.
 
-- [ ] **Step 7: Run the tests**
+- [ ] **Step 8: Run the tests**
 
 Run: `npx vitest run test/storage/collapseStore.test.ts test/view/projection.test.ts`
 Expected: PASS, including both rename cases.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
 npm run check
@@ -1487,9 +1535,10 @@ card lands in the no-state column, `drawEmpty` never fires, and extension 4a's
 unconfigured guidance is unreachable: the board looks like a working one-column board
 instead of saying what is missing.
 
-Resolution of the SCOPE stays here too: a stored path no `Iteration` result matches
-renders the product board and the stored value is untouched — a stale scope is retained,
-never rewritten.
+The SCOPE's own staleness is **not** resolved here — Task 8 step 4 already did it, once,
+upstream of every consumer. By the time this dispatch runs, `host.projection` is already
+`'board'` for a stale scope, so this chain needs no fallback of its own and must not grow
+one: a second resolution is a second opinion.
 
 - [ ] **Step 8: Run the tests**
 

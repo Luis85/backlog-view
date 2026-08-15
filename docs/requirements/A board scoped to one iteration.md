@@ -82,10 +82,19 @@ the moment the populations diverged, which is exactly what happened.
   extension 2b). No item can name an iteration, so the picker offers nothing but
   `Product` and is not drawn.
 - **2a — the stored scope names a note that is gone, or is no longer an `Iteration`.**
-  The board renders `Product` and the stored value is **retained, not rewritten**, so
-  restoring the note restores the saved scope. Stored state is user data, dropped rather
-  than guessed at — the rule [[Horizons or dates]] extension 3a already states for the
-  axis pick.
+  The view reads as the **ordinary product board everywhere** — its cards, its count, its
+  completed toggle, its offered types, its filter index — and the stored value is
+  **retained, not rewritten**, so restoring the note restores the saved scope. Stored
+  state is user data, dropped rather than guessed at: the rule [[Horizons or dates]]
+  extension 3a already states for the axis pick.
+
+  Everywhere, not just in the cards. The staleness is resolved **once**, upstream of every
+  question, into the projection the whole view then reads; resolving it only where the
+  content is drawn would leave every other gate still answering as an iteration board, and
+  the reader would get product cards under a zero-item iteration count with no completed
+  toggle — each gate consistent with itself and the screen incoherent. Two values,
+  deliberately: the raw stored path, which is user data, and the effective projection,
+  which is derived. Nothing downstream asks the question a second time.
 - **2e — the chosen `Iteration` note, or a folder above it, is renamed.** The stored scope
   **follows it**, and the board keeps showing the same iteration. This is the first UI
   state whose value is a PATH, so it is the first that has to be migrated on a rename;
@@ -315,9 +324,10 @@ the moment the populations diverged, which is exactly what happened.
   it.
 - Choosing a scope leaves the picker on screen and the `Board` position pressed, checked
   by picking one and inspecting the rebuilt toolbar.
-- `Set type` and the creation menus offer `Deliverable` here, because this board shows
-  Deliverables. Withholding a type a board displays is the mirror of showing one it does
-  not.
+- `Set type` and the creation menus offer exactly what this board can show: `Deliverable`
+  **yes**, because it draws them; `Iteration` **no**, because it never draws one. Offering
+  a type the board cannot show lets a reader create an item and watch it vanish from the
+  board it was created on, which is the same defect as withholding one it does show.
 - With cards present but no workflow resolved, the board shows the unconfigured guidance
   rather than putting every card in a no-state column.
 - The board's observed vocabulary is collected from **this scope's carriers**, so a value
