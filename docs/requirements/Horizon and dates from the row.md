@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[Scheduling work]]"
 order: 40
-status: Active
+status: Done
 priority: P2
 created: 2026-08-02
 source: user request
@@ -196,12 +196,17 @@ belong to the **item**, not to the mode, and this is where the tree got them.
 - Re-picking the value an item already holds, or re-confirming the entry unchanged,
   writes nothing and keeps the previous undo — including an entry whose fields arrived
   blank because the keys exist but hold nothing.
-- **Not yet:** that the batch a menu action produces is identical to the one the
-  equivalent roadmap gesture produces. Nothing on the roadmap writes yet
-  ([[Moving between horizons]], [[Drag from the shelf to schedule]]), so the criterion
-  has nothing to compare against — it is why this note is still `Active`, and it is the
-  first thing those two use cases have to satisfy: they plan through the same
-  `computeHorizonWrites` / `computeScheduleWrites`, or the claim stops being structural.
+- The batch a menu action produces is the batch the equivalent roadmap gesture produces.
+  This was the one criterion left open when the row's actions were built — nothing on the
+  roadmap wrote then, so it had nothing to compare against — and both use cases it was
+  waiting on have since landed on the same two planners
+  ([[Moving between horizons]], [[Drag from the shelf to schedule]]). Checked as an
+  OUTCOME rather than as a plan: one request through both surfaces against two untouched
+  vaults, comparing the whole write log — which files were opened, what each says
+  afterwards, and how many batches it took. The plans themselves are deliberately not
+  identical, and that is why the criterion is written this way: a gesture carries the
+  baseline it was measured from and the placement shape it was captured under, and a
+  dialog entry carries neither.
 
 ## Where it lives
 
@@ -226,4 +231,7 @@ Tests: `test/domain/writePlanAxis.test.ts`, `test/domain/roadmap.test.ts`,
 `test/domain/settings.test.ts`, `test/view/plan.test.ts`, `test/view/columns.test.ts`,
 and
 `test/view/contextRowWrites.test.ts`, whose every-entry-point sweep now drives these
-actions too.
+actions too. The agreement with the roadmap's own gestures is
+`test/view/planAgreement.test.ts`, which drives each request through both surfaces
+against two separate vaults and compares what landed — every case watched failing
+against a second planner written beside the shared one.
