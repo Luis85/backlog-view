@@ -232,8 +232,12 @@ the fix is restored.
   untested: a wrong type, and a plausible-but-invalid value — `leadWidth: 4000`,
   `mode: 'gantt'`, `shelfSort: 'priority'`.
 - **The bucket invariant.** Rename a note, and delete a note, then assert `prefs` is
-  unchanged and the fold lists moved or shrank. This is the rule §2 exists for, so it is
-  stated from the rule rather than from the implementation.
+  unchanged, `folds.lanes` is unchanged, and only `folds.collapsed` and `folds.expanded`
+  moved or shrank. This is the rule §2 exists for, so it is stated from the rule rather
+  than from the implementation. The `lanes` half is the assertion that earns its place:
+  moving lanes **into** `folds` is what makes "prune the folds" ambiguous, and a prune
+  that walked every array in `ViewFolds` would drop every band a reader had folded and
+  still pass a check that only said the fold lists shrank.
 - **Write validation.** A snapshot carrying an invalid pref is saved and the entry is
   asserted not to hold it. This cannot pass today and is the reason for the symmetry.
 - **The break.** A legacy `product-backlog:collapse` entry reads as defaults, throws
@@ -250,7 +254,16 @@ the fix is restored.
 `docs-check.mjs` verifies every source path a note names, so the rename is not complete
 until the notes are. **23 notes** outside `superpowers/` name
 `src/storage/collapseStore.ts` or `src/view/collapseState.ts`. Most are a path swap in a
-`## Where it lives` line. Three need prose:
+`## Where it lives` line.
+
+**Four of those 23 also name `src/view/uiState.ts`** — [[Switching projections]],
+[[Opening the work]], [[A projection for the tests]] and [[Folding a resource's band]] —
+so §6's rename is part of the same sweep, not a follow-up. Two of them name the CLASS in
+prose as well (`UiStateController` in [[Switching projections]] and
+[[A projection for the tests]]), which no check can catch: `docs-check.mjs` verifies
+paths, not symbols. Grep for the class name as well as the path.
+
+Three notes need prose rather than a path swap:
 
 - [[Collapse persistence]] — its `## Where it lives` states the two-module split and now
   states three. Rule 7 needs each new module *specified* somewhere, and this is the note
