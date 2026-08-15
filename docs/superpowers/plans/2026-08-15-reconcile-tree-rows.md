@@ -720,6 +720,18 @@ describe('renderInputs', () => {
 		);
 	});
 
+	it('differs when a column\'s rendered value type changes', () => {
+		// Obsidian's property type, not the note's: the same scalar renders differently
+		// and no frontmatter moves. If the harness cannot vary the value type a fake
+		// entry returns, say so in the report and drop this test rather than asserting
+		// against a stub that cannot reproduce it — do not weaken the source rule.
+		const { view } = viewOf({ points: 3 });
+		const before = renderInputs(view);
+		// Whatever the harness's way of changing the type a `getValue` result reports is.
+		// Read `test/helpers/vault.ts` for it.
+		expect(renderInputs(view)).not.toBe(before);
+	});
+
 	it('differs when the filter text changes', () => {
 		const { view } = viewOf({});
 		const before = renderInputs(view);
@@ -775,7 +787,38 @@ import { BacklogViewHost } from './host';
  * ADR 0029.
  */
 export function renderInputs(host: BacklogViewHost): string {
-	return JSON.stringify([host.settings, host.columns, host.projection, host.filterText, host.columnFit]);
+	return JSON.stringify([
+		host.settings,
+		host.columns,
+		host.projection,
+		host.filterText,
+		host.columnFit,
+		valueKinds(host),
+	]);
+}
+
+/**
+ * The RENDERED TYPE of each column, probed once per pass from a single entry.
+ *
+ * A property's type is Obsidian's, not the note's: change `points` from text to date in
+ * the property registry and `Value.renderTo` draws the same YAML scalar a different way,
+ * while the frontmatter — and so every row signature — is identical. The columns list
+ * cannot see it either; the property id did not change.
+ *
+ * One entry is enough, and that is a fact about the hazard rather than a shortcut: a type
+ * belongs to the PROPERTY, vault-wide, so it cannot differ between two notes in the same
+ * column. Probing per row would cost N and learn the same thing.
+ */
+function valueKinds(host: BacklogViewHost): string[] {
+	const sample = host.model?.results.find((item) => item.entry)?.entry;
+	if (!sample) return [];
+	return host.columns.map((column) => {
+		try {
+			return sample.getValue(column.prop)?.constructor.name ?? '';
+		} catch {
+			return '';
+		}
+	});
 }
 
 /**
