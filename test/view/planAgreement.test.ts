@@ -6,6 +6,7 @@ import { flush, makeView, rowByTitle, submitSchedule, useViewHarness } from '../
 import { cardByTitle } from '../helpers/board';
 import { cardDrag, gridDrag, overlayOf, pannedGrid } from '../helpers/dnd';
 import { bucketByName, gripOf, horizonVault, makeRoadmap, shelfOf } from '../helpers/roadmap';
+import { scaleFor } from '../../src/domain/timeline';
 import { Harness } from '../helpers/view';
 
 useViewHarness();
@@ -117,6 +118,31 @@ describe('dates set from the row and dates set by a card move', () => {
 
 		expect(fromRow.writeLog).toHaveLength(1);
 		expect(fromRow.writeLog).toEqual(byDrag.writeLog);
+	});
+
+	it('are the same batch from a date CHIP as from the grid — one end, one key', async () => {
+		// The chip is the newest surface over `computeScheduleWrites` and the narrowest: it
+		// names one end where every other input names a placement. Held to the same rule
+		// anyway — a one-ended grid gesture and a one-ended chip entry are one batch.
+		const byGrip = dateVault();
+		const map = datedRoadmap(byGrip);
+		gridDrag(gripOf(map.containerEl, 'Planned', 'end'), overlayOf(map.containerEl), {
+			from: 1000,
+			clientX: 1000 + 5 * scaleFor('month').dayPx,
+		});
+		await flush();
+
+		const moved = byGrip.fm('Planned.md').target as string;
+		const fromChip = dateVault();
+		const row = makeView(fromChip, DATE_AXIS, { order: ['note.target'] });
+		rowByTitle(row.containerEl, 'Planned')
+			.querySelector<HTMLElement>('.pbl-prop-target .pbl-date-chip')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		submitSchedule([moved]);
+		await flush();
+
+		expect(fromChip.writeLog).toHaveLength(1);
+		expect(fromChip.writeLog).toEqual(byGrip.writeLog);
 	});
 
 	it('take them away the same way — Unschedule and a bar dropped on the shelf', async () => {

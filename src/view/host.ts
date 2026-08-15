@@ -43,7 +43,7 @@ export type ColumnScope = 'board' | 'deliverables' | 'horizons' | 'shelf';
  * it. Declared here with the other view state the host exposes, so the interface every
  * module depends on depends on nothing itself.
  */
-export type ColumnKind = 'value' | 'tags' | 'state' | 'horizon' | 'risk' | 'assignee';
+export type ColumnKind = 'value' | 'tags' | 'state' | 'horizon' | 'risk' | 'assignee' | 'start' | 'target';
 
 export interface Column {
 	prop: BasesPropertyId;

@@ -160,10 +160,12 @@
 .pbl-horizon-chip,
 .pbl-risk-chip,
 .pbl-assignee-chip,
+.pbl-date-chip,
 button.pbl-state-chip,
 button.pbl-horizon-chip,
 button.pbl-risk-chip,
-button.pbl-assignee-chip {
+button.pbl-assignee-chip,
+button.pbl-date-chip {
 	appearance: none;
 	display: inline-flex;
 	align-items: center;
@@ -190,7 +192,8 @@ button.pbl-assignee-chip {
 .pbl-state-chip:not(.pbl-state-static):hover,
 .pbl-horizon-chip:not(.pbl-state-static):hover,
 .pbl-risk-chip:not(.pbl-state-static):hover,
-.pbl-assignee-chip:not(.pbl-state-static):hover {
+.pbl-assignee-chip:not(.pbl-state-static):hover,
+.pbl-date-chip:not(.pbl-state-static):hover {
 	background-color: var(--background-modifier-hover);
 	color: var(--text-normal);
 }
@@ -206,7 +209,8 @@ button.pbl-assignee-chip {
 .pbl-state-chip:focus-visible,
 .pbl-horizon-chip:focus-visible,
 .pbl-risk-chip:focus-visible,
-.pbl-assignee-chip:focus-visible {
+.pbl-assignee-chip:focus-visible,
+.pbl-date-chip:focus-visible {
 	outline: 1px solid var(--interactive-accent);
 	outline-offset: -1px;
 }
@@ -220,7 +224,8 @@ button.pbl-assignee-chip {
 .pbl-state-chip .svg-icon,
 .pbl-horizon-chip .svg-icon,
 .pbl-risk-chip .svg-icon,
-.pbl-assignee-chip .svg-icon {
+.pbl-assignee-chip .svg-icon,
+.pbl-date-chip .svg-icon {
 	width: var(--icon-xs);
 	height: var(--icon-xs);
 }
@@ -243,7 +248,15 @@ button.pbl-assignee-chip {
 .pbl-state-chip.pbl-state-unset,
 .pbl-horizon-chip.pbl-horizon-unset,
 .pbl-risk-chip.pbl-risk-unset,
-.pbl-assignee-chip.pbl-assignee-unset {
+.pbl-assignee-chip.pbl-assignee-unset,
+.pbl-date-chip.pbl-date-unset {
 	color: var(--text-faint);
 	border-style: dashed;
 }
+
+/* Five chip classes now appear in each of the five lists above, and the next chip makes
+   it six in each. That is an enumeration, and it is kept deliberately rather than
+   collapsed onto a shared marker class: doing so means adding a class in every chip
+   renderer and re-checking every test that asserts on chip markup, which is a larger and
+   riskier change than the one it would save. Collapse it when a chip is added for a
+   reason of its own, not on the way past. */
