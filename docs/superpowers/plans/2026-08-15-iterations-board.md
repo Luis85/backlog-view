@@ -4,7 +4,13 @@
 
 **Goal:** Add an `Iteration` note type and an `iteration` link property, then give board mode a scope picker that shows one iteration's work in a workflow of its own.
 
-**Architecture:** Three existing seams do almost all the work. `Iteration` joins `MARKER_TYPES`, inheriting every structural rule Milestone already pays for. `iteration` becomes one row in `PROPERTY_TABLE`, which buys the view option, the setup binding, the collision gate and the backfill. The board gains a *scope* — a third `Workflow` factory beside `requirementsWorkflow` and `deliverablesWorkflow`, over a population read off the whole unfocused tree, with the pick persisted beside `axis` in the collapse store.
+**Architecture:** Three existing seams do almost all the work. `Iteration` joins `MARKER_TYPES`, inheriting every structural rule Milestone already pays for. `iteration` becomes one row in `PROPERTY_TABLE`, which buys the view option, the setup binding, the collision gate and the backfill. And the iteration board is **its own `Projection` value**, with the chosen iteration's path stored beside it as a parameter.
+
+**Read this before Task 8.** An earlier revision of this plan made the iteration board a *scope field* consulted at call sites, keeping `host.projection === 'board'`. Seven review rounds then found seven separate functions that answer for the product board while an iteration is chosen — `filterScopeFor`, `countedPopulation`, `hideCompleted`, the columns dispatch, the `Set state` gate, its checkmark planner, `byProjectionType` — each found one at a time, each fix correct and one case short of the next.
+
+`src/view/projection.ts` predicted it in the file itself: *"A projection added beside `'tree'` rather than **as** a tree fails each of those gates silently and differently wherever a comparison bypasses this file"*, and `filterScopeFor`'s own comment records the identical history for the Deliverables board — *"three separate fixes to keep patching the gap… each was one case short, because a single set was being asked two questions."*
+
+So the iteration board is a projection. **This does not change the control**: the toolbar still shows one `Board` position and a scope picker, which is what was asked for. Picking an iteration sets the projection *and* the scope path; picking `Product` sets the projection back. What it changes is that "am I an iteration board" is asked in one module, and `Record<Projection, …>` in `src/view/collapseState.ts` **fails to compile** until every projection question has an answer — the instrument that can see the whole set, rather than a review round per member of it.
 
 **Tech Stack:** TypeScript, Obsidian Bases custom view API (floor 1.12.0), esbuild, vitest + jsdom, ESLint with per-directory `no-restricted-imports`.
 
@@ -60,11 +66,14 @@ Everything here implements:
 | `src/domain/readItems.ts` | `iterationStateValue` |
 | `src/domain/model.ts` | `iterationResults`, `observedIterationStates` |
 | `src/domain/board.ts` | `iterationWorkflow` |
-| `src/storage/collapseStore.ts` | `boardScope` field, read defensively |
-| `src/view/collapseState.ts` | `boardScope()` / `setBoardScope()` |
+| `src/view/host.ts` | `Projection` gains `'iteration'` |
+| `src/storage/collapseStore.ts` | `ITERATION_MODE`, and the `boardScope` path field |
+| `src/view/projection.ts` | the seven projection questions answered for it |
+| `src/view/collapseState.ts` | the `PROJECTION_MODE` row, `boardScope()` / `setBoardScope()` |
 | `src/view/uiState.ts` | the accessor pair |
 | `src/view/host.ts` | declarations |
 | `src/view/render/toolbarControls.ts` | `renderBoardScopePicker` |
+| `src/view/render/toolbarStatus.ts` | `countedPopulation` gains its case |
 | `src/view/render/board.ts` | `renderIterationBoard` |
 | `src/view/render/emptyStates.ts` | two states |
 | `src/view/render/projections.ts` | the fork |
@@ -1103,14 +1112,17 @@ than a type filter."
 
 ---
 
-### Task 8: Persist the scope
+### Task 8: A projection of its own, and its scope
 
 **Files:**
 - Modify: `src/storage/collapseStore.ts`, `src/view/collapseState.ts`, `src/view/uiState.ts`, `src/view/host.ts`
 - Test: `test/storage/collapseStore.test.ts`
 
 **Interfaces:**
-- Produces: `host.boardScope: string | null` (an Iteration note path, or `null` for Product) and `host.setBoardScope(scope: string | null): void`.
+- Produces: the `'iteration'` member of `Projection`; `host.boardScope: string | null`
+  (the chosen Iteration note's path, meaningful only in that projection) and
+  `host.setBoardScope(scope: string | null): void`, which sets **both** the projection and
+  the path — `null` returns to `'board'`, so the picker cannot leave the two disagreeing.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1152,17 +1164,59 @@ describe('the board scope', () => {
 Run: `npx vitest run test/storage/collapseStore.test.ts -t 'board scope'`
 Expected: FAIL.
 
-- [ ] **Step 3: Store it**
+- [ ] **Step 3: Make it a projection first**
+
+Before any storage. In `src/view/host.ts`:
+
+```ts
+export type Projection = 'tree' | 'board' | 'roadmap' | 'deliverables' | 'catalog' | 'iteration';
+```
+
+Then **let the compiler drive the rest**. `PROJECTION_MODE` in
+`src/view/collapseState.ts` is a `Record<Projection, ProjectionMode | null>`, so the build
+breaks until it gains a row, and `ITERATION_MODE` must join `PROJECTION_MODES` in
+`src/storage/collapseStore.ts` for the round trip to be accepted on the way back in. That
+pair is deliberate — its comment records that the chain it replaced accepted a new
+projection silently and answered `tree`, so the toggle did nothing when clicked.
+
+Now answer the seven questions in `src/view/projection.ts`, which is where "what a
+projection IS" is asked rather than compared. Every one of these was found by a separate
+review round while this was a scope field; as a projection they are one edit each in one
+file:
+
+| Question | Answer for `'iteration'` | Why |
+| --- | --- | --- |
+| `treeShaped` | `false` | cards, not rows |
+| `hidesCompleted` | `false` | completion here is the iteration workflow's question, not the product rollup's |
+| `hasRollup` | as `board` | same card shell |
+| `projectionMember` | `!inCatalog` | a board in the plan projection |
+| `filterScopeFor` | `'whole'` | the population ignores the focus, so the match index must too |
+| `byProjectionType` | **every** type, `Deliverable` included | this board shows them, so `Set type` and creation must offer them |
+| `projectionPopulation` | the scope's carriers | one population, so counts and cards cannot disagree |
+
+`byProjectionType` is the one to read twice. It strips `Deliverable` for `'board'` and
+keeps only `Deliverable` for `'deliverables'`; an iteration board shows both, so it must
+strip neither — otherwise `Set type` and the creation menus withhold a type the board is
+displaying.
+
+```ts
+it('offers every work-item type on an iteration board, Deliverable included', () => {
+	expect(byProjectionType('iteration', ALL_TYPES)).toContain('Deliverable');
+	expect(byProjectionType('board', ALL_TYPES)).not.toContain('Deliverable');
+});
+```
+
+- [ ] **Step 4: Store the scope path**
 
 In `src/storage/collapseStore.ts`, add `boardScope?: string | null` to both the snapshot and `StoredEntry`, a line in `defaultPicks` and one in `writePicks`.
 
 **Read it as a plain string, not through `readEnum`.** `AXIS_VALUES` and `ZOOM_VALUES` are closed vocabularies; a note path is not, so there is no list to check against. Validate only that it is a non-empty string, and let *resolution* — not storage — decide that a path naming no Iteration renders Product. That split is what keeps the value user data: a stale path stays stored, and restoring the note restores the choice.
 
-- [ ] **Step 4: Expose it**
+- [ ] **Step 5: Expose it**
 
 `boardScope()` / `setBoardScope()` in `collapseState.ts` beside `axisPick()` / `setAxisPick()`; the accessor pair in `uiState.ts` beside `axisPick`, asking `hooks.render()` — a full render, like the projection: no Bases refresh follows a change it was not told about. Declare both on `BacklogViewHost` in `host.ts` and forward in one line from `backlogView.ts`.
 
-- [ ] **Step 5: Migrate it on a rename**
+- [ ] **Step 6: Migrate it on a rename**
 
 This is the step the other UI-state picks did not need and this one does, because it is
 the first pick whose VALUE is a path. `CollapseState.renamePath` migrates the collapsed
@@ -1179,17 +1233,17 @@ mistake `renamePath`'s own comment records for the row keys.
 
 Both cases are covered by the two tests in Step 1.
 
-- [ ] **Step 6: Run the tests**
+- [ ] **Step 7: Run the tests**
 
-Run: `npx vitest run test/storage/collapseStore.test.ts`
+Run: `npx vitest run test/storage/collapseStore.test.ts test/view/projection.test.ts`
 Expected: PASS, including both rename cases.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 npm run check
 git add -A
-git commit -m "Persist the board scope beside the roadmap axis pick
+git commit -m "Make the iteration board a projection, and persist its scope
 
 Vault-scoped localStorage, per saved view, per device, never the .base —
 ADR 0011's rule applied again. Stored as a plain string rather than through
@@ -1335,34 +1389,35 @@ export function renderIterationBoard(
 }
 ```
 
-- [ ] **Step 4: Teach the three projection-shaped functions about the scope**
+- [ ] **Step 4: The gates the projection value does NOT answer**
 
-Each takes the **projection** alone today, and a board scope does not change the
-projection, so each answers for the product board while an iteration is chosen. All three
-are one-line answers in the place that already owns the question — never a branch at a
-call site:
+Task 8 answered the seven questions in `projection.ts`, so `filterScopeFor`,
+`byProjectionType`, `hidesCompleted`, `projectionMember` and `projectionPopulation` are
+already right here and need no branch at any call site. Two direct comparisons remain,
+because they are dispatch rather than predicates, and each needs its own case:
 
-- `filterScopeFor` (`src/view/projection.ts`) must answer `'whole'`, as it does for the
-  Deliverables board. It answers `'focused'` for every `board` today, so an inherited
-  focus would hide a matching card **through the filter** that Step 3's population just
-  promised no focus could hide. The population and the match index have to agree, or the
-  promise holds for the cards and breaks for the search.
-- `countedPopulation` (`src/view/render/toolbarStatus.ts`) must return this scope's
-  carriers. It returns `model.results` minus Deliverables for every `board`, which is
-  wrong twice here: it counts product work this board never shows and drops the
-  Deliverables it deliberately includes. It is one function so the count label and the
-  completed toggle's "(N hidden)" cannot disagree — put the scope inside it.
+- `countedPopulation` (`src/view/render/toolbarStatus.ts`) compares the projection
+  directly against `'deliverables'` and `'board'`. Add the `'iteration'` case, returning
+  this scope's carriers. It is one function so the count label and the completed toggle's
+  "(N hidden)" cannot disagree — which is exactly why the case goes inside it.
+- `renderProjectionContent` (`src/view/render/projections.ts`) — the if-chain that the
+  layer guide calls dispatch by design. See Step 7.
 
 ```ts
+it('counts this scope, Deliverables included and product work excluded', () => {
+	expect(countLabel(renderScope(model, sprint12))).toBe('4 items');
+});
+
 it('indexes the quick filter over the whole tree, so an inherited focus hides no match', () => {
 	const board = renderScope(focused(model, 'Feature'), sprint12, { filter: 'login' });
 	expect(cardPaths(board)).toContain('task-login.md'); // outside the focused subtree
 });
-
-it('counts this scope, Deliverables included and product work excluded', () => {
-	expect(countLabel(renderScope(model, sprint12))).toBe('4 items');
-});
 ```
+
+The second passes because of `filterScopeFor('iteration') === 'whole'` from Task 8, not
+because of anything in this task. It is written here anyway: it is the guarantee a reader
+of this board cares about, and a test that passes for a reason stated elsewhere still
+fails if that reason is removed.
 
 - [ ] **Step 5: Set the two narrowing controls off**
 
@@ -1374,9 +1429,18 @@ In `src/view/projection.ts`, this scope's `VisibilityRule` takes `hideCompleted:
 
 The focus picker renders a fixed, disabled button with no menu, no "Focused: <level>" label and no clear button — `renderFocusPicker`'s existing unconditional branch for the Deliverables board is the model. "Show completed items" is absent rather than present and inert.
 
-- [ ] **Step 7: Fork on it**
+- [ ] **Step 7: Fork on it, and gate the columns on a resolved workflow**
 
-In `src/view/render/projections.ts`, board mode dispatches on `host.boardScope`: `null`, or a path no `Iteration` result matches, renders the product board; a matching path renders `renderIterationBoard`. Resolution here, not in storage — a stale scope renders Product and the stored value is untouched.
+In `src/view/render/projections.ts`'s dispatch chain, `'iteration'` renders
+`renderIterationBoard` — **but only past a `resolvedIterationStateKey` check**, exactly as
+`'deliverables'` is gated today. Without that gate `boardColumns` runs with no key, every
+card lands in the no-state column, `drawEmpty` never fires, and extension 4a's
+unconfigured guidance is unreachable: the board looks like a working one-column board
+instead of saying what is missing.
+
+Resolution of the SCOPE stays here too: a stored path no `Iteration` result matches
+renders the product board and the stored value is untouched — a stale scope is retained,
+never rewritten.
 
 - [ ] **Step 8: Run the tests**
 
@@ -1478,9 +1542,39 @@ In `src/view/cardMoves.ts`, beside `performBoardMove` and `performDeliverablesBo
 
 This is the only place an iteration-board move's batch is planned and the only place it is announced. The three inputs call it; none of them plans a write beside it.
 
-- [ ] **Step 5: Route the three inputs**
+- [ ] **Step 5: Route the three inputs — and for the menu, routing is not enough**
 
-`cardDrag.ts`, `keyboard.ts` (Alt+Left/Right) and `menu.ts` (Set state) each gain a branch selecting this method when the board scope is an iteration — a `=== 'board'`-shaped gate in the same files the Deliverables board's own branches sit in.
+`cardDrag.ts` and `keyboard.ts` (Alt+Left/Right) each gain a branch selecting this method
+in the `'iteration'` projection, beside the Deliverables board's own branches.
+
+`menu.ts` needs **three** changes, not one, and routing the click is only the third:
+
+1. **The gate.** `addEditableSections` decides whether to draw the Set state submenu at
+   all from the item's own `stateKeyFor`. With only `iterationStateProperty` configured, an
+   ordinary PBI has no product key, so it would get **no Set state menu at all** on a board
+   whose columns are perfectly well defined. The gate has to ask the projection's workflow,
+   not the item's own.
+2. **The checkmark's planner.** `stateWrites` computes the no-op comparison with the
+   product or Deliverable planner. On this board it must use `computeIterationStateWrites`,
+   or the tick lands on a different value from the column the card is sitting in — a Set
+   menu's checkmark is asked of THE PLAN, and it has to be the plan this move would
+   actually make.
+3. **The click**, routed to `performIterationBoardMove`.
+
+```ts
+it('offers Set state with only the iteration workflow configured', () => {
+	const menu = openCardMenu(pbi, { stateKey: '', iterationStateKey: 'sprintState' });
+	expect(menuSection(menu, 'Set state')).not.toBe(null);
+});
+
+it('checks the entry matching the card\'s own column, not its product state', () => {
+	// status: Blocked, sprintState: Started — the card sits in Started.
+	expect(checkedTitle(openCardMenu(pbi), 'Set state')).toBe('Started');
+});
+```
+
+The second is the one to watch fail: with the product planner it ticks `Blocked`, a value
+this board has no column for.
 
 - [ ] **Step 6: Run the tests**
 

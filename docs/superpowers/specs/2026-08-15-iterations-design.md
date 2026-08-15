@@ -118,9 +118,29 @@ the refusal `renderAxisPicker` already makes for a single configured axis — an
 configured property nothing can join a scope, so every entry the picker offered would
 draw an empty board.
 
-**The pick is UI state.** A `boardScope` field beside `axis` in the collapse store's
-per-view entry (`src/storage/collapseStore.ts`) — vault-scoped localStorage, per saved
-view, per device, never the `.base`. ADR 0011's rule, applied again.
+**Internally it is a projection, not a flag.** `Projection` gains `'iteration'`, and the
+chosen note's path is stored beside it as a parameter. The *control* is unchanged — one
+`Board` position plus a picker, which is what was asked for — but "am I an iteration
+board" becomes a question `src/view/projection.ts` answers rather than a comparison
+repeated at call sites.
+
+That reverses an earlier revision of this spec, and the reversal was expensive enough to
+record. As a scope FIELD, seven separate functions answered for the product board while
+an iteration was chosen: `filterScopeFor`, `countedPopulation`, `hideCompleted`, the
+columns dispatch, the `Set state` gate, its checkmark planner, and `byProjectionType`.
+They were found one review round at a time, each fix correct and one case short of the
+next. `projection.ts` states the rule in the file itself — *"a projection added beside
+`'tree'` rather than **as** a tree fails each of those gates silently and differently"* —
+and `filterScopeFor`'s comment records the identical history for the Deliverables board:
+three fixes, each one case short, because one set was being asked two questions.
+
+As a projection, `Record<Projection, …>` in `src/view/collapseState.ts` fails to compile
+until every question has an answer. That is an instrument that can see the whole set,
+which is what the register asks for wherever a category invariant is at stake.
+
+**Both values are UI state.** The projection and the scope path live in the collapse
+store's per-view entry (`src/storage/collapseStore.ts`) — vault-scoped localStorage, per
+saved view, per device, never the `.base`. ADR 0011's rule, applied again.
 
 Read defensively, as every stored value there is: a stored path that no longer names an
 Iteration falls back to `Product` and is **retained rather than rewritten**, so restoring

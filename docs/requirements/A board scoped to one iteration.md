@@ -56,9 +56,10 @@ the moment the populations diverged, which is exactly what happened.
 
 1. In board mode the toolbar draws a scope picker beside the projection toggle, naming
    `Product` and every `Iteration` note in the model.
-2. Choosing an iteration stores the scope — the same per-view collapse-store entry the
-   projection mode and the roadmap axis use, vault-scoped localStorage, per device, never
-   the `.base` — and re-renders from the model already in hand.
+2. Choosing an iteration stores the projection **and** the chosen note's path — the same
+   per-view collapse-store entry the roadmap axis uses, vault-scoped localStorage, per
+   device, never the `.base` — and re-renders from the model already in hand. Choosing
+   `Product` stores the ordinary board projection, so the two can never disagree.
 3. The cards are the results whose iteration link resolves to that note, and no others:
    carriers only, never a descendant that did not say so itself — whatever their type,
    `Deliverable` included (3e).
@@ -110,6 +111,18 @@ the moment the populations diverged, which is exactly what happened.
   this board never shows, and it drops the Deliverables this board deliberately includes.
   It is one function precisely so the count label and the completed toggle's "(N hidden)"
   cannot disagree, so the scope belongs inside it rather than beside it.
+- **2f — a question is asked that depends on WHICH board this is** — what the quick
+  filter indexes, what the toolbar counts, whether the completed toggle applies, which
+  types `Set type` offers, whether a card is a member at all. Every one is answered from
+  the projection, in the one module that owns the question, never by a comparison written
+  beside the caller. An iteration board is therefore **its own projection value**
+  internally, even though the toolbar reaches it through a scope picker rather than a
+  toggle position. The control shape and the internal identity are different decisions,
+  and only the first was a preference. Made the other way — a scope flag consulted at call
+  sites — seven separate functions answered for the product board instead, and each was
+  found on its own, one at a time. `projection.ts` says why in the file itself: a
+  projection added *beside* the others rather than *as* one fails each gate silently and
+  differently.
 - **3a — a card is outside the Base's filter.** The context-row rule holds here exactly
   as on the product board: it renders as a breadcrumb, a lane header or an inert context
   card, and that is all — never a card to drag, never a write target, never counted,
@@ -287,6 +300,14 @@ the moment the populations diverged, which is exactly what happened.
   focus cannot hide a matching card through the filter that the population ignores.
 - The toolbar's item count and the completed toggle's "(N hidden)" both describe this
   scope's carriers — one function, so they cannot disagree.
+- Every projection-shaped question — filter index, count, completed toggle, offered types,
+  membership — is answered from the projection value in `projection.ts`, so a new one
+  cannot be added without the compiler asking for it.
+- `Set type` and the creation menus offer `Deliverable` here, because this board shows
+  Deliverables. Withholding a type a board displays is the mirror of showing one it does
+  not.
+- With cards present but no workflow resolved, the board shows the unconfigured guidance
+  rather than putting every card in a no-state column.
 - The board's observed vocabulary is collected from **this scope's carriers**, so a value
   only a `Deliverable` carries mints a column here, while a value carried only by items in
   no iteration — or in a DIFFERENT iteration — mints none.
