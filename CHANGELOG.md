@@ -84,7 +84,8 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   width, the property-column widths, the focus level, the click behaviour and the shelf's
   own controls are stored under a new key and the old one is not read. Open each view
   once and set it up again; nothing in your `.base` files and nothing in your notes is
-  touched.
+  touched. This is the last reset of its kind: each entry now records the shape it was
+  written in, so a future change to it can be migrated instead.
 
 - **Recording an absence asks for the dates alone.** The note is named
   `<resource> away <start> → <end>` from the facts you enter, so there is no title to think
@@ -99,6 +100,12 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   only one of your two workflows finishes on still gets a swatch for the other.
 
 ### Fixed
+
+- **One view saving can no longer forget every other view's working position.** Saving
+  tidies away entries for `.base` files the vault no longer has — and if the vault could
+  not answer at that moment, every entry looked gone and every one was dropped. It now
+  checks that the vault can see the base of the view doing the saving before it believes
+  any of the answers.
 
 - **Folding every resource row no longer reports the plan as empty.** The roadmap counted
   the rows it had drawn, and a folded band draws none — so shutting the last open band

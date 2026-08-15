@@ -22,6 +22,23 @@ const STORE_KEY = 'product-backlog:view-state';
  * no vault carries a dead entry forever.
  */
 const LEGACY_KEY = 'product-backlog:collapse';
+/**
+ * The shape of an entry this version writes, stamped on every one of them.
+ *
+ * It exists because the shape has already changed once, and the change cost every reader
+ * their working position: nothing on the entry said which shape it was, so the only way
+ * to tell 0.8's from 0.9's was the KEY, and moving the key is a reset. A stamp makes the
+ * next change a migration instead — read the old shape, write the new one — and costs one
+ * field to have available.
+ *
+ * The two directions are deliberately not symmetrical. A stamp this version does not know
+ * is a NEWER plugin's entry, and is dropped rather than read defensively: guessing at a
+ * shape never seen is how a value lands somewhere it means something else. An ABSENT
+ * stamp is this shape, because every entry in the wild is unstamped — the stamp arrives
+ * after the shape it describes, so reading absence as "not mine" would reset the readers
+ * it exists to protect.
+ */
+const SCHEMA = 1;
 
 /**
  * Backstop on how many fold keys a single view may remember, across every one of its lists.
@@ -164,6 +181,8 @@ export interface ViewStateSnapshot {
 }
 
 interface StoredEntry {
+	/** The shape this entry was written in — see {@link SCHEMA}. */
+	v: number;
 	/**
 	 * The base this entry belongs to, carried rather than parsed back out of the key.
 	 * A view name may contain anything a user can type — "Sprint #3" is an ordinary
@@ -338,10 +357,17 @@ export function loadViewState(app: App, id: ViewIdentity): ViewStateSnapshot {
 export function saveViewState(app: App, id: ViewIdentity, state: ViewStateSnapshot): void {
 	const map = readMap(app);
 	const key = viewStateKey(id);
-	const entry: StoredEntry = { base: id.base, folds: readFolds(state.folds), prefs: readPrefs(state.prefs) };
+	const entry: StoredEntry = {
+		v: SCHEMA,
+		base: id.base,
+		folds: readFolds(state.folds),
+		prefs: readPrefs(state.prefs),
+	};
 	if (hasContent(entry)) map[key] = entry;
 	else delete map[key];
-	pruneMissingBases(app, map, key);
+	// The base comes from the IDENTITY, never from `map[key]`: a view at its defaults has
+	// just had its entry deleted, and the guard still has to know what to ask about.
+	pruneMissingBases(app, map, key, id.base);
 	writeMap(app, map);
 }
 
@@ -392,8 +418,22 @@ function writeMap(app: App, map: StoredMap): void {
 	}
 }
 
-/** Drop entries for bases that no longer exist, never the one being written. */
-function pruneMissingBases(app: App, map: StoredMap, keep: string): void {
+/**
+ * Drop entries for bases that no longer exist, never the one being written.
+ *
+ * The whole prune rests on one question asked of the vault index, and it deletes OTHER
+ * views' state on the answer — which is why it first asks that question about a file it
+ * knows is there: `writing` is the base of the view doing the saving, and this code is
+ * running because that view is on screen. An index that cannot find THAT is not evidence
+ * about anybody else's base, so a save while it is unavailable would forget every other
+ * base in the vault. That is the one loss here that reopening a view cannot undo — the
+ * entries are gone, not merely unread.
+ *
+ * Same shape of rule as `collapseNewParents` keeps for the model: never read "I cannot
+ * see it" as "it is not there" without first checking that the reader can see anything.
+ */
+function pruneMissingBases(app: App, map: StoredMap, keep: string, writing: string): void {
+	if (app.vault.getAbstractFileByPath(writing) === null) return;
 	for (const [key, entry] of Object.entries(map)) {
 		if (key === keep) continue;
 		if (app.vault.getAbstractFileByPath(entry.base) === null) delete map[key];
@@ -428,8 +468,11 @@ function readEntry(value: unknown): StoredEntry | null {
 	const record = objectOf(value);
 	// An entry with no base cannot be pruned when its file goes, so it would linger
 	// forever; dropping it costs one view's state and is self-healing.
+	// A stamp this version does not know belongs to a newer one — see {@link SCHEMA} for
+	// why absence is the current shape and anything else is nobody's business here.
+	if (record.v !== undefined && record.v !== SCHEMA) return null;
 	const base = record.base;
 	if (typeof base !== 'string' || base.length === 0) return null;
-	const entry: StoredEntry = { base, folds: readFolds(record.folds), prefs: readPrefs(record.prefs) };
+	const entry: StoredEntry = { v: SCHEMA, base, folds: readFolds(record.folds), prefs: readPrefs(record.prefs) };
 	return hasContent(entry) ? entry : null;
 }
