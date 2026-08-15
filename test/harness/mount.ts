@@ -84,10 +84,30 @@ function fingerprint(lines: string[]): string {
 	return hash.toString(16).padStart(8, '0');
 }
 
-/** Keys in sorted order, so an object literal's own ordering cannot move the fingerprint. */
-function stableJson(value: Record<string, unknown> | undefined): string {
-	if (!value) return '';
-	return JSON.stringify(Object.keys(value).sort().map((key) => [key, value[key]]));
+/**
+ * Keys in sorted order, so an object literal's own ordering cannot move the fingerprint —
+ * and everything that is NOT an object serialized as itself.
+ *
+ * The second half was missing while this only ever saw the options object, and became a
+ * hole the moment entry VALUES joined the hash: `Object.keys(1)` and `Object.keys(true)`
+ * are both empty, so every truthy primitive collapsed to `[]`, and the `!value` guard put
+ * `0`, `false`, `''` and `null` together at `''`. A Base answering `1` where another
+ * answers `2` would have fingerprinted identically — the exact comparison this exists to
+ * refuse. Recursive, so a nested object is ordered too rather than only the top level.
+ * (Codex, PR #137.)
+ */
+function stableJson(value: unknown): string {
+	const ordered = (v: unknown): unknown => {
+		if (Array.isArray(v)) return v.map(ordered);
+		if (v !== null && typeof v === 'object') {
+			const obj = v as Record<string, unknown>;
+			return Object.keys(obj).sort().map((key) => [key, ordered(obj[key])]);
+		}
+		return v;
+	};
+	// `JSON.stringify(undefined)` is `undefined`, not a string, and a hash input has to be
+	// one — spelled out rather than defaulted to `''`, which is what an empty string is.
+	return JSON.stringify(ordered(value)) ?? 'undefined';
 }
 
 export interface MountedHarness {

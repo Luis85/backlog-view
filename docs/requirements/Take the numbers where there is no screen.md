@@ -221,6 +221,16 @@ instruments improvised around a browser.
   Watched discriminating against a bundle patched to answer one property with a value:
   `contents: 4b50cb82 here, bbb62542 in the baseline`, over an identical vault.
   (Codex, PR #137.)
+- **3p — the fingerprint's serializer only understood objects.** `stableJson` was written
+  for the options object and reused for the entry values 3o had just added: `Object.keys(1)`
+  and `Object.keys(true)` are empty, so every truthy primitive collapsed to `[]`, and a
+  `!value` guard put `0`, `false`, `''` and `null` together at `''`. A Base answering `1`
+  where another answers `2` fingerprinted identically — the exact comparison the hash exists
+  to refuse, reintroduced by the commit that widened what it covers. Non-objects serialize
+  as themselves now, and the key ordering recurses rather than stopping at the top level.
+  **Watched both ways**, since one direction alone proves nothing here: under the old
+  serializer `1`, `2` and `true` all hashed `8e94c74e` and `0` collided with `null` at
+  `4b50cb82`; under the new one all five values are distinct. (Codex, PR #137.)
 - **4a — the runner checks out the ref to compare against.** Refused: that would move the
   tree someone is working in. Building the other side is one command in a git worktree,
   and stays the human's.
