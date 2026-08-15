@@ -197,6 +197,11 @@
    below inside the 30px floor — near enough to centred that nobody measures it, and it costs
    a `calc` instead of a branch. */
 .pbl-absence {
+	/* `.pbl-absence-wash`'s reason below, plus one this mark alone has: `packLanes` is handed
+	   exactly this width to decide which marks overlap, so the rendered extent must BE it —
+	   under `content-box` the two borders add 2px the pack never saw. app.css sets it for
+	   everything, so this declares the premise rather than inheriting it (review, 2026-08-15). */
+	box-sizing: border-box;
 	position: absolute;
 	top: calc(7px + var(--pbl-sublane, 0) * 17px);
 	left: var(--pbl-bar-left);
