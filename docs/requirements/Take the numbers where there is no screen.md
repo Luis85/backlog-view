@@ -231,6 +231,14 @@ instruments improvised around a browser.
   **Watched both ways**, since one direction alone proves nothing here: under the old
   serializer `1`, `2` and `true` all hashed `8e94c74e` and `0` collided with `null` at
   `4b50cb82`; under the new one all five values are distinct. (Codex, PR #137.)
+- **3q — a count is a whole number that cannot be counted to.** `Number.isInteger` says yes
+  to `1e100` and to `9007199254740993`, so `--runs=1e100` passed the guard 3a added and
+  then never came back: the loop reaches 2^53, `run++` stops advancing the counter, and the
+  run hangs rather than taking a long time. `--notes` handed the same value to the page's
+  own generation loop. The guard is `isSafeInteger` now, which is where `Infinity` was
+  already being refused rather than a new rule. It draws the line at COUNTABLE and not at
+  large: a big representable number is a slow run somebody asked for, and nothing here
+  refuses one. (Codex, PR #137.)
 - **4a — the runner checks out the ref to compare against.** Refused: that would move the
   tree someone is working in. Building the other side is one command in a git worktree,
   and stays the human's.

@@ -120,11 +120,19 @@ function boolFlag(flag, value) {
  * the curated fixture alone: measurements labelled for a workload nobody ran. `--runs=abc`
  * printed an empty table and exited 0. Both are this file's own subject — an instrument
  * answering confidently about something it did not measure. (Codex, PR #137.)
+ *
+ * `isSafeInteger` and not `isInteger`, which is the same refusal `Infinity` already gets
+ * rather than a new rule: `--runs=1e100` is a WHOLE number to `isInteger`, and the loop
+ * counting it reaches 2^53 and stops advancing, so `run++` never terminates — a hang, not
+ * a long run. `--notes=1e100` hangs the page's own generation loop the same way. Above
+ * 2^53 a count is not a quantity this program can count TO, which is a different thing
+ * from being large: a big representable number is a slow run somebody asked for, and this
+ * refuses no such value. (Codex, PR #137.)
  */
 function wholeNumber(flag, value, min) {
 	const asked = Number(value);
-	if (Number.isInteger(asked) && asked >= min) return asked;
-	console.error(`--${flag} must be a whole number, at least ${min} — got "${value}".`);
+	if (Number.isSafeInteger(asked) && asked >= min) return asked;
+	console.error(`--${flag} must be a whole number, at least ${min} and below 2^53 — got "${value}".`);
 	process.exit(1);
 }
 
