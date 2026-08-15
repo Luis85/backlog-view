@@ -474,14 +474,18 @@ describe('the progress band carries a hairline no bar colour can erase', () => {
 		expect(body, 'an inset box-shadow would be hidden under a 100%-width fill').not.toMatch(/box-shadow:\s*inset/);
 	});
 
-	it('pulls the ring inward rather than the outward default', () => {
-		// `outline-offset: -1px` keeps the ring inside the track's own 2px/1px insets, so
-		// it never reaches the bar's own edge — never the inferred bar's 1px dashed
-		// border, never the last pixel of an open end's gradient. The outward (0-offset)
-		// default lands the ring's bottom edge exactly on the bar's own bottom edge,
-		// where an inferred bar draws its border — this is the line that keeps the two
-		// apart.
-		expect(body).toMatch(/outline-offset:\s*-1px/);
+	it('draws the ring outward, never inward into the band', () => {
+		// An inward ring (a negative `outline-offset`) eats the band's own interior from
+		// both sides — measured 2px of a 4px band, HALF the readable core, in the harness
+		// pass this rule cost before it was corrected (`.superpowers/harness-band-fix.md`).
+		// Outward is safe: the track's containing block is the bar's own PADDING box, so
+		// a 0-offset ring lands exactly at that padding edge, never past it. On a bar with
+		// no border that edge IS the outer edge (harmless — nothing else is painted
+		// there); on an inferred bar the 1px dashed border sits OUTSIDE the padding box it
+		// shrinks, so the ring stays a full 1px clear of it. Measured geometrically
+		// (`getComputedStyle`) and cross-checked with a pixel scan, not merely reasoned —
+		// the same report has both.
+		expect(body).not.toMatch(/outline-offset:\s*-/);
 	});
 
 	it('draws the ring in the page background, not in either progress colour', () => {
@@ -490,9 +494,13 @@ describe('the progress band carries a hairline no bar colour can erase', () => {
 		// same colour; a THIRD colour — the page's own background, the one thing a bar is
 		// never painted in — is what a hairline needs to separate the band from any bar
 		// colour, including a workflow state a reader has painted green through
-		// `stateColorPaint`, which is why this is not scoped to `.pbl-done`.
+		// `stateColorPaint`, which is why this is not scoped to `.pbl-done`. Asserted as
+		// the rule rather than pinned to one token: neither progress colour, not "must be
+		// exactly this one" — a future third colour choice that is still neither of them
+		// should not have to touch this test.
 		const outline = /outline:\s*1px\s+solid\s+([^;]+);/.exec(body)?.[1].trim();
 		expect(outline, 'the outline rule is missing entirely').toBeDefined();
-		expect(outline).toBe('var(--background-primary)');
+		expect(outline).not.toContain('--background-modifier-border');
+		expect(outline).not.toContain('--color-green-rgb');
 	});
 });

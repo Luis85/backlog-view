@@ -64,7 +64,8 @@ export function showColumnMenu(evt: MouseEvent, policy: string): void {
 
 /**
  * The row menu for a click on the row — a `contextmenu` from a pointer, or a plain click
- * on one of the two BUTTONS that open it (the state chip's sibling, the match count).
+ * on the one BUTTON that opens it this way (the match count chip; the state chip's own
+ * menu is `showStateMenu`/`chipMenu`, a separate path this function never sees).
  *
  * Through `showMenuForClick` for that second kind, and it is the rule rather than this
  * caller's precaution: a button's Enter or Space synthesizes a click at (0, 0), which

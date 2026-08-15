@@ -36,15 +36,26 @@
 	   inset shadow paints in the background/border step — BEFORE the fill child, per normal
 	   paint order — so at 100% fill (exactly the case this exists for) the shadow would sit
 	   under the fill and never be seen. An outline is documented to paint over an element's
-	   own descendants, so it stays visible through any fill width. `-1px` offset keeps the
-	   ring INSIDE the track's own inset box rather than the outward 0-offset default: at 0
-	   offset the ring's bottom edge lands exactly on the bar's own bottom edge, which for an
-	   inferred bar is where its 1px dashed border is drawn (`.pbl-bar-inferred`, `timeline.css`)
-	   — the track's descendant paints after the bar's own border, so the ring would overwrite
-	   it there. Pulled inward, the ring never reaches the bar's edge at all, so it cannot
-	   touch that border or the gradient an open end fades into. */
+	   own descendants, so it stays visible through any fill width.
+
+	   Outward (0 offset), NOT inward: an inward ring eats the band's own 4px interior from
+	   both sides — measured 2px left of a 4px band, HALF the readable core, on every bar
+	   this rule touches, not only a done one. `Progress on the bar`'s own open question is
+	   whether a 4px band is legible at all; halving it to answer a colour collision was the
+	   wrong trade. Outward instead: `.pbl-bar-progress` is absolutely positioned, so its
+	   containing block is `.pbl-bar`'s PADDING box (inside any border the bar carries), and
+	   `outline-offset: 0` draws the ring exactly AT that padding-box edge — never past it,
+	   so the ring can never reach past the bar it sits in. On an ordinary or open-ended bar
+	   (no border) the padding box IS the border box, so the ring abuts that outer edge —
+	   harmless, since nothing else is painted there. On an INFERRED bar, the 1px dashed
+	   border (`.pbl-bar-inferred`, `timeline.css`) sits OUTSIDE the padding box it shrinks,
+	   so the ring — landing at the padding edge as it always does — is a full 1px clear of
+	   where that border actually paints, never overwriting it. Measured, not reasoned from
+	   the arithmetic alone: `getComputedStyle` on both `.pbl-bar` and `.pbl-bar-progress`
+	   confirms the 1px gap exactly, cross-checked with a pixel scan
+	   (`.superpowers/harness-band-fix.md`). */
 	outline: 1px solid var(--background-primary);
-	outline-offset: -1px;
+	outline-offset: 0;
 }
 
 .pbl-bar-progress-fill {

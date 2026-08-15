@@ -129,25 +129,50 @@ does — `.pbl-density-compact` sets a track `min-height` and drops the lead's p
 the default density already asks: whether a 4px band is legible at all.
 
 **The band carries a 1px hairline** (`outline: 1px solid var(--background-primary)`,
-`outline-offset: -1px`, on `.pbl-bar-progress`) because a done row's own override
+`outline-offset: 0`, on `.pbl-bar-progress`) because a done row's own override
 (`--color-green`) and the fill's own paint (`rgb(var(--color-green-rgb))`) resolve to the
-SAME colour — measured `#44cf6e`, contrast 1.00, in a `npm run harness` pass 2026-08-15 —
-so on a done row the fill vanished into the bar and the band read as the *un*finished
-remainder instead of the progress. Not scoped to `.pbl-done`: a workflow state a reader
-has painted green through `stateColorPaint` hits the identical collision on a row that
-carries no done state at all, and a rule keyed to the class would miss it — the hairline
-separates the band from ANY bar colour instead. `outline`, not an inset `box-shadow`:
-the shadow paints in the background/border step, before the fill CHILD renders, so at
-100% done — the case a bar-coloured fill needed the hairline for most — a shadow would
-sit invisibly under the fill; an outline paints over an element's own descendants, so it
-stays visible whatever the fill's width. The `-1px` offset keeps the ring inside the
-track's own 2px/1px insets rather than the outward default, which lands exactly on the
-inferred bar's 1px dashed border. Measured in Chromium
-(`.superpowers/harness-band-fix.md`): the two independent guarantees hold — hairline
-against fill and against the bar itself both read at 4.75–8.44:1 across a done row at
-100%, a done row at a partial ratio, the ordinary control case and the state-slot
-colours, and a pixel scan confirms the ring never leaves the track's own box, so it
-cannot touch an inferred bar's dashed border or an open end's gradient. jsdom resolves no
-colour either, so `test/view/timelineBoxing.test.ts` pins the rule's TEXT only — the
-outline declaration, the `-1px` offset, and the third colour — refusing the deletion
-rather than the appearance; the harness pass is what looked.
+SAME colour — measured `#44cf6e`, contrast 1.00, in a `npm run harness` pass 2026-08-15,
+and still 1.00 with the hairline in place, because the hairline does not change what
+colour the fill paints. **What it fixes is the band's EXTENT, not its colour
+collision.** Before the hairline, a done bar's band had no visible edge at all: the fill
+and the bar underneath were indistinguishable, so only the unfilled remainder showed,
+reading as a gap rather than as progress, and at 100% (no remainder left) the band
+vanished outright. With the hairline, the band's own boundary is drawn in a third colour
+no bar is ever painted in, so the band's SHAPE is always visible — **on a done bar, the
+ratio is recoverable by reading the dark (unfilled) remainder and inverting it**, and at
+100% the ring reads as a full rectangle rather than as nothing. That is weaker than
+"fixed": **a ring around a solid, same-coloured fill is still ambiguous** — it looks
+exactly like a ring around an EMPTY capsule as much as a full one, since colour alone
+does not distinguish the two once the interior offers no cue. The count in the lead cell
+is the one place that distinction still lands unambiguously; the band's own contribution
+on a done row is "there is a band here, of some extent" rather than "here is the exact
+ratio." Not scoped to `.pbl-done`: a workflow state a reader has painted green through
+`stateColorPaint` hits the identical collision on a row that carries no done state at
+all, and a rule keyed to the class would miss it — the hairline separates the band from
+ANY bar colour instead. `outline`, not an inset `box-shadow`: the shadow paints in the
+background/border step, before the fill CHILD renders, so at 100% fill — the case a
+bar-coloured fill needed the hairline for most — a shadow would sit invisibly under the
+fill; an outline paints over an element's own descendants, so it stays visible whatever
+the fill's width. `outline-offset: 0` (drawn OUTWARD from the track's own border-box),
+not the inward negative offset first shipped: an inward ring eats the band's own 4px
+interior from both sides — measured 2px of 4px, HALF the band, on EVERY bar this rule
+touches, not only a done one, which cost more legibility than the colour collision it
+was fixing. Outward is safe because the band is already inset from the bar's own edges:
+for an ordinary or open-ended bar (no border) the ring's outer edge lands exactly ON the
+bar's own edge — harmless, since nothing else is painted there — and for an INFERRED
+bar, whose 1px dashed border shrinks the CONTAINING BLOCK the track is positioned
+against (an absolutely positioned child's containing block is its parent's PADDING box,
+inside any border), the track sits a full 2px inside the bar's true edge rather than 1px,
+so the ring's outward 1px still leaves a clear 1px gap before the dashed border — measured
+geometrically (`getComputedStyle`, not guessed) and cross-checked with a pixel scan, both
+in `.superpowers/harness-band-fix.md`. Measured in Chromium: the two independent
+guarantees hold — hairline against fill and against the bar itself both read at
+4.75–8.44:1 across a done row at 100%, a done row at a partial ratio, the ordinary
+control case and the state-slot colours — while the band's own 4px interior is fully
+readable at every one of them, which the inward offset had quietly halved. jsdom resolves
+no colour either, so `test/view/timelineBoxing.test.ts` pins the rule's TEXT only — the
+outline declaration, the outward (non-negative) offset, and that the colour is neither
+progress token — refusing the deletion rather than the appearance; the harness pass is
+what looked. **What remains a live-vault question, not a solved one**, is listed in
+`docs/tests/cases/Roadmap inferred bar appearance.md`: a done bar's ratio is read by
+inversion rather than directly, and a 100%-done band is ambiguous against an empty one.
