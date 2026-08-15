@@ -131,10 +131,13 @@ describe('the state-colours button', () => {
 });
 
 describe('the state-colour picker', () => {
-	it('offers one row per DECLARED state, in vocabulary order', () => {
+	it('offers one row per DECLARED state, in vocabulary order, without the done ones', () => {
+		// `Done` is declared in `WORKFLOW` and is not offered: its bar is green by
+		// specificity and its legend swatch is keyed `pbl-legend-done`, so a row for it
+		// would write a key nothing on the grid reads.
 		openPicker();
 
-		expect(rows().map((row) => row.label)).toEqual(['New', 'Active', 'Done']);
+		expect(rows().map((row) => row.label)).toEqual(['New', 'Active']);
 	});
 
 	it('offers a state once across both workflows', () => {
@@ -143,7 +146,7 @@ describe('the state-colour picker', () => {
 		// contributes the ones the requirements list does not carry.
 		openPicker({ deliverableStateProperty: 'note.ds', deliverableStateValues: 'Active, Draft' });
 
-		expect(rows().map((row) => row.label)).toEqual(['New', 'Active', 'Done', 'Draft']);
+		expect(rows().map((row) => row.label)).toEqual(['New', 'Active', 'Draft']);
 	});
 
 	it('treats a state chosen by NAME as a choice like any other', () => {

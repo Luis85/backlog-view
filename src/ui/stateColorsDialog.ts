@@ -61,7 +61,7 @@ class StateColorsDialog extends Modal {
 			text:
 				'The colour each workflow state is drawn in on the roadmap’s dated axis, and in ' +
 				'its legend. A chosen colour is fixed: unlike the default, it does not follow the ' +
-				'theme between light and dark. A finished state stays green whatever is chosen here.',
+				'theme between light and dark. Finished states are not listed: they are always green.',
 		});
 		for (const row of this.rows) this.renderRow(row);
 	}

@@ -103,12 +103,12 @@ describe('settingsInconsistency, and what the only producer guarantees', () => {
 		expect(settingsInconsistency({ ...workflow, stateColors: { active: '#FF0000' } })).toContain('would discard');
 		expect(settingsInconsistency({ ...workflow, stateColors: { active: ' red' } })).toContain('would discard');
 		expect(settingsInconsistency({ ...workflow, stateColors: { active: 'rebeccapurple' } })).toContain('would discard');
-		// Unlike the two maps above, a DONE state may be coloured — the choice is simply
-		// inert — and so may a Deliverable state, since this map spans both vocabularies.
+		// A Deliverable state may be coloured, since this map spans both vocabularies.
 		const both = settingsWith({ states: ['Active'], deliverableStates: ['Draft'], deliverableStateKey: 'ds' });
-		// Both stored shapes are producible, and a done state may carry either — the dialog
-		// offers the row and the intro says it does nothing.
-		expect(settingsInconsistency({ ...workflow, stateColors: { done: '#00ff00' } })).toBeNull();
+		// A DONE state may NOT: the resolver drops it from the table because a finished bar
+		// is green whatever is stored, so a fixture carrying one asserts a colour the picker
+		// can no longer offer and the grid would never draw.
+		expect(settingsInconsistency({ ...workflow, stateColors: { done: '#00ff00' } })).toContain('stateColors names done');
 		expect(settingsInconsistency({ ...both, stateColors: { active: '#ff0000', draft: 'cyan' } })).toBeNull();
 	});
 
