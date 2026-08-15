@@ -994,6 +994,7 @@ The links are `tabindex="-1"`, so the menu is their keyboard path rather than an
 
 **Interfaces:**
 - Consumes: `RoadmapSnapshot.placed` and `BacklogViewHost.board` (Task 4); `cardPaths` from `src/domain/board.ts`.
+- **`PlacedMount` is exported from `src/view/host.ts`, NOT from `render/columns.ts`.** Task 4 moved it: declaring it in `render/columns.ts` and importing it into `host.ts` opened 16 circular dependencies that fallow refuses, because every `render/` module already reaches `host.ts` through `RowContext`. It follows the precedent `DrawnColors` sets in that same file, which is there for the same reason. Import it from `../host`.
 - Produces:
   ```ts
   // src/view/childrenList.ts
