@@ -63,6 +63,23 @@
 	display: inline;
 }
 
+/* The header's own cells fill its content box rather than being centred in it. Nothing
+   about the NAMES moves — each cell centres its own content — but the boundary marks
+   inside them can then reach the strip's top edge and its bottom border by backing out
+   the padding alone. Centred cells leave a slack of their own on each end, which is not a
+   constant anything could subtract: it is whatever the strip's height minus the line box
+   happens to be. */
+.pbl-cols .pbl-props,
+.pbl-cols .pbl-prop {
+	align-self: stretch;
+	/* And the strip's own clip is lifted with it, or the grip is cropped back to the box it
+	   is trying to escape — the layout box still measures the full height while the PAINT
+	   stops at the content edge, which is a thing to check by asking what is hit-testable
+	   down the boundary rather than by reading a rectangle. What the clip is for is a ROW's
+	   values ending at their column; a header cell's name clips itself (`.pbl-col-name`). */
+	overflow: visible;
+}
+
 /* The column names, once at the top of the scroller instead of on every row */
 .pbl-cols {
 	display: flex;
@@ -80,6 +97,12 @@
 
 .pbl-col-label {
 	position: relative;
+	/* Overrides `.pbl-prop`'s clip — a tie on specificity, decided by coming after it, and
+	   the reason it can be spared here is that the NAME clips itself (`.pbl-col-name`
+	   below). What the clip would cost is the grip: its mark spans the header strip rather
+	   than this cell's own 16px line box, and a clipped one is a tick floating in the
+	   middle of a 37px bar instead of the boundary the column actually ends at. */
+	overflow: visible;
 	font-size: var(--font-ui-smaller);
 	color: var(--text-faint);
 	text-transform: uppercase;
@@ -114,8 +137,10 @@
    so a strip hanging past the edge is a strip cut off at it. */
 .pbl-col-grip {
 	position: absolute;
-	top: 0;
-	bottom: 0;
+	/* The header STRIP's height, not the cell's: `.pbl-cols`' own padding backed out, so
+	   the grip meets the strip's top edge and its bottom border. Written as the tokens that
+	   rule sets so the two move together. A taller hit area is the second thing it buys. */
+	inset-block: calc(-1 * var(--size-4-2)) calc(-1 * var(--size-2-2));
 	inset-inline-end: 0;
 	width: var(--size-4-3);
 	cursor: col-resize;
@@ -125,9 +150,10 @@
 	touch-action: none;
 }
 
-/* The mark: transparent until something says the handle is there. Inset by the gap that
-   keeps it off the next column, and full height so it reads as a boundary rather than as
-   a dot. */
+/* The mark: transparent until something says the handle is there, and as tall as the grip
+   it sits in — which is the whole header strip, not the label's own 16px line box. A
+   boundary that stops short at both ends reads as a tick beside the name; one running the
+   full bar reads as where the column ends. */
 .pbl-col-grip::before {
 	content: '';
 	position: absolute;

@@ -300,6 +300,23 @@ describe('rendering', () => {
 		expect(confirm, 'the grip’s own reveal must outrank the header’s hint').toBeGreaterThan(hint);
 	});
 
+	it('lets the header strip carry a boundary mark taller than its own cells', () => {
+		// The mark spans the strip — its top edge to its bottom border — rather than the
+		// label's 16px line box, and three declarations have to agree for that: the cells
+		// stretch (centred ones leave a slack no constant can back out), the strip stops
+		// clipping (its clip is for a ROW's values, and a header name clips itself), and the
+		// grip backs out the strip's own padding. Drop any one and the mark is cropped to a
+		// tick floating in the middle — while its layout box still measures the full height,
+		// which is why this was found by asking what is hit-testable down the boundary in
+		// the browser rather than by reading a rectangle.
+		expect(ruleAt('.pbl-cols .pbl-props', 'align-self: stretch;')).toBeGreaterThan(-1);
+		expect(ruleAt('.pbl-cols .pbl-props', 'overflow: visible;')).toBeGreaterThan(-1);
+		expect(ruleAt('.pbl-col-grip', 'inset-block: calc(-1 * var(--size-4-2)) calc(-1 * var(--size-2-2));')).toBeGreaterThan(-1);
+		// The label cell has to stop clipping too, and it is the LATER rule of the pair that
+		// ties with `.pbl-prop` on specificity.
+		expect(ruleAt('.pbl-col-label', 'overflow: visible;')).toBeGreaterThan(ruleAt('.pbl-prop', 'overflow: hidden;'));
+	});
+
 	it('reveals the connector on the keyboard-selected row, which is the only reveal that path gets', () => {
 		// The three reveals above are a pointer's (`:hover`), a programmatic focus's
 		// (`:focus-visible`) and the drag's own (`.is-active`) — and a keyboard user on

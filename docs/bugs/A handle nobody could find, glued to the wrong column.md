@@ -44,7 +44,8 @@ by accident.
 
 ## What it is now
 
-Three changes, and the middle one is the one that actually fixes the complaint.
+Four changes. The second is the one that actually fixes the first complaint, and the
+fourth answered a follow-up in the same round: the mark was still a tick beside the name.
 
 1. **The hit area and the MARK are separate boxes.** The grip is the full trailing gutter
    (`--size-4-3`, 12px) and draws nothing itself; a `::before` inside it is the 2px mark,
@@ -59,6 +60,14 @@ Three changes, and the middle one is the one that actually fixes the complaint.
 3. **Hovering the column NAME reveals the mark**, in `--background-modifier-border-hover`;
    the grip itself confirms in `--interactive-accent`. Two strengths: one for finding the
    handle, one for being on it.
+4. **The mark runs the header strip's own height** — its top edge to its bottom border —
+   rather than the label's 16px line box, which read as a tick floating beside the name in
+   a 37px bar. Three declarations have to agree for that, and dropping any one crops it
+   back: the header's cells `align-self: stretch` (centred ones leave a slack that is not a
+   constant, being whatever the strip's height minus the line box happens to be), the strip
+   and the label cell stop clipping (that clip is for a ROW's values ending at their
+   column; a header name clips itself), and the grip backs the strip's own padding out of
+   its block insets. The hit area grew with it, from the cell's 16px to the strip's 36px.
 
 Measured in the browser harness, which is the only thing here that can measure it: the
 mark's clear space before the next column's label went from 0px to 8px, and its own
@@ -72,6 +81,13 @@ column's values no longer start flush against the previous column's boundary.
 label too, so the hint won and the mark under the pointer stayed faint. The confirm is now
 written through the label as well, so the two tie and document order decides.
 `test/view/rendering.test.ts` pins that order, in both directions.
+
+**A layout box is not what is painted.** The full-height mark measured 36px through
+`getBoundingClientRect` while `.pbl-props`' clip was still cropping it to 24px — the box
+laid out at the height asked for and the paint stopped at the content edge. What settled it
+was asking the browser what is HIT-TESTABLE down the boundary, pixel by pixel, which is the
+same question the reader's eye asks. A rectangle read back from the element that was just
+sized is a measurement of the instruction rather than of the result.
 
 **The instrument was wrong before the rule was.** `ruleAt` in that suite escapes the
 SELECTOR it is handed and did not escape the DECLARATION, so `var(--x)`'s parentheses read

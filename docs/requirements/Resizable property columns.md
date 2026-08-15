@@ -47,8 +47,9 @@ width for every column can only ever do.
 **Main flow**
 
 1. Every drawn column's header cell carries a resize grip in its trailing gutter — the
-   whole gutter is the hit area, with a 2px mark inset off the boundary so it reads as
-   this column's handle rather than as the next column's leading edge:
+   whole gutter is the hit area, running the header strip's full height, with a 2px mark
+   inset off the boundary so it reads as this column's handle rather than as the next
+   column's leading edge:
    `role="separator"`, a real tab stop, `aria-orientation="vertical"`, an `aria-label`
    naming that column, and `aria-valuenow`/`aria-valuemin`/`aria-valuemax` stating the
    current width and its bounds.
