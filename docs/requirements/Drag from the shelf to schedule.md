@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[Scheduling work]]"
 order: 10
-status: Active
+status: Done
 priority: P2
 created: 2026-08-01
 files:
@@ -82,7 +82,7 @@ the keys rather than blanking them.
   duration only where a span is written; a one-ended plan takes the drop day** — never
   offset by the zoom's cell the way a two-ended plan is. Nothing is ever written to an
   unconfigured key — the state write's rule, which the date writes join.
-- **2e — the dragged item is a marker.** A milestone takes the **target alone**, anchored
+- **2d — the dragged item is a marker.** A milestone takes the **target alone**, anchored
   at the day under the pointer, and no start is written however many date properties are
   configured; a milestone dropped back on the shelf loses that key alone, leaving any
   stale start it carries untouched. **`cellSpan` supplies a duration only where a span is
@@ -159,3 +159,9 @@ indicator that says which placement a removal would leave, and `barHolds`, which
 where a gesture may take hold in the first place, are both `src/domain/bars.ts`, asking
 `placeItem`/`withoutEnds`
 rather than a second opinion beside them.
+
+**Status.** The lane-crossing criterion that kept this `Active` (the extension 2d that
+carried the reparent, since removed) is resolved by DESIGN rather than by an
+implementation: lanes were tried and refused ([[Lanes on the roadmap]]), so there is no
+second lane a drop onto the grid could ever cross. Every remaining criterion is built and
+driven in `test/view/roadmapMoves.test.ts` and `test/domain/bars.test.ts`.

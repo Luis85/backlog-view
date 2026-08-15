@@ -290,6 +290,10 @@ describe('the row menu carries the same matches, asked of matchesFor', () => {
 	}
 
 	it('offers a match three levels down on a TIMELINE ROW, and its direct child once — as a child, never as a match too', () => {
+		// No `focus` here — the second structural fact this fixture leans on, undocumented
+		// until now. Under focus, `deriveBars` only ever sees `model.roots`: Epic A would BE
+		// the only root, so `Feature Login` could never draw as a nested bar beneath it, and
+		// this case needs exactly that — a chevron from a nested bar, not from a listed child.
 		const { containerEl, view } = roadmap(menuVault(), { ...DATES }, { shelf: false });
 		view.setFilter('Login');
 

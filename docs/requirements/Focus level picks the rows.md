@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[Hierarchy on the roadmap]]"
 order: 20
-status: Open
+status: Done
 priority: P2
 created: 2026-08-01
 files:
@@ -119,4 +119,12 @@ anything added to it is taken from the row's own name. Measured in the browser h
 twice, not preferred.
 Driven in `test/view/roadmapMatches.test.ts`.
 
-The inferred spans remain, which is why this note stays open.
+The inferred span case is covered too: `item.descendantStart`/`descendantTarget` are
+assigned once, over the WHOLE unfocused tree ([[The model build states its cost as a
+check]]'s `assignAll`), before focus ever re-roots anything — so a focused row's inferred
+span already carries evidence from a dated descendant several rungs below the focus
+level, the same way it carries evidence from one rung below. `deriveBars` never asks
+which level a row was drawn at; it only ever asks `placeItem`, which reads those two
+fields. Driven by the "below-focus" case in `test/domain/roadmap.test.ts`: a Feature
+focused two levels above a dated PBI still infers the PBI's span, with both ends marked
+inferred.

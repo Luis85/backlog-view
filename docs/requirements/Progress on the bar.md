@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[Hierarchy on the roadmap]]"
 order: 30
-status: Open
+status: Done
 priority: P2
 created: 2026-08-01
 files:
