@@ -17,6 +17,7 @@ import {
 	renderAddSpacer,
 	renderColumnHeader,
 	renderRowColumns,
+	rollupReservation,
 	RowContext,
 } from './columns';
 
@@ -27,6 +28,11 @@ const IMPLIED_TYPE_TOOLTIP =
 export function renderTree(ctx: RowContext, treeEl: HTMLElement): void {
 	const model = ctx.host.model;
 	if (!model) return;
+	// THIS projection's population, on all three lines below AND on the reservation the
+	// widths carry — `model.items` holds every item the model kept, so on the plan it
+	// includes catalog members that draw no row here and could reserve a width for a
+	// label nothing on screen has.
+	const population = projectionPopulation(ctx.host.projection, model);
 	// Column widths are the same for every row, so they live on the scroller and
 	// are inherited — including by the subtrees a targeted refresh re-renders, and by
 	// the grip that writes one of them straight back mid-drag.
@@ -36,15 +42,21 @@ export function renderTree(ctx: RowContext, treeEl: HTMLElement): void {
 		'--pbl-meta-col': `${META_COL_WIDTH}px`,
 		'--pbl-indent': `${INDENT_PER_DEPTH}px`,
 	};
+	// The rollup label's reservation, which is the one geometry here that the DATA decides
+	// rather than the stylesheet: see `rollupReservation`. Published on the same element as
+	// the widths and for the same reason — one declaration per tree, inherited by every row
+	// and by the subtrees a targeted refresh re-renders.
+	const reservation = rollupReservation(ctx.host, population.items);
+	if (reservation) widths['--pbl-rollup-label'] = reservation;
 	for (const [index, column] of ctx.columns.entries()) {
 		widths[columnWidthVar(index)] = `${columnWidth(ctx.host, column.prop)}px`;
 	}
 	treeEl.setCssProps(widths);
-	// THIS projection's population, on all three lines. Both decisions below used to read
-	// the shared arrays, which hold every item the model kept: a base returning twelve
-	// test notes and no plan work would be told "All 12 items are done and hidden", with a
-	// Show completed items button that reveals nothing — because nothing is completed and
-	// nothing is hidden by completion. A control offering to reveal what it cannot show.
+	// Both decisions below used to read the shared arrays, which hold every item the model
+	// kept: a base returning twelve test notes and no plan work would be told "All 12 items
+	// are done and hidden", with a Show completed items button that reveals nothing —
+	// because nothing is completed and nothing is hidden by completion. A control offering
+	// to reveal what it cannot show.
 	//
 	// "Is there anything here" is asked of the RESULTS and not of the items, which is the
 	// same distinction one line further down rather than a second rule: a context row is
@@ -53,7 +65,6 @@ export function renderTree(ctx: RowContext, treeEl: HTMLElement): void {
 	// since the only child it places is a plan row. Counting it as population walked past
 	// this branch into "All 0 items are done and hidden", offering a completed toggle in a
 	// projection that hides nothing by completion at all.
-	const population = projectionPopulation(ctx.host.projection, model);
 	if (population.results.length === 0) {
 		renderEmptyState(ctx.host, treeEl);
 		return;

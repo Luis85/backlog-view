@@ -572,6 +572,39 @@ export function rollupReport(host: BacklogViewHost, item: BacklogItem): RollupRe
 	};
 }
 
+/**
+ * How wide the widest rollup label in this tree is, in `ch`, or null when nothing
+ * reserves.
+ *
+ * The bar and the label share a lane that is anchored at its END, so a label wider than
+ * its reservation moves the BAR — and the reservation was a flat 28px, which holds
+ * `9/99` and not `44/136`. Reported from a vault of 800-odd PBIs (2026-08-15): rows whose
+ * counts have different digit counts draw their bars at different x, and the deeper the
+ * backlog the more of them. Every row reserving the widest label's width is what puts
+ * them back on one line.
+ *
+ * `ch` and tabular figures rather than pixels, for the reason `syncBusyCount` gives in
+ * `render/toolbarBusy.ts`: `ch` is the advance of "0", every digit has that advance under
+ * `font-variant-numeric: tabular-nums`, and a font-relative reservation re-resolves on a
+ * theme or font change by itself where a measured pixel goes stale. The slash and the
+ * digits are all this label holds, so its LENGTH is its width.
+ *
+ * Asked of `rollupReport` rather than derived from the counts, so the reservation cannot
+ * describe a label the renderer does not produce — the two spellings (`3/8` and `8`) are
+ * that function's decision and stay there. Only the ratio form reserves: without a
+ * workflow there is no bar to be pushed off line, and the count alone is already anchored
+ * at the lane's end.
+ */
+export function rollupReservation(host: BacklogViewHost, items: readonly BacklogItem[]): string | null {
+	if (!host.settings.stateKey) return null;
+	let widest = 0;
+	for (const item of items) {
+		const report = rollupReport(host, item);
+		if (report && report.ratio !== null) widest = Math.max(widest, report.label.length);
+	}
+	return widest === 0 ? null : `${widest}ch`;
+}
+
 /** Progress rollup or descendant count, in a column of its own so both align. */
 export function renderRollup(host: BacklogViewHost, row: HTMLElement, item: BacklogItem): void {
 	const report = rollupReport(host, item);

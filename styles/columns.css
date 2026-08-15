@@ -6,12 +6,23 @@
 /* Like the property columns it never shrinks: the title truncates instead (it has
    an ellipsis and a tooltip), and a column that ran out of room drops out whole
    rather than sliding out from under its neighbours on rows with long titles. */
+/* The lane is anchored at its END, so its width decides where the bar STARTS — and the
+   bar plus the label can outgrow 84px, which is what put the bars of `0/3` and `44/136`
+   rows on different lines in a vault of 800-odd PBIs (2026-08-15). The lane therefore
+   takes whichever is larger: the width TS publishes, or what this tree's own widest label
+   needs beside a bar (`--pbl-rollup-label`, in `ch` — see `rollupReservation`). The `ch`
+   resolves against THIS element's font rather than the smaller one the label is set in,
+   so the second term overshoots slightly; that spends a few pixels of the row's flexible
+   middle and never clips, which is the safe direction of an inexact term.
+   `columnFit` budgets with the constant alone, so a tree whose labels take the second
+   branch reserves those pixels from the spacer rather than from the column count — the
+   same accepted inexactness as the gap terms that constant already carries. */
 .pbl-meta-col {
 	display: flex;
 	align-items: center;
 	justify-content: flex-end;
 	flex: 0 0 auto;
-	width: var(--pbl-meta-col, 84px);
+	width: max(var(--pbl-meta-col, 84px), calc(48px + var(--size-4-1) + var(--pbl-rollup-label, 0px)));
 }
 
 /* An ancestor the Base's filter excluded: context for the tree, not a result */
@@ -83,10 +94,17 @@
 	background-color: rgb(var(--color-green-rgb));
 }
 
+/* Tabular figures are what make the `ch` reservation exact rather than approximate —
+   `ch` is the advance of "0", and with `tabular-nums` every digit has that same advance,
+   so `<widest label>ch` holds every label in this tree. `text-align: end` so a shorter
+   label grows leftwards inside the reservation instead of pushing the bar. The 28px
+   fallback is for a stylesheet loaded without a render, not a second opinion: with a
+   render, the width is the widest label the tree actually draws. */
 .pbl-progress-label {
 	font-size: var(--font-ui-smaller);
+	font-variant-numeric: tabular-nums;
 	color: var(--text-muted);
-	min-width: 28px;
+	min-width: var(--pbl-rollup-label, 28px);
 	text-align: end;
 }
 

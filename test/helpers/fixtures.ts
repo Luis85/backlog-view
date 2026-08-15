@@ -374,5 +374,31 @@ export function edgeCaseVault(): FakeVault {
 	// compared against and something legal to be dragged onto.
 	add('Nearby work', { type: 'PBI', order: 20, status: 'New', start: '2026-08-04', due: '2026-08-28' }, 'Platform');
 	add('One day only', { type: 'PBI', order: 30, status: 'Ready', start: '2026-08-12', due: '2026-08-12' }, 'Platform');
+
+	// Three rollup labels of three different WIDTHS, side by side under one parent,
+	// because the rollup column is a fixed lane and a label that outgrows it moves the
+	// bar rather than being clipped — reported from a vault of 800-odd PBIs (2026-08-15),
+	// where the bars of `x/y`, `xx/yy` and `xxx/yyy` rows do not line up.
+	//
+	// Nothing generated reaches this: `addBulk` nests one Epic per 25 notes, so the widest
+	// label at ANY `?notes=` is two digits over two, and the case was unreachable in the
+	// harness at every size. Under 'Counts' rather than 'Platform' so the timeline cases
+	// above keep a readable grid.
+	add('Counts', { type: 'Epic', order: 20, status: 'Active' });
+	add('Three deep', { type: 'Feature', order: 10, status: 'Active' }, 'Counts');
+	add('Ten deep', { type: 'Feature', order: 20, status: 'Active' }, 'Counts');
+	add('A hundred and twenty deep', { type: 'Feature', order: 30, status: 'Active' }, 'Counts');
+	for (const [parent, count] of [
+		['Three deep', 3],
+		['Ten deep', 10],
+		['A hundred and twenty deep', 120],
+	] as const) {
+		for (let i = 1; i <= count; i += 1) {
+			// A third of each group done, so the FILL differs between the three as well as
+			// the label — a bar that has moved and a bar that is a different length are two
+			// different complaints, and one fixture should be able to tell them apart.
+			add(`${parent} ${i}`, { type: 'PBI', order: i * 10, status: i % 3 === 0 ? 'Done' : 'Active' }, parent);
+		}
+	}
 	return vault;
 }

@@ -319,6 +319,26 @@ describe('the harness draws the cases the dependency connector has to survive', 
 		// keys that on, so its presence is the checkable half.
 		expect(clipped.querySelector('.pbl-bar-connector')).not.toBeNull();
 	});
+
+	// The other half of the same fixture, and the reason it carries 133 generated notes:
+	// rollup labels of three different WIDTHS on sibling rows, which is what a vault of
+	// 800-odd PBIs has and no `?notes=` size produces — `addBulk` nests one Epic per 25,
+	// so its widest label is two digits over two. Nothing here asserts alignment; it
+	// asserts the CASE is on screen, so the thing to look at is still there to look at.
+	it('draws rollup labels of three widths, the case bar alignment is looked at with', () => {
+		const root = document.createElement('div');
+		document.body.appendChild(root);
+		const { containerEl } = mountHarness(root, 'edges');
+		clickExpandAll(containerEl);
+
+		const label = (title: string) => rowFor(containerEl, title).querySelector('.pbl-progress-label')?.textContent;
+		expect(label('Three deep')).toBe('1/3');
+		expect(label('Ten deep')).toBe('3/10');
+		expect(label('A hundred and twenty deep')).toBe('40/120');
+		// And the reservation the three of them produce, which is what holds their bars in
+		// one column — the widest of the labels this tree draws, not this row's own.
+		expect(containerEl.querySelector<HTMLElement>('.pbl-tree')?.style.getPropertyValue('--pbl-rollup-label')).toBe('6ch');
+	});
 });
 
 describe('the chrome the mock only records', () => {

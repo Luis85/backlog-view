@@ -55,6 +55,15 @@ a defect rather than an unconfigured view.
   it asserts the tree has rows, the board has cards in its columns, the roadmap has
   buckets, and the shelf is not empty. A fixture nobody asserts against is one that
   silently stops covering what it was built for.
+- **1c — a case only a BIG backlog has.** `edgeCaseVault()` (`?fixture=edges`) carries it,
+  the same split the clipped bar made: rollup labels of three different widths on sibling
+  rows — `1/3`, `3/10`, `40/120` — because a lane anchored at its end draws its bar
+  wherever the label leaves room, and a vault of 800-odd PBIs is where that was first seen
+  (see [[Bars drift out of line as the counts grow]]). Generated notes cannot stand in for
+  it: `addBulk` nests one Epic per 25, so the widest label at ANY `?notes=` is two digits
+  over two, and the case was unreachable in the harness at every size. 133 generated rows
+  is a lot for a fixture whose other cases are four notes, and it is the smallest number
+  that produces a three-digit count.
 - **3a — the context row is built from the vault alone.** It cannot be. A context row is
   the difference between what the vault holds and what the query returned, so the fixture
   has to say which note is outside — that is why the results are a function and not just

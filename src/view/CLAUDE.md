@@ -269,7 +269,16 @@ free of runtime code so imports stay cycle-free.
   per rendered depth, and the tree's own padding is subtracted because `clientWidth`
   includes it while rows live in the content box. The numbers TS owns — every column's own
   width, the rollup's and the indent step — are *published* to CSS as custom properties by
-  `renderTree`, so the stylesheet reads them instead of repeating them. The terms that are Obsidian's (`--size-4-1` gaps, the tree
+  `renderTree`, so the stylesheet reads them instead of repeating them.
+  **The rollup LABEL is the one term the data decides**, and it is published the same way
+  (`--pbl-rollup-label`, from `rollupReservation`): the lane is anchored at its end, so a
+  label wider than its reservation moves the BAR rather than being clipped, and a flat
+  28px held `9/99` and not `44/136` — bars at three different x in a vault of 800-odd PBIs
+  ([[Bars drift out of line as the counts grow]]). Every row reserves the widest label the
+  tree draws, in `ch` under `tabular-nums`, which is `syncBusyCount`'s reservation exactly
+  and for its reasons. It is the one term of the row's geometry `columnFit` does NOT sum:
+  a tree taking the wider branch spends those pixels from the flexible middle instead of
+  from the column count, the same accepted inexactness as the gap terms. The terms that are Obsidian's (`--size-4-1` gaps, the tree
   padding) cannot be owned that way and stay as constants; a theme that redefines them
   moves the threshold by a few pixels, which is the accepted cost of not measuring. A term that grows without a bound, or
   one left out of the sum, comes back as a clipped row rather than a dropped column. It
