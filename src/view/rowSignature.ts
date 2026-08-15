@@ -26,21 +26,53 @@ import { BacklogViewHost, Column } from './host';
  * ## Every `item.*` the tree's row path reads, and the term that covers it
  *
  * Swept over the WHOLE of `render/rows.ts`, `render/columns.ts` and `render/chips.ts`
- * (chips are a per-row renderer since they moved out of `columns.ts`), plus the helpers
- * those files hand the item to — `displayType`, `ownWorkflowReading`, `childTypeChoices`.
- * A grep for `item.` cannot see the last group, and it credits a field named only in a
- * COMMENT: `item.levelIndex` appears nowhere in `src/view/` outside two comments.
+ * (chips are a per-row renderer since they moved out of `columns.ts`), plus **every**
+ * helper those files hand the item to: `displayType`, `ownWorkflowReading`,
+ * `childTypeChoices`, `rollupReport`, `stateKeyFor` and `placementEnds`. Start a re-sweep
+ * from that list of six rather than rediscovering which helpers matter — the first sweep
+ * matched call sites with a pattern needing `(item` or `(host, item`, which silently
+ * misses `stateKeyFor(host.settings, item)`, the one helper in the set that turned out to
+ * hold the gap below. A grep for `item.` cannot see any of the six, and it credits a field
+ * named only in a COMMENT: `item.levelIndex` appears nowhere in `src/view/` outside two.
  *
  * | read | covered by |
  * | --- | --- |
  * | `typeName` `tags` `horizon` `riskValue` `assigneeValue` `plannedStart` `plannedTarget` `stateValue` and both secondary state values | the frontmatter term — one term, so nobody has to predict which keys a column is pointed at tomorrow |
  * | `entry` (every `note.*` cell) | the frontmatter term, given {@link reusableColumns} refused every other source, plus {@link renderInputs}' per-column type probe |
- * | `ladder` `levelIndex` (the badge's text) | `displayType(item)` — the answer the badge draws, rather than the three fields behind it |
+ * | `levelIndex` (the badge's text) | `displayType(item)` — the answer the badge draws, rather than the fields behind it |
+ * | `ladder` | **no term here at all — projection MEMBERSHIP.** See below; this is the one read with nothing in this file behind it. |
  * | `effectiveLevelIndex` (via `childLevelIndex`) | `offerableTypes(host, childTypeChoices(item))` — the add button's presence and label |
- * | `done` `deliverableDone` `testDone` (via `ownWorkflowReading`) | `ownWorkflowReading(item).done`, which is what puts `pbl-done` on the row |
- * | `title` `depth` `impliedType` `orphan` `outsideFilter` `descendantCount` `doneDescendants` | a term each |
+ * | `done` `deliverableDone` `testDone` (the `pbl-done` class) | `ownWorkflowReading(item).done` for the FLAG — but not for which workflow supplies it, which is `ladder` again |
+ * | `descendantCount` `doneDescendants` (via `rollupReport` too) | a term each |
+ * | `title` `depth` `impliedType` `orphan` `outsideFilter` | a term each |
  * | `children` | the VISIBLE child test, not the raw list: a chevron follows what renders |
  * | `file` | the path is the row's identity, so it is the reuse KEY rather than a term |
+ *
+ * ### `item.ladder` is guarded by membership, and that has to be written down
+ *
+ * `ladder` is the only read with no signature term behind it, and it is NOT covered by
+ * `displayType`: `Task` names a rung of BOTH ladders (`typeVocabulary.ts` says so), so
+ * `displayType` returns `"Task"` either way, and `childTypeChoices` clamps to `"Task"` on
+ * both sides too. It is also not private to the badge — `stateKeyFor` and
+ * `ownWorkflowReading` each branch on `inCatalog(item)`, which is exactly
+ * `item.ladder === TEST_LEVELS`, so the ladder decides WHICH KEY and WHICH VALUE this
+ * row's state chip draws. A note `type: Task, status: Doing, test_status: Passed` whose
+ * parent is retyped `PBI` → `Test suite`, with a distinct `testStateProperty`, draws
+ * `Doing` from `status` in one case and `Passed` from `test_status` in the other, and
+ * {@link rowSignature} returns the byte-identical string for both.
+ *
+ * What makes that safe today is a fact in `view/projection.ts` and not in this file:
+ * `projectionMember` IS `inCatalog` (or its negation), so a ladder flip takes the row off
+ * whichever tree-shaped projection is drawing it. The row is never reused because it is
+ * never rendered.
+ *
+ * That is a `renderInputs`-shaped guarantee resting on a term in neither function, so it
+ * is written here rather than left to be inferred. **If `projectionMember` ever stops
+ * being `inCatalog`** — a projection drawing both ladders, a Deliverable row on a
+ * tree-shaped surface — the guard vanishes with no edit to this file and no test failing,
+ * and a state chip goes stale in the wrong column behind a matching signature. The fix
+ * then is a `item.ladder` term here, not a fifth argument. ADR 0029's `## Revisit when`
+ * carries the same trigger.
  *
  * Two the pass owns rather than the row: `host.colWidths` writes one custom property per
  * column onto the tree element and never onto a cell, so a resize moves every row without
@@ -59,12 +91,17 @@ import { BacklogViewHost, Column } from './host';
  *   badge and an add button are both `effectiveLevelIndex` read off the same ladder, so
  *   every input that moves one moves the other. Both are kept anyway, because that
  *   coupling is a fact about today's two ladders and not a rule either function states.
- * - `item.impliedType` and `ownWorkflowReading(item).done` are strict functions of this
- *   note's own frontmatter and the settings, so the first term and {@link renderInputs}
- *   already cover them and nothing can fail without them. Kept because each names a class
- *   the row WEARS (`pbl-implied`, `pbl-done`), so a sweep can be reconciled against this
- *   list one-to-one; the cost is a redundancy, and the redundancy is in the safe
- *   direction.
+ * - `item.impliedType` is a strict function of this note's own frontmatter and
+ *   `settings.typeKey`, so the first term and {@link renderInputs} already cover it and
+ *   nothing can fail without it. Kept because it names a class the row WEARS
+ *   (`pbl-implied`), so a sweep reconciles against this list one-to-one; the redundancy
+ *   is in the safe direction.
+ * - `ownWorkflowReading(item).done` is **not** such a function, and saying it was is a
+ *   mistake this comment made once: the reading branches on `inCatalog(item)`, so which
+ *   workflow supplies the flag depends on `item.ladder`, which chains from the parent. It
+ *   is unheld for the OTHER reason — membership takes such a row off the projection
+ *   before a reuse could be attempted, as the `item.ladder` section above sets out. Kept,
+ *   and the ladder is what to add here if that membership rule ever changes.
  * - `item.title` is `file.basename`, so it cannot move while the path is fixed and the
  *   path is the reuse key. Kept rather than argued, because that argument is about a
  *   module this one does not import.
@@ -213,9 +250,10 @@ function distinctly(this: Record<string, unknown>, key: string, value: unknown):
  * The derived terms are the enumeration, and the table at the top of this file is what a
  * sweep should be reconciled against rather than a memory. Two of them are stated as the
  * ANSWER a row draws rather than as the fields behind it — `displayType` for the badge,
- * `offerableTypes` for the add button — because a field list is what went short before:
- * the badge reads three fields through one function, and naming that function covers a
- * fourth if one is ever added to it.
+ * `offerableTypes` for the add button — because a field list is what went short before,
+ * and naming the function covers a field added to it later. What that does NOT buy is a
+ * field the function reads without its answer moving, which is exactly `item.ladder`:
+ * read up there for the one term this list deliberately does not carry.
  */
 export function rowSignature(
 	host: BacklogViewHost,
@@ -229,9 +267,11 @@ export function rowSignature(
 		// rather than resting on the reuse key a module this one does not import chooses.
 		item.title,
 		item.depth,
-		// The badge's own text: `ladder`, `levelIndex` and `typeName` behind one answer.
-		// The ladder is chained from the PARENT for a `Task` and for an untyped note, so
-		// retyping the parent redraws this badge with this note byte-identical.
+		// The badge's own text rather than the fields behind it. An UNTYPED note takes its
+		// rung from the parent chain, so retyping the parent redraws this badge with this
+		// note byte-identical. It does NOT cover a ladder flip — `Task` is a rung of both
+		// ladders and this returns `"Task"` either way; see the `item.ladder` section at
+		// the top of this file for what does.
 		displayType(item),
 		item.impliedType,
 		// Draws the `.pbl-orphan` unlink marker, and flips when a referenced parent starts

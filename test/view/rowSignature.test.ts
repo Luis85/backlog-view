@@ -4,6 +4,9 @@ import { NullValue } from 'obsidian';
 import { FakeVault } from '../helpers/vault';
 import { Harness, makeView, useViewHarness } from '../helpers/view';
 import { BacklogItem } from '../../src/domain/model';
+import { ProductBacklogView } from '../../src/view/backlogView';
+import { ownWorkflowReading } from '../../src/domain/board';
+import { projectionMember } from '../../src/view/projection';
 import { Column } from '../../src/view/host';
 import { renderInputs, reusableColumns, rowSignature } from '../../src/view/rowSignature';
 
@@ -12,10 +15,10 @@ useViewHarness();
 const PLACE = { pos: 1, count: 1 };
 
 /** A one-note view whose only file carries the given frontmatter beside a type and an order. */
-function viewOf(fm: Record<string, unknown> = {}, config: Record<string, unknown> = {}): Harness {
+function viewOf(fm: Record<string, unknown> = {}, config: Record<string, unknown> = {}): Harness & { vault: FakeVault } {
 	const vault = new FakeVault();
 	vault.addFile('Alpha.md', { frontmatter: { type: 'PBI', order: 10, ...fm } });
-	return makeView(vault, config);
+	return { ...makeView(vault, config), vault };
 }
 
 function itemIn(harness: Harness, path = 'Alpha.md'): BacklogItem {
@@ -74,6 +77,20 @@ describe('rowSignature', () => {
 		const sig = (pos: number, count: number): string => rowSignature(harness.view, item, { pos, count });
 		expect(sig(1, 2)).not.toBe(sig(2, 2));
 		expect(sig(1, 1)).not.toBe(sig(1, 2));
+	});
+
+	it('signs a row whose file the metadata cache has not indexed', () => {
+		// The metadata cache fills asynchronously, so a Bases update can reach the render
+		// before `getFileCache` answers for a note. Absent frontmatter is a VALUE here —
+		// null, signed as such — and not a reason to throw or to skip the row.
+		const harness = viewOf({ status: 'Open' });
+		const signed = rowSignature(harness.view, itemIn(harness), PLACE);
+		harness.vault.caches.delete('Alpha.md');
+		const unindexed = rowSignature(harness.view, itemIn(harness), PLACE);
+		expect(unindexed).not.toBe(signed);
+		// And it agrees with itself, so an unindexed row is stable rather than merely
+		// different — a signature that changed per call would rebuild every row forever.
+		expect(rowSignature(harness.view, itemIn(harness), PLACE)).toBe(unindexed);
 	});
 
 	it('differs when a focus level re-roots the row to another depth', () => {
@@ -187,6 +204,47 @@ describe('rowSignature', () => {
 	});
 });
 
+describe('the ladder gap, and the membership rule that covers it', () => {
+	// `item.ladder` is the one thing a row draws from that `rowSignature` carries no term
+	// for. Both halves are pinned here TOGETHER, because the gap is only safe while the
+	// guard holds and neither is visible from the other: if the signatures ever stop
+	// colliding the term became unnecessary, and if membership ever stops separating them
+	// a state chip goes stale behind a matching signature. Either way somebody has to read
+	// `rowSignature.ts`'s `item.ladder` section and ADR 0029's matching trigger.
+	const onLadder = (parentType: string): Harness => {
+		const vault = new FakeVault();
+		vault.addFile('Parent.md', { frontmatter: { type: parentType, order: 10 } });
+		vault.addFile('Alpha.md', {
+			frontmatter: { type: 'Task', order: 10, status: 'Doing', test_status: 'Passed' },
+			parentLink: 'Parent',
+		});
+		return makeView(vault, { stateProperty: 'note.status', testStateProperty: 'note.test_status' });
+	};
+
+	it('signs a row identically across a ladder flip that redraws its state chip', () => {
+		// `stateKeyFor` and `ownWorkflowReading` both branch on `inCatalog`, so this row
+		// draws `Doing` from `status` under a PBI and `Passed` from `test_status` under a
+		// Test suite. The signature cannot tell them apart — that is the known gap.
+		const plan = itemIn(onLadder('PBI'));
+		const test = itemIn(onLadder('Test suite'));
+		expect(ownWorkflowReading(plan).value).toBe('Doing');
+		expect(ownWorkflowReading(test).value).toBe('Passed');
+		expect(rowSignature(onLadder('PBI').view, plan, PLACE)).toBe(
+			rowSignature(onLadder('Test suite').view, test, PLACE),
+		);
+	});
+
+	it('never draws those two rows on one projection, which is what makes that safe', () => {
+		// `projectionMember` IS `inCatalog`, so the flip moves the row to the other
+		// projection: it is never reused because it is never rendered.
+		const plan = itemIn(onLadder('PBI'));
+		const test = itemIn(onLadder('Test suite'));
+		expect(projectionMember('tree')(plan)).toBe(true);
+		expect(projectionMember('tree')(test)).toBe(false);
+		expect(projectionMember('catalog')(test)).toBe(true);
+	});
+});
+
 describe('renderInputs', () => {
 	it('differs when a setting that changes a row is toggled', () => {
 		// showCounts turns renderRollup from no cell into a count cell, with the
@@ -244,6 +302,13 @@ describe('renderInputs', () => {
 		// type than an absent one is.
 		expect(kinds({ isEmpty: () => true })).toBe(kinds(new NullValue()));
 		expect(kinds(3)).not.toBe(kinds(new NullValue()));
+	});
+
+	it('answers before the first data update, with no model to probe', () => {
+		// Bases mounts the view before it has handed it anything, so a pass can ask for the
+		// fingerprint with `host.model` still null.
+		const view = new ProductBacklogView({} as never, document.body.createDiv());
+		expect(() => renderInputs(view)).not.toThrow();
 	});
 
 	it('steps over an entry that refuses the property', () => {

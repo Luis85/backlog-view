@@ -140,6 +140,15 @@ feature: eleven review findings across seven rounds without reaching a correct r
 - **MOUNT cost rather than update cost becomes the complaint** — opening the view, or
   switching projection, on a large vault. Nothing here helps either, and that is the point
   at which virtualisation stops being the bigger change and starts being the only one.
+- **`projectionMember` stops being `inCatalog`** — a projection that draws both ladders, or
+  a Deliverable row on a tree-shaped surface. `item.ladder` is the one thing a row draws
+  from that `rowSignature` carries no term for, and what makes that safe is only that a
+  ladder flip currently moves the row to a different projection, so it is never reused
+  because it is never rendered. `stateKeyFor` and `ownWorkflowReading` both branch on
+  `inCatalog`, so with that guard gone a state chip would draw the wrong workflow's value
+  behind a byte-identical signature — **with no edit to `rowSignature.ts` and no test
+  failing**. The fix is a `ladder` term, and this trigger exists because nothing else
+  would announce the need for one.
 - **A vault that shows a `file.*` or `formula.*` column asks for the same win.**
   `reusableColumns` refuses the whole pass for those today. The upgrade path is
   re-rendering those cells alone on a kept row, which costs a second reuse rule; it is
