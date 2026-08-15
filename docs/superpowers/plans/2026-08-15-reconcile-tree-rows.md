@@ -325,7 +325,7 @@ export function wireChipEvents(host: BacklogViewHost, treeEl: HTMLElement): void
  */
 const CHIPS =
 	'button.pbl-state-chip, button.pbl-horizon-chip, button.pbl-risk-chip,' +
-	' button.pbl-assignee-chip, button.pbl-tag-add, button.pbl-tag-remove';
+	' button.pbl-assignee-chip, button.pbl-date-chip, button.pbl-tag-add, button.pbl-tag-remove';
 
 export function wireChipEvents(host: BacklogViewHost, treeEl: HTMLElement): void {
 	treeEl.addEventListener('click', (evt) => {
@@ -338,13 +338,21 @@ export function wireChipEvents(host: BacklogViewHost, treeEl: HTMLElement): void
 		if (chip.hasClass('pbl-horizon-chip')) return void showHorizonMenu(host, evt, item);
 		if (chip.hasClass('pbl-risk-chip')) return void showRiskMenu(host, evt, item);
 		if (chip.hasClass('pbl-assignee-chip')) return void showAssigneeMenu(host, evt, item);
+		// The date chip opens a modal rather than a menu — `promptSchedule`, which takes
+		// no event. It needs the item resolved per click like the rest and none of the
+		// anchoring the menu chips need.
+		if (chip.hasClass('pbl-date-chip')) return void promptSchedule(host, item, [endOfDateChip(chip)]);
 		if (chip.hasClass('pbl-tag-add')) return void showTagMenu(host, evt, item);
 		removeTagFromEvent(host, item, chip);
 	});
 }
 ```
 
-Three details this sketch leaves to the file:
+**The chips moved while this plan was being written.** `main` relocated every chip renderer into a new `src/view/render/chips.ts` and added a **sixth**, `renderDateChip`; only `renderTagCell` stayed in `columns.ts`. So this task's listener removals are in `chips.ts` and `columns.ts` both, and the sixth chip is a capture site the earlier drafts of this plan never mentioned.
+
+The date chip differs from the other five in a way that matters here: it calls `promptSchedule(host, item, [spec.end])` directly — a modal, not a menu — and its handler takes no event at all. It therefore needs the item resolved per click like the rest, and none of the menu anchoring. `endOfDateChip` above stands for whatever recovers `spec.end` (`'start'` or `'target'`) from the element: put it on the chip as a `dataset` entry when it is built, using whatever `dateChipFor` already keys on, and read it back. Do not infer it from the chip's label.
+
+Four details this sketch leaves to the file:
 
 - **The label chips are two classes, not one.** `LABEL_CHIPS` in `columns.ts` holds `cls: 'pbl-risk-chip'` and `cls: 'pbl-assignee-chip'`; there is no shared `pbl-label-chip`. Read `LABEL_CHIPS` and dispatch on the two real classes — the sketch above does, and `spec.showMenu` is where the two menu functions come from. Do not invent a shared class to make one branch possible; two entries in a five-entry list is cheaper than a class the stylesheet does not know.
 - The **tag remove** button needs its tag. It is already in the pill's text (`.pbl-tag-text` renders `#${tag}`); put it on the button as `remove.dataset.tag = tag` and read it back — do not parse the rendered text.
@@ -534,7 +542,7 @@ const ROW_LISTENER = {
 };
 ```
 
-Then add `ROW_LISTENER` to the `syntaxRules([...])` list for the config block covering `src/view/render/rows.ts` and `src/view/render/columns.ts`. If those two files are inside a wider block, split them into a block of their own — the file already does this (*"Disjoint regions of `src/`; see the note above `syntaxRules`"*).
+Then add `ROW_LISTENER` to the `syntaxRules([...])` list for the config block covering `src/view/render/rows.ts`, `src/view/render/columns.ts` **and `src/view/render/chips.ts`** — main moved the chip renderers into that third module, and a rule that stops at the first two would leave every chip free to grow its own listener again, which is exactly the hole this rule exists to close. If those two files are inside a wider block, split them into a block of their own — the file already does this (*"Disjoint regions of `src/`; see the note above `syntaxRules`"*).
 
 **There are four exemptions, not two, and getting this wrong makes the gate unpassable.** Two more listeners live in `rows.ts` and neither is removed by this plan:
 
@@ -817,7 +825,12 @@ export function renderInputs(host: BacklogViewHost): string {
  * Base's results.
  */
 function valueKinds(host: BacklogViewHost): string[] {
-	const results = host.model?.results ?? [];
+	// THIS projection's results, not the plan's: the catalog draws from
+	// `model.catalog`, so probing `model.results` would record an empty kind for a
+	// property only the test rows carry. `projectionPopulation` is the existing
+	// answer to "whose rows are these" and the renderer asks it too.
+	const model = host.model;
+	const results = model ? projectionPopulation(host.projection, model).results : [];
 	return host.columns.map((column) => {
 		for (const item of results) {
 			try {
