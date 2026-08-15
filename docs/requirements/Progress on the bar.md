@@ -146,7 +146,14 @@ exactly like a ring around an EMPTY capsule as much as a full one, since colour 
 does not distinguish the two once the interior offers no cue. The count in the lead cell
 is the one place that distinction still lands unambiguously; the band's own contribution
 on a done row is "there is a band here, of some extent" rather than "here is the exact
-ratio." Not scoped to `.pbl-done`: a workflow state a reader has painted green through
+ratio." **And the done case has no configuration escape**, as of `1728b67` on main: the
+state-colour dialog now lists open states only, because a finished bar is drawn green
+whatever is stored against it. So a reader cannot recolour their way out of this
+collision on a done row — it is structural, not an unlucky default, and any real fix has
+to be in the band rather than in the palette. An open state a reader paints green is the
+other half, and that one they can undo.
+
+Not scoped to `.pbl-done`: a workflow state a reader has painted green through
 `stateColorPaint` hits the identical collision on a row that carries no done state at
 all, and a rule keyed to the class would miss it — the hairline separates the band from
 ANY bar colour instead. `outline`, not an inset `box-shadow`: the shadow paints in the
