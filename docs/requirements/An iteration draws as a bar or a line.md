@@ -21,7 +21,8 @@ assignee: ""
 across its two weeks or as a line at its end date, **so that** the axis answers "what is
 this sprint holding" or "when does it close" without me keeping two kinds of note.
 
-An iteration is a marker **structurally** — no rung, no children, no dependencies
+An iteration is a marker **structurally** — no rung, no children, and no *outgoing*
+dependency edge, though like any marker it may still be waited **for**
 ([[An iteration is a note of its own]]) — and that is settled. What is not settled by the
 type is how it is **drawn**: a milestone is a point because a milestone *is* a point, but
 a sprint has two ends and the reader decides which reading they want.
@@ -34,7 +35,7 @@ questions split before the second name arrives, not after:
 
 | Predicate | Means | Unchanged by this work |
 | --- | --- | --- |
-| `isMarkerType` | no rung, no children, no dependencies | yes — its callers keep their meaning |
+| `isMarkerType` | no rung, no children, no prerequisites of its own | yes — its callers keep their meaning |
 | `drawsAsPoint` | drawn at one date, not across two, and holdable at neither end | no — this is the new one |
 
 **Every caller is named, and one of them is easy to miss.** `barHolds` in

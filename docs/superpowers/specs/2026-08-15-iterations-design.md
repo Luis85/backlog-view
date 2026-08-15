@@ -17,9 +17,12 @@ proposals.
 
 1. **An iteration is a note of its own**, typed `Iteration` — not a property value and
    not an observed vocabulary. It can therefore carry dates, a goal and a body.
-2. **The switcher chooses the board's scope**, not a new projection. `Board` stays one
-   position on the projection toggle and gains a scope picker: `Product`, or one of the
-   Iteration notes. The Deliverables board keeps its own toggle position, unchanged.
+2. **The switcher chooses the board's scope** — the CONTROL is one `Board` toggle position
+   plus a picker naming `Product` or an Iteration note, never a fifth toggle position. The
+   Deliverables board keeps its own position, unchanged. *(This was originally written as
+   "not a new projection", conflating the control with the internal identity. Only the
+   control was ever the user's decision; §3 records why the internal identity had to
+   become a projection anyway, and what that cost.)*
 3. **Only items that carry the iteration land on its board.** No inheritance down the
    tree. A Task in Sprint 12 says so itself, whatever its parent says.
 4. **An iteration draws as a bar or as a line, and that is a toggle**, not a fixed
@@ -104,8 +107,10 @@ beside the plan.
 ## 3 — The board grows a scope
 
 `Board` stays one position on the projection toggle. `renderProjectionZone`
-(`src/view/render/toolbarControls.ts`) gains a `case 'board':` that draws a scope
-picker — the axis picker's twin, in the same zone, built the same way.
+(`src/view/render/toolbarControls.ts`) switches on the toolbar POSITION rather than the
+projection, and its `'board'` case draws a scope picker — the axis picker's twin, in the
+same zone, built the same way. (Switching on the projection would delete the picker the
+moment it was used; see the price below.)
 
 ```
 [ Tree | Board | Roadmap | Deliverables ]
@@ -280,10 +285,20 @@ The all-or-nothing part is about borrowing, never about overriding.
 ## 6 — Moves
 
 A column move on an iteration board writes the resolved iteration state key alone,
-through `performBoardMove` — the host method that already exists, taking the scope's
-workflow as an input rather than growing a twin beside it. One method, three inputs
-(drag, Alt+arrow, card menu), one place the batch is planned and one place it is
+through **`performIterationBoardMove`** — a third host method beside `performBoardMove`
+and `performDeliverablesBoardMove`, over the shared `applyCardMove`. One method, three
+inputs (drag, Alt+arrow, card menu), one place the batch is planned and one place it is
 announced. Same `applySafely` gate, same single undo slot.
+
+An earlier revision of this spec said the move would go through `performBoardMove`
+itself, "taking the scope's workflow as an input rather than growing a twin beside it".
+That was wrong about the code: `performBoardMove` takes no workflow input and always
+calls `computeStateWrites`, so following it would write the **product** key while the card
+sat in an iteration column. The rule this codebase actually states is *"adding a
+projection means adding one such method, not a second idea of what a move is"* — a third
+method sharing `applyCardMove` **is** that rule, not a violation of it. The economy was
+imagined; the planner it would have needed does not exist, which is why Task 11 adds
+`computeIterationStateWrites` before it routes anything.
 
 `applyCardMove`'s capture rule holds here too: the vocabulary that names the move is
 read before the await, because the batch's own refresh rebuilds the board before it

@@ -16,8 +16,11 @@ assignee: ""
 
 # An Iterations board
 
-A second board over the *same* work the product board shows, scoped to one time box at a
-time. An iteration is a note of its own — a declared type, like a milestone — and a work
+A second board scoped to one time box at a time — **not** a re-cut of the product board's
+population. It shows every result that names the chosen iteration, `Deliverable` items
+included, which the product board excludes; and it excludes `Iteration` notes themselves,
+which the product board would happily draw. Two boards over one backlog, neither a subset
+of the other. An iteration is a note of its own — a declared type, like a milestone — and a work
 item joins one by naming it in a link property. The board is reached from a scope picker
 beside the projection toggle rather than from a toggle position of its own: `Product`, or
 one of the iterations, the way the roadmap offers its two axes from one control
