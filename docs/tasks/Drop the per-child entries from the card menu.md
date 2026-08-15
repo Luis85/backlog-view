@@ -49,8 +49,8 @@ parent's `tabindex="-1"` list, and the removed entries were the whole keyboard p
 That is not a filter question: it holds with no quick filter running, so no amount of
 match-section work reaches it.
 
-So the entries came back subtracted by `carded`, the same "already on screen" set
-`matchesUnderCard` uses — `unreachableChildren` in `childrenList.ts`, answered per
+So the entries came back subtracted by `carded`, the same "already on screen" set the
+match walk uses — `unreachableChildren` in `childrenList.ts`, answered per
 projection by `cardedPaths` in `menu.ts` (the board's columns, or the roadmap snapshot its
 own keyboard walk is built from). The clutter this task was raised for was an unfocused
 board with fat cards, and there the list is empty.
@@ -73,26 +73,28 @@ whose entries are `tabindex="-1"`, and named nowhere in the menu. That is the fa
 `src/view/CLAUDE.md` records for the board's hidden-match links, arrived at from the
 other direction.
 
-**The dedup is per SURFACE now, which is what it always meant.** `childrenList.ts` keeps
-`undisclosedMatches` for the card FACE — there the disclosure's list and the match links
-sit inches apart, and naming an item in both is a repetition — and adds
-`matchesUnderCard`, the same walk without that subtraction, for the menu, where nothing
-else names the children at all. `carded` is still subtracted in both: an item with a card
-of its own is reachable at that card.
+That was fixed by splitting the dedup per SURFACE: `undisclosedMatches` for the card
+FACE, and `matchesUnderCard` — the same walk without that subtraction — for the menu,
+where nothing else named the children any more.
+
+**The split lasted a day and is gone.** Once `Open child "…"` came back for the
+unreachable children, the unsubtracted walk offered every matched one TWICE, which is the
+list this task exists to shorten (Codex again, on the fixing commit). Both surfaces read
+`undisclosedMatches`; the menu's child entries own a listed child, the match section owns
+everything deeper. `carded` is still subtracted inside the walk, so an item with a card of
+its own is offered by neither.
 
 ## How it is checked
 
 - `test/view/cardChildren.test.ts` — the toggle is still offered on a right-click, on the
-  menu key, and on a shelf card; a card with no disclosure offers neither `Show children`
-  nor `Hide children`; and the face-versus-menu pair, which asserts the two subtractions
-  disagree on purpose.
+  menu key, and on a shelf card; and a card with no disclosure offers neither
+  `Show children` nor `Hide children`.
 - `test/view/cardChildren.test.ts` again, over four mounts in one case: board and roadmap,
   each focused and unfocused. Focused offers one entry per child and opening one opens
   **that note** (asked of the vault, since a wrong item would still carry a plausible
   name); unfocused offers none. Both directions were watched failing — the entries deleted
   for the first pair, the `carded` subtraction dropped for the second.
-- `test/view/menu.test.ts` — a filtered match under a Deliverable card is still reachable
-  from the menu.
-
-Both of the last two were watched failing with the menu pointed back at
-`undisclosedMatches`.
+- The no-duplicate rule is asserted as a COUNT rather than as a name, in both suites: on a
+  focused board and on the Deliverables board, exactly one menu entry ends in the matched
+  child's title. Which section owns it has now moved three times, and the count is the part
+  that has to hold across the next move. Watched failing with the subtraction dropped.

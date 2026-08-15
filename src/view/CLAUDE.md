@@ -601,7 +601,13 @@ free of runtime code so imports stay cycle-free.
   `interactions/menu.ts` is the one place a projection is asked which cards it drew: the
   board from its columns, the roadmap from the snapshot its own keyboard walk is built
   from. Note that only the BOARD draws matches at all — see
-  [[The roadmap names no matches under a card]]. They need
+  [[The roadmap names no matches under a card]].
+  **The two lists must not both claim one note**, and the check is a COUNT rather than a
+  name: exactly one menu entry ends in a matched child's title. A `matchesUnderCard` — the
+  match walk without its `listedChildren` subtraction — existed for one day, for the day
+  the menu named no children, and offered every matched uncarded child as both
+  `Open match` and `Open child`. Which section owns such a child has moved three times
+  now, so assert the count and let the owner move. They need
   no guard of their own against the card beneath — see the row-activation filter below.
 - The board is one tab stop and its shortcuts are invisible, so it carries hidden
   instructions (`.pbl-sr-only`, attached with `aria-describedby`). The id is minted by

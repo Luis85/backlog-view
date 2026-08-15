@@ -22,7 +22,7 @@ import { promptCreateItem } from './create';
 import { addHorizonItems, canSchedule, carriesDates, promptSchedule, unschedule } from './plan';
 import { addTagItems, tagsColumnVisible } from './tags';
 import { addDependencyItems, dependenciesAvailable } from './dependencies';
-import { matchesUnderCard, unreachableChildren } from '../childrenList';
+import { undisclosedMatches, unreachableChildren } from '../childrenList';
 import { offerableTypes, retypeChoices, rowVocabulary, treeShaped } from '../projection';
 
 /**
@@ -349,16 +349,17 @@ export const showTagMenu = (host: BacklogViewHost, evt: MouseEvent, item: Backlo
  * not the card itself matched, for the same reason the face names them: a match below
  * a matching card is a second result, and it has no card of its own to be reached by.
  *
- * `matchesUnderCard`, not `undisclosedMatches`: a match the card's own disclosure is
- * showing belongs here too, since this menu stopped naming the children themselves
- * (2026-08-14) and those list entries are `tabindex="-1"`. The card FACE keeps the
- * subtraction, because there the two lists sit inches apart — see `childrenList.ts`.
+ * `undisclosedMatches`, the same walk the card FACE uses: a match the card's own
+ * disclosure lists is offered by `addChildrenSection` below, as `Open child "…"`,
+ * whenever it has no card of its own — so naming it here as well is one menu offering
+ * one note twice, which is what a `matchesUnderCard` without the subtraction did for a
+ * day. What each surface DRAWS differs; what counts as saying a thing twice does not.
  */
 function addMatchSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
 	const board = activeBoard(host);
 	if (!board || !host.isFiltering()) return;
 	const carded = cardPaths(board);
-	const matches = matchesUnderCard(host, item, carded);
+	const matches = undisclosedMatches(host, item, carded);
 	if (matches.length === 0) return;
 	menu.addSeparator();
 	for (const match of matches) {

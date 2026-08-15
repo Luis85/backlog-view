@@ -28,7 +28,7 @@ export function listedChildren(host: BacklogViewHost, item: BacklogItem): Backlo
  * The listed children with no card of their own — the ones a pointer can reach on this
  * card's face and a keyboard cannot reach anywhere.
  *
- * `carded` is the same "already on screen" set `matchesUnderCard` subtracts, and it is
+ * `carded` is the same "already on screen" set `undisclosedMatches` subtracts, and it is
  * the whole of the rule: unfocused, every result gets a card of its own on both card
  * projections, so this is empty and the menu grows nothing. Under a FOCUS the cards are
  * the focus level's alone, so a card's children are drawn only as its own
@@ -67,10 +67,23 @@ export function childrenLabel(children: BacklogItem[]): string {
 }
 
 /**
- * The matches a card should name on its face: everything `hiddenMatches` found beneath
- * it, minus anything its own disclosure already lists. One card cannot say the same
- * thing twice — and the DEPTH of the walk is untouched, so a match three levels down
- * still surfaces where nothing else can reach it.
+ * The matches a card should name: everything `hiddenMatches` found beneath it, minus
+ * anything its own disclosure already lists. One card cannot say the same thing twice —
+ * and the DEPTH of the walk is untouched, so a match three levels down still surfaces
+ * where nothing else can reach it.
+ *
+ * **Both surfaces, again**, after a day apart. There was a `matchesUnderCard` beside this
+ * one — the same walk without the subtraction — because the menu had stopped naming the
+ * children at all, so subtracting them there withheld the one path to a matched child the
+ * face was showing. Now that the menu offers `unreachableChildren` below, the second
+ * function offered every such child TWICE: `Open match "X"` and then `Open child "X"`,
+ * doubling the very list the entries were removed to shorten. (Codex, PR #137, on the
+ * commit that fixed its previous finding.) One walk, one subtraction, and the surfaces
+ * differ in what they draw rather than in what they think a duplicate is.
+ *
+ * The subtraction is `listedChildren`, not `unreachableChildren`, and the two agree here:
+ * a listed child WITH a card is already dropped by `carded` inside `hiddenMatches`, so
+ * nothing reaches this filter that the narrower set would have kept.
  *
  * It is also the one place the walk's own boundary is supplied: `isRowHidden` is the
  * same visibility rule `listedChildren` above filters by, handed down as `drawn` so the
@@ -89,24 +102,11 @@ export function undisclosedMatches(
 	carded: Set<string>,
 ): BacklogItem[] {
 	const listed = new Set(listedChildren(host, item).map((child) => child.file.path));
-	return matchesUnderCard(host, item, carded).filter((match) => !listed.has(match.file.path));
+	return matchesUnder(host, item, carded).filter((match) => !listed.has(match.file.path));
 }
 
-/**
- * The same walk WITHOUT that last subtraction, for the card menu.
- *
- * The dedup above is about one surface saying one thing twice, and the two surfaces stopped
- * agreeing on what "twice" means when the menu's `Open child "…"` entries were removed
- * (2026-08-14). On the card FACE the disclosure's list and a match link sit inches apart,
- * so naming an item in both is a repetition. In the MENU nothing else names the children
- * at all any more — so subtracting them there withheld the one keyboard path to a match
- * the card was showing, which is precisely the failure `src/view/CLAUDE.md` records for
- * the board's hidden-match links: the disclosure's own entries are `tabindex="-1"`.
- *
- * `carded` is still subtracted in both: an item with a card of its own is reachable at
- * that card, and offering it here would point at something already on screen.
- */
-export function matchesUnderCard(host: BacklogViewHost, item: BacklogItem, carded: Set<string>): BacklogItem[] {
+/** The walk itself, so the subtraction above reads as the one thing this file adds to it. */
+function matchesUnder(host: BacklogViewHost, item: BacklogItem, carded: Set<string>): BacklogItem[] {
 	return hiddenMatches(
 		item,
 		(child) => host.isFilterMatch(child),

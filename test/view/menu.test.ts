@@ -315,10 +315,13 @@ describe('the Deliverables board’s card menu', () => {
 
 		cardByTitle(containerEl, 'D').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 		// The card's own disclosure lists it, and those entries are `tabindex="-1"` — so
-		// the menu is the keyboard path this test is about, and it has to offer the match
-		// even though the face already shows it (`matchesUnderCard`). The menu named the
-		// children themselves until 2026-08-14, which is what used to answer this.
-		expect(Menu.lastShown?.item('Open match "T"')).toBeDefined();
+		// the menu is the keyboard path this test is about. WHICH entry answers it has
+		// moved twice: `Open child` until 2026-08-14, `Open match` for a day, and now
+		// `Open child` again, because a Task on the Deliverables board has no card of its
+		// own. What must never move is that there is exactly ONE of them — the match
+		// section subtracts what the disclosure lists, so the two cannot both claim it.
+		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
+		expect(titles.filter((t) => t.endsWith('"T"'))).toEqual(['Open child "T"']);
 	});
 
 	it('gates the tree’s Set state on each item’s OWN workflow key', () => {

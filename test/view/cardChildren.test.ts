@@ -438,12 +438,12 @@ describe('children on the card', () => {
 		expect(matches).toContain('Task B1a');
 	});
 
-	// The menu's side of the same question, and it answers the OTHER way: the card face
-	// must not say one thing twice, while the menu must still say it once, because the
-	// disclosure's own entries are `tabindex="-1"` and the menu stopped naming the
-	// children themselves (2026-08-14). Two surfaces, one walk, two subtractions —
-	// `undisclosedMatches` and `matchesUnderCard`.
-	it('offers a matched child in the card menu, which the face lists but cannot focus', () => {
+	// The menu's side of the same question. It must name the child ONCE — the disclosure's
+	// own entries are `tabindex="-1"`, so a matched child the face lists needs a menu
+	// entry — and never twice. Both sections can reach for it here: it matches, and it has
+	// no card under this focus. The match walk subtracts what the disclosure lists, so the
+	// child section is the one that owns it, and there is only one walk to disagree with.
+	it('names a matched child in the card menu exactly once', () => {
 		const { containerEl, view } = makeBoard(boardVault(), {}, { focus: 'Epic' });
 		view.setFilter('Feature B1');
 		const card = cardByTitle(containerEl, 'Epic B');
@@ -451,9 +451,9 @@ describe('children on the card', () => {
 
 		// The face lists it …
 		expect(kidTitles(card)).toContain('Feature B1');
-		// … and the menu offers it anyway, because nothing in the menu names it otherwise.
+		// … and the menu names it, once, under whichever section owns it.
 		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
-		expect(titles).toContain('Open match "Feature B1"');
+		expect(titles.filter((t) => t.endsWith('"Feature B1"'))).toEqual(['Open child "Feature B1"']);
 	});
 
 	// The per-child entries, back where nothing else can reach the child and gone where

@@ -48,7 +48,7 @@ This is older than the task that found it: the roadmap has never drawn match lin
 ## What makes it more than a missing call
 
 The board's face links and its menu entries are one feature with two surfaces and one
-dedup rule (`undisclosedMatches` vs `matchesUnderCard`). Adding only the MENU half to the
+dedup rule (`undisclosedMatches`, for both). Adding only the MENU half to the
 roadmap would make the menu the sole place a match is named, which is a different feature
 and a different rule — the menu is currently specified as the keyboard path to something
 the face shows. Adding both means deciding where a roadmap card puts a match list: a

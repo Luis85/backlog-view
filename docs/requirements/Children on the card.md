@@ -137,13 +137,16 @@ through `buildItemMenu` on both the pointer path (`showItemMenu`) and the keyboa
 The match walk is shared the same way and its subtraction is now per SURFACE:
 `renderCardMatches` in `src/view/render/board.ts` reads `undisclosedMatches` for the card
 face, where the disclosure's list sits inches from the match links, and `addMatchSection`
-in `menu.ts` reads `matchesUnderCard` — the same walk without that subtraction, because
-the menu stopped naming the children themselves and a match the face lists would
-otherwise be reachable by pointer alone. `unreachableChildren` beside them is the third
-subtraction and the narrowest: the listed children with no card of their own, which is
-what the menu's `Open child "…"` entries are built from. It takes the same `carded` set,
-answered per projection by `cardedPaths` in `menu.ts`, since the board and the roadmap
-each know their own cards and the two are not the same list.
+in `menu.ts` reads it too. There was a `matchesUnderCard` beside it for one day — the
+same walk without the subtraction, added when the menu stopped naming the children — and
+it became a duplicate the moment the menu named them again: `Open match "X"` and then
+`Open child "X"`, one note twice. One walk, one subtraction; the surfaces differ in what
+they DRAW, never in what counts as saying a thing twice.
+`unreachableChildren` beside it is the narrower question and the menu's own: the listed
+children with no card of their own, which is what the `Open child "…"` entries are built
+from. It takes the same `carded` set, answered per projection by `cardedPaths` in
+`menu.ts`, since the board and the roadmap each know their own cards and the two are not
+the same list.
 The board is the only projection that draws matches on a card FACE at all —
 [[The roadmap names no matches under a card]].
 
