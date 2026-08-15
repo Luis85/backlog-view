@@ -933,12 +933,22 @@ Prove each new test can fail, one at a time, restoring after each:
 - [ ] **Step 13: The register sweep**
 
 ```bash
-grep -rln "src/storage/collapseStore.ts" docs/ | grep -v superpowers
+grep -rln "src/storage/collapseStore.ts\|test/storage/collapseStore.test.ts" docs/ | grep -v superpowers
 ```
 
-Replace the path with `src/storage/viewStateStore.ts` in every note the grep returns.
-`superpowers/` notes are historical records of a decision on a date and are **not**
-rewritten — `docs-check.mjs` exempts them.
+Replace `src/storage/collapseStore.ts` with `src/storage/viewStateStore.ts`, and
+`test/storage/collapseStore.test.ts` with `test/storage/viewStateStore.test.ts`, in every
+note the grep returns. `superpowers/` notes are historical records of a decision on a date
+and are **not** rewritten — `docs-check.mjs` exempts them.
+
+**The test path is not optional.** `docs-check.mjs:430` matches
+`` `(src|test)/….ts` `` in a living note's prose and fails on one that no longer exists,
+so a sweep that took only the source path leaves the gate red. Five notes name the test
+file: [[Switching projections]], [[Collapse persistence]], [[A resizable lead column]],
+[[Three projections, one toggle]] and [[Persisted keys stay as written]].
+
+Rule 7 — every `src/` module *specified* in a note — is what exempts `test/` from needing
+a note of its own. It does not exempt a test path a note chose to name.
 
 Two need more than a path swap:
 
@@ -1038,8 +1048,13 @@ Expected: PASS, with no test body changed — only names and import paths.
 - [ ] **Step 5: The register sweep**
 
 ```bash
-grep -rln "src/view/collapseState.ts\|src/view/uiState.ts\|UiStateController" docs/ | grep -v superpowers
+grep -rln "src/view/collapseState.ts\|src/view/uiState.ts\|test/view/persistence.test.ts\|UiStateController" \
+  docs/ | grep -v superpowers
 ```
+
+`test/view/persistence.test.ts` is renamed in Step 3 of this task and is named by three
+living notes — [[Collapse persistence]], [[Focus level]] and [[Opening the work]]. It is
+checked by the same rule as a source path (`docs-check.mjs:430`), so it moves with them.
 
 Swap the paths, and the class name in the two notes that name it in prose
 (`docs/requirements/Switching projections.md:98` and
@@ -1095,8 +1110,14 @@ git push -u origin claude/refactor-collapsestore-hx3bcs
 
 - [ ] `npm run check` passes on the final commit.
 - [ ] `grep -rn "collapseStore\|CollapseState\|collapseState" src/ test/` returns nothing.
-- [ ] `grep -rln "src/storage/collapseStore.ts\|src/view/collapseState.ts\|src/view/uiState.ts" docs/ | grep -v superpowers`
-      returns nothing.
+- [ ] This returns nothing — source paths and test paths alike, since `docs-check.mjs`
+      checks both:
+
+```bash
+grep -rln "src/storage/collapseStore.ts\|src/view/collapseState.ts\|src/view/uiState.ts\
+\|test/storage/collapseStore.test.ts\|test/view/persistence.test.ts\|UiStateController" \
+  docs/ | grep -v superpowers
+```
 - [ ] The four watch-it-fail exercises in Task 2 Step 9 were each run and each went red.
 
 **What this repository cannot check, and must be said in the PR:** Obsidian does not run
