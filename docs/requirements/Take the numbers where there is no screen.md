@@ -156,6 +156,15 @@ instruments improvised around a browser.
   nobody asked for with nothing saying so. A merely WRONG path is not in this: it already
   fails loudly, because the page it loads publishes no perf data and the run exits 1. The
   distinction is the whole reason only two spellings are named. (Codex, PR #137.)
+- **3j — the delta is computed from the printed columns.** It was, and printing is lossy:
+  both medians are rounded to one decimal for the reader, so on a small workload —
+  `--notes=0`, `--fixture=edges` — 0.04 against 0.06 became 0 and 0.1 and reported
+  `Infinity%`, while closer pairs reported 0% over a real difference. The raw medians are
+  kept beside the rounded ones and the arithmetic uses those; a real run at `--notes=0`
+  now shows `3.9` against `3.9` with a `-3%` delta, which is the honest reading of two
+  numbers that differ below the printed precision. A zero baseline still takes the em
+  dash, since a percentage of nothing is not a quantity. **Round for the reader, never
+  for the arithmetic.** (Codex, PR #137.)
 - **4a — the runner checks out the ref to compare against.** Refused: that would move the
   tree someone is working in. Building the other side is one command in a git worktree,
   and stays the human's.

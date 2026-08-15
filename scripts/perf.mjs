@@ -327,12 +327,20 @@ const unmatched = !against
 			...[...right.keys()].filter((op) => !left.has(op)).map((op) => `${op} (only in the baseline)`),
 		];
 for (const [op, { drew, times }] of left) {
-	const row = { op, drew, ms: +median(times).toFixed(1), spread: spread(times) };
+	// The RAW medians are kept beside the rounded ones, because the delta is computed from
+	// them: taking it from the printed columns divided two numbers already flattened to one
+	// decimal, so on a small workload — `--notes=0`, `--fixture=edges` — 0.04 against 0.06
+	// printed as 0 and 0.1 and reported `Infinity%`, and closer pairs reported 0% over a
+	// real difference. Round for the reader, never for the arithmetic. (Codex, PR #137.)
+	const ms = median(times);
+	const otherTimes = against ? right.get(op)?.times : undefined;
+	const otherMs = otherTimes ? median(otherTimes) : null;
+	const row = { op, drew, ms: +ms.toFixed(1), spread: spread(times) };
 	if (against) {
 		const other = right.get(op);
 		// An em dash rather than a number wherever there is nothing to compare with: `NaN%`
 		// in a delta column is a value a reader has to interpret, and every reading is wrong.
-		row.against = other ? +median(other.times).toFixed(1) : '—';
+		row.against = otherMs === null ? '—' : +otherMs.toFixed(1);
 		// Beside the delta, never behind it: two medians whose spreads overlap have no
 		// delta worth reading, and the only way a reader can see that is if both are here.
 		row.againstSpread = other ? spread(other.times) : '—';
@@ -340,7 +348,9 @@ for (const [op, { drew, times }] of left) {
 		// draw different populations — one before a change that adds or hides cards — and
 		// a delta between unlike workloads reads exactly like a speedup. (Codex, PR #137.)
 		row.againstDrew = other ? other.drew : '—';
-		row.delta = other ? `${(((row.ms - row.against) / row.against) * 100).toFixed(0)}%` : '—';
+		// A zero baseline is the one case raw numbers do not rescue — a percentage of nothing
+		// is not a quantity — so it takes the same em dash as a missing one.
+		row.delta = otherMs ? `${(((ms - otherMs) / otherMs) * 100).toFixed(0)}%` : '—';
 		if (other && other.drew !== drew) unlike.push(`${op} (${drew} vs ${other.drew})`);
 	}
 	table.push(row);
