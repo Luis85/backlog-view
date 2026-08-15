@@ -60,8 +60,38 @@ describe('a picked colour', () => {
 		// table from these two lists and has no model, so an observed state's colour would
 		// be written and then discarded on the next refresh. Deduped by `sameValue`, which
 		// is the "one state, one control" rule the Deliverables options used to restate.
-		expect(colorableStates(['New', 'Active'], ['active', 'Draft'])).toEqual(['New', 'Active', 'Draft']);
-		expect(colorableStates([], [])).toEqual([]);
+		const vocabularies = {
+			states: ['New', 'Active'],
+			doneValues: ['Closed'],
+			deliverableStates: ['active', 'Draft'],
+			deliverableDoneValues: ['Shipped'],
+		};
+		expect(colorableStates(vocabularies)).toEqual(['New', 'Active', 'Draft']);
+		expect(colorableStates({ states: [], doneValues: [], deliverableStates: [], deliverableDoneValues: [] })).toEqual([]);
+	});
+
+	it('never offers a DONE state, because nothing would draw the choice', () => {
+		// A finished bar takes green from `.pbl-timeline-row.pbl-done .pbl-bar` and its legend
+		// swatch is keyed `pbl-legend-done`, both of which ignore `stateColorPaint` — so a row
+		// for a done state is a control that writes a key nothing reads.
+		expect(
+			colorableStates({
+				states: ['New', 'Active', 'Done'],
+				doneValues: ['done'],
+				deliverableStates: [],
+				deliverableDoneValues: [],
+			}),
+		).toEqual(['New', 'Active']);
+		// Per WORKFLOW, not over the union: the Deliverables workflow goes on drawing an
+		// ordinary bar for a value only the requirements workflow finishes on.
+		expect(
+			colorableStates({
+				states: ['Active', 'Done'],
+				doneValues: ['Done'],
+				deliverableStates: ['Done', 'Shipped'],
+				deliverableDoneValues: ['Shipped'],
+			}),
+		).toEqual(['Active', 'Done']);
 	});
 
 	it('is no longer a view option, because Bases has no colour control', () => {
