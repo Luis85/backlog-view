@@ -14,7 +14,7 @@ files:
   - styles/columns.css
   - test/helpers/fixtures.ts
   - test/harness/harness.test.ts
-  - test/view/columns.test.ts
+  - test/view/rollupReservation.test.ts
 started: ""
 finished: ""
 horizon: ""
@@ -70,9 +70,11 @@ carry, and it is stated at the rule in `styles/columns.css`.
 
 ## What checks it
 
-- `test/view/columns.test.ts` — the reservation is the widest label in the tree and not
-  the row's own, and nothing is reserved where there is no bar to push out of line.
-  Watched failing with the publish removed.
+- `test/view/rollupReservation.test.ts` — the reservation is the widest label in the tree
+  and not the row's own, nothing is reserved where there is no bar to push out of line,
+  and a re-render with no reservation takes the stale one back off (the tree element
+  outlives the render, so `setCssProps` alone would leave it — Codex, PR #153). Each was
+  watched failing.
 - `test/harness/harness.test.ts` — `?fixture=edges` draws `1/3`, `3/10` and `40/120` on
   sibling rows, so the case someone would look at is still there to look at.
 - Neither asserts alignment: jsdom computes no stylesheet, and appearance is not asserted

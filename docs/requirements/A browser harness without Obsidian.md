@@ -108,7 +108,9 @@ by a screenshot from here.
   scheme — and each is reachable from a URL, so looking needs no click. A rule written for
   a phone is reachable the same way (`?phone`, the two body classes Obsidian's own shell
   sets), which is a CLASS switch and not a device: the pointer, the viewport and every
-  `@media (hover: none)` rule in `styles/touch.css` are outside what it answers.
+  `@media (hover: none)` rule in `styles/touch.css` are outside what it answers. So are a
+  dialog, a running filter, the roadmap's open shelf and a focus level (`test/harness/
+  knobs.ts`), each of which hides a whole surface behind a control a URL cannot press.
 - The harness costs `npm run check` no sixth step, and costs the PLUGIN no dependency:
   nothing it needs is shipped, and nothing it needs drives a browser. It carries one
   devDependency, `lucide-static` — static icon data, no binary to download and no version
@@ -125,8 +127,8 @@ by a screenshot from here.
 ## Where it lives
 
 `harness.mjs` · `test/harness/mount.ts` · `test/harness/page.ts` ·
-`test/harness/chrome.ts` · `test/harness/icons.ts` · `test/harness/theme.css` ·
-`test/harness/theme.ts` · `test/helpers/fixtures.ts` ·
+`test/harness/chrome.ts` · `test/harness/icons.ts` · `test/harness/knobs.ts` ·
+`test/harness/theme.css` · `test/harness/theme.ts` · `test/helpers/fixtures.ts` ·
 `test/harness/harness.test.ts` · `test/CLAUDE.md`
 
 `icons.ts` installs its renderer through the one hook the shared mock exposes for it

@@ -1,6 +1,7 @@
 /** The bundle's entry point. Everything real is in `mount.ts`, which a test can drive. */
 import { mountHarness } from './mount';
 import { PROJECTIONS, perfWanted, reportPerf, wantedNotes } from './perf';
+import { applyWantedFilter, applyWantedState, openWantedDialog } from './knobs';
 import { applyPlatform, drawSchemeToggle } from './theme';
 import { Projection } from '../../src/view/host';
 import { RoadmapAxis } from '../../src/domain/roadmap';
@@ -53,6 +54,13 @@ const AXES: RoadmapAxis[] = ['horizons', 'dates', 'resources'];
 if (AXES.includes(axis as RoadmapAxis)) {
 	view.setAxisPick(axis as RoadmapAxis);
 }
+
+// After the projection and the axis, because both re-render: a filter applied first would
+// be recomputed by the render that follows it, and a dialog opened first would be sitting
+// over a projection the page was about to leave.
+applyWantedState(view, window.location.search);
+applyWantedFilter(view, window.location.search);
+openWantedDialog(view, containerEl, window.location.search);
 
 /**
  * The view and its container, for a throwaway probe pasted into a console.

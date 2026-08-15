@@ -55,6 +55,19 @@ a defect rather than an unconfigured view.
   it asserts the tree has rows, the board has cards in its columns, the roadmap has
   buckets, and the shelf is not empty. A fixture nobody asserts against is one that
   silently stops covering what it was built for.
+- **1d — the fixture covers what someone remembered to put in it.** It did not, and the
+  gap was measured rather than argued (2026-08-15): 98 of the `.pbl-*` classes the
+  stylesheet writes were rendered by no fixture in any projection. The tags column had been
+  in `demoOrder()` since this note was written and drew EMPTY on every row, because the key
+  was never named and no note carried one; WIP limits, column policies, state colours and a
+  plain Bases property column — all shipped, all configurable — had never been drawn here
+  at all; and the malformed shapes a real vault produces by hand (an unresolvable parent, a
+  type outside the vocabulary, a state outside the workflow, a horizon outside the buckets)
+  existed only in vaults that already had the mess. Those are in the two fixtures now, and
+  the states that need a pointer rather than data are reachable by URL
+  (`test/harness/knobs.ts`). The remainder — a drag, a hover, a selection, a write in
+  flight — is stated with its reasons in [`test/CLAUDE.md`](../../test/CLAUDE.md) rather
+  than left as an unbounded promise, and the way to re-measure is written down beside it.
 - **1c — a case only a BIG backlog has.** `edgeCaseVault()` (`?fixture=edges`) carries it,
   the same split the clipped bar made: rollup labels of three different widths on sibling
   rows — `1/3`, `3/10`, `40/120` — because a lane anchored at its end draws its bar

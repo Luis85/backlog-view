@@ -106,7 +106,11 @@ harness's — see the `chrome.ts` bullet below for the four rules that leaves ab
   before it is built. Leave such a file uncommitted; nothing imports it, so `npm run
   analyze` reports it dead, correctly.
 - `test/helpers/fixtures.ts` — the demo backlog and the view options that configure all
-  four projections at once. A fourth fixture, not a replacement: the per-suite ones stay
+  four projections at once — including, since 2026-08-15, the ones a vault has that no
+  fixture had: tags on two rows (the column was in the order and empty from the start), a
+  WIP limit that is BREACHED rather than merely stated, a column policy, two painted state
+  colours beside three on their palette slot, and a plain Bases property column, which is
+  the ordinary case every vault has and the one `renderCell` falls through to. A fourth fixture, not a replacement: the per-suite ones stay
   four notes each on purpose. `demoVault('folders')` — `?fixture=folders`, mounted with
   `folderOptions()` — is the SAME backlog filed the way a folder-note vault files it:
   every note the note of its own folder, one noteless container folder on the way down,
@@ -162,6 +166,37 @@ harness's — see the `chrome.ts` bullet below for the four rules that leaves ab
   metadata cache, no vault I/O and no theme behind it. What it found once it was read
   correctly is [[The render is the whole cost of a data update]]: every phase is linear, and
   the render costs ~0.6 ms per row against the build's ~0.012 ms.
+- **`test/harness/knobs.ts` — the URL knobs that drive the view**, for states a screenshot
+  cannot click its way to: `?dialog=manual|colors|new` opens one dialog through the same
+  door its control uses, `?filter=text` runs the quick filter (`?filter=zzz` is the only
+  way to reach its empty state), `?shelf` opens the roadmap's shelf — its groups, counts,
+  shelving reasons, sort and type filter draw only while it is open — and `?focus=PBI` sets
+  the focus level, which re-roots the model and is the one way a context CARD is drawn.
+  `?view=` and `?axis=` in `page.ts` are the same idea and stay there; these are here
+  because each is a real call worth a test, since a knob that silently stopped making its
+  state is a page that looks fine and answers nothing.
+- **What the fixtures cover is MEASURED, and the instrument is a paste rather than a
+  gate.** Of the `.pbl-*` classes the stylesheet writes, 98 were rendered by no fixture in
+  any projection (2026-08-15) — the tags column had been in `demoOrder()` from the start
+  and drew empty on every row, and WIP limits, column policies, state colours, a plain
+  property column, the orphan glyph, an unknown type, a stray state and an undeclared
+  bucket had never been drawn here at all. The fixtures and the knobs above took it to 44.
+  To re-measure: a throwaway jsdom test that mounts each fixture in each projection and
+  axis, collects `classList` off every element, and diffs against `\.(pbl-[\w-]+)/g` over
+  `styles/`. It is deliberately NOT committed — the remainder is mostly gesture state, so
+  a checked-in version would need a long allowlist of exceptions, which is the table that
+  goes stale rather than the rule that does not.
+  **The 44 that are left are left for stated reasons**, and the list is worth reading
+  before adding a fixture for one: ~19 are a POINTER's (`pbl-dragging`, every
+  `pbl-drop-*`, the link drag's four, `pbl-hover-expanding`, `pbl-selected`,
+  `pbl-has-selection`, `pbl-col-selected`, `pbl-color-probe`) and no URL can stand in for
+  a gesture; 7 are transient or failure states (`pbl-busy-on`, `pbl-pending`,
+  `pbl-loading*`, `pbl-config-warning`, `pbl-modal-error`) that need a write, a
+  misconfiguration or a refusal in flight; 7 are the remaining named state colours, which
+  would be a demo of the palette rather than a backlog; and the rest need a configuration
+  variant the demo does not have (counts with no workflow, a pane too narrow for the
+  rollup, compact density) or geometry no fixture reaches yet (`pbl-weekend-layer`,
+  `pbl-bar-outside`).
 - **A change that visibly alters the view puts its cases in a FIXTURE, not in a mock.**
   In `demoVault()` where the case belongs in the everyday picture; in a named variant —
   `edgeCaseVault()`, reached by `?fixture=edges` — where it would distort it, which is

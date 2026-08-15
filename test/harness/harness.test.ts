@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { mountHarness } from './mount';
 import { applyPlatform } from './theme';
+import { applyWantedFilter, openWantedDialog } from './knobs';
 import { Modal } from '../helpers/obsidian-mock';
 import { installObsidianDom } from '../helpers/dom';
 import { clickExpandAll, projectionButton, submitPrompt } from '../helpers/view';
@@ -421,6 +422,52 @@ describe('the chrome the mock only records', () => {
 		// The re-render is the point: the fake vault notifies on create as well as on a
 		// write, so the new row is on screen rather than waiting for an unrelated edit.
 		expect(titlesIn(containerEl)).toContain('Drawn by the harness');
+	});
+});
+
+/**
+ * The knobs exist because a dialog and a running filter are states no fixture produces
+ * and no URL could reach — measured, not guessed: 98 of the classes the stylesheet writes
+ * were rendered by no fixture in any projection, and about twenty of them are a dialog's.
+ * What is asserted is that each knob still MAKES its state, since a knob that silently
+ * stopped is a page that looks fine and answers nothing.
+ */
+describe('the page can open a dialog and run a filter by URL', () => {
+	function mount() {
+		const root = document.createElement('div');
+		document.body.appendChild(root);
+		return mountHarness(root);
+	}
+
+	it('opens each dialog the knob names, and nothing without one', () => {
+		const { view, containerEl } = mount();
+		// The mock records the last modal on a static, and the suites above this one open
+		// several — so "nothing was opened" has to start from a cleared slot rather than
+		// from whatever ran before it.
+		Modal.lastOpened = null;
+
+		openWantedDialog(view, containerEl, '?view=board');
+		expect(Modal.lastOpened).toBeNull();
+
+		openWantedDialog(view, containerEl, '?dialog=manual');
+		expect(Modal.lastOpened?.contentEl.querySelector('.pbl-manual-pane h3')?.textContent).toBe('Item types');
+
+		openWantedDialog(view, containerEl, '?dialog=colors');
+		// The class is on `contentEl` itself, not on a child of it.
+		expect(Modal.lastOpened?.contentEl.hasClass('pbl-state-colors')).toBe(true);
+
+		openWantedDialog(view, containerEl, '?dialog=new');
+		expect(Modal.lastOpened?.titleEl.textContent).toContain('New');
+	});
+
+	it('runs the quick filter, and draws its empty state when nothing matches', () => {
+		const { view, containerEl } = mount();
+
+		applyWantedFilter(view, '?filter=Onboarding');
+		expect(containerEl.querySelector('.pbl-match')).not.toBeNull();
+
+		applyWantedFilter(view, '?filter=zzzznothing');
+		expect(containerEl.querySelector('.pbl-empty-filter')).not.toBeNull();
 	});
 });
 

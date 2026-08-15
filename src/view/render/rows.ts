@@ -51,6 +51,17 @@ export function renderTree(ctx: RowContext, treeEl: HTMLElement): void {
 	for (const [index, column] of ctx.columns.entries()) {
 		widths[columnWidthVar(index)] = `${columnWidth(ctx.host, column.prop)}px`;
 	}
+	// REMOVED rather than left unset, and this is the one declaration here that needs it:
+	// the tree element is built once in the constructor and only emptied per render, so
+	// its inline style outlives every pass, and `setCssProps` writes the keys it is given
+	// without clearing the ones it is not. A view whose state property is cleared while
+	// counts stay on goes from a reservation to none — and the stale one would keep the
+	// lane widened for rows that no longer draw a bar, taking the width off the title.
+	// Absent is also the only honest spelling of "none": an empty value would make
+	// `var(--pbl-rollup-label, 28px)` substitute nothing rather than fall back, and a
+	// concrete `28px` here would be a second opinion about a default the stylesheet owns.
+	// (Codex, PR #153.)
+	if (!reservation) treeEl.style.removeProperty('--pbl-rollup-label');
 	treeEl.setCssProps(widths);
 	// Both decisions below used to read the shared arrays, which hold every item the model
 	// kept: a base returning twelve test notes and no plan work would be told "All 12 items
