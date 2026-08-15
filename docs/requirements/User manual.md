@@ -8,10 +8,12 @@ source: user request
 started: ""
 finished: ""
 horizon: ""
-start: ""
-due: ""
+start: 2026-10-05
+due: 2026-10-11
 risk: ""
-assignee: ""
+assignee: Alex
+dependsOn:
+  - "[[Ship the roadmap epic]]"
 ---
 
 # User manual

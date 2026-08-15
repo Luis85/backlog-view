@@ -66,6 +66,23 @@ after it on others. The view has a deferred-update path, a busy indicator with a
 delay, and a `ResizeObserver` the tests stub, all of which have branches whose arrival is a
 question of ordering rather than of input.
 
+## A different mechanism, observed rather than ruled in
+
+During the absence-counts-and-derived-names plan (2026-08-14), an implementer ran
+`npm run check` while a second `npm run check` was already running against the same
+checkout, and watched the coverage figure **collapse** — not a hundredth-of-a-percent
+swing like the samples above, a much larger drop, consistent with two `v8` processes
+writing the coverage output at once. That is neither the clock, a concurrent EDIT, nor the
+async-race candidate above: nothing in `src/` moved between the two runs, and what varied
+was which process happened to write last, not which branch a test happened to take.
+
+Recorded as an observation, not a diagnosis: nobody has traced which write actually
+collided, or checked the mechanism against whatever locking (or lack of it) the coverage
+tool holds. It does not rule the open candidate above in or out — a corrupted merge from
+two overlapping runs and a single-run async race are compatible failure modes at different
+scales, and this note's own standing advice going forward is to run the gate in the
+foreground, alone.
+
 ## How to find it
 
 Run the suite twice with the `json` coverage reporter (already configured) and diff

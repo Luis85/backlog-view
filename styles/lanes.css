@@ -29,8 +29,11 @@
 	background-color: var(--background-secondary);
 }
 
+/* `max(30px, …)` rather than a bare formula: one sub-lane wants the floor rather than the
+   27px the pitch alone gives it, and a lane with no stretches at all wants the same 30px so
+   a roster does not stagger. `--pbl-lane-sublanes` is 0 unless a header drew marks. */
 .pbl-lane-head .pbl-timeline-track {
-	min-height: 26px;
+	min-height: max(30px, calc(10px + var(--pbl-lane-sublanes, 0) * 17px));
 }
 
 .pbl-lane-name {
@@ -39,9 +42,36 @@
 	white-space: nowrap;
 }
 
+/* The label is much wider than the bare number it replaced, in a lead column the user can
+   resize (`renderLeadResize`). Refusing to shrink is the whole of "the name truncates
+   first": `.pbl-lane-name` above already ellipsizes and shrinks at the flex default, so no
+   breakpoint and no measurement is needed — and a third fit mechanism beside `columnFit`
+   and `syncToolbarFit` was refused for exactly that reason. */
 .pbl-lane-count {
+	flex: 0 0 auto;
+	white-space: nowrap;
 	color: var(--text-muted);
 	font-weight: var(--font-normal);
+}
+
+/* Beside the item count, and it does not shrink for the same reason the count does not: the
+   resource NAME ellipsizes into whatever is left, which is one declaration instead of a third
+   fit mechanism beside `columnFit` and `syncToolbarFit`. */
+.pbl-lane-away {
+	flex: 0 0 auto;
+	white-space: nowrap;
+	padding: 0 var(--size-2-2);
+	border-radius: var(--radius-s);
+	color: var(--text-muted);
+	font-weight: var(--font-normal);
+	font-size: var(--font-smaller);
+}
+
+/* Away AND booked — the row a planner has to act on, so it is the loudest thing in the
+   column. Contrast rather than colour alone: the pill still reads with no hue at all. */
+.pbl-lane-away-busy {
+	background-color: var(--background-modifier-border);
+	color: var(--text-normal);
 }
 
 /* Outside the declared roster — the bucket axis's own stray marking, in the one form a
@@ -56,10 +86,10 @@
 	color: var(--text-muted);
 }
 
-/* Muting is done to a row's CONTENT, never to the row — see `.pbl-absence-row` below for
-   the rule and what breaks without it. A context row draws no bar, so its track is empty on
-   purpose, and the muting is what says the row is here to place its children rather than to
-   be read as a plan. */
+/* Muting is done to a row's CONTENT, never to the row — see `.pbl-absence-wash` further
+   down for the rule and what breaks without it. A context row draws no bar, so its track is
+   empty on purpose, and the muting is what says the row is here to place its children rather
+   than to be read as a plan. */
 .pbl-lane-context .pbl-timeline-lead > * {
 	opacity: 0.65;
 }
@@ -156,16 +186,27 @@
    stretches fainter than the weekend shading behind them. An absence is CONTENT. The muting
    this row still wants belongs to its LEAD, below.
 
-   14px, matching `.pbl-bar`: 12px was saying "lesser" as well as "different" and only the
-   second was intended. How the hatch reads against a themed background, and against a bar
-   it overlaps, is a live-vault check. */
+   13px, near enough to `.pbl-bar`'s 14px to read as the same KIND of mark: 12px was saying
+   "lesser" as well as "different" and only the second was intended. It matched the bar
+   exactly until the mark moved into the header's own track and took the sub-lane pitch
+   below instead. How the hatch reads against a themed background, and against a bar it
+   overlaps, is a live-vault check.
+
+   One geometry for every sub-lane count, rather than a centred single and a pitched pair:
+   13px marks on a 17px pitch, the first at 7px. At one sub-lane the mark sits 7 above and 10
+   below inside the 30px floor — near enough to centred that nobody measures it, and it costs
+   a `calc` instead of a branch. */
 .pbl-absence {
+	/* `.pbl-absence-wash`'s reason below, plus one this mark alone has: `packLanes` is handed
+	   exactly this width to decide which marks overlap, so the rendered extent must BE it —
+	   under `content-box` the two borders add 2px the pack never saw. app.css sets it for
+	   everything, so this declares the premise rather than inheriting it (review, 2026-08-15). */
+	box-sizing: border-box;
 	position: absolute;
-	top: 50%;
-	transform: translateY(-50%);
+	top: calc(7px + var(--pbl-sublane, 0) * 17px);
 	left: var(--pbl-bar-left);
 	width: var(--pbl-bar-width);
-	height: 14px;
+	height: 13px;
 	border-radius: var(--radius-s);
 	border: 1px solid var(--text-muted);
 	background-image: repeating-linear-gradient(
@@ -177,42 +218,48 @@
 	);
 }
 
-/* Muted like a context row, and for a related reason: the row is here to say what cannot be
-   taken on, not to be read as part of the plan.
-
-   The MARK is deliberately not in this list any more. It used to be, and it was dimming by a
-   fifth the one thing on the row that has to be seen — muting the row's NAME says "this is
-   furniture", muting the stretch says "this is faint", and only the first was meant.
-
-   **On the row's CONTENT, never on the row.** `opacity` below 1 does two things to a row
-   here and both are wrong: it makes the row's own sticky lead column TRANSLUCENT, so a
-   scrolled-past today line and the gridlines beneath it show through the names; and it
-   creates a stacking context, which takes the lead's `z-index: 2` out of the grid's layer
-   order and drops the whole row beneath the full-height marks. Reported from a vault as
-   "the things underneath the resources columns are shining through", with the today line
-   running straight through three rows of names. The lead column is the one part of this
-   grid that must stay opaque at every scroll position, and a rule that mutes a row is one
-   `opacity` away from making it a window. */
-.pbl-absence-row .pbl-timeline-lead > * {
-	opacity: 0.8;
+/* A milestone's diamond in the milestones' own header track, stacked where two land on the
+   same drawn day — the absence sub-lane above, read by the one other mark that shares a
+   track. Only `top` is restated: `.pbl-bar`'s own `translateY(-50%)` still centres the mark
+   on it, and the diamond's `rotate(45deg)` rides in the transform this rule does not touch.
+   15px is the centre of the 30px floor, so one sub-lane draws exactly where `top: 50%` put
+   it and nothing moves on the ordinary row; each further mark takes the same 17px pitch the
+   header's `min-height` grows by. Two classes, so it outranks `.pbl-bar` wherever the two
+   files load. */
+.pbl-lane-markers .pbl-bar {
+	top: calc(15px + var(--pbl-sublane, 0) * 17px);
 }
 
-.pbl-absence-row .pbl-timeline-track {
-	min-height: 22px;
-}
+/* The away key, defined once and used by the wash, the lead swatch and the legend, so the
+   column and the marks that stand for it cannot drift apart. A `--color-*` token mixed with a
+   TEXT token: an absence is CONTENT, so no part of it is drawn from `--background-modifier-*`
+   — the rule `docs/bugs/An absence read fainter than the decoration behind it.md` records.
 
-.pbl-absence-icon {
-	display: flex;
-	align-items: center;
-	color: var(--text-muted);
+   Scoped to `.pbl-roadmap-dates`, not `.pbl-timeline`. `.pbl-timeline` looked right and is
+   wrong: it is the grid itself, nested inside `.pbl-tree` — and `.pbl-tree` and the legend
+   are SIBLINGS, both direct children of `.pbl-view` (`backlogView.ts`), so a custom property
+   declared on the grid never reached a legend swatch sitting outside it. Inheritance runs
+   DOWN the tree only; a shared ancestor has to be an ancestor of both, not of one.
+   `.pbl-roadmap-dates` is the class `backlogView.ts` already toggles on `.pbl-view` itself
+   exactly when a grid axis draws (`drawsGrid`) — the same selector `styles/roadmap.css`
+   already scopes the timeline's own layout rules through — so it is an ancestor of the
+   legend AND of the bar row's track and lead where the wash and the swatch draw. A header's
+   own stretch (`.pbl-absence`) and its legend key sit outside this rekey and keep the plain
+   `--text-muted` hatch they always drew, so neither needed to move.
+
+   `test/view/timelineBoxing.test.ts`'s "resolves a colour for the days-lost swatch" is the
+   check that would have caught the wrong scope: the token-name pairing beside it reads only
+   whether both rules NAME `--pbl-away`, which is honest about the name and blind to whether
+   any element actually inherits the value — exactly how this shipped invisible the first
+   time. */
+.pbl-roadmap-dates {
+	--pbl-away: color-mix(in srgb, var(--color-yellow) 55%, var(--text-muted));
 }
 
 /* The same unavailable days, shaded across the WORK rows of the band — OVER the bars, so a bar
    and the stretch it crosses are read on one line and the tint lands on the bar itself. Under
    them it marked the days that are free and hid the ones being looked for, which is how it
-   shipped for a few hours on 2026-08-14. A different token from the weekend layer's
-   `--background-modifier-hover`, and stronger, because being told apart from the weekend
-   banding at a glance is the whole of what was reported.
+   shipped for a few hours on 2026-08-14.
 
    `pointer-events: none` is load-bearing rather than housekeeping: on this axis each ELEMENT
    of a band is the drop target (`laneElement` in `src/view/render/timeline.ts`), since a band
@@ -228,8 +275,11 @@
    over a saturated bar is also strong enough to look like a second bar, which is the trap the
    percentage alone cannot escape — so the fill stays a tint and the boundaries are drawn. A
    reader asking "which days" is looking for two lines, and an eye finds an edge long before it
-   finds a 10% difference in fill. It shipped as a bare 18% fill and read as almost nothing
-   over an orange bar at Months zoom, in a vault, which is what added these.
+   finds a small difference in fill.
+
+   Hatched in the row's own DARK (`--background-primary`) rather than in `--pbl-away` itself,
+   so the column DARKENS whatever it crosses instead of brightening it — a light hatch over a
+   saturated bar would read as a second bar drawn on top rather than a cost this one is paying.
 
    `box-sizing` is load-bearing rather than housekeeping, exactly as it is for
    `.pbl-timeline-cell`: `--pbl-bar-width` is a count of DAYS times `dayPx`, so under the
@@ -240,7 +290,9 @@
    The percentages are the tuning knob and nothing in this repository can settle them — jsdom
    paints nothing and the browser harness draws Obsidian's DEFAULT colours, so whether this
    out-reads a themed vault's weekend banding, and whether it stays a wash rather than becoming
-   a bar, is a live-vault check. 18% → 28% was one such look; it is not a measurement. */
+   a bar, is a live-vault check. Re-keyed from `--text-muted` to `--pbl-away` on 2026-08-14 so
+   the cost this wash marks reads as the same warm fact the swatch beside it and the legend key
+   both use; the percentages themselves are unmeasured guesses, same as before the rekey. */
 .pbl-absence-wash {
 	box-sizing: border-box;
 	position: absolute;
@@ -248,17 +300,21 @@
 	bottom: 0;
 	left: var(--pbl-bar-left);
 	width: var(--pbl-bar-width);
-	background-color: color-mix(in srgb, var(--text-muted) 28%, transparent);
-	border-inline: 1px solid color-mix(in srgb, var(--text-muted) 70%, transparent);
+	background-color: color-mix(in srgb, var(--pbl-away) 16%, transparent);
+	background-image: repeating-linear-gradient(
+		45deg,
+		color-mix(in srgb, var(--background-primary) 35%, transparent) 0 4px,
+		transparent 4px 8px
+	);
+	border-inline: 1px solid color-mix(in srgb, var(--pbl-away) 85%, transparent);
 	pointer-events: none;
 }
 
-/* The glyph a bar's own row carries when it is scheduled across days its resource is away —
+/* The mark a bar's own row carries when it is scheduled across days its resource is away —
    `noteAbsenceClash`. Pinned to the lead's RIGHT edge like `.pbl-timeline-dependency-flag`
    and for that rule's own reason: left to flow after the title it quietly narrows the column
    it sits in, and against the right edge a column of flagged rows lands in one x. Both flags
-   can appear on one row and sit side by side there. Muted rather than a warning colour: a
-   plan crossing an absence is a fact to see, not an error to fix. */
+   can appear on one row and sit side by side there. */
 .pbl-away-flag {
 	display: inline-flex;
 	align-items: center;
@@ -268,7 +324,76 @@
 	color: var(--text-muted);
 }
 
-.pbl-away-flag .svg-icon {
+/* The hatched swatch that replaced the `calendar-x` glyph on 2026-08-14 — a small block of
+   the same away key the wash draws, `--pbl-away`, rather than a warning colour: a plan
+   crossing an absence is a fact to see, not an error to fix. Sized off `--icon-s` like the
+   glyph it replaced, so the flag's own width in the lead does not jump. */
+.pbl-away-swatch {
 	width: var(--icon-s);
 	height: var(--icon-s);
+	border-radius: var(--radius-s);
+	border: 1px solid color-mix(in srgb, var(--pbl-away) 85%, transparent);
+	background-color: color-mix(in srgb, var(--pbl-away) 35%, transparent);
+	background-image: repeating-linear-gradient(
+		45deg,
+		color-mix(in srgb, var(--pbl-away) 85%, transparent) 0 2px,
+		transparent 2px 4px
+	);
+}
+
+/* The days-lost TOKEN — `drawBandCollision`'s visible half of a crossing
+   (`src/view/render/timeline.ts`), appended as a plain child of the bar's OWN title label
+   (`.pbl-bar-label`, `styles/timelineFurniture.css`) rather than positioned as a mark of
+   its own. That is what makes this rule almost nothing: no `position`, no `left`, no pair
+   of custom properties to place it against — the label it lives inside already carries the
+   position and the muted colour, inherited. Two earlier shapes both had to be undone to get
+   here: a sibling of `.pbl-timeline-row` widened every row carrying one to the whole day
+   track's own width, and a sibling of the bar with its own `placeSpan` copy landed squarely
+   on top of the title whenever both existed on the same track (`renderBarLabel` places
+   "after" at the identical edge this used to). A bar too cramped for its own title is now
+   too cramped for this sentence as well, by construction: `drawBandCollision` never reaches
+   for this class at all where `renderBarLabel` returned no label to append it to.
+
+   `flex: 0 0 auto` is load-bearing, not tidiness: `.pbl-bar-label` is a flex row sharing
+   this token with `.pbl-bar-label-title` (`styles/timelineFurniture.css`), and without a
+   refusal to shrink here the flex algorithm would take space from EITHER child impartially
+   — including this one, which has no `text-overflow` of its own to fall back on and would
+   just clip mid-token. The title is the one built to give up room; this is not.
+
+   `margin-left` rather than a leading space baked into the string: a leading space in a
+   text node is not reliably preserved (whitespace collapsing) and is invisible to a reader
+   of the code either way, where a margin states the gap as what it is. Without it the
+   label's own text and this span run together as one word — `Work3d lost`. */
+.pbl-days-lost {
+	flex: 0 0 auto;
+	margin-left: var(--size-4-1);
+	color: var(--text-muted);
+}
+
+/* A resource with nothing on screen under them: still a row, because a roster exists to show
+   who is on it, but one step quieter than one that has something to say. CONTRAST rather than
+   opacity — see the context row's muting above for what a row-level opacity costs. */
+.pbl-lane-quiet .pbl-timeline-lead,
+.pbl-lane-quiet {
+	background-color: var(--background-primary-alt);
+}
+
+.pbl-lane-quiet .pbl-lane-name {
+	color: var(--text-muted);
+	font-weight: var(--font-normal);
+}
+
+/* Where a folded band's work lies. Decoration only, so `opacity` here dims nothing that
+   carries meaning — the rule it looks like it breaks is about a ROW's opacity taking the
+   sticky lead column with it. */
+.pbl-lane-rail {
+	position: absolute;
+	bottom: 0;
+	left: var(--pbl-bar-left);
+	width: var(--pbl-bar-width);
+	height: 3px;
+	border-radius: var(--radius-s);
+	background-color: var(--text-accent);
+	opacity: 0.75;
+	pointer-events: none;
 }

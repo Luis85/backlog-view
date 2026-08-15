@@ -91,19 +91,19 @@ catalog migration and was not part of that run.
 - The legend strip above the grid: one swatch per configured state, then today, then
   the milestone — legible over the header, and a bar's colour actually matches its own
   swatch. **Never checked.**
-- The resources axis's absences, all four of them colour or crowding questions no check here
-  can reach ([[An absence read fainter than the decoration behind it]]): whether the
-  `.pbl-absence-wash` at 18% of `--text-muted` out-reads a themed vault's weekend banding, and
-  whether it still reads as *shading* rather than as a second bar beneath the one it sits
-  under; whether the hatch at `--text-muted` holds against a community theme's background and
+- The resources axis's absences, colour or crowding questions no check here
+  can reach ([[An absence read fainter than the decoration behind it]]): whether the hatch at
+  `--text-muted` holds against a community theme's background and
   against a bar it overlaps; whether two glyphs in one lead — the dependency flag and the
   absence flag, which can both appear on one row — crowd the title at a narrow lead width; and
   whether the `Unavailable` swatch's finer hatch reads as hatch at 10px rather than as a
   half-filled square. The stylesheet checks behind these say which token each rule names and
   nothing about what it resolves to, and per ADR 0020 the harness settles layout and not
-  colour. **Checked in a vault 2026-08-14 at 385 results, in light**: the hatch and the wash
-  both out-read the weekend banding, which is the first question answered and the one the whole
-  increment existed for. It also found the two defects in
+  colour. **Checked in a vault 2026-08-14 at 385 results, in light**: the hatch out-reads the
+  weekend banding, which is the first question answered and the one the whole
+  increment existed for. The wash was answered in the same look and that answer is retired —
+  what was on screen was 28% of `--text-muted`, re-keyed the same day to the 16% `--pbl-away`
+  filed as never checked below. It also found the two defects in
   [[An absence read fainter than the decoration behind it]]'s own closing section — the wash
   under the bars rather than over them, and a header glyph competing with the Add absence
   button, and the `Unavailable` swatch reading as a ⊘ among five colour dots — none of which
@@ -112,6 +112,68 @@ catalog migration and was not part of that run.
   the first of those: `demoVault()`
   carries Dana's `Single sign-on` (2026-07-20 → 2026-08-15) running straight through her absence
   (2026-08-10 → 2026-08-14), plus Sam, whose row exists only because he is away.
+- **A bar dragged by its BODY into another person's row actually lands there** — the band
+  under the pointer highlights while the drag is held, and the release writes the new
+  assignee. Nothing in the suite can answer it: jsdom hit-tests nothing, so a drop test
+  dispatches at the element it names and no preview can be in the way. Both defects this
+  gesture has had were invisible to every green check —
+  [[A release that crossed a render wrote nothing]] and
+  [[The drag preview took the drop it was previewing]] — and the second was found only
+  because the end grips, which never ask which row they landed in, kept working. Drag one
+  row down and two rows down, and drag right and left within one row. **Never checked.**
+- The band header's own readout (`renderAwayPill` beside the item count, both added
+  2026-08-14, reshaped the same day) at the default lead width on a real roster: whether an
+  item count and a `3 wk away` pill together crowd the resource name, and where the
+  ellipsis falls — `.pbl-lane-count` refuses to shrink, so the name is what gives. **Never
+  checked.**
+- The packed header (`packAbsences`, added 2026-08-14) at two sub-lanes and at three:
+  whether two marks that share a day read as two distinct marks rather than one occluding the
+  other, and whether the growth crowds the row below it. Dana's fourth stretch (added
+  2026-08-14, overlapping her running one) gives the harness a real two-sub-lane header to
+  look at; nothing in the fixture reaches three. **Never checked.**
+
+  Whether the header *grows to hold every sub-lane* was on this list and is off it: that one
+  is arithmetic rather than appearance — one pitch in `.pbl-absence`'s `top` and the same
+  pitch in the header track's `min-height` — and `test/view/timelineBoxing.test.ts` ties the
+  two together, with `test/view/resourceAbsences.test.ts` asserting the index each mark
+  actually carries. A look would answer it more slowly and less reliably than the suite does.
+- The milestones' own row (added 2026-08-15, [[Milestones out of the resource rows]]), which
+  is the same packing question asked of a mark that is 12px and rotated: whether two
+  diamonds stacked on one day read as two dates rather than as one mark drawn oddly, and
+  whether a mark a day or two from its neighbour at a coarse zoom — which stacks NOT, by
+  decision — still reads as two. That second one is the open half of 2e and the reason it is
+  written here rather than left to the suite. **Never checked.**
+- A milestone's own connector on that row, which is the only route this axis has to making
+  anything wait on a date (2d): whether the dot clears the rotated diamond it hangs off
+  rather than sitting inside its tip, whether hovering a 12px mark is enough to find a
+  control that is invisible until then, and whether a diamond marked `pbl-link-illegal`
+  mid-drag reads as refused at that size — the dimming was tuned against a full-width bar.
+  **Never checked.**
+- An arrow drawn TO a stacked milestone (added 2026-08-15, 2e): whether it visibly meets the
+  diamond it names rather than the one beside it. jsdom measures nothing, so the suite can
+  only say which ELEMENT the layer reads a Y off — the picture at 17px of separation, with
+  two arrows to two marks on one day, is a vault's answer. **Never checked.**
+- The 16% `--pbl-away` wash (re-keyed from `--text-muted` on 2026-08-14) over a saturated
+  bar, in both schemes: whether it still reads as shading rather than as a second bar now
+  that it is keyed to a warm colour instead of a neutral one, and whether the two edges
+  read distinctly from the fill between them. **Never checked.**
+- The days-lost token's suppression, in `drawBandCollision`: whether `bar.label === null` —
+  the bar's own reserve-and-flip decision, the only gate this token has — actually leaves
+  enough room at real zooms, from Weeks down to Days, or whether a token that fits the check
+  crowds a title that was still going to draw. **Never checked.**
+- `.pbl-lane-quiet` (added 2026-08-14), the contrast step a declared-but-empty band draws
+  instead of a zero: whether it reads as *quiet* — a row with nothing to say — rather than
+  as *disabled*, which is the same distinction the shelf's own dimmed cards already have to
+  hold. **Never checked.**
+- The long derived absence name (`absenceTitle`, added 2026-08-14) on the mark's own
+  tooltip, beside the dates it already states there — whether the two together crowd each
+  other, and whether the tooltip is reachable at all on a mark this small. **Never
+  checked.**
+- Whether a screen reader makes anything of the header's one concatenated
+  `aria-description` — every stretch's name and dates joined into a single string since
+  2026-08-14 (4n in [[Resource absences]]), with no structure and no way to move between
+  them: does it read as a list, a run-on sentence, or nothing a reader stops for. **Never
+  checked.**
 - The lead column's resize grip, which is where this feature keeps everything jsdom
   cannot reach: the 6px strip is findable at all (cursor and hover feedback), it shows a
   focus ring when tabbed to, a real touch drag resizes it rather than panning the

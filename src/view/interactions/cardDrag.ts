@@ -233,11 +233,45 @@ export class CardDragController {
 	 */
 	private readonly token = Symbol('pbl-card-drag');
 	private readonly unmarkView: () => void;
+	private readonly flushUpdate: () => void;
+	/** A gesture of this view's is in flight — the monitor's, so it outlives a render. */
+	private dragging = false;
+	private pendingUpdate = false;
 
-	constructor(host: BacklogViewHost, viewEl: HTMLElement) {
+	constructor(host: BacklogViewHost, viewEl: HTMLElement, flushUpdate: () => void) {
 		this.host = host;
 		this.viewEl = viewEl;
+		this.flushUpdate = flushUpdate;
 		this.unmarkView = this.markViewWhileDragging();
+	}
+
+	/**
+	 * Record a data update, answering whether it has to wait — the write gate's
+	 * `deferUpdate`, for the other thing a render pass destroys.
+	 *
+	 * `onRenderStart` unhooks every registration this controller made, and pragmatic
+	 * resolves a DROP TARGET out of its registry at dispatch time exactly as it does a
+	 * source (`notifyCurrent` in `make-drop-target.js`). So a release whose recorded
+	 * target was torn down mid-flight reaches no `onDrop` at all: the gesture writes
+	 * nothing, says nothing, and looks like a drag the user misaimed. The browser hides it
+	 * further — with no registered target under the pointer the adapter stops calling
+	 * `preventDefault` on `dragover`, so no `drop` event fires in the first place. It
+	 * recovers on the next `dragover` over a re-registered element, which is why it is
+	 * intermittent rather than permanent, and why it bites hardest just after a view opens,
+	 * when the query is still settling and updates arrive unprompted.
+	 *
+	 * Waiting costs nothing the payload was not already built for: a `CardSource` captures
+	 * its span and shape at drag start on purpose, `resolve` re-reads the note at drop
+	 * time, and the writer checks every stated baseline against the live frontmatter. The
+	 * flush runs from the monitor's `onDrop`, which fires AFTER the drop targets' — so the
+	 * batch the release planned is already in flight when the rebuild happens — and which
+	 * is told however the drag ends, a drop, a cancel or the library's broken-drag
+	 * fallback, so a deferred update can never be stranded.
+	 */
+	deferUpdate(): boolean {
+		if (!this.dragging) return false;
+		this.pendingUpdate = true;
+		return true;
 	}
 
 	/**
@@ -255,8 +289,7 @@ export class CardDragController {
 	 * active set from the moment it starts, and so is told however the drag ends: a drop,
 	 * a cancel, or the library's broken-drag fallback for a source removed mid-flight.
 	 *
-	 * The failure this fixes is silent and permanent. The drop still LANDS — the target
-	 * under the pointer is a live element the new pass registered — so nothing looks
+	 * The failure this fixes is silent and permanent. Nothing looks
 	 * wrong until the pane stops responding: a stale class leaves
 	 * `.pbl-dragging .pbl-timeline-drop { pointer-events: auto }` standing, and that
 	 * full-grid overlay then swallows every pointer event for the life of the view. No
@@ -268,8 +301,17 @@ export class CardDragController {
 	private markViewWhileDragging(): () => void {
 		return monitorForElements({
 			canMonitor: ({ source }) => this.mine(source.data, 'move'),
-			onDragStart: () => this.viewEl.addClass('pbl-dragging'),
-			onDrop: () => this.viewEl.removeClass('pbl-dragging'),
+			onDragStart: () => {
+				this.dragging = true;
+				this.viewEl.addClass('pbl-dragging');
+			},
+			onDrop: () => {
+				this.dragging = false;
+				this.viewEl.removeClass('pbl-dragging');
+				if (!this.pendingUpdate) return;
+				this.pendingUpdate = false;
+				this.flushUpdate();
+			},
 		});
 	}
 

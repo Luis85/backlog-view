@@ -102,6 +102,49 @@ function utc(date: CivilDate): number {
 }
 
 /**
+ * These ranges with every overlap combined away — sorted, both ends stated, and each
+ * covering a continuous run of days.
+ *
+ * The one place day ranges are combined, and that is the point rather than tidiness: two
+ * quantities in this plugin are a union of the same absences — how many days a bar loses,
+ * and how long a resource is away — and computing it twice is how two numbers about one
+ * set of stretches come to disagree.
+ *
+ * A one-ended range borrows its other end, `barGeometry`'s own borrowing, so a range is
+ * judged at the day it actually draws rather than treated as unbounded in the direction it
+ * has no date for.
+ *
+ * Ranges are merged when they share a day OR when they are adjacent. The second half
+ * changes no COUNT — 1–5 and 6–9 cover nine days whether that is one range or two — so it
+ * is done for the caller that wants the RANGES: a load rail drawn as two strips with no gap
+ * between them is one strip with a seam in it.
+ */
+export function mergeSpans(spans: DateSpan[]): Array<{ start: CivilDate; target: CivilDate }> {
+	const ranges = spans
+		.map((span) => ({ start: (span.start ?? span.target) as CivilDate, target: (span.target ?? span.start) as CivilDate }))
+		// Ascending by start: `daysBetween(b, a)` is a − b, which is the sign a comparator wants.
+		.sort((a, b) => daysBetween(b.start, a.start));
+	const merged: Array<{ start: CivilDate; target: CivilDate }> = [];
+	for (const range of ranges) {
+		const last = merged[merged.length - 1];
+		// `<= 1` rather than `<= 0`: a gap of one day is no gap at all once both ends are
+		// inclusive, and the range ending later of the two is the one to keep — a short range
+		// wholly inside a long one must not shorten it.
+		if (last !== undefined && daysBetween(last.target, range.start) <= 1) {
+			if (daysBetween(last.target, range.target) > 0) last.target = range.target;
+			continue;
+		}
+		merged.push({ ...range });
+	}
+	return merged;
+}
+
+/** How many days these ranges cover between them, counting a shared day once. */
+export function unionDays(spans: DateSpan[]): number {
+	return mergeSpans(spans).reduce((total, range) => total + daysBetween(range.start, range.target) + 1, 0);
+}
+
+/**
  * The earlier of two optional dates — absence is not a bound, so a null end
  * yields the other. Ties keep `a`, which is the accumulator at every call site
  * and makes the fold stable.

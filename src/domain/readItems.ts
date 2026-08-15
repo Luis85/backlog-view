@@ -206,7 +206,7 @@ function addItem(
 	// `getFileCache` call site in this layer and `test/domain/modelCost.test.ts` pins one
 	// read per note loaded, so a second reader would either double that count or have to
 	// read through `BasesEntry.getValue()`. The cache is open on this line.
-	if (isAbsenceType(typeName)) return divertAbsence(store, file, fm, settings);
+	if (isAbsenceType(typeName)) return divertAbsence(store, file, entry, fm, settings);
 	// Every field this note can answer for itself, and no others: the ten that used to
 	// be initialised here as placeholders now belong to the phases that compute them.
 	const item: RawItem = {
@@ -266,13 +266,23 @@ function addItem(
  * so it can never pull one in and `loadOutsideParents` must never be handed one. A note
  * whose range this axis cannot trust keeps nothing at all — the divert is the TYPE's and
  * unconditional, while what is kept is `readAbsence`'s question.
+ *
+ * A note the Base never RETURNED keeps nothing either, and that is the context-row rule
+ * rather than a rule of this axis: an `outsideFilter` note is never a source of anything
+ * derived from the results, counts included. One can still arrive here — a result naming an
+ * absence as its parent, or sitting under one as a folder note, pulls it in through
+ * `loadOutsideParents` — and until 2026-08-14 it minted a band, drew a stretch and was
+ * counted on the header. The check is on the KEEPING rather than on that path, so a future
+ * caller handing this function an entry-less note is refused too.
  */
 function divertAbsence(
 	store: RawStore,
 	file: TFile,
+	entry: BasesEntry | null,
 	fm: Record<string, unknown> | undefined,
 	settings: BacklogSettings,
 ): null {
+	if (entry === null) return null;
 	const absence = readAbsence(file, fm, settings);
 	if (absence) store.absences.push(absence);
 	return null;

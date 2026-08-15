@@ -4,8 +4,10 @@
  * Extracted from `test/harness/themeStub.test.ts`, which asserts with it — the parser and
  * the assertions had grown into one file against the 450-line budget, and they are two
  * subjects: what a sheet SAYS, and whether the harness's two sheets between them answer
- * what `styles/` asks. Nothing else imports this yet; it lives here because a helper is
- * where shared test machinery goes, not because a second caller is expected.
+ * what `styles/` asks. `test/view/timelineBoxing.test.ts` is now a second caller, asking
+ * the same question of a real Obsidian token (`test/harness/obsidian.css`) and a plugin
+ * custom property's own declared scope — a name being declared is not it being reachable
+ * from where a swatch actually sits, and this module is what tells the two apart.
  *
  * It is a reader, not an engine. What it models is what the harness page needs and what
  * review found it getting wrong: the element a rule matches, the at-rule above it, the

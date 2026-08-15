@@ -4,15 +4,15 @@ import { renderBarLabel } from './barLabel';
 import { bandMount, progressNote, renderBarProgress } from './barProgress';
 import { rollupReport, RowContext } from './columns';
 import {
+	barClasses,
+	drawBandCollision,
+	drawMarkerDiamonds,
 	drawnCards,
 	drawnSpans,
-	edgeClasses,
-	noteAbsenceClash,
-	renderAbsenceWash,
-	renderLaneAbsence,
 	renderLaneContextRow,
 	renderLaneHead,
 	renderLaneRowDescription,
+	spanText,
 	TimelineEntry,
 } from './lanes';
 import { createCard, wireCardActivation } from './board';
@@ -20,11 +20,9 @@ import { foldOnClick, renderBadge, renderChevron, renderTitleText } from './rows
 import { renderMilestoneLines } from './milestoneLines';
 import { dependencyNote, NO_CONFLICTS, renderDependencyArrows } from './timelineArrows';
 import { CardDragController } from '../interactions/cardDrag';
-import { dependenciesAvailable } from '../interactions/dependencies';
 import { wireBarLink, wireLinkPreview } from '../interactions/linkDrag';
 import { effectiveLeadWidth, renderLeadResize } from '../interactions/timelineLeadResize';
 import { BacklogViewHost, BarColors, DrawnColors } from '../host';
-import { crossedAbsences } from '../../domain/absences';
 import { BacklogItem } from '../../domain/model';
 import { barHolds, ShelfCard, TimelineBar, TimelineRow } from '../../domain/bars';
 import { dependencyArrows } from '../../domain/dependencies';
@@ -38,7 +36,6 @@ import {
 	WorkflowReading,
 } from '../../domain/board';
 import {
-	BarGeometry,
 	barGeometry,
 	daysBetween,
 	formatCivil,
@@ -161,6 +158,18 @@ export interface TimelineDrawing {
 	 */
 	shelf: ShelfCard[];
 	/**
+	 * The resources axis's own lanes, so the window can be widened to hold every stretch
+	 * they carry (`drawnSpans`) even though a stretch is no longer an entry of its own —
+	 * see that function's doc comment for the bug this exists to keep fixed. Empty on the
+	 * dated axis, which has no lanes and therefore nothing here to widen the window for.
+	 *
+	 * NOT a second way to ask which axis is on screen: `rows` below is still derived from
+	 * `laneElement` alone, so there is only ever one discriminator for that question. A
+	 * dated-axis caller that happened to pass lanes here would widen its own window for
+	 * nothing, since it has no bands to draw them into either way.
+	 */
+	lanes: ResourceLane[];
+	/**
 	 * Report one element of a resource's band, and which row it belongs to. Null on the
 	 * dated axis, which has no rows to belong to — and that null is the one thing the two
 	 * grid axes do not share, so everything downstream that differs between them reads
@@ -190,13 +199,25 @@ export function renderTimeline(
 	// differs between the axes, so the overlay, the mark's pointer events and a bar's row
 	// handle cannot end up disagreeing about which axis is on screen.
 	const rows = drawing.laneElement !== null;
-	// Every bar this grid will draw, in draw order — the window, the milestone lines and
-	// the dependency arrows are all computed from it and are axis-independent. What a
-	// collapsed row hides, it hides from the whole grid: the window is the drawn spans,
-	// exactly as it already is for the spans hiding completed work removes.
-	const bars = entries.flatMap((entry) => (entry.kind === 'row' ? [entry.row.bar] : []));
-	// Every span this grid DRAWS, which is not the same list as its bars — see `drawnSpans`.
-	const window = timelineWindow(drawnSpans(entries), today);
+	// Every bar THIS LIST draws, in draw order — the milestone lines and the dependency
+	// arrows are both computed from it and are axis-independent. What a collapsed row
+	// hides, it hides from this list: a row-collapsed subtree's bar is off it, exactly as
+	// the state filter hiding completed work already takes one off it.
+	// The milestones' row draws no `'row'` entry — one header holds every diamond — and its
+	// bars belong on this list all the same: the lines and the arrows are the two things
+	// computed from it, and both are exactly what a marker contributes to a grid. Left off,
+	// the resources axis would draw diamonds no line crosses and drop every arrow drawn to
+	// one. It is NOT the card list for that reason — see `cards` below.
+	const bars = entries.flatMap((entry) =>
+		entry.kind === 'row' ? [entry.row.bar] : entry.kind === 'lane' && entry.lane.markers ? entry.lane.bars : [],
+	);
+	// Every span this grid DRAWS, which is NOT the list above — see `drawnSpans`. A folded
+	// BAND's own bars are in it even though none of its rows are in `entries`, because the
+	// rail draws them where the entries list draws nothing; a row-collapsed SUBTREE inside
+	// an open band draws nothing either way and is correctly absent from both lists. A mark
+	// the window was never widened for is clamped to the edge and painted on days it does
+	// not cover.
+	const window = timelineWindow(drawnSpans(entries, drawing.lanes), today);
 	// Resolved ONCE, here, and threaded everywhere `TIMELINE_LEAD_PX` used to be read
 	// directly: the CSS width below and the TS arithmetic that places the today line,
 	// the milestone lines and the gridlines all have to agree on the same number, or a
@@ -254,6 +275,7 @@ export function renderTimeline(
 		leadWidth,
 	});
 	const tracks = new Map<string, HTMLElement>();
+	const anchors = new Map<string, HTMLElement>();
 	// Computed ONCE, before any row exists, and from `bars`/`shelf` alone — never from
 	// what the arrow layer below goes on to draw. That is what makes both consumers
 	// window-independent: `dependencyArrows` never filters by the drawn window, so an
@@ -280,16 +302,17 @@ export function renderTimeline(
 		scroller: grid,
 		dnd,
 		tracks,
+		anchors,
 		palettes,
 		conflictedPrereqs: dependencies.conflicts,
 	};
-	const drawn: DrawnColors = { done: false, milestone: milestoneLines, accent: false, absence: false };
+	const drawn: DrawnColors = { done: false, milestone: milestoneLines, accent: false, absence: false, daysLost: false };
 	drawEntries(entries, { ctx, mounts, window, drawing, drawn });
 	// After every row exists, never before: an edge's arrow anchors on the ROWS the
 	// prerequisite and the dependent actually drew, and its Y comes from where those
 	// rows really landed rather than a guessed row height — see `renderDependencyArrows`,
 	// which draws from the same `dependencies.arrows` list computed above.
-	renderDependencyArrows({ layer: arrowLayer, content, tracks }, window, dependencies.arrows, { scale, leadWidth });
+	renderDependencyArrows({ layer: arrowLayer, content, anchors }, window, dependencies.arrows, { scale, leadWidth });
 	const todayLeft = leadWidth + todayOffset(window, today, scale);
 	const line = content.createDiv({ cls: 'pbl-today', attr: { 'aria-hidden': 'true' } });
 	line.setCssProps({ '--pbl-today-left': `${todayLeft}px` });
@@ -313,6 +336,14 @@ export function renderTimeline(
 	// never can.
 	const overlay = rows ? null : content.createDiv({ cls: 'pbl-timeline-drop', attr: { 'aria-hidden': 'true' } });
 	return {
+		// Read from the ENTRIES, which is what keeps the milestones' row off this list
+		// without a rule of its own: that row draws every marker into its own header track
+		// and produces no `'row'` or `'context'` entry at all. A diamond in a shared header
+		// is not an `option` and has no element the roving selection could point
+		// `aria-activedescendant` at, so listing one would put the keyboard walk on a stop
+		// that does not exist. What that costs — no keyboard route to a marker on this axis
+		// — is recorded in [[Milestones out of the resource rows]] 3c; the dated axis still
+		// draws each one as its own selectable row.
 		cards: drawnCards(entries),
 		todayLeft,
 		scroller: grid,
@@ -342,18 +373,43 @@ interface EntryPass {
 }
 
 /**
- * Draw every entry the axis handed over, in order — the one place the four entry kinds
+ * Draw every entry the axis handed over, in order — the one place the three entry kinds
  * are told apart.
  *
  * Its own function rather than a loop inside `renderTimeline`, which is at the
  * complexity budget `npm run analyze` enforces: the grid's own setup (the window, the
  * header, the lines, the layers, the overlay) and the walk over what it contains are two
- * jobs, and the fourth entry kind is what made keeping them in one measurably too much.
+ * jobs, and telling the entry kinds apart is what made keeping them in one measurably too
+ * much.
  *
- * **The stripe counts drawn ROWS only.** A lane header is chrome and an absence is the
- * row's own furniture, so neither reaches the counter — counting either would flip the
- * parity of every work row beneath it.
+ * **The stripe counts drawn ROWS only.** A lane header is chrome — its own stretches
+ * included, since 2026-08-14 — so it never reaches the counter, and counting it would flip
+ * the parity of every work row beneath it.
  */
+/**
+ * One band's header, and whatever that header itself draws — its resource's stretches, its
+ * load rail while it is folded, and on the milestones' row every diamond on the axis.
+ *
+ * Its own function rather than three more lines inside `drawEntries`, which is at the
+ * cognitive budget `npm run analyze` enforces just telling the three entry kinds apart: a
+ * header that draws marks of its own is a fourth job, and the walk should go on asking only
+ * what kind of entry it is holding.
+ *
+ * The legend keys what the grid actually PAINTED — asked of the DOM the header just
+ * produced, not of `entry.lane.absences` (a MODEL predicate `renderLaneAbsences`' own early
+ * return could drift out of step with by hand). Since 2026-08-14 the header paints its own
+ * resource's stretches whether the band is open or shut, so this is the one place left to
+ * ask.
+ */
+function drawBand(entry: { lane: ResourceLane; collapsed: boolean }, pass: EntryPass): HTMLElement {
+	const { ctx, mounts, window, drawn } = pass;
+	const { scale, today } = pass.drawing;
+	const { head, track } = renderLaneHead(ctx, mounts.content, entry, { window, scale, today });
+	if (head.querySelector('.pbl-absence') !== null) drawn.absence = true;
+	if (entry.lane.markers) drawMarkerDiamonds(ctx, mounts, { head, track, lane: entry.lane }, { window, scale }, drawn);
+	return head;
+}
+
 function drawEntries(entries: TimelineEntry[], pass: EntryPass): void {
 	const { ctx, mounts, window, drawn } = pass;
 	const { scale, laneElement } = pass.drawing;
@@ -362,10 +418,8 @@ function drawEntries(entries: TimelineEntry[], pass: EntryPass): void {
 	// Both things a line of a band owes, from the ONE place a line is finished: whose row
 	// it is in (the header is a sibling div and cannot label what follows it) and its
 	// membership of the band, which has no container to name and so is a LIST of siblings.
-	// Together, because separately is how an absence stretch came to draw itself into a
-	// band without joining it and be a dead spot in the middle of its own row — see
-	// `docs/bugs/An absence stretch is a dead spot in its own band.md`. `named` is false
-	// for the header alone, which already carries the resource's name as its own content.
+	// `named` is false for the header alone, which already carries the resource's name as
+	// its own content.
 	const inBand = (el: HTMLElement, named = true): void => {
 		if (!lane) return;
 		if (named) renderLaneRowDescription(el, lane.name);
@@ -374,13 +428,7 @@ function drawEntries(entries: TimelineEntry[], pass: EntryPass): void {
 	for (const entry of entries) {
 		if (entry.kind === 'lane') {
 			lane = entry.lane;
-			inBand(renderLaneHead(ctx, mounts.content, entry.lane, entry.collapsed), false);
-			continue;
-		}
-		if (entry.kind === 'absence') {
-			// The legend keys what the grid DREW, and this is the one place a stretch is drawn.
-			drawn.absence = true;
-			inBand(renderLaneAbsence(ctx, mounts.content, entry.absence, { window, scale }));
+			inBand(drawBand(entry, pass), false);
 			continue;
 		}
 		let row: HTMLElement;
@@ -393,10 +441,7 @@ function drawEntries(entries: TimelineEntry[], pass: EntryPass): void {
 			// the stretch's own line already carries the mark, a context row makes no
 			// positional claim at all, and on the dated axis `lane` is null because there is
 			// no band to be a member of.
-			if (lane) {
-				renderAbsenceWash(bar.track, lane.absences, { window, scale });
-				noteAbsenceClash(bar.row, bar.lead, crossedAbsences(entry.row.bar.span, lane.absences));
-			}
+			if (lane) drawBandCollision(bar, entry.row, lane, { window, scale }, drawn);
 		}
 		inBand(row);
 		// Assigned at render because CSS has no nth-of-class, and nth-child would
@@ -405,6 +450,9 @@ function drawEntries(entries: TimelineEntry[], pass: EntryPass): void {
 		drawnRows++;
 	}
 }
+
+
+
 
 /**
  * The cell tiers are presentational, like the tree's column header: every row
@@ -477,6 +525,16 @@ interface BarRowMounts {
 	dnd: CardDragController;
 	/** Filled as each row draws, so a move's preview can be mounted in its own row. */
 	tracks: Map<string, HTMLElement>;
+	/**
+	 * What an item OCCUPIES vertically, by path — the element `renderDependencyArrows`
+	 * reads a Y off. A second map beside `tracks` rather than the track's own parent,
+	 * because the two questions have one answer on a bar row and two on the milestones'
+	 * row: a bar row's track is its own, so its parent IS the row, while every marker
+	 * shares one header track and each diamond sits on its own sub-lane inside it. Read
+	 * through the track there, every arrow anchored on the header's centre — between two
+	 * stacked diamonds and on neither.
+	 */
+	anchors: Map<string, HTMLElement>;
 	/** Which of a dependent's prerequisites conflict, by the dependent's path — see `DependencyArrows.conflicts`. */
 	conflictedPrereqs: ReadonlyMap<string, ReadonlySet<string>>;
 	/** See `TimelineDrawing.palettes`. */
@@ -497,7 +555,7 @@ function renderBarRow(
 	window: TimelineWindow,
 	entry: TimelineRow,
 	scale: TimelineScale,
-): { row: HTMLElement; colors: BarColors; lead: HTMLElement; track: HTMLElement } {
+): { row: HTMLElement; colors: BarColors; lead: HTMLElement; track: HTMLElement; label: HTMLElement | null } {
 	const bar = entry.bar;
 	// The item's OWN workflow, read ONCE and threaded through the three things on this row
 	// that key a colour or say one in words: the slot class, the hidden state words, and
@@ -540,6 +598,10 @@ function renderBarRow(
 
 	const track = row.createDiv({ cls: 'pbl-timeline-track' });
 	mounts.tracks.set(bar.item.file.path, track);
+	// A bar row occupies the whole row, so the row is what an arrow anchors on — the same
+	// element the track's parent used to supply, said directly now that the milestones'
+	// row needs a different answer. See `BarRowMounts.anchors`.
+	mounts.anchors.set(bar.item.file.path, row);
 	const geometry = barGeometry(window, bar.span);
 	// Asked ONCE, of `barHolds`, shared by the class that advertises a body drag and
 	// the wiring that actually registers one — so what the cursor promises and what a drop
@@ -591,8 +653,8 @@ function renderBarRow(
 		el.dataset.pblHold = 'body';
 		mounts.dnd.wireCard(el, bar.item, 'body', () => mounts.scroller.scrollLeft);
 	}
-	renderConnector(ctx, mounts, { row, barEl: el, geometry }, bar);
-	renderBarLabel(track, bar, geometry, scale, window);
+	wireBarLink(ctx, { dnd: mounts.dnd, content: mounts.content, row, barEl: el, outside: geometry.outside, item: bar.item });
+	const label = renderBarLabel(track, bar, geometry, scale, window);
 	renderBarProgress(ctx.host, { row, bar: bandMount(el, drawnWidthPx, geometry), lead }, bar.item);
 	renderRowFacts(row, ctx, bar, { dates, own, conflictedPrereqs: mounts.conflictedPrereqs, lead });
 	// The one caller that passes a fold: this row has a chevron, so "clicking an item
@@ -619,7 +681,7 @@ function renderBarRow(
 		// is still exactly the case where the state is outside its own vocabulary.
 		accent: !own.done && paint === null && !milestoneDrawn,
 	};
-	return { row, colors, lead, track };
+	return { row, colors, lead, track, label };
 }
 
 /**
@@ -762,109 +824,7 @@ function stateNote(stateKey: string, reading: WorkflowReading): string {
 	return reading.value ?? '';
 }
 
-/** Where this row's connector is drawn, and what it is drawn against. Grouped rather
- *  than passed flat: `max-params` is 5 and this would be the sixth. */
-interface ConnectorPlace {
-	row: HTMLElement;
-	barEl: HTMLElement;
-	geometry: BarGeometry;
-}
 
-/**
- * The dependency connector — a HANDLE, not a grip, and the distinction decides both of
- * its rules. `barHolds` withholds a grip wherever no end is the note's own, because a
- * grip writes a DATE and needs a baseline to move from; this writes a link and claims no
- * date, so an inferred bar offers one and a bar clipped by the window offers one at the
- * clamped edge. A handle can sit at a boundary without asserting anything is there,
- * which is what a diamond cannot do.
- *
- * The draw condition (`dependenciesAvailable && !geometry.outside`) is a strict subset of
- * `wireBarLink`'s own gate (`dependenciesAvailable`): a bar can never draw a connector
- * without a target being wired for it. The feature being off refuses both;
- * `geometry.outside` is the one case where a target is still wired for a bar with no dot
- * — a bar wholly outside the window has no on-screen end to draw one from, but is still
- * something another bar's link may legitimately point at. An `outsideFilter` row needs no
- * guard: `deriveBars` routes it to context before any span is computed, so it never has a
- * bar to hang one on — the same reason [[Arrows between bars]] 1c needs none.
- *
- * What that predicate MEANS changed on 2026-08-11 and the shape did not. It used to be
- * the bound key, so an unnamed property meant no connector anywhere
- * ([[Draw a dependency between bars]] 1c) — which made the gesture unreachable in exactly
- * the base that had never named the property, since Obsidian's picker cannot offer a
- * property no note carries. The write binds the key now, so the handle is what leads to a
- * bound property rather than something a bound property leads to
- * ([[Bind a property by using it]]).
- *
- * `tabindex="-1"` like every other per-row control: the pane is one tab stop and the
- * arrows move the selection. The context menu's Depends on… is the keyboard path, which
- * is what SC 2.5.7 requires of a gesture and is why it shipped first.
- */
-function renderConnector(ctx: RowContext, mounts: BarRowMounts, place: ConnectorPlace, bar: TimelineBar): void {
-	const { row, barEl, geometry } = place;
-	const dot =
-		!dependenciesAvailable(ctx.host) || geometry.outside
-			? null
-			: barEl.createEl('button', {
-					cls: 'pbl-bar-connector',
-					attr: { 'aria-label': `Draw a dependency from ${bar.item.title}`, tabindex: '-1' },
-				});
-	wireBarLink(ctx, { dnd: mounts.dnd, content: mounts.content, row, barEl, connector: dot, item: bar.item });
-}
-
-/**
- * A dateless end is styled open — the plan's gap stays visible instead of being
- * filled in — and an end past the window's edge is styled the same way: both say
- * "this continues beyond what is drawn", and the tooltip carries the exact dates.
- *
- * An inferred bar is a different claim: it HAS dates, but the view drew them from
- * below rather than reading them off the note, so it is outlined rather than
- * filled and never reads as a plan somebody stated.
- *
- * ponytail: one class covers "inferred" and "inferred, some children undated" —
- * an inferred end is uncertain by construction. Split them when someone can
- * describe the two pixels apart.
- */
-function barClasses(bar: TimelineBar, geometry: BarGeometry, hasBodyHold: boolean): string {
-	const holdable = hasBodyHold ? ' pbl-bar-holdable' : '';
-	// Nothing of it is in view. Drawing the clamp would put a diamond at a date the item
-	// does not have, and a diamond IS the claim that this is the date — so the row carries
-	// only the direction it lies past, in the same open-end vocabulary a clipped bar uses.
-	// The exact date is in the bar's tooltip and in the row's accessible name.
-	// What the WINDOW does to this mark is `edgeClasses`, shared with the absence stretch
-	// drawn by the same arithmetic. Everything below is what a BAR adds on top of it.
-	const inferred = bar.inferredStart || bar.inferredEnd ? ' pbl-bar-inferred' : '';
-	const edges = edgeClasses(geometry).join(' ');
-	if (geometry.outside) {
-		// Provenance must not be silently upgraded: an inferred span that lands wholly
-		// past the edge is still inferred, not a date the note stated, so the class
-		// that says so travels with it into this branch too.
-		return `pbl-bar ${edges}${inferred}${holdable}`;
-	}
-	let cls = 'pbl-bar';
-	if (geometry.milestone) cls += ' pbl-bar-milestone';
-	// A bar's open end is the wider claim: a date the note never stated, as well as one
-	// this window cannot reach. `edgeClasses` answers only the second, which is the whole
-	// of what an absence — both ends stated by construction — can have.
-	if (bar.span.start === null) cls += ' pbl-bar-open-start';
-	if (bar.span.target === null) cls += ' pbl-bar-open-end';
-	// `pbl-bar-clipped-end` is distinct from open-end, which also covers a bar with no
-	// target date at all. The two want different connector placement: an open end has an
-	// on-screen edge to sit past, a clamped one does not.
-	return [cls, edges].filter(Boolean).join(' ') + inferred + holdable;
-}
-
-/** One sentence about a span, said identically on the grid and in the drop ghost. */
-export function spanText(bar: TimelineBar): string {
-	const span = bar.span;
-	const inferred = bar.inferredStart || bar.inferredEnd ? ' — inferred from children' : '';
-	if (span.start !== null && span.target !== null) {
-		if (formatCivil(span.start) === formatCivil(span.target)) return `Milestone ${formatCivil(span.start)}${inferred}`;
-		return `${formatCivil(span.start)} → ${formatCivil(span.target)}${inferred}`;
-	}
-	if (span.start !== null) return `Starts ${formatCivil(span.start)}, target not set${inferred}`;
-	// deriveBars admits no fully dateless span, so the remaining end exists.
-	return `Target ${formatCivil(span.target as CivilDate)}, start not set${inferred}`;
-}
 
 function todayOffset(window: TimelineWindow, today: CivilDate, scale: TimelineScale): number {
 	const days = Math.min(Math.max(daysBetween(window.start, today), 0), window.days - 1);

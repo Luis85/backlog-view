@@ -50,13 +50,13 @@ const HEAD_PX = 6;
  * survived the window; the row's own class must not).
  */
 export function renderDependencyArrows(
-	mounts: { layer: SVGElement; content: HTMLElement; tracks: Map<string, HTMLElement> },
+	mounts: { layer: SVGElement; content: HTMLElement; anchors: Map<string, HTMLElement> },
 	window: TimelineWindow,
 	arrows: DependencyArrow[],
 	ruler: { scale: TimelineScale; leadWidth: number },
 ): void {
 	if (arrows.length === 0) return;
-	const { layer, content, tracks } = mounts;
+	const { layer, content, anchors } = mounts;
 	const { scale, leadWidth } = ruler;
 	const contentTop = content.getBoundingClientRect().top;
 	// Every rect this layer needs is read here, before any arrow element exists — the
@@ -66,8 +66,13 @@ export function renderDependencyArrows(
 		[];
 	for (const arrow of arrows) {
 		const anchor = dependencyAnchor(window, arrow.from.span, arrow.to.span);
-		const fromRow = tracks.get(arrow.from.item.file.path)?.parentElement;
-		const toRow = tracks.get(arrow.to.item.file.path)?.parentElement;
+		// The element each END occupies, asked of the render that drew it — a bar's row, a
+		// milestone's own diamond. It was the track's `parentElement` until 2026-08-15,
+		// which is the row for a bar and the SHARED header for a marker: with two markers
+		// stacked on one day, both arrows landed on that header's centre, on neither
+		// diamond and on top of each other. See `BarRowMounts.anchors`.
+		const fromRow = anchors.get(arrow.from.item.file.path);
+		const toRow = anchors.get(arrow.to.item.file.path);
 		if (!anchor || !fromRow || !toRow) continue;
 		specs.push({
 			conflict: arrow.conflict,

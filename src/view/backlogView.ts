@@ -149,7 +149,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 			treeEl: this.treeEl,
 		});
 		this.resize = new ResizePolicy(this, this.viewEl, this.treeEl, this.toolbarEl, () => this.rowCtx());
-		this.cardDnd = new CardDragController(this, this.viewEl);
+		this.cardDnd = new CardDragController(this, this.viewEl, () => this.refreshFromData());
 		this.treeEl.addEventListener('keydown', (evt) => handleProjectionKeydown(this, evt));
 		// The tree's row activation, once for the pane — rows are resolved per event, so
 		// nothing about them is captured at render (`wireRowEvents` in `render/rows.ts`).
@@ -304,6 +304,10 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	onDataUpdated(): void {
 		// A batch in flight defers this and flushes it once at the end — see the gate.
 		if (this.gate.deferUpdate()) return;
+		// So does a card gesture, for a different reason and the same shape: a render
+		// unhooks the drop target the release is aimed at, and pragmatic then finds
+		// nothing to dispatch to — see `CardDragController.deferUpdate`.
+		if (this.cardDnd.deferUpdate()) return;
 		this.refreshFromData();
 	}
 

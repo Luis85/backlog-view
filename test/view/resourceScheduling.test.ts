@@ -186,3 +186,74 @@ describe('scheduling inside a resource’s row', () => {
 		gesture.cancel();
 	});
 });
+
+/**
+ * The milestones' row is one row of diamonds and no cards, so everything a bar row wires
+ * onto its row this wires onto the mark — [[Milestones out of the resource rows]].
+ */
+describe('a diamond in the milestones row', () => {
+	function grid(containerEl: HTMLElement): (gridOffset: number) => number {
+		return pannedGrid(containerEl, { rectLeft: 300, scrollLeft: 0 });
+	}
+
+	function markerVault(extra: Record<string, unknown> = {}): FakeVault {
+		const vault = resourceVault();
+		vault.addFile('Ship.md', { frontmatter: { type: 'Milestone', order: 60, due: '2026-08-07', ...extra } });
+		return vault;
+	}
+
+	function diamond(containerEl: HTMLElement): HTMLElement {
+		const el = containerEl.querySelector<HTMLElement>('.pbl-lane-markers .pbl-bar-milestone');
+		if (!el) throw new Error('no milestone diamond drawn');
+		return el;
+	}
+
+	it('slides on the grid, writing the target alone and naming no resource', async () => {
+		const vault = markerVault();
+		const { containerEl } = laneRoadmap(vault);
+		const at = grid(containerEl);
+
+		// Released in its OWN row: the milestones' row stands for nobody, so the release
+		// says when and never who — the end grip's answer, reached by the body hold.
+		gridDrag(diamond(containerEl), diamond(containerEl), { from: at(0), clientX: at(7 * DAY_PX) });
+		await flush();
+
+		expect(vault.fm('Ship.md')['due']).toBe('2026-08-14');
+		expect(vault.fm('Ship.md')['assignee']).toBeUndefined();
+		expect(vault.fm('Ship.md')['start']).toBeUndefined();
+		expect(vault.writeLog).toHaveLength(1);
+	});
+
+	it('writes no assignee even when dropped on a resource’s band', async () => {
+		const vault = markerVault();
+		const { containerEl } = laneRoadmap(vault);
+		const at = grid(containerEl);
+
+		gridDrag(diamond(containerEl), laneHead(containerEl, 'Bob'), { from: at(0), clientX: at(7 * DAY_PX) });
+		await flush();
+
+		// The band it landed in is a resource's, and a marker is not somebody's work: what
+		// the release said was a day. Dropping a milestone into a roster row must not put
+		// it back in one.
+		expect(vault.fm('Ship.md')['due']).toBe('2026-08-14');
+		expect(vault.fm('Ship.md')['assignee']).toBeUndefined();
+	});
+
+	it('opens its own note on a click, the row it has no card for', () => {
+		const vault = markerVault();
+		const { containerEl } = laneRoadmap(vault);
+
+		diamond(containerEl).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		expect(vault.opened.map((one) => one.path)).toEqual(['Ship.md']);
+	});
+
+	it('draws done on the diamond itself, since the row is shared', () => {
+		const vault = markerVault({ status: 'Done' });
+		const { containerEl } = laneRoadmap(vault, { stateProperty: 'note.status', doneStates: 'Done' });
+
+		// Every other bar on this grid wears `pbl-done` on its ROW; here one marker being
+		// finished says nothing about the next, so the class is on the mark.
+		expect(diamond(containerEl).classList.contains('pbl-done')).toBe(true);
+	});
+});

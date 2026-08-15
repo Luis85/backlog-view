@@ -108,18 +108,39 @@ export interface DrawnColors {
 	accent: boolean;
 	/**
 	 * An unavailable stretch drew somewhere on this grid (`.pbl-absence`) — the resources
-	 * axis only, since it is the only axis whose entry list holds one.
+	 * axis only, since a stretch draws in a resource's header and the dated axis has none.
 	 *
 	 * Not a colour override like the three above, and the interface is wider than its name
 	 * because of it: what this reports is which MARKS a pass drew that the key has to
 	 * explain, and a hatch is one. Reported from the render for the same reason the others
-	 * are — `laneEntries` skips a collapsed band whole, so a predicate over `roadmap.lanes`
-	 * would key a stretch nothing on screen draws.
+	 * are, but the shape of the risk differs: a bar's own colours are reported from the
+	 * render because a fold hides a bar the model still lists, where `roadmap.lanes` is
+	 * empty by construction on any axis that draws no bands at all (`RoadmapModel.lanes`) —
+	 * so there is no STALE model data for a predicate to see wrongly here. What there is
+	 * instead is a DRIFT risk: `entry.lane.absences.length > 0` would be a second statement
+	 * of the exact condition `renderLaneAbsences`' own early return already decides, kept in
+	 * step by hand rather than read off what it actually drew. Asking the header's own DOM
+	 * after `renderLaneHead` returns (`drawEntries`) removes the second copy instead of
+	 * trusting it to agree.
 	 *
 	 * The three above are a BAR's own report, which is why `reportColors` and `renderBarRow`
 	 * take the narrower `BarColors`: a bar row draws no hatch and has nothing to say here.
 	 */
 	absence: boolean;
+	/**
+	 * A bar drew its VISIBLE days-lost token (`.pbl-days-lost`) somewhere on this grid — the
+	 * resources axis only, since it is the only one whose rows belong to a resource. Asked
+	 * of whether `drawBandCollision` actually appended that token (`render/timeline.ts`),
+	 * never of a crossing alone: a bar can cross a stretch and still draw no token at all
+	 * where `renderBarLabel` dropped its title label (no room for it against the window's
+	 * edge or a track too short for the reserve on either side) — the lead's hatched swatch
+	 * still draws either way, which is a DIFFERENT fact this field does not key. Reported
+	 * from the RENDER like `absence` beside it, and for the same reason: a collapsed band
+	 * draws no clash, so a predicate over `roadmap.lanes` would key a mark nothing on screen
+	 * makes — and a crossing with a dropped label is the same mistake reached the other way,
+	 * which is what this field existed to fix once already.
+	 */
+	daysLost: boolean;
 }
 
 /**
@@ -127,9 +148,11 @@ export interface DrawnColors {
  * draw. Narrower rather than a second vocabulary, the same relation `AxisField` has to the
  * optional-property keys: `reportColors` ORs these three into the pass's own report, and a
  * row literal that had to state `absence: false` would be claiming something about a mark
- * drawn nowhere near it.
+ * drawn nowhere near it. `daysLost` is excluded for the same reason, joining it on
+ * 2026-08-14: a bar row draws neither the hatch nor the clash mark, because both are the
+ * band's business rather than the bar's own colour.
  */
-export type BarColors = Omit<DrawnColors, 'absence'>;
+export type BarColors = Omit<DrawnColors, 'absence' | 'daysLost'>;
 
 /**
  * A surface that put an item on screen, and where that item's match links go: the card
@@ -395,8 +418,9 @@ export interface BacklogViewHost {
 	readonly shelfHiddenTypes: ReadonlySet<string>;
 	setShelfHiddenTypes(types: ReadonlySet<string>): void;
 	/**
-	 * Whether one resource's whole BAND is folded shut on the resources axis — its bars,
-	 * its absences and the notes it places, leaving the header.
+	 * Whether one resource's whole BAND is folded shut on the resources axis — its bars and
+	 * the notes it places, leaving the header. Not its absences: those draw in the header's
+	 * own track since 2026-08-14, so a fold leaves them exactly where they were.
 	 *
 	 * A third collapse question beside {@link isCollapsed} and {@link isCardCollapsed}, and
 	 * a third because it is asked of a NAME: a resource is not a note, so it has no path to
