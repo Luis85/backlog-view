@@ -165,6 +165,17 @@ instruments improvised around a browser.
   numbers that differ below the printed precision. A zero baseline still takes the em
   dash, since a percentage of nothing is not a quantity. **Round for the reader, never
   for the arithmetic.** (Codex, PR #137.)
+- **3k — a flag is given an empty value, or a negation is given one at all.** Both refused,
+  and the first as a CLASS rather than per flag. Every flag read `--flag=` as its own kind
+  of silence — `Number('')` is 0, so `--notes=` passed the whole-number guard because zero
+  is legitimately askable and the run measured the curated fixture alone; `--against=` and
+  `--fixture=` are falsy and simply dropped out. None is a value anybody could have meant,
+  so one check over every parsed key refuses them before a single flag is read; doing it
+  per flag is what produced this finding twice. The second is `--no-build`, read by
+  PRESENCE: `--no-build=false` — a caller explicitly asking for the build they were about
+  to skip — skipped it anyway, and so did `--no-build=flase`, silently measuring a stale
+  `.harness`. **Presence stops being a boolean the moment `--k=v` is legal syntax**, so
+  both build flags answer true, false or a refusal. (Codex, PR #137.)
 - **4a — the runner checks out the ref to compare against.** Refused: that would move the
   tree someone is working in. Building the other side is one command in a git worktree,
   and stays the human's.

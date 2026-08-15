@@ -81,6 +81,39 @@ if (unknown.length > 0) {
 }
 
 /**
+ * `--flag=` with nothing after it, on ANY flag — one refusal rather than eight.
+ *
+ * Every flag reads its empty value as a different silence, and each one was found
+ * separately: `Number('')` is 0, so `--notes=` passed the whole-number guard because zero
+ * is legitimately askable, and the run measured the curated fixture alone; `--against=`
+ * is falsy, so a requested comparison became a one-build table; `--fixture=` and
+ * `--axis=` are falsy too and simply drop out of the query. None of them is a value
+ * anybody could have meant, so the class is refused HERE, before a single flag is read.
+ * Doing it per flag is what produced this finding twice. (Codex, PR #137.)
+ */
+const blank = Object.keys(args).filter((key) => args[key].trim() === '');
+if (blank.length > 0) {
+	console.error(`Empty value${blank.length > 1 ? 's' : ''}: ${blank.map((k) => `--${k}=`).join(', ')}`);
+	process.exit(1);
+}
+
+/**
+ * A flag that is only on or off: bare, `=true` or `=false`, and a refusal otherwise.
+ *
+ * `--no-build` was read by PRESENCE, so `--no-build=false` — the caller explicitly asking
+ * for the build they were about to skip — skipped it anyway, and so did `--no-build=flase`.
+ * Silently measuring a stale `.harness`, which is the same failure the flag's own earlier
+ * bug had. Presence is not a boolean the moment `--k=v` is legal syntax. (Codex, PR #137.)
+ */
+function boolFlag(flag, value) {
+	if (value === undefined) return null;
+	if (value === 'true') return true;
+	if (value === 'false') return false;
+	console.error(`--${flag} takes no value, or true or false — got "${value}".`);
+	process.exit(1);
+}
+
+/**
  * A whole number, or a refusal naming the value — the two size knobs share this because
  * they share the failure. `--notes=abc` reached the page as junk, which `wantedNotes`
  * reads as "no generated notes", and the run then printed `?notes=abc` over a table of
@@ -98,19 +131,23 @@ function wholeNumber(flag, value, min) {
 // Zero is a legitimate ask: the curated fixture on its own, which is what an omitted flag
 // already measures. Junk and fractions are not.
 const notes = String(wholeNumber('notes', args.notes ?? 800, 0));
+// Both resolved here rather than at the build site, so a refusal lands before any other
+// work and so neither is left unvalidated by the other's short circuit.
+const wantsBuild = boolFlag('build', args.build);
+const wantsNoBuild = boolFlag('no-build', args['no-build']);
 const against = args.against ?? null;
 /**
  * An ASKED-FOR comparison that names nothing is a refusal, never a single-build run.
  *
- * `--against=` leaves an empty string and a bare `--against` at the end of the line leaves
- * `'true'`; every check below is a truthiness test, so both turned comparison mode OFF and
- * printed a perfectly ordinary one-build table — the run the person did not ask for, with
- * nothing saying so. A path that is merely WRONG already fails loudly (the browser finds
- * no perf data and the run exits 1), which is why only the two empty spellings are named
- * here. (Codex, PR #137.)
+ * A bare `--against` at the end of the line leaves `'true'`, and every check below is a
+ * truthiness test — so it turned comparison mode OFF and printed a perfectly ordinary
+ * one-build table, the run the person did not ask for, with nothing saying so.
+ * `--against=` is the same silence and is refused one block up, with the rest of its
+ * class. A path that is merely WRONG already fails loudly (the browser finds no perf data
+ * and the run exits 1), which is why neither is chased further. (Codex, PR #137.)
  */
-if (against === '' || against === 'true') {
-	console.error(`--against needs the path of a second built harness — got ${against === '' ? 'an empty value' : 'no value'}.`);
+if (against === 'true') {
+	console.error('--against needs the path of a second built harness — got no value.');
 	console.error('  npm run perf -- --against ../base/.harness');
 	process.exit(1);
 }
@@ -238,9 +275,11 @@ if (browser === null) {
 /**
  * Build unless told not to, in either spelling: `--no-build` is what this file's own
  * examples used while the code read `--build`, so the documented flag rebuilt `.harness`
- * anyway — over whatever had deliberately been put there to measure. (Codex, PR #137.)
+ * anyway — over whatever had deliberately been put there to measure. Both go through
+ * `boolFlag`, so each answers true, false or a refusal rather than "was it typed".
+ * (Codex, PR #137.)
  */
-if (args.build !== 'false' && args['no-build'] === undefined) {
+if (wantsBuild !== false && wantsNoBuild !== true) {
 	execFileSync(process.execPath, ['scripts/harness.mjs'], { stdio: 'inherit' });
 }
 
