@@ -78,7 +78,10 @@ a catalog can key on.
 ## Acceptance criteria
 
 - A counted message is one key with a form per plural category, selected by
-  `Intl.PluralRules` for the **catalog** locale — not the user's requested one. The forms
+  `Intl.PluralRules` for the locale of the catalog **that supplied that message** — not the
+  user's requested one, and not the active catalog either when the message fell back to
+  English. The distinction only bites on the fallback path, which is where it bit: see
+  `Grammar follows the message, not the reader` in `Locale resolution and fallback`. The forms
   that exist are the ones the catalog was written with, so asking `Intl.PluralRules('ru')`
   for categories while reading the English catalog requests a `few` form English does not
   have. A locale supplies only the categories it has; English supplies `one` and `other`.
@@ -93,7 +96,10 @@ a catalog can key on.
   is not universal and a message assembled by `+` or by template literal at the call site
   cannot be reordered at all.
 - Lists rendered into a sentence go through `Intl.ListFormat` rather than a literal
-  joiner — `configProblems` (`domain/settings.ts:206`) uses `' and '` today.
+  joiner — `configProblems` (`domain/settings.ts:206`) uses `' and '` today. The list is
+  passed to `t()` as an **array parameter** and joined during rendering, never joined at
+  the call site: only the lookup knows which catalog supplied the surrounding sentence,
+  and that is the locale the joiner has to follow.
 - Numbers **inside a message** are formatted rather than interpolated raw. The counts
   rendered outside any sentence (`columns.ts:276`, `columns.ts:280`) belong to
   `Locale-aware sorting and formatting`, since they are data presentation rather than

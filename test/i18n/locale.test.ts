@@ -95,6 +95,38 @@ describe('lookup is total', () => {
 		expect(t('count.items', { count: 5 })).toBe('RU other 5');
 	});
 
+	it('selects a FALLEN-BACK message by English rules, not by the active catalog\'s', () => {
+		// The rule is "grammar follows the catalog", and on this path the catalog that
+		// supplied the message is English rather than the active one. Russian selects `one`
+		// at 21, so reading English forms by Russian rules renders `21 item`.
+		setLocale('ru', { ru: {} });
+		expect(t('count.items', { count: 21 })).toBe('21 items');
+		expect(t('count.items', { count: 1 })).toBe('1 item');
+		// French selects `one` at zero, where English selects `other`.
+		setLocale('fr', { fr: {} });
+		expect(t('count.items', { count: 0 })).toBe('0 items');
+	});
+
+	it('still selects a TRANSLATED message by the active catalog\'s rules', () => {
+		// The other half of the same rule, so the fix above cannot be "always use English".
+		setLocale('ru', { ru });
+		expect(t('count.items', { count: 21 })).toBe('RU one 21');
+	});
+
+	it('joins a list inside a fallen-back message by English rules too', () => {
+		// A list is grammar inside a sentence, so it follows the sentence. A German joiner
+		// in an English sentence is the mixed-grammar case this asserts against.
+		setLocale('de', { de: {} });
+		expect(t('settings.sharedKey', { properties: ['state', 'parent', 'order'], key: 'k' })).toBe(
+			'The state, parent, and order properties share the key "k".',
+		);
+	});
+
+	it('joins a list in the active catalog when that catalog supplied the message', () => {
+		setLocale('de', { de: { 'settings.sharedKey': 'DE {properties} :: {key}' } });
+		expect(t('settings.sharedKey', { properties: ['a', 'b'], key: 'k' })).toBe('DE a und b :: k');
+	});
+
 	it('leaves a placeholder the caller did not supply visible rather than rendering "undefined"', () => {
 		// Unreachable from typed call sites; reachable from a TRANSLATION that introduced a
 		// parameter English does not have, which `Catalogs stay complete` is what catches.

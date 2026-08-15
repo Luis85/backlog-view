@@ -49,12 +49,19 @@ type Names<K extends MessageKey> = Placeholder<TextOf<Messages[K]>>;
  * `count` is what selects the plural form, so it is a number and not a rendered one:
  * a caller that formatted it first would hand `Intl.PluralRules` a string.
  */
-type Params<K extends MessageKey> = { [P in Names<K>]: P extends 'count' ? number : string | number };
+type Params<K extends MessageKey> = {
+	[P in Names<K>]: P extends 'count' ? number : string | number | readonly string[];
+};
 
 /** No placeholders, no second argument — and one that takes them cannot omit it. */
 type Args<K extends MessageKey> = [Names<K>] extends [never] ? [] : [params: Params<K>];
 
-type Values = Record<string, string | number>;
+/**
+ * A parameter is a scalar, or a LIST — which is joined as grammar rather than by the
+ * caller, because it has to be joined in the locale of the message it lands in and only
+ * this module knows which that is. See `grammarOf`.
+ */
+type Values = Record<string, string | number | readonly string[]>;
 
 /**
  * Every catalog that ships. One entry in this round, deliberately — see
@@ -64,24 +71,44 @@ type Values = Record<string, string | number>;
 const CATALOGS: Record<string, Catalog> = { [SOURCE_LOCALE]: en };
 
 /**
+ * Everything about a locale that decides GRAMMAR: which plural form a count selects, and
+ * how a list is joined inside a sentence.
+ */
+interface Grammar {
+	plural: Intl.PluralRules;
+	list: Intl.ListFormat;
+}
+
+function grammarFor(locale: string): Grammar {
+	return {
+		plural: new Intl.PluralRules(locale),
+		list: new Intl.ListFormat(locale, { style: 'long', type: 'conjunction' }),
+	};
+}
+
+/**
  * The resolved locale and the formatters that follow from it. Built once rather than per
  * call: `t()` runs inside render loops, and an `Intl` constructor there would be a cost
  * with no observable benefit — Obsidian needs a restart to change its language, so this
  * cannot go stale while the view is open.
+ *
+ * `source` is built beside `grammar` and is not redundant with it. A message the active
+ * catalog does not carry is rendered from ENGLISH, and English's grammar has to come with
+ * it — see `grammarOf`.
  */
 function activate(code: string, catalogs: Record<string, Catalog>): {
 	name: string;
 	messages: Catalog;
-	plural: Intl.PluralRules;
-	list: Intl.ListFormat;
+	grammar: Grammar;
+	source: Grammar;
 	number: Intl.NumberFormat;
 } {
 	const name = resolveCatalog(code, Object.keys(catalogs));
 	return {
 		name,
 		messages: catalogs[name] ?? en,
-		plural: new Intl.PluralRules(name),
-		list: new Intl.ListFormat(name, { style: 'long', type: 'conjunction' }),
+		grammar: grammarFor(name),
+		source: grammarFor(SOURCE_LOCALE),
 		number: new Intl.NumberFormat(intlLocale(code)),
 	};
 }
@@ -119,37 +146,65 @@ export function activeLocale(): { catalog: string; numbers: string } {
  */
 export function t<K extends MessageKey>(key: K, ...args: Args<K>): string {
 	const values = (args as [Values?])[0];
-	const entry = active.messages[key] ?? en[key];
-	return fill(typeof entry === 'string' ? entry : selectForm(entry, values), values);
+	const own = active.messages[key];
+	const grammar = grammarOf(own);
+	const entry = own ?? en[key];
+	return fill(typeof entry === 'string' ? entry : selectForm(entry, grammar, values), grammar, values);
+}
+
+/**
+ * The grammar of the catalog that supplied THIS message, which is not always the active
+ * one: a key the active catalog does not carry is rendered from English, and English's
+ * plural categories and list joining have to come with it.
+ *
+ * "Grammar follows the catalog" was implemented as "grammar follows the ACTIVE catalog"
+ * once, and the two are the same everywhere except the one path the fallback exists for.
+ * Russian selects `one` at 21, so English forms read by Russian rules rendered
+ * `21 item`; French selects `one` at zero, where English selects `other`. A translation
+ * gap must degrade to English, not to broken English. Found by review (Codex, PR #151).
+ */
+function grammarOf(own: Entry | undefined): Grammar {
+	return own === undefined ? active.source : active.grammar;
 }
 
 /**
  * Values joined as a list inside a sentence. `Intl.ListFormat` rather than a literal
- * joiner, in the CATALOG's locale: a joiner is grammar, and `' and '` reads right at two
- * items and wrong at three in English alone, never mind elsewhere.
+ * joiner: a joiner is grammar, and `' and '` reads right at two items and wrong at three
+ * in English alone, never mind elsewhere.
+ *
+ * **Prefer passing the array to `t()` as a parameter**, which joins it in the locale of
+ * the message it lands in — the thing a call site cannot know. This export is for a list
+ * joined into text that is not a catalog message YET: `runInit`'s notice, whose outer
+ * sentence `Every surface translated` still owes a key. There is nothing for it to agree
+ * with there, which is exactly why it should go when that sentence arrives.
  */
-export function list(values: string[]): string {
-	return active.list.format(values);
+export function list(values: readonly string[]): string {
+	return active.grammar.list.format(values);
 }
 
-function selectForm(forms: Forms, values: Values | undefined): string {
+function selectForm(forms: Forms, grammar: Grammar, values: Values | undefined): string {
 	const count = typeof values?.count === 'number' ? values.count : 0;
 	// `other` is the last resort rather than an assumption: every language has it, and a
 	// catalog missing the selected category must still render a sentence.
-	return forms[active.plural.select(count)] ?? forms.other ?? '';
+	return forms[grammar.plural.select(count)] ?? forms.other ?? '';
 }
 
 /**
  * Named parameters, substituted. Named rather than positional so a translation can
  * reorder them — a message built by `+` or by a template literal at the call site cannot
- * be reordered at all. Numbers are FORMATTED rather than pasted, in the user's locale:
- * a count is data presentation, not grammar.
+ * be reordered at all.
+ *
+ * Two parameter kinds are FORMATTED rather than pasted, and they take different locales
+ * for the reason this whole module is split on: a list is grammar inside the sentence, so
+ * it follows the message's own catalog, while a number is data presentation, so it
+ * follows the user.
  */
-function fill(text: string, values: Values | undefined): string {
+function fill(text: string, grammar: Grammar, values: Values | undefined): string {
 	if (!values) return text;
 	return text.replace(/\{(\w+)\}/g, (whole: string, name: string) => {
 		const value = values[name];
 		if (value === undefined) return whole;
-		return typeof value === 'number' ? active.number.format(value) : value;
+		if (Array.isArray(value)) return grammar.list.format(value as readonly string[]);
+		return typeof value === 'number' ? active.number.format(value) : (value as string);
 	});
 }

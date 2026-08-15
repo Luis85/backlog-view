@@ -61,8 +61,10 @@ string is merely English instead of missing.
 - **2a — the code is regional.** `pt-BR` finds the `pt` catalog before falling to English,
   matched case-insensitively.
 - **2b — no catalog matches.** English, which always exists.
-- **3a — the key is missing from the active catalog.** The English text renders. Never the
-  key, never an empty string: a gap in a translation must not read as a broken view.
+- **3a — the key is missing from the active catalog.** The English text renders, **with
+  English grammar**. Never the key, never an empty string: a gap in a translation must not
+  read as a broken view. The grammar half is the part that is easy to miss, and it was
+  missed here first — see `Grammar follows the message, not the reader` below.
 - **3b — the key is missing from English.** A build failure, not a runtime fallback.
   English is the source, so a gap there is a bug rather than an untranslated string.
 
@@ -83,6 +85,34 @@ string is merely English instead of missing.
   ever ship catalogs for. The raw `getLanguage()` code stays available for collation and
   number formatting, so a French user with no French catalog still sorts and counts in
   French. See `Locale-aware sorting and formatting`, which states the dividing line.
+
+## Grammar follows the message, not the reader
+
+The rule everywhere else in this feature is written as *"grammar follows the catalog"*,
+and that sentence has a hole in it exactly where this note's fallback lives: **which**
+catalog. Implemented as "the ACTIVE catalog" it is right on every path except the one the
+fallback exists for, and there it is wrong in a way that reads as a bug in the
+translation:
+
+| Active catalog | Message from | Renders |
+| --- | --- | --- |
+| `ru`, missing the key | English `{one, other}` | `Intl.PluralRules('ru').select(21)` is `one`, so `21 item` |
+| `fr`, missing the key | English `{one, other}` | `select(0)` is `one`, so `0 item` |
+| `de`, missing the key | English, with a list | `state, parent und order` inside an English sentence |
+
+So the rule is **grammar follows the catalog that supplied THIS message**, which is the
+active one until the key is missing and English's from then on. A translation gap must
+degrade to English, not to broken English.
+
+The list half of it has a second consequence worth stating, because it decides an
+interface rather than a line: a list joined at the CALL SITE cannot obey this rule at all,
+since the caller does not know which catalog the message will come from. So a list is
+passed to `t()` as an array parameter and joined during rendering — the same "format
+inside the module that owns it" move `A bare string cannot reach the UI` arrived at
+independently for `Intl` output, which is a good sign it is the right shape.
+
+Found by review (Codex, PR #151), against an implementation whose own comment stated the
+narrower rule correctly and then used the wrong noun.
 
 ## Where it lives
 
