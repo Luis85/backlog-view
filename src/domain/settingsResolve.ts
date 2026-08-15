@@ -228,6 +228,9 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 	const deliverable = resolveSecondaryWorkflow(secondary, DELIVERABLE_NAMES);
 	const test = resolveSecondaryWorkflow(secondary, TEST_NAMES);
 	const doneSet = new Set(effectiveDoneValues.map((v) => v.toLowerCase()));
+	// The two vocabularies with their own done lists beside them: a done state is not
+	// colourable, and which states are done is a per-workflow declaration.
+	const colourable = { states, doneValues: effectiveDoneValues, deliverableStates: deliverable.states, deliverableDoneValues: deliverable.doneValues };
 	// Limits are refused for done states HERE rather than only in the schema, so a key
 	// left in the `.base` by re-marking a state as done cannot revive its limit.
 	const limitedStates = states.filter((s) => !doneSet.has(s.toLowerCase()));
@@ -276,8 +279,9 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		// Both vocabularies, one table — see `BacklogSettings.stateColors`.
 		// Requirements and Deliverable states only. The TEST workflow deliberately has no
 		// colour boxes (product decision, 2026-08-10), so its states are not colourable and
-		// must not join this table — `colorableStates` takes the two lists it takes.
-		stateColors: nameTable(colorableStates(states, deliverable.states), (s) => stateColor(str(stateColorKey(s)))),
+		// must not join this table — `colorableStates` takes the four fields it takes. The
+		// done values go with them because a done state is not colourable either.
+		stateColors: nameTable(colorableStates(colourable), (s) => stateColor(str(stateColorKey(s)))),
 		// The two stamp keys main resolved by hand here now arrive with every other
 		// optional key in `...optionalKeys` above, read off `PROPERTY_TABLE` itself.
 		startedStates: dedupe(list('startedStates')),

@@ -1,4 +1,5 @@
 import { sameValue } from './noteFields';
+import { BacklogSettings } from './settings';
 
 /**
  * What a state's colour may BE, which states may have one, and the key it is stored under.
@@ -10,9 +11,9 @@ import { sameValue } from './noteFields';
  * is fixed: a colour chosen in light mode is that same colour in dark. Both are legal, and
  * `stateColorPaint` (`domain/board.ts`) is where the difference stops mattering.
  *
- * It takes the two vocabularies as LISTS rather than a `BacklogSettings`, so it sits below
- * the shape entirely: `settingsResolve.ts` needs `colorableStates` while it is still
- * building that object, and a parameter it cannot yet supply would only be a cast.
+ * `colorableStates` takes the four fields it reads as a `Pick` rather than a whole
+ * `BacklogSettings`: `settingsResolve.ts` needs it while it is still building that object,
+ * so it passes a literal of the four, and every other caller passes its settings whole.
  */
 
 /**
@@ -54,10 +55,27 @@ export function stateColorKey(state: string): string {
 	return `stateColor.${state.toLowerCase()}`;
 }
 
+/** The four fields a colourable vocabulary is made of — the two workflows that can key one. */
+export type ColorableVocabularies = Pick<
+	BacklogSettings,
+	'states' | 'doneValues' | 'deliverableStates' | 'deliverableDoneValues'
+>;
+
 /**
- * The states a colour can be chosen for: both workflows' DECLARED vocabularies, deduped by
- * `sameValue` — one state, one control, the rule the Deliverables option group used to
- * restate for its own boxes.
+ * The states a colour can be chosen for: both workflows' DECLARED vocabularies, minus the
+ * ones that workflow calls DONE, deduped by `sameValue` — one state, one control, the rule
+ * the Deliverables option group used to restate for its own boxes.
+ *
+ * **A done state is not colourable**, because a choice on one could never be drawn: a
+ * finished bar takes green from `.pbl-timeline-row.pbl-done .pbl-bar` and its legend swatch
+ * is keyed `pbl-legend-done`, both of which ignore what `stateColorPaint` answers. The row
+ * was offered until 2026-08-15 with the dialog's intro saying it did nothing — an inert
+ * control explained rather than removed, which is what this now removes (the note's
+ * extension 2a is written the other way round for that reason).
+ *
+ * Per WORKFLOW, not over the union: done is what a workflow declares, so a value one
+ * workflow finishes on and the other does not is still colourable — the bar the second
+ * workflow draws for it is an ordinary bar.
  *
  * **Declared, never observed**, and that is a correctness rule rather than a simplification.
  * `resolveSettings` builds `settings.stateColors` from these same two lists and cannot do
@@ -66,9 +84,11 @@ export function stateColorKey(state: string): string {
  * colour would appear to be accepted and then silently do nothing. So with a state property
  * named and no states declared, there is nothing here to colour, and the caller says so.
  */
-export function colorableStates(declared: string[], deliverableDeclared: string[]): string[] {
-	const states = [...declared];
-	for (const state of deliverableDeclared) {
+export function colorableStates(vocabularies: ColorableVocabularies): string[] {
+	const open = (declared: string[], done: string[]): string[] =>
+		declared.filter((state) => !done.some((finished) => sameValue(finished, state)));
+	const states = open(vocabularies.states, vocabularies.doneValues);
+	for (const state of open(vocabularies.deliverableStates, vocabularies.deliverableDoneValues)) {
 		if (!states.some((own) => sameValue(own, state))) states.push(state);
 	}
 	return states;

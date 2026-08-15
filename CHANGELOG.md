@@ -21,6 +21,12 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Changed
 
+- **State colours no longer offer a done state.** A finished bar is drawn green whatever
+  is stored against it, so the swatch for a done state could never change anything on the
+  grid or in the legend. The dialog now lists the open states only, and says so; a colour
+  a `.base` still holds for a done state is ignored. Done is read per workflow, so a value
+  only one of your two workflows finishes on still gets a swatch for the other.
+
 - **Double click either resize grip to reset it** — the tree's new property-column grips
   and the roadmap timeline's lead-column grip. A mouse never focuses a grip, so the Home
   key that resets one was reachable only by tabbing onto it first.
