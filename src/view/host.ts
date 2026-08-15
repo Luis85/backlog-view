@@ -16,7 +16,7 @@ export const PRODUCT_BACKLOG_VIEW_TYPE = 'product-backlog';
 
 /**
  * The five readings of one backlog. UI state, not a base setting: the choice
- * lives beside the collapse state in vault-scoped localStorage — per saved view,
+ * lives in the view-state store's vault-scoped localStorage — per saved view,
  * per device — and never in the `.base`.
  */
 export type Projection = 'tree' | 'board' | 'roadmap' | 'deliverables' | 'catalog';
@@ -27,7 +27,7 @@ export type Projection = 'tree' | 'board' | 'roadmap' | 'deliverables' | 'catalo
  * grid axes have rows and bands rather than columns. Nothing here folds by projection, so
  * a union of the screens that actually draw a column is the honest spelling — and it is
  * what keeps a requirements `Done`, a Deliverables `Done` and a horizon called `Done`
- * three separate folds. See `columnKey` in `view/collapseState.ts`.
+ * three separate folds. See `columnKey` in `view/viewState.ts`.
  */
 export type ColumnScope = 'board' | 'deliverables' | 'horizons';
 
@@ -361,11 +361,11 @@ export interface BacklogViewHost {
 
 	/**
 	 * Which projection this view shows. UI state, not a base setting: it lives
-	 * beside the collapse state in vault-scoped localStorage — per saved view,
+	 * in the view-state store's vault-scoped localStorage — per saved view,
 	 * per device — and never in the `.base`.
 	 */
 	readonly projection: Projection;
-	/** Switch the projection and re-render; the collapse store persists the choice. */
+	/** Switch the projection and re-render; the view-state store persists the choice. */
 	setProjection(mode: Projection): void;
 	/** The board of the last render, or null while the view is not a board (or has no workflow). */
 	readonly board: BoardSnapshot | null;
@@ -389,23 +389,23 @@ export interface BacklogViewHost {
 	 * `activeAxis`, never from this directly.
 	 */
 	readonly axisPick: string | null;
-	/** Pick which axis this saved view shows; the collapse store persists it. */
+	/** Pick which axis this saved view shows; the view-state store persists it. */
 	setAxisPick(axis: RoadmapAxis): void;
 	/**
 	 * Focus the tree on one type — '' for the whole tree. UI state like the mode: the
-	 * collapse store persists it, never the `.base`. Rebuilds the model, since focus is
+	 * view-state store persists it, never the `.base`. Rebuilds the model, since focus is
 	 * what it is re-rooted on; read the current focus off `settings.focusLevel`.
 	 */
 	setFocusLevel(level: string): void;
 	/**
 	 * Whether a plain click on a row's body folds it rather than opening the note —
 	 * false, opening it, is the default. UI state like the mode and the focus level: the
-	 * collapse store persists it per saved view and per device, never the `.base`,
+	 * view-state store persists it per saved view and per device, never the `.base`,
 	 * because it is flipped while working and a `.base` is shared. Only the two
 	 * ROW-shaped projections read it (`clickActionApplies`).
 	 */
 	readonly clickFolds: boolean;
-	/** Flip what a click does and re-render; the collapse store persists the pick. */
+	/** Flip what a click does and re-render; the view-state store persists the pick. */
 	setClickFolds(value: boolean): void;
 	/** Whether the shelf is collapsed for this saved view; collapsed is the default. */
 	readonly shelfCollapsed: boolean;
@@ -440,31 +440,31 @@ export interface BacklogViewHost {
 	 * is `autoCollapse` — the answer a column nobody has ruled on gets, which is `false`
 	 * everywhere except a done board column holding no open work. Passing it in keeps the
 	 * default a fact about the screen drawing the column, and `columnCollapsed` in
-	 * `view/collapseState.ts` is what makes taking it a once-only event.
+	 * `view/viewState.ts` is what makes taking it a once-only event.
 	 */
 	columnCollapsed(scope: ColumnScope, value: string | null, autoCollapse: boolean): boolean;
 	setColumnCollapsed(scope: ColumnScope, value: string | null, collapsed: boolean): void;
 	/**
 	 * Which density the dated axis draws at. UI state like the mode and the axis pick:
-	 * per saved view, per device, in the collapse store — never in the `.base`, because
+	 * per saved view, per device, in the view-state store — never in the `.base`, because
 	 * pane width is a property of the screen in front of you and not of the base.
 	 */
 	readonly zoom: ScaleId;
-	/** Pick a density and re-render; the collapse store persists it. */
+	/** Pick a density and re-render; the view-state store persists it. */
 	setZoom(id: ScaleId): void;
 	/**
 	 * The retained row density for the dated axis — 'compact', or null for
 	 * comfortable, the default. UI state exactly like the zoom beside it.
 	 */
 	readonly density: string | null;
-	/** Toggle compact rows and re-render; the collapse store persists the pick. */
+	/** Toggle compact rows and re-render; the view-state store persists the pick. */
 	setDensity(value: string | null): void;
 	/**
 	 * The retained timeline lead-column width in pixels, or null for
 	 * `TIMELINE_LEAD_PX`, the default. UI state exactly like the density beside it.
 	 */
 	readonly leadWidth: number | null;
-	/** Resize the lead column and re-render; the collapse store persists the pick. */
+	/** Resize the lead column and re-render; the view-state store persists the pick. */
 	setLeadWidth(value: number | null): void;
 	/**
 	 * The tree's resized property columns in pixels, by Bases property id. A column with

@@ -1,5 +1,5 @@
 import { BasesView, QueryController } from 'obsidian';
-import { CARD_SCOPE, CollapseState, TIMELINE_SCOPE } from './collapseState';
+import { CARD_SCOPE, TIMELINE_SCOPE, ViewState } from './viewState';
 import { FilterState } from './filterState';
 import { BacklogViewHost, BoardSnapshot, Column, ColumnFit, ColumnScope, PRODUCT_BACKLOG_VIEW_TYPE, Projection, RoadmapSnapshot } from './host';
 import { OpenController } from './openTarget';
@@ -22,7 +22,7 @@ import { ResizePolicy } from './resize';
 import { filterScopeFor, hidesCompleted, projectionMember, treeShaped } from './projection';
 import { rowHidden, VisibilityRule } from './rowVisibility';
 import { SelectionController } from './selection';
-import { UiStateController } from './uiState';
+import { ViewStateController } from './viewStateController';
 import { detectIgnoredGrouping, renderToolbar, revealFilter, syncBusy, syncFilterUi } from './render/toolbar';
 import { resolveColumns, rowContext, RowContext } from './render/columns';
 import { renderLoadingState } from './render/emptyStates';
@@ -82,14 +82,14 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	model: BacklogModel | null = null;
 	private readonly filter = new FilterState();
 	groupingIgnored = false;
-	private readonly collapse: CollapseState;
+	private readonly state: ViewState;
 	/** The write path: validation, serialization, progress and the undo slot. */
 	private readonly gate: WriteGate;
 	/** Card-move write orchestration: plans, applies and announces board/horizon/schedule moves. */
 	private readonly cardMoves: CardMoveController;
-	/** The collapse-store-backed UI state — projection, axis pick, focus, shelf, zoom,
-	 * density, lead width, column widths — see `uiState.ts`. */
-	private readonly ui: UiStateController;
+	/** The view-state-backed UI state — projection, axis pick, focus, shelf, zoom,
+	 * density, lead width, column widths — see `viewStateController.ts`. */
+	private readonly ui: ViewStateController;
 	/** When to re-measure the pane and re-run the column-fit ladder — see `resize.ts`. */
 	private readonly resize: ResizePolicy;
 	/** Whether `watchApp` has run — its subscriptions are once per view, not per update. */
@@ -132,13 +132,13 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		renderLoadingState(this.treeEl);
 
 		this.selection = new SelectionController(this.treeEl, this.rowEls, () => this.board?.colEls ?? []);
-		this.collapse = new CollapseState(this);
+		this.state = new ViewState(this);
 		this.gate = new WriteGate(this, {
 			syncBusy: () => this.syncBusyUi(),
 			flushDataUpdate: () => this.refreshFromData(),
 		});
 		this.cardMoves = new CardMoveController(this, this.rowEls);
-		this.ui = new UiStateController(this.collapse, {
+		this.ui = new ViewStateController(this.state, {
 			render: () => this.render(),
 			renderTreeContent: () => this.renderTreeContent(),
 			refreshFromData: () => this.refreshFromData(),
@@ -176,7 +176,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	onunload(): void {
 		forgetBacklogView(this);
 		this.resizeObserver?.disconnect();
-		this.collapse.dispose();
+		this.state.dispose();
 		this.dnd.dispose();
 		this.cardDnd.dispose();
 		this.viewEl.detach();
@@ -184,12 +184,12 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 
 	/**
 	 * Which projection this view shows. UI state, not a base setting: it lives
-	 * beside the collapse state — per saved view, per device — never in the `.base`.
+	 * beside the view state — per saved view, per device — never in the `.base`.
 	 * This and every accessor below it down to `jumpToToday` are one-line delegations to
-	 * `UiStateController` (`uiState.ts`), which holds the read/write and the render-depth
-	 * choice; kept here because `BacklogViewHost` has to resolve to this one class. Stated
-	 * as a range rather than a count, which the last three picks added here each made
-	 * wrong.
+	 * `ViewStateController` (`viewStateController.ts`), which holds the read/write and the
+	 * render-depth choice; kept here because `BacklogViewHost` has to resolve to this one
+	 * class. Stated as a range rather than a count, which the last three picks added here
+	 * each made wrong.
 	 */
 	get projection(): Projection {
 		return this.ui.projection;
@@ -316,10 +316,10 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// Restored FIRST, not just before the collapse defaults it must not be undone by:
 		// the focus level is stored here too, and it re-roots the model built below — a
 		// restore after the build would show the whole tree until something else refreshed.
-		this.collapse.restore(this.viewEl);
+		this.state.restore(this.viewEl);
 		// Focus is working position rather than configuration, so it comes from the store
 		// and not from the `.base`; everything downstream reads it off the settings.
-		this.settings = { ...resolveSettings(this.config), focusLevel: this.collapse.focusLevel() };
+		this.settings = { ...resolveSettings(this.config), focusLevel: this.state.focusLevel() };
 		this.model = buildModel(this.app, this.data?.data ?? [], this.settings);
 		// Which properties become columns is a config question, so it is answered once
 		// here rather than per render — and once, so the rows and the tag menu cannot
@@ -332,7 +332,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// active focus subtree was therefore never ruled on, its card opening expanded
 		// against the collapsed-by-default rule every other projection keeps. The same
 		// split `collapsiblePopulation` states for the buttons, at the other end of it.
-		this.collapse.collapseNewParents([...this.model.items, ...this.model.deliverableResults, ...this.model.catalog.items]);
+		this.state.collapseNewParents([...this.model.items, ...this.model.deliverableResults, ...this.model.catalog.items]);
 		this.filter.recompute(this.model, this.projection);
 		this.render();
 	}
@@ -358,7 +358,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		if (this.watchedApp) return;
 		this.watchedApp = true;
 		this.registerEvent(
-			this.app.vault.on('rename', (file, oldPath) => this.collapse.renamePath(oldPath, file.path)),
+			this.app.vault.on('rename', (file, oldPath) => this.state.renamePath(oldPath, file.path)),
 		);
 		this.registerEvent(this.app.workspace.on('css-change', () => syncToolbarFit(this.toolbarEl)));
 	}
@@ -436,11 +436,11 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 
 	isCollapsed(path: string): boolean {
 		// While filtering, everything on a path to a match renders expanded.
-		return !this.filter.active && this.collapse.isCollapsed(this.collapseKey(path));
+		return !this.filter.active && this.state.isCollapsed(this.collapseKey(path));
 	}
 
 	setCollapsed(path: string, collapsed: boolean): boolean {
-		return this.collapse.set(this.collapseKey(path), collapsed);
+		return this.state.set(this.collapseKey(path), collapsed);
 	}
 
 	/**
@@ -468,11 +468,11 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	isCardCollapsed(path: string): boolean {
 		// While filtering, everything on a path to a match renders expanded — the same
 		// override `isCollapsed` gives a row, asked of the card's own scope.
-		return !this.filter.active && this.collapse.isCollapsed(CARD_SCOPE + path);
+		return !this.filter.active && this.state.isCollapsed(CARD_SCOPE + path);
 	}
 
 	setCardCollapsed(path: string, collapsed: boolean): boolean {
-		return this.collapse.set(CARD_SCOPE + path, collapsed);
+		return this.state.set(CARD_SCOPE + path, collapsed);
 	}
 
 	// -------------------------------------------------------- selection, opening

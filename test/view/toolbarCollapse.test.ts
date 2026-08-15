@@ -31,7 +31,7 @@ function disclosureOf(card: HTMLElement): HTMLButtonElement | null {
 describe('the bulk collapse controls leave a card’s own disclosure alone', () => {
 	// `expandAll`/`collapseAll` write only through `host.setCollapsed`, which lands on the
 	// tree's own bit or the dated axis's — never on a card's (`CARD_SCOPE`), which only
-	// `host.setCardCollapsed` touches (`collapseState.ts`). So a card's own toggle is the
+	// `host.setCardCollapsed` touches (`viewState.ts`). So a card's own toggle is the
 	// only thing that can open or close it, by construction — the same rule regardless of
 	// whether the card is currently hidden, whether it drew a disclosure this pass, or
 	// which card projection is drawing it, since nothing here has to ask any of that.

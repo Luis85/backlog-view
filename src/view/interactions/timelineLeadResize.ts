@@ -1,7 +1,7 @@
 import { setTooltip } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { wireResizeGrip } from './resizeDrag';
-import { MAX_TIMELINE_LEAD_PX, MIN_TIMELINE_LEAD_PX } from '../../storage/collapseStore';
+import { MAX_TIMELINE_LEAD_PX, MIN_TIMELINE_LEAD_PX } from '../../storage/viewStateStore';
 
 /**
  * The lead column's own drag handle, mounted in the timeline HEADER
@@ -83,7 +83,7 @@ export function renderLeadResize(
 	};
 
 	// Persisted once, here — never from `live` — so a drag's `mousemove` stream and a
-	// held arrow key both cost one write to the collapse store, not one per pixel or
+	// held arrow key both cost one write to the view-state store, not one per pixel or
 	// per repeat event. `defaultWidth` back to `null` is `density`'s own rule: the
 	// default needs no stored entry, so dragging back to it clears the pick rather than
 	// writing the number that means the same thing. A width equal to the one on screen

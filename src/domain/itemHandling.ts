@@ -9,7 +9,7 @@ import { BasesViewConfig } from 'obsidian';
  *
  * **What a plain click DOES was the second question here until 2026-08-11**, and it is
  * no longer configuration at all: folding on click is working position, held in the
- * collapse store and reached through `host.clickFolds`, under ADR 0011's rule. It is
+ * view-state store and reached through `host.clickFolds`, under ADR 0011's rule. It is
  * flipped while working rather than while setting a view up, and a `.base` is shared.
  */
 export interface ItemHandling {

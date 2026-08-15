@@ -25,7 +25,7 @@ gives each level its own board — without the levels above them taking up the s
 | **Actor** | Backlog owner |
 | **Trigger** | Picking a type from the toolbar's focus control |
 | **Preconditions** | The tree has rows |
-| **Guarantee** | **Only the rendering is re-rooted.** No item's real parent changes, and nothing is written — not the notes, and not the `.base` either: the pick is working position, stored beside the collapse state ([[Collapse persistence]]). Clearing the focus restores the full tree. |
+| **Guarantee** | **Only the rendering is re-rooted.** No item's real parent changes, and nothing is written — not the notes, and not the `.base` either: the pick is working position, stored in the view-state store ([[Collapse persistence]]). Clearing the focus restores the full tree. |
 
 **Main flow**
 
@@ -72,8 +72,8 @@ gives each level its own board — without the levels above them taking up the s
 ## Where it lives
 
 `src/domain/model.ts` (`collectFocusRoots`) · `src/domain/itemTypes.ts` (`focusTarget`) ·
-`src/view/render/toolbar.ts` (the control) · `src/view/collapseState.ts` (the stored
+`src/view/render/toolbar.ts` (the control) · `src/view/viewState.ts` (the stored
 pick, beside the collapse sets) · `src/view/backlogView.ts` (`setFocusLevel`, and the
 restore that has to precede the model build).
 Tests: `test/domain/model.test.ts`, `test/view/toolbar.test.ts`,
-`test/domain/itemTypes.test.ts`, `test/view/persistence.test.ts`.
+`test/domain/itemTypes.test.ts`, `test/view/viewStatePersistence.test.ts`.

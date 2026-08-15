@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { fireResize } from '../helpers/dom';
 import { FakeVault } from '../helpers/vault';
 import { makeView, noOptionalProperties, treeOf, useViewHarness } from '../helpers/view';
-import { MAX_TIMELINE_LEAD_PX, MIN_TIMELINE_LEAD_PX } from '../../src/storage/collapseStore';
+import { MAX_TIMELINE_LEAD_PX, MIN_TIMELINE_LEAD_PX } from '../../src/storage/viewStateStore';
 import { effectiveLeadWidth, leadBoundsFor, MIN_DAY_TRACK_PX } from '../../src/view/interactions/timelineLeadResize';
 import { TIMELINE_LEAD_PX } from '../../src/view/render/timeline';
 
@@ -402,8 +402,11 @@ describe('the lead-column resize grip', () => {
 		expect(second.view.leadWidth).toBe(310);
 		second.view.onunload();
 
-		const map = vault.localStorage.get('product-backlog:collapse') as Record<string, { leadWidth?: unknown }>;
-		map['Plan.base#Roadmap'].leadWidth = 'wide';
+		const map = vault.localStorage.get('product-backlog:view-state') as Record<
+			string,
+			{ prefs: { leadWidth?: unknown } }
+		>;
+		map['Plan.base#Roadmap'].prefs.leadWidth = 'wide';
 		const third = makeView(vault, DATE_AXIS, { collapsed: true, base: 'Plan.base', viewName: 'Roadmap' });
 		expect(third.view.leadWidth).toBeNull();
 	});

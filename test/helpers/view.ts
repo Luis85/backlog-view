@@ -46,8 +46,8 @@ export function useViewHarness(): void {
  * the opening state itself.
  *
  * `focus`, `folds` and `widths` are options rather than config values because none of
- * them is one: all three are working position, set through the view and stored beside
- * the collapse state.
+ * them is one: all three are working position, set through the view and stored in the
+ * view state.
  */
 export function makeView(
 	vault: FakeVault,

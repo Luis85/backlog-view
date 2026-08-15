@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { makeView, treeOf, useViewHarness } from '../helpers/view';
-import { MAX_TIMELINE_LEAD_PX } from '../../src/storage/collapseStore';
+import { MAX_TIMELINE_LEAD_PX } from '../../src/storage/viewStateStore';
 import { MIN_DAY_TRACK_PX } from '../../src/view/interactions/timelineLeadResize';
 import { TIMELINE_LEAD_PX } from '../../src/view/render/timeline';
 import { addDays, daysBetween, formatCivil, scaleFor, timelineCells } from '../../src/domain/timeline';

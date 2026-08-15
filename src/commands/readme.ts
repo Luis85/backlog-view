@@ -4,8 +4,8 @@ import { configProblems } from '../domain/settingsConsistency';
 import { BacklogModel } from '../domain/model';
 import { BacklogSettings } from '../domain/settings';
 import { displaySource, joinSource, sourceComponent } from '../domain/readmeMarker';
-import { collapseStoreIdentity } from '../storage/collapseStore';
 import { ReadmeWriteResult, writeBacklogReadme } from '../storage/readmeFile';
+import { resolveViewIdentity } from '../storage/viewIdentity';
 import { activeBacklogView, LiveBacklogView } from '../view/registry';
 
 /** A view that has its first result set — the only kind a README may be generated from. */
@@ -40,7 +40,7 @@ function outcomeNotice({ outcome, path, previous }: ReadmeWriteResult): string {
 
 /**
  * How the generated file names the view it came from: the base path and the view's own
- * name, which is exactly the identity the collapse store already resolves for its own
+ * name, which is exactly what `storage/viewIdentity.ts` resolves for its own storage
  * key. Falls back to the view name alone for an embedded base, where no leaf answers
  * for the file.
  *
@@ -50,7 +50,7 @@ function outcomeNotice({ outcome, path, previous }: ReadmeWriteResult): string {
  * wrong write or a refusal to regenerate.
  */
 function viewSource(app: App, view: LiveBacklogView): string {
-	const identity = collapseStoreIdentity(app, view.viewEl, view.config.name);
+	const identity = resolveViewIdentity(app, view.viewEl, view.config.name);
 	return identity ? joinSource(identity.base, identity.view) : sourceComponent(view.config.name);
 }
 

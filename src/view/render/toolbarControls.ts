@@ -381,7 +381,7 @@ export function clickActionApplies(host: BacklogViewHost): boolean {
  * one value and a menu that re-derived any of the three could offer the opposite of what
  * the button was offering. The same rule the entries below already keep by reading
  * `disabled` off the button they mirror, kept here at the source instead, since this
- * value lives in the collapse store rather than on an element.
+ * value lives in the view-state store rather than on an element.
  *
  * `host.clickFolds` and not a setting: this is working position, per saved view and per
  * device (ADR 0011), so `setClickFolds` both persists it and re-renders — no Bases
@@ -406,7 +406,7 @@ export function clickActionToggle(host: BacklogViewHost): { folds: boolean; icon
  * exclusion logic here to keep it that way: `expandAll`/`collapseAll` write only through
  * `host.setCollapsed`, which lands on the tree's own bit or the dated axis's
  * (`TIMELINE_SCOPE`) — never on a card's (`CARD_SCOPE`), which only
- * `host.setCardCollapsed` ever touches (`collapseState.ts`). A card's own toggle is
+ * `host.setCardCollapsed` ever touches (`viewState.ts`). A card's own toggle is
  * therefore the only thing that can open or close it, by CONSTRUCTION — two disjoint
  * bits nothing here has to tell apart — rather than by a filter trying to guess, from
  * this population, which paths are currently cards.

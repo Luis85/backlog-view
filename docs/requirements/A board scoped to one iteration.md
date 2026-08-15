@@ -441,9 +441,10 @@ The workflow is a third `Workflow` factory in `src/domain/board.ts`, beside
 `requirementsWorkflow` and `deliverablesWorkflow`, over a settings group added to
 `src/domain/viewOptions.ts` and resolved in `src/domain/settings.ts`, whose key resolver
 joins `resolvedDeliverableStateKey` in `src/domain/optionalProperties.ts`. The population
-is derived in `src/domain/model.ts`. The scope is a field beside `axis` in the per-view
-entry of `src/storage/collapseStore.ts`, restored and debounce-saved by
-`src/view/collapseState.ts`, read and written through `src/view/uiState.ts` and declared
+is derived in `src/domain/model.ts`. The scope is a `prefs` value beside `axis` in the
+per-view entry of `src/storage/viewStateStore.ts` — a name rather than a path, so neither
+the prune nor the rename touches it — restored and debounce-saved by
+`src/view/viewState.ts`, read and written through `src/view/viewStateController.ts` and declared
 on the host in `src/view/host.ts`. The picker is a `board` case in `renderProjectionZone`
 in `src/view/render/toolbarControls.ts`, built the way `renderAxisPicker` beside it is;
 the board itself is `src/view/render/board.ts` under the fork in
@@ -454,4 +455,4 @@ the board itself is `src/view/render/board.ts` under the fork in
 `src/domain/writePlan.ts` and applied by `src/storage/frontmatter.ts` through
 `src/view/writeGate.ts`. Driven in `test/view/board.test.ts` and
 `test/view/contextCardWrites.test.ts`, with the store round-trip in
-`test/storage/collapseStore.test.ts`.
+`test/storage/viewStateStore.test.ts`.

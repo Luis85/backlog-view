@@ -4,7 +4,7 @@ import { BacklogViewHost, Column, ColumnFit, ColumnKind, PlacedMount } from '../
 import { columnWidth, columnWidthVar, renderColumnResize, widenSign } from '../interactions/columnResize';
 import { showAssigneeMenu, showHorizonMenu, showRiskMenu, showStateMenu, showTagMenu } from '../interactions/menu';
 import { removeTag } from '../interactions/tags';
-import { DEFAULT_PROP_COLUMN_WIDTH } from '../../storage/collapseStore';
+import { DEFAULT_PROP_COLUMN_WIDTH } from '../../storage/viewStateStore';
 import { ownWorkflowReading, stateKeyFor } from '../../domain/board';
 import { BacklogItem } from '../../domain/model';
 import { hasHorizonAxis, SHELF_LABEL } from '../../domain/roadmap';

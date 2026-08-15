@@ -7,15 +7,15 @@ created: 2026-08-14
 closed: 2026-08-14
 source: User request — "resource rows should be collapsible", with the toolbar's click-action toggle asked for alongside
 files:
-  - src/storage/collapseStore.ts
+  - src/storage/viewStateStore.ts
   - src/view/backlogView.ts
-  - src/view/collapseState.ts
+  - src/view/viewState.ts
   - src/view/host.ts
   - src/view/render/lanes.ts
   - src/view/render/rows.ts
   - src/view/render/timeline.ts
   - src/view/render/toolbarControls.ts
-  - src/view/uiState.ts
+  - src/view/viewStateController.ts
 ---
 
 # Folding a resource's band
@@ -120,7 +120,7 @@ machinery the collapse key space carries is about paths — the flush prunes any
 vault has no file for, the rename migration moves entries when a note moves, and
 `collapseNewParents` settles new parents. A band key would have been dropped on the first
 save. So it is stored beside the shelf's own hidden-type set (`collapsedLanes` in
-`src/storage/collapseStore.ts`), which is the same shape for the same reason — a per-view
+`src/storage/viewStateStore.ts`), which is the same shape for the same reason — a per-view
 set of names — and reached through `isLaneCollapsed`/`setLaneCollapsed` on
 `BacklogViewHost`.
 

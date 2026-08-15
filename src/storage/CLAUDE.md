@@ -1,6 +1,6 @@
 # storage/ — the only place anything is persisted
 
-Frontmatter, new notes, the `.base` file, collapse state. Everything upstream decides
+Frontmatter, new notes, the `.base` file, view state. Everything upstream decides
 what a change should be and hands the plan here.
 
 That boundary is enforced, not described: `no-restricted-syntax` bans
@@ -189,7 +189,7 @@ Following a rename replaces the link's TARGET only: the `#heading` and the `|ali
 what the user meant by the link and are none of a rename's business, and rebuilding the
 whole thing from the file resolved correctly while silently dropping both.
 
-## Collapse state, and the view mode beside it
+## View state: the folds, and every pick beside them
 
 - The rule that decides where anything persists: **base settings are saved on the view
   (the `.base` options); UI state is saved in vault-scoped localStorage.** What that
@@ -231,7 +231,7 @@ whole thing from the file resolved correctly while silently dropping both.
   has ruled on. A **view** rename moves the stored entry, which is why `dispose` flushes
   on an identity change even with nothing pending — the state is unchanged and yet
   belongs elsewhere. A **base** rename moves every entry naming it (`rekeyBase`, wired in
-  `main.ts`, covering bases with no view open) while `flushCollapseState` re-resolves its
+  `main.ts`, covering bases with no view open) while `flushViewState` re-resolves its
   own identity (covering the view watching it happen). And a rename is never only the
   thing renamed: `movedPath` carries everything beneath the old path, because moving a
   *folder* reports the folder — not the base inside it, nor the notes under it — so
@@ -240,29 +240,31 @@ whole thing from the file resolved correctly while silently dropping both.
   Obsidian reports a folder move once or once per descendant. Without these, ordinary
   tidying orphans an entry under a key nothing will look up again, and the next save
   prunes it for naming a file that no longer exists.
-- **Not everything a view remembers is keyed by a path, and the ones that are not stay out
-  of the collapse SET on purpose.** The shelf's hidden types, the resources axis's folded
-  bands (`collapsedLanes`) and the folded board columns and horizon buckets
-  (`collapsedColumns`/`expandedColumns`) are per-view lists of NAMES — a type, a resource,
-  a state value — and
-  the rules below are all about paths: the flush drops an entry the vault has no file for,
-  and the rename migrations move entries when a note or a base moves. A name put in that
-  set would be pruned on the first save, which is why each is a field of the stored entry
-  instead. They need no migration either: nothing renames a type or a resource, and a name
-  no row draws simply has no band to shut.
-  The columns are the one of the three stored as a PAIR, and the reason is a default rather
+- **Not everything a view remembers is keyed by a path, and the entry says which is
+  which.** The stored entry is `{ folds, prefs }`: `folds` is everything keyed by
+  something the vault can lose, and it is what the prune and the rename walk. The shelf's
+  hidden types, the tree's column widths, the resources axis's folded bands and the folded
+  board columns and horizon buckets are per-view lists or maps keyed by NAMES — a type, a
+  Bases property id, a resource, a state value — while the rules below are all about paths:
+  the flush drops an entry the vault has no file for, and the rename migrations move
+  entries when a note or a base moves. So `shelfHiddenTypes` and `colWidths` are `prefs`
+  values, which neither ever touches; a BAND and a COLUMN are folds and sit in
+  `folds.lanes` and `folds.collapsedColumns`/`folds.expandedColumns`, which the prune must
+  therefore skip — it walks `collapsed` and `expanded` only. They need no migration either:
+  nothing renames a type or a resource, and a name no row draws simply has no band to shut.
+  The columns are the one of these stored as a PAIR, and the reason is a default rather
   than a shape: a band nobody has ruled on is open and needs no entry, while a done board
   column nobody has ruled on is SHUT — so an explicit open has to be recorded or the
   default would take it back on the next render. That is the same two-set argument
   `collapsed`/`expanded` make for rows, reached for the second time and for the same
-  reason. Their key is scoped and lower-cased (`columnKey` in `view/collapseState.ts`),
+  reason. Their key is scoped and lower-cased (`columnKey` in `view/viewState.ts`),
   because two boards and the horizon axis can each hold a `Done` and each identifies its
   own columns case-insensitively.
 - Persisted state changes what pruning may key on. `collapseNewParents` must NOT drop
   paths that are missing from the model — a query that has not warmed up yet, or a
   filter the user just narrowed, would read as "these notes are gone" and throw away a
-  session they still want. `flushCollapseState` is the only place that forgets a path,
-  and it asks the vault, not the model. Growth is bounded there and by `MAX_PATHS`, which
+  session they still want. `flushViewState` is the only place that forgets a path,
+  and it asks the vault, not the model. Growth is bounded there and by `MAX_FOLDS`, which
   counts KEYS rather than notes — a parent settles once per scope — so a scope added is a
   cap to raise with it, or the headroom it promises in notes quietly halves.
 - Saves are debounced (`scheduleCollapseSave`); "Collapse all" settles every parent in
@@ -274,18 +276,27 @@ whole thing from the file resolved correctly while silently dropping both.
   zoom, comfortable rows, the default lead width, the whole tree — which is what makes a
   failed check and a value never written the same thing on the way back in, and why the
   write side stores nothing for a pick that means the default. A NAME is checked against
-  the vocabulary it mirrors (`readEnum`, spelled as strings here rather than imported as
-  a type, because stored state is not trusted as one). `leadWidth` is the first pick that
-  is a NUMBER, so there is no vocabulary to check it against: `readLeadWidth` takes
+  the vocabulary it mirrors (`oneOf`, spelled as strings here rather than imported as
+  a type, because stored state is not trusted as one). Each pick is one row in
+  `PREF_READERS`, run on the way IN over a stored entry and on the way OUT over the
+  snapshot the view hands down — so a value the store would refuse to read can never be
+  written. `leadWidth` is the first pick that
+  is a NUMBER, so there is no vocabulary to check it against: `inRange` takes
   finite and inside `MIN_TIMELINE_LEAD_PX..MAX_TIMELINE_LEAD_PX` and drops anything else
   rather than clamping it, since a clamp still trusts a corrupt-but-plausible number into
   the layout. A range check is the same rule as a vocabulary check, not an exception to
   it. `colWidths` — the tree's property columns, one width each — is that same range check
-  per ENTRY, and the granularity is the whole point: a bad number is one column back at
-  the default, never every column reset, and a `colWidths` that is not an object at all is
-  no widths. Its keys are property ids rather than paths, so they stay out of the collapse
-  set for the reason the shelf's hidden types do, and nothing prunes them: a property
-  hidden for an afternoon comes back the width its reader left it. `focus` is checked for SHAPE only, not against the vocabulary: the
+  per ENTRY (`eachInRange`, which is `inRange` run over a map), and the granularity is the
+  whole point: a bad number is one column back at the default, never every column reset,
+  and a `colWidths` that is not an object at all is no widths. Every other reader refuses
+  its value whole, which is right for one pick and wrong for a collection of independent
+  ones. Its keys are property ids rather than paths, so it is a `prefs` value for the
+  reason the shelf's hidden types are, and nothing prunes it: a property hidden for an
+  afternoon comes back the width its reader left it. The map it builds sits on a NULL
+  prototype, here and in the live copy alike, so a column a Base calls `constructor` or
+  `__proto__` is a plain width rather than something inherited off `Object` — or, on an
+  object literal, a rewritten prototype. `focus` is checked for SHAPE only, not against
+  the vocabulary: the
   type list lives in `domain/typeVocabulary.ts` and `focusTarget` already answers a name no
   configured type matches with "no focus" — the same tolerance it had while this value
   lived in the `.base`.

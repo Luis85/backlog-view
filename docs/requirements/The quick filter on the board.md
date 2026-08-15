@@ -94,7 +94,7 @@ are its contents.
 
 **Built.** The filter's session state and match-path contract moved out of
 `src/view/backlogView.ts` into `src/view/filterState.ts` when the view hit its
-400-line cap — the same shape `collapseState.ts` already has, and the extraction the
+400-line cap — the same shape `viewState.ts` already has, and the extraction the
 cap exists to force. It keeps TWO sets: `visible` (a match plus its ancestors and its
 whole subtree) decides what renders, and `matches` (the matches themselves) answers
 which of the things under a card the search actually found. One set cannot do both —

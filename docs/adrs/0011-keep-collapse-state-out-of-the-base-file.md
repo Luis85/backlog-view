@@ -59,9 +59,10 @@ leaf drawing it has one.
 - The entry has since taken every other piece of working position — the projection, the
   roadmap axis and zoom, the shelf's own controls, the **focus level**, (2026-08-11)
   **whether a click on a row folds it**, and (2026-08-14) **each property column's own
-  width**, all of which moved out of the `.base` under exactly this decision. Focus is the one that also feeds the MODEL rather than only the
-  render, so the view restores before it builds; a `.base` written before either move
-  keeps a `focusLevel` or `clickAction` key that nothing reads.
+  width**, all of which moved out of the `.base` under exactly this decision. Focus is the
+  one that also feeds the MODEL rather than only the render, so the view restores before
+  it builds; a `.base` written before either move keeps a `focusLevel` or `clickAction`
+  key that nothing reads.
 - **Moving one OUT of the `.base` is what the rule costs, not a second surface over it.**
   The fold value was a view option and a toolbar toggle at once, and keeping both would
   have meant a stored override beside a shared default: a tri-state (follow the base, or
@@ -72,6 +73,13 @@ leaf drawing it has one.
   sent to a colleague no longer arrives folding on click. The property column width paid
   the same price three days later, and the fact that it did is the point: the rule is not
   about folding, and a second value reaching for a stored override would have made it one.
+- **The entry is `{ folds, prefs }` as of 2026-08-15**, and the key is
+  `product-backlog:view-state`. Two thirds of what it holds was never a fold — `zoom`,
+  `density` and `leadWidth` are layout preferences, `clickFolds` and `shelfSort` are
+  behaviour, `shelfHiddenTypes` and `colWidths` are a filter and a layout — and the split
+  is what the prune and the rename walk: `folds` is everything keyed by something the
+  vault can lose, and they cannot reach `prefs` at all. The old key is not migrated, which
+  ADR 0016 permits before 1.0; it is cleared on the first write.
 
 ## Alternatives
 

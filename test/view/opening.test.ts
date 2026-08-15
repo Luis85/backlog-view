@@ -265,7 +265,7 @@ describe('a value no version of this plugin declared', () => {
 
 	/**
 	 * `clickAction` was this group's other option until 2026-08-11 and is now working
-	 * position in the collapse store. A `.base` written before the move still holds the
+	 * position in the view-state store. A `.base` written before the move still holds the
 	 * key, and nothing may read it back — a stale `fold` silently changing what a click
 	 * does is the one way this move can be noticed by someone who never asked for it.
 	 */

@@ -94,7 +94,7 @@ function renderBoard(
 	// is true of it — the tree's own once-only default, asked of the column rather than of
 	// a parent. The answer is asked once here and carried down, never re-derived per
 	// header: the getter SETTLES on the way past (see `columnCollapsed` in
-	// `view/collapseState.ts`).
+	// `view/viewState.ts`).
 	//
 	// `held > 0` is the load-bearing term and not a tidy-up: settling is permanent, so a
 	// default taken while the column holds NOTHING is a default taken on no evidence. A

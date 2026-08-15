@@ -6,7 +6,7 @@ import {
 	DEFAULT_PROP_COLUMN_WIDTH,
 	MAX_PROP_COLUMN_WIDTH,
 	MIN_PROP_COLUMN_WIDTH,
-} from '../../src/storage/collapseStore';
+} from '../../src/storage/viewStateStore';
 
 useViewHarness();
 

@@ -73,11 +73,18 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 - **Resize the tree's property columns** — drag the grip at a column header's trailing
   edge, double click it to put it back, or focus it and use the arrow keys. Each column keeps
-  its own width, per saved view and per device, beside the collapse state — so a title
+  its own width, per saved view and per device, beside the folded rows — so a title
   column and a risk chip no longer have to be the same size, and nothing about your
   working position is written to the `.base` file.
 
 ### Changed
+
+- **Your working position resets once on upgrade.** Which rows, bands and columns were
+  folded, the projection each view was showing, the roadmap axis, zoom, density and lead
+  width, the property-column widths, the focus level, the click behaviour and the shelf's
+  own controls are stored under a new key and the old one is not read. Open each view
+  once and set it up again; nothing in your `.base` files and nothing in your notes is
+  touched.
 
 - **Recording an absence asks for the dates alone.** The note is named
   `<resource> away <start> → <end>` from the facts you enter, so there is no title to think

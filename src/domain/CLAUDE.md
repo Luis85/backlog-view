@@ -275,7 +275,7 @@ a node test that did would be measuring the runner.
   tags property — the case the yielding rule never covered.
 - `model.results` is the Base's own rows and `model.items` is everything rendered.
   Anything answering "what is in this base" takes `results`; only rendering, navigation
-  and collapse state take `items`.
+  and view state take `items`.
 - Outside-filter ancestors (`settings.showOutsideParents`, on by default): the Bases query
   returns matches without their parents, which would flatten the tree, so `loadOutsideParents`
   walks each item's parent chain through the *metadata cache* and adds the missing notes with

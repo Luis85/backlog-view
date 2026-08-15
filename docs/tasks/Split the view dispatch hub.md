@@ -108,7 +108,7 @@ serving one concern, and only `busy` read from anywhere outside its own methods 
 the menu trio is three short methods sharing a helper and no state at all. Extracting the trio would have moved about twenty lines
 and left the file needing this task again; extracting the gate moved a hundred and
 twenty and left the shape the repository already uses three times over. `WriteGate` in
-`src/view/writeGate.ts` is the same collaborator shape as `CollapseState`, `FilterState`
+`src/view/writeGate.ts` is the same collaborator shape as `ViewState`, `FilterState`
 and `SelectionController`: constructed with the host, reaching view state through
 `BacklogViewHost` like every other module, and reaching none of the view's elements —
 it publishes progress through a hook the view implements (`syncBusyUi`) and flushes the

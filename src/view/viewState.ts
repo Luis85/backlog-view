@@ -6,14 +6,12 @@ import {
 	DELIVERABLES_MODE,
 	ProjectionMode,
 	ROADMAP_MODE,
-	CollapseSnapshot,
-	collapseStoreIdentity,
-	dropCollapseState,
-	loadCollapseState,
-	movedPath,
-	saveCollapseState,
-	ViewIdentity,
-} from '../storage/collapseStore';
+	dropViewState,
+	loadViewState,
+	saveViewState,
+	ViewPrefs,
+} from '../storage/viewStateStore';
+import { movedPath, resolveViewIdentity, ViewIdentity } from '../storage/viewIdentity';
 import { BacklogViewHost, ColumnScope, Projection } from './host';
 
 /**
@@ -22,7 +20,7 @@ import { BacklogViewHost, ColumnScope, Projection } from './host';
  * joins the union without a case here. The chain this replaced (`mode === 'tree' ? null
  * : mode === 'board' ? BOARD_MODE : ...`) had an unguarded final `else`, which stayed
  * green after a new projection was added and silently persisted its bare name instead
- * of the constant `readEntry`'s allowlist expects.
+ * of the constant `PREF_READERS`' allowlist expects.
  *
  * It is now the ONLY statement of the mapping. The reverse direction was still that same
  * chain, a few lines below the map that replaced it, with the same unguarded
@@ -43,7 +41,7 @@ const PROJECTION_MODE: Record<Projection, ProjectionMode | null> = {
 function projectionFor(mode: string | null): Projection {
 	const found = (Object.keys(PROJECTION_MODE) as Projection[]).find((p) => PROJECTION_MODE[p] === mode);
 	// The tree is the default and stores nothing, so it is also the answer for a value
-	// this version does not recognise — `readEntry` drops those on the way in, and
+	// this version does not recognise — `PREF_READERS` drops those on the way in, and
 	// agreeing with it here costs one `??`.
 	return found ?? 'tree';
 }
@@ -168,12 +166,14 @@ function seedCardScope(collapsed: Set<string>, settled: Set<string>): void {
 }
 
 /**
- * The view's working position, remembered across sessions: which rows are shut,
+ * The view's working position, remembered across sessions — which rows are shut,
  * which projection — tree, board or roadmap — the view is showing, which roadmap
- * axis it shows when both are configured, and which type the tree is focused on.
- * All of it is UI state, so it goes to the collapse store's vault-scoped
- * localStorage and never to the `.base`: base settings are saved on the view,
- * working position on the device.
+ * axis it shows when both are configured, which type the tree is focused on — and
+ * this device's own preferences beside it. All of it is UI state, so it goes to the
+ * view-state store's vault-scoped localStorage and never to the `.base`: base
+ * settings are saved on the view, working position and per-device preferences on
+ * the device. That is what makes it a view state rather than a collapse state: the
+ * folds are only part of what it holds.
  *
  * Two sets, not one: `collapsed` is what is shut right now, and `settled` is every
  * key the user has ruled on either way. A parent that is in neither has never been
@@ -185,35 +185,37 @@ function seedCardScope(collapsed: Set<string>, settled: Set<string>): void {
  * asks in, and the quick filter's override while it is active — and delegates the
  * bookkeeping here.
  */
-export class CollapseState {
+export class ViewState {
 	private readonly host: BacklogViewHost;
 	private collapsed = new Set<string>();
 	/** Paths already ruled on, so the initial state is applied to each exactly once. */
 	private settled = new Set<string>();
-	/** The persisted projection: `BOARD_MODE` or `ROADMAP_MODE`, or null for the tree. */
-	private mode: string | null = null;
-	/** The retained roadmap-axis pick; null until the user first picks. */
-	private axis: string | null = null;
-	/** The retained timeline zoom; null until the user first picks one. */
-	private zoom: string | null = null;
-	/** The retained timeline row density; null means comfortable, the default. */
-	private density: string | null = null;
-	/** The retained timeline lead-column width, in pixels; null means `TIMELINE_LEAD_PX`, the default. */
-	private leadWidth: number | null = null;
+	/**
+	 * Every pick, in the shape the store takes. One object rather than a field each:
+	 * `restore` and `flush` stop enumerating, so a pick added to one and forgotten in the
+	 * other cannot happen.
+	 */
+	private prefs: ViewPrefs = {};
+
+	/**
+	 * The collections kept beside {@link prefs} rather than read out of it. `isCollapsed`
+	 * and `isLaneCollapsed` are asked once per row, so rebuilding a set from an array per
+	 * call is a render cost this view refuses; they are flattened once per flush instead.
+	 * `hiddenShelfTypes` mirrors `prefs.shelfHiddenTypes` and is written by the same setter,
+	 * so the two cannot drift; {@link colWidths} is not a mirror at all but the very object
+	 * `prefs.colWidths` holds, for the reason stated on it.
+	 */
+	private hiddenShelfTypes = new Set<string>();
 	/**
 	 * The tree's resized property columns by Bases property id; a property with no entry
-	 * draws at `DEFAULT_PROP_COLUMN_WIDTH`. `Object.create(null)` for the reason
-	 * `readColWidths` uses it — a column named `constructor` is a plain key here.
+	 * draws at `DEFAULT_PROP_COLUMN_WIDTH`. A live map rather than a value replaced
+	 * wholesale, because its ENTRIES are set one at a time — so this holds the SAME object
+	 * `prefs.colWidths` does rather than a copy of it, and the two cannot describe
+	 * different widths. `Object.create(null)` for the reason the store's own reader uses
+	 * it — a column named `constructor` is a plain key here, and one named `__proto__` is
+	 * a width rather than a new prototype.
 	 */
 	private colWidths: Record<string, number> = Object.create(null) as Record<string, number>;
-	/** The focused type name; null means the whole tree, the default. */
-	private focus: string | null = null;
-	/** Whether a plain click on a row folds it; false means it opens the note, the default. */
-	private clickFoldsValue = false;
-	private shelfExpanded = false;
-	/** null means 'tree' (sibling order), the default. */
-	private shelfSortValue: string | null = null;
-	private hiddenShelfTypes = new Set<string>();
 	/** Resource bands folded shut, by name — see {@link isLaneCollapsed}. */
 	private foldedLanes = new Set<string>();
 	/** Board columns and horizon buckets folded shut, by {@link columnKey}. */
@@ -237,65 +239,71 @@ export class CollapseState {
 		return this.collapsed.has(key);
 	}
 
+	/**
+	 * Absence is a value. `null`, `false`, `''` and `[]` all mean "no entry", which is the
+	 * same rule the store keeps on the way to disk — stated here so the two cannot answer
+	 * differently about what a cleared pick is.
+	 */
+	private setPref<K extends keyof ViewPrefs>(key: K, value: ViewPrefs[K] | null): void {
+		const empty = value === null || value === false || value === '' || (Array.isArray(value) && value.length === 0);
+		if (empty) delete this.prefs[key];
+		else this.prefs[key] = value;
+		this.scheduleSave();
+	}
+
 	projection(): Projection {
-		return projectionFor(this.mode);
+		return projectionFor(this.prefs.mode ?? null);
 	}
 
 	setProjection(mode: Projection): void {
 		// The tree is the default and needs no stored value; a stored entry saved
 		// before a projection existed reads back as the tree the same way.
-		this.mode = PROJECTION_MODE[mode];
-		this.scheduleSave();
+		this.setPref('mode', PROJECTION_MODE[mode]);
 	}
 
 	/** The retained roadmap-axis pick — kept even while its axis is unconfigured. */
 	axisPick(): string | null {
-		return this.axis;
+		return this.prefs.axis ?? null;
 	}
 
 	setAxisPick(axis: string): void {
-		this.axis = axis;
-		this.scheduleSave();
+		this.setPref('axis', axis);
 	}
 
 	/** The retained timeline zoom for this saved view — null before the user picks. */
 	zoomPick(): string | null {
-		return this.zoom;
+		return this.prefs.zoom ?? null;
 	}
 
 	setZoom(id: string): void {
-		this.zoom = id;
-		this.scheduleSave();
+		this.setPref('zoom', id);
 	}
 
 	/** The retained row density for this saved view — null means comfortable, the default. */
 	densityPick(): string | null {
-		return this.density;
+		return this.prefs.density ?? null;
 	}
 
 	setDensity(value: string | null): void {
-		this.density = value;
-		this.scheduleSave();
+		this.setPref('density', value);
 	}
 
 	/** Whether a click on a row folds it in this saved view — false, opening it, is the default. */
 	clickFolds(): boolean {
-		return this.clickFoldsValue;
+		return this.prefs.clickFolds ?? false;
 	}
 
 	setClickFolds(value: boolean): void {
-		this.clickFoldsValue = value;
-		this.scheduleSave();
+		this.setPref('clickFolds', value);
 	}
 
 	/** The retained lead-column width for this saved view — null means the default. */
 	leadWidthPick(): number | null {
-		return this.leadWidth;
+		return this.prefs.leadWidth ?? null;
 	}
 
 	setLeadWidth(value: number | null): void {
-		this.leadWidth = value;
-		this.scheduleSave();
+		this.setPref('leadWidth', value);
 	}
 
 	/** The retained property-column widths for this saved view; a column absent from it is at the default. */
@@ -307,38 +315,37 @@ export class CollapseState {
 	setColumnWidth(prop: string, value: number | null): void {
 		if (value === null) delete this.colWidths[prop];
 		else this.colWidths[prop] = value;
-		this.scheduleSave();
+		// Through {@link setPref} like every other pick, so the last column dragged back to
+		// the default leaves no field behind: an emptied map is the absence a `null` means.
+		this.setPref('colWidths', Object.keys(this.colWidths).length > 0 ? this.colWidths : null);
 	}
 
 	/** The type the tree is focused on, or '' for the whole tree. */
 	focusLevel(): string {
-		return this.focus ?? '';
+		return this.prefs.focus ?? '';
 	}
 
 	setFocusLevel(level: string): void {
 		// The whole tree is the default and needs no stored value — the same rule the
 		// projection follows, and what makes "show all types" clear the entry rather
 		// than store an empty name.
-		this.focus = level || null;
-		this.scheduleSave();
+		this.setPref('focus', level || null);
 	}
 
 	shelfCollapsed(): boolean {
-		return !this.shelfExpanded;
+		return !(this.prefs.shelfExpanded ?? false);
 	}
 
 	setShelfCollapsed(collapsed: boolean): void {
-		this.shelfExpanded = !collapsed;
-		this.scheduleSave();
+		this.setPref('shelfExpanded', !collapsed);
 	}
 
 	shelfSort(): ShelfSort {
-		return (this.shelfSortValue as ShelfSort | null) ?? 'tree';
+		return (this.prefs.shelfSort as ShelfSort | undefined) ?? 'tree';
 	}
 
 	setShelfSort(sort: ShelfSort): void {
-		this.shelfSortValue = sort === 'tree' ? null : sort;
-		this.scheduleSave();
+		this.setPref('shelfSort', sort === 'tree' ? null : sort);
 	}
 
 	shelfHiddenTypes(): ReadonlySet<string> {
@@ -347,7 +354,7 @@ export class CollapseState {
 
 	setShelfHiddenTypes(types: ReadonlySet<string>): void {
 		this.hiddenShelfTypes = new Set(types);
-		this.scheduleSave();
+		this.setPref('shelfHiddenTypes', [...types]);
 	}
 
 	/**
@@ -488,43 +495,27 @@ export class CollapseState {
 		if (this.restored) return;
 		this.restored = true;
 		this.viewEl = viewEl;
-		this.id = collapseStoreIdentity(this.host.app, viewEl, this.host.config.name);
+		this.id = resolveViewIdentity(this.host.app, viewEl, this.host.config.name);
 		// No identifiable base: session-only, exactly as before this was persisted.
 		if (this.id === null) return;
-		const snapshot = loadCollapseState(this.host.app, this.id);
-		this.collapsed = snapshot.collapsed;
-		// Both sets settle a path; only the collapsed ones are shut.
-		this.settled = new Set([...snapshot.collapsed, ...snapshot.expanded]);
+		const { folds, prefs } = loadViewState(this.host.app, this.id);
+		this.collapsed = new Set(folds.collapsed);
+		// Both lists settle a key; only the collapsed ones are shut.
+		this.settled = new Set([...folds.collapsed, ...folds.expanded]);
 		seedTimelineScope(this.collapsed, this.settled);
 		seedCardScope(this.collapsed, this.settled);
-		this.restorePicks(snapshot);
-		this.shelfExpanded = snapshot.shelfExpanded ?? false;
-		this.shelfSortValue = snapshot.shelfSort ?? null;
-		this.hiddenShelfTypes = new Set(snapshot.shelfHiddenTypes ?? []);
+		this.prefs = prefs;
+		this.hiddenShelfTypes = new Set(prefs.shelfHiddenTypes ?? []);
+		// The stored map itself, not a copy: `PREF_READERS`' own reader already built it on
+		// a null prototype, which is the only property the live map needs of it.
+		this.colWidths = prefs.colWidths ?? (Object.create(null) as Record<string, number>);
 		// Normalized on the way back in as well, so an entry written before the key was
 		// canonical still shuts the band it was about.
-		this.foldedLanes = new Set((snapshot.collapsedLanes ?? []).map(laneKey));
+		this.foldedLanes = new Set(folds.lanes.map(laneKey));
 		// Stored as minted — `columnKey` is already canonical, so unlike a lane's there is
 		// nothing left to normalize here.
-		this.foldedColumns = new Set(snapshot.collapsedColumns ?? []);
-		this.openedColumns = new Set(snapshot.expandedColumns ?? []);
-	}
-
-	/**
-	 * The picks whose default is simply absence, read off the snapshot — split out of
-	 * {@link restore} for the reason `defaultPicks` was split out of `loadCollapseState`
-	 * one layer down: every pick added is another `??` in a method that was at the
-	 * complexity budget, and this half is nothing but those.
-	 */
-	private restorePicks(snapshot: CollapseSnapshot): void {
-		this.mode = snapshot.mode ?? null;
-		this.axis = snapshot.axis ?? null;
-		this.zoom = snapshot.zoom ?? null;
-		this.density = snapshot.density ?? null;
-		this.leadWidth = snapshot.leadWidth ?? null;
-		this.colWidths = Object.assign(Object.create(null) as Record<string, number>, snapshot.colWidths ?? {});
-		this.focus = snapshot.focus ?? null;
-		this.clickFoldsValue = snapshot.clickFolds ?? false;
+		this.foldedColumns = new Set(folds.collapsedColumns);
+		this.openedColumns = new Set(folds.expandedColumns);
 	}
 
 	/** Write any pending change immediately — closing the view is when that matters most. */
@@ -545,7 +536,7 @@ export class CollapseState {
 	/** The identity as it stands now, or null when it no longer differs from the stored one. */
 	private currentIdentity(): ViewIdentity | null {
 		if (this.viewEl === null || this.id === null) return null;
-		const now = collapseStoreIdentity(this.host.app, this.viewEl, this.host.config.name);
+		const now = resolveViewIdentity(this.host.app, this.viewEl, this.host.config.name);
 		if (now === null) return null;
 		return now.base === this.id.base && now.view === this.id.view ? null : now;
 	}
@@ -573,7 +564,7 @@ export class CollapseState {
 		if (moved !== null) {
 			// It has moved. Write it where it belongs now and take the old entry with
 			// it, so a renamed base or view migrates rather than leaving a copy behind.
-			dropCollapseState(this.host.app, this.id);
+			dropViewState(this.host.app, this.id);
 			this.id = moved;
 		}
 		const id = this.id;
@@ -587,24 +578,16 @@ export class CollapseState {
 			this.settled.delete(key);
 			this.collapsed.delete(key);
 		}
-		const expanded = new Set([...this.settled].filter((path) => !this.collapsed.has(path)));
-		saveCollapseState(this.host.app, id, {
-			collapsed: this.collapsed,
-			expanded,
-			mode: this.mode,
-			axis: this.axis,
-			zoom: this.zoom,
-			density: this.density,
-			leadWidth: this.leadWidth,
-			colWidths: this.colWidths,
-			focus: this.focus,
-			clickFolds: this.clickFoldsValue,
-			shelfExpanded: this.shelfExpanded,
-			shelfSort: this.shelfSortValue,
-			shelfHiddenTypes: [...this.hiddenShelfTypes],
-			collapsedLanes: [...this.foldedLanes],
-			collapsedColumns: [...this.foldedColumns],
-			expandedColumns: [...this.openedColumns],
+		const expanded = [...this.settled].filter((key) => !this.collapsed.has(key));
+		saveViewState(this.host.app, id, {
+			folds: {
+				collapsed: [...this.collapsed],
+				expanded,
+				lanes: [...this.foldedLanes],
+				collapsedColumns: [...this.foldedColumns],
+				expandedColumns: [...this.openedColumns],
+			},
+			prefs: this.prefs,
 		});
 	}
 }

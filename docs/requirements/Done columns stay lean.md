@@ -7,9 +7,9 @@ priority: P2
 created: 2026-08-01
 files:
   - src/domain/board.ts
-  - src/storage/collapseStore.ts
-  - src/view/collapseState.ts
-  - src/view/uiState.ts
+  - src/storage/viewStateStore.ts
+  - src/view/viewState.ts
+  - src/view/viewStateController.ts
   - src/view/render/board.ts
   - src/view/interactions/columnMenu.ts
   - styles/board.css
@@ -52,7 +52,7 @@ filter, not a place cards are moved to.
    ruled on.
 3. Collapsed, the column keeps its name and its count visible and stays a drop target,
    as Trello's collapsed lists and Linear's hidden columns both do.
-4. An explicit expand or collapse is remembered per device in the collapse store, never
+4. An explicit expand or collapse is remembered per device in the view-state store, never
    in the `.base`.
 
 **Extensions**
@@ -81,7 +81,7 @@ filter, not a place cards are moved to.
   a board renders it — the same once-only default the tree applies to a parent nobody
   has ruled on. One still carrying open work starts expanded: the collapse default
   exists for noise, and a retained card's rollup is not noise. An explicit expand or
-  collapse is remembered per device in the collapse store, never in the `.base`.
+  collapse is remembered per device in the view-state store, never in the `.base`.
 - A collapsed column keeps its name and count visible and stays a drop target, as
   Trello's collapsed lists and Linear's hidden columns both do.
 - "Show completed items" off hides what it hides in the tree: cards whose whole
@@ -105,12 +105,13 @@ column always renders, and the quick filter overrides — driven in
 horizon buckets too ([[Folding a horizon bucket]]).
 
 **The state.** `collapsedColumns` and `expandedColumns` in
-`src/storage/collapseStore.ts`, held by `src/view/collapseState.ts` and reached through
-`src/view/uiState.ts` like every other UI-state pick — vault-scoped, per device, and
+`src/storage/viewStateStore.ts` (in its `folds`, which is what a fold is), held by
+`src/view/viewState.ts` and reached through `src/view/viewStateController.ts` like every
+other UI-state pick — vault-scoped, per device, and
 explicitly not in the `.base`, for the reason ADR 0011 gives. A PAIR rather than one
 list, exactly as the row sets are: unlike a resource band, a column has a DEFAULT worth
-suppressing, so the two together say what the reader has ruled on. They are fields of the
-entry and not keys in the collapse set, the argument `collapsedLanes` already made — the
+suppressing, so the two together say what the reader has ruled on. They are lists of their
+own and not keys in the collapsed-path list, the argument `folds.lanes` already made — the
 flush drops any key the vault has no file for, and a state value is not a file. The key is
 scoped and lower-cased (`columnKey`), because both boards and the horizon axis can hold a
 `Done` and each identifies its columns case-insensitively.

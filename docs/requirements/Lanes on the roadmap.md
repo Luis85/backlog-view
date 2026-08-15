@@ -57,7 +57,7 @@ crosses a lane and a column does.
 - **1c — an item has no parent.** Parentless rows gather in a trailing lane — the
   board's rule, and Jira's undeletable catch-all lane before it: a row with nowhere to
   go is a row that disappears.
-- **1d — the user collapses a lane.** Remembered per device in the collapse store, like
+- **1d — the user collapses a lane.** Remembered per device in the view-state store, like
   board lanes and tree rows, and for the same reason: a per-screen preference, not a
   property of the base.
 - **2a — the move would make the item its own ancestor.** Refused, exactly as in the

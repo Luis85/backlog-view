@@ -33,10 +33,10 @@ function roadmapVault(): FakeVault {
 }
 
 describe('the three-position projection toggle', () => {
-	function storedEntries(vault: FakeVault): Record<string, { mode?: string; axis?: string }> {
-		return (vault.localStorage.get('product-backlog:collapse') ?? {}) as Record<
+	function storedEntries(vault: FakeVault): Record<string, { prefs: { mode?: string; axis?: string } }> {
+		return (vault.localStorage.get('product-backlog:view-state') ?? {}) as Record<
 			string,
-			{ mode?: string; axis?: string }
+			{ prefs: { mode?: string; axis?: string } }
 		>;
 	}
 
@@ -50,7 +50,7 @@ describe('the three-position projection toggle', () => {
 		// Switching is a render decision: nothing about the mode reaches the .base.
 		expect(first.config.setCalls).toEqual([]);
 		first.view.onunload();
-		expect(storedEntries(vault)['Backlog.base#Backlog']?.mode).toBe('roadmap');
+		expect(storedEntries(vault)['Backlog.base#Backlog']?.prefs.mode).toBe('roadmap');
 
 		// A fresh view over the same saved view restores the roadmap from the store.
 		document.body.empty();
@@ -171,14 +171,21 @@ describe('the axis is declared, never guessed', () => {
 		expect(bucketsOf(containerEl)).toHaveLength(0);
 		expect(containerEl.querySelector('.pbl-timeline')).not.toBeNull();
 		view.onunload();
-		const stored = (vault.localStorage.get('product-backlog:collapse') ?? {}) as Record<string, { axis?: string }>;
-		expect(stored['Backlog.base#Backlog']?.axis).toBe('dates');
+		const stored = (vault.localStorage.get('product-backlog:view-state') ?? {}) as Record<
+			string,
+			{ prefs: { axis?: string } }
+		>;
+		expect(stored['Backlog.base#Backlog']?.prefs.axis).toBe('dates');
 	});
 
 	it('falls back to the axis that remains when the picked one is unconfigured — pick retained', () => {
 		const vault = roadmapVault();
-		vault.localStorage.set('product-backlog:collapse', {
-			'Backlog.base#Backlog': { base: 'Backlog.base', collapsed: [], expanded: [], mode: 'roadmap', axis: 'dates' },
+		vault.localStorage.set('product-backlog:view-state', {
+			'Backlog.base#Backlog': {
+				base: 'Backlog.base',
+				folds: { collapsed: [], expanded: [], lanes: [] },
+				prefs: { mode: 'roadmap', axis: 'dates' },
+			},
 		});
 		// The date properties are gone; the horizon axis remains.
 		const harness = makeView(
@@ -192,8 +199,11 @@ describe('the axis is declared, never guessed', () => {
 		expect(harness.containerEl.querySelector('[data-pbl-key="axis"]')).toBeNull();
 		// The stored pick is user data: falling back must not rewrite it.
 		harness.view.onunload();
-		const stored = (vault.localStorage.get('product-backlog:collapse') ?? {}) as Record<string, { axis?: string }>;
-		expect(stored['Backlog.base#Backlog']?.axis).toBe('dates');
+		const stored = (vault.localStorage.get('product-backlog:view-state') ?? {}) as Record<
+			string,
+			{ prefs: { axis?: string } }
+		>;
+		expect(stored['Backlog.base#Backlog']?.prefs.axis).toBe('dates');
 	});
 
 	it('offers no axis picker outside roadmap mode', () => {

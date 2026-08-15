@@ -13,8 +13,8 @@ files:
   - src/view/render/projections.ts
   - src/view/host.ts
   - src/view/backlogView.ts
-  - src/view/collapseState.ts
-  - src/storage/collapseStore.ts
+  - src/view/viewState.ts
+  - src/storage/viewStateStore.ts
   - styles/timeline.css
 started: ""
 finished: ""
@@ -177,13 +177,13 @@ actually drawn at rather than the constant, and so the ResizeObserver-driven `on
 in `backlogView.ts` (extended here to cover the dated axis, guarded by the same
 `refitting` flag the tree's column ladder already uses against recursion) can compare a
 fresh measurement against exactly what was last drawn. The pick is stored exactly like
-`density`'s own shape — a `leadWidth` field in `src/storage/collapseStore.ts`, validated as
+`density`'s own shape — a `leadWidth` field in `src/storage/viewStateStore.ts`, validated as
 a finite number inside `MIN_TIMELINE_LEAD_PX..MAX_TIMELINE_LEAD_PX` rather than checked
 against an enum, since it is the first stored pick that is a number rather than a name —
-held in `src/view/collapseState.ts` and exposed through
+held in `src/view/viewState.ts` and exposed through
 `BacklogViewHost.leadWidth`/`setLeadWidth` in `src/view/host.ts` and
 `src/view/backlogView.ts`. The grip's own styling, beside the lead column's, is
 `styles/timeline.css`. Driven in `test/view/timelineLeadResize.test.ts` and
-`test/storage/collapseStore.test.ts` — the pane-resize path through a minimal
+`test/storage/viewStateStore.test.ts` — the pane-resize path through a minimal
 `ResizeObserver` double, `test/helpers/dom.ts`'s `fireResize`, since jsdom implements
 none.
