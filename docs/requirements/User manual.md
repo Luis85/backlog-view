@@ -1,7 +1,7 @@
 ---
 type: Feature
 parent: "[[Product Backlog]]"
-order: 75
+order: 5
 status: Open
 created: 2026-08-01
 source: user request

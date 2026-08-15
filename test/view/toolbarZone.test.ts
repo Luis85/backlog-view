@@ -134,17 +134,20 @@ describe('the projection zone', () => {
 	});
 
 	/**
-	 * The zone's own rule, at the only case that can tell it from a projection check:
-	 * a roadmap whose single axis is horizons draws NEITHER picker — the axis picker
-	 * returns because there is no choice, the timeline controls because the axis is not
-	 * `dates` — so the projection owns a zone and puts nothing in it. Emptiness read off
-	 * the settings a second time would have to reproduce both of those refusals; read
-	 * off `childElementCount` it cannot disagree with them. Every other case in this file
+	 * The zone's own rule, at the only case that can tell it from a projection check: an
+	 * UNCONFIGURED roadmap draws no control at all — the axis picker returns because there
+	 * is no axis to name, the timeline controls and the bucket-grid toggle because neither
+	 * axis is active — so the projection owns a zone and puts nothing in it. Emptiness read
+	 * off the settings a second time would have to reproduce all three refusals; read off
+	 * `childElementCount` it cannot disagree with them. Every other case in this file
 	 * compares roadmap against tree, where `if (projection !== 'roadmap')` passes too.
+	 *
+	 * It was the horizon-only roadmap until 2026-08-15, which is no longer a witness: that
+	 * axis draws buckets, and buckets now have a layout toggle of their own.
 	 */
 	it('takes an EMPTY zone away on the projection that owns one', () => {
 		const vault = fixture();
-		const { view, containerEl } = makeView(vault, { horizonProperty: 'note.horizon' });
+		const { view, containerEl } = makeView(vault, {});
 		view.setProjection('roadmap');
 
 		expect(containerEl.querySelector('[data-pbl-key="axis"]')).toBeNull();

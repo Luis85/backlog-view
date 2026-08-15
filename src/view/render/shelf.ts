@@ -1,7 +1,7 @@
 import { setTooltip } from 'obsidian';
 import { t } from '../../i18n/t';
 import { drawIcon } from './icons';
-import { createCard, renderCardBody, wireCardActivation } from './board';
+import { createCard, renderCardBody, renderColumnFold, wireCardActivation } from './board';
 import { RowContext } from './columns';
 import { renderShelfControls } from './shelfControls';
 import { spanText } from './lanes';
@@ -218,12 +218,41 @@ interface ShelfWiring {
 /** Shared by every card with no conflicting prerequisite, so nothing is allocated for the common case. */
 const NO_CONFLICTS: ReadonlySet<string> = new Set();
 
-/** One type group inside the expanded shelf: its header, then its cards in sort order. */
+/**
+ * One type group inside the expanded shelf: its header, then its cards in sort order —
+ * unless the reader has folded this type away, which is the board column's own fold asked
+ * of a TYPE (`ColumnScope`'s `shelf`), so it persists per saved view and per device with
+ * every other fold and needs nothing of its own in the store. `false` for the default: a
+ * type nobody has ruled on is open, since an axis has no notion of a finished type and the
+ * shelf's whole purpose is showing what is still untriaged.
+ *
+ * A folded group draws no card and RETURNS none — `renderBucket`'s rule, and for its
+ * reason: `cards` is the keyboard's walk and what the pane's `listbox`/`region` role is
+ * decided from, so a card that is not drawn must not be selectable. What it keeps is its
+ * COUNT, which is the difference between this and the type filter beside it: hiding a type
+ * takes the group away, folding it says how much is behind the fold.
+ */
 function renderShelfGroup(ctx: RowContext, shelfEl: HTMLElement, group: ShelfGroup, wiring: ShelfWiring): BacklogItem[] {
-	const groupEl = shelfEl.createDiv({ cls: 'pbl-shelf-group' });
+	const host = ctx.host;
+	const folded = host.columnCollapsed('shelf', group.type, false);
+	const groupEl = shelfEl.createDiv({
+		cls: 'pbl-shelf-group' + (folded ? ' pbl-shelf-group-collapsed' : ''),
+		attr: {
+			role: 'group',
+			// Folded is said in the NAME, the bucket's reason exactly: the count survives the
+			// fold, so a group that stayed silent about it would announce cards it is not
+			// drawing.
+			'aria-label': t(folded ? 'roadmap.groupLabelCollapsed' : 'roadmap.groupLabel', {
+				name: group.type,
+				count: group.cards.length,
+			}),
+		},
+	});
 	const header = groupEl.createDiv({ cls: 'pbl-shelf-group-header' });
+	renderColumnFold(host, header, 'shelf', group.type, { folded, label: group.type });
 	header.createSpan({ cls: 'pbl-shelf-group-name', text: group.type });
 	header.createSpan({ cls: 'pbl-shelf-group-count', text: String(group.cards.length) });
+	if (folded) return [];
 	const cardsEl = groupEl.createDiv({ cls: 'pbl-shelf-cards' });
 	for (const entry of group.cards) renderShelfCard(ctx, cardsEl, entry, wiring);
 	return group.cards.map((entry) => entry.item);

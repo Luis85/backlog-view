@@ -117,15 +117,22 @@ a catalog can key on.
   message, never concatenates a translated word onto a data value. See
   `Type names are data`.
 
-## The count was nine when this note was written, and it was eighteen
+## The count was nine when this note was written, and it was nineteen
 
 Measured rather than recalled, which is the rule this register keeps about counts. The
-nine ternaries above are still there; nine more arrived in the projections built since —
+nine ternaries above are still there; ten more arrived in the projections built since —
 the lanes, the shelf, the roadmap's buckets, the board's columns and its match count, the
 card disclosure's note, `childrenList`. Every one of them is gone. Two files the note
 named have moved on: the toolbar's count label is `render/toolbarStatus.ts` now, and the
 `' and '` joiner left `domain/settings.ts` for `domain/settingsConsistency.ts` when the
 config report split out.
+
+The nineteenth arrived **during** this work, which is the number's real lesson: merging
+main brought the shelf's new type-group fold, and its `aria-label` was written the old way
+because the old way was still the only way when it was written. It reused
+`roadmap.groupLabel` unchanged. Until `A bare string cannot reach the UI` lands there is
+nothing stopping the twentieth, so a merge that touches a rendering module is worth
+grepping — and that PBI is the reason this note does not have to keep saying so.
 
 The `${n} item${s}` shape occurred five times over the same meaning and is **one key**,
 `count.items`. That is not the deduplication `The string catalog` forbids: that rule is

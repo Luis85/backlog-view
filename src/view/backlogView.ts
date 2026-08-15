@@ -19,8 +19,8 @@ import { ItemWrite, ScheduleGesture, SchedulePlan } from '../domain/writePlan';
 import { ScaleId } from '../domain/timeline';
 import { forgetBacklogView, rememberBacklogView } from './registry';
 import { ResizePolicy } from './resize';
-import { filterScopeFor, hidesCompleted, projectionMember, treeShaped } from './projection';
-import { rowHidden, VisibilityRule } from './rowVisibility';
+import { filterScopeFor, treeShaped } from './projection';
+import { rowHidden, visibilityRule } from './rowVisibility';
 import { SelectionController } from './selection';
 import { ViewStateController } from './viewStateController';
 import { detectIgnoredGrouping, renderToolbar, revealFilter, syncBusy, syncFilterUi } from './render/toolbar';
@@ -220,6 +220,14 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.ui.setClickFolds(value);
 	}
 
+	get bucketGrid(): boolean {
+		return this.ui.bucketGrid;
+	}
+
+	setBucketGrid(grid: boolean): void {
+		this.ui.setBucketGrid(grid);
+	}
+
 	get shelfCollapsed(): boolean {
 		return this.ui.shelfCollapsed;
 	}
@@ -398,30 +406,11 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	}
 
 	isRowHidden(item: BacklogItem): boolean {
-		return rowHidden(item, this.visibility(true));
+		return rowHidden(item, visibilityRule(this.filter, this.settings, this.projection, true));
 	}
 
 	isRowHiddenUnfiltered(item: BacklogItem): boolean {
-		return rowHidden(item, this.visibility(false));
-	}
-
-	/**
-	 * The one visibility rule, assembled once. `hideCompleted` is where the Deliverables
-	 * board's exception lives — that board has no completion concept of its own, so the
-	 * toggle describing the requirements rollup must not reach it. Stated here rather than
-	 * offered as a second method for call sites to remember: three surfaces asked the
-	 * narrower question and the fourth asked the ordinary one, which is how a Deliverable
-	 * card's child list came to be emptied by a setting from another projection.
-	 */
-	private visibility(applyFilter: boolean): VisibilityRule {
-		return {
-			filter: this.filter,
-			settings: this.settings,
-			applyFilter,
-			scope: filterScopeFor(this.projection),
-			hideCompleted: hidesCompleted(this.projection),
-			inProjection: projectionMember(this.projection),
-		};
+		return rowHidden(item, visibilityRule(this.filter, this.settings, this.projection, false));
 	}
 
 	isFilterMatch(item: BacklogItem): boolean {

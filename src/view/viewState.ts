@@ -297,6 +297,20 @@ export class ViewState {
 		this.setPref('clickFolds', value);
 	}
 
+	/**
+	 * Whether a horizon bucket lays its cards out as a grid — the default, so the stored
+	 * pick is its absence. The inversion lives here and nowhere else: everything above
+	 * asks about the GRID, which is what the toggle is named for, while the store keeps
+	 * its own rule that a default is written as nothing at all.
+	 */
+	bucketGrid(): boolean {
+		return !(this.prefs.bucketList ?? false);
+	}
+
+	setBucketGrid(grid: boolean): void {
+		this.setPref('bucketList', grid ? null : true);
+	}
+
 	/** The retained lead-column width for this saved view — null means the default. */
 	leadWidthPick(): number | null {
 		return this.prefs.leadWidth ?? null;

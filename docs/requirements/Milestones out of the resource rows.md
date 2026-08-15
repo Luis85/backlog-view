@@ -14,6 +14,13 @@ files:
   - styles/lanes.css
   - styles/timeline.css
   - styles/timelineFurniture.css
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Milestones out of the resource rows

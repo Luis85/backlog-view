@@ -11,6 +11,13 @@ source: User report with a screenshot — "the absences should go in their named
 files:
   - styles/timeline.css
   - test/view/timelineBoxing.test.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # An absence drew on the line below its own name

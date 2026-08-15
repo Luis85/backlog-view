@@ -17,6 +17,8 @@ finished: ""
 horizon: ""
 risk: ""
 assignee: Chris
+start: ""
+due: ""
 ---
 
 # Move and resize a bar

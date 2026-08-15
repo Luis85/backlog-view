@@ -8,8 +8,6 @@ finished: ""
 horizon: ""
 risk: ""
 assignee: Evi
-start: 2026-09-03
-due: 2026-09-09
 ---
 
 # Reordering and reparenting

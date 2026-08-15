@@ -17,6 +17,13 @@ files:
   - src/view/render/roadmap.ts
   - src/view/render/shelf.ts
   - src/view/render/timeline.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Scheduling inside a resource's row

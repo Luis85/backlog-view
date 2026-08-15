@@ -210,6 +210,13 @@
 	min-height: var(--size-4-8);
 }
 
+/* One card per row, the toolbar's `Grid in buckets` turned off — the same track sizing
+   with the auto-fill taken out, so nothing else about a bucket's cards changes. The class
+   is on the ROW (`renderRoadmap`), not on each bucket: one statement of the pick. */
+.pbl-buckets-list .pbl-bucket-cards {
+	grid-template-columns: 1fr;
+}
+
 /* Create into this bucket. Hidden until the bucket is hovered or the button takes
    focus, exactly as the tree row's add button is: an affordance per bucket, not a
    permanent row of plus signs across the roadmap. */

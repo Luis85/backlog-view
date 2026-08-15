@@ -25,6 +25,13 @@ files:
   - src/view/render/timeline.ts
   - styles/lanes.css
   - styles/legend.css
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Resource absences

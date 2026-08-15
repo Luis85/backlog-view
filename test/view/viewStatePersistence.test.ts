@@ -336,6 +336,29 @@ describe('collapse state persistence', () => {
 		expect(makeView(vault, {}, { base: 'Backlog.base' }).view.clickFolds).toBe(false);
 	});
 
+	/**
+	 * The bucket layout, the same way and for the same reason: a habit rather than a
+	 * property of the base. Asserted through what the roadmap DRAWS on reopening, not
+	 * through the flag alone — the row's class is the whole of what the pick does.
+	 */
+	it('reopens the buckets in the layout the last session picked, without writing the .base', () => {
+		const vault = fixture();
+		const first = makeView(vault, { horizonProperty: 'note.horizon' }, { base: 'Backlog.base' });
+		first.view.setProjection('roadmap');
+		first.view.setBucketGrid(false);
+		first.view.onunload();
+		expect(first.config.setCalls).toEqual([]);
+
+		const second = makeView(vault, { horizonProperty: 'note.horizon' }, { base: 'Backlog.base' });
+		expect(second.view.bucketGrid).toBe(false);
+		expect(second.containerEl.querySelector('.pbl-roadmap-buckets.pbl-buckets-list')).not.toBeNull();
+
+		// And back: the grid is the default, so it clears the field rather than storing it.
+		second.view.setBucketGrid(true);
+		second.view.onunload();
+		expect(stored(vault)[Object.keys(stored(vault))[0]]).not.toHaveProperty('bucketList');
+	});
+
 	it('reopens focused on the type the last session picked, without writing the .base', () => {
 		const vault = fixture();
 		const first = makeView(vault, {}, { base: 'Backlog.base' });

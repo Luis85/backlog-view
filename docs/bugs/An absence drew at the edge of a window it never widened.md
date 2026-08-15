@@ -12,6 +12,13 @@ files:
   - src/view/render/lanes.ts
   - src/view/render/timeline.ts
   - test/view/resourceAbsences.test.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # An absence drew at the edge of a window it never widened
