@@ -63,6 +63,7 @@ Everything here implements:
 | `src/domain/viewOptions.ts` | `iterationsGroup()` |
 | `src/domain/settings.ts` | `iterationStateKey` / `iterationStates` / `iterationDoneValues` |
 | `src/domain/settingsResolve.ts` | `ITERATION_NAMES`, the third `SecondaryWorkflowNames` row |
+| `src/domain/settingsConsistency.ts` | `'iteration state'` in `WORKFLOW_STATE_LABELS` |
 | `src/domain/optionalProperties.ts` | `iterationState` field, `resolvedIterationStateKey` |
 | `src/domain/readItems.ts` | `iterationStateValue` |
 | `src/domain/model.ts` | `iterationResults`, `observedIterationStates` |
@@ -78,10 +79,12 @@ Everything here implements:
 | `src/view/render/board.ts` | `renderIterationBoard` |
 | `src/view/render/emptyStates.ts` | two states |
 | `src/view/render/projections.ts` | the fork |
+| `src/view/backlogView.ts` | `pbl-board-mode`, asked rather than enumerated |
 | `src/domain/writePlan.ts` | `computeIterationStateWrites` and its `ItemWrite` fields |
 | `src/storage/frontmatter.ts` | the iteration state write, beside the Deliverable and Test ones |
 | `src/storage/writeKeys.ts` | a second `carried` row, for the resolved state key |
 | `src/view/cardMoves.ts` | `performIterationBoardMove` |
+| `src/view/interactions/create.ts` | carries the scope into the creation write |
 
 ---
 
@@ -792,6 +795,7 @@ when picking it would write nothing."
 - Modify: `src/domain/settings.ts`
 - Modify: `src/domain/optionalProperties.ts` (`iterationState`, `resolvedIterationStateKey`)
 - Modify: `src/domain/settingsResolve.ts` (`ITERATION_NAMES` and its `resolveSecondaryWorkflow` call)
+- Modify: `src/domain/settingsConsistency.ts` (`WORKFLOW_STATE_LABELS`)
 - Modify: `src/domain/readItems.ts` (`iterationStateValue`)
 - Test: `test/domain/iterationSettings.test.ts` (new)
 
@@ -922,6 +926,27 @@ the two already there — the file's comment says its whole shape exists to keep
 line per workflow, so a third workflow should cost exactly one.
 
 Widen `fallbackKey` and `fallbackDoneValues`' unions to admit the new names.
+
+**And exempt the shared key from the collision gate.** `configProblems` reports two
+properties sharing one frontmatter key, *except* where every sharer is in
+`WORKFLOW_STATE_LABELS` — `{'state', 'deliverable state', 'test state'}` today. Sharing
+the product key is a **supported** iteration configuration, so without the fourth label a
+user who explicitly points `iterationStateProperty` at `status` gets a reported collision
+and **every write path blocked**, on a configuration this feature deliberately offers.
+
+```ts
+	const WORKFLOW_STATE_LABELS = new Set(['state', 'deliverable state', 'test state', 'iteration state']);
+```
+
+The label has to match `PROPERTY_TABLE`'s `label` for the `iterationState` field exactly —
+that set is keyed by label, so a mismatch silently fails to exempt.
+
+```ts
+it('allows the iteration state to share the product key on purpose', () => {
+	const s = resolveSettings(configWith({ stateProperty: 'note.status', iterationStateProperty: 'note.status' }), vault);
+	expect(configProblems(s)).toEqual([]);
+});
+```
 
 In `readItems.ts`, read `iterationStateValue` beside `deliverableStateValue`, off
 `resolvedIterationStateKey(settings)`.
@@ -1561,11 +1586,41 @@ In `src/view/projection.ts`, this scope's `VisibilityRule` takes `hideCompleted:
 
 `inProjection` is `projectionMember('board')`, which already returns `!inCatalog`.
 
-- [ ] **Step 6: Suppress the two toolbar controls**
+- [ ] **Step 6: Turn on the board LAYOUT**
+
+`renderTreeContent` (`src/view/backlogView.ts`) sets `pbl-board-mode` from
+`projection === 'board' || projection === 'deliverables'`. That class is what gives the
+scroller `overflow-x: auto` (`styles/board.css`); without it an iteration board keeps
+`.pbl-tree`'s `overflow-x: hidden`, so **every column past the pane's width is
+unreachable** — no scrollbar, no drag target, the work simply not there — and the stale
+responsive rules can strip card metadata as well.
+
+Do not add a third name to that comparison. Ask `projection.ts` — this is the same
+enumeration hazard the toolbar's position comparison already was, one file over, and the
+third board is the one that proves a list was the wrong shape:
+
+```ts
+/** Whether this projection draws CARD COLUMNS, and so needs the board layout. */
+export function boardShaped(projection: Projection): boolean {
+	return projection === 'board' || projection === 'deliverables' || projection === 'iteration';
+}
+```
+
+It is a different question from `toolbarPosition`, which answers `'board'` for
+`'iteration'` but not for `'deliverables'` — that one has a toggle position of its own.
+Two questions, because they genuinely differ on a projection that exists today.
+
+```ts
+it('draws an iteration board with the board layout, so wide column sets scroll', () => {
+	expect(renderScope(model, sprint12).viewEl.hasClass('pbl-board-mode')).toBe(true);
+});
+```
+
+- [ ] **Step 7: Suppress the two toolbar controls**
 
 The focus picker renders a fixed, disabled button with no menu, no "Focused: <level>" label and no clear button — `renderFocusPicker`'s existing unconditional branch for the Deliverables board is the model. "Show completed items" is absent rather than present and inert.
 
-- [ ] **Step 7: Fork on it, and gate the columns on a resolved workflow**
+- [ ] **Step 8: Fork on it, and gate the columns on a resolved workflow**
 
 In `src/view/render/projections.ts`'s dispatch chain, `'iteration'` renders
 `renderIterationBoard` — **but only past a `resolvedIterationStateKey` check**, exactly as
@@ -1579,12 +1634,12 @@ upstream of every consumer. By the time this dispatch runs, `host.projection` is
 `'board'` for a stale scope, so this chain needs no fallback of its own and must not grow
 one: a second resolution is a second opinion.
 
-- [ ] **Step 8: Run the tests**
+- [ ] **Step 9: Run the tests**
 
 Run: `npx vitest run test/view/iterationBoard.test.ts test/view/board.test.ts`
 Expected: PASS.
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 10: Commit**
 
 ```bash
 npm run check
@@ -1603,13 +1658,14 @@ Deliverables board had to draw first."
 
 ---
 
-### Task 11: Moves
+### Task 11: Moves, and creation in place
 
 **Files:**
 - Modify: `src/domain/writePlan.ts` (the planner and its `ItemWrite` fields)
 - Modify: `src/storage/frontmatter.ts` (the state write), `src/storage/writeKeys.ts` (its capture)
 - Modify: `src/view/cardMoves.ts` (`performIterationBoardMove`), `src/view/host.ts`
 - Modify: `src/view/interactions/cardDrag.ts`, `keyboard.ts`, `menu.ts`
+- Modify: `src/view/interactions/create.ts` and `createBacklogItem` in `src/storage/frontmatter.ts`
 - Test: `test/view/contextCardWrites.test.ts`, `test/view/iterationBoard.test.ts`
 
 **The bottom three files come first**, and skipping them is why this task looked smaller
@@ -1718,12 +1774,46 @@ this board has no column for.
 Run: `npx vitest run test/view/contextCardWrites.test.ts test/view/iterationBoard.test.ts`
 Expected: PASS. `contextCardWrites.test.ts` asks the three questions of each card projection — the drag, the keyboard and menu paths a drag cannot take, and the structural refusal behind both — so a new card projection is covered there by construction.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 7: Seed a new card with the scope's iteration**
+
+Narrowing the offered types (Task 8) is only half of "a board offers what it can show".
+The other half is that what it creates **stays**: `promptCreateItem` passes the type, the
+parent and an optional horizon to `createBacklogItem`, so a PBI or a Deliverable created
+from an iteration board's toolbar carries **no iteration link** and vanishes from the
+board on the next refresh — the exact failure the type-narrowing exists to prevent,
+arriving through the other door.
+
+The shape is already there to copy. `createBacklogItem` writes a horizon in the SAME
+`vault.create`, and its comment says why: *"so it is never momentarily a note sitting in a
+bucket its own frontmatter does not name, and never a write to an unconfigured key."* An
+iteration is that rule again — one more field on the spec, written in the same create,
+through the configured key or not at all.
+
+Creation stays outside the undo history, as it already does: undo never deletes a note.
+
+```ts
+it('creates into the iteration the board is showing', async () => {
+	await createFromToolbar({ scope: sprint12, typeName: 'PBI', title: 'New work' });
+	expect(frontmatterOf('New work').iteration).toBe('[[Sprint 12]]');
+});
+
+it('writes no iteration key when the property is unconfigured', async () => {
+	await createFromToolbar({ scope: sprint12, iterationKey: '', typeName: 'PBI' });
+	expect(Object.keys(frontmatterOf('New work'))).not.toContain('iteration');
+});
+
+it('creates without one on the product board', async () => {
+	await createFromToolbar({ scope: null, typeName: 'PBI' });
+	expect(frontmatterOf('New work').iteration).toBeUndefined();
+});
+```
+
+- [ ] **Step 8: Commit**
 
 ```bash
 npm run check
 git add -A
-git commit -m "Move a card on an iteration board
+git commit -m "Move a card on an iteration board, and create into it
 
 One host method, three inputs, one place the batch is planned and one place it
 is announced. The vocabulary naming the move is captured before the await: the

@@ -265,6 +265,15 @@ the moment the populations diverged, which is exactly what happened.
   state property. The card leaves in silence, as it already does on every other board:
   nothing correlates a Bases pass with a write, so no outcome report is attempted here
   either. The open question is recorded, not reopened.
+- **5c — a new item is created from this board's toolbar or a card's child menu.** It is
+  created **into this iteration**: the scope's link is written in the same create as the
+  type and the parent, never as a second write afterwards. Otherwise the new card is
+  missing this board's own property and vanishes on the next refresh — the same failure
+  the offered-types rule prevents, arriving through the other door. The precedent is the
+  horizon's: a note created from a bucket claims that bucket in the SAME write, so it is
+  never momentarily a note sitting somewhere its own frontmatter does not name. With the
+  iteration property unconfigured nothing is written, as everywhere else. Creation stays
+  outside the undo history, since undo never deletes a note.
 - **5b — "Show completed items" is off.** It does not reach this board, and that is one
   field rather than a per-caller choice: `hideCompleted` is false in this projection's
   `VisibilityRule`, exactly as it is for the Deliverables board. The toggle describes the
@@ -326,6 +335,9 @@ the moment the populations diverged, which is exactly what happened.
   it.
 - Choosing a scope leaves the picker on screen and the `Board` position pressed, checked
   by picking one and inspecting the rebuilt toolbar.
+- An item created from this board carries the iteration it was created on, written in the
+  same create as its type and parent, so it appears as a card immediately rather than
+  vanishing on refresh.
 - `Set type` and the creation menus offer exactly what this board can show: `Deliverable`
   **yes**, because it draws them; `Iteration` **no**, because it never draws one. Offering
   a type the board cannot show lets a reader create an item and watch it vanish from the
