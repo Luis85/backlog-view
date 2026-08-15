@@ -523,6 +523,18 @@ describe('the absence marks are drawn from the content palette', () => {
 		expect(pitch('.pbl-lane-head .pbl-timeline-track')).toBe(pitch('.pbl-absence'));
 	});
 
+	it('keeps the mark’s border inside the width the pack was handed', () => {
+		// `packLanes` separates the marks that would overlap, and it is handed `spanBox`'s
+		// `--pbl-bar-width` — so the RENDERED extent has to be that width and not that width
+		// plus two 1px borders, or two marks the pack judged to touch would overlap by 2px.
+		// Obsidian's app.css does set `* { box-sizing: border-box }`, which is why no vault
+		// has ever drawn the overlap; this states it in the plugin's own stylesheet instead of
+		// resting the pack's premise on the host's reset — the same reason `.pbl-absence-wash`
+		// and `.pbl-timeline-cell` beside it declare it rather than inherit it. Raised in
+		// review (2026-08-15) as an overlap, which it is not; the assumption was real.
+		expect(bodyOf(lanes, '.pbl-absence', 'styles/lanes.css')).toContain('box-sizing: border-box');
+	});
+
 	it('leaves the mark its pointer events, which are now the only route to Edit and Delete', () => {
 		// Stated at the FORBIDDEN thing rather than by driving the paths that would break.
 		// The mark's context menu is the only way to either act since the stretch lost its own
