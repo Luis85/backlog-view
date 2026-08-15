@@ -184,6 +184,7 @@ export class CollapseState {
 	private focus: string | null = null;
 	/** Whether a plain click on a row folds it; false means it opens the note, the default. */
 	private clickFoldsValue = false;
+	private shelfExpanded = false;
 	/** null means 'tree' (sibling order), the default. */
 	private shelfSortValue: string | null = null;
 	private hiddenShelfTypes = new Set<string>();
@@ -277,6 +278,15 @@ export class CollapseState {
 		// projection follows, and what makes "show all types" clear the entry rather
 		// than store an empty name.
 		this.focus = level || null;
+		this.scheduleSave();
+	}
+
+	shelfCollapsed(): boolean {
+		return !this.shelfExpanded;
+	}
+
+	setShelfCollapsed(collapsed: boolean): void {
+		this.shelfExpanded = !collapsed;
 		this.scheduleSave();
 	}
 
@@ -410,6 +420,7 @@ export class CollapseState {
 		this.leadWidth = snapshot.leadWidth ?? null;
 		this.focus = snapshot.focus ?? null;
 		this.clickFoldsValue = snapshot.clickFolds ?? false;
+		this.shelfExpanded = snapshot.shelfExpanded ?? false;
 		this.shelfSortValue = snapshot.shelfSort ?? null;
 		this.hiddenShelfTypes = new Set(snapshot.shelfHiddenTypes ?? []);
 		// Normalized on the way back in as well, so an entry written before the key was
@@ -488,6 +499,7 @@ export class CollapseState {
 			leadWidth: this.leadWidth,
 			focus: this.focus,
 			clickFolds: this.clickFoldsValue,
+			shelfExpanded: this.shelfExpanded,
 			shelfSort: this.shelfSortValue,
 			shelfHiddenTypes: [...this.hiddenShelfTypes],
 			collapsedLanes: [...this.foldedLanes],

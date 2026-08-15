@@ -696,19 +696,27 @@ free of runtime code so imports stay cycle-free.
   until a drag is live. A target that exists only while it is occupied is one nothing can
   ever reach. Whether it actually appears under a dragged card is a vault check.
 - The shelf's own header carries its controls — a disclosure, a sort pick, a type
-  filter — and they follow the per-row control rule exactly: `tabindex="-1"` buttons
-  opening a `Menu`, never form controls, with the card menu's shelf section as the
-  keyboard path (`addShelfSection`). One builder feeds both surfaces. The one case a
+  filter — and the two PICKERS follow the per-row control rule exactly: `tabindex="-1"`
+  buttons opening a `Menu`, never form controls, with the card menu's shelf section as
+  the keyboard path (`addShelfSection`). One builder feeds both surfaces. The one case a
   menu cannot cover is an all-shelved, collapsed roadmap, where no card renders and so
   no card menu opens: there the pane is a `region` rather than a composite, and
-  `syncShelfTabStops` puts EVERY header control back in the tab order, decided from the
-  same final card count the role is. Every one, not the disclosure alone — hiding the
-  last visible type empties the pane by itself, and rescuing only the disclosure leaves
-  the filter that caused it unreachable. Using any of them rebuilds the pane and destroys
+  `syncShelfTabStops` puts every picker back in the tab order, decided from the
+  same final card count the role is. Both, not one — hiding the
+  last visible type empties the pane by itself, and rescuing only the sort leaves
+  the filter that caused it unreachable. Using either rebuilds the pane and destroys
   the button pressed, so `refocus` puts focus back — on the PANE where cards remain, on
   the control's replacement where none do. Not interchangeable: the pane's key handler
   ignores any event whose target is not the pane itself, so focusing a `tabindex="-1"`
   control inside a composite silently kills the arrows while looking correct.
+  **The DISCLOSURE is out of that rule and is a permanent tab stop** (2026-08-15), the
+  second control in this pane to earn one after the timeline's lead grip and on the same
+  terms — chrome fixed to the frame, never among the cards, unable to compete with a
+  roving selection the pane only hears about through itself. What earned it is that the
+  card menu stopped carrying the collapse toggle, and a collapsed shelf draws no card to
+  menu from, so `-1` would have been a shelf no keyboard could reopen. It is therefore
+  its own way back too: `refocus` gives it its replacement in BOTH pane shapes, where
+  the pickers take the pane. See [[Drop the shelf's toggle from the card menu]].
 - A roadmap card is the board's card: `createCard` / `renderCardBody` /
   `wireCardActivation` are exported from `render/board.ts` and shared, so an item
   cannot look different per projection. Timeline rows reuse the card SHELL (selection,

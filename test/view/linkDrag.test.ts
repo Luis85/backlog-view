@@ -544,7 +544,8 @@ describe('a link drag is refused by the timeline grid and the dated shelf', () =
 
 	it('does not unschedule when released on the dated shelf', async () => {
 		const vault = barVault();
-		const { containerEl } = datedLinkView(vault);
+		const { containerEl, view } = datedLinkView(vault);
+		view.setShelfCollapsed(false);
 		const shelf = shelfOf(containerEl);
 		if (!shelf) throw new Error('no shelf');
 		cardDrag(connectorFor(containerEl, 'Alpha') as HTMLElement, shelf);

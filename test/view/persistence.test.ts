@@ -233,14 +233,16 @@ describe('collapse state persistence', () => {
 		expect(save).toHaveBeenCalledTimes(1);
 	});
 
-	it('persists the shelf sort and type filter across a reopen', () => {
+	it('persists the shelf collapse, sort and type filter across a reopen', () => {
 		const vault = fixture();
 		const first = makeView(vault, {}, { base: 'Backlog.base' });
+		first.view.setShelfCollapsed(false);
 		first.view.setShelfSort('title');
 		first.view.setShelfHiddenTypes(new Set(['Task']));
 		first.view.onunload();
 
 		const second = makeView(vault, {}, { base: 'Backlog.base', collapsed: true });
+		expect(second.view.shelfCollapsed).toBe(false);
 		expect(second.view.shelfSort).toBe('title');
 		expect(second.view.shelfHiddenTypes).toEqual(new Set(['Task']));
 	});

@@ -38,6 +38,7 @@ function scheduleVault() {
 function datedView(vault: FakeVault, values: Record<string, unknown> = DATE_AXIS) {
 	const harness = makeView(vault, values, { collapsed: true });
 	harness.view.setProjection('roadmap');
+	harness.view.setShelfCollapsed(false);
 	// EVERY pointer case is driven against a panned grid at a nonzero viewport offset:
 	// a fixture at the origin with no scroll passes whether or not the pointer is
 	// converted at all. `at(offset)` is the viewport X of a grid offset under that

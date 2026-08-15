@@ -78,6 +78,7 @@ describe('the browser harness mounts', () => {
 		const { view, containerEl } = mount();
 
 		view.setProjection('roadmap');
+		view.setShelfCollapsed(false);
 
 		const buckets = Array.from(containerEl.querySelectorAll('.pbl-bucket .pbl-bucket-name')).map((n) => n.textContent);
 		expect(buckets).toEqual(expect.arrayContaining(['Now', 'Next', 'Later']));
@@ -423,6 +424,7 @@ describe('the harness draws every icon the view asks for', () => {
 			// passing because nothing named a control only that axis draws.
 			view.setProjection('roadmap');
 			view.setAxisPick(axis);
+			view.setShelfCollapsed(false);
 			collect();
 		}
 		return { asked, missing, drew };

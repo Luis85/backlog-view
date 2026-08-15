@@ -64,6 +64,7 @@ describe('the three-position projection toggle', () => {
 		const before = view.model;
 
 		view.setProjection('roadmap');
+		view.setShelfCollapsed(false);
 		expect(view.model).toBe(before);
 		expect(vault.writeLog).toHaveLength(0);
 		// Every result renders exactly once: one placed, one on the shelf.
@@ -77,6 +78,7 @@ describe('the three-position projection toggle', () => {
 		view.setFilter('Untriaged');
 
 		view.setProjection('roadmap');
+		view.setShelfCollapsed(false);
 		expect(view.filterText).toBe('Untriaged');
 		expect(shelfTitles(containerEl)).toEqual(['Untriaged']);
 		// The placed result does not match, so the axis narrows with the shelf.
@@ -425,6 +427,7 @@ describe('a shared card is finished by ITS OWN workflow, on every projection tha
 		// a card rather than one test per call site.
 		const { view, containerEl } = makeView(disagreeingVault(), { horizonProperty: 'note.horizon', ...WORKFLOWS }, { collapsed: true });
 		view.setProjection('roadmap');
+		view.setShelfCollapsed(false);
 
 		expect(doneClasses(containerEl)).toEqual({ Shipped: true, Open: false, Shelved: true });
 	});

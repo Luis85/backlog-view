@@ -379,14 +379,22 @@ describe('the shelf working position', () => {
 	const id = { base: 'Backlog.base', view: 'Backlog' };
 	const none = { collapsed: new Set<string>(), expanded: new Set<string>() };
 
-	it('defaults to tree sort, nothing hidden — and needs no entry at all', () => {
+	it('defaults to collapsed, tree sort, nothing hidden — and needs no entry at all', () => {
 		vault.addFile('Backlog.base');
 		saveCollapseState(vault.app, id, { ...none });
 		expect(stored(vault)['Backlog.base#Backlog']).toBeUndefined();
 
 		const snapshot = loadCollapseState(vault.app, id);
+		expect(snapshot.shelfExpanded).toBe(false);
 		expect(snapshot.shelfSort).toBeNull();
 		expect(snapshot.shelfHiddenTypes).toEqual([]);
+	});
+
+	it('round-trips an explicit expand', () => {
+		vault.addFile('Backlog.base');
+		saveCollapseState(vault.app, id, { ...none, shelfExpanded: true });
+		expect(loadCollapseState(vault.app, id).shelfExpanded).toBe(true);
+		expect(stored(vault)['Backlog.base#Backlog']).toMatchObject({ shelfExpanded: true });
 	});
 
 	it('round-trips a non-default sort and the hidden-type list', () => {

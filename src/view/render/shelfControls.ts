@@ -6,15 +6,11 @@ import { ShelfCard } from '../../domain/bars';
 import { SHELF_LABEL } from '../../domain/roadmap';
 
 /**
- * The shelf's own header chrome: the label that names it and counts it, a sort pick and a
- * type filter. It lives in the shelf rather than in the view's toolbar because that is
- * where a reader working through unplaced work is already looking; a control for the
- * shelf, three regions away from it, was a control nobody found.
- *
- * The label was a disclosure until 2026-08-14, and the shelf opened SHUT — so the band
- * that says how much of the backlog is unplanned answered that question only after a
- * click nobody had to make. Removed on request: the shelf is always open, and what used
- * to be the one control every reader had to find first is now a heading.
+ * The shelf's own header chrome: the disclosure that names it, counts it and opens it,
+ * and — while it is open — a sort pick and a type filter. It lives in the shelf rather
+ * than in the view's toolbar because that is where a reader working through unplaced
+ * work is already looking; a control for the shelf, three regions away from it, was a
+ * control nobody found.
  *
  * Both pickers open an Obsidian `Menu` from a `tabindex="-1"` button rather than
  * rendering a `<select>` or checkboxes inline. That is not decoration: the roadmap pane
@@ -30,18 +26,47 @@ import { SHELF_LABEL } from '../../domain/roadmap';
  * answering the question the shelf exists to answer.
  */
 export function renderShelfControls(host: BacklogViewHost, headerEl: HTMLElement, shelf: ShelfCard[]): void {
-	setIcon(headerEl.createSpan({ cls: 'pbl-shelf-icon' }), 'inbox');
-	headerEl.createSpan({ cls: 'pbl-shelf-name', text: SHELF_LABEL });
-	// An empty shelf is a bare label: it renders only so a drag has somewhere to land, and
-	// a count of nothing beside two pickers with nothing to pick is chrome over an absence.
-	if (shelf.length === 0) return;
-	headerEl.createSpan({ cls: 'pbl-shelf-count', text: String(shelf.length) });
+	// An empty shelf is a bare label: it renders only so a drag has somewhere to land,
+	// and a disclosure over nothing would offer to open what has no content.
+	if (shelf.length === 0) {
+		setIcon(headerEl.createSpan({ cls: 'pbl-shelf-icon' }), 'inbox');
+		headerEl.createSpan({ cls: 'pbl-shelf-name', text: SHELF_LABEL });
+		return;
+	}
+	const collapsed = host.shelfCollapsed;
+	// The one header control that is a real tab stop wherever it renders. The card menu
+	// carried this toggle until 2026-08-15 and was its keyboard path; with that entry
+	// dropped to unclutter the menu, `tabindex="-1"` here would have left the shelf
+	// openable by pointer only — and a collapsed shelf offers no card of its own to
+	// menu from. It earns the stop the timeline's lead grip earns: chrome fixed to the
+	// pane's own frame, never among the cards, and the pane's key handler ignores any
+	// event whose target is not the pane itself, so the arrows stay the pane's.
+	const disclosure = headerEl.createEl('button', {
+		cls: 'pbl-shelf-disclosure clickable-icon',
+		attr: { type: 'button', tabindex: '0', 'aria-expanded': String(!collapsed) },
+	});
+	setIcon(disclosure.createSpan({ cls: 'pbl-shelf-collapse-icon' }), collapsed ? 'chevron-right' : 'chevron-down');
+	setIcon(disclosure.createSpan({ cls: 'pbl-shelf-icon' }), 'inbox');
+	disclosure.createSpan({ cls: 'pbl-shelf-name', text: SHELF_LABEL });
+	disclosure.createSpan({ cls: 'pbl-shelf-count', text: String(shelf.length) });
+	// `aria-expanded` carries the state an icon and a chevron only show: without it a
+	// screen-reader user at this button cannot tell a shut shelf from an open one.
+	const action = `${collapsed ? 'Expand' : 'Collapse'} ${SHELF_LABEL} (${shelf.length})`;
+	disclosure.setAttribute('aria-label', action);
+	setTooltip(disclosure, action);
+	disclosure.addEventListener('click', () => {
+		host.setShelfCollapsed(!collapsed);
+		refocus(host, '.pbl-shelf-disclosure');
+	});
+	// Nothing to order or narrow while the cards are shut away, and a control that
+	// visibly does nothing is worse than none — the toolbar's own expand/collapse rule.
+	if (collapsed) return;
 	renderSortPicker(host, headerEl);
 	renderTypeFilter(host, headerEl, shelf);
 }
 
 /**
- * Whether the shelf's header controls may sit outside the tab order, resolved from the
+ * Whether the shelf's two PICKERS may sit outside the tab order, resolved from the
  * same card count the pane's own role is: with cards on screen the pane is a
  * one-tab-stop composite and everything it carries is `tabindex="-1"`, the tree's
  * per-row rule, with the card menu's shelf section as the keyboard path; with none it
@@ -55,13 +80,19 @@ export function renderShelfControls(host: BacklogViewHost, headerEl: HTMLElement
  * that caused it out of reach. The rule is about the composite, so it lifts for
  * everything at once or it is not that rule.
  *
+ * The disclosure is excluded because it is already a permanent tab stop — see
+ * `renderShelfControls`. Writing `-1` over it here would undo that in exactly the state
+ * it exists for, and writing `0` over it is what this loop would be doing anyway.
+ *
  * Decided after the render rather than while building the buttons, because that is when
  * the count is final: two deciders reading the same question at different times is how
  * the role and the class it pairs with came apart before.
  */
 export function syncShelfTabStops(shelfEl: HTMLElement, paneIsComposite: boolean): void {
 	const tabindex = paneIsComposite ? '-1' : '0';
-	for (const btn of Array.from(shelfEl.querySelectorAll<HTMLElement>('.pbl-shelf-header button'))) {
+	for (const btn of Array.from(
+		shelfEl.querySelectorAll<HTMLElement>('.pbl-shelf-header button:not(.pbl-shelf-disclosure)'),
+	)) {
 		btn.setAttribute('tabindex', tabindex);
 	}
 }
@@ -83,13 +114,18 @@ export function syncShelfTabStops(shelfEl: HTMLElement, paneIsComposite: boolean
  * Asked AFTER the rebuild, of the state the rebuild produced — opening a shelf turns a
  * region into a composite and closing the last content turns it back, so the question is
  * about what is on screen now, not about what was pressed.
+ *
+ * The disclosure takes the second answer in BOTH states, because it is a tab stop in
+ * both: sending its focus to the pane would put a keyboard user one Shift+Tab away from
+ * the control they just used, and on a collapsed shelf there is no card menu to offer
+ * them another route to it.
  */
 function refocus(host: BacklogViewHost, selector: string): void {
 	const snapshot = host.roadmap;
 	const shelfEl = snapshot?.shelfEl;
 	if (!snapshot || !shelfEl) return;
-	const composite = snapshot.cards.length > 0;
-	const target = composite ? shelfEl.closest<HTMLElement>('.pbl-tree') : shelfEl.querySelector<HTMLElement>(selector);
+	const ownsFocus = selector === '.pbl-shelf-disclosure' || snapshot.cards.length === 0;
+	const target = ownsFocus ? shelfEl.querySelector<HTMLElement>(selector) : shelfEl.closest<HTMLElement>('.pbl-tree');
 	target?.focus();
 }
 

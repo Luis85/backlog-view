@@ -38,28 +38,32 @@ export function shelfHeavyVault(): FakeVault {
 /**
  * A view already showing the roadmap. The mode is UI state, not a base setting, so
  * it is flipped through the host exactly as the toolbar does — never the config.
- * The shelf draws its cards whenever it has any: it had a collapsed state, and a
- * `shelfCollapsed` escape hatch here to assert on it, until the option was removed
- * (2026-08-14).
+ * The shelf itself opens collapsed by default (Task 3) — expanded here unless the
+ * caller passes `shelfCollapsed: true` to assert on the collapsed state itself, the
+ * same escape hatch `makeView`'s `collapsed` param gives the tree.
  */
 export function makeRoadmap(
 	vault: FakeVault,
 	extra: Record<string, unknown> = {},
-	{ focus }: { focus?: string } = {},
+	{ shelfCollapsed = false, focus }: { shelfCollapsed?: boolean; focus?: string } = {},
 ): Harness {
 	const harness = makeView(vault, { ...HORIZON_AXIS, ...extra }, { collapsed: true, focus });
 	harness.view.setProjection('roadmap');
+	if (!shelfCollapsed) harness.view.setShelfCollapsed(false);
 	return harness;
 }
 
 /**
  * `makeRoadmap`'s sibling for the suites that configure their own axis rather than
  * taking the horizon one: everything about the view comes from `cfg`, and nothing is
- * merged in behind it.
+ * merged in behind it. The shelf is always opened — no caller of this one asserts on
+ * the collapsed state, and `makeRoadmap`'s `shelfCollapsed` is where that escape
+ * hatch already lives.
  */
 export function roadmapView(vault: FakeVault, cfg: Record<string, unknown>, { base }: { base?: string } = {}): Harness {
 	const harness = makeView(vault, cfg, { collapsed: true, base });
 	harness.view.setProjection('roadmap');
+	harness.view.setShelfCollapsed(false);
 	return harness;
 }
 
@@ -73,6 +77,9 @@ export function roadmapView(vault: FakeVault, cfg: Record<string, unknown>, { ba
  * set is `model.results`, which holds none. Both are working position rather than config
  * (ADR 0011), so they go to the harness beside `collapsed` and never into the view options.
  *
+ * `shelf` opens it, which the two MOVE suites need and no absence test does: a shelf card
+ * is a drag source and the shelf itself is the target that un-assigns.
+ *
  * `resourceLanes.test.ts` keeps a near-twin of this deliberately: that one takes an
  * `expanded` flag driving the real expand-all control after the axis is picked, which no
  * suite here wants.
@@ -80,7 +87,7 @@ export function roadmapView(vault: FakeVault, cfg: Record<string, unknown>, { ba
 export function laneRoadmap(
 	vault: FakeVault,
 	extra: Record<string, unknown> = {},
-	{ only, focus }: { only?: string[]; focus?: string } = {},
+	{ only, focus, shelf }: { only?: string[]; focus?: string; shelf?: boolean } = {},
 ): Harness {
 	const harness = makeView(vault, { ...RESOURCE_AXIS, resourceNames: 'Alice, Bob', ...extra }, {
 		collapsed: true,
@@ -89,6 +96,7 @@ export function laneRoadmap(
 	});
 	harness.view.setProjection('roadmap');
 	harness.view.setAxisPick('resources');
+	if (shelf) harness.view.setShelfCollapsed(false);
 	return harness;
 }
 

@@ -82,14 +82,11 @@ instruments improvised around a browser.
   the four card projections draw cards, the board excludes Deliverables and the
   Deliverables board draws only those — so each row carries its own count, and
   "832 rows expanded" stopped standing over a table of seven different populations.
-- **3c — the run measures a roadmap with no shelf.** It did, every time: the shelf opened
-  collapsed, and a collapsed shelf renders its header and returns, so the roadmap rows
-  described a projection missing the band this feature exists to draw. Fixed here by
-  opening it for the run and putting back exactly the state found — a measurement mode
-  that rearranges the reader's own view would be a knob with a side effect — and then made
-  moot the same day by [[Drop the shelf's collapse option]], which left nothing to open.
-  The instrument is honest about its sample either way; only one of the two answers needed
-  code.
+- **3c — the run measures a roadmap with no shelf.** It did, every time: the shelf opens
+  collapsed and a collapsed shelf renders its header and returns, so the roadmap rows
+  described a projection missing the band this feature exists to draw. The run opens it and
+  puts back exactly the state it found — a measurement mode that rearranged the reader's
+  own view would be a knob with a side effect.
 - **3d — the two builds draw different populations.** Then the delta is between unlike
   workloads and reads exactly like a speedup: a baseline from before a change that hides or
   adds cards measures fewer of them. Both sides' counts are printed and a mismatch is called
@@ -163,7 +160,7 @@ instruments improvised around a browser.
 - The published JSON carries exactly the panel's rows — checked in
   `test/harness/perfMode.test.ts`, so a column added for a human cannot change what a
   script reads.
-- The run leaves the projection and the axis as it found them.
+- The run leaves the projection, the axis and the shelf collapse as it found them.
 - No assertion anywhere in this work measures elapsed time, and `npm run check` gains no
   step.
 - No new dependency: the browser is found, not installed, and the page is driven by

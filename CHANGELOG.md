@@ -13,11 +13,11 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Removed
 
-- **The shelf no longer collapses** — it always shows what it holds. The disclosure, the
-  card menu's **Expand/Collapse unplaced**, and the stored collapse state are gone, and the
-  shelf's sort and type filter are always available. It opened shut by default, so the band
-  that says how much of your backlog is unplanned only answered that after a click. An
-  earlier version's stored setting is ignored.
+- **The card's right-click menu no longer offers Expand/Collapse unplaced** — the shelf
+  still collapses, from its own header, which is where the control has always been. Its
+  sort and type filter stay on the menu whenever the shelf is open. The header's
+  disclosure is now reachable with Tab, so the shelf can still be opened and shut without
+  a pointer.
 
 - **The card's right-click menu no longer lists the children one by one** — the
   **Show/Hide children** toggle stays, and so does the list on the card itself. A card with

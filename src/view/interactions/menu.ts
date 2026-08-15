@@ -638,6 +638,14 @@ export function addShelfTypeItems(host: BacklogViewHost, menu: Menu, shelf: Shel
  * the feature would fail at its own purpose. `syncShelfTabStops` covers the one case this
  * cannot, where no card renders and there is no menu to open.
  *
+ * The collapse toggle is NOT here. It was, until it was removed on request to shorten
+ * this menu (2026-08-15): the shelf's own header carries the disclosure, which is where a
+ * reader working through unplaced work is already looking, and the menu is a longer list
+ * for every card on screen. The keyboard path moved with it rather than going — the
+ * disclosure is a real tab stop now, in every state, which is what makes removing this
+ * entry a decluttering rather than a pointer-only shelf. See
+ * [[Drop the shelf's toggle from the card menu]].
+ *
  * On the roadmap only, and only while the shelf holds something — an entry for a region
  * that is not on screen is the defect in the other direction.
  */
@@ -645,6 +653,9 @@ function addShelfSection(host: BacklogViewHost, menu: Menu): void {
 	if (host.projection !== 'roadmap') return;
 	const shelf = host.roadmap?.roadmap.shelf ?? [];
 	if (shelf.length === 0) return;
+	// Nothing to order or narrow while the cards are shut away — the header withholds the
+	// same two pickers for the same reason.
+	if (host.shelfCollapsed) return;
 	menu.addSeparator();
 	menu.addItem((mi) => {
 		mi.setTitle('Sort unplaced').setIcon('arrow-up-down');

@@ -91,6 +91,19 @@ export class UiStateController {
 		this.hooks.render();
 	}
 
+	get shelfCollapsed(): boolean {
+		return this.collapse.shelfCollapsed();
+	}
+
+	setShelfCollapsed(collapsed: boolean): void {
+		if (collapsed === this.shelfCollapsed) return;
+		this.collapse.setShelfCollapsed(collapsed);
+		// Does NOT spare the control that asked for it — the shelf's disclosure lives
+		// in the content pane and is rebuilt by this very call, which is why it hands
+		// focus to its replacement itself (`renderShelfControls`).
+		this.hooks.renderTreeContent();
+	}
+
 	get shelfSort(): ShelfSort {
 		return this.collapse.shelfSort();
 	}

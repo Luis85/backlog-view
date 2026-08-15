@@ -105,22 +105,21 @@ into `shelf.ts` for the bands beside them — driven in `test/domain/roadmap.tes
 `test/view/roadmapFrame.test.ts` and `test/view/shelfUx.test.ts` (accessors in
 `test/helpers/roadmap.ts`).
 
-The shelf's own header picks (`shelfSort`, `shelfHiddenTypes`, persisted UI state beside
-the collapse store) are what `renderShelf` now consults — there was a `shelfCollapsed`
-beside them, and an EMPTY shelf is what contributes zero cards now that it is gone
-([[Drop the shelf's collapse option]], 2026-08-14; the drop target and its outcome
-preview are wired before that check, never after, so a display state can never disable
-the one thing that un-places). A shelf with cards groups them through `organizeShelf` — by
+The shelf's own header picks (`host.shelfCollapsed`, `shelfSort`, `shelfHiddenTypes`,
+persisted UI state beside the collapse store) are what `renderShelf` now consults:
+collapsed contributes zero cards to the DOM (the drop target and its outcome preview
+are wired before that check, never after, so collapsing can never disable the one thing
+that un-places), and an expanded shelf groups its cards through `organizeShelf` — by
 type, in `ALL_TYPES` order plus a trailing `Other` — sorted within each group and
 filtered by type, all three display-only. The advisory gate on the roadmap's own empty
 state was fixed in the same change: it sums the axis's own rendered count (captured
 before the shelf renders, so collapsing the shelf cannot make it lie), the shelf's real
 count and the context strip's count, rather than counting what is currently on screen —
-an all-shelved backlog is not empty, it is a backlog not yet planned. This whole
-paragraph is [[The shelf, organized]]'s own ground: that PBI specifies the grouping, sort
-and filter UX summarized here, and its collapse half is superseded.
+an all-shelved, collapsed backlog is not empty, it is a backlog not yet planned. This
+whole paragraph is [[The shelf, organized]]'s own ground: that PBI specifies the
+grouping, sort, filter and collapse UX summarized here.
 
-The shelf's interactive chrome — a sort picker and a type filter —
+The shelf's interactive chrome — a collapse toggle, a sort picker, a type filter —
 cannot live inside the roadmap pane itself: it wears `role="listbox"` while any cards
 render, a one-tab-stop composite widget with no room for a `<select>` or checkboxes. It
 is built instead as toolbar chrome, a sibling of the pane rather than a descendant, in

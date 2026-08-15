@@ -47,19 +47,24 @@ describe('the perf panel reports the sample it took', () => {
 	 */
 	const RUN_MS = 30_000;
 
-	it(
-		'measures a roadmap with the shelf in it',
-		() => {
-			// The shelf was withheld from every roadmap number this panel printed until the
-			// collapse option existed no more: it opened shut, and a shut shelf drew its
-			// header and returned. Nothing restores anything now — there is no state to
-			// restore — so the check is simply that the band is in the sample.
+	// Both ways round, because "restores what it found" and "collapses it afterwards" agree
+	// on one of the two — and a measurement mode that rearranged the reader's own view
+	// would be a knob with a side effect, the shelf being stored UI state.
+	it.each([true, false])(
+		'opens the shelf for the run and puts it back (collapsed: %s)',
+		(collapsed) => {
 			const { view, containerEl, mount: first, results, contents } = mount();
+			view.setShelfCollapsed(collapsed);
 
 			reportPerf(view, containerEl, first, { fixture: 'demo', results, contents });
 
+			expect(view.shelfCollapsed).toBe(collapsed);
+			// Asked of the ROADMAP row's own count rather than of the DOM afterwards: the run
+			// restores the collapse it found, so the screen at the end says nothing about what
+			// was measured. What the shelf HOLDS is then read by opening it here.
 			const roadmap = published().rows.find((row) => row.op === 'switch to roadmap');
 			view.setProjection('roadmap');
+			view.setShelfCollapsed(false);
 			const shelved = containerEl.querySelectorAll('.pbl-shelf .pbl-card').length;
 			expect(shelved).toBeGreaterThan(0);
 			expect(roadmap?.drew).toBeGreaterThanOrEqual(shelved);

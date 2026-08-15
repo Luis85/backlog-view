@@ -39,13 +39,6 @@ vault surfaced uneven card widths, a shelf flush against the pane's edges, and a
 horizontal scrollbar the shelf itself was forcing. This PBI is that comfort pass,
 alongside the same visual fixes.
 
-> **The collapse half of this note no longer describes the plugin.** The disclosure, the
-> collapsed-by-default opening, the stored `shelfExpanded` and the card menu's
-> expand/collapse entry were all removed on 2026-08-14 — the shelf is always drawn. Read
-> every "collapsed" sentence below as a record of what shipped and was then taken out, and
-> see [[Drop the shelf's collapse option]] for what replaced each of them. The grouping,
-> the sort pick and the type filter are untouched and still current.
-
 ## Use case
 
 | | |
@@ -124,23 +117,28 @@ from it, is one nobody finds. Nothing about the constraint that put them there c
 being form controls: both pickers are `tabindex="-1"` buttons opening an Obsidian `Menu`,
 the answer the tree's own per-row controls (`.pbl-add`, the state chip) already give.
 
+The DISCLOSURE was lifted out of that rule on 2026-08-15 and is a permanent tab stop:
+the card menu stopped carrying the collapse toggle
+([[Drop the shelf's toggle from the card menu]]), and a collapsed shelf draws no card to
+open a menu from, so the sentence below would have described a shelf a keyboard could
+shut and never reopen. What follows is now about the two pickers.
+
 That rule is the COMPOSITE's, so it is applied only where a composite exists:
-`syncShelfTabStops` puts every header control back in the tab order whenever the pane
+`syncShelfTabStops` puts every picker back in the tab order whenever the pane
 rendered no card and dropped to `role="region"`, resolved from the same final count the
 role itself is. Two states reach it: an all-shelved roadmap with the shelf shut, where
 the disclosure is the only way to the cards it holds, and an all-shelved roadmap whose
 last visible type the filter just hid, where the pane empties by itself and the filter
 is the only way back. Both are where a `-1` stops being a convention and becomes a
 trap, which is why the lift is all-or-nothing rather than per control. Where the pane IS a composite, the keyboard path is the card menu's own shelf section
-(`addShelfSection`, `src/view/interactions/menu.ts`): expand or collapse, and the same
+(`addShelfSection`, `src/view/interactions/menu.ts`): the same
 two pickers as submenus. That is not a nicety deferred to later work — this codebase's
 rule for a `tabindex="-1"` control is that its menu path ships WITH it, stated at the
 board's hidden-match links, whose absence would leave them "pointer-only and the feature
 would fail at its own purpose". The entries come from the same two item builders the
 header buttons call, so the two surfaces cannot drift about what is offered or what is
 checked, the reason the horizon chip and its menu already share one builder. Three host
-methods (`setShelfSort`/`setShelfHiddenTypes`, and a `setShelfCollapsed` until it was
-removed) each write through
+methods (`setShelfCollapsed`/`setShelfSort`/`setShelfHiddenTypes`) each write through
 `CollapseState` and re-render the content pane alone — never the whole toolbar — so a
 keyboard user's focus survives the control they just used, the same reason `setFilter`
 does not call a full `render()` either.
