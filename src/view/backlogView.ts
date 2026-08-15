@@ -18,8 +18,8 @@ import { ItemWrite, ScheduleGesture, SchedulePlan } from '../domain/writePlan';
 import { forgetBacklogView, rememberBacklogView } from './registry';
 import { renderPass } from './renderPass';
 import { ResizePolicy } from './resize';
-import { filterScopeFor, hidesCompleted, projectionMember } from './projection';
-import { rowHidden, VisibilityRule } from './rowVisibility';
+import { filterScopeFor } from './projection';
+import { rowHidden, visibilityRule } from './rowVisibility';
 import { SelectionController } from './selection';
 import { ViewStateController } from './viewStateController';
 import { ViewStateSurface } from './viewStateSurface';
@@ -285,30 +285,11 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 	}
 
 	isRowHidden(item: BacklogItem): boolean {
-		return rowHidden(item, this.visibility(true));
+		return rowHidden(item, visibilityRule(this.filter, this.settings, this.projection, true));
 	}
 
 	isRowHiddenUnfiltered(item: BacklogItem): boolean {
-		return rowHidden(item, this.visibility(false));
-	}
-
-	/**
-	 * The one visibility rule, assembled once. `hideCompleted` is where the Deliverables
-	 * board's exception lives — that board has no completion concept of its own, so the
-	 * toggle describing the requirements rollup must not reach it. Stated here rather than
-	 * offered as a second method for call sites to remember: three surfaces asked the
-	 * narrower question and the fourth asked the ordinary one, which is how a Deliverable
-	 * card's child list came to be emptied by a setting from another projection.
-	 */
-	private visibility(applyFilter: boolean): VisibilityRule {
-		return {
-			filter: this.filter,
-			settings: this.settings,
-			applyFilter,
-			scope: filterScopeFor(this.projection),
-			hideCompleted: hidesCompleted(this.projection),
-			inProjection: projectionMember(this.projection),
-		};
+		return rowHidden(item, visibilityRule(this.filter, this.settings, this.projection, false));
 	}
 
 	isFilterMatch(item: BacklogItem): boolean {

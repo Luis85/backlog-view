@@ -1,7 +1,7 @@
 ---
 type: Feature
 parent: "[[Codebase health]]"
-order: 30
+order: 0
 status: Open
 started: ""
 finished: ""

@@ -1,7 +1,7 @@
 ---
 type: Issue
 parent: "[[Codebase health]]"
-order: 290
+order: 90
 status: Open
 priority: P2
 area: docs

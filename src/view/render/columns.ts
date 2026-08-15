@@ -2,12 +2,12 @@ import { BasesPropertyId, NullValue, setTooltip } from 'obsidian';
 import { drawIcon } from './icons';
 import { BacklogViewHost, Column, ColumnFit, ColumnKind, PlacedMount } from '../host';
 import { columnWidth, columnWidthVar, renderColumnResize, widenSign } from '../interactions/columnResize';
-import { showAssigneeMenu, showHorizonMenu, showRiskMenu, showStateMenu, showTagMenu } from '../interactions/menu';
+import { dateChipFor, LABEL_CHIPS, renderDateChip, renderHorizonChip, renderLabelChip, renderStateChip } from './chips';
+import { showTagMenu } from '../interactions/menu';
 import { removeTag } from '../interactions/tags';
 import { DEFAULT_PROP_COLUMN_WIDTH } from '../../storage/viewStateStore';
-import { ownWorkflowReading, stateKeyFor } from '../../domain/board';
 import { BacklogItem } from '../../domain/model';
-import { hasHorizonAxis, SHELF_LABEL } from '../../domain/roadmap';
+import { hasHorizonAxis } from '../../domain/roadmap';
 import { BacklogSettings, hasRiskLevels } from '../../domain/settings';
 import { resolvedDeliverableStateKey, resolvedTestStateKey } from '../../domain/optionalProperties';
 import { hasRollup, treeShaped } from '../projection';
@@ -247,15 +247,31 @@ export function resolveColumns(host: BacklogViewHost): Column[] {
  * one names the key this row's own workflow writes.
  */
 function columnKind(settings: BacklogSettings, prop: BasesPropertyId): ColumnKind {
-	const deliverableKey = resolvedDeliverableStateKey(settings);
-	const testKey = resolvedTestStateKey(settings);
-	if (settings.stateKey && prop === `note.${settings.stateKey}`) return 'state';
-	if (deliverableKey && prop === `note.${deliverableKey}`) return 'state';
-	if (testKey && prop === `note.${testKey}`) return 'state';
-	if (hasHorizonAxis(settings) && prop === `note.${settings.horizonKey}`) return 'horizon';
-	if (hasRiskLevels(settings) && prop === `note.${settings.riskKey}`) return 'risk';
-	if (settings.assigneeKey && prop === `note.${settings.assigneeKey}`) return 'assignee';
-	if (settings.tagsKey && prop === `note.${settings.tagsKey}`) return 'tags';
+	// A LIST, in the order the keys are asked, rather than the chain of ifs this was: the
+	// chain hit the complexity budget at the eighth key, and every branch in it asked one
+	// question — does this key name this column. An entry's key is `''` exactly when its
+	// feature is not configured enough for the chip to have anything to do, which is where
+	// each kind's OWN predicate is applied and the reason they differ is stated above.
+	//
+	// The two date ends take the KEY alone, the assignee's reasoning rather than the
+	// horizon's: a date field needs no declared vocabulary, so there is no second half to
+	// pair with. `hasDateAxis` is deliberately not asked — it answers whether the ROADMAP
+	// can draw a timeline, and a row editing one end of its own plan does not need the
+	// other end to exist.
+	const claims: [key: string, kind: ColumnKind][] = [
+		[settings.stateKey, 'state'],
+		[resolvedDeliverableStateKey(settings), 'state'],
+		[resolvedTestStateKey(settings), 'state'],
+		[hasHorizonAxis(settings) ? settings.horizonKey : '', 'horizon'],
+		[hasRiskLevels(settings) ? settings.riskKey : '', 'risk'],
+		[settings.assigneeKey, 'assignee'],
+		[settings.startKey, 'start'],
+		[settings.targetKey, 'target'],
+		[settings.tagsKey, 'tags'],
+	];
+	for (const [key, kind] of claims) {
+		if (key !== '' && prop === `note.${key}`) return kind;
+	}
 	return 'value';
 }
 
@@ -432,17 +448,21 @@ function renderCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem,
 	if (column.kind === 'horizon') return renderHorizonChip(host, cell, item, column.label);
 	if (column.kind === 'risk' || column.kind === 'assignee')
 		return renderLabelChip(host, cell, item, column.label, LABEL_CHIPS[column.kind]);
+	// A date is the one kind that draws DIFFERENTLY per projection, and the asymmetry is
+	// the point rather than an exception waiting to be smoothed away: a card has to keep
+	// showing the value — no column and no bucket says when — while the chip's entry is
+	// the ROW's, reached from a row menu no card projection carries. So a card gets what
+	// it had before the chips existed, the plain value, and only a tree-shaped projection
+	// gets the control. Asked through `treeShaped` rather than compared against 'tree',
+	// so the catalog is a tree here without anyone remembering to add it.
+	if (column.kind === 'start' || column.kind === 'target') {
+		return treeShaped(host.projection)
+			? renderDateChip(host, cell, item, column.label, dateChipFor(column.kind))
+			: renderValue(host, cell, item, column);
+	}
 	return renderValue(host, cell, item, column);
 }
 
-/**
- * What a chip announces. The verb is ours and stays sentence case; the noun is the
- * property's own display name, so the control says which key it writes rather than which
- * KIND of thing it is.
- */
-function chipLabel(label: string, value: string | null): string {
-	return value === null ? `Set ${label}` : `Change ${label} (currently ${value})`;
-}
 
 function renderValue(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem, column: Column): boolean {
 	// An ancestor from outside the filter has no Bases row, so no property values.
@@ -590,210 +610,4 @@ export function renderRollup(host: BacklogViewHost, row: HTMLElement, item: Back
 	} else {
 		col.createSpan({ cls: 'pbl-count', text: report.label });
 	}
-}
-
-/**
- * Clickable state chip — the inline write surface for the workflow state.
- *
- * WHOSE state is the item's own question — its type, else its ladder — and the same one
- * `Set state` asks in `interactions/menu.ts`: a Deliverable shows and edits the Deliverable
- * workflow's value and a catalog row the test workflow's, so the chip and the menu it opens
- * can never name different states. Either one under the fallback (no property of its own
- * configured) reads the shared key, so this is the identical value either way.
- */
-function renderStateChip(host: BacklogViewHost, col: HTMLElement, item: BacklogItem, column: Column): boolean {
-	// The CELL is the properties menu's question and the CHIP is the row's own: this
-	// column names ONE key, and a row draws into it only when that is the key its
-	// workflow writes. With both workflows visible on distinct keys there are two such
-	// columns, and every row fills exactly one of them and leaves the other empty —
-	// empty rather than absent, or the columns after it would shift on that row alone.
-	// `stateKeyFor` is the same function `buildItemMenu` gates Set state on, so the chip
-	// and the menu can never disagree about which key this row writes.
-	const key = stateKeyFor(host.settings, item);
-	if (!key || `note.${key}` !== column.prop) return false;
-	const { value, done } = ownWorkflowReading(item);
-	const cls = 'pbl-state-chip' + (done ? ' pbl-state-done' : '') + (value === null ? ' pbl-state-unset' : '');
-
-	// A note the Base excluded is context: show the state it has, never offer to
-	// write it. An unset one renders nothing at all rather than a "State" button
-	// that would look like an invitation.
-	if (item.outsideFilter) {
-		if (value === null) return false;
-		const chip = col.createDiv({ cls: `${cls} pbl-state-static` });
-		fillStateChip(chip, done, value);
-		setTooltip(chip, "Not in this base's filter — state can't be changed here");
-		return true;
-	}
-
-	// A native button, so assistive tech can activate it — but no Tab stop: the
-	// tree keeps its single-tab-stop model, and the context menu carries the
-	// documented keyboard path (Set state).
-	const chip = col.createEl('button', {
-		cls,
-		attr: {
-			type: 'button',
-			tabindex: '-1',
-			'aria-label': chipLabel(column.label, value),
-		},
-	});
-	fillStateChip(chip, done, value);
-	setTooltip(chip, 'Change state');
-	chip.addEventListener('click', (evt) => showStateMenu(host, evt, item));
-	return true;
-}
-
-function fillStateChip(chip: HTMLElement, done: boolean, value: string | null): void {
-	const icon = done ? 'circle-check' : value !== null ? 'circle' : 'circle-dashed';
-	drawIcon(chip.createSpan({ cls: 'pbl-state-icon' }), icon);
-	chip.createSpan({ cls: 'pbl-state-text', text: value ?? 'State' });
-}
-
-/**
- * Clickable horizon chip — the state chip's shape over the roadmap's placement, so
- * the property a card is dragged between buckets by is settable from the tree too,
- * where most of a backlog is actually read. It opens the same menu the row's own
- * Set horizon does (`addHorizonItems`), which is what keeps every horizon this base
- * can reach reachable from here as well, and checked against the same plan.
- *
- * Rendered on exactly the condition the roadmap draws its bucket axis on
- * (`hasHorizonAxis`) — a property with no declared values is a board without stages,
- * and a chip whose menu could set nothing would be a third opinion about what
- * "configured" means.
- */
-function renderHorizonChip(host: BacklogViewHost, col: HTMLElement, item: BacklogItem, label: string): boolean {
-	// A value the reader refuses is not a placement: the roadmap shelves such a card
-	// with the reason on its face, and the chip says the same thing — unplaced, and
-	// why — rather than showing a horizon the axis would not honor.
-	const value = item.horizon.value;
-	const unplaced = value === null;
-	const reason = item.horizon.invalid ? 'Unreadable horizon value' : null;
-	const cls = 'pbl-horizon-chip' + (unplaced ? ' pbl-horizon-unset' : '');
-
-	// A note the Base excluded is context: show where it sits, never offer to move
-	// it. With nothing to show it renders nothing at all, rather than a button-shaped
-	// invitation to a write this row cannot take.
-	if (item.outsideFilter) {
-		if (unplaced) return false;
-		const chip = col.createDiv({ cls: `${cls} pbl-state-static` });
-		fillHorizonChip(chip, value);
-		setTooltip(chip, "Not in this base's filter — horizon can't be changed here");
-		return true;
-	}
-
-	// A native button with no Tab stop, the state chip's bargain: reachable by
-	// assistive tech, invisible to Tab, with the context menu as the keyboard path.
-	const chip = col.createEl('button', {
-		cls,
-		attr: {
-			type: 'button',
-			tabindex: '-1',
-			'aria-label': chipLabel(label, value),
-		},
-	});
-	fillHorizonChip(chip, value);
-	setTooltip(chip, reason ?? 'Change horizon');
-	chip.addEventListener('click', (evt) => showHorizonMenu(host, evt, item));
-	return true;
-}
-
-/**
- * The two LABEL chips — the risk level and the assignee — as data rather than as two
- * copies of one renderer. Each carries the icon of the menu it opens, so the chip and
- * the row's Set entry read as one control, and each names the property in its own words:
- * an unset chip is an INVITATION, not a placement, so it says what could go there rather
- * than the horizon's `Unplaced`.
- */
-const LABEL_CHIPS: Record<'risk' | 'assignee', LabelChip> = {
-	risk: {
-		valueOf: (item) => item.riskValue,
-		cls: 'pbl-risk-chip',
-		unsetCls: 'pbl-risk-unset',
-		icon: 'shield-alert',
-		unsetIcon: 'shield',
-		placeholder: 'Risk',
-		noun: 'risk',
-		showMenu: showRiskMenu,
-	},
-	assignee: {
-		valueOf: (item) => item.assigneeValue,
-		cls: 'pbl-assignee-chip',
-		unsetCls: 'pbl-assignee-unset',
-		icon: 'user',
-		unsetIcon: 'user-plus',
-		placeholder: 'Assignee',
-		noun: 'assignee',
-		showMenu: showAssigneeMenu,
-	},
-};
-
-interface LabelChip {
-	valueOf: (item: BacklogItem) => string | null;
-	cls: string;
-	unsetCls: string;
-	icon: string;
-	unsetIcon: string;
-	/** What an unset chip says — the property, not a value, because there is none. */
-	placeholder: string;
-	/** The property's name in a sentence, for the tooltips. */
-	noun: string;
-	showMenu: (host: BacklogViewHost, evt: MouseEvent, item: BacklogItem) => void;
-}
-
-/**
- * Clickable label chip — the state chip's shape, over a plain value the note declares.
- * Each kind is drawn on the same test the row menu's own Set entry is gated on
- * (`columnKind` states which, per kind), so a chip whose menu could set nothing is not a
- * state either side can reach alone, and it opens that menu's own builder through
- * `showMenu` rather than a second list.
- */
-function renderLabelChip(host: BacklogViewHost, col: HTMLElement, item: BacklogItem, label: string, spec: LabelChip): boolean {
-	const value = spec.valueOf(item);
-	const cls = spec.cls + (value === null ? ` ${spec.unsetCls}` : '');
-
-	// A note the Base excluded is context: show what it claims, never offer to change
-	// it. With nothing to show it renders nothing at all, rather than a button-shaped
-	// invitation to a write this row cannot take.
-	if (item.outsideFilter) {
-		if (value === null) return false;
-		const chip = col.createDiv({ cls: `${cls} pbl-state-static` });
-		fillLabelChip(chip, value, spec);
-		setTooltip(chip, `Not in this base's filter — ${spec.noun} can't be changed here`);
-		return true;
-	}
-
-	// A native button with no Tab stop, the state chip's bargain: reachable by
-	// assistive tech, invisible to Tab, with the context menu as the keyboard path.
-	const chip = col.createEl('button', {
-		cls,
-		attr: {
-			type: 'button',
-			tabindex: '-1',
-			'aria-label': chipLabel(label, value),
-		},
-	});
-	fillLabelChip(chip, value, spec);
-	setTooltip(chip, `Change ${spec.noun}`);
-	chip.addEventListener('click', (evt) => spec.showMenu(host, evt, item));
-	return true;
-}
-
-/**
- * A label chip's face. An EMPTY value — the stub the backfill leaves — is a key with
- * nothing in it, so it says the same thing absence does; the menu's Clear entry is still
- * what takes the key away.
- */
-function fillLabelChip(chip: HTMLElement, value: string | null, spec: LabelChip): void {
-	drawIcon(chip.createSpan({ cls: 'pbl-state-icon' }), value === null ? spec.unsetIcon : spec.icon);
-	chip.createSpan({ cls: 'pbl-state-text', text: value ?? spec.placeholder });
-}
-
-/**
- * The chip's face. Unplaced is named with the roadmap's own word for it — the shelf
- * is where such a row sits there — rather than with the property's name: the chip
- * states a placement, and "not placed yet" is one. What pressing it does is in the
- * accessible name, which is where the state chip puts it too.
- */
-function fillHorizonChip(chip: HTMLElement, value: string | null): void {
-	drawIcon(chip.createSpan({ cls: 'pbl-state-icon' }), value === null ? 'inbox' : 'milestone');
-	chip.createSpan({ cls: 'pbl-state-text', text: value ?? SHELF_LABEL });
 }

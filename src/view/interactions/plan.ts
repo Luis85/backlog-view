@@ -132,15 +132,24 @@ export function addHorizonItems(host: BacklogViewHost, menu: Menu, item: Backlog
  * here, so the entry cannot tell them apart afterwards and does not try
  * ([[Horizon and dates from the row]] 4d).
  */
-function scheduleFields(host: BacklogViewHost, item: BacklogItem): { field: string; name: string; value: string }[] {
+function scheduleFields(
+	host: BacklogViewHost,
+	item: BacklogItem,
+	ends: PlacementEnd[],
+): { field: string; name: string; value: string }[] {
 	const fields = [];
-	for (const field of placementEnds(item.typeName)) {
+	for (const field of ends) {
 		const key = optionalKeyFor(host.settings, field);
 		if (key === '') continue;
-		const reading = field === 'start' ? item.plannedStart : item.plannedTarget;
-		fields.push({ field, name: key, value: reading.value ? formatCivil(reading.value) : '' });
+		fields.push({ field, name: key, value: statedDate(item, field) });
 	}
 	return fields;
+}
+
+/** What the note says for one end, as the entry spells a date, or '' for absent and unreadable alike. */
+function statedDate(item: BacklogItem, field: PlacementEnd): string {
+	const reading = field === 'start' ? item.plannedStart : item.plannedTarget;
+	return reading.value ? formatCivil(reading.value) : '';
 }
 
 /**
@@ -160,11 +169,41 @@ function scheduleFields(host: BacklogViewHost, item: BacklogItem): { field: stri
  * milestone's values carry no `start` and the comparison below cannot fire. There is no
  * second place to keep in step, which is what "per type, not per control" buys.
  */
-function validateSchedule(values: Record<string, string>): string | null {
-	const start = values.start ?? '';
-	const target = values.target ?? '';
-	if (start !== '' && target !== '' && target < start) return 'The target date cannot be before the start date.';
-	return null;
+function validateSchedule(values: Record<string, string>, unshown: Partial<Record<PlacementEnd, string>>): string | null {
+	const start = values.start ?? unshown.start ?? '';
+	const target = values.target ?? unshown.target ?? '';
+	if (start === '' || target === '' || target >= start) return null;
+	// Name the end the entry did NOT show. A one-end entry is refused against a date the
+	// reader cannot see, and "cannot be before the start date" about a field that is not on
+	// screen reads as a bug rather than as a rule.
+	if (values.start === undefined) return `The target date cannot be before this item's start date (${start}).`;
+	if (values.target === undefined) return `The start date cannot be after this item's target date (${target}).`;
+	return 'The target date cannot be before the start date.';
+}
+
+/**
+ * The ends this item HAS that the entry is not showing, with the dates the note states —
+ * the baseline the span rule is checked against when only one end is on screen.
+ *
+ * Narrowed by `placementEnds` first, which is what keeps a marker's stale start out of it:
+ * that end is one this type may only ignore, so comparing a target against it would refuse
+ * a date the type says is the only one it has.
+ *
+ * This is the ONE thing here decided from the model rather than from the form, and the
+ * departure is deliberate rather than overlooked — `planFrom` below says at length why a
+ * WRITE may not be. The direction of the failure is what makes it safe: a model a refresh
+ * behind can only make this wrongly REFUSE, which is visible, recoverable, and leaves the
+ * reader holding their input since the prompt stays open on what they entered. The defect
+ * that rule was written for could wrongly DELETE a value another editor had just fixed.
+ */
+function unshownEnds(item: BacklogItem, ends: PlacementEnd[]): Partial<Record<PlacementEnd, string>> {
+	const unshown: Partial<Record<PlacementEnd, string>> = {};
+	for (const field of placementEnds(item.typeName)) {
+		if (ends.includes(field)) continue;
+		const stated = statedDate(item, field);
+		if (stated !== '') unshown[field] = stated;
+	}
+	return unshown;
 }
 
 /**
@@ -212,8 +251,17 @@ function planFrom(prefill: Record<string, string>, values: Record<string, string
  * than this"), and a dialog entry is absolute — the user typed that date meaning that
  * date, so a live change to the base is not a reason to refuse it.
  */
-export function promptSchedule(host: BacklogViewHost, item: BacklogItem): void {
-	const fields = scheduleFields(host, item);
+export function promptSchedule(
+	host: BacklogViewHost,
+	item: BacklogItem,
+	ends: PlacementEnd[] = placementEnds(item.typeName),
+): void {
+	const fields = scheduleFields(host, item, ends);
+	// Narrowed to one end by a date CHIP, which writes the end it names and nothing else.
+	// It is the same modal, the same planner and the same host method as the two-field
+	// entry — a one-end prompt is this field list with one row in it, not a second idea of
+	// what scheduling is.
+	const unshown = unshownEnds(item, ends);
 	// What the inputs were opened with, kept so the submitted values can be compared
 	// against what the reader was actually SHOWN. Built here rather than inside
 	// `planFrom` so there is one reading of the item per prompt: read it again at submit
@@ -223,7 +271,7 @@ export function promptSchedule(host: BacklogViewHost, item: BacklogItem): void {
 		heading: `Schedule "${item.title}"`,
 		description: 'Pick a date for each end, or clear a field to remove that date.',
 		fields,
-		validate: validateSchedule,
+		validate: (values) => validateSchedule(values, unshown),
 		onSubmit: (values) => void host.performScheduleMove(item, planFrom(prefill, values)),
 	}).open();
 }

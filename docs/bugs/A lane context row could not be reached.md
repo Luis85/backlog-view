@@ -12,6 +12,13 @@ files:
   - src/view/render/lanes.ts
   - src/view/render/timeline.ts
   - test/view/roadmapMatches.test.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # A lane context row could not be reached

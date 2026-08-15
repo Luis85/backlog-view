@@ -7,8 +7,6 @@ created: 2026-08-01
 started: ""
 finished: ""
 horizon: ""
-start: 2026-09-14
-due: 2026-09-20
 risk: ""
 assignee: Sarah
 ---

@@ -15,6 +15,11 @@ files:
   - src/view/viewStateSurface.ts
 started: ""
 finished: 2026-08-15
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Split the view dispatch hub again

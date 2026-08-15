@@ -16,6 +16,13 @@ files:
   - src/view/render/timeline.ts
   - src/view/render/toolbarControls.ts
   - src/view/viewStateController.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Folding a resource's band

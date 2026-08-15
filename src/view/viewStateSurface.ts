@@ -68,6 +68,15 @@ export abstract class ViewStateSurface extends BasesView {
 		this.ui.setClickFolds(value);
 	}
 
+	/** Whether the horizon board draws its bucket grid — arrived on main while this class was being extracted. */
+	get bucketGrid(): boolean {
+		return this.ui.bucketGrid;
+	}
+
+	setBucketGrid(grid: boolean): void {
+		this.ui.setBucketGrid(grid);
+	}
+
 	get shelfCollapsed(): boolean {
 		return this.ui.shelfCollapsed;
 	}

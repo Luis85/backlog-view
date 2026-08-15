@@ -93,6 +93,18 @@ export class ViewStateController {
 		this.hooks.render();
 	}
 
+	get bucketGrid(): boolean {
+		return this.state.bucketGrid();
+	}
+
+	setBucketGrid(grid: boolean): void {
+		if (grid === this.bucketGrid) return;
+		this.state.setBucketGrid(grid);
+		// A full render like the density toggle beside it: the buckets redraw, and so does
+		// the toolbar button that has to come back saying the new value.
+		this.hooks.render();
+	}
+
 	get shelfCollapsed(): boolean {
 		return this.state.shelfCollapsed();
 	}

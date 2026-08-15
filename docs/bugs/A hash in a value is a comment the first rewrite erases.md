@@ -9,6 +9,13 @@ created: 2026-08-14
 source: this repository's own register, after ✨ ran against it in a live vault on 2026-08-14
 files:
   - src/storage/frontmatter.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # A hash in a value is a comment the first rewrite erases
