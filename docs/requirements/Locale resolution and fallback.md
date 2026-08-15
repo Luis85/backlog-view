@@ -2,9 +2,9 @@
 type: PBI
 parent: "[[Multilang]]"
 order: 10
-status: Open
-started: ""
-finished: ""
+status: Done
+started: "2026-08-15"
+finished: "2026-08-15"
 horizon: ""
 start: ""
 due: ""
@@ -86,9 +86,18 @@ string is merely English instead of missing.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The resolver belongs in the new leaf `Multilang`
-describes, below every layer that needs it, importing none of them.
+`src/i18n/locale.ts` is the resolution itself, and it is **pure**: `resolveCatalog` narrows
+a language code to a shipped catalog, `intlLocale` makes the raw code safe for `Intl`, and
+neither knows which catalogs exist — the registry sits with the catalogs, so a test can ask
+this module any question without a reload. `src/i18n/t.ts` holds the resolved locale and
+the formatters built from it, reads `getLanguage()` from `obsidian` in `initLocale`, and
+exposes `setLocale` — whose catalogs argument is the seam fixture locales come through.
+`src/main.ts` calls `initLocale()` first in `onload`, before it registers the view name and
+the command name.
 
-It reads `getLanguage()` from `obsidian`, and it is the module `src/main.ts` must consult
-before it registers the view name and the command name — both of which are spelled at
-`onload` today and cannot react to a later change anyway.
+`i18n/` is the new leaf `Multilang` describes: `eslint.config.mjs` gives it a `forbidden`
+entry listing every other directory, so it cannot grow an edge back up.
+
+The fallback chain is exercised by `test/i18n/locale.test.ts` against the fixture catalogs
+in `test/i18n/fixtures.ts`, because against the shipped registry every code resolves to
+English and none of it could fail. `test/helpers/obsidian-mock.ts` supplies `getLanguage`.

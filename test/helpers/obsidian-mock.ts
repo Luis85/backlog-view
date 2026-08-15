@@ -32,6 +32,15 @@ export function stringifyYaml(obj: unknown): string {
 	);
 }
 
+/**
+ * The app's configured language. Obsidian's own defaults to `'en'` and so does this —
+ * a test that cares drives `setLocale` directly rather than reaching through here,
+ * because resolution happens once at load and nothing re-reads it.
+ */
+export function getLanguage(): string {
+	return 'en';
+}
+
 export function normalizePath(path: string): string {
 	return path
 		.replace(/\\/g, '/')

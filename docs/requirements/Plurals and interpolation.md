@@ -2,9 +2,9 @@
 type: PBI
 parent: "[[Multilang]]"
 order: 30
-status: Open
-started: ""
-finished: ""
+status: Done
+started: "2026-08-15"
+finished: "2026-08-15"
 horizon: ""
 start: ""
 due: ""
@@ -103,14 +103,40 @@ a catalog can key on.
   message, never concatenates a translated word onto a data value. See
   `Type names are data`.
 
+## The count was nine when this note was written, and it was eighteen
+
+Measured rather than recalled, which is the rule this register keeps about counts. The
+nine ternaries above are still there; nine more arrived in the projections built since —
+the lanes, the shelf, the roadmap's buckets, the board's columns and its match count, the
+card disclosure's note, `childrenList`. Every one of them is gone. Two files the note
+named have moved on: the toolbar's count label is `render/toolbarStatus.ts` now, and the
+`' and '` joiner left `domain/settings.ts` for `domain/settingsConsistency.ts` when the
+config report split out.
+
+The `${n} item${s}` shape occurred five times over the same meaning and is **one key**,
+`count.items`. That is not the deduplication `The string catalog` forbids: that rule is
+about identical English text meaning two different things, and this is one meaning
+rendered in five places.
+
+One assembly is deliberately left standing, marked in the code: `runInit`'s notice still
+builds `Product Backlog: {…}.{…}` out of fragments. `list()` now joins them — the half
+that is grammar, and the half this PBI asked for — and turning the whole sentence into one
+key belongs to `Every surface translated`, which is where the fragments' own wording goes
+too.
+
+One English wording changed rather than being carried across: `1 note no longer exist`
+became `no longer exists`. It was a two-form rule with the wrong second form, and it is
+only visible once the forms are written out.
+
 ## Where it lives
 
-**Nothing yet — this note is design.** The formatter is part of the catalog module, since
-`A bare string cannot reach the UI` requires its output to carry provenance and that can
-only be minted where the catalog is.
+`src/i18n/t.ts` holds the formatter — `selectForm` (via `Intl.PluralRules` on the catalog
+locale), the named substitution, `list()` over `Intl.ListFormat`, and `Intl.NumberFormat`
+for a number inside a message. The forms themselves are catalog data in `src/i18n/en.ts`.
 
-What it replaces is spread across the view: nine inline plural ternaries in
-`src/view/render/toolbar.ts`, `src/view/render/emptyStates.ts`,
-`src/view/render/columns.ts`, `src/view/interactions/undo.ts`
-and `src/view/interactions/structure.ts`, and the literal `' and '` joiner in
-`src/domain/settings.ts`.
+What it replaced: `src/view/render/toolbar.ts`, `src/view/render/toolbarStatus.ts`,
+`src/view/render/emptyStates.ts`, `src/view/render/lanes.ts`, `src/view/render/shelf.ts`,
+`src/view/render/roadmap.ts`, `src/view/render/board.ts`,
+`src/view/render/cardChildren.ts`, `src/view/interactions/undo.ts`,
+`src/view/interactions/structure.ts`, `src/view/childrenList.ts`, and the joiner in
+`src/domain/settingsConsistency.ts`.

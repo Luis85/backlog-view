@@ -1,4 +1,5 @@
 import { setTooltip } from 'obsidian';
+import { t } from '../../i18n/t';
 import { drawIcon } from './icons';
 import { RowContext } from './columns';
 import { renderBadge, renderTitleText } from './rows';
@@ -74,7 +75,7 @@ export function renderCardChildren(ctx: RowContext, card: HTMLElement, item: Bac
 	// ladder is not hidden by this view.
 	const drawn = item.children.filter(projectionMember(host.projection));
 	const omitted = drawn.length - children.length;
-	const note = omitted > 0 ? ` — ${omitted} more ${omitted === 1 ? 'is' : 'are'} hidden by the current view` : '';
+	const note = omitted > 0 ? ` — ${t('card.hiddenChildren', { count: omitted })}` : '';
 
 	const draw = (): void => {
 		// Read live, never captured at wire time: a surrounding refresh can change this

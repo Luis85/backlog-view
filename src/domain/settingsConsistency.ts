@@ -1,4 +1,5 @@
 import { BacklogSettings } from './settings';
+import { list, t } from '../i18n/t';
 import { ownedProperties } from './optionalProperties';
 import { colorableStates, stateColor } from './stateColors';
 
@@ -234,7 +235,7 @@ export function configProblems(settings: BacklogSettings): string[] {
 	for (const [key, users] of keys) {
 		if (users.every((label) => WORKFLOW_STATE_LABELS.has(label))) continue;
 		if (users.length > 1) {
-			problems.push(`The ${users.join(' and ')} properties share the key "${key}".`);
+			problems.push(t('settings.sharedKey', { properties: list(users), key }));
 		}
 	}
 	return problems;

@@ -116,6 +116,19 @@ It makes two otherwise-blocked checks possible now:
 The brackets are the point: an *unbracketed* string on screen is one the sweep missed, so
 the pseudo-locale doubles as a visual completeness check that no lint rule can perform.
 
+## What landed with the layer (2026-08-15)
+
+The fixture half of this note is built and is what makes the layer's checks capable of
+failing: `test/i18n/fixtures.ts` carries a `pt` (so `pt-BR` has a base language to find), a
+`ru` with a `few` category English cannot select and a `many` deliberately missing (so the
+`other` last resort is reachable), a catalog with the parameters in the other order, and a
+sparse one that forces the missing-key fallback. `setLocale`'s catalogs argument is the seam
+they come through. Four of the layer's invariants were each broken in turn and watched fail.
+
+Still owed, and not started: the **pseudo-locale**, and the parity check in
+`Catalogs stay complete`. Both are named here rather than left to be inferred from an
+unticked box.
+
 ## Acceptance criteria
 
 - Exactly one catalog ships: English. The locale registry holds one entry, and the code

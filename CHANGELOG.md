@@ -13,6 +13,19 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Added
 
+- **Counted messages are now written per plural form rather than by adding an `s`.** The
+  view reads Obsidian's configured language and takes every message it can currently show
+  through a catalog, so a count reads correctly at one, at none and at many, and a number
+  inside a sentence is formatted for the reader's locale — `12,345 items`, not `12345`.
+  Lists inside a message are joined as that language joins them rather than with a literal
+  `and`. Nothing about the backlog changes: the tree, the ranking, the type names and
+  everything written to a note are the same in every language. **The plugin still ships in
+  English only**, deliberately — this is the layer a translation would go into, not a
+  translation.
+
+- One wording fix that came with it: an undo that could not find a note said `1 note no
+  longer exist`, and now says `exists`.
+
 - **Every milestone in one row above the roster.** On the resources axis a milestone is no
   longer filed under whoever is named on it — where folding that person's band took the
   date off screen — and one naming nobody no longer waits on the shelf. Every placed

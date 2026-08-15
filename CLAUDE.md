@@ -93,6 +93,26 @@ main → commands → view → storage → domain
 `ui/` is a leaf of reusable Obsidian dialogs that knows about none of them. `test/`
 mirrors the same directories.
 
+**`i18n/` is a second leaf, one level lower: below every layer, importing none of them.**
+It has to be, because every layer renders text — `ui/` may import nothing at all and
+`domain/` may not reach view, storage, ui or commands, so a catalog placed in any existing
+directory is unreachable from at least one of its callers. Same mechanical statement as the
+others: a `forbidden` entry naming every directory, so it cannot grow an edge back up.
+`en.ts` is the catalog and is **data** — no imports, no logic, so a translator edits it
+without reading the plugin. `t.ts` derives the key and parameter types from it by template
+literal type, which is why `t('count.items')` with a missing parameter is a compile error
+and no key list has to be kept in step. The sentence is the unit of translation: nothing
+builds a message by joining pieces, plural forms and list joining follow the CATALOG's
+locale because they are grammar, and numbers follow the USER's because they are data
+presentation. `initLocale()` runs once in `main.ts`; Obsidian needs a restart to change
+language, so nothing re-reads it. What must never enter the catalog is anything the plugin
+writes, matches or persists — type names, state values, option keys, tags, file names. The
+test when it is not obvious: **ask what breaks if two people with different Obsidian
+languages open the same vault.** "One sees different words" is text; "one writes notes the
+other's view cannot read" is data. Only ~21 keys are in it so far — the sweep across the
+remaining call sites is `docs/requirements/Every surface translated.md`, so an English
+literal beside a `t()` call is work not yet done rather than a rule being broken.
+
 **`domain/`** is the backlog itself — what the tree *is*, what a change *would* mean, what
 each projection derives — and it reads the vault without ever writing it or touching the
 DOM. That is what makes it the layer with node tests and no harness: a rule about levels,

@@ -1,4 +1,5 @@
 import { setTooltip } from 'obsidian';
+import { t } from '../../i18n/t';
 import { drawIcon } from './icons';
 import { createCard, renderCardBody, wireCardActivation } from './board';
 import { RowContext } from './columns';
@@ -170,7 +171,7 @@ export function renderShelf(
 		cls: 'pbl-shelf' + (empty ? ' pbl-shelf-empty' : '') + (collapsed ? ' pbl-shelf-collapsed' : ''),
 		attr: {
 			role: 'group',
-			'aria-label': `${SHELF_LABEL}, ${shelfCards.length} item${shelfCards.length === 1 ? '' : 's'}`,
+			'aria-label': t('roadmap.groupLabel', { name: SHELF_LABEL, count: shelfCards.length }),
 		},
 	});
 	const header = shelfEl.createDiv({ cls: 'pbl-shelf-header' });
