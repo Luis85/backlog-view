@@ -328,7 +328,8 @@ button.pbl-bar-connector {
    in the browser harness and read as a multi-select — most bars are legal, so the
    scarce thing is the one worth a mark. Three classes deep, which is what makes this
    outrank every single- and double-class `.pbl-bar-*` rule in `timeline.css` regardless
-   of which file loads last. */
+   of which file loads last.
+
    The second selector is a milestone on the resources axis, where the class lands on the
    MARK because that axis gives a marker no row of its own — the same substitution
    `BarLinkParts.row` makes. Descendant and self cannot be one selector, and the pair ties
@@ -356,7 +357,8 @@ button.pbl-bar-connector {
    Dashed and 1px against `.pbl-drop-over`'s solid 2px below, so the origin and the
    target under the pointer are never one look — the two rules tie on specificity and
    cannot co-occur anyway (`accepts` refuses the source), so the distinction is the dash
-   and the weight, not the cascade. */
+   and the weight, not the cascade.
+
    Two selectors for the reason the illegal rule above carries two: on the resources axis a
    marker's mark IS what wears the class. */
 .pbl-linking .pbl-link-source .pbl-bar,

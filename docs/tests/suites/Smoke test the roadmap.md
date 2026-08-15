@@ -68,6 +68,21 @@ catalog migration and was not part of that run.
   line at 488px, milestone line and label and diamond centre all 704px.** The Today
   label this measured no longer exists — [[State colour and a legend]] replaced it with
   a legend strip, **never checked in Chromium**.
+- **A narrowed lead column whose count slot has changed hands.** While the quick filter is
+  running, a dated or resources row shows how many matches hide under it in the slot its
+  ROLLUP normally occupies (`.pbl-row-matches` replacing `.pbl-bar-count`), and the row
+  menu is what names them; clearing the filter gives the rollup back. A substitution, since
+  the lead's only shrinkable item is the row's title and two additions were measured
+  costing it. What a vault still owes is what a THEME does to the widths this leans on: the
+  type badge's `min-width: 58px` holds a type name at Obsidian's default UI font, and the
+  chip is its glyph plus a numeral in that font. Filter the roadmap on the dated axis, drag
+  the lead's grip through its whole range, and check that a row's title truncates no
+  earlier than it did unfiltered, that nothing crosses into the day track, that the row
+  does not change height, and that the rollup returns when the filter clears. **A
+  three-digit count is the case to look for**: at 220px in Chromium one row already clipped
+  its single digit to a partial glyph, which is the chip yielding as designed and is the
+  point at which a reader could misread the number.
+  **Measured in Chromium 2026-08-15 at 160/220/480px; never checked in a vault.**
 - The dated axis's grid butts against the chrome above it — no blank strip between the
   toolbar or the legend and the header, where the lead column's border and the first
   gridline would otherwise simply stop. The horizon axis keeps its top gutter, so check

@@ -101,7 +101,7 @@ top of them:
 - No second source of truth: no board-only rank property, no board-only state, no
   state string written that the user did not configure or observe.
 - A row outside the Base's filter obeys the context-row rule on the board exactly as
-  in the tree — it renders, it parents, and that is all: a breadcrumb, a lane header,
+  in the tree — it renders, it parents, and that is all: a breadcrumb,
   or an inert context card when focus lands on its level. Never counted, never
   written, never a source of columns.
 

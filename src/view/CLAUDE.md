@@ -514,6 +514,73 @@ free of runtime code so imports stay cycle-free.
   lookup trusted without the comparison accepts a delete-and-recreate under the same name
   and writes to a note nobody picked up. Same fact `src/storage/CLAUDE.md` leans on for
   the dependency undo, used here for the other direction.
+- **A column can be FOLDED, and the fold is a fourth collapse question** — `columnCollapsed`
+  / `setColumnCollapsed`, asked of a scope and the column's own value rather than of a
+  path, `isLaneCollapsed`'s reason exactly. Three things about it are worth knowing before
+  touching either card projection:
+  **The snapshot is where the fold is said.** A folded column contributes no cards to
+  `BoardSnapshot.board`, and a folded bucket returns none from `renderBucket` — one line
+  each, and between them they keep `boardPosition`, `nextBoardPosition`, Alt+arrow, the
+  roadmap's linear walk and the pane's `listbox` role honest without any of those asking
+  about a fold. Skipping the DOM alone would leave the keyboard resting a selection on a
+  card nobody can see.
+  **Both advisories keep asking the UNFOLDED population.** `renderBoardAdvisory` reads the
+  model's own columns and `renderRoadmapAdvisory` counts the buckets, never the cards
+  drawn — a board with every column folded is not a board with nothing on it, and telling
+  the reader their work was all done or all filtered away is the collapsed shelf's mistake
+  one projection over.
+  **The default is the board's alone**: `col.done && col.held > 0 && !col.openWork`, taken
+  once. The two terms beside `done` ask different questions and are deliberately measured
+  DIFFERENTLY (`domain/board.ts`) — every review finding against this default was one of
+  them measured the other's way.
+  `openWork` asks whether anything here is unfinished, over the POPULATION with the quick
+  filter lifted, so a search that hid every open card cannot make a stage look finished and
+  fold work the reader was holding.
+  `held` asks whether the stage holds anything at all, and is NOT population-based: it is
+  counted through `owned`, which carries neither the filter nor the completed-items toggle.
+  A count cannot serve — the toggle lives in the population predicate, so with finished work
+  hidden a done column FULL of finished work reports zero and reads as empty, refusing the
+  fold in the one configuration the feature exists for. The term is needed all the same,
+  because settling is permanent: a default taken while the column holds NOTHING — a board
+  drawn before its results arrive, a filter narrowed to nothing — shut Done for good and
+  handed the work back folded. `collapseNewParents` states that hazard for an unloaded
+  model; a default settled lazily at the render meets it a second time.
+  `openWork` is the
+  one derived quantity a CONTEXT card contributes to, and only through its rollup: under a
+  focus such a card can be the only thing standing for the results below it, so a column
+  folded on its silence takes them off the board — with no advisory, since the board does
+  hold a card. Its own state still counts for nothing, which is the context-row rule
+  intact rather than bent. A bucket
+  passes `false`: an axis has no notion of finished. The once-only part is
+  `collapseNewParents`' rule reached lazily — a column does not exist in the model, so the
+  render is the first moment there is anything to settle.
+  The disclosure itself is `renderChevron` on both surfaces (`renderColumnFold`, exported
+  from `render/board.ts`), so the filter override, the real `disabled` flag and the focus
+  report come with it. **Its `aria-expanded` is not what SAYS the fold, though**, and the
+  reason is the same one that makes the disclosure a `tabindex="-1"` button: an accessible
+  name overrides the children it is set on, so a reader arriving at the column stop by
+  `aria-activedescendant` hears `columnLabel` and no button at all. The word is therefore
+  in the label — `columnLabel` for a column, the bucket's own `aria-label` for a bucket —
+  which is a claim about a COUNT rather than about a chevron: the count deliberately
+  survives the fold, so a label that stayed silent would announce cards the column is not
+  showing. Its keyboard path on the BOARD is the column stop's own menu, which
+  is why that menu is now unconditional and lives in `interactions/columnMenu.ts`; a bucket
+  has no such path, and that gap is [[Folding a horizon bucket]]'s own last paragraph
+  rather than something to fix beside a fold.
+  **Two surfaces over one action have to be AVAILABLE at the same times, and that is a
+  second question from agreeing about the state.** These two shared a builder and still
+  came apart on it TWICE, which is why it is written as a rule rather than as two fixes.
+  Once on the quick filter: `renderChevron` disables itself while one runs, the menu entry
+  did not, and since the filter override makes `columnCollapsed` answer false, a folded
+  column offered an enabled Collapse that wrote a fold nothing on screen could show. Once
+  on the empty no-state strip: the header draws it no disclosure, and the menu went on
+  offering one, so a reader could fold a 44px box that was already a 44px box and shut out
+  the first stateless card to arrive. Both found by review (Codex, PR #140).
+  What the second fix does that the first did not is remove the chance of a third: the
+  strip's test is `emptyNoState` in `domain/board.ts`, asked by the header and by the menu,
+  rather than a condition copied into each. Ask it of any second surface — not just "does
+  it say the same thing", but "is it offered exactly when the first one is", and then put
+  the answer somewhere both read.
 - The whole column is the drop target and the highlight is the only drop signal —
   within-column order is derived from the Base's sort, so there is no between-cards
   edge, no hitbox package, and deliberately no Alt+Up/Down rank shortcut.
@@ -708,6 +775,51 @@ free of runtime code so imports stay cycle-free.
   cannot look different per projection. Timeline rows reuse the card SHELL (selection,
   context styling) with a row layout — `.pbl-card.pbl-timeline-row` overrides the
   card's column geometry in CSS.
+- **The roadmap names its hidden matches from a REGISTER it reads, never a model it
+  predicts.** Every surface that puts an item on screen fills `RowContext.placed` as it
+  draws — the item, the element its match links belong on, and whether that surface lists
+  its children — and `nameMatches` (`render/roadmap.ts`) runs `renderCardMatches` over it
+  once they all have. The board can afford the inline call the roadmap cannot, and the
+  difference is a fact about the models rather than a preference: a `BoardModel` is
+  already narrowed to what draws, so `cardPaths` answers "already on screen", while
+  `RoadmapModel.shelf` holds every shelved item whether `host.shelfCollapsed` shows them
+  or not and `organizeShelf` drops whole groups from an expanded shelf through
+  `host.shelfHiddenTypes`. Neither of those is overridden by an active filter; a lane
+  fold IS (`isLaneCollapsed` is `!filter.active && …`), so two states that look alike
+  answer the same question oppositely and only the render knows which happened.
+  `listsChildren` travels with the mount for the same reason it cannot be read off
+  `cardKids`: a timeline row joins that set for its FOLD chevron, which lists nothing, so
+  a matching direct child IS named there while a bucket card's disclosure already shows
+  it. That is why `undisclosedMatches` takes the already-listed set from its caller —
+  only the surface knows what it shows.
+  **`face` is the mount's second answer and a separate question from `listsChildren`.** A
+  CARD names each match as a link; a ROW — the timeline's and the lane context's — takes
+  over the lead's own count slot, `.pbl-bar-count`, showing the match count while the
+  filter runs and the rollup when it does not. **Never both, and that is the rule rather
+  than the arrangement: a sticky lead is a fixed-width column whose only shrinkable item is
+  the row's title, so anything ADDED to it is taken from the row's name.** Two additions
+  were built and measured before that was understood — match titles in the lead left one
+  character of the row's own name at the default width (`O… 4/17 ⌕O…`), and a `flex: 0 0
+  auto` chip beside the rollup still cost 34px there and, unable to yield, hung 28.95px
+  over the day track at the 160px floor. The substitution costs nothing: the same row's
+  title measures identically filtered and unfiltered. `renderMatchCount` swaps the element
+  in the slot's own PLACE (`replaceWith`), because `margin-inline-start: auto` on that slot
+  anchors the end of the lead and `renderRowFacts` may draw a dependency flag after it; the
+  rollup stays ANNOUNCED throughout on the row's `.pbl-sr-only` span, which costs no width.
+  Every number here came from `npm run harness` in Chromium and from nothing the suite can
+  see; what the suite holds is the substitution itself (`test/view/roadmapMatches.test.ts`,
+  which jsdom CAN see) and the declarations that let the chip yield
+  (`test/view/timelineBoxing.test.ts`).
+  **A marker's row cannot use an sr-only span for any of this.** `renderRowFacts` gives it
+  an explicit `aria-label`, which REPLACES the content-derived name and takes the progress
+  span with it — so that row folds `progressNote` (`render/barProgress.ts`) into its own
+  label, from the one report rather than a second phrasing. Reachable because
+  `childTypeChoices` offers a marker no children and refuses no deliberate move, while
+  `assignAll` counts by structure.
+  `PlacedMount` itself is declared in `host.ts` beside `DrawnColors` and for that type's
+  reason: a `render/` type imported back into `host.ts` turns the
+  `columns.ts` ↔ `menu.ts` ↔ `host.ts` web into sixteen cycles `npm run analyze` refuses
+  — measured, after writing it the other way first.
 - **A timeline row's chevron folds ROWS, and a card's disclosure lists children on its
   face; they are two bits, two host method pairs, and one register (2026-08-09).** A row
   goes through `isCollapsed`/`setCollapsed`, and `collapseKey` is the ONE place that

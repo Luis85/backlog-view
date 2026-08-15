@@ -54,9 +54,30 @@ export function boardVault(): FakeVault {
 export function makeBoard(
 	vault: FakeVault,
 	extra: Record<string, unknown> = {},
-	{ focus, folds }: { focus?: string; folds?: boolean } = {},
+	{ focus, folds, foldedColumns }: { focus?: string; folds?: boolean; foldedColumns?: boolean } = {},
 ): Harness {
 	const harness = makeView(vault, { ...BOARD_WORKFLOW, ...extra }, { collapsed: true, focus, folds });
 	harness.view.setProjection('board');
+	if (!foldedColumns) expandColumns(harness.containerEl);
 	return harness;
+}
+
+/**
+ * Open every column that came up folded — `makeView`'s own `collapsed` rule, applied to
+ * the board: a done column holding no open work starts shut, so a suite about anything
+ * else would otherwise be asserting against a fold it never asked for. Opt back in with
+ * `{ foldedColumns: true }`, exactly as a tree test opts into `{ collapsed: true }`.
+ *
+ * Through the real disclosure, and re-queried after every click, because the toggle
+ * rebuilds the whole projection and the button pressed no longer exists. Bounded rather
+ * than looping until clean: a click that failed to change the state would otherwise hang
+ * the suite instead of failing it.
+ */
+export function expandColumns(containerEl: HTMLElement): void {
+	for (let i = 0; i < 50; i++) {
+		const shut = containerEl.querySelector<HTMLElement>('.pbl-board-col .pbl-chevron[aria-expanded="false"]');
+		if (!shut) return;
+		shut.click();
+	}
+	throw new Error('columns would not open');
 }

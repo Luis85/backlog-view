@@ -22,6 +22,16 @@ export const PRODUCT_BACKLOG_VIEW_TYPE = 'product-backlog';
 export type Projection = 'tree' | 'board' | 'roadmap' | 'deliverables' | 'catalog';
 
 /**
+ * Which screen a folded column was folded on. Three words that are almost the projection
+ * and deliberately not it: the horizon buckets are one AXIS of the roadmap, and the two
+ * grid axes have rows and bands rather than columns. Nothing here folds by projection, so
+ * a union of the screens that actually draw a column is the honest spelling — and it is
+ * what keeps a requirements `Done`, a Deliverables `Done` and a horizon called `Done`
+ * three separate folds. See `columnKey` in `view/collapseState.ts`.
+ */
+export type ColumnScope = 'board' | 'deliverables' | 'horizons';
+
+/**
  * A column of the trailing strip: the property id to read, the label the header shows,
  * and WHICH RENDERING it gets. Membership and order belong to the Bases properties
  * menu alone — a kind never decides whether a column exists, only what is drawn inside
@@ -61,8 +71,20 @@ export interface BusyState {
  * the elements to put the focus outline and `aria-activedescendant` there.
  */
 export interface BoardSnapshot {
+	/**
+	 * What was DRAWN, which since a column can be folded is no longer the whole model: a
+	 * folded column's `cards` list is empty here, and that is what stops the keyboard
+	 * selecting a card no longer on screen — `boardPosition`, `nextBoardPosition` and
+	 * Alt+arrow all walk this. Every count on a column is still the real one.
+	 */
 	board: BoardModel;
 	colEls: HTMLElement[];
+	/**
+	 * Which board this is, carried so nothing downstream has to re-derive it from the
+	 * projection. The column menu needs it to key a fold, and the render that produced
+	 * these columns is the one thing that cannot be wrong about which board they are.
+	 */
+	scope: ColumnScope;
 }
 
 /** One scroll box the frame owns, keyed by WHICH BAND IT IS rather than by position. */
@@ -133,6 +155,41 @@ export interface DrawnColors {
 export type BarColors = Omit<DrawnColors, 'absence' | 'daysLost'>;
 
 /**
+ * A surface that put an item on screen, and where that item's match links go: the card
+ * itself, or a row's sticky lead cell.
+ *
+ * `listsChildren` is whether that surface shows the item's children on its own face,
+ * which decides whether a match already on the card is named twice. It cannot be read off
+ * `RowContext.cardKids`: a timeline row joins that set for its FOLD chevron, which lists
+ * nothing.
+ *
+ * Declared HERE, beside `RoadmapSnapshot` and beside `DrawnColors` above, for that type's
+ * own reason rather than a new one: the render modules produce it, but they all reach
+ * `host.ts` (through `RowContext`), so an import the other way turns the whole
+ * `columns.ts` ↔ `menu.ts` ↔ `host.ts` web into sixteen cycles `npm run analyze` refuses.
+ * Measured, not assumed — it was written in `render/columns.ts` first and fallow named
+ * every one of them.
+ */
+export interface PlacedMount {
+	item: BacklogItem;
+	mount: HTMLElement;
+	listsChildren: boolean;
+	/**
+	 * How this surface shows what the filter found BELOW the item — a separate question
+	 * from `listsChildren`, and deliberately not inferred from it. `'links'` is a button
+	 * per match, which a card has the width for; `'count'` is one fixed-width chip that
+	 * opens the row menu, which is all a sticky lead COLUMN can afford.
+	 *
+	 * Measured, not preferred. The lead's only shrinkable items are the row's title and
+	 * whatever names the matches, so they shrink together: with titles in the lead, a row
+	 * that gained a match rendered one character of its own name at the default 220px
+	 * width while its neighbours showed theirs in full. A row that gains matches must not
+	 * lose its identity, so the row's face costs a fixed width or nothing.
+	 */
+	face: 'links' | 'count';
+}
+
+/**
  * The roadmap as last rendered: the derived model, and the rendered cards in
  * reading order — axis first, then the shelf, then the context strip — which is
  * the order the keyboard walks.
@@ -145,6 +202,14 @@ export interface RoadmapSnapshot {
 	 * the keyboard walk and `aria-activedescendant` never reach past what is on screen.
 	 */
 	cards: BacklogItem[];
+	/**
+	 * What the pass drew, by path — the register `nameMatches` built, kept so the row
+	 * menu can offer the same matches the faces do. The menu is handed an item and no
+	 * surface, so `listsChildren` has to travel with the mount or the menu would have
+	 * to guess: always subtracting loses a row's direct-child match, never subtracting
+	 * offers a card's disclosure entries a second time.
+	 */
+	placed: ReadonlyMap<string, PlacedMount>;
 	/**
 	 * The shelf's own element for THIS render. Carried so a control that rebuilt the
 	 * pane can find its own replacement afterwards — the pressed button is gone by
@@ -367,6 +432,19 @@ export interface BacklogViewHost {
 	isLaneCollapsed(name: string): boolean;
 	setLaneCollapsed(name: string, collapsed: boolean): void;
 	/**
+	 * Whether one board column or horizon bucket is folded to its strip, asked of the
+	 * screen it is drawn on and its own value.
+	 *
+	 * A fourth collapse question, and a fourth for {@link isLaneCollapsed}'s reason: a
+	 * column is a VALUE, not a note, so it keys nothing in the path space. What is new here
+	 * is `autoCollapse` — the answer a column nobody has ruled on gets, which is `false`
+	 * everywhere except a done board column holding no open work. Passing it in keeps the
+	 * default a fact about the screen drawing the column, and `columnCollapsed` in
+	 * `view/collapseState.ts` is what makes taking it a once-only event.
+	 */
+	columnCollapsed(scope: ColumnScope, value: string | null, autoCollapse: boolean): boolean;
+	setColumnCollapsed(scope: ColumnScope, value: string | null, collapsed: boolean): void;
+	/**
 	 * Which density the dated axis draws at. UI state like the mode and the axis pick:
 	 * per saved view, per device, in the collapse store — never in the `.base`, because
 	 * pane width is a property of the screen in front of you and not of the base.
@@ -477,9 +555,13 @@ export interface BacklogViewHost {
 	showContextMenuFor(item: BacklogItem): void;
 	/**
 	 * Open the column's own menu, anchored to the column that index names. False when
-	 * there was nothing to open — a column with nothing agreed offers no menu — so the
-	 * keyboard path can leave the key to whoever else wants it rather than swallowing
-	 * it on a stop where nothing happens. The pointer path already worked that way.
+	 * there was nothing to open, so the keyboard path can leave the key to whoever else
+	 * wants it rather than swallowing it on a stop where nothing happens; the pointer
+	 * path already worked that way.
+	 *
+	 * That case is now only an index naming no column. It used to be the ordinary state of
+	 * a column with no working agreement, and stopped being one when the fold joined the
+	 * menu: every column can be folded, so every column has something to offer.
 	 */
 	showColumnMenuFor(index: number): boolean;
 
