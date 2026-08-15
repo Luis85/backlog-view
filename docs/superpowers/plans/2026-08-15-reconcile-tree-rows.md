@@ -536,7 +536,28 @@ const ROW_LISTENER = {
 
 Then add `ROW_LISTENER` to the `syntaxRules([...])` list for the config block covering `src/view/render/rows.ts` and `src/view/render/columns.ts`. If those two files are inside a wider block, split them into a block of their own — the file already does this (*"Disjoint regions of `src/`; see the note above `syntaxRules`"*).
 
-`wireChipEvents` and `wireRowEvents` both call `addEventListener` and both live in `rows.ts`. They are the delegation and must be exempt: put an `// eslint-disable-next-line no-restricted-syntax` above each, with a one-line reason. Two exemptions naming themselves are the point; a rule with no exemptions here would be a rule that bans the fix.
+**There are four exemptions, not two, and getting this wrong makes the gate unpassable.** Two more listeners live in `rows.ts` and neither is removed by this plan:
+
+- `renderChevron`'s `click`. It closes over `state.toggle`, `redraw` and the element — **callbacks, not an item**. The tree's redraw is the one Task 3 just made resolve by path, and the timeline passes its own; so this listener never holds a `BacklogItem` and is correct as it stands.
+- `renderRowLead`'s `title` `mouseover`, which fires the `hover-link` trigger. It closes over `item` and reads `item.file.path` from it.
+
+The second one is safe today only by luck — a path does not go stale — so **make it safe by construction first**: `renderRowLead` already computes `const path = item.file.path` for the fold callback in Step 3, so use that same local in the hover handler and let the closure hold a string instead of the item. One line, and it removes a trap for whoever next adds `item.title` to that handler.
+
+Then put an `// eslint-disable-next-line no-restricted-syntax` above each of the four, with a one-line reason that says which kind it is:
+
+| Site | Why it is exempt |
+| --- | --- |
+| `wireRowEvents` | the delegation itself |
+| `wireChipEvents` | the delegation itself |
+| `renderChevron` | closes over callbacks, never an item |
+| `renderRowLead`'s hover | closes over a path string, never an item |
+
+Four exemptions naming themselves are the point. The rule cannot see "closes over a `BacklogItem`" — no AST selector can — so it bans the spelling it *can* see and each exemption states why it is not the thing the rule is for. A rule with no exemptions here would be a rule that bans its own fix, and one applied without them fails `npm run lint`, which no later task can clear.
+
+- [ ] **Step 5b: Prove the gate still passes**
+
+Run: `npm run lint`
+Expected: PASS. If it reports the title hover or the chevron click, you have not exempted all four — the rule is on the spelling, and those two are legitimate uses of it.
 
 - [ ] **Step 6: Watch the rule reject the thing it forbids**
 
