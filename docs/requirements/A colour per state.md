@@ -94,10 +94,15 @@ are not, and the reason each half moved is worth stating:
   doing nothing. Found in review before it shipped.
 - **1b — nothing to colour at all.** The button is withheld rather than opening onto an
   empty dialog, and both ask `hasColorableStates`, so the two cannot drift.
-- **2a — a done state.** Listed like any other, and the intro says what choosing one does:
-  nothing. Its bar is green by specificity whatever is chosen. Offered rather than hidden
-  because the row set is the vocabulary, and a vocabulary with a hole in it invites the
-  question this sentence answers.
+- **2a — a done state.** Not listed, and the intro says why: a finished bar is green by
+  specificity and its legend swatch is keyed `pbl-legend-done`, so a choice on one could
+  never be drawn. This note first specified the opposite — the row offered, the intro
+  explaining that choosing it did nothing — on the ground that the row set is the
+  vocabulary. Reversed on user request (2026-08-15): a control that is documented as inert
+  is still a control, and the question a missing row invites is answered by one sentence in
+  the intro rather than by a swatch per finished state. Done is asked per WORKFLOW, so a
+  value only one of the two finishes on stays colourable for the other, which still draws
+  it as an ordinary bar.
 - **2b — both workflows spell a state the same way.** One row. The colours are one table
   keyed by the state VALUE, so a second row would be two controls over one key — and this is
   the common case, since a Deliverable workflow with no states of its own falls back to the
@@ -146,9 +151,11 @@ are not, and the reason each half moved is worth stating:
 - Clearing a choice returns that state to its slot colour, not to the plain accent — which
   is what keeping the slot class under an inline colour buys — and puts that same slot
   colour back in the swatch rather than leaving the cleared choice showing.
-- A choice is offered only for a DECLARED state, in either workflow, deduped by `sameValue`.
-  An observed-only vocabulary offers nothing and says why: the resolver cannot see observed
-  states, so a colour stored against one would be discarded on the next refresh.
+- A choice is offered only for a DECLARED state that workflow does not call DONE, in either
+  workflow, deduped by `sameValue`. An observed-only vocabulary offers nothing and says why:
+  the resolver cannot see observed states, so a colour stored against one would be discarded
+  on the next refresh. A done state is dropped by the same function, so the dialog, the
+  resolved table and the fixture check cannot disagree about which states are colourable.
 - The button renders under the legend's own gate — roadmap mode, dated axis — and nowhere
   else, and is withheld where the dialog would be empty. Both ask one predicate.
 - Closing the dialog puts focus on the button as it exists THEN, not the one that opened it:
@@ -189,10 +196,10 @@ matches the bar is exactly the live-vault item above.
 `src/domain/stateColors.ts` is what a choice IS and who may have one: `stateColor` (a name
 or a six-digit hex, or null), `isColorName` (which half a stored value is), `stateColorKey`
 (the persisted key, by `wipLimitKey`'s rule — no longer a view-option key, since nothing
-declares it in the schema) and `colorableStates` (the declared vocabularies, deduped, which
-is the rule the Deliverables option group used to restate for its own boxes). It takes the
-two vocabularies as lists rather than a `BacklogSettings`, so `settingsResolve.ts` can call
-it while still building that object.
+declares it in the schema) and `colorableStates` (the declared vocabularies minus each
+workflow's done values, deduped, which is the rule the Deliverables option group used to
+restate for its own boxes). It takes the four fields it reads rather than a whole
+`BacklogSettings`, so `settingsResolve.ts` can call it while still building that object.
 
 `resolveSettings` (`src/domain/settingsResolve.ts`) reads one `stateColors` table over those
 states, and `colourProblem` (`src/domain/settingsConsistency.ts`) is that rule read backwards
