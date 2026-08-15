@@ -325,7 +325,18 @@ const median = (values) => {
 	const mid = sorted.length >> 1;
 	return sorted.length % 2 === 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 };
-const spread = (values) => `${Math.min(...values).toFixed(0)}–${Math.max(...values).toFixed(0)}`;
+/**
+ * The run-to-run range, at the SAME precision as the median beside it.
+ *
+ * It was whole milliseconds, which reads fine at 300 ms and destroys the column's whole
+ * purpose below 1: a real 0.1–0.4 printed as `0–0`, so the one number a reader consults
+ * to decide whether a delta is noise said there was none. Small workloads are supported
+ * and documented — `--notes=0`, `--fixture=edges` — so this is a case the tool offers,
+ * not an edge it stumbles into. One decimal throughout rather than a precision that
+ * scales with magnitude: the spread is read AGAINST the median, and two columns rounded
+ * differently cannot be compared by eye. (Codex, PR #137.)
+ */
+const spread = (values) => `${Math.min(...values).toFixed(1)}–${Math.max(...values).toFixed(1)}`;
 
 /** Op → the per-run medians, in the order the runs happened. */
 function collect(results) {

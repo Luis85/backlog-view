@@ -176,6 +176,16 @@ instruments improvised around a browser.
   to skip — skipped it anyway, and so did `--no-build=flase`, silently measuring a stale
   `.harness`. **Presence stops being a boolean the moment `--k=v` is legal syntax**, so
   both build flags answer true, false or a refusal. (Codex, PR #137.)
+- **3l — the spread is rounded coarser than the thing it qualifies.** It was: whole
+  milliseconds, beside a median printed to one decimal. Fine at 300 ms and destructive
+  below 1, where a real 0.1–0.4 prints as `0–0` — the one column a reader consults to
+  decide whether a delta is noise, reporting that there is none. Shown on a real
+  `--notes=0` run: `switch to deliverables` reads `3.8–4.1` where it used to read `4–4`.
+  Small workloads are offered and documented, so this is a case the tool serves rather
+  than an edge it meets. One decimal throughout rather than a precision scaled to
+  magnitude, because the spread is read AGAINST the median and two columns rounded
+  differently cannot be compared by eye. The published tables above are unaffected —
+  hundreds of milliseconds, where the first decimal changes no reading. (Codex, PR #137.)
 - **4a — the runner checks out the ref to compare against.** Refused: that would move the
   tree someone is working in. Building the other side is one command in a git worktree,
   and stays the human's.
