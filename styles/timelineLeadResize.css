@@ -1,0 +1,58 @@
+/* The dated axis's lead-column resize grip — `src/view/interactions/timelineLeadResize.ts`.
+
+   Its own partial since 2026-08-15, and the move is the file cap rather than a change of
+   mind: `timeline.css` reached 400 lines, and a control with its own module, its own
+   `hover: none` target and its own focus reasoning is a concern rather than a stray rule
+   in the grid's file. `styles/propertyColumns.css` is the same control on the tree and
+   was filed this way already — the comment in the touch block below names it because the
+   two grips answer the same question differently.
+
+   Position in `index.css` is NOT load-bearing: every selector here is
+   `.pbl-timeline-lead-grip` or a pseudo-class of it, declared in no other partial, so
+   nothing here is decided by order.
+
+   `touch.css` is deliberately not where the `hover: none` block lives, and that is the
+   general rule rather than an exception made here: the two hover-revealed create buttons
+   are the only case that file's header lists, and this block is a target SIZE rather
+   than a reveal — nothing above it is being undone, so there is no pair for a later rule
+   to get between. */
+
+/* The lead column's own resize grip — a thin strip pinned to the column's right edge,
+   `.pbl-bar-grip`'s pattern over a column boundary instead of a bar's. `position: sticky`
+   on `.pbl-timeline-lead` establishes its containing block, so `right` resolves against
+   that column's own box regardless of scroll. */
+.pbl-timeline-lead-grip {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	right: -3px;
+	width: 6px;
+	cursor: col-resize;
+	z-index: 1;
+	/* Otherwise the browser reads a touch drag here as a pan of the scroller beneath
+	   it and the pointermove stream this grip needs never arrives. */
+	touch-action: none;
+}
+/* The same 6px mouse target, on a device with fingers and no hover. It needs no line of
+   its own — `.pbl-timeline-lead`'s own border already draws this boundary, which is the
+   difference from the property columns' grip (styles/propertyColumns.css), where nothing
+   else marks where a column ends. */
+@media (hover: none) {
+	.pbl-timeline-lead-grip {
+		width: 20px;
+		right: -10px;
+	}
+}
+.pbl-timeline-lead-grip:hover,
+.pbl-timeline-lead-grip:focus-visible {
+	background-color: var(--interactive-accent);
+}
+/* The ring has to contrast with the strip it rings. Both were `--interactive-accent`,
+   which on a 6px strip filled with that same accent is an indicator drawn in the colour
+   of the thing it indicates — invisible, on the one control here that has to say where
+   the keyboard is. `--text-on-accent` is the token a theme guarantees legible against
+   the accent it fills with, which is exactly the question being asked. */
+.pbl-timeline-lead-grip:focus-visible {
+	outline: 2px solid var(--text-on-accent);
+	outline-offset: -1px;
+}

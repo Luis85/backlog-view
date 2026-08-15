@@ -583,7 +583,11 @@ describe('the absence marks are drawn from the content palette', () => {
 });
 
 describe('the resize grip is ringed in a colour other than its own fill', () => {
-	const css = readFileSync(new URL('../../styles/timeline.css', import.meta.url), 'utf8');
+	// The grip's own partial since 2026-08-15 — it left `styles/timeline.css` when that
+	// file reached its 400-line cap. Read from ONE file on purpose: the question is
+	// whether the two declarations name the same token, which only holds if both are
+	// where this looks.
+	const css = readFileSync(new URL('../../styles/timelineLeadResize.css', import.meta.url), 'utf8');
 
 	/** The colour tokens one property names, across every rule that styles the focused grip. */
 	function tokens(property: string): string[] {
