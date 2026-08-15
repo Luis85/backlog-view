@@ -13,6 +13,12 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Added
 
+- **Fold a type group in the shelf.** Each type group in the expanded shelf now has a
+  disclosure beside its name. Fold one and its cards go while its header and its true
+  count stay — the difference from the type filter, which takes the whole group away. The
+  folds are remembered per saved view on this device, beside the board's and the horizon
+  axis's own.
+
 - **A toggle for the bucket grid on the horizon roadmap.** A wide bucket reflows its cards
   into several columns, which is right for a backlog slice and wrong for a short list you
   are reading down. The toolbar now carries a toggle for it while the horizon axis is

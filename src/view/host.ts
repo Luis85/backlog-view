@@ -22,14 +22,19 @@ export const PRODUCT_BACKLOG_VIEW_TYPE = 'product-backlog';
 export type Projection = 'tree' | 'board' | 'roadmap' | 'deliverables' | 'catalog';
 
 /**
- * Which screen a folded column was folded on. Three words that are almost the projection
- * and deliberately not it: the horizon buckets are one AXIS of the roadmap, and the two
- * grid axes have rows and bands rather than columns. Nothing here folds by projection, so
- * a union of the screens that actually draw a column is the honest spelling — and it is
- * what keeps a requirements `Done`, a Deliverables `Done` and a horizon called `Done`
- * three separate folds. See `columnKey` in `view/viewState.ts`.
+ * Which screen a folded column was folded on. Four words that are almost the projection
+ * and deliberately not it: the horizon buckets are one AXIS of the roadmap, the shelf's
+ * type groups are a BAND of it drawn on every axis, and the two grid axes have rows and
+ * bands rather than columns. Nothing here folds by projection, so a union of the screens
+ * that actually draw a foldable stack of cards is the honest spelling — and it is what
+ * keeps a requirements `Done`, a Deliverables `Done` and a horizon called `Done` three
+ * separate folds. See `columnKey` in `view/viewState.ts`.
+ *
+ * `shelf` is keyed by a TYPE name rather than a state value, which changes nothing about
+ * the mechanism: the key space is "a word on one screen", and a type is a word the same
+ * way a column's state is.
  */
-export type ColumnScope = 'board' | 'deliverables' | 'horizons';
+export type ColumnScope = 'board' | 'deliverables' | 'horizons' | 'shelf';
 
 /**
  * A column of the trailing strip: the property id to read, the label the header shows,
