@@ -34,6 +34,20 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   its name until you edit it; a name you set by hand in Obsidian is replaced the next time
   you edit the stretch.
 
+### Fixed
+
+- **A bar drag or resize no longer loses its release.** If the vault changed while a bar was
+  in the air — which happens most often in the first minutes after a view is opened, while
+  the query is still settling — the release could write nothing at all: the ghost showed the
+  dates it meant, the bar snapped back, and nothing was said about it. The view now waits for
+  the gesture to finish before it rebuilds.
+
+- **Dragging a bar into someone else's row lands there.** The drag preview itself was taking
+  the release: it is drawn in the row the bar came from, so a body drag — whose pointer sits
+  inside the ghost by construction — was answered with the row it started in, leaving the
+  bar with its original owner and never lighting up the row it was aimed at. End grips were
+  unaffected, since a resize never asks which row it landed in.
+
 ## [0.8.0] - 2026-08-14
 
 ### Added

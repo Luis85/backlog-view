@@ -97,6 +97,15 @@ catalog migration and was not part of that run.
   the first of those: `demoVault()`
   carries Dana's `Single sign-on` (2026-07-20 → 2026-08-15) running straight through her absence
   (2026-08-10 → 2026-08-14), plus Sam, whose row exists only because he is away.
+- **A bar dragged by its BODY into another person's row actually lands there** — the band
+  under the pointer highlights while the drag is held, and the release writes the new
+  assignee. Nothing in the suite can answer it: jsdom hit-tests nothing, so a drop test
+  dispatches at the element it names and no preview can be in the way. Both defects this
+  gesture has had were invisible to every green check —
+  [[A release that crossed a render wrote nothing]] and
+  [[The drag preview took the drop it was previewing]] — and the second was found only
+  because the end grips, which never ask which row they landed in, kept working. Drag one
+  row down and two rows down, and drag right and left within one row. **Never checked.**
 - The band header's own readout (`renderAwayPill` beside the item count, both added
   2026-08-14, reshaped the same day) at the default lead width on a real roster: whether an
   item count and a `3 wk away` pill together crowd the resource name, and where the

@@ -90,6 +90,21 @@ describe('the two boxes sized from TypeScript arithmetic', () => {
 		expect(ruleBody('.pbl-timeline-row')).toContain('display: flex;');
 		expect(bodyOf(css, '.pbl-card.pbl-timeline-row', 'styles/timeline.css')).not.toContain('display');
 	});
+
+	it.each(['.pbl-drop-ghost', '.pbl-drop-ghost-dates'])('lets the pointer through %s, the one decoration that MOVES under it', (selector) => {
+		// The preview is drawn into the dragged bar's own row track and the drop target is
+		// somewhere else — a band element on the resources axis, the grid-wide overlay on the
+		// dated one — so a preview that takes the pointer answers the release with the row the
+		// bar came FROM. On the resources axis that is the whole message: the bar keeps its
+		// assignee, the band under the pointer never highlights, and the gesture reads as one
+		// that did not register.
+		//
+		// Stated at the forbidden thing, like the absence wash below it and for the same
+		// reason: jsdom hit-tests nothing, so every drop test in this suite stays green
+		// through exactly this declaration being absent — which is how it shipped. The reach
+		// is the declaration in this rule, not a later one overriding it.
+		expect(ruleBody(selector)).toContain('pointer-events: none;');
+	});
 });
 
 /**

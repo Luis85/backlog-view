@@ -45,7 +45,23 @@
 }
 
 /* The preview: a ghost bar and the dates it means, so the drop states its contract
-   before it commits it. */
+   before it commits it.
+
+   `pointer-events: none` on both is load-bearing rather than housekeeping, and it is the
+   rule `styles/lanes.css` states for the marks inside a band, read onto the one element
+   that MOVES under the pointer. Both are drawn into the dragged bar's own row track
+   (`previewMount`) while the drop target is somewhere else — the resources axis's band
+   elements, the dated axis's grid-wide overlay — so a preview that takes the pointer
+   answers the release with the row it came FROM. On the resources axis that is the whole
+   message: `wireLaneDrop` reads its own `band.lane`, so the bar keeps its assignee, the
+   band under the pointer never highlights, and the drag reads as one that did not
+   register. Body-specific by construction, which is how it was found — a grip is routed
+   to the dated axis's own gesture and never asks which band it landed in.
+
+   The geometry is why it bites rather than a near miss: the ghost is the dragged bar
+   REDRAWN at the delta, so a body slide keeps the pointer inside it at the same offset it
+   was grabbed at, and the dates label hangs a row's-worth below the middle of its own row,
+   over the band beneath. */
 .pbl-drop-ghost {
 	position: absolute;
 	top: 50%;
@@ -56,6 +72,7 @@
 	border-radius: var(--radius-s);
 	border: 1px dashed var(--interactive-accent);
 	background-color: var(--background-modifier-hover);
+	pointer-events: none;
 }
 
 .pbl-drop-ghost-dates {
@@ -67,6 +84,7 @@
 	color: var(--text-muted);
 	background-color: var(--background-primary);
 	white-space: nowrap;
+	pointer-events: none;
 }
 
 .pbl-timeline-header {
