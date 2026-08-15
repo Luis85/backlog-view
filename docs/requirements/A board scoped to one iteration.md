@@ -120,6 +120,14 @@ the moment the populations diverged, which is exactly what happened.
   this board never shows, and it drops the Deliverables this board deliberately includes.
   It is one function precisely so the count label and the completed toggle's "(N hidden)"
   cannot disagree, so the scope belongs inside it rather than beside it.
+- **1d — the `Board` toggle position is clicked while it is already pressed and an
+  iteration is chosen.** Nothing happens. It looks like a no-op and is not one unless the
+  click asks the same question the pressed state does: the position is `Board` while the
+  projection is the iteration's, so a handler comparing the projection would set the
+  ordinary board **without** clearing the scope, leaving the stored projection and the
+  stored scope disagreeing — exactly what choosing `Product` exists to keep in step. Both
+  the pressed state and the click ask the position; leaving a scope is always the scope
+  picker's own action, never a bare projection change.
 - **1c — an iteration is chosen and the toolbar rebuilds.** The scope picker is **still
   there**, naming `Product` and every iteration, and the `Board` position still renders
   pressed. Neither is automatic: internally this is its own projection, so a control

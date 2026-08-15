@@ -117,6 +117,14 @@ declared name owes: a default subfolder, an icon and a badge colour.
   whichever of the two Obsidian picks, and the menu would look right while the write went
   elsewhere. This is why the iteration write sits beside the parent's rather than in the
   label list: labels are plain strings and carry neither the app nor a source path.
+- **4d — the item holds a link but the model has no `Iteration` notes left to offer**
+  (the last one was deleted, or the link was always broken). `Set iteration` still renders,
+  with `None` alone. No targets is not the same as nothing to do: an item holding a value
+  needs the action that clears it, and this is the only place offering one. Hiding the
+  submenu because the TARGET list is empty leaves a value on screen the reader cannot
+  remove — "unresolved is not unset" (4a) applied to the menu's own gate rather than to
+  the plan behind it. With no link and no targets there is genuinely nothing to do, and
+  the submenu is absent.
 - **4c — the row is itself an `Iteration`.** `Set iteration` is not offered: an iteration
   is the scope a board is chosen by, never something put inside one. The board's
   population refuses one too, rather than trusting the menu — a key written by hand would

@@ -715,6 +715,15 @@ describe('Set iteration', () => {
 		expect(menuSection(openRowMenu(testCase), 'Set iteration')).toBe(null);
 	});
 
+	it('still offers None with no iterations left, so a broken link can be cleared', () => {
+		const menu = openRowMenu(pbiWithBrokenLink, { iterations: [] });
+		expect(menuTitles(menu, 'Set iteration')).toEqual(['None']);
+	});
+
+	it('is absent with no iterations and nothing to clear', () => {
+		expect(menuSection(openRowMenu(pbi, { iterations: [] }), 'Set iteration')).toBe(null);
+	});
+
 	it('is absent with no iteration property configured', () => {
 		expect(menuSection(openRowMenu(pbi, { iterationKey: '' }), 'Set iteration')).toBe(null);
 	});
@@ -762,7 +771,12 @@ export function addIterationItems(host: BacklogViewHost, menu: Menu, item: Backl
 	const iterations = [...(host.model?.byPath.values() ?? [])].filter(
 		(i) => isIterationType(i.typeName) && !i.outsideFilter,
 	);
-	if (iterations.length === 0) return;
+	// No targets is NOT the same as nothing to do. An item still holding a link — a
+	// broken one, or one to the iteration that was just deleted — needs `None` to clear
+	// it, and this is the last place offering that. Hiding the whole submenu because the
+	// TARGET list is empty leaves a value on screen the reader cannot remove: the
+	// "unresolved is not unset" rule again, one level up from the plan that keeps it.
+	if (iterations.length === 0 && item.iterationLink === null) return;
 	// ... submenu built with `submenuOf`, one entry per iteration plus None, each
 	// `.setChecked(computeIterationWrites(item, target).length === 0)` — the checkmark
 	// asked of the PLAN, never of a value comparison beside it.
@@ -1287,6 +1301,24 @@ So `projection.ts` gains one more question, and it is the one that keeps the aut
 control decision true: `toolbarPosition('iteration') === 'board'`. The zone switches on
 that, and so does the toggle's pressed state. This is a real cost of the split, not a
 free consequence of it — worth paying for the compile-checked gates, and worth naming.
+
+**The pressed state is not the only comparison in that helper.** `position()`'s click
+handler calls `host.setProjection(mode)`, so with the effective projection `'iteration'`,
+clicking the **already-pressed** `Board` button is not the no-op it looks like: it sets the
+projection to `'board'` without going through `setBoardScope(null)`, leaving the stored
+projection and the stored scope disagreeing — the one thing step 5's `setBoardScope`
+contract exists to prevent. The click has to ask `toolbarPosition` too: clicking the
+position you are already on does nothing, and leaving a scope is `setBoardScope(null)`,
+never a bare `setProjection`.
+
+```ts
+it('does nothing when the pressed Board position is clicked while scoped', () => {
+	const host = hostWith({ projection: 'iteration', boardScope: sprint12 });
+	clickPosition(renderToolbar(host), 'Board');
+	expect(host.projection).toBe('iteration');
+	expect(host.boardScope).toBe(sprint12);
+});
+```
 
 ```ts
 it('keeps the scope picker on screen after a scope is chosen', () => {
