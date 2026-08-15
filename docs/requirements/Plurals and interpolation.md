@@ -85,6 +85,14 @@ a catalog can key on.
   that exist are the ones the catalog was written with, so asking `Intl.PluralRules('ru')`
   for categories while reading the English catalog requests a `few` form English does not
   have. A locale supplies only the categories it has; English supplies `one` and `other`.
+- **`other` is the one REQUIRED category**, stated in the type rather than guarded at the
+  lookup. Every language in CLDR has it, so requiring it costs no locale anything — and it
+  is what makes the last resort a real value: with every category optional, a catalog
+  written with `few` alone type-checked and rendered a **blank label**, against this
+  feature's own "every key renders something" guarantee. The guarantee is exactly as wide
+  as the check: the compiler enforces it for every catalog under `src/`, which is every
+  catalog that ships, and `tsconfig.json` covers `src/` only — so a `test/` fixture is its
+  author's problem. Found by review (Codex, PR #151).
 - `Intl.ListFormat` follows the catalog locale for the same reason: it is producing
   grammar inside a sentence, and a French joiner in an English sentence is a worse result
   than an English one. This is the grammar half of the rule in

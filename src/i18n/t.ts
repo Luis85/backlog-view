@@ -25,11 +25,21 @@ import { intlLocale, resolveCatalog, SOURCE_LOCALE } from './locale';
  */
 
 /**
- * A message with plural forms. Partial by design: a catalog supplies only the categories
- * its own language has, so English carrying `one` and `other` must not force Japanese to
- * invent a second form.
+ * A message with plural forms. The language-specific categories are optional by design —
+ * a catalog supplies only the ones its own language has, so English carrying `one` and
+ * `other` must not force Japanese to invent a second form.
+ *
+ * **`other` is the exception and is required**, because every language in CLDR has it. So
+ * requiring it costs no locale anything, and it is what makes the last resort below a
+ * real value rather than an empty string: with every category optional, a catalog written
+ * with `few` alone type-checked and rendered a BLANK label, against this module's own
+ * "every key renders something" guarantee. Stated in the type rather than guarded at the
+ * lookup, so it holds for a catalog nobody has written yet — checked by the compiler for
+ * every catalog under `src/`, which is every catalog that ships. `tsconfig.json` covers
+ * `src/` only, so a `test/` fixture is its author's problem. Found by review
+ * (Codex, PR #151).
  */
-type Forms = Partial<Record<Intl.LDMLPluralRule, string>>;
+type Forms = Partial<Record<Intl.LDMLPluralRule, string>> & { other: string };
 type Entry = string | Forms;
 
 /** The shape every catalog has. English is the source; see `en.ts`. */
@@ -184,9 +194,9 @@ export function list(values: readonly string[]): string {
 
 function selectForm(forms: Forms, grammar: Grammar, values: Values | undefined): string {
 	const count = typeof values?.count === 'number' ? values.count : 0;
-	// `other` is the last resort rather than an assumption: every language has it, and a
-	// catalog missing the selected category must still render a sentence.
-	return forms[grammar.plural.select(count)] ?? forms.other ?? '';
+	// `other` is the last resort, and it is a real one: the type requires it, so a catalog
+	// missing the SELECTED category still renders a sentence rather than an empty string.
+	return forms[grammar.plural.select(count)] ?? forms.other;
 }
 
 /**
