@@ -4,6 +4,8 @@
 
 **Goal:** Stop rebuilding every row on every data update — keep the row elements whose content did not change — so a write batch no longer costs ~280 ms on an 832-row tree.
 
+**What this does and does not buy:** the per-row cost drops from building a row to serializing and comparing a signature. The render stays **linear in the visible rows** — `renderForest` walks every one of them whether it keeps it or not, and skipping that walk needs to know what changed, which `onDataUpdated()` cannot say. This is a large constant-factor cut, not a change of class; virtualisation is the only thing that changes the class, and ADR 0029 refuses it for now with reasons.
+
 **Architecture:** Three moves, in order. First make room: `src/view/backlogView.ts` is at the 400-line cap and the reconcile has to change it, so the render orchestration comes out at the seam the register already named. Then remove the render-time captures that make reusing a row unsafe: every per-row control resolves its item from `data-path` at event time. Then reconcile — a per-pass fingerprint decides whether reuse is legal at all, and a per-row signature decides which rows survive.
 
 **Tech Stack:** TypeScript, Obsidian 1.12.0 Bases custom-view API, vitest + jsdom, esbuild. No new dependencies.
@@ -1247,7 +1249,11 @@ If `--against` takes a bundle path rather than a directory, read `scripts/` for 
 Record the medians of the panel's medians, 832 rows, folder fixture, tree expanded, for `update`, `render only`, `mount (collapsed)` and each projection switch. Then ask two questions before believing any of it:
 
 - **Do the spreads overlap?** A delta between overlapping spreads is this environment's drift, which has been read as a finding here twice. Alternate more runs rather than reporting it.
-- **Did the class change?** The claim is not a percentage. `update` after a one-note write should stop scaling with the row count. Run `?notes=200`, `?notes=800` and `?notes=1600` and check that `update` is flat-ish across them where it used to be linear. A uniform percentage improvement at every size means the constant moved and the class did not, which is a different and much smaller result — report it as that.
+- **How big is the constant, and does it hold at every size?** `update` will still be **linear in the visible rows**, and expecting otherwise is a mistake this plan made until review caught it: `renderForest` visits every visible item and `rowSignature` serializes each one's frontmatter whether the row is kept or not. The walk is the floor, and it is inherent — skipping it needs provenance, which `onDataUpdated()` cannot give.
+
+  So the claim is a **constant-factor cut**, and the number to report is the per-row cost: run `?notes=200`, `?notes=800` and `?notes=1600`, divide `update` by the row count at each, and check the per-row figure fell and stayed roughly flat across sizes. A per-row cost that falls at 200 and rises again at 1600 means the signature walk is eating the saving — that is Risk 4 in the spec arriving, and the reference-comparison upgrade named there is the answer.
+
+  **Only virtualisation changes the class**, which is the refused-for-now alternative in ADR 0029, and this measurement is the evidence for or against ever taking it. Say which the numbers support.
 
 - [ ] **Step 4: Write the numbers down**
 
@@ -1272,7 +1278,14 @@ git worktree remove /tmp/backlog-baseline
 
 - [ ] **Step 1: The bug note**
 
-Add `## Fix` — the change, and **the test that fails without it** (`test/view/rowReuse.test.ts`, by name). Add the A/B table from Task 6 in the shape the existing `## Partly addressed` tables use. Set `status: Done` and `closed: 2026-08-15` only if Task 6 showed the class change; if it showed a constant-factor move, say that plainly and leave the note open. The note's own `## Lesson` is about believing a number too early.
+Add `## Fix` — the change, and **the test that fails without it** (`test/view/rowReuse.test.ts`, by name). Add the A/B table from Task 6 in the shape the existing `## Partly addressed` tables use, with the per-row figures at all three sizes.
+
+**On whether to close it.** An earlier draft of this plan said to close only on a class change. That was wrong, and it would have left the note open forever: the reconcile keeps the walk, so the cost stays linear by construction and only virtualisation changes that. Judge it on the symptom the note actually reports instead — *"a vault of roughly 800 notes … is sluggish"*, half a second after every write:
+
+- If the 832-row `update` is now fast enough that the pause is gone, close it. Say in the outcome that the **class is unchanged and why**, and that virtualisation is what would change it, with ADR 0029's `## Revisit when` as the pointer. A note closed on a symptom, with its limit written down, is honest; one left open against a criterion nothing can meet is not.
+- If the pause is still there, leave it open and say what the numbers were. Do not close a P1 on a percentage that did not reach the complaint.
+
+The note's own `## Lesson` is about believing a number too early. This paragraph is that lesson applied to the criterion rather than to the measurement.
 
 Keep `## Where to look`, `## Live-vault checks owed` and `## How to check` — they are still true and the last is how anyone re-runs this.
 
