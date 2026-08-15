@@ -193,6 +193,18 @@ the moment the populations diverged, which is exactly what happened.
   underneath: a board's stray columns come from **its own** population, so a column
   nothing on this board could reach is never drawn, and a column something on it holds is
   never withheld.
+- **3k — a value under the iteration state key is carried only by ANOTHER iteration's
+  work.** It mints no column here. "Its own population" means **this scope's carriers**,
+  not every carrier in the base: a `Deferred` used only in Sprint 13 must not open an
+  empty `Deferred` column on Sprint 12, nor offer it as a Set-state target there. So the
+  observed vocabulary is collected from the population the board is drawing, the way
+  `requirementsWorkflow` collects from the results rather than reading
+  `model.observedStates` — and never from a model-wide list that no scope could narrow.
+- **3l — an `Iteration` note itself carries an iteration link**, written by hand rather
+  than through a menu that refuses to offer it. It is not a card. An iteration is the
+  scope a board is chosen by, and the population refuses one rather than trusting the
+  menu to have prevented it — a rule the population keeps holds against a note nobody
+  edited through the UI.
 - **4a — neither the iteration state property nor the product one is configured.** The
   scope is still **enterable** and the board shows the unconfigured empty state, naming
   the option to set and where. A workflow is what the COLUMNS need, never what the scope
@@ -266,9 +278,11 @@ the moment the populations diverged, which is exactly what happened.
   focus cannot hide a matching card through the filter that the population ignores.
 - The toolbar's item count and the completed toggle's "(N hidden)" both describe this
   scope's carriers — one function, so they cannot disagree.
-- The board's observed vocabulary is collected from **its own** population, so a value
-  only a `Deliverable` carries mints a column here, while a value carried only by items
-  in no iteration mints none.
+- The board's observed vocabulary is collected from **this scope's carriers**, so a value
+  only a `Deliverable` carries mints a column here, while a value carried only by items in
+  no iteration — or in a DIFFERENT iteration — mints none.
+- No `Iteration` note is ever a card on an iteration board, whatever its own frontmatter
+  says.
 - Columns come from the `iterationStateProperty` / `iterationStateValues` /
   `iterationDoneValues` group, falling back to the product workflow field by field — the
   key when no iteration state property is set, each list only while it is itself empty.

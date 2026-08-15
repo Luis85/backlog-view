@@ -464,33 +464,55 @@ In `src/domain/writePlan.ts`, beside `computeAssigneeWrites`:
  * write that changes nothing but spends the undo slot — and would tick a Set menu's
  * checkmark for a value the reader already holds under a different spelling. The horizon
  * menu drifted exactly this way once, offering as current an action that removes a key.
+ *
+ * Carries the target FILE, never a pre-serialized string, for the reason `write.parent`
+ * does: two Iteration notes may share a basename in different folders, and only
+ * Obsidian's own path-aware generation can spell an unambiguous link from THIS note to
+ * THAT one. `[[${target.basename}]]` resolves, relative to the edited note, to whichever
+ * of the two Obsidian picks.
  */
-export function computeIterationWrites(item: BacklogItem, target: { path: string; basename: string } | null): ItemWrite[] {
+export function computeIterationWrites(item: BacklogItem, target: TFile | null): ItemWrite[] {
 	if ((target?.path ?? null) === item.iterationPath) return [];
-	return [{ path: item.path, iteration: target === null ? null : `[[${target.basename}]]` }];
+	return [{ path: item.path, file: item.file, iteration: target }];
 }
 ```
 
 Add to `ItemWrite`:
 
 ```ts
-	/** The iteration link to write, or null to delete the key. Absent leaves it alone. */
-	iteration?: string | null;
+	/** The Iteration note to link to, or null to delete the key. Absent leaves it alone. */
+	iteration?: TFile | null;
 ```
 
 - [ ] **Step 4: Apply it**
 
-In `src/storage/frontmatter.ts`, in `applyLabels`, add one pair to the existing list:
+**Not in `applyLabels`**, and this is the correction that matters. That list is for plain
+LABEL strings — the risk and the assignee — and it has neither `app` nor the source path,
+which path-aware link generation needs. A link belongs with the links.
+
+In `src/storage/frontmatter.ts`, beside `applyHierarchy`'s own parent write:
 
 ```ts
-	const labels: [string | null | undefined, string][] = [
-		[write.risk, settings.riskKey],
-		[write.assignee, settings.assigneeKey],
-		[write.iteration, settings.iterationKey],
-	];
+/**
+ * The iteration link. Beside the parent's rather than in `applyLabels`, because it is a
+ * LINK: `wikilinkTo` needs the app and the SOURCE path to spell an unambiguous target,
+ * and the label list carries neither. Sharing that list would have written
+ * `[[${basename}]]`, which resolves to the wrong note wherever two iterations share one.
+ *
+ * The three rules that list keeps are kept here too, and they are the ones to check on
+ * any new optional property: `undefined` leaves the key alone, `null` deletes it, and an
+ * UNCONFIGURED key is never written at all.
+ */
+function applyIteration(app: App, fm: Record<string, unknown>, settings: BacklogSettings, write: ItemWrite): void {
+	if (write.iteration === undefined || !settings.iterationKey) return;
+	if (write.iteration === null) delete fm[settings.iterationKey];
+	else setOwn(fm, settings.iterationKey, wikilinkTo(app, write.iteration, write.file.path));
+}
 ```
 
-Nothing else. The loop already keeps both halves of the rule: `undefined` leaves the key alone, `null` deletes it, and an unconfigured key (`!key`) is never written. This is the third label property and the reason `applyRisk` was generalised into `applyLabels` on 2026-08-10 — a fourth is a row in this list, not a fourth function.
+Call it from `applyInto` beside `applyLabels`. The reflex to reuse the label list was the
+right reflex and the wrong list: reuse is judged by what the value IS, not by how few
+lines the change is.
 
 - [ ] **Step 5: Write the write-boundary test**
 
@@ -566,6 +588,15 @@ describe('Set iteration', () => {
 	it('is absent with no iteration property configured', () => {
 		expect(menuSection(openRowMenu(pbi, { iterationKey: '' }), 'Set iteration')).toBe(null);
 	});
+
+	it('is absent on an Iteration row — an iteration is never put in one', () => {
+		expect(menuSection(openRowMenu(sprint12Row), 'Set iteration')).toBe(null);
+	});
+
+	it('offers every Iteration note under a focus that re-roots the results', () => {
+		expect(menuTitles(openRowMenu(pbi, { focus: 'PBI' }), 'Set iteration'))
+			.toEqual(['Sprint 11', 'Sprint 12', 'None']);
+	});
 });
 ```
 
@@ -590,7 +621,17 @@ In `src/view/interactions/labels.ts`, following `addAssigneeItems`' shape:
  */
 export function addIterationItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
 	if (host.settings.iterationKey === '' || item.outsideFilter || inCatalog(item)) return;
-	const iterations = (host.model?.results ?? []).filter((i) => isIterationType(i.typeName));
+	// An iteration is never PUT IN one. It is the scope a board is chosen by, and a
+	// cross- or self-assignment would make one a card on another's board — which Task 1's
+	// badge decision leans on being impossible.
+	if (isIterationType(item.typeName)) return;
+	// `byPath`, not `results`: a focus level re-roots `results`, so a top-level Iteration
+	// outside the focused subtree would vanish from this menu. The same reason
+	// `candidates` in `interactions/dependencies.ts` reads `byPath` — and the same reason
+	// it filters `outsideFilter` explicitly, since `byPath` carries context rows.
+	const iterations = [...(host.model?.byPath.values() ?? [])].filter(
+		(i) => isIterationType(i.typeName) && !i.outsideFilter,
+	);
 	if (iterations.length === 0) return;
 	// ... submenu built with `submenuOf`, one entry per iteration plus None, each
 	// `.setChecked(computeIterationWrites(item, target).length === 0)` — the checkmark
@@ -764,7 +805,10 @@ opposite landed."
 
 **Interfaces:**
 - Consumes: `iterationPath` (Task 3), `resolvedIterationStateKey` (Task 6).
-- Produces: `model.iterationResults: BacklogItem[]`, `iterationWorkflow(model, settings): Workflow`.
+- Produces: `model.iterationResults: BacklogItem[]`, and
+  `iterationWorkflow(population: BacklogItem[], settings: BacklogSettings): Workflow` —
+  the **population**, not the model, so there is no model-wide observed list for a scope
+  to disagree with.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -786,6 +830,17 @@ describe('an iteration board population', () => {
 
 	it('excludes context rows', () => {
 		expect(paths(inIteration(model, sprint12))).not.toContain('excluded-epic.md');
+	});
+
+	it('excludes an Iteration that names another iteration', () => {
+		// Not reachable through the menu, but reachable by hand — and the badge decision
+		// rests on an Iteration never being a card.
+		expect(paths(inIteration(model, sprint13))).not.toContain('docs/iterations/Sprint 12.md');
+	});
+
+	it('observes only this scope\'s states, so a sibling sprint opens no column here', () => {
+		expect(iterationWorkflow(inIteration(model, sprint12), settings).observedValues)
+			.not.toContain('Deferred'); // carried only in Sprint 13
 	});
 
 	describe('immune to the focus level', () => {
@@ -829,11 +884,27 @@ In `src/domain/model.ts`, beside `deliverableResults` (around line 219), read of
 	 * No work-item type is filtered: a `Deliverable` naming an iteration is a card here.
 	 */
 	iterationResults: items.filter(
-		(item) => !item.outsideFilter && !inCatalog(item) && item.iterationPath !== null,
+		(item) =>
+			!item.outsideFilter &&
+			!inCatalog(item) &&
+			!isIterationType(item.typeName) &&
+			item.iterationPath !== null,
 	),
 ```
 
-Add `observedIterationStates` beside `observedDeliverableStates`, collected over `iterationResults` — this board's own population, so a value only a Deliverable carries mints a column here and a value carried only by items in no iteration mints none.
+`!isIterationType` is not belt-and-braces. Task 5's menu refuses to offer the action on an
+Iteration row, but a hand-written frontmatter key would still put Sprint 12 inside Sprint
+13 — and Task 1's badge decision rests on an Iteration never being a card. A rule the
+population keeps holds against a note nobody edited through the UI; a rule only the menu
+keeps does not.
+
+**Do not add an `observedIterationStates` to the model.** An earlier draft of this plan
+did, collected over every carrier, and it was wrong: that merges every iteration's
+vocabulary, so a `Deferred` carried only in Sprint 13 would open an empty `Deferred`
+column on Sprint 12 and offer it as a Set-state target there. The observed vocabulary is
+**this scope's**, so it is collected inside the workflow from the population the workflow
+is handed — which is exactly what `requirementsWorkflow` does with `collectObservedStates`
+rather than reading `model.observedStates`, for the reason its own comment gives.
 
 - [ ] **Step 4: Add the workflow**
 
@@ -856,11 +927,12 @@ In `src/domain/board.ts`, beside `deliverablesWorkflow`:
  * this workflow calls done without wearing `pbl-done`. Do not "fix" that by restoring
  * the override.
  */
-export function iterationWorkflow(model: BacklogModel, settings: BacklogSettings): Workflow {
+export function iterationWorkflow(population: BacklogItem[], settings: BacklogSettings): Workflow {
+	const observed = collectObservedStates(population, settings);
 	return {
 		stateOf: (item) => item.iterationStateValue,
-		values: menuValues(settings.iterationStates, settings.iterationDoneValues, model.observedIterationStates),
-		observedValues: model.observedIterationStates,
+		values: menuValues(settings.iterationStates, settings.iterationDoneValues, observed),
+		observedValues: observed,
 		doneValues: settings.iterationDoneValues,
 		wipLimits: {},
 		columnPolicies: {},
@@ -1079,7 +1151,7 @@ export function renderIterationBoard(
 	if (!model) return { board: { columns: [], cardCount: 0 }, colEls: [] };
 	const population = model.iterationResults.filter((item) => item.iterationPath === scope);
 	const board = boardColumns(
-		iterationWorkflow(model, host.settings),
+		iterationWorkflow(population, host.settings),
 		population,
 		(item) => !host.isRowHidden(item),
 		() => true,

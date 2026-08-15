@@ -63,9 +63,11 @@ declared name owes: a default subfolder, an icon and a badge colour.
    subfolder and takes its own badge and icon.
 2. The user names an iteration property in the view options, or lets the toolbar's setup
    action bind the suggested key ([[Backfill missing properties]]).
-3. On a row or a card, `Set iteration` offers every `Iteration` note in the model, plus
-   `None`.
-4. Picking one writes a wikilink to that note under the configured key, through
+3. On a row or a card, `Set iteration` offers every `Iteration` note in the model — read
+   from the whole item map, not the focused results, so a focus set elsewhere cannot make
+   a top-level iteration unofferable — plus `None`.
+4. Picking one writes a wikilink to that note under the configured key — spelled by
+   Obsidian's own path-aware link generation, from this note to that one — through
    `applySafely`, and the write can be taken back by the one undo slot
    ([[Undo and redo]]).
 5. The tree, both roadmap axes and the product board are unchanged by the value: it
@@ -100,6 +102,17 @@ declared name owes: a default subfolder, an icon and a badge colour.
   `parent` and `dependsOn` already are, through the metadata cache: a broken link is kept
   and rendered, never silently dropped and never repaired by a write nobody asked for
   ([[Broken links still render]]).
+- **4b — two `Iteration` notes share a basename in different folders.** The link written
+  still names the chosen one, because the plan carries the target FILE and the writer
+  spells the link from the editing note's own path — the same path-aware generation the
+  parent link already uses. A link serialized from the basename alone would resolve to
+  whichever of the two Obsidian picks, and the menu would look right while the write went
+  elsewhere. This is why the iteration write sits beside the parent's rather than in the
+  label list: labels are plain strings and carry neither the app nor a source path.
+- **4c — the row is itself an `Iteration`.** `Set iteration` is not offered: an iteration
+  is the scope a board is chosen by, never something put inside one. The board's
+  population refuses one too, rather than trusting the menu — a key written by hand would
+  otherwise make one iteration a card on another's board.
 - **5a — the item carries an iteration and its parent carries a different one.** Both are
   true and neither is derived. Nothing inherits an iteration down the tree, which is what
   makes the board's population a plain question about one note
@@ -112,10 +125,11 @@ declared name owes: a default subfolder, an icon and a badge colour.
 - The `iterationProperty` view option names the frontmatter key; `iteration` is the
   suggested placeholder, offered by the setup action and never matched by name.
 - The value is a wikilink to the Iteration note, read through the same link handling
-  `parent` and `dependsOn` use.
+  `parent` and `dependsOn` use, and WRITTEN through the same path-aware generation the
+  parent link uses — so two iterations sharing a basename still get distinct links.
 - `Set iteration` appears on the row and card menus of **plan** rows, offers every
-  `Iteration` note plus `None`, checks its entries from the plan, and is absent on a
-  context row and on a catalog member.
+  `Iteration` note plus `None` **whatever focus level is active**, checks its entries from
+  the plan, and is absent on a context row, on a catalog member and on an `Iteration` row.
 - The write goes through `applySafely`, writes only the configured key, is never written
   when the key is unconfigured, and is undone by the one undo slot.
 - No iteration is ever inherited from a parent item.
@@ -129,7 +143,10 @@ the `iterationProperty` option in `src/domain/viewOptions.ts`, the resolved key 
 `src/domain/settings.ts`, the collision gate in `src/domain/settingsConsistency.ts` and
 the setup action's binding. Reading the link is `src/domain/readItems.ts` over
 `src/domain/noteFields.ts`; the write is one more pair in `applyLabels`'
-list in `src/storage/frontmatter.ts`, planned by `src/domain/writePlan.ts`. The menu
+in `src/storage/frontmatter.ts` beside the parent link's own write — NOT in `applyLabels`,
+which carries plain strings and neither the app nor a source path — planned by
+`src/domain/writePlan.ts`, which carries the target file rather than a serialized string.
+The menu
 entry is `src/view/interactions/labels.ts`, beside the assignee's
 ([[Setting the assignee on an item]]). Driven in `test/domain/settings.test.ts` and
 `test/view/contextRowWrites.test.ts`.

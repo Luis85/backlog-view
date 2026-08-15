@@ -81,9 +81,20 @@ key-collision gate and the `ownedProperties` listing. No new machinery.
 already resolves a link property through the metadata cache — handling wikilinks,
 aliases, bare names and lists — which is how `parent` and `dependsOn` are read.
 
-**Writing it.** One more pair in `applyLabels`' list in `src/storage/frontmatter.ts`,
-the shape the assignee arrived as on 2026-08-10. The rule that list already keeps holds
-unchanged: an unconfigured key is never written, and a `null` value deletes.
+**Writing it.** Beside the **parent link's** own write in `src/storage/frontmatter.ts`,
+not in `applyLabels`. An earlier draft of this spec said the label list, reaching for the
+cheapest reuse; that list is for plain LABEL strings — the risk and the assignee — and it
+carries neither the app nor the source path, which `wikilinkTo` needs. Two Iteration notes
+sharing a basename in different folders would then get one ambiguous `[[Sprint 12]]` that
+resolves to whichever Obsidian picks, while the menu looked right. Reuse is judged by what
+the value IS, and this one is a link. The plan therefore carries the target **file**, never
+a serialized string. The three rules the label list keeps are kept here too: an
+unconfigured key is never written, `null` deletes, `undefined` leaves the key alone.
+
+**Never put in one.** An `Iteration` is not offered `Set iteration`, and the board
+population refuses one as a card rather than trusting the menu to have prevented it — a
+key written by hand would otherwise make one iteration a card on another's board, which
+the badge decision leans on being impossible.
 
 **Setting it.** A `Set iteration` submenu on the row and card context menus, offering
 every Iteration note plus `None`. Its checkmark is asked of the **plan** — an entry is
@@ -172,9 +183,18 @@ for a scope picker over a toggle position. The argument is replaced rather than 
 A control is chosen by **how many things it has to offer** — iterations are unbounded,
 Deliverables are one — never by whether two populations coincide.
 
-`iterationWorkflow(model, settings, iteration)` sits in `src/domain/board.ts` beside
-`deliverablesWorkflow` — a third instance of the `Workflow` interface, which already has
-two, stated as a factory so the domain tests exercise the workflow the view builds.
+`iterationWorkflow(population, settings)` sits in `src/domain/board.ts` beside
+`deliverablesWorkflow` — a third instance of the `Workflow` interface, stated as a factory
+so the domain tests exercise the workflow the view builds.
+
+It takes the **population**, not the model, and that is load-bearing. Its observed
+vocabulary is collected from the cards this board actually holds, the way
+`requirementsWorkflow` uses `collectObservedStates` rather than reading
+`model.observedStates`. A model-wide `observedIterationStates` — which an earlier draft
+proposed — merges every iteration's vocabulary, so a `Deferred` used only in Sprint 13
+would open an empty `Deferred` column on Sprint 12 and offer it as a Set-state target
+there. Handing the workflow the population removes the model-wide list a scope could
+disagree with, rather than adding a scope argument to correct it.
 
 The context-row rule applies unchanged: an `outsideFilter` item renders, it parents, and
 that is all — never a card to drag, never a write target, never counted, never a source
