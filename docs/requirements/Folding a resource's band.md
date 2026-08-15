@@ -77,10 +77,19 @@ computed per band.
   event to follow; a name no row draws simply has no band to shut, and the entry costs one
   string until the reader folds something else.
 
+- **3c — every band that holds work is folded.** The roadmap says nothing about being
+  empty, because it is not: the headers, their counts and their load rails are on screen
+  and one press reopens any of them. The advisory counted the rows the axis DREW, and a
+  folded band draws none, so shutting the last open band reported that every item was done
+  and hidden. Found in review (2026-08-15) on the milestones' row, which reaches the same
+  defect from the other side. Fixed where the count is rather than beside the fold —
+  [[Roadmap empty states]] 3b.
+
 ## Acceptance criteria
 
 - A band's disclosure shuts its bars and the notes it places, and leaves its header, count,
   controls and its own stretches on screen.
+- Folding every band leaves the roadmap reporting nothing about emptiness.
 - A bar row's disclosure shuts its descendants **in that band only**; a bar whose children
   are all in other bands draws no disclosure.
 - Both folds survive closing and reopening the view, and neither is written to the `.base`.

@@ -229,6 +229,22 @@ describe('folding on the resources axis', () => {
 		expect(bandChevron(containerEl, 'Alice')?.getAttribute('aria-label')).toBe("Show Alice's work");
 	});
 
+	it('does not report the plan empty when every band that holds work is folded', () => {
+		// A folded band draws its header, its count and its rail, and produces no `'row'`
+		// entry at all — so the advisory's population, read off what the axis DREW, went
+		// to zero and told the reader every item was done and hidden while their work sat
+		// on screen behind a chevron they could reopen. The horizons axis was given the
+		// model's own count for exactly this reason when a bucket learnt to fold; this
+		// axis kept the drawn one after its bands learnt the same trick.
+		const { containerEl } = laneRoadmap(nestedVault(), { expanded: true });
+		for (const name of ['Alice', 'Bob'])
+			bandChevron(containerEl, name)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		// The premise beside the conclusion: nothing on the grid is a row any more.
+		expect(rowFor(containerEl, 'Epic')).toBeNull();
+		expect(containerEl.querySelector('.pbl-board-advisory')).toBeNull();
+	});
+
 	it('puts focus on the pane when the disclosure that held it is folded away', () => {
 		// Folding a band redraws the whole projection, so the button pressed is gone — and a
 		// browser drops focus to the body, where the pane's arrows and menu keys do nothing.

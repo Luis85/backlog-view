@@ -15,7 +15,7 @@ import { StatePalette, statePalettes } from '../../domain/board';
 import { timelineRows } from '../../domain/bars';
 import { isMarkerType } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
-import { buildRoadmap, HorizonBucket, ResourceLane, RoadmapAxis, RoadmapModel } from '../../domain/roadmap';
+import { axisPopulation, buildRoadmap, HorizonBucket, ResourceLane, RoadmapAxis, RoadmapModel } from '../../domain/roadmap';
 import { scaleFor, TimelineScale, TimelineWindow } from '../../domain/timeline';
 import { CivilDate } from '../../domain/noteFields';
 
@@ -99,19 +99,15 @@ export function renderRoadmap(
 		drawn = timeline.drawn;
 		dependencyConflicts = timeline.dependencyConflicts;
 	}
-	// Captured before the shelf renders: collapsing the shelf changes ITS contribution
-	// to `cards` (see `renderShelf`), never the axis's own — this is the true "does the
-	// roadmap have anything to show" count, including context cards already placed in
-	// a bucket, which no domain-model counter answers on its own.
-	// What the axis HOLDS, which since a bucket can be folded is no longer what it drew:
-	// the buckets are counted rather than the cards pushed above. A roadmap whose every
-	// bucket is shut is not a roadmap with nothing on it, and telling the reader their work
-	// was all done or all filtered away would be the same lie the collapsed shelf already
-	// had to be kept out of. The grid axes fold nothing, so there `cards` still is the
-	// population — and it is read HERE, before the shelf renders, because collapsing the
-	// shelf changes ITS contribution and never the axis's own.
-	const axisPopulation =
-		axis === 'horizons' ? roadmap.buckets.reduce((n, bucket) => n + bucket.cards.length, 0) : cards.length;
+	// What the axis HOLDS, which is no longer what it drew on any of the three:
+	// `axisPopulation` (`domain/roadmap.ts`) counts the model rather than the cards pushed
+	// above. A roadmap whose every bucket is shut, whose every band is folded, or whose only
+	// visible note is a milestone in the shared header track is not a roadmap with nothing on
+	// it, and telling the reader their work was all done or all filtered away would be the
+	// same lie the collapsed shelf already had to be kept out of. This was the buckets alone
+	// until 2026-08-15, with `cards.length` for the grid axes and a sentence beside it saying
+	// they fold nothing — true when it was written and untrue since bands learnt to.
+	const population = axisPopulation(roadmap);
 	const removal = shelfRemoval(host, axis);
 	const shelf = renderShelf(ctx, frameEl, { cards: roadmap.shelf, conflicts: dependencyConflicts, axis }, dnd, removal);
 	cards.push(...shelf.cards);
@@ -125,7 +121,7 @@ export function renderRoadmap(
 	const advisoryEl = renderRoadmapAdvisory(
 		ctx,
 		frameEl,
-		axisPopulation + roadmap.shelf.length + roadmap.context.length,
+		population + roadmap.shelf.length + roadmap.context.length,
 		treeEl,
 	);
 

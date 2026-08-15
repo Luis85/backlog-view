@@ -283,6 +283,28 @@ export function assignableLanes(roadmap: RoadmapModel | undefined): ResourceLane
 	return (roadmap?.lanes ?? []).filter((lane) => !lane.markers);
 }
 
+/**
+ * What the axis HOLDS — every card it placed, whether or not a row was drawn for one.
+ *
+ * The question behind "does this roadmap have anything to show", and it is the model's
+ * rather than the render's because what draws is no longer what is there: a folded bucket,
+ * a folded band and the milestones' shared header all put cards on screen that produce no
+ * selectable row, and counting rows told a reader with work in front of them that every
+ * item was done and hidden. The buckets' count is the one that had to be asked of the model
+ * first, when a bucket learnt to fold; the two grid axes reached the same shape later, from
+ * bands that fold and from a diamond that is never an `option`.
+ *
+ * Context rows are counted with the results, and only where the axis PLACED one: a card on
+ * screen is a card on screen, and the context the axis could not place is counted by its own
+ * strip beside the shelf's.
+ */
+export function axisPopulation(roadmap: RoadmapModel): number {
+	if (roadmap.axis === 'horizons') return roadmap.buckets.reduce((n, bucket) => n + bucket.cards.length, 0);
+	// `bars` is flattened across the rows on the resources axis and is the whole grid on the
+	// dated one, where no lane draws and the sum below is zero.
+	return roadmap.bars.length + roadmap.lanes.reduce((n, lane) => n + lane.context.length, 0);
+}
+
 /** The drawn row a name belongs to, matched as the bars were placed. */
 function laneFor(roadmap: RoadmapModel, value: string): string | null {
 	return roadmap.lanes.find((lane) => sameValue(lane.name, value))?.name ?? null;
