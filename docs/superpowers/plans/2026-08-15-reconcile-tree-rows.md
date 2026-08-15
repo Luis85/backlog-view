@@ -1249,27 +1249,28 @@ Add the regression test to `test/view/rowReuse.test.ts`:
 
 - [ ] **Step 5: Claim the header**
 
-In `renderTree` in `src/view/render/rows.ts`, the header is appended fresh on every pass and the row index cannot see it. Claim it instead:
+In `renderTree` in `src/view/render/rows.ts`, the header is appended fresh on every pass and the row index cannot see it. With the tree no longer emptied, a second one would stack on every update.
+
+**It does not need re-rendering at all on a reuse pass.** `renderColumnHeader` draws from the settings, the resolved columns, their widths, the rollup predicate and the fit verdict — and every one of those is in the render-inputs fingerprint that already decided this pass may reuse. So an existing header is correct by the same argument that let the rows be kept: leave it, and build one only when there is none.
 
 ```ts
-	// Claimed rather than appended: with the tree no longer emptied, a fresh header per
-	// pass would stack, and a cleanup that walks the row index cannot see a node that is
-	// not a row.
-	const existingHeader = treeEl.querySelector(':scope > .pbl-cols');
-	existingHeader?.detach();
-	renderColumnHeader(ctx, treeEl);
-	const header = treeEl.querySelector(':scope > .pbl-cols');
-	if (header && header !== treeEl.firstChild) treeEl.insertBefore(header, treeEl.firstChild);
+	// Left alone when it is already there. Everything this header draws from — the
+	// columns, their widths, the rollup predicate, the fit verdict — is in the
+	// fingerprint that decided this pass may reuse, so an existing header is correct for
+	// the same reason the rows are. A pass that may NOT reuse emptied the tree above, so
+	// there is none and one is built.
+	//
+	// Found by direct traversal rather than a query: `treeEl.querySelector` is banned
+	// (`TREE_SCAN` in `eslint.config.mjs`) for walking every rendered row, and the header
+	// is one step away — it is the tree's first element child by construction.
+	const first = treeEl.firstElementChild;
+	const header = first instanceof HTMLElement && first.hasClass('pbl-cols') ? first : null;
+	if (!header) renderColumnHeader(ctx, treeEl);
 ```
 
-`:scope >` matters: a board column's own header must not be claimed by the tree's.
+Then `renderForest` starts its walk after the header rather than at `firstChild`, so its prune can never reach it.
 
-Note the deliberate simplicity — the header is rebuilt, not diffed. It is one element per pass against several hundred rows, and giving it its own signature would be the second reuse rule this design is avoiding.
-
-```ts
-// ponytail: the header is rebuilt every pass. One element against N rows; give it a
-// signature only if a measurement says it matters.
-```
+**Do not reach for `treeEl.querySelector(':scope > .pbl-cols')`.** It reads naturally and it fails `npm run lint`, which fails `npm run check`, which blocks this task and every task after it — `TREE_SCAN` matches any `querySelector`/`querySelectorAll` whose receiver is named `treeEl`. The rule's own comment records that it once had a regex bug letting single-element queries through, so it has been sharpened since; do not assume a narrower form slips past.
 
 - [ ] **Step 6: Reconcile the forest**
 
