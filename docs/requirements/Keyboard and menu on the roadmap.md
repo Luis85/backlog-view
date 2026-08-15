@@ -52,8 +52,7 @@ rather than deferred behind it.
 2. Space lifts the selected item — Enter stays what it is in every projection:
    activation, opening the note ([[Opening the work]]). Arrows preview the move —
    across buckets on the horizon axis, along the grid by whole cells on the timeline.
-   On a
-   bar, Tab shifts the grip between the holds the pointer may take — the whole bar
+   On a bar, Tab shifts the grip between the holds the pointer may take — the whole bar
    where every end it renders is the note's own, stated or open, and each end that
    can take a write ([[Move and resize a bar]]) — announced with the selection, so
    arrows resize as well as slide: the one-date write the edge drag plans, without
@@ -61,13 +60,13 @@ rather than deferred behind it.
 3. Space drops, committing the batch the drag would write; Escape cancels with nothing
    written.
 4. The context menu offers the moves in words — set horizon, schedule, unschedule,
-   clear horizon — beside the item's existing actions. Schedule opens
-   the dates for entry, prefilled with the dates the note itself states — an inferred
+   clear horizon — beside the item's existing actions. Schedule opens the dates for
+   entry, prefilled with the dates the note itself states — an inferred
    endpoint arrives blank, because an inference is display and confirming a prompt
    must not be the write that materializes it — or, for an unscheduled item, with
    today spanning one zoom cell, the shelf drop's own default; confirming writes the
-   same shaped batch the gestures write. Each
-   menu action is one dimension and one small undoable batch.
+   same shaped batch the gestures write. Each menu action is one dimension and one
+   small undoable batch.
 
 **Extensions**
 
@@ -149,11 +148,10 @@ What remains is everything this note is actually about. The **lift** — Space, 
 Space, Escape, with Tab shifting the grip along a bar — is a state machine that has no
 code yet and joins `src/view/interactions/keyboard.ts` beside the tree's navigation;
 Alt+arrow is a single-dimension shortcut, not a lift. The **date entry** is a prompt
-beside the new-item prompts in
-`src/ui/prompts.ts`, and schedule, unschedule and clear horizon are menu actions in
-`src/view/interactions/menu.ts` — the removal pair gated on the note carrying the key
-(4a), which the current Set horizon expresses only as its shelf entry. `Schedule` and
-`Unschedule` already give the dated
+beside the new-item prompts in `src/ui/prompts.ts`, and schedule, unschedule and clear
+horizon are menu actions in `src/view/interactions/menu.ts` — the removal pair gated on
+the note carrying the key (4a), which the current Set horizon expresses only as its
+shelf entry. `Schedule` and `Unschedule` already give the dated
 axis's single-dimension writes a non-pointer path, and the drags shipped by
 [[Move and resize a bar]] and [[Drag from the shelf to schedule]] give it pointer ones
 too — so WCAG 2.2 SC 2.5.7 is satisfied the day the drags land, and what the lift still

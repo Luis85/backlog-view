@@ -117,6 +117,10 @@ gives the rollup back the moment the filter clears. A substitution rather than a
 addition, because a sticky lead column's only shrinkable item is the row's title, so
 anything added to it is taken from the row's own name. Measured in the browser harness,
 twice, not preferred.
+A MARKER row announces the rollup and not the count: `renderRowFacts` gives that row an
+explicit `aria-label` which REPLACES its content, and that label folds in the progress
+report but not the chip's own words — accepted, because the matches stay reachable
+through the row menu and `src/view/render/timeline.ts` is at its line budget.
 Driven in `test/view/roadmapMatches.test.ts`.
 
 The inferred span case is covered too: `item.descendantStart`/`descendantTarget` are

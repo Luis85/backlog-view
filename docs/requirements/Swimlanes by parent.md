@@ -5,9 +5,6 @@ order: 20
 status: Dropped
 priority: P2
 created: 2026-08-01
-files:
-  - src/domain/writePlan.ts
-  - src/domain/dropTargets.ts
 started: ""
 finished: ""
 horizon: ""
@@ -88,8 +85,13 @@ crossing lanes is the drop-onto-a-row the tree already plans.
 
 ## Where it lives
 
-**Why it was dropped.** Built, tried and refused on 2026-08-14. Lanes are not coming back
-to either projection, so this note is kept as the record of a design already considered
-rather than as work waiting to be done. It stays in the tree so every
-`[[wikilink]]` to it still resolves and nobody proposes lanes again from the
+**Why it was dropped.** Built, tried and refused on 2026-08-14. Lanes BY PARENT are not
+coming back to the board or the roadmap, so this note is kept as the record of a design
+already considered rather than as work waiting to be done. It stays in the tree so every
+`[[wikilink]]` to it still resolves and nobody proposes grouping by parent again from the
 code alone.
+
+**This retires no band that ships.** The roadmap draws bands on its resources axis —
+[[Showing a resources axis on the roadmap]], which `src/view/render/lanes.ts` serves —
+and that axis groups by the assignee property, never by parent. Nothing here applies to
+it.

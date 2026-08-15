@@ -98,9 +98,9 @@ export function progressNote(report: RollupReport | null): string {
  * than ratio-bearing spans — a milestone diamond, an outside-window arrow, and (found
  * by review after this module shipped) a bar drawn at `MIN_BAR_PX`. The insets that
  * keep the band off an inferred border and an open end's gradient are 2px each, so a
- * floor-width bar has nothing left between them for a track to occupy, and four
- * pixels could not show a ratio anyway — a quarter done would be one pixel, a mark a
- * reader would be right to distrust.
+ * floor-width bar has nothing left between them for a track to occupy. That inset
+ * arithmetic is the whole rule: the guard is `<= MIN_BAR_PX`, which is exactly "the bar
+ * is at the floor", and a bar one pixel wider draws its band like any other.
  *
  * `drawnWidthPx` is the width `renderBarRow` already computed for `--pbl-bar-width`
  * (`Math.max(geometry.spanDays * scale.dayPx, MIN_BAR_PX)`) — read here rather than
