@@ -94,9 +94,11 @@ picker — the axis picker's twin, in the same zone, built the same way.
 [ Scope: Product ▾ ]  →  Product · Sprint 11 · Sprint 12
 ```
 
-Offered only when at least one Iteration note is in the model. With none there is
-nothing to choose between, which is the refusal `renderAxisPicker` already makes for a
-single configured axis.
+Offered only when the iteration property is configured **and** at least one Iteration
+note is in the model. Both halves: with no notes there is nothing to choose between —
+the refusal `renderAxisPicker` already makes for a single configured axis — and with no
+configured property nothing can join a scope, so every entry the picker offered would
+draw an empty board.
 
 **The pick is UI state.** A `boardScope` field beside `axis` in the collapse store's
 per-view entry (`src/storage/collapseStore.ts`) — vault-scoped localStorage, per saved
@@ -116,7 +118,20 @@ A host accessor pair `boardScope` / `setBoardScope` joins the siblings in
 | Scope | Cards | Columns |
 | --- | --- | --- |
 | `Product` | unchanged | `requirementsWorkflow` |
-| An iteration | the results whose `iteration` link resolves to that note, **whatever their type** | `iterationWorkflow` |
+| An iteration | the plan results whose `iteration` link resolves to that note, **whatever their work-item type** | `iterationWorkflow` |
+
+**Catalog members are excluded, and that is not a type filter.** `projectionMember`
+returns `!inCatalog` for every projection but the catalog's own, and `inProjection` is
+asked first and unconditionally in the single `VisibilityRule` — *no needle makes a
+`Test case` a row of the plan*. The iteration board is a board in the plan projection and
+inherits that answer, as the tree, the product board and the roadmap already do. So
+"whatever their type" means every **work-item** type, `Deliverable` included; the two
+ladders stay apart. `Set iteration` is therefore offered on plan rows only, so the
+property is never written where no card could draw.
+
+**A workflow gates the columns, never the scope.** An iteration scope must be enterable
+with no workflow resolved — otherwise the unconfigured empty state below is unreachable,
+since the only way to see it is to be on the board that has none.
 
 **Deliverables are included** — decided by the user on 2026-08-15, after a review round
 had argued them out. No type filter at all: not the product board's `!isDeliverableType`,

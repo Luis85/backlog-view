@@ -75,6 +75,11 @@ declared name owes: a default subfolder, an icon and a badge colour.
 - **3a — the item is outside the Base's filter.** `Set iteration` is not offered at all,
   with the parent-link actions and Set state it sits beside. A context row renders and
   parents; it is never a write target.
+- **3c — the row is a catalog member** (a `Test suite`, a `Test case`, or a `Task`
+  beneath one). `Set iteration` is not offered. The population it would join is the plan's
+  (see [[A board scoped to one iteration]] extension 3i), so writing the key here would
+  store a value no board can ever draw — a link accepted and silently dropped, which is
+  worse than an action that is simply absent.
 - **3b — the value the note already holds is the entry being offered.** Its checkmark is
   asked of the **plan** — checked exactly when picking it would write nothing — never by
   a comparison written beside the plan. The two drifted once already on the horizon menu,
@@ -97,8 +102,9 @@ declared name owes: a default subfolder, an icon and a badge colour.
   suggested placeholder, offered by the setup action and never matched by name.
 - The value is a wikilink to the Iteration note, read through the same link handling
   `parent` and `dependsOn` use.
-- `Set iteration` appears on the row and card menus, offers every `Iteration` note plus
-  `None`, checks its entries from the plan, and is absent on a context row.
+- `Set iteration` appears on the row and card menus of **plan** rows, offers every
+  `Iteration` note plus `None`, checks its entries from the plan, and is absent on a
+  context row and on a catalog member.
 - The write goes through `applySafely`, writes only the configured key, is never written
   when the key is unconfigured, and is undone by the one undo slot.
 - No iteration is ever inherited from a parent item.

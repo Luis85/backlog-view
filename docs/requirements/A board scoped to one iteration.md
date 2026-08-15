@@ -49,7 +49,7 @@ the moment the populations diverged, which is exactly what happened.
 | --- | --- |
 | **Actor** | Backlog owner |
 | **Trigger** | Choosing an iteration from the board's scope picker |
-| **Preconditions** | Board mode is on, at least one `Iteration` note is in the model, and an iteration workflow resolves to some key — its own when `iterationStateProperty` is configured, or (falling back) the product board's `stateKey` when it is not |
+| **Preconditions** | Board mode is on, the iteration property is configured, and at least one `Iteration` note is in the model. A resolved workflow is **not** a precondition: it is what the columns need, not what entering the scope needs, and 4a is the guidance shown when there is none |
 | **Guarantee** | One model, one write gate, one undo history, exactly as [[Product Kanban]]'s own guarantee states. Switching scope re-runs no query and writes nothing; a move writes the *resolved* iteration state key alone. |
 
 **Main flow**
@@ -120,6 +120,21 @@ the moment the populations diverged, which is exactly what happened.
   a type level is set and the user goes to the deliverables board, the type level shall
   not affect this board… there are only the deliverables to display."* There are only this
   iteration's items to display.
+- **3i — a `Test suite`, a `Test case`, or a `Task` beneath one carries the iteration
+  link.** It is **not** a card here, and this is not an exception to "whatever their
+  type": catalog membership is not a type filter. `projectionMember` returns `!inCatalog`
+  for every projection but the catalog's own, and `inProjection` is asked FIRST and
+  unconditionally in the one `VisibilityRule` — *no needle makes a `Test case` a row of
+  the plan*. The iteration board is a board in the plan projection, so it inherits that
+  answer the way the tree, the product board and the roadmap already do. The catalog has
+  a projection of its own; a time box over it would be a second feature, and nothing has
+  asked for one.
+
+  `Set iteration` follows the same line and is offered on **plan rows only**, so the
+  property cannot be written where no card could ever appear. Accepting a link that
+  silently never draws is the failure mode this closes; the alternative — a third mixed
+  population spanning two ladders — is a bigger change than this feature, and the
+  register would have to argue it rather than let a criterion imply it.
 - **3h — the toolbar's focus picker, while an iteration scope is chosen.** It offers no
   menu and renders no "Focused: <level>" label and no clear button, exactly as it does on
   the Deliverables board: whatever the inherited focus, it does not narrow this board, so
@@ -149,10 +164,13 @@ the moment the populations diverged, which is exactly what happened.
   underneath: a board's stray columns come from **its own** population, so a column
   nothing on this board could reach is never drawn, and a column something on it holds is
   never withheld.
-- **4a — neither the iteration state property nor the product one is configured.** Only
-  then does the board show the unconfigured empty state, naming the option to set and
-  where. A workflow is this board's prerequisite here too, and the fallback means an
-  unconfigured iteration property alone is not enough to trigger it.
+- **4a — neither the iteration state property nor the product one is configured.** The
+  scope is still **enterable** and the board shows the unconfigured empty state, naming
+  the option to set and where. A workflow is what the COLUMNS need, never what the scope
+  needs: gating scope selection on a resolved workflow would make this very guidance
+  unreachable, since the only way to see it is to be on the board that has none. The
+  fallback means an unconfigured iteration state property alone is not enough to trigger
+  it — the product `stateKey` has to be missing too.
 - **4b — the iteration state property is configured on its own key, but its states or
   done values are not.** They fall through to **this** workflow's own observed values or
   the shipped default, never to the product workflow's declared states or customized done
@@ -186,15 +204,22 @@ the moment the populations diverged, which is exactly what happened.
 ## Acceptance criteria
 
 - In board mode the toolbar offers a scope picker naming `Product` and every `Iteration`
-  note, and does not render it when there is no iteration to choose.
+  note **while the iteration property is configured and at least one `Iteration` note is
+  in the model**, and does not render it otherwise. Both halves: with no configured
+  property nothing can join a scope, so a picker offering scopes would be a control whose
+  every entry draws an empty board (1b).
+- The scope is enterable with no workflow resolved, which is the only way extension 4a's
+  guidance can be reached. A resolved workflow gates the columns, never the scope.
 - The scope persists per saved view in the collapse store's vault-scoped localStorage,
   survives a restart on that device, and never touches the `.base`. A stale stored scope
   renders `Product` and is retained rather than rewritten.
 - Switching scope is a render decision: same model, same results, same undo slot, no
   re-query. The quick filter carries over.
 - Cards are exactly the results whose iteration link resolves to the chosen note,
-  **whatever their type**. No descendant appears by inheritance, no type is filtered out,
-  and no result the link names is missing: the column counts sum to that population.
+  **whatever their work-item type** — no *type* is filtered out, `Deliverable` included.
+  Catalog members are a different question and are excluded by `inProjection`, which is
+  not a type filter (3i). No descendant appears by inheritance, and no result the link
+  names is missing: the column counts sum to that population.
 - **No focus level narrows this board**, checked over every level `ALL_TYPES` names plus
   no focus at all, because the population is read off the whole unfocused tree. The
   toolbar's focus picker renders no menu, no label and no clear button here.
