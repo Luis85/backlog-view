@@ -17,7 +17,7 @@ assignee: ""
 
 # An iteration is a note of its own
 
-An eighth declared type, and one optional property that points at it.
+A twelfth declared type, and one optional property that points at it.
 
 **As** someone running the backlog in time boxes, **I want** an iteration to be a note I
 can open, date and write a goal into, **so that** "Sprint 12" is something the vault
@@ -137,7 +137,7 @@ declared name owes: a default subfolder, an icon and a badge colour.
 ## Acceptance criteria
 
 - `Iteration` is a declared type in `MARKER_TYPES` with a default subfolder, an icon and
-  a badge colour, and ADR 0013 records the eighth name. It files into
+  a badge colour, and ADR 0013 records the twelfth name. It files into
   `typeFolder.iteration` — shipped default `iterations` under the home folder — and takes
   the `calendar-clock` icon and the purple badge.
 - The register's own gate knows the type too: `docs-check.mjs`'s `LEGAL_CHILDREN` and

@@ -42,7 +42,12 @@ Deliberately out of scope, so a reader does not look for them:
 
 ## 1 — `Iteration` joins the type vocabulary
 
-An eighth declared name, in `MARKER_TYPES` beside `Milestone` (`src/domain/typeVocabulary.ts`).
+A twelfth declared name, in `MARKER_TYPES` beside `Milestone`
+(`src/domain/typeVocabulary.ts`). Twelfth, not eighth: earlier revisions of this spec said
+eighth, taken from ADR 0013's title rather than from `ALL_TYPES`, which has held eleven
+names since the two test types joined. The register's own rule covers it — measure a set
+with an instrument that can see all of it — and a decision record's title is not that
+instrument.
 
 A marker occupies no rung, holds nothing and hangs from nothing, which is what an
 iteration is: items *link* to it, they are never its children. Every structural rule
@@ -385,7 +390,7 @@ scope picker before any of it is built, by adding an `Iteration` type and a scop
 
 - `docs/requirements/An Iterations board.md` — the Feature, under [[Product Kanban]].
 - Three PBIs under it, in the order the work should land.
-- An amendment to ADR 0013 for the eighth name.
+- An amendment to ADR 0013 for the twelfth name.
 - `docs/README.md`'s folder table gains an `iterations/` row, and its hierarchy table
   gains `Iteration` — both are gated by `docs-check.mjs` against `LEGAL_CHILDREN` and by
   `test/docs/surfaces.test.ts` against the real option keys, so neither can be skipped.

@@ -200,6 +200,10 @@ In `styles/badges.css`, after `.pbl-lvl-deliverable`:
  * "whichever looked least crowded". All eight theme tokens were already worn when this
  * badge arrived, so the question was only WHICH pair shares and what keeps it apart.
  *
+ * The count above this block says ELEVEN badges; it is TWELVE now. Update it in the same
+ * edit — a count in prose goes stale the moment a name is added, which is why the rule
+ * beneath it is written as a rule and not as an inventory.
+ *
  * An Iteration hangs from nothing, so it sits at the TOP LEVEL of the tree, beside Epics
  * (orange) and Milestones (cyan) — the two hues it therefore must not take. Every other
  * wearer is a descendant, separated from it by the ladder's own indentation. A Feature is
@@ -223,12 +227,14 @@ Expected: PASS. `badges.test.ts` renders one of every `ALL_TYPES` entry and asse
 In `docs/adrs/0013-…md`, under Consequences, beside the Milestone amendment:
 
 ```markdown
-- **Amended 2026-08-15 (Iterations).** The vocabulary is **eight** names. `Iteration`
+- **Amended 2026-08-15 (Iterations).** The vocabulary is **twelve** names — counted from
+  `ALL_TYPES`, not from this record's own title, which still says seven and has been wrong
+  since `Deliverable` and the two test types arrived. `Iteration`
   joins `MARKER_TYPES` rather than `EXTRA_TYPES` for the reason the Milestone amendment
   gives: items link to an iteration, they are never its children, so it occupies no rung
   and hangs from nothing, and declares no prerequisites — though like every marker it may
   still be waited FOR. Nothing this ADR decided changes — the vocabulary is still
-  fixed, still constants, and the eighth name owes the same three shipped opinions the
+  fixed, still constants, and the twelfth name owes the same three shipped opinions the
   other seven do. It has them: `iterations`, `calendar-clock`, purple.
 ```
 
@@ -277,7 +283,7 @@ Expected: exit 0.
 
 ```bash
 git add -A
-git commit -m "Add Iteration as the eighth declared type
+git commit -m "Add Iteration as the twelfth declared type
 
 A marker beside Milestone: it occupies no rung, holds nothing and hangs from
 nothing, because items link to an iteration rather than being its children.
