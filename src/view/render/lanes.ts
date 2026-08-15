@@ -4,17 +4,20 @@ import { RowContext } from './columns';
 import { drawIcon } from './icons';
 import { renderBadge, renderChevron, renderTitleText } from './rows';
 import { promptAddAbsence, showAbsenceMenu } from '../interactions/absences';
-import { BacklogViewHost } from '../host';
-import { Absence, absencesConfigured, absenceTitle, awayWeeks, packAbsences } from '../../domain/absences';
-import { timelineRows, TimelineRow } from '../../domain/bars';
+import { CardDragController } from '../interactions/cardDrag';
+import { BacklogViewHost, DrawnColors } from '../host';
+import { Absence, absencesConfigured, absenceTitle, awayWeeks, crossedAbsences, daysLost, packAbsences } from '../../domain/absences';
+import { barHolds, timelineRows, TimelineBar, TimelineRow } from '../../domain/bars';
 import { BacklogItem } from '../../domain/model';
 import { CivilDate } from '../../domain/noteFields';
 import { ResourceLane } from '../../domain/roadmap';
+import { ownWorkflowReading } from '../../domain/board';
 import { sanitizeTitle } from '../../storage/frontmatter';
 import {
 	BarGeometry,
 	barGeometry,
 	DateSpan,
+	daysBetween,
 	formatCivil,
 	mergeSpans,
 	MIN_BAR_PX,
@@ -72,7 +75,18 @@ export type TimelineEntry =
  * out of here — the mapping from three geometry flags to three class names is one rule, and
  * a second copy is what drifts the next time a mark learns a fourth edge state.
  */
-export function edgeClasses(geometry: BarGeometry): string[] {
+/**
+ * What `drawMarkerDiamonds` needs of the grid it draws into — the three fields of
+ * `BarRowMounts` a diamond actually uses, named structurally rather than imported, so this
+ * module stays reachable from `./timeline.ts` and never back.
+ */
+export interface MarkerMounts {
+	tracks: Map<string, HTMLElement>;
+	scroller: HTMLElement;
+	dnd: CardDragController;
+}
+
+function edgeClasses(geometry: BarGeometry): string[] {
 	if (geometry.outside) return ['pbl-bar-outside', geometry.clippedStart ? 'pbl-bar-open-start' : 'pbl-bar-open-end'];
 	const classes: string[] = [];
 	if (geometry.clippedStart) classes.push('pbl-bar-open-start');
@@ -112,8 +126,13 @@ export function barEntries(rows: TimelineRow[]): TimelineEntry[] {
  */
 export function drawnSpans(entries: TimelineEntry[], lanes: ResourceLane[]): DateSpan[] {
 	const bars = entries.flatMap((entry) => (entry.kind === 'row' ? [entry.row.bar.span] : []));
+	// A folded band's bars, and the milestones' row's — the same hazard reached two ways.
+	// Neither draws a `'row'` entry, and both draw a mark in the header's own track, so a
+	// window read from the entries alone would be narrowed out from under the very marks it
+	// is meant to hold. The markers row is not gated on `collapsed`: it never has row
+	// entries, open or shut.
 	const laneBars = entries.flatMap((entry) =>
-		entry.kind === 'lane' && entry.collapsed ? entry.lane.bars.map((bar) => bar.span) : [],
+		entry.kind === 'lane' && (entry.collapsed || entry.lane.markers) ? entry.lane.bars.map((bar) => bar.span) : [],
 	);
 	const stretches = lanes.flatMap((lane) =>
 		lane.absences.map((absence) => ({ start: absence.start, target: absence.target })),
@@ -145,7 +164,12 @@ export function laneEntries(lanes: ResourceLane[], folded: LaneFolds): TimelineE
 	for (const lane of lanes) {
 		const collapsed = folded.lane(lane.name);
 		entries.push({ kind: 'lane', lane, collapsed });
-		if (collapsed) continue;
+		// **The milestones' row is the header and nothing else.** Every marker draws as a
+		// diamond in that one header's own track (`drawMarkerDiamonds` in `./timeline.ts`),
+		// so the row never produces bar rows to fold, which is why it draws no disclosure
+		// either — there is nothing under it to disclose. A date is a point and a column of
+		// one-diamond rows was a row per point saying what one row says.
+		if (collapsed || lane.markers) continue;
 		// Header, then rows, then context — the stretches are the header's own furniture
 		// now (`renderLaneAbsences`), drawn in its track whether the band is open or shut,
 		// so there is no entry for them here at all.
@@ -199,18 +223,23 @@ export function renderLaneHead(
 	content: HTMLElement,
 	entry: { lane: ResourceLane; collapsed: boolean },
 	ruler: { window: TimelineWindow; scale: TimelineScale; today: CivilDate },
-): HTMLElement {
+): { head: HTMLElement; track: HTMLElement } {
 	const { lane, collapsed } = entry;
 	const quiet = lane.bars.length === 0 && lane.absences.length === 0 && lane.context.length === 0;
 	const head = content.createDiv({
 		cls:
 			'pbl-lane-head' +
+			(lane.markers ? ' pbl-lane-markers' : '') +
 			(lane.declared ? '' : ' pbl-lane-undeclared') +
 			(collapsed ? ' pbl-lane-collapsed' : '') +
 			(quiet ? ' pbl-lane-quiet' : ''),
 	});
 	const lead = head.createDiv({ cls: 'pbl-timeline-lead' });
-	renderLaneChevron(ctx.host, lead, lane, collapsed);
+	// No disclosure on the milestones' row. `laneEntries` gives it no rows to fold, so a
+	// chevron there would be a control with nothing under it — and a fold bit able to take
+	// the dates the whole plan is measured against off screen is the very thing this row
+	// exists to prevent.
+	if (!lane.markers) renderLaneChevron(ctx.host, lead, lane, collapsed);
 	lead.createSpan({ cls: 'pbl-lane-name', text: lane.name });
 	if (lane.bars.length > 0) {
 		lead.createSpan({ cls: 'pbl-lane-count', text: `${lane.bars.length} item${lane.bars.length === 1 ? '' : 's'}` });
@@ -227,7 +256,10 @@ export function renderLaneHead(
 	renderLaneAbsenceAdd(ctx, lead, lane);
 	const track = renderLaneAbsences(ctx, head, lane, ruler);
 	if (collapsed) renderLaneRail(track, lane, ruler);
-	return head;
+	// The track is handed back rather than found again: the milestones' row draws into this
+	// very element (`drawMarkerDiamonds`), and a caller that had to query for it would carry
+	// a null branch nothing can reach.
+	return { head, track };
 }
 
 /**
@@ -281,7 +313,7 @@ function renderLaneChevron(host: BacklogViewHost, lead: HTMLElement, lane: Resou
 	const state = {
 		hasChildren: true,
 		collapsed,
-		label: `${collapsed ? 'Show' : 'Hide'} ${lane.name}'s work`,
+		label: `${collapsed ? 'Show' : 'Hide'} ${lane.markers ? lane.name.toLowerCase() : `${lane.name}'s work`}`,
 		toggle: () => host.setLaneCollapsed(lane.name, !collapsed),
 	};
 	// The whole projection redraws — the window, the gridlines and every full-height mark
@@ -307,7 +339,9 @@ function renderLaneChevron(host: BacklogViewHost, lead: HTMLElement, lane: Resou
  * identical statement the New button beside it already carries, not a new one.
  */
 function renderLaneAbsenceAdd(ctx: RowContext, lead: HTMLElement, lane: ResourceLane): void {
-	if (!absencesConfigured(ctx.host.settings)) return;
+	// The milestones' row is not a person and has nobody to be away — the same reason it
+	// takes no assignee write when something is dropped on it.
+	if (lane.markers || !absencesConfigured(ctx.host.settings)) return;
 	const host = ctx.host;
 	const btn = lead.createEl('button', {
 		cls: 'clickable-icon pbl-lane-ctl pbl-lane-absence-add',
@@ -399,8 +433,9 @@ function absenceSaid(absence: Absence): string {
  * instruction that three is where this codebase consolidates rather than copies again
  * (`applyLabels` replacing `applyRisk` is the same call made once already). The days-lost
  * sentence beside a bar briefly used this too, positioned as a sibling of the bar; it now
- * lands inside the bar's own title label instead (`drawBandCollision`,
- * `render/timeline.ts`), which needs no position of its own, so this is back to three.
+ * lands inside the bar's own title label instead (`drawBandCollision`, below), which needs
+ * no position of its own. The fourth caller is the milestones' row (`drawMarkerDiamonds`),
+ * which is what a fourth copy would have been: the same two lines under a different name.
  */
 function placeSpan(el: HTMLElement, geometry: BarGeometry, scale: TimelineScale): void {
 	el.setCssProps({
@@ -550,7 +585,7 @@ function renderLaneRail(
  * `.pbl-bar-outside` is a direction rather than a span, and a column of shaded days has no
  * way to say that.
  */
-export function renderAbsenceWash(
+function renderAbsenceWash(
 	track: HTMLElement,
 	absences: Absence[],
 	ruler: { window: TimelineWindow; scale: TimelineScale },
@@ -602,7 +637,7 @@ export function renderAbsenceWash(
  * carry the whole count even where the row itself only ever shows the short token, or
  * shows nothing at all because the title's own label was dropped.
  */
-export function noteAbsenceClash(bar: { row: HTMLElement; lead: HTMLElement }, crossed: Absence[], costSentence: string): void {
+function noteAbsenceClash(bar: { row: HTMLElement; lead: HTMLElement }, crossed: Absence[], costSentence: string): void {
 	if (crossed.length === 0) return;
 	const spans = crossed.map(absenceSaid).join('; ');
 	const said = `Crosses ${crossed.length === 1 ? 'an absence' : `${crossed.length} absences`}, ${costSentence}: ${spans}`;
@@ -618,7 +653,203 @@ export function noteAbsenceClash(bar: { row: HTMLElement; lead: HTMLElement }, c
  * replace the content-derived accessible name and cost a reader the badge, the title and
  * the dates — `renderCardBody`'s outside-filter marker makes the same choice for the same
  * reason.
+ *
+ * The milestones' row needs no guard here and deliberately has none: it draws no row of its
+ * own (`laneEntries`) and its header is the one element `drawEntries` passes as unnamed, so
+ * a resource's name is the only thing this can ever be asked about.
  */
 export function renderLaneRowDescription(row: HTMLElement, name: string): void {
 	row.setAttribute('aria-description', `Assigned to ${name}`);
 }
+
+/**
+ * Every marker on the axis, as diamonds in the ONE header track the milestones' row is —
+ * [[Milestones out of the resource rows]]. A point in time has no duration to fold and no
+ * subtree to disclose, so a row apiece said per row what one row says; what a reader needs
+ * of a milestone here is where it falls against the bands beneath it, and the diamond is
+ * that whole answer.
+ *
+ * **The name is not lost with the row, and that is what makes a bare diamond legible.**
+ * `renderMilestoneLines` already draws each marker's title in the coarse header tier above
+ * a full-height line, so the row's job is the mark and the line's is the name. This adds
+ * the same fact where a pointer can reach it — the title and the exact date on the
+ * diamond's own tooltip and `aria-label` — because a line's label is a different element
+ * from the mark and the two are read at opposite ends of the grid.
+ *
+ * `mounts.tracks` is registered per marker PATH against this one shared track, so a
+ * dependency arrow drawn to a milestone anchors on this row exactly as it anchors on any
+ * other: `renderDependencyArrows` reads the track's parent for the Y and takes the X from
+ * `dependencyAnchor`, so several markers sharing one track is the right answer rather than
+ * a compromise — they genuinely share the row.
+ *
+ * Done is asked per DIAMOND and lands on the diamond, unlike every other bar on this grid,
+ * whose `pbl-done` sits on the row: the row here is shared by every marker and one of them
+ * being finished says nothing about the next. `styles/timeline.css` carries the matching
+ * rule beside the row-level one.
+ */
+export function drawMarkerDiamonds(
+	ctx: RowContext,
+	mounts: MarkerMounts,
+	band: { track: HTMLElement; lane: ResourceLane },
+	ruler: { window: TimelineWindow; scale: TimelineScale },
+	drawn: DrawnColors,
+): void {
+	const track = band.track;
+	for (const bar of band.lane.bars) {
+		const geometry = barGeometry(ruler.window, bar.span);
+		const holdable = barHolds(bar.item, ctx.host.settings, bar).includes('body');
+		const done = ownWorkflowReading(bar.item).done;
+		const el = track.createDiv({ cls: barClasses(bar, geometry, holdable) + (done ? ' pbl-done' : '') });
+		placeSpan(el, geometry, ruler.scale);
+		const said = `${bar.item.title} — ${spanText(bar)}`;
+		el.setAttribute('aria-label', said);
+		setTooltip(el, said);
+		mounts.tracks.set(bar.item.file.path, track);
+		if (holdable) {
+			// The body hold IS the diamond, the grid's own rule — and the only hold a marker
+			// has, since a point has no end to resize. The scroller's offset rides the payload
+			// for the delta the hold measures, exactly as a bar row's does.
+			el.dataset.pblHold = 'body';
+			mounts.dnd.wireCard(el, bar.item, 'body', () => mounts.scroller.scrollLeft);
+		}
+		// The row is not a card, so `wireCardActivation` has nothing to wire: the diamond is
+		// the whole of what a reader can click here, and opening the note is what a click on a
+		// bar already does everywhere else on this grid.
+		el.addEventListener('click', (evt) => ctx.host.openItem(bar.item, evt));
+		if (done) drawn.done = true;
+		else if (!geometry.outside) drawn.milestone = true;
+	}
+}
+
+/**
+ * Everything a WORK row owes its own band about the stretch it crosses: the shading behind
+ * the bar, the mark and its cost beside it, and the report the legend keys from — three
+ * things that must agree about which stretches this bar actually crosses, so they are
+ * decided together here rather than left as three separate asks inside `drawEntries`, which
+ * is already at the branching budget `npm run analyze` enforces just telling the three entry
+ * kinds apart.
+ *
+ * `crossed` is computed once, here, and threaded into `absenceCost` and `noteAbsenceClash`
+ * — passed rather than each asking `crossedAbsences` again over the band's full `absences`
+ * list, which used to run that walk twice for one row and left the answers free to
+ * disagree if the band's own absences ever changed between the calls.
+ *
+ * The cost text is appended HERE, as a plain child of `bar.label` — the very element
+ * `renderBarLabel` already decided has room for a title, or dropped — rather than
+ * positioned as a sibling of the bar with its own width check. A bar too cramped for its
+ * own title is too cramped for a sentence about it, by the SAME reserve, so there is no
+ * second "is there room" to keep in step and no second offset to compute: `bar.label ===
+ * null` is the whole suppression rule now. `drawn.daysLost` follows from whether that
+ * append actually happened — a crossing with a dropped title still flags the lead swatch,
+ * but the legend's "Days lost" key is about the TOKEN, and keying it where none landed
+ * anywhere is the exact "keys a mark nothing on screen makes" defect `DrawnColors.daysLost`'s
+ * own comment warns against for `absence` beside it.
+ */
+export function drawBandCollision(bar: { row: HTMLElement; lead: HTMLElement; track: HTMLElement; label: HTMLElement | null }, row: TimelineRow, lane: ResourceLane, ruler: { window: TimelineWindow; scale: TimelineScale }, drawn: DrawnColors): void {
+	// The label is handed over so the wash can put it back on top: the tint belongs over the
+	// BAR and under the row's own NAME, and both halves are append order rather than a
+	// `z-index` — see `renderAbsenceWash`, and `styles/dependencyArrows.css` for why a layer
+	// here may not have one.
+	renderAbsenceWash(bar.track, lane.absences, ruler, bar.label);
+	const crossed = crossedAbsences(row.bar.span, lane.absences);
+	if (crossed.length === 0) return;
+	const cost = absenceCost(row, crossed);
+	noteAbsenceClash(bar, crossed, cost.full);
+	if (bar.label === null) return;
+	bar.label.createSpan({ cls: 'pbl-days-lost', text: cost.short, attr: { 'aria-hidden': 'true' } });
+	drawn.daysLost = true;
+}
+
+/**
+ * What a crossing costs — the SHORT token for the row and the FULL sentence for the
+ * tooltip and the sr-only span, computed together so the two can never disagree about the
+ * number. Two strings rather than `clashCost` and a `clashCostSentence` beside it, because
+ * both need the SAME `lost`/`whole` arithmetic and a caller asking for one alone was the
+ * shape that risked the two drifting apart, the same reason `crossed` above is computed once
+ * for both this and `noteAbsenceClash`.
+ *
+ * The short form exists because `.pbl-bar-label`'s content box measures 118px (`max-width:
+ * 144px`, `box-sizing: border-box`, `padding: 0 8px` plus the `after` variant's own
+ * `padding-left: 18px`), and a full sentence never fitted there even with an empty title in
+ * front of it — "15 days lost to absence" alone is ~128px at `--font-ui-smaller`. These
+ * short forms are ~40–55px, small enough that `.pbl-days-lost`'s own `flex: 0 0 auto`
+ * (`styles/lanes.css`) can hold the whole token unshrunk and still leave the title
+ * (`.pbl-bar-label-title`, `min-width: 0`) room to ellipsize into what is left — the flex
+ * row `.pbl-bar-label` became for exactly this reason, since `text-overflow: ellipsis`
+ * truncates at the LINE's end and could not tell the token from the title on its own. The
+ * full form is never lost, only moved off the row itself.
+ *
+ * **There is no milestone case any more, and its absence is the rule rather than an
+ * omission.** This answered `· away` for a point before any arithmetic until 2026-08-15,
+ * when a marker stopped sitting in a resource's band at all — it draws in the milestones'
+ * own row, which has no absences, so nothing a marker crosses can reach this function. A
+ * branch that cannot be reached is a claim nothing keeps; the loss it stands for is
+ * recorded in [[Milestones out of the resource rows]].
+ *
+ * `lost` is real calendar days, off the note's own span; the unnamed unclamped total below
+ * is that same span's REAL length, which is what "whole" has to mean — `geometry.spanDays`
+ * is the window-CLAMPED width and a narrower number for a bar clipped at the window's edge,
+ * so comparing against it would call a few days lost off a sliver of a decades-long plan
+ * "all" of it.
+ */
+function absenceCost(row: TimelineRow, crossed: Absence[]): { short: string; full: string } {
+	const lost = daysLost(row.bar.span, crossed);
+	const whole = lost >= daysBetween((row.bar.span.start ?? row.bar.span.target) as CivilDate, (row.bar.span.target ?? row.bar.span.start) as CivilDate) + 1;
+	return whole ? { short: `all ${lost}d`, full: `all ${lost} days lost` } : { short: `${lost}d lost`, full: `${lost} days lost to absence` };
+}
+
+/**
+ * A dateless end is styled open — the plan's gap stays visible instead of being
+ * filled in — and an end past the window's edge is styled the same way: both say
+ * "this continues beyond what is drawn", and the tooltip carries the exact dates.
+ *
+ * An inferred bar is a different claim: it HAS dates, but the view drew them from
+ * below rather than reading them off the note, so it is outlined rather than
+ * filled and never reads as a plan somebody stated.
+ *
+ * ponytail: one class covers "inferred" and "inferred, some children undated" —
+ * an inferred end is uncertain by construction. Split them when someone can
+ * describe the two pixels apart.
+ */
+export function barClasses(bar: TimelineBar, geometry: BarGeometry, hasBodyHold: boolean): string {
+	const holdable = hasBodyHold ? ' pbl-bar-holdable' : '';
+	// Nothing of it is in view. Drawing the clamp would put a diamond at a date the item
+	// does not have, and a diamond IS the claim that this is the date — so the row carries
+	// only the direction it lies past, in the same open-end vocabulary a clipped bar uses.
+	// The exact date is in the bar's tooltip and in the row's accessible name.
+	// What the WINDOW does to this mark is `edgeClasses`, shared with the absence stretch
+	// drawn by the same arithmetic. Everything below is what a BAR adds on top of it.
+	const inferred = bar.inferredStart || bar.inferredEnd ? ' pbl-bar-inferred' : '';
+	const edges = edgeClasses(geometry).join(' ');
+	if (geometry.outside) {
+		// Provenance must not be silently upgraded: an inferred span that lands wholly
+		// past the edge is still inferred, not a date the note stated, so the class
+		// that says so travels with it into this branch too.
+		return `pbl-bar ${edges}${inferred}${holdable}`;
+	}
+	let cls = 'pbl-bar';
+	if (geometry.milestone) cls += ' pbl-bar-milestone';
+	// A bar's open end is the wider claim: a date the note never stated, as well as one
+	// this window cannot reach. `edgeClasses` answers only the second, which is the whole
+	// of what an absence — both ends stated by construction — can have.
+	if (bar.span.start === null) cls += ' pbl-bar-open-start';
+	if (bar.span.target === null) cls += ' pbl-bar-open-end';
+	// `pbl-bar-clipped-end` is distinct from open-end, which also covers a bar with no
+	// target date at all. The two want different connector placement: an open end has an
+	// on-screen edge to sit past, a clamped one does not.
+	return [cls, edges].filter(Boolean).join(' ') + inferred + holdable;
+}
+
+/** One sentence about a span, said identically on the grid and in the drop ghost. */
+export function spanText(bar: TimelineBar): string {
+	const span = bar.span;
+	const inferred = bar.inferredStart || bar.inferredEnd ? ' — inferred from children' : '';
+	if (span.start !== null && span.target !== null) {
+		if (formatCivil(span.start) === formatCivil(span.target)) return `Milestone ${formatCivil(span.start)}${inferred}`;
+		return `${formatCivil(span.start)} → ${formatCivil(span.target)}${inferred}`;
+	}
+	if (span.start !== null) return `Starts ${formatCivil(span.start)}, target not set${inferred}`;
+	// deriveBars admits no fully dateless span, so the remaining end exists.
+	return `Target ${formatCivil(span.target as CivilDate)}, start not set${inferred}`;
+}
+

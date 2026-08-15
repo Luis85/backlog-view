@@ -1,6 +1,7 @@
 import { Absence } from './absences';
 import { firstPlacedIndex } from './board';
 import { deriveBars, placeItem, ShelfCard, statedEnds, TimelineBar } from './bars';
+import { isMarkerType } from './itemTypes';
 import { BacklogItem, BacklogModel } from './model';
 import { FieldReading, sameValue } from './noteFields';
 import { BacklogSettings } from './settings';
@@ -121,11 +122,31 @@ export interface HorizonBucket {
  * second source would append to `bars`. It cannot: `TimelineBar.item` is a `BacklogItem`
  * and an absence is deliberately never one, so the second list is `absences`.
  */
+/**
+ * What the milestones' own row is CALLED — the header, and the key its fold is stored
+ * under, since a band is collapsed by its name. A resource genuinely named this would share
+ * that one bit and draw a second row beside it; recorded rather than guarded, because every
+ * guard costs a rule about names the roster is otherwise free to choose.
+ */
+const MILESTONE_LANE = 'Milestones';
+
 export interface ResourceLane {
 	/** The assignee value this row stands for, in its first-seen casing. */
 	name: string;
 	/** False for a row minted by a result's undeclared assignee. */
 	declared: boolean;
+	/**
+	 * True for the ONE row that is not a resource at all — the milestones' own, drawn first.
+	 * A marker is a point in the plan rather than somebody's work, so it belongs to no
+	 * resource and must not be hidden inside one's folded band; it is placed here whatever
+	 * its assignee says, and its assignee is never read to position it.
+	 *
+	 * A boolean rather than a name test, because everything downstream asks a different
+	 * question of it: no absence control, no roster declaration, and a drop that writes the
+	 * day and never a resource. Comparing `name` against a constant in each of those places
+	 * is how a row named by a user comes to be treated as this one.
+	 */
+	markers: boolean;
 	/** Result bars, in tree order, positioned exactly as the dated axis positions one. */
 	bars: TimelineBar[];
 	/**
@@ -408,6 +429,14 @@ function placeContext(item: BacklogItem, byValue: Map<string, HorizonBucket>, ro
  * Every placement question is `placeItem`'s, asked unchanged: the marker reduction, the
  * unreadable and reversed refusals and the rollup inference are the dated axis's rules,
  * and this axis groups their answers rather than restating one of them.
+ *
+ * A MARKER is the exception to the grouping, not to the placement: it is placed by exactly
+ * the same call and then put in a row of its own at the head of the roster, because a
+ * milestone is a fact about the plan rather than about a person. Two consequences follow
+ * and both are the point — an unassigned milestone draws instead of shelving, since there
+ * is no assignee left to be missing, and no fold of anybody's band can take it off screen.
+ * The row is minted by its first placed marker, exactly as an undeclared assignee's is: a
+ * roster with an empty Milestones header on every base would say nothing.
  */
 function deriveLanes(
 	rows: BacklogItem[],
@@ -415,12 +444,15 @@ function deriveLanes(
 	roadmap: RoadmapModel,
 	absences: Absence[],
 ): void {
+	const markers: ResourceLane = { name: MILESTONE_LANE, declared: true, markers: true, bars: [], absences: [], context: [] };
 	const lanes = settings.resourceNames.map(
-		(name): ResourceLane => ({ name, declared: true, bars: [], absences: [], context: [] }),
+		(name): ResourceLane => ({ name, declared: true, markers: false, bars: [], absences: [], context: [] }),
 	);
 	const byName = new Map<string, ResourceLane>(lanes.map((lane) => [lane.name.toLowerCase(), lane]));
 	for (const item of rows) {
-		if (!item.outsideFilter) placeAssigned(item, lanes, byName, roadmap);
+		if (item.outsideFilter) continue;
+		if (isMarkerType(item.typeName)) placeBar(item, () => markers, roadmap);
+		else placeAssigned(item, lanes, byName, roadmap);
 	}
 	// Second, so a resource a result already named keeps the casing that result gave its
 	// row — and third-source minting: unlike a context row, an absence MAY create one,
@@ -430,9 +462,9 @@ function deriveLanes(
 	for (const item of rows) {
 		if (item.outsideFilter) placeContextLane(item, byName, roadmap);
 	}
-	roadmap.lanes = lanes;
+	roadmap.lanes = markers.bars.length > 0 ? [markers, ...lanes] : lanes;
 	// Flattened in row order — see `RoadmapModel.bars` for who asks and why.
-	roadmap.bars = lanes.flatMap((lane) => lane.bars);
+	roadmap.bars = roadmap.lanes.flatMap((lane) => lane.bars);
 }
 
 /**
@@ -452,12 +484,22 @@ function placeAssigned(
 		roadmap.shelf.push({ item, reason: null });
 		return;
 	}
+	placeBar(item, () => laneNamed(name, lanes, byName), roadmap);
+}
+
+/**
+ * One result on the grid, or on the shelf with its reason. The row is a THUNK because a row
+ * is minted by the bar that lands in it and never by one that shelves — the rule the roster
+ * has always kept for an undeclared assignee, and the same reason the milestones' row is
+ * absent from a base whose only marker has no readable date.
+ */
+function placeBar(item: BacklogItem, lane: () => ResourceLane, roadmap: RoadmapModel): void {
 	const placement = placeItem(item, statedEnds(item));
 	if (placement.kind === 'shelf') {
 		roadmap.shelf.push({ item, reason: placement.reason });
 		return;
 	}
-	laneNamed(name, lanes, byName).bars.push(placement.bar);
+	lane().bars.push(placement.bar);
 }
 
 /**
@@ -471,14 +513,23 @@ function placeAssigned(
 function laneNamed(name: string, lanes: ResourceLane[], byName: Map<string, ResourceLane>): ResourceLane {
 	const existing = byName.get(name.toLowerCase());
 	if (existing) return existing;
-	const lane: ResourceLane = { name, declared: false, bars: [], absences: [], context: [] };
+	const lane: ResourceLane = { name, declared: false, markers: false, bars: [], absences: [], context: [] };
 	byName.set(name.toLowerCase(), lane);
 	lanes.push(lane);
 	return lane;
 }
 
-/** A context row joins a row that already exists, or the axis's undifferentiated context. */
+/**
+ * A context row joins a row that already exists, or the axis's undifferentiated context. A
+ * marker joins the second whatever it names: "a milestone is in no resource's row" is a
+ * rule about the row and not about the bar, so an excluded one must not reach a band by the
+ * one path that positions nothing.
+ */
 function placeContextLane(item: BacklogItem, byName: Map<string, ResourceLane>, roadmap: RoadmapModel): void {
+	if (isMarkerType(item.typeName)) {
+		roadmap.context.push(item);
+		return;
+	}
 	const name = item.assigneeValue;
 	const lane = name === null ? undefined : byName.get(name.toLowerCase());
 	if (lane) lane.context.push(item);

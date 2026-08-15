@@ -332,7 +332,17 @@ describe('what a bar SAYS it costs to cross an absence', () => {
 		expect(said).toMatch(/^\d+d lost$/);
 	});
 
-	it('says a milestone is just away, not a day count', () => {
+	/**
+	 * A milestone assigned to Alice, dated inside Alice's own absence, says NOTHING about it —
+	 * and that is the rule rather than a gap. Since [[Milestones out of the resource rows]] a
+	 * marker draws in the milestones' own row, which stands for nobody and holds no stretches,
+	 * so there is no band for it to collide with. The assignee is still on the note; it is
+	 * simply never read to place a marker.
+	 *
+	 * The collision this file is about is a fact about a bar and a stretch IN ONE ROW, so a
+	 * mark here would have to be computed from a row the reader is not looking at.
+	 */
+	it('says nothing about the away days of a milestone drawn out of the band', () => {
 		const vault = new FakeVault();
 		vault.addFile('Ship.md', {
 			frontmatter: { type: 'Milestone', order: 10, assignee: 'Alice', due: '2026-08-05' },
@@ -342,10 +352,12 @@ describe('what a bar SAYS it costs to cross an absence', () => {
 		});
 		const { containerEl } = laneRoadmap(vault);
 
-		expect(rowFor(containerEl, 'Ship')?.querySelector('.pbl-days-lost')?.textContent).toBe('· away');
-		// The full form still says it in words, in the sentence a reader or a tooltip reaches.
-		expect(rowFor(containerEl, 'Ship')?.querySelector('.pbl-sr-only')?.textContent).toContain(
-			'falls on an away day',
-		);
+		const markers = containerEl.querySelector<HTMLElement>('.pbl-lane-markers');
+		const diamond = markers?.querySelector<HTMLElement>('.pbl-bar-milestone');
+		expect(diamond?.getAttribute('aria-label'), 'the milestone still draws — as a diamond').toContain('Ship');
+		expect(rowFor(containerEl, 'Ship'), 'and never as a row in anybody’s band').toBeNull();
+		expect(markers?.querySelector('.pbl-days-lost')).toBeNull();
+		expect(markers?.querySelector('.pbl-away-flag')).toBeNull();
+		expect(markers?.getAttribute('aria-description'), 'the row stands for no resource').toBeNull();
 	});
 });

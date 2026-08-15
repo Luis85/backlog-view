@@ -521,3 +521,54 @@ describe('the band header’s readout', () => {
 		expect(harness.containerEl.querySelectorAll('.pbl-lane-head, .pbl-timeline-row')).toHaveLength(rowsWhenOpen);
 	});
 });
+
+/**
+ * The milestones' own row on screen: one row of diamonds, and no control that could fold
+ * it — [[Milestones out of the resource rows]].
+ */
+describe('the milestones row', () => {
+	function markerVault(): FakeVault {
+		const vault = countingVault([]);
+		vault.addFile('Ship.md', {
+			frontmatter: { type: 'Milestone', order: 20, assignee: 'Alice', due: '2026-08-07' },
+		});
+		vault.addFile('Launch.md', { frontmatter: { type: 'Milestone', order: 30, due: '2026-08-20' } });
+		return vault;
+	}
+
+	it('draws every marker as a diamond in one header track, and no row of its own', () => {
+		const harness = laneRoadmap(markerVault(), { expanded: true });
+		const markers = lanesOf(harness.containerEl)[0];
+
+		expect(laneNames(harness.containerEl)[0]).toBe('Milestones');
+		expect(markers.querySelectorAll('.pbl-bar-milestone')).toHaveLength(2);
+		// Not a row apiece, and not a row in anybody's band either.
+		expect(rowFor(harness.containerEl, 'Ship')).toBeNull();
+		expect(rowFor(harness.containerEl, 'Launch')).toBeNull();
+	});
+
+	it('draws no disclosure, so nothing can fold the dates the plan is measured against', () => {
+		const harness = laneRoadmap(markerVault(), { expanded: true });
+		const [markers, alice] = lanesOf(harness.containerEl);
+
+		expect(markers.querySelector('.pbl-chevron')).toBeNull();
+		// The control is a band's, not a header's: Alice's still has one.
+		expect(alice.querySelector('.pbl-chevron')).not.toBeNull();
+	});
+
+	it('names each diamond, since the row’s lead column names none of them', () => {
+		const harness = laneRoadmap(markerVault(), { expanded: true });
+		const diamonds = lanesOf(harness.containerEl)[0].querySelectorAll<HTMLElement>('.pbl-bar-milestone');
+
+		expect(diamonds[0].getAttribute('aria-label')).toContain('Ship');
+		expect(diamonds[0].getAttribute('aria-label')).toContain('2026-08-07');
+	});
+
+	it('withholds the absence control — the row stands for nobody', () => {
+		const harness = laneRoadmap(markerVault(), { expanded: true });
+		const [markers, alice] = lanesOf(harness.containerEl);
+
+		expect(markers.querySelector('.pbl-lane-absence-add')).toBeNull();
+		expect(alice.querySelector('.pbl-lane-absence-add')).not.toBeNull();
+	});
+});

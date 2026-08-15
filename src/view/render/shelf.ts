@@ -3,7 +3,7 @@ import { drawIcon } from './icons';
 import { createCard, renderCardBody, wireCardActivation } from './board';
 import { RowContext } from './columns';
 import { renderShelfControls } from './shelfControls';
-import { spanText } from './timeline';
+import { spanText } from './lanes';
 import { dependencyNote } from './timelineArrows';
 import { BacklogViewHost } from '../host';
 import { CardDragController, CardSource } from '../interactions/cardDrag';

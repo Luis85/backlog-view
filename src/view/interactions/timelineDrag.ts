@@ -1,6 +1,6 @@
 import { CardDragController, CardSource, PointerAt } from './cardDrag';
 import { RowContext } from '../render/columns';
-import { spanText } from '../render/timeline';
+import { spanText } from '../render/lanes';
 import { BacklogViewHost } from '../host';
 import { BarHold, placeItem, plannedEnds } from '../../domain/bars';
 import { PlacementEnd, placementEnds } from '../../domain/itemTypes';

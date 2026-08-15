@@ -13,6 +13,7 @@ import { newItemType, promptCreateItem } from '../interactions/create';
 import { gestureAt, previewer, submitGesture, TimelineParts, wireTimelineDrag } from '../interactions/timelineDrag';
 import { StatePalette, statePalettes } from '../../domain/board';
 import { timelineRows } from '../../domain/bars';
+import { isMarkerType } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
 import { buildRoadmap, HorizonBucket, ResourceLane, RoadmapAxis, RoadmapModel } from '../../domain/roadmap';
 import { scaleFor, TimelineScale, TimelineWindow } from '../../domain/timeline';
@@ -263,7 +264,17 @@ function wireLaneDrop(
 			// beside a colleague's bar is not handing it to them. Routing it through the
 			// resource move to then re-state the row the note already holds would be the same
 			// write said twice, with a removal one null away.
-			if (source.hold === 'start' || source.hold === 'end') {
+			// **A MARKER is the dated axis's own gesture too, and the test is asked of BOTH
+			// ends of the release.** The milestones' row stands for nobody, so a release IN it
+			// says when and never who — writing its header's caption into an assignee property
+			// would invent a resource out of a row's name. And a marker released in somebody
+			// ELSE's band is the same answer from the other side: it draws in the milestones'
+			// row whatever its assignee says ([[Milestones out of the resource rows]]), so a
+			// row write there would be a change the reader is never shown, spent from the one
+			// undo slot. `Set assignee` still writes one — a note may record who owns a date;
+			// what may not happen is a POSITIONAL gesture writing a value this axis does not
+			// read.
+			if (band.lane.markers || isMarkerType(source.item.typeName) || source.hold === 'start' || source.hold === 'end') {
 				submitGesture(host, source, gesture);
 				return;
 			}

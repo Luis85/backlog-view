@@ -249,6 +249,16 @@
 	opacity: 0.7;
 }
 
+/* The same override where there is no row to carry it: every marker on the resources axis
+   draws into ONE shared header track (`drawMarkerDiamonds`, render/timeline.ts), so done is
+   a fact about the diamond and the class goes on the diamond. Two classes here against the
+   two `.pbl-bar.pbl-bar-milestone` carries, so this must come AFTER it to win — which is
+   why it is not written beside the rule above. */
+.pbl-bar.pbl-done {
+	--pbl-bar-color: var(--color-green);
+	opacity: 0.7;
+}
+
 /* Wide enough to hit at 4px/day (a vault check, not a jsdom one); children of the positioned `.pbl-bar`, so `left`/`right` resolve against its own edges. */
 .pbl-bar-grip {
 	position: absolute;
