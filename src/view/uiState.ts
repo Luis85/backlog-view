@@ -1,5 +1,5 @@
 import { CollapseState } from './collapseState';
-import { Projection } from './host';
+import { ColumnScope, Projection } from './host';
 import { RoadmapAxis } from '../domain/roadmap';
 import { ShelfSort } from '../domain/shelf';
 import { ScaleId, scaleFor } from '../domain/timeline';
@@ -134,6 +134,21 @@ export class UiStateController {
 	 */
 	setLaneCollapsed(name: string, collapsed: boolean): void {
 		if (this.collapse.setLaneCollapsed(name, collapsed)) this.hooks.renderTreeContent();
+	}
+
+	columnCollapsed(scope: ColumnScope, value: string | null, autoCollapse: boolean): boolean {
+		return this.collapse.columnCollapsed(scope, value, autoCollapse);
+	}
+
+	/**
+	 * Content only, like the shelf's own disclosure beside it: a fold changes which cards
+	 * the projection draws and nothing about the toolbar. And like the shelf's, it does NOT
+	 * spare the control that asked — the header is rebuilt by this very call, so the caller
+	 * puts focus back itself.
+	 */
+	setColumnCollapsed(scope: ColumnScope, value: string | null, collapsed: boolean): void {
+		this.collapse.setColumnCollapsed(scope, value, collapsed);
+		this.hooks.renderTreeContent();
 	}
 
 	get zoom(): ScaleId {

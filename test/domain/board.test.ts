@@ -535,4 +535,3 @@ describe('boardColumns with the Deliverables workflow', () => {
 		expect(labels(board)).toEqual(['No state', 'Blocked', 'Done']);
 	});
 });
-

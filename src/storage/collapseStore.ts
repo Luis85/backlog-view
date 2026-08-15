@@ -159,6 +159,20 @@ export interface CollapseSnapshot {
 	 * exist.
 	 */
 	collapsedLanes?: string[] | null;
+	/**
+	 * Board columns and horizon buckets the reader has folded shut, by KEY — a scope and
+	 * the column's own value, minted by `columnKey` in `view/collapseState.ts`.
+	 *
+	 * Beside {@link CollapseSnapshot.collapsedLanes} and out of the `collapsed` path set
+	 * for the identical reason: everything in that set is a note PATH, so a state value put
+	 * there would be dropped by the first flush. A pair rather than one list, because
+	 * unlike a band a column HAS a default worth suppressing — a done column of finished
+	 * work starts shut — so the two together say what has been ruled on, exactly as
+	 * `collapsed`/`expanded` do for rows.
+	 */
+	collapsedColumns?: string[] | null;
+	/** Columns explicitly opened; settled is this and {@link collapsedColumns} together. */
+	expandedColumns?: string[] | null;
 }
 
 /** Which base view an entry belongs to. */
@@ -215,6 +229,10 @@ interface StoredEntry {
 	shelfHiddenTypes?: string[];
 	/** Absent or empty means every resource band is open. */
 	collapsedLanes?: string[];
+	/** Absent or empty means no column has been folded. */
+	collapsedColumns?: string[];
+	/** Absent or empty means no column has been explicitly opened. */
+	expandedColumns?: string[];
 }
 
 type StoredMap = Record<string, StoredEntry>;
@@ -319,6 +337,17 @@ function defaultShelf(
 }
 
 /**
+ * The folded columns and the opened ones — a pair, so a column nobody has ruled on can
+ * still be told from one the reader deliberately opened against its own default.
+ */
+function defaultColumns(entry: StoredEntry | undefined): Pick<CollapseSnapshot, 'collapsedColumns' | 'expandedColumns'> {
+	return {
+		collapsedColumns: entry?.collapsedColumns ?? [],
+		expandedColumns: entry?.expandedColumns ?? [],
+	};
+}
+
+/**
  * The seven picks whose default is simply absence, read back off a stored entry — split
  * out of {@link loadCollapseState} so that function's own complexity stays readable as
  * the picks grow; this one is nothing but `??` chains.
@@ -335,6 +364,14 @@ function defaultPicks(
 		focus: entry?.focus ?? null,
 		clickFolds: entry?.clickFolds ?? false,
 	};
+}
+
+/** Empty is the default on both sides, so neither list is written when it holds nothing. */
+function writeColumns(entry: StoredEntry, snapshot: CollapseSnapshot): void {
+	const collapsed = snapshot.collapsedColumns ?? [];
+	const expanded = snapshot.expandedColumns ?? [];
+	if (collapsed.length > 0) entry.collapsedColumns = collapsed;
+	if (expanded.length > 0) entry.expandedColumns = expanded;
 }
 
 function writeShelf(entry: StoredEntry, shelf: ShelfState): void {
@@ -386,6 +423,7 @@ export function loadCollapseState(app: App, id: ViewIdentity): CollapseSnapshot 
 		colWidths: entry?.colWidths ?? null,
 		...defaultPicks(entry),
 		...defaultShelf(entry),
+		...defaultColumns(entry),
 	};
 }
 
@@ -407,6 +445,7 @@ export function saveCollapseState(app: App, id: ViewIdentity, snapshot: Collapse
 		types: snapshot.shelfHiddenTypes ?? [],
 		lanes: snapshot.collapsedLanes ?? [],
 	});
+	writeColumns(entry, snapshot);
 	// A view at its defaults — nothing settled, the tree, no pick, shelf untouched —
 	// needs no entry. That is the same question the read side asks of a stored entry, so
 	// it is asked with the same function: a field added to one and forgotten in the other
@@ -521,6 +560,11 @@ function readShelfFields(record: Record<string, unknown>, entry: StoredEntry): v
 	// paths changes nothing it checks.
 	const lanes = readPaths(record.collapsedLanes);
 	if (lanes.length > 0) entry.collapsedLanes = lanes;
+	// Same reader again: a column key is a string in a list, whatever the string names.
+	const folded = readPaths(record.collapsedColumns);
+	if (folded.length > 0) entry.collapsedColumns = folded;
+	const opened = readPaths(record.expandedColumns);
+	if (opened.length > 0) entry.expandedColumns = opened;
 }
 
 function entryHasContent(entry: StoredEntry): boolean {
@@ -538,7 +582,9 @@ function entryHasContent(entry: StoredEntry): boolean {
 		entry.shelfExpanded !== undefined ||
 		entry.shelfSort !== undefined ||
 		entry.shelfHiddenTypes !== undefined ||
-		entry.collapsedLanes !== undefined
+		entry.collapsedLanes !== undefined ||
+		entry.collapsedColumns !== undefined ||
+		entry.expandedColumns !== undefined
 	);
 }
 

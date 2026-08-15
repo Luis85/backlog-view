@@ -1,0 +1,190 @@
+# Collapsing a board column and a horizon bucket
+
+**Date** 2026-08-14
+
+A board column and a horizon bucket can be folded to a narrow strip that keeps its name,
+its count and its drop target, and the choice is remembered per saved view and per
+device. A done column holding nothing but finished work starts folded the first time it
+renders.
+
+This is the build of `docs/requirements/Done columns stay lean.md`, whose collapse half
+has been design since 2026-08-01, plus the same affordance on the horizon axis, which no
+note covers yet.
+
+## What the user gets
+
+- A chevron in the header of every board column (both board-shaped projections) and every
+  horizon bucket. Pressing it folds the column to a 44px strip: the name turns vertical,
+  the count stays, the cards go.
+- The fold survives a reload, a projection switch and an Obsidian restart, per saved view
+  and per device.
+- A done column holding nothing but open-work-free cards is folded the first time it is
+  seen. Expanding it is remembered; nothing re-folds it.
+- A folded column is still a drop target, so completing work into a folded Done keeps
+  working.
+
+## Where the state lives
+
+Two fields on the stored entry in `src/storage/collapseStore.ts`:
+
+```
+collapsedColumns?: string[]
+expandedColumns?: string[]
+```
+
+Settled is the union of the two — the shape the path pair (`collapsed` / `expanded`)
+already has, and it is that shape for the same reason: an expanded entry only suppresses
+a default, while a collapsed one is visible state.
+
+**They are not in the path key space, and that is the whole reason they are fields of
+their own.** Everything in `collapsed` / `expanded` is a note PATH: `flush` drops any key
+the vault has no file for, `renamePath` moves keys when a note moves, and
+`collapseNewParents` settles new parents. A state value is not a file, so a column key put
+in that set would be pruned on the first save. This is the argument `collapsedLanes`
+already made for resource bands, applied a second time — and it needs no rename migration
+for the same reason: nothing renames a state, and a value no column draws simply has no
+column to fold.
+
+### The key
+
+```
+`${scope}\u0000${value.toLowerCase()}`
+```
+
+- `scope` is `board`, `deliverables` or `horizons`.
+- `value` is the column's state or the bucket's value; `''` for the no-state column, which
+  is safe as a sentinel because a state value that reads back empty is no state at all.
+
+**Lower-cased** because both projections already identify their columns that way —
+`boardColumns` indexes `byValue` on `state.toLowerCase()` and `buildRoadmap` does the same
+for buckets — so a fold keyed on the spelling would silently reopen when the display case
+changed. `laneKey` made this decision first.
+
+**Scoped** because a requirements board and a Deliverables board can each have a state
+called `Done`, and a horizon can be called `Done` too. Three columns, three folds.
+
+Read back with the same defensive `readPaths` `collapsedLanes` uses — a list of strings is
+a list of strings whether the strings are paths or names.
+
+## The two host methods
+
+On `CollapseState`, reached through `BacklogViewHost` and delegated by
+`UiStateController` like every other UI-state pick:
+
+- `columnCollapsed(key: string, autoCollapse: boolean): boolean`
+- `setColumnCollapsed(key: string, collapsed: boolean): void`
+
+The first **settles on the first ask**. That is `collapseNewParents`' own rule — a column
+nobody has ruled on takes the default exactly once — asked lazily per column rather than
+in a pass on the data update, because unlike a parent, a column does not exist in the
+model: it is derived by `boardColumns` / `buildRoadmap` inside the render, so the render is
+the first moment there is anything to settle. A read that settles is documented at the
+method; it schedules a save and never renders.
+
+`setColumnCollapsed` takes `renderTreeContent()` — the projection is content, the toolbar
+is untouched — and the caller puts focus on the pane afterwards, because the button
+pressed is destroyed by the rebuild. That is `renderShelfControls`' `refocus` rule and the
+timeline chevron's; focus on the pane rather than on the replacement control, or the
+pane's arrow keys go quiet while looking correct.
+
+## The done default
+
+`BoardColumn` gains one field:
+
+```
+/** True while any card in this column's POPULATION still carries unfinished work. */
+openWork: boolean
+```
+
+Computed in `boardColumns`' existing population loop — the pass that fills `fullCount`,
+which walks `candidates` with the quick filter lifted. A card contributes `openWork` when
+`!card.subtreeDone`.
+
+Reading it off the population and not off `col.cards` is the load-bearing half: a filter
+that hid every open card in Done would otherwise make the column read as finished and fold
+it, and the user would have searched their board into a different shape. `fullCount`
+exists for exactly that reason and this borrows its pass.
+
+The default is `col.done && !col.openWork`. With "Show completed items" off, a done
+column's fully-done cards are already out of the population, so such a column reports no
+open work and folds — which is extension 3b of the requirement: the stage still renders,
+folded at most, and stays a drop target.
+
+Buckets pass `false`: an axis has no notion of done, and nothing has asked for one.
+
+## What the fold removes
+
+**A folded column contributes no cards to the snapshot the render returns.** That is one
+change and it is what keeps every consumer honest without any of them being edited:
+`boardPosition`, `nextBoardPosition` and `handleBoardMoveKey` all walk
+`snapshot.board.columns[col].cards`, so a card that is not drawn is not selectable and
+Alt+arrow cannot land the selection somewhere invisible. `cardPaths` is built from the same
+board, so a card folded away is once again nameable as a hidden match on another card's
+face — which is correct: it is not on screen.
+
+The roadmap does this already and this is that rule reused — `renderShelf` contributes to
+`cards` only what it drew, and `renderBucket` will return `[]` when folded.
+
+**Both advisories keep asking the unfolded population.** `renderBoardAdvisory` gates on
+"does any column hold a card" and `renderRoadmapAdvisory` on the axis's own card count; a
+board with every column folded would otherwise be told that everything is done or that
+nothing matches. The board's advisory reads the model's columns before the fold is applied;
+the roadmap's counts the buckets rather than the drawn cards.
+
+## The surfaces
+
+Both headers gain the same control: a `<button tabindex="-1">` carrying `aria-expanded`
+and a chevron, the shape `renderShelfControls`' disclosure already has. `tabindex="-1"`
+because both panes are one tab stop.
+
+**The board's keyboard path is the column menu.** The column header is already the
+listbox's column stop and already answers the menu key, so `buildColumnMenu` gains the
+Collapse / Expand entry and `showColumnMenuFor` stops refusing to open on a column with no
+policy — today a column with nothing agreed has no menu, and after this it always has at
+least one thing to say. One builder behind the button and the menu entry, so the two cannot
+disagree about which way the column is currently folded.
+
+**A bucket has no keyboard path, and this records that rather than hiding it.** A bucket is
+not a keyboard stop — nothing selects one to act on — so its disclosure is reachable by
+pointer and by assistive tech and by nothing else. That is the same gap
+`renderBucketNew` already carries and points at
+`docs/requirements/Keyboard and menu on the roadmap.md`, whose main flow has arrows moving
+across the roadmap's regions; bucket stops close both at once. What is lost here is smaller
+than what is lost there: a fold is display state with no write behind it.
+
+The disclosure sits inside a `role="option"` header on the board, which is the deviation
+`docs/issues/A disclosure nested in an option role.md` already records for the timeline
+chevron. No new argument, same accepted cost.
+
+## Appearance
+
+`.pbl-board-strip` already draws a 44px column with a vertical name — the empty no-state
+column's shape. A folded column gets the same rules by adding one selector to them, so the
+two cannot drift. Buckets have no strip rule today and need the equivalent written in
+`styles/roadmap.css`.
+
+The chevron follows the shelf's: `chevron-right` folded, `chevron-down` open.
+
+## Out of scope
+
+- **"Collapse all" stays about rows and cards.** A bulk control that also folded every
+  stage would make a board unreadable in one press, and `collapsiblePopulation` is about
+  what a projection's items are, not about its furniture.
+- **Age-based hiding** ("done more than two weeks ago") stays where the requirement left
+  it: out of scope until transition stamps give it a date to read.
+- **A folded column's cards stay in every count.** `count`, `fullCount`, the rollups and
+  the toolbar's own readout are about the work, not about what is currently drawn.
+
+## Checks
+
+- `test/domain/` — `openWork` is read off the population: a column whose only open card is
+  hidden by the quick filter still reports open work.
+- `test/storage/collapseStore.test.ts` — the two fields round-trip, a non-list is dropped,
+  an entry holding only a folded column is not pruned as empty.
+- `test/view/` — the toggle folds and persists; a folded column keeps its name, its count
+  and its drop target; the keyboard cannot select a folded column's card; neither advisory
+  appears when every column is folded; a done column with no open work folds once, and an
+  explicit expand survives a data update.
+
+Appearance in a themed vault is not answerable here, as ever: the strip shape ships today,
+so `npm run test-build` is the check that is owed.

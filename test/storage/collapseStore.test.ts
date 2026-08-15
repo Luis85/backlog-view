@@ -469,3 +469,67 @@ describe('the shelf working position', () => {
 		expect(loadCollapseState(vault.app, id).shelfHiddenTypes).toEqual([]);
 	});
 });
+
+describe('folded columns and buckets', () => {
+	const id = { base: 'Backlog.base', view: 'Backlog' };
+	const none = { collapsed: new Set<string>(), expanded: new Set<string>() };
+	// Opaque to this module: `columnKey` in `view/collapseState.ts` mints the real ones and
+	// this side never parses them, so the tests read as strings rather than as its format.
+	const DONE = 'board-done';
+	const NEXT = 'horizons-next';
+
+	it('defaults to nothing folded, and needs no entry at all', () => {
+		vault.addFile('Backlog.base');
+		saveCollapseState(vault.app, id, { ...none });
+		expect(stored(vault)['Backlog.base#Backlog']).toBeUndefined();
+
+		const snapshot = loadCollapseState(vault.app, id);
+		expect(snapshot.collapsedColumns).toEqual([]);
+		expect(snapshot.expandedColumns).toEqual([]);
+	});
+
+	it('round-trips a fold on its own, with nothing else in the entry to keep it alive', () => {
+		// A view whose ONLY change is one folded column still has state worth an entry —
+		// the question the density test asks, of the field added after it.
+		vault.addFile('Backlog.base');
+		saveCollapseState(vault.app, id, { ...none, collapsedColumns: [DONE] });
+		expect(loadCollapseState(vault.app, id).collapsedColumns).toEqual([DONE]);
+	});
+
+	it('keeps the two lists apart, so an open against a default is not read as a fold', () => {
+		vault.addFile('Backlog.base');
+		saveCollapseState(vault.app, id, { ...none, collapsedColumns: [NEXT], expandedColumns: [DONE] });
+		const snapshot = loadCollapseState(vault.app, id);
+		expect(snapshot.collapsedColumns).toEqual([NEXT]);
+		expect(snapshot.expandedColumns).toEqual([DONE]);
+	});
+
+	it('drops a stored list that is not an array of strings', () => {
+		vault.localStorage.set(STORE_KEY, {
+			'Backlog.base#Backlog': {
+				base: 'Backlog.base',
+				collapsed: [],
+				expanded: [],
+				collapsedColumns: DONE,
+				expandedColumns: [7, NEXT],
+			},
+		});
+		const snapshot = loadCollapseState(vault.app, id);
+		expect(snapshot.collapsedColumns).toEqual([]);
+		// The list survives minus the entry that is not a string — `readPaths`' own rule,
+		// borrowed whole because a column key is a string in a list like any other.
+		expect(snapshot.expandedColumns).toEqual([NEXT]);
+	});
+
+	it('keeps a folded column through a base rename, since it names no file to prune', () => {
+		// The reason these are fields rather than keys in the collapse SET: the flush drops
+		// any key the vault has no file for, and a state value never has one.
+		vault.addFile('Old.base');
+		saveCollapseState(vault.app, { base: 'Old.base', view: 'Backlog' }, { ...none, collapsedColumns: [DONE] });
+		vault.files.delete('Old.base');
+		vault.addFile('New.base');
+		rekeyBase(vault.app, 'Old.base', 'New.base');
+
+		expect(loadCollapseState(vault.app, { base: 'New.base', view: 'Backlog' }).collapsedColumns).toEqual([DONE]);
+	});
+});

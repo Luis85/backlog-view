@@ -4,7 +4,7 @@ import { ProductBacklogView } from '../../src/view/backlogView';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
 import { flush, makeView, projectionButton, refresh, useViewHarness } from '../helpers/view';
 import { cardDrag } from '../helpers/dnd';
-import { cardByTitle, cardTitles, columnByName, columnNames, columnsOf, countOf } from '../helpers/board';
+import { cardByTitle, cardTitles, columnByName, columnNames, columnsOf, countOf, expandColumns } from '../helpers/board';
 
 useViewHarness();
 
@@ -23,6 +23,9 @@ function boardView(
 ) {
 	const harness = makeView(vault, cfg, { collapsed: true, ...opts });
 	harness.view.setProjection('board');
+	// A done column with no open work starts folded — see `expandColumns`. This suite is
+	// about what a board draws, so it opens them the way a reader would.
+	expandColumns(harness.containerEl);
 	return harness;
 }
 

@@ -6,6 +6,7 @@ import {
 	DELIVERABLES_MODE,
 	ProjectionMode,
 	ROADMAP_MODE,
+	CollapseSnapshot,
 	collapseStoreIdentity,
 	dropCollapseState,
 	loadCollapseState,
@@ -13,7 +14,7 @@ import {
 	saveCollapseState,
 	ViewIdentity,
 } from '../storage/collapseStore';
-import { BacklogViewHost, Projection } from './host';
+import { BacklogViewHost, ColumnScope, Projection } from './host';
 
 /**
  * The stored `mode` value for each projection, null for the tree — a `Record` rather
@@ -88,6 +89,25 @@ function notePath(key: string): string {
  */
 function laneKey(name: string): string {
 	return name.toLowerCase();
+}
+
+/**
+ * One board column's or horizon bucket's fold key: the scope it is drawn in, and its own
+ * value. `''` is the no-state column, which is a safe sentinel because a state that reads
+ * back empty is no state at all.
+ *
+ * SCOPED, because the same word can name a column on more than one screen — a requirements
+ * `Done`, a Deliverables `Done` and a horizon called `Done` are three columns and three
+ * folds. Lower-cased for {@link laneKey}'s reason, twice over: `boardColumns` indexes its
+ * columns on `state.toLowerCase()` and `buildRoadmap` does the same for buckets, so a value
+ * whose spelling changes is still one column and has to stay one fold.
+ *
+ * A NUL joins the two halves rather than a printable separator, the reason
+ * {@link TIMELINE_SCOPE} uses one: a state value is user data and may contain anything a
+ * user can type.
+ */
+function columnKey(scope: ColumnScope, value: string | null): string {
+	return `${scope}\u0000${(value ?? '').toLowerCase()}`;
 }
 
 /** The scope prefix a settled key carries, or '' for the tree's own bare path. */
@@ -196,6 +216,10 @@ export class CollapseState {
 	private hiddenShelfTypes = new Set<string>();
 	/** Resource bands folded shut, by name — see {@link isLaneCollapsed}. */
 	private foldedLanes = new Set<string>();
+	/** Board columns and horizon buckets folded shut, by {@link columnKey}. */
+	private foldedColumns = new Set<string>();
+	/** Columns opened AGAINST a default that would have folded them — see {@link columnCollapsed}. */
+	private openedColumns = new Set<string>();
 	private id: ViewIdentity | null = null;
 	private restored = false;
 	/** Kept so the identity can be re-resolved when the base is renamed under us. */
@@ -355,6 +379,48 @@ export class CollapseState {
 		return true;
 	}
 
+	/**
+	 * Whether one board column or horizon bucket is folded shut — and, the first time a
+	 * column's own default would fold it, the act of folding it.
+	 *
+	 * That is `collapseNewParents`' rule (a thing nobody has ruled on takes its default
+	 * exactly once) asked lazily rather than in a pass on the data update, because unlike a
+	 * parent a column does not exist in the MODEL: `boardColumns` and `buildRoadmap` derive
+	 * it inside the render, so the render is the first moment there is anything to settle.
+	 * A read that writes is the price of that, and it is bounded — it fires once per column
+	 * whose default applies, schedules a save and renders nothing.
+	 *
+	 * The default is asked freshly every pass rather than remembered as "seen", which is
+	 * again the tree's own shape: a row is not a parent until it has children, and a done
+	 * column is not noise until its last open card is finished. So a column that finishes
+	 * folds itself, and {@link openedColumns} is what makes that survivable — an explicit
+	 * open is remembered against exactly this default and is never taken back.
+	 */
+	columnCollapsed(scope: ColumnScope, value: string | null, autoCollapse: boolean): boolean {
+		const key = columnKey(scope, value);
+		if (this.foldedColumns.has(key)) return true;
+		// Open is the default, so an unfolded column nobody has ruled on needs no entry —
+		// only an open that CONTRADICTS a fold does, which is what `openedColumns` holds.
+		if (!autoCollapse || this.openedColumns.has(key)) return false;
+		this.foldedColumns.add(key);
+		this.scheduleSave();
+		return true;
+	}
+
+	setColumnCollapsed(scope: ColumnScope, value: string | null, collapsed: boolean): void {
+		const key = columnKey(scope, value);
+		// Exclusive: the two sets are one tri-state (folded, opened, never ruled on), so a
+		// key in both would make "did the reader open this against its default" unanswerable.
+		if (collapsed) {
+			this.foldedColumns.add(key);
+			this.openedColumns.delete(key);
+		} else {
+			this.foldedColumns.delete(key);
+			this.openedColumns.add(key);
+		}
+		this.scheduleSave();
+	}
+
 	/** Returns true when the state actually changed. */
 	set(key: string, collapsed: boolean): boolean {
 		const changed = collapsed ? !this.collapsed.has(key) : this.collapsed.delete(key);
@@ -431,6 +497,26 @@ export class CollapseState {
 		this.settled = new Set([...snapshot.collapsed, ...snapshot.expanded]);
 		seedTimelineScope(this.collapsed, this.settled);
 		seedCardScope(this.collapsed, this.settled);
+		this.restorePicks(snapshot);
+		this.shelfExpanded = snapshot.shelfExpanded ?? false;
+		this.shelfSortValue = snapshot.shelfSort ?? null;
+		this.hiddenShelfTypes = new Set(snapshot.shelfHiddenTypes ?? []);
+		// Normalized on the way back in as well, so an entry written before the key was
+		// canonical still shuts the band it was about.
+		this.foldedLanes = new Set((snapshot.collapsedLanes ?? []).map(laneKey));
+		// Stored as minted — `columnKey` is already canonical, so unlike a lane's there is
+		// nothing left to normalize here.
+		this.foldedColumns = new Set(snapshot.collapsedColumns ?? []);
+		this.openedColumns = new Set(snapshot.expandedColumns ?? []);
+	}
+
+	/**
+	 * The picks whose default is simply absence, read off the snapshot — split out of
+	 * {@link restore} for the reason `defaultPicks` was split out of `loadCollapseState`
+	 * one layer down: every pick added is another `??` in a method that was at the
+	 * complexity budget, and this half is nothing but those.
+	 */
+	private restorePicks(snapshot: CollapseSnapshot): void {
 		this.mode = snapshot.mode ?? null;
 		this.axis = snapshot.axis ?? null;
 		this.zoom = snapshot.zoom ?? null;
@@ -439,12 +525,6 @@ export class CollapseState {
 		this.colWidths = Object.assign(Object.create(null) as Record<string, number>, snapshot.colWidths ?? {});
 		this.focus = snapshot.focus ?? null;
 		this.clickFoldsValue = snapshot.clickFolds ?? false;
-		this.shelfExpanded = snapshot.shelfExpanded ?? false;
-		this.shelfSortValue = snapshot.shelfSort ?? null;
-		this.hiddenShelfTypes = new Set(snapshot.shelfHiddenTypes ?? []);
-		// Normalized on the way back in as well, so an entry written before the key was
-		// canonical still shuts the band it was about.
-		this.foldedLanes = new Set((snapshot.collapsedLanes ?? []).map(laneKey));
 	}
 
 	/** Write any pending change immediately — closing the view is when that matters most. */
@@ -523,6 +603,8 @@ export class CollapseState {
 			shelfSort: this.shelfSortValue,
 			shelfHiddenTypes: [...this.hiddenShelfTypes],
 			collapsedLanes: [...this.foldedLanes],
+			collapsedColumns: [...this.foldedColumns],
+			expandedColumns: [...this.openedColumns],
 		});
 	}
 }

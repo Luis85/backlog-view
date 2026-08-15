@@ -241,13 +241,23 @@ whole thing from the file resolved correctly while silently dropping both.
   tidying orphans an entry under a key nothing will look up again, and the next save
   prunes it for naming a file that no longer exists.
 - **Not everything a view remembers is keyed by a path, and the ones that are not stay out
-  of the collapse SET on purpose.** The shelf's hidden types and the resources axis's
-  folded bands (`collapsedLanes`) are per-view lists of NAMES — a type, a resource — and
+  of the collapse SET on purpose.** The shelf's hidden types, the resources axis's folded
+  bands (`collapsedLanes`) and the folded board columns and horizon buckets
+  (`collapsedColumns`/`expandedColumns`) are per-view lists of NAMES — a type, a resource,
+  a state value — and
   the rules below are all about paths: the flush drops an entry the vault has no file for,
   and the rename migrations move entries when a note or a base moves. A name put in that
   set would be pruned on the first save, which is why each is a field of the stored entry
   instead. They need no migration either: nothing renames a type or a resource, and a name
   no row draws simply has no band to shut.
+  The columns are the one of the three stored as a PAIR, and the reason is a default rather
+  than a shape: a band nobody has ruled on is open and needs no entry, while a done board
+  column nobody has ruled on is SHUT — so an explicit open has to be recorded or the
+  default would take it back on the next render. That is the same two-set argument
+  `collapsed`/`expanded` make for rows, reached for the second time and for the same
+  reason. Their key is scoped and lower-cased (`columnKey` in `view/collapseState.ts`),
+  because two boards and the horizon axis can each hold a `Done` and each identifies its
+  own columns case-insensitively.
 - Persisted state changes what pruning may key on. `collapseNewParents` must NOT drop
   paths that are missing from the model — a query that has not warmed up yet, or a
   filter the user just narrowed, would read as "these notes are gone" and throw away a
