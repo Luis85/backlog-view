@@ -233,6 +233,23 @@ const DELIVERABLE_FIELD_READ = {
 };
 
 /**
+ * A row's controls are wired on the PANE, never on the element. A listener built during
+ * a render closes over that render's `BacklogItem`, which is the previous model's object
+ * the moment an update lands — and reusing a row element is exactly what this codebase
+ * now does. The rule sits at the call rather than on a list of the controls, because the
+ * next control is the one a list would miss.
+ *
+ * It sees this spelling. A listener added through an aliased reference
+ * (`const on = el.addEventListener`) is not caught here and is caught by
+ * `test/view/rowControls.test.ts` only on the paths that test drives.
+ */
+const ROW_LISTENER = {
+	selector: "CallExpression[callee.property.name='addEventListener']",
+	message:
+		'A per-row control may not carry its own listener: it would close over this render\'s BacklogItem and go stale when the model is rebuilt. Add it to wireChipEvents in render/rows.ts, which resolves the item from data-path per event.',
+};
+
+/**
  * Flat config sets a rule wholesale per file: a narrower block REPLACES the wider one's
  * options rather than adding to them, so two blocks matching the same file would leave
  * it with only the later one's selectors — silently dropping the rest.
@@ -254,6 +271,13 @@ const RENDER = 'src/view/render/**/*.ts';
 // carved out of RENDER the same way RANKING_VIEW was carved out of RANKING, because a
 // rule applies to the rest of the region and not to this one file.
 const RENDER_BOARD = 'src/view/render/board.ts';
+// The row's own controls, carved out of RENDER for ROW_LISTENER: `rows.ts` wires the
+// tree's row and chip delegation (the only place a per-row listener may live),
+// `columns.ts` draws the state and horizon chips those delegate for, and `chips.ts`
+// draws the rest of them (the label and date chips) — main moved the chip renderers
+// there once `columns.ts` hit its own line budget, so a rule that stopped at the first
+// two would leave that third file free to grow a captured listener again.
+const ROW_CONTROLS = ['src/view/render/rows.ts', 'src/view/render/columns.ts', 'src/view/render/chips.ts'];
 // The rest of view/, once menu.ts, render/ and create.ts are carved out below.
 const VIEW = 'src/view/**/*.ts';
 // The card-move orchestration, exempt from DELIVERABLE_FIELD_READ for the same reason
@@ -392,15 +416,15 @@ export default defineConfig([
 		]),
 	},
 	{
-		// view/render/, minus RENDER_BOARD (its own block below): draws the column, never
-		// plans a write, so it is the one region allowed to import overBy. The write
-		// boundary and the menu-anchor rule still apply — nothing here is exempt from
-		// those, only from OVERBY. It offers types on the toolbar, so ALL_TYPES_IMPORT and
-		// CHILD_TYPE_CHOICES_NULL apply here too, and so does DELIVERABLE_FIELD_READ — the
-		// chip (`columns.ts`) is exactly the surface that must not hand-pick the raw
+		// view/render/, minus RENDER_BOARD and ROW_CONTROLS (their own blocks below): draws
+		// the column, never plans a write, so it is the one region allowed to import overBy.
+		// The write boundary and the menu-anchor rule still apply — nothing here is exempt
+		// from those, only from OVERBY. It offers types on the toolbar, so ALL_TYPES_IMPORT
+		// and CHILD_TYPE_CHOICES_NULL apply here too, and so does DELIVERABLE_FIELD_READ —
+		// the chip (`columns.ts`) is exactly the surface that must not hand-pick the raw
 		// fields itself.
 		files: [RENDER],
-		ignores: [RENDER_BOARD],
+		ignores: [RENDER_BOARD, ...ROW_CONTROLS],
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
@@ -418,6 +442,24 @@ export default defineConfig([
 		// DELIVERABLE_FIELD_READ does not apply here. Everything else RENDER carries does.
 		files: [RENDER_BOARD],
 		rules: syntaxRules([...SVG_CLASS_TOKENS, ...WRITE_BOUNDARY, MENU_ANCHOR, TREE_SCAN, ALL_TYPES_IMPORT, CHILD_TYPE_CHOICES_NULL]),
+	},
+	{
+		// The row's own controls, carved out of RENDER: everything RENDER carries, plus
+		// ROW_LISTENER — the rule that keeps a per-row control from wiring its own listener,
+		// so a render may KEEP a row element without leaving a handler pointing into the
+		// model the update replaced. See ROW_CONTROLS's own comment above for why all three
+		// files, and render/rows.ts for the delegation and its exemptions.
+		files: ROW_CONTROLS,
+		rules: syntaxRules([
+			...SVG_CLASS_TOKENS,
+			...WRITE_BOUNDARY,
+			MENU_ANCHOR,
+			TREE_SCAN,
+			ALL_TYPES_IMPORT,
+			CHILD_TYPE_CHOICES_NULL,
+			DELIVERABLE_FIELD_READ,
+			ROW_LISTENER,
+		]),
 	},
 	{
 		// The rest of view/ — everything under it once menu.ts, render/, create.ts,

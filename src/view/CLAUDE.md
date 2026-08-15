@@ -34,9 +34,13 @@ free of runtime code so imports stay cycle-free.
   from `rowEls`. The row, chip and drag listeners live on the PANE, one delegated set
   each for the view (`wireRowEvents` and `wireChipEvents` in `render/rows.ts`, `wireTree`
   in `interactions/dragDrop.ts`), resolving their row or item by `data-path` against the
-  current model per event — so nothing about a row is captured at wire time, a targeted
-  refresh that leaves surrounding rows in place cannot leave a handler holding a stale
-  item, and a data update rebuilds rows without rebuilding listeners. `wireChipEvents` is
+  current model per event. **No per-row control carries its own listener.** A render that
+  KEEPS a row element must not leave a handler pointing into the model the update
+  replaced, and a targeted refresh that leaves surrounding rows in place cannot leave one
+  holding a stale item — a data update rebuilds rows without rebuilding listeners. A
+  direct `addEventListener` in `render/rows.ts`, `render/columns.ts` or `render/chips.ts`
+  fails lint; an aliased one is caught only on a path `test/view/rowControls.test.ts`
+  drives. `wireChipEvents` is
   what a KEPT row depends on: a render that reused a row element instead of rebuilding it
   would still carry a stale-closured chip if that chip's own listener were wired at
   render time, so the delegation had to exist before that reuse could be safe. Per-row

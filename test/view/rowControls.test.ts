@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { FakeVault } from '../helpers/vault';
-import { makeView, rowByTitle, useViewHarness } from '../helpers/view';
+import { makeView, rowByTitle, titlesOf, useViewHarness } from '../helpers/view';
 import * as menu from '../../src/view/interactions/menu';
 
 useViewHarness();
@@ -60,5 +60,39 @@ describe('row controls after a data update', () => {
 		rowByTitle(containerEl, 'Parent').querySelector<HTMLElement>('.pbl-state-chip')?.click();
 
 		expect(spy).not.toHaveBeenCalled();
+	});
+
+	it('refolds a kept row from the children the model holds now', () => {
+		const vault = new FakeVault();
+		vault.addFile('Parent.md', { frontmatter: { type: 'Feature', order: 10 } });
+		vault.addFile('Child A.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Parent' });
+		vault.addFile('Child B.md', { frontmatter: { type: 'PBI', order: 20 }, parentLink: 'Parent' });
+		const { view, containerEl } = makeView(vault);
+		view.onDataUpdated();
+		expect(titlesOf(containerEl)).toEqual(['Parent', 'Child A', 'Child B']);
+
+		// The children REORDER. Adding one would not do: `descendantCount` is a signature
+		// term, so a new child rebuilds the parent's row and its closure with it, and the
+		// test would prove nothing about a kept disclosure. A swap leaves every one of the
+		// parent's own terms equal — same frontmatter, same count, same done count, same
+		// visible-children answer — so the parent's row is KEPT and its captured child
+		// list is the only thing that could be stale.
+		vault.setFrontmatter('Child A.md', { type: 'PBI', order: 30, parent: '[[Parent]]' });
+		view.onDataUpdated();
+
+		// Passes today because every update rebuilds the row. It is here for Task 5,
+		// where the row is KEPT and the disclosure's closure is what would go stale —
+		// the case a signature cannot catch, since the parent's own frontmatter and
+		// rollup are both unchanged by a reorder while its child list is not.
+		//
+		// The reorder is load-bearing, not incidental: this test was first written as
+		// "a child ARRIVES", which changes `descendantCount` — a signature term — so the
+		// parent's row would have been rebuilt and nothing about a kept disclosure would
+		// have been exercised. Do not simplify it back.
+		const row = rowByTitle(containerEl, 'Parent');
+		row.querySelector<HTMLElement>('.pbl-chevron')?.click(); // collapse
+		row.querySelector<HTMLElement>('.pbl-chevron')?.click(); // expand
+
+		expect(titlesOf(containerEl)).toEqual(['Parent', 'Child B', 'Child A']);
 	});
 });

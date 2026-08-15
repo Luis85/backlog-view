@@ -199,8 +199,16 @@ function renderRowLead(
 	// The tree refreshes the one subtree it changed; the dated axis's rows share this
 	// control and re-render whole, which is why what to redraw is the caller's — and which
 	// BIT it flips is the caller's for the same reason.
-	const fold = (): void => void host.setCollapsed(item.file.path, !host.isCollapsed(item.file.path));
-	renderChevron(host, row, { ...state, toggle: fold }, () => host.refreshSubtree(item));
+	const path = item.file.path;
+	const fold = (): void => void host.setCollapsed(path, !host.isCollapsed(path));
+	// Resolved per click, not captured: `refreshSubtree` renders the item's `children`,
+	// and on a KEPT row a captured item is the previous model's child list. `fold` above
+	// is safe for the opposite reason — a path is the row's identity and does not go
+	// stale. Two callbacks, one hazard; see ADR 0029.
+	renderChevron(host, row, { ...state, toggle: fold }, () => {
+		const current = host.model?.byPath.get(path);
+		if (current) host.refreshSubtree(current);
+	});
 
 	renderBadge(host, row, item);
 
@@ -213,6 +221,7 @@ function renderRowLead(
 	// against 12ms, because a skipped row must be laid out to be measured). A tooltip
 	// repeating a title that already fits is the price, and it is small.
 	setTooltip(title, item.title);
+	// eslint-disable-next-line no-restricted-syntax -- closes over a path string, never an item.
 	title.addEventListener('mouseover', (evt) => {
 		// NOTHING here may read layout — see `src/view/CLAUDE.md`.
 		host.app.workspace.trigger('hover-link', {
@@ -220,8 +229,8 @@ function renderRowLead(
 			source: PRODUCT_BACKLOG_VIEW_TYPE,
 			hoverParent: host.app.renderContext,
 			targetEl: title,
-			linktext: item.file.path,
-			sourcePath: item.file.path,
+			linktext: path,
+			sourcePath: path,
 		});
 	});
 
@@ -316,6 +325,7 @@ export function renderChevron(
 			: disclosureButton(rowEl, cls, { expanded: !state.collapsed, label, disabled: host.isFiltering() });
 	drawIcon(chevron, 'chevron-right');
 	chevron.toggleClass('pbl-expanded', !state.collapsed);
+	// eslint-disable-next-line no-restricted-syntax -- closes over state.toggle, redraw and the element, never a BacklogItem.
 	chevron.addEventListener('click', () => {
 		// Read here rather than trusted from `disabled`: a click landing on the icon
 		// inside a disabled button still reaches this listener, and the div form has no
@@ -417,7 +427,6 @@ function renderRowTrailing(ctx: RowContext, row: HTMLElement, item: BacklogItem,
 	});
 	drawIcon(addBtn, 'plus');
 	setTooltip(addBtn, addLabel(childTypes));
-	addBtn.addEventListener('click', () => promptCreateItem(ctx.host, childTypes, item));
 }
 
 /** A row that can hold only one type says so; one with a choice cannot promise which. */
@@ -522,41 +531,6 @@ function rowItem(host: BacklogViewHost, evt: Event): BacklogItem | null {
 }
 
 /**
- * The tree's row activation, wired ONCE on the pane — called from the view's
- * constructor, beside the keydown it mirrors. The per-row wiring this replaces cost a
- * listener set per row and rebuilt them all on every data update.
- */
-export function wireRowEvents(host: BacklogViewHost, treeEl: HTMLElement): void {
-	treeEl.addEventListener('click', (evt) => {
-		// Before selection AND before the fold: a control inside the row is not the row,
-		// whichever of the two things "clicking an item" is configured to mean. Folding on
-		// a chevron click would fold twice; folding on an add-button click would fold on
-		// the way to a modal.
-		if (fromRowControl(evt)) return;
-		const item = rowItem(host, evt);
-		if (!item) return;
-		host.selectItem(item, false);
-		const spent = foldOnClick(host, item, evt, {
-			// The tree's own two answers: the children it is currently drawing, and the
-			// one subtree its fold changes.
-			hasChildren: item.children.some((child) => !host.isRowHidden(child)),
-			redraw: () => host.refreshSubtree(item),
-		});
-		if (spent) return;
-		host.openItem(item, evt);
-	});
-	treeEl.addEventListener('auxclick', (evt) => {
-		if (evt.button !== 1 || fromRowControl(evt)) return;
-		const item = rowItem(host, evt);
-		if (item) host.openItemIn(item, 'tab');
-	});
-	treeEl.addEventListener('contextmenu', (evt) => {
-		const item = rowItem(host, evt);
-		if (item) showItemMenu(host, evt, item, offerableTypes(host, childTypeChoices(item)));
-	});
-}
-
-/**
  * The item any row- or card-aimed event is about, or null off both. Resolved at EVENT
  * time from `data-path` against the current model, never captured at render — which is
  * what lets a render KEEP a row element instead of rebuilding it. A chip that closed
@@ -608,6 +582,7 @@ const CHIP_ACTIONS: Record<string, ChipAction> = {
 		const end = chip.dataset.end;
 		if (end === 'start' || end === 'target') promptSchedule(host, item, [end]);
 	},
+	'pbl-add': (host, _evt, item) => promptCreateItem(host, offerableTypes(host, childTypeChoices(item)), item),
 	'pbl-tag-add': (host, evt, item) => showTagMenu(host, evt, item),
 	'pbl-tag-remove': (host, evt, item, chip) => {
 		// `preventDefault` only: the row's own handler already ignores a click on a
@@ -628,13 +603,51 @@ const CHIP_ACTIONS: Record<string, ChipAction> = {
  * two tag buttons take the other route to the same end: `renderTagCell` renders no
  * button at all for a context row, so the `button` prefix costs them nothing and the
  * selector still needs it — a bare `.pbl-tag-remove` would match nothing there either
- * way, but naming the rule once for all seven chips is cheaper than remembering which
+ * way, but naming the rule once for all eight chips is cheaper than remembering which
  * ones happen to need it. `button` is also the rule `fromRowControl` already states for
  * the same question, so this is the existing answer rather than a second one.
  */
 const CHIPS = Object.keys(CHIP_ACTIONS)
 	.map((cls) => `button.${cls}`)
 	.join(', ');
+
+/* eslint-disable no-restricted-syntax -- these two ARE the delegation: they take the
+   listeners off the rows so a render may keep one. The rule below them is what stops a
+   per-row control growing its own. */
+/**
+ * The tree's row activation, wired ONCE on the pane — called from the view's
+ * constructor, beside the keydown it mirrors. The per-row wiring this replaces cost a
+ * listener set per row and rebuilt them all on every data update.
+ */
+export function wireRowEvents(host: BacklogViewHost, treeEl: HTMLElement): void {
+	treeEl.addEventListener('click', (evt) => {
+		// Before selection AND before the fold: a control inside the row is not the row,
+		// whichever of the two things "clicking an item" is configured to mean. Folding on
+		// a chevron click would fold twice; folding on an add-button click would fold on
+		// the way to a modal.
+		if (fromRowControl(evt)) return;
+		const item = rowItem(host, evt);
+		if (!item) return;
+		host.selectItem(item, false);
+		const spent = foldOnClick(host, item, evt, {
+			// The tree's own two answers: the children it is currently drawing, and the
+			// one subtree its fold changes.
+			hasChildren: item.children.some((child) => !host.isRowHidden(child)),
+			redraw: () => host.refreshSubtree(item),
+		});
+		if (spent) return;
+		host.openItem(item, evt);
+	});
+	treeEl.addEventListener('auxclick', (evt) => {
+		if (evt.button !== 1 || fromRowControl(evt)) return;
+		const item = rowItem(host, evt);
+		if (item) host.openItemIn(item, 'tab');
+	});
+	treeEl.addEventListener('contextmenu', (evt) => {
+		const item = rowItem(host, evt);
+		if (item) showItemMenu(host, evt, item, offerableTypes(host, childTypeChoices(item)));
+	});
+}
 
 /**
  * Every per-item chip, on one delegated handler for the whole pane. Both card
@@ -656,3 +669,4 @@ export function wireChipEvents(host: BacklogViewHost, treeEl: HTMLElement): void
 		if (cls) CHIP_ACTIONS[cls](host, evt, item, chip);
 	});
 }
+/* eslint-enable no-restricted-syntax -- delegation ends here; a listener below this line is a per-row control's own. */
