@@ -1,7 +1,7 @@
 /** The bundle's entry point. Everything real is in `mount.ts`, which a test can drive. */
 import { mountHarness } from './mount';
 import { PROJECTIONS, perfWanted, reportPerf, wantedNotes } from './perf';
-import { drawSchemeToggle } from './theme';
+import { applyPlatform, drawSchemeToggle } from './theme';
 import { Projection } from '../../src/view/host';
 import { RoadmapAxis } from '../../src/domain/roadmap';
 
@@ -11,6 +11,9 @@ import { RoadmapAxis } from '../../src/domain/roadmap';
  */
 const wantedFixture = new URLSearchParams(window.location.search).get('fixture');
 const fixture = wantedFixture === 'edges' || wantedFixture === 'folders' ? wantedFixture : 'demo';
+// Before the mount: this is a body class the toolbar's own fit measurement can see, and
+// applying it afterwards would leave that measurement made against the other layout.
+applyPlatform(window.location.search);
 // `mount` is measured INSIDE `mountHarness`, around the view's own first draw — see
 // `Mount` there. Timed from out here it counted the fixture generation and the harness
 // chrome, which scale with `?notes=` and are not the view.

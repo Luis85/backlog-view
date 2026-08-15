@@ -60,6 +60,22 @@ describe('the manual dialog', () => {
 		expect(content().querySelector('.pbl-manual-pane h3')?.textContent).toBe('First');
 	});
 
+	// Both classes go on the MODAL and not on `contentEl`, and the sentence saying so was
+	// a comment with nothing behind it until the mock grew a `modalEl` (2026-08-15): the
+	// settings background is scoped to `.modal.mod-settings`, and the phone rules that
+	// stop a fixed 190px sidebar crushing the pane are `.is-phone .modal.mod-sidebar-layout`
+	// and `.is-phone .modal.mod-settings.mod-sidebar-layout` — neither matches on
+	// `mod-settings` alone, so dropping either class loses a layout silently.
+	it('marks the modal element itself with both classes the vendored rules require', () => {
+		openManual({} as never, SECTIONS, 'one');
+		const modalEl = Modal.lastOpened?.modalEl;
+		expect(modalEl?.hasClass('mod-settings')).toBe(true);
+		expect(modalEl?.hasClass('mod-sidebar-layout')).toBe(true);
+		// On the modal, NOT on the content: a test that only counted the classes would
+		// pass with both on the element whose rules never match.
+		expect(content().hasClass('mod-sidebar-layout')).toBe(false);
+	});
+
 	// Focus policy belongs to the caller, so what this asserts is that the dialog CALLS
 	// back — where focus lands is each door's own test, in `manualEntryPoints.test.ts`.
 	it('tells the caller when it closes, so focus policy stays out of ui/', () => {

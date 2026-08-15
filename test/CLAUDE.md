@@ -86,13 +86,17 @@ a watched-failing test" — stay in [`../CLAUDE.md`](../CLAUDE.md).
 
 `npm run harness` bundles the REAL view into a static page — no Obsidian, no server, no
 browser-automation dependency — and prints a `file://` URL. `?view=board`,
-`?view=roadmap` and `?view=deliverables` open straight into a projection and `?theme=light` into the light scheme,
+`?view=roadmap` and `?view=deliverables` open straight into a projection, `?theme=light` into the light scheme,
+and `?phone` puts Obsidian's own `is-phone`/`is-mobile` body classes on the page,
 so a headless screenshot of a URL needs nothing to click; a corner toggle switches the
 scheme by hand, and it is the harness's furniture rather than the view's. The toolbar switches projections, and the drags, menu entries and
-keyboard moves are the view's own — but the menu and dialog WIDGETS are drawn by
-`test/harness/chrome.ts`, because the module mock records a `Menu`/`Modal` and renders
-nothing. What they contain and what they do is the view's; what they look like is not
-Obsidian's.
+keyboard moves are the view's own — but the menu WIDGET is drawn by
+`test/harness/chrome.ts`, because the module mock records a `Menu` and renders
+nothing. What it contains and what it does is the view's; what it looks like is not
+Obsidian's. The DIALOG stopped being that on 2026-08-15: the mock's `Modal` now has
+Obsidian's own `modalEl`, and `chrome.ts` appends THAT, so `.modal` and
+`.modal.mod-settings` in the vendored sheet paint it. Only its placement is the
+harness's — see the `chrome.ts` bullet below for the four rules that leaves absent.
 
 - `test/harness/mount.ts` — mounts `ProductBacklogView` against `demoVault()`, re-rendering
   once a batch of writes stops. `test/harness/page.ts` is the bundle entry and is two
@@ -172,7 +176,31 @@ Obsidian's.
   are "visible".
 - `test/harness/chrome.ts` — patches the mock's `Menu` and `Modal` to appear, from the
   harness rather than in the mock, so the 68 files asserting through `lastShown` /
-  `lastOpened` measure exactly what they did before.
+  `lastOpened` measure exactly what they did before. The MENU it draws is its own widget.
+  The DIALOG is Obsidian's own `.modal` element (the mock's `modalEl`, which the plugin
+  writes `mod-settings mod-sidebar-layout` to) inside a `.pbl-harness-modal` overlay, and
+  that split is where the fidelity is: the box takes app.css's `.modal` rule and the
+  manual takes `.modal.mod-settings`, both of which resolved in the vendored sheet and
+  matched nothing while a hand-written `.pbl-harness-modal-box` drew over them. What is
+  still absent is the other side of the same coin — the reduction keeps what the harness
+  was DRIVEN through, and nothing ever drove Obsidian's own `.modal-container`,
+  `.modal-bg`, `.modal-title` or `.modal-content`, so those four are not in the file. A
+  title reads unstyled here and the content pane does not grow to the frame; that is loud,
+  and a re-derivation against a local install is what fills it. Guessing them in
+  `theme.css` is refused for the reason that file's header gives. **The manual is the one
+  thing that reads WORSE than before**: nothing in the sheet widens a settings dialog past
+  `--dialog-width`, so it draws at 560px on a desktop and its prose clips — where the
+  guessed box, having no width at all, sized to its content. Not a defect in the manual,
+  and not present under `?phone`, whose rules the sheet does have.
+- `test/harness/theme.ts` — the two things the page tells the stylesheet about its
+  environment, both a body class and nothing more: the colour scheme (`?theme=light`, plus
+  the corner toggle) and `?phone`, which sets `is-phone` and `is-mobile` the way Obsidian's
+  shell does. `?phone` is what makes `styles/manual.css`'s seven phone rules and the
+  vendored sheet's `.is-mobile` variable block reachable at all — they were unreachable
+  here until 2026-08-15. It is a class switch and no more: the viewport is still the
+  window, the pointer is still a mouse, and `styles/touch.css` keys on
+  `@media (hover: none)` rather than on a class, so that partial is a browser's own device
+  emulation to reach and the gestures are still a real device's.
 - `test/harness/icons.ts` — draws the real lucide glyph for each `setIcon` name, through
   `setIconRenderer`, the one hook the mock exposes; by default the mock still only
   records `data-icon`, so the suite is untouched. An unresolvable name is marked rather
@@ -198,7 +226,8 @@ not:** a user's colours, and any layout a partial leans on an Obsidian element d
 supply rather than writing itself. Two files answer that now, in order:
 `test/harness/obsidian.css` is Obsidian's REAL app.css, reduced to the rules the harness
 exercises (its header states what was kept and why), and `test/harness/theme.css` carries
-the harness's own chrome — the leaf frame, the menu and modal widgets, the missing-icon
+the harness's own chrome — the leaf frame, the menu widget, the dialog's overlay
+(its BOX went to Obsidian's `.modal` rule on 2026-08-15), the missing-icon
 marker — and, since 2026-08-10, no Obsidian value at all. Loading the real sheet first is what makes an
 element default present at all rather than approximated: a card-children disclosure whose
 toggle rendered as a centred, boxed native button shipped looking right here and wrong in

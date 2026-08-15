@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { mountHarness } from './mount';
+import { applyPlatform } from './theme';
+import { Modal } from '../helpers/obsidian-mock';
 import { installObsidianDom } from '../helpers/dom';
 import { clickExpandAll, projectionButton, submitPrompt } from '../helpers/view';
 import { barFor, gripNames } from '../helpers/roadmap';
@@ -366,6 +368,24 @@ describe('the chrome the mock only records', () => {
 		expect(vault.fm('Onboarding.md').status).toBe('Active');
 	});
 
+	// The box the dialog draws in used to be `.pbl-harness-modal-box`, hand-written, while
+	// app.css's `.modal` sat in the vendored sheet resolving correctly and matching
+	// nothing — the same shape as the disclosure that shipped looking right here and wrong
+	// in a vault. What this holds is that the frame on the page IS the modal's own
+	// element, so the plugin's classes on it (`mod-settings`, `mod-sidebar-layout`) and
+	// Obsidian's rules for it are what paint the dialog.
+	it('draws the dialog in the modal’s own element, not a box of the harness’s', () => {
+		const { containerEl } = mount();
+		containerEl.querySelector<HTMLElement>('.pbl-new-btn')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		const frame = document.querySelector<HTMLElement>('.pbl-harness-modal > .modal');
+		expect(frame).toBe(Modal.lastOpened?.modalEl);
+		// Obsidian's own class on the overlay too, which is what the `.is-phone
+		// .modal-container` rules in the vendored sheet need to match under `?phone`.
+		expect(document.querySelector('.pbl-harness-modal')?.hasClass('modal-container')).toBe(true);
+		expect(frame?.querySelector('.modal-content')).toBe(Modal.lastOpened?.contentEl);
+	});
+
 	it('puts a dialog on the page, and re-renders once the note it creates lands', async () => {
 		const { containerEl, vault } = mount();
 		const newItem = containerEl.querySelector<HTMLElement>('.pbl-new-btn');
@@ -381,6 +401,26 @@ describe('the chrome the mock only records', () => {
 		// The re-render is the point: the fake vault notifies on create as well as on a
 		// write, so the new row is on screen rather than waiting for an unrelated edit.
 		expect(titlesIn(containerEl)).toContain('Drawn by the harness');
+	});
+});
+
+/**
+ * `?phone` is a body class and nothing else, so what is checkable here is the class —
+ * which rule then matches is the browser's answer and jsdom computes no linked
+ * stylesheet. Worth checking anyway: the knob is spelled once, and a page that quietly
+ * set neither class would look exactly like a page whose phone rules had all stopped
+ * matching. Both classes, because Obsidian's shell sets both and the vendored sheet's
+ * variable block is keyed on the one the plugin's own partials never name.
+ */
+describe('the page can say it is a phone', () => {
+	it('sets both of Obsidian’s phone classes, and takes them off again', () => {
+		applyPlatform('?phone');
+		expect(document.body.hasClass('is-phone')).toBe(true);
+		expect(document.body.hasClass('is-mobile')).toBe(true);
+
+		applyPlatform('?view=board');
+		expect(document.body.hasClass('is-phone')).toBe(false);
+		expect(document.body.hasClass('is-mobile')).toBe(false);
 	});
 });
 
