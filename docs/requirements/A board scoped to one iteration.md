@@ -99,11 +99,31 @@ the moment the populations diverged, which is exactly what happened.
   and hidden", which cannot tell an empty base from an empty scope. The same distinction
   [[A board scoped to Deliverables]] extension 1b had to draw, met a second time
   ([[Board empty states]]).
-- **3c — a focus level is active.** It narrows this board exactly as it narrows the
-  product board, and that is a consequence rather than a decision: the cards come from
-  the focused results, which is what a focus narrows. This board does **not** copy the
-  Deliverables board's immunity, which exists because that board reads the whole
-  unfocused tree for a population defined by type.
+- **3c — a focus level is active** (set from another projection and carried over).
+  **No focus level narrows this board, at any level, ever.** The cards are read off the
+  whole, unfocused tree, the way `model.deliverableResults` already is and for the same
+  reason: a control left set on another projection must not make this board's work
+  disappear.
+
+  An earlier draft of this note said the opposite — that a focus narrows this board
+  "exactly as it narrows the product board" — and it was incoherent twice over. A focus
+  level is a **ladder** control: it picks which rung becomes a card and rolls the rest up.
+  This board's population is defined by an explicit **link**, which the ladder knows
+  nothing about, so there is no rung for a focus to pick. And the product board does not
+  narrow the way that draft assumed: under a focus it cards
+  `requirementsFocusRoots(model.roots)`, not the results, so copying it would card a
+  focused Feature *and* its matching descendants at once. Following it properly is worse
+  still — a PBI in Sprint 12 whose Feature is in Sprint 13 would vanish from Sprint 12's
+  board, which is the sprint's own content hidden by a setting made somewhere else.
+
+  This is the ruling the human already made for the sibling board, in these words: *"when
+  a type level is set and the user goes to the deliverables board, the type level shall
+  not affect this board… there are only the deliverables to display."* There are only this
+  iteration's items to display.
+- **3h — the toolbar's focus picker, while an iteration scope is chosen.** It offers no
+  menu and renders no "Focused: <level>" label and no clear button, exactly as it does on
+  the Deliverables board: whatever the inherited focus, it does not narrow this board, so
+  there is nothing for a label to name and nothing for a clear button to undo.
 - **3d — an item's own iteration differs from its parent's.** Its own value decides, and
   the parent's is not consulted. Nothing is inherited down the tree.
 - **3e — a `Deliverable` carries the chosen iteration link.** It **is** a card here, and
@@ -148,10 +168,20 @@ the moment the populations diverged, which is exactly what happened.
   state property. The card leaves in silence, as it already does on every other board:
   nothing correlates a Bases pass with a write, so no outcome report is attempted here
   either. The open question is recorded, not reopened.
-- **5b — "Show completed items" is off and a card's iteration state reads as done.** The
-  control is not implemented for this board in this increment, following the Deliverables
-  board's own deferral for the same reason: answering it needs a rollup over the
-  iteration workflow, not the product one.
+- **5b — "Show completed items" is off.** It does not reach this board, and that is one
+  field rather than a per-caller choice: `hideCompleted` is false in this projection's
+  `VisibilityRule`, exactly as it is for the Deliverables board. The toggle describes the
+  **requirements** rollup (`item.subtreeDone`), and this board's completion is a question
+  the iteration workflow answers, so letting it through would hide a card by a verdict
+  from a workflow this board does not draw. A card whose *product* state reads as done
+  therefore still renders here, and the control is absent from the toolbar rather than
+  present and inert. Answering completion properly needs a rollup over the iteration
+  workflow, which nothing has asked for yet.
+
+  The rule is set in the one predicate rather than at the call sites for the reason that
+  predicate's own comment records: it was a per-caller choice for three surfaces and the
+  fourth forgot, emptying a card's child disclosure from a setting flipped on another
+  projection.
 
 ## Acceptance criteria
 
@@ -165,6 +195,12 @@ the moment the populations diverged, which is exactly what happened.
 - Cards are exactly the results whose iteration link resolves to the chosen note,
   **whatever their type**. No descendant appears by inheritance, no type is filtered out,
   and no result the link names is missing: the column counts sum to that population.
+- **No focus level narrows this board**, checked over every level `ALL_TYPES` names plus
+  no focus at all, because the population is read off the whole unfocused tree. The
+  toolbar's focus picker renders no menu, no label and no clear button here.
+- "Show completed items" does not reach this board: `hideCompleted` is false in its
+  `VisibilityRule`, so a card whose product state reads as done still renders, and the
+  toolbar omits the control rather than showing an inert one.
 - A `Deliverable` naming the iteration draws a card here, is columned by the iteration
   workflow, and takes its finished styling from that workflow's done values — not from
   the Deliverable workflow's, and not from the product board's.

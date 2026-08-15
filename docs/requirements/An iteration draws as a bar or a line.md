@@ -99,6 +99,12 @@ call sites rather than trusting a rule to reach them.
   is a `.base` setting and not UI state: the writer resolves it from settings, and
   `storage/` cannot reach the localStorage the working position lives in without breaking
   the layer rule.
+- **5b — the option is on but only one date property is configured.** The end without a
+  configured key is not writable and gets no grip, whatever the option says. The two
+  questions are independent and both must pass: `drawsAsPoint` says which ends this
+  **type** admits, `optionalKeyFor` says which the **configuration** can store, and
+  `barHolds` already takes the intersection. This option widens the first and must never
+  be read as widening the second.
 
 ## Acceptance criteria
 
@@ -111,9 +117,15 @@ call sites rather than trusting a rule to reach them.
 - With it on, an `Iteration` draws a start→target bar, draws no boundary line, and obeys
   every ordinary span rule — the reversed-span shelving, and the open-ended bar a single
   date gives every other item.
-- With it on, **both grips are on the bar**, which means `barHolds` asks the new predicate
-  on its own line rather than keeping its `isMarkerType` branch. A criterion satisfied by
-  `placementEnds` alone would ship a bar nobody can resize.
+- With it on, **each grip is on the bar wherever its own date property is configured**,
+  which means `barHolds` asks the new predicate on its own line rather than keeping its
+  `isMarkerType` branch. Both halves are load-bearing and they pull opposite ways. Without
+  the first, `placementEnds` widens and that branch still returns a body hold, so the bar
+  draws and nobody can resize it. Without the second, a base configured with a target
+  property and no start property would offer a start grip whose drag writes an
+  unconfigured key — which `barHolds` already refuses through `optionalKeyFor`, and which
+  no new predicate may talk it out of. The type decides whether an end is *drawable*; the
+  configuration decides whether it is *writable*; a grip needs both.
 - Every path that places a date — the row's Schedule and Unschedule, the shelf drop, the
   body slide, both grips, and the writer — narrows by asking the predicate, never by
   restating it.

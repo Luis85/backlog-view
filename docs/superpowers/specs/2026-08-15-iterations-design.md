@@ -149,13 +149,32 @@ The context-row rule applies unchanged: an `outsideFilter` item renders, it pare
 that is all — never a card to drag, never a write target, never counted, never a source
 of this board's column vocabulary.
 
-Two controls behave differently from the Deliverables board, and the difference is not an
-exception but a consequence of where the population comes from. An iteration board draws
-from `model.results`, which is what a focus narrows, so **the focus level narrows it
-exactly as it narrows the product board** — nothing here reads the whole unfocused tree
-the way `model.deliverableResults` deliberately does. **"Show completed items" is not
-implemented here** in this increment, following the Deliverables board's own deferral:
-answering it needs a rollup over the iteration workflow, not the requirements one.
+**Neither of the two narrowing controls reaches this board**, which is the Deliverables
+board's arrangement adopted wholesale rather than an exception argued case by case.
+
+*No focus level narrows it, at any level.* The cards are read off the whole, unfocused
+tree, the way `model.deliverableResults` already is. An earlier draft of this spec said
+the opposite and was wrong twice. A focus level is a **ladder** control — it picks which
+rung becomes a card — and this population is defined by a **link**, which the ladder knows
+nothing about, so there is no rung to pick. And the product board does not narrow the way
+that draft assumed: under a focus it cards `requirementsFocusRoots(model.roots)`, not the
+results, so "narrows exactly as the product board does" named no behaviour that exists.
+Implementing it faithfully would be worse than incoherent — a PBI in Sprint 12 whose
+Feature sits in Sprint 13 would disappear from Sprint 12's board because of a control set
+on another projection. The human already ruled this way for the sibling board: *"there are
+only the deliverables to display."* There are only this iteration's items to display.
+
+*"Show completed items" does not reach it either*, as one field — `hideCompleted: false`
+in this projection's `VisibilityRule` — never a per-caller choice. That predicate's own
+comment records why: it was a per-caller choice for three surfaces and the fourth forgot.
+The toggle describes the **requirements** rollup (`item.subtreeDone`), and completion here
+is the iteration workflow's question, so a card whose product state reads as done still
+renders. Answering completion properly needs a rollup over the iteration workflow, which
+nothing has asked for.
+
+The toolbar follows: on an iteration scope the focus picker renders no menu, no
+"Focused: <level>" label and no clear button, and "Show completed items" is absent rather
+than present and inert.
 
 ## 5 — Its own workflow, based on the product one
 
@@ -226,6 +245,13 @@ predicates inside one function — `placementEnds` for which ends are writable, 
 on, the bar drawn, and neither grip there. It is the third question the single predicate
 answers today — what a *gesture* may take hold of — and finding it is what turned a
 two-way split into a three-way one.
+
+**A grip needs two independent yeses, and this option buys only one.** The *type* decides
+which ends are drawable (`drawsAsPoint`); the *configuration* decides which are writable
+(`optionalKeyFor`, which `barHolds` already checks). A base with a target property and no
+start property gets no start grip on an iteration bar, exactly as it gets none on any
+other bar, because a grip whose drag writes an unconfigured key is the safe-write rule
+broken. Widening the first question must never be read as widening the second.
 
 **The toggle is a `.base` view option** (`iterationBars`, in the Iterations group), not
 UI state. That is not a preference call: `placementEnds` is read by the **writer** in
