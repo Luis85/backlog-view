@@ -886,6 +886,29 @@ describe('row reuse across a data update', () => {
 		expect(titlesOf(containerEl)).toEqual(['Epic', 'Beta', 'Gamma', 'Alpha', 'Deep']);
 	});
 
+	it('re-indents a reused child group when its parent is reparented deeper', () => {
+		// A same-depth sibling reorder does not exercise this: the group's own
+		// `--pbl-depth` is written by `childGroupEl` at CREATION only, so a reparent to a
+		// new depth rebuilds the row (depth is in the signature) and leaves the reused
+		// group's indent guide at the old level.
+		const vault = backlog();
+		vault.addFile('Deep.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Alpha' });
+		const { view, containerEl } = makeView(vault, { stateKey: 'status' });
+		view.onDataUpdated();
+
+		// Alpha moves from under Epic to under Beta — one level deeper, still expanded.
+		vault.setFrontmatter('Alpha.md', { type: 'Feature', order: 10, status: 'Open', parent: '[[Beta]]' });
+		view.onDataUpdated();
+
+		const row = rowByTitle(containerEl, 'Alpha');
+		const group = row.nextElementSibling as HTMLElement;
+		expect(group.hasClass('pbl-children')).toBe(true);
+		// Asserted against the ROW's own depth rather than a literal: `renderItem` and
+		// `childGroupEl` write the same number, and the bug is precisely that they stop
+		// agreeing. A hard-coded 2 would still pass if both drifted together.
+		expect(group.style.getPropertyValue('--pbl-depth')).toBe(row.style.getPropertyValue('--pbl-depth'));
+	});
+
 	it('rebuilds every row when a setting that changes a row is toggled', () => {
 		const { view, containerEl } = makeView(backlog(), { stateKey: 'status', showCounts: false });
 		view.onDataUpdated();
@@ -1043,13 +1066,17 @@ function renderForest(ctx: RowContext, containerEl: HTMLElement, siblings: Backl
 
 - The row and its `.pbl-children` group are **one structural unit**. The group is the row's **next sibling**, not its descendant — `childGroupEl` builds it in the container and `refreshRowChildren` reaches it by `row.nextElementSibling`. Moving, replacing and detaching all take both.
 - **Whether a group should exist is asked of the item, never of what happened to the row.** The condition is the one `renderItem` already computes — any visible child, and not collapsed — and it is answered the same way whether the row was kept, replaced or built:
-  - it should exist and one is there → reuse that element and recurse into it;
+  - it should exist and one is there → reuse that element and recurse into it, **after re-writing its `--pbl-depth`**;
   - it should exist and none is there → create it;
   - it should not exist and one is there → `forgetElement` it and detach.
 
   Writing this as "a replaced row keeps its group, a new row creates one" is wrong in both directions, and `Collapse all` is the case that shows it: it flips `collapsed`, so the signature changes and the row is replaced, and a keep-the-group rule would leave the collapsed descendants on screen. Expanding a row that was already indexed is the mirror — the row is not new, and it needs a group it does not have.
 
   Reusing the group where it survives is still what keeps a reordered parent from rebuilding its whole subtree, which is the cost this task exists to remove. It is just not the rule; it is one branch of it.
+
+  **A group is an element with state too**, so ask it the same question the rows get: what does it draw from? `childGroupEl` writes `--pbl-depth` from `item.depth` and nothing else, and it writes it **only at creation**. Reparent an expanded item to a different depth and its row rebuilds — `depth` is in the signature — while the reused group keeps the old indent guide. So a claimed group has that one property re-written from the current item. One line, and cheaper than recreating the group and its subtree with it.
+
+  Extract the claim-or-create into a small helper beside `childGroupEl` rather than inlining three branches into `renderItem`; `childGroupEl` becomes its create arm, and the depth write is then stated once for both arms instead of once per caller.
 - `forgetElement` drops the detached element's path **and every path in its group** from `ctx.rows` and `ctx.sigs` — the job `forgetSubtree` does today, reached from the DOM rather than from the model, because the model no longer describes what is on screen at that point.
 - Every claim and every build writes `ctx.sigs.set(path, sig)`, so the next pass compares against what this pass actually drew.
 
