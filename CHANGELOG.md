@@ -29,6 +29,12 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Changed
 
+- **State colours no longer offer a done state.** A finished bar is drawn green whatever
+  is stored against it, so the swatch for a done state could never change anything on the
+  grid or in the legend. The dialog now lists the open states only, and says so; a colour
+  a `.base` still holds for a done state is ignored. Done is read per workflow, so a value
+  only one of your two workflows finishes on still gets a swatch for the other.
+
 - **Lanes will not be built** on the roadmap or the board. They were tried and refused.
 
 ## [0.8.0] - 2026-08-14
