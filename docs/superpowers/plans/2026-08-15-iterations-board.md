@@ -2038,12 +2038,21 @@ it('is taken back by the one undo slot', async () => {
 });
 
 it('refuses the whole batch when a write targets a context card', async () => {
-	await expect(moveCard(contextPbi, 'Shipped', { scope: sprint12 })).rejects.toThrow();
+	// `applySafely` returns null for an `outsideFilter` target and `applyCardMove`
+	// turns that into `false` — it does NOT throw. The existing context-card tests
+	// assert the same shape, and a `.rejects` expectation fails even when the gate
+	// refuses correctly.
+	expect(await moveCard(contextPbi, 'Shipped', { scope: sprint12 })).toBe(false);
+	expect(written(contextPbi)).toEqual({});
 });
 
 for (const input of ['drag', 'keyboard', 'menu'] as const) {
-	it(`announces itself the same way from ${input}`, async () => {
-		expect(await announcementFrom(input, pbi, 'Shipped')).toBe('Login flow moved to Shipped');
+	it(`announces itself in the SHARED words from ${input}`, async () => {
+		// The existing formatter, verbatim — quoting, capitalisation and the SOURCE
+		// column included. Inventing an iteration-only sentence is exactly what the
+		// same-words guarantee forbids.
+		expect(await announcementFrom(input, pbi, 'Shipped'))
+			.toBe('Moved "Login flow" from Started to Shipped');
 	});
 }
 ```
@@ -2055,9 +2064,16 @@ Expected: FAIL.
 
 - [ ] **Step 3: Route the three inputs — and for the menu, routing is not enough**
 
-`cardDrag.ts` and `keyboard.ts` (Alt+Left/Right) each gain a branch selecting this method
-in the `'iteration'` projection — and in `keyboard.ts` that branch goes **before** the
-type branch, not beside it. `handleBoardMoveKey` tests `isDeliverableType(card.typeName)`
+**In `keyboard.ts`, the dispatch comes before the branch.** `handleProjectionKeydown`
+sends only `'board'` and `'deliverables'` to `handleBoardKeydown`; everything else falls
+to the tree handler. So `'iteration'` must be added to that top-level dispatch **first**,
+or the whole board keyboard is lost — no card navigation, and Alt+Left/Right running the
+tree's outdent/indent, which is a HIERARCHY write where a state move was meant. That is a
+worse failure than the one below, and the branch below is unreachable without it.
+
+With the dispatch fixed, `cardDrag.ts` and `keyboard.ts` each gain a branch selecting this
+method in the `'iteration'` projection — and in `keyboard.ts` that branch goes **before**
+the type branch, not beside it. `handleBoardMoveKey` tests `isDeliverableType(card.typeName)`
 first and calls `performDeliverablesBoardMove`, so a Deliverable moved with Alt+arrow on
 an iteration board would write the Deliverables key while sitting in an iteration column.
 
