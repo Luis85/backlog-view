@@ -44,8 +44,15 @@ An eighth declared name, in `MARKER_TYPES` beside `Milestone` (`src/domain/typeV
 A marker occupies no rung, holds nothing and hangs from nothing, which is what an
 iteration is: items *link* to it, they are never its children. Every structural rule
 that follows is therefore inherited rather than written — no rung in the ladder, no `+`
-offering to create a child under it, no dependency edges, ranked out of the ladder by
-`itemTypes.ts`.
+offering to create a child under it, no **outgoing** dependency edge, ranked out of the
+ladder by `itemTypes.ts`.
+
+Outgoing only. A marker declares no prerequisites (`candidates` returns none for one) but
+can still be **waited for**: `candidates` draws from `model.byPath` and excludes only
+context rows, loops and what is already named. So any item may name an iteration as its
+prerequisite, exactly as it may name a milestone — coherent ("this cannot start until
+Sprint 12 closes"), already true of the other marker, and refusing it for one name would
+be a rule about that name rather than about markers.
 
 It owes the three shipped opinions ADR 0013 requires of a declared name: a default
 subfolder (`iterations`, in `DEFAULT_TYPE_SUBFOLDERS`), an icon, and a badge colour.
@@ -141,14 +148,23 @@ sit together. The product board is scoped to a kind of work and the Deliverables
 another; this one is scoped to a fortnight, which does not care what kind of note a piece
 of work is.
 
-Two consequences follow and both are wanted. A `Deliverable` card is columned by the
-**iteration** workflow like every other card here — one board has one column list — and
-its finished styling comes from that workflow's done values through the shared card
-shell, which already takes completion as an input rather than reading `item.done`. So a
-Deliverable may read `Done` on its own board and `In review` here, and both are true.
-And the board's observed vocabulary is collected from **its own** population, so a value
-only a Deliverable carries mints a column here, the mirror of the rule
-`requirementsWorkflow` keeps for the same reason.
+Three consequences follow. A `Deliverable` card is **columned** by the iteration workflow
+like every other card here — one board has one column list. The board's observed
+vocabulary is collected from **its own** population, so a value only a Deliverable carries
+mints a column here, the mirror of the rule `requirementsWorkflow` keeps for the same
+reason.
+
+The third is a correction. An earlier draft said a card's finished styling would come from
+the iteration workflow, "through the shared card shell, which already takes completion as
+an input rather than reading `item.done`". **That is false about this codebase.**
+`createCard` asks `ownWorkflowReading(item)` and takes **no** completion parameter; its
+comment records that the parameter was removed precisely because a per-board override is a
+category invariant asked at the places someone thought of — the Deliverables board and the
+timeline passed their own while the horizon buckets, the shelf and the context strip
+styled a Deliverable by a workflow that does not track it. So on an iteration board **no**
+card's `pbl-done` follows the iteration workflow: each follows its own type's. A card can
+sit in a column this board calls done and not be styled done. That is the honest outcome
+and the cheap one; restoring the override would re-open a hole for one screen.
 
 What this costs is a claim the design cannot make: *every card on an iteration board is
 also a card on the product board* is false, and an earlier draft used it as the argument

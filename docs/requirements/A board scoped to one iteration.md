@@ -89,7 +89,20 @@ the moment the populations diverged, which is exactly what happened.
   one base can hold a product board beside an iteration board over the same notes. That
   is why the scope is per saved view rather than per base.
 - **2c — a quick filter is active.** It carries over rather than clearing, in every scope
-  alike, because dropping it on a switch would make the picker destructive.
+  alike, because dropping it on a switch would make the picker destructive — **and it is
+  indexed over the whole tree here, not the focused forest.** `filterScopeFor` answers
+  `'whole'` for the Deliverables board and `'focused'` for everything else, and it takes
+  the **projection** alone, which a board scope does not change. So it has to learn about
+  the scope, or an inherited focus would hide a matching card through the filter that 3c
+  just promised no focus could hide. The two answers must agree: a board whose population
+  ignores the focus needs a match index that ignores it too, or the promise holds for the
+  cards and breaks for the search.
+- **2d — the toolbar's item count, with an iteration chosen.** It counts **this scope's**
+  carriers. `countedPopulation` reads the projection and answers `model.results` minus
+  Deliverables for every `board`, which is wrong here twice over: it counts product work
+  this board never shows, and it drops the Deliverables this board deliberately includes.
+  It is one function precisely so the count label and the completed toggle's "(N hidden)"
+  cannot disagree, so the scope belongs inside it rather than beside it.
 - **3a — a card is outside the Base's filter.** The context-row rule holds here exactly
   as on the product board: it renders as a breadcrumb, a lane header or an inert context
   card, and that is all — never a card to drag, never a write target, never counted,
@@ -152,13 +165,29 @@ the moment the populations diverged, which is exactly what happened.
 - **3f — a `Deliverable` card is on this board and its column is asked for.** The
   **iteration** workflow decides, exactly as it does for every other card here. One board
   has one column list; a board that columned some cards by one vocabulary and some by
-  another would not be a board. Its finished styling follows the same source — the
-  iteration workflow's own done values, never the Deliverable workflow's — through the
-  shared card shell, which already takes completion as an input rather than reading
-  `item.done` itself, precisely so two boards can disagree about one card without either
-  lying ([[A Deliverable is coloured by its own workflow]]). A Deliverable can therefore
-  read `Done` on its own board and `In review` here, and both are true of it.
-- **3g — a value under the iteration state key is carried only by a `Deliverable`.** It
+  another would not be a board.
+- **3g — the same card's FINISHED STYLING is asked for.** It comes from the item's **own**
+  workflow, not from this board's — a Deliverable's from the Deliverable workflow, a PBI's
+  from the product one — so on an iteration board **no** card's `pbl-done` is decided by
+  the iteration workflow, and a card can sit in a column this board calls done while not
+  being styled as done.
+
+  That reads like an inconsistency and is a deliberate rule kept where it is decided.
+  `createCard` asks `ownWorkflowReading(item)` and takes **no** completion parameter, and
+  its comment records why: it *was* a parameter with an `item.done` default and a
+  per-board override, which is a category invariant asked at the places someone thought
+  of. The Deliverables board and the timeline passed their own; the horizon buckets, the
+  shelf and the context strip took the default and styled a Deliverable by a workflow
+  that does not track it, in both directions. Restoring an override for this board would
+  re-open that hole for the sake of one screen.
+
+  An earlier draft of this note said the opposite — that the shell "takes completion as an
+  input rather than reading `item.done`" — and cited
+  [[A Deliverable is coloured by its own workflow]] for it. That note states the
+  **type-dispatch** rule; the parameter it describes had already been removed. A sentence
+  about code, written from another note rather than from the code, and wrong in the one
+  direction that would have shipped.
+- **3j — a value under the iteration state key is carried only by a `Deliverable`.** It
   mints a column here like any other observed value, because a Deliverable card can land
   in it. This is the mirror image of the product board's rule, and the same rule
   underneath: a board's stray columns come from **its own** population, so a column
@@ -226,9 +255,17 @@ the moment the populations diverged, which is exactly what happened.
 - "Show completed items" does not reach this board: `hideCompleted` is false in its
   `VisibilityRule`, so a card whose product state reads as done still renders, and the
   toolbar omits the control rather than showing an inert one.
-- A `Deliverable` naming the iteration draws a card here, is columned by the iteration
-  workflow, and takes its finished styling from that workflow's done values — not from
-  the Deliverable workflow's, and not from the product board's.
+- A `Deliverable` naming the iteration draws a card here and is columned by the iteration
+  workflow. Its **finished styling** comes from its own workflow, as every card's does in
+  every projection — `createCard` asks `ownWorkflowReading(item)` and takes no completion
+  parameter — so no card's `pbl-done` on this board is decided by the iteration workflow,
+  and a card may sit in a done column without being styled done. Restoring a per-board
+  completion override is explicitly refused: it is the category invariant `createCard`'s
+  own comment records removing.
+- The quick filter is indexed over the whole tree in an iteration scope, so an inherited
+  focus cannot hide a matching card through the filter that the population ignores.
+- The toolbar's item count and the completed toggle's "(N hidden)" both describe this
+  scope's carriers — one function, so they cannot disagree.
 - The board's observed vocabulary is collected from **its own** population, so a value
   only a `Deliverable` carries mints a column here, while a value carried only by items
   in no iteration mints none.

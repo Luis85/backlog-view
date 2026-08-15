@@ -33,7 +33,18 @@ A note is the only form that can be scheduled, and scheduling a sprint is what
 convenience: a marker occupies no rung, holds nothing and hangs from nothing, which is
 exactly what an iteration is. Items **link** to an iteration; they are never its
 children. Every structural rule follows without being written — no rung, no `+` to create
-a child under it, no dependency edges, ranked out of the ladder. It amends ADR 0013 the
+a child under it, ranked out of the ladder, and **no outgoing dependency edge**: a marker
+declares no prerequisites, which `readItems.ts` states at the read and `candidates`
+enforces by returning none.
+
+Outgoing only, and the narrowing is deliberate rather than a hedge. A marker can still be
+**waited for** — `candidates` draws from `model.byPath` and excludes only context rows,
+loops and what is already named, so any item may name an iteration as its prerequisite,
+exactly as it may name a milestone. That is coherent ("this cannot start until Sprint 12
+closes") and it is the behaviour a `Milestone` already has, so refusing it for one marker
+would be a new rule about one name rather than a rule about markers. An earlier draft of
+this note said "no dependency edges" flatly, which promised a refusal the code does not
+make in the incoming direction. It amends ADR 0013 the
 way the Milestone addition already did, and owes the same three shipped opinions a
 declared name owes: a default subfolder, an icon and a badge colour.
 
