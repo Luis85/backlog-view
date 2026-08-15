@@ -71,6 +71,15 @@ free of runtime code so imports stay cycle-free.
   own; the toolbar and the tree are the view's, reached through the two hooks it is
   constructed with) and reads view state through `BacklogViewHost` like every other
   module.
+- **Two shapes take work out of `backlogView.ts`, and which one applies is decided by the
+  interface rather than by taste.** Anything the modules do NOT ask the host for can leave
+  as a delegate the view owns — `WriteGate`, `CardMoveController`, `ViewStateController` —
+  or, where it needs no state at all, as a free function over `BacklogViewHost`, which is
+  what `renderPass.ts` is. A member `BacklogViewHost` NAMES cannot: it has to be on the
+  object the modules are handed, so the view-state forwards moved to `viewStateSurface.ts`,
+  an abstract class the view extends. Still one implementation, and the delegate still
+  holds the behaviour — only the surface moved. Adding a view-state value is therefore two
+  files: the controller for what it does, that surface for the two members that expose it.
 - A batch write is one refresh, not one per file. Every file `applyWrites` touches
   comes back as its own `onDataUpdated`, so mid-batch the view would rebuild the model
   and every row hundreds of times, each pass rendering a half-applied tree. While

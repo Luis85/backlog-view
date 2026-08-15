@@ -2,14 +2,19 @@
 type: Task
 order: 60
 parent: "[[One file per concern]]"
-status: Open
+status: Done
 priority: P2
 area: refactor
 created: 2026-08-09
+closed: 2026-08-15
 source: final review of the toolbar overhaul branch
 files:
   - src/view/backlogView.ts
   - src/view/render/afterContent.ts
+  - src/view/renderPass.ts
+  - src/view/viewStateSurface.ts
+started: ""
+finished: 2026-08-15
 ---
 
 # Split the view dispatch hub again
@@ -119,3 +124,53 @@ protected by a type — both are protected by comments and by the existing suite
 that moves either has to move its comments with it and pass those suites with no
 assertion touched, which is the bar the write-gate extraction met and the reason it is
 trusted.
+
+## Outcome
+
+**Done on 2026-08-15: 399 → 314 effective lines, eighty-six of headroom.** Three seams,
+taken in the order the file made them available.
+
+**The render orchestration**, the seam this note left half-taken on 2026-08-14. `render`'s
+content pass — everything between capturing the old frame's scroll and the post-content
+sync already living in `render/afterContent.ts` — is now `renderPass` in
+`src/view/renderPass.ts`, a free function over `BacklogViewHost`, comments included.
+`backlogView.ts` keeps the guarded second pass, which recurses into the whole of
+`renderTreeContent` and so has to stay above `renderPass` on the call stack.
+
+That move has an ordering hazard the brief driving it had not seen, and it is the reason
+`renderPass` takes a `publish` hook rather than returning the snapshots: `captureScroll`
+needs the PREVIOUS `host.roadmap` (`scrollBoxes` finds the timeline scroller and the
+per-band boxes through it) while the legend and the dated axis's collapse controls, through
+`syncAfterContent`, need the NEW one. Returning them put every reader of the second kind
+ahead of the assignment — a legend one frame stale, and null on the first roadmap render.
+Nothing in the suite catches that, which is why it is written down here. The hook is called
+exactly where `this.board = …; this.roadmap = …;` sat, so the pass's own later readers —
+`resyncBoardColumn`, `resyncAfterRender` and `syncAfterContent` — are back inside it and
+read the frame that just drew.
+
+**The menu trio.** `showContextMenuFor` and `showColumnMenuFor` now delegate to
+`showContextMenu` (`interactions/menu.ts`) and `showColumnMenuForIndex`
+(`interactions/columnMenu.ts`) — the modules that already own `buildItemMenu` and
+`buildColumnMenu`, which lost their `export` in the same move since nothing outside those
+files calls them any more.
+
+Those two together bought eight lines (399 → 391), against a criterion asking for seventy.
+That is the shave this note was written to refuse, and the reason for a third cut. It is
+also the diagnosis: most of what looked like bulk in `renderTreeContent` was documentation,
+which `max-lines` already excludes via `skipComments`, so moving it bought nothing.
+
+**The view-state surface**, which is where the bulk actually was — twenty-five one-line
+forwards to `ViewStateController`, seventy-eight effective lines, the block that grows by
+two members every time a view-state value is added. It could not become a delegate: the
+behaviour is already in one, and what is left is the surface, which `BacklogViewHost` NAMES
+and therefore has to be on the object handed to the modules. So it moved to
+`src/view/viewStateSurface.ts`, an abstract class `ProductBacklogView` extends —
+`BacklogViewHost` still resolves to that one class, `ui` is still built in one place, and
+the two collapse questions keep their filter override by asking `isFiltering()` rather than
+the view's private `FilterState`. ADR 0003 records the rule that decides between the two
+shapes; `src/view/CLAUDE.md` states it where someone about to move the next block will be
+standing.
+
+`npm run check` green with no test edited — 2669 tests, including
+`test/view/boardMoves.test.ts`'s held-column-stop assertion, which is what would have caught
+the publish ordering had it been wrong in the other direction.

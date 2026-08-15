@@ -42,7 +42,9 @@ export interface ViewStateHooks {
  * `ProductBacklogView` still implements every one of these on `BacklogViewHost`
  * itself and forwards to this controller in one line, the same delegation
  * `WriteGate`'s three write methods already use — so the interface still resolves to
- * one class.
+ * one class. Those forwards live on `viewStateSurface.ts`, the abstract class the view
+ * extends: a member the interface names has to be on the object modules are handed, so
+ * this file could take the state and the render-depth choice but never the surface.
  */
 export class ViewStateController {
 	constructor(

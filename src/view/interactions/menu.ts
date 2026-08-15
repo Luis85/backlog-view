@@ -2,7 +2,7 @@ import { Menu, MenuItem } from 'obsidian';
 import { hasRiskLevels, menuValues, stateMenuValues } from '../../domain/settings';
 import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
 import { inferFolderParent } from '../../domain/folderNotes';
-import { inCatalog, isDeliverableType, keepsProjection } from '../../domain/itemTypes';
+import { childTypeChoices, inCatalog, isDeliverableType, keepsProjection } from '../../domain/itemTypes';
 
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { sameValue, todayStamp } from '../../domain/noteFields';
@@ -59,7 +59,7 @@ export function showItemMenu(host: BacklogViewHost, evt: MouseEvent, item: Backl
 }
 
 /** Assemble the row menu; the caller decides where to show it. */
-export function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childTypes: string[]): Menu | null {
+function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childTypes: string[]): Menu | null {
 	const model = host.model;
 	if (!model) return null;
 	const menu = new Menu();
@@ -276,13 +276,22 @@ export function showMenuForClick(menu: Menu, evt: MouseEvent): void {
  * The corner fallback is a ROW's, not deliberately a column's too: `colEls` and
  * `board.columns` are built by the same `.map()` over the same array (`renderBoard`), so
  * an index that resolves a column always resolves an element, and that branch stays
- * unreachable from `showColumnMenuFor`.
+ * unreachable from `showColumnMenu` (`interactions/columnMenu.ts`).
  */
 export function showMenuAtElement(menu: Menu | null, el: HTMLElement | null): boolean {
 	if (!menu) return false;
 	const rect = el?.getBoundingClientRect();
 	menu.showAtPosition(rect ? { x: rect.left, y: rect.bottom } : { x: 0, y: 0 });
 	return true;
+}
+
+/**
+ * The row context menu, opened at the item's own row — the keyboard path (Menu key /
+ * Shift+F10) and the whole of `BacklogViewHost.showContextMenuFor`, kept here as one
+ * delegation on the view so `BacklogViewHost` still resolves to that one class.
+ */
+export function showContextMenu(host: BacklogViewHost, item: BacklogItem, rowEl: HTMLElement | null): void {
+	showMenuAtElement(buildItemMenu(host, item, childTypeChoices(item)), rowEl);
 }
 
 /**
