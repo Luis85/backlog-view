@@ -448,8 +448,18 @@ function renderCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem,
 	if (column.kind === 'horizon') return renderHorizonChip(host, cell, item, column.label);
 	if (column.kind === 'risk' || column.kind === 'assignee')
 		return renderLabelChip(host, cell, item, column.label, LABEL_CHIPS[column.kind]);
-	if (column.kind === 'start' || column.kind === 'target')
-		return renderDateChip(host, cell, item, column.label, dateChipFor(column.kind));
+	// A date is the one kind that draws DIFFERENTLY per projection, and the asymmetry is
+	// the point rather than an exception waiting to be smoothed away: a card has to keep
+	// showing the value — no column and no bucket says when — while the chip's entry is
+	// the ROW's, reached from a row menu no card projection carries. So a card gets what
+	// it had before the chips existed, the plain value, and only a tree-shaped projection
+	// gets the control. Asked through `treeShaped` rather than compared against 'tree',
+	// so the catalog is a tree here without anyone remembering to add it.
+	if (column.kind === 'start' || column.kind === 'target') {
+		return treeShaped(host.projection)
+			? renderDateChip(host, cell, item, column.label, dateChipFor(column.kind))
+			: renderValue(host, cell, item, column);
+	}
 	return renderValue(host, cell, item, column);
 }
 

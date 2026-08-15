@@ -197,3 +197,42 @@ describe('pressing a date chip', () => {
 		expect(vault.fm('Stale.md').start).toBe('2026-12-01');
 	});
 });
+
+describe('a date property on a CARD', () => {
+	/**
+	 * Found by review (Codex, PR #152) and it was a real regression: reclassifying the
+	 * date keys took them off every card, because `renderCardBody` filters the resolved
+	 * columns to the kinds a card draws and these two were `value` before this change.
+	 *
+	 * The rule the card filter states for state and horizon does not reach the dates: they
+	 * are excluded there because a column already IS a card's state and a bucket already IS
+	 * its horizon, so the chip would repeat what the card's own position says. A board
+	 * column and a horizon bucket say nothing about WHEN, so a date on a card is not a
+	 * repetition of anything — it is the only place the value appears.
+	 */
+	it('still renders, as the value it was before the chips existed', () => {
+		const vault = new FakeVault();
+		// A state property, or the board has no workflow and draws guidance instead of
+		// cards — which would fail this test for a reason that is not the one it is about.
+		vault.addFile('Planned.md', {
+			frontmatter: { type: 'PBI', order: 10, status: 'New', start: '2026-08-04', due: '2026-08-10' },
+		});
+		// A Bases ROW value, not just frontmatter: `renderValue` reads `entry.getValue`,
+		// which the fake leaves null unless a test says otherwise — so without this the
+		// card draws nothing whether or not the fix is in, and the test passes for a
+		// reason that is not the one it is about.
+		vault.entryValues.set('Planned.md', { 'note.start': '2026-08-04', 'note.due': '2026-08-10' });
+		const { view, containerEl } = makeView(vault, { ...DATES, stateProperty: 'note.status' }, VISIBLE);
+
+		view.setProjection('board');
+
+		const card = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-card')).find(
+			(el) => el.querySelector('.pbl-card-title')?.textContent === 'Planned',
+		);
+		expect(card?.textContent).toContain('2026-08-04');
+		// A value, never the tree's chip: the entry behind it is the ROW's, and a card
+		// carrying a control no card projection routes to would be an affordance that
+		// looks live and is not.
+		expect(card?.querySelector('.pbl-date-chip')).toBeNull();
+	});
+});

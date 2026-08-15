@@ -8,6 +8,7 @@ created: 2026-08-15
 source: user request
 files:
   - src/view/host.ts
+  - src/view/render/board.ts
   - src/view/render/chips.ts
   - src/view/render/columns.ts
   - src/view/interactions/plan.ts
@@ -95,6 +96,16 @@ implementation number.
 - **2c — the row came from outside the Base's filter.** A static `div`, never a button,
   with the reason in its tooltip; absent entirely where it has nothing to show. The gate
   refuses whole any batch naming such a row anyway.
+- **2d — the projection is a card.** The date renders as the **plain value it was before
+  the chips existed**, and the chip is absent. Two halves, and they fail oppositely: a card
+  must keep SHOWING the value, because no board column and no bucket says anything about
+  *when*, so the card is the only place it appears; and it must not carry the CHIP, whose
+  entry is the row menu's and which no card projection routes to — an affordance that
+  looks live and is not. This is the case that shows the card filter's own rule is about
+  **repetition** rather than about which kinds are chips: state and horizon are withheld
+  from a card because its column or its bucket already says them, and a date has no such
+  equivalent. Found by review (Codex, PR #152) after the first version reclassified the
+  keys and silently dropped them from every card.
 - **3a — the entry is confirmed unchanged.** Nothing is written and the previous undo
   stands, including where the key exists holding an empty value: `planFrom` decides from
   the FORM, and a field nobody touched states nothing
@@ -142,6 +153,8 @@ implementation number.
   it; re-confirming the entry unchanged writes nothing and keeps the previous undo.
 - A date that would reverse the span is refused at the entry against the end the note
   states, naming that date, and nothing is written.
+- On a card the date renders as the value it always did, and the chip does not appear
+  there at all.
 - Transition stamps and every other key the plugin owns stay untouched by these writes.
 - The column is in the fit budget and drops whole, by its place in the properties menu's
   order like every other column — which cost nothing to deliver, because these are
@@ -163,7 +176,11 @@ taken it past its 400-line budget, and the seam is the one `writeGate.ts` and
 `cardMoves.ts` were taken along — `columns.ts` decides WHICH properties are columns and
 how wide they are, and `chips.ts` decides what a cell that is more than a value draws.
 `renderCell` is the one caller and stays in `columns.ts`, because dispatching on a
-column's kind is a question about columns.
+column's kind is a question about columns — and it is where the per-projection answer
+lives too: a date kind draws its chip on a tree-shaped projection and falls through to
+`renderValue` anywhere else, asked through `treeShaped` so the catalog is a tree here
+without anyone remembering to add it. `renderCardBody` in `src/view/render/board.ts`
+carries the other half, admitting both kinds to the columns a card draws.
 
 The kinds are `'start'` and `'target'` in `ColumnKind` (`src/view/host.ts`), assigned by
 `columnKind` — now a LIST of key-to-kind claims rather than the chain of ifs it was, which
