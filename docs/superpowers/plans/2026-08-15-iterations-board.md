@@ -2064,9 +2064,21 @@ vacated may be gone with its last card."
 
 Every path must exist — these notes are under `docs/requirements/`, which `docs-check.mjs` treats as living, so a named path that is not there fails the gate.
 
-- [ ] **Step 2: Set each note's `status: Done` and write the Feature's `## Outcome`**
+- [ ] **Step 2: Close the two PBIs this plan delivered — and NOT the Feature**
+
+`An iteration is a note of its own` and `A board scoped to one iteration` go to
+`status: Done`. `An Iterations board` stays **Open**, and so does
+`An iteration draws as a bar or a line`, which this plan does not build.
+
+A Feature is done when its use cases are, and this one lists three. Marking it Done with
+one unimplemented would put a false status into a backlog that is read as the project's
+own — and this repository displays that backlog with this plugin, so the lie would be on
+screen. Its `## Outcome` is written when the third PBI lands, since the README says an
+outcome is written after the work.
 
 - [ ] **Step 3: Add the `[Unreleased]` changelog entry**
+
+Describing the two PBIs that landed, not the Feature.
 
 Added by the pull request that earns it, never invented at release time.
 

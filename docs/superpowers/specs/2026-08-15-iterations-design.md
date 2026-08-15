@@ -360,10 +360,22 @@ UI state. That is not a preference call: `placementEnds` is read by the **writer
 cannot reach localStorage-backed UI state without breaking the layer rule. It governs
 writes, so it is configuration.
 
-**Cost, stated plainly.** `placementEnds` grows a `settings` argument, so every caller is
-touched: the row's Schedule and Unschedule, the shelf drop, the body slide, both grips,
-and the writer. Mechanical, but it is the widest diff in the feature, and it is why this
-ships as its own PBI that the board work does not depend on.
+**Cost, stated plainly — and it is wider than one signature.** TWO functions ask the new
+predicate and neither has `settings` today:
+
+- `placementEnds(typeName)`, reached by the row's Schedule and Unschedule, the shelf drop,
+  the body slide, both grips, and the writer;
+- `placeItem(item, stated)`, reached by `deriveBars`, `buildRoadmap` and the resources
+  placement, the shelf, card moves and the timeline drag.
+
+`placeItem` is the one that decides point-or-span for the main dated axis, so without it
+threaded the option changes nothing a reader can see. An earlier revision of this spec
+costed only `placementEnds` and would have had an implementer widen one signature, watch
+the tests pass, and ship an option that does not work.
+
+That is the widest diff in the feature by some margin, and it is why this ships as its own
+PBI that the board work does not depend on — and why that PBI needs its own plan rather
+than being folded into this one.
 
 ## Testing
 
