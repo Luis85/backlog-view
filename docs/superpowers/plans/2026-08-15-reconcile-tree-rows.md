@@ -59,15 +59,29 @@ That task deliberately does not prescribe the cut and says to read the file fres
       cardDnd: CardDragController;
       rowCtx: () => RowContext;
       scroll: ScrollAnchor;
+      /**
+       * Publish the snapshots the content render just produced, at the point the view
+       * used to assign them — BEFORE the post-content work, which reads `host.roadmap`.
+       * The same hook shape `WriteGate` is constructed with.
+       */
+      publish: (board: BoardSnapshot | null, roadmap: RoadmapSnapshot | null) => void;
   }
 
   export interface RenderPassResult {
-      board: BoardSnapshot | null;
-      roadmap: RoadmapSnapshot | null;
       scroll: ScrollAnchor;
       /** True when the fit verdict changed and the caller owes a second, guarded pass. */
       refitNeeded: boolean;
   }
+  ```
+
+  **Why a callback rather than a return value**, since this looks like indirection for its own sake: the snapshots have two readers at two different times inside one pass, and returning them serves only the later one.
+
+  - `captureScroll(treeEl, roadmap, scroll)` wants the **previous** snapshot — `scrollBoxes` uses it to find the timeline scroller and the per-band scroll boxes — so it must run before anything publishes.
+  - `syncAfterContent` wants the **new** one: it reads `host.roadmap?.drawn` for the legend, and the dated-axis collapse controls read it too.
+
+  Publishing on return puts the second reader before the assignment, so the legend and those controls draw one frame stale — and `null` on the first roadmap render. Nothing in the suite catches that, which is why it is stated here rather than left to the review.
+
+  ```ts
 
   export function renderPass(
       host: BacklogViewHost,
@@ -123,10 +137,15 @@ In `src/view/backlogView.ts`, replace the body of `renderTreeContent` with the d
 				cardDnd: this.cardDnd,
 				rowCtx: () => this.rowCtx(),
 				scroll: this.scroll,
+				// Assigned mid-pass, where these two lines used to sit: the post-content
+				// work inside the pass reads `host.roadmap`, and the scroll capture before
+				// it deliberately reads the old one.
+				publish: (board, roadmap) => {
+					this.board = board;
+					this.roadmap = roadmap;
+				},
 			},
 		);
-		this.board = result.board;
-		this.roadmap = result.roadmap;
 		this.scroll = result.scroll;
 		// Measured against the tree that now exists, scrollbar and all. A changed
 		// verdict means a column came or went, which only the rows can show — one
