@@ -122,9 +122,9 @@ Driven in `test/view/roadmapMatches.test.ts`.
 The inferred span case is covered too: `item.descendantStart`/`descendantTarget` are
 assigned once, over the WHOLE unfocused tree ([[The model build states its cost as a
 check]]'s `assignAll`), before focus ever re-roots anything — so a focused row's inferred
-span already carries evidence from a dated descendant several rungs below the focus
-level, the same way it carries evidence from one rung below. `deriveBars` never asks
-which level a row was drawn at; it only ever asks `placeItem`, which reads those two
-fields. Driven by the "below-focus" case in `test/domain/roadmap.test.ts`: a Feature
-focused two levels above a dated PBI still infers the PBI's span, with both ends marked
-inferred.
+span already carries evidence from a dated descendant below the focus level, exactly as
+it would from any other descendant. `deriveBars` never asks which level a row was drawn
+at; it only ever asks `placeItem`, which reads those two fields. Driven by the
+"below-focus" case in `test/domain/roadmap.test.ts`: with focus on Feature, a PBI one
+rung below it — Feature's own direct child, never a row of its own once focused — still
+supplies the Feature's inferred span, with both ends marked inferred.

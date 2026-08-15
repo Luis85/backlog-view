@@ -160,8 +160,10 @@ where a gesture may take hold in the first place, are both `src/domain/bars.ts`,
 `placeItem`/`withoutEnds`
 rather than a second opinion beside them.
 
-**Status.** The lane-crossing criterion that kept this `Active` (the extension 2d that
-carried the reparent, since removed) is resolved by DESIGN rather than by an
-implementation: lanes were tried and refused ([[Lanes on the roadmap]]), so there is no
-second lane a drop onto the grid could ever cross. Every remaining criterion is built and
-driven in `test/view/roadmapMoves.test.ts` and `test/domain/bars.test.ts`.
+**Status.** The lane-crossing criterion that kept this `Active` — a drop into another
+lane's row carrying the reparent in the same batch as the dates — is resolved by DESIGN
+rather than by an implementation: lanes were tried and refused ([[Lanes on the roadmap]]),
+so there is no second lane a drop onto the grid could ever cross. It is gone from the
+extensions list above rather than renumbered, so no letter here now names it. Every
+remaining criterion is built and driven in `test/view/roadmapMoves.test.ts` and
+`test/domain/bars.test.ts`.

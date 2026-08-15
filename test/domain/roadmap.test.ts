@@ -384,13 +384,13 @@ describe('the writable horizon vocabulary', () => {
 // file hit its `test/**` line budget — one subject, fully self-contained.
 
 describe('a focused row and a below-focus descendant (probe)', () => {
-	it('below-focus: an inferred span reaches a dated grandchild the focus level hides', () => {
+	it('below-focus: an inferred span reaches a dated child the focus level hides', () => {
 		const settings = axisSettings();
 		const vault = new FakeVault();
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
 		vault.addFile('Feature.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
-		// The PBI is two rungs below the focus level: never a row of its own once
-		// focused, only evidence for its ancestor's inferred span.
+		// The PBI is Feature's direct child — one rung below the focus level: never a
+		// row of its own once focused, only evidence for its ancestor's inferred span.
 		vault.addFile('PBI.md', {
 			frontmatter: { type: 'PBI', order: 10, start: '2026-03-01', due: '2026-06-01' },
 			parentLink: 'Feature',
