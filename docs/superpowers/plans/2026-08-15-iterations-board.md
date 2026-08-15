@@ -984,6 +984,15 @@ and **every write path blocked**, on a configuration this feature deliberately o
 The label has to match `PROPERTY_TABLE`'s `label` for the `iterationState` field exactly —
 that set is keyed by label, so a mismatch silently fails to exempt.
 
+**And extend the resolved-settings invariant.** `settingsConsistency.ts` also holds
+`settingsInconsistency` and `listProblem`, which assert what `resolveSettings` can and
+cannot produce — and they check the Deliverable and test workflows only. Left alone, a
+test fixture could hold iteration settings `resolveSettings` would never emit: empty
+`iterationDoneValues`, an empty inherited state list, untrimmed or duplicated states. Every
+iteration test in this plan would then be passing or failing against a configuration the
+product cannot reach, which is worse than a failing test. Add the third workflow's three
+fields to both checks beside the two already there.
+
 ```ts
 it('allows the iteration state to share the product key on purpose', () => {
 	const s = resolveSettings(configWith({ stateProperty: 'note.status', iterationStateProperty: 'note.status' }), vault);
@@ -1588,7 +1597,29 @@ silently dropped to Product — a rename quietly undoing a choice, which is the 
 the "retained, not rewritten" rule the stale case exists to keep.
 
 Run the value through `movedPath(this.scope, oldPath, newPath)` in the same loop, and set
-`changed` when it moves. `movedPath` is what makes the folder case work for free: it
+`changed` when it moves.
+
+**And migrate the column-fold keys with it.** Step 3's fold scope carries the chosen
+iteration's PATH, and `collapsedColumns` / `expandedColumns` are keyed by that scope plus
+the column's own value (`columnKey` in `collapseState.ts`). So a renamed iteration whose
+`Done` was folded would leave its fold behind under the old path and strand a key nothing
+reads — the board reopening columns the reader closed, and the store growing entries that
+never match again. This is the cost of putting a path inside a key, and it is worth
+paying; what is not acceptable is paying half of it.
+
+```ts
+it('carries a folded column with its iteration on a rename', () => {
+	store.setColumnCollapsed(`iteration:${sprint12}`, 'Done', true);
+	store.renamePath(sprint12, 'docs/iterations/Sprint 12 (Q3).md');
+	expect(store.columnCollapsed('iteration:docs/iterations/Sprint 12 (Q3).md', 'Done', false)).toBe(true);
+});
+
+it('carries them under a folder rename too', () => {
+	store.setColumnCollapsed(`iteration:${sprint12}`, 'Done', true);
+	store.renamePath('docs/iterations', 'docs/sprints');
+	expect(store.columnCollapsed('iteration:docs/sprints/Sprint 12.md', 'Done', false)).toBe(true);
+});
+``` `movedPath` is what makes the folder case work for free: it
 matches the exact path OR the `oldPath + '/'` prefix, so a renamed *folder* carries the
 note inside it. A comparison against the renamed path alone would leave it behind — the
 mistake `renamePath`'s own comment records for the row keys.
@@ -2019,7 +2050,7 @@ it('checks the entry matching the card\'s own column, not its product state', ()
 	expect(checkedTitle(openCardMenu(pbi), 'Set state')).toBe('Started');
 });
 
-it('routes a DELIVERABLE card here by the projection, not by its type', () => {
+it('routes a DELIVERABLE card here by the projection, not by its type', async () => {
 	// The type branch would win without projection-first routing, and this board
 	// columns Deliverables by the iteration workflow like everything else on it.
 	expect(menuTitles(openCardMenu(deliverableInSprint12), 'Set state'))

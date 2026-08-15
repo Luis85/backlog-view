@@ -115,6 +115,10 @@ the moment the populations diverged, which is exactly what happened.
   iteration board: a scope shared by all of them would leave `Done` folded on Sprint 13
   because the reader folded it on Sprint 12, which is the product board's own collision
   one level in. `Done` on the product board is untouched either way.
+
+  Putting a path inside a key has a price, and it is paid at the rename: a folded column
+  **moves with its iteration** (2e), or the board reopens columns the reader closed and the
+  store keeps entries nothing will ever match. Half of that price is not an option.
 - **2e — the chosen `Iteration` note, or a folder above it, is renamed.** The stored scope
   **follows it**, and the board keeps showing the same iteration. This is the first UI
   state whose value is a PATH, so it is the first that has to be migrated on a rename;
@@ -356,7 +360,8 @@ the moment the populations diverged, which is exactly what happened.
   and filter index alike, resolved once rather than at the render — and is retained rather
   than rewritten.
 - Renaming the chosen `Iteration` note — or a folder above it — carries the stored scope
-  with it, so the board keeps showing the same iteration.
+  **and that iteration's folded columns** with it, so the board keeps showing the same
+  iteration in the same shape.
 - Switching scope is a render decision: same model, same results, same undo slot, no
   re-query. The quick filter carries over.
 - Cards are exactly the results whose iteration link resolves to the chosen note,
