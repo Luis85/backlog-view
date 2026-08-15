@@ -62,7 +62,10 @@ export interface RenderPassResult {
  * the snapshots off the host again (the selection's column-stop lookup, and the
  * legend through `syncAfterContent`), while `captureScroll` above it wants the
  * frame being replaced. Returning them instead would put every one of those
- * readers ahead of the assignment.
+ * readers ahead of the assignment, and `test/view/legend.test.ts` says so
+ * loudly: 22 of its 37 fail with this hook moved to the end of the function,
+ * because `syncAfterContent` then keys the swatches off the PREVIOUS snapshot —
+ * null on a first roadmap render, so the legend collapses to `['Today']`.
  *
  * The guarded SECOND pass a changed fit verdict can ask for stays in the caller:
  * it recurses into the whole of `renderTreeContent`, filter sync included, which
@@ -85,13 +88,13 @@ export function renderPass(host: BacklogViewHost, els: RenderPassEls, deps: Rend
 	// is not the scroll box, and reading it here would capture zeros.
 	let scroll = captureScroll(els.treeEl, host.roadmap, deps.scroll);
 	els.treeEl.empty();
-	// The row index and the card-disclosure set are the same live collections
-	// `rowCtx` hands back below — cleared through it rather than through fields of
-	// their own, so this pass holds no state that outlives it.
+	// The row index and the card-disclosure set are the VIEW's own collections, reached
+	// through `rowCtx` (which hands back the live ones, not copies) because this pass has
+	// no fields of its own. They outlive it, which is exactly why they are cleared here:
+	// an index that survived its render would answer for rows that are gone, and a set
+	// that did would claim disclosures for a screen that is gone.
 	const clearing = deps.rowCtx();
 	clearing.rows.clear();
-	// Same lifetime as the row index: a set that outlived its render would claim
-	// disclosures for a screen that is gone.
 	clearing.cardKids.clear();
 	if (!treeShaped(projection)) {
 		// The column ladder is the tree's: a narrow-pane verdict from tree mode must
@@ -105,16 +108,22 @@ export function renderPass(host: BacklogViewHost, els: RenderPassEls, deps: Rend
 	deps.publish(content.board, content.roadmap);
 	els.treeEl.setAttribute('role', content.role);
 	els.treeEl.setAttribute('aria-label', content.label);
+	// Column stops are board state: without a board on screen a held stop would point
+	// at a projection that no longer exists, so it is released; with one, it is clamped
+	// to the columns left, the way the card selection is carried.
+	//
+	// BEFORE `restoreScroll`, and that order is behaviour: `selectBoardColumn` ends in an
+	// unconditional `scrollIntoView` on the column it lands on, so whichever of these two
+	// runs last decides where the pane sits. The restored anchor has to win, or a board
+	// panned away from a held column stop snaps back on every refresh — the pan captured
+	// at the top of this pass and then thrown away.
+	deps.selection.resyncBoardColumn(content.board?.colEls.length ?? null);
 	// Both offsets belong to the content that made them — restored, corrected,
 	// reset or replaced by the anchor policy `restoreScroll` states beside the
 	// fork that decides what was drawn.
 	scroll = restoreScroll(els.treeEl, scroll, content.roadmap, projection);
-	// Column stops are board state: without a board on screen a held stop would point
-	// at a projection that no longer exists, so it is released; with one, it is clamped
-	// to the columns left, the way the card selection is carried.
-	deps.selection.resyncBoardColumn(content.board?.colEls.length ?? null);
 	// The selection may have been inside the subtree this pass just replaced. Column
-	// stops are reapplied first (just above), so a held one is left alone here —
+	// stops are reapplied first (above), so a held one is left alone here —
 	// see `SelectionController.resyncAfterRender`.
 	deps.selection.resyncAfterRender();
 	// Unconditional, because it holds four things and two of them (the legend) are

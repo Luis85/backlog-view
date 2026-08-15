@@ -6,7 +6,6 @@
 		"ignore": ["test/harness/obsidian.css"]
 	},
 	"usedClassMembers": [
-		{ "extends": "BasesView", "members": ["type"] },
 		{ "extends": "ViewStateSurface", "members": ["type"] },
 		{
 			"extends": "AbstractInputSuggest",

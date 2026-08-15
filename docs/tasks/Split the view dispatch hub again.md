@@ -143,10 +143,21 @@ needs the PREVIOUS `host.roadmap` (`scrollBoxes` finds the timeline scroller and
 per-band boxes through it) while the legend and the dated axis's collapse controls, through
 `syncAfterContent`, need the NEW one. Returning them put every reader of the second kind
 ahead of the assignment — a legend one frame stale, and null on the first roadmap render.
-Nothing in the suite catches that, which is why it is written down here. The hook is called
-exactly where `this.board = …; this.roadmap = …;` sat, so the pass's own later readers —
-`resyncBoardColumn`, `resyncAfterRender` and `syncAfterContent` — are back inside it and
-read the frame that just drew.
+`test/view/legend.test.ts` is the check under that: 22 of its 37 fail with the hook moved
+to the end of `renderPass`, since `syncAfterContent` reads `host.roadmap?.palettes` and the
+swatch list collapses to `['Today']`. The hook is called exactly where
+`this.board = …; this.roadmap = …;` sat, so the pass's own later readers —
+`resyncBoardColumn`, `restoreScroll`, `resyncAfterRender` and `syncAfterContent` — are back
+inside it and read the frame that just drew.
+
+**Their ORDER is behaviour too**, and one of them was transposed on the way through
+review: `resyncBoardColumn` runs BEFORE `restoreScroll`, as it did in `renderTreeContent`,
+because `selectBoardColumn` ends in an unconditional `scrollIntoView` and whichever runs
+last decides where the pane sits. With the restore first, a board panned away from a held
+column stop snapped back on every refresh — the pan captured at the top of the pass and
+then thrown away. **No test in this repository can catch that**: `test/helpers/dom.ts`
+stubs `Element.prototype.scrollIntoView` as a no-op, so the order is held by the comment
+beside it and by nothing else.
 
 **The menu trio.** `showContextMenuFor` and `showColumnMenuFor` now delegate to
 `showContextMenu` (`interactions/menu.ts`) and `showColumnMenuForIndex`
