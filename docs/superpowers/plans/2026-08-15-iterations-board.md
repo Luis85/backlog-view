@@ -1186,6 +1186,7 @@ file:
 
 | Question | Answer for `'iteration'` | Why |
 | --- | --- | --- |
+| `toolbarPosition` | `'board'` | **new** — which toggle position this projection lights up |
 | `treeShaped` | `false` | cards, not rows |
 | `hidesCompleted` | `false` | completion here is the iteration workflow's question, not the product rollup's |
 | `hasRollup` | as `board` | same card shell |
@@ -1193,6 +1194,40 @@ file:
 | `filterScopeFor` | `'whole'` | the population ignores the focus, so the match index must too |
 | `byProjectionType` | **every** type, `Deliverable` included | this board shows them, so `Set type` and creation must offer them |
 | `projectionPopulation` | the scope's carriers | one population, so counts and cards cannot disagree |
+
+**`toolbarPosition` is the price of splitting internal identity from control identity**,
+and it has to be paid in the same task that splits them. Two places in the toolbar compare
+the projection to a position directly, and both break the moment those two stop being the
+same thing:
+
+- `renderProjectionZone` (`src/view/render/toolbarControls.ts`) switches on
+  `host.projection`, so a `case 'board'` would stop matching the instant a scope is
+  picked. **The picker would delete itself on first use** — no way back to `Product`, no
+  way to another iteration, the control gone precisely because it worked.
+- The toggle's own `position()` helper (`src/view/render/toolbar.ts`) sets `is-active` and
+  `aria-pressed` from `host.projection === mode`, so in the `'iteration'` projection **no
+  position renders pressed at all** — a switcher showing nothing selected.
+
+So `projection.ts` gains one more question, and it is the one that keeps the author's
+control decision true: `toolbarPosition('iteration') === 'board'`. The zone switches on
+that, and so does the toggle's pressed state. This is a real cost of the split, not a
+free consequence of it — worth paying for the compile-checked gates, and worth naming.
+
+```ts
+it('keeps the scope picker on screen after a scope is chosen', () => {
+	const bar = renderToolbar(hostWith({ projection: 'iteration', boardScope: sprint12 }));
+	expect(scopePicker(bar)).not.toBe(null);
+});
+
+it('presses the Board position while an iteration is chosen', () => {
+	const bar = renderToolbar(hostWith({ projection: 'iteration', boardScope: sprint12 }));
+	expect(pressedPosition(bar)).toBe('Board');
+});
+```
+
+Drive the first through the *interaction*, not the state: pick an iteration from the
+picker, let the rebuild happen, then look for the picker in the rebuilt toolbar. A test
+that renders the end state directly passes while the round trip is broken.
 
 `byProjectionType` is the one to read twice. It strips `Deliverable` for `'board'` and
 keeps only `Deliverable` for `'deliverables'`; an iteration board shows both, so it must
@@ -1286,8 +1321,14 @@ describe('the board scope picker', () => {
 		expect(scopePicker(render(withIterations, { iterationKey: '' }))).toBe(null);
 	});
 
-	it('renders only in board mode', () => {
+	it('renders only in the Board position', () => {
 		expect(scopePicker(render(withIterations, { projection: 'roadmap' }))).toBe(null);
+	});
+
+	it('is still there after a scope is picked, so the choice can be changed', () => {
+		const bar = render(withIterations);
+		clickScope(bar, 'Sprint 12');
+		expect(scopeChoices(rebuiltToolbar())).toEqual(['Product', 'Sprint 11', 'Sprint 12']);
 	});
 });
 ```
@@ -1299,7 +1340,15 @@ Expected: FAIL.
 
 - [ ] **Step 3: Draw it**
 
-In `src/view/render/toolbarControls.ts`, add a `case 'board':` to `renderProjectionZone`'s switch — the file's own comment says a projection that grows a control adds a case, not a guard somewhere else in the row — and write `renderBoardScopePicker` against `renderAxisPicker` beside it, using `menuButton`, `showMenuForClick` and `pickAndRefocus(barEl, 'scope', …)`. Pass `barEl`, never `zone`: the zone is destroyed by the rebuild the pick causes.
+In `src/view/render/toolbarControls.ts`, `renderProjectionZone` switches on
+`toolbarPosition(host.projection)` rather than the projection itself, and its `'board'`
+case draws the picker — so the picker survives its own use, which it would not if the
+switch compared the projection directly (Task 8, step 3). The file's own comment holds: a
+projection that grows a control adds a case, not a guard somewhere else in the row.
+
+Write `renderBoardScopePicker` against `renderAxisPicker` beside it, using `menuButton`,
+`showMenuForClick` and `pickAndRefocus(barEl, 'scope', …)`. Pass `barEl`, never `zone`:
+the zone is destroyed by the rebuild the pick causes.
 
 - [ ] **Step 4: Run the tests**
 

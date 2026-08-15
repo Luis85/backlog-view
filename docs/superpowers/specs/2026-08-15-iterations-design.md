@@ -138,6 +138,16 @@ As a projection, `Record<Projection, …>` in `src/view/collapseState.ts` fails 
 until every question has an answer. That is an instrument that can see the whole set,
 which is what the register asks for wherever a category invariant is at stake.
 
+**The split has a price, and it falls on the toolbar.** Two controls compare the
+projection to a *position* directly: `renderProjectionZone`'s switch, and the toggle's
+`is-active` / `aria-pressed`. Once the internal identity and the control identity stop
+being the same value, both are wrong — the scope picker would delete itself on first use,
+leaving no way back to `Product`, and no toggle position would render pressed. So
+`projection.ts` gains a `toolbarPosition` question answering `'board'` for `'iteration'`,
+and both controls ask it. One extra question is the whole cost, and it is worth the
+compile-checked gates; it is named here rather than discovered, because a split that
+keeps the control shape must be checked *at the control*.
+
 **Both values are UI state.** The projection and the scope path live in the collapse
 store's per-view entry (`src/storage/collapseStore.ts`) — vault-scoped localStorage, per
 saved view, per device, never the `.base`. ADR 0011's rule, applied again.

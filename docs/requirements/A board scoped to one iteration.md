@@ -111,6 +111,15 @@ the moment the populations diverged, which is exactly what happened.
   this board never shows, and it drops the Deliverables this board deliberately includes.
   It is one function precisely so the count label and the completed toggle's "(N hidden)"
   cannot disagree, so the scope belongs inside it rather than beside it.
+- **1c — an iteration is chosen and the toolbar rebuilds.** The scope picker is **still
+  there**, naming `Product` and every iteration, and the `Board` position still renders
+  pressed. Neither is automatic: internally this is its own projection, so a control
+  comparing the projection to a toolbar POSITION would drop the picker the instant it was
+  used — the control disappearing precisely because it worked — and leave the switcher
+  showing nothing selected. Which position a projection lights up is therefore its own
+  question, asked in the module that owns projection questions, and the answer for an
+  iteration board is `Board`. Driven through the interaction rather than the end state: a
+  test that renders the chosen scope directly passes while the round trip is broken.
 - **2f — a question is asked that depends on WHICH board this is** — what the quick
   filter indexes, what the toolbar counts, whether the completed toggle applies, which
   types `Set type` offers, whether a card is a member at all. Every one is answered from
@@ -301,8 +310,11 @@ the moment the populations diverged, which is exactly what happened.
 - The toolbar's item count and the completed toggle's "(N hidden)" both describe this
   scope's carriers — one function, so they cannot disagree.
 - Every projection-shaped question — filter index, count, completed toggle, offered types,
-  membership — is answered from the projection value in `projection.ts`, so a new one
-  cannot be added without the compiler asking for it.
+  membership, **and which toolbar position is pressed** — is answered from the projection
+  value in `projection.ts`, so a new one cannot be added without the compiler asking for
+  it.
+- Choosing a scope leaves the picker on screen and the `Board` position pressed, checked
+  by picking one and inspecting the rebuilt toolbar.
 - `Set type` and the creation menus offer `Deliverable` here, because this board shows
   Deliverables. Withholding a type a board displays is the mirror of showing one it does
   not.
