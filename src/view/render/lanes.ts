@@ -355,16 +355,25 @@ export function renderLaneContextRow(ctx: RowContext, content: HTMLElement, item
  * and still needs it, which is why this is a condition and not a deletion: the title is the
  * only legible name a stretch has left.
  *
- * **The reach of that equality is exactly a basename `sanitizeTitle` did not have to
- * change.** A resource holding `/` is filed as `A-B away …` where the derivation says
- * `A/B away …`, so that one note states its dates twice — the sanitizer is private to
- * `storage/frontmatter.ts` and neither this layer nor `domain/` may reach it. Named here
- * rather than left to read as covered.
+ * **A PREFIX rather than an equality, because the plugin files its own collisions under a
+ * suffix.** Two absences for one resource over the same days derive the same name, so
+ * `uniqueNotePath` appends a number and the second is `… 2026-08-06 1`. Under an equality
+ * that note failed the test and got the range a second time — the defect above, surviving in
+ * exactly the case the derivation cannot avoid. `startsWith` is not the suffix parsed back
+ * off: it asks whether the derived name is where this basename BEGINS, which is the same
+ * question for `… 1` as for a reader's own `… offsite`, and both of those already carry the
+ * range. Raised independently by two reviewers before it was fixed.
+ *
+ * **What it still does not reach is a basename `sanitizeTitle` had to change.** A resource
+ * holding `/` is filed as `A-B away …` where the derivation says `A/B away …`, so that one
+ * note states its dates twice — no prefix relation survives a character swap, and the
+ * sanitizer is private to `storage/frontmatter.ts` where neither this layer nor `domain/`
+ * may reach it. Named here rather than left to read as covered.
  */
 function absenceSaid(absence: Absence): string {
 	const start = formatCivil(absence.start);
 	const target = formatCivil(absence.target);
-	if (absence.title === absenceTitle({ resource: absence.resource, start, target })) return absence.title;
+	if (absence.title.startsWith(absenceTitle({ resource: absence.resource, start, target }))) return absence.title;
 	return `${absence.title} — ${start} → ${target}`;
 }
 

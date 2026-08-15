@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { useViewHarness } from '../helpers/view';
 import { laneRoadmap, rowFor } from '../helpers/roadmap';
-import { ALICE_AWAY_PATH, absenceVault } from '../helpers/resources';
+import { ALICE_AWAY, ALICE_AWAY_PATH, absenceVault } from '../helpers/resources';
 import { addDays, formatCivil, MAX_TIMELINE_DAYS } from '../../src/domain/timeline';
 import { readDate, todayStamp } from '../../src/domain/noteFields';
 
@@ -139,6 +139,28 @@ describe('the days a band is unavailable, shaded across its work', () => {
 });
 
 describe('the mark a bar carries for crossing one', () => {
+	it('states the range once for a stretch the plugin filed under a collision suffix', () => {
+		// Two absences for one resource over the same days derive the SAME name, so
+		// `uniqueNotePath` files the second at `… 1` — the one case the derivation cannot
+		// avoid. Under an equality that basename failed the carries-the-range test and got
+		// the dates a second time, which is the defect the condition exists to prevent,
+		// surviving in the case the plugin produces itself. Raised by two reviewers.
+		const vault = new FakeVault();
+		vault.addFile('Work.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
+		});
+		vault.addFile(`${ALICE_AWAY} 1.md`, {
+			frontmatter: { type: 'Absence', assignee: 'Alice', start: '2026-08-04', due: '2026-08-06' },
+		});
+		const { containerEl } = laneRoadmap(vault);
+		const said = Array.from(rowFor(containerEl, 'Work')?.querySelectorAll<HTMLElement>('.pbl-sr-only') ?? [])
+			.map((span) => span.textContent ?? '')
+			.find((text) => text.startsWith('Crosses'));
+
+		// The suffixed name, and the range exactly once — no ` — 2026-08-04 → 2026-08-06` after it.
+		expect(said).toBe(`Crosses an absence, 3 days lost to absence: ${ALICE_AWAY} 1`);
+	});
+
 	it('marks the bar it crosses, in words as well as in shading', () => {
 		// The wash tells this in colour alone, which WCAG 1.4.1 refuses and which a screen
 		// reader gets nothing of — so the row carries the sentence, and the lead carries the
