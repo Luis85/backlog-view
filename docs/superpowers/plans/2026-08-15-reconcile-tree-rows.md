@@ -1321,6 +1321,10 @@ function renderForest(ctx: RowContext, containerEl: HTMLElement, siblings: Backl
 - `forgetElement` drops the detached element's path **and every path in its group** from `ctx.rows` and `ctx.sigs` — the job `forgetSubtree` does today, reached from the DOM rather than from the model, because the model no longer describes what is on screen at that point.
 - Every claim and every build writes `ctx.sigs.set(path, sig)`, so the next pass compares against what this pass actually drew — **except a volatile row**, below.
 
+- **A row with no recorded signature is never claimed, and there are two ways to have none.** A *volatile* row drew another note's content (below). An *unsignable* row is one `rowSignature` returned `null` for — the metadata cache had not indexed its file yet. Both take the same path; keep the wording distinct so a reader knows which they are looking at.
+
+  The second case is worth stating because it is a disagreement between two sources: a generic `note.*` cell draws from `item.entry.getValue()` — the Bases entry — while the signature draws from `metadataCache.getFileCache()`. The cache fills asynchronously, so Bases can hand over an entry before the cache answers, and every such row's frontmatter term collapses to the same `null`. Two updates inside that window with different entry values would look identical to the signature. Do **not** close it by signing the entry's values instead: that is a `getValue` per column per row per pass, which is the cost this increment removes.
+
 - [ ] **Step 6c: A row that drew someone else's content can never be claimed**
 
 The column gate asks where a value comes FROM. It cannot ask what the value renders INTO, and that is a second hole: `renderValue` hands the value to `Value.renderTo`, so a `note.related` holding `[[Other note]]` draws a link whose text belongs to another note, and an embed draws that note's content outright. Change the other note and this row's frontmatter — and so its signature — is identical.
