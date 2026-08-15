@@ -34,7 +34,13 @@ function ruleAt(selector: string, decl: string, inMedia?: string): number {
 	// selector is the general fix — a no-op for every prior caller (a `.` escaped twice
 	// over matches exactly what an unescaped `.` wildcard already matched).
 	const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-	const pattern = new RegExp(`^[\\t]*${escaped}[,\\s][^{]*\\{[^}]*${decl}`, 'gm');
+	// The DECLARATION is escaped for the same reason and was not, which is a defect in the
+	// instrument rather than in any rule it read: a `var(--x)` decl's parentheses were a
+	// capture GROUP, so the pattern looked for `var--x` and matched nothing. A pin asserting
+	// the rule is present then fails loudly, which is how this was found — but a pin
+	// asserting one is ABSENT would have passed while measuring nothing at all.
+	const wanted = decl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	const pattern = new RegExp(`^[\\t]*${escaped}[,\\s][^{]*\\{[^}]*${wanted}`, 'gm');
 	let found = -1;
 	for (const match of styles.matchAll(pattern)) {
 		const at = match.index;
@@ -260,22 +266,61 @@ describe('rendering', () => {
 	});
 
 	it('gives both resize grips a hoverless presentation, since neither is revealed any other way', () => {
-		// A 6px strip that paints only on `:hover` is invisible on a phone, and invisible is
+		// A strip that paints only on `:hover` is invisible on a phone, and invisible is
 		// unusable for a control whose whole affordance is knowing where to press — the
 		// tree's other hidden controls are all in a menu as well, and a boundary is not.
-		// Both grips widen to a finger-sized target there; the property column's also draws
-		// the boundary line the header otherwise has none of, while the timeline's lead
+		// Both grips widen to a finger-sized target there; the property column's also paints
+		// its mark, which nothing else in that header draws, while the timeline's lead
 		// column already carries its own border.
 		expect(ruleAt('.pbl-col-grip', 'width: 20px;', '(hover: none)')).toBeGreaterThan(-1);
-		expect(ruleAt('.pbl-col-grip', 'border-inline-end: 2px solid', '(hover: none)')).toBeGreaterThan(-1);
+		expect(ruleAt('.pbl-col-grip::before', 'background-color: var(--background-modifier-border);', '(hover: none)')).toBeGreaterThan(-1);
 		expect(ruleAt('.pbl-timeline-lead-grip', 'width: 20px;', '(hover: none)')).toBeGreaterThan(-1);
 		// After the rule each overrides, the ordering `styles/touch.css` states and the
 		// hazard that file records: a media query adds no specificity, so a block written
 		// above what it changes loses the tie.
-		expect(ruleAt('.pbl-col-grip', 'width: 20px;', '(hover: none)')).toBeGreaterThan(ruleAt('.pbl-col-grip', 'width: 6px;'));
+		expect(ruleAt('.pbl-col-grip', 'width: 20px;', '(hover: none)')).toBeGreaterThan(
+			ruleAt('.pbl-col-grip', 'width: var(--size-4-3);'),
+		);
 		expect(ruleAt('.pbl-timeline-lead-grip', 'width: 20px;', '(hover: none)')).toBeGreaterThan(
 			ruleAt('.pbl-timeline-lead-grip', 'width: 6px;'),
 		);
+	});
+
+	it('lets the column header reveal its resize mark, and the grip outrank that reveal', () => {
+		// Hovering the NAME is how a reader finds a handle they had no reason to point at.
+		// It hints; the grip itself confirms in the accent. Both paint the same box, so the
+		// confirm has to WIN — and it is the weaker selector by nature, since a pointer on
+		// the grip is a pointer on the label too. Scoping it through the label is what makes
+		// the two tie on specificity so document order decides, and this pins the order.
+		// Written as a bug once: the mark under the pointer stayed the hint's colour.
+		const hint = ruleAt('.pbl-col-label:hover .pbl-col-grip::before', 'background-color:');
+		const confirm = ruleAt('.pbl-col-label .pbl-col-grip:hover::before', 'background-color: var(--interactive-accent);');
+		expect(hint, 'the column name needs to reveal the mark').toBeGreaterThan(-1);
+		expect(confirm, 'the grip needs a reveal of its own').toBeGreaterThan(-1);
+		expect(confirm, 'the grip’s own reveal must outrank the header’s hint').toBeGreaterThan(hint);
+	});
+
+	it('lets the header strip carry a boundary mark taller than its own cells', () => {
+		// The mark spans the strip — its top edge to its bottom border — rather than the
+		// label's 16px line box, and three declarations have to agree for that: the cells
+		// stretch (centred ones leave a slack no constant can back out), the strip stops
+		// clipping (its clip is for a ROW's values, and a header name clips itself), and the
+		// grip backs out the strip's own padding. Drop any one and the mark is cropped to a
+		// tick floating in the middle — while its layout box still measures the full height,
+		// which is why this was found by asking what is hit-testable down the boundary in
+		// the browser rather than by reading a rectangle.
+		expect(ruleAt('.pbl-cols .pbl-props', 'align-self: stretch;')).toBeGreaterThan(-1);
+		expect(ruleAt('.pbl-cols .pbl-props', 'overflow: visible;')).toBeGreaterThan(-1);
+		expect(ruleAt('.pbl-col-grip', 'inset-block: calc(-1 * var(--size-4-2)) calc(-1 * var(--size-2-2));')).toBeGreaterThan(-1);
+		// The cell is spared `.pbl-prop`'s clip by that same (0,2,0) strip rule, which is
+		// what the second pin above covers — its selector list names the cell too. There is
+		// deliberately no pin on `.pbl-col-label` here: one was written, asserting an
+		// `overflow: visible` inside that rule, and the declaration decided NOTHING (a
+		// later `overflow: hidden` in the same rule outranked it by position). A text pin
+		// cannot decide a cascade — it can only say a declaration is present — so what it
+		// pins has to be the rule that actually governs, and the browser is what says which
+		// one that is.
+		expect(ruleAt('.pbl-col-label', 'overflow:')).toBe(-1);
 	});
 
 	it('reveals the connector on the keyboard-selected row, which is the only reveal that path gets', () => {
