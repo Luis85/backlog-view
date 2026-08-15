@@ -88,5 +88,9 @@ with it — and RETURNS no cards when folded, which is `renderBucket`'s rule and
 the keyboard walk and the pane's role honest without either asking about a fold.
 
 jsdom has no layout, so the suite asserts the cards, the count, the accessible name, the
-walk and the stored pick (`test/view/shelfFold.test.ts`); how the folded header reads
-beside its neighbours is `npm run harness`'s to show and a live vault's to confirm.
+walk and the stored pick (`test/view/shelfFold.test.ts`), and `npm run harness` answered
+the appearance: in Chromium against the real stylesheet, a folded group is one header row
+carrying a right-pointing chevron, its type and its count, sitting flush between its open
+neighbours — the shelf's own disclosure one level up, at group scale, with no rule of its
+own needed in `styles/shelf.css`. A themed vault's colours and spacing are still
+unanswerable here (ADR 0020).

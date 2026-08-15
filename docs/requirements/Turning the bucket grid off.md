@@ -61,6 +61,13 @@ pick is stored per saved view and per device.
 - **1a — another axis or another projection is showing.** No toggle is drawn: buckets are
   the horizon axis's alone, and a control that changes nothing on the screen in front of
   you is worse than one that is not there.
+- **2b — the pane is too narrow for a bucket to hold two card tracks.** The grid is
+  ALREADY drawing one card per row, so pressing the toggle changes nothing on screen —
+  only the button's own icon and pressed state. Accepted rather than fixed: the pick is
+  still stored and takes effect the moment the pane widens or a horizon is folded, and
+  withholding the control would need a per-render measurement of every bucket (the tree's
+  column-fit ladder, for a question with no clipping behind it). Measured in the harness
+  on the demo backlog's three horizons: one card column at a 1560px pane, two at 1700px.
 - **2a — the pane is too narrow for the toolbar row.** The toggle is shed with the density
   toggle at the same rung and carried by the `⋯`, checked exactly when the button was.
 
@@ -90,6 +97,10 @@ what pressing it does once — for the button and its `⋯` entry both. `renderR
 `styles/toolbarFit.css` sheds it with the density toggle.
 
 Layout is jsdom's blind spot, so the suite asserts the CLASS and the pick
-(`test/view/bucketGrid.test.ts`, `test/view/viewStatePersistence.test.ts`); that a single
-track actually draws one card per row is `npm run harness`'s to show and a live vault's to
-confirm.
+(`test/view/bucketGrid.test.ts`, `test/view/viewStatePersistence.test.ts`), and
+`npm run harness` answered the layout: measured in Chromium against the real stylesheet on
+the demo backlog's three horizons, a 2400px pane draws three card tracks per bucket with
+the grid on and one full-width card per row with it off, 1700px draws two against one, and
+at 1560px the two states are identical because the grid is already down to a single track
+(extension 2b). What the harness still cannot answer is a themed vault's colours and
+spacing, so the release sweep's own check stands (ADR 0020).
