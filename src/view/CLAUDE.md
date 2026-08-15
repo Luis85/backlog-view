@@ -52,9 +52,30 @@ free of runtime code so imports stay cycle-free.
   would still carry a stale-closured chip if that chip's own listener were wired at
   render time, so the delegation had to exist before that reuse could be safe. Per-row
   icons are cloned from per-name templates
-  (`drawIcon` in `render/icons.ts`) rather than re-parsed through `setIcon`. Data updates
-  still rebuild everything — skipping that needs to account for arbitrary chip property
-  values.
+  (`drawIcon` in `render/icons.ts`) rather than re-parsed through `setIcon`.
+  **A data update no longer rebuilds everything** (ADR 0029): `renderPass.ts` asks two
+  questions, and they fail differently on purpose. `renderInputs` (`rowSignature.ts`) is
+  the PASS-level fingerprint — `host.settings` whole, the columns, the projection, the
+  filter text, the fit verdict, the stored column widths and a probe of each column's
+  RENDERED value type — so a settings-derived rendering decision written next year is
+  covered without anyone remembering it, and beside it `reusableColumns` refuses the whole
+  pass unless every column is `note.`-backed. `rowSignature` is the PER-ROW question, and
+  it is an enumeration: that note's whole frontmatter as one term, plus the derived values
+  a row shows that its own note cannot give. Matching, the walk in `render/rows.ts` keeps
+  the element and carries its child group with it; unsignable (its note is not in the
+  metadata cache yet) or drawing another note's content, it is never claimed. Two
+  consequences bind anything written here from now on. **A row is no longer a clean
+  slate** — it carries whatever the last pass put on it, so a class, an attribute or a
+  `dataset` key set on one branch must be UNSET on the other, and that failure needs two
+  passes in the right order to show at all. And **a new per-ITEM rendering term has to
+  join `rowSignature` by hand**: nothing enforces the enumeration, so the build says
+  nothing, the suite says nothing, and the symptom is a stale cell on screen — four review
+  rounds found that list short, two of them inside the fix for the previous one. The
+  sweep to reconcile against, and the four terms no test can fail without, are in
+  `rowSignature.ts`'s own header rather than restated here. It costs about
+  **+0.11 ms per row BUILT** — signing a row that cannot be kept — against about
+  **−0.22 ms per row on a reuse pass** (0.324 → 0.104 ms/row for an `update` at 832
+  expanded rows), so every build pass, the mount included, pays a little for it.
 - **No input handler reads layout to answer a question the event did not ask**, and think
   hard before a RENDER does either. A layout read forces the browser to flush pending
   style and layout synchronously; in an input handler the pending work is largest, because

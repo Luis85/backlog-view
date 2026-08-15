@@ -136,6 +136,47 @@ fake two tests can reach through.**
 Fixed by copying (`{ ...values }`). What it cost before that was one confusing hour, not a
 shipped defect — the leak is the harness's, and no vault has one config object per view.
 
+## A third instance, 2026-08-15 — and it produced a vacuous test
+
+This note names the hazard exactly and was **Done** when the hazard bit again, in the row
+reconcile increment. Worth recording for that reason rather than in spite of it: a closed
+note describing the trap did not stop the trap.
+
+`FakeVault.setFrontmatter` rewrites the frontmatter alone. The parent edge does not live
+there — `resolveParent` reads `frontmatterLinks` first and the raw value only as a
+fallback, which is the whole subject of this note — so `setFrontmatter(path, { …, parent:
+'[[Beta]]' })` **moves nothing**. A test written that way to reparent a row one level
+deeper compared a group's `--pbl-depth` against its row's and asserted `'1' === '1'` about
+a tree that had not changed. It passed. It passed with the rule it guarded deleted, which
+is the definition of vacuous, and it survived a full review round before the control
+assertion — *the depth actually moved* — was added and the fixture switched to `addFile`
+with `parentLink`.
+
+Two things it says that the earlier instances did not:
+
+- **The divergence is not only in the ten hand-written fixtures.** It is in a HELPER that
+  writes them, so it is reachable by a test that never touches a bracketed value on
+  purpose. The earlier evidence — "nothing depends on the divergence" — was measured over
+  the suite as it stood, and a suite grows.
+- **The failure mode changed.** The instances above are a code path exercised
+  unrealistically; this one is an assertion that checked nothing. The first wastes a test,
+  the second reports success where it knows least.
+
+**Kept closed, with the instance recorded.** A limitation note closes because the decision
+is taken, not because the hazard is gone — and the hazard recurring is what this note
+predicts, so it is evidence for the record rather than against its closure. Reopening
+would mean somebody is about to act, and the only action available is the fixture rewrite
+`## What is left` below already refuses on stated grounds. What WOULD change that verdict:
+an instance that ships a defect rather than a vacuous test, or a fourth of any kind — at
+which point the answer is not a rewrite but making the fake faithful in the one place that
+produced this one, teaching `setFrontmatter` to index a bracketed value the way `addFile`'s
+`parentLink` already does, so an edit that reads as a reparent either moves the row or
+fails loudly.
+
+The wider lesson is the root `CLAUDE.md`'s and this increment paid for it twice: **an
+assertion has to be watched failing.** A comparison whose two sides are computed from the
+same unchanged thing is green for the reason nobody reads.
+
 ## What is left
 
 The fixtures still model a cache no vault hands out, and the cost of that is now known

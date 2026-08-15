@@ -132,8 +132,36 @@ fail without, and a single non-`note.` column refuses reuse for the whole pass.
 four are named in `rowSignature.ts` with the reason each cannot be isolated, rather than
 left reading as checked.
 
-**Mount cost is untouched.** A first render has nothing to reuse, so the ~0.3 ms per row
-is still paid in full when the view opens or the projection changes.
+**What it bought, measured.** Interleaved A/B against `86b1170` — the last commit before
+the reconcile, same fixture, same seven columns — four alternated runs, medians of the
+panel's medians, folder fixture, tree expanded. `update` fell **0.324 → 0.104 ms/row at
+832 rows (−68%)**, `render only` 0.275 → 0.083, and the same cut holds at 232 and 1632
+rows with spreads that never overlap. The per-row cost does not climb with size — 0.116 →
+0.104 → 0.099 — so the per-row signature walk is not eating its own saving, and the
+reference-comparison upgrade the design named as a fallback is not owed on this evidence.
+The carried child group is worth what it was meant to be worth: a reorder that moves all
+832 rows costs 98.9 ms against 241.1 on the build that rebuilds everything. Every figure
+is a **lower bound with a known direction and an unknown size** — the harness's fake entry
+has no `renderTo`, so a real vault pays more per row than any of them, and skips more per
+kept row too. The numbers, the instrument and its caveats are in
+`docs/bugs/The render is the whole cost of a data update.md`.
+
+**A pass that BUILDS got dearer, and that is the price of this decision.** `switch to
+tree` — a full rebuild with reuse illegal because the projection changed — is **+17% at
+232 rows and +17% at 1632, spreads not overlapping**, about **+0.11 ms per row built**:
+signing a row that cannot be kept. Every build pass pays it, the mount included. It is
+small against the ~0.22 ms/row the reuse passes save, and a data update happens far more
+often than a projection switch, so the trade is the right way round — but it is a real
+cost and it is stated rather than left out.
+
+**Mount cost is untouched ONLY because the mount draws a COLLAPSED tree.** A first render
+has nothing to reuse, so the ~0.3 ms per row is still paid in full when the view opens or
+the projection changes — and the paragraph above is now also paid there. It does not show
+in the measurement (mount reads −1% to +4% at every size, spreads overlapping throughout)
+because a collapsed mount at `?notes=800` draws 39 rows, where +0.11 ms/row is a few
+milliseconds inside the noise. **A vault that opens on an expanded tree pays it in full.**
+The earlier flat claim that mount cost was untouched was narrowed here once the numbers
+came in.
 
 ## Alternatives
 
