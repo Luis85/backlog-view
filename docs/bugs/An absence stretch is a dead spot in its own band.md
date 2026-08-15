@@ -47,6 +47,14 @@ The two lines below the loop's `continue` are the wiring every other line gets. 
 absence branch does remember to name the row (`renderLaneRowDescription`), which is what
 makes this read as complete on inspection: half of what a band line owes is there.
 
+(This code shape is history: the `'absence'` `TimelineEntry` kind and `renderLaneAbsence`
+were both deleted on 2026-08-14, when the stretch moved into its resource's HEADER track —
+see [[Resource absences]] 4n. The principle this bug states survives that change in a
+stronger form rather than needing this fix again: a mark is now a DOM CHILD of the header
+element rather than a sibling `TimelineEntry` with its own `laneTarget` call to remember, so
+the drop reaches it by construction — the child-versus-sibling distinction 4n itself cites
+this note for.)
+
 This is the recorded cost of per-element wiring arriving, not a surprise. The
 specification for it names the element kinds as a **list** — "the header, each bar row,
 each excluded note's row" — and a list is what the fourth kind, added a commit later by

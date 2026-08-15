@@ -100,9 +100,11 @@ empty stylesheet.
 **`DrawnColors` gained a fourth field, and is now wider than its name**: it reports which
 MARKS a pass drew that the key has to explain, and a hatch is one. `drawEntries` sets it at
 the one place a stretch is drawn, so the swatch appears exactly where the mark does — the
-view test drives a band folded shut and watches the entry go with it, which is reachable only
-because `laneEntries` skips a collapsed band whole. A bar's own report is the narrower
-`BarColors`, so no row literal claims anything about a mark drawn nowhere near it.
+view test drove a band folded shut and watched the entry go with it, which was reachable then
+because `laneEntries` skipped a collapsed band whole; since 2026-08-14 the stretch draws in
+the header instead, and `test/view/legend.test.ts` now asserts the swatch STAYS when the band
+folds shut (4n in [[Resource absences]]). A bar's own report is the narrower `BarColors`, so
+no row literal claims anything about a mark drawn nowhere near it.
 
 **A `.pbl-absence-wash` is appended into each work row's day track**, positioned by the same
 `barGeometry` the mark is, so the shading and the stretch cannot disagree about which day is

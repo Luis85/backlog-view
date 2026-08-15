@@ -433,9 +433,10 @@ crowds a title that was not going to fit either.
 rather than an omission.** One was built on 2026-08-14 — `lane.bars.length` is RESULT bars and
 stays so, the rule a bucket's count already keeps, which leaves a band whose only content is an
 absence reading `0` — and it was removed the same day, from the vault it was built for: the
-stretch's own hatched row is directly beneath the header, so the `0` is never read alone, and a
+stretch's own hatched mark was directly beneath the header then, in a row of its own, and sits
+inside the header's own track now (4n) — either way the `0` is never read alone — and a
 fourth `user-x` in one lead competed with the Add absence button that reveals on hover in the
-same place. The reading of `0` is the accepted cost, and the row below is what pays it.
+same place. The reading of `0` is the accepted cost, and the mark itself is what pays it.
 
 **What the header DOES carry, since 2026-08-14, is a labelled readout** — words rather than
 the fourth `user-x`, so the reason above about the Add absence button is untouched. What
@@ -447,7 +448,8 @@ render pass painted, so it is asked the same way whether the band is open or shu
 
 **The shape changed again the same day, and this is the second rewrite of it.** What shipped
 as one number is now two things, each dropped at zero rather than reading a bare `0`: an
-ITEM count (`${lane.bars.length} items`, still result bars and nothing else) and a WEEKS-AWAY
+ITEM count (`lane.bars.length`, pluralized `item`/`items`, still result bars and nothing
+else) and a WEEKS-AWAY
 pill (`awayWeeks` in `src/domain/absences.ts`, unioned rather than summed so two overlapping
 stretches are not away twice), weighted up with its own class when the resource also holds
 work — that is the row a planner has to act on, since away with nothing booked is merely
