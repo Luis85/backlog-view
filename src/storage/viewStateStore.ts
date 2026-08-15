@@ -159,6 +159,12 @@ export interface ViewPrefs {
 	leadWidth?: number;
 	focus?: string;
 	clickFolds?: boolean;
+	/**
+	 * Whether a horizon bucket lays its cards out one per row instead of the responsive
+	 * grid. Stored as the OFF state for the grid, because the grid is the default and a
+	 * default stores nothing — the same absence rule `density` keeps for comfortable rows.
+	 */
+	bucketList?: boolean;
 	shelfExpanded?: boolean;
 	shelfSort?: string;
 	shelfHiddenTypes?: string[];
@@ -282,6 +288,7 @@ export const PREF_READERS: { [K in keyof ViewPrefs]-?: Reader<NonNullable<ViewPr
 	leadWidth: inRange(MIN_TIMELINE_LEAD_PX, MAX_TIMELINE_LEAD_PX),
 	focus: anyName,
 	clickFolds: onlyTrue,
+	bucketList: onlyTrue,
 	shelfExpanded: onlyTrue,
 	shelfSort: oneOf(SHELF_SORT_VALUES),
 	shelfHiddenTypes: nonEmptyTexts,
