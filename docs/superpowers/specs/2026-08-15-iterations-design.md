@@ -1,0 +1,242 @@
+# Iterations — design
+
+Date: 2026-08-15
+Status: approved, not built
+
+## The ask
+
+An `Iteration` concept for the backlog: work items say which iteration they belong to,
+and a second kanban board shows one iteration at a time, with a workflow based on the
+product board's. The two boards are reached from one switcher, the way the roadmap's two
+axes are.
+
+## Decisions taken during design
+
+Four questions were put to the user. The answers below are the constraints, not
+proposals.
+
+1. **An iteration is a note of its own**, typed `Iteration` — not a property value and
+   not an observed vocabulary. It can therefore carry dates, a goal and a body.
+2. **The switcher chooses the board's scope**, not a new projection. `Board` stays one
+   position on the projection toggle and gains a scope picker: `Product`, or one of the
+   Iteration notes. The Deliverables board keeps its own toggle position, unchanged.
+3. **Only items that carry the iteration land on its board.** No inheritance down the
+   tree. A Task in Sprint 12 says so itself, whatever its parent says.
+4. **An iteration draws as a bar or as a line, and that is a toggle**, not a fixed
+   consequence of the type.
+
+## What this is not
+
+Deliberately out of scope, so a reader does not look for them:
+
+- No burndown, no velocity, no capacity.
+- No swimlanes and no all-iterations board.
+- No "Show completed items" on an iteration board, following the Deliverables board's
+  own deferral of the same control for the same reason: completion there is a question
+  the iteration workflow answers, not the requirements one.
+- No inheritance of an iteration from a parent item (decision 3).
+- No automatic roll-over of unfinished work into the next iteration.
+
+## 1 — `Iteration` joins the type vocabulary
+
+An eighth declared name, in `MARKER_TYPES` beside `Milestone` (`src/domain/typeVocabulary.ts`).
+
+A marker occupies no rung, holds nothing and hangs from nothing, which is what an
+iteration is: items *link* to it, they are never its children. Every structural rule
+that follows is therefore inherited rather than written — no rung in the ladder, no `+`
+offering to create a child under it, no dependency edges, ranked out of the ladder by
+`itemTypes.ts`.
+
+It owes the three shipped opinions ADR 0013 requires of a declared name: a default
+subfolder (`iterations`, in `DEFAULT_TYPE_SUBFOLDERS`), an icon, and a badge colour.
+This amends ADR 0013 exactly as the Milestone addition did on 2026-08-02.
+
+Consequences that follow for free and are wanted: the type appears in the creator menus,
+is accepted as a focus root, groups on the shelf, and is documented by the generated
+README and the in-app manual, because all of those read `ALL_TYPES`.
+
+## 2 — `iteration` joins the optional properties
+
+One row in `PROPERTY_TABLE` (`src/domain/optionalProperties.ts`):
+
+| | |
+| --- | --- |
+| field | `iteration` |
+| option key | `iterationProperty` |
+| suggested key | `iteration` |
+| label | `iteration` |
+| settings key | `iterationKey` |
+
+That single row buys the view option, the ✨ setup binding, the backfill stub, the
+key-collision gate and the `ownedProperties` listing. No new machinery.
+
+**Reading it.** The value is a wikilink to the Iteration note. `src/domain/noteFields.ts`
+already resolves a link property through the metadata cache — handling wikilinks,
+aliases, bare names and lists — which is how `parent` and `dependsOn` are read.
+
+**Writing it.** One more pair in `applyLabels`' list in `src/storage/frontmatter.ts`,
+the shape the assignee arrived as on 2026-08-10. The rule that list already keeps holds
+unchanged: an unconfigured key is never written, and a `null` value deletes.
+
+**Setting it.** A `Set iteration` submenu on the row and card context menus, offering
+every Iteration note plus `None`. Its checkmark is asked of the **plan** — an entry is
+checked exactly when picking it would write nothing — never by a comparison written
+beside the plan.
+
+## 3 — The board grows a scope
+
+`Board` stays one position on the projection toggle. `renderProjectionZone`
+(`src/view/render/toolbarControls.ts`) gains a `case 'board':` that draws a scope
+picker — the axis picker's twin, in the same zone, built the same way.
+
+```
+[ Tree | Board | Roadmap | Deliverables ]
+[ Scope: Product ▾ ]  →  Product · Sprint 11 · Sprint 12
+```
+
+Offered only when at least one Iteration note is in the model. With none there is
+nothing to choose between, which is the refusal `renderAxisPicker` already makes for a
+single configured axis.
+
+**The pick is UI state.** A `boardScope` field beside `axis` in the collapse store's
+per-view entry (`src/storage/collapseStore.ts`) — vault-scoped localStorage, per saved
+view, per device, never the `.base`. ADR 0011's rule, applied again.
+
+Read defensively, as every stored value there is: a stored path that no longer names an
+Iteration falls back to `Product` and is **retained rather than rewritten**, so restoring
+the note restores the saved choice. That is the axis pick's own rule
+([[Horizons or dates]] extension 3a), and it is what makes a stored value user data
+rather than a cache.
+
+A host accessor pair `boardScope` / `setBoardScope` joins the siblings in
+`src/view/uiState.ts`.
+
+## 4 — Population and columns
+
+| Scope | Cards | Columns |
+| --- | --- | --- |
+| `Product` | unchanged | `requirementsWorkflow` |
+| An iteration | `model.results` whose `iteration` link resolves to that note | `iterationWorkflow` |
+
+`iterationWorkflow(model, settings, iteration)` sits in `src/domain/board.ts` beside
+`deliverablesWorkflow` — a third instance of the `Workflow` interface, which already has
+two, stated as a factory so the domain tests exercise the workflow the view builds.
+
+The context-row rule applies unchanged: an `outsideFilter` item renders, it parents, and
+that is all — never a card to drag, never a write target, never counted, never a source
+of this board's column vocabulary.
+
+Two controls behave differently from the Deliverables board, and the difference is not an
+exception but a consequence of where the population comes from. An iteration board draws
+from `model.results`, which is what a focus narrows, so **the focus level narrows it
+exactly as it narrows the product board** — nothing here reads the whole unfocused tree
+the way `model.deliverableResults` deliberately does. **"Show completed items" is not
+implemented here** in this increment, following the Deliverables board's own deferral:
+answering it needs a rollup over the iteration workflow, not the requirements one.
+
+## 5 — Its own workflow, based on the product one
+
+An `Iterations` view-options group mirroring `deliverablesGroup()`
+(`src/domain/viewOptions.ts`):
+
+| Option key | What it is |
+| --- | --- |
+| `iterationStateProperty` | the iteration workflow's own state property |
+| `iterationStateValues` | its ordered states |
+| `iterationDoneValues` | its states that count as done |
+
+Resolved by `resolvedIterationStateKey` in `src/domain/optionalProperties.ts`, beside
+the two resolvers already there.
+
+**The fallback is field by field**, which is the Deliverables board's hard-won rule and
+the exact sentence a register note once got wrong: the *key* falls back to the product
+board's resolved `stateKey` when no iteration state property is set; each *list* falls
+back only while it is itself empty. **A list you set always wins**, shared key or not.
+The all-or-nothing part is about borrowing, never about overriding.
+
+## 6 — Moves
+
+A column move on an iteration board writes the resolved iteration state key alone,
+through `performBoardMove` — the host method that already exists, taking the scope's
+workflow as an input rather than growing a twin beside it. One method, three inputs
+(drag, Alt+arrow, card menu), one place the batch is planned and one place it is
+announced. Same `applySafely` gate, same single undo slot.
+
+`applyCardMove`'s capture rule holds here too: the vocabulary that names the move is
+read before the await, because the batch's own refresh rebuilds the board before it
+resolves and the column just vacated may be gone with its last card.
+
+## 7 — Empty states
+
+Two, in `src/view/render/emptyStates.ts`:
+
+- **No workflow resolves** — the Deliverables board's unconfigured twin, naming the
+  option to set and where.
+- **The iteration holds no items** — "No items in this iteration yet". Never the product
+  board's "All N items are done and hidden", which cannot tell an empty base from an
+  empty scope. That is [[A board scoped to Deliverables]] extension 1b, met a second
+  time.
+
+## 8 — A bar or a line
+
+`isMarkerType` today answers two different questions, and only `Milestone` needs them
+fused. Adding `Iteration` to the same list without splitting them would make
+`isMarkerType` mean two things at eight call sites — the exact defect
+`src/domain/typeVocabulary.ts` records for `isExtraType`.
+
+The split:
+
+| Predicate | Means | Asked by |
+| --- | --- | --- |
+| `isMarkerType` | no rung, no children, no dependencies | `childTypeChoices`, `src/domain/dependencies.ts` and `src/view/interactions/dependencies.ts` — unchanged |
+| `drawsAsPoint(typeName, settings)` | drawn at one date, not across two | `placementEnds`, `src/domain/bars.ts`, `src/view/render/timeline.ts`, `src/view/render/milestoneLines.ts` |
+
+`drawsAsPoint` is `isMarkerType(t) && !(isIterationType(t) && settings.iterationBars)`.
+Toggle off, an iteration draws a boundary line exactly as a Milestone does. Toggle on,
+it draws a start→target bar and no line.
+
+**The toggle is a `.base` view option** (`iterationBars`, in the Iterations group), not
+UI state. That is not a preference call: `placementEnds` is read by the **writer** in
+`src/storage/frontmatter.ts` to decide which date keys a drag may touch, and `storage/`
+cannot reach localStorage-backed UI state without breaking the layer rule. It governs
+writes, so it is configuration.
+
+**Cost, stated plainly.** `placementEnds` grows a `settings` argument, so every caller is
+touched: the row's Schedule and Unschedule, the shelf drop, the body slide, both grips,
+and the writer. Mechanical, but it is the widest diff in the feature, and it is why this
+ships as its own PBI that the board work does not depend on.
+
+## Testing
+
+`domain/` gets node tests, `view/` gets the jsdom harness, as ever.
+
+- `test/domain/iterationSettings.test.ts` — the field-by-field fallback, in both
+  directions, with the two claims the Deliverables note got wrong asserted explicitly.
+- `test/domain/iterationModel.test.ts` — population is carriers only; a descendant
+  without its own iteration is absent.
+- `test/view/iterationBoard.test.ts` — the scope picker, its persistence, the fallback
+  of a stale stored scope, and the two empty states.
+- `test/view/contextCardWrites.test.ts` — extended, since a card projection's three
+  entry points are what that file exists to ask about.
+- `test/domain/bars.test.ts` — `drawsAsPoint` both ways, and that `isMarkerType`'s
+  structural callers did not change meaning.
+
+Obsidian cannot run here. A live-vault smoke test is still owed for: the type's badge
+colour and icon, the scope picker's fit in the toolbar row, and the bar/line toggle's
+appearance on a themed vault. `npm run harness` can answer layout and hierarchy for the
+scope picker before any of it is built, by adding an `Iteration` type and a scope to
+`demoOptions()` / `demoResults()` in `test/helpers/fixtures.ts`.
+
+## Register work this implies
+
+- `docs/requirements/An Iterations board.md` — the Feature, under [[Product Kanban]].
+- Three PBIs under it, in the order the work should land.
+- An amendment to ADR 0013 for the eighth name.
+- `docs/README.md`'s folder table gains an `iterations/` row, and its hierarchy table
+  gains `Iteration` — both are gated by `docs-check.mjs` against `LEGAL_CHILDREN` and by
+  `test/docs/surfaces.test.ts` against the real option keys, so neither can be skipped.
+- Every new option key (`iterationProperty`, `iterationStateProperty`,
+  `iterationStateValues`, `iterationDoneValues`, `iterationBars`, and the generated
+  `typeFolder.iteration`) must be named in `docs/requirements/`, or
+  `test/docs/surfaces.test.ts` fails.
+- `CHANGELOG.md` gains an `[Unreleased]` entry in the pull request that earns it.

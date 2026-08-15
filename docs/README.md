@@ -101,8 +101,14 @@ one; its own toolbar creates only Deliverables — and its focus control, briefl
 clear-only while an inherited focus still narrowed this board like any other, was
 later reversed to ignore the focus level outright, since no level narrows this board
 and there is never anything left to clear. What remains under the epic — lanes,
-creation from a column, column collapse, and the touch verdict a device has to
-answer — is still design.
+creation from a column, column collapse, the touch verdict a device has to answer,
+and **iterations** — is still design. That last one multiplies the board a second
+time and does it differently on purpose: a time box partitions nothing, since every
+card in a sprint is also a card on the product board, and the number of sprints only
+grows. So it takes no toggle position of its own. `Board` gains a **scope** picker
+beside the projection toggle — `Product`, or one iteration — the control the roadmap
+already uses to offer its two axes, over a workflow of its own that falls back to the
+product board's field by field.
 
 Those use cases are the argument for writing a PBI *before* building it rather than
 after. The ones still open say **nothing yet** (or **partly built**, naming exactly
