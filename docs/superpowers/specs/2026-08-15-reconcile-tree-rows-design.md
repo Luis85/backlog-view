@@ -80,8 +80,15 @@ a reused element would hold a chip pointing at the previous update's item, whose
 and `children` reach into a model that is gone.
 
 So the controls resolve their item **per event**, by `data-path` against the current model,
-the way the row's own activation already does — `rowItem(host, evt)` in `render/rows.ts` is
-the helper that exists for it and gains an export. This is worth having on its own: it makes
+the way the row's own activation already does.
+
+The resolver for them is **not** `rowItem` in `render/rows.ts`, and the difference matters:
+`rowItem` searches for `.pbl-row`, which is the tree's alone, and its comment says so —
+*"on a card projection every one of these handlers resolves nothing and stands aside"*.
+`renderPropCells` is shared with the cards, whose path sits on `.pbl-card`, so reusing
+`rowItem` for the chips would make every chip on the board, the roadmap and the shelf
+inert. The delegated resolver matches `[data-path]` instead, which both mounts carry, and
+`rowItem` keeps its narrowing untouched. This is worth having on its own: it makes
 the guide's sentence true as written, and it takes a closure and an `addEventListener` call
 per control out of the render before the class changes at all — up to seven per row where
 every chip column is configured, plus one more for every tag a row carries.
@@ -139,8 +146,23 @@ pass is handled by the gate below instead:
 - **The note's frontmatter, stringified.** One term covering the badge, the title, every
   `note.*` property cell, the state, horizon, risk and assignee chips, and the tags.
 - **What a row draws that its frontmatter cannot give**: rollup done and total, `depth`,
-  `aria-level`, `aria-posinset`, `aria-setsize`, whether any child is visible, collapsed,
-  selected, `outsideFilter`, `draggable`, implied type, and the add button's label.
+  `levelIndex` and `effectiveLevelIndex`, `impliedType`, **`orphan`**, `outsideFilter`,
+  `aria-posinset` and `aria-setsize`, whether any child is visible, collapsed, selected,
+  draggable, and the add button's type list.
+
+**That second list was built with an instrument, not from memory**, and the first draft of
+it proves why: it was written by recalling the render and it missed `orphan`, which draws
+the `.pbl-orphan` unlink marker and flips when a referenced parent starts being returned by
+the Base — no frontmatter touched, same depth, same position. Review caught it. The list
+above comes from sweeping every `item.*` read in `renderItem`, `renderRowLead`,
+`renderRowTrailing`, `renderBadge` and every cell renderer, and checking each against a
+term.
+
+The honest limit stays: this is an **enumeration**, and nothing fails when a term is
+missing. A new per-item rendering decision has to join it, and neither the compiler nor
+the suite will say so — which is why the pass-level fingerprint above covers the settings
+axis by construction rather than by listing, and why this list is the part of the design
+to re-derive by sweep rather than by reading, every time the row gains something.
 
 The failure directions are not symmetric and the design leans on that. A signature that
 differs when the row would have drawn the same costs one wasted row build — today's
