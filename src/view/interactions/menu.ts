@@ -14,7 +14,7 @@ import {
 	ItemWrite,
 } from '../../domain/writePlan';
 import { addAssigneeItems, addRiskItems } from './labels';
-import { BoardModel, cardPaths, deliverablesWorkflow, ownWorkflowReading, stateKeyFor } from '../../domain/board';
+import { BoardModel, deliverablesWorkflow, ownWorkflowReading, stateKeyFor } from '../../domain/board';
 import { ShelfCard } from '../../domain/bars';
 import { organizeShelf, ShelfSort } from '../../domain/shelf';
 import { canReorder, indent, moveToEdge, moveWithinSiblings, outdent, outdentTarget, visibleNeighbor } from './structure';
@@ -22,7 +22,7 @@ import { promptCreateItem } from './create';
 import { addHorizonItems, canSchedule, carriesDates, promptSchedule, unschedule } from './plan';
 import { addTagItems, tagsColumnVisible } from './tags';
 import { addDependencyItems, dependenciesAvailable } from './dependencies';
-import { listedChildren, undisclosedMatches } from '../childrenList';
+import { listedChildren, matchesFor } from '../childrenList';
 import { offerableTypes, retypeChoices, rowVocabulary, treeShaped } from '../projection';
 
 /**
@@ -39,11 +39,23 @@ function isCurrentType(item: BacklogItem, type: string): boolean {
 	return item.typeName !== null && item.typeName.toLowerCase() === type.toLowerCase();
 }
 
-/** Context menu for a backlog row (mouse path). */
+/**
+ * The row menu for a click on the row — a `contextmenu` from a pointer, or a plain click
+ * on the one BUTTON that opens it this way (the match count chip; the state chip's own
+ * menu is `showStateMenu`/`chipMenu`, a separate path this function never sees).
+ *
+ * Through `showMenuForClick` for that second kind, and it is the rule rather than this
+ * caller's precaution: a button's Enter or Space synthesizes a click at (0, 0), which
+ * `showAtMouseEvent` reads as a position and honours, dropping the menu in the viewport
+ * corner. A real pointer never reports that, so the pointer path is unchanged. It shipped
+ * that way on the match count chip, whose menu is the ONLY route to the matches it counts
+ * (`renderMatchCount`, `render/board.ts`) — so the corner was the whole of that
+ * affordance's keyboard path.
+ */
 export function showItemMenu(host: BacklogViewHost, evt: MouseEvent, item: BacklogItem, childTypes: string[]): void {
 	evt.preventDefault();
 	const menu = buildItemMenu(host, item, childTypes);
-	menu?.showAtMouseEvent(evt);
+	if (menu) showMenuForClick(menu, evt);
 }
 
 /** Assemble the row menu; the caller decides where to show it. */
@@ -327,10 +339,8 @@ export const showTagMenu = (host: BacklogViewHost, evt: MouseEvent, item: Backlo
  * a matching card is a second result, and it has no card of its own to be reached by.
  */
 function addMatchSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
-	const board = activeBoard(host);
-	if (!board || !host.isFiltering()) return;
-	const carded = cardPaths(board);
-	const matches = undisclosedMatches(host, item, carded);
+	if (!host.isFiltering()) return;
+	const matches = matchesFor(host, item);
 	if (matches.length === 0) return;
 	menu.addSeparator();
 	for (const match of matches) {

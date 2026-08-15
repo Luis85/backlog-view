@@ -59,6 +59,31 @@ Switch to the roadmap's dated axis.
   a child): does the unclosed dashed edge read as **"this continues, unknown"**, or does
   it read as a rendering glitch — a line that just stops? This is a judgement call, not a
   class assertion, and it is the reason this note exists.
+- On that same comparison, find a bar with descendants (dated or inferred) and confirm
+  its progress band carries a visible hairline separating the band from the bar — not
+  just on the green-on-green done case the hairline exists for, but on an ordinary
+  state-coloured bar too, where the fix must not have made anything worse. Measured in
+  Chromium's DEFAULT colours (`npm run harness`, `.superpowers/harness-band-fix.md`,
+  2026-08-15): a done row's band, an inferred bar's dashed border, and an open end's
+  gradient all still read correctly against it — the ring's outer edge lands exactly on
+  a plain or open-ended bar's own edge (harmless, nothing else painted there) and a full
+  1px short of an inferred bar's dashed border (measured via computed geometry, not
+  guessed). **What a vault still owes**: a themed vault's own colours — a community
+  theme can replace `--background-primary` (the hairline's own colour) with something
+  closer to a bar colour than Obsidian's default is, which is exactly the kind of
+  collision this fix exists to survive, and no harness pass can say whether it does.
+- **Residual, not solved: a done bar's ratio is read by inversion, and 100% is
+  ambiguous.** The hairline fixes the band's EXTENT — it is always visible as a shape —
+  not the colour collision that made it invisible in the first place: fill-vs-bar
+  contrast on a done row is still 1.00, and stays 1.00 under this fix, because the
+  hairline is a boundary around the band, not a change to what colour the fill paints.
+  So on a done bar the actual ratio has to be read by inversion (reading the dark,
+  UNFILLED remainder and subtracting from the whole), and at 100% a ring around a solid
+  bar-coloured fill is genuinely ambiguous against a ring around an EMPTY capsule —
+  colour offers no cue once the interior is uniform. Whether a reader actually does that
+  inversion correctly, and whether a 100%-done bar reads as "full" rather than "I can't
+  tell if this is 0% or 100%" at a glance, is exactly the kind of judgement call this
+  suite exists for and no contrast number answers. **Never checked in a vault.**
 
 ## Acceptance criteria
 

@@ -34,7 +34,7 @@ the base's filter, is a note the board writes and then cannot show.
 | **Actor** | Backlog owner |
 | **Trigger** | Choosing to create from a column, by pointer, menu or Enter on a selected column |
 | **Preconditions** | Board mode is on and the config-problems gate is clear |
-| **Guarantee** | Creation writes the new note and nothing else — never the lane's parent, never a sibling. If the result is not visible on the next render, the view says so rather than letting it vanish. |
+| **Guarantee** | Creation writes the new note and nothing else — never a sibling. If the result is not visible on the next render, the view says so rather than letting it vanish. |
 
 **Main flow**
 
@@ -49,11 +49,6 @@ the base's filter, is a note the board writes and then cannot show.
 
 - **1a — the column is the no-state column.** Creation writes no state at all, rather than
   writing an empty one. Absence is a value here.
-- **1b — lanes are on.** The lane provides the parent, and the offered types narrow to what
-  that parent may hold.
-- **1c — the lane's parent is outside the filter.** The child is taken by explicit link with
-  folder inference skipped, exactly as the tree's context rows do — the link keeps the
-  hierarchy right wherever the note lands.
 - **4a — the next render does not show it.** Folder rules cannot rescue a note from a
   *state* filter: a base can exclude a state the workflow still names —
   `status != Done` beside a Done column — and a filter is opaque to the view, so
@@ -76,10 +71,7 @@ the base's filter, is a note the board writes and then cannot show.
   finished work swallowed a card born done — the view says so and offers to open it,
   rather than letting it silently vanish.
 - The no-state column creates without writing a state at all.
-- With lanes on, the lane provides the parent and the offered types narrow to what
-  that parent may hold; a lane whose parent is outside the filter takes the child by
-  explicit link with folder inference skipped, exactly as the tree's context rows do.
-- Creation writes the new note only — never the lane's parent, never a sibling.
+- Creation writes the new note only — never a sibling.
 
 ## Where it lives
 
