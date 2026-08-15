@@ -251,9 +251,15 @@ function addMoveSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): v
  * a focused button synthesizes a click at (0, 0), and anchoring a menu there drops
  * it in the viewport corner instead of beside the control the user is standing on.
  * Every menu opened from a button goes through here.
+ *
+ * The BUTTON the user activated, not `evt.currentTarget`: the per-item chips are
+ * delegated at the pane now (`wireChipEvents` in `render/rows.ts`), so `currentTarget`
+ * is `treeEl` rather than the chip, and anchoring to it would drop the menu under the
+ * whole tree instead of beside the control. A direct listener's `currentTarget` and
+ * `target` resolve to the same button, so this needs no second code path for one.
  */
 export function showMenuForClick(menu: Menu, evt: MouseEvent): void {
-	const el = evt.currentTarget;
+	const el = (evt.target instanceof Element ? evt.target.closest('button') : null) ?? evt.currentTarget;
 	if (evt.clientX === 0 && evt.clientY === 0 && el instanceof HTMLElement) {
 		const rect = el.getBoundingClientRect();
 		menu.showAtPosition({ x: rect.left, y: rect.bottom });
