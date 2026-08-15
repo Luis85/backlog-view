@@ -13,6 +13,13 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Added
 
+- **A toggle for the bucket grid on the horizon roadmap.** A wide bucket reflows its cards
+  into several columns, which is right for a backlog slice and wrong for a short list you
+  are reading down. The toolbar now carries a toggle for it while the horizon axis is
+  showing: press it and every bucket lists its cards one per row. The grid stays the
+  default, and the pick is remembered per saved view on this device — nothing is written
+  to the `.base`.
+
 - **Every milestone in one row above the roster.** On the resources axis a milestone is no
   longer filed under whoever is named on it — where folding that person's band took the
   date off screen — and one naming nobody no longer waits on the shelf. Every placed

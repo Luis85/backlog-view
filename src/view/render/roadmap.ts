@@ -79,7 +79,12 @@ export function renderRoadmap(
 	// legend — see `RoadmapSnapshot.palettes`. Empty on the horizon axis, which draws no bar.
 	let palettes: StatePalette[] = [];
 	if (axis === 'horizons') {
-		const bucketsEl = frameEl.createDiv({ cls: 'pbl-roadmap-buckets' });
+		// The layout pick rides the ROW rather than each bucket: one class where the buckets
+		// are created, read by `.pbl-bucket-cards` in `styles/roadmap.css`, so a bucket that
+		// renders knows nothing about it.
+		const bucketsEl = frameEl.createDiv({
+			cls: 'pbl-roadmap-buckets' + (host.bucketGrid ? '' : ' pbl-buckets-list'),
+		});
 		for (const bucket of roadmap.buckets) cards.push(...renderBucket(ctx, bucketsEl, bucket, dnd));
 		// The pane is the scroller, not the frame: the frame is `max-content` wide and
 		// scrolls nothing, so auto-scroll toward an edge has to watch the box that does.

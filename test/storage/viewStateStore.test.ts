@@ -35,6 +35,7 @@ const FULL_PREFS: Required<ViewPrefs> = {
 	leadWidth: 240,
 	focus: 'Feature',
 	clickFolds: true,
+	bucketList: true,
 	shelfExpanded: true,
 	shelfSort: 'modified',
 	shelfHiddenTypes: ['Task'],

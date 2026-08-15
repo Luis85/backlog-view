@@ -407,6 +407,14 @@ export interface BacklogViewHost {
 	readonly clickFolds: boolean;
 	/** Flip what a click does and re-render; the view-state store persists the pick. */
 	setClickFolds(value: boolean): void;
+	/**
+	 * Whether a horizon bucket lays its cards out as a responsive grid — the default —
+	 * rather than one card per row. UI state exactly like the density beside it: how wide
+	 * the pane in front of you is, per saved view and per device, never the `.base`.
+	 */
+	readonly bucketGrid: boolean;
+	/** Flip the bucket layout and re-render; the view-state store persists the pick. */
+	setBucketGrid(grid: boolean): void;
 	/** Whether the shelf is collapsed for this saved view; collapsed is the default. */
 	readonly shelfCollapsed: boolean;
 	/** Toggle the shelf's collapse state and re-render the content pane. */
