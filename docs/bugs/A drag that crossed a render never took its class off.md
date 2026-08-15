@@ -56,10 +56,14 @@ removed in its `onDrop`. Two facts turn that into a permanent stranding:
 So a gesture held across a render never gets its `onDrop`. And `viewEl` is built once in
 the view's constructor and survives every render, so nothing later takes the class off.
 
-**The drop still lands**, which is what makes this invisible until the pane dies: the
-target under the pointer is a live element the new pass registered, and the payload
-resolves against the rebuilt model exactly as designed. The write happens, the card moves,
-and the view is left unusable.
+**The drop was believed to still land**, and that is why this read as a cosmetic
+stranding: the target under the pointer is a live element the new pass registered, and the
+payload resolves against the rebuilt model exactly as designed. That belief was wrong, and
+it hid a second, larger failure for four days — see
+[[A release that crossed a render wrote nothing]]. Pragmatic looks a DROP TARGET up in its
+registry at dispatch time exactly as it does a source, so the release reaches no `onDrop`
+either, unless a `dragover` has landed on a re-registered element in between. The class
+fix below is still right and still needed; what it was described as costing was not.
 
 Why it appeared while drawing dependencies, and why it would not reproduce on demand: each
 dependency write refreshes the view, so a session spent linking bars is a session full of
