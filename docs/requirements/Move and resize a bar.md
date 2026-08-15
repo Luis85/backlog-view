@@ -28,10 +28,9 @@ The convention is universal — Asana, GitHub and the Obsidian Gantt prior art a
 the bar's body shifts both dates together, an end moves that date alone, and every
 drag means a whole day, at every zoom — zoom changes pixel density and header
 granularity only, never the write's own grid. What is distinctive here is what
-the gesture does *not* do: a date write has no peers. Within its lane it renumbers no
+the gesture does *not* do: a date write has no peers. It renumbers no
 siblings, cascades to no children, and touches exactly one note — which is what makes
-its preview an honest contract. Crossing a lane is a different gesture with a stated
-owner: the combined batch [[Lanes on the roadmap]] specifies.
+its preview an honest contract.
 
 ## Use case
 
@@ -40,7 +39,7 @@ owner: the combined batch [[Lanes on the roadmap]] specifies.
 | **Actor** | Backlog owner |
 | **Trigger** | Dragging a bar's body, or one of its ends |
 | **Preconditions** | Roadmap mode is on with the timeline axis |
-| **Guarantee** | The preview is the contract: release writes exactly the dates it showed, one batch, one undo — and a gesture that stays in its lane writes only the dragged note's own date properties, with no other note renumbered, retyped or touched. |
+| **Guarantee** | The preview is the contract: release writes exactly the dates it showed, one batch, one undo — and the gesture writes only the dragged note's own date properties, with no other note renumbered, retyped or touched. |
 
 **Main flow**
 
@@ -87,10 +86,6 @@ owner: the combined batch [[Lanes on the roadmap]] specifies.
   offered a start grip with no baseline anywhere on the note to drag from. A grip
   needs at least one end that is the note's own — stated, or open because the note's
   OTHER end is stated — never a bar that is entirely someone else's evidence.
-- **1d — the drag crosses a lane as well as time.** The gesture leaves this PBI:
-  reparent and dates travel as the one combined batch [[Lanes on the roadmap]]
-  specifies — previewed together, applied together, undone together — so the two notes
-  cannot disagree about whose write it is.
 - **1e — the value is a datetime.** The delta is whole days, as at every zoom; the time
   of day rides along untouched, and the write keeps the shape the note had — a drag
   re-plans a date, it does not re-format a value. Which DAY a gesture lands on is the
@@ -127,9 +122,8 @@ owner: the combined batch [[Lanes on the roadmap]] specifies.
 - A marker's diamond takes no end grip at all, and its body slide writes the target alone —
   never a start, neither one it lacks nor a stale one the type ignores
   ([[Milestones as their own type]]).
-- Within its lane, a bar gesture is a single-note write: no sibling renumbering, no
-  cascade to children, nothing else touched. A drag that also crosses a lane is the
-  combined batch [[Lanes on the roadmap]] specifies, never a second write path.
+- A bar gesture is a single-note write: no sibling renumbering, no
+  cascade to children, nothing else touched.
 - One-dated bars keep their open end on body drags, and dragging the open end writes
   the missing date where its property is configured — an unconfigured end offers no
   grip, and nothing is ever written to an unconfigured key; ends clamp at equal and

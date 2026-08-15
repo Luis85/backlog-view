@@ -125,6 +125,68 @@
 	font-size: var(--font-ui-smaller);
 }
 
+/* A ROW's match affordance: a COUNT, never the titles above, and it OCCUPIES the lead's
+   existing count slot rather than joining it — `renderMatchCount` swaps it for
+   `.pbl-bar-count` while a filter runs, so `margin-inline-start: auto` here is that slot's
+   own anchor inherited rather than a second opinion about where the end of the lead is.
+
+   A substitution because a sticky lead is a fixed-width column whose only shrinkable item
+   is the row's own title, so anything ADDED comes out of the row's name. Measured twice in
+   the browser harness: match titles here left one character of the row's own (`O… 4/17`)
+   at the default 220px lead, and a `flex: 0 0 auto` chip beside the rollup still cost the
+   title 34px and hung 28.95px out of the column at the 160px floor, because an
+   unshrinkable item cannot yield. Hence `flex: 0 1 auto` with `min-width: 0` and
+   `overflow: hidden`: it gives way to the icon alone rather than crossing the boundary.
+
+   Nothing sets a height: a row's height is content-driven (`min-height` on the track is a
+   floor, and the row stretches) and `renderDependencyArrows` has already measured every
+   row rectangle by the time this is drawn, so anything taller than the line it joins would
+   move the rows out from under the arrows. `line-height: 1.4` at `--font-ui-smaller` is
+   what keeps it inside that line.
+
+   Still a real `<button>`, so the button-qualified selector joins this rule's own selector
+   list rather than restating a property later — `.pbl-card-match`'s own arrangement above,
+   for its reason: a bare class is (0,1,0) and loses to Obsidian's
+   `button:not(.clickable-icon)` at (0,1,1) regardless of source order. */
+.pbl-row-matches,
+button.pbl-row-matches {
+	flex: 0 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	margin-inline-start: auto;
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	padding: 0 var(--size-2-1);
+	height: auto;
+	line-height: 1.4;
+	box-shadow: none;
+	background-color: var(--background-modifier-hover);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.pbl-row-matches:hover {
+	color: var(--text-normal);
+	background-color: var(--background-modifier-active-hover);
+}
+
+.pbl-row-matches:focus-visible {
+	outline: 1px solid var(--interactive-accent);
+	outline-offset: 1px;
+}
+
+.pbl-row-matches-icon {
+	display: flex;
+	align-items: center;
+	color: var(--text-faint);
+}
+
+.pbl-row-matches-icon .svg-icon {
+	width: 12px;
+	height: 12px;
+}
+
 .pbl-card-matches-icon {
 	display: flex;
 	align-items: center;

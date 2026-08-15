@@ -54,8 +54,7 @@ The menu is the answer on every platform either way.
 3. Alt+Left and Alt+Right move the selected card one column, writing the same batch a
    drop writes.
 4. The move is announced from a polite live region naming the card and what changed —
-   old and new column for a state move, old and new lane for a reparent, both for a drop
-   that does both.
+   old and new column for a state move.
 5. Enter opens the note; `/` reaches the quick filter; Ctrl/Cmd+Z undoes.
 
 **Extensions**
@@ -71,8 +70,7 @@ The menu is the answer on every platform either way.
   from once creation lands.
 - **3a — there is no Alt+Up/Down for rank.** Deliberately: within-column order is derived,
   not stored ([[Board order is derived not stored]]), so a rank shortcut would promise
-  something the board does not keep. The pair is free for lanes
-  ([[Swimlanes by parent]]).
+  something the board does not keep.
 - **3b — the user takes the menu instead.** Set state offers exactly the board's targets:
   the configured states, the observed out-of-workflow values, and a no-state entry writing
   the same remove-state write the no-state column's drop writes. `stateMenuValues` alone
@@ -92,8 +90,7 @@ The menu is the answer on every platform either way.
   creation from that stop still waits on [[New cards in place]].
 - Alt+Left and Alt+Right move the selected card one column, writing the same batch a
   drop writes. There is deliberately no Alt+Up/Down *rank* — within-column order is
-  derived ([[Board order is derived not stored]]) — which leaves the pair free for
-  lanes ([[Swimlanes by parent]]).
+  derived ([[Board order is derived not stored]]).
 - Set state in the context menu is the equivalent non-drag path on every platform, and
   the required one on touch. On the board its vocabulary is exactly the board's
   targets — configured states, observed out-of-workflow values, and a no-state entry
@@ -102,9 +99,8 @@ The menu is the answer on every platform either way.
   `stateMenuValues` alone cannot supply that list (it returns only the configured
   states when a list is set); closing that gap for board mode is this PBI's own work.
 - Every move — drag, key or menu — is announced to assistive technology from a polite
-  live region naming the card and what changed: old and new column for a state move,
-  old and new lane for a reparent, both for a drop that does both. Hidden
-  instructions on the board describe the shortcuts and the menu path.
+  live region naming the card and what changed: old and new column for a state move.
+  Hidden instructions on the board describe the shortcuts and the menu path.
 
 ## Where it lives
 
@@ -142,8 +138,7 @@ and both new entry points aimed at a context card in
 wired to pick up, so the rule needed testing where the drag could not reach.
 
 Still open, each waiting on a use case of its own: the column stop's **creation** —
-Enter and the menu on an empty column — needs [[New cards in place]]; the **lane** half
-of the announcement, old and new lane for a reparent, needs [[Swimlanes by parent]];
-and the **touch verdict** belongs to [[Smoke test the board in a live vault]], which is
+Enter and the menu on an empty column — needs [[New cards in place]]; and the **touch
+verdict** belongs to [[Smoke test the board in a live vault]], which is
 where a device can answer it. The menu path it would fall back to is built either way,
 which was the point of not waiting for the answer.

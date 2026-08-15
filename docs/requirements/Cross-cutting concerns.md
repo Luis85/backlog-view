@@ -22,7 +22,7 @@ it. `Codebase health` is what keeps the code maintainable. This epic is the four
 **qualities that are true of everything or true of nothing.**
 
 That includes work not yet built. `Product Kanban` is design-only today, but a board is a
-new set of rendered surfaces — columns, cards, swimlanes, empty states — and every one of
+new set of rendered surfaces — columns, cards, empty states — and every one of
 them will need a label from the catalog and a colour from a token. Nothing here has to be
 restated in those notes; the point of an epic at this level is that it governs whatever
 the plugin grows next, which is why the two features are written against properties rather

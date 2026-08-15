@@ -93,8 +93,8 @@ one write gate, one undo history. On top of them:
   dates always winning) exists on screen only. What lands in frontmatter is what a
   user did, on the note they did it to.
 - A row outside the Base's filter obeys the context-row rule on the roadmap exactly as
-  in the tree and on the board — it renders, it parents, and that is all: a lane
-  header, a breadcrumb, or an inert context row when focus lands on its level. Never
+  in the tree and on the board — it renders, it parents, and that is all: a
+  breadcrumb, or an inert context row when focus lands on its level. Never
   counted, never written, never a source of buckets, spans or vocabulary.
 
 Two neighbouring ideas were deliberately out of scope, so they would be re-decided
@@ -120,7 +120,7 @@ and the board's, under the same one-file-per-concern budgets; the only writer st
 `storage/frontmatter.ts`, gaining date and horizon writes plus their key removals (the
 mirror of `removeParentKey`) under the same key-collision checks; the mode itself is
 the persisted option [[Switching projections]] already defines, one value wider. Zoom
-and lane collapse are per-screen working positions and go to the collapse store, never
+is a per-screen working position and goes to the collapse store, never
 the `.base`.
 
 ## Evidence

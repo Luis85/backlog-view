@@ -805,6 +805,51 @@ free of runtime code so imports stay cycle-free.
   cannot look different per projection. Timeline rows reuse the card SHELL (selection,
   context styling) with a row layout — `.pbl-card.pbl-timeline-row` overrides the
   card's column geometry in CSS.
+- **The roadmap names its hidden matches from a REGISTER it reads, never a model it
+  predicts.** Every surface that puts an item on screen fills `RowContext.placed` as it
+  draws — the item, the element its match links belong on, and whether that surface lists
+  its children — and `nameMatches` (`render/roadmap.ts`) runs `renderCardMatches` over it
+  once they all have. The board can afford the inline call the roadmap cannot, and the
+  difference is a fact about the models rather than a preference: a `BoardModel` is
+  already narrowed to what draws, so `cardPaths` answers "already on screen", while
+  `RoadmapModel.shelf` holds every shelved item whether `host.shelfCollapsed` shows them
+  or not and `organizeShelf` drops whole groups from an expanded shelf through
+  `host.shelfHiddenTypes`. Neither of those is overridden by an active filter; a lane
+  fold IS (`isLaneCollapsed` is `!filter.active && …`), so two states that look alike
+  answer the same question oppositely and only the render knows which happened.
+  `listsChildren` travels with the mount for the same reason it cannot be read off
+  `cardKids`: a timeline row joins that set for its FOLD chevron, which lists nothing, so
+  a matching direct child IS named there while a bucket card's disclosure already shows
+  it. That is why `undisclosedMatches` takes the already-listed set from its caller —
+  only the surface knows what it shows.
+  **`face` is the mount's second answer and a separate question from `listsChildren`.** A
+  CARD names each match as a link; a ROW — the timeline's and the lane context's — takes
+  over the lead's own count slot, `.pbl-bar-count`, showing the match count while the
+  filter runs and the rollup when it does not. **Never both, and that is the rule rather
+  than the arrangement: a sticky lead is a fixed-width column whose only shrinkable item is
+  the row's title, so anything ADDED to it is taken from the row's name.** Two additions
+  were built and measured before that was understood — match titles in the lead left one
+  character of the row's own name at the default width (`O… 4/17 ⌕O…`), and a `flex: 0 0
+  auto` chip beside the rollup still cost 34px there and, unable to yield, hung 28.95px
+  over the day track at the 160px floor. The substitution costs nothing: the same row's
+  title measures identically filtered and unfiltered. `renderMatchCount` swaps the element
+  in the slot's own PLACE (`replaceWith`), because `margin-inline-start: auto` on that slot
+  anchors the end of the lead and `renderRowFacts` may draw a dependency flag after it; the
+  rollup stays ANNOUNCED throughout on the row's `.pbl-sr-only` span, which costs no width.
+  Every number here came from `npm run harness` in Chromium and from nothing the suite can
+  see; what the suite holds is the substitution itself (`test/view/roadmapMatches.test.ts`,
+  which jsdom CAN see) and the declarations that let the chip yield
+  (`test/view/timelineBoxing.test.ts`).
+  **A marker's row cannot use an sr-only span for any of this.** `renderRowFacts` gives it
+  an explicit `aria-label`, which REPLACES the content-derived name and takes the progress
+  span with it — so that row folds `progressNote` (`render/barProgress.ts`) into its own
+  label, from the one report rather than a second phrasing. Reachable because
+  `childTypeChoices` offers a marker no children and refuses no deliberate move, while
+  `assignAll` counts by structure.
+  `PlacedMount` itself is declared in `host.ts` beside `DrawnColors` and for that type's
+  reason: a `render/` type imported back into `host.ts` turns the
+  `columns.ts` ↔ `menu.ts` ↔ `host.ts` web into sixteen cycles `npm run analyze` refuses
+  — measured, after writing it the other way first.
 - **A timeline row's chevron folds ROWS, and a card's disclosure lists children on its
   face; they are two bits, two host method pairs, and one register (2026-08-09).** A row
   goes through `isCollapsed`/`setCollapsed`, and `collapseKey` is the ONE place that

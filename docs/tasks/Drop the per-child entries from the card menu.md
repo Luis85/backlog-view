@@ -50,15 +50,16 @@ That is not a filter question: it holds with no quick filter running, so no amou
 match-section work reaches it.
 
 So the entries came back subtracted by `carded`, the same "already on screen" set the
-match walk uses — `unreachableChildren` in `childrenList.ts`, answered per
-projection by `cardedPaths` in `menu.ts` (the board's columns, or the roadmap snapshot its
-own keyboard walk is built from). The clutter this task was raised for was an unfocused
-board with fat cards, and there the list is empty.
+match walk uses — `unreachableChildren` in `childrenList.ts`, answered per projection by
+`cardedPaths` beside it: the board's own columns, or the register the roadmap's render
+fills. The clutter this task was raised for was an unfocused board with fat cards, and
+there the list is empty.
 
-**What that does not fix**, and it is older than this task: the roadmap draws no match
-links on a card face at all — `renderCardMatches` is the board's. So a focused roadmap
-card's deep matches (a grandchild, not a listed child) are named nowhere and reachable by
-nothing. Filed as [[The roadmap names no matches under a card]].
+**What that did not fix** was older than this task: the roadmap drew no match links on a
+card face at all, so a focused roadmap card's deep matches were named nowhere. Filed as
+[[The roadmap names no matches under a card]] and closed by main the same day — a bucket
+or shelf card now names its matches, and a timeline row, which has no room for a list,
+draws a count and puts the titles in its menu.
 
 ## The consequence that needed fixing with it
 
@@ -83,6 +84,15 @@ list this task exists to shorten (Codex again, on the fixing commit). Both surfa
 `undisclosedMatches`; the menu's child entries own a listed child, the match section owns
 everything deeper. `carded` is still subtracted inside the walk, so an item with a card of
 its own is offered by neither.
+
+**Then main gave the walk a caller-supplied `listed`**, which is the same conclusion
+reached independently and generalized past cards: only the surface knows what it shows.
+The menu's answer is `menuChildren` — this task's narrowing plus `addChildrenSection`'s
+own gate — and NOT `listedChildren`, which is what main's own callers pass. The two are
+the same set until the entries are narrowed, and subtracting the wider one would silently
+drop a match the menu is not otherwise naming. Stating the gate and the narrowing in one
+function is what keeps the loop that adds the entries and the walk that subtracts them
+from coming apart again.
 
 ## How it is checked
 

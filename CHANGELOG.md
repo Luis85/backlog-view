@@ -28,6 +28,20 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
   A running quick filter opens every fold, so a search can still find what is inside one.
 
+- **How far along a roadmap bar is** — a bar on the dated axis now carries a band
+  showing the share of the work beneath it that is done, and every row with
+  descendants carries the count the tree's rollup column shows. The band draws inside
+  the bar without covering it, so a bar whose span is inferred still reads as
+  inferred and an open end still reads as open. With no workflow property configured
+  there is nothing to call done, so the count is the whole report — exactly as in the
+  tree.
+
+- **The roadmap says what your search found underneath** — filter the roadmap and any
+  bucket card, bar, shelf card or context row that is only on screen because something
+  beneath it matched now names those matches, each one opening its note. They are in
+  the row menu too, so this needs no pointer. Previously a match three levels down was
+  found, counted, and impossible to reach.
+
 ### Removed
 
 - **The card's right-click menu no longer offers Expand/Collapse unplaced** — the shelf
@@ -57,6 +71,8 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   grid or in the legend. The dialog now lists the open states only, and says so; a colour
   a `.base` still holds for a done state is ignored. Done is read per workflow, so a value
   only one of your two workflows finishes on still gets a swatch for the other.
+
+- **Lanes will not be built** on the roadmap or the board. They were tried and refused.
 
 ## [0.8.0] - 2026-08-14
 

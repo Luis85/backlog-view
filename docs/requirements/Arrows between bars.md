@@ -73,9 +73,9 @@ against one would report a date no note carries — a red mark on a fact that do
 **Extensions**
 
 - **1a — the prerequisite has no bar.** Shelved for want of readable dates
-  ([[The unplaced shelf]]), hidden by the reader's own controls, collapsed into a lane
-  ([[Lanes on the roadmap]]), or lying wholly outside the drawn window
-  ([[Zoom and the today marker]]). No arrow: an arrow needs two ends and the view has one.
+  ([[The unplaced shelf]]), hidden by the reader's own controls, or lying wholly outside
+  the drawn window ([[Zoom and the today marker]]). No arrow: an arrow needs two ends and
+  the view has one.
   Where a control did the hiding — "Show completed items" narrowing the rows the dated axis
   even builds bars from — **no conflict either**, 1c's own suppression for the same reason:
   a prerequisite with no bar was never derived, so there is nothing left of it to compare

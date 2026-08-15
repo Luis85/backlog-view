@@ -1,13 +1,13 @@
 import { setTooltip } from 'obsidian';
 import { drawIcon } from './icons';
-import { createCard, renderCardBody, renderColumnFold, wireCardActivation } from './board';
+import { createCard, renderCardBody, renderCardMatches, renderColumnFold, wireCardActivation } from './board';
 import { RowContext } from './columns';
 import { renderAllDoneState, renderEmptyState, renderFilterEmptyState } from './emptyStates';
 import { renderContextStrip, renderShelf, shelfRemoval } from './shelf';
 import { syncShelfTabStops } from './shelfControls';
 import { barEntries, laneEntries } from './lanes';
 import { renderTimeline, TimelineRender } from './timeline';
-import { BacklogViewHost, DrawnColors, RoadmapSnapshot, ScrollBox } from '../host';
+import { BacklogViewHost, DrawnColors, PlacedMount, RoadmapSnapshot, ScrollBox } from '../host';
 import { CardDragController } from '../interactions/cardDrag';
 import { newItemType, promptCreateItem } from '../interactions/create';
 import { gestureAt, previewer, submitGesture, TimelineParts, wireTimelineDrag } from '../interactions/timelineDrag';
@@ -48,6 +48,7 @@ export function renderRoadmap(
 		return {
 			roadmap: { axis, buckets: [], bars: [], lanes: [], shelf: [], context: [], placedCount: 0 },
 			cards: [],
+			placed: ctx.placed,
 			shelfEl: null,
 			todayLeft: null,
 			scroller: null,
@@ -115,6 +116,7 @@ export function renderRoadmap(
 	cards.push(...shelf.cards);
 	const context = renderContextStrip(ctx, frameEl, roadmap.context);
 	cards.push(...context.cards);
+	nameMatches(ctx);
 	// `cards` is final here, and it is what the pane's `listbox`/`region` role is decided
 	// from downstream — so it is also what decides whether the shelf's own controls may
 	// leave the tab order. See `syncShelfTabStops`.
@@ -135,7 +137,37 @@ export function renderRoadmap(
 	if (context.el) boxes.push({ key: 'context', el: context.el });
 	if (advisoryEl) boxes.push({ key: 'advisory', el: advisoryEl });
 
-	return { roadmap, cards, shelfEl: shelf.el, todayLeft, scroller, boxes, window, scale, leadWidth, drawn, palettes };
+	return {
+		roadmap,
+		cards,
+		placed: ctx.placed,
+		shelfEl: shelf.el,
+		todayLeft,
+		scroller,
+		boxes,
+		window,
+		scale,
+		leadWidth,
+		drawn,
+		palettes,
+	};
+}
+
+/**
+ * Name the matches the filter found under each drawn item, now that every surface has
+ * registered. A second pass rather than inline calls, because "which items are already
+ * on screen" is only true once the last one is: the board can ask its model
+ * (`cardPaths`) because a `BoardModel` is already narrowed to what draws, and the
+ * roadmap's is not — `RoadmapModel.shelf` holds items a collapsed or type-filtered shelf
+ * never puts on screen.
+ */
+function nameMatches(ctx: RowContext): void {
+	if (!ctx.host.isFiltering()) return;
+	const carded = new Set(ctx.placed.keys());
+	// Annotated so fallow can see the members this file reads — see the root CLAUDE.md on
+	// interface members resolved through a property access.
+	const mounts: PlacedMount[] = [...ctx.placed.values()];
+	for (const placed of mounts) renderCardMatches(ctx, carded, placed);
 }
 
 /** What a grid axis needs to draw — grouped so `renderGridAxis` stays inside max-params. */
@@ -335,6 +367,7 @@ function renderBucket(
 		const card = createCard(ctx, cardsEl, item);
 		renderCardBody(ctx, card, item);
 		wireCardActivation(ctx, card, item);
+		ctx.placed.set(item.file.path, { item, mount: card, listsChildren: true, face: 'links' });
 		dnd.wireCard(card, item);
 	}
 	// The whole bucket is the target, the board's rule: within a bucket the order is

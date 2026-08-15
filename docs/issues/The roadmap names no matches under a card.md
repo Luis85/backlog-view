@@ -2,13 +2,15 @@
 type: Issue
 order: 60
 parent: "[[Children on the card]]"
-status: Open
+status: Done
 priority: P3
 area: usability
 created: 2026-08-15
+closed: 2026-08-15
 source: Found while narrowing [[Drop the per-child entries from the card menu]] after review (Codex, PR #137)
 files:
   - src/view/render/board.ts
+  - src/view/childrenList.ts
   - src/view/interactions/menu.ts
 started: ""
 finished: ""
@@ -57,8 +59,20 @@ bucket card has the room, a timeline row is a bar in a grid and does not.
 So this is a design question, not a one-line fix, which is why it is filed rather than
 folded into the task that surfaced it.
 
-## What would close it
+## Answered by main, hours after it was filed
 
-A decision on the surface, then `cardedPaths`-style plumbing that is already written:
-`addMatchSection`'s `carded` could come from `cardedPaths` rather than from the board
-alone, which is the whole of the menu half.
+`da15f5b` and the increment around it, merged 2026-08-15. It answered the design question
+this note said had to come first — a bucket card and a shelf card name their matches like
+a board card, and a timeline ROW, which has no room for a list, draws a COUNT instead and
+puts the titles in its menu.
+
+Both halves landed together, which is what this note asked for. `matchesFor` in
+`childrenList.ts` is the plumbing it predicted, and arrived at the same shape from the
+other side: it asks whichever projection drew the row — `cardPaths` on the board, the
+`placed` register the render fills on the roadmap, because `RoadmapModel` is not what the
+roadmap draws.
+
+Kept rather than deleted, for the reason `docs/README.md` gives: what it records is that
+the gap was real and older than the change that surfaced it, and that both surfaces had
+to move together. The one thing it got wrong is worth keeping too — it called the
+timeline row's lack of room a blocker, and the answer was a count rather than nothing.

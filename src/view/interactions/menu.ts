@@ -14,7 +14,7 @@ import {
 	ItemWrite,
 } from '../../domain/writePlan';
 import { addAssigneeItems, addRiskItems } from './labels';
-import { BoardModel, cardPaths, deliverablesWorkflow, ownWorkflowReading, stateKeyFor } from '../../domain/board';
+import { BoardModel, deliverablesWorkflow, ownWorkflowReading, stateKeyFor } from '../../domain/board';
 import { ShelfCard } from '../../domain/bars';
 import { organizeShelf, ShelfSort } from '../../domain/shelf';
 import { canReorder, indent, moveToEdge, moveWithinSiblings, outdent, outdentTarget, visibleNeighbor } from './structure';
@@ -22,7 +22,7 @@ import { promptCreateItem } from './create';
 import { addHorizonItems, canSchedule, carriesDates, promptSchedule, unschedule } from './plan';
 import { addTagItems, tagsColumnVisible } from './tags';
 import { addDependencyItems, dependenciesAvailable } from './dependencies';
-import { undisclosedMatches, unreachableChildren } from '../childrenList';
+import { matchesFor, menuChildren, cardedPaths } from '../childrenList';
 import { offerableTypes, retypeChoices, rowVocabulary, treeShaped } from '../projection';
 
 /**
@@ -39,11 +39,23 @@ function isCurrentType(item: BacklogItem, type: string): boolean {
 	return item.typeName !== null && item.typeName.toLowerCase() === type.toLowerCase();
 }
 
-/** Context menu for a backlog row (mouse path). */
+/**
+ * The row menu for a click on the row — a `contextmenu` from a pointer, or a plain click
+ * on the one BUTTON that opens it this way (the match count chip; the state chip's own
+ * menu is `showStateMenu`/`chipMenu`, a separate path this function never sees).
+ *
+ * Through `showMenuForClick` for that second kind, and it is the rule rather than this
+ * caller's precaution: a button's Enter or Space synthesizes a click at (0, 0), which
+ * `showAtMouseEvent` reads as a position and honours, dropping the menu in the viewport
+ * corner. A real pointer never reports that, so the pointer path is unchanged. It shipped
+ * that way on the match count chip, whose menu is the ONLY route to the matches it counts
+ * (`renderMatchCount`, `render/board.ts`) — so the corner was the whole of that
+ * affordance's keyboard path.
+ */
 export function showItemMenu(host: BacklogViewHost, evt: MouseEvent, item: BacklogItem, childTypes: string[]): void {
 	evt.preventDefault();
 	const menu = buildItemMenu(host, item, childTypes);
-	menu?.showAtMouseEvent(evt);
+	if (menu) showMenuForClick(menu, evt);
 }
 
 /** Assemble the row menu; the caller decides where to show it. */
@@ -326,17 +338,18 @@ export const showTagMenu = (host: BacklogViewHost, evt: MouseEvent, item: Backlo
  * not the card itself matched, for the same reason the face names them: a match below
  * a matching card is a second result, and it has no card of its own to be reached by.
  *
- * `undisclosedMatches`, the same walk the card FACE uses: a match the card's own
- * disclosure lists is offered by `addChildrenSection` below, as `Open child "…"`,
- * whenever it has no card of its own — so naming it here as well is one menu offering
- * one note twice, which is what a `matchesUnderCard` without the subtraction did for a
- * day. What each surface DRAWS differs; what counts as saying a thing twice does not.
+ * `matchesFor` — the same walk the faces use, asked of whichever projection drew this
+ * item and subtracting what THIS menu will itself list. That subtraction is
+ * `menuChildren`, not `listedChildren`: the two came apart when the per-child entries
+ * were narrowed to the unreachable ones, so a child the menu is not naming can still be
+ * named as a match here, and one it is naming is named once. Both directions have been
+ * broken here within two days — a walk without the subtraction offered a note twice, and
+ * a subtraction of the wider set would drop a match silently. What each surface DRAWS
+ * differs; what counts as saying a thing twice does not.
  */
 function addMatchSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
-	const board = activeBoard(host);
-	if (!board || !host.isFiltering()) return;
-	const carded = cardPaths(board);
-	const matches = undisclosedMatches(host, item, carded);
+	if (!host.isFiltering()) return;
+	const matches = matchesFor(host, item);
 	if (matches.length === 0) return;
 	menu.addSeparator();
 	for (const match of matches) {
@@ -363,9 +376,10 @@ function addMatchSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): 
  * FOCUS. Unfocused, every result has a card of its own on both card projections and this
  * list is empty — which is the state the clutter was reported in. Focused, the cards are
  * the focus level's alone, and a child appears only as a `tabindex="-1"` entry on its
- * parent's face, so these entries are the whole keyboard path to it. `unreachableChildren`
- * is where that subtraction lives; `cardedPaths` is what each projection answers it with.
- * (Codex, PR #137, pointing at the roadmap half of it.)
+ * parent's face, so these entries are the whole keyboard path to it. `menuChildren` is
+ * that narrowing plus this section's own gate, stated once in `childrenList.ts` so
+ * `matchesFor` can subtract exactly what this loop adds; `cardedPaths` is what each
+ * projection answers it with. (Codex, PR #137, pointing at the roadmap half of it.)
  *
  * The gate is `cardChildrenShown`, filled by the render, and not the projection: a card
  * whose children have all hidden draws no disclosure and a dated-axis timeline row draws
@@ -405,7 +419,7 @@ function addChildrenSection(host: BacklogViewHost, menu: Menu, item: BacklogItem
 				}),
 		);
 	}
-	for (const child of unreachableChildren(host, item, cardedPaths(host))) {
+	for (const child of menuChildren(host, item, cardedPaths(host))) {
 		menu.addItem((mi) =>
 			mi
 				.setTitle(`Open child "${child.title}"`)
@@ -640,21 +654,6 @@ export function addShelfTypeItems(host: BacklogViewHost, menu: Menu, shelf: Shel
  * On the roadmap only, and only while the shelf holds something — an entry for a region
  * that is not on screen is the defect in the other direction.
  */
-/**
- * Every path this card projection drew a card for — the "already on screen" test.
- *
- * Asked of whichever projection is drawing, because both answer it and they answer it
- * differently: the board from its columns, the roadmap from the snapshot its own
- * keyboard walk is built from (buckets or bars, then the shelf, then context). On the
- * tree it is empty, which is correct rather than a fallback — nothing here calls it
- * outside a card's own menu.
- */
-function cardedPaths(host: BacklogViewHost): Set<string> {
-	const board = activeBoard(host);
-	if (board) return cardPaths(board);
-	return new Set((host.roadmap?.cards ?? []).map((card) => card.file.path));
-}
-
 function addShelfSection(host: BacklogViewHost, menu: Menu): void {
 	if (host.projection !== 'roadmap') return;
 	const shelf = host.roadmap?.roadmap.shelf ?? [];

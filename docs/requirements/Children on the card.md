@@ -134,21 +134,31 @@ disclosure for, and so does that one; the view publishes the set as
 `menu.ts`'s `addChildrenSection` reads it — the same list and the same gate, reached
 through `buildItemMenu` on both the pointer path (`showItemMenu`) and the keyboard path
 (`showContextMenuFor`) — so neither re-derives an answer the screen already has.
-The match walk is shared the same way and its subtraction is now per SURFACE:
-`renderCardMatches` in `src/view/render/board.ts` reads `undisclosedMatches` for the card
-face, where the disclosure's list sits inches from the match links, and `addMatchSection`
-in `menu.ts` reads it too. There was a `matchesUnderCard` beside it for one day — the
-same walk without the subtraction, added when the menu stopped naming the children — and
-it became a duplicate the moment the menu named them again: `Open match "X"` and then
-`Open child "X"`, one note twice. One walk, one subtraction; the surfaces differ in what
-they DRAW, never in what counts as saying a thing twice.
-`unreachableChildren` beside it is the narrower question and the menu's own: the listed
-children with no card of their own, which is what the `Open child "…"` entries are built
-from. It takes the same `carded` set, answered per projection by `cardedPaths` in
-`menu.ts`, since the board and the roadmap each know their own cards and the two are not
-the same list.
-The board is the only projection that draws matches on a card FACE at all —
-[[The roadmap names no matches under a card]].
+`undisclosedMatches` is read the same way, by `renderCardMatches` in
+`src/view/render/board.ts` for the card face and — through `matchesFor`, also in
+`childrenList.ts` — by `addMatchSection` in `menu.ts` for its menu, so the two surfaces
+cannot both name a match the disclosure already listed.
+
+`matchesFor` is what lets the menu ask ONE question regardless of which projection drew
+the row it is on: it reads `host.board` on the board and `host.roadmap.placed` on the
+roadmap — `RoadmapModel` is not what the roadmap draws, so the register `render/roadmap.ts`
+fills as it renders is what the menu reads instead — and it is where the menu's own
+already-listed set is decided, which is NOT the face's. A card's face subtracts what its
+OWN disclosure lists (`listsChildren` on the `PlacedMount` a surface registers,
+`src/view/host.ts`); the menu instead asks `host.cardChildrenShown`, the same set
+`addChildrenSection` above already reads — because a timeline row joins that set through
+its fold chevron while listing nothing on its own face, so a direct child match that the
+face still names on a row would be offered twice in the menu were the two policies not
+kept apart.
+
+`matchesFor` subtracts `menuChildren` and not `listedChildren`, and the two are the same
+set only until the per-child entries are narrowed — which they were on 2026-08-15
+([[Drop the per-child entries from the card menu]]): the menu names a listed child only
+where it has **no card of its own**, so subtracting the wider set would silently drop a
+match that the menu is not otherwise naming. `menuChildren` states that gate and that
+narrowing together, in `childrenList.ts` beside the walk, so the loop that adds the
+entries and the walk that subtracts them cannot come apart. `cardedPaths` is the one
+place a projection is asked which cards it drew, and both read it.
 
 The expansion bit itself is `CARD_SCOPE` in `src/view/collapseState.ts`, a prefix
 alongside `TIMELINE_SCOPE`, read and written through `BacklogViewHost.isCardCollapsed`/
