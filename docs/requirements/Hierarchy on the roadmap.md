@@ -2,7 +2,7 @@
 type: Feature
 parent: "[[Product Roadmap]]"
 order: 50
-status: Open
+status: Done
 created: 2026-08-01
 started: ""
 finished: ""
@@ -30,3 +30,9 @@ uses the card shell without the body, so it draws a disclosure of its own kind i
 [[Collapsing a bar's subtree]] folds the rows beneath it rather than listing them on its
 face, off a collapse bit of its own, since a fold on the plan is not a statement about
 where the reader is in the backlog.
+
+**Closed 2026-08-15.** Every child is in a terminal state: [[Focus level picks the rows]]
+and [[Progress on the bar]] are `Done`, and [[Lanes on the roadmap]] is `Dropped` — the
+design was built, tried and refused, which is an answer and not a debt. The Outcome above
+is what those two deliver: the focus level decides which rung becomes rows, and what sits
+below still counts, in a rollup the tree and the roadmap read from one place.
