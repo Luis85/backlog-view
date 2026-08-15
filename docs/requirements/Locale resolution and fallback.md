@@ -56,8 +56,9 @@ string is merely English instead of missing.
 
 - **1a — the code is empty or malformed.** `getLanguage()` documents a default of `en`, but
   the resolver does not rely on that: an unusable code resolves to English rather than
-  propagating. See `Locale-aware sorting and formatting` for why the *raw* code still needs
-  validating before `Intl` sees it.
+  propagating. **Malformed is judged of the WHOLE tag, before any base is taken** — see
+  `One judgement about a tag, asked twice` below. See `Locale-aware sorting and formatting`
+  for why the *raw* code still needs validating before `Intl` sees it.
 - **2a — the code is regional.** `pt-BR` finds the `pt` catalog before falling to English,
   matched case-insensitively.
 - **2b — no catalog matches.** English, which always exists.
@@ -113,6 +114,33 @@ independently for `Intl` output, which is a good sign it is the right shape.
 
 Found by review (Codex, PR #151), against an implementation whose own comment stated the
 narrower rule correctly and then used the wrong noun.
+
+## One judgement about a tag, asked twice
+
+The two answers this note asks for — which catalog, and which locale for `Intl` — are
+deliberately different questions, and that made it easy to give them **different ideas of
+what a valid tag is**. Both defects below are that one mistake, seen from each end:
+
+| Code | Catalog said | `Intl` said | Why |
+| --- | --- | --- | --- |
+| `pt_BR` | `pt` — the resolver split on `_` | `en` — `getCanonicalLocales` throws on `_` | Portuguese text, English numbers |
+| `pt-!!!` | `pt` — the base subtag is real | `en` — refused | A corrupted host locale renders an unasked-for translation |
+
+Neither is reachable from Obsidian, whose language list holds well-formed codes; both are
+reachable from a caller, and the second is the one that would matter once a second catalog
+ships.
+
+So there is **one validator, and both callers go through it**:
+`Intl.getCanonicalLocales` is the judge — the same judgement every `Intl` constructor
+makes, rather than a pattern of our own that could disagree with them — with underscores
+normalized to hyphens before it, so an underscore tag is the same tag to both callers.
+It returns null rather than a fallback, because the two callers fall back to different
+things.
+
+The property to assert is the PAIR, not either answer: a code yields a catalog and a
+number locale together, or neither. A tag one accepts and the other refuses renders
+translated text with the source language's numbers, which reads as a broken translation
+rather than as a rejected tag. Found by review (Codex, PR #151).
 
 ## Where it lives
 

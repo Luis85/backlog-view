@@ -36,6 +36,17 @@ describe('resolveCatalog', () => {
 		expect(resolveCatalog('!!not a tag!!', shipped)).toBe('en');
 	});
 
+	it('refuses a malformed tag WHOLE rather than salvaging its first subtag', () => {
+		// The trap this states: `pt-!!!` and `pt_` both begin with a real language subtag,
+		// so a base match taken before validating hands back the Portuguese catalog for a
+		// corrupted host locale — a translation nobody's Obsidian asked for, and the exact
+		// opposite of this note's "malformed resolves to English". Found by review
+		// (Codex, PR #151).
+		expect(resolveCatalog('pt-!!!', shipped)).toBe('en');
+		expect(resolveCatalog('pt_', shipped)).toBe('en');
+		expect(resolveCatalog('pt-', shipped)).toBe('en');
+	});
+
 	it('falls back to English even when English is not in the list — it always exists', () => {
 		expect(resolveCatalog('ja', ['pt'])).toBe('en');
 	});
@@ -44,6 +55,13 @@ describe('resolveCatalog', () => {
 describe('intlLocale', () => {
 	it('canonicalizes a usable tag rather than narrowing it — Intl handles more than we ship', () => {
 		expect(intlLocale('pt-br')).toBe('pt-BR');
+	});
+
+	it('accepts the same underscore form `resolveCatalog` does, so the two cannot disagree', () => {
+		// `Intl.getCanonicalLocales` throws on an underscore, and `resolveCatalog` splits on
+		// one — so before both went through one validator, `pt_BR` read the Portuguese
+		// catalog and formatted its numbers in English. Found by review (Codex, PR #151).
+		expect(intlLocale('pt_BR')).toBe('pt-BR');
 	});
 
 	it('answers English for a tag Intl would throw on, rather than propagating it', () => {
@@ -59,6 +77,16 @@ describe('the two locales are separate answers', () => {
 		setLocale('pt-BR', { pt });
 		expect(activeLocale()).toEqual({ catalog: 'pt', numbers: 'pt-BR' });
 		expect(t('count.items', { count: 2 })).toBe('PT 2 itens');
+	});
+
+	it('answers both halves for one tag, or neither — never a catalog without its numbers', () => {
+		// The pair is the assertion. A tag one function accepts and the other refuses
+		// renders translated text with the source language's numbers, which reads as a
+		// broken translation rather than as a rejected tag.
+		setLocale('pt_BR', { pt });
+		expect(activeLocale()).toEqual({ catalog: 'pt', numbers: 'pt-BR' });
+		setLocale('pt-!!!', { pt });
+		expect(activeLocale()).toEqual({ catalog: 'en', numbers: 'en' });
 	});
 
 	it('formats numbers in the USER locale even with no catalog for it', () => {
