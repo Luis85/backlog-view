@@ -98,8 +98,9 @@ a row can be kept. Naming them is most of this step:
 
 - **`this.treeEl.empty()` in `src/view/backlogView.ts`**, which runs before the content
   render. Nothing can be reused while it does, so the reconcile path does not call it. It
-  stays on every other path — a projection switch, an empty state, a non-frontmatter
-  column — and those paths are exactly the ones that also clear `rowEls`.
+  stays on every other path — a projection switch, an empty state, a changed
+  render-inputs fingerprint — and those paths are exactly the ones that also clear
+  `rowEls`.
 - **The column header.** `renderColumnHeader` appends a fresh `.pbl-cols` on every pass.
   With the clear gone it would append a second one per update, and a cleanup that removes
   only what the row index knows about cannot see it. So the header is **claimed**: the
@@ -132,14 +133,14 @@ A pure, DOM-free `rowSignature()` in a new `src/view/rowSignature.ts`. The prece
 pure module in the view layer is `src/view/childrenList.ts`, which exists for the same
 reason — an answer two render modules must agree on, with no cycle between them.
 
-It folds three groups of terms:
+It folds two groups of terms, and **only per-item ones** — everything shared by the whole
+pass is handled by the gate below instead:
 
 - **The note's frontmatter, stringified.** One term covering the badge, the title, every
   `note.*` property cell, the state, horizon, risk and assignee chips, and the tags.
-- **What a row draws that the frontmatter cannot give**: rollup done and total, `depth`,
+- **What a row draws that its frontmatter cannot give**: rollup done and total, `depth`,
   `aria-level`, `aria-posinset`, `aria-setsize`, whether any child is visible, collapsed,
   selected, `outsideFilter`, `draggable`, implied type, and the add button's label.
-- **The resolved column list**, since which columns exist changes every cell on every row.
 
 The failure directions are not symmetric and the design leans on that. A signature that
 differs when the row would have drawn the same costs one wasted row build — today's
@@ -147,21 +148,40 @@ behaviour, for that row. A signature that matches when the row would have drawn
 differently ships a **stale row**, which is a correctness bug. Every judgement call below
 is taken in the first direction.
 
-## The guard: reconcile is off for a non-frontmatter column
+## The gate: one fingerprint for everything that is not per-item
 
-A column may be any Bases property id. `note.*` is covered by the frontmatter term;
-`file.mtime`, `file.size` and a `formula.*` are not — a body edit changes `file.mtime`
-with the frontmatter untouched, so that cell would go stale while its signature matched.
+A row draws from more than its own note, and the rest of it changes for the whole pass at
+once. `refreshFromData` re-resolves the settings on the same argument-less update path, so
+a view-option change arrives looking exactly like a data change:
 
-**Reconcile therefore runs only while every configured column is a `note.*` property.**
-With one present, the render is exactly today's, in full. The predicate is computed once
-per update beside `resolveColumns`.
+- `showCounts` toggled turns `renderRollup` from no cell into a count cell, while
+  `descendantCount` and the frontmatter are both unchanged.
+- A changed done value flips `.pbl-done` on a leaf whose frontmatter nobody touched.
+- `host.filterText` decides which substring `renderTitleText` lights up, and whether the
+  row is draggable at all.
+- The `columnFit` verdict sizes every cell on every row.
 
-This is a stated ceiling, not an oversight, and it carries a `ponytail:` comment naming its
-upgrade path: re-render the non-frontmatter cells alone on a kept row, which buys those
-vaults the same win at the price of a second reuse rule. The shipped default qualifies —
-`tagsKey` defaults to `tags`, a frontmatter key, and `file.name`, the parent, order and type
-keys are all skipped as columns before the list is built.
+**Enumerating those inside the per-row signature is the wrong shape** — it is a list of the
+places someone thought of, and the next settings-derived rendering decision is the one that
+breaks it. So they are answered once per pass instead, as a single **render-inputs
+fingerprint**: the resolved settings, the resolved column list, the projection, the filter
+text and the column-fit verdict. Unchanged from the previous pass, the reconcile runs.
+Changed, the pass empties the tree, clears the index and renders exactly as today.
+
+This is what lets the per-row signature stay per-item: while the fingerprint holds, every
+row on screen was drawn under the settings this pass is drawing under.
+
+**The non-frontmatter column rule lives in the same gate**, because it is a property of the
+resolved columns. A column may be any Bases property id; `note.*` is covered by the
+frontmatter term, and `file.mtime`, `file.size` and a `formula.*` are not — a body edit
+changes `file.mtime` with the frontmatter untouched, so that cell would go stale while its
+signature matched. With one present the fingerprint refuses the reconcile outright.
+
+That last part is a stated ceiling rather than an oversight, and it carries a `ponytail:`
+comment naming its upgrade path: re-render the non-frontmatter cells alone on a kept row,
+which buys those vaults the same win at the price of a second reuse rule. The shipped
+default qualifies — `tagsKey` defaults to `tags`, a frontmatter key, and `file.name`, the
+parent, order and type keys are all skipped as columns before the list is built.
 
 ## Risks, stated rather than discovered
 
@@ -225,6 +245,11 @@ Two honesty notes travel with the numbers into the register:
   reference; the guide sentence is written to what the rule reaches, not wider.
 - **Reconcile is off for a non-frontmatter column.** A configured `file.mtime` column
   renders every row afresh on every update.
+- **A settings change is not reused across.** Toggling `showCounts` between two updates
+  gives every row its count cell, and changing the configured done values repaints
+  `.pbl-done` — both with no frontmatter touched. Driven through the fingerprint rather
+  than through a signature term, so a settings-derived rendering decision written later is
+  covered without editing the test.
 - `npm run check` — build, lint, coverage-thresholded tests, fallow, docs register.
 
 ## What lands in the register
