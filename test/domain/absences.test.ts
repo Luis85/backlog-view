@@ -2,7 +2,7 @@ import { TFile } from 'obsidian';
 import { describe, expect, it } from 'vitest';
 import { buildModel } from '../../src/domain/model';
 import { buildRoadmap } from '../../src/domain/roadmap';
-import { Absence, absencesConfigured, absenceTitle, awayWeeks, crossedAbsences, daysLost, packAbsences } from '../../src/domain/absences';
+import { Absence, absencesConfigured, absenceTitle, awayWeeks, crossedAbsences, daysLost, packLanes } from '../../src/domain/absences';
 import { CivilDate, readDate } from '../../src/domain/noteFields';
 import { ABSENCE_TYPE, ALL_TYPES, typeFolderKey } from '../../src/domain/typeVocabulary';
 import { folderForType } from '../../src/domain/itemTypes';
@@ -201,46 +201,47 @@ describe('a bar scheduled across an absence', () => {
 	});
 });
 
-describe('packing overlapping stretches into sub-lanes', () => {
-	const titles = (packed: Absence[][]): string[][] => packed.map((sub) => sub.map((one) => one.title));
+describe('packing drawn boxes into sub-lanes', () => {
+	/** A box in the shape `spanBox` produces — the drawer's own numbers, named by their ends. */
+	const box = (left: number, right: number): { left: number; right: number } => ({ left, right });
 
-	it('puts stretches that share no day in one sub-lane, in date order', () => {
-		const packed = packAbsences([away('B', '2026-08-10', '2026-08-12'), away('A', '2026-08-01', '2026-08-03')]);
-
-		expect(titles(packed)).toEqual([['A', 'B']]);
+	it('puts boxes that do not overlap on one line', () => {
+		expect(packLanes([box(0, 10), box(20, 30)])).toEqual([0, 0]);
 	});
 
-	it('opens a second sub-lane for two that merely TOUCH', () => {
-		// Inclusive at both ends, `crossedAbsences`' rule: 1–5 and 5–9 share the 5th, so they
-		// cannot be drawn on one line without one of them lying about a day.
-		const packed = packAbsences([away('A', '2026-08-01', '2026-08-05'), away('B', '2026-08-05', '2026-08-09')]);
-
-		expect(titles(packed)).toEqual([['A'], ['B']]);
+	it('lets two that merely TOUCH share a line', () => {
+		// Ends are exclusive, so a box starting exactly where the last one stopped fits beside
+		// it. That is the pixel reading of the day rule it replaces, where two stretches sharing
+		// a DAY could not: 1–5 and 5–9 are one day apart and their boxes overlap by that day.
+		expect(packLanes([box(0, 10), box(10, 20)])).toEqual([0, 0]);
+		expect(packLanes([box(0, 10), box(9, 20)])).toEqual([0, 1]);
 	});
 
-	it('opens a third only when three are mutually overlapping', () => {
-		const packed = packAbsences([
-			away('A', '2026-08-01', '2026-08-10'),
-			away('B', '2026-08-02', '2026-08-11'),
-			away('C', '2026-08-03', '2026-08-12'),
-		]);
-
-		expect(titles(packed)).toEqual([['A'], ['B'], ['C']]);
+	it('opens a third line only when three mutually overlap', () => {
+		expect(packLanes([box(0, 30), box(10, 40), box(20, 50)])).toEqual([0, 1, 2]);
 	});
 
-	it('reuses the first sub-lane that has room rather than the emptiest', () => {
-		// A greedy first-fit, so a long stretch does not push everything after it downward.
-		const packed = packAbsences([
-			away('Long', '2026-08-01', '2026-08-20'),
-			away('Early', '2026-08-02', '2026-08-04'),
-			away('Late', '2026-08-06', '2026-08-08'),
-		]);
+	it('reuses the first line with room rather than the emptiest', () => {
+		// Greedy first-fit, so a long box does not push everything after it downward.
+		expect(packLanes([box(0, 100), box(10, 30), box(40, 60)])).toEqual([0, 1, 1]);
+	});
 
-		expect(titles(packed)).toEqual([['Long'], ['Early', 'Late']]);
+	it('separates boxes that share no day but overlap all the same', () => {
+		// The whole reason this packs boxes rather than dates. Two one-day stretches on
+		// consecutive days at quarter zoom: 2px apart, 4px wide because `MIN_BAR_PX` floors
+		// them. The days never touch and the marks half-cover one another.
+		expect(packLanes([box(0, 4), box(2, 6)])).toEqual([0, 1]);
+		// And the same for two clamped to one edge, which is the other place days and pixels
+		// disagree: identical boxes, whatever their dates said.
+		expect(packLanes([box(500, 504), box(500, 504)])).toEqual([0, 1]);
+	});
+
+	it('spends no line on two clamped past OPPOSITE edges, which never touched', () => {
+		expect(packLanes([box(0, 4), box(500, 504)])).toEqual([0, 0]);
 	});
 
 	it('packs nothing into nothing', () => {
-		expect(packAbsences([])).toEqual([]);
+		expect(packLanes([])).toEqual([]);
 	});
 });
 

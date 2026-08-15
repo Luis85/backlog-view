@@ -166,38 +166,50 @@ export function absenceTitle(facts: AbsenceFacts): string {
 }
 
 /**
- * These stretches grouped into the sub-lanes they can be drawn on — the first holding as
- * many as fit without sharing a day, the next taking what is left, and so on.
+ * The sub-lane each drawn box goes on: the first line holding as many as fit without
+ * overlapping, the next taking what is left, and so on. One index per box, in the order
+ * given.
  *
- * **This is not the lane-packing extension 4a refused, and the difference is the whole
- * argument.** That refusal's reason was "a packing rule is a second geometry to keep in step
- * with the one the bars use". This returns `Absence[][]` and computes no pixel: it runs over
- * ABSENCES only and never over bars, and calls neither `barGeometry` nor anything that draws.
+ * **It packs the boxes the marks are DRAWN as, and that is the whole of what makes it
+ * right.** Its predecessor grouped the absences by their civil DATES, which is the same
+ * answer only while a day's width is what separates two marks — and twice it is not. A
+ * stretch wholly past the window draws at the EDGE rather than at its dates, so two months
+ * apart are one rectangle; and every mark is floored at `MIN_BAR_PX`, so at quarter zoom two
+ * one-day stretches on consecutive dates are 4px wide and 2px apart. Both share no day, both
+ * were given one line, and in both the later mark covered the earlier — taking its tooltip
+ * and the only route to Edit and Delete with it. The first was patched at the drawing loop
+ * with a line reserved per clamped mark; the second arrived anyway, which is what says the
+ * patch was at the wrong level. Days and pixels disagree wherever the pixels are not a
+ * function of the days alone, and only the pixels can answer which marks overlap.
  *
- * What 4a was protecting is therefore a commitment owed by whatever renders this, not a fact
- * about this function: the drawer must still place every bar by `barGeometry` against the
- * one shared window, unmoved by any absence grouping, and must give two stretches that share
- * a day two sub-lanes rather than hiding or merging either. The drawer is
- * `renderLaneAbsences` in `src/view/render/lanes.ts`, and both halves of that commitment are
- * checked there rather than assumed: each packed mark's own `--pbl-sublane` index in
+ * **This is still not the lane-packing extension 4a refused, and it is now a better answer
+ * to it than the day pack was.** That refusal's reason was "a packing rule is a second
+ * geometry to keep in step with the one the bars use" — and this reads `barGeometry`'s own
+ * output through the very helper that writes the mark's `--pbl-bar-left` and
+ * `--pbl-bar-width` (`spanBox` in `src/view/render/lanes.ts`), so there is no second
+ * geometry to keep in step. It runs over absences and never over bars, and moves no bar: the
+ * commitment 4a protects is that every bar is placed by `barGeometry` against the one shared
+ * window, unmoved by any absence grouping, and that two stretches that would overlap get two
+ * sub-lanes rather than one hiding the other. Both halves are checked at the drawer rather
+ * than assumed here — each mark's own `--pbl-sublane` in
  * `test/view/resourceAbsences.test.ts`, and the 17px pitch the two stylesheet rules must
- * agree on in `test/view/timelineBoxing.test.ts`. Neither is a fact this function can state,
- * which is why they are named rather than restated here.
+ * agree on in `test/view/timelineBoxing.test.ts`.
  *
- * Greedy FIRST-fit rather than best-fit, deliberately: a long stretch then holds sub-lane 0
- * and everything short slots in beneath it, instead of each new stretch pushing the pile
- * down. The boundary is `crossedAbsences`' — inclusive at both ends — so two that merely
- * touch do not share a line, because one of them would have to lie about the shared day.
+ * Greedy FIRST-fit, so a long stretch holds line 0 and the short ones slot in beneath it
+ * rather than each new one pushing the pile down. That tightness is the CALLER's ordering,
+ * not this function's: give it boxes sorted by `left`. The assignment is valid whatever the
+ * order — `Math.max` keeps each line's end honest — but an unsorted list may spend lines it
+ * did not need. Ends are exclusive, so two boxes that merely touch share a line; that is the
+ * pixel reading of the day pack's own rule, where two stretches sharing a day did not.
  */
-export function packAbsences(absences: Absence[]): Absence[][] {
-	const sorted = [...absences].sort((a, b) => daysBetween(b.start, a.start));
-	const packed: Absence[][] = [];
-	for (const absence of sorted) {
-		const room = packed.find((sub) => daysBetween(sub[sub.length - 1].target, absence.start) >= 1);
-		if (room === undefined) packed.push([absence]);
-		else room.push(absence);
-	}
-	return packed;
+export function packLanes(boxes: readonly { left: number; right: number }[]): number[] {
+	const ends: number[] = [];
+	return boxes.map((box) => {
+		let line = ends.findIndex((end) => end <= box.left);
+		if (line < 0) line = ends.push(0) - 1;
+		ends[line] = Math.max(ends[line], box.right);
+		return line;
+	});
 }
 
 /**

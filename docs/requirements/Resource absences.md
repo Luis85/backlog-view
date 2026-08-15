@@ -89,35 +89,46 @@ already looks.
   resolves to — safe to share with every other type's notes, because what keeps an
   absence out of the tree and the other axes is its type, never its folder.
 - **4a — an absence overlaps another absence in the same row.** They PACK: the first
-  sub-lane holds as many stretches as fit without sharing a day, the next takes what is
-  left, and the header grows to hold every sub-lane. Nothing is hidden and nothing is
-  merged — two stretches that share a day are two marks on two lines, exactly as they were
-  when each had a row.
+  sub-lane holds as many stretches as fit without their marks overlapping, the next takes
+  what is left, and the header grows to hold every sub-lane. Nothing is hidden and nothing
+  is merged — two stretches that would cover the same pixels are two marks on two lines,
+  exactly as they were when each had a row.
 
   **This reverses the original 4a** ("both draw, stacked; the row's own height grows rather
   than either one moving to avoid the other") and the acceptance criterion that said "with
   no lane-packing". The reason those gave was that "a packing rule is a second geometry to
   keep in step with the one the bars use", and what answers it is that this packing is
-  narrower than the one refused: `packAbsences` returns `Absence[][]` and computes no pixel,
-  runs over ABSENCES only and never over bars, and every bar is still placed by
-  `barGeometry` — one geometry, and a grouping decided before it. What the old 4a was
+  narrower than the one refused: `packLanes` groups the marks and nothing else — it runs over
+  ABSENCES only and never over bars, and every bar is still placed by `barGeometry`, unmoved
+  by any of it. One geometry, read rather than restated (see below). What the old 4a was
   protecting survives in a sharper form: nothing moved aside for anything, and no stretch
   dropped or merged, at a third of the height.
 
   An absence overlapping a BAR is not this case and never was — the bar keeps its own row
   and the stretch shades it (4k).
 
-  **The pack answers about DAYS and the marks are drawn in PIXELS**, and a CLAMPED mark is
-  where those two stop agreeing: a stretch wholly beyond the window's edge draws at that
-  edge rather than at its dates, so two of them months apart do not overlap, share a
-  sub-lane, and land as one minimum-width stripe on one pixel — the later burying the
-  earlier outright, with its tooltip and the only route to Edit and Delete underneath. Each
-  such mark takes a line nothing else uses, counted from the last line an unclamped mark
-  occupies so a band grows no blank one. Found in review (2026-08-15) and reachable only
-  past `MAX_TIMELINE_DAYS`, since the window otherwise widens to hold every stretch it
-  draws — which is why the fix is one line per clamped mark rather than a second pack over
-  the drawn intervals kept in step with this one. It over-allocates by a line for two marks
-  past OPPOSITE edges, which never touched.
+  **What packs is the BOX each mark draws as, never its dates**, and that is the second
+  version of this rule rather than a refinement of it. The first packed the civil dates,
+  which is the same answer only while a day's width is what separates two marks — and twice
+  it is not. A stretch wholly beyond the window draws at that EDGE rather than at its dates,
+  so two months apart are one rectangle; and every mark is floored at the minimum drawable
+  width, so at quarter zoom two ONE-DAY stretches on consecutive dates are 4px wide and 2px
+  apart. Both share no day, both were given one line, and in both the later mark covered the
+  earlier — with its tooltip and the only route to Edit and Delete underneath. Two review
+  findings, a day apart (2026-08-15). The first was patched at the drawing loop, with a line
+  reserved per clamped mark and a paragraph here saying a second pack over the drawn
+  intervals was not worth keeping in step with this one; the second arrived anyway, which is
+  what said the patch was at the wrong level and the paragraph wrong about the cost.
+
+  There is no second geometry to keep in step, which is what the day pack was protecting
+  and what makes this the better answer to the original 4a rather than a retreat from it:
+  `packLanes` is handed the boxes `spanBox` computes, and `spanBox` is what writes each
+  mark's `--pbl-bar-left` and `--pbl-bar-width`. The pack and the draw cannot disagree about
+  which pixels a mark covers, because they read the same call. It still runs over absences
+  and never over bars, and still moves nothing: every bar is placed by `barGeometry` against
+  the one shared window. Two marks clamped past OPPOSITE edges now share a line, which the
+  reserved-line patch spent one on.
+
 - **4b — the resource an absence names is not on the declared roster and has nothing
   assigned to it.** It still gets a row — an absence can be the first reason a
   resource's row exists, extending
