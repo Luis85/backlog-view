@@ -308,8 +308,24 @@ Each registers a mount as it draws, and the second pass calls `renderCardMatches
   rather than `roadmap.context`, and it is hand-built from `createCard` upward, so it
   shares no body with the other four and has to register for itself.
 
-The lead column is the reader's to size ([[A resizable lead column]]), so a narrow one
-ellipsises the list rather than wrapping it. **A timeline row must not change height**:
+**A row's face draws a COUNT, not the titles.** The two lead-cell surfaces — the timeline
+row and the lane context row — show one small affordance saying how many matches are under
+this row, and the row menu lists them. Cards keep the titles: a card has room, and the
+board has drawn them that way since the feature existed.
+
+This is measured, not preferred. Drawing the titles in the lead was tried and taken to the
+harness: `.pbl-card-title` and `.pbl-card-matches` are the only shrinkable items in that
+column, so they shrink together, and at the **default** 220px lead the five rows carrying
+matches rendered as `O… 4/17 ⌕O…`, `S… 3/8 ⌕A…`, `B 1/6 ⌕D. U.. R` — one character of the
+row's own name — while rows without matches showed their titles in full. Each link got
+11–30px of the 56–148 it wanted. A row that gains matches must not lose its identity, and
+a match abbreviated to `O…` was never reachable-by-reading anyway. A fixed ~20px count
+costs the title a known constant instead of a variable share, and it also removes the
+3.31px spill the same run found at the 160px floor, where the list's own flex gap was what
+overflowed.
+
+The lead column is the reader's to size ([[A resizable lead column]]), and this is what
+makes that setting affordable: the count costs the same at every width. **A timeline row must not change height**:
 `renderDependencyArrows` snapshots every row's rectangle into fixed SVG coordinates before
 matches are named, so a row that grew would leave every arrow pointing between stale
 positions. The face therefore says *that* matches are there and the row menu says *which*

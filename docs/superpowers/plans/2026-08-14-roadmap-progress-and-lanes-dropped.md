@@ -865,33 +865,52 @@ and in `src/view/render/timeline.ts`, where the entry pass builds its result, in
 
 A row's mount is its `lead` — the sticky lead column, the one text region such a row has. A card's mount is the card.
 
-- [ ] **Step 6b: Give the lead column its own sizing for the list**
+- [ ] **Step 6b: A row's face draws a count, not the titles**
 
-The card's styles do not carry over, and assuming they did was a review finding against this plan. `.pbl-timeline-lead` in `styles/timeline.css` is `display: flex` with `align-items: center` and **no `flex-wrap`** — a single non-wrapping row of badge, title and count. `.pbl-card-matches` is itself a wrap container, but as a flex ITEM in that row it gets no sizing, so its content-based minimum can push past the column's fixed `width: var(--pbl-tl-lead)` and spill over the day track. Each `.pbl-card-match` is `white-space: nowrap` with `max-width: 100%`, so a long title ellipsizes only once its container is actually constrained.
+**Decided from measurement, after the harness run.** The two lead-cell surfaces — the timeline row and the lane context row — must NOT render `.pbl-card-matches` with titles. `.pbl-card-title` and `.pbl-card-matches` are the only shrinkable items in that column, so they shrink together: at the **default** 220px lead, rows with matches rendered `O… 4/17 ⌕O…` and `B 1/6 ⌕D. U.. R` — one character of the row's own name — while rows without matches showed their titles in full. Links got 11–30px of the 56–148 they wanted. A row that gains matches must not lose its identity.
 
-**The row's height must not change**, which decides the shape of the fix. `.pbl-timeline-row .pbl-timeline-track` sets `min-height: 34px` — a floor, not a fixed height — and the row is `display: flex; align-items: stretch`, so a lead that wraps onto a second line makes the whole row taller. `renderDependencyArrows` runs inside `renderTimeline`, well before this second pass, and it snapshots row rectangles into fixed SVG path coordinates ("where rows really landed rather than a guessed row height", says its own call site). A row that grows afterwards shifts itself and every row below it, and every arrow then points between stale positions. Found by review.
+Cards are unaffected: bucket cards, shelf cards and the context strip keep the full link list, because a card has the width and the board has drawn it that way since the feature existed. **This step changes the two row surfaces only.**
 
-So the list stays on **one line**, ellipsised, and does not wrap:
+Render, on a row, one element instead of the list — a search icon and the match count, as a `tabindex="-1"` button that opens the row's own menu (`showItemMenu`), so the affordance and the list it stands for are one gesture apart:
+
+```ts
+// on a ROW surface: the face says how many, the menu says which. A fixed cost in a
+// column the reader sizes, rather than a variable share taken from the row's name.
+const chip = mount.createEl('button', {
+    cls: 'pbl-row-matches',
+    attr: { type: 'button', tabindex: '-1', 'aria-label': `${matches.length} search ${matches.length === 1 ? 'match' : 'matches'} below` },
+});
+drawIcon(chip.createSpan({ cls: 'pbl-row-matches-icon' }), 'search');
+chip.createSpan({ text: String(matches.length) });
+setTooltip(chip, `${matches.length} search ${matches.length === 1 ? 'match' : 'matches'} under this row — open the menu to reach them`);
+chip.addEventListener('click', (evt) => { evt.stopPropagation(); showItemMenu(ctx.host, evt, item, childTypeChoices(item)); });
+```
+
+Give it a fixed footprint so it cannot take the title's width, in `styles/cards.css` beside the rules Task 4 already put there:
 
 ```css
-/* The match list shares the lead's single line and never adds one. A timeline row's
-   height is content-driven (`min-height` on the track is a floor, and the row stretches),
-   and `renderDependencyArrows` has already measured every row rectangle by the time
-   matches are named — so a list that wrapped would move the rows out from under the
-   arrows. `min-width: 0` is what lets it shrink far enough for `.pbl-card-match`'s own
-   ellipsis to engage; a flex item's automatic minimum is its content otherwise, which is
-   how the list would otherwise push past the column into the day track. */
-.pbl-timeline-lead .pbl-card-matches {
-	flex: 0 1 auto;
-	min-width: 0;
-	flex-wrap: nowrap;
-	overflow: hidden;
+/* A row's match affordance: a COUNT, never titles. `flex: 0 0 auto` is the whole point —
+   the lead is a fixed-width column whose only shrinkable items are the title and this, so
+   a variable-width list here is taken out of the row's own name. Measured at the default
+   lead width, titles-in-the-lead left one character of the row's identity. */
+.pbl-row-matches {
+	flex: 0 0 auto;
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	padding: 0 var(--size-2-1);
+	height: auto;
+	line-height: 1.4;
+	box-shadow: none;
+	background-color: var(--background-modifier-hover);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
 }
 ```
 
-**The full set stays reachable through the row menu**, which Task 5 gives this surface and which lists every match rather than as many as fit. That is what makes an ellipsised face honest rather than lossy: the face says "there are matches here", the menu says which.
+Delete the `.pbl-timeline-lead .pbl-card-matches` rule added earlier in this task — no row renders that element any more, and a rule for markup nothing produces is dead CSS that `npm run check` is right to flag.
 
-**This is layout, so jsdom cannot check it and the suite must not pretend to.** `npm run harness` CAN: the partials write these rules themselves, which is what the harness is faithful about. Run it, filter the roadmap on the dated axis so a row keeps a match, and drag the lead's resize grip to its narrowest. Record what you saw in the report. Add the narrow-lead case to the live-vault list too — a themed vault changes the font metrics this depends on.
+**Re-run the harness after this change** and re-measure the same three questions at 160 / 220 / 480: row height equal with and without the chip, nothing past the lead's right edge at the 160px floor, and — the one this step exists for — **a row's title rendering the same as a row without matches at the same width**. Put the numbers in the report.
 
 - [ ] **Step 7: Run the second pass**
 
