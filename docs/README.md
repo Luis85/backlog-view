@@ -103,12 +103,15 @@ later reversed to ignore the focus level outright, since no level narrows this b
 and there is never anything left to clear. What remains under the epic — lanes,
 creation from a column, column collapse, the touch verdict a device has to answer,
 and **iterations** — is still design. That last one multiplies the board a second
-time and does it differently on purpose: a time box partitions nothing, since every
-card in a sprint is also a card on the product board, and the number of sprints only
-grows. So it takes no toggle position of its own. `Board` gains a **scope** picker
-beside the projection toggle — `Product`, or one iteration — the control the roadmap
-already uses to offer its two axes, over a workflow of its own that falls back to the
-product board's field by field.
+time and does it differently on purpose, for a reason that is arithmetic rather than
+scope: there is exactly one Deliverables board, and sprints only ever accumulate, so
+a toggle position per sprint is not a toggle. `Board` gains a **scope** picker beside
+the projection toggle — `Product`, or one iteration — the control the roadmap already
+uses to offer its two axes, over a workflow of its own that falls back to the product
+board's field by field. It is also the one board where both kinds of work sit
+together: a sprint commits to finishing a design as readily as a PBI, so a
+`Deliverable` naming the iteration draws a card there, columned by that board's one
+workflow like everything else on it.
 
 Those use cases are the argument for writing a PBI *before* building it rather than
 after. The ones still open say **nothing yet** (or **partly built**, naming exactly

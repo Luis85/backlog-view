@@ -116,15 +116,30 @@ A host accessor pair `boardScope` / `setBoardScope` joins the siblings in
 | Scope | Cards | Columns |
 | --- | --- | --- |
 | `Product` | unchanged | `requirementsWorkflow` |
-| An iteration | the non-`Deliverable` results whose `iteration` link resolves to that note | `iterationWorkflow` |
+| An iteration | the results whose `iteration` link resolves to that note, **whatever their type** | `iterationWorkflow` |
 
-**Deliverables are excluded**, matching the product board's own `!isDeliverableType`
-filter. `model.results` includes them, so this is a filter that has to be written, not an
-absence that comes for free. Without it the argument for a scope picker collapses: the
-claim is that every card on an iteration board is also a card on the product board, and
-the product board refuses Deliverables. A Deliverable admitted here would also sit under
-a *third* column vocabulary and take a *third* state property from a move. It may still
-name an iteration; it simply draws no card here, exactly as it draws none there.
+**Deliverables are included** — decided by the user on 2026-08-15, after a review round
+had argued them out. No type filter at all: not the product board's `!isDeliverableType`,
+and not its mirror. A sprint is a commitment to finish some work, and a concept or a
+design is part of what a sprint commits to, so this is the one board where the two kinds
+sit together. The product board is scoped to a kind of work and the Deliverables board to
+another; this one is scoped to a fortnight, which does not care what kind of note a piece
+of work is.
+
+Two consequences follow and both are wanted. A `Deliverable` card is columned by the
+**iteration** workflow like every other card here — one board has one column list — and
+its finished styling comes from that workflow's done values through the shared card
+shell, which already takes completion as an input rather than reading `item.done`. So a
+Deliverable may read `Done` on its own board and `In review` here, and both are true.
+And the board's observed vocabulary is collected from **its own** population, so a value
+only a Deliverable carries mints a column here, the mirror of the rule
+`requirementsWorkflow` keeps for the same reason.
+
+What this costs is a claim the design cannot make: *every card on an iteration board is
+also a card on the product board* is false, and an earlier draft used it as the argument
+for a scope picker over a toggle position. The argument is replaced rather than patched.
+A control is chosen by **how many things it has to offer** — iterations are unbounded,
+Deliverables are one — never by whether two populations coincide.
 
 `iterationWorkflow(model, settings, iteration)` sits in `src/domain/board.ts` beside
 `deliverablesWorkflow` — a third instance of the `Workflow` interface, which already has

@@ -31,13 +31,18 @@ Deliverables one, and a resolver beside `resolvedDeliverableStateKey` in
 
 ## Why a scope, and not a fifth toggle position
 
-The Deliverables board took a toggle position because its population is a **type**: a
-Deliverable is never a card on the product board, so the two boards partition the work
-and both are always meaningful. Iterations do not partition anything. Every card on an
-iteration board is also a card on the product board, and the number of iterations grows
-without bound as sprints go by. A toggle position per sprint is not a toggle; a scope
-picker holding a growing list is the control that already exists for that shape, and the
-roadmap's axis picker is the one to copy.
+The Deliverables board took a toggle position because there is exactly **one** of it: its
+population is a type, the vocabulary is fixed, and the position is as permanent as the
+name. Iterations are unbounded and only accumulate — a vault three years in has seventy
+of them, and a toggle with seventy positions is not a toggle. The count is the whole
+argument. A scope picker holding a growing list is the control that already exists for
+that shape, and the roadmap's axis picker is the one to copy.
+
+It is deliberately **not** argued from the two boards holding the same work, which they
+do not: an iteration board shows `Deliverable` cards and the product board excludes them.
+A sprint is a commitment to finish some work, and a concept or a design is part of what a
+sprint commits to — so this is the one board where both kinds sit together, columned by
+one workflow, which is what makes it a board rather than two boards drawn side by side.
 
 ## Why the workflow is its own
 

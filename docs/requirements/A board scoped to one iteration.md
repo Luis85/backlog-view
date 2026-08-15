@@ -26,12 +26,22 @@ time: the same rule — the workflow the view options define **is** the column
 configuration — over a second independent property, with a population narrowed by a
 link rather than by a type.
 
-It is reached differently from [[A Deliverables board]], on purpose. That board took a
-toggle position because its population is a type, so the two boards partition the work
-and both stay meaningful forever. Iterations partition nothing — every card here is also
-a card on the product board — and their number grows without bound. So `Board` stays one
-toggle position and grows a **scope**, the shape [[Horizons or dates]] already uses to
-offer the roadmap's two axes from one control.
+It is reached differently from [[A Deliverables board]], on purpose, and the reason is
+**arithmetic, not scope**. That board took a toggle position because there is exactly one
+of it: its population is a type, the vocabulary is fixed, and the position is as
+permanent as the name. Iterations are unbounded and only ever accumulate — a vault three
+years in has seventy of them. A toggle with seventy positions is not a toggle. So `Board`
+stays one toggle position and grows a **scope**, the shape [[Horizons or dates]] already
+uses to offer the roadmap's two axes from one control.
+
+That is the whole argument, and it deliberately no longer rests on the two boards holding
+the same kind of work. An earlier draft of this note claimed every card here is also a
+card on the product board, and used that as the reason a scope was safe where a toggle
+position was not. It was a false claim and a bad argument. False, because this board
+holds Deliverables and the product board excludes them (3e). Bad, because a control is
+chosen by how many things it has to offer, not by whether two populations happen to
+coincide — and tying the argument to a coincidence would have made the picker look wrong
+the moment the populations diverged, which is exactly what happened.
 
 ## Use case
 
@@ -50,8 +60,8 @@ offer the roadmap's two axes from one control.
    projection mode and the roadmap axis use, vault-scoped localStorage, per device, never
    the `.base` — and re-renders from the model already in hand.
 3. The cards are the results whose iteration link resolves to that note, and no others:
-   carriers only, never a descendant that did not say so itself, and never a
-   `Deliverable` (3e).
+   carriers only, never a descendant that did not say so itself — whatever their type,
+   `Deliverable` included (3e).
 4. The columns are the workflow the `Iterations` options group defines — its own state
    property when one is configured, or the product workflow's resolved key when it is
    not. Either way the columns run: no-state first, the configured states in order, then
@@ -96,19 +106,29 @@ offer the roadmap's two axes from one control.
   unfocused tree for a population defined by type.
 - **3d — an item's own iteration differs from its parent's.** Its own value decides, and
   the parent's is not consulted. Nothing is inherited down the tree.
-- **3e — a `Deliverable` carries the chosen iteration link.** It is **not** a card here,
-  exactly as it is not one on the product board, which excludes every `Deliverable` from
-  its cards, its count and its stray columns. Two reasons, and the second is the load-
-  bearing one. The stated invariant above — every card on an iteration board is also a
-  card on the product board, which is the whole argument for a scope rather than a toggle
-  position — is false the moment this board admits an item that board refuses. And a
-  Deliverable already has a workflow of its own ([[A Deliverables board]]); admitting it
-  here would put one note under a *third* column vocabulary and let a move write a third
-  state property onto it. A Deliverable is still perfectly free to name an iteration, and
-  the value is still read, written and undone like any other — it simply does not draw a
-  card on this board, the same way it draws none on the product board. It reaches this
-  board only in the one form any excluded item does: as a context row for a visible
-  descendant (3a).
+- **3e — a `Deliverable` carries the chosen iteration link.** It **is** a card here, and
+  this is the one board where the two kinds of work sit together. That is the point of a
+  time box rather than an exception to a rule: a sprint is a commitment to finish some
+  work, and a concept or a design is part of what a sprint commits to. The product board
+  is scoped to a kind of work and the Deliverables board to another; this board is scoped
+  to a *fortnight*, and a fortnight does not care what kind of note a piece of work is.
+  So the population is a plain question about one link, asked of every result whatever
+  its type — no type filter, and none of the product board's `!isDeliverableType`.
+- **3f — a `Deliverable` card is on this board and its column is asked for.** The
+  **iteration** workflow decides, exactly as it does for every other card here. One board
+  has one column list; a board that columned some cards by one vocabulary and some by
+  another would not be a board. Its finished styling follows the same source — the
+  iteration workflow's own done values, never the Deliverable workflow's — through the
+  shared card shell, which already takes completion as an input rather than reading
+  `item.done` itself, precisely so two boards can disagree about one card without either
+  lying ([[A Deliverable is coloured by its own workflow]]). A Deliverable can therefore
+  read `Done` on its own board and `In review` here, and both are true of it.
+- **3g — a value under the iteration state key is carried only by a `Deliverable`.** It
+  mints a column here like any other observed value, because a Deliverable card can land
+  in it. This is the mirror image of the product board's rule, and the same rule
+  underneath: a board's stray columns come from **its own** population, so a column
+  nothing on this board could reach is never drawn, and a column something on it holds is
+  never withheld.
 - **4a — neither the iteration state property nor the product one is configured.** Only
   then does the board show the unconfigured empty state, naming the option to set and
   where. A workflow is this board's prerequisite here too, and the fallback means an
@@ -142,12 +162,15 @@ offer the roadmap's two axes from one control.
   renders `Product` and is retained rather than rewritten.
 - Switching scope is a render decision: same model, same results, same undo slot, no
   re-query. The quick filter carries over.
-- Cards are exactly the non-`Deliverable` results whose iteration link resolves to the
-  chosen note. No descendant appears by inheritance, no `Deliverable` appears at all, and
-  no other result the link names is missing: the column counts sum to that population.
-- Every card on an iteration board is also a card on the product board. That is the
-  invariant the scope picker rests on, and the `Deliverable` exclusion is what keeps it
-  true rather than a claim the population quietly breaks.
+- Cards are exactly the results whose iteration link resolves to the chosen note,
+  **whatever their type**. No descendant appears by inheritance, no type is filtered out,
+  and no result the link names is missing: the column counts sum to that population.
+- A `Deliverable` naming the iteration draws a card here, is columned by the iteration
+  workflow, and takes its finished styling from that workflow's done values — not from
+  the Deliverable workflow's, and not from the product board's.
+- The board's observed vocabulary is collected from **its own** population, so a value
+  only a `Deliverable` carries mints a column here, while a value carried only by items
+  in no iteration mints none.
 - Columns come from the `iterationStateProperty` / `iterationStateValues` /
   `iterationDoneValues` group, falling back to the product workflow field by field — the
   key when no iteration state property is set, each list only while it is itself empty.
