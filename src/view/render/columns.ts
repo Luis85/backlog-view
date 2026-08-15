@@ -1,4 +1,4 @@
-import { BasesPropertyId, NullValue, setTooltip } from 'obsidian';
+import { BasesPropertyId, NullValue, setTooltip, Value } from 'obsidian';
 import { drawIcon } from './icons';
 import { BacklogViewHost, Column, ColumnFit, ColumnKind, PlacedMount } from '../host';
 import { columnWidth, columnWidthVar, renderColumnResize, widenSign } from '../interactions/columnResize';
@@ -462,19 +462,33 @@ function renderCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem,
 }
 
 
+/**
+ * Whether a Bases value draws anything at all.
+ *
+ * One statement of it, because two readings drift: a missing property comes back as a
+ * `NullValue` INSTANCE rather than `null`, and `isEmpty` is declared on some `Value`
+ * subclasses (`ObjectValue`) and not on `Value` itself, so both tests are easy to write
+ * differently the second time — the second reading's first draft asked `!= null`, which a
+ * `NullValue` instance passes. {@link renderValue} asks it to decide whether to draw a
+ * cell, and `valueKinds` (`view/rowSignature.ts`) asks it to decide which value it may
+ * read a rendered TYPE from. Neither test is a version guard; both are genuine questions
+ * about the value in hand.
+ */
+export function drawsSomething(value: Value | null): value is Value {
+	if (value === null || value instanceof NullValue) return false;
+	const maybeEmpty = value as { isEmpty?: () => boolean };
+	return !(typeof maybeEmpty.isEmpty === 'function' && maybeEmpty.isEmpty());
+}
+
 function renderValue(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem, column: Column): boolean {
 	// An ancestor from outside the filter has no Bases row, so no property values.
-	let value = null;
+	let value: Value | null = null;
 	try {
 		value = item.entry?.getValue(column.prop) ?? null;
 	} catch {
 		return false;
 	}
-	if (value === null || value instanceof NullValue) return false;
-	// isEmpty() is declared on some Value subclasses (ObjectValue) but not on Value
-	// itself, so this stays a genuine test of the value in hand, not a version guard.
-	const maybeEmpty = value as { isEmpty?: () => boolean };
-	if (typeof maybeEmpty.isEmpty === 'function' && maybeEmpty.isEmpty()) return false;
+	if (!drawsSomething(value)) return false;
 
 	const text = value.toString().trim();
 	const valueEl = cell.createSpan({ cls: 'pbl-prop-value' });
