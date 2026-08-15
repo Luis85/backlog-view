@@ -1,6 +1,6 @@
 import { BacklogViewHost } from './host';
 import { BacklogItem } from '../domain/model';
-import { hiddenMatches } from '../domain/board';
+import { cardPaths, hiddenMatches } from '../domain/board';
 import { displayType } from '../domain/itemTypes';
 
 /**
@@ -45,10 +45,10 @@ export function childrenLabel(children: BacklogItem[]): string {
 }
 
 /**
- * The matches a card should name on its face: everything `hiddenMatches` found beneath
- * it, minus anything its own disclosure already lists. One card cannot say the same
- * thing twice — and the DEPTH of the walk is untouched, so a match three levels down
- * still surfaces where nothing else can reach it.
+ * The matches a surface should name on its face: everything `hiddenMatches` found
+ * beneath the item, minus anything that surface already lists. One surface cannot say
+ * the same thing twice — and the DEPTH of the walk is untouched, so a match three levels
+ * down still surfaces where nothing else can reach it.
  *
  * It is also the one place the walk's own boundary is supplied: `isRowHidden` is the
  * same visibility rule `listedChildren` above filters by, handed down as `drawn` so the
@@ -57,20 +57,53 @@ export function childrenLabel(children: BacklogItem[]): string {
  * consumers of a card's matches (the card face's links and the row menu's Open match
  * entries) route through this function, one guard answers for both.
  *
- * Reads `listedChildren`, never the disclosure's own expansion state — the state a
- * toggle owns is irrelevant here, since both this and `listedChildren` only run while
- * the quick filter is active, and filtering forces every disclosure open anyway.
+ * **`listed` is what the CALLER already shows**, never a set decided here. The rule is
+ * that a surface must not name twice what it already shows, and only the surface knows
+ * what it shows: a card draws a disclosure and passes `listedChildren`, while a timeline
+ * row draws none at all and passes nothing — subtracting there would delete a
+ * direct-child match, the below-focus result this whole feature exists to reach.
+ *
+ * Where a caller does pass `listedChildren`, it is that function's answer and never the
+ * disclosure's own expansion state — the state a toggle owns is irrelevant here, since
+ * both only run while the quick filter is active, and filtering forces every disclosure
+ * open anyway.
  */
 export function undisclosedMatches(
 	host: BacklogViewHost,
 	item: BacklogItem,
 	carded: Set<string>,
+	listed: readonly BacklogItem[],
 ): BacklogItem[] {
-	const listed = new Set(listedChildren(host, item).map((child) => child.file.path));
+	const shown = new Set(listed.map((child) => child.file.path));
 	return hiddenMatches(
 		item,
 		(child) => host.isFilterMatch(child),
 		carded,
 		(child) => !host.isRowHidden(child),
-	).filter((match) => !listed.has(match.file.path));
+	).filter((match) => !shown.has(match.file.path));
+}
+
+/**
+ * The matches to offer for this item, asked of whichever projection drew it.
+ *
+ * A board asks its model: a `BoardModel` is already narrowed to what draws, so
+ * `cardPaths` is honest there. The roadmap asks the register its render filled, because
+ * its model is not what it draws — and that register is also where the disclosure
+ * policy is, which the menu cannot work out for itself: it is handed an item and no
+ * surface, so always subtracting would lose a row's direct-child match and never
+ * subtracting would offer a card's disclosure entries a second time.
+ */
+export function matchesFor(host: BacklogViewHost, item: BacklogItem): BacklogItem[] {
+	// The MENU's already-listed set is not the face's. `addChildrenSection` adds an
+	// "Open child" entry for every `listedChildren` whenever the path is in
+	// `cardChildrenShown` — and a timeline row joins that set through its FOLD chevron,
+	// while listing nothing on its face. Reusing the face's policy here would offer one
+	// note twice in one menu: once as a child, once as a match. So the menu asks the
+	// thing that actually lists in a menu.
+	const listed = host.cardChildrenShown.has(item.file.path) ? listedChildren(host, item) : [];
+	const roadmap = host.roadmap;
+	if (roadmap) return undisclosedMatches(host, item, new Set(roadmap.placed.keys()), listed);
+	const board = host.board?.board;
+	if (!board) return [];
+	return undisclosedMatches(host, item, cardPaths(board), listed);
 }

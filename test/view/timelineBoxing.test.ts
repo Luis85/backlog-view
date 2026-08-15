@@ -72,6 +72,37 @@ describe('the two boxes sized from TypeScript arithmetic', () => {
 		expect(dimmed).toContain('.pbl-absence-row .pbl-timeline-lead > *');
 	});
 
+	it('lets a row’s match affordance YIELD rather than cross the column boundary', () => {
+		// The lead is a fixed-width column, so an item that cannot shrink cannot do
+		// anything but overflow once the column is full. Measured in Chromium through
+		// `npm run harness` at the 160px floor: a `flex: 0 0 auto` chip hung 28.95px over
+		// the day track on every row that had one. `flex: 0 1 auto` with `min-width: 0`
+		// and `overflow: hidden` is what makes it give way to the icon alone instead.
+		//
+		// WHERE it sits is the code's (`renderMatchCount` swaps it for `.pbl-bar-count`),
+		// and the two have to agree about the end of the lead, so the anchor is asserted
+		// against the slot's own rather than against a literal.
+		//
+		// Text again, and the reach is exactly that: it sees the declarations and cannot
+		// tell you what the column came out looking like. That is the narrow-lead case in
+		// `docs/tests/suites/Smoke test the roadmap.md`.
+		const cards = readFileSync(new URL('../../styles/cards.css', import.meta.url), 'utf8');
+		const chip = bodyOf(cards, '.pbl-row-matches,\nbutton.pbl-row-matches', 'styles/cards.css');
+		expect(chip).toContain('flex: 0 1 auto;');
+		expect(chip).toContain('min-width: 0;');
+		expect(chip).toContain('overflow: hidden;');
+		// The slot it replaces anchors the end of the lead; the replacement has to too.
+		const band = readFileSync(new URL('../../styles/barProgress.css', import.meta.url), 'utf8');
+		expect(bodyOf(band, '.pbl-bar-count', 'styles/barProgress.css')).toContain('margin-inline-start: auto;');
+		expect(chip).toContain('margin-inline-start: auto;');
+		// Not vacuous, and the pairing is the point: a CARD has the room, so its own list
+		// still wraps to as many titles as it holds. Only the ROW trades them for a count.
+		expect(bodyOf(cards, '.pbl-card-matches', 'styles/cards.css')).toContain('flex-wrap: wrap;');
+		// And nothing is left pinned to the rule this replaced — a row renders no
+		// `.pbl-card-matches` at all now, so CSS for it here would be dead.
+		expect(cards).not.toContain('.pbl-timeline-lead .pbl-card-matches');
+	});
+
 	it('lays a row out from being a ROW, never from being a card', () => {
 		// Every row of this grid is a sticky lead beside a day track, and that geometry has
 		// to come from `.pbl-timeline-row` alone. Attached to `.pbl-card.pbl-timeline-row`
@@ -416,5 +447,60 @@ describe('the resize grip is ringed in a colour other than its own fill', () => 
 		expect(fills.length, 'nothing fills the focused grip').toBeGreaterThan(0);
 		expect(rings.length, 'the focused grip draws no outline').toBeGreaterThan(0);
 		for (const ring of rings) expect(fills, `the ring repeats its own fill: ${ring}`).not.toContain(ring);
+	});
+});
+
+/**
+ * `.pbl-bar-progress`'s track and `.pbl-timeline-row.pbl-done .pbl-bar`'s done override
+ * paint the SAME green (`--color-green` and `rgb(var(--color-green-rgb))` both resolve to
+ * `#44cf6e`, measured 2026-08-15 — contrast 1.00), so on a done row the fill vanishes into
+ * the bar and the band shows only its unfilled remainder, inverted from what it means to
+ * report. jsdom resolves no custom property to a colour, so this is a text check like the
+ * pair above it: it sees the declaration and cannot tell you what a done bar's band
+ * actually looks like — that is `npm run harness`'s `.superpowers/harness-band-fix.md`
+ * pass, not this file.
+ */
+describe('the progress band carries a hairline no bar colour can erase', () => {
+	const css = readFileSync(new URL('../../styles/barProgress.css', import.meta.url), 'utf8');
+	const body = bodyOf(css, '.pbl-bar-progress', 'styles/barProgress.css');
+
+	it('draws a 1px outline rather than an inset box-shadow', () => {
+		// `outline` paints over the element's OWN descendants (documented browser
+		// behaviour, confirmed in the harness pass): at 100% done the fill child covers
+		// the whole track box, and an inset `box-shadow` — painted in the background/border
+		// step, before a child renders — would sit UNDER that fill and never be seen. An
+		// outline has no such ordering problem, which is the whole reason it was chosen.
+		expect(body).toMatch(/outline:\s*1px\s+solid/);
+		expect(body, 'an inset box-shadow would be hidden under a 100%-width fill').not.toMatch(/box-shadow:\s*inset/);
+	});
+
+	it('draws the ring outward, never inward into the band', () => {
+		// An inward ring (a negative `outline-offset`) eats the band's own interior from
+		// both sides — measured 2px of a 4px band, HALF the readable core, in the harness
+		// pass this rule cost before it was corrected (`.superpowers/harness-band-fix.md`).
+		// Outward is safe: the track's containing block is the bar's own PADDING box, so
+		// a 0-offset ring lands exactly at that padding edge, never past it. On a bar with
+		// no border that edge IS the outer edge (harmless — nothing else is painted
+		// there); on an inferred bar the 1px dashed border sits OUTSIDE the padding box it
+		// shrinks, so the ring stays a full 1px clear of it. Measured geometrically
+		// (`getComputedStyle`) and cross-checked with a pixel scan, not merely reasoned —
+		// the same report has both.
+		expect(body).not.toMatch(/outline-offset:\s*-/);
+	});
+
+	it('draws the ring in the page background, not in either progress colour', () => {
+		// Neither the track's neutral fill (`--background-modifier-border`) nor the
+		// fill's green (`rgb(var(--color-green-rgb))`) survives a bar painted in that
+		// same colour; a THIRD colour — the page's own background, the one thing a bar is
+		// never painted in — is what a hairline needs to separate the band from any bar
+		// colour, including a workflow state a reader has painted green through
+		// `stateColorPaint`, which is why this is not scoped to `.pbl-done`. Asserted as
+		// the rule rather than pinned to one token: neither progress colour, not "must be
+		// exactly this one" — a future third colour choice that is still neither of them
+		// should not have to touch this test.
+		const outline = /outline:\s*1px\s+solid\s+([^;]+);/.exec(body)?.[1].trim();
+		expect(outline, 'the outline rule is missing entirely').toBeDefined();
+		expect(outline).not.toContain('--background-modifier-border');
+		expect(outline).not.toContain('--color-green-rgb');
 	});
 });

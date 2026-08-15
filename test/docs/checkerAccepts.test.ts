@@ -657,6 +657,21 @@ describe('the gate accepts valid documents', () => {
 
 		await expectAccepted(files);
 	});
+	it('accepts a note whose status is Dropped', async () => {
+		// A refused design stays in the tree rather than being deleted, so the gate has
+		// to accept the status that says so. `docs/Product Backlog.base` already
+		// declares Dropped a done value, so the config knew this word before the
+		// checker did.
+		const files = baseRegister();
+		files['docs/requirements/Refused.md'] = useCase({
+			title: 'Refused',
+			order: 90,
+			parent: 'A slice',
+		}).replace('status: Open', 'status: Dropped');
+
+		await expectAccepted(files);
+	});
+
 	it('accepts an Absence wherever it is filed, since its folder is a user setting', async () => {
 		// Exempted by TYPE, not by path: `Folder for Absence items` is configuration this
 		// checker cannot see, so a `docs/absences/` rule would be the gate guessing one.
