@@ -185,12 +185,12 @@ describe('an absence on the resources axis', () => {
 	});
 
 	it('gives every clamped mark a line of its own, so one cannot bury another', () => {
-		// `packAbsences` answers about DAYS: two stretches beyond the same edge do not
-		// overlap, so it puts them in one sub-lane — and `barGeometry` clamps both to that
-		// edge, so they draw as one `MIN_BAR_PX` stripe on one pixel. The later covered the
-		// earlier outright, taking its tooltip and the only route to Edit and Delete with
-		// it. Two months apart in the note and the same rectangle on screen, which is why
-		// the pack alone could never see it.
+		// The first place days and pixels stop agreeing: two stretches beyond the same edge
+		// do not overlap in days, and `barGeometry` clamps both to that edge, so they draw
+		// as one `MIN_BAR_PX` stripe on one pixel. The later covered the earlier outright,
+		// taking its tooltip and the only route to Edit and Delete with it. Two months
+		// apart in the note and the same rectangle on screen, which is why a pack over the
+		// DATES could never see it — and why the pack reads the drawn boxes instead.
 		const vault = new FakeVault();
 		vault.addFile('Work.md', {
 			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2020-01-01', due: '2032-01-01' },
@@ -213,6 +213,38 @@ describe('an absence on the resources axis', () => {
 		]);
 		expect(new Set(marks.map((el) => el.style.getPropertyValue('--pbl-bar-left'))).size).toBe(1);
 		// So the LINE is what has to separate them, and the header has to have grown for it.
+		expect(marks.map((el) => el.style.getPropertyValue('--pbl-sublane'))).toEqual(['0', '1']);
+		expect(head.style.getPropertyValue('--pbl-lane-sublanes')).toBe('2');
+	});
+
+	it('separates two marks the minimum width makes overlap, though their days do not', () => {
+		// The floor is the second place days and pixels stop agreeing, and it needs no
+		// clamp to reach: at quarter zoom a day is 2px and every mark is at least
+		// `MIN_BAR_PX` wide, so two ONE-DAY stretches on consecutive dates are 2px apart
+		// and 4px wide. They share no day, so a pack that answers about days puts them on
+		// one line — and the later then paints over half the earlier, leaving a ~2px
+		// sliver as the only route to its tooltip and its Edit and Delete menu.
+		const vault = new FakeVault();
+		vault.addFile('Work.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
+		});
+		vault.addFile('Monday off.md', {
+			frontmatter: { type: 'Absence', assignee: 'Quinn', start: '2026-08-03', due: '2026-08-03' },
+		});
+		vault.addFile('Tuesday off.md', {
+			frontmatter: { type: 'Absence', assignee: 'Quinn', start: '2026-08-04', due: '2026-08-04' },
+		});
+		const harness = laneRoadmap(vault);
+		harness.view.setZoom('quarter');
+		const head = lanesOf(harness.containerEl)[laneNames(harness.containerEl).indexOf('Quinn')];
+		const marks = Array.from(head.querySelectorAll<HTMLElement>('.pbl-absence'));
+
+		// The premise, stated rather than assumed: the two really are drawn 2px apart and
+		// really are 4px wide, so the boxes overlap and nothing but the line can part them.
+		const left = marks.map((el) => Number.parseFloat(el.style.getPropertyValue('--pbl-bar-left')));
+		expect(marks.map((el) => el.style.getPropertyValue('--pbl-bar-width'))).toEqual(['4px', '4px']);
+		expect(left[1] - left[0]).toBe(2);
+
 		expect(marks.map((el) => el.style.getPropertyValue('--pbl-sublane'))).toEqual(['0', '1']);
 		expect(head.style.getPropertyValue('--pbl-lane-sublanes')).toBe('2');
 	});

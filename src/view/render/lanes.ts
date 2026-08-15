@@ -8,7 +8,7 @@ import { promptAddAbsence, showAbsenceMenu } from '../interactions/absences';
 import { CardDragController } from '../interactions/cardDrag';
 import { wireBarLink } from '../interactions/linkDrag';
 import { BacklogViewHost, DrawnColors } from '../host';
-import { Absence, absencesConfigured, absenceTitle, awayWeeks, crossedAbsences, daysLost, packAbsences } from '../../domain/absences';
+import { Absence, absencesConfigured, absenceTitle, awayWeeks, crossedAbsences, daysLost, packLanes } from '../../domain/absences';
 import { barHolds, timelineRows, TimelineBar, TimelineRow } from '../../domain/bars';
 import { BacklogItem } from '../../domain/model';
 import { CivilDate } from '../../domain/noteFields';
@@ -482,10 +482,22 @@ function absenceSaid(absence: Absence): string {
  * which is what a fourth copy would have been: the same two lines under a different name.
  */
 function placeSpan(el: HTMLElement, geometry: BarGeometry, scale: TimelineScale): void {
-	el.setCssProps({
-		'--pbl-bar-left': `${geometry.startDay * scale.dayPx}px`,
-		'--pbl-bar-width': `${Math.max(geometry.spanDays * scale.dayPx, MIN_BAR_PX)}px`,
-	});
+	const { left, right } = spanBox(geometry, scale);
+	el.setCssProps({ '--pbl-bar-left': `${left}px`, '--pbl-bar-width': `${right - left}px` });
+}
+
+/**
+ * The same box in numbers, for the one caller that has to REASON about where a mark lands
+ * rather than only put it there — `packLanes`, which separates the marks that would overlap.
+ *
+ * Extracted rather than recomputed beside the pack, and that is the point of it: a pack fed
+ * its own idea of the arithmetic is a second geometry to keep in step with this one, which is
+ * exactly what [[Resource absences]] 4a refused. Reading the box off the function that writes
+ * it means the two cannot disagree about which pixels a mark covers.
+ */
+function spanBox(geometry: BarGeometry, scale: TimelineScale): { left: number; right: number } {
+	const left = geometry.startDay * scale.dayPx;
+	return { left, right: left + Math.max(geometry.spanDays * scale.dayPx, MIN_BAR_PX) };
 }
 
 /**
@@ -493,14 +505,15 @@ function placeSpan(el: HTMLElement, geometry: BarGeometry, scale: TimelineScale)
  * is what makes a band one row per person whatever they have.
  *
  * Positioned by `barGeometry` against the same window a bar is, so a stretch and the work it
- * crosses cannot disagree about which day is which, and packed by `packAbsences` so two that
- * share a day get two sub-lanes instead of two rows. The sub-lane count goes onto the HEADER
- * as `--pbl-lane-sublanes` and the stylesheet does the arithmetic: one number crossing the
- * boundary rather than a height computed here.
+ * crosses cannot disagree about which day is which, and packed by `packLanes` so two that
+ * would overlap get two sub-lanes instead of two rows. The sub-lane count goes onto the
+ * HEADER as `--pbl-lane-sublanes` and the stylesheet does the arithmetic: one number crossing
+ * the boundary rather than a height computed here.
  *
- * **The pack answers about DAYS and the draw happens in PIXELS**, and where the window
- * clamps a mark those two stop agreeing — the case the loop below adds a line for, stated
- * at the line that adds it.
+ * **What is packed is the BOX each mark draws as, never its dates**, and the difference is
+ * what two review findings were: a mark clamped to the window's edge, and a one-day mark
+ * floored at `MIN_BAR_PX`, both cover pixels their days do not. `spanBox` is the one place
+ * either is computed, so the pack and the draw read the same numbers.
  *
  * **The count is not the mechanism — `--pbl-sublane` per MARK is.** The header's count only
  * grows the track; the index each mark carries is what puts it on its own line, so 4a's
@@ -540,42 +553,25 @@ function renderLaneAbsences(
 	const host: BacklogViewHost = ctx.host;
 	const track = head.createDiv({ cls: 'pbl-timeline-track' });
 	if (lane.absences.length === 0) return track;
-	const packed = packAbsences(lane.absences);
-	head.setAttribute(
-		'aria-description',
-		`Unavailable: ${packed.flat().map(absenceSaid).join('; ')}`,
-	);
-	const marks = packed.flatMap((sub, index) =>
-		sub.map((absence) => ({
-			absence,
-			index,
-			geometry: barGeometry(ruler.window, { start: absence.start, target: absence.target }),
-		})),
-	);
-	// **The pack's line is where a mark GOES; a clamped mark has to be given one instead.**
-	// A wholly-outside stretch draws at the window's EDGE rather than at its dates, so the
-	// pack cannot separate it from anything: two beyond one edge do not overlap in days,
-	// share a sub-lane, and land as one `MIN_BAR_PX` stripe on one pixel — the later
-	// covering the earlier outright, taking its tooltip and the only route to Edit and
-	// Delete with it. A stretch merely CLIPPED at that same edge collides with them the
-	// same way. So each takes a line nothing else uses, counted from the last line an
-	// inside mark actually occupies rather than from `packed.length`: a sub-lane whose
-	// only member was clamped away is a blank line at the top of the band otherwise.
-	// It still over-allocates by one per mark past OPPOSITE edges, which never touched —
-	// the cheap direction, since it takes a plan past `MAX_TIMELINE_DAYS` for any of this
-	// to arise and the alternative is a second pack over the DRAWN day-index intervals
-	// kept in step with `packAbsences`' civil-date one.
-	let sublanes = Math.max(0, ...marks.filter((one) => !one.geometry.outside).map((one) => one.index + 1));
-	for (const { absence, index, geometry } of marks) {
+	// Left to right, which is what `packLanes` wants to pack tightly and what a reader hears
+	// the description in — the same list answers both, so the order the marks draw in and the
+	// order they are named in cannot come apart.
+	const marks = lane.absences
+		.map((absence) => {
+			const geometry = barGeometry(ruler.window, { start: absence.start, target: absence.target });
+			return { absence, geometry, box: spanBox(geometry, ruler.scale) };
+		})
+		.sort((a, b) => a.box.left - b.box.left);
+	const sublanes = packLanes(marks.map((mark) => mark.box));
+	head.setAttribute('aria-description', `Unavailable: ${marks.map((mark) => absenceSaid(mark.absence)).join('; ')}`);
+	for (const [index, { absence, geometry }] of marks.entries()) {
 		const mark = track.createDiv({ cls: ['pbl-absence', ...edgeClasses(geometry)].join(' ') });
 		placeSpan(mark, geometry, ruler.scale);
-		mark.setCssProps({ '--pbl-sublane': String(geometry.outside ? sublanes++ : index) });
+		mark.setCssProps({ '--pbl-sublane': String(sublanes[index]) });
 		setTooltip(mark, absenceSaid(absence));
 		mark.addEventListener('contextmenu', (evt) => showAbsenceMenu(host, absence, evt));
 	}
-	// After the loop, not before it: a clamped mark adds a line the pack did not know about,
-	// and a header grown for fewer lines than it drew overlaps the marks it holds.
-	head.setCssProps({ '--pbl-lane-sublanes': String(sublanes) });
+	head.setCssProps({ '--pbl-lane-sublanes': String(Math.max(...sublanes) + 1) });
 	return track;
 }
 

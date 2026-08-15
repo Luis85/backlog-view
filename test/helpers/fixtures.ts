@@ -219,7 +219,7 @@ export function demoVault(layout: Layout = 'flat', extra = 0): FakeVault {
 	// size without it. One that has ENDED, the case the band header's readout must count as
 	// nothing: a fixed past date rather than a today-relative one, so it stays past as the
 	// clock moves. And a fourth, overlapping the offsite, so the harness draws a two-sub-lane
-	// header — the case `packAbsences` exists for.
+	// header — the case `packLanes` exists for.
 	add('Dana is at the offsite', { type: 'Absence', assignee: 'Dana', start: '2026-08-10', due: '2026-08-14' });
 	add('Sam is on leave', { type: 'Absence', assignee: 'Sam', start: '2026-09-01', due: '2026-09-18' });
 	add('Dana was at a conference', { type: 'Absence', assignee: 'Dana', start: '2026-07-06', due: '2026-07-10' });
