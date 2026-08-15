@@ -145,6 +145,16 @@
 	   it and the pointermove stream this grip needs never arrives. */
 	touch-action: none;
 }
+/* The same 6px mouse target, on a device with fingers and no hover. It needs no line of
+   its own — `.pbl-timeline-lead`'s own border already draws this boundary, which is the
+   difference from the property columns' grip (styles/propertyColumns.css), where nothing
+   else marks where a column ends. */
+@media (hover: none) {
+	.pbl-timeline-lead-grip {
+		width: 20px;
+		right: -10px;
+	}
+}
 .pbl-timeline-lead-grip:hover,
 .pbl-timeline-lead-grip:focus-visible {
 	background-color: var(--interactive-accent);

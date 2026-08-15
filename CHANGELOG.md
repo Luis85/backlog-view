@@ -62,6 +62,12 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   the row menu too, so this needs no pointer. Previously a match three levels down was
   found, counted, and impossible to reach.
 
+- **Resize the tree's property columns** — drag the grip at a column header's trailing
+  edge, double click it to put it back, or focus it and use the arrow keys. Each column keeps
+  its own width, per saved view and per device, beside the collapse state — so a title
+  column and a risk chip no longer have to be the same size, and nothing about your
+  working position is written to the `.base` file.
+
 ### Changed
 
 - **Recording an absence asks for the dates alone.** The note is named
@@ -91,6 +97,17 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   unaffected, since a resize never asks which row it landed in.
 
 - **Lanes will not be built** on the roadmap or the board. They were tried and refused.
+
+- **Double click either resize grip to reset it** — the tree's new property-column grips
+  and the roadmap timeline's lead-column grip. A mouse never focuses a grip, so the Home
+  key that resets one was reachable only by tabbing onto it first.
+
+- **The Property column width option is gone.** The width is a per-column pick you drag
+  now, kept on the device rather than in the shared `.base`
+  ([ADR 0011](docs/adrs/0011-keep-collapse-state-out-of-the-base-file.md): a value is
+  configuration or working position, never both). A base written with a
+  `propertyColumnWidth` key keeps a setting nothing reads; every column starts at the
+  same 132px it did and moves from there.
 
 ## [0.8.0] - 2026-08-14
 

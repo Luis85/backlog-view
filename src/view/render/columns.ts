@@ -1,8 +1,10 @@
 import { BasesPropertyId, NullValue, setTooltip } from 'obsidian';
 import { drawIcon } from './icons';
-import { BacklogViewHost, Column, ColumnFit, ColumnKind, PlacedMount, Projection } from '../host';
+import { BacklogViewHost, Column, ColumnFit, ColumnKind, PlacedMount } from '../host';
+import { columnWidth, columnWidthVar, renderColumnResize, widenSign } from '../interactions/columnResize';
 import { showAssigneeMenu, showHorizonMenu, showRiskMenu, showStateMenu, showTagMenu } from '../interactions/menu';
 import { removeTag } from '../interactions/tags';
+import { DEFAULT_PROP_COLUMN_WIDTH } from '../../storage/collapseStore';
 import { ownWorkflowReading, stateKeyFor } from '../../domain/board';
 import { BacklogItem } from '../../domain/model';
 import { hasHorizonAxis, SHELF_LABEL } from '../../domain/roadmap';
@@ -61,6 +63,7 @@ export function rowContext(host: BacklogViewHost, rows: Map<string, HTMLElement>
  * stylesheet loaded without a render, not a second opinion.
  */
 export const META_COL_WIDTH = 84;
+
 /**
  * Everything on a row that is not one of the columns, at its widest: the constant
  * is a sum of the bounds in styles.css rather than a guess, so it can be checked
@@ -101,18 +104,23 @@ const TREE_PADDING = 16;
  * {@link syncColumnFit} below. Exporting the calculation alone invites a second caller
  * that measures the same pane and then disagrees about what to hide.
  */
-function columnFit(
-	settings: BacklogSettings,
-	projection: Projection,
-	columnCount: number,
-	depth: number,
-	width: number,
-): ColumnFit {
-	const meta = (settings.stateKey || settings.showCounts) && hasRollup(projection) ? META_COL_WIDTH : 0;
+function columnFit(host: BacklogViewHost, columns: readonly Column[], depth: number, width: number): ColumnFit {
+	const settings = host.settings;
+	const meta = (settings.stateKey || settings.showCounts) && hasRollup(host.projection) ? META_COL_WIDTH : 0;
 	const lead = ROW_LEAD_WIDTH + TREE_PADDING + depth * INDENT_PER_DEPTH;
 	const room = width - lead - meta;
-	const fitting = Math.max(0, Math.floor(room / settings.propColumnWidth));
-	const shown = Math.min(columnCount, fitting);
+	// Summed rather than divided: each column carries its own width now, so how many fit
+	// depends on WHICH ones — a 280px first column and a 90px second are not two columns
+	// of the same size, and a division by any one of them answers for none of them. The
+	// loop stops at the first column that does not fit rather than skipping it, because
+	// they drop from the END of the user's order.
+	let used = 0;
+	let shown = 0;
+	for (const column of columns) {
+		used += columnWidth(host, column.prop);
+		if (used > room) break;
+		shown++;
+	}
 	// Nothing below this: what is left is the row's own lead, and the title truncates
 	// from there.
 	return { shown, rollupDropped: shown === 0 && width < lead + meta };
@@ -140,7 +148,7 @@ export function syncColumnFit(ctx: RowContext, viewEl: HTMLElement, treeEl: HTML
 	if (width === 0) return false;
 	// Indent is part of what a row needs, so expanding a deep branch can be what
 	// makes the columns stop fitting.
-	const fit = columnFit(ctx.host.settings, ctx.host.projection, ctx.host.columns.length, renderedDepth(ctx), width);
+	const fit = columnFit(ctx.host, ctx.host.columns, renderedDepth(ctx), width);
 	// Against what this pass actually DREW rather than against the stored number, so a
 	// render that drew a different count than the verdict claims still asks for the pass
 	// that reconciles them.
@@ -280,22 +288,43 @@ export function renderColumnHeader(ctx: RowContext, containerEl: HTMLElement): v
 		!ctx.host.columnFit?.rollupDropped;
 	// Nothing to head at all, which is not the same question as "no columns".
 	if (ctx.columns.length === 0 && !rollup) return;
-	// Presentational: every value below carries its own accessible label.
-	const header = containerEl.createDiv({ cls: 'pbl-cols', attr: { 'aria-hidden': 'true' } });
+	const header = containerEl.createDiv({ cls: 'pbl-cols' });
 	header.createDiv({ cls: 'pbl-row-spacer' });
 
 	const props = header.createDiv({ cls: 'pbl-props' });
-	for (const column of ctx.columns) {
-		const cell = props.createDiv({ cls: 'pbl-prop pbl-col-label', text: column.label });
-		setTooltip(cell, column.label);
+	// One style read for the whole strip, not one per grip — see `widenSign`.
+	const widen = widenSign(props);
+	for (const [index, column] of ctx.columns.entries()) {
+		const cell = props.createDiv({ cls: 'pbl-prop pbl-col-label' });
+		sizeCell(cell, index);
+		// The NAME is presentational — every value under it carries its own accessible
+		// label, which is why `renderCell` hands each chip the column's display name. The
+		// header itself no longer is: it carries the resize grips, and `aria-hidden`
+		// inherits, so hiding the whole strip would hide the only control that resizes a
+		// column from exactly the readers who cannot drag one.
+		const name = cell.createSpan({ cls: 'pbl-col-name', text: column.label, attr: { 'aria-hidden': 'true' } });
+		setTooltip(name, column.label);
+		renderColumnResize(ctx.host, cell, containerEl, { prop: column.prop, label: column.label, index, widen });
 	}
 	if (rollup) {
 		header.createDiv({
 			cls: 'pbl-meta-col pbl-col-label',
 			text: settings.stateKey ? 'Progress' : 'Items',
+			attr: { 'aria-hidden': 'true' },
 		});
 	}
 	renderAddSpacer(header);
+}
+
+/**
+ * Point one cell at its column's published width. `--pbl-prop-w` is what the stylesheet
+ * lays out with, and it resolves the indexed property the tree element carries — see
+ * {@link columnWidthVar} for why the cell holds a reference rather than a number. An
+ * index of -1 is a column no render published, and keeps the stylesheet's own default.
+ */
+function sizeCell(cell: HTMLElement, index: number): void {
+	if (index < 0) return;
+	cell.setCssProps({ '--pbl-prop-w': `var(${columnWidthVar(index)}, ${DEFAULT_PROP_COLUMN_WIDTH}px)` });
 }
 
 /**
@@ -361,6 +390,12 @@ export function renderPropCells(
 		// selector mean two boxes.
 		const cls = 'pbl-prop' + (column.kind === 'value' ? '' : ` pbl-prop-${column.kind}`);
 		const cell = props.createDiv({ cls });
+		// Which column this IS, not where it sits in the list this caller passed: a card
+		// narrows that list, and a cell reading its neighbour's width would be one more
+		// thing to keep in step. A column the caller made up rather than passed through
+		// gets no width, and the stylesheet's own default — which is all a card wants,
+		// since `.pbl-card .pbl-prop` sizes itself to its content either way.
+		sizeCell(cell, ctx.columns.indexOf(column));
 		const drew = renderCell(ctx.host, cell, item, column);
 		if (drew) anyDrawn = true;
 		else if (dropEmpty) cell.detach();
@@ -372,8 +407,9 @@ export function renderPropCells(
  * Which of the five renderings this column asked for.
  *
  * Every one of them is handed the COLUMN's own display name, because that is the only
- * thing on the row that says which property the cell is: the header
- * (`renderColumnHeader`) is `aria-hidden`, so a chip whose accessible name says only
+ * thing on the row that says which property the cell is: the header's column NAME is
+ * `aria-hidden` (`renderColumnHeader` — the strip itself is not, since it carries the
+ * resize grips), so a chip whose accessible name says only
  * "Change state" is unidentifiable — and two state columns are legal now, so two such
  * chips can be on screen at once naming different properties. The chips put the name in
  * the accessible name and keep the TOOLTIP a plain statement of what pressing does: a

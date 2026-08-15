@@ -31,8 +31,8 @@ export interface UiStateHooks {
 /**
  * The collapse-store-backed UI state `BacklogViewHost` exposes: the projection, the
  * retained roadmap-axis pick, the focus level, what a plain click on a row does, the
- * shelf's own collapse/sort/type filter, and the dated axis's zoom, density and lead
- * width. One shape repeated for
+ * shelf's own collapse/sort/type filter, the dated axis's zoom, density and lead width,
+ * and the tree's per-column widths. One shape repeated for
  * each — read the collapse store, write it back, ask for the render depth the change
  * needs — extracted for the reason `WriteGate` was: state (here, the collapse store
  * plus the render-depth choice) that only this cluster of methods touches, in the one
@@ -178,6 +178,22 @@ export class UiStateController {
 	setLeadWidth(value: number | null): void {
 		if (value === this.leadWidth) return;
 		this.collapse.setLeadWidth(value);
+		this.hooks.render();
+	}
+
+	get colWidths(): Readonly<Record<string, number>> {
+		return this.collapse.columnWidths();
+	}
+
+	/**
+	 * A full render, not a content-only one: the column ladder re-measures against the
+	 * new widths, so a column that no longer fits has to drop — and the grip that asked
+	 * for this is in the header the render rebuilds (see `interactions/columnResize.ts`
+	 * for what that costs a keyboard user, and how it is paid).
+	 */
+	setColWidth(prop: string, value: number | null): void {
+		if ((this.colWidths[prop] ?? null) === value) return;
+		this.collapse.setColumnWidth(prop, value);
 		this.hooks.render();
 	}
 }

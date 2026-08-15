@@ -91,13 +91,15 @@ the whole reason to put values in columns rather than after the title.
 - The set of columns is derived once and read everywhere — deriving it twice is how the
   tag menu came to offer editing for a column the renderer had skipped.
 - The widths TypeScript owns are published to CSS as custom properties, so the layout and
-  the fit calculation cannot drift apart.
+  the fit calculation cannot drift apart. One property per column, since
+  [[Resizable property columns]] gave each its own width.
 
 ## Where it lives
 
-`src/domain/viewOptions.ts` (`propertyColumnWidth`, `tagsProperty` — and no option for
+`src/domain/viewOptions.ts` (`tagsProperty` — and no option for
 *whether* to show the columns: the Bases properties menu is the only switch, and
-[ADR 0023](../adrs/0023-columns-are-the-bases-property-order.md) is why) ·
+[ADR 0023](../adrs/0023-columns-are-the-bases-property-order.md) is why; no option for
+their WIDTH either since 2026-08-14, which is [[Resizable property columns]]) ·
 `src/view/render/columns.ts` (`RowContext`, the header, every trailing cell, plus
 `resolveColumns` and the fit — `columnFit` decides how many columns the pane holds and
 `syncColumnFit` applies that count, together, because a threshold computed in one file and
