@@ -14,7 +14,7 @@ import {
 	ItemWrite,
 } from '../../domain/writePlan';
 import { addAssigneeItems, addRiskItems } from './labels';
-import { BoardModel, cardPaths, deliverablesWorkflow, ownWorkflowReading, stateKeyFor } from '../../domain/board';
+import { BoardModel, deliverablesWorkflow, ownWorkflowReading, stateKeyFor } from '../../domain/board';
 import { ShelfCard } from '../../domain/bars';
 import { organizeShelf, ShelfSort } from '../../domain/shelf';
 import { canReorder, indent, moveToEdge, moveWithinSiblings, outdent, outdentTarget, visibleNeighbor } from './structure';
@@ -22,7 +22,7 @@ import { promptCreateItem } from './create';
 import { addHorizonItems, canSchedule, carriesDates, promptSchedule, unschedule } from './plan';
 import { addTagItems, tagsColumnVisible } from './tags';
 import { addDependencyItems, dependenciesAvailable } from './dependencies';
-import { listedChildren, undisclosedMatches } from '../childrenList';
+import { listedChildren, matchesFor } from '../childrenList';
 import { offerableTypes, retypeChoices, rowVocabulary, treeShaped } from '../projection';
 
 /**
@@ -350,13 +350,8 @@ export const showTagMenu = (host: BacklogViewHost, evt: MouseEvent, item: Backlo
  * a matching card is a second result, and it has no card of its own to be reached by.
  */
 function addMatchSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
-	const board = activeBoard(host);
-	if (!board || !host.isFiltering()) return;
-	const carded = cardPaths(board);
-	// A board card is the only surface this section serves today, and it lists its
-	// children on its own face — so what the disclosure already shows is subtracted here
-	// exactly as it is on the card.
-	const matches = undisclosedMatches(host, item, carded, listedChildren(host, item));
+	if (!host.isFiltering()) return;
+	const matches = matchesFor(host, item);
 	if (matches.length === 0) return;
 	menu.addSeparator();
 	for (const match of matches) {

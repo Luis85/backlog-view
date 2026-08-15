@@ -1,6 +1,6 @@
 import { BacklogViewHost } from './host';
 import { BacklogItem } from '../domain/model';
-import { hiddenMatches } from '../domain/board';
+import { cardPaths, hiddenMatches } from '../domain/board';
 import { displayType } from '../domain/itemTypes';
 
 /**
@@ -81,4 +81,29 @@ export function undisclosedMatches(
 		carded,
 		(child) => !host.isRowHidden(child),
 	).filter((match) => !shown.has(match.file.path));
+}
+
+/**
+ * The matches to offer for this item, asked of whichever projection drew it.
+ *
+ * A board asks its model: a `BoardModel` is already narrowed to what draws, so
+ * `cardPaths` is honest there. The roadmap asks the register its render filled, because
+ * its model is not what it draws — and that register is also where the disclosure
+ * policy is, which the menu cannot work out for itself: it is handed an item and no
+ * surface, so always subtracting would lose a row's direct-child match and never
+ * subtracting would offer a card's disclosure entries a second time.
+ */
+export function matchesFor(host: BacklogViewHost, item: BacklogItem): BacklogItem[] {
+	// The MENU's already-listed set is not the face's. `addChildrenSection` adds an
+	// "Open child" entry for every `listedChildren` whenever the path is in
+	// `cardChildrenShown` — and a timeline row joins that set through its FOLD chevron,
+	// while listing nothing on its face. Reusing the face's policy here would offer one
+	// note twice in one menu: once as a child, once as a match. So the menu asks the
+	// thing that actually lists in a menu.
+	const listed = host.cardChildrenShown.has(item.file.path) ? listedChildren(host, item) : [];
+	const roadmap = host.roadmap;
+	if (roadmap) return undisclosedMatches(host, item, new Set(roadmap.placed.keys()), listed);
+	const board = host.board?.board;
+	if (!board) return [];
+	return undisclosedMatches(host, item, cardPaths(board), listed);
 }

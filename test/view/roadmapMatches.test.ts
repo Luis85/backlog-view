@@ -34,9 +34,9 @@ function matchCountOn(el: HTMLElement | null | undefined): string {
 
 /**
  * The menu the count chip opens — the row's own menu, which is the path to the matches
- * the chip counts. **The `Open match …` entries in it are Task 5's**: `addMatchSection`
- * still gates on `activeBoard`, so on the roadmap the menu opens without them and these
- * cases assert the chip reaches the row menu rather than what that menu will hold.
+ * the chip counts. `matchesFor` (`view/childrenList.ts`) is what puts `Open match …`
+ * entries in it on the roadmap, so a case asserting one of those entries is asserting
+ * that the chip's count and the menu behind it agree about what was found.
  */
 function chipMenu(el: HTMLElement | null | undefined): Menu {
 	const chip = el?.querySelector<HTMLElement>('.pbl-row-matches');
@@ -108,7 +108,11 @@ describe('every roadmap surface names what the filter found under it', () => {
 		// this, so a list here is width taken out of the name. Measured, not preferred.
 		expect(matchesOn(row)).toEqual([]);
 		expect(matchCountOn(row)).toBe('1');
-		expect(chipMenu(row).items.map((i) => i.titleText)).toContain('Open in new tab');
+		const titles = chipMenu(row).items.map((i) => i.titleText);
+		expect(titles).toContain('Open in new tab');
+		// The count chip's own reachability claim: the menu it opens actually names the
+		// match it counted, not merely a menu with something else in it.
+		expect(titles).toContain('Open match "PBI Login"');
 	});
 
 	it('a shelf card', () => {
@@ -144,7 +148,9 @@ describe('every roadmap surface names what the filter found under it', () => {
 		const row = containerEl.querySelector<HTMLElement>('.pbl-lane-context');
 		expect(matchesOn(row)).toEqual([]);
 		expect(matchCountOn(row)).toBe('1');
-		expect(chipMenu(row).items.map((i) => i.titleText)).toContain('Open in new tab');
+		const titles = chipMenu(row).items.map((i) => i.titleText);
+		expect(titles).toContain('Open in new tab');
+		expect(titles).toContain('Open match "PBI Login"');
 	});
 
 	it('opens in a new tab on a middle click, which never fires click at all', () => {
@@ -255,6 +261,78 @@ describe('what a surface already shows, it does not name twice', () => {
 		// Named once, by the disclosure the card draws on its own face.
 		expect(card?.querySelector('.pbl-card-kids')).not.toBeNull();
 		expect(matchesOn(card)).toEqual([]);
+	});
+});
+
+describe('the row menu carries the same matches, asked of matchesFor', () => {
+	/**
+	 * `Feature Login` is Epic A's direct child and its own match, over a wholly undated
+	 * branch — `PBI B`, then `Task Login`, a match three levels down. Nothing in that
+	 * branch states or inherits a date, so none of it mounts a bar or a shelf card of its
+	 * own (with the shelf collapsed) and the walk from Epic A reaches every one of them
+	 * unblocked. `Login Sibling` is a SEPARATE dated child, on no branch the other three
+	 * are on: it is what gives Epic A's row a chevron at all (a nested bar beneath it),
+	 * without ever standing between Epic A and the branch this case is about — a dated
+	 * sibling ON that branch would itself mount a bar and block the walk at the first
+	 * rung, the failure this fixture is built to avoid.
+	 */
+	function menuVault(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, start: '2026-08-01', due: '2026-08-10' } });
+		vault.addFile('Feature Login.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic A' });
+		vault.addFile('PBI B.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature Login' });
+		vault.addFile('Task Login.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'PBI B' });
+		vault.addFile('Login Sibling.md', {
+			frontmatter: { type: 'Feature', order: 20, start: '2026-08-02', due: '2026-08-03' },
+			parentLink: 'Epic A',
+		});
+		return vault;
+	}
+
+	it('offers a match three levels down on a TIMELINE ROW, and its direct child once — as a child, never as a match too', () => {
+		const { containerEl, view } = roadmap(menuVault(), { ...DATES }, { shelf: false });
+		view.setFilter('Login');
+
+		const titles = chipMenu(rowFor(containerEl, 'Epic A')).items.map((i) => i.titleText);
+
+		expect(titles).toContain('Open match "Task Login"');
+		// The row lists no children on its own face, so its menu names the direct child
+		// through `cardChildrenShown` — as a child, asserting the "Open match" spelling
+		// here would contradict this.
+		expect(titles).toContain('Open child "Feature Login"');
+		expect(titles).not.toContain('Open match "Feature Login"');
+		// No note appears twice in one menu — the case an unconditional subtraction (or
+		// an unconditional non-subtraction) would fail.
+		expect(titles.filter((t) => t.includes('Feature Login')).length).toBe(1);
+	});
+
+	it('does NOT offer a direct child as a match on a BUCKET CARD — its own disclosure already lists it', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, horizon: 'Now' } });
+		vault.addFile('Feature Login.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic A' });
+		const { containerEl, view } = roadmap(vault, { ...HORIZONS }, { focus: 'Epic' });
+		view.setFilter('Login');
+
+		const card = bucketByName(containerEl, 'Now').querySelector<HTMLElement>('.pbl-card');
+		card?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
+
+		expect(titles).not.toContain('Open match "Feature Login"');
+		expect(titles).toContain('Open child "Feature Login"');
+	});
+
+	it('offers navigation and no write action on a CONTEXT ROW’s menu, matches included', () => {
+		const vault = deepVault();
+		const { containerEl, view } = roadmap(vault, { ...DATES }, { focus: 'Epic', only: ['PBI Login.md'] });
+		view.setFilter('Login');
+
+		const card = containerEl.querySelector<HTMLElement>('.pbl-roadmap-context .pbl-card');
+		card?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
+
+		expect(titles).toContain('Open match "PBI Login"');
+		expect(titles).toContain('Open in new tab');
+		expect(titles).not.toContain('Set type');
 	});
 });
 
