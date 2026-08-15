@@ -204,6 +204,11 @@ never checked.
 And **the crossing flag wore `user-x`**, the glyph that already marked the Add absence
 button, an absence row and a resource being away — four uses of one mark, of which the two a
 reader most needs to tell apart are "this row IS an absence" and "this row RUNS THROUGH one".
-It became `calendar-x` for a day and is a **hatched swatch in `--pbl-away`** now, drawing the
-same gradient the mark and the legend key draw: a colour rather than a fifth icon, so the
-flag in the lead and the shading on the row beside it read as one thing.
+It became `calendar-x` for a day and is a **hatched swatch in `--pbl-away`** now, drawing from
+the same KEY the wash and the legend swatch draw from — not the same gradient, which is what
+this said until 2026-08-15: three rules hatch three ways, and each is tuned to the box it
+fills. The swatch stripes `--pbl-away` itself over a 35% fill at a 4px period, the wash
+stripes the row's own `--background-primary` over 16% at 8px so it darkens what it crosses,
+and `.pbl-legend-days-lost` halves the wash's period to fit a full stripe in a 10px square —
+`styles/legend.css` says so at the rule. What the key buys is a colour rather than a fifth
+icon, so the flag in the lead and the shading on the row beside it read as one thing.

@@ -10,6 +10,7 @@ import { timelineRows, TimelineRow } from '../../domain/bars';
 import { BacklogItem } from '../../domain/model';
 import { CivilDate } from '../../domain/noteFields';
 import { ResourceLane } from '../../domain/roadmap';
+import { sanitizeTitle } from '../../storage/frontmatter';
 import {
 	BarGeometry,
 	barGeometry,
@@ -364,16 +365,28 @@ export function renderLaneContextRow(ctx: RowContext, content: HTMLElement, item
  * question for `… 1` as for a reader's own `… offsite`, and both of those already carry the
  * range. Raised independently by two reviewers before it was fixed.
  *
- * **What it still does not reach is a basename `sanitizeTitle` had to change.** A resource
- * holding `/` is filed as `A-B away …` where the derivation says `A/B away …`, so that one
- * note states its dates twice — no prefix relation survives a character swap, and the
- * sanitizer is private to `storage/frontmatter.ts` where neither this layer nor `domain/`
- * may reach it. Named here rather than left to read as covered.
+ * **Both sides are SANITIZED, because a basename has already been through `sanitizeTitle`
+ * and the derivation has not.** A resource holding `/` is filed as `A-B away …` where
+ * `absenceTitle` says `A/B away …`, so the raw comparison failed on a note the plugin wrote
+ * itself and appended the range to a name that already carried it — the same defect as the
+ * collision suffix, reached through the other escape, and raised by a reviewer once the
+ * first was fixed. Sanitizing the derived side asks about the name the note ACTUALLY has,
+ * which closes the gap rather than narrowing it: the basename IS `sanitizeTitle` of the
+ * derivation (plus a suffix), the facts have not changed, so the two agree wherever the
+ * note was written from these facts — through a character swap, a collapsed run of spaces
+ * or a trimmed leading dot alike.
+ *
+ * Reaching into `storage/` for it is legal and not a shortcut: the layering is
+ * view → storage → domain, and `eslint.config.mjs` forbids this layer only `commands/`.
+ * `domain/` genuinely may not, which is why the question is asked here rather than beside
+ * `absenceTitle` — the sanitizer is what a title becomes ON DISK, and only the two layers
+ * that can see a disk may ask.
  */
 function absenceSaid(absence: Absence): string {
 	const start = formatCivil(absence.start);
 	const target = formatCivil(absence.target);
-	if (absence.title.startsWith(absenceTitle({ resource: absence.resource, start, target }))) return absence.title;
+	if (absence.title.startsWith(sanitizeTitle(absenceTitle({ resource: absence.resource, start, target }))))
+		return absence.title;
 	return `${absence.title} — ${start} → ${target}`;
 }
 

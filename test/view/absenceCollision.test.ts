@@ -161,6 +161,29 @@ describe('the mark a bar carries for crossing one', () => {
 		expect(said).toBe(`Crosses an absence, 3 days lost to absence: ${ALICE_AWAY} 1`);
 	});
 
+	it('states the range once for a stretch the SANITIZER had to rename', () => {
+		// The other escape from the derived name, and the plugin makes this one itself too: a
+		// resource holding a character `sanitizeTitle` replaces is filed under a basename the
+		// derivation never spells — `A/B away …` is written to disk as `A-B away …` — so a
+		// prefix test against the RAW derived name fails and the dates are appended to a name
+		// that already carries them. Sanitizing both sides is what makes the comparison ask
+		// about the name the note actually has.
+		const vault = new FakeVault();
+		vault.addFile('Work.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: 'A/B', start: '2026-08-01', due: '2026-08-10' },
+		});
+		vault.addFile('A-B away 2026-08-04 → 2026-08-06.md', {
+			frontmatter: { type: 'Absence', assignee: 'A/B', start: '2026-08-04', due: '2026-08-06' },
+		});
+		const { containerEl } = laneRoadmap(vault);
+		const said = Array.from(rowFor(containerEl, 'Work')?.querySelectorAll<HTMLElement>('.pbl-sr-only') ?? [])
+			.map((span) => span.textContent ?? '')
+			.find((text) => text.startsWith('Crosses'));
+
+		// The sanitized name, and the range exactly once — no ` — 2026-08-04 → 2026-08-06` after it.
+		expect(said).toBe('Crosses an absence, 3 days lost to absence: A-B away 2026-08-04 → 2026-08-06');
+	});
+
 	it('marks the bar it crosses, in words as well as in shading', () => {
 		// The wash tells this in colour alone, which WCAG 1.4.1 refuses and which a screen
 		// reader gets nothing of — so the row carries the sentence, and the lead carries the

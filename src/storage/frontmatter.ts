@@ -702,8 +702,21 @@ export function uniqueNotePath(app: App, folder: string, title: string, self?: T
 	return path;
 }
 
-/** What a title becomes on disk, before any collision suffix. */
-function sanitizeTitle(title: string): string {
+/**
+ * What a title becomes on disk, before any collision suffix.
+ *
+ * Exported for the one caller that has to ask the question WITHOUT taking a path:
+ * `absenceSaid` (`view/render/lanes.ts`) compares a note's BASENAME against the name
+ * `absenceTitle` derives from its facts, and those are two strings for one file name the
+ * moment a resource holds a character this replaces — `A/B away …` is filed as `A-B away
+ * …`. Sanitizing the derived side is what makes that comparison ask about the name the
+ * note actually has.
+ *
+ * `view/` may reach `storage/` (the layering is main → commands → view → storage →
+ * domain, and `eslint.config.mjs` forbids only view → commands); `domain/` may not, which
+ * is why this question is asked in the view rather than beside `absenceTitle`.
+ */
+export function sanitizeTitle(title: string): string {
 	const cleaned = title
 		.replace(/[\\/:*?"<>|#^[\]]/g, '-')
 		.replace(/\s+/g, ' ')
