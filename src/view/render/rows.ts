@@ -138,8 +138,10 @@ export function refreshRowChildren(ctx: RowContext, item: BacklogItem, row: HTML
  * keyboard-opened menu loses its anchor). Asking the detached DOM cannot make that mistake:
  * it forgets exactly what it removed.
  *
- * Both maps, never one: a signature left behind for a row that is gone is a claim waiting
- * to be made against an element nobody can reach.
+ * Both maps, never one — because they have one lifetime, not because a stray signature is
+ * itself dangerous: a claim also needs the `ctx.rows` entry the line above deletes, so a
+ * signature left behind alone is inert. Deleting it here is what keeps the pair readable as
+ * one fact rather than two that happen to agree.
  */
 function forgetElement(ctx: RowContext, el: Element): void {
 	const path = el.getAttribute('data-path');

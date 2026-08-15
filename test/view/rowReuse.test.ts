@@ -86,12 +86,24 @@ describe('row reuse across a data update', () => {
 		vault.addFile('Beta kid.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Beta' });
 		const { view, containerEl } = makeView(vault, STATE);
 		view.onDataUpdated();
+		expect(rowByTitle(containerEl, 'Alpha').getAttribute('aria-level')).toBe('2');
 
 		// Alpha moves from under Epic to under Beta — one level deeper, still expanded.
-		vault.setFrontmatter('Alpha.md', { type: 'Feature', order: 20, status: 'Open', parent: '[[Beta]]' });
-		view.onDataUpdated();
+		// Through `addFile` and NOT `setFrontmatter`: the parent edge lives in the link
+		// cache (`resolveParent` reads `frontmatterLinks` first and the raw value only as a
+		// fallback), and `setFrontmatter` rewrites the frontmatter alone — so an edit that
+		// reads as a reparent moves nothing at all, and this test asserted `'1' === '1'`
+		// about a tree that had not changed until it was written this way.
+		vault.addFile('Alpha.md', {
+			frontmatter: { type: 'Feature', order: 20, status: 'Open' },
+			parentLink: 'Beta',
+		});
+		refresh(view, vault);
 
 		const row = rowByTitle(containerEl, 'Alpha');
+		// The CONTROL: the depth actually moved. Without it an inert fixture passes the
+		// comparison below by leaving both sides at the level they started on.
+		expect(row.getAttribute('aria-level')).toBe('3');
 		const group = row.nextElementSibling as HTMLElement;
 		expect(group.hasClass('pbl-children')).toBe(true);
 		expect(titlesOf(containerEl)).toContain('Deep');

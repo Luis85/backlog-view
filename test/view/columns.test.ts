@@ -396,16 +396,21 @@ describe('property columns', () => {
 		const tree = treeOf(containerEl);
 		const paneWidth = (px: number) => Object.defineProperty(tree, 'clientWidth', { value: px, configurable: true });
 
-		// Each render pass empties the tree exactly once, so counting that counts passes.
+		// The widths `renderTree` publishes onto the scroller, once per tree content render —
+		// the same instrument the two tests above count with, and for the same reason: a pass
+		// no longer empties the tree when it may KEEP the rows it drew last time. It happens
+		// to empty on every pass HERE (each step changes the pane width, so the fit verdict
+		// and the fingerprint move with it), and an instrument that is right by accident is
+		// what makes the `throwAt` arithmetic below silently retarget when that stops holding.
 		let passes = 0;
 		let throwAt = 0;
-		const realEmpty = HTMLElement.prototype.empty;
-		Object.defineProperty(tree, 'empty', {
+		const realProps = HTMLElement.prototype.setCssProps;
+		Object.defineProperty(tree, 'setCssProps', {
 			configurable: true,
-			value: function (this: HTMLElement): void {
+			value: function (this: HTMLElement, props: Record<string, string>): void {
 				passes += 1;
 				if (passes === throwAt) throw new Error('render blew up');
-				realEmpty.call(this);
+				realProps.call(this, props);
 			},
 		});
 

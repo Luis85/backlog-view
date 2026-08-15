@@ -44,8 +44,9 @@ Two modules carry it, at deliberately different scales.
 a `BacklogViewHost`, in the shape `src/view/childrenList.ts` established for a view-layer
 module that renders nothing. `renderInputs` is everything a pass draws from that belongs
 to no single item — the resolved settings, the columns, the projection, the filter text,
-the column-fit verdict, and a per-column probe of the RENDERED type of each column's
-value — as one string compared once per pass. `reusableColumns` is whether reuse is legal
+the column-fit verdict, the stored column widths (the HEADER's rather than the rows'; see
+Consequences) and a per-column probe of the RENDERED type of each column's value — as one
+string compared once per pass. `reusableColumns` is whether reuse is legal
 at all this pass: every column must be `note.`-backed, because a `file.mtime` or a
 `formula.*` cell can change with the frontmatter untouched. `rowSignature` is everything
 ONE row draws from: its whole frontmatter as a single term, plus the derived values a row

@@ -140,6 +140,41 @@ describe('drag state details', () => {
 		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B', 'Feature B1', 'Feature B2']);
 	});
 
+	it('takes its own marks off a KEPT row when a render lands mid-hover', () => {
+		// A render is no longer a clean slate (ADR 0029): a row whose signature has not moved
+		// keeps its element, so anything this controller wrote on it outlives the pass unless
+		// the controller takes it off. `onRenderStart` used to drop its two references and
+		// leave the classes to be destroyed with the row — which stopped being true the
+		// moment a row could survive an update.
+		vi.useFakeTimers();
+		const vault = fixture();
+		const { view, containerEl } = makeView(vault, {}, { collapsed: true });
+
+		const to = rowByTitle(containerEl, 'Epic B');
+		stubRect(to);
+		const from = rowByTitle(containerEl, 'Epic A');
+		from.dispatchEvent(new MouseEvent('dragstart', { bubbles: true }));
+		to.dispatchEvent(new MouseEvent('dragover', { bubbles: true, clientY: 15 }));
+		expect(from.classList.contains('pbl-drag-source')).toBe(true);
+		expect(to.classList.contains('pbl-drop-inside')).toBe(true);
+		expect(to.classList.contains('pbl-hover-expanding')).toBe(true);
+
+		// A batch write finishing, say. Nothing a row draws has changed, so both rows are
+		// KEPT — which is what the assertions below turn on: a rebuilt row would carry no
+		// classes whatever the controller did.
+		view.onDataUpdated();
+		expect(rowByTitle(containerEl, 'Epic B')).toBe(to);
+		expect(rowByTitle(containerEl, 'Epic A')).toBe(from);
+
+		expect(from.classList.contains('pbl-drag-source')).toBe(false);
+		expect(to.classList.contains('pbl-drop-inside')).toBe(false);
+		expect(to.classList.contains('pbl-hover-expanding')).toBe(false);
+		// And the 600ms timer goes with them: it closes over a `BacklogItem` from the model
+		// this render replaced, and the gesture it belongs to is one the render invalidated.
+		vi.advanceTimersByTime(700);
+		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B']);
+	});
+
 	it('drops the hover-expand cue when the drag moves off the row', () => {
 		vi.useFakeTimers();
 		const vault = fixture();
