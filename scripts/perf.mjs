@@ -179,8 +179,23 @@ const runs = wholeNumber('runs', args.runs ?? (against ? 3 : 1), 1);
  */
 const wantedWindow = String(args.window ?? '1200,900');
 const size = wantedWindow.split(',').map(Number);
-if (size.length !== 2 || !size.every((n) => Number.isInteger(n) && n > 0)) {
-	console.error(`--window must be WIDTH,HEIGHT in whole pixels — got "${wantedWindow}".`);
+/**
+ * Chromium parses this switch as a signed 32-bit integer, so the check is a RANGE and not
+ * just `Number.isInteger`: `1e100` is an integer to JavaScript and normalizes to the token
+ * `1e+100`, and `9007199254740991` is a whole number Chromium cannot hold — both were
+ * accepted, both left the browser on its own default, and both were printed as the
+ * viewport that was measured. Same defect as `1200x900`, at the other end of the number
+ * line: what the heading states has to be what is in force. (Codex, PR #137.)
+ *
+ * The bound is what Chromium can PARSE, not what it can allocate, and the two differ: at
+ * `2147483647,900` the browser accepts the switch and then dies trying to make the
+ * surface, which this reports as a failed run with no table. That is the honest outcome
+ * and the reason no tighter cap is invented here — a number nobody can measure at fails
+ * loudly, while a number silently replaced by the default is the defect.
+ */
+const MAX_WINDOW_PX = 2_147_483_647;
+if (size.length !== 2 || !size.every((n) => Number.isInteger(n) && n > 0 && n <= MAX_WINDOW_PX)) {
+	console.error(`--window must be WIDTH,HEIGHT in whole pixels, 1 to ${MAX_WINDOW_PX} — got "${wantedWindow}".`);
 	process.exit(1);
 }
 /**

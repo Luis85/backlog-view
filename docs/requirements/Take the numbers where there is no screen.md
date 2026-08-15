@@ -71,7 +71,16 @@ instruments improvised around a browser.
   depends on, reported as something it was not. What reaches the browser is then the PARSED
   pair rather than the string typed: `1e3,900` and `1200.0,900` are whole numbers to
   JavaScript and unparseable to Chromium, so normalizing is what makes the heading and the
-  viewport the same fact for every spelling that gets through. (Codex, PR #137.)
+  viewport the same fact for every spelling that gets through. And the check is a RANGE
+  rather than `Number.isInteger`, which is the same defect at the other end of the number
+  line: `1e100` is a whole number to JavaScript that normalizes to the token `1e+100`, and
+  `9007199254740991` is one Chromium cannot hold — both were accepted, both left the
+  browser on its own default, and both were printed as the viewport measured. The bound is
+  what Chromium can PARSE and not what it can allocate: at the int32 ceiling the browser
+  takes the switch and then dies making the surface, which is a failed run with no table.
+  That is the honest outcome, and the reason no tighter cap is invented — a size nobody can
+  measure at fails loudly, while a size silently replaced by the default is the defect.
+  (Codex, PR #137.)
 - **3a — one run per side is compared.** That is how this register produced two retracted
   findings, so `--against` starts at three runs and prints both spreads: two medians whose
   spreads overlap have no delta worth reading, and a reader can only see that if both are
