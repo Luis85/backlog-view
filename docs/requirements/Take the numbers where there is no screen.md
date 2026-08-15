@@ -150,6 +150,12 @@ instruments improvised around a browser.
   register warns about — accepted because `args` is a plain object and "which keys does
   this file read" cannot be asked of it, while a Proxy recording reads would only refuse
   after the work it should have prevented. (Codex, PR #137.)
+- **3i — the comparison names nothing.** Refused. `--against=` left an empty string and a
+  bare `--against` left `'true'`, and every test of it is a truthiness test — so both
+  turned comparison mode OFF and printed an ordinary one-build table, which is the run
+  nobody asked for with nothing saying so. A merely WRONG path is not in this: it already
+  fails loudly, because the page it loads publishes no perf data and the run exits 1. The
+  distinction is the whole reason only two spellings are named. (Codex, PR #137.)
 - **4a — the runner checks out the ref to compare against.** Refused: that would move the
   tree someone is working in. Building the other side is one command in a git worktree,
   and stays the human's.

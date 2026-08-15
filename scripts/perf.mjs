@@ -99,6 +99,21 @@ function wholeNumber(flag, value, min) {
 // already measures. Junk and fractions are not.
 const notes = String(wholeNumber('notes', args.notes ?? 800, 0));
 const against = args.against ?? null;
+/**
+ * An ASKED-FOR comparison that names nothing is a refusal, never a single-build run.
+ *
+ * `--against=` leaves an empty string and a bare `--against` at the end of the line leaves
+ * `'true'`; every check below is a truthiness test, so both turned comparison mode OFF and
+ * printed a perfectly ordinary one-build table — the run the person did not ask for, with
+ * nothing saying so. A path that is merely WRONG already fails loudly (the browser finds
+ * no perf data and the run exits 1), which is why only the two empty spellings are named
+ * here. (Codex, PR #137.)
+ */
+if (against === '' || against === 'true') {
+	console.error(`--against needs the path of a second built harness — got ${against === '' ? 'an empty value' : 'no value'}.`);
+	console.error('  npm run perf -- --against ../base/.harness');
+	process.exit(1);
+}
 // One run answers "what does it cost"; a COMPARISON off one run each is the mistake this
 // register has now made twice — a difference smaller than the noise of its own terms,
 // read as a finding. So a comparison starts at three and prints both sides' spreads.
