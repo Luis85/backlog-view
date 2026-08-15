@@ -66,7 +66,8 @@ Everything here implements:
 | `src/domain/settingsConsistency.ts` | `'iteration state'` in `WORKFLOW_STATE_LABELS` |
 | `src/domain/optionalProperties.ts` | `iterationState` field, `resolvedIterationStateKey` |
 | `src/domain/readItems.ts` | `iterationStateValue` |
-| `src/domain/model.ts` | `iterationResults`, `observedIterationStates` |
+| `src/domain/model.ts` | `iterationResults` — **no** `observedIterationStates`, see Task 7 |
+| `src/domain/vocabulary.ts` | `collectObservedIterationStates`, the scope-local collector |
 | `src/domain/board.ts` | `iterationWorkflow` |
 | `src/view/host.ts` | `Projection` gains `'iteration'`; `ColumnScope` gains a per-iteration value |
 | `src/storage/collapseStore.ts` | `ITERATION_MODE`, and the `boardScope` path field |
@@ -1010,7 +1011,8 @@ opposite landed."
 
 **Interfaces:**
 - Consumes: `iterationPath` (Task 3), `resolvedIterationStateKey` (Task 6).
-- Produces: `model.iterationResults: BacklogItem[]`, and
+- Produces: `model.iterationResults: BacklogItem[]`,
+  `withContextAncestors(population, model): BacklogItem[]` (Task 10 calls it), and
   `iterationWorkflow(population: BacklogItem[], settings: BacklogSettings): Workflow` —
   the **population**, not the model, so there is no model-wide observed list for a scope
   to disagree with.
@@ -1180,16 +1182,69 @@ export function collectObservedIterationStates(all: VocabularySource[], settings
 }
 ```
 
-- [ ] **Step 5: Run the tests**
+- [ ] **Step 5: Add the context-ancestor helper the renderer needs**
+
+Task 10 builds its board from the carriers **plus** their excluded ancestors, so those
+ancestors can render as inert context cards. Nothing in the repository does that today —
+the product board gets context rows for free because it is handed `model.results`, which
+already contains them, and a link-filtered list does not. So the helper is new, and it
+belongs in `src/domain/board.ts` beside `requirementsFocusRoots`, which is the existing
+"widen a candidate list for the renderer" function:
+
+```ts
+/**
+ * A board's candidates: the population, plus every `outsideFilter` ancestor one of them
+ * hangs from. Widening the CANDIDATES is not widening the population — the context-row
+ * rule is that such a row renders and parents and does nothing else, and a row cannot
+ * render at all if the list handed to `boardColumns` has already dropped it.
+ *
+ * The product board never needed this: it is handed `model.results`, which carries its
+ * context rows already. A population filtered by a LINK does not, which is why this
+ * exists here and nowhere else.
+ */
+export function withContextAncestors(population: BacklogItem[], model: BacklogModel): BacklogItem[] {
+	const seen = new Set(population.map((item) => item.file.path));
+	const out = [...population];
+	for (const item of population) {
+		for (let p = item.parent; p !== null && p.outsideFilter; p = p.parent) {
+			if (seen.has(p.file.path)) break;
+			seen.add(p.file.path);
+			out.push(p);
+		}
+	}
+	return out;
+}
+```
+
+Walking up while the ancestor is `outsideFilter` and stopping at the first one already
+seen: a shared excluded parent is added once, and a chain of them is added whole. Stopping
+at the first in-filter ancestor is deliberate — that one is either a carrier already or is
+not this board's business.
+
+```ts
+it('adds an excluded parent once for two carriers beneath it', () => {
+	expect(withContextAncestors([taskA, taskB], model).filter((i) => i === excludedEpic)).toHaveLength(1);
+});
+
+it('adds a whole chain of excluded ancestors', () => {
+	expect(paths(withContextAncestors([deepTask], model))).toContain('excluded-feature.md');
+});
+
+it('adds nothing when every ancestor is in the filter', () => {
+	expect(withContextAncestors([plainPbi], model)).toEqual([plainPbi]);
+});
+```
+
+- [ ] **Step 6: Run the tests**
 
 Run: `npx vitest run test/domain/iterationModel.test.ts test/domain/board.test.ts`
 Expected: PASS, including every level of the focus block.
 
-- [ ] **Step 6: Watch the focus invariant fail**
+- [ ] **Step 7: Watch the focus invariant fail**
 
 Temporarily build `iterationResults` from the focused results instead of `items`. Run the focus block. Expected: FAIL on at least one level. Restore.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 npm run check
@@ -1667,7 +1722,7 @@ export function renderIterationBoard(
 	// whole epic keeps. The candidate list is the carriers PLUS their `outsideFilter`
 	// ancestors; the counted population, the workflow vocabulary and every write target
 	// stay the carriers alone. A context row renders, it parents, and that is all.
-	const candidates = withContextAncestors(population, model);
+	const candidates = withContextAncestors(population, model); // defined in Task 7
 	const board = boardColumns(
 		iterationWorkflow(population, host.settings),
 		candidates,
