@@ -10,7 +10,7 @@ import { BacklogItem } from '../../domain/model';
 import { hasHorizonAxis, SHELF_LABEL } from '../../domain/roadmap';
 import { BacklogSettings, hasRiskLevels } from '../../domain/settings';
 import { resolvedDeliverableStateKey, resolvedTestStateKey } from '../../domain/optionalProperties';
-import { hasRollup, treeShaped } from '../projection';
+import { hasRollup, projectionPopulation, treeShaped } from '../projection';
 
 /**
  * State shared by one render pass. Config lookups live here so per-row work stays
@@ -57,12 +57,44 @@ export function rowContext(host: BacklogViewHost, rows: Map<string, HTMLElement>
 }
 
 /**
- * Width of the rollup column. `renderTree` publishes it to CSS as a custom property,
- * so the stylesheet reads it rather than repeating it — the same one-directional trick
- * as the property column width. The fallbacks in styles.css are defaults for a
- * stylesheet loaded without a render, not a second opinion.
+ * The rollup column's FLOOR — its width whenever the labels in it are short enough to sit
+ * inside it, which is every tree counting under a hundred. `metaColWidth` below is what
+ * anything outside this file asks, because the answer depends on the data; the fallbacks
+ * in styles.css are defaults for a stylesheet loaded without a render, not a second
+ * opinion.
  */
-export const META_COL_WIDTH = 84;
+const META_COL_WIDTH = 84;
+
+/**
+ * A digit's advance in the rollup label, at the widest it is worth budgeting for.
+ *
+ * The label is `--font-ui-smaller` (12px by default), where a figure measures about 7.2px
+ * in Obsidian's own UI font; 8 is a deliberate ceiling over that rather than a
+ * measurement, because the number's job here is to make the BUDGET conservative. The
+ * layout does not depend on it — the label reserves in `ch`, which is exact for whatever
+ * font is in front of the reader, and `styles/columns.css` lets the lane grow to whatever
+ * that comes to. What this decides is only how much room `columnFit` sets aside.
+ *
+ * Where the two can still disagree: a phone with a large text size resolves
+ * `--font-ui-smaller` above 12px, so a figure can exceed 8px and the budget is a few
+ * pixels optimistic there. The layout stays correct — the lane grows — and the cost is the
+ * one this constant is a ceiling to avoid, not a return of it.
+ */
+const ROLLUP_CHAR_PX = 8;
+
+/**
+ * The rollup lane at the width THIS tree's widest label needs, which is what both the
+ * stylesheet and the fit budget must use.
+ *
+ * `columnFit` subtracted the flat 84px while the lane grew past it, and the two disagreed
+ * exactly where it matters: at a fit boundary the row's flexible middle is already at
+ * zero, `.pbl-tree` is `overflow-x: hidden`, and the extra width is taken out of the end
+ * of the row rather than out of slack that is no longer there. (Codex, PR #153 — the first
+ * version of this shipped that disagreement as an accepted cost, which it was not.)
+ */
+export function metaColWidth(chars: number): number {
+	return Math.max(META_COL_WIDTH, 48 + 4 + Math.ceil(chars * ROLLUP_CHAR_PX));
+}
 
 /**
  * Everything on a row that is not one of the columns, at its widest: the constant
@@ -106,7 +138,11 @@ const TREE_PADDING = 16;
  */
 function columnFit(host: BacklogViewHost, columns: readonly Column[], depth: number, width: number): ColumnFit {
 	const settings = host.settings;
-	const meta = (settings.stateKey || settings.showCounts) && hasRollup(host.projection) ? META_COL_WIDTH : 0;
+	// The lane at the width THIS tree's labels need, never the flat constant: the two
+	// disagreed exactly at a fit boundary, where the row's flexible middle is already spent.
+	const model = host.model;
+	const chars = model === null ? 0 : rollupChars(host, projectionPopulation(host.projection, model).items);
+	const meta = (settings.stateKey || settings.showCounts) && hasRollup(host.projection) ? metaColWidth(chars) : 0;
 	const lead = ROW_LEAD_WIDTH + TREE_PADDING + depth * INDENT_PER_DEPTH;
 	const room = width - lead - meta;
 	// Summed rather than divided: each column carries its own width now, so how many fit
@@ -573,8 +609,10 @@ export function rollupReport(host: BacklogViewHost, item: BacklogItem): RollupRe
 }
 
 /**
- * How wide the widest rollup label in this tree is, in `ch`, or null when nothing
- * reserves.
+ * How many characters the widest rollup label in this tree holds — 0 when nothing
+ * reserves. The CHARACTER count rather than a width, because its two readers want
+ * different units from it: the stylesheet takes `ch` (exact for the reader's own font)
+ * and `metaColWidth` takes pixels (what the fit budget can subtract).
  *
  * The bar and the label share a lane that is anchored at its END, so a label wider than
  * its reservation moves the BAR — and the reservation was a flat 28px, which holds
@@ -595,14 +633,14 @@ export function rollupReport(host: BacklogViewHost, item: BacklogItem): RollupRe
  * workflow there is no bar to be pushed off line, and the count alone is already anchored
  * at the lane's end.
  */
-export function rollupReservation(host: BacklogViewHost, items: readonly BacklogItem[]): string | null {
-	if (!host.settings.stateKey) return null;
+export function rollupChars(host: BacklogViewHost, items: readonly BacklogItem[]): number {
+	if (!host.settings.stateKey) return 0;
 	let widest = 0;
 	for (const item of items) {
 		const report = rollupReport(host, item);
 		if (report && report.ratio !== null) widest = Math.max(widest, report.label.length);
 	}
-	return widest === 0 ? null : `${widest}ch`;
+	return widest;
 }
 
 /** Progress rollup or descendant count, in a column of its own so both align. */

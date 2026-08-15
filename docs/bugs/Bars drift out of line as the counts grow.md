@@ -63,18 +63,25 @@ is the advance of "0" and tabular figures give every digit that same advance —
 reservation is exact rather than approximate, and re-resolves by itself on a theme or font
 change where a measured pixel goes stale.
 
-`columnFit` still budgets with the flat `META_COL_WIDTH`, so a tree whose labels take the
-wider branch spends those pixels from the row's flexible middle rather than from the
-column count. That is the same accepted inexactness the gap terms in that constant already
-carry, and it is stated at the rule in `styles/columns.css`.
+`columnFit` budgets with the same width, through the same `metaColWidth` call. It did not
+at first — the fit kept the flat constant and this note called the difference slack — and
+review was right that it is not: at a fit boundary the row's flexible middle is already at
+zero and `.pbl-tree` is `overflow-x: hidden`, so the extra width came out of the end of the
+row instead of out of room that was no longer there. The pixels the fit sums are a
+per-digit ceiling (8px, over the ~7.2px a figure measures at the default 12px label)
+rather than a measurement; the `ch` on the label is what holds the layout exact where the
+two differ, which is a phone whose text size lifts `--font-ui-smaller` past 12px. There the
+fit is a few pixels optimistic and the lane still grows, which is the direction that costs
+slack rather than a clipped row.
 
 ## What checks it
 
 - `test/view/rollupReservation.test.ts` — the reservation is the widest label in the tree
   and not the row's own, nothing is reserved where there is no bar to push out of line,
-  and a re-render with no reservation takes the stale one back off (the tree element
-  outlives the render, so `setCssProps` alone would leave it — Codex, PR #153). Each was
-  watched failing.
+  a re-render with no reservation takes the stale one back off (the tree element outlives
+  the render, so `setCssProps` alone would leave it), and a tree whose labels widen the
+  lane drops a column the same pane held before — the fit and the stylesheet reading one
+  number. The last two came from review (Codex, PR #153). Each was watched failing.
 - `test/harness/harness.test.ts` — `?fixture=edges` draws `1/3`, `3/10` and `40/120` on
   sibling rows, so the case someone would look at is still there to look at.
 - Neither asserts alignment: jsdom computes no stylesheet, and appearance is not asserted

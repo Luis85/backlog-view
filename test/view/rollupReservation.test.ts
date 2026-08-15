@@ -38,6 +38,43 @@ describe('the rollup label reservation', () => {
 		expect(treeOf(containerEl).style.getPropertyValue('--pbl-rollup-label')).toBe('6ch');
 	});
 
+	it('budgets the lane at the width it actually draws, so a wide label drops a column', () => {
+		// The fit subtracted a flat 84px while the lane grew past it, and the two disagree
+		// exactly where it matters: at a boundary the row's flexible middle is already at
+		// zero and `.pbl-tree` is `overflow-x: hidden`, so the extra width comes out of the
+		// end of the row rather than out of slack. Same pane, same columns, same everything
+		// but the COUNTS — the wider lane is the only thing that can drop the column.
+		// (Codex, PR #153.)
+		const wide = new FakeVault();
+		wide.addFile('Root.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active' } });
+		for (let i = 1; i <= 120; i += 1) {
+			wide.addFile(`Child ${i}.md`, {
+				frontmatter: { type: 'Feature', order: i * 10, status: i <= 44 ? 'Done' : 'Active' },
+				parentLink: 'Root',
+			});
+		}
+		const narrow = new FakeVault();
+		narrow.addFile('Root.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active' } });
+		narrow.addFile('Child 1.md', { frontmatter: { type: 'Feature', order: 10, status: 'Done' }, parentLink: 'Root' });
+
+		const drawn = (vault: FakeVault) => {
+			const { containerEl, view } = makeView(
+				vault,
+				{ stateProperty: 'note.status' },
+				{ order: ['note.points'], widths: { 'note.points': 280 } },
+			);
+			// 720 = the row's own lead (308) + the tree's padding (16) + one level of indent
+			// (24) + a 280px column, with 92px over — enough for the flat 84px lane and not
+			// for the 100px one six characters ask for. The verdict turns on the lane alone.
+			Object.defineProperty(treeOf(containerEl), 'clientWidth', { value: 720, configurable: true });
+			view.onDataUpdated();
+			return rowByTitle(containerEl, 'Root').querySelectorAll('.pbl-prop').length;
+		};
+
+		expect(drawn(narrow)).toBe(1);
+		expect(drawn(wide)).toBe(0);
+	});
+
 	it('takes the reservation back off when a re-render no longer has one', () => {
 		// The tree element is built once and emptied per render, so its inline style
 		// outlives the pass that wrote it and `setCssProps` clears nothing it is not given.

@@ -13,11 +13,11 @@ import { ownWorkflowReading } from '../../domain/board';
 import { columnWidth, columnWidthVar } from '../interactions/columnResize';
 import {
 	INDENT_PER_DEPTH,
-	META_COL_WIDTH,
 	renderAddSpacer,
 	renderColumnHeader,
 	renderRowColumns,
-	rollupReservation,
+	metaColWidth,
+	rollupChars,
 	RowContext,
 } from './columns';
 
@@ -38,16 +38,18 @@ export function renderTree(ctx: RowContext, treeEl: HTMLElement): void {
 	// the grip that writes one of them straight back mid-drag.
 	// Geometry lives in one place: columnFit budgets with these numbers and the
 	// stylesheet lays out with them, so the two cannot drift apart.
+	// The lane's width is the one the FIT budgets with, from the same function, so the
+	// stylesheet and `columnFit` cannot describe different geometry (Codex, PR #153).
+	const chars = rollupChars(ctx.host, population.items);
 	const widths: Record<string, string> = {
-		'--pbl-meta-col': `${META_COL_WIDTH}px`,
+		'--pbl-meta-col': `${metaColWidth(chars)}px`,
 		'--pbl-indent': `${INDENT_PER_DEPTH}px`,
 	};
 	// The rollup label's reservation, which is the one geometry here that the DATA decides
 	// rather than the stylesheet: see `rollupReservation`. Published on the same element as
 	// the widths and for the same reason — one declaration per tree, inherited by every row
 	// and by the subtrees a targeted refresh re-renders.
-	const reservation = rollupReservation(ctx.host, population.items);
-	if (reservation) widths['--pbl-rollup-label'] = reservation;
+	if (chars > 0) widths['--pbl-rollup-label'] = `${chars}ch`;
 	for (const [index, column] of ctx.columns.entries()) {
 		widths[columnWidthVar(index)] = `${columnWidth(ctx.host, column.prop)}px`;
 	}
@@ -61,7 +63,7 @@ export function renderTree(ctx: RowContext, treeEl: HTMLElement): void {
 	// `var(--pbl-rollup-label, 28px)` substitute nothing rather than fall back, and a
 	// concrete `28px` here would be a second opinion about a default the stylesheet owns.
 	// (Codex, PR #153.)
-	if (!reservation) treeEl.style.removeProperty('--pbl-rollup-label');
+	if (chars === 0) treeEl.style.removeProperty('--pbl-rollup-label');
 	treeEl.setCssProps(widths);
 	// Both decisions below used to read the shared arrays, which hold every item the model
 	// kept: a base returning twelve test notes and no plan work would be told "All 12 items

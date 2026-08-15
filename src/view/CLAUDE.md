@@ -276,9 +276,15 @@ free of runtime code so imports stay cycle-free.
   28px held `9/99` and not `44/136` — bars at three different x in a vault of 800-odd PBIs
   ([[Bars drift out of line as the counts grow]]). Every row reserves the widest label the
   tree draws, in `ch` under `tabular-nums`, which is `syncBusyCount`'s reservation exactly
-  and for its reasons. It is the one term of the row's geometry `columnFit` does NOT sum:
-  a tree taking the wider branch spends those pixels from the flexible middle instead of
-  from the column count, the same accepted inexactness as the gap terms. The terms that are Obsidian's (`--size-4-1` gaps, the tree
+  and for its reasons. **`columnFit` sums it like every other term**, through the same
+  `metaColWidth` call the stylesheet's own width comes from — the first version of this
+  left the fit on the flat constant and called the difference slack, which it is not at a
+  fit boundary: the flexible middle is already at zero there and `.pbl-tree` is
+  `overflow-x: hidden`, so the extra width came out of the end of the row. The px it sums
+  are a per-digit CEILING rather than a measurement, and the `ch` on the label is what
+  keeps the layout exact where the two differ (a phone's text size lifting
+  `--font-ui-smaller` past 12px); the fit is a few pixels optimistic there and nothing
+  clips. The terms that are Obsidian's (`--size-4-1` gaps, the tree
   padding) cannot be owned that way and stay as constants; a theme that redefines them
   moves the threshold by a few pixels, which is the accepted cost of not measuring. A term that grows without a bound, or
   one left out of the sum, comes back as a clipped row rather than a dropped column. It

@@ -8,15 +8,16 @@
    rather than sliding out from under its neighbours on rows with long titles. */
 /* The lane is anchored at its END, so its width decides where the bar STARTS — and the
    bar plus the label can outgrow 84px, which is what put the bars of `0/3` and `44/136`
-   rows on different lines in a vault of 800-odd PBIs (2026-08-15). The lane therefore
-   takes whichever is larger: the width TS publishes, or what this tree's own widest label
-   needs beside a bar (`--pbl-rollup-label`, in `ch` — see `rollupReservation`). The `ch`
-   resolves against THIS element's font rather than the smaller one the label is set in,
-   so the second term overshoots slightly; that spends a few pixels of the row's flexible
-   middle and never clips, which is the safe direction of an inexact term.
-   `columnFit` budgets with the constant alone, so a tree whose labels take the second
-   branch reserves those pixels from the spacer rather than from the column count — the
-   same accepted inexactness as the gap terms that constant already carries. */
+   rows on different lines in a vault of 800-odd PBIs (2026-08-15). `--pbl-meta-col` is
+   already that width: `metaColWidth` sizes it from this tree's widest label and
+   `columnFit` budgets with the same call, so the layout and the fit cannot describe
+   different rows.
+   The second term is the guarantee under that arithmetic rather than a second opinion:
+   TS budgets a digit at a ceiling of 8px, which holds at the default 12px label and can
+   be exceeded where a phone's text size lifts `--font-ui-smaller` past it. `ch` is exact
+   for whatever font is actually in front of the reader, so `max()` keeps the bars on one
+   line there too — with the fit a few pixels optimistic, which is the direction that
+   costs a little slack rather than a clipped row. */
 .pbl-meta-col {
 	display: flex;
 	align-items: center;
