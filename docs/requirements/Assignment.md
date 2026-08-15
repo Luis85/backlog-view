@@ -9,7 +9,9 @@ started: ""
 finished: ""
 horizon: ""
 risk: ""
-assignee: Chris
+assignee: Alex
+start: 2026-08-17
+due: 2026-08-23
 ---
 
 # Assignment

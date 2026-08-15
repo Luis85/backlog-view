@@ -133,6 +133,11 @@ needed it — `drawnSpans` in `src/view/render/lanes.ts` reads a lane's bars fro
 list itself, gated on that lane entry's own `collapsed`, so only a band that is actually shut
 (and therefore actually drawing this rail) widens the window for them; an OPEN band's
 row-collapsed subtree must not, since nothing of it draws at all — not a row, not a rail.
+That gate gained a second arm on 2026-08-15 and the rule behind it is unchanged: the
+milestones' row ([[Milestones out of the resource rows]]) draws every marker in its own
+header track and produces no bar rows at all, open or shut, so it widens the window from
+`lanes` for exactly the reason a folded band does — a mark drawn where the entry list draws
+nothing.
 Narrowing the fix to that distinction is its own record, in
 [[The load rail drew nothing for a folded band's own far-off work]].
 

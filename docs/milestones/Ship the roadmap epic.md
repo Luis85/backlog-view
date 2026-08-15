@@ -4,7 +4,7 @@ order: 70
 status: Open
 created: 2026-08-02
 source: user request
-due: 2026-09-30
+due: 2026-09-14
 started: ""
 finished: ""
 horizon: ""
