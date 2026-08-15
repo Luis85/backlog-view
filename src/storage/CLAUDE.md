@@ -260,6 +260,25 @@ whole thing from the file resolved correctly while silently dropping both.
   reason. Their key is scoped and lower-cased (`columnKey` in `view/viewState.ts`),
   because two boards and the horizon axis can each hold a `Done` and each identifies its
   own columns case-insensitively.
+- **Every entry carries the shape it was written in** (`v`, `SCHEMA`). The shape has
+  changed once already and it cost every reader their working position, because the only
+  thing that distinguished 0.8's entry from 0.9's was the KEY — and moving the key is a
+  reset. With a stamp the next change is a migration. The two directions are deliberately
+  not symmetrical: an entry stamped by a version this one does not know is DROPPED rather
+  than read defensively (guessing at a shape never seen is how a value lands somewhere it
+  means something else), while an entry with NO stamp is this shape, because every entry
+  in the wild is unstamped and reading absence as "not mine" would reset exactly the
+  readers the stamp protects.
+- **The prune asks whether the vault index can be trusted before it believes it.**
+  `pruneMissingBases` deletes every OTHER view's entry on one question asked of the index,
+  so it first asks that question about the base of the view doing the saving — a file that
+  is on screen. If the index cannot find THAT, it is not answering about anybody else's
+  base either, and one save while it is unavailable would forget every base in the vault.
+  That is the only loss here reopening a view cannot undo: those entries are gone, not
+  merely unread. The base comes from the identity, never from the map, since a view at its
+  defaults has just had its own entry deleted. Same rule as the one below, one level up:
+  never read "I cannot see it" as "it is not there" without first checking the reader can
+  see anything.
 - Persisted state changes what pruning may key on. `collapseNewParents` must NOT drop
   paths that are missing from the model — a query that has not warmed up yet, or a
   filter the user just narrowed, would read as "these notes are gone" and throw away a
