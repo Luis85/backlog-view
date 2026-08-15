@@ -101,9 +101,13 @@ progress colours rather than the bar's, since `.pbl-bar` is painted in that colo
 band wearing it would be invisible on every ordinary span. `renderBarRow` in
 `timeline.ts` passes a null bar for a milestone and for an outside-window arrow, which
 are marks rather than spans, and `renderLaneContextRow` in `lanes.ts` passes null
-because that row draws no bar at all; all three still render their count. No context
-item is banded on any axis, because `deriveBars` routes one to `context` before a
-placement is computed for it. The count is also announced once on the row itself, as a
+because that row draws no bar at all; all three still render their count. A fourth
+case joined 2026-08-15: `bandMount` in `barProgress.ts` also nulls the bar drawn at
+`MIN_BAR_PX`, read from the same width `--pbl-bar-width` sets rather than recomputed —
+the two 2px insets consume a floor-width bar whole, and four pixels cannot show a
+ratio anyway (a quarter done would be one pixel, a mark a reader would be right to
+distrust); the count still renders. No context item is banded on any axis, because
+`deriveBars` routes one to `context` before a placement is computed for it. The count is also announced once on the row itself, as a
 `.pbl-sr-only` fact, because both bar rows and the context row already tooltip the lead
 cell with the item's own title — a tooltip that, in the real app, may become an
 `aria-label` replacing the cell's text and taking the count with it. jsdom's `setTooltip`

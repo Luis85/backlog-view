@@ -2,6 +2,7 @@ import { setTooltip } from 'obsidian';
 import { RollupReport, rollupReport } from './columns';
 import { BacklogViewHost } from '../host';
 import { BacklogItem } from '../../domain/model';
+import { BarGeometry, MIN_BAR_PX } from '../../domain/timeline';
 
 /**
  * How far along a dated row's subtree is, on the two surfaces a timeline row has:
@@ -43,9 +44,11 @@ import { BacklogItem } from '../../domain/model';
  *
  * `bar` is null where the shape takes no band — a milestone diamond, an
  * outside-window arrow are marks rather than spans (`markWidth` in `./barLabel.ts`
- * owns that distinction), and a lane context row draws no `.pbl-bar` at all. Those
- * surfaces still get their count, so each reports what it can draw and claims nothing
- * it cannot.
+ * owns that distinction), a lane context row draws no `.pbl-bar` at all, and (see
+ * `bandMount` below) a bar drawn at `MIN_BAR_PX` — too narrow for the two insets that
+ * keep the band off the bar's own border and gradient to leave anything between them.
+ * Those surfaces still get their count, so each reports what it can draw and claims
+ * nothing it cannot.
  *
  * The words and the guard are `rollupReport`'s in `./columns.ts`, shared with the tree's
  * own renderer rather than restated here: one item cannot report its progress
@@ -87,4 +90,27 @@ export function renderBarProgress(
 export function progressNote(report: RollupReport | null): string {
 	if (!report || !report.label) return '';
 	return report.tooltip || `${report.label} items`;
+}
+
+/**
+ * The `bar` argument `renderBarRow` hands `renderBarProgress`: the bar element
+ * itself, or null for a shape that takes no band. Three of them, all marks rather
+ * than ratio-bearing spans — a milestone diamond, an outside-window arrow, and (found
+ * by review after this module shipped) a bar drawn at `MIN_BAR_PX`. The insets that
+ * keep the band off an inferred border and an open end's gradient are 2px each, so a
+ * floor-width bar has nothing left between them for a track to occupy, and four
+ * pixels could not show a ratio anyway — a quarter done would be one pixel, a mark a
+ * reader would be right to distrust.
+ *
+ * `drawnWidthPx` is the width `renderBarRow` already computed for `--pbl-bar-width`
+ * (`Math.max(geometry.spanDays * scale.dayPx, MIN_BAR_PX)`) — read here rather than
+ * recomputed, so the CSS and this decision can never disagree about how wide the bar
+ * actually is.
+ */
+export function bandMount(
+	el: HTMLElement,
+	drawnWidthPx: number,
+	geometry: Pick<BarGeometry, 'milestone' | 'outside'>,
+): HTMLElement | null {
+	return geometry.milestone || geometry.outside || drawnWidthPx <= MIN_BAR_PX ? null : el;
 }

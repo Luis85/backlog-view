@@ -4,6 +4,7 @@ import { FakeVault } from '../helpers/vault';
 import { demoOptions, demoResults } from '../helpers/fixtures';
 import { Harness, useViewHarness } from '../helpers/view';
 import { barFor, laneRoadmap, roadmapView, rowFor } from '../helpers/roadmap';
+import { MIN_BAR_PX } from '../../src/domain/timeline';
 
 /**
  * The dated axis's own rollup — the band inside a bar and the count in the lead cell —
@@ -34,6 +35,23 @@ function fourPbiFeature(): FakeVault {
 	vault.addFile('PBI 2.md', { frontmatter: { type: 'PBI', order: 20, status: 'Active' }, parentLink: 'Feature' });
 	vault.addFile('PBI 3.md', { frontmatter: { type: 'PBI', order: 30, status: 'New' }, parentLink: 'Feature' });
 	vault.addFile('PBI 4.md', { frontmatter: { type: 'PBI', order: 40, status: 'New' }, parentLink: 'Feature' });
+	return vault;
+}
+
+/**
+ * `fourPbiFeature`'s own span, narrowed to one day apart — the geometry that hits
+ * `MIN_BAR_PX` at quarter zoom (2px/day: 2 days of span × 2px = 4px) without being a
+ * milestone (start and due are not the same day, so `geometry.milestone` stays false).
+ */
+function oneDayFeature(): FakeVault {
+	const vault = fourPbiFeature();
+	vault.setFrontmatter('Feature.md', {
+		type: 'Feature',
+		order: 10,
+		status: 'Active',
+		start: '2026-08-01',
+		due: '2026-08-02',
+	});
 	return vault;
 }
 
@@ -121,13 +139,33 @@ describe('the band inside a bar', () => {
 		expect(fill?.style.getPropertyValue('--pbl-progress')).toBe('100%');
 	});
 
+	it('draws no band on a bar too narrow to hold one, and still states the count', () => {
+		// Zoomed out rather than faked: at quarter zoom (2px/day) a span one day apart
+		// draws at exactly MIN_BAR_PX, the same floor `--pbl-bar-width` reads — the case
+		// an ordinary coarse-zoom roadmap of epics hits routinely, not a contrived width.
+		const { view, containerEl } = datedRoadmap(oneDayFeature());
+		view.setZoom('quarter');
+
+		const bar = barFor(containerEl, 'Feature');
+		expect(parseFloat(bar.style.getPropertyValue('--pbl-bar-width'))).toBe(MIN_BAR_PX);
+		expect(bar.querySelector('.pbl-bar-progress')).toBeNull();
+
+		const row = rowFor(containerEl, 'Feature');
+		expect(row?.querySelector('.pbl-bar-count')?.textContent).toBe('1/4');
+	});
+
 	it('bands an OPEN-ENDED bar at 100% done without replacing its own geometry', () => {
 		const vault = new FakeVault();
 		vault.addFile('OpenParent.md', {
 			frontmatter: { type: 'Feature', order: 10, status: 'Active', start: '2026-08-01' },
 		});
 		vault.addFile('OpenChild.md', { frontmatter: { type: 'PBI', order: 10, status: 'Done' }, parentLink: 'OpenParent' });
-		const { containerEl } = datedRoadmap(vault);
+		const { view, containerEl } = datedRoadmap(vault);
+		// An open end borrows the OTHER end, so this bar is always exactly one day wide —
+		// at the default month zoom that is MIN_BAR_PX itself, drawing no band regardless
+		// of geometry. Week zoom (16px/day) widens that one day past the floor, which is
+		// what this case is actually testing.
+		view.setZoom('week');
 
 		const bar = barFor(containerEl, 'OpenParent');
 		expect(bar.classList.contains('pbl-bar-open-end')).toBe(true);

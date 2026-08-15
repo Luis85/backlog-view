@@ -1,7 +1,7 @@
 import { setTooltip } from 'obsidian';
 import { drawIcon } from './icons';
 import { renderBarLabel } from './barLabel';
-import { progressNote, renderBarProgress } from './barProgress';
+import { bandMount, progressNote, renderBarProgress } from './barProgress';
 import { rollupReport, RowContext } from './columns';
 import {
 	drawnCards,
@@ -551,9 +551,10 @@ function renderBarRow(
 	// and by Alt+Up/Down, which name a value rather than displacing one.
 	const holdable = holds.includes('body');
 	const el = track.createDiv({ cls: barClasses(bar, geometry, holdable) });
+	const drawnWidthPx = Math.max(geometry.spanDays * scale.dayPx, MIN_BAR_PX);
 	el.setCssProps({
 		'--pbl-bar-left': `${geometry.startDay * scale.dayPx}px`,
-		'--pbl-bar-width': `${Math.max(geometry.spanDays * scale.dayPx, MIN_BAR_PX)}px`,
+		'--pbl-bar-width': `${drawnWidthPx}px`,
 	});
 	const dates = spanText(bar);
 	el.setAttribute('aria-label', dates);
@@ -592,7 +593,7 @@ function renderBarRow(
 	}
 	renderConnector(ctx, mounts, { row, barEl: el, geometry }, bar);
 	renderBarLabel(track, bar, geometry, scale, window);
-	renderBarProgress(ctx.host, { row, bar: geometry.milestone || geometry.outside ? null : el, lead }, bar.item);
+	renderBarProgress(ctx.host, { row, bar: bandMount(el, drawnWidthPx, geometry), lead }, bar.item);
 	renderRowFacts(row, ctx, bar, { dates, own, conflictedPrereqs: mounts.conflictedPrereqs, lead });
 	// The one caller that passes a fold: this row has a chevron, so "clicking an item
 	// expands or collapses it" means here exactly what it means in the tree. Its two
