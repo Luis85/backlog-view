@@ -54,6 +54,26 @@
 	font-weight: var(--font-normal);
 }
 
+/* Beside the item count, and it does not shrink for the same reason the count does not: the
+   resource NAME ellipsizes into whatever is left, which is one declaration instead of a third
+   fit mechanism beside `columnFit` and `syncToolbarFit`. */
+.pbl-lane-away {
+	flex: 0 0 auto;
+	white-space: nowrap;
+	padding: 0 var(--size-2-2);
+	border-radius: var(--radius-s);
+	color: var(--text-muted);
+	font-weight: var(--font-normal);
+	font-size: var(--font-smaller);
+}
+
+/* Away AND booked — the row a planner has to act on, so it is the loudest thing in the
+   column. Contrast rather than colour alone: the pill still reads with no hue at all. */
+.pbl-lane-away-busy {
+	background-color: var(--background-modifier-border);
+	color: var(--text-normal);
+}
+
 /* Outside the declared roster — the bucket axis's own stray marking, in the one form a
    row can carry it: `.pbl-bucket-undeclared` dims a column header, and this dims a row's. */
 .pbl-lane-undeclared .pbl-lane-name {

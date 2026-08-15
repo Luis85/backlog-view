@@ -211,7 +211,10 @@ export function renderLaneHead(
 	const lead = head.createDiv({ cls: 'pbl-timeline-lead' });
 	renderLaneChevron(ctx.host, lead, lane, collapsed);
 	lead.createSpan({ cls: 'pbl-lane-name', text: lane.name });
-	lead.createSpan({ cls: 'pbl-lane-count', text: laneReadout(lane, ruler.today) });
+	if (lane.bars.length > 0) {
+		lead.createSpan({ cls: 'pbl-lane-count', text: `${lane.bars.length} item${lane.bars.length === 1 ? '' : 's'}` });
+	}
+	renderAwayPill(lead, lane, ruler.today);
 	if (!lane.declared) {
 		const mark = lead.createSpan({ cls: 'pbl-lane-stray' });
 		drawIcon(mark, 'circle-help');
@@ -227,37 +230,25 @@ export function renderLaneHead(
 }
 
 /**
- * What a band's header reports: its result bars, and the absences that have not ended.
+ * How long this resource is still away, as a pill beside their item count.
  *
- * **The item half is RESULT bars and stays so**, the rule a bucket's count already keeps —
- * a context row placed here is placement, not population, and an absence is furniture of
- * the row. Only its spelling changed on 2026-08-14; a band whose only content is an absence
- * still reads `0 items`.
+ * **Weeks rather than a count of stretches**, which is what this reported until 2026-08-14:
+ * two stretches is not a quantity a planner can act on, and three weeks is. `awayWeeks`
+ * unions them, so a resource with two overlapping stretches is not away twice.
  *
- * **The absence half is a glyph's refusal answered in words.** One was built on 2026-08-14
- * and removed the same day, for two reasons that still hold: the stretch's own hatched row
- * sits directly beneath the header, and a fourth `user-x` in this lead competed with the
- * Add absence button that reveals on hover in the same place. The glyph stays refused. What
- * words buy that the mark could not is the two things the rows below cannot say — a
- * FILTER on today, since the band draws every stretch a resource ever had, and a count that
- * survives folding, since `laneEntries` skips a collapsed band's absences entirely.
+ * Dropped entirely at zero, like the item count beside it. A roster row for someone with
+ * nothing to say draws nothing rather than a column of zeroes — which is the whole of what
+ * "one row per person" buys once the stretches move into the header.
  *
- * It is dropped at zero rather than reading `0 absences`, which would sit on nearly every
- * band reporting nothing anyone asked for.
- *
- * Plurals inline, this codebase's own idiom at eleven other call sites rather than a shared
- * helper for two words.
+ * Weighted up when the resource ALSO holds work, because that row is the one a planner has
+ * to do something about: away with nothing booked is information, away with four items
+ * booked is a problem.
  */
-function laneReadout(lane: ResourceLane, today: CivilDate): string {
-	const items = `${lane.bars.length} item${lane.bars.length === 1 ? '' : 's'}`;
-	// Known-wrong stopgap, not a finished readout: `away` is now WEEKS (`awayWeeks`), but the
-	// label below still says "absence" — stale from when `away` counted stretches. Reads as a
-	// correct string on every fixture today, which is what makes it worth flagging rather than
-	// leaving to be noticed: the task that rewrites this whole readout into an item count and
-	// an away-weeks pill (`${away} wk away`) replaces this line and the string together.
-	const away = lane.absences.length === 0 ? 0 : awayWeeks(lane.absences, today);
-	if (away === 0) return items;
-	return `${items} / ${away} absence${away === 1 ? '' : 's'}`;
+function renderAwayPill(lead: HTMLElement, lane: ResourceLane, today: CivilDate): void {
+	const weeks = awayWeeks(lane.absences, today);
+	if (weeks === 0) return;
+	const busy = lane.bars.length > 0 ? ' pbl-lane-away-busy' : '';
+	lead.createSpan({ cls: `pbl-lane-away${busy}`, text: `${weeks} wk away` });
 }
 
 /**

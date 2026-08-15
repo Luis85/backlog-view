@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { shelfRemoval } from '../../src/view/render/shelf';
 import { clickExpandAll, Harness, makeView, useViewHarness } from '../helpers/view';
-import { gripNames, laneCountOf, laneNames, laneOrder, lanesOf, rowFor, shelfTitles } from '../helpers/roadmap';
+import { gripNames, laneAwayOf, laneCountOf, laneNames, laneOrder, lanesOf, rowFor, shelfTitles } from '../helpers/roadmap';
 import { resourceVault } from '../helpers/resources';
 import { addDays, formatCivil } from '../../src/domain/timeline';
 import { readDate, todayStamp } from '../../src/domain/noteFields';
@@ -105,7 +105,7 @@ describe('the resources axis on screen', () => {
 		const harness = laneRoadmap(resourceVault());
 		const [alice, bob] = lanesOf(harness.containerEl);
 		expect(laneCountOf(alice)).toBe('2 items');
-		expect(laneCountOf(bob)).toBe('0 items');
+		expect(laneCountOf(bob)).toBe('');
 		// `Nobody` names no resource; `Undated` names one and has no date to be placed at.
 		expect(shelfTitles(harness.containerEl).sort()).toEqual(['Nobody', 'Undated']);
 	});
@@ -394,44 +394,58 @@ describe('a context row inside a resource row', () => {
 		const harness = laneRoadmap(contextVault(), { only: ['Result.md'], focus: 'Epic' });
 
 		// Placement, not population — the bucket axis's rule over a different property.
-		expect(laneCountOf(lanesOf(harness.containerEl)[0])).toBe('0 items');
+		expect(laneCountOf(lanesOf(harness.containerEl)[0])).toBe('');
 		expect(shelfTitles(harness.containerEl)).toEqual([]);
 	});
 });
 
 describe('the band header’s readout', () => {
-	it('names the pending absences beside the items, and only the pending ones', () => {
-		// The filter on today is the whole reason this readout exists: the rows below draw
-		// every stretch a resource ever had, so a finished one is exactly what the reader
-		// does not want counted.
+	it('reports the items and the weeks away as two separate things', () => {
 		const vault = countingVault([
 			{ title: 'Over', start: dayFromToday(-20), target: dayFromToday(-10) },
-			{ title: 'Ahead', start: dayFromToday(5), target: dayFromToday(9) },
+			{ title: 'Ahead', start: dayFromToday(5), target: dayFromToday(11) },
 		]);
 		const harness = laneRoadmap(vault);
+		const alice = lanesOf(harness.containerEl)[0];
 
-		expect(laneCountOf(lanesOf(harness.containerEl)[0])).toBe('1 item / 1 absence');
+		expect(laneCountOf(alice)).toBe('1 item');
+		// The ended stretch is not counted — the filter is the whole reason the pill exists.
+		expect(laneAwayOf(alice)).toBe('1 wk away');
 	});
 
-	it('pluralizes each half on its own count', () => {
-		const vault = countingVault([
-			{ title: 'Ahead', start: dayFromToday(5), target: dayFromToday(9) },
-			{ title: 'Later', start: dayFromToday(20), target: dayFromToday(24) },
-		]);
-		vault.addFile('More work.md', {
-			frontmatter: { type: 'Epic', order: 20, assignee: 'Alice', start: '2026-08-02', due: '2026-08-04' },
+	it('drops the item count entirely at zero rather than reading a zero', () => {
+		const vault = countingVault([{ title: 'Ahead', start: dayFromToday(5), target: dayFromToday(9) }]);
+		vault.addFile('Away.md', {
+			frontmatter: { type: 'Absence', assignee: 'Bob', start: dayFromToday(5), due: dayFromToday(9) },
 		});
 		const harness = laneRoadmap(vault);
+		const bob = lanesOf(harness.containerEl)[1];
 
-		expect(laneCountOf(lanesOf(harness.containerEl)[0])).toBe('2 items / 2 absences');
+		expect(laneCountOf(bob)).toBe('');
+		expect(laneAwayOf(bob)).toBe('1 wk away');
 	});
 
-	it('drops the absence half entirely with nothing pending', () => {
-		// `0 absences` reports nothing the reader needed and would sit on nearly every band.
+	it('drops the pill when nothing is still to come', () => {
 		const vault = countingVault([{ title: 'Over', start: dayFromToday(-20), target: dayFromToday(-10) }]);
 		const harness = laneRoadmap(vault);
 
 		expect(laneCountOf(lanesOf(harness.containerEl)[0])).toBe('1 item');
+		expect(laneAwayOf(lanesOf(harness.containerEl)[0])).toBe('');
+	});
+
+	it('weights the pill up where the resource also holds work', () => {
+		// A busy-and-away row is the loudest thing in the column, because it is the one a
+		// planner has to do something about.
+		const vault = countingVault([{ title: 'Ahead', start: dayFromToday(5), target: dayFromToday(9) }]);
+		vault.addFile('Away.md', {
+			frontmatter: { type: 'Absence', assignee: 'Bob', start: dayFromToday(5), due: dayFromToday(9) },
+		});
+		const harness = laneRoadmap(vault);
+
+		expect(lanesOf(harness.containerEl)[0].querySelector('.pbl-lane-away')?.className).toContain('pbl-lane-away-busy');
+		expect(lanesOf(harness.containerEl)[1].querySelector('.pbl-lane-away')?.className).not.toContain(
+			'pbl-lane-away-busy',
+		);
 	});
 
 	it('keeps both the readout and the mark on a COLLAPSED band', () => {
@@ -446,22 +460,8 @@ describe('the band header’s readout', () => {
 		harness.view.setLaneCollapsed('Alice', true);
 
 		expect(harness.containerEl.querySelectorAll('.pbl-absence')).toHaveLength(1);
-		expect(laneCountOf(lanesOf(harness.containerEl)[0])).toBe('1 item / 1 absence');
-	});
-
-	it('reads as absence alone on a band with no work at all', () => {
-		// The case a band header exists to answer: `Sam` in the demo fixture is a row whose
-		// only reason to be on screen is that someone is away, with no work of their own.
-		// `countingVault` always seeds `Work.md` for Alice, so this fixture puts the
-		// absence on Bob instead — declared in the roster (`laneRoadmap`'s own
-		// `resourceNames: 'Alice, Bob'`) but never assigned any bar.
-		const vault = countingVault([]);
-		vault.addFile('Away.md', {
-			frontmatter: { type: 'Absence', assignee: 'Bob', start: dayFromToday(5), due: dayFromToday(9) },
-		});
-		const harness = laneRoadmap(vault);
-
-		expect(laneCountOf(lanesOf(harness.containerEl)[1])).toBe('0 items / 1 absence');
+		expect(laneCountOf(lanesOf(harness.containerEl)[0])).toBe('1 item');
+		expect(laneAwayOf(lanesOf(harness.containerEl)[0])).toBe('1 wk away');
 	});
 
 	it('draws a lane with nothing at all as a quiet row', () => {

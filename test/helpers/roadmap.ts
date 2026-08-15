@@ -171,6 +171,11 @@ export function laneCountOf(lane: HTMLElement): string {
 	return lane.querySelector('.pbl-lane-count')?.textContent ?? '';
 }
 
+/** The away pill's text, or '' where the header draws none. */
+export function laneAwayOf(lane: HTMLElement): string {
+	return lane.querySelector('.pbl-lane-away')?.textContent ?? '';
+}
+
 /**
  * Every drawn row of the resources axis in order, headers included — what the reader's
  * eye walks down. A header reads as `lane:<name>` so one assertion can state both the
