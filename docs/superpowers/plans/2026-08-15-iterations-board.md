@@ -80,7 +80,7 @@ Everything here implements:
 | `src/view/render/board.ts` | `renderIterationBoard` |
 | `src/view/render/emptyStates.ts` | two states |
 | `src/view/render/projections.ts` | the fork |
-| `src/view/backlogView.ts` | `pbl-board-mode`, asked rather than enumerated |
+| `src/view/render/projections.ts` | `pbl-board-mode` in `syncProjectionClasses`, asked rather than enumerated |
 | `src/domain/writePlan.ts` | `computeIterationStateWrites` and its `ItemWrite` fields (Task 10) |
 | `src/storage/frontmatter.ts` | the iteration state write (Task 10) |
 | `src/storage/writeKeys.ts` | a second `carried` row, for the resolved state key (Task 10) |
@@ -1500,11 +1500,14 @@ is the defect. But it also shows no `Iteration`, because Task 7's population rej
 create one here, or retype a visible card to one, and **watch it vanish from the board it
 was created on** — the same defect through the other door.
 
+`byProjectionType` is file-private, so drive it through `offerableTypes`, which is the
+exported way in and the one both menus actually call:
+
 ```ts
 it('offers exactly what an iteration board can show', () => {
-	expect(byProjectionType('iteration', ALL_TYPES)).toContain('Deliverable');
-	expect(byProjectionType('iteration', ALL_TYPES)).not.toContain('Iteration');
-	expect(byProjectionType('board', ALL_TYPES)).not.toContain('Deliverable');
+	expect(offerableTypes(hostWith({ projection: 'iteration' }))).toContain('Deliverable');
+	expect(offerableTypes(hostWith({ projection: 'iteration' }))).not.toContain('Iteration');
+	expect(offerableTypes(hostWith({ projection: 'board' }))).not.toContain('Deliverable');
 });
 ```
 
@@ -1847,21 +1850,11 @@ export function renderIterationBoard(
 	// ancestors; the counted population, the workflow vocabulary and every write target
 	// stay the carriers alone. A context row renders, it parents, and that is all.
 	const candidates = withContextAncestors(population); // defined in Task 7
-	// A context ancestor is visible when a carrier IN THIS SCOPE below it is — never by
-	// `isRowHidden`, which recurses over the ancestor's WHOLE subtree and so answers for
-	// descendants in other iterations. Sprint 12 would otherwise draw a context card whose
-	// only matching descendant is in Sprint 13, and suppress its own "nothing matches"
-	// advisory while none of its own carriers match. The rule is the context-row rule
-	// itself, asked correctly: a context row renders because it PARENTS something on
-	// screen, so what is on screen has to be this board's population and not the tree's.
-	const inScope = new Set(population.map((item) => item.file.path));
-	const visibleCarrier = (item: BacklogItem): boolean =>
-		inScope.has(item.file.path) && !host.isRowHidden(item);
 	const board = boardColumns(
 		iterationWorkflow(population, host.settings),
 		candidates,
-		(item) => (item.outsideFilter ? population.some((c) => descendsFrom(c, item) && visibleCarrier(c)) : visibleCarrier(item)),
-		(item) => !item.outsideFilter && inScope.has(item.file.path) && !host.isRowHiddenUnfiltered(item),
+		(item) => !host.isRowHidden(item),
+		(item) => !host.isRowHiddenUnfiltered(item) && !item.outsideFilter,
 	);
 	return renderBoard(ctx, boardEl, dnd, board, {
 		// Its own fold scope, and it carries the CHOSEN ITERATION. `ColumnScope` is what
@@ -1912,16 +1905,44 @@ because of anything in this task. It is written here anyway: it is the guarantee
 of this board cares about, and a test that passes for a reason stated elsewhere still
 fails if that reason is removed.
 
-- [ ] **Step 6: Set the two narrowing controls off**
+- [ ] **Step 6: Scope the VISIBILITY RULE, not the predicates around it**
+
+The scoping belongs in `inProjection` on this projection's `VisibilityRule`
+(`src/view/rowVisibility.ts`), where it answers **"in this scope's population, or an
+`outsideFilter` ancestor of one"** — not in a wrapper at the call site.
+
+That file states why, and the reason is the failure two earlier revisions of this step
+walked into: `inProjection` is asked **first, unconditionally, and inside the recursion
+too**, so a context row is judged by the same rule as the results it is placing. Wrapping
+`isRowHidden` from outside cannot reach that recursion. Both attempts got the same defect
+one level deeper each time — first an ancestor drawn for a match in another iteration,
+then a carrier kept because the whole-tree index marks ancestors of an out-of-scope match
+visible. The recursion is the thing that has to be scoped, and `inProjection` is where
+this codebase already scopes it.
+
+With that in place the two predicates passed to `boardColumns` are the ordinary ones, as
+they are on every other board.
+
+```ts
+it('hides a carrier whose only match is a descendant in another iteration', () => {
+	const board = renderScope(model, sprint12, { filter: 'sprint-13-only' });
+	expect(cardPaths(board).size).toBe(0);
+	expect(emptyText(board)).toContain('No matches');
+});
+```
+
+- [ ] **Step 7: Set the two narrowing controls off**
 
 In `src/view/projection.ts`, this scope's `VisibilityRule` takes `hideCompleted: false` — one field, in the one predicate, never a per-caller choice. That predicate's own comment records why: it was a per-caller choice for three surfaces until the fourth forgot.
 
 `inProjection` is `projectionMember('board')`, which already returns `!inCatalog`.
 
-- [ ] **Step 7: Turn on the board LAYOUT**
+- [ ] **Step 8: Turn on the board LAYOUT**
 
-`renderTreeContent` (`src/view/backlogView.ts`) sets `pbl-board-mode` from
-`projection === 'board' || projection === 'deliverables'`. That class is what gives the
+`syncProjectionClasses` (`src/view/render/projections.ts`) sets `pbl-board-mode` from
+`projection === 'board' || projection === 'deliverables'`. **Verify the location before
+editing** — this instruction named `backlogView.ts` until main was merged into this branch
+and moved the writer. A file named in a plan is a fact with a shelf life. That class is what gives the
 scroller `overflow-x: auto` (`styles/board.css`); without it an iteration board keeps
 `.pbl-tree`'s `overflow-x: hidden`, so **every column past the pane's width is
 unreachable** — no scrollbar, no drag target, the work simply not there — and the stale
@@ -1948,11 +1969,11 @@ it('draws an iteration board with the board layout, so wide column sets scroll',
 });
 ```
 
-- [ ] **Step 8: Suppress the two toolbar controls**
+- [ ] **Step 9: Suppress the two toolbar controls**
 
 The focus picker renders a fixed, disabled button with no menu, no "Focused: <level>" label and no clear button — `renderFocusPicker`'s existing unconditional branch for the Deliverables board is the model. "Show completed items" is absent rather than present and inert.
 
-- [ ] **Step 9: Fork on it, and gate the columns on a resolved workflow**
+- [ ] **Step 10: Fork on it, and gate the columns on a resolved workflow**
 
 In `src/view/render/projections.ts`'s dispatch chain, `'iteration'` renders
 `renderIterationBoard` — **but only past a `resolvedIterationStateKey` check**, exactly as
@@ -1966,12 +1987,12 @@ upstream of every consumer. By the time this dispatch runs, `host.projection` is
 `'board'` for a stale scope, so this chain needs no fallback of its own and must not grow
 one: a second resolution is a second opinion.
 
-- [ ] **Step 10: Run the tests**
+- [ ] **Step 11: Run the tests**
 
 Run: `npx vitest run test/view/iterationBoard.test.ts test/view/board.test.ts`
 Expected: PASS.
 
-- [ ] **Step 11: Commit**
+- [ ] **Step 12: Commit**
 
 ```bash
 npm run check

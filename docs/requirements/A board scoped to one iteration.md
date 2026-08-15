@@ -199,7 +199,12 @@ the moment the populations diverged, which is exactly what happened.
   is counted, what supplies the vocabulary, and what may be written to.
 
   And a context row is drawn because it **parents something on this board** — never
-  because something anywhere below it is visible. An excluded ancestor can parent work in
+  because something anywhere below it is visible. That rule has to live in the projection's
+  own membership question, which is asked first and **inside the recursion**, rather than
+  in a filter wrapped around the result: an excluded ancestor can parent work in several
+  iterations, and so can a carrier, so a rule applied only at the outside still lets a
+  match in Sprint 13 keep a card on Sprint 12 and swallow its "nothing matches" advisory.
+  Scoping the membership scopes the walk; scoping the walk's output does not. An excluded ancestor can parent work in
   several iterations at once, so asking the tree whether it has a visible descendant would
   draw it on Sprint 12 for a match that only exists in Sprint 13, and would suppress
   Sprint 12's own "nothing matches" advisory while none of its carriers match. What is on
