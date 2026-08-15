@@ -66,8 +66,8 @@ already looks.
    the two dates in the start and target properties, and its own declared type
    (`Absence`) — nothing else stored, and no title typed: the note's name is derived
    from those three facts by `absenceTitle`.
-4. The row draws it as a blocked stretch, positioned exactly as a bar would be, in that
-   resource's row only.
+4. The resource's own header draws it as a stretch inside its own track, positioned exactly
+   as a bar would be, in that resource's band and nowhere else (4n).
 
 **Extensions**
 
@@ -88,15 +88,30 @@ already looks.
   backlog's own home folder, the same default a type with no folder of its own already
   resolves to — safe to share with every other type's notes, because what keeps an
   absence out of the tree and the other axes is its type, never its folder.
-- **4a — an absence overlaps another absence, or an item's own bar, in the same row.**
-  Both draw, stacked; the row's own height grows rather than either one moving to avoid
-  the other.
+- **4a — an absence overlaps another absence in the same row.** They PACK: the first
+  sub-lane holds as many stretches as fit without sharing a day, the next takes what is
+  left, and the header grows to hold every sub-lane. Nothing is hidden and nothing is
+  merged — two stretches that share a day are two marks on two lines, exactly as they were
+  when each had a row.
+
+  **This reverses the original 4a** ("both draw, stacked; the row's own height grows rather
+  than either one moving to avoid the other") and the acceptance criterion that said "with
+  no lane-packing". The reason those gave was that "a packing rule is a second geometry to
+  keep in step with the one the bars use", and what answers it is that this packing is
+  narrower than the one refused: `packAbsences` returns `Absence[][]` and computes no pixel,
+  runs over ABSENCES only and never over bars, and every bar is still placed by
+  `barGeometry` — one geometry, and a grouping decided before it. What the old 4a was
+  protecting survives in a sharper form: nothing moved aside for anything, and no stretch
+  dropped or merged, at a third of the height.
+
+  An absence overlapping a BAR is not this case and never was — the bar keeps its own row
+  and the stretch shades it (4k).
 - **4b — the resource an absence names is not on the declared roster and has nothing
   assigned to it.** It still gets a row — an absence can be the first reason a
   resource's row exists, extending
   [[Showing a resources axis on the roadmap]]'s declared-or-observed row list with a
   third source.
-- **4c — deleting an absence.** From its bar's own context menu, through Obsidian's
+- **4c — deleting an absence.** From its own mark's context menu, through Obsidian's
   ordinary file delete rather than this backlog's undo — the note was never one of this
   backlog's write targets to begin with, so there is no batch for the gate to have
   captured an inverse of.
@@ -116,13 +131,14 @@ already looks.
 - **4k — the stretch also shades the band's own work rows** (added 2026-08-14). The same
   unavailable days are drawn over the bars of every work row in that band, so a bar and
   the stretch it crosses are read on one line rather than two — which is what the user story
-  above asks for and what a line of its own could not give: the collision was the hardest
-  thing on the band to see. **4a is unchanged**: both still draw, stacked, and nothing moves
-  to avoid anything. This is an ADDITION beside the named line and never a replacement for
-  it, because that line is the surface carrying the title, the dates and the Edit/Delete
-  menu — a resource whose only content is an absence (4b) would otherwise get a row with
-  nothing in it to act on. A stretch the drawn window cannot reach shades nothing at all,
-  since the shading would then colour days it does not cover. See
+  above asks for and what a mark in the header alone could not give: the collision was the
+  hardest thing on the band to see. **4a is unchanged**: overlapping stretches still pack
+  rather than move for each other, and the wash moves for nothing either. This is an
+  ADDITION beside the header's own track (4n) and never a replacement for it, because that
+  track is the surface carrying the title, the dates and the Edit/Delete menu — a resource
+  whose only content is an absence (4b) would otherwise get a row with nothing in it to act
+  on. A stretch the drawn window cannot reach shades nothing at all, since the shading would
+  then colour days it does not cover. See
   [[An absence read fainter than the decoration behind it]].
 - **4l — the title is derived, not asked for** (added 2026-08-14). The form asks for the
   resource, a start and an end, and the note is named `<resource> away <start> → <end>`
@@ -139,10 +155,29 @@ already looks.
   note that silently stops following its own dates. Nothing is retroactive: an absence that
   already exists keeps its name until it is edited, and `readAbsence` never required a
   derived one.
-- **4m — the band header counts the stretches still to come** (added 2026-08-14). Its
-  readout is `2 items / 1 absence`, the absence half counting only those whose end is today
-  or later, and dropped entirely at zero. See the refusal paragraph under
-  `## Where it lives` for why this is not the removed glyph returning.
+- **4m — the band header counts what's still ahead** (added 2026-08-14, reshaped the same
+  day). An item count and a weeks-away pill, each dropped entirely at zero rather than one
+  string counting both — the pill counting only stretches whose end is today or later. See
+  the refusal paragraph and the shape's own two rewrites under `## Where it lives`, for why
+  this is not the removed glyph returning and for why it ended as two numbers rather than
+  one.
+
+- **4n — a stretch is drawn in its resource's HEADER, not in a row of its own** (added
+  2026-08-14). One row per person whatever they have. The title, the dates and the
+  Edit/Delete menu move onto the mark itself, which is now the only route to them, so a
+  `pointer-events: none` on a mark or a `stopPropagation` in its handler breaks the feature
+  in two different ways. A drop still reaches the band because a mark is a CHILD of the
+  header rather than a sibling drawing into it — the distinction
+  [[An absence stretch is a dead spot in its own band]] records.
+
+  **What this costs a screen reader, stated as a regression rather than a substitution.**
+  Each stretch had a row carrying `<title> — unavailable <dates>` and `Assigned to <name>`.
+  It now has neither: the header takes one `aria-description` listing every stretch, so
+  three become one string with no structure and no way to move between them. Accepted
+  because one-row-per-person is the point of the change and no per-stretch element can carry
+  a name while the row it replaced is gone. The keyboard gap is unchanged, not widened — an
+  absence row was never a keyboard stop either, and [[Keyboard and menu on the roadmap]]
+  still owns closing it.
 - **4d — the configuration narrows to one date property, or none, after absences already
   exist.** They stop rendering, all of them, silently — the same gate 1a already puts in
   front of creating one applies to reading them too: the reader checks both properties
@@ -250,15 +285,17 @@ already looks.
   query actually returns; a Base whose query narrows by type has to include the absence
   type, the same dependency every other declared type here already has on the Base
   returning it.
-- A band header reports its result bars and, when there is one, the absences whose end is
-  today or later — a collapsed band included, since it is then the only surface saying so.
-  A finished stretch is counted by nothing.
+- A band header reports an item count — its result bars, dropped at zero — and, when there
+  is one, a weeks-away pill over the stretches whose end is today or later, weighted up when
+  the resource also holds work and likewise dropped at zero. Both read the same whether the
+  band is open or shut. A finished stretch counts toward neither.
 - A resource named only by an absence still gets a row.
 - An absence renders whatever the quick filter says. The filter chooses among WORK — its
   two sets are matches and their subtrees — and a stretch is furniture of the row rather
   than a result it could match or hide, so a band minted only by an absence stays on
   screen while a filter narrows the work around it.
-- Overlapping bars and absences in one row stack, with no lane-packing.
+- Overlapping stretches pack into sub-lanes inside one header, growing it; nothing is hidden
+  or merged. A bar keeps its own row whatever crosses it.
 - Deleting an absence removes the note through Obsidian's own delete.
 - Renaming the configured type-key property after absences already exist is not
   migrated — the same non-guarantee every declared type's recognition already carries —
@@ -324,28 +361,33 @@ mint a row (4b), since it is a statement this base's own notes make about a reso
 rather than a value borrowed from a note the filter excluded. It is never counted and
 never shelved, the rule a context row already keeps.
 
-Drawing is `src/view/render/lanes.ts` — a fourth `TimelineEntry` kind leading each band,
-and `renderLaneAbsence`, positioned by `barGeometry` against the same window a bar is —
-drawn from `src/view/render/timeline.ts`'s own entry loop, which does NOT count one as a
-drawn row: the stripe alternates over work, and an absence is furniture of the row. The
-blocked stretch is `styles/lanes.css`, hatched rather than filled and never state-coloured,
-on `.pbl-bar-inferred`'s own argument that a mark the view did not read off a plan must not
-look like one.
+Drawing is `src/view/render/lanes.ts` — `renderLaneAbsences`, called from `renderLaneHead`
+rather than produced as an entry of its own kind: `TimelineEntry` carries no `'absence'`
+member at all now, since every stretch is furniture of its resource's HEADER rather than a
+line the entry loop interleaves. `packAbsences` groups the lane's own stretches into
+sub-lanes first — the first sub-lane holding as many as fit without sharing a day, the next
+taking what is left — and the header publishes the count as `--pbl-lane-sublanes` so the
+stylesheet grows the track by that many marks' worth of height, one number crossing the
+boundary rather than a height computed here. Each mark is positioned by `barGeometry`
+against the same window a bar is, drawn in `styles/lanes.css` hatched rather than filled and
+never state-coloured, on `.pbl-bar-inferred`'s own argument that a mark the view did not read
+off a plan must not look like one.
 
 **The mark is drawn from a TEXT token and never from a `--background-modifier-*` one**
 (2026-08-14). That second palette is what `.pbl-grid-line` is made of and the family
 `.pbl-weekend-layer` draws from, so a mark built out of it cannot out-read the decoration it
-sits on — which is how it shipped and how it was reported. `.pbl-absence-row`'s muting
-belongs to the row's LEAD alone for the same reason: it says "this row is furniture", and
-applied to the stretch it said "this mark is faint". Both are checked as the RULE rather than
+sits on — which is how it shipped and how it was reported. Checked as the RULE rather than
 as the colour, in `test/view/timelineBoxing.test.ts`, whose reach is the tokens each rule
-names and nothing about what they resolve to. See
-[[An absence read fainter than the decoration behind it]].
+names and nothing about what they resolve to. `.pbl-absence-row` and the muting rule that
+named it are both gone: the mark used to sit in a row of its own that the row-lead rule
+dimmed everything else on, and once it moved into the header's own track (4n) there was no
+row left beside it to mute — the rule was retired with the row rather than carried onto the
+header. See [[An absence read fainter than the decoration behind it]].
 
-**The wash (4k) is `renderAbsenceWash`, beside `renderLaneAbsence`**, called from
-`drawEntries`' own row branch — a WORK row only, since the stretch's own line already carries
-the mark, a context row makes no positional claim at all, and on the dated axis there is no
-band to be a member of. It is APPENDED into the row's day track, so it sits over the bar, and
+**The wash (4k) is `renderAbsenceWash`, beside `renderLaneAbsences`**, called from
+`drawEntries`' own row branch — a WORK row only, since the stretch's own mark, in its
+resource's header, already carries the title and the dates; a context row makes no
+positional claim at all, and on the dated axis there is no band to be a member of. It is APPENDED into the row's day track, so it sits over the bar, and
 that is the whole layer story: it shipped *under* the bars and was corrected the same day from
 a live vault, because a wash a bar paints over marks the days that are free and hides exactly
 the ones the reader is looking for. What must not be reached for either way is a `z-index`:
@@ -365,14 +407,27 @@ day it renders rather than treated as unbounded in the direction it has no date 
 backlog stating targets and no starts is the ordinary case here, and the other reading would
 report a crossing on nearly every stretch behind it. From DATES, never from geometry, so a
 crossing outside the drawn window still marks its row: the row is where the fact lives, and a
-window-derived mark would narrow it to wherever the reader happens to be scrolled. What
-reports it is `noteAbsenceClash`, the dependency conflict's shape reused — a glyph in the
-lead plus the words it stands for as `.pbl-sr-only` content, because the wash tells this in
-colour alone and WCAG 1.4.1 refuses that. The glyph is `calendar-x` and deliberately NOT the
-`user-x` every other absence control wears: that mark already means the Add absence button, an
-absence row, and a resource being away, and the two facts a reader most needs to tell apart on
-this axis are "this row is an absence" and "this row runs through one". A crossing is about
-DAYS.
+window-derived mark would narrow it to wherever the reader happens to be scrolled.
+
+What reports it is no longer a glyph alone. `drawBandCollision` in
+`src/view/render/timeline.ts` calls `noteAbsenceClash` for the swatch and the words, and
+`absenceCost` — over `daysLost`, the union of every crossed stretch clamped to the bar's own
+days, never the sum — for what the crossing COSTS: a short token (`15d lost`, `all 10d` when
+it swallows the whole bar, `· away` for a marker, which has no days to lose) appended inside
+the bar's own title label, and the full sentence (`15 days lost to absence: …`) on the
+swatch's tooltip and in a `.pbl-sr-only` span, because the wash tells this in colour alone
+and WCAG 1.4.1 refuses that. The mark itself is a hatched SWATCH in the away key, not the
+`calendar-x` glyph it shipped with and not the `user-x` every other absence control wears —
+a colour rather than a fourth icon competing with the Add absence button, the header's own
+icon and a resource being away, all of which already spend `user-x`. The legend gains a
+**Days lost** key exactly where the token lands, gated on `DrawnColors.daysLost` — the
+render's own report, so a fold or a filter that takes the token off screen takes the key
+with it too.
+
+The token's suppression is the bar's own reserve and not a rule of its own: `bar.label ===
+null` — the same test a title already fails when the bar is too narrow to carry one — is
+the whole gate, so a crossing with no room for a label still flags the lead swatch but never
+crowds a title that was not going to fit either.
 
 **The band header carries NO glyph saying the band holds an absence, and that is a refusal
 rather than an omission.** One was built on 2026-08-14 — `lane.bars.length` is RESULT bars and
@@ -382,19 +437,26 @@ stretch's own hatched row is directly beneath the header, so the `0` is never re
 fourth `user-x` in one lead competed with the Add absence button that reveals on hover in the
 same place. The reading of `0` is the accepted cost, and the row below is what pays it.
 
-**What the header DOES carry, since 2026-08-14, is a labelled readout** — `2 items / 1
-absence`, `laneReadout` in `src/view/render/lanes.ts` over `pendingAbsences` in
-`src/domain/absences.ts`. That is not the refusal reversed: words are not the fourth
-`user-x`, so the reason above about the Add absence button is untouched, and the item half
-is still RESULT bars, so a band whose only content is an absence still reads `0 items`.
-What words buy that the mark could not is the two things the row below cannot say. The
-count is FILTERED on today — the band draws every stretch a resource ever had, so a
-finished one is exactly what must not be counted, and the reader would otherwise compare
-each hatch to the today line one at a time. And it survives FOLDING, where `laneEntries`
-skips the whole band and the header is the only surface left. The absence half is dropped
-at zero rather than reading `0 absences`. Deliberately the opposite of the legend's rule,
-which keys what the pass PAINTED and so must not key a collapsed band's swatch: the
-readout is a fact about the band, and the header is drawn either way.
+**What the header DOES carry, since 2026-08-14, is a labelled readout** — words rather than
+the fourth `user-x`, so the reason above about the Add absence button is untouched. What
+words buy that a mark could not is the two things the stretch itself cannot say: the count
+is FILTERED on today — the band draws every stretch a resource ever had, so a finished one
+is exactly what must not be counted, and the reader would otherwise compare each hatch to
+the today line one at a time — and it is a fact about the band rather than about what one
+render pass painted, so it is asked the same way whether the band is open or shut.
+
+**The shape changed again the same day, and this is the second rewrite of it.** What shipped
+as one number is now two things, each dropped at zero rather than reading a bare `0`: an
+ITEM count (`${lane.bars.length} items`, still result bars and nothing else) and a WEEKS-AWAY
+pill (`awayWeeks` in `src/domain/absences.ts`, unioned rather than summed so two overlapping
+stretches are not away twice), weighted up with its own class when the resource also holds
+work — that is the row a planner has to act on, since away with nothing booked is merely
+information. `0 items` was reported for a few hours on 2026-08-14 and was dropped the same
+day: a roster of quiet rows each reading zero is noise, and `.pbl-lane-quiet` says the same
+thing about an empty band without spending a number on it. The former single-string
+`laneReadout` and `pendingAbsences` are both gone — `renderAwayPill` beside the item count
+is what replaced them, and the item half still means what it always meant, RESULT bars, so a
+band whose only content is an absence still reads no item count at all rather than `0 items`.
 
 Creating one is `AbsencePromptModal` in `src/ui/prompts.ts` (`SchedulePromptModal`'s shape,
 with no per-field clear button — an empty end is not a real answer here) opened by
@@ -429,10 +491,10 @@ driven by a check that would only be re-stating the type.
 
 **What a live vault still owes**, because jsdom paints nothing and trashes nothing: how the
 hatched stretch reads against a themed background and against a bar it overlaps; whether a
-screen reader announces an absence row usefully among `option` rows, given that the row is
-a plain div carrying its own `aria-label` and the same `aria-description` every row of the
-band gets; and the delete's confirmation behaviour under the user's own "deleted files"
-setting.
+screen reader makes anything useful of the header's one concatenated `aria-description`
+naming every stretch at once (4n's own accepted regression), given that the header is a
+plain div among `option` rows and claims no role of its own; and the delete's confirmation
+behaviour under the user's own "deleted files" setting.
 
 The 2026-08-14 readability increment added four to that list and **the first two are now
 answered**: checked in a vault at 385 results, in light, the hatch and the wash both out-read

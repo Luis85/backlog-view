@@ -89,11 +89,25 @@ export default defineConfig({
 			// already gives: a rise needs a figure the suite REPRODUCES, and this increment
 			// measured two. Pinning either would be pinning a sample. Functions and lines held
 			// at 99.81 and 99.6 across all four runs — nothing to raise there either.
+			//
+			// A SIXTH sample, closing the same increment (the one-row-per-resource plan,
+			// 2026-08-14): four local runs — the coverage step of a full `npm run check`
+			// plus three standalone `npm run test:coverage` runs afterward, checked for
+			// exactly the split the fifth sample found — measured the IDENTICAL figure all
+			// four times: 98.54/94.86/99.82/99.61 (statements/branches/functions/lines),
+			// same denominators every run (6780/6880, 4233/4462, 1678/1681, 5647/5669). All
+			// four exceed this floor, and this time the suite reproduced rather than split,
+			// so the rise this comment has declined twice above is taken now — on the
+			// reproducibility this comment has always asked for, not on a relaxed bar. The
+			// nondeterminism itself is not fixed and not claimed to be: four consecutive
+			// agreeing runs narrow the window it can be hiding in, they do not close it, and
+			// `docs/issues/The coverage figure is not reproducible to a hundredth.md` stays
+			// open on that account.
 			thresholds: {
-				statements: 98.52,
-				branches: 94.83,
-				functions: 99.81,
-				lines: 99.6,
+				statements: 98.54,
+				branches: 94.86,
+				functions: 99.82,
+				lines: 99.61,
 			},
 		},
 	},

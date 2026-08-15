@@ -97,16 +97,38 @@ catalog migration and was not part of that run.
   the first of those: `demoVault()`
   carries Dana's `Single sign-on` (2026-07-20 → 2026-08-15) running straight through her absence
   (2026-08-10 → 2026-08-14), plus Sam, whose row exists only because he is away.
-- The band header's readout (`laneReadout`, added 2026-08-14) at the default lead width on
-  a real roster: whether `2 items / 1 absence` crowds the resource name, and where the
+- The band header's own readout (`renderAwayPill` beside the item count, both added
+  2026-08-14, reshaped the same day) at the default lead width on a real roster: whether an
+  item count and a `3 wk away` pill together crowd the resource name, and where the
   ellipsis falls — `.pbl-lane-count` refuses to shrink, so the name is what gives. **Never
   checked.**
-- The long derived absence name (`absenceTitle`, added 2026-08-14) in an absence row's own
-  lead, beside the dates the bar already states — whether the two together crowd each other
-  at a narrow lead width. **Never checked.**
-- Whether a screen reader reads the readout usefully: the header claims no role of its own
-  and labels its rows by proximity alone, so what the readout adds to that announcement, if
-  anything, is unverified. **Never checked.**
+- The packed header (`packAbsences`, added 2026-08-14) at two sub-lanes and at three:
+  whether the header actually grows to hold every sub-lane, whether two marks that share a
+  day read as two distinct marks rather than one occluding the other, and whether the
+  growth crowds the row below it. Dana's fourth stretch (added 2026-08-14, overlapping her
+  running one) gives the harness a real two-sub-lane header to look at; nothing in the
+  fixture reaches three. **Never checked.**
+- The 16% `--pbl-away` wash (re-keyed from `--text-muted` on 2026-08-14) over a saturated
+  bar, in both schemes: whether it still reads as shading rather than as a second bar now
+  that it is keyed to a warm colour instead of a neutral one, and whether the two edges
+  read distinctly from the fill between them. **Never checked.**
+- The days-lost token's suppression, in `drawBandCollision`: whether `bar.label === null` —
+  the bar's own reserve-and-flip decision, the only gate this token has — actually leaves
+  enough room at real zooms, from Weeks down to Days, or whether a token that fits the check
+  crowds a title that was still going to draw. **Never checked.**
+- `.pbl-lane-quiet` (added 2026-08-14), the contrast step a declared-but-empty band draws
+  instead of a zero: whether it reads as *quiet* — a row with nothing to say — rather than
+  as *disabled*, which is the same distinction the shelf's own dimmed cards already have to
+  hold. **Never checked.**
+- The long derived absence name (`absenceTitle`, added 2026-08-14) on the mark's own
+  tooltip, beside the dates it already states there — whether the two together crowd each
+  other, and whether the tooltip is reachable at all on a mark this small. **Never
+  checked.**
+- Whether a screen reader makes anything of the header's one concatenated
+  `aria-description` — every stretch's name and dates joined into a single string since
+  2026-08-14 (4n in [[Resource absences]]), with no structure and no way to move between
+  them: does it read as a list, a run-on sentence, or nothing a reader stops for. **Never
+  checked.**
 - The lead column's resize grip, which is where this feature keeps everything jsdom
   cannot reach: the 6px strip is findable at all (cursor and hover feedback), it shows a
   focus ring when tabbed to, a real touch drag resizes it rather than panning the

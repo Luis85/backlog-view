@@ -206,13 +206,21 @@ import each other. `src/view/render/roadmap.ts` dispatches the three axes and ho
 bar may be taken hold of. `styles/lanes.css` carries the header's band, imported after
 `timeline.css` because it overrides `.pbl-timeline-lead` at equal specificity.
 
-**The header's count became a labelled readout on 2026-08-14** — `2 items / 1 absence`,
-`laneReadout` in `src/view/render/lanes.ts`. The item half is unchanged in meaning and is
-still result bars; what is new is the words and the second half, whose reasons belong to
-[[Resource absences]] and are recorded there. `.pbl-lane-count` refuses to shrink
+**The header's count became a labelled readout on 2026-08-14, and changed shape again the
+same day.** What started as one string, `2 items / 1 absence` (`laneReadout`), is now an
+item count that drops at zero and a weeks-away pill beside it (`renderAwayPill`, over
+`awayWeeks` in `src/domain/absences.ts`) that drops at zero too and is weighted up when the
+resource also holds work — both read the same whether the band is open or shut. The item
+half is unchanged in meaning, still result bars; the reasons for the rest belong to
+[[Resource absences]] and are recorded there. What belongs here is that this axis's own
+promise — one row per declared or observed resource, empty or not — now reaches the
+header's own STRETCH track too (4n there): a band with nothing but an absence is still one
+row, never a row plus a line of its own. `.pbl-lane-count` refuses to shrink
 (`styles/lanes.css`), so the resource NAME ellipsizes into the label at a narrow lead
 width rather than the label being measured and shortened — a third fit mechanism beside
-`columnFit` and `syncToolbarFit` was refused.
+`columnFit` and `syncToolbarFit` was refused. A band with nothing at all — no bars, no
+absences, no context row — draws `.pbl-lane-quiet` instead of a zero of any kind, the same
+refusal applied to the row itself rather than to a number in it.
 
 **The axis was read-only in this increment, and that was a decision rather than an
 omission.** No grip on a bar, no drop target on the grid, and a shelf that accepted nothing
@@ -250,11 +258,15 @@ same increment.
 above), and on 2026-08-14 `DrawnColors` came to carry a fourth thing the render reports: a
 MARK rather than a colour override, the absence hatch, so the `Unavailable` swatch can be
 gated the way the other four are. Reported from the render rather than derived from the
-model for those three's own reason — `laneEntries` skips a collapsed band whole, so a
-predicate over `roadmap.lanes` would key a stretch nothing on screen draws, which is exactly
-the mistake the done and milestone swatches each made once. The interface is therefore wider
-than its name, and a BAR's own report is the narrower `BarColors` so no row literal has to
-claim anything about a mark drawn nowhere near it. See
+model, but not for the fold reason the done and milestone swatches learned it from: a
+stretch now draws in its header's own track whether the band is folded or not (4n in
+[[Resource absences]]), so `roadmap.lanes` is never stale about one going missing under a
+fold. What a hand-derived `entry.lane.absences.length > 0` would still risk is DRIFT — a
+second statement of the exact condition `renderLaneAbsences`' own early return already
+decides, kept in step by hand rather than read off what it actually drew — so `drawEntries`
+asks the header's own DOM after `renderLaneHead` returns instead. The interface is therefore
+wider than its name, and a BAR's own report is the narrower `BarColors` so no row literal has
+to claim anything about a mark drawn nowhere near it. See
 [[An absence read fainter than the decoration behind it]].
 
 **Not built here, and owed:** the header's appearance in a themed vault, plus how a screen
