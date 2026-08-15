@@ -1,6 +1,6 @@
 import { setTooltip } from 'obsidian';
 import { drawIcon } from './icons';
-import { createCard, renderCardBody, wireCardActivation } from './board';
+import { createCard, renderCardBody, renderColumnFold, wireCardActivation } from './board';
 import { RowContext } from './columns';
 import { renderAllDoneState, renderEmptyState, renderFilterEmptyState } from './emptyStates';
 import { renderContextStrip, renderShelf, shelfRemoval } from './shelf';
@@ -101,7 +101,15 @@ export function renderRoadmap(
 	// to `cards` (see `renderShelf`), never the axis's own — this is the true "does the
 	// roadmap have anything to show" count, including context cards already placed in
 	// a bucket, which no domain-model counter answers on its own.
-	const axisCardCount = cards.length;
+	// What the axis HOLDS, which since a bucket can be folded is no longer what it drew:
+	// the buckets are counted rather than the cards pushed above. A roadmap whose every
+	// bucket is shut is not a roadmap with nothing on it, and telling the reader their work
+	// was all done or all filtered away would be the same lie the collapsed shelf already
+	// had to be kept out of. The grid axes fold nothing, so there `cards` still is the
+	// population — and it is read HERE, before the shelf renders, because collapsing the
+	// shelf changes ITS contribution and never the axis's own.
+	const axisPopulation =
+		axis === 'horizons' ? roadmap.buckets.reduce((n, bucket) => n + bucket.cards.length, 0) : cards.length;
 	const removal = shelfRemoval(host, axis);
 	const shelf = renderShelf(ctx, frameEl, { cards: roadmap.shelf, conflicts: dependencyConflicts, axis }, dnd, removal);
 	cards.push(...shelf.cards);
@@ -114,7 +122,7 @@ export function renderRoadmap(
 	const advisoryEl = renderRoadmapAdvisory(
 		ctx,
 		frameEl,
-		axisCardCount + roadmap.shelf.length + roadmap.context.length,
+		axisPopulation + roadmap.shelf.length + roadmap.context.length,
 		treeEl,
 	);
 
@@ -288,11 +296,24 @@ function renderBucket(
 	bucket: HorizonBucket,
 	dnd: CardDragController,
 ): BacklogItem[] {
+	// No auto-fold on this axis, so the answer is always `false`: an axis has no notion of
+	// finished, which is the one thing a board column's own default is about.
+	const folded = ctx.host.columnCollapsed('horizons', bucket.value, false);
 	const colEl = bucketsEl.createDiv({
-		cls: 'pbl-bucket' + (bucket.declared ? '' : ' pbl-bucket-undeclared'),
-		attr: { role: 'group', 'aria-label': `${bucket.value}, ${bucket.count} item${bucket.count === 1 ? '' : 's'}` },
+		cls:
+			'pbl-bucket' +
+			(bucket.declared ? '' : ' pbl-bucket-undeclared') +
+			(folded ? ' pbl-bucket-collapsed' : ''),
+		attr: {
+			role: 'group',
+			// Folded is said in the NAME, `columnLabel`'s reason on the board: the count
+			// deliberately survives the fold, so a bucket that stayed silent about it would
+			// announce items it is not drawing.
+			'aria-label': `${bucket.value}${folded ? ', collapsed' : ''}, ${bucket.count} item${bucket.count === 1 ? '' : 's'}`,
+		},
 	});
 	const header = colEl.createDiv({ cls: 'pbl-bucket-header' });
+	renderColumnFold(ctx.host, header, 'horizons', bucket.value, { folded, label: bucket.value });
 	header.createSpan({ cls: 'pbl-bucket-name', text: bucket.value });
 	header.createSpan({ cls: 'pbl-bucket-count', text: String(bucket.count) });
 	if (!bucket.declared) {
@@ -305,7 +326,12 @@ function renderBucket(
 	}
 	renderBucketNew(ctx, header, bucket);
 	const cardsEl = colEl.createDiv({ cls: 'pbl-bucket-cards' });
-	for (const item of bucket.cards) {
+	// Folded, this bucket draws no card and RETURNS none, which is the whole of what the
+	// fold costs the rest of the pane: `cards` is the keyboard's walk and what the pane's
+	// `listbox`/`region` role is decided from, so a card that is not drawn is not selected
+	// and not counted as making this a composite. `renderShelf` contributes the same way.
+	const drawn = folded ? [] : bucket.cards;
+	for (const item of drawn) {
 		const card = createCard(ctx, cardsEl, item);
 		renderCardBody(ctx, card, item);
 		wireCardActivation(ctx, card, item);
@@ -317,7 +343,7 @@ function renderBucket(
 	// observed vocabulary is writable.
 	dnd.wireDropTarget(colEl, (source) => void ctx.host.performHorizonMove(source.item, bucket.value));
 	dnd.wireScroller(cardsEl);
-	return bucket.cards;
+	return drawn;
 }
 
 /**

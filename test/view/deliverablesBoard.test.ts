@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { boardVault, cardByTitle, cardTitles, columnByName, columnNames } from '../helpers/board';
+import { boardVault, cardByTitle, cardTitles, columnByName, columnNames, expandColumns } from '../helpers/board';
 import { flush, makeView, useViewHarness } from '../helpers/view';
 import { FakeVault } from '../helpers/vault';
 import { cardDrag } from '../helpers/dnd';
@@ -113,6 +113,9 @@ describe('the Deliverables board', () => {
 		});
 		harness.view.setProjection('deliverables');
 		const { containerEl } = harness;
+		// `Published` is a done value holding nothing but finished work, so this board's
+		// own fold default shuts that column — the reader would open it, and so does this.
+		expandColumns(containerEl);
 
 		expect(cardByTitle(containerEl, 'D').classList.contains('pbl-done')).toBe(true);
 	});

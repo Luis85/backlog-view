@@ -29,8 +29,24 @@ describe('the board columns use the room they have', () => {
 		expect(body, 'nothing stops a column shrinking past its stated minimum').toMatch(/min-width:\s*260px/);
 	});
 
-	it('leaves the empty no-state column its narrow strip', () => {
-		const body = ruleBody('.pbl-board-strip');
+	it('lets a folded header clip its own rotated name rather than overflow', () => {
+		// Text, and its reach is exactly that — but the pair below is load-bearing and was
+		// found MISSING by measuring the rendered page, not by reading it. Rotated, the
+		// name grows along the column's height, and a flex item will not shrink below its
+		// content: at a 220px pane a long state value ran 145px past the column's bottom
+		// and left the count outside the box, which is the one thing a folded column
+		// promises to keep showing. Both terms are needed and neither works alone.
+		const body = ruleBody('.pbl-board-collapsed .pbl-board-col-header');
+
+		expect(body, 'the folded header cannot shrink below its rotated name').toMatch(/min-height:\s*0/);
+		expect(body, 'nothing clips what the shrink leaves over').toMatch(/overflow:\s*hidden/);
+	});
+
+	it('leaves the empty no-state column, and a folded one, the same narrow strip', () => {
+		// ONE rule for both, so a fold and the empty no-state column cannot drift to
+		// different widths — the selector list is half the assertion.
+		expect(css).toContain('.pbl-board-strip,\n.pbl-board-collapsed {');
+		const body = ruleBody('.pbl-board-collapsed');
 
 		expect(body, 'the strip no longer overrides the growing column').toMatch(/flex:\s*0 0 44px/);
 		// Inherited from `.pbl-board-col`, the 260px floor would blow the strip up to a
