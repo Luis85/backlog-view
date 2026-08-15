@@ -23,6 +23,28 @@
 	background-color: var(--background-modifier-border);
 	overflow: hidden;
 	pointer-events: none; /* decoration over the row's name and the drag grips */
+	/* A hairline the band's own two colours cannot supply. `--color-green` (the done
+	   override on `.pbl-bar`, `timeline.css`) and `rgb(var(--color-green-rgb))` (the fill,
+	   right above) are the SAME rendered colour — measured #44cf6e, contrast 1.00 — so on a
+	   done row's bar the fill vanishes into it and only the unfilled track reads, inverting
+	   the signal into "how much is left" at every ratio and into nothing at all at 100%.
+	   Scoped to done would miss the same collision on a plain state colour a reader has
+	   painted green (`stateColorPaint`), so this outlines the band itself, whatever colour
+	   sits under or in it.
+
+	   `outline`, not `box-shadow`: this rule is on the TRACK, the fill's own parent, and an
+	   inset shadow paints in the background/border step — BEFORE the fill child, per normal
+	   paint order — so at 100% fill (exactly the case this exists for) the shadow would sit
+	   under the fill and never be seen. An outline is documented to paint over an element's
+	   own descendants, so it stays visible through any fill width. `-1px` offset keeps the
+	   ring INSIDE the track's own inset box rather than the outward 0-offset default: at 0
+	   offset the ring's bottom edge lands exactly on the bar's own bottom edge, which for an
+	   inferred bar is where its 1px dashed border is drawn (`.pbl-bar-inferred`, `timeline.css`)
+	   — the track's descendant paints after the bar's own border, so the ring would overwrite
+	   it there. Pulled inward, the ring never reaches the bar's edge at all, so it cannot
+	   touch that border or the gradient an open end fades into. */
+	outline: 1px solid var(--background-primary);
+	outline-offset: -1px;
 }
 
 .pbl-bar-progress-fill {

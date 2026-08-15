@@ -59,6 +59,17 @@ Switch to the roadmap's dated axis.
   a child): does the unclosed dashed edge read as **"this continues, unknown"**, or does
   it read as a rendering glitch — a line that just stops? This is a judgement call, not a
   class assertion, and it is the reason this note exists.
+- On that same comparison, find a bar with descendants (dated or inferred) and confirm
+  its progress band carries a visible hairline separating the band from the bar — not
+  just on the green-on-green done case the hairline exists for, but on an ordinary
+  state-coloured bar too, where the fix must not have made anything worse. Measured in
+  Chromium's DEFAULT colours (`npm run harness`, `.superpowers/harness-band-fix.md`,
+  2026-08-15): a done row's band, an inferred bar's dashed border, and an open end's
+  gradient all still read correctly against it. **What a vault still owes**: a themed
+  vault's own colours — a community theme can replace `--background-primary` (the
+  hairline's own colour) with something closer to a bar colour than Obsidian's default
+  is, which is exactly the kind of collision this fix exists to survive, and no harness
+  pass can say whether it does.
 
 ## Acceptance criteria
 

@@ -449,3 +449,50 @@ describe('the resize grip is ringed in a colour other than its own fill', () => 
 		for (const ring of rings) expect(fills, `the ring repeats its own fill: ${ring}`).not.toContain(ring);
 	});
 });
+
+/**
+ * `.pbl-bar-progress`'s track and `.pbl-timeline-row.pbl-done .pbl-bar`'s done override
+ * paint the SAME green (`--color-green` and `rgb(var(--color-green-rgb))` both resolve to
+ * `#44cf6e`, measured 2026-08-15 — contrast 1.00), so on a done row the fill vanishes into
+ * the bar and the band shows only its unfilled remainder, inverted from what it means to
+ * report. jsdom resolves no custom property to a colour, so this is a text check like the
+ * pair above it: it sees the declaration and cannot tell you what a done bar's band
+ * actually looks like — that is `npm run harness`'s `.superpowers/harness-band-fix.md`
+ * pass, not this file.
+ */
+describe('the progress band carries a hairline no bar colour can erase', () => {
+	const css = readFileSync(new URL('../../styles/barProgress.css', import.meta.url), 'utf8');
+	const body = bodyOf(css, '.pbl-bar-progress', 'styles/barProgress.css');
+
+	it('draws a 1px outline rather than an inset box-shadow', () => {
+		// `outline` paints over the element's OWN descendants (documented browser
+		// behaviour, confirmed in the harness pass): at 100% done the fill child covers
+		// the whole track box, and an inset `box-shadow` — painted in the background/border
+		// step, before a child renders — would sit UNDER that fill and never be seen. An
+		// outline has no such ordering problem, which is the whole reason it was chosen.
+		expect(body).toMatch(/outline:\s*1px\s+solid/);
+		expect(body, 'an inset box-shadow would be hidden under a 100%-width fill').not.toMatch(/box-shadow:\s*inset/);
+	});
+
+	it('pulls the ring inward rather than the outward default', () => {
+		// `outline-offset: -1px` keeps the ring inside the track's own 2px/1px insets, so
+		// it never reaches the bar's own edge — never the inferred bar's 1px dashed
+		// border, never the last pixel of an open end's gradient. The outward (0-offset)
+		// default lands the ring's bottom edge exactly on the bar's own bottom edge,
+		// where an inferred bar draws its border — this is the line that keeps the two
+		// apart.
+		expect(body).toMatch(/outline-offset:\s*-1px/);
+	});
+
+	it('draws the ring in the page background, not in either progress colour', () => {
+		// Neither the track's neutral fill (`--background-modifier-border`) nor the
+		// fill's green (`rgb(var(--color-green-rgb))`) survives a bar painted in that
+		// same colour; a THIRD colour — the page's own background, the one thing a bar is
+		// never painted in — is what a hairline needs to separate the band from any bar
+		// colour, including a workflow state a reader has painted green through
+		// `stateColorPaint`, which is why this is not scoped to `.pbl-done`.
+		const outline = /outline:\s*1px\s+solid\s+([^;]+);/.exec(body)?.[1].trim();
+		expect(outline, 'the outline rule is missing entirely').toBeDefined();
+		expect(outline).toBe('var(--background-primary)');
+	});
+});

@@ -127,3 +127,27 @@ comes off it: nothing about the band changes with density, because nothing about
 does — `.pbl-density-compact` sets a track `min-height` and drops the lead's padding, and
 `.pbl-bar` is 14px in both. What stays a vault question is narrower and is the same one
 the default density already asks: whether a 4px band is legible at all.
+
+**The band carries a 1px hairline** (`outline: 1px solid var(--background-primary)`,
+`outline-offset: -1px`, on `.pbl-bar-progress`) because a done row's own override
+(`--color-green`) and the fill's own paint (`rgb(var(--color-green-rgb))`) resolve to the
+SAME colour — measured `#44cf6e`, contrast 1.00, in a `npm run harness` pass 2026-08-15 —
+so on a done row the fill vanished into the bar and the band read as the *un*finished
+remainder instead of the progress. Not scoped to `.pbl-done`: a workflow state a reader
+has painted green through `stateColorPaint` hits the identical collision on a row that
+carries no done state at all, and a rule keyed to the class would miss it — the hairline
+separates the band from ANY bar colour instead. `outline`, not an inset `box-shadow`:
+the shadow paints in the background/border step, before the fill CHILD renders, so at
+100% done — the case a bar-coloured fill needed the hairline for most — a shadow would
+sit invisibly under the fill; an outline paints over an element's own descendants, so it
+stays visible whatever the fill's width. The `-1px` offset keeps the ring inside the
+track's own 2px/1px insets rather than the outward default, which lands exactly on the
+inferred bar's 1px dashed border. Measured in Chromium
+(`.superpowers/harness-band-fix.md`): the two independent guarantees hold — hairline
+against fill and against the bar itself both read at 4.75–8.44:1 across a done row at
+100%, a done row at a partial ratio, the ordinary control case and the state-slot
+colours, and a pixel scan confirms the ring never leaves the track's own box, so it
+cannot touch an inferred bar's dashed border or an open end's gradient. jsdom resolves no
+colour either, so `test/view/timelineBoxing.test.ts` pins the rule's TEXT only — the
+outline declaration, the `-1px` offset, and the third colour — refusing the deletion
+rather than the appearance; the harness pass is what looked.
