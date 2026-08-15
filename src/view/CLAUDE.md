@@ -537,7 +537,11 @@ free of runtime code so imports stay cycle-free.
   settling is permanent, so a default taken while the column holds NOTHING — a board drawn
   before its results arrive, a filter narrowed to nothing — shut Done for good and handed
   the work back folded. `collapseNewParents` states that hazard for an unloaded model; a
-  default settled lazily at the render meets it a second time. It is the
+  default settled lazily at the render meets it a second time. The evidence that the
+  column holds anything at all is `col.held` and never a count: `count` and `fullCount` are
+  measured through the population predicate, which carries the completed-items toggle, so
+  with finished work hidden a done column FULL of it reports zero and reads as empty. It is
+  the
   one derived quantity a CONTEXT card contributes to, and only through its rollup: under a
   focus such a card can be the only thing standing for the results below it, so a column
   folded on its silence takes them off the board — with no advisory, since the board does

@@ -230,6 +230,32 @@ describe('the done column’s own default', () => {
 		expect(folded(columnByName(containerEl, 'Done'))).toBe(true);
 	});
 
+	it('still folds when the completed items it holds are the ones being hidden', () => {
+		// Found by review (Codex, PR #140). "Show completed items" off takes every finished
+		// subtree out of the POPULATION, so a done column of finished work reported
+		// `fullCount === 0` and read as empty — and the guard against settling an empty
+		// column then blocked the fold in exactly the configuration it exists for.
+		// Extension 3b of the requirement: the stage still renders, folded at most.
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'New' } });
+		vault.addFile('Shipped.md', { frontmatter: { type: 'Epic', order: 20, status: 'Done' } });
+		const { containerEl } = makeBoard(vault, { showCompleted: false }, { foldedColumns: true });
+
+		expect(cardTitles(columnByName(containerEl, 'Done'))).toEqual([]);
+		expect(folded(columnByName(containerEl, 'Done'))).toBe(true);
+	});
+
+	it('takes no default from a column the board holds nothing for', () => {
+		// The other side of the same term, and why it is there: settling is permanent, so a
+		// board with nothing in it must not shut Done for good and hand the work back
+		// folded when it arrives.
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'New' } });
+		const { containerEl } = makeBoard(vault, {}, { foldedColumns: true });
+
+		expect(folded(columnByName(containerEl, 'Done'))).toBe(false);
+	});
+
 	it('never folds again once the reader has opened it', () => {
 		// The tree's own rule: a default applies to what nobody has ruled on. Without the
 		// second list the next data update would shut the column in front of the user who

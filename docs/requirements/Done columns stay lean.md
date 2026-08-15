@@ -156,10 +156,22 @@ arrive with it. Its keyboard path is the column's own menu, which moved to
 withheld from a column with nothing agreed, and every column has a fold now, so it is
 unconditional and `menu.ts` — which is about an ITEM — stopped being its home.
 
+**The evidence that a stage HOLDS something is `col.held`, never a count.** Settling is
+permanent, so a default taken on an empty column is taken on no evidence — a board drawn
+before its results arrive would shut Done for good. But `count` and `fullCount` are both
+measured through the population predicate, and the completed-items toggle lives in that:
+with finished work hidden, a done column full of finished work reports zero and reads as
+empty, refusing the fold in exactly the configuration extension 3b is about. `held` is
+counted through `owned`, which asks only whether the card is this board's at all. Found by
+review (Codex, PR #140), on the term's first spelling.
+
 **A context card speaks for the results below it and for nothing else.** It joins no
 count, and its own state is no part of this board's verdict — the context-row rule — but
 its result descendants are the Base's own rows, and under a focus that card can be the
-only thing standing for them. Folding a Done column on its silence took those results off
+only thing standing for them. It is asked BEFORE the population predicate, which is the
+second half of the same report: that predicate is about RESULTS and rejects a context card
+for reasons that have nothing to do with the rows below it — this board rejects every
+Deliverable, including the context ones its own `visible` deliberately admits. Folding a Done column on its silence took those results off
 the board with it, and left no advisory, since the board did hold a card. So the rollup
 answers here and the card does not (found by review, Codex, PR #140).
 

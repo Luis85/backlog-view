@@ -95,16 +95,22 @@ function renderBoard(
 	// header: the getter SETTLES on the way past (see `columnCollapsed` in
 	// `view/collapseState.ts`).
 	//
-	// `fullCount > 0` is the load-bearing term and not a tidy-up: settling is permanent, so
-	// a default taken while the column holds NOTHING is a default taken on no evidence. A
+	// `held > 0` is the load-bearing term and not a tidy-up: settling is permanent, so a
+	// default taken while the column holds NOTHING is a default taken on no evidence. A
 	// board drawn before its results arrive — a Bases pass that has not warmed up, a filter
 	// the reader has just narrowed to nothing — has an empty Done like every other column,
 	// and without this term it would shut Done for good and hand the work back folded. Same
 	// hazard `collapseNewParents` states for a model that has not loaded, one projection
 	// over. An empty column is also nothing to hide: "done columns stay lean" is about
 	// finished work taking a stage's room, and no work takes none.
+	//
+	// `held` and not `fullCount`, which was this term's first spelling and got the feature's
+	// own case backwards: `fullCount` is measured through the population predicate, and the
+	// completed-items toggle lives in that, so with finished work hidden a done column FULL
+	// of finished work reported zero and refused the fold in exactly the configuration
+	// extension 3b of the requirement is about. Found by review (Codex, PR #140).
 	const folds = board.columns.map((col) =>
-		ctx.host.columnCollapsed(opts.scope, col.state, col.done && col.fullCount > 0 && !col.openWork),
+		ctx.host.columnCollapsed(opts.scope, col.state, col.done && col.held > 0 && !col.openWork),
 	);
 	// A folded column draws no cards, and the SNAPSHOT is where that is said, because the
 	// keyboard reads the snapshot: `boardPosition`, `nextBoardPosition` and Alt+arrow all
@@ -153,6 +159,11 @@ export function renderRequirementsBoard(ctx: RowContext, boardEl: HTMLElement, d
 		model.focused ? requirementsFocusRoots(model.roots) : model.results,
 		(item) => !host.isRowHidden(item) && (item.outsideFilter || !isDeliverableType(item.typeName)),
 		(item) => !host.isRowHiddenUnfiltered(item) && !isDeliverableType(item.typeName),
+		// What this board OWNS, and nothing about what is hidden inside it: the type alone.
+		// Both predicates above carry the completed-items toggle, which is exactly what
+		// `BoardColumn.held` may not be measured through — see the fold default in
+		// `renderBoard`.
+		(item) => !isDeliverableType(item.typeName),
 	);
 	return renderBoard(ctx, boardEl, dnd, board, {
 		scope: 'board',

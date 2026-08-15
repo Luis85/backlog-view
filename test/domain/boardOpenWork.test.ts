@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { boardColumns, deliverablesWorkflow, requirementsWorkflow } from '../../src/domain/board';
+import { isDeliverableType } from '../../src/domain/itemTypes';
 import { BacklogItem, buildModel } from '../../src/domain/model';
 import { BacklogSettings } from '../../src/domain/settings';
 import { resolveSettings } from '../../src/domain/settingsResolve';
@@ -124,6 +125,32 @@ describe('a context card speaks for the results below it and for nothing else', 
 		const board = boardColumns(requirementsWorkflow(model, settings), model.roots, everything);
 
 		expect(board.columns.find((c) => c.label === 'Done')?.openWork).toBe(false);
+	});
+
+	it('speaks even where the result population would reject its type', () => {
+		// Found by review (Codex, PR #140), and a second way into the same blank board. The
+		// requirements board's population rejects EVERY Deliverable, so a context
+		// Deliverable — which that board's `visible` deliberately admits as a card — was
+		// skipped before the rollup was ever asked. With a finished result beside it in the
+		// same done column, the column folded and took the only card standing for the open
+		// rows below it. The predicate is about RESULTS; a context card is not one.
+		const vault = new FakeVault();
+		vault.addFile('Thing.md', { frontmatter: { type: 'Deliverable', order: 10, status: 'Done' } });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10, status: 'New' }, parentLink: 'Thing' });
+		vault.addFile('Shipped.md', { frontmatter: { type: 'Epic', order: 20, status: 'Done' } });
+		const model = buildModel(vault.app, only(vault, 'PBI.md', 'Shipped.md'), settings);
+		const board = boardColumns(
+			requirementsWorkflow(model, settings),
+			model.roots,
+			// The requirements board's own pair, spelled out: context is admitted whatever
+			// its type, and the population rejects every Deliverable.
+			(item) => item.outsideFilter || !isDeliverableType(item.typeName),
+			(item) => !isDeliverableType(item.typeName),
+		);
+
+		const done = board.columns.find((c) => c.label === 'Done');
+		expect(done?.cards.map((c) => c.title)).toContain('Thing');
+		expect(done?.openWork).toBe(true);
 	});
 
 	it('still counts for nothing, in either direction', () => {
