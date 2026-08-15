@@ -1,8 +1,10 @@
 import { BasesPropertyId, NullValue, setTooltip } from 'obsidian';
 import { drawIcon } from './icons';
-import { BacklogViewHost, Column, ColumnFit, ColumnKind, Projection } from '../host';
+import { BacklogViewHost, Column, ColumnFit, ColumnKind, PlacedMount } from '../host';
+import { columnWidth, columnWidthVar, renderColumnResize, widenSign } from '../interactions/columnResize';
 import { showAssigneeMenu, showHorizonMenu, showRiskMenu, showStateMenu, showTagMenu } from '../interactions/menu';
 import { removeTag } from '../interactions/tags';
+import { DEFAULT_PROP_COLUMN_WIDTH } from '../../storage/viewStateStore';
 import { ownWorkflowReading, stateKeyFor } from '../../domain/board';
 import { BacklogItem } from '../../domain/model';
 import { hasHorizonAxis, SHELF_LABEL } from '../../domain/roadmap';
@@ -25,6 +27,22 @@ export interface RowContext {
 	 * screen rather than re-deriving it and hoping the two agree.
 	 */
 	cardKids: Set<string>;
+	/**
+	 * What this pass actually DREW, and where each one's matches go. Filled by the
+	 * surfaces as they render and read after they have all run, so "is this item on
+	 * screen" is a fact rather than a prediction — the same arrangement `cardKids`
+	 * above uses, and for the same reason.
+	 *
+	 * The roadmap needs it because its model is not what it draws: `RoadmapModel.shelf`
+	 * holds every shelved item whether or not `host.shelfCollapsed` shows them, and
+	 * `organizeShelf` drops whole groups from an EXPANDED shelf through
+	 * `host.shelfHiddenTypes`. Neither is overridden by an active filter, while a lane
+	 * fold IS — two states that look alike, answering the same question oppositely.
+	 *
+	 * `PlacedMount` is declared in `host.ts` rather than here — see its own comment for
+	 * the cycle that decides it.
+	 */
+	placed: Map<string, PlacedMount>;
 	columns: Column[];
 }
 
@@ -33,7 +51,9 @@ export function rowContext(host: BacklogViewHost, rows: Map<string, HTMLElement>
 	// that one, or a narrowed pane would ratchet the count down and never let a column
 	// come back when it widens again.
 	const shown = host.columns.slice(0, host.columnFit?.shown ?? host.columns.length);
-	return { host, rows, cardKids, columns: shown };
+	// Created here rather than on the view: `backlogView.ts` already passes this context
+	// to the whole render pass, and the register is a fact about one pass.
+	return { host, rows, cardKids, placed: new Map(), columns: shown };
 }
 
 /**
@@ -43,6 +63,7 @@ export function rowContext(host: BacklogViewHost, rows: Map<string, HTMLElement>
  * stylesheet loaded without a render, not a second opinion.
  */
 export const META_COL_WIDTH = 84;
+
 /**
  * Everything on a row that is not one of the columns, at its widest: the constant
  * is a sum of the bounds in styles.css rather than a guess, so it can be checked
@@ -83,18 +104,23 @@ const TREE_PADDING = 16;
  * {@link syncColumnFit} below. Exporting the calculation alone invites a second caller
  * that measures the same pane and then disagrees about what to hide.
  */
-function columnFit(
-	settings: BacklogSettings,
-	projection: Projection,
-	columnCount: number,
-	depth: number,
-	width: number,
-): ColumnFit {
-	const meta = (settings.stateKey || settings.showCounts) && hasRollup(projection) ? META_COL_WIDTH : 0;
+function columnFit(host: BacklogViewHost, columns: readonly Column[], depth: number, width: number): ColumnFit {
+	const settings = host.settings;
+	const meta = (settings.stateKey || settings.showCounts) && hasRollup(host.projection) ? META_COL_WIDTH : 0;
 	const lead = ROW_LEAD_WIDTH + TREE_PADDING + depth * INDENT_PER_DEPTH;
 	const room = width - lead - meta;
-	const fitting = Math.max(0, Math.floor(room / settings.propColumnWidth));
-	const shown = Math.min(columnCount, fitting);
+	// Summed rather than divided: each column carries its own width now, so how many fit
+	// depends on WHICH ones — a 280px first column and a 90px second are not two columns
+	// of the same size, and a division by any one of them answers for none of them. The
+	// loop stops at the first column that does not fit rather than skipping it, because
+	// they drop from the END of the user's order.
+	let used = 0;
+	let shown = 0;
+	for (const column of columns) {
+		used += columnWidth(host, column.prop);
+		if (used > room) break;
+		shown++;
+	}
 	// Nothing below this: what is left is the row's own lead, and the title truncates
 	// from there.
 	return { shown, rollupDropped: shown === 0 && width < lead + meta };
@@ -122,7 +148,7 @@ export function syncColumnFit(ctx: RowContext, viewEl: HTMLElement, treeEl: HTML
 	if (width === 0) return false;
 	// Indent is part of what a row needs, so expanding a deep branch can be what
 	// makes the columns stop fitting.
-	const fit = columnFit(ctx.host.settings, ctx.host.projection, ctx.host.columns.length, renderedDepth(ctx), width);
+	const fit = columnFit(ctx.host, ctx.host.columns, renderedDepth(ctx), width);
 	// Against what this pass actually DREW rather than against the stored number, so a
 	// render that drew a different count than the verdict claims still asks for the pass
 	// that reconciles them.
@@ -262,22 +288,43 @@ export function renderColumnHeader(ctx: RowContext, containerEl: HTMLElement): v
 		!ctx.host.columnFit?.rollupDropped;
 	// Nothing to head at all, which is not the same question as "no columns".
 	if (ctx.columns.length === 0 && !rollup) return;
-	// Presentational: every value below carries its own accessible label.
-	const header = containerEl.createDiv({ cls: 'pbl-cols', attr: { 'aria-hidden': 'true' } });
+	const header = containerEl.createDiv({ cls: 'pbl-cols' });
 	header.createDiv({ cls: 'pbl-row-spacer' });
 
 	const props = header.createDiv({ cls: 'pbl-props' });
-	for (const column of ctx.columns) {
-		const cell = props.createDiv({ cls: 'pbl-prop pbl-col-label', text: column.label });
-		setTooltip(cell, column.label);
+	// One style read for the whole strip, not one per grip — see `widenSign`.
+	const widen = widenSign(props);
+	for (const [index, column] of ctx.columns.entries()) {
+		const cell = props.createDiv({ cls: 'pbl-prop pbl-col-label' });
+		sizeCell(cell, index);
+		// The NAME is presentational — every value under it carries its own accessible
+		// label, which is why `renderCell` hands each chip the column's display name. The
+		// header itself no longer is: it carries the resize grips, and `aria-hidden`
+		// inherits, so hiding the whole strip would hide the only control that resizes a
+		// column from exactly the readers who cannot drag one.
+		const name = cell.createSpan({ cls: 'pbl-col-name', text: column.label, attr: { 'aria-hidden': 'true' } });
+		setTooltip(name, column.label);
+		renderColumnResize(ctx.host, cell, containerEl, { prop: column.prop, label: column.label, index, widen });
 	}
 	if (rollup) {
 		header.createDiv({
 			cls: 'pbl-meta-col pbl-col-label',
 			text: settings.stateKey ? 'Progress' : 'Items',
+			attr: { 'aria-hidden': 'true' },
 		});
 	}
 	renderAddSpacer(header);
+}
+
+/**
+ * Point one cell at its column's published width. `--pbl-prop-w` is what the stylesheet
+ * lays out with, and it resolves the indexed property the tree element carries — see
+ * {@link columnWidthVar} for why the cell holds a reference rather than a number. An
+ * index of -1 is a column no render published, and keeps the stylesheet's own default.
+ */
+function sizeCell(cell: HTMLElement, index: number): void {
+	if (index < 0) return;
+	cell.setCssProps({ '--pbl-prop-w': `var(${columnWidthVar(index)}, ${DEFAULT_PROP_COLUMN_WIDTH}px)` });
 }
 
 /**
@@ -343,6 +390,12 @@ export function renderPropCells(
 		// selector mean two boxes.
 		const cls = 'pbl-prop' + (column.kind === 'value' ? '' : ` pbl-prop-${column.kind}`);
 		const cell = props.createDiv({ cls });
+		// Which column this IS, not where it sits in the list this caller passed: a card
+		// narrows that list, and a cell reading its neighbour's width would be one more
+		// thing to keep in step. A column the caller made up rather than passed through
+		// gets no width, and the stylesheet's own default — which is all a card wants,
+		// since `.pbl-card .pbl-prop` sizes itself to its content either way.
+		sizeCell(cell, ctx.columns.indexOf(column));
 		const drew = renderCell(ctx.host, cell, item, column);
 		if (drew) anyDrawn = true;
 		else if (dropEmpty) cell.detach();
@@ -354,8 +407,9 @@ export function renderPropCells(
  * Which of the five renderings this column asked for.
  *
  * Every one of them is handed the COLUMN's own display name, because that is the only
- * thing on the row that says which property the cell is: the header
- * (`renderColumnHeader`) is `aria-hidden`, so a chip whose accessible name says only
+ * thing on the row that says which property the cell is: the header's column NAME is
+ * `aria-hidden` (`renderColumnHeader` — the strip itself is not, since it carries the
+ * resize grips), so a chip whose accessible name says only
  * "Change state" is unidentifiable — and two state columns are legal now, so two such
  * chips can be on screen at once naming different properties. The chips put the name in
  * the accessible name and keep the TOOLTIP a plain statement of what pressing does: a
@@ -481,27 +535,60 @@ function renderTagCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogIt
 	return item.tags.length > 0;
 }
 
+/** What an item's rollup says, in one place — see {@link rollupReport}. */
+export interface RollupReport {
+	/** Face text: "3/8" with a workflow, "8" without one, '' for a leaf. */
+	label: string;
+	/** Long form for a tooltip, or '' when there is no ratio to state. */
+	tooltip: string;
+	/** Done share 0..1, or null when no workflow makes one meaningful. */
+	ratio: number | null;
+}
+
+/**
+ * What an item's rollup SAYS — the guard, the ratio and both strings, in one place.
+ *
+ * Two renderers read this: the tree's rollup column below, and `renderBarProgress` for
+ * the roadmap's dated rows. They draw different DOM — a meta column, versus a band
+ * inside a bar and a count in a lead cell — but they must never disagree about the
+ * words or about when there is nothing to say, which is what
+ * `Progress on the bar` guarantees. Copies of a string are how that guarantee rots.
+ *
+ * Null means the rollup is OFF for this view — no workflow and no counts configured, or
+ * a projection with no rollup — and nothing is drawn. An empty `label` is the other
+ * emptiness: the rollup is on and this item is a leaf, which the tree still gives an
+ * empty `.pbl-meta-col` so its row stays aligned with the header and with its non-leaf
+ * siblings. An empty measure is not a zero, and it is not an absent column either.
+ */
+export function rollupReport(host: BacklogViewHost, item: BacklogItem): RollupReport | null {
+	const settings = host.settings;
+	if ((!settings.stateKey && !settings.showCounts) || !hasRollup(host.projection)) return null;
+	if (item.descendantCount === 0) return { label: '', tooltip: '', ratio: null };
+	if (!settings.stateKey) return { label: String(item.descendantCount), tooltip: '', ratio: null };
+	return {
+		label: `${item.doneDescendants}/${item.descendantCount}`,
+		tooltip: `${item.doneDescendants} of ${item.descendantCount} items done`,
+		ratio: item.doneDescendants / item.descendantCount,
+	};
+}
+
 /** Progress rollup or descendant count, in a column of its own so both align. */
 export function renderRollup(host: BacklogViewHost, row: HTMLElement, item: BacklogItem): void {
-	const settings = host.settings;
-	if ((!settings.stateKey && !settings.showCounts) || !hasRollup(host.projection)) return;
+	const report = rollupReport(host, item);
+	if (!report) return;
 	const col = row.createDiv({ cls: 'pbl-meta-col' });
-	if (item.descendantCount === 0) return;
+	if (!report.label) return;
 
-	if (settings.stateKey) {
-		const ratio = item.doneDescendants / item.descendantCount;
-		const progress = col.createDiv({ cls: 'pbl-progress' + (ratio === 1 ? ' pbl-complete' : '') });
+	if (report.ratio !== null) {
+		const progress = col.createDiv({ cls: 'pbl-progress' + (report.ratio === 1 ? ' pbl-complete' : '') });
 		const bar = progress.createDiv({ cls: 'pbl-progress-bar' });
 		bar.createDiv({ cls: 'pbl-progress-fill' }).setCssProps({
-			'--pbl-progress': `${Math.round(ratio * 100)}%`,
+			'--pbl-progress': `${Math.round(report.ratio * 100)}%`,
 		});
-		progress.createSpan({
-			cls: 'pbl-progress-label',
-			text: `${item.doneDescendants}/${item.descendantCount}`,
-		});
-		setTooltip(progress, `${item.doneDescendants} of ${item.descendantCount} items done`);
-	} else if (settings.showCounts) {
-		col.createSpan({ cls: 'pbl-count', text: String(item.descendantCount) });
+		progress.createSpan({ cls: 'pbl-progress-label', text: report.label });
+		setTooltip(progress, report.tooltip);
+	} else {
+		col.createSpan({ cls: 'pbl-count', text: report.label });
 	}
 }
 

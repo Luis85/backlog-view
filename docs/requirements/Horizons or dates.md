@@ -79,7 +79,7 @@ and the placeholders suggest the ecosystem's own names (the Tasks plugin's `star
   none is left — while the stored pick is retained, not rewritten: a persisted key is
   user data, and restoring the cleared property restores the saved choice with it.
 - **4a — an item is outside the Base's filter.** It never places as a result on either
-  axis: context rows render only in the context forms the epic names — a lane header, a
+  axis: context rows render only in the context forms the epic names — a
   breadcrumb, an inert context row — never counted, never written.
 
 ## Acceptance criteria

@@ -145,8 +145,12 @@ export const SETUP: ManualSection = {
 		},
 		{
 			term: 'Presentation',
-			text: 'The width of a property column, and whether descendant counts show.',
-			keys: ['propertyColumnWidth', 'showCounts'],
+			text:
+				'Whether descendant counts show. The WIDTH of a property column is not here: drag ' +
+				'the grip at its header (double click it to put it back), and the width is kept ' +
+				'per view on this device, like the projection and the focus level, rather than ' +
+				'in the base.',
+			keys: ['showCounts'],
 		},
 		{
 			term: 'The state property is a prerequisite',
@@ -160,7 +164,8 @@ export const SETUP: ManualSection = {
 				'The filter, the sort that orders unranked items, and which properties show as ' +
 				"columns are the Base's own settings, reached from the same toolbar — its " +
 				'properties menu is the only switch for what a row shows, and in what order. ' +
-				'This view decides their width, and drops leading columns when the row will ' +
+				'Their WIDTH is this view\'s, and the reader\'s: drag the grip on a column ' +
+				'header, or double click it to reset. Columns still drop when the row will ' +
 				'not fit.',
 		},
 		{

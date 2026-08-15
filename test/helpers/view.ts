@@ -45,8 +45,9 @@ export function useViewHarness(): void {
  * harness expands it through the real toolbar control. Pass `collapsed` to assert on
  * the opening state itself.
  *
- * `focus` and `folds` are options rather than config values because neither is one:
- * both are working position, set through the view and stored beside the collapse state.
+ * `focus`, `folds` and `widths` are options rather than config values because none of
+ * them is one: all three are working position, set through the view and stored in the
+ * view state.
  */
 export function makeView(
 	vault: FakeVault,
@@ -57,6 +58,7 @@ export function makeView(
 		viewName,
 		focus,
 		folds,
+		widths,
 		only,
 		order,
 	}: {
@@ -65,6 +67,8 @@ export function makeView(
 		viewName?: string;
 		focus?: string;
 		folds?: boolean;
+		/** Property-column widths in pixels, by Bases property id — one `setColWidth` each. */
+		widths?: Record<string, number>;
 		only?: string[];
 		order?: string[];
 	} = {},
@@ -91,6 +95,7 @@ export function makeView(
 	view.onDataUpdated();
 	if (focus) view.setFocusLevel(focus);
 	if (folds) view.setClickFolds(true);
+	for (const [prop, px] of Object.entries(widths ?? {})) view.setColWidth(prop, px);
 	if (!collapsed) clickExpandAll(containerEl);
 	return { view, config, containerEl };
 }

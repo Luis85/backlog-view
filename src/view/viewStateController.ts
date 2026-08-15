@@ -1,5 +1,5 @@
 import { ViewState } from './viewState';
-import { Projection } from './host';
+import { ColumnScope, Projection } from './host';
 import { RoadmapAxis } from '../domain/roadmap';
 import { ShelfSort } from '../domain/shelf';
 import { ScaleId, scaleFor } from '../domain/timeline';
@@ -31,8 +31,8 @@ export interface UiStateHooks {
 /**
  * The view-state-backed UI state `BacklogViewHost` exposes: the projection, the
  * retained roadmap-axis pick, the focus level, what a plain click on a row does, the
- * shelf's own collapse/sort/type filter, and the dated axis's zoom, density and lead
- * width. One shape repeated for
+ * shelf's own collapse/sort/type filter, the dated axis's zoom, density and lead width,
+ * and the tree's per-column widths. One shape repeated for
  * each — read the view state, write it back, ask for the render depth the change
  * needs — extracted for the reason `WriteGate` was: state (here, the view state
  * plus the render-depth choice) that only this cluster of methods touches, in the one
@@ -136,6 +136,21 @@ export class ViewStateController {
 		if (this.state.setLaneCollapsed(name, collapsed)) this.hooks.renderTreeContent();
 	}
 
+	columnCollapsed(scope: ColumnScope, value: string | null, autoCollapse: boolean): boolean {
+		return this.state.columnCollapsed(scope, value, autoCollapse);
+	}
+
+	/**
+	 * Content only, like the shelf's own disclosure beside it: a fold changes which cards
+	 * the projection draws and nothing about the toolbar. And like the shelf's, it does NOT
+	 * spare the control that asked — the header is rebuilt by this very call, so the caller
+	 * puts focus back itself.
+	 */
+	setColumnCollapsed(scope: ColumnScope, value: string | null, collapsed: boolean): void {
+		this.state.setColumnCollapsed(scope, value, collapsed);
+		this.hooks.renderTreeContent();
+	}
+
 	get zoom(): ScaleId {
 		return scaleFor(this.state.zoomPick()).id;
 	}
@@ -163,6 +178,22 @@ export class ViewStateController {
 	setLeadWidth(value: number | null): void {
 		if (value === this.leadWidth) return;
 		this.state.setLeadWidth(value);
+		this.hooks.render();
+	}
+
+	get colWidths(): Readonly<Record<string, number>> {
+		return this.state.columnWidths();
+	}
+
+	/**
+	 * A full render, not a content-only one: the column ladder re-measures against the
+	 * new widths, so a column that no longer fits has to drop — and the grip that asked
+	 * for this is in the header the render rebuilds (see `interactions/columnResize.ts`
+	 * for what that costs a keyboard user, and how it is paid).
+	 */
+	setColWidth(prop: string, value: number | null): void {
+		if ((this.colWidths[prop] ?? null) === value) return;
+		this.state.setColumnWidth(prop, value);
 		this.hooks.render();
 	}
 }

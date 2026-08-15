@@ -316,6 +316,20 @@ describe('the lead-column resize grip', () => {
 			expect(view.leadWidth).toBeNull();
 		});
 
+		it('resets on a double click, which is the only reset a pointer has', () => {
+			// `pointerdown` prevents default, so a mouse never focuses the strip and Home is
+			// a key the reader would first have to Tab to it to press. In
+			// `interactions/resizeDrag.ts`, so it holds for the tree's column grips too.
+			const { view, containerEl } = makeView(datedVault(), DATE_AXIS, { collapsed: true });
+			view.setProjection('roadmap');
+
+			grip(containerEl).dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+			expect(view.leadWidth).not.toBeNull();
+
+			grip(containerEl).dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+			expect(view.leadWidth).toBeNull();
+		});
+
 		it('clamps a step past either bound', () => {
 			const { view, containerEl } = makeView(datedVault(), DATE_AXIS, { collapsed: true });
 			view.setProjection('roadmap');

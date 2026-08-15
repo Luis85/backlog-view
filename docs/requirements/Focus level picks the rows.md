@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[Hierarchy on the roadmap]]"
 order: 20
-status: Open
+status: Done
 priority: P2
 created: 2026-08-01
 files:
@@ -86,8 +86,9 @@ rung becomes rows, with everything beneath surviving in rollups and inferred spa
 - Changing focus writes nothing to any note — the choice itself persists as the view
   option it already is — and bucket and shelf counts narrow with the rows.
 - While the quick filter is active, a focused row kept only by a descendant's match
-  names those matching descendants, each opening its note — the board's rule,
-  unchanged on the roadmap.
+  reaches those matching descendants: a card names each one, opening its note; a
+  lead-cell row states how many and opens its menu onto them, since naming them there
+  costs the row its own title.
 - The same toolbar control drives all three projections and persists as it does today.
 
 ## Where it lives
@@ -98,6 +99,42 @@ when focused, every result otherwise — and a focused context item places only 
 bucket that already exists, or stands beside the shelf apart from its count, never on
 the timeline by its own dates (driven in `test/domain/roadmap.test.ts` and
 `test/view/roadmapFrame.test.ts`). Which types rank beside a level is
-`src/domain/itemTypes.ts`, already shared. The inferred spans, the fills counting
-below-focus results, and the quick filter's descendant naming remain this note's work,
-which is why it stays open.
+`src/domain/itemTypes.ts`, already shared.
+
+The quick filter's descendant naming is `nameMatches` in `src/view/render/roadmap.ts`,
+over `RowContext.placed` in `src/view/render/columns.ts` — a register each surface fills
+as it draws, holding where an item's match links go and whether that surface lists its
+children. It is read rather than predicted because the roadmap's model is not what it
+draws: `RoadmapModel.shelf` holds every shelved item whether `host.shelfCollapsed` shows
+them or not, and `organizeShelf` drops whole groups from an expanded shelf through
+`host.shelfHiddenTypes`. Neither is overridden by an active filter; a lane fold is. The
+walk itself is `hiddenMatches` in `src/domain/board.ts`, unchanged, through
+`undisclosedMatches` in `src/view/childrenList.ts` — which now takes the already-listed
+set from its caller, since a timeline row draws no disclosure and subtracting one would
+delete a direct-child match. A CARD names each match as a link; a ROW — the timeline's
+and the lane's — puts a count in the slot its ROLLUP occupies, opening its own menu, and
+gives the rollup back the moment the filter clears. That menu is the chip's ONLY route to
+what it counted, so `showItemMenu` in `src/view/interactions/menu.ts` opens it through
+`showMenuForClick` rather than `showAtMouseEvent`: the chip is a button, Enter or Space on
+it synthesizes a click at (0, 0), and a menu anchored there lands in the viewport corner.
+Found by review 2026-08-15 — the chip was the first BUTTON caller that function ever had,
+every other one being a `contextmenu` from a real pointer, so the rule the repository
+already keeps for every other menu had never been asked of it. A substitution rather than an
+addition, because a sticky lead column's only shrinkable item is the row's title, so
+anything added to it is taken from the row's own name. Measured in the browser harness,
+twice, not preferred.
+A MARKER row announces the rollup and not the count: `renderRowFacts` gives that row an
+explicit `aria-label` which REPLACES its content, and that label folds in the progress
+report but not the chip's own words — accepted, because the matches stay reachable
+through the row menu and `src/view/render/timeline.ts` is at its line budget.
+Driven in `test/view/roadmapMatches.test.ts`.
+
+The inferred span case is covered too: `item.descendantStart`/`descendantTarget` are
+assigned once, over the WHOLE unfocused tree ([[The model build states its cost as a
+check]]'s `assignAll`), before focus ever re-roots anything — so a focused row's inferred
+span already carries evidence from a dated descendant below the focus level, exactly as
+it would from any other descendant. `deriveBars` never asks which level a row was drawn
+at; it only ever asks `placeItem`, which reads those two fields. Driven by the
+"below-focus" case in `test/domain/roadmap.test.ts`: with focus on Feature, a PBI one
+rung below it — Feature's own direct child, never a row of its own once focused — still
+supplies the Feature's inferred span, with both ends marked inferred.

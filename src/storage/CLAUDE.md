@@ -243,13 +243,23 @@ whole thing from the file resolved correctly while silently dropping both.
 - **Not everything a view remembers is keyed by a path, and the entry says which is
   which.** The stored entry is `{ folds, prefs }`: `folds` is everything keyed by
   something the vault can lose, and it is what the prune and the rename walk. The shelf's
-  hidden types and the resources axis's folded bands are per-view lists of NAMES — a type,
-  a resource — while the rules below are all about paths: the flush drops an entry the
-  vault has no file for, and the rename migrations move entries when a note or a base
-  moves. So `shelfHiddenTypes` is a `prefs` value, which neither ever touches; a BAND is a
-  fold and sits in `folds.lanes`, which the prune must therefore skip — it walks
-  `collapsed` and `expanded` only. They need no migration either: nothing renames a type
-  or a resource, and a name no row draws simply has no band to shut.
+  hidden types, the tree's column widths, the resources axis's folded bands and the folded
+  board columns and horizon buckets are per-view lists or maps keyed by NAMES — a type, a
+  Bases property id, a resource, a state value — while the rules below are all about paths:
+  the flush drops an entry the vault has no file for, and the rename migrations move
+  entries when a note or a base moves. So `shelfHiddenTypes` and `colWidths` are `prefs`
+  values, which neither ever touches; a BAND and a COLUMN are folds and sit in
+  `folds.lanes` and `folds.collapsedColumns`/`folds.expandedColumns`, which the prune must
+  therefore skip — it walks `collapsed` and `expanded` only. They need no migration either:
+  nothing renames a type or a resource, and a name no row draws simply has no band to shut.
+  The columns are the one of these stored as a PAIR, and the reason is a default rather
+  than a shape: a band nobody has ruled on is open and needs no entry, while a done board
+  column nobody has ruled on is SHUT — so an explicit open has to be recorded or the
+  default would take it back on the next render. That is the same two-set argument
+  `collapsed`/`expanded` make for rows, reached for the second time and for the same
+  reason. Their key is scoped and lower-cased (`columnKey` in `view/viewState.ts`),
+  because two boards and the horizon axis can each hold a `Done` and each identifies its
+  own columns case-insensitively.
 - Persisted state changes what pruning may key on. `collapseNewParents` must NOT drop
   paths that are missing from the model — a query that has not warmed up yet, or a
   filter the user just narrowed, would read as "these notes are gone" and throw away a
@@ -275,7 +285,18 @@ whole thing from the file resolved correctly while silently dropping both.
   finite and inside `MIN_TIMELINE_LEAD_PX..MAX_TIMELINE_LEAD_PX` and drops anything else
   rather than clamping it, since a clamp still trusts a corrupt-but-plausible number into
   the layout. A range check is the same rule as a vocabulary check, not an exception to
-  it. `focus` is checked for SHAPE only, not against the vocabulary: the
+  it. `colWidths` — the tree's property columns, one width each — is that same range check
+  per ENTRY (`eachInRange`, which is `inRange` run over a map), and the granularity is the
+  whole point: a bad number is one column back at the default, never every column reset,
+  and a `colWidths` that is not an object at all is no widths. Every other reader refuses
+  its value whole, which is right for one pick and wrong for a collection of independent
+  ones. Its keys are property ids rather than paths, so it is a `prefs` value for the
+  reason the shelf's hidden types are, and nothing prunes it: a property hidden for an
+  afternoon comes back the width its reader left it. The map it builds sits on a NULL
+  prototype, here and in the live copy alike, so a column a Base calls `constructor` or
+  `__proto__` is a plain width rather than something inherited off `Object` — or, on an
+  object literal, a rewritten prototype. `focus` is checked for SHAPE only, not against
+  the vocabulary: the
   type list lives in `domain/typeVocabulary.ts` and `focusTarget` already answers a name no
   configured type matches with "no focus" — the same tolerance it had while this value
   lived in the `.base`.

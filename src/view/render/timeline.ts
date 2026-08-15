@@ -1,8 +1,10 @@
 import { setTooltip } from 'obsidian';
 import { drawIcon } from './icons';
 import { renderBarLabel } from './barLabel';
-import { RowContext } from './columns';
+import { bandMount, progressNote, renderBarProgress } from './barProgress';
+import { rollupReport, RowContext } from './columns';
 import {
+	drawnCards,
 	drawnSpans,
 	edgeClasses,
 	noteAbsenceClash,
@@ -311,7 +313,7 @@ export function renderTimeline(
 	// never can.
 	const overlay = rows ? null : content.createDiv({ cls: 'pbl-timeline-drop', attr: { 'aria-hidden': 'true' } });
 	return {
-		cards: bars.map((bar) => bar.item),
+		cards: drawnCards(entries),
 		todayLeft,
 		scroller: grid,
 		content,
@@ -531,6 +533,10 @@ function renderBarRow(
 	const title = lead.createDiv({ cls: 'pbl-card-title' });
 	renderTitleText(ctx.host, title, bar.item.title);
 	setTooltip(lead, bar.item.title);
+	// The lead is where this row's match affordance goes — the one text region it has, and
+	// a fixed-width COUNT there rather than titles (`face`). It lists no children on its
+	// face either, since the chevron folds ROWS, so `listsChildren` is false.
+	ctx.placed.set(bar.item.file.path, { item: bar.item, mount: lead, listsChildren: false, face: 'count' });
 
 	const track = row.createDiv({ cls: 'pbl-timeline-track' });
 	mounts.tracks.set(bar.item.file.path, track);
@@ -545,9 +551,10 @@ function renderBarRow(
 	// and by Alt+Up/Down, which name a value rather than displacing one.
 	const holdable = holds.includes('body');
 	const el = track.createDiv({ cls: barClasses(bar, geometry, holdable) });
+	const drawnWidthPx = Math.max(geometry.spanDays * scale.dayPx, MIN_BAR_PX);
 	el.setCssProps({
 		'--pbl-bar-left': `${geometry.startDay * scale.dayPx}px`,
-		'--pbl-bar-width': `${Math.max(geometry.spanDays * scale.dayPx, MIN_BAR_PX)}px`,
+		'--pbl-bar-width': `${drawnWidthPx}px`,
 	});
 	const dates = spanText(bar);
 	el.setAttribute('aria-label', dates);
@@ -586,6 +593,7 @@ function renderBarRow(
 	}
 	renderConnector(ctx, mounts, { row, barEl: el, geometry }, bar);
 	renderBarLabel(track, bar, geometry, scale, window);
+	renderBarProgress(ctx.host, { row, bar: bandMount(el, drawnWidthPx, geometry), lead }, bar.item);
 	renderRowFacts(row, ctx, bar, { dates, own, conflictedPrereqs: mounts.conflictedPrereqs, lead });
 	// The one caller that passes a fold: this row has a chevron, so "clicking an item
 	// expands or collapses it" means here exactly what it means in the tree. Its two
@@ -672,9 +680,15 @@ function renderRowFacts(
 		setTooltip(lead, `${bar.item.title} — ${waits}`);
 	}
 	if (isMarkerType(bar.item.typeName)) {
+		// The label REPLACES this row's content, and the progress span `renderBarProgress`
+		// just put there is part of it — so a marker with descendants says its rollup here
+		// or says it to nobody. A marker is a point by the ladder and not by enforcement:
+		// `childTypeChoices` offers it no children and refuses no deliberate move, while
+		// `assignAll` counts by structure. Same words as the span, from the same report.
+		const progress = progressNote(rollupReport(ctx.host, bar.item));
 		row.setAttribute(
 			'aria-label',
-			`${bar.item.title} — ${dates}${state ? ` — ${state}` : ''}${waits ? ` — ${waits}` : ''}`,
+			`${bar.item.title} — ${dates}${state ? ` — ${state}` : ''}${waits ? ` — ${waits}` : ''}${progress ? ` — ${progress}` : ''}`,
 		);
 	}
 }

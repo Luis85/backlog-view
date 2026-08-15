@@ -56,7 +56,7 @@ are its contents.
   get to. Whether the card ITSELF matched changes nothing: a match below a matching
   card is a second, distinct result, and one card cannot stand for two. A match that
   has a card of its own is left to that card, so no match is named twice.
-- **2b — a collapsed column or lane holds a match.** Collapse is ignored while filtering,
+- **2b — a collapsed column holds a match.** Collapse is ignored while filtering,
   exactly as the tree ignores it: the header opens for the filter's duration and returns
   to its saved state after. A match locked behind a closed header is a match lost.
 - **3a — a column is over its WIP limit.** The signal keeps reading the full population,
@@ -82,7 +82,7 @@ are its contents.
   active. The WIP signal keeps reading the full population — a filter must never make
   an over-limit column look under its limit.
 - Collapse is ignored while filtering, exactly as the tree ignores it: a collapsed
-  column or lane holding a match opens for the filter's duration and returns to its
+  column holding a match opens for the filter's duration and returns to its
   saved state after — a match locked behind a closed header is a match lost.
 - Dragging stays enabled while filtering. A state write does not depend on visual
   neighbours — which is exactly why the tree must disable dragging under the filter

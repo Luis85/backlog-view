@@ -1,5 +1,6 @@
 import { setTooltip } from 'obsidian';
 import { BacklogViewHost } from '../host';
+import { wireResizeGrip } from './resizeDrag';
 import { MAX_TIMELINE_LEAD_PX, MIN_TIMELINE_LEAD_PX } from '../../storage/viewStateStore';
 
 /**
@@ -11,18 +12,12 @@ import { MAX_TIMELINE_LEAD_PX, MIN_TIMELINE_LEAD_PX } from '../../storage/viewSt
  *
  * Not `CardDragController`: that controller's whole shape is a `BacklogItem` picked
  * up and dropped somewhere (`cardDrag.ts`'s own preamble), and a column boundary is
- * neither a card nor a drop target. Pointer events (not `mousedown`/`mousemove`/
- * `mouseup`) keep the same delta-then-clamp shape `timelineDrag.ts`'s holds already
- * use, without forcing a fake item through machinery built for one — and this plugin
- * is not desktop-only (`manifest.json`), so a mouse-only grip cannot be resized on a
- * touch device at all. `setPointerCapture` on the grip itself is what lets the stream
- * survive the pointer leaving a 6px strip: capture re-targets every later event at the
- * capturing element regardless of where the pointer physically is, which is also why
- * the move/up handlers live on the GRIP rather than `window` now — capture makes the
- * window-level net this used to need redundant. jsdom implements the `PointerEvent`
- * constructor but not capture itself, so `setPointerCapture`/`releasePointerCapture`
- * are called through an optional chain: real browsers use them, tests dispatch
- * directly on the grip and never need them to do anything.
+ * neither a card nor a drop target. The gesture itself is `wireResizeGrip`
+ * (`interactions/resizeDrag.ts`) — the delta-then-clamp shape `timelineDrag.ts`'s holds
+ * already use, without forcing a fake item through machinery built for one — and it is
+ * shared with the tree's property-column grip (`interactions/columnResize.ts`), which
+ * arrived as a copy of it. What stays here is what this boundary MEANS: the pane's own
+ * clamp, and what a commit does to the store.
  *
  * `tabindex="0"` — a REAL tab stop — where every other control inside this
  * one-tab-stop pane (`src/view/CLAUDE.md`'s Controls section) is `tabindex="-1"`
@@ -68,7 +63,7 @@ export function renderLeadResize(
 			tabindex: '0',
 		},
 	});
-	setTooltip(grip, 'Drag to resize, or focus and use the arrow keys (Home resets it)');
+	setTooltip(grip, 'Drag to resize, or double click to reset. Focus it for the arrow keys and Home');
 
 	// Live feedback is the CSS custom property alone — nothing re-renders mid-gesture,
 	// and that splits the frame in two while the gesture lasts. Everything laid out AFTER
@@ -82,28 +77,17 @@ export function renderLeadResize(
 	// today's mark is off by the gesture's delta. Taken because `commit` below re-renders
 	// at the settled width and it is gone the instant the pointer releases; redoing that
 	// arithmetic on every `pointermove` is the upgrade path.
+	// Announcing the width is `wireResizeGrip`'s, not this function's — see its own note.
 	const live = (width: number): void => {
 		content.setCssProps({ '--pbl-tl-lead': `${width}px` });
-		grip.setAttribute('aria-valuenow', String(width));
 	};
 
 	// Persisted once, here — never from `live` — so a drag's `mousemove` stream and a
 	// held arrow key both cost one write to the collapse store, not one per pixel or
 	// per repeat event. `defaultWidth` back to `null` is `density`'s own rule: the
 	// default needs no stored entry, so dragging back to it clears the pick rather than
-	// writing the number that means the same thing.
-	// Commit only a width that DIFFERS from the one on screen. Asked here, once, rather
-	// than by each gesture in its own way — three separate versions of this question have
-	// now been wrong. It is not "did the pointer move": at a pane boundary a real drag
-	// (or ArrowRight at the ceiling) produces a delta whose clamped target is the width
-	// already drawn, and committing that writes the CLAMP back over a wider stored pick,
-	// losing a choice made in a wider pane for good. What matters is only what would
-	// change. Home stays an explicit reset and does not come through here.
-	const commitIfChanged = (width: number): void => {
-		if (width === current) return;
-		commit(width);
-	};
-
+	// writing the number that means the same thing. A width equal to the one on screen
+	// never reaches here at all — `wireResizeGrip` refuses it against `startWidth` below.
 	const commit = (width: number): void => {
 		// Asked BEFORE the write below, which destroys this element and with it the
 		// answer: focus is restored only to a grip that actually held it. A pointer
@@ -114,7 +98,9 @@ export function renderLeadResize(
 		// bails on any event whose target is not the pane itself — the guard checked
 		// at the grip in the "leaves the pane its own keys" test). "A pointer resize
 		// takes no focus" in the same suite is what holds this half.
-		const held = document.activeElement === grip;
+		// The grip's OWN document — see `interactions/columnResize.ts`'s own note: in a
+		// pop-out window the global one belongs to the main window and this is never true.
+		const held = grip.ownerDocument.activeElement === grip;
 		host.setLeadWidth(width === defaultWidth ? null : width);
 		// The write above re-renders the whole projection, destroying THIS element —
 		// the shelf header's own controls hit the identical wall (`shelfControls.ts`'s
@@ -124,78 +110,21 @@ export function renderLeadResize(
 		if (held) host.roadmap?.scroller?.querySelector<HTMLElement>('.pbl-timeline-lead-grip')?.focus();
 	};
 
-	// The pointer that owns the gesture in flight, or null between gestures. A column
-	// boundary is dragged by ONE contact: a second finger landing on the grip mid-drag
-	// used to install a second set of handlers with its own `startX`, after which every
-	// move fed both and either finger lifting committed — so the width saved could be
-	// the one the other contact was aiming at. It is refused rather than tracked,
-	// because there is no second thing here to drag.
-	let activePointer: number | null = null;
-
-	grip.addEventListener('pointerdown', (evt) => {
-		if (evt.button !== 0 || activePointer !== null) return;
-		activePointer = evt.pointerId;
-		// Not text selection: a resize drag has to feel like one, not a text drag.
-		evt.preventDefault();
-		grip.setPointerCapture?.(evt.pointerId);
-		const startX = evt.clientX;
+	wireResizeGrip(grip, {
 		// The gesture's baseline is where the grip VISUALLY is — `current`, the effective
-		// width this render drew — never `host.leadWidth` directly: on a pane too narrow
-		// for the stored pick those two disagree, and starting from the stored one would
-		// jump the column the instant the pointer moved a single pixel.
-		const startWidth = current;
-		// Every callback below answers only to the contact that started the gesture —
-		// capture re-targets that pointer's events here, it does not stop another
-		// pointer's from arriving.
-		const mine = (e: PointerEvent): boolean => e.pointerId === activePointer;
-		const onMove = (moveEvt: PointerEvent): void => {
-			if (mine(moveEvt)) live(effectiveLeadWidth(startWidth + (moveEvt.clientX - startX), available));
-		};
-		const end = (evt: PointerEvent): void => {
-			grip.removeEventListener('pointermove', onMove);
-			grip.removeEventListener('pointerup', onUp);
-			grip.removeEventListener('pointercancel', onCancel);
-			grip.releasePointerCapture?.(evt.pointerId);
-			activePointer = null;
-		};
-		const onUp = (upEvt: PointerEvent): void => {
-			if (!mine(upEvt)) return;
-			end(upEvt);
-			commitIfChanged(effectiveLeadWidth(startWidth + (upEvt.clientX - startX), available));
-		};
-		// A cancel is the platform saying the gesture stopped being the user's — palm
-		// rejection, an orientation change, another gesture taking it over. The width it
-		// happened to reach is one nobody chose, so it is put BACK rather than saved:
-		// `live` alone, never `commit`, which also leaves the store with no entry to
-		// take away later. `touch-action: none` does not make this rare — that stops the
-		// scroller stealing the pan, not the platform interrupting.
-		const onCancel = (cancelEvt: PointerEvent): void => {
-			if (!mine(cancelEvt)) return;
-			end(cancelEvt);
-			live(startWidth);
-		};
-		// On the grip itself, riding pointer capture — not `window`: capture keeps the
-		// stream targeted here even once the pointer leaves the 6px strip, so there is
-		// nothing left for a window-level net to catch.
-		grip.addEventListener('pointermove', onMove);
-		grip.addEventListener('pointerup', onUp);
-		grip.addEventListener('pointercancel', onCancel);
-	});
-
-	grip.addEventListener('keydown', (evt) => {
-		if (evt.key === 'ArrowLeft' || evt.key === 'ArrowRight') {
-			evt.preventDefault();
-			const step = evt.key === 'ArrowRight' ? KEY_STEP_PX : -KEY_STEP_PX;
-			commitIfChanged(effectiveLeadWidth(current + step, available));
-		} else if (evt.key === 'Home') {
-			evt.preventDefault();
-			commit(defaultWidth);
-		}
+		// width this render drew — never `host.leadWidth` directly: on a pane too narrow for
+		// the stored pick those two disagree, and starting from the stored one would jump
+		// the column the instant the pointer moved a single pixel.
+		widthAt: (deltaX) => effectiveLeadWidth(current + deltaX, available),
+		// Also the width the gesture will not commit back — at a pane boundary a drag or an
+		// arrow key clamps straight onto it, and writing that clamp back over a wider stored
+		// pick loses a choice made in a wider pane for good.
+		startWidth: current,
+		live,
+		commit,
+		reset: () => commit(defaultWidth),
 	});
 }
-
-/** How far one arrow-key press moves the column, in pixels. */
-const KEY_STEP_PX = 10;
 
 /**
  * Room reserved for the day track when the pane is too narrow to also hold the

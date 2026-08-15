@@ -24,7 +24,7 @@ const STORE_KEY = 'product-backlog:view-state';
 const LEGACY_KEY = 'product-backlog:collapse';
 
 /**
- * Backstop on how many fold keys a single view may remember, across all three lists.
+ * Backstop on how many fold keys a single view may remember, across every one of its lists.
  * A real backlog is a few hundred rows, so this is far above normal use and exists only
  * so a pathological vault cannot grow the entry without bound. Collapsed keys are kept
  * first: an expanded entry only suppresses the default, while a collapsed one is visible
@@ -98,8 +98,18 @@ const SHELF_SORT_VALUES = ['tree', 'title', 'modified'];
  */
 export const MIN_TIMELINE_LEAD_PX = 160;
 export const MAX_TIMELINE_LEAD_PX = 480;
+/**
+ * The tree's property columns are fixed-width so values line up across rows; this is the
+ * width one draws at until its reader resizes it, and the bounds a stored pick is read
+ * back against. Here rather than in `domain/settings.ts`, where they lived while the
+ * width was a view option: the bounds on a stored pick belong beside the field that
+ * stores it, exactly as the lead column's do above.
+ */
+export const DEFAULT_PROP_COLUMN_WIDTH = 132;
+export const MIN_PROP_COLUMN_WIDTH = 80;
+export const MAX_PROP_COLUMN_WIDTH = 280;
 
-/** Everything keyed by something the vault can lose: note paths, and a lane's own name. */
+/** Everything the reader has folded shut — rows by path, and bands and columns by name. */
 export interface ViewFolds {
 	collapsed: string[];
 	expanded: string[];
@@ -108,9 +118,22 @@ export interface ViewFolds {
 	 * is why the prune walks the two lists above and never this one.
 	 */
 	lanes: string[];
+	/**
+	 * Board columns and horizon buckets folded shut, by KEY — a scope and the column's own
+	 * value, minted by `columnKey` in `view/viewState.ts`. Not a path either, so the prune
+	 * skips it the way it skips the lanes.
+	 */
+	collapsedColumns: string[];
+	/**
+	 * Columns explicitly opened; settled is this and {@link ViewFolds.collapsedColumns}
+	 * together. A pair rather than one list, because unlike a band a column HAS a default
+	 * worth suppressing — a done column of finished work starts shut — so the two together
+	 * say what has been ruled on, exactly as `collapsed`/`expanded` do for rows.
+	 */
+	expandedColumns: string[];
 }
 
-/** Everything else: one value each, never pruned, never renamed. */
+/** Everything else: keyed by nothing the vault owns, so never pruned and never renamed. */
 export interface ViewPrefs {
 	mode?: string;
 	axis?: string;
@@ -122,6 +145,17 @@ export interface ViewPrefs {
 	shelfExpanded?: boolean;
 	shelfSort?: string;
 	shelfHiddenTypes?: string[];
+	/**
+	 * The tree's resized property columns, in pixels, keyed by the Bases property id the
+	 * column draws. A key is present only once its column has been dragged away from
+	 * {@link DEFAULT_PROP_COLUMN_WIDTH}; absent or empty means every column is at it.
+	 *
+	 * A pref rather than a fold, by the rule this whole shape states: a key here is a
+	 * property id, never a note path, so neither the prune nor the rename may reach it —
+	 * a column whose property leaves the Base keeps its entry, and a property hidden for
+	 * an afternoon comes back the width its reader left it.
+	 */
+	colWidths?: Record<string, number>;
 }
 
 export interface ViewStateSnapshot {
@@ -184,6 +218,33 @@ function nonEmptyTexts(value: unknown): string[] | undefined {
 }
 
 /**
+ * {@link inRange} applied per ENTRY of a map, and that granularity is the whole of what
+ * makes it its own reader: a bad entry is dropped ALONE rather than taking the map with
+ * it, because one hand-edited number should not reset every other column. Every other
+ * reader here refuses the value whole, which is right for a single pick and wrong for a
+ * collection of independent ones.
+ *
+ * `Object.create(null)`, like the settings' own name tables: a stored key spelled
+ * `constructor` or `__proto__` must be a plain entry rather than a collision with
+ * something inherited off `Object` — and `__proto__` on an object literal would rewrite
+ * the prototype instead of storing a width.
+ */
+function eachInRange(min: number, max: number): Reader<Record<string, number>> {
+	const width = inRange(min, max);
+	return (value) => {
+		if (value === null || typeof value !== 'object' || Array.isArray(value)) return undefined;
+		const widths: Record<string, number> = Object.create(null) as Record<string, number>;
+		let any = false;
+		for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+			if (key.length === 0 || width(entry) === undefined) continue;
+			widths[key] = entry as number;
+			any = true;
+		}
+		return any ? widths : undefined;
+	};
+}
+
+/**
  * The one statement of what a stored preference may be. It is run on the way IN, over an
  * entry another version of this plugin may have written, and on the way OUT, over the
  * snapshot the view hands down — so a value the store would refuse to read can never be
@@ -205,6 +266,7 @@ export const PREF_READERS: { [K in keyof ViewPrefs]-?: Reader<NonNullable<ViewPr
 	shelfExpanded: onlyTrue,
 	shelfSort: oneOf(SHELF_SORT_VALUES),
 	shelfHiddenTypes: nonEmptyTexts,
+	colWidths: eachInRange(MIN_PROP_COLUMN_WIDTH, MAX_PROP_COLUMN_WIDTH),
 };
 
 /** A record, or an empty one for anything that is not a plain object. */
@@ -228,13 +290,26 @@ function readPrefs(source: unknown): ViewPrefs {
 	return prefs;
 }
 
-/** The same, for the folds — one {@link MAX_FOLDS} budget spent across the three lists. */
+/**
+ * The same, for the folds — one {@link MAX_FOLDS} budget spent across the lists, in the
+ * order they are read here. That order is the rule: what is left when the budget runs out
+ * is dropped, so the collapsed rows are taken first.
+ */
 function readFolds(source: unknown): ViewFolds {
 	const record = objectOf(source);
-	const collapsed = texts(record.collapsed).slice(0, MAX_FOLDS);
-	const expanded = texts(record.expanded).slice(0, MAX_FOLDS - collapsed.length);
-	const lanes = texts(record.lanes).slice(0, MAX_FOLDS - collapsed.length - expanded.length);
-	return { collapsed, expanded, lanes };
+	let budget = MAX_FOLDS;
+	const take = (value: unknown): string[] => {
+		const list = texts(value).slice(0, budget);
+		budget -= list.length;
+		return list;
+	};
+	return {
+		collapsed: take(record.collapsed),
+		expanded: take(record.expanded),
+		lanes: take(record.lanes),
+		collapsedColumns: take(record.collapsedColumns),
+		expandedColumns: take(record.expandedColumns),
+	};
 }
 
 /**
@@ -242,8 +317,12 @@ function readFolds(source: unknown): ViewFolds {
  * one function, so a shape one writes and the other refuses cannot arise.
  */
 function hasContent(entry: StoredEntry): boolean {
-	const { collapsed, expanded, lanes } = entry.folds;
-	return collapsed.length + expanded.length + lanes.length > 0 || Object.keys(entry.prefs).length > 0;
+	const { collapsed, expanded, lanes, collapsedColumns, expandedColumns } = entry.folds;
+	const folded = [collapsed, expanded, lanes, collapsedColumns, expandedColumns].reduce(
+		(total, list) => total + list.length,
+		0,
+	);
+	return folded > 0 || Object.keys(entry.prefs).length > 0;
 }
 
 export function loadViewState(app: App, id: ViewIdentity): ViewStateSnapshot {

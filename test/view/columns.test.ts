@@ -57,7 +57,11 @@ describe('property columns', () => {
 		view.onDataUpdated();
 
 		const header = treeOf(containerEl).querySelector('.pbl-cols');
-		expect(header?.getAttribute('aria-hidden')).toBe('true');
+		// The strip is not hidden — it carries the resize grips — but every label in it is:
+		// each cell's value already names its own property, and the header repeating that
+		// name is what a screen reader does not need twice.
+		expect(header?.getAttribute('aria-hidden')).toBeNull();
+		expect(header?.querySelector('.pbl-col-name')?.getAttribute('aria-hidden')).toBe('true');
 		expect(Array.from(header?.querySelectorAll('.pbl-col-label') ?? []).map((el) => el.textContent)).toEqual([
 			'points',
 			'status',
@@ -65,13 +69,13 @@ describe('property columns', () => {
 		]);
 		// Same column widths as the rows, so the labels sit above their values
 		expect(header?.querySelector('.pbl-props')?.childElementCount).toBe(2);
-		expect(treeOf(containerEl).style.getPropertyValue('--pbl-prop-count')).toBe('2');
-		expect(treeOf(containerEl).style.getPropertyValue('--pbl-prop-col')).toBe('132px');
+		expect(treeOf(containerEl).style.getPropertyValue('--pbl-prop-w-0')).toBe('132px');
+		expect(treeOf(containerEl).style.getPropertyValue('--pbl-prop-w-1')).toBe('132px');
 	});
 
 	it('drops columns from the end of the order, keeping the rollup to the last', () => {
 		const vault = fixture();
-		const { containerEl, config, view } = makeView(vault, { propertyColumnWidth: 280 });
+		const { containerEl, config, view } = makeView(vault, {}, { widths: { 'note.points': 280, 'note.owner': 280 } });
 		config.order = ['note.points', 'note.owner'];
 		const tree = treeOf(containerEl);
 		const viewEl = containerEl.querySelector('.pbl-view');
@@ -114,7 +118,7 @@ describe('property columns', () => {
 		// With no state property and no counts there is no `.pbl-meta-col` at all, so a
 		// pane that holds one 280px column beside a rollup holds two without it.
 		const vault = fixture();
-		const { containerEl, config, view } = makeView(vault, { propertyColumnWidth: 280, showCounts: false });
+		const { containerEl, config, view } = makeView(vault, { showCounts: false }, { widths: { 'note.points': 280, 'note.owner': 280 } });
 		config.order = ['note.points', 'note.owner'];
 		const tree = treeOf(containerEl);
 		Object.defineProperty(tree, 'clientWidth', { value: 950, configurable: true });
@@ -136,8 +140,8 @@ describe('property columns', () => {
 		const vault = fixture();
 		const { containerEl, view } = makeView(
 			vault,
-			{ propertyColumnWidth: 200, stateProperty: 'note.status' },
-			{ order: ['note.points'] },
+			{ stateProperty: 'note.status' },
+			{ order: ['note.points'], widths: { 'note.points': 200 } },
 		);
 		view.setProjection('catalog');
 		const tree = treeOf(containerEl);
@@ -167,10 +171,11 @@ describe('property columns', () => {
 				},
 			},
 		});
-		const { containerEl, config, view } = makeView(vault, {
-			propertyColumnWidth: 280,
-			stateProperty: 'note.status',
-		});
+		const { containerEl, config, view } = makeView(
+			vault,
+			{ stateProperty: 'note.status' },
+			{ widths: { 'note.points': 280, 'note.done': 280, 'note.status': 280 } },
+		);
 		config.order = ['note.points', 'note.done', 'note.status'];
 		const tree = treeOf(containerEl);
 		Object.defineProperty(tree, 'clientWidth', { value: 900, configurable: true });
@@ -184,7 +189,7 @@ describe('property columns', () => {
 
 	it('draws no header bar at a width where the columns and the rollup have both gone', () => {
 		const vault = fixture();
-		const { containerEl, config, view } = makeView(vault, { propertyColumnWidth: 280 });
+		const { containerEl, config, view } = makeView(vault, {}, { widths: { 'note.points': 280, 'note.owner': 280 } });
 		config.order = ['note.points', 'note.owner'];
 		const tree = treeOf(containerEl);
 		const paneWidth = (px: number) => {
@@ -236,11 +241,11 @@ describe('property columns', () => {
 			'note.points': { toString: () => '5' },
 			'note.owner': { toString: () => 'Sam' },
 		});
-		const { containerEl, config, view } = makeView(vault, {
-			propertyColumnWidth: 280,
-			stateProperty: 'note.status',
-			stateValues: 'New, Active, Done',
-		});
+		const { containerEl, config, view } = makeView(
+			vault,
+			{ stateProperty: 'note.status', stateValues: 'New, Active, Done' },
+			{ widths: { 'note.points': 280, 'note.owner': 280 } },
+		);
 		config.order = ['note.points', 'note.owner'];
 		const tree = treeOf(containerEl);
 		const viewEl = containerEl.querySelector('.pbl-view');
@@ -349,7 +354,7 @@ describe('property columns', () => {
 
 	it('does not buy a second render pass on a pane whose verdict has not moved', () => {
 		const vault = fixture();
-		const { containerEl, config, view } = makeView(vault, { propertyColumnWidth: 280 });
+		const { containerEl, config, view } = makeView(vault, {}, { widths: { 'note.points': 280, 'note.owner': 280 } });
 		config.order = ['note.points', 'note.owner'];
 		const tree = treeOf(containerEl);
 		Object.defineProperty(tree, 'clientWidth', { value: 900, configurable: true });
@@ -378,7 +383,7 @@ describe('property columns', () => {
 		// render strands it true for the life of the view and the second pass is silently
 		// gone from then on — a column that came or went never reaching the rows.
 		const vault = fixture();
-		const { containerEl, config, view } = makeView(vault, { propertyColumnWidth: 280, stateProperty: 'note.status' });
+		const { containerEl, config, view } = makeView(vault, { stateProperty: 'note.status' }, { widths: { 'note.points': 280, 'note.owner': 280 } });
 		config.order = ['note.points', 'note.owner'];
 		const tree = treeOf(containerEl);
 		const paneWidth = (px: number) => Object.defineProperty(tree, 'clientWidth', { value: px, configurable: true });
@@ -551,13 +556,21 @@ describe('property columns', () => {
 		expect(rowByTitle(containerEl, 'Placed').querySelector('.pbl-prop-value')?.textContent).toBe('Now');
 	});
 
-	it('sizes the columns from the view option', () => {
+	it('sizes each column from its own stored width', () => {
 		const vault = fixture();
-		const { containerEl, config, view } = makeView(vault, { propertyColumnWidth: 200 });
-		config.order = ['note.points'];
+		const { containerEl, config, view } = makeView(vault, {}, { widths: { 'note.owner': 200 } });
+		config.order = ['note.points', 'note.owner'];
 		view.onDataUpdated();
 
-		expect(treeOf(containerEl).style.getPropertyValue('--pbl-prop-col')).toBe('200px');
+		// Its own width, and the unresized one beside it still at the default: one number
+		// for every column is exactly what a per-column pick stopped being.
+		expect(treeOf(containerEl).style.getPropertyValue('--pbl-prop-w-0')).toBe('132px');
+		expect(treeOf(containerEl).style.getPropertyValue('--pbl-prop-w-1')).toBe('200px');
+		// And each cell reads the one published for ITS column, so a row's second cell is
+		// the one that follows the second grip.
+		const cells = rowByTitle(containerEl, 'Epic A').querySelectorAll<HTMLElement>('.pbl-prop');
+		expect(cells[0].style.getPropertyValue('--pbl-prop-w')).toBe('var(--pbl-prop-w-0, 132px)');
+		expect(cells[1].style.getPropertyValue('--pbl-prop-w')).toBe('var(--pbl-prop-w-1, 132px)');
 	});
 
 	it('keeps the empty space around the columns part of the row click target', () => {

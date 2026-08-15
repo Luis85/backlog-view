@@ -60,8 +60,6 @@ export interface BacklogSettings extends ItemHandling {
 	 * Editing is offered only while this property is one of the visible ones.
 	 */
 	tagsKey: string;
-	/** Width in pixels of one property column. */
-	propColumnWidth: number;
 	/** State values (case-insensitive) that count as done. */
 	doneValues: string[];
 	/**
@@ -225,10 +223,6 @@ export const DEFAULT_HORIZON_VALUES = ['Now', 'Next', 'Later'];
  * write down. A default the user edits freely, never a fixed list.
  */
 export const DEFAULT_RISK_VALUES = ['1 - High', '2 - Normal', '3 - Low'];
-/** Property columns are fixed-width so values line up across rows; this is that width. */
-export const DEFAULT_PROP_COLUMN_WIDTH = 132;
-export const MIN_PROP_COLUMN_WIDTH = 80;
-export const MAX_PROP_COLUMN_WIDTH = 280;
 
 export function defaultSettings(): BacklogSettings {
 	return {
@@ -244,7 +238,6 @@ export function defaultSettings(): BacklogSettings {
 		focusLevel: '',
 		stateKey: '',
 		tagsKey: 'tags',
-		propColumnWidth: DEFAULT_PROP_COLUMN_WIDTH,
 		doneValues: [...DEFAULT_DONE_VALUES],
 		wipLimits: nameTable<number>([]),
 		columnPolicies: nameTable<string>([]),

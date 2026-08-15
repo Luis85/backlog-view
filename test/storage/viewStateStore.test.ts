@@ -38,18 +38,21 @@ const FULL_PREFS: Required<ViewPrefs> = {
 	shelfExpanded: true,
 	shelfSort: 'modified',
 	shelfHiddenTypes: ['Task'],
+	colWidths: { 'note.owner': 200 },
 };
 
 const FULL_FOLDS: Required<ViewFolds> = {
 	collapsed: ['Epic.md'],
 	expanded: ['Feature.md'],
 	lanes: ['luis'],
+	collapsedColumns: ['board\u0000done'],
+	expandedColumns: ['horizons\u0000next'],
 };
 
 const ID = { base: 'Plan.base', view: 'Backlog' };
 
 function emptyFolds(): ViewFolds {
-	return { collapsed: [], expanded: [], lanes: [] };
+	return { collapsed: [], expanded: [], lanes: [], collapsedColumns: [], expandedColumns: [] };
 }
 
 function stored(vault: FakeVault): Record<string, { base: string; folds: ViewFolds; prefs: ViewPrefs }> {

@@ -130,8 +130,21 @@ disclosure for, and so does that one; the view publishes the set as
 through `buildItemMenu` on both the pointer path (`showItemMenu`) and the keyboard path
 (`showContextMenuFor`) — so neither re-derives an answer the screen already has.
 `undisclosedMatches` is read the same way, by `renderCardMatches` in
-`src/view/render/board.ts` for the card face and by `addMatchSection` in `menu.ts` for
-its menu, so the two surfaces cannot both name a match the disclosure already listed.
+`src/view/render/board.ts` for the card face and — through `matchesFor`, also in
+`childrenList.ts` — by `addMatchSection` in `menu.ts` for its menu, so the two surfaces
+cannot both name a match the disclosure already listed.
+
+`matchesFor` is what lets the menu ask ONE question regardless of which projection drew
+the row it is on: it reads `host.board` on the board and `host.roadmap.placed` on the
+roadmap — `RoadmapModel` is not what the roadmap draws, so the register `render/roadmap.ts`
+fills as it renders is what the menu reads instead — and it is where the menu's own
+already-listed set is decided, which is NOT the face's. A card's face subtracts what its
+OWN disclosure lists (`listsChildren` on the `PlacedMount` a surface registers,
+`src/view/host.ts`); the menu instead asks `host.cardChildrenShown`, the same set
+`addChildrenSection` above already reads — because a timeline row joins that set through
+its fold chevron while listing nothing on its own face, so a direct child match that the
+face still names on a row would be offered twice in the menu were the two policies not
+kept apart.
 
 The expansion bit itself is `CARD_SCOPE` in `src/view/viewState.ts`, a prefix
 alongside `TIMELINE_SCOPE`, read and written through `BacklogViewHost.isCardCollapsed`/

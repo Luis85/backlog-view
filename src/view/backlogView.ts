@@ -1,14 +1,15 @@
 import { BasesView, QueryController } from 'obsidian';
 import { CARD_SCOPE, TIMELINE_SCOPE, ViewState } from './viewState';
 import { FilterState } from './filterState';
-import { BacklogViewHost, BoardSnapshot, Column, ColumnFit, PRODUCT_BACKLOG_VIEW_TYPE, Projection, RoadmapSnapshot } from './host';
+import { BacklogViewHost, BoardSnapshot, Column, ColumnFit, ColumnScope, PRODUCT_BACKLOG_VIEW_TYPE, Projection, RoadmapSnapshot } from './host';
 import { OpenController } from './openTarget';
 import { WriteGate } from './writeGate';
 import { CardMoveController } from './cardMoves';
 import { CardDragController } from './interactions/cardDrag';
 import { DragDropController } from './interactions/dragDrop';
 import { handleProjectionKeydown } from './interactions/keyboard';
-import { buildColumnMenu, buildItemMenu, showMenuAtElement } from './interactions/menu';
+import { buildColumnMenu } from './interactions/columnMenu';
+import { buildItemMenu, showMenuAtElement } from './interactions/menu';
 import { BacklogItem, BacklogModel, buildModel } from '../domain/model';
 import { childTypeChoices, PlacementEnd } from '../domain/itemTypes';
 import { DropTarget } from '../domain/dropTargets';
@@ -27,7 +28,7 @@ import { resolveColumns, rowContext, RowContext } from './render/columns';
 import { renderLoadingState } from './render/emptyStates';
 import { syncAfterContent } from './render/afterContent';
 import { syncToolbarFit } from './render/toolbarFit';
-import { captureScroll, centreOnToday, renderProjectionContent, restoreScroll, ScrollAnchor } from './render/projections';
+import { captureScroll, renderProjectionContent, restoreScroll, ScrollAnchor, scrollToToday, syncProjectionClasses } from './render/projections';
 import { refreshRowChildren, wireRowEvents } from './render/rows';
 import { BacklogSettings, defaultSettings } from '../domain/settings';
 import { adoptableProperties, notePropertyId, OptionalField, OptionalProperty } from '../domain/optionalProperties';
@@ -87,7 +88,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	/** Card-move write orchestration: plans, applies and announces board/horizon/schedule moves. */
 	private readonly cardMoves: CardMoveController;
 	/** The view-state-backed UI state — projection, axis pick, focus, shelf, zoom,
-	 * density, lead width — see `viewStateController.ts`. */
+	 * density, lead width, column widths — see `viewStateController.ts`. */
 	private readonly ui: ViewStateController;
 	/** When to re-measure the pane and re-run the column-fit ladder — see `resize.ts`. */
 	private readonly resize: ResizePolicy;
@@ -125,10 +126,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// `renderLegend` itself, which is also what makes it absent (not merely hidden)
 		// off the dated axis.
 		this.legendEl = this.viewEl.createDiv();
-		this.treeEl = this.viewEl.createDiv({
-			cls: 'pbl-tree',
-			attr: { role: 'tree', tabindex: '0' },
-		});
+		this.treeEl = this.viewEl.createDiv({ cls: 'pbl-tree', attr: { role: 'tree', tabindex: '0' } });
 		// Nothing to render until Bases delivers the first result set — say what is
 		// happening instead of showing an empty pane.
 		renderLoadingState(this.treeEl);
@@ -187,9 +185,11 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	/**
 	 * Which projection this view shows. UI state, not a base setting: it lives
 	 * beside the view state — per saved view, per device — never in the `.base`.
-	 * This and the seven accessors below are one-line delegations to `ViewStateController`
-	 * (`viewStateController.ts`), which holds the read/write and the render-depth choice; kept here
-	 * because `BacklogViewHost` has to resolve to this one class.
+	 * This and every accessor below it down to `jumpToToday` are one-line delegations to
+	 * `ViewStateController` (`viewStateController.ts`), which holds the read/write and the
+	 * render-depth choice; kept here because `BacklogViewHost` has to resolve to this one
+	 * class. Stated as a range rather than a count, which the last three picks added here
+	 * each made wrong.
 	 */
 	get projection(): Projection {
 		return this.ui.projection;
@@ -254,6 +254,17 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.ui.setLaneCollapsed(name, collapsed);
 	}
 
+	columnCollapsed(scope: ColumnScope, value: string | null, autoCollapse: boolean): boolean {
+		// The filter overrides this fold like every other, and short-circuiting BEFORE the
+		// controller is what keeps a narrowed board from settling a default: while a search
+		// runs, a column is open because the search says so and not because anyone ruled.
+		return !this.filter.active && this.ui.columnCollapsed(scope, value, autoCollapse);
+	}
+
+	setColumnCollapsed(scope: ColumnScope, value: string | null, collapsed: boolean): void {
+		this.ui.setColumnCollapsed(scope, value, collapsed);
+	}
+
 	get zoom(): ScaleId {
 		return this.ui.zoom;
 	}
@@ -278,13 +289,16 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		this.ui.setLeadWidth(value);
 	}
 
+	get colWidths(): Readonly<Record<string, number>> {
+		return this.ui.colWidths;
+	}
+
+	setColWidth(prop: string, value: number | null): void {
+		this.ui.setColWidth(prop, value);
+	}
+
 	jumpToToday(): void {
-		const roadmap = this.roadmap;
-		// `leadWidth` is in the guard beside `todayLeft` rather than defaulted below it:
-		// `renderRoadmap` sets both in the dated branch and neither anywhere else, so the
-		// term costs nothing and it is what narrows `leadWidth` to a number.
-		if (!roadmap?.scroller || roadmap.todayLeft === null || roadmap.leadWidth === null) return;
-		roadmap.scroller.scrollLeft = centreOnToday(roadmap.todayLeft, roadmap.scroller.clientWidth, roadmap.leadWidth);
+		scrollToToday(this.roadmap);
 	}
 
 	onDataUpdated(): void {
@@ -488,15 +502,15 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	}
 
 	showContextMenuFor(item: BacklogItem): void {
-		showMenuAtElement(buildItemMenu(this, item, childTypeChoices(item)), this.rowElFor(item));
+		showMenuAtElement(buildItemMenu(this, item, childTypeChoices(item)), this.rowEls.get(item.file.path) ?? null);
 	}
 
 	showColumnMenuFor(index: number): boolean {
-		return showMenuAtElement(buildColumnMenu(this.board?.board.columns[index]?.policy ?? ''), this.board?.colEls[index] ?? null);
-	}
-
-	private rowElFor(item: BacklogItem): HTMLElement | null {
-		return this.rowEls.get(item.file.path) ?? null;
+		// The scope comes off the snapshot rather than being re-derived from the projection:
+		// the render that drew these columns is the one thing that cannot be wrong about
+		// which board they belong to.
+		const board = this.board;
+		return showMenuAtElement(board && buildColumnMenu(this, board.scope, board.board.columns[index]), board?.colEls[index] ?? null);
 	}
 
 	/**
@@ -505,7 +519,9 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	 * has a few hundred rows.
 	 */
 	refreshSubtree(item: BacklogItem): void {
-		const row = this.rowElFor(item);
+		// Straight off the index rather than through a helper: this and the context menu
+		// were its only two callers, and the lookup says what it does.
+		const row = this.rowEls.get(item.file.path);
 		if (!row) {
 			this.render();
 			return;
@@ -535,14 +551,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		const model = this.model;
 		if (!model) return;
 		const projection = this.projection;
-		this.viewEl.toggleClass('pbl-board-mode', projection === 'board' || projection === 'deliverables');
-		this.viewEl.toggleClass('pbl-roadmap-mode', projection === 'roadmap');
-		// The class NAME stays what it is: it turns on the GRID's layout, which the
-		// resources axis needs in full, and every rule in `styles/` plus every test
-		// already names it — renaming it would be a diff across the stylesheet for no
-		// behaviour. What it is asked about is `drawsGrid`, not the plain dated axis.
-		const axis = projection === 'roadmap' ? activeAxis(this.settings, this.axisPick) : null;
-		this.viewEl.toggleClass('pbl-roadmap-dates', axis !== null && drawsGrid(axis));
+		syncProjectionClasses(this.viewEl, projection, projection === 'roadmap' ? activeAxis(this.settings, this.axisPick) : null);
 		// The keyboard instructions belong to the board and are rebuilt with it below;
 		// dropped here so the attribute never outlives the element it points at — a
 		// dangling `aria-describedby` is read as no description at all.
@@ -574,10 +583,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// Column stops are board state: without a board on screen a held stop would
 		// point at a projection that no longer exists, so it is released; with one,
 		// it is clamped to the columns left, the way the card selection is carried.
-		if (content.board === null) this.selectBoardColumn(null);
-		else if (this.selectedBoardColumn !== null) {
-			this.selectBoardColumn(Math.min(this.selectedBoardColumn, content.board.colEls.length - 1));
-		}
+		this.selection.resyncBoardColumn(content.board?.colEls.length ?? null);
 		// Both offsets belong to the content that made them — restored, corrected,
 		// reset or replaced by the anchor policy `restoreScroll` states beside the
 		// fork that decides what was drawn.

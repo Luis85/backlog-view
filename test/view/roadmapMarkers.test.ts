@@ -20,6 +20,34 @@ const DATES = { startProperty: 'note.start', targetProperty: 'note.due' };
 const TODAY_ISO = todayStamp();
 
 describe('a marker on the dated axis', () => {
+	it('says its own progress in the name that REPLACES its content', () => {
+		// A marker's row is the one that carries an explicit `aria-label`, because neither
+		// its line nor its diamond is focusable. An explicit label REPLACES the
+		// content-derived name, so the `.pbl-sr-only` progress span `renderBarProgress`
+		// puts on the row is swallowed by it — announced to nobody, which is the exact
+		// defect that span exists to prevent, one surface further along.
+		//
+		// The case is reachable even though the ladder treats a marker as a point:
+		// `childTypeChoices` returns [] for a marker parent but refuses no move the user
+		// makes deliberately, and `assignAll` counts children by STRUCTURE — a marker
+		// contributes 0 itself and still accumulates the subtree below it. Where it truly
+		// has none, `rollupReport` returns an empty label and nothing is drawn or said.
+		const vault = new FakeVault();
+		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10, due: '2026-08-10', status: 'New' } });
+		vault.addFile('Cut the branch.md', {
+			frontmatter: { type: 'PBI', order: 10, status: 'Done' },
+			parentLink: 'Ship 1.0',
+		});
+		const { containerEl } = roadmapView(vault, { ...DATES, stateProperty: 'note.status', doneValues: 'Done' });
+
+		const row = rowFor(containerEl, 'Ship 1.0');
+		// Drawn on the row, and drawn in the lead — neither of which a replaced name keeps.
+		expect(row?.querySelector('.pbl-bar-count')?.textContent).toBe('1/1');
+		// So the words have to be in the name itself, and they are the SAME words the span
+		// carries rather than a second phrasing of one fact.
+		expect(row?.getAttribute('aria-label')).toContain('1 of 1 items done');
+	});
+
 	it('draws no diamond for a milestone past the window edge, only the direction it lies past', () => {
 		const vault = new FakeVault();
 		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10, due: '2200-01-01' } });

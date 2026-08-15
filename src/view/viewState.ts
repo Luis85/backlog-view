@@ -12,7 +12,7 @@ import {
 	ViewPrefs,
 } from '../storage/viewStateStore';
 import { movedPath, resolveViewIdentity, ViewIdentity } from '../storage/viewIdentity';
-import { BacklogViewHost, Projection } from './host';
+import { BacklogViewHost, ColumnScope, Projection } from './host';
 
 /**
  * The stored `mode` value for each projection, null for the tree — a `Record` rather
@@ -87,6 +87,25 @@ function notePath(key: string): string {
  */
 function laneKey(name: string): string {
 	return name.toLowerCase();
+}
+
+/**
+ * One board column's or horizon bucket's fold key: the scope it is drawn in, and its own
+ * value. `''` is the no-state column, which is a safe sentinel because a state that reads
+ * back empty is no state at all.
+ *
+ * SCOPED, because the same word can name a column on more than one screen — a requirements
+ * `Done`, a Deliverables `Done` and a horizon called `Done` are three columns and three
+ * folds. Lower-cased for {@link laneKey}'s reason, twice over: `boardColumns` indexes its
+ * columns on `state.toLowerCase()` and `buildRoadmap` does the same for buckets, so a value
+ * whose spelling changes is still one column and has to stay one fold.
+ *
+ * A NUL joins the two halves rather than a printable separator, the reason
+ * {@link TIMELINE_SCOPE} uses one: a state value is user data and may contain anything a
+ * user can type.
+ */
+function columnKey(scope: ColumnScope, value: string | null): string {
+	return `${scope}\u0000${(value ?? '').toLowerCase()}`;
 }
 
 /** The scope prefix a settled key carries, or '' for the tree's own bare path. */
@@ -172,21 +191,37 @@ export class ViewState {
 	/** Paths already ruled on, so the initial state is applied to each exactly once. */
 	private settled = new Set<string>();
 	/**
-	 * Every scalar pick, in the shape the store takes. One object rather than ten fields:
+	 * Every pick, in the shape the store takes. One object rather than a field each:
 	 * `restore` and `flush` stop enumerating, so a pick added to one and forgotten in the
 	 * other cannot happen.
 	 */
 	private prefs: ViewPrefs = {};
 
 	/**
-	 * The two collections that stay `Set`s. `isCollapsed` and `isLaneCollapsed` are asked
-	 * once per row, so rebuilding a set from an array per call is a render cost this view
-	 * refuses; they are flattened once per flush instead. `hiddenShelfTypes` mirrors
-	 * `prefs.shelfHiddenTypes` and is written by the same setter, so the two cannot drift.
+	 * The collections kept beside {@link prefs} rather than read out of it. `isCollapsed`
+	 * and `isLaneCollapsed` are asked once per row, so rebuilding a set from an array per
+	 * call is a render cost this view refuses; they are flattened once per flush instead.
+	 * `hiddenShelfTypes` mirrors `prefs.shelfHiddenTypes` and is written by the same setter,
+	 * so the two cannot drift; {@link colWidths} is not a mirror at all but the very object
+	 * `prefs.colWidths` holds, for the reason stated on it.
 	 */
 	private hiddenShelfTypes = new Set<string>();
+	/**
+	 * The tree's resized property columns by Bases property id; a property with no entry
+	 * draws at `DEFAULT_PROP_COLUMN_WIDTH`. A live map rather than a value replaced
+	 * wholesale, because its ENTRIES are set one at a time — so this holds the SAME object
+	 * `prefs.colWidths` does rather than a copy of it, and the two cannot describe
+	 * different widths. `Object.create(null)` for the reason the store's own reader uses
+	 * it — a column named `constructor` is a plain key here, and one named `__proto__` is
+	 * a width rather than a new prototype.
+	 */
+	private colWidths: Record<string, number> = Object.create(null) as Record<string, number>;
 	/** Resource bands folded shut, by name — see {@link isLaneCollapsed}. */
 	private foldedLanes = new Set<string>();
+	/** Board columns and horizon buckets folded shut, by {@link columnKey}. */
+	private foldedColumns = new Set<string>();
+	/** Columns opened AGAINST a default that would have folded them — see {@link columnCollapsed}. */
+	private openedColumns = new Set<string>();
 	private id: ViewIdentity | null = null;
 	private restored = false;
 	/** Kept so the identity can be re-resolved when the base is renamed under us. */
@@ -271,6 +306,20 @@ export class ViewState {
 		this.setPref('leadWidth', value);
 	}
 
+	/** The retained property-column widths for this saved view; a column absent from it is at the default. */
+	columnWidths(): Readonly<Record<string, number>> {
+		return this.colWidths;
+	}
+
+	/** null clears the pick, which is what a column dragged back to the default stores. */
+	setColumnWidth(prop: string, value: number | null): void {
+		if (value === null) delete this.colWidths[prop];
+		else this.colWidths[prop] = value;
+		// Through {@link setPref} like every other pick, so the last column dragged back to
+		// the default leaves no field behind: an emptied map is the absence a `null` means.
+		this.setPref('colWidths', Object.keys(this.colWidths).length > 0 ? this.colWidths : null);
+	}
+
 	/** The type the tree is focused on, or '' for the whole tree. */
 	focusLevel(): string {
 		return this.prefs.focus ?? '';
@@ -335,6 +384,48 @@ export class ViewState {
 		else this.foldedLanes.delete(key);
 		this.scheduleSave();
 		return true;
+	}
+
+	/**
+	 * Whether one board column or horizon bucket is folded shut — and, the first time a
+	 * column's own default would fold it, the act of folding it.
+	 *
+	 * That is `collapseNewParents`' rule (a thing nobody has ruled on takes its default
+	 * exactly once) asked lazily rather than in a pass on the data update, because unlike a
+	 * parent a column does not exist in the MODEL: `boardColumns` and `buildRoadmap` derive
+	 * it inside the render, so the render is the first moment there is anything to settle.
+	 * A read that writes is the price of that, and it is bounded — it fires once per column
+	 * whose default applies, schedules a save and renders nothing.
+	 *
+	 * The default is asked freshly every pass rather than remembered as "seen", which is
+	 * again the tree's own shape: a row is not a parent until it has children, and a done
+	 * column is not noise until its last open card is finished. So a column that finishes
+	 * folds itself, and {@link openedColumns} is what makes that survivable — an explicit
+	 * open is remembered against exactly this default and is never taken back.
+	 */
+	columnCollapsed(scope: ColumnScope, value: string | null, autoCollapse: boolean): boolean {
+		const key = columnKey(scope, value);
+		if (this.foldedColumns.has(key)) return true;
+		// Open is the default, so an unfolded column nobody has ruled on needs no entry —
+		// only an open that CONTRADICTS a fold does, which is what `openedColumns` holds.
+		if (!autoCollapse || this.openedColumns.has(key)) return false;
+		this.foldedColumns.add(key);
+		this.scheduleSave();
+		return true;
+	}
+
+	setColumnCollapsed(scope: ColumnScope, value: string | null, collapsed: boolean): void {
+		const key = columnKey(scope, value);
+		// Exclusive: the two sets are one tri-state (folded, opened, never ruled on), so a
+		// key in both would make "did the reader open this against its default" unanswerable.
+		if (collapsed) {
+			this.foldedColumns.add(key);
+			this.openedColumns.delete(key);
+		} else {
+			this.foldedColumns.delete(key);
+			this.openedColumns.add(key);
+		}
+		this.scheduleSave();
 	}
 
 	/** Returns true when the state actually changed. */
@@ -415,9 +506,16 @@ export class ViewState {
 		seedCardScope(this.collapsed, this.settled);
 		this.prefs = prefs;
 		this.hiddenShelfTypes = new Set(prefs.shelfHiddenTypes ?? []);
+		// The stored map itself, not a copy: `PREF_READERS`' own reader already built it on
+		// a null prototype, which is the only property the live map needs of it.
+		this.colWidths = prefs.colWidths ?? (Object.create(null) as Record<string, number>);
 		// Normalized on the way back in as well, so an entry written before the key was
 		// canonical still shuts the band it was about.
 		this.foldedLanes = new Set(folds.lanes.map(laneKey));
+		// Stored as minted — `columnKey` is already canonical, so unlike a lane's there is
+		// nothing left to normalize here.
+		this.foldedColumns = new Set(folds.collapsedColumns);
+		this.openedColumns = new Set(folds.expandedColumns);
 	}
 
 	/** Write any pending change immediately — closing the view is when that matters most. */
@@ -482,7 +580,13 @@ export class ViewState {
 		}
 		const expanded = [...this.settled].filter((key) => !this.collapsed.has(key));
 		saveViewState(this.host.app, id, {
-			folds: { collapsed: [...this.collapsed], expanded, lanes: [...this.foldedLanes] },
+			folds: {
+				collapsed: [...this.collapsed],
+				expanded,
+				lanes: [...this.foldedLanes],
+				collapsedColumns: [...this.foldedColumns],
+				expandedColumns: [...this.openedColumns],
+			},
 			prefs: this.prefs,
 		});
 	}

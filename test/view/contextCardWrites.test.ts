@@ -5,8 +5,8 @@ import { FakeVault, FakeViewConfig } from '../helpers/vault';
 import { Menu, Notice } from '../helpers/obsidian-mock';
 import { flush, key, makeView, treeOf, useViewHarness } from '../helpers/view';
 import { cardDrag } from '../helpers/dnd';
-import { cardByTitle } from '../helpers/board';
-import { bucketNames, laneCountOf, laneNames, lanesOf, rowFor, shelfTitles } from '../helpers/roadmap';
+import { cardByTitle, expandColumns } from '../helpers/board';
+import { bucketNames, laneCountOf, laneNames, laneRoadmap, lanesOf, rowFor, shelfTitles } from '../helpers/roadmap';
 import { legalTargets } from '../../src/view/interactions/dependencies';
 
 /**
@@ -55,6 +55,9 @@ describe('write safety with context rows, across the board’s entry points', ()
 		// Focus is working position, not a base setting: set through the view.
 		view.setFocusLevel('PBI');
 		view.setProjection('board');
+		// Every column open: this asks what a write path does to a context card, and a
+		// folded Done column would take the context card off screen before the question.
+		expandColumns(containerEl);
 		return { view, containerEl, vault };
 	}
 
@@ -444,6 +447,38 @@ describe('write safety with context rows, across the resources axis’s entry po
 		view.showContextMenuFor(mid as never);
 		expect(Menu.lastShown?.item('Set assignee')).toBeUndefined();
 		expect(Menu.lastShown?.item('Set type')).toBeUndefined();
+		expect(vault.writeLog).toEqual([]);
+	});
+
+	it('drives the SAME menu through the row it actually renders — a new entry point onto an excluded note', async () => {
+		// Task 4 wired the lane context row's own `contextmenu` listener
+		// (`renderLaneContextRow` calling `wireCardActivation`), so this is a new entry
+		// point onto an `outsideFilter` item and gets the same three questions as every
+		// other one: `showContextMenuFor` above drives the VIEW's notion of the menu,
+		// this drives the actual DOM element a mouse or a screen reader would. `Mid`
+		// above never draws as `.pbl-lane-context` — its assignee names no lane, so it
+		// falls to the general context strip — so this needs its own fixture: an
+		// excluded EPIC whose own assignee names a lane a real result also uses.
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, assignee: 'Alice' } });
+		vault.addFile('Feature B.md', {
+			frontmatter: { type: 'Feature', order: 20, start: '2026-08-01', due: '2026-08-09' },
+			parentLink: 'Epic',
+		});
+		const { containerEl } = laneRoadmap(vault, {}, { only: ['Feature B.md'], focus: 'Epic' });
+		const row = containerEl.querySelector<HTMLElement>('.pbl-lane-context');
+		expect(row).not.toBeNull();
+
+		row?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+
+		expect(Menu.lastShown?.item('Set assignee')).toBeUndefined();
+		expect(Menu.lastShown?.item('Set state')).toBeUndefined();
+		expect(Menu.lastShown?.item('Set type')).toBeUndefined();
+		expect(Menu.lastShown?.item('Clear parent link')).toBeUndefined();
+		expect(Menu.lastShown?.item('Use folder position')).toBeUndefined();
+		// Navigation stays offered — the row still opens, it just cannot be edited.
+		expect(Menu.lastShown?.item('Open in new tab')).toBeDefined();
+		Menu.lastShown?.items.forEach((mi) => mi.clickHandler?.());
 		expect(vault.writeLog).toEqual([]);
 	});
 
