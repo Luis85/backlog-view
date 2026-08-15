@@ -11,6 +11,64 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+### Added
+
+- **Fold a board column or a horizon bucket** — press the chevron in its header and the
+  column narrows to a strip, keeping its name, its count and its ability to take a drop.
+  The choice is remembered per saved view and per device, beside the rows you have
+  collapsed, and never written to the `.base`. On a board the column's own context menu
+  offers the same fold, which is the keyboard path to it.
+
+- **A done column of finished work opens folded** — the first time a board draws a done
+  column holding finished work and nothing else, it starts shut, the same once-only default
+  the tree applies to a parent nobody has ruled on. One still carrying open work opens
+  normally, an empty one is left alone, and once you open a folded column it stays open.
+  Horizon buckets have no such default: an axis has no notion of finished, so a bucket is
+  open until you shut it.
+
+  A running quick filter opens every fold, so a search can still find what is inside one.
+
+- **How far along a roadmap bar is** — a bar on the dated axis now carries a band
+  showing the share of the work beneath it that is done, and every row with
+  descendants carries the count the tree's rollup column shows. The band draws inside
+  the bar without covering it, so a bar whose span is inferred still reads as
+  inferred and an open end still reads as open. With no workflow property configured
+  there is nothing to call done, so the count is the whole report — exactly as in the
+  tree.
+
+- **The roadmap says what your search found underneath** — filter the roadmap and any
+  bucket card, bar, shelf card or context row that is only on screen because something
+  beneath it matched now names those matches, each one opening its note. They are in
+  the row menu too, so this needs no pointer. Previously a match three levels down was
+  found, counted, and impossible to reach.
+
+- **Resize the tree's property columns** — drag the grip at a column header's trailing
+  edge, double click it to put it back, or focus it and use the arrow keys. Each column keeps
+  its own width, per saved view and per device, beside the collapse state — so a title
+  column and a risk chip no longer have to be the same size, and nothing about your
+  working position is written to the `.base` file.
+
+### Changed
+
+- **State colours no longer offer a done state.** A finished bar is drawn green whatever
+  is stored against it, so the swatch for a done state could never change anything on the
+  grid or in the legend. The dialog now lists the open states only, and says so; a colour
+  a `.base` still holds for a done state is ignored. Done is read per workflow, so a value
+  only one of your two workflows finishes on still gets a swatch for the other.
+
+- **Lanes will not be built** on the roadmap or the board. They were tried and refused.
+
+- **Double click either resize grip to reset it** — the tree's new property-column grips
+  and the roadmap timeline's lead-column grip. A mouse never focuses a grip, so the Home
+  key that resets one was reachable only by tabbing onto it first.
+
+- **The Property column width option is gone.** The width is a per-column pick you drag
+  now, kept on the device rather than in the shared `.base`
+  ([ADR 0011](docs/adrs/0011-keep-collapse-state-out-of-the-base-file.md): a value is
+  configuration or working position, never both). A base written with a
+  `propertyColumnWidth` key keeps a setting nothing reads; every column starts at the
+  same 132px it did and moves from there.
+
 ## [0.8.0] - 2026-08-14
 
 ### Added

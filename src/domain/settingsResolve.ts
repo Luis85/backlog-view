@@ -4,8 +4,6 @@ import { colorableStates, stateColor, stateColorKey } from './stateColors';
 import {
 	BacklogSettings,
 	columnPolicyKey,
-	MAX_PROP_COLUMN_WIDTH,
-	MIN_PROP_COLUMN_WIDTH,
 	defaultSettings,
 	nameTable,
 	parseWipLimit,
@@ -201,14 +199,6 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		const v = config.get(key);
 		return typeof v === 'boolean' ? v : def;
 	};
-	// A slider stores a number, but a hand-edited .base file can hold anything;
-	// clamp so a stray value cannot collapse the columns to nothing.
-	const width = (key: string, def: number): number => {
-		const v = config.get(key);
-		const n = typeof v === 'number' ? v : Number.parseFloat(typeof v === 'string' ? v : '');
-		if (!Number.isFinite(n)) return def;
-		return Math.min(Math.max(Math.round(n), MIN_PROP_COLUMN_WIDTH), MAX_PROP_COLUMN_WIDTH);
-	};
 	const list = (key: string): string[] =>
 		str(key)
 			.split(',')
@@ -238,6 +228,9 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 	const deliverable = resolveSecondaryWorkflow(secondary, DELIVERABLE_NAMES);
 	const test = resolveSecondaryWorkflow(secondary, TEST_NAMES);
 	const doneSet = new Set(effectiveDoneValues.map((v) => v.toLowerCase()));
+	// The two vocabularies with their own done lists beside them: a done state is not
+	// colourable, and which states are done is a per-workflow declaration.
+	const colourable = { states, doneValues: effectiveDoneValues, deliverableStates: deliverable.states, deliverableDoneValues: deliverable.doneValues };
 	// Limits are refused for done states HERE rather than only in the schema, so a key
 	// left in the `.base` by re-marking a state as done cannot revive its limit.
 	const limitedStates = states.filter((s) => !doneSet.has(s.toLowerCase()));
@@ -280,15 +273,15 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		focusLevel: fallback.focusLevel,
 		...optionalKeys,
 		tagsKey: tagsKey(),
-		propColumnWidth: width('propertyColumnWidth', fallback.propColumnWidth),
 		doneValues: effectiveDoneValues,
 		wipLimits: nameTable(limitedStates, (s) => parseWipLimit(str(wipLimitKey(s)))),
 		columnPolicies: nameTable(states, (s) => str(columnPolicyKey(s)).trim() || null),
 		// Both vocabularies, one table — see `BacklogSettings.stateColors`.
 		// Requirements and Deliverable states only. The TEST workflow deliberately has no
 		// colour boxes (product decision, 2026-08-10), so its states are not colourable and
-		// must not join this table — `colorableStates` takes the two lists it takes.
-		stateColors: nameTable(colorableStates(states, deliverable.states), (s) => stateColor(str(stateColorKey(s)))),
+		// must not join this table — `colorableStates` takes the four fields it takes. The
+		// done values go with them because a done state is not colourable either.
+		stateColors: nameTable(colorableStates(colourable), (s) => stateColor(str(stateColorKey(s)))),
 		// The two stamp keys main resolved by hand here now arrive with every other
 		// optional key in `...optionalKeys` above, read off `PROPERTY_TABLE` itself.
 		startedStates: dedupe(list('startedStates')),

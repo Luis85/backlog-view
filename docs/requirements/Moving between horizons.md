@@ -52,11 +52,9 @@ one undo.
 
 **Extensions**
 
-- **1a — the drop lands where the card already is.** Same bucket, same lane: no write is
+- **1a — the drop lands where the card already is.** No write is
   planned, and the undo slot is not consumed — a no-op must not cost the one change that
-  can be taken back. A same-bucket drop across lanes is not a no-op: the reparent is
-  planned alone ([[Lanes on the roadmap]]), with no redundant horizon write riding
-  along.
+  can be taken back.
 - **1b — the user cannot drag.** The context menu offers the horizons as a set-action and
   the keyboard offers lift and move ([[Keyboard and menu on the roadmap]]); both write
   the identical batch.
@@ -85,9 +83,7 @@ one undo.
 ## Acceptance criteria
 
 - A bucket move is one write to the horizon property, through the gate, one undo.
-- A drop that changes neither bucket nor lane writes nothing and keeps the previous
-  undo; a same-bucket drop across lanes plans the reparent alone, with no redundant
-  horizon write.
+- A drop that changes nothing writes nothing and keeps the previous undo.
 - Shelf to bucket writes the value; bucket to shelf removes the key rather than
   blanking it, and undo restores it.
 - Writable vocabulary is declared plus observed-on-results; context rows contribute
@@ -149,12 +145,9 @@ and building it from this note's one sentence cost eleven review findings across
 rounds without reaching a correct rule. The whole account, and what has to be decided
 before it is built again, is [[The outcome report was built from one sentence]].
 
-Still Active, not Done, on three honest counts. 3b is the first, above. The lift —
+Still Active, not Done, on two honest counts. 3b is the first, above. The lift —
 Space, arrows, Space, Escape — is [[Keyboard and menu on the roadmap]]'s, and this
-note's 1b is met by the shortcut and the menu until it lands. And 1a's lane clause
-cannot be exercised at all: with [[Lanes on the roadmap]] unbuilt there is no second
-dimension for a same-bucket drop to cross, so "the reparent is planned alone" is
-specified and untested. What a live vault
+note's 1b is met by the shortcut and the menu until it lands. What a live vault
 still has to confirm is the drag itself — jsdom dispatches the events but paints
 nothing, so the bucket highlight, the empty shelf appearing mid-drag and the drop
 feeling like a drop are [[Smoke test the visual changes]]'s to check.

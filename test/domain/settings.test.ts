@@ -298,15 +298,6 @@ describe('resolveSettings display options', () => {
 		expect(resolveSettings(fakeConfig({ tagsProperty: 'file.tags' })).tagsKey).toBe('');
 	});
 
-	it('clamps the property column width and ignores unusable values', () => {
-		const width = (v: unknown) => resolveSettings(fakeConfig({ propertyColumnWidth: v })).propColumnWidth;
-		expect(width(180)).toBe(180);
-		// A hand-edited .base file can hold anything — never collapse the columns
-		expect(width(10)).toBe(80);
-		expect(width(9999)).toBe(280);
-		expect(width('160')).toBe(160);
-		expect(width('wide')).toBe(defaultSettings().propColumnWidth);
-	});
 });
 
 describe('stateMenuValues', () => {

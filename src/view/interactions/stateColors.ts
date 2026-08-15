@@ -59,8 +59,9 @@ export function hexOf(computed: string): string | null {
 /**
  * One row per state a colour can be chosen for, in vocabulary order.
  *
- * The LIST is `colorableStates` — the declared vocabularies, deduped — because those are
- * the only states a choice survives a refresh for (see that function). The PAINT is
+ * The LIST is `colorableStates` — the declared vocabularies, deduped, without the done
+ * states — because those are the only states a choice survives a refresh for AND is drawn
+ * for at all (see that function; a done bar is green whatever is stored). The PAINT is
  * `stateColorPaint`, the very function the bar and the legend ask, so an unchosen row opens
  * on the colour that state is actually drawn in and a chosen one opens on the choice.
  *
@@ -73,7 +74,7 @@ function stateColorRows(host: BacklogViewHost): StateColorRow[] {
 	if (!model) return [];
 	const palettes = statePalettes(model, host.settings);
 	const rows: StateColorRow[] = [];
-	for (const state of colorableStates(host.settings.states, host.settings.deliverableStates)) {
+	for (const state of colorableStates(host.settings)) {
 		// The palette that PLACES this state, kept rather than mapped over: the row needs
 		// its slot as well as its paint, and the slot is what the reset restores to.
 		//
@@ -115,9 +116,7 @@ function stateColorRows(host: BacklogViewHost): StateColorRow[] {
 export function hasColorableStates(host: BacklogViewHost): boolean {
 	if (!host.model) return false;
 	const palettes = statePalettes(host.model, host.settings);
-	return colorableStates(host.settings.states, host.settings.deliverableStates).some((state) =>
-		palettes.some((palette) => paletteSlot(palette, state) !== null),
-	);
+	return colorableStates(host.settings).some((state) => palettes.some((palette) => paletteSlot(palette, state) !== null));
 }
 
 /**

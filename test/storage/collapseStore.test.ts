@@ -3,7 +3,9 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
 	DELIVERABLES_MODE,
 	loadCollapseState,
+	MAX_PROP_COLUMN_WIDTH,
 	MAX_TIMELINE_LEAD_PX,
+	MIN_PROP_COLUMN_WIDTH,
 	MIN_TIMELINE_LEAD_PX,
 	rekeyBase,
 	saveCollapseState,
@@ -346,6 +348,54 @@ describe('the persisted timeline lead-column width', () => {
 	});
 });
 
+describe('the persisted property-column widths', () => {
+	const id = { base: 'Backlog.base', view: 'Backlog' };
+	const none = { collapsed: new Set<string>(), expanded: new Set<string>() };
+	const entry = (colWidths: unknown) =>
+		vault.localStorage.set(STORE_KEY, {
+			'Backlog.base#Backlog': { base: 'Backlog.base', collapsed: [], expanded: [], colWidths },
+		});
+
+	it('round-trips a width per property', () => {
+		const app = vault.app;
+		saveCollapseState(app, id, { ...none, colWidths: { 'note.owner': 200, 'note.points': 90 } });
+		expect(loadCollapseState(app, id).colWidths).toEqual({ 'note.owner': 200, 'note.points': 90 });
+	});
+
+	it('needs no entry for a view whose columns are all at the default', () => {
+		const app = vault.app;
+		saveCollapseState(app, id, { ...none, colWidths: {} });
+		expect(loadCollapseState(app, id).colWidths).toBeNull();
+		expect(stored(vault)['Backlog.base#Backlog']).toBeUndefined();
+	});
+
+	it('drops one unusable width without taking the map with it', () => {
+		// A bad entry is one column's pick, not every column's: one hand-edited number
+		// must not reset the widths beside it.
+		entry({ 'note.owner': 200, 'note.points': MAX_PROP_COLUMN_WIDTH + 1, 'note.risk': '90', 'note.due': NaN });
+		expect(loadCollapseState(vault.app, id).colWidths).toEqual({ 'note.owner': 200 });
+	});
+
+	it('accepts a width exactly at each bound, and nothing beyond them', () => {
+		entry({ min: MIN_PROP_COLUMN_WIDTH, max: MAX_PROP_COLUMN_WIDTH, under: MIN_PROP_COLUMN_WIDTH - 1 });
+		expect(loadCollapseState(vault.app, id).colWidths).toEqual({
+			min: MIN_PROP_COLUMN_WIDTH,
+			max: MAX_PROP_COLUMN_WIDTH,
+		});
+	});
+
+	it('reads a map that is not one, and a key inherited off Object, as no widths at all', () => {
+		for (const junk of [null, 200, 'wide', ['note.owner', 200]]) {
+			entry(junk);
+			expect(loadCollapseState(vault.app, id).colWidths).toBeNull();
+		}
+		// A property may legally be called `constructor`, and a stored entry may claim one:
+		// it has to read back as a plain width rather than as whatever `Object` inherits.
+		entry({ constructor: 200 });
+		expect(loadCollapseState(vault.app, id).colWidths?.constructor).toBe(200);
+	});
+});
+
 describe('what a click on a row does', () => {
 	const id = { base: 'Backlog.base', view: 'Backlog' };
 	const none = { collapsed: new Set<string>(), expanded: new Set<string>() };
@@ -417,5 +467,69 @@ describe('the shelf working position', () => {
 			'Backlog.base#Backlog': { base: 'Backlog.base', collapsed: [], expanded: [], shelfHiddenTypes: 'Task' },
 		});
 		expect(loadCollapseState(vault.app, id).shelfHiddenTypes).toEqual([]);
+	});
+});
+
+describe('folded columns and buckets', () => {
+	const id = { base: 'Backlog.base', view: 'Backlog' };
+	const none = { collapsed: new Set<string>(), expanded: new Set<string>() };
+	// Opaque to this module: `columnKey` in `view/collapseState.ts` mints the real ones and
+	// this side never parses them, so the tests read as strings rather than as its format.
+	const DONE = 'board-done';
+	const NEXT = 'horizons-next';
+
+	it('defaults to nothing folded, and needs no entry at all', () => {
+		vault.addFile('Backlog.base');
+		saveCollapseState(vault.app, id, { ...none });
+		expect(stored(vault)['Backlog.base#Backlog']).toBeUndefined();
+
+		const snapshot = loadCollapseState(vault.app, id);
+		expect(snapshot.collapsedColumns).toEqual([]);
+		expect(snapshot.expandedColumns).toEqual([]);
+	});
+
+	it('round-trips a fold on its own, with nothing else in the entry to keep it alive', () => {
+		// A view whose ONLY change is one folded column still has state worth an entry —
+		// the question the density test asks, of the field added after it.
+		vault.addFile('Backlog.base');
+		saveCollapseState(vault.app, id, { ...none, collapsedColumns: [DONE] });
+		expect(loadCollapseState(vault.app, id).collapsedColumns).toEqual([DONE]);
+	});
+
+	it('keeps the two lists apart, so an open against a default is not read as a fold', () => {
+		vault.addFile('Backlog.base');
+		saveCollapseState(vault.app, id, { ...none, collapsedColumns: [NEXT], expandedColumns: [DONE] });
+		const snapshot = loadCollapseState(vault.app, id);
+		expect(snapshot.collapsedColumns).toEqual([NEXT]);
+		expect(snapshot.expandedColumns).toEqual([DONE]);
+	});
+
+	it('drops a stored list that is not an array of strings', () => {
+		vault.localStorage.set(STORE_KEY, {
+			'Backlog.base#Backlog': {
+				base: 'Backlog.base',
+				collapsed: [],
+				expanded: [],
+				collapsedColumns: DONE,
+				expandedColumns: [7, NEXT],
+			},
+		});
+		const snapshot = loadCollapseState(vault.app, id);
+		expect(snapshot.collapsedColumns).toEqual([]);
+		// The list survives minus the entry that is not a string — `readPaths`' own rule,
+		// borrowed whole because a column key is a string in a list like any other.
+		expect(snapshot.expandedColumns).toEqual([NEXT]);
+	});
+
+	it('keeps a folded column through a base rename, since it names no file to prune', () => {
+		// The reason these are fields rather than keys in the collapse SET: the flush drops
+		// any key the vault has no file for, and a state value never has one.
+		vault.addFile('Old.base');
+		saveCollapseState(vault.app, { base: 'Old.base', view: 'Backlog' }, { ...none, collapsedColumns: [DONE] });
+		vault.files.delete('Old.base');
+		vault.addFile('New.base');
+		rekeyBase(vault.app, 'Old.base', 'New.base');
+
+		expect(loadCollapseState(vault.app, { base: 'New.base', view: 'Backlog' }).collapsedColumns).toEqual([DONE]);
 	});
 });

@@ -95,7 +95,7 @@ const USE_CASE_SECTIONS = [
  */
 const USE_CASE_ROWS = ["Actor", "Trigger", "Preconditions", "Guarantee"];
 /** The register's own status vocabulary, from the conventions table in `docs/README.md`. */
-const NOTE_STATUSES = new Set(["Open", "Active", "Done"]);
+const NOTE_STATUSES = new Set(["Open", "Active", "Done", "Dropped"]);
 const ADR_SECTIONS = ["## Context", "## Decision", "## Consequences", "## Alternatives", "## Revisit when"];
 const ADR_STATUSES = new Set(["Accepted", "Superseded", "Proposed"]);
 const ADR_AREAS = new Set(["architecture", "domain", "platform", "storage", "testing", "tooling"]);

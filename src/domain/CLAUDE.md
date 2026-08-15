@@ -161,6 +161,14 @@ a node test that did would be measuring the runner.
   selection over the same two predicates, and it is stated there rather than here.
   `columnKind` (`render/columns.ts`) needed a line too, or the chip that reads correctly
   would have had no column to draw into.
+  **`item.done` and `item.subtreeDone` are the REQUIREMENTS reading, and reaching for
+  either is the recurring form of this mistake** — three times now, most recently
+  `BoardColumn.openWork` (found by review, PR #140), where a Deliverable finished in its
+  own workflow reported open work unless its `status` happened to agree, so the fold
+  default never fired on that board at all. `ownWorkflowReading` is the answer where an
+  ITEM is in hand. Where a COLUMN is, `col.done` is the same answer arrived at more cheaply
+  and it cannot drift: `workflow.stateOf` is what put the card in that column, so the
+  column already IS the active workflow's verdict on it.
 - **A projection's forest is computed, never filtered** — `projectionForest`, beside
   `collectFocusRoots`, asked twice with opposite predicates. `renderForest` drops a hidden
   sibling *without descending through it*, so hiding rows loses everything under a hidden

@@ -90,6 +90,16 @@ const DENSITY_VALUES = ['compact'];
  */
 export const MIN_TIMELINE_LEAD_PX = 160;
 export const MAX_TIMELINE_LEAD_PX = 480;
+/**
+ * The tree's property columns are fixed-width so values line up across rows; this is the
+ * width one draws at until its reader resizes it, and the bounds a stored pick is read
+ * back against. Here rather than in `domain/settings.ts`, where they lived while the
+ * width was a view option: the bounds on a stored pick belong beside the field that
+ * stores it, exactly as the lead column's do above.
+ */
+export const DEFAULT_PROP_COLUMN_WIDTH = 132;
+export const MIN_PROP_COLUMN_WIDTH = 80;
+export const MAX_PROP_COLUMN_WIDTH = 280;
 /** The values the `shelfSort` field may hold. Mirrors `ShelfSort` in `domain/shelf.ts`. */
 const SHELF_SORT_VALUES = ['tree', 'title', 'modified'];
 
@@ -111,6 +121,17 @@ export interface CollapseSnapshot {
 	 * `MIN_TIMELINE_LEAD_PX`/`MAX_TIMELINE_LEAD_PX` for how it is validated on read.
 	 */
 	leadWidth?: number | null;
+	/**
+	 * The tree's resized property columns, in pixels, keyed by the Bases property id the
+	 * column draws. A key is present only once its column has been dragged away from
+	 * `DEFAULT_PROP_COLUMN_WIDTH`; absent or empty means every column is at the default.
+	 *
+	 * A map rather than one number, because each column is resized on its own — and one
+	 * whose property leaves the Base keeps its entry rather than being pruned with the
+	 * note paths: what a column is called is the reader's own configuration, not a file,
+	 * so a property hidden for an afternoon comes back the width they left it.
+	 */
+	colWidths?: Record<string, number> | null;
 	/** The focused type name; null or absent means the whole tree, the default. */
 	focus?: string | null;
 	/**
@@ -138,6 +159,20 @@ export interface CollapseSnapshot {
 	 * exist.
 	 */
 	collapsedLanes?: string[] | null;
+	/**
+	 * Board columns and horizon buckets the reader has folded shut, by KEY — a scope and
+	 * the column's own value, minted by `columnKey` in `view/collapseState.ts`.
+	 *
+	 * Beside {@link CollapseSnapshot.collapsedLanes} and out of the `collapsed` path set
+	 * for the identical reason: everything in that set is a note PATH, so a state value put
+	 * there would be dropped by the first flush. A pair rather than one list, because
+	 * unlike a band a column HAS a default worth suppressing — a done column of finished
+	 * work starts shut — so the two together say what has been ruled on, exactly as
+	 * `collapsed`/`expanded` do for rows.
+	 */
+	collapsedColumns?: string[] | null;
+	/** Columns explicitly opened; settled is this and {@link collapsedColumns} together. */
+	expandedColumns?: string[] | null;
 }
 
 /** Which base view an entry belongs to. */
@@ -172,6 +207,12 @@ interface StoredEntry {
 	 */
 	leadWidth?: number;
 	/**
+	 * Absent or empty means every property column is at `DEFAULT_PROP_COLUMN_WIDTH`. Each
+	 * value is validated against `MIN_PROP_COLUMN_WIDTH`/`MAX_PROP_COLUMN_WIDTH` on the
+	 * way in — see `readColWidths`.
+	 */
+	colWidths?: Record<string, number>;
+	/**
 	 * Absent means the whole tree, the default. Stored as the type name the user picked
 	 * and NOT checked against the vocabulary here: `focusTarget` already answers a name
 	 * no configured type matches with "no focus", the same way it did while this lived
@@ -188,6 +229,10 @@ interface StoredEntry {
 	shelfHiddenTypes?: string[];
 	/** Absent or empty means every resource band is open. */
 	collapsedLanes?: string[];
+	/** Absent or empty means no column has been folded. */
+	collapsedColumns?: string[];
+	/** Absent or empty means no column has been explicitly opened. */
+	expandedColumns?: string[];
 }
 
 type StoredMap = Record<string, StoredEntry>;
@@ -292,6 +337,17 @@ function defaultShelf(
 }
 
 /**
+ * The folded columns and the opened ones — a pair, so a column nobody has ruled on can
+ * still be told from one the reader deliberately opened against its own default.
+ */
+function defaultColumns(entry: StoredEntry | undefined): Pick<CollapseSnapshot, 'collapsedColumns' | 'expandedColumns'> {
+	return {
+		collapsedColumns: entry?.collapsedColumns ?? [],
+		expandedColumns: entry?.expandedColumns ?? [],
+	};
+}
+
+/**
  * The seven picks whose default is simply absence, read back off a stored entry — split
  * out of {@link loadCollapseState} so that function's own complexity stays readable as
  * the picks grow; this one is nothing but `??` chains.
@@ -308,6 +364,14 @@ function defaultPicks(
 		focus: entry?.focus ?? null,
 		clickFolds: entry?.clickFolds ?? false,
 	};
+}
+
+/** Empty is the default on both sides, so neither list is written when it holds nothing. */
+function writeColumns(entry: StoredEntry, snapshot: CollapseSnapshot): void {
+	const collapsed = snapshot.collapsedColumns ?? [];
+	const expanded = snapshot.expandedColumns ?? [];
+	if (collapsed.length > 0) entry.collapsedColumns = collapsed;
+	if (expanded.length > 0) entry.expandedColumns = expanded;
 }
 
 function writeShelf(entry: StoredEntry, shelf: ShelfState): void {
@@ -327,9 +391,9 @@ interface ShelfState {
 }
 
 /**
- * The seven picks whose default is simply absence — the tree, no axis pick, no zoom, no
- * density, the default lead width, the whole tree, a click that opens. Empty, false and
- * null are the same thing
+ * The eight picks whose default is simply absence — the tree, no axis pick, no zoom, no
+ * density, the default lead width, unresized columns, the whole tree, a click that opens.
+ * Empty, false and null are the same thing
  * here, which is what makes clearing a focus remove the field rather than store a name
  * meaning "none". `leadWidth` fits the same truthy check as the others despite being a
  * number: every value this module ever WRITES is already clamped to
@@ -341,6 +405,9 @@ function writePicks(entry: StoredEntry, snapshot: CollapseSnapshot): void {
 	if (snapshot.zoom) entry.zoom = snapshot.zoom;
 	if (snapshot.density) entry.density = snapshot.density;
 	if (snapshot.leadWidth) entry.leadWidth = snapshot.leadWidth;
+	// An empty map is the same absence as a null one: a column dragged back to the
+	// default drops its key, and the last one to go leaves no field behind.
+	if (snapshot.colWidths && Object.keys(snapshot.colWidths).length > 0) entry.colWidths = snapshot.colWidths;
 	if (snapshot.focus) entry.focus = snapshot.focus;
 	if (snapshot.clickFolds) entry.clickFolds = true;
 }
@@ -350,8 +417,13 @@ export function loadCollapseState(app: App, id: ViewIdentity): CollapseSnapshot 
 	return {
 		collapsed: new Set(entry?.collapsed ?? []),
 		expanded: new Set(entry?.expanded ?? []),
+		// Read here rather than in `defaultPicks` for a reason with nothing to do with
+		// where it belongs: one more `??` term there tips that function past the
+		// complexity budget, and this one is a map rather than one of its scalars anyway.
+		colWidths: entry?.colWidths ?? null,
 		...defaultPicks(entry),
 		...defaultShelf(entry),
+		...defaultColumns(entry),
 	};
 }
 
@@ -373,6 +445,7 @@ export function saveCollapseState(app: App, id: ViewIdentity, snapshot: Collapse
 		types: snapshot.shelfHiddenTypes ?? [],
 		lanes: snapshot.collapsedLanes ?? [],
 	});
+	writeColumns(entry, snapshot);
 	// A view at its defaults — nothing settled, the tree, no pick, shelf untouched —
 	// needs no entry. That is the same question the read side asks of a stored entry, so
 	// it is asked with the same function: a field added to one and forgotten in the other
@@ -452,6 +525,31 @@ function readLeadWidth(value: unknown): number | undefined {
 	return value >= MIN_TIMELINE_LEAD_PX && value <= MAX_TIMELINE_LEAD_PX ? value : undefined;
 }
 
+/**
+ * `readLeadWidth` applied per entry of the column-width map, and nothing else: a key
+ * naming a property this Base no longer shows is kept (see `CollapseSnapshot.colWidths`),
+ * so the only thing checked here is that each value is a width this plugin could have
+ * written. A bad entry is dropped alone rather than taking the map with it — one
+ * hand-edited number should not reset every other column.
+ *
+ * `Object.create(null)`, like the settings' own name tables: a stored key spelled
+ * `constructor` or `__proto__` must be a plain entry rather than a collision with
+ * something inherited off `Object` — and `__proto__` on an object literal would rewrite
+ * the prototype instead of storing a width.
+ */
+function readColWidths(value: unknown): Record<string, number> | undefined {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) return undefined;
+	const widths: Record<string, number> = Object.create(null) as Record<string, number>;
+	let any = false;
+	for (const [prop, width] of Object.entries(value as Record<string, unknown>)) {
+		if (prop.length === 0 || typeof width !== 'number' || !Number.isFinite(width)) continue;
+		if (width < MIN_PROP_COLUMN_WIDTH || width > MAX_PROP_COLUMN_WIDTH) continue;
+		widths[prop] = width;
+		any = true;
+	}
+	return any ? widths : undefined;
+}
+
 function readShelfFields(record: Record<string, unknown>, entry: StoredEntry): void {
 	if (typeof record.shelfExpanded === 'boolean' && record.shelfExpanded) entry.shelfExpanded = true;
 	const sort = readEnum(record.shelfSort, SHELF_SORT_VALUES);
@@ -462,6 +560,11 @@ function readShelfFields(record: Record<string, unknown>, entry: StoredEntry): v
 	// paths changes nothing it checks.
 	const lanes = readPaths(record.collapsedLanes);
 	if (lanes.length > 0) entry.collapsedLanes = lanes;
+	// Same reader again: a column key is a string in a list, whatever the string names.
+	const folded = readPaths(record.collapsedColumns);
+	if (folded.length > 0) entry.collapsedColumns = folded;
+	const opened = readPaths(record.expandedColumns);
+	if (opened.length > 0) entry.expandedColumns = opened;
 }
 
 function entryHasContent(entry: StoredEntry): boolean {
@@ -473,12 +576,15 @@ function entryHasContent(entry: StoredEntry): boolean {
 		entry.zoom !== undefined ||
 		entry.density !== undefined ||
 		entry.leadWidth !== undefined ||
+		entry.colWidths !== undefined ||
 		entry.focus !== undefined ||
 		entry.clickFolds !== undefined ||
 		entry.shelfExpanded !== undefined ||
 		entry.shelfSort !== undefined ||
 		entry.shelfHiddenTypes !== undefined ||
-		entry.collapsedLanes !== undefined
+		entry.collapsedLanes !== undefined ||
+		entry.collapsedColumns !== undefined ||
+		entry.expandedColumns !== undefined
 	);
 }
 
@@ -500,6 +606,8 @@ function readEntry(value: unknown): StoredEntry | null {
 	if (density !== undefined) entry.density = density;
 	const leadWidth = readLeadWidth(record.leadWidth);
 	if (leadWidth !== undefined) entry.leadWidth = leadWidth;
+	const colWidths = readColWidths(record.colWidths);
+	if (colWidths !== undefined) entry.colWidths = colWidths;
 	// Not an enum: the vocabulary this is matched against lives in `domain/settings.ts`
 	// and a name outside it already reads as no focus, so the only check here is shape.
 	if (typeof record.focus === 'string' && record.focus.length > 0) entry.focus = record.focus;

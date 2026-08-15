@@ -119,10 +119,11 @@ export const SETUP: ManualSection = {
 				'opened by the palette button on the roadmap toolbar — dated axis only, since that ' +
 				'is the one place a state colour is drawn. It offers one swatch per DECLARED state, ' +
 				'across both workflows, each state once; a state you have not listed in the boxes ' +
-				'above cannot be coloured, because there would be nowhere to keep the choice. The ' +
-				'swatch opens on the colour that state is drawn in now, and the arrow beside it puts ' +
-				'it back on the default. A chosen colour is fixed, where the default follows the ' +
-				'theme between light and dark; a finished state stays green whatever is chosen.',
+				'above cannot be coloured, because there would be nowhere to keep the choice. A ' +
+				'done state is not listed either: a finished bar is always green. The swatch opens ' +
+				'on the colour that state is drawn in now, and the arrow beside it puts it back on ' +
+				'the default. A chosen colour is fixed, where the default follows the theme ' +
+				'between light and dark.',
 		},
 		{
 			term: 'Where new notes go',
@@ -144,8 +145,12 @@ export const SETUP: ManualSection = {
 		},
 		{
 			term: 'Presentation',
-			text: 'The width of a property column, and whether descendant counts show.',
-			keys: ['propertyColumnWidth', 'showCounts'],
+			text:
+				'Whether descendant counts show. The WIDTH of a property column is not here: drag ' +
+				'the grip at its header (double click it to put it back), and the width is kept ' +
+				'per view on this device, like the projection and the focus level, rather than ' +
+				'in the base.',
+			keys: ['showCounts'],
 		},
 		{
 			term: 'The state property is a prerequisite',
@@ -159,7 +164,8 @@ export const SETUP: ManualSection = {
 				'The filter, the sort that orders unranked items, and which properties show as ' +
 				"columns are the Base's own settings, reached from the same toolbar — its " +
 				'properties menu is the only switch for what a row shows, and in what order. ' +
-				'This view decides their width, and drops leading columns when the row will ' +
+				'Their WIDTH is this view\'s, and the reader\'s: drag the grip on a column ' +
+				'header, or double click it to reset. Columns still drop when the row will ' +
 				'not fit.',
 		},
 		{
