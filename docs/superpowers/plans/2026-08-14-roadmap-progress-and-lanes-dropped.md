@@ -1189,6 +1189,12 @@ This is a **probe**, and the two outcomes are handled differently:
 
 Found by review: the plan's failing branch previously left a red test staged into a task that has to run the full gate.
 
+- [ ] **Step 2b: Write down the second pitfall the Task 5 fixture works around**
+
+`menuVault()` in `test/view/roadmapMatches.test.ts` documents one of the two structural facts its shape depends on — that a dated leaf's span infers upward through every ancestor, which blocks `hiddenMatches`' walk. It does not document the other: **under `focus`, `deriveBars` only ever sees `model.roots`, so a `TimelineRow` can never get a nested chevron.** The test simply omits `focus` from its `roadmap()` call with nothing saying why, so anyone adding a focused variant re-derives the pitfall from scratch.
+
+Add one comment beside that omission saying it. This is bookkeeping, not behaviour: change no fixture and no assertion, and the suite must stay green with the same counts.
+
 - [ ] **Step 3: Add the changelog entry**
 
 Under `## [Unreleased]`, in the voice the existing entries use — someone deciding whether to upgrade, not a commit log:
