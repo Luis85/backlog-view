@@ -1,5 +1,5 @@
 import { BasesAllOptions, BasesOptions, BasesPropertyId, BasesViewConfig } from 'obsidian';
-import { BacklogSettings, columnPolicyKey, DEFAULT_DONE_VALUES, DEFAULT_HORIZON_VALUES, DEFAULT_PROP_COLUMN_WIDTH, DEFAULT_RISK_VALUES, MAX_PROP_COLUMN_WIDTH, MIN_PROP_COLUMN_WIDTH, wipLimitKey } from './settings';
+import { BacklogSettings, columnPolicyKey, DEFAULT_DONE_VALUES, DEFAULT_HORIZON_VALUES, DEFAULT_RISK_VALUES, wipLimitKey } from './settings';
 import { OptionalField, optionalProperty } from './optionalProperties';
 import { resolveSettings } from './settingsResolve';
 import { ABSENCE_TYPE, ALL_TYPES, DEFAULT_HOME_FOLDER, defaultTypeFolder, typeFolderKey } from './typeVocabulary';
@@ -390,15 +390,6 @@ function displayGroup(): BasesAllOptions {
 		type: 'group',
 		displayName: 'Display',
 		items: [
-			{
-				type: 'slider',
-				key: 'propertyColumnWidth',
-				displayName: 'Property column width',
-				default: DEFAULT_PROP_COLUMN_WIDTH,
-				min: MIN_PROP_COLUMN_WIDTH,
-				max: MAX_PROP_COLUMN_WIDTH,
-				step: 4,
-			},
 			{
 				type: 'property',
 				key: 'tagsProperty',

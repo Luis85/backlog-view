@@ -259,6 +259,25 @@ describe('rendering', () => {
 		}
 	});
 
+	it('gives both resize grips a hoverless presentation, since neither is revealed any other way', () => {
+		// A 6px strip that paints only on `:hover` is invisible on a phone, and invisible is
+		// unusable for a control whose whole affordance is knowing where to press — the
+		// tree's other hidden controls are all in a menu as well, and a boundary is not.
+		// Both grips widen to a finger-sized target there; the property column's also draws
+		// the boundary line the header otherwise has none of, while the timeline's lead
+		// column already carries its own border.
+		expect(ruleAt('.pbl-col-grip', 'width: 20px;', '(hover: none)')).toBeGreaterThan(-1);
+		expect(ruleAt('.pbl-col-grip', 'border-inline-end: 2px solid', '(hover: none)')).toBeGreaterThan(-1);
+		expect(ruleAt('.pbl-timeline-lead-grip', 'width: 20px;', '(hover: none)')).toBeGreaterThan(-1);
+		// After the rule each overrides, the ordering `styles/touch.css` states and the
+		// hazard that file records: a media query adds no specificity, so a block written
+		// above what it changes loses the tie.
+		expect(ruleAt('.pbl-col-grip', 'width: 20px;', '(hover: none)')).toBeGreaterThan(ruleAt('.pbl-col-grip', 'width: 6px;'));
+		expect(ruleAt('.pbl-timeline-lead-grip', 'width: 20px;', '(hover: none)')).toBeGreaterThan(
+			ruleAt('.pbl-timeline-lead-grip', 'width: 6px;'),
+		);
+	});
+
 	it('reveals the connector on the keyboard-selected row, which is the only reveal that path gets', () => {
 		// The three reveals above are a pointer's (`:hover`), a programmatic focus's
 		// (`:focus-visible`) and the drag's own (`.is-active`) — and a keyboard user on
