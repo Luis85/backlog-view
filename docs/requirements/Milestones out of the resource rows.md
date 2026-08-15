@@ -185,6 +185,14 @@ can fold them away.
   for; found in review (2026-08-15). It is reported from what the render DREW, never
   recomputed from the results, which is the rule [[A colour per state]]'s legend keeps.
 
+- **6c — a milestone is the only thing the base puts on screen.** The frame draws it and no
+  advisory renders. 3c's cost is that a diamond is no card stop, and the roadmap's advisory
+  counted the card stops — so a plan whose one visible note was a release date announced
+  that every item was done and hidden, beside the date it was drawing. Found in review
+  (2026-08-15). Fixed where the count is, not here: the advisory asks what the axis HOLDS,
+  which is the model's question and no longer the render's — [[Roadmap empty states]] 3b,
+  where the folded band reaches the same defect by the other road.
+
 ## Acceptance criteria
 
 - On the resources axis, no marker is ever in a resource's row — not by its assignee, not

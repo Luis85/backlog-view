@@ -93,6 +93,12 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Fixed
 
+- **Folding every resource row no longer reports the plan as empty.** The roadmap counted
+  the rows it had drawn, and a folded band draws none — so shutting the last open band
+  answered with "all your items are done and hidden" beside the headers, counts and rails
+  still on screen. It counts what the axis holds now, which also covers a plan whose only
+  visible note is a milestone.
+
 - **A bar drag or resize no longer loses its release.** If the vault changed while a bar was
   in the air — which happens most often in the first minutes after a view is opened, while
   the query is still settling — the release could write nothing at all: the ghost showed the

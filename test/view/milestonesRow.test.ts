@@ -224,6 +224,23 @@ describe('the milestones row', () => {
 		expect(roster.querySelectorAll('.pbl-lane-rail')).toHaveLength(1);
 	});
 
+	it('keeps the empty advisory away when a milestone is the only thing drawn', () => {
+		// The diamonds are deliberately absent from `drawnCards` — a mark in a shared
+		// header is no `option` and nothing could point the roving selection at it
+		// (extension 3c) — and the advisory's population was read off that same list. So a
+		// plan whose only visible note is a milestone announced itself as empty beside the
+		// milestone it was drawing. What the axis DREW as rows is not what it HOLDS.
+		const vault = new FakeVault();
+		vault.addFile('Ship.md', { frontmatter: { type: 'Milestone', order: 20, due: '2026-08-07' } });
+		const harness = laneRoadmap(vault);
+
+		// The premise, stated rather than assumed: the mark really is on screen, and it
+		// really is the only thing with no row of its own to be counted by.
+		expect(lanesOf(harness.containerEl)[0].querySelectorAll('.pbl-bar-milestone')).toHaveLength(1);
+		expect(harness.containerEl.querySelectorAll('.pbl-timeline-row')).toHaveLength(0);
+		expect(harness.containerEl.querySelector('.pbl-board-advisory')).toBeNull();
+	});
+
 	it('marks a milestone the held drag may not land on, and clears it when the drag ends', () => {
 		// Work already waits for Ship, so dropping Work onto Ship would close a loop. The
 		// sweep marks ROWS, and a marker on this axis has none — the mark is the only
