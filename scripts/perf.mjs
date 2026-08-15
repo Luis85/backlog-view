@@ -302,6 +302,35 @@ if (browser === null) {
  * `boolFlag`, so each answers true, false or a refusal rather than "was it typed".
  * (Codex, PR #137.)
  */
+/**
+ * WHICH Chromium, not just which executable name.
+ *
+ * The heading is the reproducibility line, and `headless_shell` names every build
+ * Playwright has ever shipped — while a browser version is a real term in these numbers,
+ * since what `content-visibility` skips and what a layout costs are the browser's own.
+ * Two tables captured a month apart could differ entirely from that and read as identical
+ * runs. Asked of the binary once, before anything is timed.
+ *
+ * It is NOT in the workload comparison, and that is not an omission: `--against`
+ * alternates two harnesses inside one process with one resolved browser, so the two sides
+ * cannot differ. What this fixes is a table read next to one from another machine.
+ * (Codex, PR #137.)
+ */
+const browserBuild = (() => {
+	try {
+		// The FIRST line, and a blank answer falls back like a failed one. Chromium says
+		// `Chromium 141.0.7390.37` and nothing else, but the heading is one line and this
+		// runs against whatever `CHROME_PATH` names — a multi-line answer would break the
+		// row rather than fill a field, and an empty tail would read as a field missing
+		// rather than as one that could not be asked.
+		const said = execFileSync(browser, ['--version'], { encoding: 'utf8' }).split('\n')[0].trim();
+		return said || path.basename(browser);
+	} catch {
+		// A build that will not answer still measures; the heading says what is known.
+		return path.basename(browser);
+	}
+})();
+
 if (wantsBuild !== false && wantsNoBuild !== true) {
 	execFileSync(process.execPath, ['scripts/harness.mjs'], { stdio: 'inherit' });
 }
@@ -506,7 +535,7 @@ const ignored = [
 const drawn = ran
 	? `${ran.fixture}${ran.axis ? ` · ${ran.axis}` : ''}${ran.grid ? ` · ${ran.grid}` : ''} · ${ran.results} results`
 	: search;
-console.log(`\n${drawn}  ·  ${runs} run${runs === 1 ? '' : 's'}  ·  window ${window}  ·  ${path.basename(browser)}`);
+console.log(`\n${drawn}  ·  ${runs} run${runs === 1 ? '' : 's'}  ·  window ${window}  ·  ${browserBuild}`);
 if (against) console.log(`against ${against} (alternated, A B A B)`);
 console.table(table);
 // Loud, and not a refusal: "did this change cost anything" is a legitimate question to

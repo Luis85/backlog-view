@@ -248,6 +248,16 @@ instruments improvised around a browser.
   already being refused rather than a new rule. It draws the line at COUNTABLE and not at
   large: a big representable number is a slow run somebody asked for, and nothing here
   refuses one. (Codex, PR #137.)
+- **3q — the heading names the executable, not the BUILD.** It said `headless_shell`,
+  which is every Chromium Playwright has ever shipped. A browser version is a real term in
+  these numbers — what `content-visibility` skips and what a layout costs are the browser's
+  own — so two tables captured a month apart could differ entirely from that and read as
+  identical runs. It is asked of the binary once, before anything is timed, and it is
+  deliberately NOT in the workload comparison: `--against` alternates two harnesses inside
+  one process with one resolved browser, so the two sides cannot differ. What this fixes is
+  a table read beside one from another machine. First line only, and a blank or failed
+  answer falls back to the executable name — the heading is one row, and this runs against
+  whatever `CHROME_PATH` names. (Codex, PR #137.)
 - **4a — the runner checks out the ref to compare against.** Refused: that would move the
   tree someone is working in. Building the other side is one command in a git worktree,
   and stays the human's.
