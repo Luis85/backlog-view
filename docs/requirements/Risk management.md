@@ -10,8 +10,6 @@ finished: ""
 horizon: ""
 risk: ""
 assignee: Alex
-start: 2026-09-14
-due: 2026-09-20
 ---
 
 # Risk management

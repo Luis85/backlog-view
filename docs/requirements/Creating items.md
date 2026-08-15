@@ -1,13 +1,15 @@
 ---
 type: Feature
 parent: "[[Product Backlog]]"
-order: 30
+order: 0
 status: Active
 started: ""
-finished: ""
 horizon: ""
 risk: ""
 assignee: Evi
+finished: ""
+start: ""
+due: ""
 ---
 
 # Creating items

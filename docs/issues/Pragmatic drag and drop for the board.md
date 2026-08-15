@@ -1,6 +1,6 @@
 ---
 type: Issue
-order: 60
+order: 67.5
 parent: "[[Product Kanban]]"
 status: Open
 priority: P2

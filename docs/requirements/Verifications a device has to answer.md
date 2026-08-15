@@ -1,7 +1,7 @@
 ---
 type: Feature
 parent: "[[Codebase health]]"
-order: 60
+order: 5
 status: Open
 area: verification
 created: 2026-08-03

@@ -1,7 +1,7 @@
 ---
 type: Issue
 parent: "[[Codebase health]]"
-order: 180
+order: 118.75
 status: Open
 area: architecture
 priority: P3

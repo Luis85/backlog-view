@@ -13,6 +13,13 @@ files:
   - src/view/render/toolbarFilter.ts
   - src/view/render/toolbarControls.ts
   - src/view/render/toolbarFit.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # A toolbar that fits one row

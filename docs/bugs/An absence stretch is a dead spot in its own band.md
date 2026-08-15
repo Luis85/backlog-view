@@ -12,6 +12,13 @@ files:
   - src/view/render/timeline.ts
   - test/view/resourceAbsences.test.ts
   - test/view/resourceMoves.test.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # An absence stretch is a dead spot in its own band

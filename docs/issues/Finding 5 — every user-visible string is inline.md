@@ -1,7 +1,7 @@
 ---
 type: Issue
 parent: "[[Codebase health]]"
-order: 140
+order: 115
 status: Open
 area: i18n
 priority: P2

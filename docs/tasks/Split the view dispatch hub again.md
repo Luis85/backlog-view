@@ -10,6 +10,13 @@ source: final review of the toolbar overhaul branch
 files:
   - src/view/backlogView.ts
   - src/view/render/afterContent.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
 ---
 
 # Split the view dispatch hub again
