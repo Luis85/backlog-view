@@ -13,6 +13,13 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Added
 
+- **Every milestone in one row above the roster.** On the resources axis a milestone is no
+  longer filed under whoever is named on it — where folding that person's band took the
+  date off screen — and one naming nobody no longer waits on the shelf. Every placed
+  milestone draws as a diamond in a single row above the first resource, nothing can fold
+  it away, and two milestones on the same day stack instead of hiding one another. Drag
+  from a diamond to make something wait for that date, exactly as on the plain dated axis.
+
 - **One row per resource, whatever they have.** An absence used to draw a blocked line of
   its own beneath its resource's header; it draws inside the header itself now, and two that
   share a day pack into their own sub-lanes rather than either one hiding the other. The
@@ -33,6 +40,12 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   of — and editing a date renames the note to match. An absence that already exists keeps
   its name until you edit it; a name you set by hand in Obsidian is replaced the next time
   you edit the stretch.
+
+- **State colours no longer offer a done state.** A finished bar is drawn green whatever
+  is stored against it, so the swatch for a done state could never change anything on the
+  grid or in the legend. The dialog now lists the open states only, and says so; a colour
+  a `.base` still holds for a done state is ignored. Done is read per workflow, so a value
+  only one of your two workflows finishes on still gets a swatch for the other.
 
 ### Fixed
 
