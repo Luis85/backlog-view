@@ -95,6 +95,17 @@ the moment the populations diverged, which is exactly what happened.
   toggle — each gate consistent with itself and the screen incoherent. Two values,
   deliberately: the raw stored path, which is user data, and the effective projection,
   which is derived. Nothing downstream asks the question a second time.
+- **2g — the iteration property is cleared while a scope is chosen.** The view falls back
+  to the product board, and the stored path is **retained** so re-configuring the property
+  restores the scope. The configured key is therefore part of resolving the effective
+  scope, not only the stored path: with no key every item reads a null iteration, so the
+  path still names a real note that nothing can match, the picker is gone (1b) and the
+  pressed `Board` position is a deliberate no-op (1d) — leaving the reader stranded on a
+  permanently empty board with no control to leave it.
+- **2h — a column is folded on an iteration board.** It folds **here only**. Columns are
+  keyed by a fold scope of this board's own, so `Done` folded on Sprint 12 leaves `Done`
+  open on the product board and on every other iteration. Sharing the product board's
+  scope would make two boards' identically named columns one control.
 - **2e — the chosen `Iteration` note, or a folder above it, is renamed.** The stored scope
   **follows it**, and the board keeps showing the same iteration. This is the first UI
   state whose value is a PATH, so it is the first that has to be migrated on a rename;
@@ -344,8 +355,12 @@ the moment the populations diverged, which is exactly what happened.
 - Choosing a scope leaves the picker on screen and the `Board` position pressed, checked
   by picking one and inspecting the rebuilt toolbar.
 - An item created from this board carries the iteration it was created on, written in the
-  same create as its type and parent, so it appears as a card immediately rather than
-  vanishing on refresh.
+  same create as its type and parent — spelled from the NEW note's own path, so two
+  iterations sharing a basename still get distinct links — and so it appears as a card
+  immediately rather than vanishing on refresh.
+- Column folding is scoped to this board: folding a column here folds it nowhere else.
+- Clearing the iteration property falls back to the product board and retains the stored
+  scope.
 - `Set type` and the creation menus offer exactly what this board can show: `Deliverable`
   **yes**, because it draws them; `Iteration` **no**, because it never draws one. Offering
   a type the board cannot show lets a reader create an item and watch it vanish from the

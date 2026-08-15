@@ -68,7 +68,7 @@ Everything here implements:
 | `src/domain/readItems.ts` | `iterationStateValue` |
 | `src/domain/model.ts` | `iterationResults`, `observedIterationStates` |
 | `src/domain/board.ts` | `iterationWorkflow` |
-| `src/view/host.ts` | `Projection` gains `'iteration'` |
+| `src/view/host.ts` | `Projection` **and** `ColumnScope` each gain `'iteration'` |
 | `src/storage/collapseStore.ts` | `ITERATION_MODE`, and the `boardScope` path field |
 | `src/view/projection.ts` | the seven projection questions answered for it |
 | `src/view/collapseState.ts` | the `PROJECTION_MODE` row, `boardScope()` / `setBoardScope()` |
@@ -1383,13 +1383,28 @@ Two values, and the distinction is the whole of it:
 
 - the **stored** scope, raw, which is user data and is never rewritten — a path whose note
   is gone stays exactly as written, so restoring the note restores the choice;
-- the **effective** projection, resolved once from that value against the model:
-  `'iteration'` while the path names an `Iteration` result, `'board'` otherwise.
+- the **effective** projection, resolved once from that value against the model **and the
+  settings**: `'iteration'` while the iteration property is configured *and* the path names
+  an `Iteration` result, `'board'` otherwise.
+
+Both halves. With `iterationProperty` cleared, every item reads a null iteration, so the
+path still names a note but no card can ever match it — and Task 9's picker is gone
+(`iterationKey` is empty) while the pressed `Board` button is a deliberate no-op. The
+reader would be stranded on a permanently empty scoped board with no control to leave it,
+where extension 1b promises the unchanged product board. The raw path is still retained,
+so re-configuring the property restores the scope.
 
 `host.projection` returns the effective one. Nothing downstream asks the question twice,
 and nothing downstream can answer it differently.
 
 ```ts
+it('reads as the ordinary board when the iteration property is cleared', () => {
+	// The path still names a real Iteration note; nothing can carry the link.
+	const host = hostWith({ storedScope: sprint12, iterationKey: '' });
+	expect(host.projection).toBe('board');
+	expect(rawStoredScope(host)).toBe(sprint12); // retained — reconfiguring restores it
+});
+
 it('reads as the ordinary board everywhere while the scope is stale', () => {
 	const host = hostWith({ storedScope: 'docs/iterations/Gone.md' });
 	expect(host.projection).toBe('board');
@@ -1621,7 +1636,7 @@ export function renderIterationBoard(
 ): BoardSnapshot {
 	const host: BacklogViewHost = ctx.host;
 	const model = host.model;
-	if (!model) return { board: { columns: [], cardCount: 0 }, colEls: [] };
+	if (!model) return { board: { columns: [], cardCount: 0 }, colEls: [], scope: 'iteration' };
 	const population = model.iterationResults.filter((item) => item.iterationPath === scope);
 	const board = boardColumns(
 		iterationWorkflow(population, host.settings),
@@ -1630,6 +1645,11 @@ export function renderIterationBoard(
 		() => true,
 	);
 	return renderBoard(ctx, boardEl, dnd, board, {
+		// Its OWN fold scope, not `'board'`. `ColumnScope` is what keeps identically named
+		// columns on different boards from sharing collapse state — reusing `'board'`
+		// would make folding `Done` here fold Product's `Done` too. Widen the union in
+		// `src/view/host.ts`: `'board' | 'deliverables' | 'horizons' | 'iteration'`.
+		scope: 'iteration',
 		move: (item, state) => void host.performIterationBoardMove(item, state),
 		stateOptionLabel: 'Iteration workflow states (in order)',
 		drawEmpty: (h, aside, root) => {
@@ -1846,10 +1866,22 @@ through the configured key or not at all.
 
 Creation stays outside the undo history, as it already does: undo never deletes a note.
 
+`NewItemSpec` carries the **`TFile`**, not a name — `iteration?: TFile` beside
+`horizon?: string`, spelled with `wikilinkTo(app, spec.iteration, path)` from the NEW
+note's own path. A horizon is a plain value and a basename is fine for it; an iteration is
+a link, and Task 4 already refused the ambiguous spelling on the edit path. Refusing it
+there and permitting it here would let a card created on Sprint 12 link to the *other*
+Sprint 12 and vanish on refresh — the same defect this step exists to prevent.
+
 ```ts
 it('creates into the iteration the board is showing', async () => {
-	await createFromToolbar({ scope: sprint12, typeName: 'PBI', title: 'New work' });
+	await createFromToolbar({ scope: sprint12File, typeName: 'PBI', title: 'New work' });
 	expect(frontmatterOf('New work').iteration).toBe('[[Sprint 12]]');
+});
+
+it('links unambiguously when two iterations share a basename', async () => {
+	await createFromToolbar({ scope: sprint12InQ3, typeName: 'PBI', title: 'New work' });
+	expect(frontmatterOf('New work').iteration).toBe('[[q3/Sprint 12]]');
 });
 
 it('writes no iteration key when the property is unconfigured', async () => {
