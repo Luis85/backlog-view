@@ -3,7 +3,9 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
 	DELIVERABLES_MODE,
 	loadCollapseState,
+	MAX_PROP_COLUMN_WIDTH,
 	MAX_TIMELINE_LEAD_PX,
+	MIN_PROP_COLUMN_WIDTH,
 	MIN_TIMELINE_LEAD_PX,
 	rekeyBase,
 	saveCollapseState,
@@ -343,6 +345,54 @@ describe('the persisted timeline lead-column width', () => {
 			});
 			expect(loadCollapseState(vault.app, id).leadWidth).toBeNull();
 		}
+	});
+});
+
+describe('the persisted property-column widths', () => {
+	const id = { base: 'Backlog.base', view: 'Backlog' };
+	const none = { collapsed: new Set<string>(), expanded: new Set<string>() };
+	const entry = (colWidths: unknown) =>
+		vault.localStorage.set(STORE_KEY, {
+			'Backlog.base#Backlog': { base: 'Backlog.base', collapsed: [], expanded: [], colWidths },
+		});
+
+	it('round-trips a width per property', () => {
+		const app = vault.app;
+		saveCollapseState(app, id, { ...none, colWidths: { 'note.owner': 200, 'note.points': 90 } });
+		expect(loadCollapseState(app, id).colWidths).toEqual({ 'note.owner': 200, 'note.points': 90 });
+	});
+
+	it('needs no entry for a view whose columns are all at the default', () => {
+		const app = vault.app;
+		saveCollapseState(app, id, { ...none, colWidths: {} });
+		expect(loadCollapseState(app, id).colWidths).toBeNull();
+		expect(stored(vault)['Backlog.base#Backlog']).toBeUndefined();
+	});
+
+	it('drops one unusable width without taking the map with it', () => {
+		// A bad entry is one column's pick, not every column's: one hand-edited number
+		// must not reset the widths beside it.
+		entry({ 'note.owner': 200, 'note.points': MAX_PROP_COLUMN_WIDTH + 1, 'note.risk': '90', 'note.due': NaN });
+		expect(loadCollapseState(vault.app, id).colWidths).toEqual({ 'note.owner': 200 });
+	});
+
+	it('accepts a width exactly at each bound, and nothing beyond them', () => {
+		entry({ min: MIN_PROP_COLUMN_WIDTH, max: MAX_PROP_COLUMN_WIDTH, under: MIN_PROP_COLUMN_WIDTH - 1 });
+		expect(loadCollapseState(vault.app, id).colWidths).toEqual({
+			min: MIN_PROP_COLUMN_WIDTH,
+			max: MAX_PROP_COLUMN_WIDTH,
+		});
+	});
+
+	it('reads a map that is not one, and a key inherited off Object, as no widths at all', () => {
+		for (const junk of [null, 200, 'wide', ['note.owner', 200]]) {
+			entry(junk);
+			expect(loadCollapseState(vault.app, id).colWidths).toBeNull();
+		}
+		// A property may legally be called `constructor`, and a stored entry may claim one:
+		// it has to read back as a plain width rather than as whatever `Object` inherits.
+		entry({ constructor: 200 });
+		expect(loadCollapseState(vault.app, id).colWidths?.constructor).toBe(200);
 	});
 });
 

@@ -88,7 +88,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	/** Card-move write orchestration: plans, applies and announces board/horizon/schedule moves. */
 	private readonly cardMoves: CardMoveController;
 	/** The collapse-store-backed UI state — projection, axis pick, focus, shelf, zoom,
-	 * density, lead width — see `uiState.ts`. */
+	 * density, lead width, column widths — see `uiState.ts`. */
 	private readonly ui: UiStateController;
 	/** When to re-measure the pane and re-run the column-fit ladder — see `resize.ts`. */
 	private readonly resize: ResizePolicy;
@@ -126,10 +126,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		// `renderLegend` itself, which is also what makes it absent (not merely hidden)
 		// off the dated axis.
 		this.legendEl = this.viewEl.createDiv();
-		this.treeEl = this.viewEl.createDiv({
-			cls: 'pbl-tree',
-			attr: { role: 'tree', tabindex: '0' },
-		});
+		this.treeEl = this.viewEl.createDiv({ cls: 'pbl-tree', attr: { role: 'tree', tabindex: '0' } });
 		// Nothing to render until Bases delivers the first result set — say what is
 		// happening instead of showing an empty pane.
 		renderLoadingState(this.treeEl);
@@ -188,9 +185,11 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	/**
 	 * Which projection this view shows. UI state, not a base setting: it lives
 	 * beside the collapse state — per saved view, per device — never in the `.base`.
-	 * This and the seven accessors below are one-line delegations to `UiStateController`
-	 * (`uiState.ts`), which holds the read/write and the render-depth choice; kept here
-	 * because `BacklogViewHost` has to resolve to this one class.
+	 * This and every accessor below it down to `jumpToToday` are one-line delegations to
+	 * `UiStateController` (`uiState.ts`), which holds the read/write and the render-depth
+	 * choice; kept here because `BacklogViewHost` has to resolve to this one class. Stated
+	 * as a range rather than a count, which the last three picks added here each made
+	 * wrong.
 	 */
 	get projection(): Projection {
 		return this.ui.projection;
@@ -288,6 +287,14 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 
 	setLeadWidth(value: number | null): void {
 		this.ui.setLeadWidth(value);
+	}
+
+	get colWidths(): Readonly<Record<string, number>> {
+		return this.ui.colWidths;
+	}
+
+	setColWidth(prop: string, value: number | null): void {
+		this.ui.setColWidth(prop, value);
 	}
 
 	jumpToToday(): void {
@@ -495,7 +502,7 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 	}
 
 	showContextMenuFor(item: BacklogItem): void {
-		showMenuAtElement(buildItemMenu(this, item, childTypeChoices(item)), this.rowElFor(item));
+		showMenuAtElement(buildItemMenu(this, item, childTypeChoices(item)), this.rowEls.get(item.file.path) ?? null);
 	}
 
 	showColumnMenuFor(index: number): boolean {
@@ -506,17 +513,15 @@ export class ProductBacklogView extends BasesView implements BacklogViewHost {
 		return showMenuAtElement(board && buildColumnMenu(this, board.scope, board.board.columns[index]), board?.colEls[index] ?? null);
 	}
 
-	private rowElFor(item: BacklogItem): HTMLElement | null {
-		return this.rowEls.get(item.file.path) ?? null;
-	}
-
 	/**
 	 * Re-render one row's children after an expand or collapse. Rebuilding the whole
 	 * tree for it is the difference between instant and visibly slow once a backlog
 	 * has a few hundred rows.
 	 */
 	refreshSubtree(item: BacklogItem): void {
-		const row = this.rowElFor(item);
+		// Straight off the index rather than through a helper: this and the context menu
+		// were its only two callers, and the lookup says what it does.
+		const row = this.rowEls.get(item.file.path);
 		if (!row) {
 			this.render();
 			return;

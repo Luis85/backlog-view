@@ -280,7 +280,12 @@ whole thing from the file resolved correctly while silently dropping both.
   finite and inside `MIN_TIMELINE_LEAD_PX..MAX_TIMELINE_LEAD_PX` and drops anything else
   rather than clamping it, since a clamp still trusts a corrupt-but-plausible number into
   the layout. A range check is the same rule as a vocabulary check, not an exception to
-  it. `focus` is checked for SHAPE only, not against the vocabulary: the
+  it. `colWidths` — the tree's property columns, one width each — is that same range check
+  per ENTRY, and the granularity is the whole point: a bad number is one column back at
+  the default, never every column reset, and a `colWidths` that is not an object at all is
+  no widths. Its keys are property ids rather than paths, so they stay out of the collapse
+  set for the reason the shelf's hidden types do, and nothing prunes them: a property
+  hidden for an afternoon comes back the width its reader left it. `focus` is checked for SHAPE only, not against the vocabulary: the
   type list lives in `domain/typeVocabulary.ts` and `focusTarget` already answers a name no
   configured type matches with "no focus" — the same tolerance it had while this value
   lived in the `.base`.

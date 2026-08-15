@@ -103,7 +103,13 @@ not a substitution:
 | `styles/timeline.css`, `.pbl-bar-inferred.pbl-bar-open-start` / `.pbl-bar-open-end` | `border-left` / `border-right: none`, which open the same side as the gradient above and must move with it |
 
 **Physical positioning whose value is computed elsewhere.** The category the earlier
-inventory could not have held, because it arrived with the roadmap:
+inventory could not have held, because it arrived with the roadmap — and the one construct
+of this shape that is already ANSWERED rather than recorded is the property columns' resize
+grip (2026-08-14, [[Resizable property columns]]): pinned with `inset-inline-end`, dragged
+by a physical `clientX`, and mirrored by a sign read off the header cell's own computed
+direction. It is here as the worked example of what this group costs, not as a fourth
+group — one control's gesture is a smaller question than a grid whose every offset
+TypeScript publishes:
 
 | Where | Construct |
 | --- | --- |

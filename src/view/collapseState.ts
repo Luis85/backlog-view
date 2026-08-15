@@ -6,6 +6,7 @@ import {
 	DELIVERABLES_MODE,
 	ProjectionMode,
 	ROADMAP_MODE,
+	CollapseSnapshot,
 	collapseStoreIdentity,
 	dropCollapseState,
 	loadCollapseState,
@@ -199,6 +200,12 @@ export class CollapseState {
 	private density: string | null = null;
 	/** The retained timeline lead-column width, in pixels; null means `TIMELINE_LEAD_PX`, the default. */
 	private leadWidth: number | null = null;
+	/**
+	 * The tree's resized property columns by Bases property id; a property with no entry
+	 * draws at `DEFAULT_PROP_COLUMN_WIDTH`. `Object.create(null)` for the reason
+	 * `readColWidths` uses it — a column named `constructor` is a plain key here.
+	 */
+	private colWidths: Record<string, number> = Object.create(null) as Record<string, number>;
 	/** The focused type name; null means the whole tree, the default. */
 	private focus: string | null = null;
 	/** Whether a plain click on a row folds it; false means it opens the note, the default. */
@@ -288,6 +295,18 @@ export class CollapseState {
 
 	setLeadWidth(value: number | null): void {
 		this.leadWidth = value;
+		this.scheduleSave();
+	}
+
+	/** The retained property-column widths for this saved view; a column absent from it is at the default. */
+	columnWidths(): Readonly<Record<string, number>> {
+		return this.colWidths;
+	}
+
+	/** null clears the pick, which is what a column dragged back to the default stores. */
+	setColumnWidth(prop: string, value: number | null): void {
+		if (value === null) delete this.colWidths[prop];
+		else this.colWidths[prop] = value;
 		this.scheduleSave();
 	}
 
@@ -478,13 +497,7 @@ export class CollapseState {
 		this.settled = new Set([...snapshot.collapsed, ...snapshot.expanded]);
 		seedTimelineScope(this.collapsed, this.settled);
 		seedCardScope(this.collapsed, this.settled);
-		this.mode = snapshot.mode ?? null;
-		this.axis = snapshot.axis ?? null;
-		this.zoom = snapshot.zoom ?? null;
-		this.density = snapshot.density ?? null;
-		this.leadWidth = snapshot.leadWidth ?? null;
-		this.focus = snapshot.focus ?? null;
-		this.clickFoldsValue = snapshot.clickFolds ?? false;
+		this.restorePicks(snapshot);
 		this.shelfExpanded = snapshot.shelfExpanded ?? false;
 		this.shelfSortValue = snapshot.shelfSort ?? null;
 		this.hiddenShelfTypes = new Set(snapshot.shelfHiddenTypes ?? []);
@@ -495,6 +508,23 @@ export class CollapseState {
 		// nothing left to normalize here.
 		this.foldedColumns = new Set(snapshot.collapsedColumns ?? []);
 		this.openedColumns = new Set(snapshot.expandedColumns ?? []);
+	}
+
+	/**
+	 * The picks whose default is simply absence, read off the snapshot — split out of
+	 * {@link restore} for the reason `defaultPicks` was split out of `loadCollapseState`
+	 * one layer down: every pick added is another `??` in a method that was at the
+	 * complexity budget, and this half is nothing but those.
+	 */
+	private restorePicks(snapshot: CollapseSnapshot): void {
+		this.mode = snapshot.mode ?? null;
+		this.axis = snapshot.axis ?? null;
+		this.zoom = snapshot.zoom ?? null;
+		this.density = snapshot.density ?? null;
+		this.leadWidth = snapshot.leadWidth ?? null;
+		this.colWidths = Object.assign(Object.create(null) as Record<string, number>, snapshot.colWidths ?? {});
+		this.focus = snapshot.focus ?? null;
+		this.clickFoldsValue = snapshot.clickFolds ?? false;
 	}
 
 	/** Write any pending change immediately — closing the view is when that matters most. */
@@ -566,6 +596,7 @@ export class CollapseState {
 			zoom: this.zoom,
 			density: this.density,
 			leadWidth: this.leadWidth,
+			colWidths: this.colWidths,
 			focus: this.focus,
 			clickFolds: this.clickFoldsValue,
 			shelfExpanded: this.shelfExpanded,
