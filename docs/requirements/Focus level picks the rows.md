@@ -86,8 +86,9 @@ rung becomes rows, with everything beneath surviving in rollups and inferred spa
 - Changing focus writes nothing to any note — the choice itself persists as the view
   option it already is — and bucket and shelf counts narrow with the rows.
 - While the quick filter is active, a focused row kept only by a descendant's match
-  names those matching descendants, each opening its note — the board's rule,
-  unchanged on the roadmap.
+  reaches those matching descendants: a card names each one, opening its note; a
+  lead-cell row states how many and opens its menu onto them, since naming them there
+  costs the row its own title.
 - The same toolbar control drives all three projections and persists as it does today.
 
 ## Where it lives
@@ -110,6 +111,10 @@ them or not, and `organizeShelf` drops whole groups from an expanded shelf throu
 walk itself is `hiddenMatches` in `src/domain/board.ts`, unchanged, through
 `undisclosedMatches` in `src/view/childrenList.ts` — which now takes the already-listed
 set from its caller, since a timeline row draws no disclosure and subtracting one would
-delete a direct-child match. Driven in `test/view/roadmapMatches.test.ts`.
+delete a direct-child match. A CARD names each match as a link; a ROW — the timeline's
+and the lane's — draws one fixed-width count chip opening its own menu instead, because a
+sticky lead column's only shrinkable items are the row's title and this, so a list there
+is width taken out of the row's own name. Measured in the browser harness, not preferred.
+Driven in `test/view/roadmapMatches.test.ts`.
 
 The inferred spans remain, which is why this note stays open.

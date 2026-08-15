@@ -724,10 +724,29 @@ free of runtime code so imports stay cycle-free.
   `cardKids`: a timeline row joins that set for its FOLD chevron, which lists nothing, so
   a matching direct child IS named there while a bucket card's disclosure already shows
   it. That is why `undisclosedMatches` takes the already-listed set from its caller —
-  only the surface knows what it shows. `PlacedMount` is declared in `host.ts` beside
-  `DrawnColors` and for that type's reason: a `render/` type imported back into `host.ts`
-  turns the `columns.ts` ↔ `menu.ts` ↔ `host.ts` web into sixteen cycles `npm run
-  analyze` refuses — measured, after writing it the other way first.
+  only the surface knows what it shows.
+  **`face` is the mount's second answer and a separate question from `listsChildren`.** A
+  CARD names each match as a link; a ROW — the timeline's and the lane context's — draws
+  one fixed-width count chip that opens its own menu. That is measured rather than
+  preferred: a sticky lead cell's only shrinkable items are the row's own title and
+  whatever names its matches, so they shrink together, and at the DEFAULT 220px lead a row
+  that gained a match rendered one character of its own name (`O… 4/17 ⌕O…`) beside
+  neighbours showing theirs in full. The fixed chip also removes the flex GAP that put a
+  full lead 3.31px over the day track at the narrowest width, since a zero-width flex item
+  still costs its gap. Both numbers came from `npm run harness` in Chromium and from
+  nothing the suite can see; what the suite holds is the declaration
+  (`test/view/timelineBoxing.test.ts`) and the markup per surface
+  (`test/view/roadmapMatches.test.ts`).
+  **A marker's row cannot use an sr-only span for any of this.** `renderRowFacts` gives it
+  an explicit `aria-label`, which REPLACES the content-derived name and takes the progress
+  span with it — so that row folds `progressNote` (`render/barProgress.ts`) into its own
+  label, from the one report rather than a second phrasing. Reachable because
+  `childTypeChoices` offers a marker no children and refuses no deliberate move, while
+  `assignAll` counts by structure.
+  `PlacedMount` itself is declared in `host.ts` beside `DrawnColors` and for that type's
+  reason: a `render/` type imported back into `host.ts` turns the
+  `columns.ts` ↔ `menu.ts` ↔ `host.ts` web into sixteen cycles `npm run analyze` refuses
+  — measured, after writing it the other way first.
 - **A timeline row's chevron folds ROWS, and a card's disclosure lists children on its
   face; they are two bits, two host method pairs, and one register (2026-08-09).** A row
   goes through `isCollapsed`/`setCollapsed`, and `collapseKey` is the ONE place that

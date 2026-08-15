@@ -1,5 +1,5 @@
 import { setTooltip } from 'obsidian';
-import { rollupReport } from './columns';
+import { RollupReport, rollupReport } from './columns';
 import { BacklogViewHost } from '../host';
 import { BacklogItem } from '../../domain/model';
 
@@ -69,5 +69,22 @@ export function renderBarProgress(
 	}
 	const label = mounts.lead.createSpan({ cls: 'pbl-bar-count', text: report.label });
 	if (report.tooltip) setTooltip(label, report.tooltip);
-	mounts.row.createSpan({ cls: 'pbl-sr-only', text: report.tooltip || `${report.label} items` });
+	mounts.row.createSpan({ cls: 'pbl-sr-only', text: progressNote(report) });
+}
+
+/**
+ * The words a row ANNOUNCES about its progress, or '' where there is nothing to say —
+ * `rollupReport`'s long form, falling back to the face plus a noun where no workflow makes
+ * a ratio (`8` alone announces a bare number).
+ *
+ * Exported for the ONE row that cannot use the span above: a marker's row carries an
+ * explicit `aria-label` (`renderRowFacts` in `./timeline.ts`), and an explicit label
+ * REPLACES the content-derived name — taking the span with it. So that row folds these
+ * words into its own label instead, from here rather than from a second phrasing, which is
+ * the rule `rollupReport` already states for the two RENDERERS and now for the two things
+ * that say it out loud.
+ */
+export function progressNote(report: RollupReport | null): string {
+	if (!report || !report.label) return '';
+	return report.tooltip || `${report.label} items`;
 }

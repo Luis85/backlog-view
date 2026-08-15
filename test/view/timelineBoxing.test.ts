@@ -72,25 +72,26 @@ describe('the two boxes sized from TypeScript arithmetic', () => {
 		expect(dimmed).toContain('.pbl-absence-row .pbl-timeline-lead > *');
 	});
 
-	it('keeps a timeline row’s match list on one line, so the row keeps its height', () => {
-		// A row's height is content-driven — `min-height` on the track is a floor and the
-		// row is `align-items: stretch` — and `renderDependencyArrows` has already
-		// snapshotted every row rectangle into fixed SVG path coordinates by the time
-		// `nameMatches` puts these links in the lead. A list that wrapped onto a second
-		// line would grow the row and leave every arrow pointing between stale positions.
+	it('costs a row’s match affordance a FIXED width, never a share of the title', () => {
+		// The lead is a fixed-width column whose only shrinkable items are the row's own
+		// title and whatever names its matches, so a variable-width list there is width
+		// taken out of the NAME. Measured in Chromium through `npm run harness` at the
+		// default 220px lead: with titles in the lead, rows carrying a match rendered one
+		// character of their own (`O… 4/17 ⌕O…`) beside neighbours showing theirs in full,
+		// and at the 160px floor the list's own flex gap put a full lead 3.31px over the
+		// day track. `flex: 0 0 auto` is what refuses both.
 		//
-		// Text again, and the reach is exactly that: it sees the declarations and cannot
-		// tell you the list came out on one line, nor that the ellipsis engaged. That is
-		// the narrow-lead case in `docs/tests/suites/Smoke test the roadmap.md`.
+		// Text again, and the reach is exactly that: it sees the declaration and cannot
+		// tell you what the column came out looking like. That is the narrow-lead case in
+		// `docs/tests/suites/Smoke test the roadmap.md`.
 		const cards = readFileSync(new URL('../../styles/cards.css', import.meta.url), 'utf8');
-		const inLead = bodyOf(cards, '.pbl-timeline-lead .pbl-card-matches', 'styles/cards.css');
-		expect(inLead).toContain('flex-wrap: nowrap;');
-		// What lets `.pbl-card-match`'s own ellipsis engage: a flex item's automatic
-		// minimum is its content, which would push the list past the column instead.
-		expect(inLead).toContain('min-width: 0;');
-		// Not vacuous: a CARD's own list still wraps, so this is the row's answer rather
-		// than a change to both surfaces.
+		expect(bodyOf(cards, '.pbl-row-matches,\nbutton.pbl-row-matches', 'styles/cards.css')).toContain('flex: 0 0 auto;');
+		// Not vacuous, and the pairing is the point: a CARD has the room, so its own list
+		// still wraps to as many titles as it holds. Only the ROW trades them for a count.
 		expect(bodyOf(cards, '.pbl-card-matches', 'styles/cards.css')).toContain('flex-wrap: wrap;');
+		// And nothing is left pinned to the rule this replaced — a row renders no
+		// `.pbl-card-matches` at all now, so CSS for it here would be dead.
+		expect(cards).not.toContain('.pbl-timeline-lead .pbl-card-matches');
 	});
 
 	it('lays a row out from being a ROW, never from being a card', () => {

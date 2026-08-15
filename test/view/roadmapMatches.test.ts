@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
+import { Menu } from '../helpers/obsidian-mock';
 import { Harness, key, makeView, treeOf, useViewHarness } from '../helpers/view';
 import { bucketByName, laneRoadmap, rowFor } from '../helpers/roadmap';
 
@@ -20,6 +21,29 @@ function matchLink(el: HTMLElement | null | undefined, title: string): HTMLEleme
 	);
 	if (!link) throw new Error(`no match link named: ${title}`);
 	return link;
+}
+
+/**
+ * What a ROW's face says instead: the count chip, or '' where none is drawn. A lead cell
+ * cannot afford the titles — they are taken out of the row's own name — so the two row
+ * surfaces draw one fixed chip and the menu carries the list.
+ */
+function matchCountOn(el: HTMLElement | null | undefined): string {
+	return el?.querySelector<HTMLElement>('.pbl-row-matches')?.textContent ?? '';
+}
+
+/**
+ * The menu the count chip opens — the row's own menu, which is the path to the matches
+ * the chip counts. **The `Open match …` entries in it are Task 5's**: `addMatchSection`
+ * still gates on `activeBoard`, so on the roadmap the menu opens without them and these
+ * cases assert the chip reaches the row menu rather than what that menu will hold.
+ */
+function chipMenu(el: HTMLElement | null | undefined): Menu {
+	const chip = el?.querySelector<HTMLElement>('.pbl-row-matches');
+	if (!chip) throw new Error('no match count chip drawn');
+	chip.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+	if (!Menu.lastShown) throw new Error('the count chip opened no menu');
+	return Menu.lastShown;
 }
 
 /**
@@ -74,15 +98,17 @@ describe('every roadmap surface names what the filter found under it', () => {
 		expect(vault.opened.map((o) => o.path)).toEqual(['PBI Login.md']);
 	});
 
-	it('a bar row on the dated axis', () => {
+	it('a bar row on the dated axis — a COUNT, and the menu behind it', () => {
 		const vault = deepVault({ start: '2026-08-01', due: '2026-08-10' });
 		const { containerEl, view } = roadmap(vault, { ...DATES }, { focus: 'Epic' });
 		view.setFilter('Login');
 
 		const row = rowFor(containerEl, 'Epic A');
-		expect(matchesOn(row)).toEqual(['PBI Login']);
-		matchLink(row, 'PBI Login').dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		expect(vault.opened.map((o) => o.path)).toEqual(['PBI Login.md']);
+		// Never the titles: a lead cell's only shrinkable items are the row's own name and
+		// this, so a list here is width taken out of the name. Measured, not preferred.
+		expect(matchesOn(row)).toEqual([]);
+		expect(matchCountOn(row)).toBe('1');
+		expect(chipMenu(row).items.map((i) => i.titleText)).toContain('Open in new tab');
 	});
 
 	it('a shelf card', () => {
@@ -110,23 +136,25 @@ describe('every roadmap surface names what the filter found under it', () => {
 		expect(vault.opened.map((o) => o.path)).toEqual(['PBI Login.md']);
 	});
 
-	it('a lane context row on the resources axis', () => {
+	it('a lane context row on the resources axis — the same count chip', () => {
 		const vault = laneVault();
 		const { containerEl, view } = laneRoadmap(vault, {}, { only: ['PBI Login.md'], focus: 'Epic' });
 		view.setFilter('Login');
 
 		const row = containerEl.querySelector<HTMLElement>('.pbl-lane-context');
-		expect(matchesOn(row)).toEqual(['PBI Login']);
-		matchLink(row, 'PBI Login').dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		expect(vault.opened.map((o) => o.path)).toEqual(['PBI Login.md']);
+		expect(matchesOn(row)).toEqual([]);
+		expect(matchCountOn(row)).toBe('1');
+		expect(chipMenu(row).items.map((i) => i.titleText)).toContain('Open in new tab');
 	});
 
 	it('opens in a new tab on a middle click, which never fires click at all', () => {
-		const vault = deepVault({ start: '2026-08-01', due: '2026-08-10' });
+		// A CARD surface, because a row draws no link to middle-click — the shelf card is
+		// the same fixture as above with the epic left undated.
+		const vault = deepVault();
 		const { containerEl, view } = roadmap(vault, { ...DATES }, { focus: 'Epic' });
 		view.setFilter('Login');
 
-		const link = matchLink(rowFor(containerEl, 'Epic A'), 'PBI Login');
+		const link = matchLink(shelfCard(containerEl), 'PBI Login');
 		link.dispatchEvent(new MouseEvent('auxclick', { bubbles: true, button: 1 }));
 
 		// The row's own auxclick handler must not also fire: stopping only the primary
@@ -145,14 +173,16 @@ describe('what a surface already shows, it does not name twice', () => {
 		return vault;
 	}
 
-	it('a bar row draws no disclosure, so its own matching child IS named', () => {
+	it('a bar row draws no disclosure, so its own matching child IS counted', () => {
 		// The case an unconditional subtraction ate: a timeline row lists nothing on its
 		// face, so subtracting its listed children would delete the one match it has.
 		const vault = directVault({ start: '2026-08-01', due: '2026-08-10' });
 		const { containerEl, view } = roadmap(vault, { ...DATES }, { focus: 'Epic' });
 		view.setFilter('Login');
 
-		expect(matchesOn(rowFor(containerEl, 'Epic A'))).toEqual(['Feature Login']);
+		const row = rowFor(containerEl, 'Epic A');
+		expect(matchCountOn(row)).toBe('1');
+		expect(chipMenu(row).items.map((i) => i.titleText)).toContain('Open in new tab');
 	});
 
 	it('a bucket card lists that same child, so it is not named a second time', () => {
@@ -181,7 +211,7 @@ describe('modelled but not drawn — the register is read, never predicted', () 
 		view.setFilter('Login');
 
 		expect(shelfCard(containerEl)?.querySelector('.pbl-card-title')?.textContent).toBe('PBI Login');
-		expect(matchesOn(rowFor(containerEl, 'Epic A'))).toEqual([]);
+		expect(matchCountOn(rowFor(containerEl, 'Epic A'))).toBe('');
 	});
 
 	it('a COLLAPSED shelf draws none of them, so the ancestor names it', () => {
@@ -191,16 +221,16 @@ describe('modelled but not drawn — the register is read, never predicted', () 
 		view.setFilter('Login');
 
 		expect(shelfCard(containerEl)).toBeNull();
-		expect(matchesOn(rowFor(containerEl, 'Epic A'))).toEqual(['PBI Login']);
+		expect(matchCountOn(rowFor(containerEl, 'Epic A'))).toBe('1');
 	});
 
-	it('an expanded shelf whose type filter hides the group names it too', () => {
+	it('an expanded shelf whose type filter hides the group counts it too', () => {
 		const { containerEl, view } = roadmap(shelvedChildVault(), { ...DATES });
 		view.setShelfHiddenTypes(new Set(['PBI']));
 		view.setFilter('Login');
 
 		expect(shelfCard(containerEl)).toBeNull();
-		expect(matchesOn(rowFor(containerEl, 'Epic A'))).toEqual(['PBI Login']);
+		expect(matchCountOn(rowFor(containerEl, 'Epic A'))).toBe('1');
 	});
 });
 
@@ -223,7 +253,7 @@ describe('a folded band reopens under a filter', () => {
 		expect(rowFor(containerEl, 'Epic A')).toBeNull();
 
 		view.setFilter('Login');
-		expect(matchesOn(rowFor(containerEl, 'Epic A'))).toEqual(['PBI Login']);
+		expect(matchCountOn(rowFor(containerEl, 'Epic A'))).toBe('1');
 	});
 });
 

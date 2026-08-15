@@ -1,8 +1,8 @@
 import { setTooltip } from 'obsidian';
 import { drawIcon } from './icons';
 import { renderBarLabel } from './barLabel';
-import { renderBarProgress } from './barProgress';
-import { RowContext } from './columns';
+import { progressNote, renderBarProgress } from './barProgress';
+import { rollupReport, RowContext } from './columns';
 import {
 	drawnCards,
 	drawnSpans,
@@ -533,9 +533,10 @@ function renderBarRow(
 	const title = lead.createDiv({ cls: 'pbl-card-title' });
 	renderTitleText(ctx.host, title, bar.item.title);
 	setTooltip(lead, bar.item.title);
-	// The lead is where this row's match links go — the one text region it has. It lists
-	// no children on its face (the chevron folds ROWS), so `listsChildren` is false.
-	ctx.placed.set(bar.item.file.path, { item: bar.item, mount: lead, listsChildren: false });
+	// The lead is where this row's match affordance goes — the one text region it has, and
+	// a fixed-width COUNT there rather than titles (`face`). It lists no children on its
+	// face either, since the chevron folds ROWS, so `listsChildren` is false.
+	ctx.placed.set(bar.item.file.path, { item: bar.item, mount: lead, listsChildren: false, face: 'count' });
 
 	const track = row.createDiv({ cls: 'pbl-timeline-track' });
 	mounts.tracks.set(bar.item.file.path, track);
@@ -678,9 +679,15 @@ function renderRowFacts(
 		setTooltip(lead, `${bar.item.title} — ${waits}`);
 	}
 	if (isMarkerType(bar.item.typeName)) {
+		// The label REPLACES this row's content, and the progress span `renderBarProgress`
+		// just put there is part of it — so a marker with descendants says its rollup here
+		// or says it to nobody. A marker is a point by the ladder and not by enforcement:
+		// `childTypeChoices` offers it no children and refuses no deliberate move, while
+		// `assignAll` counts by structure. Same words as the span, from the same report.
+		const progress = progressNote(rollupReport(ctx.host, bar.item));
 		row.setAttribute(
 			'aria-label',
-			`${bar.item.title} — ${dates}${state ? ` — ${state}` : ''}${waits ? ` — ${waits}` : ''}`,
+			`${bar.item.title} — ${dates}${state ? ` — ${state}` : ''}${waits ? ` — ${waits}` : ''}${progress ? ` — ${progress}` : ''}`,
 		);
 	}
 }

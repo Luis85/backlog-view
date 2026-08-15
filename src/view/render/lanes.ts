@@ -294,9 +294,10 @@ function renderLaneAbsenceAdd(ctx: RowContext, lead: HTMLElement, lane: Resource
  * its match links included — opens on it. That was missing until 2026-08-15; see
  * [[A lane context row could not be reached]].
  *
- * The mount for its matches is the LEAD, the one text region such a row has, and it lists
- * no children of its own — `listsChildren: false`, so a matching direct child is named
- * here rather than subtracted against a disclosure this row never draws.
+ * The mount for its matches is the LEAD, the one text region such a row has, so its face
+ * is a COUNT rather than the titles a card can afford (`face`, on `PlacedMount`). It lists
+ * no children of its own either — `listsChildren: false`, so a matching direct child is
+ * counted here rather than subtracted against a disclosure this row never draws.
  */
 export function renderLaneContextRow(ctx: RowContext, content: HTMLElement, item: BacklogItem): HTMLElement {
 	const row = createCard(ctx, content, item);
@@ -309,7 +310,7 @@ export function renderLaneContextRow(ctx: RowContext, content: HTMLElement, item
 	setTooltip(lead, item.title);
 	renderBarProgress(ctx.host, { row, bar: null, lead }, item);
 	row.createDiv({ cls: 'pbl-timeline-track' });
-	ctx.placed.set(item.file.path, { item, mount: lead, listsChildren: false });
+	ctx.placed.set(item.file.path, { item, mount: lead, listsChildren: false, face: 'count' });
 	wireCardActivation(ctx, row, item);
 	return row;
 }

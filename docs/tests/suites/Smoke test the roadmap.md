@@ -68,19 +68,22 @@ catalog migration and was not part of that run.
   line at 488px, milestone line and label and diamond centre all 704px.** The Today
   label this measured no longer exists — [[State colour and a legend]] replaced it with
   a legend strip, **never checked in Chromium**.
-- **A narrowed lead column holding match links.** While the quick filter is running, a
-  dated or resources row names the matches hiding under it in its own sticky lead cell
-  (`nameMatches` in `src/view/render/roadmap.ts`). That cell is a nowrap flex row fixed to
-  `--pbl-tl-lead`, so the list has to share the ONE line and ellipsise, never wrap: a row's
-  height is content-driven, and `renderDependencyArrows` has already snapshotted every row
-  rectangle before the links exist, so a second line would leave every arrow pointing
-  between stale positions. Filter the demo backlog on the dated axis (`npm run harness`,
-  `?view=roadmap`; any common letter names several — "u" reaches "Survey the storage APIs"),
-  then drag the lead's resize grip to its narrowest and check three things: the row does not
-  grow, nothing spills over the day track, and a long title ellipsises rather than being
-  clipped mid-word. `test/view/timelineBoxing.test.ts` refuses the declarations' deletion and
-  can say nothing about the result; the font metrics this leans on are a THEME's, so the
-  harness does not close it either. **Never checked.**
+- **A narrowed lead column holding a match count.** While the quick filter is running, a
+  dated or resources row states how many matches hide under it as one chip in its own
+  sticky lead cell (`.pbl-row-matches`, from `nameMatches` in
+  `src/view/render/roadmap.ts`), and the row menu is what names them. The chip is
+  `flex: 0 0 auto` precisely so it cannot take a share of the row's title — the earlier
+  design put the match TITLES there and cost the row its own name at the default width,
+  measured in the harness on 2026-08-15 and replaced. What a vault still owes is what a
+  THEME does to the two numbers this leans on: the type badge's `min-width: 58px` holds a
+  type name at Obsidian's default UI font, and the chip's own width is its glyph plus a
+  numeral in that font. Filter the roadmap on the dated axis, drag the lead's resize grip
+  through its whole range, and check that the row's title truncates no earlier than the
+  same row without a chip, that nothing crosses into the day track, and that the row does
+  not change height. A three-digit count is the case to look for at the floor.
+  `test/view/timelineBoxing.test.ts` refuses the declaration's deletion and can say
+  nothing about the result. **Never checked in a vault; measured in Chromium 2026-08-15
+  at 160/220/480px.**
 - The dated axis's grid butts against the chrome above it — no blank strip between the
   toolbar or the legend and the header, where the lead column's border and the first
   gridline would otherwise simply stop. The horizon axis keeps its top gutter, so check

@@ -94,22 +94,58 @@
 	font-size: var(--font-ui-smaller);
 }
 
-/* A TIMELINE ROW's lead cell is the other mount, and the card's sizing does not carry
-   over: `.pbl-timeline-lead` is a nowrap flex row fixed to `--pbl-tl-lead`, where this
-   list is a flex item with no sizing of its own. So it shares the lead's single line and
-   never adds one — a row's height is content-driven (`min-height` on the track is a
-   floor, and the row stretches), and `renderDependencyArrows` has already measured every
-   row rectangle by the time matches are named, so a list that wrapped would move the rows
-   out from under the arrows. `min-width: 0` is what lets it shrink far enough for
-   `.pbl-card-match`'s own ellipsis to engage; a flex item's automatic minimum is its
-   content otherwise, which is how the list would push past the column into the day track.
-   The full set stays reachable through the row menu, which lists every match rather than
-   as many as fit — that is what makes an ellipsised face honest rather than lossy. */
-.pbl-timeline-lead .pbl-card-matches {
-	flex: 0 1 auto;
-	min-width: 0;
-	flex-wrap: nowrap;
-	overflow: hidden;
+/* A ROW's match affordance: a COUNT, never the titles above. `flex: 0 0 auto` is the whole
+   point of it. A sticky lead cell is a fixed-width column whose only shrinkable items are
+   the row's own title and whatever names its matches, so a variable-width list there is
+   width taken out of the row's NAME — measured in the browser harness at the default 220px
+   lead, where rows carrying matches rendered one character of their own title (`O… 4/17`)
+   beside neighbours showing theirs in full. A fixed chip also removes the flex GAP that
+   pushed a full lead 3.31px past its own column at the narrowest width, since a
+   zero-width flex item still costs its gap.
+
+   Nothing sets a height here: a row's height is content-driven (`min-height` on the track
+   is a floor, and the row stretches) and `renderDependencyArrows` has already measured
+   every row rectangle by the time this is drawn, so anything taller than the line it joins
+   would move the rows out from under the arrows. `line-height: 1.4` at
+   `--font-ui-smaller` is what keeps it inside that line.
+   Still a real `<button>`, so the button-qualified selector joins this rule's own selector
+   list rather than restating a property later — `.pbl-card-match`'s own arrangement above,
+   for its reason: a bare class is (0,1,0) and loses to Obsidian's
+   `button:not(.clickable-icon)` at (0,1,1) regardless of source order. */
+.pbl-row-matches,
+button.pbl-row-matches {
+	flex: 0 0 auto;
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	padding: 0 var(--size-2-1);
+	height: auto;
+	line-height: 1.4;
+	box-shadow: none;
+	background-color: var(--background-modifier-hover);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.pbl-row-matches:hover {
+	color: var(--text-normal);
+	background-color: var(--background-modifier-active-hover);
+}
+
+.pbl-row-matches:focus-visible {
+	outline: 1px solid var(--interactive-accent);
+	outline-offset: 1px;
+}
+
+.pbl-row-matches-icon {
+	display: flex;
+	align-items: center;
+	color: var(--text-faint);
+}
+
+.pbl-row-matches-icon .svg-icon {
+	width: 12px;
+	height: 12px;
 }
 
 .pbl-card-matches-icon {

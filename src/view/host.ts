@@ -129,6 +129,19 @@ export interface PlacedMount {
 	item: BacklogItem;
 	mount: HTMLElement;
 	listsChildren: boolean;
+	/**
+	 * How this surface shows what the filter found BELOW the item — a separate question
+	 * from `listsChildren`, and deliberately not inferred from it. `'links'` is a button
+	 * per match, which a card has the width for; `'count'` is one fixed-width chip that
+	 * opens the row menu, which is all a sticky lead COLUMN can afford.
+	 *
+	 * Measured, not preferred. The lead's only shrinkable items are the row's title and
+	 * whatever names the matches, so they shrink together: with titles in the lead, a row
+	 * that gained a match rendered one character of its own name at the default 220px
+	 * width while its neighbours showed theirs in full. A row that gains matches must not
+	 * lose its identity, so the row's face costs a fixed width or nothing.
+	 */
+	face: 'links' | 'count';
 }
 
 /**

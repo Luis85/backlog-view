@@ -159,9 +159,7 @@ function nameMatches(ctx: RowContext): void {
 	// Annotated so fallow can see the members this file reads — see the root CLAUDE.md on
 	// interface members resolved through a property access.
 	const mounts: PlacedMount[] = [...ctx.placed.values()];
-	for (const placed of mounts) {
-		renderCardMatches(ctx, placed.mount, placed.item, carded, placed.listsChildren);
-	}
+	for (const placed of mounts) renderCardMatches(ctx, carded, placed);
 }
 
 /** What a grid axis needs to draw — grouped so `renderGridAxis` stays inside max-params. */
@@ -343,7 +341,7 @@ function renderBucket(
 		const card = createCard(ctx, cardsEl, item);
 		renderCardBody(ctx, card, item);
 		wireCardActivation(ctx, card, item);
-		ctx.placed.set(item.file.path, { item, mount: card, listsChildren: true });
+		ctx.placed.set(item.file.path, { item, mount: card, listsChildren: true, face: 'links' });
 		dnd.wireCard(card, item);
 	}
 	// The whole bucket is the target, the board's rule: within a bucket the order is

@@ -10,7 +10,7 @@ import {
 	renderNoDeliverablesState,
 } from './emptyStates';
 import { fromRowControl, renderBadge, renderTitleText } from './rows';
-import { BacklogViewHost, BoardSnapshot } from '../host';
+import { BacklogViewHost, BoardSnapshot, PlacedMount } from '../host';
 import { uniqueElementId } from '../selection';
 import { CardDragController } from '../interactions/cardDrag';
 import { showColumnMenu, showItemMenu } from '../interactions/menu';
@@ -343,9 +343,10 @@ function renderCard(ctx: RowContext, cardsEl: HTMLElement, item: BacklogItem, re
 	// a card" is answerable now on this projection alone: a `BoardModel` is already
 	// narrowed to what draws, so `cardPaths` is the whole answer. The roadmap's model is
 	// not, so it names its own matches in a second pass once every surface has drawn
-	// (`nameMatches` in `render/roadmap.ts`). `true` is this surface's own answer: a board
-	// card lists its children on its face, so the disclosure's entries are subtracted.
-	renderCardMatches(ctx, card, item, render.carded, true);
+	// (`nameMatches` in `render/roadmap.ts`). The mount is stated rather than registered
+	// for the same reason, and both of its answers are this surface's own: a board card
+	// lists its children on its face, and it has the width to name each match.
+	renderCardMatches(ctx, render.carded, { item, mount: card, listsChildren: true, face: 'links' });
 	wireCardActivation(ctx, card, item);
 	render.dnd.wireCard(card, item);
 }
@@ -488,29 +489,33 @@ export function wireCardActivation(
  * which is the ordinary case and needs no special test.
  *
  * Exported, because it is not the board's alone: every roadmap surface calls it through
- * `nameMatches` (`render/roadmap.ts`), which is why `mount` is an element rather than a
- * card — a row's links go in its sticky lead cell — and why `listsChildren` is the
- * caller's answer. A board card lists its children and passes `true`; a timeline row draws
- * no disclosure at all and passes `false`, or the subtraction would delete its one
- * direct-child match.
+ * `nameMatches` (`render/roadmap.ts`). It takes the surface's own `PlacedMount` rather
+ * than the pieces, because three of that record's fields are exactly the three answers
+ * only the surface has — where the links go, what it already lists, and which FACE it can
+ * afford — and passing them flat put this function over the repo's `max-params` budget.
  *
- * Buttons with `tabindex="-1"`, exactly as the tree's per-row controls are — a card
- * projection is one tab stop, so Tab keeps skipping past the whole projection. That makes
- * the row MENU their keyboard path rather than an extra: `addMatchSection` offers the
- * same matches, from the same walk. Pointer-only links would fail this feature at its
+ * `listsChildren` decides the subtraction: a board card lists its children and passes
+ * `true`; a timeline row draws no disclosure at all and passes `false`, or the
+ * subtraction would delete its one direct-child match.
+ *
+ * `face` decides what is drawn, and the two are separate questions — see `PlacedMount`.
+ * A CARD gets a button per match. A ROW gets one fixed-width count chip, because a sticky
+ * lead column's only shrinkable items are the row's title and this, so a variable-width
+ * list here is width taken out of the row's own name.
+ *
+ * Buttons with `tabindex="-1"` either way, exactly as the tree's per-row controls are — a
+ * card projection is one tab stop, so Tab keeps skipping past the whole projection. That
+ * makes the row MENU their keyboard path rather than an extra: `addMatchSection` offers
+ * the same matches, from the same walk. Pointer-only links would fail this feature at its
  * own purpose, which is that a found match can be reached.
  */
-export function renderCardMatches(
-	ctx: RowContext,
-	mount: HTMLElement,
-	item: BacklogItem,
-	carded: Set<string>,
-	listsChildren: boolean,
-): void {
+export function renderCardMatches(ctx: RowContext, carded: Set<string>, placed: PlacedMount): void {
 	const host: BacklogViewHost = ctx.host;
 	if (!host.isFiltering()) return;
+	const { item, mount, listsChildren } = placed;
 	const matches = undisclosedMatches(host, item, carded, listsChildren ? listedChildren(host, item) : []);
 	if (matches.length === 0) return;
+	if (placed.face === 'count') return renderMatchCount(ctx, mount, item, matches.length);
 	const list = mount.createDiv({ cls: 'pbl-card-matches' });
 	drawIcon(list.createSpan({ cls: 'pbl-card-matches-icon' }), 'search');
 	for (const match of matches) {
@@ -527,4 +532,32 @@ export function renderCardMatches(
 			if (evt.button === 1) host.openItemIn(match, 'tab');
 		});
 	}
+}
+
+/**
+ * A ROW's answer to the same question: how many, not which. One chip of fixed width
+ * (`flex: 0 0 auto` in `styles/cards.css`) that opens the row's own menu, where the
+ * matches are named in full — the affordance and the list it stands for one gesture apart.
+ *
+ * The face is a count because the alternative was measured and refused. `.pbl-card-title`
+ * and a match list are the only shrinkable items in a sticky lead column, so they shrink
+ * together: with titles in the lead, a row that gained a match rendered `O… 4/17 ⌕O…` at
+ * the DEFAULT lead width while its neighbours showed their names in full. A row that gains
+ * a match must not lose its identity, and the fixed chip is also what removes the flex gap
+ * that pushed a full lead past its own column at the narrowest width.
+ *
+ * `tabindex="-1"` and no `stopPropagation`, the match link's own bargain: `ROW_CONTROL`
+ * covers every `button`, so `fromRowControl` already keeps this out of the row's activation
+ * handler — a per-control guard here would be the eleventh of the ten that rule replaced.
+ */
+function renderMatchCount(ctx: RowContext, mount: HTMLElement, item: BacklogItem, count: number): void {
+	const said = `${count} search ${count === 1 ? 'match' : 'matches'} below`;
+	const chip = mount.createEl('button', {
+		cls: 'pbl-row-matches',
+		attr: { type: 'button', tabindex: '-1', 'aria-label': said },
+	});
+	drawIcon(chip.createSpan({ cls: 'pbl-row-matches-icon' }), 'search');
+	chip.createSpan({ text: String(count) });
+	setTooltip(chip, `${said} — open the menu to reach them`);
+	chip.addEventListener('click', (evt) => showItemMenu(ctx.host, evt, item, childTypeChoices(item)));
 }
