@@ -8,7 +8,7 @@ created: 2026-08-01
 files:
   - src/domain/timeline.ts
   - src/view/render/toolbar.ts
-  - src/storage/collapseStore.ts
+  - src/storage/viewStateStore.ts
   - src/view/collapseState.ts
   - src/view/render/projections.ts
   - styles/roadmap.css
@@ -100,7 +100,7 @@ disclosure is its header's (`src/view/render/shelfControls.ts`), the toolbar tog
 its `syncShelfToggle` having been retired with the width-measured compaction they served. The per-device zoom memory is
 kept in both halves of the same store, under the collapse state's own identity and
 pruning rules and its own session-only exception for an embedded base:
-`src/storage/collapseStore.ts` validates the persisted value, and
+`src/storage/viewStateStore.ts` validates the persisted value, and
 `src/view/collapseState.ts` is what actually holds it as a private field, reads it on
 restore and writes it into the snapshot that gets saved. The date anchor carried across
 a scale change — the civil date at the viewport's leading edge, not the pixel offset a

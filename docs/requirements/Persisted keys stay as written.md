@@ -83,9 +83,9 @@ Sorting every placeholder in `viewOptions.ts` by that test is part of
 A vault whose folder is called `Dokumente` because of who ran the command once is a vault
 that stops matching every `file.inFolder("docs")` filter written since.
 
-**Collapse-store keys.** `storage/collapseStore.ts` keys collapse state on the base's
+**View-state keys.** `storage/viewStateStore.ts` keys view state on the base's
 path and prunes entries that name a path no longer present. Any locale-dependent
-component in that identity would drop every user's collapse state on a language switch,
+component in that identity would drop every user's view state on a language switch,
 and `docs/tests/cases/Verify base identity in a live vault.md` records that base identity is
 one of the two things this repository cannot test.
 
@@ -122,7 +122,7 @@ one of the two things this repository cannot test.
 **Nothing yet — this note is design.** `src/storage/frontmatter.ts` holds all three
 writers — `applyWrites`, `applyRestores` and
 `createBacklogItem` · `src/storage/baseFile.ts` writes the scaffolded `.base` and owns the
-`docs` and `Product Backlog` defaults · `src/storage/collapseStore.ts` keys collapse state
+`docs` and `Product Backlog` defaults · `src/storage/viewStateStore.ts` keys collapse state
 on the base's path · `src/domain/typeVocabulary.ts` derives `typeFolderKey` from a type name.
 Tests: `test/storage/frontmatter.test.ts`, `test/storage/restore.test.ts`,
-`test/storage/baseFile.test.ts`, `test/storage/collapseStore.test.ts`.
+`test/storage/baseFile.test.ts`, `test/storage/viewStateStore.test.ts`.

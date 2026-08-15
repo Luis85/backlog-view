@@ -62,9 +62,9 @@ the one I am working in.
 
 `src/storage/viewIdentity.ts` (which saved view this is: the leaf walk that finds the
 `.base`, the storage key, and the rename arithmetic both halves need) ·
-`src/storage/collapseStore.ts` (defensive read, pruning — the only module allowed to touch
+`src/storage/viewStateStore.ts` (defensive read, pruning — the only module allowed to touch
 local storage) · `src/view/collapseState.ts` (which rows are shut, the once-only default,
 the debounced save).
-Tests: `test/storage/collapseStore.test.ts`, `test/view/persistence.test.ts`.
+Tests: `test/storage/viewStateStore.test.ts`, `test/view/persistence.test.ts`.
 Base identity in a live vault is the one part this repository cannot check — see
 [[Verify base identity in a live vault]].

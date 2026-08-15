@@ -11,7 +11,7 @@ files:
   - src/domain/settingsConsistency.ts
   - src/domain/settingsResolve.ts
   - src/domain/viewOptions.ts
-  - src/storage/collapseStore.ts
+  - src/storage/viewStateStore.ts
   - src/storage/frontmatter.ts
   - src/view/backlogView.ts
   - src/view/resize.ts
@@ -173,7 +173,7 @@ a loop over `configuredAxes` itself: with exactly two axes a spelled-out list wa
 thing, and with three it stopped being — two configured out of three would have offered the
 unconfigured one, whose pick `activeAxis` then falls straight back out of.
 
-The persisted PICK is not the same claim: `src/storage/collapseStore.ts` reads stored state
+The persisted PICK is not the same claim: `src/storage/viewStateStore.ts` reads stored state
 defensively rather than trusting it as the `RoadmapAxis` type, so its own `AXIS_VALUES` — a
 separate list of strings, not derived from the type — gains `'resources'` too, or a saved
 pick of this axis is silently dropped on the next load and falls back to whichever axis

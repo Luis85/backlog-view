@@ -6,7 +6,7 @@ status: Open
 priority: P2
 created: 2026-08-01
 files:
-  - src/storage/collapseStore.ts
+  - src/storage/viewStateStore.ts
 started: ""
 finished: ""
 horizon: ""
@@ -96,5 +96,5 @@ filter, not a place cards are moved to.
 hides `subtreeDone` cards through the same row-visibility rule the tree uses, the
 column always renders, and the quick filter overrides — driven in
 `test/view/boardMoves.test.ts`. Still design: column collapse itself, which belongs in
-`src/storage/collapseStore.ts` with the tree's row collapse — vault-scoped, per
+`src/storage/viewStateStore.ts` with the tree's row collapse — vault-scoped, per
 device, pruned — and explicitly not in the `.base`, for the reason ADR 0011 gives.

@@ -10,7 +10,7 @@ closed: 2026-08-01
 created: 2026-07-31
 source: PR #14, collapse-state persistence
 files:
-  - src/storage/collapseStore.ts
+  - src/storage/viewStateStore.ts
 started: ""
 finished: ""
 horizon: ""
@@ -57,10 +57,16 @@ one. Point a Base at `docs/issues/` (see [codebase-health](../../requirements/Co
 2. Expand several rows.
 3. Close the tab and reopen the Base (or restart Obsidian).
 4. The rows should come back **open**. If everything is collapsed, the assumption failed.
+5. On the FIRST open after an upgrade from 0.8, the view is at its defaults — the tree,
+   collapsed, no axis or zoom pick. That reset is the decision, not a failure: the old key
+   is not read. State carried across instead means somebody built the migration ADR 0011
+   says there is not.
 
 To confirm directly, inspect the vault's local storage for the key
-`product-backlog:collapse` — it should hold one entry per base view, keyed
-`<percent-encoded base path>#<percent-encoded view name>`.
+`product-backlog:view-state` — it should hold one entry per base view, keyed
+`<percent-encoded base path>#<percent-encoded view name>`. The old key
+`product-backlog:collapse` must be absent after that first save; an entry still there
+means the new store never wrote.
 
 ## If it fails
 

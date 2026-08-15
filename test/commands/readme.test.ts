@@ -152,7 +152,7 @@ describe('the write backlog readme command', () => {
 		// called `Sprint %25` was read back to the user as `Sprint %`.
 		const vault = new FakeVault();
 		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
-		// No leaf: an embedded base, which collapseStoreIdentity answers null for.
+		// No leaf: an embedded base, which resolveViewIdentity answers null for.
 		makeView(vault, { homeFolder: 'work' }, { viewName: 'Sprint %25' });
 		vault.activeView = new FileView(vault.addFile('Note.md'), document.body);
 

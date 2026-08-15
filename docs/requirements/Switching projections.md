@@ -6,7 +6,7 @@ status: Done
 priority: P1
 created: 2026-08-01
 files:
-  - src/storage/collapseStore.ts
+  - src/storage/viewStateStore.ts
   - src/view/backlogView.ts
   - src/view/render/toolbar.ts
 started: ""
@@ -90,7 +90,7 @@ of a shared file.
 ## Where it lives
 
 The mode is the `mode` field of the collapse store's per-view entry
-(`src/storage/collapseStore.ts`), restored and debounce-saved by
+(`src/storage/viewStateStore.ts`), restored and debounce-saved by
 `src/view/collapseState.ts` with the collapse sets it lives beside — so base renames
 and view renames migrate it for free. The toolbar toggle (`renderModeToggle` in
 `src/view/render/toolbar.ts` — three positions since the roadmap joined,
@@ -104,4 +104,4 @@ every one of them on `BacklogViewHost` and forwards to the controller in one lin
 dispatches the render on the projection, swapping the scroller between tree and
 listbox roles over the same model, undo slot and filter state. Driven in
 `test/view/board.test.ts` (the store round-trip in
-`test/storage/collapseStore.test.ts`).
+`test/storage/viewStateStore.test.ts`).

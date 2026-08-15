@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { makeView, treeOf, useViewHarness } from '../helpers/view';
-import { MAX_TIMELINE_LEAD_PX, MIN_TIMELINE_LEAD_PX } from '../../src/storage/collapseStore';
+import { MAX_TIMELINE_LEAD_PX, MIN_TIMELINE_LEAD_PX } from '../../src/storage/viewStateStore';
 import { leadBoundsFor } from '../../src/view/interactions/timelineLeadResize';
 
 useViewHarness();

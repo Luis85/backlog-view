@@ -9,7 +9,7 @@ files:
   - src/domain/timeline.ts
   - src/view/render/timeline.ts
   - src/view/render/toolbar.ts
-  - src/storage/collapseStore.ts
+  - src/storage/viewStateStore.ts
   - src/view/collapseState.ts
   - styles/timelineFurniture.css
 started: ""
@@ -98,7 +98,7 @@ nothing is written, and no rendering decision changes what places or what shelve
 and bar labels — dropped when neither side has room — in `src/view/render/timeline.ts`
 (the today band it once also drew is gone; see [[State colour and a legend]]); the
 density toggle in `src/view/render/toolbar.ts` over
-a `density` field beside `zoom` in `src/storage/collapseStore.ts`, held in
+a `density` field beside `zoom` in `src/storage/viewStateStore.ts`, held in
 `src/view/collapseState.ts` exactly like the zoom beside it; the rules in
 `styles/timelineFurniture.css`. Driven in `test/domain/timeline.test.ts`,
 `test/view/timelineFurniture.test.ts` and `test/view/timelineZoom.test.ts`.

@@ -84,7 +84,7 @@ describe('the zoom control', () => {
 	});
 
 	it('is session-only in an embedded base — the exception it joins, checked not assumed', () => {
-		// `collapseStoreIdentity` deliberately returns no identity for an embedded view,
+		// `resolveViewIdentity` deliberately returns no identity for an embedded view,
 		// so nothing persists there today: not collapse state, not the mode, not the
 		// axis, and now not the zoom. That gap is [[Embedded bases do not persist
 		// collapse state]]'s, and minting an identity is a collision question about
@@ -196,8 +196,11 @@ describe('the density toggle', () => {
 
 		// Stored state is user-writable data another version may have written: an
 		// unknown density reads back as the default, never trusted into the class.
-		const map = vault.localStorage.get('product-backlog:collapse') as Record<string, { density?: string }>;
-		map['Plan.base#Roadmap'].density = 'cozy';
+		const map = vault.localStorage.get('product-backlog:view-state') as Record<
+			string,
+			{ prefs: { density?: string } }
+		>;
+		map['Plan.base#Roadmap'].prefs.density = 'cozy';
 		const third = makeView(vault, DATE_AXIS, { collapsed: true, base: 'Plan.base', viewName: 'Roadmap' });
 		expect(third.view.density).toBeNull();
 	});

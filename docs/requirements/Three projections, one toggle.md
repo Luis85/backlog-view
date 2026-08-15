@@ -6,7 +6,7 @@ status: Done
 priority: P1
 created: 2026-08-01
 files:
-  - src/storage/collapseStore.ts
+  - src/storage/viewStateStore.ts
   - src/view/backlogView.ts
   - src/view/render/toolbar.ts
 started: ""
@@ -80,11 +80,11 @@ the third layout a separate product.
 ## Where it lives
 
 The mode is the collapse-store entry's `mode` field grown a roadmap value
-(`src/storage/collapseStore.ts`), restored and debounce-saved by
+(`src/storage/viewStateStore.ts`), restored and debounce-saved by
 `src/view/collapseState.ts` with the collapse sets it lives beside. The toggle is a
 three-position group (`renderModeToggle` in `src/view/render/toolbar.ts`) driving
 `setProjection`; `src/view/backlogView.ts` dispatches the keyboard on the projection
 it reads and applies the content fork in `src/view/render/projections.ts` — which
 projection draws the pane, and what the pane claims to be while it does. Driven in
 `test/view/roadmap.test.ts`, the store round-trip in
-`test/storage/collapseStore.test.ts`.
+`test/storage/viewStateStore.test.ts`.

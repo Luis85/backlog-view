@@ -7,7 +7,7 @@ priority: P2
 created: 2026-08-04
 files:
   - src/domain/shelf.ts
-  - src/storage/collapseStore.ts
+  - src/storage/viewStateStore.ts
   - src/view/collapseState.ts
   - src/view/host.ts
   - src/view/backlogView.ts
@@ -105,7 +105,7 @@ child carrying an inferred level and any differently-cased declared type), drive
 `test/domain/shelf.test.ts`.
 
 Persistence is three fields on the collapse store's existing per-view entry
-(`src/storage/collapseStore.ts`), read as defensively as `mode`/`axis` already are, with
+(`src/storage/viewStateStore.ts`), read as defensively as `mode`/`axis` already are, with
 matching accessors on `src/view/collapseState.ts`.
 
 The interactive controls — the disclosure that names, counts and opens the shelf, plus

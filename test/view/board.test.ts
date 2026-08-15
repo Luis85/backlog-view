@@ -287,8 +287,11 @@ describe('the requirements board excludes Deliverables', () => {
 // split out to keep this file under its line budget, and because it is one subject.
 
 describe('the projection toggle', () => {
-	function storedEntries(vault: FakeVault): Record<string, { mode?: string }> {
-		return (vault.localStorage.get('product-backlog:collapse') ?? {}) as Record<string, { mode?: string }>;
+	function storedEntries(vault: FakeVault): Record<string, { prefs: { mode?: string } }> {
+		return (vault.localStorage.get('product-backlog:view-state') ?? {}) as Record<
+			string,
+			{ prefs: { mode?: string } }
+		>;
 	}
 
 	it('persists in localStorage per saved view — never in the base file', () => {
@@ -304,7 +307,7 @@ describe('the projection toggle', () => {
 		// The rule itself: base settings go on the view; UI state never touches it.
 		expect(first.config.setCalls.some((c) => c.key === 'viewMode')).toBe(false);
 		first.view.onunload();
-		expect(storedEntries(vault)['Backlog.base#Backlog']?.mode).toBe('board');
+		expect(storedEntries(vault)['Backlog.base#Backlog']?.prefs.mode).toBe('board');
 
 		// A fresh view over the same saved view restores the board from the store.
 		document.body.empty();
@@ -316,13 +319,17 @@ describe('the projection toggle', () => {
 			new MouseEvent('click', { bubbles: true }),
 		);
 		second.view.onunload();
-		expect(storedEntries(vault)['Backlog.base#Backlog']?.mode).toBeUndefined();
+		expect(storedEntries(vault)['Backlog.base#Backlog']?.prefs.mode).toBeUndefined();
 	});
 
 	it('treats a stored mode it does not recognize as the tree', () => {
 		const vault = boardVault();
-		vault.localStorage.set('product-backlog:collapse', {
-			'Backlog.base#Backlog': { base: 'Backlog.base', collapsed: [], expanded: [], mode: 'sideways' },
+		vault.localStorage.set('product-backlog:view-state', {
+			'Backlog.base#Backlog': {
+				base: 'Backlog.base',
+				folds: { collapsed: [], expanded: [], lanes: [] },
+				prefs: { mode: 'sideways' },
+			},
 		});
 		const { containerEl } = makeView(vault, { ...WORKFLOW }, { base: 'Backlog.base' });
 

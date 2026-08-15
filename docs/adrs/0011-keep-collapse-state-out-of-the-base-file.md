@@ -70,6 +70,13 @@ leaf drawing it has one.
   person's working position — has one answer per value, so the option went rather than
   growing a second reading of itself. What that gives up is a shareable default: a base
   sent to a colleague no longer arrives folding on click.
+- **The entry is `{ folds, prefs }` as of 2026-08-15**, and the key is
+  `product-backlog:view-state`. Two thirds of what it holds was never a fold — `zoom`,
+  `density` and `leadWidth` are layout preferences, `clickFolds` and `shelfSort` are
+  behaviour, `shelfHiddenTypes` is a filter — and the split is what the prune and the
+  rename walk: `folds` is everything keyed by something the vault can lose, and they
+  cannot reach `prefs` at all. The old key is not migrated, which ADR 0016 permits before
+  1.0; it is cleared on the first write.
 
 ## Alternatives
 

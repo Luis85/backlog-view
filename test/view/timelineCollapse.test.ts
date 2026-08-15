@@ -117,8 +117,12 @@ describe('collapsing a bar’s subtree', () => {
 		// first open after the upgrade finds the axis's scope unsettled and applies the
 		// default to all of it, shutting every row the reader had left open.
 		const vault = nestedVault();
-		vault.localStorage.set('product-backlog:collapse', {
-			'Backlog.base#Backlog': { base: 'Backlog.base', collapsed: [], expanded: ['Epic.md'] },
+		vault.localStorage.set('product-backlog:view-state', {
+			'Backlog.base#Backlog': {
+				base: 'Backlog.base',
+				folds: { collapsed: [], expanded: ['Epic.md'], lanes: [] },
+				prefs: {},
+			},
 		});
 
 		const { containerEl } = roadmapView(vault, { ...DATES }, { base: 'Backlog.base' });

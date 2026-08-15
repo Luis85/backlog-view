@@ -8,7 +8,7 @@ area: limitation
 created: 2026-07-31
 source: PR #14, third Codex review
 files:
-  - src/storage/collapseStore.ts
+  - src/storage/viewStateStore.ts
 started: ""
 finished: ""
 horizon: ""

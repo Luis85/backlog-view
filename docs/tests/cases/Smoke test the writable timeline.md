@@ -14,7 +14,7 @@ files:
   - src/view/render/timeline.ts
   - src/view/render/toolbar.ts
   - src/view/render/projections.ts
-  - src/storage/collapseStore.ts
+  - src/storage/viewStateStore.ts
   - src/view/collapseState.ts
   - styles/roadmap.css
   - styles/timeline.css

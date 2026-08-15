@@ -7,12 +7,11 @@ useViewHarness();
 
 describe('collapse state persistence', () => {
 	interface StoredEntry {
-		collapsed: string[];
-		expanded: string[];
+		folds: { collapsed: string[]; expanded: string[]; lanes: string[] };
 	}
 
 	function stored(vault: FakeVault): Record<string, StoredEntry> {
-		return (vault.localStorage.get('product-backlog:collapse') ?? {}) as Record<string, StoredEntry>;
+		return (vault.localStorage.get('product-backlog:view-state') ?? {}) as Record<string, StoredEntry>;
 	}
 
 	const expandedTitles = ['Epic A', 'Epic B', 'Feature B1', 'Feature B2'];
@@ -23,7 +22,7 @@ describe('collapse state persistence', () => {
 		expect(titlesOf(first.containerEl)).toEqual(expandedTitles);
 		first.view.onunload();
 
-		expect(stored(vault)['Backlog.base#Backlog'].expanded).toContain('Epic B.md');
+		expect(stored(vault)['Backlog.base#Backlog'].folds.expanded).toContain('Epic B.md');
 
 		// `collapsed: true` skips the harness's expand-all, so an expanded tree here
 		// is the restore doing it — not the test.
@@ -46,7 +45,7 @@ describe('collapse state persistence', () => {
 		expect(titlesOf(first.containerEl)).toEqual(['Epic A', 'Epic B']);
 		first.view.onunload();
 
-		expect(stored(vault)['Backlog.base#Backlog'].collapsed).toContain('Epic B.md');
+		expect(stored(vault)['Backlog.base#Backlog'].folds.collapsed).toContain('Epic B.md');
 		const second = makeView(vault, {}, { base: 'Backlog.base', collapsed: true });
 		expect(titlesOf(second.containerEl)).toEqual(['Epic A', 'Epic B']);
 	});
@@ -195,22 +194,26 @@ describe('collapse state persistence', () => {
 
 	it('forgets paths whose note is gone, and entries whose base is gone', () => {
 		const vault = fixture();
-		vault.localStorage.set('product-backlog:collapse', {
-			'Deleted.base#Backlog': { base: 'Deleted.base', collapsed: ['Whatever.md'], expanded: [] },
+		vault.localStorage.set('product-backlog:view-state', {
+			'Deleted.base#Backlog': {
+				base: 'Deleted.base',
+				folds: { collapsed: ['Whatever.md'], expanded: [], lanes: [] },
+				prefs: {},
+			},
 		});
 		const { view } = makeView(vault, {}, { base: 'Backlog.base' });
 		vault.files.delete('Epic B.md');
 		view.onunload();
 
 		const entry = stored(vault)['Backlog.base#Backlog'];
-		expect([...entry.collapsed, ...entry.expanded]).not.toContain('Epic B.md');
+		expect([...entry.folds.collapsed, ...entry.folds.expanded]).not.toContain('Epic B.md');
 		// Nothing else will ever enumerate the base that wrote this.
 		expect(stored(vault)['Deleted.base#Backlog']).toBeUndefined();
 	});
 
 	it('ignores stored state it cannot read rather than failing to render', () => {
 		const vault = fixture();
-		vault.localStorage.set('product-backlog:collapse', 'not an object');
+		vault.localStorage.set('product-backlog:view-state', 'not an object');
 		const { containerEl } = makeView(vault, {}, { base: 'Backlog.base', collapsed: true });
 
 		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B']);
@@ -264,6 +267,24 @@ describe('collapse state persistence', () => {
 		second.view.setLaneCollapsed('Dana', false);
 		second.view.onunload();
 		expect(makeView(vault, {}, { base: 'Backlog.base', collapsed: true }).view.isLaneCollapsed('Dana')).toBe(false);
+	});
+
+	it('keeps a folded band and a stored pick when the flush prunes a note that is gone', () => {
+		// `folds.lanes` holds resource NAMES and `prefs` holds no key at all. The flush
+		// drops fold keys whose FILE is gone, and it may reach neither: a prune that took
+		// the whole folds bucket rather than the two path lists would shut nothing and
+		// silently reopen every band the reader folded, and one that reached the prefs
+		// would throw away every pick the same way.
+		const vault = fixture();
+		const first = makeView(vault, {}, { base: 'Backlog.base' });
+		first.view.setLaneCollapsed('Dana', true);
+		first.view.setZoom('quarter');
+		vault.files.delete('Epic A.md');
+		first.view.onunload();
+
+		const second = makeView(vault, {}, { base: 'Backlog.base', collapsed: true });
+		expect(second.view.isLaneCollapsed('Dana')).toBe(true);
+		expect(second.view.zoom).toBe('quarter');
 	});
 
 	it('folds a band by the resource, not by the casing the row happened to draw', () => {

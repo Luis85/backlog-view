@@ -56,7 +56,7 @@ const WRITE_BOUNDARY = [
 	},
 	{
 		selector: "MemberExpression[property.name=/^(save|load)LocalStorage$/]",
-		message: 'Persisted view state goes through src/storage/collapseStore.ts.',
+		message: 'Persisted view state goes through src/storage/viewStateStore.ts.',
 	},
 ];
 

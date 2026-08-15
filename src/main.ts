@@ -1,7 +1,7 @@
 import { Plugin } from 'obsidian';
 import { CREATE_BACKLOG_COMMAND_ID, promptCreateBacklogBase } from './commands/scaffold';
 import { WRITE_README_COMMAND_ID, writeBacklogReadmeCommand } from './commands/readme';
-import { rekeyBase } from './storage/collapseStore';
+import { rekeyBase } from './storage/viewStateStore';
 import { getViewOptions } from './domain/viewOptions';
 import { PRODUCT_BACKLOG_VIEW_TYPE, ProductBacklogView } from './view/backlogView';
 

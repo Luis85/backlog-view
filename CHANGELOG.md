@@ -13,6 +13,12 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Changed
 
+- **Your working position resets once on upgrade.** Which rows were folded, the projection
+  each view was showing, the roadmap axis, zoom, density and lead width, the focus level,
+  the click behaviour and the shelf's own controls are stored under a new key and the old
+  one is not read. Open each view once and set it up again; nothing in your `.base` files
+  and nothing in your notes is touched.
+
 - **State colours no longer offer a done state.** A finished bar is drawn green whatever
   is stored against it, so the swatch for a done state could never change anything on the
   grid or in the legend. The dialog now lists the open states only, and says so; a colour

@@ -443,7 +443,7 @@ smaller than the code it replaced and collision-free by construction, so 2d's th
 need no fourth mechanism — `endOfSiblingsOrder` was already handed the real group.
 
 **The stored round trip was fixed rather than extended.** `PROJECTION_MODES` in
-`src/storage/collapseStore.ts` is the one list `readEntry` allows, and `projectionFor` in
+`src/storage/viewStateStore.ts` is the one list `readEntry` allows, and `projectionFor` in
 `src/view/collapseState.ts` inverts `PROJECTION_MODE` instead of the `if` chain that ended
 in an unguarded `return 'tree'` — the direction that would have left the toggle doing
 nothing the moment it was clicked.

@@ -1,6 +1,6 @@
 import { setTooltip } from 'obsidian';
 import { BacklogViewHost } from '../host';
-import { MAX_TIMELINE_LEAD_PX, MIN_TIMELINE_LEAD_PX } from '../../storage/collapseStore';
+import { MAX_TIMELINE_LEAD_PX, MIN_TIMELINE_LEAD_PX } from '../../storage/viewStateStore';
 
 /**
  * The lead column's own drag handle, mounted in the timeline HEADER

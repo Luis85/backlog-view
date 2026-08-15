@@ -240,19 +240,21 @@ whole thing from the file resolved correctly while silently dropping both.
   Obsidian reports a folder move once or once per descendant. Without these, ordinary
   tidying orphans an entry under a key nothing will look up again, and the next save
   prunes it for naming a file that no longer exists.
-- **Not everything a view remembers is keyed by a path, and the ones that are not stay out
-  of the collapse SET on purpose.** The shelf's hidden types and the resources axis's
-  folded bands (`collapsedLanes`) are per-view lists of NAMES — a type, a resource — and
-  the rules below are all about paths: the flush drops an entry the vault has no file for,
-  and the rename migrations move entries when a note or a base moves. A name put in that
-  set would be pruned on the first save, which is why each is a field of the stored entry
-  instead. They need no migration either: nothing renames a type or a resource, and a name
-  no row draws simply has no band to shut.
+- **Not everything a view remembers is keyed by a path, and the entry says which is
+  which.** The stored entry is `{ folds, prefs }`: `folds` is everything keyed by
+  something the vault can lose, and it is what the prune and the rename walk. The shelf's
+  hidden types and the resources axis's folded bands are per-view lists of NAMES — a type,
+  a resource — while the rules below are all about paths: the flush drops an entry the
+  vault has no file for, and the rename migrations move entries when a note or a base
+  moves. So `shelfHiddenTypes` is a `prefs` value, which neither ever touches; a BAND is a
+  fold and sits in `folds.lanes`, which the prune must therefore skip — it walks
+  `collapsed` and `expanded` only. They need no migration either: nothing renames a type
+  or a resource, and a name no row draws simply has no band to shut.
 - Persisted state changes what pruning may key on. `collapseNewParents` must NOT drop
   paths that are missing from the model — a query that has not warmed up yet, or a
   filter the user just narrowed, would read as "these notes are gone" and throw away a
   session they still want. `flushCollapseState` is the only place that forgets a path,
-  and it asks the vault, not the model. Growth is bounded there and by `MAX_PATHS`, which
+  and it asks the vault, not the model. Growth is bounded there and by `MAX_FOLDS`, which
   counts KEYS rather than notes — a parent settles once per scope — so a scope added is a
   cap to raise with it, or the headroom it promises in notes quietly halves.
 - Saves are debounced (`scheduleCollapseSave`); "Collapse all" settles every parent in
@@ -264,9 +266,12 @@ whole thing from the file resolved correctly while silently dropping both.
   zoom, comfortable rows, the default lead width, the whole tree — which is what makes a
   failed check and a value never written the same thing on the way back in, and why the
   write side stores nothing for a pick that means the default. A NAME is checked against
-  the vocabulary it mirrors (`readEnum`, spelled as strings here rather than imported as
-  a type, because stored state is not trusted as one). `leadWidth` is the first pick that
-  is a NUMBER, so there is no vocabulary to check it against: `readLeadWidth` takes
+  the vocabulary it mirrors (`oneOf`, spelled as strings here rather than imported as
+  a type, because stored state is not trusted as one). Each pick is one row in
+  `PREF_READERS`, run on the way IN over a stored entry and on the way OUT over the
+  snapshot the view hands down — so a value the store would refuse to read can never be
+  written. `leadWidth` is the first pick that
+  is a NUMBER, so there is no vocabulary to check it against: `inRange` takes
   finite and inside `MIN_TIMELINE_LEAD_PX..MAX_TIMELINE_LEAD_PX` and drops anything else
   rather than clamping it, since a clamp still trusts a corrupt-but-plausible number into
   the layout. A range check is the same rule as a vocabulary check, not an exception to

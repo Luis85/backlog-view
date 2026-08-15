@@ -8,7 +8,7 @@ created: 2026-08-01
 files:
   - src/domain/writePlan.ts
   - src/domain/dropTargets.ts
-  - src/storage/collapseStore.ts
+  - src/storage/viewStateStore.ts
 started: ""
 finished: ""
 horizon: ""
@@ -93,5 +93,5 @@ crosses a lane and a column does.
 **Nothing yet — this note is design.** A lane crossing is the drop-onto plan
 `src/domain/writePlan.ts` already builds, refused where `src/domain/dropTargets.ts`
 already refuses cycles; lane collapse joins the per-screen state in
-`src/storage/collapseStore.ts`. The board's lanes and the roadmap's are one design in
+`src/storage/viewStateStore.ts`. The board's lanes and the roadmap's are one design in
 two projections.
