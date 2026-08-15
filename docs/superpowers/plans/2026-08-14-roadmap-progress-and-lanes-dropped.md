@@ -1248,3 +1248,57 @@ State it in the pull request rather than letting `npm run check` read as proof:
 - **The match links in a narrow lead column** — whether wrapping reads as intended at the smallest width the resize grip allows.
 
 `npm run test-build` installs the plugin into this repository, and `docs/Product Backlog.base` is the fixture: it has deep subtrees, inferred spans, a milestone, context rows and — after Task 2 — dropped items.
+
+
+---
+
+### Task 7: A bar too narrow to show a ratio draws no band
+
+Found by review after Task 4 shipped. `MIN_BAR_PX` is **4**, and `.pbl-bar-progress` insets 2px at each end — so on any bar drawn at that minimum the track resolves to **zero width**. `renderBarProgress` renders a band, and nothing appears. A one-day bar at month zoom and a one- or two-day bar at quarter zoom both hit it, which are ordinary sights on a roadmap of epics at a coarse zoom.
+
+**The fix is to not draw it, not to shrink the insets.** Four pixels cannot show a ratio: at 25% done it is one pixel, which is a mark a reader would be right to distrust. The insets are also not decoration — they are what keeps the band off the dashed border of an inferred span and out of the gradient of an open end — so trimming them trades a real guarantee for a signal still too small to read. The count in the lead already states the number, and the tooltip carries the long form, so nothing is lost by drawing nothing.
+
+This is not a new concept: `renderBarRow` already passes `bar: null` for a milestone diamond and an outside-window arrow, because neither is a span. A bar at minimum width is the third such case — a shape with no room for a ratio.
+
+**Files:**
+- Modify: `src/view/render/timeline.ts` (the `renderBarProgress` call in `renderBarRow`)
+- Modify: `src/view/render/barProgress.ts` (the doc comment naming the shapes that take no band)
+- Modify: `docs/requirements/Progress on the bar.md` (`## Where it lives`)
+- Test: `test/view/barProgress.test.ts`
+
+**Interfaces:** unchanged — this passes `null` where it already passes `null`.
+
+- [ ] **Step 1: Write the failing test**
+
+In `test/view/barProgress.test.ts`, beside the milestone and outside-arrow cases: a parent with descendants whose span is drawn at `MIN_BAR_PX` renders **no** `.pbl-bar-progress`, and still renders its `.pbl-bar-count` in the lead. Build it by zooming out rather than by faking a width — the point is that the case arises from the grid, not from a contrived geometry. Import `MIN_BAR_PX` from `src/domain/timeline.ts` rather than writing `4`.
+
+- [ ] **Step 2: Watch it fail**
+
+```bash
+npx vitest run test/view/barProgress.test.ts -t 'minimum'
+```
+Expected: FAIL — the band is present today.
+
+- [ ] **Step 3: Null the bar at minimum width**
+
+In `renderBarRow`, the call already reads `geometry.milestone || geometry.outside ? null : el`. Add the third condition, from the width the same function already computes for `--pbl-bar-width`. Do not recompute it — read the value that is already there, so the CSS and the decision cannot disagree.
+
+**`src/view/render/timeline.ts` is at 395 of 400 code lines.** If the third condition does not fit in the lines available, move the whole `bar:` decision into a small named helper in `barProgress.ts` and call it — that file has room and the question is its own.
+
+- [ ] **Step 4: Watch it pass, then run the gate**
+
+```bash
+npx vitest run test/view/barProgress.test.ts
+npm run check
+```
+
+- [ ] **Step 5: Say so where the module is specified**
+
+In `docs/requirements/Progress on the bar.md`, add the third shape to the sentence naming the two that take no band, with the reason: four pixels cannot show a ratio, and the count already states the number.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src/view/render/ test/view/barProgress.test.ts docs/requirements/
+git commit -m "Draw no band on a bar too narrow to hold one"
+```
