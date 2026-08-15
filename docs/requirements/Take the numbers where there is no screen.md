@@ -210,6 +210,17 @@ instruments improvised around a browser.
   against a bundle patched to report a grid that moves per page load — which is what
   crossing midnight does and what nothing in this repository's history can supply.
   (Codex, PR #137.)
+- **3o — the fingerprint hashes the notes but not what the BASE answers.** It did:
+  `renderValue` draws `entry.getValue()`, not the frontmatter, so a Base supplying a
+  different computed or plain value draws a different cell over notes that never moved —
+  and the hash, built from paths, frontmatter, options and result order, matched. Each
+  result's answer for each visible property joins it. **It hashes a run of nulls today**,
+  because nothing populates `FakeVault.entryValues`, so it catches no comparison that can
+  be made right now; it is in because the fingerprint's promise is "the inputs the view was
+  handed", and an input left out of it opens silently the day a fixture supplies one.
+  Watched discriminating against a bundle patched to answer one property with a value:
+  `contents: 4b50cb82 here, bbb62542 in the baseline`, over an identical vault.
+  (Codex, PR #137.)
 - **4a — the runner checks out the ref to compare against.** Refused: that would move the
   tree someone is working in. Building the other side is one command in a git worktree,
   and stays the human's.

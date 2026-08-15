@@ -190,6 +190,15 @@ export function mountHarness(root: HTMLElement, fixture: HarnessFixture = 'demo'
 		// And which of them the Base returns, in its order, since that is a second fact
 		// about the workload that the note set alone does not carry.
 		results.map((entry) => entry.file.path).join('\u0002'),
+		// And what each result ANSWERS for each visible property, which is neither of the
+		// two above: `renderValue` draws `entry.getValue()`, not the frontmatter, so a Base
+		// supplying a different computed or plain value draws a different cell over notes
+		// that never moved. It hashes to a run of nulls today — `FakeVault.entryValues` is
+		// populated by nothing — so this catches no comparison that can be made right now,
+		// and it is here because the fingerprint's promise is "the inputs the view was
+		// handed" and an input left out of it opens silently the day a fixture supplies
+		// one. (Codex, PR #137.)
+		...results.map((entry) => order.map((id) => stableJson(entry.getValue(id))).join('\u0001')),
 	]);
 
 	let settle: ReturnType<typeof setTimeout> | undefined;
