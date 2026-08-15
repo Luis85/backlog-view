@@ -535,16 +535,28 @@ export function renderCardMatches(ctx: RowContext, carded: Set<string>, placed: 
 }
 
 /**
- * A ROW's answer to the same question: how many, not which. One chip of fixed width
- * (`flex: 0 0 auto` in `styles/cards.css`) that opens the row's own menu, where the
- * matches are named in full — the affordance and the list it stands for one gesture apart.
+ * A ROW's answer to the same question: how many, not which — one chip that opens the row's
+ * own menu, where the matches are named in full.
  *
- * The face is a count because the alternative was measured and refused. `.pbl-card-title`
- * and a match list are the only shrinkable items in a sticky lead column, so they shrink
- * together: with titles in the lead, a row that gained a match rendered `O… 4/17 ⌕O…` at
- * the DEFAULT lead width while its neighbours showed their names in full. A row that gains
- * a match must not lose its identity, and the fixed chip is also what removes the flex gap
- * that pushed a full lead past its own column at the narrowest width.
+ * **It SUBSTITUTES rather than adds, and that is the whole design.** A sticky lead is a
+ * fixed-width column whose only shrinkable item is the row's own title, so anything added
+ * to it is taken from the row's name — measured twice in the browser harness and wrong
+ * both times: match titles in the lead left one character of the row's name at the DEFAULT
+ * width (`O… 4/17 ⌕O…`), and a fixed-width chip beside the rollup still cost 34px there
+ * and, being unable to yield, hung 28.95px out of the column at the narrowest.
+ *
+ * The lead already carries a count slot — `.pbl-bar-count`, the rollup — and matches exist
+ * only while the quick filter runs. So the slot shows the rollup unfiltered and the match
+ * count while filtering, never both: the width budget does not move. It is the better
+ * number during a search on its own merits, since a rollup counts every descendant
+ * regardless of what the filter narrowed to, and the rollup stays ANNOUNCED either way
+ * through `renderBarProgress`'s `.pbl-sr-only` span, which costs no width at all.
+ *
+ * Replaced in the slot's own PLACE rather than appended after it: `margin-inline-start:
+ * auto` on that slot is what anchors the end of the lead, and `renderRowFacts` may draw a
+ * dependency flag after it. Where the rollup is off entirely there is no slot and no
+ * substitution to make, so the chip is simply the last thing in the lead — which is where
+ * its own auto margin puts it.
  *
  * `tabindex="-1"` and no `stopPropagation`, the match link's own bargain: `ROW_CONTROL`
  * covers every `button`, so `fromRowControl` already keeps this out of the row's activation
@@ -560,4 +572,7 @@ function renderMatchCount(ctx: RowContext, mount: HTMLElement, item: BacklogItem
 	chip.createSpan({ text: String(count) });
 	setTooltip(chip, `${said} — open the menu to reach them`);
 	chip.addEventListener('click', (evt) => showItemMenu(ctx.host, evt, item, childTypeChoices(item)));
+	// `replaceWith` MOVES the chip into the slot's position, so the element created above
+	// lands where the rollup was rather than after everything drawn since.
+	mount.querySelector('.pbl-bar-count')?.replaceWith(chip);
 }

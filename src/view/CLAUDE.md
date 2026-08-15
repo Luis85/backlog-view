@@ -726,17 +726,23 @@ free of runtime code so imports stay cycle-free.
   it. That is why `undisclosedMatches` takes the already-listed set from its caller —
   only the surface knows what it shows.
   **`face` is the mount's second answer and a separate question from `listsChildren`.** A
-  CARD names each match as a link; a ROW — the timeline's and the lane context's — draws
-  one fixed-width count chip that opens its own menu. That is measured rather than
-  preferred: a sticky lead cell's only shrinkable items are the row's own title and
-  whatever names its matches, so they shrink together, and at the DEFAULT 220px lead a row
-  that gained a match rendered one character of its own name (`O… 4/17 ⌕O…`) beside
-  neighbours showing theirs in full. The fixed chip also removes the flex GAP that put a
-  full lead 3.31px over the day track at the narrowest width, since a zero-width flex item
-  still costs its gap. Both numbers came from `npm run harness` in Chromium and from
-  nothing the suite can see; what the suite holds is the declaration
-  (`test/view/timelineBoxing.test.ts`) and the markup per surface
-  (`test/view/roadmapMatches.test.ts`).
+  CARD names each match as a link; a ROW — the timeline's and the lane context's — takes
+  over the lead's own count slot, `.pbl-bar-count`, showing the match count while the
+  filter runs and the rollup when it does not. **Never both, and that is the rule rather
+  than the arrangement: a sticky lead is a fixed-width column whose only shrinkable item is
+  the row's title, so anything ADDED to it is taken from the row's name.** Two additions
+  were built and measured before that was understood — match titles in the lead left one
+  character of the row's own name at the default width (`O… 4/17 ⌕O…`), and a `flex: 0 0
+  auto` chip beside the rollup still cost 34px there and, unable to yield, hung 28.95px
+  over the day track at the 160px floor. The substitution costs nothing: the same row's
+  title measures identically filtered and unfiltered. `renderMatchCount` swaps the element
+  in the slot's own PLACE (`replaceWith`), because `margin-inline-start: auto` on that slot
+  anchors the end of the lead and `renderRowFacts` may draw a dependency flag after it; the
+  rollup stays ANNOUNCED throughout on the row's `.pbl-sr-only` span, which costs no width.
+  Every number here came from `npm run harness` in Chromium and from nothing the suite can
+  see; what the suite holds is the substitution itself (`test/view/roadmapMatches.test.ts`,
+  which jsdom CAN see) and the declarations that let the chip yield
+  (`test/view/timelineBoxing.test.ts`).
   **A marker's row cannot use an sr-only span for any of this.** `renderRowFacts` gives it
   an explicit `aria-label`, which REPLACES the content-derived name and takes the progress
   span with it — so that row folds `progressNote` (`render/barProgress.ts`) into its own

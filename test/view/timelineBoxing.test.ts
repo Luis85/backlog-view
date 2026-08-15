@@ -72,20 +72,28 @@ describe('the two boxes sized from TypeScript arithmetic', () => {
 		expect(dimmed).toContain('.pbl-absence-row .pbl-timeline-lead > *');
 	});
 
-	it('costs a row’s match affordance a FIXED width, never a share of the title', () => {
-		// The lead is a fixed-width column whose only shrinkable items are the row's own
-		// title and whatever names its matches, so a variable-width list there is width
-		// taken out of the NAME. Measured in Chromium through `npm run harness` at the
-		// default 220px lead: with titles in the lead, rows carrying a match rendered one
-		// character of their own (`O… 4/17 ⌕O…`) beside neighbours showing theirs in full,
-		// and at the 160px floor the list's own flex gap put a full lead 3.31px over the
-		// day track. `flex: 0 0 auto` is what refuses both.
+	it('lets a row’s match affordance YIELD rather than cross the column boundary', () => {
+		// The lead is a fixed-width column, so an item that cannot shrink cannot do
+		// anything but overflow once the column is full. Measured in Chromium through
+		// `npm run harness` at the 160px floor: a `flex: 0 0 auto` chip hung 28.95px over
+		// the day track on every row that had one. `flex: 0 1 auto` with `min-width: 0`
+		// and `overflow: hidden` is what makes it give way to the icon alone instead.
 		//
-		// Text again, and the reach is exactly that: it sees the declaration and cannot
+		// WHERE it sits is the code's (`renderMatchCount` swaps it for `.pbl-bar-count`),
+		// and the two have to agree about the end of the lead, so the anchor is asserted
+		// against the slot's own rather than against a literal.
+		//
+		// Text again, and the reach is exactly that: it sees the declarations and cannot
 		// tell you what the column came out looking like. That is the narrow-lead case in
 		// `docs/tests/suites/Smoke test the roadmap.md`.
 		const cards = readFileSync(new URL('../../styles/cards.css', import.meta.url), 'utf8');
-		expect(bodyOf(cards, '.pbl-row-matches,\nbutton.pbl-row-matches', 'styles/cards.css')).toContain('flex: 0 0 auto;');
+		const chip = bodyOf(cards, '.pbl-row-matches,\nbutton.pbl-row-matches', 'styles/cards.css');
+		expect(chip).toContain('flex: 0 1 auto;');
+		expect(chip).toContain('min-width: 0;');
+		expect(chip).toContain('overflow: hidden;');
+		// The slot it replaces anchors the end of the lead; the replacement has to too.
+		expect(ruleBody('.pbl-bar-count')).toContain('margin-inline-start: auto;');
+		expect(chip).toContain('margin-inline-start: auto;');
 		// Not vacuous, and the pairing is the point: a CARD has the room, so its own list
 		// still wraps to as many titles as it holds. Only the ROW trades them for a count.
 		expect(bodyOf(cards, '.pbl-card-matches', 'styles/cards.css')).toContain('flex-wrap: wrap;');

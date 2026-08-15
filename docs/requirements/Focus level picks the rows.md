@@ -112,9 +112,11 @@ walk itself is `hiddenMatches` in `src/domain/board.ts`, unchanged, through
 `undisclosedMatches` in `src/view/childrenList.ts` — which now takes the already-listed
 set from its caller, since a timeline row draws no disclosure and subtracting one would
 delete a direct-child match. A CARD names each match as a link; a ROW — the timeline's
-and the lane's — draws one fixed-width count chip opening its own menu instead, because a
-sticky lead column's only shrinkable items are the row's title and this, so a list there
-is width taken out of the row's own name. Measured in the browser harness, not preferred.
+and the lane's — puts a count in the slot its ROLLUP occupies, opening its own menu, and
+gives the rollup back the moment the filter clears. A substitution rather than an
+addition, because a sticky lead column's only shrinkable item is the row's title, so
+anything added to it is taken from the row's own name. Measured in the browser harness,
+twice, not preferred.
 Driven in `test/view/roadmapMatches.test.ts`.
 
 The inferred spans remain, which is why this note stays open.

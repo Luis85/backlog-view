@@ -164,6 +164,67 @@ describe('every roadmap surface names what the filter found under it', () => {
 	});
 });
 
+describe('a row SUBSTITUTES its count slot, never adds to it', () => {
+	/** A dated epic with two children, one of them the filter's match. */
+	function countedVault(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, start: '2026-08-01', due: '2026-08-10' } });
+		vault.addFile('Feature A1.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic A' });
+		vault.addFile('PBI Login.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature A1' });
+		return vault;
+	}
+
+	it('shows the rollup with no filter running, exactly as before', () => {
+		const { containerEl } = roadmap(countedVault(), { ...DATES }, { focus: 'Epic' });
+
+		const row = rowFor(containerEl, 'Epic A');
+		expect(row?.querySelector('.pbl-bar-count')?.textContent).toBe('2');
+		expect(row?.querySelector('.pbl-row-matches')).toBeNull();
+	});
+
+	it('gives the SAME slot to the matches while one is', () => {
+		// The lead is a fixed-width column whose only shrinkable item is the row's title,
+		// so anything ADDED to it comes out of the row's name — measured twice in the
+		// browser harness, at 34px of title and at a 28.95px overflow. The affordance is
+		// therefore a substitution: the count slot is already spent, and a rollup counting
+		// every descendant is not what a reader narrowing the view is asking about.
+		const { containerEl, view } = roadmap(countedVault(), { ...DATES }, { focus: 'Epic' });
+		view.setFilter('Login');
+
+		const row = rowFor(containerEl, 'Epic A');
+		expect(matchCountOn(row)).toBe('1');
+		expect(row?.querySelector('.pbl-bar-count')).toBeNull();
+		// In the slot's own place, not appended after it: everything in the lead is
+		// anchored by that slot's `margin-inline-start: auto`, and a dependency flag drawn
+		// after it would otherwise be left where the rollup used to push it from.
+		expect(row?.querySelector('.pbl-timeline-lead')?.lastElementChild?.className).toContain('pbl-row-matches');
+	});
+
+	it('keeps announcing the rollup on the row, which costs no width', () => {
+		// The visible slot is spent, so the words are the sr-only span's alone — the one
+		// place the progress stays reachable while a filter narrows the view.
+		const { containerEl, view } = roadmap(countedVault(), { ...DATES }, { focus: 'Epic' });
+		view.setFilter('Login');
+
+		const said = Array.from(rowFor(containerEl, 'Epic A')?.querySelectorAll('.pbl-sr-only') ?? []).map(
+			(el) => el.textContent,
+		);
+		expect(said).toContain('2 items');
+	});
+
+	it('leaves a row with no rollup slot to append, rather than inventing one', () => {
+		// With the rollup off altogether — no workflow and no counts — `rollupReport`
+		// returns null and nothing draws the slot, so there is nothing to substitute and
+		// the affordance is simply the last thing in the lead.
+		const { containerEl, view } = roadmap(countedVault(), { ...DATES, showCounts: false }, { focus: 'Epic' });
+		view.setFilter('Login');
+
+		const row = rowFor(containerEl, 'Epic A');
+		expect(row?.querySelector('.pbl-bar-count')).toBeNull();
+		expect(matchCountOn(row)).toBe('1');
+	});
+});
+
 describe('what a surface already shows, it does not name twice', () => {
 	/** A direct child of the epic, matching, with no row of its own. */
 	function directVault(epic: Record<string, unknown> = {}): FakeVault {
