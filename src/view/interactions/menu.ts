@@ -305,9 +305,12 @@ export function showContextMenu(host: BacklogViewHost, item: BacklogItem, rowEl:
  * matching section offers — one builder per property, never a second list — so a chip and
  * the context menu cannot disagree about what is offered or which entry is current.
  *
- * The click belongs to the control, not to the row it sits on: `stopPropagation` here is
- * what keeps pressing a chip from also activating the row. (`fromRowControl` in
- * `render/rows.ts` covers a control that forgets; this one does not have to.)
+ * The click belongs to the control, not to the row it sits on — but the guard for that is
+ * `fromRowControl` in `render/rows.ts`, asked by `wireRowEvents` before `wireChipEvents`
+ * ever runs, not `stopPropagation` here: both are delegated listeners on `treeEl` now, so
+ * this one firing does not stop a sibling listener on the same element that already ran.
+ * `stopPropagation` still matters for what sits ABOVE `treeEl` — nothing there should see
+ * a chip's click either — but it is not what keeps the row from also activating.
  */
 function chipMenu(
 	host: BacklogViewHost,

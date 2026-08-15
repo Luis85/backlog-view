@@ -567,20 +567,59 @@ export function wireRowEvents(host: BacklogViewHost, treeEl: HTMLElement): void 
  * would leave every card chip inert. `rowItem` above keeps its narrower selector — it
  * is the tree's own row activation, not a chip.
  *
- * Exported ahead of a consumer in THIS task: the resolver is one half of the plan's
- * produced interface, and the sibling task delegating the row's remaining controls
- * (the add button, the tag pills' own container) is what imports it next.
+ * Not exported: `wireChipEvents` below is its only caller today. A sibling task
+ * delegating the row's remaining controls can add `export` on the line it needs it —
+ * that is a one-word diff, not a reason to carry the keyword now for a consumer that
+ * does not exist yet.
  */
-// fallow-ignore-next-line unused-export
-export function itemForEvent(host: BacklogViewHost, evt: Event): BacklogItem | null {
+function itemForEvent(host: BacklogViewHost, evt: Event): BacklogItem | null {
 	const el = evt.target instanceof Element ? evt.target.closest('[data-path]') : null;
 	const path = el instanceof HTMLElement ? el.dataset.path : undefined;
 	return path ? (host.model?.byPath.get(path) ?? null) : null;
 }
 
+/** One chip's action, given the item it was clicked for and the chip element itself. */
+type ChipAction = (host: BacklogViewHost, evt: MouseEvent, item: BacklogItem, chip: HTMLElement) => void;
+
 /**
- * Every selector is prefixed `button`, and that is load-bearing rather than tidy.
+ * Every chip's class name, mapped to its own action — ONE table the selector and the
+ * dispatch both read, so a class lives in exactly one place. `LABEL_CHIPS`'s two entries
+ * are folded in by `spec.cls` rather than restated: a rename there moves here for free,
+ * where a literal copy would silently leave that chip's delegated click matching
+ * nothing, and no test would fail, since nothing else drives a risk or assignee click
+ * through this selector.
  *
+ * The date chip is the one action that does not open a menu: `promptSchedule` is a modal
+ * and takes no event, so it needs none of the anchoring the other five carry through
+ * their `MouseEvent`. Which end it writes travels on the chip's own `dataset.end`
+ * (`renderDateChip` in `render/chips.ts`), never inferred from the label — the label is
+ * the column's own display name and says nothing about which end this is.
+ */
+const CHIP_ACTIONS: Record<string, ChipAction> = {
+	'pbl-state-chip': (host, evt, item) => showStateMenu(host, evt, item),
+	'pbl-horizon-chip': (host, evt, item) => showHorizonMenu(host, evt, item),
+	...Object.fromEntries(
+		Object.values(LABEL_CHIPS).map((spec): [string, ChipAction] => [
+			spec.cls,
+			(host, evt, item) => spec.showMenu(host, evt, item),
+		]),
+	),
+	'pbl-date-chip': (host, _evt, item, chip) => {
+		const end = chip.dataset.end;
+		if (end === 'start' || end === 'target') promptSchedule(host, item, [end]);
+	},
+	'pbl-tag-add': (host, evt, item) => showTagMenu(host, evt, item),
+	'pbl-tag-remove': (host, evt, item, chip) => {
+		// `preventDefault` only: the row's own handler already ignores a click on a
+		// `button` (`fromRowControl`).
+		evt.preventDefault();
+		const tag = chip.dataset.tag;
+		if (tag) removeTag(host, item, tag);
+	},
+};
+
+/**
+ * Every class in `CHIP_ACTIONS`, each prefixed `button` — load-bearing rather than tidy.
  * A context row's five property chips are the SAME classes on a `div` — every chip in
  * `render/chips.ts` builds `pbl-state-static` alongside the chip's own class on that
  * `div` — and a selector matching the class alone would open an edit menu on a
@@ -593,21 +632,18 @@ export function itemForEvent(host: BacklogViewHost, evt: Event): BacklogItem | n
  * ones happen to need it. `button` is also the rule `fromRowControl` already states for
  * the same question, so this is the existing answer rather than a second one.
  */
-const CHIPS =
-	'button.pbl-state-chip, button.pbl-horizon-chip, button.pbl-risk-chip,' +
-	' button.pbl-assignee-chip, button.pbl-date-chip, button.pbl-tag-add, button.pbl-tag-remove';
+const CHIPS = Object.keys(CHIP_ACTIONS)
+	.map((cls) => `button.${cls}`)
+	.join(', ');
 
 /**
  * Every per-item chip, on one delegated handler for the whole pane. Both card
  * projections and the tree render into `treeEl` (`renderProjectionContent`), so this one
  * listener serves the tree's rows and every card alike — the same reach `wireRowEvents`
- * has, for the same reason.
- *
- * The date chip is the one entry that does not open a menu: `promptSchedule` is a modal
- * and takes no event, so it needs none of the anchoring the other five carry through
- * their `MouseEvent`. Which end it writes travels on the chip's own `dataset.end`
- * (`renderDateChip` in `render/chips.ts`), never inferred from the label — the label is
- * the column's own display name and says nothing about which end this is.
+ * has, for the same reason. The class a matched chip carries is looked up in
+ * `CHIP_ACTIONS` rather than tested by an if-chain, so a chip added to that table without
+ * a class `wireChipEvents` recognises does nothing — never a fallthrough to some other
+ * chip's write.
  */
 export function wireChipEvents(host: BacklogViewHost, treeEl: HTMLElement): void {
 	treeEl.addEventListener('click', (evt) => {
@@ -616,20 +652,7 @@ export function wireChipEvents(host: BacklogViewHost, treeEl: HTMLElement): void
 		if (!(chip instanceof HTMLElement)) return;
 		const item = itemForEvent(host, evt);
 		if (!item) return;
-		if (chip.hasClass('pbl-state-chip')) return void showStateMenu(host, evt, item);
-		if (chip.hasClass('pbl-horizon-chip')) return void showHorizonMenu(host, evt, item);
-		if (chip.hasClass('pbl-risk-chip')) return void LABEL_CHIPS.risk.showMenu(host, evt, item);
-		if (chip.hasClass('pbl-assignee-chip')) return void LABEL_CHIPS.assignee.showMenu(host, evt, item);
-		if (chip.hasClass('pbl-date-chip')) {
-			const end = chip.dataset.end;
-			if (end === 'start' || end === 'target') promptSchedule(host, item, [end]);
-			return;
-		}
-		if (chip.hasClass('pbl-tag-add')) return void showTagMenu(host, evt, item);
-		// `preventDefault` only: the row's own handler already ignores a click on a
-		// `button` (`fromRowControl`).
-		evt.preventDefault();
-		const tag = chip.dataset.tag;
-		if (tag) removeTag(host, item, tag);
+		const cls = Object.keys(CHIP_ACTIONS).find((c) => chip.classList.contains(c));
+		if (cls) CHIP_ACTIONS[cls](host, evt, item, chip);
 	});
 }

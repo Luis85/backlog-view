@@ -31,12 +31,16 @@ free of runtime code so imports stay cycle-free.
   `render/timelineArrows.ts` measures them to draw an arrow. So the declaration in
   `styles/cards.css` names the three CONTAINERS rather than `.pbl-card` — see
   [[Every card renders, on screen or not]]. `refreshRowChildren` must prune the subtree it removes
-  from `rowEls`. The row and drag listeners live on the PANE, one delegated set for the
-  view (`wireRowEvents` in `render/rows.ts`, `wireTree` in `interactions/dragDrop.ts`),
-  resolving their row by `data-path` against the current model per event — so nothing
-  about a row is captured at wire time, a targeted refresh that leaves surrounding rows
-  in place cannot leave a handler holding a stale item, and a data update rebuilds rows
-  without rebuilding listeners. Per-row icons are cloned from per-name templates
+  from `rowEls`. The row, chip and drag listeners live on the PANE, one delegated set
+  each for the view (`wireRowEvents` and `wireChipEvents` in `render/rows.ts`, `wireTree`
+  in `interactions/dragDrop.ts`), resolving their row or item by `data-path` against the
+  current model per event — so nothing about a row is captured at wire time, a targeted
+  refresh that leaves surrounding rows in place cannot leave a handler holding a stale
+  item, and a data update rebuilds rows without rebuilding listeners. `wireChipEvents` is
+  what a KEPT row depends on: a render that reused a row element instead of rebuilding it
+  would still carry a stale-closured chip if that chip's own listener were wired at
+  render time, so the delegation had to exist before that reuse could be safe. Per-row
+  icons are cloned from per-name templates
   (`drawIcon` in `render/icons.ts`) rather than re-parsed through `setIcon`. Data updates
   still rebuild everything — skipping that needs to account for arbitrary chip property
   values.
@@ -191,8 +195,11 @@ free of runtime code so imports stay cycle-free.
   drop where the properties menu put them, like every other column.
 - **The five per-row menus are one function**: `chipMenu` in `interactions/menu.ts`, with
   `showStateMenu` / `showHorizonMenu` / `showRiskMenu` / `showAssigneeMenu` / `showTagMenu`
-  as one-line exports over it. It is what stops a control from also activating the row it sits on — the reason
-  every one of them was five identical lines before.
+  as one-line exports over it. What stops a control from also activating the row it sits
+  on is `fromRowControl` (`render/rows.ts`), asked by `wireRowEvents` before
+  `wireChipEvents` — both delegated on `treeEl` — ever runs; `chipMenu`'s own
+  `stopPropagation` only reaches ancestors above `treeEl` now, since a sibling listener on
+  the same element already ran by the time it fires.
 - **The horizon chip is that same shape over the placement** (`renderHorizonChip`,
   beside the state chip in `render/columns.ts`): rendered on `hasHorizonAxis` — the one
   definition of a configured bucket axis, never a second opinion — static for a context

@@ -23,6 +23,16 @@ describe('row controls after a data update', () => {
 		// the only shape that exercises a KEPT row once Task 5 lands. Changing the
 		// frontmatter would change the signature, rebuild the row, and install a fresh
 		// closure, which proves nothing about delegation either before or after.
+		//
+		// This test PASSES TODAY for a reason that has nothing to do with delegation: every
+		// data update still rebuilds every row from scratch, so even a closure captured at
+		// render time would be fresh by the time this click fires — there is no rebuild
+		// between the second `onDataUpdated()` and the click for a stale closure to survive.
+		// It becomes load-bearing only once Task 5 lands row reuse, at which point a captured
+		// item WOULD go stale here and this assertion is what catches it. Do not "fix" this
+		// test into failing before then, and do not read a pass here as proof delegation
+		// works — the delegation was verified by review, not by this test, which cannot
+		// distinguish the two shapes until a row can survive an update unrebuilt.
 		view.onDataUpdated();
 
 		const spy = vi.spyOn(menu, 'showStateMenu').mockImplementation(() => {});
