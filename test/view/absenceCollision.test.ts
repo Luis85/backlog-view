@@ -69,6 +69,26 @@ describe('the days a band is unavailable, shaded across its work', () => {
 		expect(children.indexOf(washes[0])).toBeGreaterThan(barIndex);
 	});
 
+	it('leaves the bar’s own title ON TOP of the shading, not behind it', () => {
+		// Reported from a vault on 2026-08-15: a title read THROUGH the hatch, which is a title
+		// nobody reads. The wash has to paint over the bar (the case above) and under the name,
+		// and one mechanism does both — append order. `drawBandCollision` moves the label to the
+		// end of the track once the wash is drawn; no `z-index` is involved, and none may be,
+		// since the track establishes no stacking context and would compete with the sticky lead
+		// column at 2 (`styles/dependencyArrows.css`).
+		const { containerEl } = laneRoadmap(absenceVault());
+		const work = rowFor(containerEl, 'Work');
+		const track = work?.querySelector<HTMLElement>('.pbl-timeline-track');
+		const children = Array.from(track?.children ?? []);
+		const label = children.findIndex((el) => el.classList.contains('pbl-bar-label'));
+		const wash = children.findIndex((el) => el.classList.contains('pbl-absence-wash'));
+
+		// Both drawn, or this asserts an ordering between two things that are not there.
+		expect(label).toBeGreaterThanOrEqual(0);
+		expect(wash).toBeGreaterThanOrEqual(0);
+		expect(label).toBeGreaterThan(wash);
+	});
+
 	it('shades no line that makes no positional claim, and no band on the dated axis', () => {
 		// Three exclusions, each with its own reason: the stretch's own row already carries
 		// the mark; a context row draws no bar at all by recorded decision, so shading days

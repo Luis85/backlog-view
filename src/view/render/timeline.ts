@@ -442,7 +442,11 @@ function drawEntries(entries: TimelineEntry[], pass: EntryPass): void {
  * own comment warns against for `absence` beside it.
  */
 function drawBandCollision(bar: { row: HTMLElement; lead: HTMLElement; track: HTMLElement; label: HTMLElement | null }, row: TimelineRow, lane: ResourceLane, ruler: { window: TimelineWindow; scale: TimelineScale }, drawn: DrawnColors): void {
-	renderAbsenceWash(bar.track, lane.absences, ruler);
+	// The label is handed over so the wash can put it back on top: the tint belongs over the
+	// BAR and under the row's own NAME, and both halves are append order rather than a
+	// `z-index` — see `renderAbsenceWash`, and `styles/dependencyArrows.css` for why a layer
+	// here may not have one.
+	renderAbsenceWash(bar.track, lane.absences, ruler, bar.label);
 	const crossed = crossedAbsences(row.bar.span, lane.absences);
 	if (crossed.length === 0) return;
 	const cost = absenceCost(row, crossed);

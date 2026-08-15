@@ -515,6 +515,14 @@ function renderLaneRail(
  * as it decides the arrow layer's sandwich, and this drawer runs after `renderBarRow` has
  * finished the row.
  *
+ * **Over the bar is not over everything, and the difference is the row's TITLE.** The wash
+ * paints over `.pbl-bar` and under `.pbl-bar-label`, which its caller arranges by moving the
+ * label to the end of the track once this has run (`drawBandCollision` in
+ * `./timeline.ts`) — reported from a vault on 2026-08-15, where a title read through the
+ * hatch and so was not read at all. The same one mechanism either way: append order, never a
+ * `z-index`. A caller that draws this and leaves the label where it was gets a legible bar
+ * and an illegible name.
+ *
  * A stretch wholly outside the window draws nothing. `barGeometry` CLAMPS one, so shading it
  * would colour days it does not cover — the mark can say "past this edge" because
  * `.pbl-bar-outside` is a direction rather than a span, and a column of shaded days has no
@@ -524,6 +532,7 @@ export function renderAbsenceWash(
 	track: HTMLElement,
 	absences: Absence[],
 	ruler: { window: TimelineWindow; scale: TimelineScale },
+	label: HTMLElement | null,
 ): void {
 	for (const absence of absences) {
 		const geometry = barGeometry(ruler.window, { start: absence.start, target: absence.target });
@@ -531,6 +540,11 @@ export function renderAbsenceWash(
 		const wash = track.createDiv({ cls: 'pbl-absence-wash', attr: { 'aria-hidden': 'true' } });
 		placeSpan(wash, geometry, ruler.scale);
 	}
+	// The label goes back on top, HERE rather than at the call site: this function is what put
+	// something over the row, so it is what owes the row its title back. `appendChild` on an
+	// element already in the track MOVES it, so nothing is created and only the painting
+	// changes — the label is absolutely positioned either way.
+	if (label !== null) track.appendChild(label);
 }
 
 /**
