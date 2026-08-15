@@ -821,8 +821,12 @@ function valueKinds(host: BacklogViewHost): string[] {
 	return host.columns.map((column) => {
 		for (const item of results) {
 			try {
-				const value = item.entry?.getValue(column.prop);
-				if (value != null) return value.constructor.name;
+				const value = item.entry?.getValue(column.prop) ?? null;
+				// `drawsSomething`, not `!= null`: a missing property comes back as a
+				// `NullValue` INSTANCE, which is not null, so a bare null check stops at
+				// the first row that lacks the property and records `NullValue` as the
+				// column's type for good — leaving a populated row's rendering unguarded.
+				if (drawsSomething(value)) return value.constructor.name;
 			} catch {
 				// This entry cannot answer for this property; the next one may.
 			}
@@ -938,6 +942,31 @@ Check every member against the file that defines it before trusting this list �
 // empty columns ever shows up in the numbers, cache the resolved kinds and invalidate
 // them on a column-list change.
 ```
+
+- [ ] **Step 3a: Give the emptiness test one owner**
+
+`renderValue` in `src/view/render/columns.ts` already decides whether a value draws anything — `value === null || value instanceof NullValue`, then the `isEmpty()` probe on the values that declare one. `valueKinds` needs the identical question, and a second copy of it is how the two come to disagree: the first draft of the probe asked `!= null`, which a `NullValue` instance passes.
+
+Extract it rather than repeat it:
+
+```ts
+/**
+ * Whether a Bases value draws anything at all.
+ *
+ * One statement of it, because two readings drift: a missing property comes back as a
+ * `NullValue` INSTANCE rather than `null`, and `isEmpty` is declared on some `Value`
+ * subclasses and not on `Value` itself, so both tests are easy to write differently the
+ * second time. `renderValue` asks it to decide whether to draw a cell, and `valueKinds`
+ * asks it to decide which value it may read a type from.
+ */
+export function drawsSomething(value: Value | null): value is Value {
+	if (value === null || value instanceof NullValue) return false;
+	const maybeEmpty = value as { isEmpty?: () => boolean };
+	return !(typeof maybeEmpty.isEmpty === 'function' && maybeEmpty.isEmpty());
+}
+```
+
+Have `renderValue` call it in place of its inline checks, so the behaviour it has today is what the helper carries. That is a refactor with no behaviour change — if a test moves, you changed something.
 
 - [ ] **Step 3b: Re-derive the list with an instrument, and reconcile it against the code**
 
