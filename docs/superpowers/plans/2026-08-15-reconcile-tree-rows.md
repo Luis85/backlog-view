@@ -282,25 +282,70 @@ export function itemForEvent(host: BacklogViewHost, evt: Event): BacklogItem | n
  * wiring it at render, is the invisible one this function exists to remove.
  */
 export function wireChipEvents(host: BacklogViewHost, treeEl: HTMLElement): void {
+/**
+ * Every selector is prefixed `button`, and that is load-bearing rather than tidy.
+ *
+ * A context row's chips are the SAME classes on a `div` — `renderStateChip` builds
+ * `createDiv({ cls: `${cls} pbl-state-static` })` where `cls` already starts with
+ * `pbl-state-chip`, and the horizon and label chips do the identical thing. A selector
+ * matching the class alone would open an edit menu on a read-only value, and the write
+ * behind it would then be refused by the gate — a control that offers what it cannot do,
+ * which is the context-row rule this codebase says every past bug in it forgot.
+ *
+ * `button` is also the rule `fromRowControl` already states for the same question, so
+ * this is the existing answer rather than a second one.
+ */
+const CHIPS =
+	'button.pbl-state-chip, button.pbl-horizon-chip, button.pbl-risk-chip,' +
+	' button.pbl-assignee-chip, button.pbl-tag-add, button.pbl-tag-remove';
+
+export function wireChipEvents(host: BacklogViewHost, treeEl: HTMLElement): void {
 	treeEl.addEventListener('click', (evt) => {
 		const target = evt.target instanceof Element ? evt.target : null;
-		const chip = target?.closest('.pbl-state-chip, .pbl-horizon-chip, .pbl-label-chip, .pbl-tag-add, .pbl-tag-remove');
+		const chip = target?.closest(CHIPS);
 		if (!chip) return;
 		const item = itemForEvent(host, evt);
 		if (!item) return;
 		if (chip.hasClass('pbl-state-chip')) return void showStateMenu(host, evt, item);
 		if (chip.hasClass('pbl-horizon-chip')) return void showHorizonMenu(host, evt, item);
-		if (chip.hasClass('pbl-label-chip')) return void showLabelMenuFor(host, evt, item, chip);
+		if (chip.hasClass('pbl-risk-chip')) return void showRiskMenu(host, evt, item);
+		if (chip.hasClass('pbl-assignee-chip')) return void showAssigneeMenu(host, evt, item);
 		if (chip.hasClass('pbl-tag-add')) return void showTagMenu(host, evt, item);
 		removeTagFromEvent(host, item, chip);
 	});
 }
 ```
 
-Two details this sketch leaves to the file:
+Three details this sketch leaves to the file:
 
-- The **label chip** carries which of risk or assignee it is. `renderLabelChip` currently closes over `spec.showMenu`; put the discriminator on the element (`chip.dataset.label = spec.noun` or the class the stylesheet already gives it) and read it back. Use whatever `LABEL_CHIPS` already keys on rather than inventing a second vocabulary.
+- **The label chips are two classes, not one.** `LABEL_CHIPS` in `columns.ts` holds `cls: 'pbl-risk-chip'` and `cls: 'pbl-assignee-chip'`; there is no shared `pbl-label-chip`. Read `LABEL_CHIPS` and dispatch on the two real classes — the sketch above does, and `spec.showMenu` is where the two menu functions come from. Do not invent a shared class to make one branch possible; two entries in a five-entry list is cheaper than a class the stylesheet does not know.
 - The **tag remove** button needs its tag. It is already in the pill's text (`.pbl-tag-text` renders `#${tag}`); put it on the button as `remove.dataset.tag = tag` and read it back — do not parse the rendered text.
+- **Verify the button claim before trusting the selector.** Every editable chip is built with `createEl('button', …)` today. Confirm that for each of the six, and if one is not a button, fix the delegation to exclude the static form some other way rather than dropping the `button` prefix for all of them.
+
+- [ ] **Step 3b: Prove the static chips stay inert**
+
+Append to `test/view/rowControls.test.ts`. This is the context-row rule, and it is the failure this delegation would introduce rather than one it inherits:
+
+```ts
+	it('opens no menu when a context row\'s static chip is clicked', () => {
+		// An outsideFilter row's chips are the same CLASSES on a div — the delegated
+		// selector must not reach them. A menu here would offer a write the gate then
+		// refuses: a control that says it can do what it cannot.
+		const vault = new FakeVault();
+		vault.addFile('Parent.md', { frontmatter: { type: 'Feature', order: 10, status: 'Open' } });
+		vault.addFile('Kid.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Parent' });
+		// A base returning only the child pulls the parent in as a context row.
+		const { view, containerEl } = makeView(vault, { stateKey: 'status' }, { results: ['Kid.md'] });
+		view.onDataUpdated();
+
+		const spy = vi.spyOn(menu, 'showStateMenu').mockImplementation(() => {});
+		rowByTitle(containerEl, 'Parent').querySelector<HTMLElement>('.pbl-state-chip')?.click();
+
+		expect(spy).not.toHaveBeenCalled();
+	});
+```
+
+`makeView`'s third argument is a guess at how the harness restricts the result set. Read `test/helpers/view.ts` and `test/view/contextRowWrites.test.ts` — that suite builds context-row fixtures constantly and its way is the way.
 
 Replace the five `addEventListener` calls in `columns.ts` with nothing. The classes and `dataset` writes stay.
 
@@ -902,6 +947,42 @@ In `src/view/renderPass.ts`, replace the unconditional clear:
 `clearRowIndex()` is a new one-line host method clearing `rowEls`, `rowSigs` and `cardKids` together — three maps with one lifetime, cleared from one place rather than from three call sites that have to agree. Add it to `BacklogViewHost` in `src/view/host.ts` (declaration only; `host.ts` stays free of runtime code).
 
 Return `inputs` in `RenderPassResult`; `backlogView` stores it and passes it back as `lastInputs` next pass.
+
+- [ ] **Step 4b: Clear before every empty state**
+
+`renderTree`'s three early returns — no results, everything filtered out, everything done and hidden — fire **after** the reuse decision and **before** anything prunes. A data update that empties the tree keeps the shared inputs identical and the index non-empty, so reuse is chosen, and the empty message is then appended below the rows it is claiming do not exist.
+
+The spec lists this as Risk 3. It is not optional and it is not a corner: marking the last open item done is an ordinary write.
+
+At the top of each early-return branch in `renderTree`:
+
+```ts
+	// The early returns render no rows, so nothing below prunes the ones already here.
+	// A reused pass would append this message under the rows it says are not there.
+	treeEl.empty();
+	ctx.host.clearRowIndex();
+```
+
+Add the regression test to `test/view/rowReuse.test.ts`:
+
+```ts
+	it('leaves only the empty state when the last result goes', () => {
+		const { view, containerEl, vault } = makeView(backlog(), { stateKey: 'status' });
+		view.onDataUpdated();
+		expect(rows(containerEl).length).toBeGreaterThan(0);
+
+		vault.removeFile('Alpha.md');
+		vault.removeFile('Beta.md');
+		vault.removeFile('Gamma.md');
+		vault.removeFile('Epic.md');
+		view.onDataUpdated();
+
+		expect(rows(containerEl)).toHaveLength(0);
+		expect(containerEl.querySelectorAll('.pbl-cols')).toHaveLength(0);
+	});
+```
+
+`vault.removeFile` is a guess — read `test/helpers/vault.ts` for the real one. Run this test before the fix and watch it fail: the rows and the header are still there.
 
 - [ ] **Step 5: Claim the header**
 
