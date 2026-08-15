@@ -659,6 +659,20 @@ describe('rowSignature', () => {
 		expect(sigOf({ status: 'Open' })).not.toBe(sigOf({ status: 'Doing' }));
 	});
 
+	it('differs across values JSON would flatten together', () => {
+		// Each pair serializes identically under a plain `JSON.stringify`, and each is a
+		// FALSE MATCH — the direction that ships a stale row. Table-driven so a fourth
+		// collision is a row rather than another test.
+		const collisions: Array<[Record<string, unknown>, Record<string, unknown>]> = [
+			[{ n: null }, { n: NaN }],
+			[{ n: NaN }, { n: Infinity }],
+			[{ d: new Date('2026-01-01T00:00:00.000Z') }, { d: '2026-01-01T00:00:00.000Z' }],
+		];
+		for (const [left, right] of collisions) {
+			expect(sigOf(left)).not.toBe(sigOf(right));
+		}
+	});
+
 	it('differs when a frontmatter key nothing draws is added', () => {
 		// A false DIFFERENCE is the safe direction: one wasted row build, never a stale
 		// cell. The frontmatter is one term precisely so no one has to decide which keys
@@ -765,6 +779,32 @@ export function reusableColumns(columns: Column[]): boolean {
 }
 
 /**
+ * A JSON replacer that keeps values JSON would otherwise flatten into each other.
+ *
+ * The signature's whole job is that a match means "draws the same". `JSON.stringify`
+ * breaks that in three places, and each is a **false match** — the direction that ships a
+ * stale row rather than one wasted build:
+ *
+ * - `NaN` and `Infinity` both serialize as `null`, so a key changing between YAML `.nan`
+ *   and an empty value reads as unchanged.
+ * - a `Date` serializes to its ISO string, so a real date and a string that spells the
+ *   same instant collide — and Bases renders those two differently.
+ * - `undefined` is dropped entirely, so a key holding it is indistinguishable from a key
+ *   that is absent.
+ *
+ * It reads `this[key]` rather than the `value` argument because `toJSON` runs FIRST: by
+ * the time the replacer sees a `Date` it is already a string. The holder is where the
+ * type still exists.
+ */
+function distinctly(this: Record<string, unknown>, key: string, value: unknown): unknown {
+	const raw = this[key];
+	if (raw instanceof Date) return `#date:${raw.toISOString()}`;
+	if (typeof raw === 'number' && !Number.isFinite(raw)) return `#num:${String(raw)}`;
+	if (raw === undefined && key !== '') return '#undefined';
+	return value;
+}
+
+/**
  * Everything ONE row draws from, given that {@link renderInputs} already held.
  *
  * Two groups: the note's frontmatter, which is one term covering the badge, the title,
@@ -784,7 +824,7 @@ export function rowSignature(
 ): string {
 	const frontmatter = host.app.metadataCache.getFileCache(item.file)?.frontmatter ?? null;
 	return JSON.stringify([
-		frontmatter,
+		JSON.stringify(frontmatter, distinctly),
 		item.depth,
 		item.levelIndex,
 		item.effectiveLevelIndex,
