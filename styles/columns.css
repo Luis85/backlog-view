@@ -95,8 +95,15 @@
 	min-width: 0;
 }
 
+/* `flex: 0 0 48px`, not a bare `width` — because the group above is now sized by the lane
+   rather than by its content, so anything shrinkable inside it absorbs an overflow. A
+   bare width leaves the default `flex-shrink: 1`, and the bar is what a too-narrow lane
+   would take it out of: the fill is a PERCENTAGE of this box, so a shrunk bar does not
+   merely look wrong, it reports a different quantity — two rows at the same ratio drawn
+   at two lengths. The label yields instead, which costs a digit and states nothing false.
+   (Codex, PR #153, on the change that pinned the bar.) */
 .pbl-progress-bar {
-	width: 48px;
+	flex: 0 0 48px;
 	height: 5px;
 	border-radius: 3px;
 	background-color: var(--background-modifier-border);

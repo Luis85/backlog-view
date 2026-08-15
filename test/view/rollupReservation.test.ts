@@ -34,6 +34,16 @@ describe('the declarations that pin the bar', () => {
 		expect(rule('.pbl-progress')).toContain('flex: 1 1 auto');
 	});
 
+	it('refuses to let the bar be what a narrow lane shrinks', () => {
+		// Filling the lane is what made this reachable: a group sized by its content cannot
+		// squeeze its children, and one sized by the lane resolves an overflow out of
+		// whatever will shrink. The bar is the wrong thing to take it out of — the fill is a
+		// percentage of this box, so a shrunk bar reports a different quantity rather than
+		// merely looking wrong. (Codex, PR #153.)
+		expect(rule('.pbl-progress-bar')).toContain('flex: 0 0 48px');
+		expect(rule('.pbl-progress-bar')).not.toContain('width:');
+	});
+
 	it('reserves nothing on the label, whose weight the complete state changes', () => {
 		// The pairing IS the check: the completion rule may go on setting a weight exactly
 		// because no width here is stated in a metric that weight could move.
