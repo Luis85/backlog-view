@@ -291,7 +291,9 @@ the moment the populations diverged, which is exactly what happened.
   guidance can be reached. A resolved workflow gates the columns, never the scope.
 - The scope persists per saved view in the collapse store's vault-scoped localStorage,
   survives a restart on that device, and never touches the `.base`. A stale stored scope
-  renders `Product` and is retained rather than rewritten.
+  makes the WHOLE view read as `Product` — cards, count, completed toggle, offered types
+  and filter index alike, resolved once rather than at the render — and is retained rather
+  than rewritten.
 - Renaming the chosen `Iteration` note — or a folder above it — carries the stored scope
   with it, so the board keeps showing the same iteration.
 - Switching scope is a render decision: same model, same results, same undo slot, no
