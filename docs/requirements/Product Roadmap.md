@@ -4,14 +4,13 @@ order: 20
 status: Open
 created: 2026-08-01
 source: user request
-horizon: Next
 area: product
 started: ""
 finished: ""
 risk: ""
 assignee: Sarah
-start: 2026-09-07
-due: 2026-11-06
+start: 2026-08-03
+due: 2026-08-30
 ---
 
 # Product Roadmap

@@ -8,8 +8,8 @@ horizon: ""
 risk: ""
 assignee: Evi
 finished: ""
-start: ""
-due: ""
+start: 2026-08-03
+due: 2026-08-30
 ---
 
 # Creating items

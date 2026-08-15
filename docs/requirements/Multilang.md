@@ -2,12 +2,12 @@
 type: Feature
 parent: "[[Cross-cutting concerns]]"
 order: 10
-status: Open
+status: Active
 started: ""
 finished: ""
-horizon: ""
-start: ""
-due: ""
+horizon: Now
+start: 2026-08-15
+due: 2026-08-21
 risk: ""
 assignee: ""
 ---

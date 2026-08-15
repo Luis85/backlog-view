@@ -11,6 +11,9 @@ views:
       - priority
       - area
       - tags
+    sort:
+      - property: order
+        direction: ASC
     homeFolder: docs
     stateProperty: note.status
     stateValues: Open, Active, Done

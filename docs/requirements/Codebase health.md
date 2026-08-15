@@ -4,13 +4,12 @@ order: 67.5
 status: Open
 area: meta
 created: 2026-07-31
-horizon: Later
 started: ""
 finished: ""
 risk: ""
 assignee: Igmar
-start: 2026-07-20
-due: 2026-09-25
+start: 2026-08-03
+due: 2026-08-30
 ---
 
 # Codebase health

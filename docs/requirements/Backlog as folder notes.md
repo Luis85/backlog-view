@@ -1,7 +1,7 @@
 ---
 type: PBI
 parent: "[[Creating items]]"
-order: 60
+order: 25
 status: Open
 priority: P2
 created: 2026-08-01
@@ -14,9 +14,9 @@ files:
   - src/domain/viewOptions.ts
 started: ""
 finished: ""
-horizon: ""
-start: ""
-due: ""
+horizon: Next
+start: 2026-08-17
+due: 2026-08-30
 risk: ""
 assignee: ""
 ---

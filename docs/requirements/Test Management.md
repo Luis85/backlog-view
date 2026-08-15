@@ -1,7 +1,6 @@
 ---
 type: Epic
 order: 65
-horizon: Later
 status: Open
 area: product
 created: 2026-08-08
@@ -10,8 +9,8 @@ started: ""
 finished: ""
 risk: ""
 assignee: Alex
-start: 2026-07-20
-due: 2026-08-21
+start: 2026-08-03
+due: 2026-09-13
 ---
 
 # Test Management

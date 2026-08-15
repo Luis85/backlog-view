@@ -4,13 +4,12 @@ order: 66.25
 status: Open
 area: meta
 created: 2026-08-01
-horizon: Later
 started: ""
 finished: ""
 risk: ""
 assignee: Igmar
-start: 2026-07-20
-due: 2026-08-14
+start: 2026-08-15
+due: 2026-10-04
 ---
 
 # Cross-cutting concerns
