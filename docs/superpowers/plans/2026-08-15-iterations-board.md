@@ -46,6 +46,7 @@ Everything here implements:
 | `src/domain/typeVocabulary.ts` | `ITERATION_TYPE`, added to `MARKER_TYPES`; `iterations` in `DEFAULT_TYPE_SUBFOLDERS` |
 | `src/view/render/badges.ts` | `iteration` row in `NAMED_TYPE_STYLE` |
 | `styles/badges.css` | `.pbl-lvl-iteration` hue, with the sharing decision recorded |
+| `scripts/docs-check.mjs` | `LEGAL_CHILDREN` / `ROOT_TYPES`, matched to the README hierarchy table |
 | `src/domain/optionalProperties.ts` | `iteration` in `OptionalField`, `iterationKey` in `OptionalSettingsKey`, one `PROPERTY_TABLE` row |
 | `src/domain/settings.ts` | `iterationKey` field, default, resolve |
 | `src/domain/viewOptions.ts` | `optionalPropertyOption('iteration', …)` |
@@ -93,7 +94,9 @@ Everything here implements:
 - Modify: `src/view/render/badges.ts` (`NAMED_TYPE_STYLE`)
 - Modify: `styles/badges.css`
 - Modify: `docs/adrs/0013-fix-the-type-vocabulary-at-six-names.md`
-- Modify: `docs/README.md` (folder table)
+- Modify: `docs/README.md` (folder table **and** hierarchy table)
+- Modify: `scripts/docs-check.mjs` (`LEGAL_CHILDREN`, `ROOT_TYPES`)
+- Modify: `docs/requirements/An iteration is a note of its own.md` (names `typeFolder.iteration`)
 - Test: `test/domain/itemTypes.test.ts`, `test/view/badges.test.ts`
 
 **Interfaces:**
@@ -230,6 +233,38 @@ In `docs/README.md`'s folder table, after the `milestones/` row:
 ```markdown
 | `iterations/` | Time boxes work is committed to, owned by no item | `Iteration` |
 ```
+
+**Two more gates fire on this task, and both are easy to miss because neither is about
+`src/`.**
+
+**The register's own hierarchy.** `scripts/docs-check.mjs` keeps its own `LEGAL_CHILDREN`
+and `ROOT_TYPES`, and compares that map against the **hierarchy** table in
+`docs/README.md` in *both* directions. Adding the type to the plugin without adding it
+here leaves the register unable to hold an `Iteration` note at all — it is rejected as an
+unknown type — and adding it to only one of the three surfaces fails the comparison. All
+three, and the entry is `Milestone`'s exactly:
+
+```js
+	// A marker holds nothing and hangs from nothing: no children, and a root of its own.
+	Iteration: new Set(),
+```
+
+plus `Iteration` in `ROOT_TYPES` — a separate set on purpose, because only that one decides
+whether a parentless note is rejected — and the matching row in the README hierarchy table.
+
+**The generated folder option.** `ALL_TYPES` drives `typeFolderKey`, so `getViewOptions()`
+now emits `typeFolder.iteration`, and `test/docs/surfaces.test.ts` requires every emitted
+key to appear as an **exact code token** in `docs/requirements/`. A generic
+`typeFolder.<type>` does not satisfy it. `Milestones as their own type.md` names
+`typeFolder.milestone` for exactly this reason; name `typeFolder.iteration` the same way in
+`An iteration is a note of its own.md`:
+
+```markdown
+- It files into `typeFolder.iteration` — shipped default `iterations` under the home
+  folder — and takes the `calendar-clock` icon and the purple badge.
+```
+
+Neither gate is optional: Step 9's `npm run check` fails on both.
 
 - [ ] **Step 9: Run the whole gate and commit**
 
@@ -791,7 +826,11 @@ describe('the iteration workflow falls back field by field', () => {
 			doneValues: 'Done',
 			iterationDoneValues: 'Shipped',
 		}), vault);
-		expect(settings.iterationDoneValues).toEqual(['shipped']);
+		// CASING IS PRESERVED. `list()` trims and no more; the lowercasing happens at
+		// COMPARISON (`new Set(effectiveDoneValues.map((v) => v.toLowerCase()))`), not on
+		// the way in — the same as the product and test workflows. An expectation of
+		// `['shipped']` here is red against a correct implementation.
+		expect(settings.iterationDoneValues).toEqual(['Shipped']);
 	});
 });
 ```

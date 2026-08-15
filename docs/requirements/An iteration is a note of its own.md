@@ -129,7 +129,12 @@ declared name owes: a default subfolder, an icon and a badge colour.
 ## Acceptance criteria
 
 - `Iteration` is a declared type in `MARKER_TYPES` with a default subfolder, an icon and
-  a badge colour, and ADR 0013 records the eighth name.
+  a badge colour, and ADR 0013 records the eighth name. It files into
+  `typeFolder.iteration` — shipped default `iterations` under the home folder — and takes
+  the `calendar-clock` icon and the purple badge.
+- The register's own gate knows the type too: `docs-check.mjs`'s `LEGAL_CHILDREN` and
+  `ROOT_TYPES` carry it, matched by the hierarchy table in `docs/README.md`, so an
+  `Iteration` note can live in this backlog rather than being rejected as an unknown type.
 - The `iterationProperty` view option names the frontmatter key; `iteration` is the
   suggested placeholder, offered by the setup action and never matched by name.
 - The value is a wikilink to the Iteration note, read through the same link handling
