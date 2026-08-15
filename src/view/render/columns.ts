@@ -632,11 +632,26 @@ export function rollupReport(host: BacklogViewHost, item: BacklogItem): RollupRe
  * that function's decision and stay there. Only the ratio form reserves: without a
  * workflow there is no bar to be pushed off line, and the count alone is already anchored
  * at the lane's end.
+ *
+ * **`isRowHidden`, and deliberately not "is this row on screen".** A quick filter or the
+ * completed-items toggle can hide a whole deep subtree, and reserving for a label none of
+ * the remaining rows draws widens the lane for all of them and can drop a property column
+ * at a fit boundary (Codex, PR #153). What that predicate does NOT ask about is COLLAPSE,
+ * which is the half worth keeping: sizing from the rows literally rendered would widen the
+ * lane the moment a subtree with a longer label was expanded, and every bar on screen would
+ * shift sideways as a side effect of opening one row. Hiding modes re-render everything
+ * anyway; expanding one row must not move the rest.
+ *
+ * It stays a superset of what is drawn in one case — a visible child under a hidden parent
+ * is counted and not rendered — and that is the safe direction: over-reserving spends
+ * slack, under-reserving puts the bars back out of line, which is the defect this exists
+ * to fix.
  */
 export function rollupChars(host: BacklogViewHost, items: readonly BacklogItem[]): number {
 	if (!host.settings.stateKey) return 0;
 	let widest = 0;
 	for (const item of items) {
+		if (host.isRowHidden(item)) continue;
 		const report = rollupReport(host, item);
 		if (report && report.ratio !== null) widest = Math.max(widest, report.label.length);
 	}

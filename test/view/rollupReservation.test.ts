@@ -75,6 +75,35 @@ describe('the rollup label reservation', () => {
 		expect(drawn(wide)).toBe(0);
 	});
 
+	it('sizes from the rows a hiding mode leaves, but never from what is expanded', () => {
+		// Two halves of one rule. A filter that hides the deep subtree must narrow the
+		// reservation — reserving for a label no remaining row draws widens the lane for all
+		// of them and can drop a column (Codex, PR #153). COLLAPSE must not: sizing from the
+		// rows literally rendered would move every bar on screen sideways as a side effect
+		// of expanding one row, which is why the predicate that decides this is
+		// `isRowHidden` and not "did this pass draw it".
+		const vault = new FakeVault();
+		vault.addFile('Small.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active' } });
+		vault.addFile('Only child.md', { frontmatter: { type: 'Feature', order: 10, status: 'Done' }, parentLink: 'Small' });
+		vault.addFile('Big.md', { frontmatter: { type: 'Epic', order: 20, status: 'Active' } });
+		for (let i = 1; i <= 120; i += 1) {
+			vault.addFile(`Big ${i}.md`, {
+				frontmatter: { type: 'Feature', order: i * 10, status: i <= 44 ? 'Done' : 'Active' },
+				parentLink: 'Big',
+			});
+		}
+		const { containerEl, view } = makeView(vault, { stateProperty: 'note.status' }, { collapsed: true });
+		// Collapsed to the two roots — `Big`'s own `44/120` is on screen, and nothing under
+		// either root is. The reservation is the same as it will be expanded.
+		expect(treeOf(containerEl).style.getPropertyValue('--pbl-rollup-label')).toBe('6ch');
+
+		view.setFilter('Only child');
+
+		// `Big` and its 120 are all hidden now, so the widest label left is `Small`'s.
+		expect(rowByTitle(containerEl, 'Small').querySelector('.pbl-progress-label')?.textContent).toBe('1/1');
+		expect(treeOf(containerEl).style.getPropertyValue('--pbl-rollup-label')).toBe('3ch');
+	});
+
 	it('takes the reservation back off when a re-render no longer has one', () => {
 		// The tree element is built once and emptied per render, so its inline style
 		// outlives the pass that wrote it and `setCssProps` clears nothing it is not given.

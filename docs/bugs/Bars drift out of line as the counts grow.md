@@ -51,8 +51,10 @@ size. The case existed only in real vaults.
 ## The fix
 
 Every row reserves the widest label THIS TREE draws, so all the labels occupy one width
-and every bar starts in one place. `rollupReservation` (`view/render/columns.ts`) asks
-`rollupReport` for each item's label and takes the longest, `renderTree` publishes it as
+and every bar starts in one place. `rollupChars` (`view/render/columns.ts`) asks
+`rollupReport` for each label the projection would show and takes the longest —
+`isRowHidden`, so a filter or the completed toggle narrows it, and not "what this pass
+drew", so expanding a row never moves the bars beside it — `renderTree` publishes it as
 `--pbl-rollup-label` beside the other geometry it owns, and the stylesheet reserves it on
 the label and lets the lane grow to hold it.
 

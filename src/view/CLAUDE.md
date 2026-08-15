@@ -284,7 +284,10 @@ free of runtime code so imports stay cycle-free.
   are a per-digit CEILING rather than a measurement, and the `ch` on the label is what
   keeps the layout exact where the two differ (a phone's text size lifting
   `--font-ui-smaller` past 12px); the fit is a few pixels optimistic there and nothing
-  clips. The terms that are Obsidian's (`--size-4-1` gaps, the tree
+  clips. **What it measures is `isRowHidden`, not what the pass drew**: a filter or the
+  completed toggle hiding a deep subtree must narrow the lane, while COLLAPSE must not —
+  sizing from the rows literally rendered would shift every bar on screen sideways as a
+  side effect of expanding one row. The terms that are Obsidian's (`--size-4-1` gaps, the tree
   padding) cannot be owned that way and stay as constants; a theme that redefines them
   moves the threshold by a few pixels, which is the accepted cost of not measuring. A term that grows without a bound, or
   one left out of the sum, comes back as a clipped row rather than a dropped column. It
