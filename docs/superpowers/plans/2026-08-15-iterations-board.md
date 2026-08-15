@@ -1344,10 +1344,16 @@ export type Projection = 'tree' | 'board' | 'roadmap' | 'deliverables' | 'catalo
 
 Then **let the compiler drive the rest**. `PROJECTION_MODE` in
 `src/view/collapseState.ts` is a `Record<Projection, ProjectionMode | null>`, so the build
-breaks until it gains a row, and `ITERATION_MODE` must join `PROJECTION_MODES` in
-`src/storage/collapseStore.ts` for the round trip to be accepted on the way back in. That
-pair is deliberate — its comment records that the chain it replaced accepted a new
-projection silently and answered `tree`, so the toggle did nothing when clicked.
+breaks until it gains a row — and that row is **`BOARD_MODE`, the same value `'board'`
+maps to**. There is no `ITERATION_MODE` and `PROJECTION_MODES` in
+`src/storage/collapseStore.ts` is unchanged: step 4 makes the retained SCOPE the sole
+discriminator between the two boards, so a second stored mode would be exactly the second
+value that can disagree with the first. (An earlier revision of this step asked for one,
+written before step 4 existed.)
+
+`projectionFor` — the map read backwards — therefore answers `'board'` for `BOARD_MODE`,
+and the scope-aware resolution in step 4 is what turns that into `'iteration'`. Reading a
+mode back is deliberately not the place the two boards are told apart.
 
 Now answer the seven questions in `src/view/projection.ts`, which is where "what a
 projection IS" is asked rather than compared. Every one of these was found by a separate
@@ -1548,7 +1554,29 @@ In `src/storage/collapseStore.ts`, add `boardScope?: string | null` to both the 
 
 - [ ] **Step 6: Expose it**
 
-`boardScope()` / `setBoardScope()` in `collapseState.ts` beside `axisPick()` / `setAxisPick()`; the accessor pair in `uiState.ts` beside `axisPick`, asking `hooks.render()` — a full render, like the projection: no Bases refresh follows a change it was not told about. Declare both on `BacklogViewHost` in `host.ts` and forward in one line from `backlogView.ts`.
+`boardScope()` / `setBoardScope()` in `collapseState.ts` beside `axisPick()` /
+`setAxisPick()`; the accessor pair in `uiState.ts`, declared on `BacklogViewHost` in
+`host.ts` and forwarded in one line from `backlogView.ts`.
+
+**`setBoardScope` calls `hooks.recomputeFilter()` before `hooks.render()`** — like
+`setProjection`, not like `setAxisPick`. The quick-filter index is built FOR a projection,
+and changing the scope changes `filterScopeFor` from the focused index to the whole-tree
+one. Without the rebuild, a filter already running keeps answering for the forest it was
+built over: matches outside the focused subtree stay missing until some unrelated refresh,
+which is extension 2c broken in the one case it exists for. `setProjection`'s own comment
+states the ordering — *"Before the render, not after: the render is what reads the index."*
+
+```ts
+it('rebuilds the match index when the scope changes under a live filter', () => {
+	// Product board, Feature focus, filter running — then switch to Sprint 12.
+	const host = hostWith({ projection: 'board', focus: 'Feature', filter: 'login' });
+	host.setBoardScope(sprint12);
+	expect(cardPaths(render(host))).toContain('task-login.md'); // outside the focused subtree
+});
+```
+
+Drive the transition, not the end state: a test that renders an already-scoped host builds
+its index once, correctly, and never exercises the stale-index path at all.
 
 - [ ] **Step 7: Migrate it on a rename**
 
@@ -1973,6 +2001,13 @@ in the `'iteration'` projection, beside the Deliverables board's own branches.
    actually make.
 3. **The click**, routed to `performIterationBoardMove`.
 
+**And the routing is projection-FIRST in both functions.** `chooseState` and `stateWrites`
+test `isDeliverableType` before anything else today, so a `Deliverable` card on an
+iteration board would take the Deliverable workflow for both its click and its checkmark —
+on the one board that deliberately mixes the two kinds into a single column vocabulary.
+The card would sit in an iteration column and its menu would offer, and write, another
+board's states. The iteration branch goes ahead of the type branch in both.
+
 ```ts
 it('offers Set state with only the iteration workflow configured', () => {
 	const menu = openCardMenu(pbi, { stateKey: '', iterationStateKey: 'sprintState' });
@@ -1982,6 +2017,15 @@ it('offers Set state with only the iteration workflow configured', () => {
 it('checks the entry matching the card\'s own column, not its product state', () => {
 	// status: Blocked, sprintState: Started — the card sits in Started.
 	expect(checkedTitle(openCardMenu(pbi), 'Set state')).toBe('Started');
+});
+
+it('routes a DELIVERABLE card here by the projection, not by its type', () => {
+	// The type branch would win without projection-first routing, and this board
+	// columns Deliverables by the iteration workflow like everything else on it.
+	expect(menuTitles(openCardMenu(deliverableInSprint12), 'Set state'))
+		.toEqual(iterationStates);
+	await moveViaMenu(deliverableInSprint12, 'Shipped');
+	expect(written(deliverableInSprint12)).toEqual({ sprintState: 'Shipped' });
 });
 ```
 

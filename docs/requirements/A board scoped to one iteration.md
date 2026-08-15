@@ -127,7 +127,11 @@ the moment the populations diverged, which is exactly what happened.
   is why the scope is per saved view rather than per base.
 - **2c — a quick filter is active.** It carries over rather than clearing, in every scope
   alike, because dropping it on a switch would make the picker destructive — **and it is
-  indexed over the whole tree here, not the focused forest.** `filterScopeFor` answers
+  indexed over the whole tree here, not the focused forest, with the index REBUILT as the
+  scope changes.** Carrying the filter over is not enough on its own: the index is built
+  for one forest, and a switch that changes which forest applies leaves a running filter
+  answering for the previous one. So the scope setter rebuilds before it renders, the way
+  the projection setter already does.** `filterScopeFor` answers
   `'whole'` for the Deliverables board and `'focused'` for everything else, and it takes
   the **projection** alone, which a board scope does not change. So it has to learn about
   the scope, or an inherited focus would hide a matching card through the filter that 3c
@@ -245,7 +249,11 @@ the moment the populations diverged, which is exactly what happened.
   So the population is a plain question about one link, asked of every result whatever
   its type — no type filter, and none of the product board's `!isDeliverableType`.
 - **3f — a `Deliverable` card is on this board and its column is asked for.** The
-  **iteration** workflow decides, exactly as it does for every other card here. One board
+  **iteration** workflow decides, exactly as it does for every other card here — and so do
+  its `Set state` entries and its checkmark. Every routing question on this board is
+  answered by the PROJECTION before it is answered by the item's type; asking the type
+  first would give a Deliverable card another board's states while it sits in this board's
+  column. One board
   has one column list; a board that columned some cards by one vocabulary and some by
   another would not be a board.
 - **3g — the same card's FINISHED STYLING is asked for.** It comes from the item's **own**
