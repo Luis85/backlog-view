@@ -438,6 +438,11 @@ describe('the iteration link', () => {
 	it('reads no entry at all when the key is absent', () => {
 		expect(readOne({}, { iterationKey: 'iteration' }).iterationLink).toBe(null);
 	});
+
+	it('takes the first entry when the key holds a list', () => {
+		const item = readOne({ iteration: ['[[Sprint 12]]', '[[Sprint 13]]'] }, { iterationKey: 'iteration' });
+		expect(item.iterationPath).toBe('docs/iterations/Sprint 12.md');
+	});
 });
 ```
 
@@ -462,7 +467,14 @@ In `src/domain/readItems.ts`, beside where `deliverableStateValue` is read (arou
 	// indistinguishable from an unset key, and the Set menu would then tick `None` on a
 	// note whose frontmatter still holds a broken link — offering as current an action
 	// that cannot be taken. That is the same defect the horizon menu shipped once.
-	const iterationLink = settings.iterationKey ? readLinkEntry(app, file, cache, settings.iterationKey) : null;
+	// `readLinkList`, the reader that already exists — there is no `readLinkEntry`, and
+	// inventing one would duplicate the cache handling this function does. An iteration
+	// is SINGULAR, so take the first entry and ignore any others: a list under this key
+	// is a note the user mis-filled, and reading the first is the same answer the parent
+	// link gives for the same shape.
+	const iterationLink = settings.iterationKey
+		? (readLinkList(app, file, cache, settings.iterationKey)[0] ?? null)
+		: null;
 ```
 
 Add `iterationLink: LinkEntry | null` to the item interface, plus a derived

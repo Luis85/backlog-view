@@ -53,7 +53,7 @@ call sites rather than trusting a rule to reach them.
 | --- | --- |
 | **Actor** | Backlog owner |
 | **Trigger** | Setting "Draw iterations as bars" in the view options, or scheduling an iteration on the dated axis |
-| **Preconditions** | Roadmap mode, the dated axis, and an iteration carrying at least a target date |
+| **Preconditions** | Roadmap mode, the dated axis, and an iteration carrying a date the mode can use — a **target** date in line mode, since a point IS its target (3b); **either** date in bar mode, since one date places an open-ended bar (4a) |
 | **Guarantee** | The option decides which date keys a placement may touch, so a drag can never write a start onto an iteration the option says is a point. Changing the option rewrites nothing on any note. |
 
 **Main flow**
