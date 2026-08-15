@@ -27,7 +27,7 @@ function itemIn(harness: Harness, path = 'Alpha.md'): BacklogItem {
 	return item;
 }
 
-function sigOf(fm: Record<string, unknown>, config: Record<string, unknown> = {}): string {
+function sigOf(fm: Record<string, unknown>, config: Record<string, unknown> = {}): string | null {
 	const harness = viewOf(fm, config);
 	return rowSignature(harness.view, itemIn(harness), PLACE);
 }
@@ -74,29 +74,30 @@ describe('rowSignature', () => {
 		const item = itemIn(harness);
 		// Both halves of `aria-posinset` / `aria-setsize`, because each moves alone: a
 		// sibling inserted above changes the position, one appended below the size.
-		const sig = (pos: number, count: number): string => rowSignature(harness.view, item, { pos, count });
+		const sig = (pos: number, count: number): string | null => rowSignature(harness.view, item, { pos, count });
 		expect(sig(1, 2)).not.toBe(sig(2, 2));
 		expect(sig(1, 1)).not.toBe(sig(1, 2));
 	});
 
-	it('signs a row whose file the metadata cache has not indexed', () => {
+	it('does NOT sign a row whose file the metadata cache has not indexed', () => {
 		// The metadata cache fills asynchronously, so a Bases update can reach the render
-		// before `getFileCache` answers for a note. Absent frontmatter is a VALUE here —
-		// null, signed as such — and not a reason to throw or to skip the row.
+		// before `getFileCache` answers for a note. What it protects against is the two
+		// sources disagreeing about what is known: a `note.*` cell is drawn from the Bases
+		// ENTRY, this signature is read from the CACHE, so while the cache is silent the value
+		// can move between two passes with the signature identical — and the row would be kept
+		// with a stale cell. This asserted the unindexed signature was STABLE until 2026-08-15,
+		// which is exactly what made such a row reusable; the row still renders, it is only
+		// ineligible for reuse.
 		const harness = viewOf({ status: 'Open' });
-		const signed = rowSignature(harness.view, itemIn(harness), PLACE);
+		expect(rowSignature(harness.view, itemIn(harness), PLACE)).not.toBeNull();
 		harness.vault.caches.delete('Alpha.md');
-		const unindexed = rowSignature(harness.view, itemIn(harness), PLACE);
-		expect(unindexed).not.toBe(signed);
-		// And it agrees with itself, so an unindexed row is stable rather than merely
-		// different — a signature that changed per call would rebuild every row forever.
-		expect(rowSignature(harness.view, itemIn(harness), PLACE)).toBe(unindexed);
+		expect(rowSignature(harness.view, itemIn(harness), PLACE)).toBeNull();
 	});
 
 	it('differs when a focus level re-roots the row to another depth', () => {
 		// `depth` draws `aria-level` and `--pbl-depth`, and a focus re-roots it without
 		// touching a note: the same PBI is a child at depth 1 and a focus root at 0.
-		const atDepth = (focus?: string): string => {
+		const atDepth = (focus?: string): string | null => {
 			const vault = new FakeVault();
 			vault.addFile('Parent.md', { frontmatter: { type: 'Feature', order: 10 } });
 			vault.addFile('Alpha.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Parent' });
@@ -110,7 +111,7 @@ describe('rowSignature', () => {
 		// `outsideFilter` draws `.pbl-outside`, stops the row being draggable, turns every
 		// chip into its static form and withholds the tag controls. The parent note is
 		// byte-identical either way; only whether the Base returned it moves.
-		const parentSig = (only: string[]): string => {
+		const parentSig = (only: string[]): string | null => {
 			const vault = new FakeVault();
 			vault.addFile('Parent.md', { frontmatter: { type: 'Feature', order: 10 } });
 			vault.addFile('Alpha.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Parent' });
@@ -124,7 +125,7 @@ describe('rowSignature', () => {
 		// Both numbers, because each moves alone: a child added changes the count, a child
 		// finished changes the done share. Neither touches the parent's own note, and the
 		// visible-children term stays true throughout.
-		const rollup = (children: Record<string, unknown>[]): string => {
+		const rollup = (children: Record<string, unknown>[]): string | null => {
 			const vault = new FakeVault();
 			vault.addFile('Alpha.md', { frontmatter: { type: 'PBI', order: 10 } });
 			children.forEach((fm, i) => {
@@ -160,7 +161,7 @@ describe('rowSignature', () => {
 		// A chevron follows the VISIBLE children, so hiding a done child turns the parent
 		// into a leaf without touching a byte of the parent's note — and without moving
 		// its rollup, which goes on counting the child either way.
-		const withChild = (showCompleted: boolean): string => {
+		const withChild = (showCompleted: boolean): string | null => {
 			const vault = new FakeVault();
 			vault.addFile('Alpha.md', { frontmatter: { type: 'PBI', order: 10, status: 'Open' } });
 			vault.addFile('Beta.md', {
@@ -177,7 +178,7 @@ describe('rowSignature', () => {
 		// `displayType` reads `ladder`, `levelIndex` and `typeName`. An untyped note takes
 		// its rung from the parent chain, so retyping the parent redraws this badge while
 		// this row's own note stays byte-identical — the `item.orphan` shape again.
-		const badgeOf = (parentType: string): string => {
+		const badgeOf = (parentType: string): string | null => {
 			const vault = new FakeVault();
 			vault.addFile('Parent.md', { frontmatter: { type: parentType, order: 10 } });
 			vault.addFile('Alpha.md', { frontmatter: { order: 10 }, parentLink: 'Parent' });
@@ -193,7 +194,7 @@ describe('rowSignature', () => {
 		// review found in the first draft of this list.
 		// Focused on its own level, the row is a rendered ROOT either way, so `depth` is 0
 		// in both — which is what makes this a test of `orphan` rather than of depth.
-		const orphaned = (parentExists: boolean): string => {
+		const orphaned = (parentExists: boolean): string | null => {
 			const vault = new FakeVault();
 			if (parentExists) vault.addFile('Parent.md', { frontmatter: { type: 'Feature', order: 10 } });
 			vault.addFile('Alpha.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Parent' });

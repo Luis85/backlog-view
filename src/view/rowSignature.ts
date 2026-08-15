@@ -76,8 +76,10 @@ import { BacklogViewHost, Column } from './host';
  *
  * Two the pass owns rather than the row: `host.colWidths` writes one custom property per
  * column onto the tree element and never onto a cell, so a resize moves every row without
- * touching one; and `host.clickFolds` changes what a click MEANS, resolved per event by
- * the delegated handler, never drawn.
+ * touching one — it is a term of {@link renderInputs} all the same, because the HEADER's
+ * grip is built from the number and a pass that reuses leaves that header alone; and
+ * `host.clickFolds` changes what a click MEANS, resolved per event by the delegated
+ * handler, never drawn.
  *
  * ## What the checks under this list actually reach
  *
@@ -128,6 +130,13 @@ export function renderInputs(host: BacklogViewHost): string {
 		host.projection,
 		host.filterText,
 		host.columnFit,
+		// The HEADER's, not the rows': a cell points at its column's published custom
+		// property rather than holding a number, so a resize moves every row without
+		// touching one — but the header's grip announces the width it was built with
+		// (`aria-valuenow`) and its gesture measures from it, and a pass that keeps the
+		// header keeps both. The rows are rebuilt with it, which is what every pass did
+		// before this decision and is one wasted build per keypress.
+		host.colWidths,
 		valueKinds(host),
 	]);
 }
@@ -254,13 +263,27 @@ function distinctly(this: Record<string, unknown>, key: string, value: unknown):
  * and naming the function covers a field added to it later. What that does NOT buy is a
  * field the function reads without its answer moving, which is exactly `item.ladder`:
  * read up there for the one term this list deliberately does not carry.
+ *
+ * Returns null where the row cannot be signed AT ALL — a note the metadata cache has not
+ * answered for yet. The guard at the top of the body says why that is not the same thing
+ * as signing an absent frontmatter, and the walk treats it exactly as it treats a row that
+ * drew another note's content: nothing recorded, so nothing to match, so never claimed.
  */
 export function rowSignature(
 	host: BacklogViewHost,
 	item: BacklogItem,
 	place: { pos: number; count: number },
-): string {
-	const frontmatter = host.app.metadataCache.getFileCache(item.file)?.frontmatter ?? null;
+): string | null {
+	const frontmatter = host.app.metadataCache.getFileCache(item.file)?.frontmatter;
+	// UNSIGNABLE, rather than signed as an absent value. The metadata cache fills
+	// asynchronously, so Bases can hand the view an entry before `getFileCache` answers for
+	// that note — and the row's own cells are drawn from that ENTRY while this term is read
+	// from the CACHE. While the two disagree about what is known, a `note.*` value can move
+	// between two passes with this string identical, and the row would be kept with a stale
+	// cell. Signing it as `null` made every such row stable and therefore reusable, which is
+	// exactly the hole. The row still RENDERS as it always did; it is only ineligible for
+	// reuse, which the walk states once for this case and for a volatile one alike.
+	if (!frontmatter) return null;
 	return JSON.stringify([
 		JSON.stringify(frontmatter, distinctly),
 		// `file.basename`, so it cannot move while the path is fixed — carried anyway

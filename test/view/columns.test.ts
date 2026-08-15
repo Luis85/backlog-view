@@ -212,12 +212,16 @@ describe('property columns', () => {
 		// And it stays gone: the pass the changed verdict bought got there, and another
 		// update at the same width buys nothing beyond its own render.
 		let passes = 0;
-		const realEmpty = HTMLElement.prototype.empty;
-		Object.defineProperty(tree, 'empty', {
+		// Counted at the widths `renderTree` publishes onto the scroller, once per tree
+		// content render. It used to count `treeEl.empty()`, which stopped being one call
+		// per pass when a pass began KEEPING the rows it drew last time (ADR 0029) — the
+		// quantity this test is about did not move, the instrument that could see it did.
+		const realProps = HTMLElement.prototype.setCssProps;
+		Object.defineProperty(tree, 'setCssProps', {
 			configurable: true,
-			value: function (this: HTMLElement): void {
+			value: function (this: HTMLElement, props: Record<string, string>): void {
 				passes += 1;
-				realEmpty.call(this);
+				realProps.call(this, props);
 			},
 		});
 		view.onDataUpdated();
@@ -360,12 +364,16 @@ describe('property columns', () => {
 		Object.defineProperty(tree, 'clientWidth', { value: 900, configurable: true });
 
 		let passes = 0;
-		const realEmpty = HTMLElement.prototype.empty;
-		Object.defineProperty(tree, 'empty', {
+		// Counted at the widths `renderTree` publishes onto the scroller, once per tree
+		// content render. It used to count `treeEl.empty()`, which stopped being one call
+		// per pass when a pass began KEEPING the rows it drew last time (ADR 0029) — the
+		// quantity this test is about did not move, the instrument that could see it did.
+		const realProps = HTMLElement.prototype.setCssProps;
+		Object.defineProperty(tree, 'setCssProps', {
 			configurable: true,
-			value: function (this: HTMLElement): void {
+			value: function (this: HTMLElement, props: Record<string, string>): void {
 				passes += 1;
-				realEmpty.call(this);
+				realProps.call(this, props);
 			},
 		});
 

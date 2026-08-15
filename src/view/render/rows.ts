@@ -5,11 +5,12 @@ import { promptCreateItem } from '../interactions/create';
 import { showItemMenu, showHorizonMenu, showStateMenu, showTagMenu } from '../interactions/menu';
 import { promptSchedule } from '../interactions/plan';
 import { removeTag } from '../interactions/tags';
-import { offerableTypes, projectionMember } from '../projection';
+import { offerableTypes } from '../projection';
 import { renderAllDoneState, renderEmptyState, renderFilterEmptyState } from './emptyStates';
 import { projectionPopulation } from '../projection';
 import { badgeStyleFor } from './badges';
 import { LABEL_CHIPS } from './chips';
+import { rowSignature } from '../rowSignature';
 import { BacklogItem } from '../../domain/model';
 import { childTypeChoices, displayType } from '../../domain/itemTypes';
 import { ownWorkflowReading } from '../../domain/board';
@@ -58,6 +59,7 @@ export function renderTree(ctx: RowContext, treeEl: HTMLElement): void {
 	// projection that hides nothing by completion at all.
 	const population = projectionPopulation(ctx.host.projection, model);
 	if (population.results.length === 0) {
+		emptyTree(ctx, treeEl);
 		renderEmptyState(ctx.host, treeEl);
 		return;
 	}
@@ -65,12 +67,37 @@ export function renderTree(ctx: RowContext, treeEl: HTMLElement): void {
 	// a row per root isRowHidden lets through. Asking first keeps the header — which is
 	// not a row — from having to be built and then thrown away again.
 	if (!population.roots.some((root) => !ctx.host.isRowHidden(root))) {
+		emptyTree(ctx, treeEl);
 		if (ctx.host.isFiltering()) renderFilterEmptyState(ctx.host, treeEl);
 		else renderAllDoneState(ctx.host, treeEl, population.results.length);
 		return;
 	}
-	renderColumnHeader(ctx, treeEl);
-	renderForest(ctx, treeEl, population.roots);
+	// Left alone when it is already there. Everything this header draws from — the columns,
+	// their widths, the rollup predicate, the fit verdict — is in the fingerprint that
+	// decided this pass may reuse, so an existing header is correct for the same reason the
+	// rows are, and a pass that may NOT reuse emptied the tree above, so there is none and
+	// one is built. Found by direct traversal rather than a query: `treeEl.querySelector` is
+	// banned (`TREE_SCAN` in `eslint.config.mjs`) for walking every rendered row, and the
+	// header is one step away — it is the tree's first element child by construction.
+	const first = treeEl.firstElementChild;
+	const header =
+		first instanceof HTMLElement && first.hasClass('pbl-cols') ? first : renderColumnHeader(ctx, treeEl);
+	// The walk starts AFTER the header, so its prune can never reach a node that is not a
+	// row and that the index cannot see.
+	renderForest(ctx, treeEl, population.roots, header ? header.nextElementSibling : treeEl.firstElementChild);
+}
+
+/**
+ * Drop everything on screen, for a branch that will render no rows.
+ *
+ * The three empty states above fire AFTER the reuse decision and BEFORE anything prunes: a
+ * data update that empties the tree leaves the shared inputs identical and the index
+ * non-empty, so reuse is chosen and the message would be appended UNDER the rows it says
+ * are gone. Marking the last open item done is an ordinary write, not a corner.
+ */
+function emptyTree(ctx: RowContext, treeEl: HTMLElement): void {
+	treeEl.empty();
+	ctx.host.clearRowIndex();
 }
 
 /**
@@ -84,61 +111,184 @@ export function refreshRowChildren(ctx: RowContext, item: BacklogItem, row: HTML
 	row.querySelector('.pbl-chevron')?.classList.toggle('pbl-expanded', hasChildren && !collapsed);
 	if (hasChildren) row.setAttribute('aria-expanded', String(!collapsed));
 
-	const existing = row.nextElementSibling;
-	if (existing instanceof HTMLElement && existing.hasClass('pbl-children')) {
-		forgetSubtree(ctx.rows, item.children, projectionMember(ctx.host.projection));
+	const existing = groupAfter(row);
+	if (existing) {
+		forgetElement(ctx, existing);
 		existing.detach();
 	}
 	const parentEl = row.parentElement;
 	if (!hasChildren || collapsed || !parentEl) return;
 	// createDiv appends to the container; move the group up to sit after its row.
-	const childrenEl = childGroupEl(parentEl, item);
+	const childrenEl = childGroupEl(parentEl, item, null);
 	parentEl.insertBefore(childrenEl, row.nextSibling);
 	renderForest(ctx, childrenEl, item.children);
 }
 
 /**
- * Drop a removed subtree from the row index so stale elements can't be found — along
- * this projection's MEMBERSHIP edges, never the raw child list.
+ * Drop a detached element's rows from the index and from the signatures — reached from the
+ * DOM rather than from the model, because at the moment something is pruned the model no
+ * longer describes what is on screen.
  *
- * A non-member's subtree can hold a member this projection renders as a promoted ROOT,
- * whose row is somewhere else entirely and is not being detached. Walking raw children
- * deletes that row's index entry while its DOM stays on screen, and everything that reaches
- * a row by lookup then fails for it silently: selection cannot mark or announce it, and a
- * keyboard-opened menu loses its anchor.
+ * A ROW holds no rows: its child group is its SIBLING, so a row answers for its own path
+ * and stops. Anything else — a `.pbl-children` group — is walked, which is what makes this
+ * exact where a walk of the model's child edges was not. A non-member's subtree can hold a
+ * member this projection renders as a promoted ROOT, whose row is somewhere else entirely
+ * and is not being detached; deleting that row's entry while its DOM stays on screen breaks
+ * everything that reaches a row by lookup (selection cannot mark or announce it, a
+ * keyboard-opened menu loses its anchor). Asking the detached DOM cannot make that mistake:
+ * it forgets exactly what it removed.
  *
- * Membership is a superset of what a pass actually DRAWS — `isRowHidden` (the quick
- * filter, the completed toggle) narrows further — so this can walk into and delete the
- * entry for a member that rendered no row this pass. That is harmless, not a second bug:
- * a hidden member's subtree renders no rows to leave stale, and a full render clears
- * `rowEls` outright (`this.rowEls.clear()` in `backlogView.ts`) before rebuilding it, so
- * no stale entry can survive past that boundary either.
+ * Both maps, never one: a signature left behind for a row that is gone is a claim waiting
+ * to be made against an element nobody can reach.
  */
-function forgetSubtree(rows: Map<string, HTMLElement>, items: BacklogItem[], member: (item: BacklogItem) => boolean): void {
-	for (const item of items) {
-		if (!member(item)) continue;
-		rows.delete(item.file.path);
-		forgetSubtree(rows, item.children, member);
+function forgetElement(ctx: RowContext, el: Element): void {
+	const path = el.getAttribute('data-path');
+	if (path) {
+		ctx.rows.delete(path);
+		ctx.sigs.delete(path);
+		return;
+	}
+	for (const child of Array.from(el.children)) forgetElement(ctx, child);
+}
+
+/**
+ * Render a sibling group, skipping hidden items so aria positions stay true.
+ *
+ * The walk CLAIMS rather than builds where it can: an element whose path is indexed and
+ * whose signature is unchanged is moved into place instead of rebuilt. With an empty index
+ * and an empty container this is exactly a build, which is why there is one path here and
+ * not two. `start` is where the walk begins — the tree passes the node after its header, so
+ * the prune below can never reach it.
+ */
+function renderForest(
+	ctx: RowContext,
+	containerEl: HTMLElement,
+	siblings: BacklogItem[],
+	start?: Element | null,
+): void {
+	const visible = siblings.filter((item) => !ctx.host.isRowHidden(item));
+	// ELEMENTS, never child nodes: everything a render puts in one of these containers is a
+	// row or a child group, so the two walks are the same walk — and this one needs no
+	// per-node narrowing to reach a path or a subtree.
+	let cursor: Element | null = start === undefined ? containerEl.firstElementChild : start;
+	visible.forEach((item, i) => {
+		cursor = renderItem(ctx, containerEl, item, { pos: i + 1, count: visible.length }, cursor);
+	});
+	// Everything left after the last claimed node is a row this pass did not draw.
+	while (cursor) {
+		const next: Element | null = cursor.nextElementSibling;
+		forgetElement(ctx, cursor);
+		cursor.detach();
+		cursor = next;
 	}
 }
 
-/** Render a sibling group, skipping hidden items so aria positions stay true. */
-function renderForest(ctx: RowContext, containerEl: HTMLElement, siblings: BacklogItem[]): void {
-	const visible = siblings.filter((item) => !ctx.host.isRowHidden(item));
-	visible.forEach((item, i) => renderItem(ctx, containerEl, item, { pos: i + 1, count: visible.length }));
-}
-
+/**
+ * Draw ONE item at the cursor and return the node the walk should look at next.
+ *
+ * The row and its child group are one structural unit, and the group is the row's NEXT
+ * SIBLING rather than its descendant (`childGroupEl` builds it in the container, and
+ * `refreshRowChildren` reaches it by `row.nextElementSibling`). So they move together, are
+ * replaced together and are detached together.
+ */
 function renderItem(
 	ctx: RowContext,
 	containerEl: HTMLElement,
 	item: BacklogItem,
 	place: { pos: number; count: number },
-): void {
+	cursor: Element | null,
+): Element | null {
 	const host = ctx.host;
+	const path = item.file.path;
 	// A row whose children are all hidden renders as a leaf: a chevron expanding
 	// into an empty group would be a lie (its progress bar tells the story).
 	const hasChildren = item.children.some((c) => !host.isRowHidden(c));
-	const collapsed = host.isCollapsed(item.file.path);
+	const collapsed = host.isCollapsed(path);
+	const sig = rowSignature(host, item, place);
+	const previous = ctx.rows.get(path) ?? null;
+	// Read off the PREVIOUS element and before anything moves: a row that travels leaves its
+	// group behind unless the group is carried with it. Whether the group should exist AT
+	// ALL is asked of the item further down, never of what happened to the row.
+	const group = groupAfter(previous);
+	// A null signature is a row that could not be signed (its note is not in the metadata
+	// cache yet); an absent one is a row whose signature was withheld for what it DREW.
+	// Different reasons, one consequence, stated once here: nothing recorded, so nothing to
+	// match, so never claimed.
+	let after = cursor;
+	let row = previous !== null && sig !== null && ctx.sigs.get(path) === sig ? previous : null;
+	let drewOthers = false;
+	if (!row) {
+		if (previous) after = dropReplaced(previous, cursor);
+		row = buildRow(ctx, containerEl, item, { hasChildren, collapsed, place });
+		drewOthers = drewOtherNotes(row);
+	}
+	if (row !== after) containerEl.insertBefore(row, after);
+	ctx.rows.set(path, row);
+	if (sig === null || drewOthers) ctx.sigs.delete(path);
+	else ctx.sigs.set(path, sig);
+	// Asked of the ITEM — any visible child, and not collapsed — and answered the same way
+	// whether the row was kept, replaced or built. "A replaced row keeps its group" is wrong
+	// in both directions: `Collapse all` flips the collapse bit, so the signature changes and
+	// the row is REPLACED while its group has to go, and expanding an already-indexed row is
+	// the mirror — the row is not new and needs a group it does not have.
+	if (hasChildren && !collapsed) {
+		const childrenEl = childGroupEl(containerEl, item, group);
+		containerEl.insertBefore(childrenEl, row.nextSibling);
+		renderForest(ctx, childrenEl, item.children);
+		return childrenEl.nextElementSibling;
+	}
+	if (group) {
+		forgetElement(ctx, group);
+		group.detach();
+	}
+	return row.nextElementSibling;
+}
+
+/**
+ * Take a row that is about to be replaced off the screen, and hand back the node the
+ * walk's cursor should point at now.
+ *
+ * Detached HERE rather than left to the prune at the end of the sibling walk: the prune
+ * forgets every path it detaches, and by then this path names the row that replaced it.
+ */
+function dropReplaced(previous: HTMLElement, cursor: Element | null): Element | null {
+	const after = previous === cursor ? cursor.nextElementSibling : cursor;
+	previous.detach();
+	return after;
+}
+
+/**
+ * Did this row draw content belonging to ANOTHER note?
+ *
+ * `reusableColumns` asks where a value comes FROM and cannot ask what it renders INTO: a
+ * `note.related` holding `[[Other note]]` draws a link whose text is the target's, and an
+ * embed draws that note's content outright. Rename or edit the other note and this row's
+ * own frontmatter — and so its signature — is identical. Predicting which values do that
+ * means reimplementing Bases' renderer in a predicate, so the rendered DOM is asked instead.
+ *
+ * Asked of the whole ROW rather than cell by cell: one query per built row instead of one
+ * per column, and nothing else a row draws is an anchor, an embed or an image, so the two
+ * give the same answer. Were that ever to change, the error is a REFUSED reuse — one wasted
+ * row build, the direction every judgement in ADR 0029 takes.
+ */
+function drewOtherNotes(row: HTMLElement): boolean {
+	return row.querySelector('a, .internal-embed, img') !== null;
+}
+
+/** A row's child group, which is its next SIBLING; null where it has none. */
+function groupAfter(row: HTMLElement | null): HTMLElement | null {
+	const next = row?.nextElementSibling ?? null;
+	return next instanceof HTMLElement && next.hasClass('pbl-children') ? next : null;
+}
+
+/** Everything a row element IS, for the walk above to place. */
+function buildRow(
+	ctx: RowContext,
+	containerEl: HTMLElement,
+	item: BacklogItem,
+	state: { hasChildren: boolean; collapsed: boolean; place: { pos: number; count: number } },
+): HTMLElement {
+	const host = ctx.host;
 	// Through `offerableTypes` like every other type list. `childTypeChoices` answers the
 	// ladder's question and its answer carries `EXTRA_TYPES` — `Deliverable` among them —
 	// so the raw list is the whole vocabulary minus the rungs, not what a projection may
@@ -152,12 +302,12 @@ function renderItem(
 		attr: {
 			role: 'treeitem',
 			'aria-level': String(item.depth + 1),
-			'aria-posinset': String(place.pos),
-			'aria-setsize': String(place.count),
+			'aria-posinset': String(state.place.pos),
+			'aria-setsize': String(state.place.count),
 			'aria-selected': String(selected),
 		},
 	});
-	if (hasChildren) row.setAttribute('aria-expanded', String(!collapsed));
+	if (state.hasChildren) row.setAttribute('aria-expanded', String(!state.collapsed));
 	// The row's OWN workflow, the same rule the card's child list, the card itself and the
 	// timeline bar all keep: a Deliverable is finished when ITS states say so.
 	if (ownWorkflowReading(item).done) row.addClass('pbl-done');
@@ -167,19 +317,23 @@ function renderItem(
 	// While filtering, visual neighbors are not real siblings — ranking by drag would
 	// mislead; an ancestor from outside the filter has unknown siblings for the same reason.
 	row.draggable = !host.isFiltering() && !item.outsideFilter;
-	ctx.rows.set(item.file.path, row);
 
-	renderRowLead(ctx, row, item, { hasChildren, collapsed });
+	renderRowLead(ctx, row, item, state);
 	renderRowTrailing(ctx, row, item, childTypes);
-
-	if (hasChildren && !collapsed) {
-		renderForest(ctx, childGroupEl(containerEl, item), item.children);
-	}
+	return row;
 }
 
-/** The child group of a row; its indent guide aligns under the parent's chevron column. */
-function childGroupEl(containerEl: HTMLElement, item: BacklogItem): HTMLElement {
-	const childrenEl = containerEl.createDiv({ cls: 'pbl-children', attr: { role: 'group' } });
+/**
+ * The child group of a row — claimed where one survived, created where none did. Its
+ * indent guide aligns under the parent's chevron column.
+ *
+ * `--pbl-depth` is written on BOTH arms rather than at creation alone, and that is the
+ * whole reason the two arms live in one function: a group is an element with state too.
+ * Reparent an expanded item to a different depth and its row rebuilds — `depth` is a
+ * signature term — while a group merely reused would keep the old indent guide.
+ */
+function childGroupEl(containerEl: HTMLElement, item: BacklogItem, existing: HTMLElement | null): HTMLElement {
+	const childrenEl = existing ?? containerEl.createDiv({ cls: 'pbl-children', attr: { role: 'group' } });
 	childrenEl.setCssProps({ '--pbl-depth': String(item.depth) });
 	return childrenEl;
 }

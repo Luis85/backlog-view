@@ -41,17 +41,31 @@ export interface RowContext {
 	 * the cycle that decides it.
 	 */
 	placed: Map<string, PlacedMount>;
+	/**
+	 * Signature per rendered path, from the pass that drew it — read to decide whether a
+	 * row may be KEPT (`rowSignature`, and ADR 0029). One lifetime with `rows` beside it,
+	 * which is why `clearRowIndex` clears the two together: a signature index that outlived
+	 * its rows would claim elements that are gone. A path ABSENT here is a row that may
+	 * never be claimed — it drew another note's content, or its note is not in the metadata
+	 * cache yet.
+	 */
+	sigs: Map<string, string>;
 	columns: Column[];
 }
 
-export function rowContext(host: BacklogViewHost, rows: Map<string, HTMLElement>, cardKids: Set<string>): RowContext {
+export function rowContext(
+	host: BacklogViewHost,
+	rows: Map<string, HTMLElement>,
+	cardKids: Set<string>,
+	sigs: Map<string, string>,
+): RowContext {
 	// What this pass DRAWS. `host.columns` stays what EXISTS — `syncColumnFit` measures
 	// that one, or a narrowed pane would ratchet the count down and never let a column
 	// come back when it widens again.
 	const shown = host.columns.slice(0, host.columnFit?.shown ?? host.columns.length);
 	// Created here rather than on the view: `backlogView.ts` already passes this context
 	// to the whole render pass, and the register is a fact about one pass.
-	return { host, rows, cardKids, placed: new Map(), columns: shown };
+	return { host, rows, cardKids, placed: new Map(), sigs, columns: shown };
 }
 
 /**
@@ -285,8 +299,13 @@ function columnLabel(host: BacklogViewHost, prop: BasesPropertyId): string {
  * The header naming the property columns. Rows carry no labels of their own —
  * repeating "Assignee:" on every row is the clutter columns exist to remove — so
  * the names live here once, pinned to the top of the scroller.
+ *
+ * Returns the header it drew, or null where there was nothing to head. The caller needs
+ * the element rather than a second look at the container: a reconciling pass walks the
+ * rows after it, and the node the walk starts at is the one thing that decides whether
+ * its prune can reach the header.
  */
-export function renderColumnHeader(ctx: RowContext, containerEl: HTMLElement): void {
+export function renderColumnHeader(ctx: RowContext, containerEl: HTMLElement): HTMLElement | null {
 	const settings = ctx.host.settings;
 	// CONFIGURED is not DRAWN, and this asks the second: the rollup is pinned past the end
 	// of the column list rather than being one of them, so a strip narrowed to zero
@@ -301,7 +320,7 @@ export function renderColumnHeader(ctx: RowContext, containerEl: HTMLElement): v
 		hasRollup(ctx.host.projection) &&
 		!ctx.host.columnFit?.rollupDropped;
 	// Nothing to head at all, which is not the same question as "no columns".
-	if (ctx.columns.length === 0 && !rollup) return;
+	if (ctx.columns.length === 0 && !rollup) return null;
 	const header = containerEl.createDiv({ cls: 'pbl-cols' });
 	header.createDiv({ cls: 'pbl-row-spacer' });
 
@@ -328,6 +347,7 @@ export function renderColumnHeader(ctx: RowContext, containerEl: HTMLElement): v
 		});
 	}
 	renderAddSpacer(header);
+	return header;
 }
 
 /**

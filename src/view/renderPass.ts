@@ -2,6 +2,7 @@ import { BacklogViewHost, BoardSnapshot, RoadmapSnapshot } from './host';
 import { CardDragController } from './interactions/cardDrag';
 import { DragDropController } from './interactions/dragDrop';
 import { treeShaped } from './projection';
+import { renderInputs, reusableColumns } from './rowSignature';
 import { RowContext } from './render/columns';
 import { syncAfterContent } from './render/afterContent';
 import { captureScroll, renderProjectionContent, restoreScroll, ScrollAnchor, syncProjectionClasses } from './render/projections';
@@ -35,6 +36,12 @@ export interface RenderPassDeps {
 	rowCtx: () => RowContext;
 	scroll: ScrollAnchor;
 	/**
+	 * The render inputs the PREVIOUS pass drew with, or null when nothing is on screen.
+	 * Equal to this pass's own is the whole of what makes reuse legal at the pass level —
+	 * see the reuse decision below.
+	 */
+	lastInputs: string | null;
+	/**
 	 * Publish the snapshots the content render just produced, at the point the view used
 	 * to assign them — BEFORE the post-content work, which reads `host.roadmap`. The
 	 * scroll capture earlier in the pass deliberately runs against the OLD snapshot.
@@ -47,6 +54,8 @@ export interface RenderPassResult {
 	scroll: ScrollAnchor;
 	/** True when the fit verdict changed and the caller owes a second, guarded pass. */
 	refitNeeded: boolean;
+	/** What this pass drew with, for the caller to hand back as `lastInputs` next time. */
+	inputs: string;
 }
 
 /**
@@ -87,15 +96,26 @@ export function renderPass(host: BacklogViewHost, els: RenderPassEls, deps: Rend
 	// Captured from the OLD frame, before its DOM goes: on the dated axis the pane
 	// is not the scroll box, and reading it here would capture zeros.
 	let scroll = captureScroll(els.treeEl, host.roadmap, deps.scroll);
-	els.treeEl.empty();
-	// The row index and the card-disclosure set are the VIEW's own collections, reached
-	// through `rowCtx` (which hands back the live ones, not copies) because this pass has
-	// no fields of its own. They outlive it, which is exactly why they are cleared here:
-	// an index that survived its render would answer for rows that are gone, and a set
-	// that did would claim disclosures for a screen that is gone.
-	const clearing = deps.rowCtx();
-	clearing.rows.clear();
-	clearing.cardKids.clear();
+	// Whether the row walk below may KEEP the elements already on screen (ADR 0029).
+	// Everything a row draws that is not its own note lives in one string — see
+	// `renderInputs` — so a settings change, a filter change, a projection switch and a
+	// column that is not frontmatter-backed all land here rather than in a per-row term
+	// somebody has to remember to add. The index is the view's own collection, reached
+	// through `rowCtx` (which hands back the live one, not a copy) because this pass has no
+	// fields of its own; empty, there is nothing to keep and the walk is an ordinary build.
+	const inputs = renderInputs(host);
+	const reuse =
+		treeShaped(projection) &&
+		inputs === deps.lastInputs &&
+		reusableColumns(host.columns) &&
+		deps.rowCtx().rows.size > 0;
+	// Cleared TOGETHER and only here: an index that survived a render it did not draw would
+	// answer for rows that are gone, a signature index that did would claim them, and a
+	// disclosure set that did would speak for a screen that is gone.
+	if (!reuse) {
+		els.treeEl.empty();
+		host.clearRowIndex();
+	}
 	if (!treeShaped(projection)) {
 		// The column ladder is the tree's: a narrow-pane verdict from tree mode must
 		// not strip cells off cards, and its rollup class must not hide theirs.
@@ -132,5 +152,5 @@ export function renderPass(host: BacklogViewHost, els: RenderPassEls, deps: Rend
 	// The fit ladder is the tree's alone; every other projection reports no verdict
 	// change and leaves the caller's guarded second pass untaken.
 	const refitNeeded = treeShaped(projection) && deps.resize.refit();
-	return { scroll, refitNeeded };
+	return { scroll, refitNeeded, inputs };
 }

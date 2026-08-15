@@ -96,6 +96,31 @@ The `#num:` / `#date:` sentinel escaping in the signature's JSON replacer has th
 history: the first tagging collided with strings a user can actually author, so every
 authored string beginning `#` is now escaped out of that namespace.
 
+**A row can refuse to be SIGNED, for two different reasons.** The list above is about
+missing terms; these two are about a term's SOURCE being unavailable, and both end the same
+way — nothing recorded, so nothing to match, so the row is rebuilt next pass. One is
+finding 2: a cell that drew a link, an embed or an image drew another note's content, asked
+of the rendered row rather than predicted from the value. The other was found in review of
+the shipped signature, while the walk that spends it was being built: the frontmatter term
+is read from the METADATA CACHE, while a `note.*` cell is drawn from the Bases ENTRY. The
+cache fills asynchronously, so between an update Bases has answered and one the cache has
+not, every unindexed row signs the same string — and a value that moved in that window
+would have been kept behind it. `rowSignature` returns null there.
+
+**`host.colWidths` is a pass-level input, though no row draws one.** A cell points at its
+column's published custom property rather than holding a number, which is what lets a
+resize drag move every row without a render at all. But the HEADER's grip is built from the
+number, announces it as `aria-valuenow` and measures its next step from it — and a pass
+that reuses leaves that header alone. So the width is a term of `renderInputs`, and a
+keyboard resize rebuilds every row: exactly what it did before this decision, at one wasted
+build per keypress.
+
+**What the external-content rule costs.** A vault whose value columns are all link-valued
+gets no reuse at all, and every row this pass BUILDS pays one `querySelector` for the
+question. A vault whose value columns are text, numbers and dates keeps the whole win. If
+the reconcile turns out never to activate on a realistic column set, that rule is too blunt,
+and the per-cell refresh named in `reusableColumns` is the upgrade.
+
 **The safe failure direction is stated and paid for.** A signature that differs when the
 row would have drawn the same costs one wasted row build; one that matches when the row
 would have drawn differently ships a stale row. Every judgement here takes the first — the

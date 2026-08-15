@@ -101,6 +101,18 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 	 * wasteful at six hundred — every selection change would walk the whole DOM.
 	 */
 	private rowEls = new Map<string, HTMLElement>();
+	/**
+	 * The signature each rendered row was drawn from, filled through `RowContext.sigs` and
+	 * cleared with `rowEls` — one lifetime, so `clearRowIndex` is the only place either is
+	 * emptied. A path missing from here while its row is in `rowEls` is a row this pass may
+	 * not keep; `rowSignature` (ADR 0029) is what puts one in.
+	 */
+	private readonly rowSigs = new Map<string, string>();
+	/**
+	 * The render inputs the last pass drew with, or null while nothing is on screen. A pass
+	 * may reuse rows only when this is unchanged — see `renderPass`.
+	 */
+	private lastInputs: string | null = null;
 	private resizeObserver: ResizeObserver | null = null;
 	/** The Base's visible properties as columns, resolved once per data update. */
 	columns: Column[] = [];
@@ -430,6 +442,7 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 				cardDnd: this.cardDnd,
 				rowCtx: () => this.rowCtx(),
 				scroll: this.scroll,
+				lastInputs: this.lastInputs,
 				// The one thing the pass cannot do itself — `BacklogViewHost` exposes both
 				// snapshots as readonly — called at the point these two lines used to sit,
 				// which is what keeps the pass's own later readers off a stale frame.
@@ -440,6 +453,11 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 			},
 		);
 		this.scroll = result.scroll;
+		// Stored BEFORE the refit pass below, never after it: that pass renders with the
+		// verdict this one produced, so its own inputs are the ones on screen when it
+		// finishes, and an assignment after the recursion would overwrite them with the
+		// frame that was replaced.
+		this.lastInputs = result.inputs;
 		// Measured against the tree that now exists, scrollbar and all. A changed
 		// verdict means a column came or went, which only the rows can show — one
 		// more pass, guarded, since the second pass measures the same tree.
@@ -455,7 +473,13 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 
 	/** The per-pass render state: the row index plus the hoisted config lookups. */
 	private rowCtx(): RowContext {
-		return rowContext(this, this.rowEls, this.cardKids);
+		return rowContext(this, this.rowEls, this.cardKids, this.rowSigs);
+	}
+
+	clearRowIndex(): void {
+		this.rowEls.clear();
+		this.rowSigs.clear();
+		this.cardKids.clear();
 	}
 
 	// -------------------------------------------------------------------- writes

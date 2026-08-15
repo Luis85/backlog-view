@@ -120,15 +120,35 @@ export class DragDropController {
 		return item.children.some((child) => !this.host.isRowHidden(child));
 	}
 
-	/** Rows are about to be rebuilt; drop the references to the old indicator and source rows. */
+	/**
+	 * A render is starting. Rows are no longer necessarily rebuilt — a reused element wears
+	 * whatever the last pass left on it — so the marks this controller put on them come OFF
+	 * here rather than being destroyed with the row. Dropping the two references alone was
+	 * enough only while every pass emptied the tree.
+	 *
+	 * The reconcile must not answer this by clearing `.pbl-drop-*` itself: a walk that
+	 * enumerated another module's classes is the list-of-remembered-places this design
+	 * refuses everywhere, and the list is five long. The controller owns them, so the
+	 * controller cleans them.
+	 *
+	 * Cancelling the hover expand is the same rule reaching a timer: `scheduleHoverExpand`
+	 * closes over a `BacklogItem` for 600ms, which used to be destroyed with the row under
+	 * the cursor and now would fire against the model this render replaces. Cancelled rather
+	 * than re-resolved, because the pending expand belongs to a gesture the render has
+	 * already invalidated — running it late would open a row the reader is no longer over.
+	 */
 	onRenderStart(): void {
-		this.activeDropRow = null;
-		this.dragSourceRow = null;
+		this.clearRowMarks();
 	}
 
 	clearDragState(): void {
 		this.draggedPath = null;
 		this.els.viewEl.removeClass('pbl-dragging');
+		this.clearRowMarks();
+	}
+
+	/** Take this controller's marks off the rows it put them on, and stop the hover expand. */
+	private clearRowMarks(): void {
 		this.cancelHoverExpand();
 		if (this.activeDropRow) {
 			this.activeDropRow.classList.remove('pbl-drop-before', 'pbl-drop-after', 'pbl-drop-inside');
