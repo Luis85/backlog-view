@@ -111,10 +111,16 @@ width for every column can only ever do.
   column whichever way outward is, and Arrow Right always moves the boundary physically
   right, as the separator pattern says it should.
 - **1d — a device with no hover.** The grip paints only on hover or focus, which on a
-  phone is never — and a boundary has no menu entry to be found by instead, which is what
-  the tree's other hidden controls have. Under `hover: none` it draws the column boundary
-  itself and widens to a finger-sized target. The timeline's lead grip takes the same
-  widening and needs no line: its own column already draws one.
+  touch device is never — and a boundary has no menu entry to be found by instead, which
+  is what the tree's other hidden controls have. Under `hover: none` it draws the column
+  boundary itself and widens to a finger-sized target. The timeline's lead grip takes the
+  same widening and needs no line: its own column already draws one.
+  **On a PHONE-width pane this is moot, and that is worth saying rather than implying
+  otherwise**: the fit ladder drops every property column well before a phone's width, so
+  there is no column to resize and no grip to find — measured in the browser harness at
+  480px, where the strip draws no cells at all. What this extension buys is a tablet, a
+  landscape phone and a wide split, which is where a touch reader has columns in the first
+  place.
 - **1b — a keyboard reader stepping a column by repeated presses.** Each step re-renders
   the header and destroys the grip pressed, so focus is put back on its replacement —
   asked of the GRIP's own document, since a view in an Obsidian pop-out window draws into
