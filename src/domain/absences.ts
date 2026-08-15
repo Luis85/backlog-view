@@ -177,8 +177,12 @@ export function absenceTitle(facts: AbsenceFacts): string {
  * What 4a was protecting is therefore a commitment owed by whatever renders this, not a fact
  * about this function: the drawer must still place every bar by `barGeometry` against the
  * one shared window, unmoved by any absence grouping, and must give two stretches that share
- * a day two sub-lanes rather than hiding or merging either. Nothing here checks that yet —
- * `packAbsences` has no caller outside its own test as of this commit.
+ * a day two sub-lanes rather than hiding or merging either. The drawer is
+ * `renderLaneAbsences` in `src/view/render/lanes.ts`, and both halves of that commitment are
+ * checked there rather than assumed: each packed mark's own `--pbl-sublane` index in
+ * `test/view/resourceAbsences.test.ts`, and the 17px pitch the two stylesheet rules must
+ * agree on in `test/view/timelineBoxing.test.ts`. Neither is a fact this function can state,
+ * which is why they are named rather than restated here.
  *
  * Greedy FIRST-fit rather than best-fit, deliberately: a long stretch then holds sub-lane 0
  * and everything short slots in beneath it, instead of each new stretch pushing the pile
@@ -220,17 +224,30 @@ export function daysLost(span: DateSpan, absences: Absence[]): number {
 }
 
 /**
- * How long this resource is still away, in whole weeks rounded UP — the band header's pill.
+ * How much of this resource's absence is still AHEAD, in whole weeks rounded UP — the band
+ * header's pill.
  *
  * Rounded up because a partial week is still time nobody can be scheduled into, and reported
  * in weeks because a header is scanned rather than read: "3 wk away" answers the question a
  * roster is being looked at to answer, and the exact days are on the stretches themselves.
  *
+ * **Clamped at `today`, which is what makes "still" true rather than only intended.** Each
+ * pending stretch contributes the days left of it and never the days it has already spent —
+ * counted whole, a four-week absence with two days to run reported `4 wk away` and then fell
+ * to nothing overnight, which is the number being loudest exactly where it is least true.
+ * `isPending` decides WHETHER a stretch counts and this clamp decides FROM WHEN; both are the
+ * same inclusive boundary at today, so a stretch ending today is one day rather than none.
+ *
  * Only the stretches that have not ended (`isPending`), and their union rather than their
  * sum — `daysLost`'s rule, from the same primitive, so the two numbers on one screen cannot
- * disagree about how long one set of stretches lasts.
+ * disagree about how long one set of stretches lasts. The clamp is `daysLost`'s too: that one
+ * narrows each stretch to the BAR's own days, this one to the days not yet gone.
  */
 export function awayWeeks(absences: Absence[], today: CivilDate): number {
 	const pending = absences.filter((absence) => isPending(absence, today));
-	return Math.ceil(unionDays(pending.map((absence) => ({ start: absence.start, target: absence.target }))) / 7);
+	const ahead = pending.map((absence) => ({
+		start: daysBetween(absence.start, today) > 0 ? today : absence.start,
+		target: absence.target,
+	}));
+	return Math.ceil(unionDays(ahead) / 7);
 }

@@ -157,7 +157,11 @@ already looks.
   derived one.
 - **4m — the band header counts what's still ahead** (added 2026-08-14, reshaped the same
   day). An item count and a weeks-away pill, each dropped entirely at zero rather than one
-  string counting both — the pill counting only stretches whose end is today or later. See
+  string counting both — the pill counting only stretches whose end is today or later, and
+  only the part of each that is still to come: a stretch already running contributes its
+  remainder, so the number falls a week at a time instead of holding at four and then
+  vanishing overnight (corrected 2026-08-15, the sentence having said "still ahead" from the
+  start while the code counted whole stretches). See
   the refusal paragraph and the shape's own two rewrites under `## Where it lives`, for why
   this is not the removed glyph returning and for why it ended as two numbers rather than
   one.
@@ -172,8 +176,16 @@ already looks.
 
   **What this costs a screen reader, stated as a regression rather than a substitution.**
   Each stretch had a row carrying `<title> — unavailable <dates>` and `Assigned to <name>`.
-  It now has neither: the header takes one `aria-description` listing every stretch, so
-  three become one string with no structure and no way to move between them. Accepted
+  It now has neither: the header takes one `aria-description` listing every stretch, in the
+  order the marks are DRAWN rather than model order, so three become one string with no
+  structure and no way to move between them. Each stretch is named there, on its own mark's
+  tooltip and in a crossed bar's sentence by one function (`absenceSaid` in
+  `src/view/render/lanes.ts`), which states the range ONCE: 4l made the title carry the dates,
+  so appending them as well read `Alice away 2026-08-04 → 2026-08-06 2026-08-04 → 2026-08-06`
+  on every note this plugin has made — on the only per-stretch channel a reader has left.
+  The append survives for a title the derivation would not have produced (a note named before
+  4l, or one renamed by hand), asked of `absenceTitle` rather than of the string's shape.
+  Accepted
   because one-row-per-person is the point of the change and no per-stretch element can carry
   a name while the row it replaced is gone. The keyboard gap is unchanged, not widened — an
   absence row was never a keyboard stop either, and [[Keyboard and menu on the roadmap]]
@@ -286,9 +298,11 @@ already looks.
   type, the same dependency every other declared type here already has on the Base
   returning it.
 - A band header reports an item count — its result bars, dropped at zero — and, when there
-  is one, a weeks-away pill over the stretches whose end is today or later, weighted up when
-  the resource also holds work and likewise dropped at zero. Both read the same whether the
-  band is open or shut. A finished stretch counts toward neither.
+  is one, a weeks-away pill over what is LEFT of the stretches whose end is today or later,
+  weighted up when the resource also holds work and likewise dropped at zero. Both read the
+  same whether the band is open or shut. A finished stretch counts toward neither, and a
+  running one counts from today rather than from the day it began: a four-week absence with
+  two days to go says one week, not four.
 - A resource named only by an absence still gets a row.
 - An absence renders whatever the quick filter says. The filter chooses among WORK — its
   two sets are matches and their subtrees — and a stretch is furniture of the row rather
@@ -306,7 +320,8 @@ already looks.
 
 **Editing** (2026-08-14) is `promptEditAbsence` in `src/view/interactions/absences.ts` over
 `updateAbsenceNote` and `renameAbsenceNote` in `src/storage/absenceNotes.ts`. The prompt
-gained one optional field — `editing`, the three values to pre-fill — rather than a second
+gained one optional field — `editing`, the two dates to pre-fill, the resource already having
+a field of its own that the row prefills — rather than a second
 modal, which is what keeps the validator and the refusals one statement. `AbsenceSpec` split
 in two for the same reason the acts did: `AbsenceFacts` is what an absence SAYS and is all
 an update takes, while the folder and the title decide where the note IS and belong to
@@ -417,9 +432,10 @@ it swallows the whole bar, `· away` for a marker, which has no days to lose) ap
 the bar's own title label, and the full sentence (`15 days lost to absence: …`) on the
 swatch's tooltip and in a `.pbl-sr-only` span, because the wash tells this in colour alone
 and WCAG 1.4.1 refuses that. The mark itself is a hatched SWATCH in the away key, not the
-`calendar-x` glyph it shipped with and not the `user-x` every other absence control wears —
-a colour rather than a fourth icon competing with the Add absence button, the header's own
-icon and a resource being away, all of which already spend `user-x`. The legend gains a
+`calendar-x` glyph it shipped with and not the `user-x` the Add absence button wears — a
+colour rather than a second icon competing with that button, which is the ONE `user-x` left
+in this band: the stretch's own row icon went with the row (4n) and the header's glyph was
+refused (below), so the three this note used to count are one. The legend gains a
 **Days lost** key exactly where the token lands, gated on `DrawnColors.daysLost` — the
 render's own report, so a fold or a filter that takes the token off screen takes the key
 with it too.
@@ -451,7 +467,8 @@ as one number is now two things, each dropped at zero rather than reading a bare
 ITEM count (`lane.bars.length`, pluralized `item`/`items`, still result bars and nothing
 else) and a WEEKS-AWAY
 pill (`awayWeeks` in `src/domain/absences.ts`, unioned rather than summed so two overlapping
-stretches are not away twice), weighted up with its own class when the resource also holds
+stretches are not away twice, and clamped at today so a running stretch reports its remainder
+rather than its whole length — corrected 2026-08-15), weighted up with its own class when the resource also holds
 work — that is the row a planner has to act on, since away with nothing booked is merely
 information. `0 items` was reported for a few hours on 2026-08-14 and was dropped the same
 day: a roster of quiet rows each reading zero is noise, and `.pbl-lane-quiet` says the same
@@ -482,8 +499,10 @@ which stopped being the whole of it and was narrowed to what is drawn.
 **Neither Add absence nor Delete absence has a keyboard path**, and this is the bucket New
 button's own gap in its own words rather than a new one: the pane is one tab stop with a
 roving selection over `roadmap.cards`, an absence is not a card, and a row is not a
-keyboard stop, so nothing selects one to act on. Both controls are `tabindex="-1"`.
-Closing the gap properly means row stops, which is
+keyboard stop, so nothing selects one to act on. The Add button carries `tabindex="-1"`
+like every other per-row control; the stretch itself is a plain `div.pbl-absence` with no
+`tabindex` at all, so Edit and Delete — which live only on its context menu — have no
+keyboard route either. Closing the gap properly means row stops, which is
 [[Keyboard and menu on the roadmap]]'s work.
 
 **That the delete cannot go through the write gate is a COMPILE-time fact, not a test.**
@@ -498,10 +517,17 @@ naming every stretch at once (4n's own accepted regression), given that the head
 plain div among `option` rows and claims no role of its own; and the delete's confirmation
 behaviour under the user's own "deleted files" setting.
 
-The 2026-08-14 readability increment added four to that list and **the first two are now
-answered**: checked in a vault at 385 results, in light, the hatch and the wash both out-read
-the weekend banding, and the wash reads as shading rather than as a second bar — once it was
-drawn OVER the bars rather than under them, which is what that look found. **The swatch
+The 2026-08-14 readability increment added four to that list and **the first is answered**:
+checked in a vault at 385 results, in light, the hatch out-reads the weekend banding.
+
+**The wash's own half of that answer is retired** (2026-08-15). What was looked at was a 28%
+`--text-muted` wash, and the same day it was re-keyed to 16% of `--pbl-away` — a different
+colour at a different strength, so "it out-reads the banding" and "it reads as shading rather
+than as a second bar" are both answers about a mark that is no longer on screen. The re-keyed
+wash is filed as never checked in
+[[Smoke test the roadmap]], which is where it stays until someone looks. What survives the
+rekey and is worth keeping: the wash had to be drawn OVER the bars rather than under them,
+which is what that look found and is a layer question rather than a colour one. **The swatch
 question is answered too, and answered "no"**: at 10px square it read as a slashed circle among
 the five colour dots, so it is 20px wide now and draws the mark's own gradient rather than a
 halved copy of it. What stays owed: whether two glyphs in one lead (a dependency flag and an

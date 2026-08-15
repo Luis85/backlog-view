@@ -16,8 +16,10 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 - **One row per resource, whatever they have.** An absence used to draw a blocked line of
   its own beneath its resource's header; it draws inside the header itself now, and two that
   share a day pack into their own sub-lanes rather than either one hiding the other. The
-  header's own pill says how many weeks of it are still ahead — `3 wk away`, dropped
-  entirely once nothing is left, and called out when the same person also has work booked —
+  header's own pill says how many weeks of it are still ahead — counted from today, so a
+  stretch already under way reports what is left of it rather than its whole length:
+  `3 wk away`, dropped entirely once nothing is left, and called out when the same person
+  also has work booked —
   beside an item count that disappears the same way when a row has nothing in it. A bar
   scheduled straight across a stretch now says what that costs right in its own title,
   `15d lost` or `all 10d` when the crossing swallows the whole bar, with the full sentence

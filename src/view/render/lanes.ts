@@ -5,7 +5,7 @@ import { drawIcon } from './icons';
 import { renderBadge, renderChevron, renderTitleText } from './rows';
 import { promptAddAbsence, showAbsenceMenu } from '../interactions/absences';
 import { BacklogViewHost } from '../host';
-import { Absence, absencesConfigured, awayWeeks, packAbsences } from '../../domain/absences';
+import { Absence, absencesConfigured, absenceTitle, awayWeeks, packAbsences } from '../../domain/absences';
 import { timelineRows, TimelineRow } from '../../domain/bars';
 import { BacklogItem } from '../../domain/model';
 import { CivilDate } from '../../domain/noteFields';
@@ -230,7 +230,9 @@ export function renderLaneHead(
 }
 
 /**
- * How long this resource is still away, as a pill beside their item count.
+ * How long this resource is still away, as a pill beside their item count — counted FROM
+ * TODAY, so a stretch already running contributes only the days left of it and a four-week
+ * absence with two days to go reads `1 wk away`. `awayWeeks` is where that clamp lives.
  *
  * **Weeks rather than a count of stretches**, which is what this reported until 2026-08-14:
  * two stretches is not a quantity a planner can act on, and three weeks is. `awayWeeks`
@@ -336,6 +338,37 @@ export function renderLaneContextRow(ctx: RowContext, content: HTMLElement, item
 }
 
 /**
+ * What one stretch is CALLED, with its range stated once — the string behind every place a
+ * stretch is named: the header's one `aria-description`, the mark's own tooltip, and the
+ * sentence a crossed bar carries. Between them that is the whole of what a reader who cannot
+ * see the hatch gets, so a defect here is invisible and total.
+ *
+ * `Absence.title` is the note's BASENAME, and since 2026-08-14 the create and the edit paths
+ * both derive that basename from the very facts this would otherwise append (`absenceTitle`,
+ * the one producer — [[Resource absences]] 4l). Appending unconditionally therefore read
+ * `Alice away 2026-08-04 → 2026-08-06 2026-08-04 → 2026-08-06`, with no separator, on every
+ * note this plugin has ever made.
+ *
+ * The condition is asked of that PRODUCER rather than of the string's shape: a title equal to
+ * what `absenceTitle` derives from this stretch's own three facts already carries the range.
+ * Anything else — a note named before 4l, or one a reader named `Offsite` by hand — does not,
+ * and still needs it, which is why this is a condition and not a deletion: the title is the
+ * only legible name a stretch has left.
+ *
+ * **The reach of that equality is exactly a basename `sanitizeTitle` did not have to
+ * change.** A resource holding `/` is filed as `A-B away …` where the derivation says
+ * `A/B away …`, so that one note states its dates twice — the sanitizer is private to
+ * `storage/frontmatter.ts` and neither this layer nor `domain/` may reach it. Named here
+ * rather than left to read as covered.
+ */
+function absenceSaid(absence: Absence): string {
+	const start = formatCivil(absence.start);
+	const target = formatCivil(absence.target);
+	if (absence.title === absenceTitle({ resource: absence.resource, start, target })) return absence.title;
+	return `${absence.title} — ${start} → ${target}`;
+}
+
+/**
  * Where a positioned mark's day span goes, in pixels — `--pbl-bar-left` and
  * `--pbl-bar-width`, the latter floored at `MIN_BAR_PX` so a span too short to reach it
  * does not vanish. One pair of custom properties, extracted because THREE identical
@@ -363,6 +396,18 @@ function placeSpan(el: HTMLElement, geometry: BarGeometry, scale: TimelineScale)
  * share a day get two sub-lanes instead of two rows. The sub-lane count goes onto the HEADER
  * as `--pbl-lane-sublanes` and the stylesheet does the arithmetic: one number crossing the
  * boundary rather than a height computed here.
+ *
+ * **The count is not the mechanism — `--pbl-sublane` per MARK is.** The header's count only
+ * grows the track; the index each mark carries is what puts it on its own line, so 4a's
+ * "two stretches that share a day are two marks on two lines" rests on that one
+ * `setCssProps` below. Two checks stand under it, because a header with two marks and a
+ * count of `2` stays true with the index wiring deleted and the marks stacked on one line:
+ * `test/view/resourceAbsences.test.ts` asserts each packed mark's own index, and
+ * `test/view/timelineBoxing.test.ts` ties the 17px pitch `.pbl-absence` steps by to the one
+ * the header's own track grows by, since a pitch changed in one rule alone overlaps the
+ * marks. That same file refuses `.pbl-absence` a `pointer-events: none`, which is the
+ * paragraph below stated where it can actually be seen — jsdom dispatches events whatever
+ * the stylesheet says, so no drop or menu test can catch that declaration.
  *
  * **Each mark keeps its pointer events, and that is deliberate in both directions.** It needs
  * them for the context menu, which is now the ONLY route to Edit and Delete — the row that
@@ -394,7 +439,7 @@ function renderLaneAbsences(
 	head.setCssProps({ '--pbl-lane-sublanes': String(packed.length) });
 	head.setAttribute(
 		'aria-description',
-		`Unavailable: ${lane.absences.map((one) => `${one.title} ${formatCivil(one.start)} → ${formatCivil(one.target)}`).join('; ')}`,
+		`Unavailable: ${packed.flat().map(absenceSaid).join('; ')}`,
 	);
 	packed.forEach((sub, index) => {
 		for (const absence of sub) {
@@ -402,7 +447,7 @@ function renderLaneAbsences(
 			const mark = track.createDiv({ cls: ['pbl-absence', ...edgeClasses(geometry)].join(' ') });
 			placeSpan(mark, geometry, ruler.scale);
 			mark.setCssProps({ '--pbl-sublane': String(index) });
-			setTooltip(mark, `${absence.title} — ${formatCivil(absence.start)} → ${formatCivil(absence.target)}`);
+			setTooltip(mark, absenceSaid(absence));
 			mark.addEventListener('contextmenu', (evt) => showAbsenceMenu(host, absence, evt));
 		}
 	});
@@ -494,8 +539,10 @@ export function renderAbsenceWash(
  * column of them is scannable, and the words it stands for in the row's own content.
  * Hatched in the away key (`--pbl-away`) rather than the `calendar-x` glyph it shipped
  * with, so the lead mark and the wash it sits beside on the SAME row read as one thing —
- * a colour rather than a fourth icon competing with the Add absence button, the absence
- * row's own icon and a resource being away, all of which already spend `user-x`.
+ * a colour rather than a second icon competing with the Add absence button, which is the
+ * one `user-x` left in this band: the absence row's own icon went with the row (4n) and the
+ * header's own glyph was refused (`docs/requirements/Resource absences.md`), so the three
+ * this sentence used to count are one.
  *
  * The sentence is not a nicety. The wash over the bar tells this in colour alone, which
  * WCAG 1.4.1 refuses and which a screen reader gets nothing of at all. `.pbl-sr-only`
@@ -521,7 +568,7 @@ export function renderAbsenceWash(
  */
 export function noteAbsenceClash(bar: { row: HTMLElement; lead: HTMLElement }, crossed: Absence[], costSentence: string): void {
 	if (crossed.length === 0) return;
-	const spans = crossed.map((one) => `${one.title} ${formatCivil(one.start)} → ${formatCivil(one.target)}`).join('; ');
+	const spans = crossed.map(absenceSaid).join('; ');
 	const said = `Crosses ${crossed.length === 1 ? 'an absence' : `${crossed.length} absences`}, ${costSentence}: ${spans}`;
 	bar.row.createSpan({ cls: 'pbl-sr-only', text: said });
 	// A hatched swatch in the away key rather than the `calendar-x` glyph it replaced, so the

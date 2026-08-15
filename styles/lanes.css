@@ -186,9 +186,11 @@
    stretches fainter than the weekend shading behind them. An absence is CONTENT. The muting
    this row still wants belongs to its LEAD, below.
 
-   14px, matching `.pbl-bar`: 12px was saying "lesser" as well as "different" and only the
-   second was intended. How the hatch reads against a themed background, and against a bar
-   it overlaps, is a live-vault check.
+   13px, near enough to `.pbl-bar`'s 14px to read as the same KIND of mark: 12px was saying
+   "lesser" as well as "different" and only the second was intended. It matched the bar
+   exactly until the mark moved into the header's own track and took the sub-lane pitch
+   below instead. How the hatch reads against a themed background, and against a bar it
+   overlaps, is a live-vault check.
 
    One geometry for every sub-lane count, rather than a centred single and a pitched pair:
    13px marks on a 17px pitch, the first at 7px. At one sub-lane the mark sits 7 above and 10

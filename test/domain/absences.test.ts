@@ -8,7 +8,7 @@ import { ABSENCE_TYPE, ALL_TYPES, typeFolderKey } from '../../src/domain/typeVoc
 import { folderForType } from '../../src/domain/itemTypes';
 import { BacklogSettings } from '../../src/domain/settings';
 import { settingsFrom, settingsWith } from '../helpers/settings';
-import { absenceVault } from '../helpers/resources';
+import { ALICE_AWAY, ALICE_AWAY_PATH, absenceVault } from '../helpers/resources';
 import { FakeVault } from '../helpers/vault';
 
 /**
@@ -41,8 +41,8 @@ describe('an absence is never a work item', () => {
 		// Not an item, not a result, not reachable by path — the exclusion is the type's,
 		// and it happens before a `RawItem` is built rather than by failing a later test.
 		expect(model.items.map((i) => i.title)).toEqual(['Work']);
-		expect(model.byPath.has('Alice away.md')).toBe(false);
-		expect(model.absences.map((a) => a.title)).toEqual(['Alice away']);
+		expect(model.byPath.has(ALICE_AWAY_PATH)).toBe(false);
+		expect(model.absences.map((a) => a.title)).toEqual([ALICE_AWAY]);
 		expect(model.absences[0].resource).toBe('Alice');
 	});
 
@@ -102,7 +102,7 @@ describe('an absence is never a work item', () => {
 		const model = buildModel(vault.app, vault.entries(), settingsFor({ targetKey: '' }));
 		// Still dropped from the model — that is the TYPE's doing and unconditional — and
 		// still not readable as anything.
-		expect(model.byPath.has('Alice away.md')).toBe(false);
+		expect(model.byPath.has(ALICE_AWAY_PATH)).toBe(false);
 		expect(model.absences).toEqual([]);
 	});
 
@@ -285,7 +285,19 @@ describe('how long a resource is away', () => {
 	it('leaves out a stretch that has already ended, and keeps one still running', () => {
 		// The filter `pendingAbsences` used to be, now the only thing left of it.
 		expect(awayWeeks([away('Over', '2026-08-01', '2026-08-13')], TODAY)).toBe(0);
-		expect(awayWeeks([away('Ends today', '2026-08-01', '2026-08-14')], TODAY)).toBe(2);
+		// A stretch ending today has ONE day left, not the fortnight it has run for.
+		expect(awayWeeks([away('Ends today', '2026-08-01', '2026-08-14')], TODAY)).toBe(1);
+	});
+
+	it('counts the REMAINDER of a running stretch, never the whole of it', () => {
+		// What the pill says is how long this resource is still away, so a stretch already
+		// under way contributes only the days left of it. Counted whole it reports a month for
+		// someone back on Sunday, and then drops to nothing overnight — the number is loudest
+		// exactly where it is least true. `isPending` decides WHETHER a stretch counts and this
+		// clamp decides FROM WHEN, which is one rule asked at both ends of the same day.
+		expect(awayWeeks([away('Four weeks, two days left', '2026-07-20', '2026-08-15')], TODAY)).toBe(1);
+		// Wholly ahead — nothing to clamp, so the whole stretch counts.
+		expect(awayWeeks([away('Not started', '2026-08-20', '2026-09-16')], TODAY)).toBe(4);
 	});
 
 	it('counts a day two stretches share once', () => {

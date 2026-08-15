@@ -76,19 +76,19 @@ catalog migration and was not part of that run.
 - The legend strip above the grid: one swatch per configured state, then today, then
   the milestone — legible over the header, and a bar's colour actually matches its own
   swatch. **Never checked.**
-- The resources axis's absences, all four of them colour or crowding questions no check here
-  can reach ([[An absence read fainter than the decoration behind it]]): whether the
-  `.pbl-absence-wash` at 18% of `--text-muted` out-reads a themed vault's weekend banding, and
-  whether it still reads as *shading* rather than as a second bar beneath the one it sits
-  under; whether the hatch at `--text-muted` holds against a community theme's background and
+- The resources axis's absences, colour or crowding questions no check here
+  can reach ([[An absence read fainter than the decoration behind it]]): whether the hatch at
+  `--text-muted` holds against a community theme's background and
   against a bar it overlaps; whether two glyphs in one lead — the dependency flag and the
   absence flag, which can both appear on one row — crowd the title at a narrow lead width; and
   whether the `Unavailable` swatch's finer hatch reads as hatch at 10px rather than as a
   half-filled square. The stylesheet checks behind these say which token each rule names and
   nothing about what it resolves to, and per ADR 0020 the harness settles layout and not
-  colour. **Checked in a vault 2026-08-14 at 385 results, in light**: the hatch and the wash
-  both out-read the weekend banding, which is the first question answered and the one the whole
-  increment existed for. It also found the two defects in
+  colour. **Checked in a vault 2026-08-14 at 385 results, in light**: the hatch out-reads the
+  weekend banding, which is the first question answered and the one the whole
+  increment existed for. The wash was answered in the same look and that answer is retired —
+  what was on screen was 28% of `--text-muted`, re-keyed the same day to the 16% `--pbl-away`
+  filed as never checked below. It also found the two defects in
   [[An absence read fainter than the decoration behind it]]'s own closing section — the wash
   under the bars rather than over them, and a header glyph competing with the Add absence
   button, and the `Unavailable` swatch reading as a ⊘ among five colour dots — none of which
@@ -103,11 +103,16 @@ catalog migration and was not part of that run.
   ellipsis falls — `.pbl-lane-count` refuses to shrink, so the name is what gives. **Never
   checked.**
 - The packed header (`packAbsences`, added 2026-08-14) at two sub-lanes and at three:
-  whether the header actually grows to hold every sub-lane, whether two marks that share a
-  day read as two distinct marks rather than one occluding the other, and whether the
-  growth crowds the row below it. Dana's fourth stretch (added 2026-08-14, overlapping her
-  running one) gives the harness a real two-sub-lane header to look at; nothing in the
-  fixture reaches three. **Never checked.**
+  whether two marks that share a day read as two distinct marks rather than one occluding the
+  other, and whether the growth crowds the row below it. Dana's fourth stretch (added
+  2026-08-14, overlapping her running one) gives the harness a real two-sub-lane header to
+  look at; nothing in the fixture reaches three. **Never checked.**
+
+  Whether the header *grows to hold every sub-lane* was on this list and is off it: that one
+  is arithmetic rather than appearance — one pitch in `.pbl-absence`'s `top` and the same
+  pitch in the header track's `min-height` — and `test/view/timelineBoxing.test.ts` ties the
+  two together, with `test/view/resourceAbsences.test.ts` asserting the index each mark
+  actually carries. A look would answer it more slowly and less reliably than the suite does.
 - The 16% `--pbl-away` wash (re-keyed from `--text-muted` on 2026-08-14) over a saturated
   bar, in both schemes: whether it still reads as shading rather than as a second bar now
   that it is keyed to a warm colour instead of a neutral one, and whether the two edges

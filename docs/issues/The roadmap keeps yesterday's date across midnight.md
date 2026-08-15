@@ -42,8 +42,13 @@ then**, and they are not equally visible:
   centre;
 - **the milestone lines' coincidence nudge**, which steps a milestone aside inside the
   day cell it shares with today;
-- **the band header's pending-absence count** (`pendingAbsences`), so a stretch that
-  ended yesterday is still counted as pending.
+- **the band header's weeks-away pill** (`awayWeeks(lane.absences, ruler.today)`), which
+  asks `today` twice — whether a stretch has ended, and how much of a running one is left —
+  so a stretch that ended overnight is still counted, and every running one reports a day
+  more than it has. The symbol this bullet named when it was raised (`pendingAbsences`, a
+  COUNT of stretches) never shipped: the same commit that added this note replaced the
+  header's count with the pill. The staleness is unchanged and reaches the header by the
+  same one line.
 
 ## Why it is deliberate
 
@@ -83,8 +88,8 @@ bug.
 
 Cosmetic, and cleared by any interaction. A reader who touches the view at all — scrolls,
 folds a band, switches a projection, edits a note — gets a correct date immediately, and
-a backlog nobody has touched since before midnight is one nobody is reading. The count's
-own error is bounded at one absence per stretch that ended overnight.
+a backlog nobody has touched since before midnight is one nobody is reading. The pill's own
+error is bounded at one day per band, and shows only where that day crosses a whole week.
 
 The case that would make it matter is a wall display: a roadmap left open unattended, which
 is exactly where a today line on the wrong day misleads and where nothing will arrive to

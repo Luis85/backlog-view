@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { useViewHarness } from '../helpers/view';
 import { laneRoadmap, rowFor } from '../helpers/roadmap';
-import { absenceVault } from '../helpers/resources';
+import { ALICE_AWAY_PATH, absenceVault } from '../helpers/resources';
 import { addDays, formatCivil, MAX_TIMELINE_DAYS } from '../../src/domain/timeline';
 import { readDate, todayStamp } from '../../src/domain/noteFields';
 
@@ -83,7 +83,7 @@ describe('the days a band is unavailable, shaded across its work', () => {
 		// The Base returns everything but `Outside`, which therefore loads as the context row
 		// placing `Inside`, and the focus level is what puts such a row in the roadmap's row
 		// set at all — `resourceLanes.test.ts`'s own context construction.
-		const harness = laneRoadmap(vault, {}, { only: ['Work.md', 'Inside.md', 'Alice away.md'], focus: 'Epic' });
+		const harness = laneRoadmap(vault, {}, { only: ['Work.md', 'Inside.md', ALICE_AWAY_PATH], focus: 'Epic' });
 		expect(harness.containerEl.querySelector('.pbl-lane-context')).not.toBeNull();
 
 		// The header's own track carries the stretches themselves now, so a wash there would

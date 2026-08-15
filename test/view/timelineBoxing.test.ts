@@ -328,6 +328,11 @@ describe('the furniture declarations whose comments call them load-bearing', () 
 		// (`src/view/render/timeline.ts`) spends on the short tokens' whole budget.
 		// Nothing before this tied that number to the three declarations that produce it,
 		// so changing any one of them would leave the comment wrong with nothing red.
+		// The premise before the arithmetic: a stray `box-sizing: content-box` here would leave
+		// every number below unchanged and the box model diverged — `max-width` would stop
+		// including the padding, so the real content box becomes 144 rather than 118 and this
+		// test stays green through it. Asked of the declaration that must NOT be there.
+		expect(ruleBody('.pbl-bar-label'), '.pbl-bar-label states a box-sizing of its own').not.toContain('box-sizing');
 		const maxWidth = /max-width:\s*(\d+)px/.exec(ruleBody('.pbl-bar-label'));
 		const padding = /padding:\s*0\s+var\(--size-4-(\d+)\)/.exec(ruleBody('.pbl-bar-label'));
 		const afterPaddingLeft = /padding-left:\s*(\d+)px/.exec(ruleBody('.pbl-bar-label-after'));
@@ -459,6 +464,28 @@ describe('the absence marks are drawn from the content palette', () => {
 		const height = (css: string, selector: string, file: string) => /height:\s*(\d+)px/.exec(bodyOf(css, selector, file))?.[1];
 		expect(height(timeline, '.pbl-bar', 'styles/timeline.css'), '.pbl-bar states no height').toBeDefined();
 		expect(height(lanes, '.pbl-absence', 'styles/lanes.css')).toBe('13');
+	});
+
+	it('ties the sub-lane pitch to the height the header grows by, since the two must agree', () => {
+		// One number in two rules, exactly as the 118px content box is tied to the three
+		// declarations that produce it. `.pbl-absence` steps each mark down by its own
+		// `--pbl-sublane` index; the header's track grows by the sub-lane COUNT. A pitch
+		// changed in one of them alone either overlaps the marks or leaves a gap under the
+		// last one, and nothing else here could say so — jsdom lays nothing out.
+		const pitch = (selector: string) => /var\(--pbl-(?:lane-)?sublanes?[^)]*\)\s*\*\s*(\d+)px/.exec(bodyOf(lanes, selector, 'styles/lanes.css'))?.[1];
+		expect(pitch('.pbl-absence'), '.pbl-absence steps by no sub-lane pitch at all').toBeDefined();
+		expect(pitch('.pbl-lane-head .pbl-timeline-track')).toBe(pitch('.pbl-absence'));
+	});
+
+	it('leaves the mark its pointer events, which are now the only route to Edit and Delete', () => {
+		// Stated at the FORBIDDEN thing rather than by driving the paths that would break.
+		// The mark's context menu is the only way to either act since the stretch lost its own
+		// row, and the band's drop reaches it by bubbling — so `pointer-events: none` here
+		// breaks the feature twice. jsdom dispatches events whatever the stylesheet says, so
+		// the drop test and the menu test both stay green through exactly that declaration:
+		// this is the one check that can see it. Its reach is the declaration in this rule,
+		// not a later one overriding it.
+		expect(bodyOf(lanes, '.pbl-absence', 'styles/lanes.css')).not.toContain('pointer-events');
 	});
 
 	it('keys the hatch with the very gradient the stretch draws, not a copy of it', () => {

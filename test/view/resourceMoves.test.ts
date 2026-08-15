@@ -23,6 +23,25 @@ function laneRoadmap(vault: FakeVault, extra: Record<string, unknown> = {}): Har
 	return bareLaneRoadmap(vault, extra, { shelf: true });
 }
 
+/**
+ * Every element of one resource's band, off the rendered DOM — the header, whatever the
+ * header's own track draws inside it, and each line until the next band begins.
+ *
+ * COLLECTED rather than listed, which is the whole point: `laneElement` wires a band element
+ * by element because there is no container to wire, so "every element is a target" cannot be
+ * checked by naming the kinds that exist today — the next kind is exactly the one that breaks
+ * it. See `docs/bugs/An absence stretch is a dead spot in its own band.md`.
+ */
+function bandElements(containerEl: HTMLElement, name: string): HTMLElement[] {
+	const head = laneHead(containerEl, name);
+	const found: HTMLElement[] = [head, ...head.querySelectorAll<HTMLElement>('.pbl-timeline-track > *')];
+	for (let el = head.nextElementSibling; el !== null; el = el.nextElementSibling) {
+		if (el.classList.contains('pbl-lane-head')) break;
+		found.push(el as HTMLElement);
+	}
+	return found;
+}
+
 function shelf(containerEl: HTMLElement): HTMLElement {
 	const el = shelfOf(containerEl);
 	if (!el) throw new Error('the shelf is not rendered');
@@ -248,6 +267,61 @@ describe('moving between resources by drag', () => {
 		await flush();
 
 		expect(vault.fm('Stray.md')['assignee']).toBe('Alice');
+	});
+
+	it('every element the band actually draws takes the drop, whatever kind it is', async () => {
+		// The category check `docs/bugs/An absence stretch is a dead spot in its own band.md`
+		// asks for, stated from the RULE rather than from the kinds that existed when it was
+		// written: the band's elements are COLLECTED off the rendered DOM and a drop is driven
+		// at each. A fifth kind of line either joins the band or fails here, without anyone
+		// having predicted it — which is exactly what the fourth kind did not do, and what the
+		// stretch moving into the header's own track (2026-08-14) would have needed again.
+		//
+		// The count is asserted first, and it is the instrument's own check: a collector that
+		// silently found nothing would satisfy the loop below for any grid at all.
+		const vault = new FakeVault();
+		vault.addFile('Alice work.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
+		});
+		vault.addFile('Alice away 2026-08-04 → 2026-08-06.md', {
+			frontmatter: { type: 'Absence', assignee: 'Alice', start: '2026-08-04', due: '2026-08-06' },
+		});
+		vault.addFile('Outside.md', { frontmatter: { type: 'Epic', order: 20, assignee: 'Alice' } });
+		vault.addFile('Inside.md', {
+			frontmatter: { type: 'Feature', order: 10, assignee: 'Alice', start: '2026-08-02', due: '2026-08-03' },
+			parentLink: 'Outside',
+		});
+		vault.addFile('Carried.md', {
+			frontmatter: { type: 'Epic', order: 30, assignee: 'Bob', start: '2026-08-01', due: '2026-08-05' },
+		});
+		const only = ['Alice work.md', 'Alice away 2026-08-04 → 2026-08-06.md', 'Inside.md', 'Carried.md'];
+		const harness = bareLaneRoadmap(vault, {}, { only, focus: 'Epic' });
+		const kinds = bandElements(harness.containerEl, 'Alice');
+		// The header, the stretch drawn inside its track, the bar row, and the excluded note
+		// the band places — every KIND of element this axis draws inside one band, which is
+		// what the loop below then drives a drop at.
+		expect(kinds.map((el) => el.className.split(' ').filter((c) => c.startsWith('pbl-lane') || c === 'pbl-absence' || c === 'pbl-timeline-row'))).toEqual([
+			['pbl-lane-head'],
+			['pbl-absence'],
+			['pbl-timeline-row'],
+			['pbl-timeline-row', 'pbl-lane-context'],
+		]);
+
+		for (let index = 0; index < kinds.length; index++) {
+			vault.setFrontmatter('Carried.md', {
+				type: 'Epic',
+				order: 30,
+				assignee: 'Bob',
+				start: '2026-08-01',
+				due: '2026-08-05',
+			});
+			refresh(harness.view, vault);
+			const target = bandElements(harness.containerEl, 'Alice')[index];
+			cardDrag(barFor(harness.containerEl, 'Carried'), target);
+			await flush();
+
+			expect(vault.fm('Carried.md')['assignee'], `no drop reached ${target.className}`).toBe('Alice');
+		}
 	});
 
 	it('the element under the drag highlights, and the highlight dies with the gesture', () => {

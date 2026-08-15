@@ -11,6 +11,7 @@ source: Review of the resource timeline, 2026-08-14 — found by reading, confir
 files:
   - src/view/render/timeline.ts
   - test/view/resourceAbsences.test.ts
+  - test/view/resourceMoves.test.ts
 ---
 
 # An absence stretch is a dead spot in its own band
@@ -69,6 +70,15 @@ it does both things a line owes: says whose row it is in, and joins the list of 
 elements. A fifth kind of line has one call to make instead of two to remember.
 
 The check is stated from the RULE rather than from the list of kinds that existed when it
-was written, which is the whole lesson here: `test/view/resourceAbsences.test.ts` collects
-every line of one resource's band off the rendered DOM, asserts the count, and drives a
-drop at each — so a kind added later either joins the band or fails this.
+was written, which is the whole lesson here: `bandElements` in
+`test/view/resourceMoves.test.ts` collects every element of one resource's band off the
+rendered DOM — the header, whatever the header's own track draws inside it, and each line
+until the next band begins — asserts what it found, and drives a drop at each. So a kind
+added later either joins the band or fails this.
+
+**That sentence stood here for a day describing a test that did not exist** (fixed
+2026-08-15). What was written then drove one drop at one mark and one at a bar row, and the
+collector it named was used for a single ordering assertion; the claim was the design, read
+back as the implementation. It is worth recording rather than quietly correcting, because
+the very next commit added the kind it was meant to catch — the stretch moved into its
+resource's header track — and a category check that existed only in prose caught nothing.

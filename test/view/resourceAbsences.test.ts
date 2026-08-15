@@ -4,7 +4,7 @@ import { FakeVault } from '../helpers/vault';
 import { Menu, Modal, Notice } from '../helpers/obsidian-mock';
 import { flush, refresh, submitButton, useViewHarness } from '../helpers/view';
 import { barFor, laneCountOf, laneNames, laneRoadmap, lanesOf } from '../helpers/roadmap';
-import { absenceVault } from '../helpers/resources';
+import { ALICE_AWAY, ALICE_AWAY_PATH, absenceVault } from '../helpers/resources';
 import { cardDrag } from '../helpers/dnd';
 
 useViewHarness();
@@ -87,6 +87,13 @@ describe('an absence on the resources axis', () => {
 
 		expect(head.querySelectorAll('.pbl-absence')).toHaveLength(2);
 		expect(head.style.getPropertyValue('--pbl-lane-sublanes')).toBe('2');
+		// **The count is not the mechanism.** Two marks and a `2` both survive deleting the
+		// per-mark index wiring entirely — the marks then stack on ONE line inside a header
+		// grown for two, which is 4a's promise ("two stretches that share a day are two marks
+		// on two lines") broken with nothing red. The index each mark carries is what the
+		// stylesheet turns into a line (`.pbl-absence`'s `top`), so it is what gets asserted.
+		const marks = Array.from(head.querySelectorAll<HTMLElement>('.pbl-absence'));
+		expect(marks.map((mark) => mark.style.getPropertyValue('--pbl-sublane'))).toEqual(['0', '1']);
 	});
 
 	it('counts for nothing on the header, and takes no stripe', () => {
@@ -204,9 +211,49 @@ describe('an absence on the resources axis', () => {
 		// the register: three rows each with a name become one description with three in it.
 		const { containerEl } = laneRoadmap(absenceVault());
 
-		expect(lanesOf(containerEl)[0].getAttribute('aria-description')).toBe(
-			'Unavailable: Alice away 2026-08-04 → 2026-08-06',
-		);
+		// The fixture's note carries the name the create path derives, so the range is in the
+		// title already and is stated ONCE. Appended unconditionally — as it was until the
+		// title became derived — this reads `Alice away 2026-08-04 → 2026-08-06 2026-08-04 →
+		// 2026-08-06`, on the only per-stretch channel a screen reader has left.
+		expect(lanesOf(containerEl)[0].getAttribute('aria-description')).toBe(`Unavailable: ${ALICE_AWAY}`);
+	});
+
+	it('says the range once on the mark’s own tooltip too, which is where the name is legible', () => {
+		const { containerEl } = laneRoadmap(absenceVault());
+		const mark = containerEl.querySelector<HTMLElement>('.pbl-lane-head .pbl-absence');
+
+		expect(mark?.dataset.tooltip).toBe(ALICE_AWAY);
+	});
+
+	it('still states the range for a note whose name does not carry it', () => {
+		// The case the append was written for and the reason it is a condition rather than a
+		// deletion: a note named before the title was derived, or one a reader named by hand,
+		// says nothing about when. Asked of the PRODUCER — a title equal to what `absenceTitle`
+		// derives from the same three facts — never of the string's shape.
+		const vault = new FakeVault();
+		vault.addFile('Offsite.md', {
+			frontmatter: { type: 'Absence', assignee: 'Alice', start: '2026-08-04', due: '2026-08-06' },
+		});
+		const { containerEl } = laneRoadmap(vault);
+
+		const said = 'Offsite — 2026-08-04 → 2026-08-06';
+		expect(lanesOf(containerEl)[0].getAttribute('aria-description')).toBe(`Unavailable: ${said}`);
+		expect(containerEl.querySelector<HTMLElement>('.pbl-absence')?.dataset.tooltip).toBe(said);
+	});
+
+	it('lists the stretches in the order the marks are actually drawn', () => {
+		// The description walked `lane.absences` — model order — while the marks draw in
+		// PACKED order, so a reader hearing "the first one" and a reader seeing the top line
+		// were told about two different stretches.
+		const vault = absenceVault();
+		vault.addFile('Alice away 2026-08-05 → 2026-08-08.md', {
+			frontmatter: { type: 'Absence', assignee: 'Alice', start: '2026-08-05', due: '2026-08-08' },
+		});
+		const { containerEl } = laneRoadmap(vault);
+		const head = lanesOf(containerEl)[0];
+		const drawn = Array.from(head.querySelectorAll<HTMLElement>('.pbl-absence')).map((mark) => mark.dataset.tooltip);
+
+		expect(head.getAttribute('aria-description')).toBe(`Unavailable: ${drawn.join('; ')}`);
 	});
 
 	it('draws nothing at all with one date property configured', () => {
@@ -449,7 +496,7 @@ describe('editing a placed absence', () => {
 		expect(fm['assignee']).toBe('Bob');
 		expect(fm['start']).toBe('2026-08-05');
 		expect(fm['due']).toBe('2026-08-09');
-		expect(vault.files.has('Alice away.md')).toBe(false);
+		expect(vault.files.has(ALICE_AWAY_PATH)).toBe(false);
 	});
 
 	it('renames the note when the FACTS change, since the facts are what name it', async () => {
@@ -461,7 +508,7 @@ describe('editing a placed absence', () => {
 		await flush();
 
 		expect(vault.files.has('Alice away 2026-08-05 → 2026-08-09.md')).toBe(true);
-		expect(vault.files.has('Alice away.md')).toBe(false);
+		expect(vault.files.has(ALICE_AWAY_PATH)).toBe(false);
 		// Through Obsidian's own rename, so the frontmatter travels with the note.
 		expect(vault.fm('Alice away 2026-08-05 → 2026-08-09.md')['assignee']).toBe('Alice');
 	});
@@ -469,34 +516,35 @@ describe('editing a placed absence', () => {
 	it('names the note the rename actually produced, not the name that was asked for', async () => {
 		// `uniqueNotePath` appends a number where the name is taken, so the note the reader is
 		// told to look for has to be the one that exists. Rare now that both dates are in the
-		// name — which is why the collision is planted rather than waited for.
+		// name — which is why the collision is planted rather than waited for, at the name the
+		// EDIT will derive rather than at the one the fixture already occupies.
 		const vault = absenceVault();
-		vault.addFile('Alice away 2026-08-04 → 2026-08-06.md', { frontmatter: { type: 'Epic', order: 20 } });
+		vault.addFile('Alice away 2026-08-05 → 2026-08-09.md', { frontmatter: { type: 'Epic', order: 20 } });
 		const { containerEl } = laneRoadmap(vault);
 
 		openEdit(containerEl);
-		submitAbsence({ resource: 'Alice', start: '2026-08-04', target: '2026-08-06' });
+		submitAbsence({ resource: 'Alice', start: '2026-08-05', target: '2026-08-09' });
 		await flush();
 
-		expect(vault.files.has('Alice away 2026-08-04 → 2026-08-06 1.md')).toBe(true);
-		expect(Notice.messages).toContain('Updated "Alice away 2026-08-04 → 2026-08-06 1".');
+		expect(vault.files.has('Alice away 2026-08-05 → 2026-08-09 1.md')).toBe(true);
+		expect(Notice.messages).toContain('Updated "Alice away 2026-08-05 → 2026-08-09 1".');
 	});
 
 	it('leaves a note that already landed on a collided name where it is, edit after edit', async () => {
-		// The number is appended ONCE, by the collision. A second edit derives the same name
-		// again, so the note's own occupied path must not be read as taken — or every later
-		// edit ratchets the suffix (`… 1` → `… 2` → `… 3`), rewrites every link naming the
-		// note and reports a name the reader did not ask for.
-		const vault = absenceVault();
+		// The number is appended ONCE, by the collision. A later edit derives the same name
+		// again, so the note's own occupied path must not be read as taken — or every edit
+		// after the first ratchets the suffix (`… 1` → `… 2` → `… 3`), rewrites every link
+		// naming the note and reports a name the reader did not ask for. The note starts where
+		// the first collision already left it, which is the state the ratchet acts on.
+		const vault = new FakeVault();
 		vault.addFile('Alice away 2026-08-04 → 2026-08-06.md', { frontmatter: { type: 'Epic', order: 20 } });
-		const harness = laneRoadmap(vault);
+		vault.addFile('Alice away 2026-08-04 → 2026-08-06 1.md', {
+			frontmatter: { type: 'Absence', assignee: 'Alice', start: '2026-08-04', due: '2026-08-06' },
+		});
+		const { containerEl } = laneRoadmap(vault);
 
-		openEdit(harness.containerEl);
-		submitAbsence({ resource: 'Alice', start: '2026-08-04', target: '2026-08-06' });
-		await flush();
-		refresh(harness.view, vault);
-		// Nothing changed on the second pass — the same three facts, re-confirmed.
-		openEdit(harness.containerEl);
+		// Nothing changed — the same three facts, re-confirmed.
+		openEdit(containerEl);
 		submitAbsence({ resource: 'Alice', start: '2026-08-04', target: '2026-08-06' });
 		await flush();
 
@@ -525,20 +573,18 @@ describe('editing a placed absence', () => {
 
 	it('leaves the note where it is when the facts have not changed', async () => {
 		// A rename to the name a note already has is a needless write, and one Obsidian would
-		// answer by appending a number. The fixture is already at its derived name, which is
-		// what a note created by this flow looks like.
-		const vault = new FakeVault();
-		vault.addFile('Alice away 2026-08-04 → 2026-08-06.md', {
-			frontmatter: { type: 'Absence', assignee: 'Alice', start: '2026-08-04', due: '2026-08-06' },
-		});
+		// answer by appending a number. The fixture is already at its derived name — which is
+		// what a note created by this flow looks like, and is now the only shape it has.
+		const vault = absenceVault();
 		const { containerEl } = laneRoadmap(vault);
+		const before = vault.files.size;
 
 		openEdit(containerEl);
 		submitAbsence({ resource: 'Alice', start: '2026-08-04', target: '2026-08-06' });
 		await flush();
 
-		expect(vault.files.size).toBe(1);
-		expect(vault.files.has('Alice away 2026-08-04 → 2026-08-06.md')).toBe(true);
+		expect(vault.files.size).toBe(before);
+		expect(vault.files.has(ALICE_AWAY_PATH)).toBe(true);
 	});
 
 	it('refuses a broken range at the form, exactly as adding one does', async () => {
@@ -551,13 +597,13 @@ describe('editing a placed absence', () => {
 		expect(submitAbsence({ start: '2026-08-09', target: '2026-08-04' })).toBe(false);
 		await flush();
 
-		expect(vault.fm('Alice away.md')['start']).toBe('2026-08-04');
+		expect(vault.fm(ALICE_AWAY_PATH)['start']).toBe('2026-08-04');
 	});
 
 	it('reports a save it could not make, rather than failing silently', async () => {
 		const vault = absenceVault();
 		const { containerEl } = laneRoadmap(vault);
-		vault.failWrites.add('Alice away.md');
+		vault.failWrites.add(ALICE_AWAY_PATH);
 
 		openEdit(containerEl);
 		submitAbsence({ resource: 'Alice', start: '2026-08-05', target: '2026-08-09' });
@@ -569,7 +615,7 @@ describe('editing a placed absence', () => {
 	it('writes the frontmatter BEFORE the rename, so a refused write leaves the name alone', async () => {
 		const vault = absenceVault();
 		const { containerEl } = laneRoadmap(vault);
-		vault.failWrites.add('Alice away.md');
+		vault.failWrites.add(ALICE_AWAY_PATH);
 		vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
 		// Both halves follow from one edit now — new dates mean new frontmatter AND a new
@@ -581,8 +627,8 @@ describe('editing a placed absence', () => {
 		await flush();
 
 		expect(vault.files.has('Bob away 2026-08-05 → 2026-08-09.md')).toBe(false);
-		expect(vault.files.has('Alice away.md')).toBe(true);
-		expect(vault.fm('Alice away.md')['start']).toBe('2026-08-04');
+		expect(vault.files.has(ALICE_AWAY_PATH)).toBe(true);
+		expect(vault.fm(ALICE_AWAY_PATH)['start']).toBe('2026-08-04');
 	});
 
 	it('re-asks the gate at submit, exactly as the add flow does', async () => {
@@ -598,7 +644,7 @@ describe('editing a placed absence', () => {
 		submitAbsence({ resource: 'Alice', start: '2026-08-05', target: '2026-08-09' });
 		await flush();
 
-		expect(vault.fm('Alice away.md')['start']).toBe('2026-08-04');
+		expect(vault.fm(ALICE_AWAY_PATH)['start']).toBe('2026-08-04');
 		expect(Notice.messages.some((m) => m.startsWith('Name the assignee and both date properties'))).toBe(true);
 	});
 
@@ -641,7 +687,7 @@ describe('deleting an absence', () => {
 		Menu.lastShown?.item('Delete absence')?.click();
 		await flush();
 
-		expect(vault.trashed).toEqual(['Alice away.md']);
+		expect(vault.trashed).toEqual([ALICE_AWAY_PATH]);
 		// No batch was captured, so there is nothing for undo to take back — the note was
 		// never one of this backlog's write targets.
 		expect(vault.writeLog).toEqual([]);
