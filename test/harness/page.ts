@@ -1,6 +1,6 @@
 /** The bundle's entry point. Everything real is in `mount.ts`, which a test can drive. */
 import { mountHarness } from './mount';
-import { perfWanted, reportPerf, wantedNotes } from './perf';
+import { PROJECTIONS, perfWanted, reportPerf, wantedNotes } from './perf';
 import { drawSchemeToggle } from './theme';
 import { Projection } from '../../src/view/host';
 import { RoadmapAxis } from '../../src/domain/roadmap';
@@ -29,7 +29,6 @@ drawSchemeToggle();
  * dependency this harness is built to avoid.
  */
 const wanted = new URLSearchParams(window.location.search).get('view');
-const PROJECTIONS: Projection[] = ['tree', 'board', 'roadmap', 'deliverables', 'catalog'];
 if (PROJECTIONS.includes(wanted as Projection)) {
 	view.setProjection(wanted as Projection);
 }

@@ -19,7 +19,14 @@ import { drawnHeight, type Mount } from './mount';
 /** Samples per row. Enough that one GC pause moves the worst column and not the median. */
 const SAMPLES = 5;
 
-const PROJECTIONS: Projection[] = ['tree', 'board', 'roadmap', 'deliverables'];
+/**
+ * Every projection, once — the run times a switch to each in turn, and `?view=` picks
+ * one to open on. Exported because `page.ts` had its own copy: the two came apart, this
+ * one missing `catalog`, so the table said "every projection" over four of five while
+ * the URL knob offered the fifth. One list, or the claim goes stale on the next
+ * projection too.
+ */
+export const PROJECTIONS: Projection[] = ['tree', 'board', 'roadmap', 'deliverables', 'catalog'];
 
 interface Row {
 	op: string;

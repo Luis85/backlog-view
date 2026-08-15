@@ -124,7 +124,8 @@ Obsidian's.
   display — which is most of them. It measures nothing itself: the page publishes its rows
   as JSON (`PERF_DATA_ID`) and `scripts/perf.mjs` drives Chromium with `--dump-dom`, parses
   that one element, and does the arithmetic across runs. `--notes`, `--runs`, `--fixture`,
-  `--axis`, `--window`, `--no-build`, and `--against <a second built harness>`, which ALTERNATES the two
+  `--axis`, `--window`, `--build`/`--no-build` (either spelling, each taking `true` or
+  `false`), and `--against <a second built harness>`, which ALTERNATES the two
   within one loop and prints both spreads beside the delta — the method
   [[The render is the whole cost of a data update]] insists on, since this environment's
   drift is larger than many differences worth reading. Two medians whose spreads overlap
@@ -135,7 +136,9 @@ Obsidian's.
   `--view` is deliberately NOT among them, which is why this list naming it was a defect
   rather than a typo: `?view=` is a PAGE knob, for looking and for screenshots, and it
   selected nothing the table measures, since the run switches to the tree and then times a
-  switch to every projection in turn.
+  switch to every projection in turn — every one, from the list `page.ts` reads for
+  `?view=` rather than a second copy, which is how that claim stood over four of five
+  while the knob offered the fifth.
   For a question the panel does not answer — does a scroll position survive a rebuild,
   does a handler force layout — `window.__pbl` is `{ view, containerEl }`, so the probe is
   a paste into a console instead of an edit to `page.ts` and a rebuild. `?axis=dates`

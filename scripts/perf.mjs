@@ -69,8 +69,8 @@ for (let i = 0; i < argv.length; i++) {
  * about — it goes stale if a flag is added without touching it. That is accepted here
  * because the alternative is worse: `args` is a plain object, so "which keys are read"
  * cannot be asked of it, and a Proxy recording reads would refuse a typo only after the
- * work it should have prevented. The five lines below are the flags, in the order they
- * are read.
+ * work it should have prevented. The set below is the whole list; it is not in read
+ * order, and nothing depends on an order — it is a membership test.
  */
 const KNOWN = new Set(['notes', 'runs', 'against', 'window', 'fixture', 'axis', 'build', 'no-build']);
 const unknown = Object.keys(args).filter((key) => !KNOWN.has(key));

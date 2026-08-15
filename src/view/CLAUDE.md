@@ -26,8 +26,8 @@ free of runtime code so imports stay cycle-free.
   unconditionally rather than when needed. The rule is stated at the declaration in
   `styles/tree.css` because that is where someone about to break it will be standing.
   **A card carries it too**, and the same sentence decides WHERE: the board's columns, the
-  horizon buckets and the shelf take it (368ms to 138ms for a board switch at ~800 cards,
-  418ms to 154ms for the roadmap's), and the timeline's lead rows do not, because
+  horizon buckets and the shelf take it (330ms to 126ms for a board switch at ~800 notes,
+  557ms to 203ms for the roadmap's), and the timeline's lead rows do not, because
   `render/timelineArrows.ts` measures them to draw an arrow. So the declaration in
   `styles/cards.css` names the three CONTAINERS rather than `.pbl-card` — see
   [[Every card renders, on screen or not]]. `refreshRowChildren` must prune the subtree it removes
