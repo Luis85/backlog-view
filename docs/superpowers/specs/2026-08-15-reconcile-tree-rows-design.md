@@ -57,6 +57,23 @@ Addressed by name rather than by line, so the list survives the next insertion a
 | `renderHorizonChip` | `src/view/render/columns.ts` | the horizon chip |
 | `renderLabelChip` | `src/view/render/columns.ts` | the risk and assignee chips |
 | `renderRowTrailing` | `src/view/render/rows.ts` | the `New <child>` button |
+| `renderRowLead` | `src/view/render/rows.ts` | the disclosure's **redraw** callback |
+
+The last one is the worst of them and the easiest to miss, so it is worth being exact
+about which half is the hazard. `renderRowLead` builds two callbacks on adjacent lines:
+
+- `fold` closes over `item.file.path` — a **string**, and the row's identity. Safe.
+- the redraw, `() => host.refreshSubtree(item)`, closes over the item **object**, and
+  `refreshSubtree` renders that item's `children`. On a kept row this is the previous
+  model's child list, so a collapse and expand after an update would restore a subtree
+  that no longer exists. The signature cannot save it either: a change to a child that
+  moves neither the parent's rollup nor any other term leaves the parent's signature
+  identical, which is correct for what the parent DRAWS and wrong for what its stale
+  closure would draw next.
+
+So the redraw resolves its item from the current model per click, like the rest.
+`renderChevron` is shared with the timeline's rows, which re-render whole and pass their
+own redraw — the callback is the caller's, and only the tree's caller changes.
 
 Harmless while every update rebuilds every row, and the exact reason a kept row is unsafe:
 a reused element would hold a chip pointing at the previous update's item, whose `parent`
@@ -66,7 +83,7 @@ So the controls resolve their item **per event**, by `data-path` against the cur
 the way the row's own activation already does — `rowItem(host, evt)` in `render/rows.ts` is
 the helper that exists for it and gains an export. This is worth having on its own: it makes
 the guide's sentence true as written, and it takes a closure and an `addEventListener` call
-per control out of the render before the class changes at all — up to six per row where
+per control out of the render before the class changes at all — up to seven per row where
 every chip column is configured, plus one more for every tag a row carries.
 
 The cards share `renderPropCells`, so their chips are delegated by the same change. Card
@@ -76,16 +93,35 @@ renders.
 
 ## Step 2 — the reconcile
 
-`renderTree` stops clearing `rowEls`. The forest walk becomes, per item, in sibling order:
+**The tree holds three things that are not rows**, and each one has to be answered before
+a row can be kept. Naming them is most of this step:
+
+- **`this.treeEl.empty()` in `src/view/backlogView.ts`**, which runs before the content
+  render. Nothing can be reused while it does, so the reconcile path does not call it. It
+  stays on every other path — a projection switch, an empty state, a non-frontmatter
+  column — and those paths are exactly the ones that also clear `rowEls`.
+- **The column header.** `renderColumnHeader` appends a fresh `.pbl-cols` on every pass.
+  With the clear gone it would append a second one per update, and a cleanup that removes
+  only what the row index knows about cannot see it. So the header is **claimed**: the
+  reconcile finds the existing `.pbl-cols`, updates it in place, and builds one only when
+  there is none.
+- **The child groups.** `.pbl-children` is the row's **next sibling**, not its descendant
+  — `childGroupEl` builds it in the *container*, which is why `refreshRowChildren` reaches
+  it through `row.nextElementSibling`. A row and its group are therefore one structural
+  unit: they move together, they are replaced together, and they are detached together.
+  A kept row moved on its own would leave its group at the old position and break the
+  adjacency `refreshRowChildren` depends on.
+
+The forest walk then becomes, per item, in sibling order:
 
 1. Compute the signature.
 2. If `rowEls` holds the path and the stored signature matches, keep the element — moving
-   it with `insertBefore` when its position in the container changed.
-3. Otherwise build the row as today, replacing the indexed element when there was one.
-4. Recurse into the row's `.pbl-children` group by the same rule, reusing the group element
-   when the row was kept.
-5. After the walk, detach every element still in the index that this pass did not claim,
-   and drop it from the index.
+   the row **and the `.pbl-children` group following it** when its position changed.
+3. Otherwise build the row as today, replacing the indexed element and its group together
+   when there was one.
+4. Recurse into that group by the same rule, whether it was kept or built.
+5. After the walk, detach every element still in the index that this pass did not claim —
+   each with its group — and drop it from the index.
 
 `refreshRowChildren` is unchanged in behaviour and keeps working: it re-renders one child
 group and prunes the subtree it removes.
@@ -135,10 +171,13 @@ keys are all skipped as columns before the list is built.
    one to survive — so reuse clears the transient classes explicitly.
 2. **`rowEls` accuracy.** `forgetSubtree` and `refreshRowChildren` were written against a
    full render that clears the index. Reconcile removes that boundary, so the index is
-   maintained by the walk and pruned at the end of it.
+   maintained by the walk and pruned at the end of it. A child group has **no index entry
+   at all** and never gets one: it is reached by adjacency from its row, which is what
+   makes "the row and its group move together" a rule rather than a convenience.
 3. **The early returns.** `renderTree` bails to an empty state — no results, everything
-   filtered, everything done — before it renders a row. Those paths clear the index
-   outright, or a later reconcile finds elements that are no longer in the document.
+   filtered, everything done — before it renders a row. Those paths empty the tree and
+   clear the index outright, or a later reconcile finds elements that are no longer in the
+   document.
 4. **The frontmatter term's cost.** Stringifying frontmatter for 832 rows must not
    approach what it saves. If it does, the upgrade is a reference comparison against
    Obsidian's cached metadata object — cheaper, and correct only while a changed file
@@ -170,6 +209,14 @@ Two honesty notes travel with the numbers into the register:
 - **A chip acts on the current item.** A chip clicked after a data update writes to the
   item the model holds now, not the one captured at the previous render. Fails without
   step 1; watched failing.
+- **A disclosure acts on the current children.** A child is added, the parent's own
+  signature is unchanged, and collapsing then expanding the parent shows the child. This
+  is the one the signature cannot catch by construction, so it is asserted directly.
+- **One header per pass.** Repeated data updates leave exactly one `.pbl-cols` in the
+  tree.
+- **A kept row's group travels with it.** Two expanded siblings are reordered by a write;
+  each subtree ends up under its own parent, and `refreshRowChildren` still finds its
+  group by adjacency afterwards.
 - **`rowSignature` in both directions.** Every field a row draws changes the signature, and
   two items that would draw the same row agree on it.
 - **The category invariant, at the forbidden thing.** A `no-restricted-syntax` rule bans
