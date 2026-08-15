@@ -80,10 +80,10 @@ Everything here implements:
 | `src/view/render/emptyStates.ts` | two states |
 | `src/view/render/projections.ts` | the fork |
 | `src/view/backlogView.ts` | `pbl-board-mode`, asked rather than enumerated |
-| `src/domain/writePlan.ts` | `computeIterationStateWrites` and its `ItemWrite` fields |
-| `src/storage/frontmatter.ts` | the iteration state write, beside the Deliverable and Test ones |
-| `src/storage/writeKeys.ts` | a second `carried` row, for the resolved state key |
-| `src/view/cardMoves.ts` | `performIterationBoardMove` |
+| `src/domain/writePlan.ts` | `computeIterationStateWrites` and its `ItemWrite` fields (Task 10) |
+| `src/storage/frontmatter.ts` | the iteration state write (Task 10) |
+| `src/storage/writeKeys.ts` | a second `carried` row, for the resolved state key (Task 10) |
+| `src/view/cardMoves.ts` | `performIterationBoardMove` (Task 10) |
 | `src/view/interactions/create.ts` | carries the scope into the creation write |
 
 ---
@@ -491,7 +491,10 @@ stays null and is never repaired by a write nobody asked for."
 
 **Interfaces:**
 - Consumes: `iterationPath` from Task 3.
-- Produces: `computeIterationWrites(item: BacklogItem, target: TFile | null): ItemWrite[]` — `null` clears. `ItemWrite` gains an `iteration?: string | null` field, where `null` means delete the key.
+- Produces: `computeIterationWrites(item: BacklogItem, target: TFile | null): ItemWrite[]` —
+  `null` clears. `ItemWrite` gains an **`iteration?: TFile | null`** field: the FILE, never
+  a serialized string, so the writer can spell a path-aware link. `null` means delete the
+  key, `undefined` leaves it alone.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -630,6 +633,13 @@ it('never writes the iteration key when it is unconfigured', async () => {
 it('deletes the key on null rather than writing an empty string', async () => {
 	const fm = await applyOne({ iteration: null }, { ...settings, iterationKey: 'iteration' }, { iteration: '[[S11]]' });
 	expect('iteration' in fm).toBe(false);
+});
+
+it('spells the link from the editing note, not from the target basename', async () => {
+	// Two Sprint 12 notes in different folders. The write carries the FILE, so the
+	// writer can disambiguate; a serialized string could not.
+	const fm = await applyOne({ iteration: sprint12InQ3 }, { ...settings, iterationKey: 'iteration' });
+	expect(fm.iteration).toBe('[[q3/Sprint 12]]');
 });
 ```
 
@@ -1258,7 +1268,7 @@ file:
 | `projectionMember` | `!inCatalog` | a board in the plan projection |
 | `filterScopeFor` | `'whole'` | the population ignores the focus, so the match index must too |
 | `byProjectionType` | every type **except `Iteration`**, `Deliverable` included | offer exactly what this board can show — no more, no less |
-| `projectionPopulation` | the scope's carriers | one population, so counts and cards cannot disagree |
+| `projectionPopulation` | the ordinary plan population | **it cannot answer for a scope** — see below |
 
 **`toolbarPosition` is the price of splitting internal identity from control identity**,
 and it has to be paid in the same task that splits them. Two places in the toolbar compare
@@ -1293,6 +1303,17 @@ it('presses the Board position while an iteration is chosen', () => {
 Drive the first through the *interaction*, not the state: pick an iteration from the
 picker, let the rebuild happen, then look for the picker in the rebuilt toolbar. A test
 that renders the end state directly passes while the round trip is broken.
+
+**`projectionPopulation` is deliberately NOT where the scoped population lives.** It takes
+`(projection, model)` and nothing else, and every existing caller passes exactly that — so
+it can answer "the plan's population" but never "*this* iteration's carriers", which needs
+the chosen path. Widening its contract would touch every caller to thread a value all but
+one of them ignore.
+
+The scoped population belongs where the scope is already in hand: `countedPopulation`
+takes the `host`, and `renderIterationBoard` filters `model.iterationResults` by the chosen
+path directly. Both read the same field off the same host, so they cannot disagree — which
+is the guarantee that mattered, and it is met without a contract change.
 
 `byProjectionType` is the one to read twice, and **"every type" is the wrong answer** —
 it was the answer an earlier revision of this plan gave, and it is wrong in the opposite
@@ -1486,13 +1507,50 @@ means every entry would draw an empty board."
 
 ---
 
-### Task 10: Render the scoped board
+### Task 10: The move plumbing, then the scoped board
+
+**Every task in this plan ends green**, and this one nearly did not: its
+`renderIterationBoard` wires `move: (item, state) => host.performIterationBoardMove(...)`,
+and an earlier revision did not add that method until Task 11 — so Task 10's own
+`npm run check` could not compile, let alone pass. The move *plumbing* therefore lands
+here, ahead of the render that references it; Task 11 keeps the three input paths and
+creation, which need a board on screen to be driven against.
+
+That ordering is not an accident of this plan. The render needs a method to *name*, and
+the inputs need a render to be *tested through* — so the only order in which each task
+stands alone is plumbing, render, inputs.
 
 **Files:**
 - Modify: `src/view/render/board.ts` (`renderIterationBoard`), `src/view/render/emptyStates.ts`, `src/view/render/projections.ts`, `src/view/projection.ts`
 - Test: `test/view/iterationBoard.test.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [ ] **Step 1: Land the planner, the writer, its capture and the host method**
+
+Lift Task 11's own step of the same name and do it here — the whole of it, in this order,
+because the render below cannot compile without the last one:
+
+1. `src/domain/writePlan.ts` — `computeIterationStateWrites`, beside the Deliverable and
+   Test planners, with `iterationState?: string` and `removeIterationStateKey?: boolean`
+   on `ItemWrite`.
+2. `src/storage/frontmatter.ts` — the write, beside the Deliverable and Test state writes,
+   through `resolvedIterationStateKey`.
+3. `src/storage/writeKeys.ts` — the `carried` row, using the **resolved** key:
+
+```ts
+		[write.removeIterationStateKey || write.iterationState !== undefined, resolvedIterationStateKey(settings)],
+```
+
+4. `src/view/cardMoves.ts` — `performIterationBoardMove`, beside `performBoardMove` and
+   `performDeliverablesBoardMove`, over the shared `applyCardMove`; declared on
+   `BacklogViewHost` in `src/view/host.ts` and forwarded in one line. `applyCardMove`'s
+   capture rule holds: the vocabulary that names the move is read **before** the await,
+   because the batch's own refresh rebuilds the board before it resolves and the column
+   just vacated may be gone with its last card.
+
+Nothing calls it yet. That is fine and is the point — a method with no caller compiles,
+and Step 2's render is its first one.
+
+- [ ] **Step 2: Write the failing tests**
 
 ```ts
 it('cards exactly the population, and the column counts sum to it', () => {
@@ -1513,12 +1571,12 @@ it('shows the unconfigured guidance with no workflow, and the scope is still ent
 
 The second is [[A board scoped to Deliverables]] extension 1b met a second time: the product board's advisory cannot tell an empty base from an empty scope.
 
-- [ ] **Step 2: Run them and watch them fail**
+- [ ] **Step 3: Run them and watch them fail**
 
 Run: `npx vitest run test/view/iterationBoard.test.ts -t 'iteration board'`
 Expected: FAIL.
 
-- [ ] **Step 3: Render it**
+- [ ] **Step 4: Render it**
 
 In `src/view/render/board.ts`, beside `renderDeliverablesBoard`:
 
@@ -1550,7 +1608,7 @@ export function renderIterationBoard(
 }
 ```
 
-- [ ] **Step 4: The gates the projection value does NOT answer**
+- [ ] **Step 5: The gates the projection value does NOT answer**
 
 Task 8 answered the seven questions in `projection.ts`, so `filterScopeFor`,
 `byProjectionType`, `hidesCompleted`, `projectionMember` and `projectionPopulation` are
@@ -1580,13 +1638,13 @@ because of anything in this task. It is written here anyway: it is the guarantee
 of this board cares about, and a test that passes for a reason stated elsewhere still
 fails if that reason is removed.
 
-- [ ] **Step 5: Set the two narrowing controls off**
+- [ ] **Step 6: Set the two narrowing controls off**
 
 In `src/view/projection.ts`, this scope's `VisibilityRule` takes `hideCompleted: false` — one field, in the one predicate, never a per-caller choice. That predicate's own comment records why: it was a per-caller choice for three surfaces until the fourth forgot.
 
 `inProjection` is `projectionMember('board')`, which already returns `!inCatalog`.
 
-- [ ] **Step 6: Turn on the board LAYOUT**
+- [ ] **Step 7: Turn on the board LAYOUT**
 
 `renderTreeContent` (`src/view/backlogView.ts`) sets `pbl-board-mode` from
 `projection === 'board' || projection === 'deliverables'`. That class is what gives the
@@ -1616,11 +1674,11 @@ it('draws an iteration board with the board layout, so wide column sets scroll',
 });
 ```
 
-- [ ] **Step 7: Suppress the two toolbar controls**
+- [ ] **Step 8: Suppress the two toolbar controls**
 
 The focus picker renders a fixed, disabled button with no menu, no "Focused: <level>" label and no clear button — `renderFocusPicker`'s existing unconditional branch for the Deliverables board is the model. "Show completed items" is absent rather than present and inert.
 
-- [ ] **Step 8: Fork on it, and gate the columns on a resolved workflow**
+- [ ] **Step 9: Fork on it, and gate the columns on a resolved workflow**
 
 In `src/view/render/projections.ts`'s dispatch chain, `'iteration'` renders
 `renderIterationBoard` — **but only past a `resolvedIterationStateKey` check**, exactly as
@@ -1634,12 +1692,12 @@ upstream of every consumer. By the time this dispatch runs, `host.projection` is
 `'board'` for a stale scope, so this chain needs no fallback of its own and must not grow
 one: a second resolution is a second opinion.
 
-- [ ] **Step 9: Run the tests**
+- [ ] **Step 10: Run the tests**
 
 Run: `npx vitest run test/view/iterationBoard.test.ts test/view/board.test.ts`
 Expected: PASS.
 
-- [ ] **Step 10: Commit**
+- [ ] **Step 11: Commit**
 
 ```bash
 npm run check
@@ -1658,22 +1716,17 @@ Deliverables board had to draw first."
 
 ---
 
-### Task 11: Moves, and creation in place
+### Task 11: The three inputs, and creation in place
 
 **Files:**
-- Modify: `src/domain/writePlan.ts` (the planner and its `ItemWrite` fields)
-- Modify: `src/storage/frontmatter.ts` (the state write), `src/storage/writeKeys.ts` (its capture)
-- Modify: `src/view/cardMoves.ts` (`performIterationBoardMove`), `src/view/host.ts`
 - Modify: `src/view/interactions/cardDrag.ts`, `keyboard.ts`, `menu.ts`
 - Modify: `src/view/interactions/create.ts` and `createBacklogItem` in `src/storage/frontmatter.ts`
 - Test: `test/view/contextCardWrites.test.ts`, `test/view/iterationBoard.test.ts`
 
-**The bottom three files come first**, and skipping them is why this task looked smaller
-than it is. `applyCardMove` only *executes* an `ItemWrite` somebody already planned, and
-the repository has planners and writer fields for the product, Deliverable and Test states
-only. With `iterationStateKey` distinct from all three there is nothing that can write
-`sprintState` alone — reusing either existing planner writes the **wrong workflow's key**,
-which is the one failure this whole feature is supposed to make impossible.
+**The planner, the writer, its capture and `performIterationBoardMove` all landed in Task
+10**, because the render there names the host method and could not compile without it.
+What is left here is the part that needs a board on screen to be driven against: the three
+input paths, and creation.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1705,37 +1758,7 @@ for (const input of ['drag', 'keyboard', 'menu'] as const) {
 Run: `npx vitest run test/view/iterationBoard.test.ts -t move`
 Expected: FAIL.
 
-- [ ] **Step 3: Plan, write and capture the iteration state**
-
-Three edits, each the third instance of a pair that already exists:
-
-- `src/domain/writePlan.ts` — `computeIterationStateWrites`, beside the Deliverable and
-  Test planners, with `iterationState?: string` and `removeIterationStateKey?: boolean`
-  on `ItemWrite` (the same pair every workflow state carries, because "no state" is a key
-  removal rather than an empty string).
-- `src/storage/frontmatter.ts` — the write, beside the Deliverable and Test state writes
-  that were pulled out of `applyInto` together to stay under the complexity cap. Through
-  `resolvedIterationStateKey`, so a falling-back workflow writes the product key.
-- `src/storage/writeKeys.ts` — a second `carried` row, and it must use the **resolved**
-  key for the reason that list's own comment gives: *"Same RESOLVED keys `applyInto` just
-  wrote: capture and apply must read the same fallback, or a key written under it would
-  have no inverse to undo it with."*
-
-```ts
-		[write.removeIterationStateKey || write.iterationState !== undefined, resolvedIterationStateKey(settings)],
-```
-
-This is a different row from Task 4's. That one captures the iteration **link**
-(`settings.iterationKey`, unresolved — it has no fallback); this one captures the
-iteration **state** (`resolvedIterationStateKey`). Two properties, two rows.
-
-- [ ] **Step 4: Add the one host method**
-
-In `src/view/cardMoves.ts`, beside `performBoardMove` and `performDeliverablesBoardMove`, over the shared `applyCardMove`. **The capture rule holds:** read the vocabulary that will NAME the move *before* the await, because the batch's own refresh rebuilds the board before it resolves and the column just vacated may be gone with its last card.
-
-This is the only place an iteration-board move's batch is planned and the only place it is announced. The three inputs call it; none of them plans a write beside it.
-
-- [ ] **Step 5: Route the three inputs — and for the menu, routing is not enough**
+- [ ] **Step 3: Route the three inputs — and for the menu, routing is not enough**
 
 `cardDrag.ts` and `keyboard.ts` (Alt+Left/Right) each gain a branch selecting this method
 in the `'iteration'` projection, beside the Deliverables board's own branches.
@@ -1769,12 +1792,12 @@ it('checks the entry matching the card\'s own column, not its product state', ()
 The second is the one to watch fail: with the product planner it ticks `Blocked`, a value
 this board has no column for.
 
-- [ ] **Step 6: Run the tests**
+- [ ] **Step 4: Run the tests**
 
 Run: `npx vitest run test/view/contextCardWrites.test.ts test/view/iterationBoard.test.ts`
 Expected: PASS. `contextCardWrites.test.ts` asks the three questions of each card projection — the drag, the keyboard and menu paths a drag cannot take, and the structural refusal behind both — so a new card projection is covered there by construction.
 
-- [ ] **Step 7: Seed a new card with the scope's iteration**
+- [ ] **Step 5: Seed a new card with the scope's iteration**
 
 Narrowing the offered types (Task 8) is only half of "a board offers what it can show".
 The other half is that what it creates **stays**: `promptCreateItem` passes the type, the
@@ -1808,7 +1831,7 @@ it('creates without one on the product board', async () => {
 });
 ```
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 npm run check
