@@ -543,21 +543,39 @@ Then add `ROW_LISTENER` to the `syntaxRules([...])` list for the config block co
 
 The second one is safe today only by luck — a path does not go stale — so **make it safe by construction first**: `renderRowLead` already computes `const path = item.file.path` for the fold callback in Step 3, so use that same local in the hover handler and let the closure hold a string instead of the item. One line, and it removes a trap for whoever next adds `item.title` to that handler.
 
-Then put an `// eslint-disable-next-line no-restricted-syntax` above each of the four, with a one-line reason that says which kind it is:
+**Count the CALLS, not the functions.** `eslint-disable-next-line` suppresses one call, and `wireRowEvents` alone has three — `click`, `auxclick` and `contextmenu`. Six calls survive in `rows.ts`:
 
-| Site | Why it is exempt |
+| Call | Why it is exempt |
 | --- | --- |
-| `wireRowEvents` | the delegation itself |
-| `wireChipEvents` | the delegation itself |
-| `renderChevron` | closes over callbacks, never an item |
-| `renderRowLead`'s hover | closes over a path string, never an item |
+| `wireRowEvents` — `click` | the delegation itself |
+| `wireRowEvents` — `auxclick` | the delegation itself |
+| `wireRowEvents` — `contextmenu` | the delegation itself |
+| `wireChipEvents` — `click` | the delegation itself |
+| `renderChevron` — `click` | closes over callbacks, never an item |
+| `renderRowLead` — `mouseover` | closes over a path string, never an item |
 
-Four exemptions naming themselves are the point. The rule cannot see "closes over a `BacklogItem`" — no AST selector can — so it bans the spelling it *can* see and each exemption states why it is not the thing the rule is for. A rule with no exemptions here would be a rule that bans its own fix, and one applied without them fails `npm run lint`, which no later task can clear.
+So do not write six next-line directives. Put the two delegation functions **adjacent** in the file and wrap them in one block disable, which says the thing once:
+
+```ts
+/* eslint-disable no-restricted-syntax -- these two ARE the delegation: they take the
+   listeners off the rows so a render may keep one. The rule below them is what stops a
+   per-row control growing its own. */
+export function wireRowEvents(host: BacklogViewHost, treeEl: HTMLElement): void { … }
+
+export function wireChipEvents(host: BacklogViewHost, treeEl: HTMLElement): void { … }
+/* eslint-enable no-restricted-syntax */
+```
+
+Then one `// eslint-disable-next-line no-restricted-syntax` on each of the other two, with its reason from the table.
+
+Exemptions naming themselves are the point. The rule cannot see "closes over a `BacklogItem`" — no AST selector can — so it bans the spelling it *can* see and each exemption states why it is not the thing the rule is for. A rule with no exemptions here would be a rule that bans its own fix, and one applied without them fails `npm run lint`, which no later task can clear.
 
 - [ ] **Step 5b: Prove the gate still passes**
 
 Run: `npm run lint`
-Expected: PASS. If it reports the title hover or the chevron click, you have not exempted all four — the rule is on the spelling, and those two are legitimate uses of it.
+Expected: PASS, with **zero** `no-restricted-syntax` reports in `rows.ts`.
+
+Count what it reports rather than skimming for red. The exemptions are per CALL, and `wireRowEvents` has three of them, so a plausible-looking set of directives can still leave two violations standing — which blocks this task and every task after it. If it reports anything, map each report to the table above before adding a directive: a call not in that table is a real violation and wants the delegation, not an exemption.
 
 - [ ] **Step 6: Watch the rule reject the thing it forbids**
 
