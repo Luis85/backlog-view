@@ -198,6 +198,32 @@ describe('the milestones row', () => {
 		expect(vault.opened.map((one) => one.path)).toEqual(['Ship.md']);
 	});
 
+	it('stays open when a real resource of the same name is folded', () => {
+		// A band's fold is keyed by NAME and case-insensitively (`laneKey`), and extension 1a
+		// accepts that a roster entry genuinely called `Milestones` draws a second row. So
+		// folding the PERSON answered for the synthetic row as well: it took
+		// `pbl-lane-collapsed` and drew folded-work rails under diamonds that never left the
+		// screen — and with no disclosure of its own, nothing here could undo it.
+		const vault = countingVault([]);
+		vault.addFile('Ship.md', { frontmatter: { type: 'Milestone', order: 20, due: '2026-08-07' } });
+		vault.addFile('Theirs.md', {
+			frontmatter: { type: 'Epic', order: 30, assignee: 'Milestones', start: '2026-08-02', due: '2026-08-09' },
+		});
+		const harness = laneRoadmap(vault, { resourceNames: 'Milestones, Alice' });
+		// The premise, stated rather than assumed: two rows carry that caption, and the
+		// chevron belongs to the second one — the roster's, which has work to fold.
+		expect(laneNames(harness.containerEl).slice(0, 2)).toEqual(['Milestones', 'Milestones']);
+		lanesOf(harness.containerEl)[1].querySelector('.pbl-chevron')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		const [markers, roster] = lanesOf(harness.containerEl);
+		expect(markers.classList.contains('pbl-lane-collapsed')).toBe(false);
+		expect(markers.querySelectorAll('.pbl-lane-rail')).toHaveLength(0);
+		expect(markers.querySelectorAll('.pbl-bar-milestone')).toHaveLength(1);
+		// The control beside it: the row the reader actually folded really did fold.
+		expect(roster.classList.contains('pbl-lane-collapsed')).toBe(true);
+		expect(roster.querySelectorAll('.pbl-lane-rail')).toHaveLength(1);
+	});
+
 	it('marks a milestone the held drag may not land on, and clears it when the drag ends', () => {
 		// Work already waits for Ship, so dropping Work onto Ship would close a loop. The
 		// sweep marks ROWS, and a marker on this axis has none — the mark is the only

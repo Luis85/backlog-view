@@ -186,7 +186,13 @@ export function drawnCards(entries: TimelineEntry[]): BacklogItem[] {
 export function laneEntries(lanes: ResourceLane[], folded: LaneFolds): TimelineEntry[] {
 	const entries: TimelineEntry[] = [];
 	for (const lane of lanes) {
-		const collapsed = folded.lane(lane.name);
+		// The markers row is never folded, and asking that HERE is what makes it true of
+		// everything downstream — the head's class, its rails, and the entries below. Its
+		// caption is a name a roster may legitimately hold (extension 1a of
+		// [[Milestones out of the resource rows]] accepts the two rows), and a band's fold is
+		// keyed by name, so `folded.lane` answers for a resource called `Milestones` and the
+		// diamonds' row alike. It has no disclosure to undo that with.
+		const collapsed = !lane.markers && folded.lane(lane.name);
 		entries.push({ kind: 'lane', lane, collapsed });
 		// **The milestones' row is the header and nothing else.** Every marker draws as a
 		// diamond in that one header's own track (`drawMarkerDiamonds` in `./timeline.ts`),

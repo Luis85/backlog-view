@@ -81,6 +81,14 @@ can fold them away.
   is otherwise free to choose, and the milestones' row is not in the roster's own name
   index, so no work is ever misfiled into it. It carries no fold bit of its own either
   (step 4), so the two cannot share one.
+- **1b — that resource's band is folded.** The milestones' row stays open. A band's fold is
+  keyed by the NAME and case-insensitively (`laneKey`), so the roster row's bit answered for
+  this row as well: it took the collapsed class and drew the folded-work rails under
+  diamonds that never left the screen, and with no disclosure of its own nothing could undo
+  it. Found in review (2026-08-15). The refusal is asked once, where the entries are built,
+  rather than at each surface that reads the bit — the head's class, its rails and the rows
+  below it are three readers of one answer, and this row is the only lane that can never be
+  folded whatever the store holds.
 - **2a — a diamond is dragged along the grid.** It slides, writing the **target alone**,
   exactly as it does on the plain dated axis — the body hold is the diamond itself, and a
   point has no end to resize. Nothing about the row it is released in is written.
