@@ -1042,10 +1042,47 @@ function renderForest(ctx: RowContext, containerEl: HTMLElement, siblings: Backl
 `renderItem` gains the cursor parameter and a claim branch. The rules it has to keep, each one a review finding from the spec:
 
 - The row and its `.pbl-children` group are **one structural unit**. The group is the row's **next sibling**, not its descendant — `childGroupEl` builds it in the container and `refreshRowChildren` reaches it by `row.nextElementSibling`. Moving, replacing and detaching all take both.
-- A **replaced** row keeps its existing group element and recurses into it. Only a genuinely new row creates a fresh group. Otherwise one reordered parent rebuilds its whole subtree, which is the cost this task exists to remove.
-- A **claimed** row has its transient classes cleared. Drag state (`.pbl-drop-*`) is not in the signature, so a reused element keeps whatever it was wearing.
+- **Whether a group should exist is asked of the item, never of what happened to the row.** The condition is the one `renderItem` already computes — any visible child, and not collapsed — and it is answered the same way whether the row was kept, replaced or built:
+  - it should exist and one is there → reuse that element and recurse into it;
+  - it should exist and none is there → create it;
+  - it should not exist and one is there → `forgetElement` it and detach.
+
+  Writing this as "a replaced row keeps its group, a new row creates one" is wrong in both directions, and `Collapse all` is the case that shows it: it flips `collapsed`, so the signature changes and the row is replaced, and a keep-the-group rule would leave the collapsed descendants on screen. Expanding a row that was already indexed is the mirror — the row is not new, and it needs a group it does not have.
+
+  Reusing the group where it survives is still what keeps a reordered parent from rebuilding its whole subtree, which is the cost this task exists to remove. It is just not the rule; it is one branch of it.
 - `forgetElement` drops the detached element's path **and every path in its group** from `ctx.rows` and `ctx.sigs` — the job `forgetSubtree` does today, reached from the DOM rather than from the model, because the model no longer describes what is on screen at that point.
 - Every claim and every build writes `ctx.sigs.set(path, sig)`, so the next pass compares against what this pass actually drew.
+
+- [ ] **Step 6b: Let the drag controller clean up after itself**
+
+A kept row wears whatever it was wearing, and the tree's native drag puts four things on rows that no signature knows about. Today none of it matters because the rows are destroyed. `DragDropController.onRenderStart` currently drops its two references without cleaning them:
+
+```ts
+	/** Rows are about to be rebuilt; drop the references to the old indicator and source rows. */
+	onRenderStart(): void {
+		this.activeDropRow = null;
+		this.dragSourceRow = null;
+	}
+```
+
+The reconcile must **not** answer this by clearing `.pbl-drop-*` in `renderForest`. A reconcile that enumerates another module's classes is the same "list of the places somebody thought of" this design refuses everywhere else — and the list is already longer than that one entry: `pbl-drop-before`, `pbl-drop-after`, `pbl-drop-inside`, `pbl-drag-source`, and `pbl-hover-expanding`.
+
+The controller owns them, so the controller cleans them. In `src/view/interactions/dragDrop.ts`, make `onRenderStart` remove the drop and source classes from the rows it is about to forget, and cancel the hover expand — `cancelHoverExpand()` already removes `pbl-hover-expanding` and clears the timer. Rewrite the doc comment: rows are no longer necessarily rebuilt, which is exactly why the cleanup can no longer be left to their destruction.
+
+**There is an eighth capture site here**, and it is not in the lint rule's reach:
+
+```ts
+		const timer = window.setTimeout(() => {
+			…
+			if (this.host.setCollapsed(path, false)) {
+				this.host.refreshSubtree(item);
+			}
+		}, 600);
+```
+
+`scheduleHoverExpand` closes over `item` for 600 ms. An external data update landing mid-hover used to destroy the row under it; with reuse, the timer can fire against the previous model's item. Cancelling the hover expand in `onRenderStart` is what closes it — the timer never survives a render, so there is nothing stale to fire. Do it that way rather than by resolving the item inside the callback: the pending expand is about a gesture that the render has already invalidated, and running it late would expand a row the user is no longer hovering.
+
+Note in the report that this site exists and why the Task 3 lint rule does not cover it — the rule is scoped to `render/rows.ts` and `render/columns.ts`, and this is `interactions/dragDrop.ts`. Do not widen the rule here; that is a decision for the final review with the whole diff in view.
 
 - [ ] **Step 7: Run the tests**
 
