@@ -63,10 +63,11 @@ class ManualDialog extends Modal {
 		// class on the wrong element, or leaving either one off, silently loses the phone
 		// rules that depend on it.
 		//
-		// The jsdom mock has no `modalEl`, so NOTHING in the suite can catch either class
-		// being wrong or missing. Optional-chained for that reason, and it is on the
-		// live-vault list.
-		(this as { modalEl?: HTMLElement }).modalEl?.addClass('mod-settings', 'mod-sidebar-layout');
+		// That sentence was unchecked until 2026-08-15 — the jsdom mock had no `modalEl`,
+		// so the call was optional-chained through a cast and nothing in the suite could
+		// see it. The mock has one now, `test/ui/manualDialog.test.ts` asserts both
+		// classes land on it, and the browser harness draws the dialog in that element.
+		this.modalEl.addClass('mod-settings', 'mod-sidebar-layout');
 
 		const split = contentEl.createDiv('pbl-manual-split');
 		const nav = split.createDiv('modal-sidebar-inner pbl-manual-nav');

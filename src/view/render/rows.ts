@@ -13,10 +13,11 @@ import { ownWorkflowReading } from '../../domain/board';
 import { columnWidth, columnWidthVar } from '../interactions/columnResize';
 import {
 	INDENT_PER_DEPTH,
-	META_COL_WIDTH,
 	renderAddSpacer,
 	renderColumnHeader,
 	renderRowColumns,
+	metaColWidth,
+	rollupChars,
 	RowContext,
 } from './columns';
 
@@ -27,24 +28,48 @@ const IMPLIED_TYPE_TOOLTIP =
 export function renderTree(ctx: RowContext, treeEl: HTMLElement): void {
 	const model = ctx.host.model;
 	if (!model) return;
+	// THIS projection's population, on all three lines below AND on the reservation the
+	// widths carry — `model.items` holds every item the model kept, so on the plan it
+	// includes catalog members that draw no row here and could reserve a width for a
+	// label nothing on screen has.
+	const population = projectionPopulation(ctx.host.projection, model);
 	// Column widths are the same for every row, so they live on the scroller and
 	// are inherited — including by the subtrees a targeted refresh re-renders, and by
 	// the grip that writes one of them straight back mid-drag.
 	// Geometry lives in one place: columnFit budgets with these numbers and the
 	// stylesheet lays out with them, so the two cannot drift apart.
+	// The lane's width is the one the FIT budgets with, from the same function, so the
+	// stylesheet and `columnFit` cannot describe different geometry (Codex, PR #153).
+	const chars = rollupChars(ctx.host, population.items);
 	const widths: Record<string, string> = {
-		'--pbl-meta-col': `${META_COL_WIDTH}px`,
+		'--pbl-meta-col': `${metaColWidth(chars)}px`,
 		'--pbl-indent': `${INDENT_PER_DEPTH}px`,
 	};
+	// The rollup label's reservation, which is the one geometry here that the DATA decides
+	// rather than the stylesheet: see `rollupReservation`. Published on the same element as
+	// the widths and for the same reason — one declaration per tree, inherited by every row
+	// and by the subtrees a targeted refresh re-renders.
+	if (chars > 0) widths['--pbl-rollup-label'] = `${chars}ch`;
 	for (const [index, column] of ctx.columns.entries()) {
 		widths[columnWidthVar(index)] = `${columnWidth(ctx.host, column.prop)}px`;
 	}
+	// REMOVED rather than left unset, and this is the one declaration here that needs it:
+	// the tree element is built once in the constructor and only emptied per render, so
+	// its inline style outlives every pass, and `setCssProps` writes the keys it is given
+	// without clearing the ones it is not. A view whose state property is cleared while
+	// counts stay on goes from a reservation to none — and the stale one would keep the
+	// lane widened for rows that no longer draw a bar, taking the width off the title.
+	// Absent is also the only honest spelling of "none": an empty value would make
+	// `var(--pbl-rollup-label, 28px)` substitute nothing rather than fall back, and a
+	// concrete `28px` here would be a second opinion about a default the stylesheet owns.
+	// (Codex, PR #153.)
+	if (chars === 0) treeEl.style.removeProperty('--pbl-rollup-label');
 	treeEl.setCssProps(widths);
-	// THIS projection's population, on all three lines. Both decisions below used to read
-	// the shared arrays, which hold every item the model kept: a base returning twelve
-	// test notes and no plan work would be told "All 12 items are done and hidden", with a
-	// Show completed items button that reveals nothing — because nothing is completed and
-	// nothing is hidden by completion. A control offering to reveal what it cannot show.
+	// Both decisions below used to read the shared arrays, which hold every item the model
+	// kept: a base returning twelve test notes and no plan work would be told "All 12 items
+	// are done and hidden", with a Show completed items button that reveals nothing —
+	// because nothing is completed and nothing is hidden by completion. A control offering
+	// to reveal what it cannot show.
 	//
 	// "Is there anything here" is asked of the RESULTS and not of the items, which is the
 	// same distinction one line further down rather than a second rule: a context row is
@@ -53,7 +78,6 @@ export function renderTree(ctx: RowContext, treeEl: HTMLElement): void {
 	// since the only child it places is a plan row. Counting it as population walked past
 	// this branch into "All 0 items are done and hidden", offering a completed toggle in a
 	// projection that hides nothing by completion at all.
-	const population = projectionPopulation(ctx.host.projection, model);
 	if (population.results.length === 0) {
 		renderEmptyState(ctx.host, treeEl);
 		return;

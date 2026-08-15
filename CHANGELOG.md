@@ -132,6 +132,12 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Fixed
 
+- **Progress bars line up again in a big backlog.** The bar and its count share a lane
+  anchored at the right, and the count had a fixed reservation that only held two digits
+  over two — so a row counting hundreds pushed its own bar left, and rows counting units,
+  tens and hundreds each drew their bar in a different place. Every row now reserves the
+  widest count in the tree, so the bars share one edge whatever the numbers are.
+
 - **One view saving can no longer forget every other view's working position.** Saving
   tidies away entries for `.base` files the vault no longer has — and if the vault could
   not answer at that moment, every entry looked gone and every one was dropped. It now

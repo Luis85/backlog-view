@@ -64,8 +64,27 @@ palette, in both a light and a dark scheme, switchable in the page (`?theme=ligh
 the harness's own corner toggle) — so contrast, hierarchy and the does-this-read-at-all
 question can be asked both ways, which is where the plugin's own choices show. It is
 still a stub: a themed vault replaces exactly those values, and most vaults have a theme,
-so a colour seen in the harness is not a colour a user sees; and the menu and dialog
-**widgets** are the harness's own, since the mock records them and renders nothing.
+so a colour seen in the harness is not a colour a user sees; and the menu **widget** is
+the harness's own, since the mock records a `Menu` and renders nothing.
+
+The dialog was in that last sentence until 2026-08-15, and it was the disclosure episode
+in a second place: the harness drew a hand-written box while `.modal`, `.modal.mod-settings`
+and `.modal-sidebar-inner` sat in the vendored sheet resolving correctly and matching
+nothing — the very rules `styles/manual.css` is written against and corrects. The mock's
+`Modal` now carries Obsidian's own `modalEl`, and the harness appends THAT inside an
+overlay of its own, so the box is Obsidian's rule rather than a guess at it. That also
+gave `manualDialog`'s two classes their first check: the mock had no `modalEl`, so the
+comment stating where they must go had nothing behind it and said so.
+
+The same reduction that makes this work bounds it. `.modal-container`, `.modal-bg`,
+`.modal-title` and `.modal-content` are absent, because the vendored sheet keeps what the
+harness was driven through and nothing ever drove those — so a title reads unstyled here
+and the content pane does not grow to the frame, until someone with a local install
+re-derives. A visible absence, chosen over a silent stand-in — and one of them is a real
+cost rather than a cosmetic one: nothing in the sheet widens a settings dialog past
+`--dialog-width`, so the manual draws at 560px on a desktop and clips its prose, where the
+guessed box had no width and sized to its content. The manual on a PHONE, which was
+unreachable here in any form until `?phone` existed, is drawn correctly.
 
 Icons moved from the second list to the first. They rendered as their own NAMES while
 the mock drew no SVG, and that was not a neutral stand-in: `chevron-down` is several
@@ -86,7 +105,12 @@ by a screenshot from here.
 - The page mounts the real view — not a copy of it, and not a fixture of its markup — so
   a change to `src/view/` is visible without any harness edit.
 - All three projections are reachable, through the view's own toolbar, in either colour
-  scheme — and each is reachable from a URL, so looking needs no click.
+  scheme — and each is reachable from a URL, so looking needs no click. A rule written for
+  a phone is reachable the same way (`?phone`, the two body classes Obsidian's own shell
+  sets), which is a CLASS switch and not a device: the pointer, the viewport and every
+  `@media (hover: none)` rule in `styles/touch.css` are outside what it answers. So are a
+  dialog, a running filter, the roadmap's open shelf and a focus level (`test/harness/
+  knobs.ts`), each of which hides a whole surface behind a control a URL cannot press.
 - The harness costs `npm run check` no sixth step, and costs the PLUGIN no dependency:
   nothing it needs is shipped, and nothing it needs drives a browser. It carries one
   devDependency, `lucide-static` — static icon data, no binary to download and no version
@@ -103,8 +127,8 @@ by a screenshot from here.
 ## Where it lives
 
 `harness.mjs` · `test/harness/mount.ts` · `test/harness/page.ts` ·
-`test/harness/icons.ts` · `test/harness/theme.css` · `test/harness/theme.ts` ·
-`test/helpers/fixtures.ts` ·
+`test/harness/chrome.ts` · `test/harness/icons.ts` · `test/harness/knobs.ts` ·
+`test/harness/theme.css` · `test/harness/theme.ts` · `test/helpers/fixtures.ts` ·
 `test/harness/harness.test.ts` · `test/CLAUDE.md`
 
 `icons.ts` installs its renderer through the one hook the shared mock exposes for it

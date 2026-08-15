@@ -102,6 +102,27 @@ export function demoOptions(): Record<string, unknown> {
 		// `Priya` is on nothing, so her row draws empty — a resource exists whether or not
 		// work has reached them, and nothing else in the fixture can show that.
 		resourceNames: 'Dana, Kim, Priya',
+		// The tags column has been in `demoOrder()` from the start and drew EMPTY on every
+		// row until 2026-08-15, because the key was never named and no note carried one:
+		// the pills, their remove buttons and the whole editing surface were unreachable in
+		// the tool built for looking. A property named in the order but not in the options
+		// is a plain column, so this line is what makes it the TAGS column.
+		tagsProperty: 'note.tags',
+		// A WIP limit and a column policy, which are shipped board features that nothing in
+		// the harness could draw. `Active` holds more than two cards in the fixture below,
+		// so the limit is drawn AND breached — the count badge, its warning icon and the
+		// over-limit column all at once, rather than a limit that is merely stated. `Review`
+		// carries the policy instead, so the two read separately.
+		'wipLimit.active': '2',
+		'columnPolicy.review': 'Two reviewers, one of them outside the team',
+		// Two states painted and three left on their palette slot, which is what the colour
+		// feature looks like in use rather than as a demo of itself: a NAMED colour and a
+		// hand-typed hex are the two shapes `stateColorPaint` resolves differently, and the
+		// unpainted states beside them are what says the slot colours are still doing their
+		// job. Nothing here was drawable in the harness before 2026-08-15 — the chips, the
+		// column heads and the legend all read the same paint.
+		'stateColor.active': 'blue',
+		'stateColor.review': '#b07cc6',
 		deliverableStateProperty: 'note.docStatus',
 		deliverableStateValues: 'Concept, Draft, In review, Published',
 		deliverableDoneValues: 'Published',
@@ -120,7 +141,11 @@ export function demoOrder(): string[] {
 	// `demoVault()` already carries every face they have — a note with both dates, one
 	// with neither, a milestone whose start cell must draw NOTHING, and the context row —
 	// so no note had to be added to show them.
-	return ['note.status', 'note.horizon', 'note.risk', 'note.assignee', 'note.start', 'note.due', 'note.tags'];
+	//
+	// `note.points` is the one column here that is NOT one of ours: a plain Bases value,
+	// which is what `renderCell` falls through to and what every vault has. Nothing in any
+	// fixture drew that branch until 2026-08-15.
+	return ['note.status', 'note.horizon', 'note.risk', 'note.assignee', 'note.start', 'note.due', 'note.points', 'note.tags'];
 }
 
 /**
@@ -163,10 +188,14 @@ export function demoVault(layout: Layout = 'flat', extra = 0): FakeVault {
 	// The assignee chip's two faces sit beside the risk chip's for the same reason: a name
 	// here and on `Welcome tour` below, every other row unassigned — the dashed, inviting
 	// chip, which is the commonest face of both.
-	add('Single sign-on', { type: 'PBI', order: 20, status: 'Review', started: '2026-07-20', horizon: 'Now', start: '2026-07-20', due: '2026-08-15', risk: '1 - High', assignee: 'Dana' }, 'Sign-up flow', 'Use cases');
+	// Tags, in the three shapes the cell has to draw: several on one row (which is where
+	// they wrap and where the row's own width is spent), exactly one, and — everywhere
+	// else — none, since an empty tags cell is the commonest face of that column and the
+	// one a row full of pills has to be read against.
+	add('Single sign-on', { type: 'PBI', order: 20, status: 'Review', started: '2026-07-20', horizon: 'Now', start: '2026-07-20', due: '2026-08-15', risk: '1 - High', assignee: 'Dana', tags: ['auth', 'security', 'needs-design'] }, 'Sign-up flow', 'Use cases');
 	add('Provider handshake', { type: 'Task', order: 10, status: 'Active' }, 'Single sign-on');
 	add('Token refresh', { type: 'Task', order: 20 }, 'Single sign-on');
-	add('Welcome tour', { type: 'Feature', order: 20, status: 'Ready', horizon: 'Next', assignee: 'Kim' }, 'Onboarding');
+	add('Welcome tour', { type: 'Feature', order: 20, status: 'Ready', horizon: 'Next', assignee: 'Kim', tags: ['onboarding'] }, 'Onboarding');
 	// Dated while its parent is not, so `Welcome tour` draws an INFERRED bar: outlined,
 	// no grips at all, and still a connector — a link claims no date, so it needs no
 	// baseline the way a grip does.
@@ -274,8 +303,28 @@ export function demoVault(layout: Layout = 'flat', extra = 0): FakeVault {
 	// its grouping and its type filter doing something rather than listing one name.
 	add('Voice control', { type: 'Idea', order: 60 });
 
+	// A PLAIN property column — a number Bases hands the view as a value rather than a
+	// property this plugin knows anything about. Every column in `demoOrder()` before this
+	// was one of ours (a chip, the tags cell), so the ordinary case — the one every vault
+	// has and the one `renderCell` falls through to — drew in no fixture at all. Two rows
+	// carry one and the rest do not, since an empty cell is what keeps the columns after it
+	// from shifting and is the commonest face of any property column.
+	vault.entryValues.set(pathIn(layout, 'Single sign-on', 'Onboarding/Sign-up flow/Use cases'), { 'note.points': 8 });
+	vault.entryValues.set(pathIn(layout, 'Welcome tour', 'Onboarding'), { 'note.points': 3 });
+
 	addBulk(add, extra);
 	return vault;
+}
+
+/**
+ * Where a note ENDED UP, which only the layout knows: the flat fixture files everything at
+ * the root and the folder one nests each note inside its own folder under its parent's.
+ * `entryValues` is keyed by path, so a value written against the flat path would silently
+ * attach to nothing in the other layout — the cell would just be empty, which is a legal
+ * thing for it to be and so not a failure anyone would see.
+ */
+function pathIn(layout: Layout, title: string, under: string): string {
+	return layout === 'flat' ? `${title}.md` : `${under}/${title}/${title}.md`;
 }
 
 /**
@@ -379,5 +428,43 @@ export function edgeCaseVault(): FakeVault {
 	// compared against and something legal to be dragged onto.
 	add('Nearby work', { type: 'PBI', order: 20, status: 'New', start: '2026-08-04', due: '2026-08-28' }, 'Platform');
 	add('One day only', { type: 'PBI', order: 30, status: 'Ready', start: '2026-08-12', due: '2026-08-12' }, 'Platform');
+
+	// Three rollup labels of three different WIDTHS, side by side under one parent,
+	// because the rollup column is a fixed lane and a label that outgrows it moves the
+	// bar rather than being clipped — reported from a vault of 800-odd PBIs (2026-08-15),
+	// where the bars of `x/y`, `xx/yy` and `xxx/yyy` rows do not line up.
+	//
+	// Nothing generated reaches this: `addBulk` nests one Epic per 25 notes, so the widest
+	// label at ANY `?notes=` is two digits over two, and the case was unreachable in the
+	// harness at every size. Under 'Counts' rather than 'Platform' so the timeline cases
+	// above keep a readable grid.
+	// The malformed and the unvocabularied, which are what a real vault produces by hand
+	// and no configured fixture has: a parent link naming a note nothing resolves to, a
+	// `type` the vocabulary does not carry, a state outside the declared workflow and a
+	// horizon outside the declared buckets. Each draws its own mark — the orphan glyph, the
+	// unknown badge, a stray board column, an undeclared bucket — and every one of them was
+	// unreachable in the harness before 2026-08-15, so the marks could be read only in a
+	// vault that already had the mess.
+	add('Imported from the old tracker', { type: 'PBI', order: 40, status: 'Blocked', horizon: 'Someday' }, 'No such epic');
+	add('Untyped leftovers', { order: 50, status: 'Blocked' }, 'Platform');
+	add('Crash on empty title', { type: 'Bug', order: 60, status: 'Active' }, 'Platform');
+	add('Filed under a word nobody declared', { type: 'Curiosity', order: 70, horizon: 'Someday' }, 'Platform');
+
+	add('Counts', { type: 'Epic', order: 20, status: 'Active' });
+	add('Three deep', { type: 'Feature', order: 10, status: 'Active' }, 'Counts');
+	add('Ten deep', { type: 'Feature', order: 20, status: 'Active' }, 'Counts');
+	add('A hundred and twenty deep', { type: 'Feature', order: 30, status: 'Active' }, 'Counts');
+	for (const [parent, count] of [
+		['Three deep', 3],
+		['Ten deep', 10],
+		['A hundred and twenty deep', 120],
+	] as const) {
+		for (let i = 1; i <= count; i += 1) {
+			// A third of each group done, so the FILL differs between the three as well as
+			// the label — a bar that has moved and a bar that is a different length are two
+			// different complaints, and one fixture should be able to tell them apart.
+			add(`${parent} ${i}`, { type: 'PBI', order: i * 10, status: i % 3 === 0 ? 'Done' : 'Active' }, parent);
+		}
+	}
 	return vault;
 }

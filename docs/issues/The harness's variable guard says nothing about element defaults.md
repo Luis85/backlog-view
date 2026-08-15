@@ -58,6 +58,24 @@ elements and pseudo-classes the harness's fixture actually renders and compare t
 what the vendored sheet defines for them — that is a harder instrument than a `var(--x)`
 regex, and building it is future work, not something to invent inside this note.
 
+## A second instance, and what it shows (2026-08-15)
+
+The dialog was drawn in a hand-written `.pbl-harness-modal-box` while app.css's `.modal`
+was in the vendored file, resolving, and matching nothing — a guessed baseline beside a
+real one, found by reading rather than by any check. Handing the mock's `modalEl` to the
+harness fixes that instance and demonstrates the shape of the gap this note is about: the
+reduction keeps what the harness was DRIVEN through, so `.modal-container`, `.modal-bg`,
+`.modal-title` and `.modal-content` were never kept, and the dialog's title and content
+pane now read unstyled — and whatever widens a settings dialog was not kept either, so the
+manual clips its prose at `--dialog-width` on a desktop. That absence is at least loud. The one this note is filed about —
+a default the vendored sheet still states at an old value — stays silent, and nothing here
+changes that.
+
+The instrument sketched below has a cheaper half than the one described: comparing the
+selectors the vendored sheet defines against the elements and classes the harness actually
+puts on the page would not catch staleness, but it would have named `.modal-title` and
+`.modal-content` as drawn-but-unstyled without anyone reading the CSS.
+
 ## Impact
 
 Three real defects shipped past `npm run harness` and were only caught because the owner

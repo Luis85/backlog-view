@@ -8,6 +8,11 @@
  * widgets, not Obsidian's widgets, and appearance here is worth even less than the rest
  * of the harness's (ADR 0020).
  *
+ * The MENU is still a stand-in end to end. The DIALOG is not, as of 2026-08-15: it is
+ * Obsidian's own `.modal` element, painted by the `.modal` rules in the vendored sheet,
+ * inside an overlay the harness places. What is the harness's own there is the placement
+ * and nothing else — see `patchModal` below for which rules that leaves absent.
+ *
  * Patched from HERE rather than built into the mock on purpose: the suite asserts through
  * `lastShown`/`lastOpened` and empties `document.body` between tests, so a mock that also
  * appended nodes would be changing what 68 test files measure to serve a page none of
@@ -106,6 +111,27 @@ function onEscape(evt: KeyboardEvent): void {
 	if (evt.key === 'Escape') closeMenu();
 }
 
+/**
+ * Show the dialog in Obsidian's own frame.
+ *
+ * What this can hand over is bounded by the vendored sheet, and the bound is worth
+ * stating because it is visible: `.modal` itself is in there (background, border,
+ * radius, padding, `--dialog-width`, `max-height`, flex column), as is
+ * `.modal.mod-settings` and every `.is-phone .modal…` rule the manual leans on. The base
+ * `.modal-container`, `.modal-bg`, `.modal-title` and `.modal-content` rules are NOT —
+ * the reduction kept what the harness was driven through, and until now the harness drew
+ * a box of its own, so Obsidian's were never used and never kept. So a title reads
+ * unstyled here and the content pane does not grow to the frame. That absence is loud and
+ * one re-derivation against a local install away; a hand-written stand-in for it would be
+ * silent and permanent, which is the trade `test/harness/theme.css`'s header settles.
+ *
+ * One of them costs something, so read it before filing a bug: whatever WIDENS a settings
+ * dialog beyond `--dialog-width` was never kept either, so the manual draws at 560px on a
+ * desktop and its prose column clips. It is the one place this change reads worse than
+ * the guessed box did (that box had no width at all, so it sized to its content and
+ * happened to look right). `?phone` is unaffected — those rules ARE in the sheet, and the
+ * stacked layout they draw was unreachable here until the same day.
+ */
 function patchModal(): void {
 	const proto = Modal.prototype;
 	const open = proto.open;
@@ -115,10 +141,18 @@ function patchModal(): void {
 		// The original runs onOpen, which is what BUILDS contentEl — so the nodes only
 		// exist to be appended after this call, never before it.
 		open.call(this);
+		// The overlay is the harness's (Obsidian's own `.modal-container` placement rules
+		// are not in the reduced sheet — nothing ever drew one to keep them), and it
+		// carries Obsidian's class too so the `.is-phone .modal-container` rules that ARE
+		// there apply under `?phone`. The BOX is no longer the harness's: `modalEl` is
+		// `.modal`, which app.css paints — its background, border, radius, padding, width
+		// and max-height, plus `.modal.mod-settings` for the manual. A stand-in box drawn
+		// beside a real rule that resolves is the disclosure episode again (ADR 0020).
 		const frame = document.body.createDiv(MODAL_CLASS);
-		const box = frame.createDiv('pbl-harness-modal-box');
-		box.appendChild(this.titleEl);
-		box.appendChild(this.contentEl);
+		frame.addClass('modal-container', 'mod-dim');
+		frame.appendChild(this.modalEl);
+		this.modalEl.appendChild(this.titleEl);
+		this.modalEl.appendChild(this.contentEl);
 	};
 	proto.close = function () {
 		close.call(this);

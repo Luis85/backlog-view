@@ -1,6 +1,9 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { mountHarness } from './mount';
+import { applyPlatform } from './theme';
+import { applyWantedFilter, openWantedDialog } from './knobs';
+import { Modal } from '../helpers/obsidian-mock';
 import { installObsidianDom } from '../helpers/dom';
 import { ExtraButtonComponent } from '../helpers/obsidian-mock';
 import { clickExpandAll, projectionButton, submitPrompt } from '../helpers/view';
@@ -318,6 +321,26 @@ describe('the harness draws the cases the dependency connector has to survive', 
 		// keys that on, so its presence is the checkable half.
 		expect(clipped.querySelector('.pbl-bar-connector')).not.toBeNull();
 	});
+
+	// The other half of the same fixture, and the reason it carries 133 generated notes:
+	// rollup labels of three different WIDTHS on sibling rows, which is what a vault of
+	// 800-odd PBIs has and no `?notes=` size produces — `addBulk` nests one Epic per 25,
+	// so its widest label is two digits over two. Nothing here asserts alignment; it
+	// asserts the CASE is on screen, so the thing to look at is still there to look at.
+	it('draws rollup labels of three widths, the case bar alignment is looked at with', () => {
+		const root = document.createElement('div');
+		document.body.appendChild(root);
+		const { containerEl } = mountHarness(root, 'edges');
+		clickExpandAll(containerEl);
+
+		const label = (title: string) => rowFor(containerEl, title).querySelector('.pbl-progress-label')?.textContent;
+		expect(label('Three deep')).toBe('1/3');
+		expect(label('Ten deep')).toBe('3/10');
+		expect(label('A hundred and twenty deep')).toBe('40/120');
+		// And the reservation the three of them produce, which is what holds their bars in
+		// one column — the widest of the labels this tree draws, not this row's own.
+		expect(containerEl.querySelector<HTMLElement>('.pbl-tree')?.style.getPropertyValue('--pbl-rollup-label')).toBe('6ch');
+	});
 });
 
 describe('the chrome the mock only records', () => {
@@ -367,6 +390,24 @@ describe('the chrome the mock only records', () => {
 		expect(vault.fm('Onboarding.md').status).toBe('Active');
 	});
 
+	// The box the dialog draws in used to be `.pbl-harness-modal-box`, hand-written, while
+	// app.css's `.modal` sat in the vendored sheet resolving correctly and matching
+	// nothing — the same shape as the disclosure that shipped looking right here and wrong
+	// in a vault. What this holds is that the frame on the page IS the modal's own
+	// element, so the plugin's classes on it (`mod-settings`, `mod-sidebar-layout`) and
+	// Obsidian's rules for it are what paint the dialog.
+	it('draws the dialog in the modal’s own element, not a box of the harness’s', () => {
+		const { containerEl } = mount();
+		containerEl.querySelector<HTMLElement>('.pbl-new-btn')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		const frame = document.querySelector<HTMLElement>('.pbl-harness-modal > .modal');
+		expect(frame).toBe(Modal.lastOpened?.modalEl);
+		// Obsidian's own class on the overlay too, which is what the `.is-phone
+		// .modal-container` rules in the vendored sheet need to match under `?phone`.
+		expect(document.querySelector('.pbl-harness-modal')?.hasClass('modal-container')).toBe(true);
+		expect(frame?.querySelector('.modal-content')).toBe(Modal.lastOpened?.contentEl);
+	});
+
 	it('puts a dialog on the page, and re-renders once the note it creates lands', async () => {
 		const { containerEl, vault } = mount();
 		const newItem = containerEl.querySelector<HTMLElement>('.pbl-new-btn');
@@ -382,6 +423,72 @@ describe('the chrome the mock only records', () => {
 		// The re-render is the point: the fake vault notifies on create as well as on a
 		// write, so the new row is on screen rather than waiting for an unrelated edit.
 		expect(titlesIn(containerEl)).toContain('Drawn by the harness');
+	});
+});
+
+/**
+ * The knobs exist because a dialog and a running filter are states no fixture produces
+ * and no URL could reach — measured, not guessed: 98 of the classes the stylesheet writes
+ * were rendered by no fixture in any projection, and about twenty of them are a dialog's.
+ * What is asserted is that each knob still MAKES its state, since a knob that silently
+ * stopped is a page that looks fine and answers nothing.
+ */
+describe('the page can open a dialog and run a filter by URL', () => {
+	function mount() {
+		const root = document.createElement('div');
+		document.body.appendChild(root);
+		return mountHarness(root);
+	}
+
+	it('opens each dialog the knob names, and nothing without one', () => {
+		const { view, containerEl } = mount();
+		// The mock records the last modal on a static, and the suites above this one open
+		// several — so "nothing was opened" has to start from a cleared slot rather than
+		// from whatever ran before it.
+		Modal.lastOpened = null;
+
+		openWantedDialog(view, containerEl, '?view=board');
+		expect(Modal.lastOpened).toBeNull();
+
+		openWantedDialog(view, containerEl, '?dialog=manual');
+		expect(Modal.lastOpened?.contentEl.querySelector('.pbl-manual-pane h3')?.textContent).toBe('Item types');
+
+		openWantedDialog(view, containerEl, '?dialog=colors');
+		// The class is on `contentEl` itself, not on a child of it.
+		expect(Modal.lastOpened?.contentEl.hasClass('pbl-state-colors')).toBe(true);
+
+		openWantedDialog(view, containerEl, '?dialog=new');
+		expect(Modal.lastOpened?.titleEl.textContent).toContain('New');
+	});
+
+	it('runs the quick filter, and draws its empty state when nothing matches', () => {
+		const { view, containerEl } = mount();
+
+		applyWantedFilter(view, '?filter=Onboarding');
+		expect(containerEl.querySelector('.pbl-match')).not.toBeNull();
+
+		applyWantedFilter(view, '?filter=zzzznothing');
+		expect(containerEl.querySelector('.pbl-empty-filter')).not.toBeNull();
+	});
+});
+
+/**
+ * `?phone` is a body class and nothing else, so what is checkable here is the class —
+ * which rule then matches is the browser's answer and jsdom computes no linked
+ * stylesheet. Worth checking anyway: the knob is spelled once, and a page that quietly
+ * set neither class would look exactly like a page whose phone rules had all stopped
+ * matching. Both classes, because Obsidian's shell sets both and the vendored sheet's
+ * variable block is keyed on the one the plugin's own partials never name.
+ */
+describe('the page can say it is a phone', () => {
+	it('sets both of Obsidian’s phone classes, and takes them off again', () => {
+		applyPlatform('?phone');
+		expect(document.body.hasClass('is-phone')).toBe(true);
+		expect(document.body.hasClass('is-mobile')).toBe(true);
+
+		applyPlatform('?view=board');
+		expect(document.body.hasClass('is-phone')).toBe(false);
+		expect(document.body.hasClass('is-mobile')).toBe(false);
 	});
 });
 
