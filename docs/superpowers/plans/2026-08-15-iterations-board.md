@@ -45,7 +45,8 @@ Everything here implements:
 | `src/domain/viewOptions.ts` | `optionalPropertyOption('iteration', …)` |
 | `src/domain/readItems.ts` | read the link into `iterationPath` |
 | `src/domain/writePlan.ts` | `computeIterationWrites` |
-| `src/storage/frontmatter.ts` | one pair in `applyLabels`' list |
+| `src/storage/frontmatter.ts` | `applyIteration`, beside the parent link's write |
+| `src/storage/writeKeys.ts` | one row in `touchedKeys`' `carried` list |
 | `src/view/interactions/labels.ts` | `addIterationItems` |
 
 **Part B — the scoped board**
@@ -54,6 +55,7 @@ Everything here implements:
 | --- | --- |
 | `src/domain/viewOptions.ts` | `iterationsGroup()` |
 | `src/domain/settings.ts` | `iterationStateKey` / `iterationStates` / `iterationDoneValues` |
+| `src/domain/settingsResolve.ts` | `ITERATION_NAMES`, the third `SecondaryWorkflowNames` row |
 | `src/domain/optionalProperties.ts` | `iterationState` field, `resolvedIterationStateKey` |
 | `src/domain/readItems.ts` | `iterationStateValue` |
 | `src/domain/model.ts` | `iterationResults`, `observedIterationStates` |
@@ -66,6 +68,9 @@ Everything here implements:
 | `src/view/render/board.ts` | `renderIterationBoard` |
 | `src/view/render/emptyStates.ts` | two states |
 | `src/view/render/projections.ts` | the fork |
+| `src/domain/writePlan.ts` | `computeIterationStateWrites` and its `ItemWrite` fields |
+| `src/storage/frontmatter.ts` | the iteration state write, beside the Deliverable and Test ones |
+| `src/storage/writeKeys.ts` | a second `carried` row, for the resolved state key |
 | `src/view/cardMoves.ts` | `performIterationBoardMove` |
 
 ---
@@ -433,7 +438,8 @@ stays null and is never repaired by a write nobody asked for."
 
 **Files:**
 - Modify: `src/domain/writePlan.ts` (`computeIterationWrites`)
-- Modify: `src/storage/frontmatter.ts` (`applyLabels`)
+- Modify: `src/storage/frontmatter.ts` (a write beside `applyHierarchy`'s parent link)
+- Modify: `src/storage/writeKeys.ts` (`touchedKeys`)
 - Test: `test/domain/writePlan.test.ts`, `test/storage/frontmatter.test.ts`
 
 **Interfaces:**
@@ -548,6 +554,21 @@ Call it from `applyInto` beside `applyLabels`. The reflex to reuse the label lis
 right reflex and the wrong list: reuse is judged by what the value IS, not by how few
 lines the change is.
 
+**And capture it**, in `src/storage/writeKeys.ts`. `applyWrites` decides whether anything
+changed and builds the undo from `touchedKeys`, so a key written but not listed there is
+written with `WriteOutcome.changed` still false and **no restore in the undo slot** — the
+undo criterion below would fail while every write test passed. That function's `carried`
+list says so itself: *"each such property should add a line here rather than another
+branch — the assignee did exactly that."* One row:
+
+```ts
+		[write.iteration !== undefined, settings.iterationKey],
+```
+
+Its own comment states the condition rule: listed whenever the write TOUCHES the key and
+a property names it — the same condition `applyIteration` writes on, so applying and
+capturing cannot drift.
+
 - [ ] **Step 5: Write the write-boundary test**
 
 In `test/storage/frontmatter.test.ts`:
@@ -564,7 +585,24 @@ it('deletes the key on null rather than writing an empty string', async () => {
 });
 ```
 
-- [ ] **Step 6: Run both suites**
+- [ ] **Step 6: Run both suites, and drive undo through both directions**
+
+```ts
+it('undoes setting an iteration', async () => {
+	await setIteration(pbi, sprint12);
+	await host.undoLast();
+	expect(frontmatterOf(pbi).iteration).toBeUndefined();
+});
+
+it('undoes clearing an iteration', async () => {
+	await setIteration(pbiInSprint12, null);
+	await host.undoLast();
+	expect(frontmatterOf(pbi).iteration).toBe('[[Sprint 12]]');
+});
+```
+
+Both fail without the `writeKeys.ts` row, and neither fails without it in a way the
+write tests would notice — which is the point of driving undo rather than the write.
 
 Run: `npx vitest run test/domain/writePlan.test.ts test/storage/frontmatter.test.ts`
 Expected: PASS.
@@ -708,6 +746,7 @@ when picking it would write nothing."
 - Modify: `src/domain/viewOptions.ts` (`iterationsGroup`)
 - Modify: `src/domain/settings.ts`
 - Modify: `src/domain/optionalProperties.ts` (`iterationState`, `resolvedIterationStateKey`)
+- Modify: `src/domain/settingsResolve.ts` (`ITERATION_NAMES` and its `resolveSecondaryWorkflow` call)
 - Modify: `src/domain/readItems.ts` (`iterationStateValue`)
 - Test: `test/domain/iterationSettings.test.ts` (new)
 
@@ -804,9 +843,43 @@ export function resolvedIterationStateKey(settings: BacklogSettings): string {
 }
 ```
 
-- [ ] **Step 5: Add the three settings fields and read the value**
+- [ ] **Step 5: Add the three settings fields, and RESOLVE them**
 
-`iterationStateKey: string`, `iterationStates: string[]`, `iterationDoneValues: string[]` in `BacklogSettings`, defaulting to `''`, `[]`, `[...DEFAULT_DONE_VALUES]`. In `readItems.ts`, read `iterationStateValue` beside `deliverableStateValue`, off `resolvedIterationStateKey(settings)`.
+`iterationStateKey: string`, `iterationStates: string[]`, `iterationDoneValues: string[]`
+in `BacklogSettings`, defaulting to `''`, `[]`, `[...DEFAULT_DONE_VALUES]`.
+
+**Fields and defaults alone resolve nothing**, and this is the third file the task needs.
+The field-by-field fallback the four tests in Step 1 assert lives in
+`src/domain/settingsResolve.ts`, behind `SecondaryWorkflowNames` and
+`resolveSecondaryWorkflow`, and that file knows only the Deliverable and Test workflows
+today. Without a third row the options are read by nothing, the fallback never runs, and
+every one of those tests fails for a reason that looks like the fallback logic being wrong
+rather than absent. Add the row beside `DELIVERABLE_NAMES` and `TEST_NAMES`:
+
+```ts
+const ITERATION_NAMES: SecondaryWorkflowNames = {
+	property: 'iterationStateProperty',
+	stateValues: 'iterationStateValues',
+	doneValues: 'iterationDoneValues',
+	fallbackKey: 'iterationStateKey',
+	fallbackDoneValues: 'iterationDoneValues',
+};
+```
+
+The ids stay literal rather than built from a shared prefix, for the reason that file
+records: a persisted option id has to stay greppable, and `viewOptions.ts` spells these
+the same way. Then one more `resolveSecondaryWorkflow` call in `resolveSettings`, beside
+the two already there — the file's comment says its whole shape exists to keep that to one
+line per workflow, so a third workflow should cost exactly one.
+
+Widen `fallbackKey` and `fallbackDoneValues`' unions to admit the new names.
+
+In `readItems.ts`, read `iterationStateValue` beside `deliverableStateValue`, off
+`resolvedIterationStateKey(settings)`.
+
+This also settles the open question Task 2 step 4 flagged: `resolveSettings` is not one
+generic walk over `OPTIONAL_PROPERTIES` for everything — the optional PROPERTY comes from
+that table, and a secondary WORKFLOW's two value lists come from here.
 
 - [ ] **Step 6: Run the tests**
 
@@ -1332,9 +1405,18 @@ Deliverables board had to draw first."
 ### Task 11: Moves
 
 **Files:**
+- Modify: `src/domain/writePlan.ts` (the planner and its `ItemWrite` fields)
+- Modify: `src/storage/frontmatter.ts` (the state write), `src/storage/writeKeys.ts` (its capture)
 - Modify: `src/view/cardMoves.ts` (`performIterationBoardMove`), `src/view/host.ts`
 - Modify: `src/view/interactions/cardDrag.ts`, `keyboard.ts`, `menu.ts`
 - Test: `test/view/contextCardWrites.test.ts`, `test/view/iterationBoard.test.ts`
+
+**The bottom three files come first**, and skipping them is why this task looked smaller
+than it is. `applyCardMove` only *executes* an `ItemWrite` somebody already planned, and
+the repository has planners and writer fields for the product, Deliverable and Test states
+only. With `iterationStateKey` distinct from all three there is nothing that can write
+`sprintState` alone — reusing either existing planner writes the **wrong workflow's key**,
+which is the one failure this whole feature is supposed to make impossible.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1366,22 +1448,46 @@ for (const input of ['drag', 'keyboard', 'menu'] as const) {
 Run: `npx vitest run test/view/iterationBoard.test.ts -t move`
 Expected: FAIL.
 
-- [ ] **Step 3: Add the one host method**
+- [ ] **Step 3: Plan, write and capture the iteration state**
+
+Three edits, each the third instance of a pair that already exists:
+
+- `src/domain/writePlan.ts` — `computeIterationStateWrites`, beside the Deliverable and
+  Test planners, with `iterationState?: string` and `removeIterationStateKey?: boolean`
+  on `ItemWrite` (the same pair every workflow state carries, because "no state" is a key
+  removal rather than an empty string).
+- `src/storage/frontmatter.ts` — the write, beside the Deliverable and Test state writes
+  that were pulled out of `applyInto` together to stay under the complexity cap. Through
+  `resolvedIterationStateKey`, so a falling-back workflow writes the product key.
+- `src/storage/writeKeys.ts` — a second `carried` row, and it must use the **resolved**
+  key for the reason that list's own comment gives: *"Same RESOLVED keys `applyInto` just
+  wrote: capture and apply must read the same fallback, or a key written under it would
+  have no inverse to undo it with."*
+
+```ts
+		[write.removeIterationStateKey || write.iterationState !== undefined, resolvedIterationStateKey(settings)],
+```
+
+This is a different row from Task 4's. That one captures the iteration **link**
+(`settings.iterationKey`, unresolved — it has no fallback); this one captures the
+iteration **state** (`resolvedIterationStateKey`). Two properties, two rows.
+
+- [ ] **Step 4: Add the one host method**
 
 In `src/view/cardMoves.ts`, beside `performBoardMove` and `performDeliverablesBoardMove`, over the shared `applyCardMove`. **The capture rule holds:** read the vocabulary that will NAME the move *before* the await, because the batch's own refresh rebuilds the board before it resolves and the column just vacated may be gone with its last card.
 
 This is the only place an iteration-board move's batch is planned and the only place it is announced. The three inputs call it; none of them plans a write beside it.
 
-- [ ] **Step 4: Route the three inputs**
+- [ ] **Step 5: Route the three inputs**
 
 `cardDrag.ts`, `keyboard.ts` (Alt+Left/Right) and `menu.ts` (Set state) each gain a branch selecting this method when the board scope is an iteration — a `=== 'board'`-shaped gate in the same files the Deliverables board's own branches sit in.
 
-- [ ] **Step 5: Run the tests**
+- [ ] **Step 6: Run the tests**
 
 Run: `npx vitest run test/view/contextCardWrites.test.ts test/view/iterationBoard.test.ts`
 Expected: PASS. `contextCardWrites.test.ts` asks the three questions of each card projection — the drag, the keyboard and menu paths a drag cannot take, and the structural refusal behind both — so a new card projection is covered there by construction.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 npm run check
