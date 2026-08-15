@@ -582,7 +582,15 @@ const CHIP_ACTIONS: Record<string, ChipAction> = {
 		const end = chip.dataset.end;
 		if (end === 'start' || end === 'target') promptSchedule(host, item, [end]);
 	},
-	'pbl-add': (host, _evt, item) => promptCreateItem(host, offerableTypes(host, childTypeChoices(item)), item),
+	'pbl-add': (host, _evt, item) => {
+		// Recomputed at click time, like the rest of this table — and checked here for the
+		// same reason `renderRowTrailing` withholds the button on an empty list: on a KEPT
+		// row this list can empty between renders without the row's own signature changing
+		// (nothing does yet — Task 4's signature already covers it — but this action must
+		// not depend on that staying true in a module it does not import).
+		const choices = offerableTypes(host, childTypeChoices(item));
+		if (choices.length > 0) promptCreateItem(host, choices, item);
+	},
 	'pbl-tag-add': (host, evt, item) => showTagMenu(host, evt, item),
 	'pbl-tag-remove': (host, evt, item, chip) => {
 		// `preventDefault` only: the row's own handler already ignores a click on a
@@ -613,7 +621,10 @@ const CHIPS = Object.keys(CHIP_ACTIONS)
 
 /* eslint-disable no-restricted-syntax -- these two ARE the delegation: they take the
    listeners off the rows so a render may keep one. The rule below them is what stops a
-   per-row control growing its own. */
+   per-row control growing its own. ESLint cannot scope a disable to one selector, so
+   this also switches off every OTHER no-restricted-syntax check over this region —
+   TREE_SCAN included, so a treeEl.querySelectorAll added inside this block is not
+   caught by that ban either. */
 /**
  * The tree's row activation, wired ONCE on the pane — called from the view's
  * constructor, beside the keydown it mirrors. The per-row wiring this replaces cost a

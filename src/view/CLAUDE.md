@@ -34,13 +34,20 @@ free of runtime code so imports stay cycle-free.
   from `rowEls`. The row, chip and drag listeners live on the PANE, one delegated set
   each for the view (`wireRowEvents` and `wireChipEvents` in `render/rows.ts`, `wireTree`
   in `interactions/dragDrop.ts`), resolving their row or item by `data-path` against the
-  current model per event. **No per-row control carries its own listener.** A render that
-  KEEPS a row element must not leave a handler pointing into the model the update
-  replaced, and a targeted refresh that leaves surrounding rows in place cannot leave one
-  holding a stale item — a data update rebuilds rows without rebuilding listeners. A
-  direct `addEventListener` in `render/rows.ts`, `render/columns.ts` or `render/chips.ts`
-  fails lint; an aliased one is caught only on a path `test/view/rowControls.test.ts`
-  drives. `wireChipEvents` is
+  current model per event. **No per-row control's LISTENER closes over its item** — two
+  controls do carry their own listener rather than routing through that delegation, and
+  both are named exemptions from the lint rule below rather than an oversight:
+  `renderChevron`'s `click` (`render/rows.ts`) closes over `state.toggle`, `redraw` and
+  the element, never a `BacklogItem`, and the title's `mouseover` there closes over the
+  row's path as a plain string. A render that KEEPS a row element must not leave a
+  handler pointing into the model the update replaced, and a targeted refresh that
+  leaves surrounding rows in place cannot leave one holding a stale item — a data update
+  rebuilds rows without rebuilding listeners. The check cannot see what a closure
+  captures, so it bans the CALL instead: a direct `addEventListener` anywhere in
+  `render/rows.ts`, `render/columns.ts` or `render/chips.ts` fails lint unless it is one
+  of the six named exemptions in `render/rows.ts` (the two above plus the four calls
+  that ARE the delegation); an aliased one is caught only on a path
+  `test/view/rowControls.test.ts` drives. `wireChipEvents` is
   what a KEPT row depends on: a render that reused a row element instead of rebuilding it
   would still carry a stale-closured chip if that chip's own listener were wired at
   render time, so the delegation had to exist before that reuse could be safe. Per-row
