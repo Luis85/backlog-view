@@ -514,6 +514,73 @@ free of runtime code so imports stay cycle-free.
   lookup trusted without the comparison accepts a delete-and-recreate under the same name
   and writes to a note nobody picked up. Same fact `src/storage/CLAUDE.md` leans on for
   the dependency undo, used here for the other direction.
+- **A column can be FOLDED, and the fold is a fourth collapse question** — `columnCollapsed`
+  / `setColumnCollapsed`, asked of a scope and the column's own value rather than of a
+  path, `isLaneCollapsed`'s reason exactly. Three things about it are worth knowing before
+  touching either card projection:
+  **The snapshot is where the fold is said.** A folded column contributes no cards to
+  `BoardSnapshot.board`, and a folded bucket returns none from `renderBucket` — one line
+  each, and between them they keep `boardPosition`, `nextBoardPosition`, Alt+arrow, the
+  roadmap's linear walk and the pane's `listbox` role honest without any of those asking
+  about a fold. Skipping the DOM alone would leave the keyboard resting a selection on a
+  card nobody can see.
+  **Both advisories keep asking the UNFOLDED population.** `renderBoardAdvisory` reads the
+  model's own columns and `renderRoadmapAdvisory` counts the buckets, never the cards
+  drawn — a board with every column folded is not a board with nothing on it, and telling
+  the reader their work was all done or all filtered away is the collapsed shelf's mistake
+  one projection over.
+  **The default is the board's alone**: `col.done && col.held > 0 && !col.openWork`, taken
+  once. The two terms beside `done` ask different questions and are deliberately measured
+  DIFFERENTLY (`domain/board.ts`) — every review finding against this default was one of
+  them measured the other's way.
+  `openWork` asks whether anything here is unfinished, over the POPULATION with the quick
+  filter lifted, so a search that hid every open card cannot make a stage look finished and
+  fold work the reader was holding.
+  `held` asks whether the stage holds anything at all, and is NOT population-based: it is
+  counted through `owned`, which carries neither the filter nor the completed-items toggle.
+  A count cannot serve — the toggle lives in the population predicate, so with finished work
+  hidden a done column FULL of finished work reports zero and reads as empty, refusing the
+  fold in the one configuration the feature exists for. The term is needed all the same,
+  because settling is permanent: a default taken while the column holds NOTHING — a board
+  drawn before its results arrive, a filter narrowed to nothing — shut Done for good and
+  handed the work back folded. `collapseNewParents` states that hazard for an unloaded
+  model; a default settled lazily at the render meets it a second time.
+  `openWork` is the
+  one derived quantity a CONTEXT card contributes to, and only through its rollup: under a
+  focus such a card can be the only thing standing for the results below it, so a column
+  folded on its silence takes them off the board — with no advisory, since the board does
+  hold a card. Its own state still counts for nothing, which is the context-row rule
+  intact rather than bent. A bucket
+  passes `false`: an axis has no notion of finished. The once-only part is
+  `collapseNewParents`' rule reached lazily — a column does not exist in the model, so the
+  render is the first moment there is anything to settle.
+  The disclosure itself is `renderChevron` on both surfaces (`renderColumnFold`, exported
+  from `render/board.ts`), so the filter override, the real `disabled` flag and the focus
+  report come with it. **Its `aria-expanded` is not what SAYS the fold, though**, and the
+  reason is the same one that makes the disclosure a `tabindex="-1"` button: an accessible
+  name overrides the children it is set on, so a reader arriving at the column stop by
+  `aria-activedescendant` hears `columnLabel` and no button at all. The word is therefore
+  in the label — `columnLabel` for a column, the bucket's own `aria-label` for a bucket —
+  which is a claim about a COUNT rather than about a chevron: the count deliberately
+  survives the fold, so a label that stayed silent would announce cards the column is not
+  showing. Its keyboard path on the BOARD is the column stop's own menu, which
+  is why that menu is now unconditional and lives in `interactions/columnMenu.ts`; a bucket
+  has no such path, and that gap is [[Folding a horizon bucket]]'s own last paragraph
+  rather than something to fix beside a fold.
+  **Two surfaces over one action have to be AVAILABLE at the same times, and that is a
+  second question from agreeing about the state.** These two shared a builder and still
+  came apart on it TWICE, which is why it is written as a rule rather than as two fixes.
+  Once on the quick filter: `renderChevron` disables itself while one runs, the menu entry
+  did not, and since the filter override makes `columnCollapsed` answer false, a folded
+  column offered an enabled Collapse that wrote a fold nothing on screen could show. Once
+  on the empty no-state strip: the header draws it no disclosure, and the menu went on
+  offering one, so a reader could fold a 44px box that was already a 44px box and shut out
+  the first stateless card to arrive. Both found by review (Codex, PR #140).
+  What the second fix does that the first did not is remove the chance of a third: the
+  strip's test is `emptyNoState` in `domain/board.ts`, asked by the header and by the menu,
+  rather than a condition copied into each. Ask it of any second surface — not just "does
+  it say the same thing", but "is it offered exactly when the first one is", and then put
+  the answer somewhere both read.
 - The whole column is the drop target and the highlight is the only drop signal —
   within-column order is derived from the Base's sort, so there is no between-cards
   edge, no hitbox package, and deliberately no Alt+Up/Down rank shortcut.

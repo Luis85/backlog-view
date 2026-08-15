@@ -56,6 +56,34 @@ export interface BoardColumn {
 	limit: number | null;
 	/** The working agreement written on this stage in the view options, or ''. */
 	policy: string;
+	/**
+	 * True while any card in this column's POPULATION still carries unfinished work —
+	 * the question a done column's fold default is decided on, so a column of finished
+	 * subtrees can start shut and one holding a retained card cannot.
+	 *
+	 * Measured over the same pass {@link BoardColumn.fullCount} is, with the quick filter
+	 * lifted, and that is load-bearing rather than a detail of where the loop sits: read
+	 * off `cards`, a search that hid every open card in Done would report the stage
+	 * finished and fold it, so a user would have searched their board into a different
+	 * shape. Results only, like `count` — a context card is placement, not work.
+	 *
+	 * "Finished" is THIS column's verdict, never `item.subtreeDone`: that field is built on
+	 * `item.done`, the requirements reading, which is the wrong workflow on the Deliverables
+	 * board and on the catalog. See the comment at the assignment.
+	 */
+	openWork: boolean;
+	/**
+	 * Result cards this stage HOLDS, whatever is currently hidden inside it — the evidence
+	 * the fold default needs beside {@link BoardColumn.openWork}, since settling is
+	 * permanent and a default taken on an empty column is a default taken on no evidence.
+	 *
+	 * Neither {@link BoardColumn.count} nor {@link BoardColumn.fullCount} can serve. Both
+	 * are measured through `population`, which carries the completed-items toggle, so with
+	 * finished work hidden a done column full of finished work reports zero — and reads as
+	 * a column with nothing in it rather than the one the fold is for. This is counted
+	 * through `owned` instead, which asks only whether the card is this board's at all.
+	 */
+	held: number;
 }
 
 export interface BoardModel {
@@ -404,11 +432,67 @@ export function paletteDone(palette: StatePalette, state: string): boolean {
  * results as live cards, and a focus-level item outside the filter as an inert
  * context card that still places its results ({@link BoardColumn.cards}).
  */
+/**
+ * The three per-column tallies, in one walk: what the stage HOLDS, what it counts, and
+ * whether any of it is unfinished. One pass because they come from one question asked of
+ * each card — three passes would be three chances to disagree about who is in the column.
+ *
+ * Split out of {@link boardColumns}, which was over its cognitive-complexity budget once
+ * the context branch and `held` joined it. The predicates ride in an object so this stays
+ * inside `max-params`.
+ */
+function tallyColumns(
+	candidates: BacklogItem[],
+	columnFor: (card: BacklogItem) => BoardColumn,
+	asks: { population: (item: BacklogItem) => boolean; owned: (item: BacklogItem) => boolean },
+): void {
+	for (const card of candidates) {
+		const col = columnFor(card);
+		// A context card joins no count — placement, not population — and its OWN state is
+		// not this base's verdict on anything, the context-row rule. What IS the Base's is
+		// everything below it, and under a focus this card can be the only thing standing
+		// for those rows: fold its column away and the results it places leave the board
+		// with it, silently and with no advisory, because the board does hold a card. So
+		// the rollup speaks here and the card does not. Found by review (Codex, PR #140).
+		//
+		// Asked BEFORE `population`, and that order is the fix for the second half of the
+		// same report: the predicate is about RESULTS and rejects a context card for
+		// reasons that have nothing to do with the rows below it — the requirements board
+		// rejects every Deliverable, including the context ones its own `visible`
+		// deliberately admits as cards. Gating on it skipped exactly those.
+		if (card.outsideFilter) {
+			if (card.doneDescendants !== card.descendantCount) col.openWork = true;
+			continue;
+		}
+		// What the stage HOLDS, whatever is hidden inside it. Counted through `owned` and
+		// never through `population`, because the completed toggle lives in that one: with
+		// finished work hidden, a done column of finished work reports `fullCount === 0`
+		// and reads as empty — so a fold default guarding on it would refuse to fire in
+		// exactly the configuration the fold exists for. Found by review (Codex, PR #140).
+		if (asks.owned(card)) col.held += 1;
+		if (!asks.population(card)) continue;
+		col.fullCount += 1;
+		// Asked here rather than of `col.cards` on purpose — see `BoardColumn.openWork`.
+		//
+		// And asked of the COLUMN rather than of `card.subtreeDone`, which is a different
+		// mistake with the same shape: `item.done` is the REQUIREMENTS reading, so a
+		// Deliverable finished in its own workflow reports open work unless its
+		// requirements status happens to agree, and the fold default never fires on that
+		// board at all. `ownWorkflowReading` is this codebase's answer to that question and
+		// `col.done` is the same answer arrived at more cheaply — the card is in this column
+		// because `workflow.stateOf` put it there, so the column IS the active workflow's
+		// verdict on it and the two cannot drift. The descendants keep the rollup's own
+		// reading, exactly as `subtreeDone` does.
+		if (!col.done || card.doneDescendants !== card.descendantCount) col.openWork = true;
+	}
+}
+
 export function boardColumns(
 	workflow: Workflow,
 	candidates: BacklogItem[],
 	visible: (item: BacklogItem) => boolean,
 	population: (item: BacklogItem) => boolean = visible,
+	owned: (item: BacklogItem) => boolean = population,
 ): BoardModel {
 	const { columns, byValue, noState } = workflowColumns(workflow);
 	// State-to-column matching is case-insensitive, exactly as doneValues matching
@@ -425,11 +509,7 @@ export function boardColumns(
 		columnFor(card).cards.push(card);
 		sortIndex.set(card, card.outsideFilter ? firstPlacedIndex(card, visible) : card.entryIndex);
 	}
-	// The population each filtered count is "of": the same candidates through the same
-	// placement, with only the filter lifted. Results only, exactly as `count` is.
-	for (const card of candidates) {
-		if (!card.outsideFilter && population(card)) columnFor(card).fullCount += 1;
-	}
+	tallyColumns(candidates, columnFor, { population, owned });
 	let cardCount = 0;
 	for (const col of columns) {
 		col.cards.sort((a, b) => (sortIndex.get(a) ?? 0) - (sortIndex.get(b) ?? 0) || a.entryIndex - b.entryIndex);
@@ -437,6 +517,24 @@ export function boardColumns(
 		cardCount += col.count;
 	}
 	return { columns, cardCount };
+}
+
+/**
+ * The empty no-state column, which draws as a bare 44px drop strip rather than as a
+ * column: clearing a state by drag has to stay possible without a permanently empty stage
+ * taking a stage's room.
+ *
+ * Asked by two surfaces and therefore stated in one place. It decides what the header
+ * DRAWS — no count, and no disclosure, since there is nothing in it to fold — and what
+ * that column's menu OFFERS, and the two coming apart is exactly how the strip came to
+ * carry a Collapse action with no control on screen for it (found by review, PR #140).
+ *
+ * "Empty" is about the POPULATION and not the matches, the same reading `count`/`fullCount`
+ * already keep apart: a filter that hid every stateless card must not collapse the column
+ * to a strip, which would say the work is gone rather than merely unmatched.
+ */
+export function emptyNoState(col: BoardColumn): boolean {
+	return col.state === null && col.cards.length === 0 && col.fullCount === 0;
 }
 
 /**
@@ -473,6 +571,8 @@ function workflowColumns(
 		// legitimately contain a state called `constructor`.
 		limit: byName(workflow.wipLimits, state) ?? null,
 		policy: byName(workflow.columnPolicies, state) ?? '',
+		openWork: false,
+		held: 0,
 	});
 	const noState = column(null, false);
 	const columns = [noState, ...workflow.values.map((s) => column(s, false))];

@@ -229,11 +229,15 @@ function handleBoardKeydown(host: BacklogViewHost, evt: KeyboardEvent): void {
 }
 
 /**
- * The keys a column stop answers — the policy menu, which is the one thing there is
- * to say about a column you are standing in. A column with nothing agreed has no menu
- * to open, and then the key is left alone rather than swallowed: the same rule the
- * pointer path (`showColumnMenu`) already kept, and the reason `showColumnMenuFor`
- * reports rather than returning void.
+ * The keys a column stop answers — the column's own menu, which is where its fold and its
+ * working agreement both live. This is the fold's keyboard path: the header's disclosure
+ * is a `tabindex="-1"` button like every other per-row control, so the menu is what a
+ * reader standing on the stop uses instead.
+ *
+ * The key is left alone rather than swallowed when nothing opens — the same rule the
+ * pointer path (`showColumnMenu`) keeps, and the reason `showColumnMenuFor` reports
+ * rather than returning void. With the fold in the menu that is now only an index naming
+ * no column, where it used to be any column with nothing agreed.
  */
 function handleColumnStopKey(host: BacklogViewHost, col: number, evt: KeyboardEvent): void {
 	if (isMenuKey(evt) && host.showColumnMenuFor(col)) evt.preventDefault();

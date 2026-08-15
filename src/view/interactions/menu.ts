@@ -40,29 +40,6 @@ function isCurrentType(item: BacklogItem, type: string): boolean {
 }
 
 /**
- * The column's menu. A policy is text, not an action, so its one entry is disabled:
- * the menu exists to make the policy reachable without a pointer, and an entry that
- * looked clickable would promise a command that does not exist.
- *
- * Null when there is no policy — a column with nothing agreed offers no menu at all,
- * rather than an empty one.
- */
-export function buildColumnMenu(policy: string): Menu | null {
-	if (!policy) return null;
-	const menu = new Menu();
-	menu.addItem((mi) => mi.setTitle(policy).setIcon('info').setDisabled(true));
-	return menu;
-}
-
-/** The pointer path onto that menu. */
-export function showColumnMenu(evt: MouseEvent, policy: string): void {
-	const menu = buildColumnMenu(policy);
-	if (!menu) return;
-	evt.preventDefault();
-	showMenuForClick(menu, evt);
-}
-
-/**
  * The row menu for a click on the row — a `contextmenu` from a pointer, or a plain click
  * on the one BUTTON that opens it this way (the match count chip; the state chip's own
  * menu is `showStateMenu`/`chipMenu`, a separate path this function never sees).

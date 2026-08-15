@@ -5,7 +5,7 @@ import { FakeVault, FakeViewConfig } from '../helpers/vault';
 import { Menu, Notice } from '../helpers/obsidian-mock';
 import { flush, key, makeView, treeOf, useViewHarness } from '../helpers/view';
 import { cardDrag } from '../helpers/dnd';
-import { cardByTitle } from '../helpers/board';
+import { cardByTitle, expandColumns } from '../helpers/board';
 import { bucketNames, laneCountOf, laneNames, laneRoadmap, lanesOf, rowFor, shelfTitles } from '../helpers/roadmap';
 import { legalTargets } from '../../src/view/interactions/dependencies';
 
@@ -55,6 +55,9 @@ describe('write safety with context rows, across the board’s entry points', ()
 		// Focus is working position, not a base setting: set through the view.
 		view.setFocusLevel('PBI');
 		view.setProjection('board');
+		// Every column open: this asks what a write path does to a context card, and a
+		// folded Done column would take the context card off screen before the question.
+		expandColumns(containerEl);
 		return { view, containerEl, vault };
 	}
 
