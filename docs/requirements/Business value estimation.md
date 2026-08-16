@@ -64,8 +64,14 @@ configurable per vault:
 | Enablement | How much further valuable work does this unlock? | 5% |
 
 `Business value = Σ(score × weight)`, normalized back to 1.00–5.00. Every scale is 1–5,
-and every point on every scale has a stated meaning — a score is chosen against a
-sentence, never by picking a number that feels right.
+and the model is worth nothing until **every point on every scale carries a stated
+meaning** — a score is chosen against a sentence, never by picking a number that feels
+right. Those sentences are deliberately not here: a rubric is what the scoring surface
+displays, so the feature that builds that surface owns them, for the eight dimensions,
+for confidence, and for effort and complexity alike. The requirements document this epic
+came from carries a default set to start from. Until they are written, nothing under this
+epic is buildable — a 1–5 selector with no rubric behind it is the arbitrary number this
+epic exists to replace, wearing eight faces instead of one.
 
 Three quantities stay **outside** that sum and beside it:
 
@@ -119,7 +125,7 @@ Three quantities stay **outside** that sum and beside it:
 
 ## Settled before anything is built
 
-Four questions have to be answered in the features under this epic, because each one can
+Five questions have to be answered in the features under this epic, because each one can
 make the work twice as large after it starts:
 
 1. **Roughly twelve new optional properties.** Obsidian's picker offers only properties a
@@ -139,3 +145,12 @@ make the work twice as large after it starts:
    validated → needs re-estimation is a state machine over a property that is not the
    board's, and the board already learned what a second workflow costs
    ([[A Deliverable is coloured by its own workflow]]).
+5. **A partial profile is the normal case, and it has no arithmetic yet.** Dimensions are
+   optional per level and every score property is optional per note, so most items will
+   have some dimensions answered and some not. Three candidate rules — suppress the total,
+   renormalize the weights over the answered dimensions, or score a missing dimension as
+   its lowest point — give the same item three different values and three different
+   positions in the matrix, so exactly one of them has to be chosen and stated before any
+   two items are compared. Whichever it is, the rule this epic already holds applies to it:
+   **a partial profile never looks like a complete one**, and a displayed total says how
+   much of the model it rests on.
