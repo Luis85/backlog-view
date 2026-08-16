@@ -160,6 +160,49 @@ describe('Set iteration', () => {
 		]);
 	});
 
+	/** The two sprints with timeframes of their own, and a PBI in one whose dates drifted. */
+	function driftedVault(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Sprint 11.md', { frontmatter: { type: 'Iteration', start: '2026-08-24', due: '2026-09-06' } });
+		vault.addFile('Sprint 12.md', { frontmatter: { type: 'Iteration', start: '2026-09-07', due: '2026-09-20' } });
+		vault.addFile('PBI.md', {
+			frontmatter: { type: 'PBI', order: 10, iteration: '[[Sprint 12]]', start: '2026-05-01', due: '2026-05-30' },
+		});
+		return vault;
+	}
+
+	const DATED_KEYS = { iterationProperty: 'note.iteration', startProperty: 'note.start', targetProperty: 'note.due' };
+
+	it("keeps the current iteration checked when the item's dates have drifted from it", () => {
+		// The narrowing this menu exists to state. The plan for `Sprint 12` is non-empty —
+		// it re-syncs the two dates — so the register's usual "checked when picking writes
+		// nothing" would leave every entry unchecked and the row would show no current
+		// iteration at all.
+		const { containerEl } = makeView(driftedVault(), DATED_KEYS);
+
+		expect((iterationEntries(containerEl, 'PBI') ?? []).map((e) => [e.titleText, e.checked])).toEqual([
+			['Sprint 11', false],
+			['Sprint 12', true],
+			['None', false],
+		]);
+	});
+
+	it('re-applies the timeframe when the checked iteration is picked', async () => {
+		// Checked is not inert: the entry that shows as current still has a write behind
+		// it, and it is the schedule alone — the link is already right.
+		const vault = driftedVault();
+		const { containerEl } = makeView(vault, DATED_KEYS);
+
+		(iterationEntries(containerEl, 'PBI') ?? [])[1].click();
+		await flush();
+
+		expect(vault.fm('PBI.md')).toMatchObject({
+			iteration: '[[Sprint 12]]',
+			start: '2026-09-07',
+			due: '2026-09-20',
+		});
+	});
+
 	it('names two same-basename iterations apart, and writes the one that was picked', async () => {
 		const vault = new FakeVault();
 		vault.addFile('A/Sprint 12.md', { frontmatter: { type: 'Iteration' } });

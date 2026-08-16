@@ -371,18 +371,26 @@ export function canSetIteration(host: BacklogViewHost, item: BacklogItem): boole
  * Not through `addLabelItems` above: a label is a plain string that IS its own entry
  * title, while an iteration is a NOTE whose title is derived and can differ from it, so
  * the shared helper would have to carry a label accessor two of its three callers pass as
- * the identity. What it shares instead is both of that helper's rules. Checked is asked
- * of the PLAN — an entry is checked exactly when picking it would write nothing — never
- * by a comparison written beside the plan and expected to agree with it. And `None`
- * appears only while the note carries the key (`ownKeys`, presence and not value), so it
- * can never write nothing, and it removes the key rather than blanking it.
+ * the identity. What it shares instead is that helper's rules, one of them narrowed.
+ * Checked is asked of the PLAN, never by a comparison written beside the plan and
+ * expected to agree with it — but of the plan's LINK component alone, see below. And
+ * `None` appears only while the note carries the key (`ownKeys`, presence and not value),
+ * so it can never write nothing, and it removes the key rather than blanking it.
  */
 export function addIterationItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
 	const writes = (target: BacklogItem | null): ItemWrite[] => computeIterationWrites(item, target, host.settings);
 	for (const target of iterationTargets(host)) {
 		menu.addItem((si) => {
 			si.setTitle(target.label).onClick(() => void host.applySafely(writes(target.item)));
-			if (writes(target.item).length === 0) si.setChecked(true);
+			// Narrowed deliberately when the plan grew a timeframe. The register's usual
+			// rule — checked exactly when picking it would write nothing — was the same
+			// question as "which iteration is this item in" only while the plan held ONE
+			// write. Now a re-pick of the current iteration re-syncs its dates, so an item
+			// whose dates have drifted plans something for every entry and NO entry would
+			// show as current. The menu's question is the second one, so it asks the
+			// component that answers it. Still asked of the plan, so nothing compares
+			// values beside it — which is the drift the original rule exists to prevent.
+			if (!writes(target.item).some((w) => w.iteration !== undefined)) si.setChecked(true);
 		});
 	}
 	if (!item.ownKeys.iteration) return;

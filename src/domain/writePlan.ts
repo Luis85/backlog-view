@@ -2,7 +2,9 @@ import { TFile } from 'obsidian';
 import { DropTarget } from './dropTargets';
 import { BacklogItem, BacklogModel } from './model';
 import { childLevelIndex, PlacementEnd } from './itemTypes';
+import { statedEnds } from './bars';
 import { readDate, sameValue } from './noteFields';
+import { daysBetween, formatCivil } from './timeline';
 import { hasHorizonAxis } from './roadmap';
 import { stateKeyFor } from './board';
 import { BacklogSettings, isDoneValue, isStartedValue } from './settings';
@@ -354,24 +356,31 @@ export function computeAssigneeWrites(item: BacklogItem, value: string | null): 
 }
 
 /**
- * Everything ONE iteration change writes: the link alone, for now — a later task adds
- * the two dates the iteration's own timeframe supplies, in this same batch.
+ * Everything ONE iteration change writes: the link, and the timeframe that comes with
+ * it — joining a sprint is joining its dates.
  *
- * `target` is the iteration's ITEM, not its `TFile`: the write below takes `.file` for
- * the link, but the item is what a later join needs to reach the iteration's own `start`
- * and `target` readings, which live on `BacklogItem` because that is where `readItems.ts`
- * parses them — a `TFile` is a path and a name and nothing else. This module is pure
- * domain, so it cannot look either up itself; the caller already holds the item, because
- * the menu that calls this built its entries from the model.
+ * `target` is the iteration's ITEM, not its `TFile`: the write takes `.file` for the
+ * link, but the dates are the iteration's own `start` and `target` READINGS, which live
+ * on `BacklogItem` because that is where `readItems.ts` parses them — a `TFile` is a path
+ * and a name and nothing else. This module is pure domain, so it cannot look either up
+ * itself; the caller already holds the item, because the menu that calls this built its
+ * entries from the model.
  *
- * An unconfigured key plans nothing — absence is a value.
+ * **One write on one file, not three.** The dates ride the same `ItemWrite` as the link,
+ * through the `AxisWrite` that already keeps the two rules they need — an unconfigured key
+ * is dropped and a null deletes (`axisEntries` in `storage/writeKeys.ts`, already captured
+ * for undo) — so the link and the schedule apply and undo together. Two records naming one
+ * file would capture two inverses, and an undo could then return the link and keep the
+ * dates: a state the single pick cannot describe.
  *
- * Emptiness is what a later task's menu asks of this output for its checkmark, so a pick
- * that changes nothing must return `[]` rather than a write the applier happens to no-op.
+ * An unconfigured iteration key plans nothing — absence is a value.
+ *
+ * Emptiness still means "this pick would change nothing", so a fully-agreeing re-pick
+ * returns `[]` rather than a write the applier happens to no-op. What the MENU asks of
+ * this output is narrower now — see `addIterationItems`.
  */
 export function computeIterationWrites(item: BacklogItem, target: BacklogItem | null, settings: BacklogSettings): ItemWrite[] {
 	if (!settings.iterationKey) return [];
-	const current = item.iterationEntry;
 	// A None pick is asked of PRESENCE (`ownKeys`), never of the PARSED entry — the same
 	// split `computeAssigneeWrites`/`computeRiskWrites` make. `readLinkList` refuses a
 	// non-string or an empty value outright, so a hand-edited `iteration: ''` or
@@ -380,12 +389,53 @@ export function computeIterationWrites(item: BacklogItem, target: BacklogItem | 
 	// None checkmark on a note the reader can see is not empty, and picking it would
 	// then write nothing. `ownKeys.iteration` answers "is there a key to remove", which
 	// is the question a removal is actually asking.
+	//
+	// It plans the removal and NOTHING ELSE: leaving a sprint is not a reschedule, so the
+	// item keeps whatever plan it had. Deleting two date keys on the way out is a decision
+	// nobody made.
 	if (target === null) return item.ownKeys.iteration ? [{ file: item.file, iteration: null }] : [];
 	// Compared by PATH, never by the raw text: two spellings of one note are one
 	// iteration. A link that resolved to nothing has no path and is therefore never
 	// "already there" for any target.
-	const same = current?.file?.path === target.file.path;
-	return same ? [] : [{ file: item.file, iteration: target.file }];
+	const linkChanges = item.iterationEntry?.file?.path !== target.file.path;
+	const axis = timeframeOf(item, target);
+	if (!linkChanges && axis === undefined) return [];
+	return [{ file: item.file, ...(linkChanges ? { iteration: target.file } : {}), ...(axis ? { axis } : {}) }];
+}
+
+/**
+ * The iteration's timeframe as the ends this write has to state, or undefined where it
+ * has to state none. Three rules, and each is a separate decision:
+ *
+ * - The iteration's dates OVERWRITE the item's. No merge and no fill-only-what-is-empty:
+ *   a sprint's dates are the item's dates once it is in the sprint, so a card committed
+ *   to a band must not keep the one it came from.
+ * - An end the ITERATION does not carry is left alone — `undefined`, never `null`, which
+ *   in an `AxisWrite` is a REMOVAL and would delete the item's own date because the
+ *   sprint has none.
+ * - An end the item already states is absent from the plan, compared as a CIVIL date the
+ *   way every other comparison of these values is: `2026-9-7` and `2026-09-07T09:00` both
+ *   spell the day the sprint starts, and rewriting either would spend an undo slot on a
+ *   spelling.
+ *
+ * It asks the READINGS rather than the settings, which is what keeps an unconfigured
+ * start or target key out of the plan without a second gate: `readGated` already answers
+ * absence for a key no property names, so neither side of the comparison can exist.
+ */
+function timeframeOf(item: BacklogItem, target: BacklogItem): AxisWrite | undefined {
+	const wanted = statedEnds(target);
+	const held = statedEnds(item);
+	const axis: AxisWrite = {};
+	let planned = false;
+	for (const end of ['start', 'target'] as const) {
+		const date = wanted[end].value;
+		if (date === null) continue;
+		const own = held[end].value;
+		if (own !== null && daysBetween(date, own) === 0) continue;
+		axis[end] = formatCivil(date);
+		planned = true;
+	}
+	return planned ? axis : undefined;
 }
 
 /**
