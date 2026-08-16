@@ -216,12 +216,13 @@ export function markersLane(containerEl: HTMLElement): HTMLElement | null {
 
 /**
  * One marker's diamond in that row, by title — what replaced its bar ROW on both grid axes.
- * Found by the mark's own accessible name rather than by its path, because that is the fact
- * a reader gets and the one every projection has to keep.
+ * Found by the mark's own visually hidden CONTENT rather than by its path, because that is
+ * the fact a reader gets and the one every projection has to keep. Content and not a label:
+ * `.pbl-bar` is a plain div, where ARIA prohibits an accessible name.
  */
 export function markFor(containerEl: HTMLElement, title: string): HTMLElement {
 	const marks = Array.from(markersLane(containerEl)?.querySelectorAll<HTMLElement>('.pbl-bar') ?? []);
-	const mark = marks.find((el) => el.getAttribute('aria-label')?.startsWith(`${title} — `));
+	const mark = marks.find((el) => el.querySelector('.pbl-sr-only')?.textContent?.startsWith(`${title} — `));
 	if (!mark) throw new Error(`no marker diamond for ${title}`);
 	return mark;
 }

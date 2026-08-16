@@ -59,9 +59,10 @@ one line, and the work starts at the top of the grid.
    everything derived from it: the line, the arrows, the shelf and the placed count all
    read the marker exactly as before.
 3. The row draws **no disclosure**, since it produces no bar rows to fold.
-4. Each diamond carries its own title, exact date and workflow state in its tooltip and
-   accessible name, and a click on it opens its note. The full-height line still carries the
-   title in the coarse header tier, which is what makes a row of bare diamonds legible.
+4. Each diamond carries its own title, exact date and workflow state as visually hidden
+   CONTENT and in its tooltip, and a click on it opens its note. The full-height line still
+   carries the title in the coarse header tier, which is what makes a row of bare diamonds
+   legible.
 5. The row is minted by its first placed marker and is absent otherwise, exactly as it is on
    the resources axis. A marker that shelves mints no row.
 6. A diamond is still a drag source and still a dependency source: the body hold slides it,
@@ -126,6 +127,15 @@ one line, and the work starts at the top of the grid.
   and has no element `aria-activedescendant` could point at, so selecting one would leave
   the roving walk on a path with no stop. `wireCardActivation` is therefore two halves —
   `wireOpenGestures` and `wireItemMenu` — and a card still takes both through it.
+- **3f — where those words are put.** In the mark's own `.pbl-sr-only` CONTENT, never in an
+  `aria-label`. `.pbl-bar` is a plain div, so its implicit role is `generic`, and ARIA
+  PROHIBITS an accessible name on one — a label there may be announced by nobody, which for
+  a mark that no longer has a row would mean the words were LOST when the row went rather
+  than moved. Text is in the accessibility tree whatever the element's role is. The rule is
+  not new: `stateNote`'s own comment states it for this exact element, and this row broke it
+  on the resources axis in 2026-08-15 and here on 2026-08-16 until review caught it. What it
+  does not buy is an ACTIONABLE milestone — the diamond is still no stop, which is 3a — so
+  the honest claim is that the words are readable, not that the mark is reachable.
 - **4a — the bucket axis.** Nothing here applies: a marker is an ordinary card there.
 - **5a — a marker the Base excluded.** Unchanged. `deriveBars` routes a context row to
   `RoadmapModel.context` before any span is computed, so it never reaches this row — the
@@ -141,8 +151,9 @@ one line, and the work starts at the top of the grid.
   ordinary work under the same parent.
 - A marker's placement is unchanged: the same reduction to its target point, the same
   shelving reasons, the same diamond and the same outside-the-window marking.
-- Each diamond names itself — its title, its exact date and its state — with a click that
-  opens its note; its full-height line still crosses the grid and still carries the title.
+- Each diamond names itself in content a screen reader reads — its title, its exact date and
+  its state, never through a label a `generic` role forbids — with a click that opens its
+  note; its full-height line still crosses the grid and still carries the title.
 - The colour a marker actually draws is the colour the legend keys, the wholly-outside case
   and the done case included.
 - A milestone's own state is legible without colour on BOTH grid axes.
@@ -184,7 +195,9 @@ of `wireCardActivation` a mark can take without a selection. The open pair is wi
 because a browser splits one affordance in two — a middle click never fires `click` — so a
 surface that wires the primary one alone loses the tab silently.
 
-`test/view/roadmapMatches.test.ts` drives 3d's registration, watched failing without it, and
+`test/view/roadmapMatches.test.ts` drives 3d's registration, watched failing without it;
+`test/view/milestonesRow.test.ts` and `test/view/roadmapMarkers.test.ts` drive 3f from both
+directions (the words present as content, and no `aria-label` on the mark at all); and
 `test/view/roadmapMarkers.test.ts` drives 3e — all three gestures on the mark, and the
 connector inside it refused by `fromRowControl` on both halves of the pair.
 

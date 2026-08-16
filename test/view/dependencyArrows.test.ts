@@ -218,7 +218,7 @@ describe("the row's accessible name states what it waits for", () => {
 		vault.addFile('Ship.md', { frontmatter: { type: 'Milestone', order: 20, dependsOn: 'A', due: '2026-08-05' } });
 		const { containerEl } = roadmapView(vault, { ...DATES });
 
-		expect(markFor(containerEl, 'Ship').getAttribute('aria-label')).toBe('Ship — Milestone 2026-08-05');
+		expect(markFor(containerEl, 'Ship').querySelector('.pbl-sr-only')?.textContent).toBe('Ship — Milestone 2026-08-05');
 		expect(markersLane(containerEl)?.hasClass('pbl-row-conflict')).toBe(false);
 		// And no arrow, from either end: the declaration is gone, not merely unspoken.
 		expect(arrows(containerEl)).toHaveLength(0);

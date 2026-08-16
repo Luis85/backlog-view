@@ -975,7 +975,12 @@ free of runtime code so imports stay cycle-free.
   instead; with the row gone that branch was unreachable and went, and `progressNote` is no
   longer exported. What it cost — a marker with descendants announces its rollup to nobody
   — is [[Milestones in one row on the dated axis]] 3b. Its state is not lost with it:
-  `stateNote` moved into `render/lanes.ts` and the diamond folds it into its own label.
+  `stateNote` moved into `render/lanes.ts` and the diamond folds it into its own visually
+  hidden CONTENT — never an `aria-label`, which `stateNote`'s comment has always refused for
+  this element: `.pbl-bar` is a plain div, role `generic`, where ARIA prohibits an accessible
+  name, so a label there may be announced by nobody. A mark with no row has nowhere else for
+  the words to be, which is what made breaking that rule a LOSS rather than a lesser
+  announcement.
   **The diamond still REGISTERS in `ctx.placed`, with `face: 'none'`**, and the two are
   different questions: registering says the item is ON SCREEN, which is what `carded` is
   read from, while `face` says what can be WRITTEN on the mount. Drawn and unregistered, a

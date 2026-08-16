@@ -827,7 +827,15 @@ export function drawMarkerDiamonds(
 		// colour alone, which WCAG 1.4.1 refuses and a screen reader gets none of.
 		const state = stateNote(stateKeyFor(ctx.host.settings, bar.item), ownWorkflowReading(bar.item));
 		const said = `${bar.item.title} — ${spanText(bar)}${state ? ` — ${state}` : ''}`;
-		el.setAttribute('aria-label', said);
+		// **CONTENT, never an `aria-label`** — this repository's own rule about this exact
+		// element, stated at `stateNote` and broken here until 2026-08-16: `.pbl-bar` is a
+		// plain div, so its implicit role is `generic`, and ARIA PROHIBITS an accessible name
+		// on one. A label there may be announced by nobody, which would mean the words a
+		// marker's row used to carry were LOST when the row went rather than moved. Text is in
+		// the accessibility tree whatever the element's role is. Found in review, on both grid
+		// axes, since the mark is one mark. The tooltip beside it is the pointer's own route to
+		// the same sentence and needs no role at all.
+		el.createSpan({ cls: 'pbl-sr-only', text: said });
 		setTooltip(el, said);
 		// The path on the MARK, which is where every other grid puts it (`renderBarRow` puts
 		// it on the row): the link drag's own sweep reads it back to mark what a held gesture

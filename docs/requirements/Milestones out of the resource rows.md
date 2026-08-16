@@ -161,6 +161,13 @@ can fold them away.
   which this row shipped WITHOUT: `pbl-done` repaints the diamond green and nothing said so,
   which is state in colour alone. `stateNote` is read by a bar row and a diamond alike now —
   see [[Milestones in one row on the dated axis]] 3c, which is where the fix came from.
+- **3e — where every word on a diamond is put.** In the mark's own `.pbl-sr-only` CONTENT,
+  never an `aria-label`, and this row shipped it the wrong way on 2026-08-15: `.pbl-bar` is a
+  plain div, role `generic`, where ARIA prohibits an accessible name — so the title and date
+  step 5 promises "on the mark" may have been announced by nobody, which for a mark with no
+  row is a loss rather than a lesser announcement. `stateNote`'s own comment has always
+  stated the rule for this element. Corrected on both axes at once (review, 2026-08-16); see
+  [[Milestones in one row on the dated axis]] 3f.
 - **3b — a milestone dated on its own assignee's away day.** Nothing is said about it, and
   this is a **loss** rather than an omission — it was reported until 2026-08-15, as the
   `· away` token and the sentence beside it. What that mark means is that a bar and a

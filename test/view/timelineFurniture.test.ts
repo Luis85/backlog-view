@@ -396,7 +396,7 @@ describe('workflow state on the dated axis', () => {
 		// to hold a `.pbl-sr-only` span and the mark's own label is the whole of what it
 		// announces. Without these words `pbl-done` is a green diamond and nothing else —
 		// state in colour alone, which is exactly what `stateNote` exists to prevent.
-		expect(markFor(containerEl, 'Cutover').getAttribute('aria-label')).toBe(
+		expect(markFor(containerEl, 'Cutover').querySelector('.pbl-sr-only')?.textContent).toBe(
 			'Cutover — Milestone 2026-09-15 — Active',
 		);
 	});

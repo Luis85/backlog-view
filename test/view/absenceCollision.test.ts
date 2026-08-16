@@ -354,7 +354,7 @@ describe('what a bar SAYS it costs to cross an absence', () => {
 
 		const markers = containerEl.querySelector<HTMLElement>('.pbl-lane-markers');
 		const diamond = markers?.querySelector<HTMLElement>('.pbl-bar-milestone');
-		expect(diamond?.getAttribute('aria-label'), 'the milestone still draws — as a diamond').toContain('Ship');
+		expect(diamond?.querySelector('.pbl-sr-only')?.textContent, 'the milestone still draws — as a diamond').toContain('Ship');
 		expect(rowFor(containerEl, 'Ship'), 'and never as a row in anybody’s band').toBeNull();
 		expect(markers?.querySelector('.pbl-days-lost')).toBeNull();
 		expect(markers?.querySelector('.pbl-away-flag')).toBeNull();

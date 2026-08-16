@@ -73,8 +73,8 @@ describe('a marker on the dated axis', () => {
 		expect(mark.classList.contains('pbl-bar-milestone')).toBe(false);
 		expect(mark.classList.contains('pbl-bar-outside')).toBe(true);
 		expect(mark.classList.contains('pbl-bar-open-end')).toBe(true);
-		// The exact date is never lost — it stays where the mark's accessible name puts it.
-		expect(mark.getAttribute('aria-label')).toContain('2200-01-01');
+		// The exact date is never lost — it stays in the mark's own visually hidden content.
+		expect(mark.querySelector('.pbl-sr-only')?.textContent).toContain('2200-01-01');
 	});
 
 	it('draws no diamond for a milestone before the window edge either, marked open at the START', () => {
@@ -89,7 +89,7 @@ describe('a marker on the dated axis', () => {
 		const mark = markFor(containerEl, 'Kickoff');
 		expect(mark.classList.contains('pbl-bar-outside')).toBe(true);
 		expect(mark.classList.contains('pbl-bar-open-start')).toBe(true);
-		expect(mark.getAttribute('aria-label')).toContain('1900-01-01');
+		expect(mark.querySelector('.pbl-sr-only')?.textContent).toContain('1900-01-01');
 	});
 
 	it('opens its note on every gesture a bar row had — click, middle click and the menu', () => {
@@ -128,16 +128,25 @@ describe('a marker on the dated axis', () => {
 		expect(vault.opened).toEqual([]);
 	});
 
-	it('puts the milestone’s name and exact date on the mark itself', () => {
+	it('puts the milestone’s name and exact date on the mark, as CONTENT rather than a label', () => {
 		// The row's lead named it until 2026-08-16 and there is no lead any more, so the
 		// diamond is the only place a name can be: bare marks in a shared track are legible
 		// because the mark says where and the full-height line's label says what.
+		//
+		// **A `.pbl-sr-only` span and never an `aria-label`**, which is this repository's own
+		// rule about this very element, stated at `stateNote` and broken here: `.pbl-bar` is a
+		// plain div, role `generic`, where ARIA PROHIBITS an accessible name — so a label on
+		// it may be announced by nobody, and the words the row used to carry would be lost
+		// rather than moved. Content is always in the accessibility tree. Found in review
+		// (2026-08-16), on both grid axes, since the mark is one mark.
 		const vault = new FakeVault();
 		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10, due: '2026-12-01' } });
 		const { containerEl } = roadmapView(vault, { ...DATES });
 
 		const mark = markFor(containerEl, 'Ship 1.0');
-		expect(mark.getAttribute('aria-label')).toBe('Ship 1.0 — Milestone 2026-12-01');
+		expect(mark.querySelector('.pbl-sr-only')?.textContent).toBe('Ship 1.0 — Milestone 2026-12-01');
+		expect(mark.hasAttribute('aria-label')).toBe(false);
+		// The pointer's own route to the same words is untouched.
 		expect(mark.dataset.tooltip).toBe('Ship 1.0 — Milestone 2026-12-01');
 	});
 });
