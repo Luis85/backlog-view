@@ -247,6 +247,73 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 }
 
 /**
+ * The board population for ONE iteration: every item that names it, plus the excluded
+ * ancestors those items need to be placed at all.
+ *
+ * **Candidates are not population, and the distinction is the whole function.** An
+ * in-scope carrier hanging from an excluded ancestor needs that ancestor drawn or it has
+ * nowhere to sit, so the list carries both — while the CARRIERS alone are counted, are
+ * writable, and supply anything derived. Nothing here has to enforce that second half:
+ * an ancestor arrives `outsideFilter`, which is the question every count, every rollup
+ * and every write gate in this codebase already asks.
+ *
+ * A function rather than a `BacklogModel` field, unlike `deliverableResults` beside it,
+ * because the iteration is a runtime PICK: one model serves whichever scope the toolbar
+ * is on, and a field would have to be rebuilt on a choice that changes nothing about the
+ * vault.
+ *
+ * Read off `realRoots` — the whole, unfocused tree — for `deliverableResults`' reason: a
+ * focus level set on another projection must not narrow a board scoped to a fortnight.
+ *
+ * Four refusals decide a CARRIER, and each is its own rule:
+ *
+ * - **Nothing is inherited down the tree.** Committing a parent to a sprint does not
+ *   commit its subtree, so a child with no link of its own is not on the board.
+ * - **No catalog member.** `inCatalog` answers first and unconditionally — no needle
+ *   makes a `Test case` a row of the plan, and a link is a needle like any other.
+ * - **No marker**, asked of `isMarkerType` and never of `isIterationType`. A marker
+ *   occupies no rung, holds nothing and hangs from nothing — it is not work, and a board
+ *   scoped to a commitment to finish some work draws work. Written as the one name, a
+ *   hand-written link on a `Milestone` cards it as a sprint item; written as the
+ *   predicate, a third marker inherits the rule rather than reopening the hole.
+ * - **No context row.** This one follows from none of the others and was the refusal
+ *   this function's plan did not state: `iterationEntry` is read on EVERY item,
+ *   `outsideFilter` rows included — unlike `declaredEdges`, which skips them, because an
+ *   excluded note may be NAMED by a result and may never do the naming. So an excluded
+ *   note holding the link is a candidate on the strength of its own frontmatter, and a
+ *   list filtered by the link alone would card it, count it and take a drop on it. It
+ *   renders, it parents, and that is all.
+ *
+ * A `Deliverable` is included, with no type filter at all — not the product board's
+ * `!isDeliverableType` and not its mirror. A sprint is a commitment to finish some work,
+ * and a concept or a design is part of what it commits to.
+ *
+ * The membership question is asked INSIDE the walk. Scoping the output instead would let
+ * a match in ANOTHER iteration keep an ancestor on this board and swallow its "nothing
+ * matches" advisory.
+ */
+export function iterationResults(model: BacklogModel, path: string): BacklogItem[] {
+	const carries = (item: BacklogItem): boolean =>
+		!item.outsideFilter &&
+		!isMarkerType(item.typeName) &&
+		!inCatalog(item) &&
+		item.iterationEntry?.file?.path === path;
+	const drawn: BacklogItem[] = [];
+	const walk = (items: BacklogItem[]): void => {
+		for (const item of items) {
+			const mark = drawn.length;
+			if (carries(item)) drawn.push(item);
+			walk(item.children);
+			// An excluded ancestor joins only once something below it has — inserted at the
+			// mark so the list reads top-down, the order a board places cards in.
+			if (item.outsideFilter && drawn.length > mark) drawn.splice(mark, 0, item);
+		}
+	};
+	walk(model.realRoots);
+	return drawn;
+}
+
+/**
  * Resolve declared prerequisites into edges, once the item set is final.
  *
  * Runs after `assignAll` — and therefore after the scope prune — so an entry resolves
