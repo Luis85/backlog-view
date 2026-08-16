@@ -1,10 +1,8 @@
-import { BasesPropertyId, NullValue, setTooltip } from 'obsidian';
+import { BasesPropertyId, NullValue, setTooltip, Value } from 'obsidian';
 import { drawIcon } from './icons';
 import { BacklogViewHost, Column, ColumnFit, ColumnKind, PlacedMount } from '../host';
 import { columnWidth, columnWidthVar, renderColumnResize, widenSign } from '../interactions/columnResize';
 import { dateChipFor, LABEL_CHIPS, renderDateChip, renderHorizonChip, renderLabelChip, renderStateChip } from './chips';
-import { showTagMenu } from '../interactions/menu';
-import { removeTag } from '../interactions/tags';
 import { DEFAULT_PROP_COLUMN_WIDTH } from '../../storage/viewStateStore';
 import { BacklogItem } from '../../domain/model';
 import { hasHorizonAxis } from '../../domain/roadmap';
@@ -43,17 +41,31 @@ export interface RowContext {
 	 * the cycle that decides it.
 	 */
 	placed: Map<string, PlacedMount>;
+	/**
+	 * Signature per rendered path, from the pass that drew it — read to decide whether a
+	 * row may be KEPT (`rowSignature`, and ADR 0029). One lifetime with `rows` beside it,
+	 * which is why `clearRowIndex` clears the two together: a signature index that outlived
+	 * its rows would claim elements that are gone. A path ABSENT here is a row that may
+	 * never be claimed — it drew another note's content, or its note is not in the metadata
+	 * cache yet.
+	 */
+	sigs: Map<string, string>;
 	columns: Column[];
 }
 
-export function rowContext(host: BacklogViewHost, rows: Map<string, HTMLElement>, cardKids: Set<string>): RowContext {
+export function rowContext(
+	host: BacklogViewHost,
+	rows: Map<string, HTMLElement>,
+	cardKids: Set<string>,
+	sigs: Map<string, string>,
+): RowContext {
 	// What this pass DRAWS. `host.columns` stays what EXISTS — `syncColumnFit` measures
 	// that one, or a narrowed pane would ratchet the count down and never let a column
 	// come back when it widens again.
 	const shown = host.columns.slice(0, host.columnFit?.shown ?? host.columns.length);
 	// Created here rather than on the view: `backlogView.ts` already passes this context
 	// to the whole render pass, and the register is a fact about one pass.
-	return { host, rows, cardKids, placed: new Map(), columns: shown };
+	return { host, rows, cardKids, placed: new Map(), sigs, columns: shown };
 }
 
 /**
@@ -323,8 +335,13 @@ function columnLabel(host: BacklogViewHost, prop: BasesPropertyId): string {
  * The header naming the property columns. Rows carry no labels of their own —
  * repeating "Assignee:" on every row is the clutter columns exist to remove — so
  * the names live here once, pinned to the top of the scroller.
+ *
+ * Returns the header it drew, or null where there was nothing to head. The caller needs
+ * the element rather than a second look at the container: a reconciling pass walks the
+ * rows after it, and the node the walk starts at is the one thing that decides whether
+ * its prune can reach the header.
  */
-export function renderColumnHeader(ctx: RowContext, containerEl: HTMLElement): void {
+export function renderColumnHeader(ctx: RowContext, containerEl: HTMLElement): HTMLElement | null {
 	const settings = ctx.host.settings;
 	// CONFIGURED is not DRAWN, and this asks the second: the rollup is pinned past the end
 	// of the column list rather than being one of them, so a strip narrowed to zero
@@ -339,7 +356,7 @@ export function renderColumnHeader(ctx: RowContext, containerEl: HTMLElement): v
 		hasRollup(ctx.host.projection) &&
 		!ctx.host.columnFit?.rollupDropped;
 	// Nothing to head at all, which is not the same question as "no columns".
-	if (ctx.columns.length === 0 && !rollup) return;
+	if (ctx.columns.length === 0 && !rollup) return null;
 	const header = containerEl.createDiv({ cls: 'pbl-cols' });
 	header.createDiv({ cls: 'pbl-row-spacer' });
 
@@ -366,6 +383,7 @@ export function renderColumnHeader(ctx: RowContext, containerEl: HTMLElement): v
 		});
 	}
 	renderAddSpacer(header);
+	return header;
 }
 
 /**
@@ -500,19 +518,33 @@ function renderCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem,
 }
 
 
+/**
+ * Whether a Bases value draws anything at all.
+ *
+ * One statement of it, because two readings drift: a missing property comes back as a
+ * `NullValue` INSTANCE rather than `null`, and `isEmpty` is declared on some `Value`
+ * subclasses (`ObjectValue`) and not on `Value` itself, so both tests are easy to write
+ * differently the second time — the second reading's first draft asked `!= null`, which a
+ * `NullValue` instance passes. {@link renderValue} asks it to decide whether to draw a
+ * cell, and `valueKinds` (`view/rowSignature.ts`) asks it to decide which value it may
+ * read a rendered TYPE from. Neither test is a version guard; both are genuine questions
+ * about the value in hand.
+ */
+export function drawsSomething(value: Value | null): value is Value {
+	if (value === null || value instanceof NullValue) return false;
+	const maybeEmpty = value as { isEmpty?: () => boolean };
+	return !(typeof maybeEmpty.isEmpty === 'function' && maybeEmpty.isEmpty());
+}
+
 function renderValue(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem, column: Column): boolean {
 	// An ancestor from outside the filter has no Bases row, so no property values.
-	let value = null;
+	let value: Value | null = null;
 	try {
 		value = item.entry?.getValue(column.prop) ?? null;
 	} catch {
 		return false;
 	}
-	if (value === null || value instanceof NullValue) return false;
-	// isEmpty() is declared on some Value subclasses (ObjectValue) but not on Value
-	// itself, so this stays a genuine test of the value in hand, not a version guard.
-	const maybeEmpty = value as { isEmpty?: () => boolean };
-	if (typeof maybeEmpty.isEmpty === 'function' && maybeEmpty.isEmpty()) return false;
+	if (!drawsSomething(value)) return false;
 
 	const text = value.toString().trim();
 	const valueEl = cell.createSpan({ cls: 'pbl-prop-value' });
@@ -569,14 +601,12 @@ function renderTagCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogIt
 			cls: 'pbl-tag-remove',
 			attr: { type: 'button', tabindex: '-1', 'aria-label': `Remove tag ${tag}` },
 		});
+		// The tag this button removes, read back by the delegated handler
+		// (`wireChipEvents` in `render/rows.ts`) rather than parsed off the rendered
+		// `#${tag}` text.
+		remove.dataset.tag = tag;
 		drawIcon(remove, 'x');
 		setTooltip(remove, `Remove #${tag}`);
-		remove.addEventListener('click', (evt) => {
-			// `preventDefault` only: a tag pill is a link-shaped control, and the row's own
-			// handler already ignores it (`fromRowControl`).
-			evt.preventDefault();
-			removeTag(host, item, tag);
-		});
 	}
 	if (item.tags.length > 0) setTooltip(cell, `${column.label}: ${item.tags.map((t) => `#${t}`).join(', ')}`);
 	if (!editable) return item.tags.length > 0;
@@ -587,7 +617,6 @@ function renderTagCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogIt
 	});
 	drawIcon(add, 'plus');
 	setTooltip(add, 'Add tag');
-	add.addEventListener('click', (evt) => showTagMenu(host, evt, item));
 	return item.tags.length > 0;
 }
 

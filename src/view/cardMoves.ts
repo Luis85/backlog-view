@@ -210,18 +210,27 @@ export class CardMoveController {
 	}
 
 	/**
-	 * Apply a move and mark its row pending until the Bases refresh re-renders it in
-	 * place. Both projections move items, so both need the same holding signal —
-	 * cleared on refusal AND on a batch that changed nothing, because only a real
-	 * change brings the refresh that would replace the row: a stale Unschedule of
-	 * dates another editor already removed, or a batch the shape or baseline check
-	 * refuses, would otherwise leave the card looking permanently in flight.
+	 * Apply a move and mark its row pending for the duration of the batch. Both
+	 * projections move items, so both need the same holding signal.
+	 *
+	 * Taken off UNCONDITIONALLY, which is this module owning both halves of the class it
+	 * sets. It used to be removed only on a refusal or a batch that changed nothing, and
+	 * a successful move relied on the row being REBUILT to carry the class away with the
+	 * element — a property of the render, across a layer seam, stated nowhere. Since
+	 * ADR 0029 a render may KEEP a row element instead, so what once could not fail is
+	 * now a fact about `rowSignature`'s term list: an accepted tree drop moves the row's
+	 * `place.pos`, which is a term, so nothing is broken today and nothing says it has to
+	 * stay that way. Removing it here needs neither guarantee. By the time this await
+	 * resolves the batch's own refresh has already run (`runExclusively` flushes the
+	 * deferred update in its `finally`), so a rebuilt row's captured element is detached
+	 * and the removal is a harmless no-op, while a kept one is exactly the row that still
+	 * wears the class.
 	 */
 	private async applyMove(item: BacklogItem, writes: ItemWrite[]): Promise<WriteOutcome | null> {
 		const row = this.rowEls.get(item.file.path) ?? null;
 		row?.classList.add('pbl-pending');
 		const applied = await this.host.applySafely(writes);
-		if (applied === null || !applied.changed) row?.classList.remove('pbl-pending');
+		row?.classList.remove('pbl-pending');
 		return applied;
 	}
 }

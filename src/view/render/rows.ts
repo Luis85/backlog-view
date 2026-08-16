@@ -2,164 +2,28 @@ import { Keymap, setTooltip } from 'obsidian';
 import { drawIcon } from './icons';
 import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
 import { promptCreateItem } from '../interactions/create';
-import { showItemMenu } from '../interactions/menu';
-import { offerableTypes, projectionMember } from '../projection';
-import { renderAllDoneState, renderEmptyState, renderFilterEmptyState } from './emptyStates';
-import { projectionPopulation } from '../projection';
+import { showItemMenu, showHorizonMenu, showStateMenu, showTagMenu } from '../interactions/menu';
+import { promptSchedule } from '../interactions/plan';
+import { removeTag } from '../interactions/tags';
+import { offerableTypes } from '../projection';
 import { badgeStyleFor } from './badges';
+import { LABEL_CHIPS } from './chips';
 import { BacklogItem } from '../../domain/model';
 import { childTypeChoices, displayType } from '../../domain/itemTypes';
 import { ownWorkflowReading } from '../../domain/board';
-import { columnWidth, columnWidthVar } from '../interactions/columnResize';
-import {
-	INDENT_PER_DEPTH,
-	renderAddSpacer,
-	renderColumnHeader,
-	renderRowColumns,
-	metaColWidth,
-	rollupChars,
-	RowContext,
-} from './columns';
+import { renderAddSpacer, renderRowColumns, RowContext } from './columns';
 
 /** Why an implied badge is marked, said once: the render sets the class, the pass reads it. */
 const IMPLIED_TYPE_TOOLTIP =
 	'Type property not set — level implied from position. Use "Assign missing properties" to write it.';
-/** Render the tree content (or the empty state) into the tree element. */
-export function renderTree(ctx: RowContext, treeEl: HTMLElement): void {
-	const model = ctx.host.model;
-	if (!model) return;
-	// THIS projection's population, on all three lines below AND on the reservation the
-	// widths carry — `model.items` holds every item the model kept, so on the plan it
-	// includes catalog members that draw no row here and could reserve a width for a
-	// label nothing on screen has.
-	const population = projectionPopulation(ctx.host.projection, model);
-	// Column widths are the same for every row, so they live on the scroller and
-	// are inherited — including by the subtrees a targeted refresh re-renders, and by
-	// the grip that writes one of them straight back mid-drag.
-	// Geometry lives in one place: columnFit budgets with these numbers and the
-	// stylesheet lays out with them, so the two cannot drift apart.
-	// The lane's width is the one the FIT budgets with, from the same function, so the
-	// stylesheet and `columnFit` cannot describe different geometry (Codex, PR #153).
-	const chars = rollupChars(ctx.host, population.items);
-	const widths: Record<string, string> = {
-		'--pbl-meta-col': `${metaColWidth(chars)}px`,
-		'--pbl-indent': `${INDENT_PER_DEPTH}px`,
-	};
-	// The rollup label's reservation, which is the one geometry here that the DATA decides
-	// rather than the stylesheet: see `rollupReservation`. Published on the same element as
-	// the widths and for the same reason — one declaration per tree, inherited by every row
-	// and by the subtrees a targeted refresh re-renders.
-	if (chars > 0) widths['--pbl-rollup-label'] = `${chars}ch`;
-	for (const [index, column] of ctx.columns.entries()) {
-		widths[columnWidthVar(index)] = `${columnWidth(ctx.host, column.prop)}px`;
-	}
-	// REMOVED rather than left unset, and this is the one declaration here that needs it:
-	// the tree element is built once in the constructor and only emptied per render, so
-	// its inline style outlives every pass, and `setCssProps` writes the keys it is given
-	// without clearing the ones it is not. A view whose state property is cleared while
-	// counts stay on goes from a reservation to none — and the stale one would keep the
-	// lane widened for rows that no longer draw a bar, taking the width off the title.
-	// Absent is also the only honest spelling of "none": an empty value would make
-	// `var(--pbl-rollup-label, 28px)` substitute nothing rather than fall back, and a
-	// concrete `28px` here would be a second opinion about a default the stylesheet owns.
-	// (Codex, PR #153.)
-	if (chars === 0) treeEl.style.removeProperty('--pbl-rollup-label');
-	treeEl.setCssProps(widths);
-	// Both decisions below used to read the shared arrays, which hold every item the model
-	// kept: a base returning twelve test notes and no plan work would be told "All 12 items
-	// are done and hidden", with a Show completed items button that reveals nothing —
-	// because nothing is completed and nothing is hidden by completion. A control offering
-	// to reveal what it cannot show.
-	//
-	// "Is there anything here" is asked of the RESULTS and not of the items, which is the
-	// same distinction one line further down rather than a second rule: a context row is
-	// placement, never population. A base returning one `PBI` whose excluded parent is a
-	// `Test case` gives the catalog exactly one item — that context row — and it is hidden,
-	// since the only child it places is a plan row. Counting it as population walked past
-	// this branch into "All 0 items are done and hidden", offering a completed toggle in a
-	// projection that hides nothing by completion at all.
-	if (population.results.length === 0) {
-		renderEmptyState(ctx.host, treeEl);
-		return;
-	}
-	// Whether any row will render is knowable before rendering one: renderForest draws
-	// a row per root isRowHidden lets through. Asking first keeps the header — which is
-	// not a row — from having to be built and then thrown away again.
-	if (!population.roots.some((root) => !ctx.host.isRowHidden(root))) {
-		if (ctx.host.isFiltering()) renderFilterEmptyState(ctx.host, treeEl);
-		else renderAllDoneState(ctx.host, treeEl, population.results.length);
-		return;
-	}
-	renderColumnHeader(ctx, treeEl);
-	renderForest(ctx, treeEl, population.roots);
-}
-
-/**
- * Re-render one row's child group in place. Expanding and collapsing is the most
- * frequent interaction in a large backlog; rebuilding the whole tree for it would
- * cost hundreds of rows of DOM work to change one subtree.
- */
-export function refreshRowChildren(ctx: RowContext, item: BacklogItem, row: HTMLElement): void {
-	const collapsed = ctx.host.isCollapsed(item.file.path);
-	const hasChildren = item.children.some((c) => !ctx.host.isRowHidden(c));
-	row.querySelector('.pbl-chevron')?.classList.toggle('pbl-expanded', hasChildren && !collapsed);
-	if (hasChildren) row.setAttribute('aria-expanded', String(!collapsed));
-
-	const existing = row.nextElementSibling;
-	if (existing instanceof HTMLElement && existing.hasClass('pbl-children')) {
-		forgetSubtree(ctx.rows, item.children, projectionMember(ctx.host.projection));
-		existing.detach();
-	}
-	const parentEl = row.parentElement;
-	if (!hasChildren || collapsed || !parentEl) return;
-	// createDiv appends to the container; move the group up to sit after its row.
-	const childrenEl = childGroupEl(parentEl, item);
-	parentEl.insertBefore(childrenEl, row.nextSibling);
-	renderForest(ctx, childrenEl, item.children);
-}
-
-/**
- * Drop a removed subtree from the row index so stale elements can't be found — along
- * this projection's MEMBERSHIP edges, never the raw child list.
- *
- * A non-member's subtree can hold a member this projection renders as a promoted ROOT,
- * whose row is somewhere else entirely and is not being detached. Walking raw children
- * deletes that row's index entry while its DOM stays on screen, and everything that reaches
- * a row by lookup then fails for it silently: selection cannot mark or announce it, and a
- * keyboard-opened menu loses its anchor.
- *
- * Membership is a superset of what a pass actually DRAWS — `isRowHidden` (the quick
- * filter, the completed toggle) narrows further — so this can walk into and delete the
- * entry for a member that rendered no row this pass. That is harmless, not a second bug:
- * a hidden member's subtree renders no rows to leave stale, and a full render clears
- * `rowEls` outright (`this.rowEls.clear()` in `backlogView.ts`) before rebuilding it, so
- * no stale entry can survive past that boundary either.
- */
-function forgetSubtree(rows: Map<string, HTMLElement>, items: BacklogItem[], member: (item: BacklogItem) => boolean): void {
-	for (const item of items) {
-		if (!member(item)) continue;
-		rows.delete(item.file.path);
-		forgetSubtree(rows, item.children, member);
-	}
-}
-
-/** Render a sibling group, skipping hidden items so aria positions stay true. */
-function renderForest(ctx: RowContext, containerEl: HTMLElement, siblings: BacklogItem[]): void {
-	const visible = siblings.filter((item) => !ctx.host.isRowHidden(item));
-	visible.forEach((item, i) => renderItem(ctx, containerEl, item, { pos: i + 1, count: visible.length }));
-}
-
-function renderItem(
+/** Everything a row element IS, for the walk in `render/reconcile.ts` to place. */
+export function buildRow(
 	ctx: RowContext,
 	containerEl: HTMLElement,
 	item: BacklogItem,
-	place: { pos: number; count: number },
-): void {
+	state: { hasChildren: boolean; collapsed: boolean; place: { pos: number; count: number } },
+): HTMLElement {
 	const host = ctx.host;
-	// A row whose children are all hidden renders as a leaf: a chevron expanding
-	// into an empty group would be a lie (its progress bar tells the story).
-	const hasChildren = item.children.some((c) => !host.isRowHidden(c));
-	const collapsed = host.isCollapsed(item.file.path);
 	// Through `offerableTypes` like every other type list. `childTypeChoices` answers the
 	// ladder's question and its answer carries `EXTRA_TYPES` — `Deliverable` among them —
 	// so the raw list is the whole vocabulary minus the rungs, not what a projection may
@@ -173,12 +37,12 @@ function renderItem(
 		attr: {
 			role: 'treeitem',
 			'aria-level': String(item.depth + 1),
-			'aria-posinset': String(place.pos),
-			'aria-setsize': String(place.count),
+			'aria-posinset': String(state.place.pos),
+			'aria-setsize': String(state.place.count),
 			'aria-selected': String(selected),
 		},
 	});
-	if (hasChildren) row.setAttribute('aria-expanded', String(!collapsed));
+	if (state.hasChildren) row.setAttribute('aria-expanded', String(!state.collapsed));
 	// The row's OWN workflow, the same rule the card's child list, the card itself and the
 	// timeline bar all keep: a Deliverable is finished when ITS states say so.
 	if (ownWorkflowReading(item).done) row.addClass('pbl-done');
@@ -188,21 +52,10 @@ function renderItem(
 	// While filtering, visual neighbors are not real siblings — ranking by drag would
 	// mislead; an ancestor from outside the filter has unknown siblings for the same reason.
 	row.draggable = !host.isFiltering() && !item.outsideFilter;
-	ctx.rows.set(item.file.path, row);
 
-	renderRowLead(ctx, row, item, { hasChildren, collapsed });
+	renderRowLead(ctx, row, item, state);
 	renderRowTrailing(ctx, row, item, childTypes);
-
-	if (hasChildren && !collapsed) {
-		renderForest(ctx, childGroupEl(containerEl, item), item.children);
-	}
-}
-
-/** The child group of a row; its indent guide aligns under the parent's chevron column. */
-function childGroupEl(containerEl: HTMLElement, item: BacklogItem): HTMLElement {
-	const childrenEl = containerEl.createDiv({ cls: 'pbl-children', attr: { role: 'group' } });
-	childrenEl.setCssProps({ '--pbl-depth': String(item.depth) });
-	return childrenEl;
+	return row;
 }
 
 /** Grip, chevron, badge and title. */
@@ -220,8 +73,16 @@ function renderRowLead(
 	// The tree refreshes the one subtree it changed; the dated axis's rows share this
 	// control and re-render whole, which is why what to redraw is the caller's — and which
 	// BIT it flips is the caller's for the same reason.
-	const fold = (): void => void host.setCollapsed(item.file.path, !host.isCollapsed(item.file.path));
-	renderChevron(host, row, { ...state, toggle: fold }, () => host.refreshSubtree(item));
+	const path = item.file.path;
+	const fold = (): void => void host.setCollapsed(path, !host.isCollapsed(path));
+	// Resolved per click, not captured: `refreshSubtree` renders the item's `children`,
+	// and on a KEPT row a captured item is the previous model's child list. `fold` above
+	// is safe for the opposite reason — a path is the row's identity and does not go
+	// stale. Two callbacks, one hazard; see ADR 0029.
+	renderChevron(host, row, { ...state, toggle: fold }, () => {
+		const current = host.model?.byPath.get(path);
+		if (current) host.refreshSubtree(current);
+	});
 
 	renderBadge(host, row, item);
 
@@ -234,6 +95,7 @@ function renderRowLead(
 	// against 12ms, because a skipped row must be laid out to be measured). A tooltip
 	// repeating a title that already fits is the price, and it is small.
 	setTooltip(title, item.title);
+	// eslint-disable-next-line no-restricted-syntax -- closes over a path string, never an item.
 	title.addEventListener('mouseover', (evt) => {
 		// NOTHING here may read layout — see `src/view/CLAUDE.md`.
 		host.app.workspace.trigger('hover-link', {
@@ -241,8 +103,8 @@ function renderRowLead(
 			source: PRODUCT_BACKLOG_VIEW_TYPE,
 			hoverParent: host.app.renderContext,
 			targetEl: title,
-			linktext: item.file.path,
-			sourcePath: item.file.path,
+			linktext: path,
+			sourcePath: path,
 		});
 	});
 
@@ -337,6 +199,7 @@ export function renderChevron(
 			: disclosureButton(rowEl, cls, { expanded: !state.collapsed, label, disabled: host.isFiltering() });
 	drawIcon(chevron, 'chevron-right');
 	chevron.toggleClass('pbl-expanded', !state.collapsed);
+	// eslint-disable-next-line no-restricted-syntax -- closes over state.toggle, redraw and the element, never a BacklogItem.
 	chevron.addEventListener('click', () => {
 		// Read here rather than trusted from `disabled`: a click landing on the icon
 		// inside a disabled button still reaches this listener, and the div form has no
@@ -438,7 +301,6 @@ function renderRowTrailing(ctx: RowContext, row: HTMLElement, item: BacklogItem,
 	});
 	drawIcon(addBtn, 'plus');
 	setTooltip(addBtn, addLabel(childTypes));
-	addBtn.addEventListener('click', () => promptCreateItem(ctx.host, childTypes, item));
 }
 
 /** A row that can hold only one type says so; one with a choice cannot promise which. */
@@ -525,27 +387,107 @@ export function foldOnClick(
 }
 
 /**
- * The item a row-aimed event is about, or null off the rows entirely. Resolved at EVENT
- * time from the row's `data-path` against the current model, never captured at render:
- * the tree's listeners live on the pane (one set for the view, not one per row — the
- * measurement that retired the per-row set is in
+ * The item an event is about, or null where its target is outside `scope`. Resolved at
+ * EVENT time from `data-path` against the current model, never captured at render: the
+ * listeners live on the pane (one set for the view, not one per row — the measurement
+ * that retired the per-row set is in
  * `docs/bugs/The render is the whole cost of a data update.md`), so there is no
  * wire-time item to capture and nothing to go stale when a data update replaces the
- * model.
+ * model. That is also what lets a render KEEP a row element instead of rebuilding it: a
+ * chip that closed over its item would point into the previous model the moment an
+ * update landed.
  *
- * `.pbl-row` is the tree's alone — cards and timeline rows are `.pbl-card` — so on a card
- * projection every one of these handlers resolves nothing and stands aside.
+ * The SCOPE is the caller's, because it is the only thing the two callers below disagree
+ * about — each states its own selector's reason where it passes it.
  */
-function rowItem(host: BacklogViewHost, evt: Event): BacklogItem | null {
-	const row = evt.target instanceof Element ? evt.target.closest('.pbl-row') : null;
-	const path = row instanceof HTMLElement ? row.dataset.path : undefined;
+function itemAt(host: BacklogViewHost, evt: Event, scope: string): BacklogItem | null {
+	const el = evt.target instanceof Element ? evt.target.closest(scope) : null;
+	const path = el instanceof HTMLElement ? el.dataset.path : undefined;
 	return path ? (host.model?.byPath.get(path) ?? null) : null;
 }
 
+/** One chip's action, given the item it was clicked for and the chip element itself. */
+type ChipAction = (host: BacklogViewHost, evt: MouseEvent, item: BacklogItem, chip: HTMLElement) => void;
+
+/**
+ * Every chip's class name, mapped to its own action — ONE table the selector and the
+ * dispatch both read, so a class lives in exactly one place. `LABEL_CHIPS`'s two entries
+ * are folded in by `spec.cls` rather than restated: a rename there moves here for free,
+ * where a literal copy would silently leave that chip's delegated click matching
+ * nothing, and no test would fail, since nothing else drives a risk or assignee click
+ * through this selector.
+ *
+ * The date chip is the one action that does not open a menu: `promptSchedule` is a modal
+ * and takes no event, so it needs none of the anchoring the other five carry through
+ * their `MouseEvent`. Which end it writes travels on the chip's own `dataset.end`
+ * (`renderDateChip` in `render/chips.ts`), never inferred from the label — the label is
+ * the column's own display name and says nothing about which end this is.
+ */
+const CHIP_ACTIONS: Record<string, ChipAction> = {
+	'pbl-state-chip': (host, evt, item) => showStateMenu(host, evt, item),
+	'pbl-horizon-chip': (host, evt, item) => showHorizonMenu(host, evt, item),
+	...Object.fromEntries(
+		Object.values(LABEL_CHIPS).map((spec): [string, ChipAction] => [
+			spec.cls,
+			(host, evt, item) => spec.showMenu(host, evt, item),
+		]),
+	),
+	'pbl-date-chip': (host, _evt, item, chip) => {
+		const end = chip.dataset.end;
+		if (end === 'start' || end === 'target') promptSchedule(host, item, [end]);
+	},
+	'pbl-add': (host, _evt, item) => {
+		// Recomputed at click time, like the rest of this table — and checked here for the
+		// same reason `renderRowTrailing` withholds the button on an empty list: on a KEPT
+		// row this list can empty between renders without the row's own signature changing
+		// (nothing does yet — Task 4's signature already covers it — but this action must
+		// not depend on that staying true in a module it does not import).
+		const choices = offerableTypes(host, childTypeChoices(item));
+		if (choices.length > 0) promptCreateItem(host, choices, item);
+	},
+	'pbl-tag-add': (host, evt, item) => showTagMenu(host, evt, item),
+	'pbl-tag-remove': (host, evt, item, chip) => {
+		// `preventDefault` only: the row's own handler already ignores a click on a
+		// `button` (`fromRowControl`).
+		evt.preventDefault();
+		const tag = chip.dataset.tag;
+		if (tag) removeTag(host, item, tag);
+	},
+};
+
+/**
+ * Every class in `CHIP_ACTIONS`, each prefixed `button` — load-bearing rather than tidy.
+ * A context row's five property chips are the SAME classes on a `div` — every chip in
+ * `render/chips.ts` builds `pbl-state-static` alongside the chip's own class on that
+ * `div` — and a selector matching the class alone would open an edit menu on a
+ * read-only value that the write gate would then refuse: a control offering what it
+ * cannot do, the context-row rule this codebase says every past bug in it forgot. The
+ * two tag buttons take the other route to the same end: `renderTagCell` renders no
+ * button at all for a context row, so the `button` prefix costs them nothing and the
+ * selector still needs it — a bare `.pbl-tag-remove` would match nothing there either
+ * way, but naming the rule once for all eight chips is cheaper than remembering which
+ * ones happen to need it. `button` is also the rule `fromRowControl` already states for
+ * the same question, so this is the existing answer rather than a second one.
+ */
+const CHIPS = Object.keys(CHIP_ACTIONS)
+	.map((cls) => `button.${cls}`)
+	.join(', ');
+
+/* eslint-disable no-restricted-syntax -- these two ARE the delegation: they take the
+   listeners off the rows so a render may keep one. The rule below them is what stops a
+   per-row control growing its own. ESLint cannot scope a disable to one selector, so
+   this also switches off every OTHER no-restricted-syntax check over this region —
+   TREE_SCAN included, so a treeEl.querySelectorAll added inside this block is not
+   caught by that ban either. */
 /**
  * The tree's row activation, wired ONCE on the pane — called from the view's
  * constructor, beside the keydown it mirrors. The per-row wiring this replaces cost a
  * listener set per row and rebuilt them all on every data update.
+ *
+ * Its scope is `.pbl-row`, the tree's alone — cards and timeline rows are `.pbl-card` —
+ * so on a card projection every one of these three handlers resolves nothing and stands
+ * aside. That is narrower than `wireChipEvents`' scope below on purpose: this is the
+ * tree's own row activation, not a chip.
  */
 export function wireRowEvents(host: BacklogViewHost, treeEl: HTMLElement): void {
 	treeEl.addEventListener('click', (evt) => {
@@ -554,7 +496,7 @@ export function wireRowEvents(host: BacklogViewHost, treeEl: HTMLElement): void 
 		// a chevron click would fold twice; folding on an add-button click would fold on
 		// the way to a modal.
 		if (fromRowControl(evt)) return;
-		const item = rowItem(host, evt);
+		const item = itemAt(host, evt, '.pbl-row');
 		if (!item) return;
 		host.selectItem(item, false);
 		const spent = foldOnClick(host, item, evt, {
@@ -568,11 +510,37 @@ export function wireRowEvents(host: BacklogViewHost, treeEl: HTMLElement): void 
 	});
 	treeEl.addEventListener('auxclick', (evt) => {
 		if (evt.button !== 1 || fromRowControl(evt)) return;
-		const item = rowItem(host, evt);
+		const item = itemAt(host, evt, '.pbl-row');
 		if (item) host.openItemIn(item, 'tab');
 	});
 	treeEl.addEventListener('contextmenu', (evt) => {
-		const item = rowItem(host, evt);
+		const item = itemAt(host, evt, '.pbl-row');
 		if (item) showItemMenu(host, evt, item, offerableTypes(host, childTypeChoices(item)));
 	});
 }
+
+/**
+ * Every per-item chip, on one delegated handler for the whole pane. Both card
+ * projections and the tree render into `treeEl` (`renderProjectionContent`), so this one
+ * listener serves the tree's rows and every card alike — the same reach `wireRowEvents`
+ * has, for the same reason. The class a matched chip carries is looked up in
+ * `CHIP_ACTIONS` rather than tested by an if-chain, so a chip added to that table without
+ * a class `wireChipEvents` recognises does nothing — never a fallthrough to some other
+ * chip's write.
+ *
+ * Its scope is `[data-path]` rather than `.pbl-row`: `renderPropCells` is shared with both
+ * card projections, whose mount is `.pbl-card`, so narrowing to the tree's own row class
+ * would leave every card chip inert.
+ */
+export function wireChipEvents(host: BacklogViewHost, treeEl: HTMLElement): void {
+	treeEl.addEventListener('click', (evt) => {
+		const target = evt.target instanceof Element ? evt.target : null;
+		const chip = target?.closest(CHIPS);
+		if (!(chip instanceof HTMLElement)) return;
+		const item = itemAt(host, evt, '[data-path]');
+		if (!item) return;
+		const cls = Object.keys(CHIP_ACTIONS).find((c) => chip.classList.contains(c));
+		if (cls) CHIP_ACTIONS[cls](host, evt, item, chip);
+	});
+}
+/* eslint-enable no-restricted-syntax -- delegation ends here; a listener below this line is a per-row control's own. */

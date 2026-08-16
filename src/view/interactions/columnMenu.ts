@@ -1,7 +1,7 @@
 import { Menu } from 'obsidian';
-import { BacklogViewHost, ColumnScope } from '../host';
+import { BacklogViewHost, BoardSnapshot, ColumnScope } from '../host';
 import { BoardColumn, emptyNoState } from '../../domain/board';
-import { showMenuForClick } from './menu';
+import { showMenuAtElement, showMenuForClick } from './menu';
 
 /**
  * A board column's own menu — its fold, and the working agreement written on it.
@@ -31,7 +31,7 @@ import { showMenuForClick } from './menu';
  *
  * Null only with no column at all — an index naming nothing.
  */
-export function buildColumnMenu(host: BacklogViewHost, scope: ColumnScope, col: BoardColumn | undefined): Menu | null {
+function buildColumnMenu(host: BacklogViewHost, scope: ColumnScope, col: BoardColumn | undefined): Menu | null {
 	if (!col) return null;
 	const menu = new Menu();
 	// `false`: this asks, it must not settle. The default has already been taken by the
@@ -88,4 +88,17 @@ export function showColumnMenu(host: BacklogViewHost, evt: MouseEvent, scope: Co
 	if (!menu) return;
 	evt.preventDefault();
 	showMenuForClick(menu, evt);
+}
+
+/**
+ * The keyboard path onto that same menu, anchored to the column's own header element —
+ * the whole of `BacklogViewHost.showColumnMenuFor`, kept there as one delegation on the
+ * view so `BacklogViewHost` still resolves to that one class.
+ *
+ * The scope comes off the snapshot rather than being re-derived from the projection: the
+ * render that drew these columns is the one thing that cannot be wrong about which board
+ * they belong to.
+ */
+export function showColumnMenuForIndex(host: BacklogViewHost, board: BoardSnapshot | null, index: number): boolean {
+	return showMenuAtElement(board && buildColumnMenu(host, board.scope, board.board.columns[index]), board?.colEls[index] ?? null);
 }

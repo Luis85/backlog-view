@@ -610,6 +610,17 @@ export interface BacklogViewHost {
 
 	render(): void;
 	/**
+	 * Forget everything the last render pass indexed: the row elements, their signatures
+	 * and the card disclosures. Three collections with ONE lifetime, cleared from one place
+	 * rather than from the call sites that would each have to remember all three — an index
+	 * that outlived its rows would hand back elements that are gone, and a signature index
+	 * that did would claim them.
+	 *
+	 * Called by the pass that empties the tree (`renderPass`) and by each of the tree's
+	 * empty states, which render no rows and so prune none.
+	 */
+	clearRowIndex(): void;
+	/**
 	 * Re-render one row's children in place after an expand or collapse — the
 	 * targeted alternative to `render()`, which rebuilds every row in the tree.
 	 */

@@ -2,14 +2,16 @@
 type: Bug
 parent: "[[The render path states its costs as checks]]"
 order: 30
-status: Open
+status: Done
 area: performance
 priority: P1
 created: 2026-08-10
+closed: 2026-08-15
 source: Measured in Chromium through the browser harness, against a user report of an ~800-note folder-mode vault
 files:
-  - src/view/backlogView.ts
   - src/view/render/rows.ts
+  - src/view/renderPass.ts
+  - src/view/rowSignature.ts
 started: ""
 finished: ""
 horizon: ""
@@ -134,7 +136,78 @@ property cell here falls into the cheap `setText` catch path. A real vault runs
 Obsidian's Bases value renderer per cell and real tooltips, so it pays MORE per row than
 these numbers — the direction of the error is known, not its size.
 
+## Fix: the rows a data update did not change are kept (2026-08-15)
+
+A data update **diffs** the tree instead of emptying it, which is [ADR
+0029](../adrs/0029-reconcile-rows-by-signature.md). Two questions decide it. The pass asks
+one — everything a row draws that belongs to no single item, as one string (`renderInputs`
+in `src/view/rowSignature.ts`), plus a refusal of the whole pass unless every column is
+`note.`-backed — and the walk in `src/view/render/rows.ts` asks the other per row: a
+signature of that note's whole frontmatter plus the derived values a row shows that its own
+note cannot give. A row whose signature matches keeps its element, and its child group
+travels with it, so an unchanged subtree is never rebuilt. A row that cannot be signed —
+its note is not in the metadata cache yet, or its cell drew another note's content — is
+never claimed.
+
+**Checked by** `test/view/rowReuse.test.ts` — "rebuilds only the row whose note changed"
+
+Measured **interleaved A/B**, for the reason the section above states: this environment's
+run-to-run drift is larger than several of the effects it is asked about. Four alternated
+runs, medians of the panel's own medians, folder fixture, tree expanded, against `86b1170`
+— the last commit before the reconcile, with the same fixture and the same seven columns,
+so the delta is this change and nothing else.
+
+| rows | `update` before | after | per row before | per row after |
+| --- | --- | --- | --- | --- |
+| 232 | 81.4 ms | **26.9 ms** | 0.351 ms | **0.116 ms** |
+| 832 | 269.9 ms | **86.9 ms** | 0.324 ms | **0.104 ms** |
+| 1632 | 507.3 ms | **161.3 ms** | 0.311 ms | **0.099 ms** |
+
+| rows | `render only` before | after | per row before | per row after |
+| --- | --- | --- | --- | --- |
+| 232 | 72.3 ms | **21.6 ms** | 0.312 ms | **0.093 ms** |
+| 832 | 229.0 ms | **69.4 ms** | 0.275 ms | **0.083 ms** |
+| 1632 | 487.1 ms | **134.5 ms** | 0.298 ms | **0.082 ms** |
+
+Spreads do not overlap for either op at any of the three sizes. The per-row cost does not
+climb with size — it falls slightly, 0.116 → 0.104 → 0.099 — so the per-row signature walk
+is not eating its own saving at 1632 rows.
+
+**Subtree reuse is real, and it is most of the saving on an update that MOVES something.**
+The panel's own `update` re-feeds identical data, which is the best case and cannot see a
+carried child group at all, so it was measured a second way: a throwaway harness entry that
+reverses every Epic's `order` between samples, so every root row's signature changes and no
+descendant's does, published alongside a count of how many rows landed at a different index
+(832 of 832 — an instrument whose reorder quietly did nothing would have printed exactly
+the numbers that say "the group was kept"). At 832 rows that reorder costs **98.9 ms**,
+against 80.7 ms for an update that changed nothing and **241.1 ms** for the same reorder on
+the build that rebuilds everything.
+
+The honesty note above travels with every number here: the harness's fake `entry` has no
+`renderTo`, so a real vault pays MORE per row than this. **These are lower bounds with a
+known direction and an unknown size** — and it cuts both ways, since a kept row skips
+Obsidian's value renderer entirely, so the SAVING in a vault is probably larger than −68%
+while every absolute figure is larger too.
+
+**Closed on the symptom, and the class is unchanged.** What this note reports is a vault of
+roughly 800 notes paying half a second on every write; at 832 rows that update is now 87 ms,
+so the pause is gone and the note closes. What did **not** change is the shape: `update` is
+still linear in the visible rows (5.3× the rows costs 6.0× the time), because the reconcile
+still walks every visible item to decide about it. Only **virtualisation** — rendering the
+rows in the viewport and no others — changes the class, and it is the one thing that would
+also touch the mount and the projection switches, which are now the biggest tree numbers on
+the panel. ADR 0029's `## Revisit when` carries that trigger; nothing measured here argues
+for taking it now.
+
+One cost went the other way and is recorded in that ADR rather than here: a pass that
+BUILDS rather than reuses pays about +0.11 ms per row for signing a row it cannot keep.
+
 ## Where to look
+
+**Kept as the record of what was known while this note was OPEN — `## Fix` above is the
+answer it was asking for, and diffing is what won.** Read the figures here as dated: the
+0.6 ms/row below is the top table's, before `content-visibility: auto` took it to ~0.3
+ms/row (2026-08-10) and the reconcile took it to ~0.10 (2026-08-15).
 
 The per-row render path, not the model. `src/view/CLAUDE.md`'s own cost section names the
 lever in the sentence quoted above: a data update rebuilds every row, and skipping that
