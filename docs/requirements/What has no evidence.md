@@ -27,7 +27,7 @@ row is. So every unevidenced item appears in one list, each row carrying the typ
 lifecycle value **as the note wrote them**, unread and uninterpreted, and a reader who wants
 only the opportunities sorts or filters the column. Nothing is lost except a setting.
 
-The first three are a count of zero and need nothing else said. **The fourth is a ranking,
+The first two are a count of zero and need nothing else said. **The third is a ranking,
 not a threshold**: the items with the most linked evidence, ordered by that count, longest
 first, showing the count beside each. There is deliberately no line above which an item is
 "heavily supported" — 10, 7 and 4 have no natural cut, and any of a fixed number, the maximum

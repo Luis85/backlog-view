@@ -66,5 +66,14 @@ options. With none named the promotion writes no state at all: it creates the ba
 and the link, and the reader moves the card if they want it moved. Guessing which column
 somebody meant is how a promotion quietly files a validated opportunity as planned.
 
+**Promoting twice is allowed, and the second time says what the first produced.** One
+opportunity legitimately becomes several backlog items — an epic and the feature beside it,
+or the same problem split across two products — which is why
+[[The evidence explorer]] draws that hop as one-to-many. So nothing blocks a repeat, and
+nothing is deduplicated behind the reader's back. What the action does is show the backlog
+items that already name this opportunity, on the screen where the promotion is confirmed, so
+a second promotion is a decision rather than an accident — which matters most where no
+promoted state is configured and the lifecycle value therefore never moves.
+
 **Outcome** — Committed work names the opportunity it came from, the discovery record
 survives the commitment, and its state changes only to a value somebody chose.
