@@ -398,6 +398,24 @@ export function computeIterationWrites(item: BacklogItem, target: BacklogItem | 
 	// iteration. A link that resolved to nothing has no path and is therefore never
 	// "already there" for any target.
 	const linkChanges = item.iterationEntry?.file?.path !== target.file.path;
+	// **This axis write states no `ends`, deliberately — so the writer's reversed-span
+	// guard does not run on it.** `refusesAxis` (`storage/frontmatter.ts`) returns false
+	// outright without them, which means joining a START-ONLY iteration can leave
+	// `start > target` on the note, and the roadmap then shelves that card as a reversed
+	// span. That outcome is the accepted one, not a missed guard:
+	//
+	// - REFUSING the batch would contradict the rule above it — the iteration's dates
+	//   overwrite whatever the item held — and would make a legitimate join fail because
+	//   of a date the join is not touching.
+	// - ADJUSTING the item's target to make the pair coherent is exactly the decision the
+	//   `undefined`-never-`null` rule exists to forbid: the sprint states no target, so
+	//   nothing here knows what the item's should become.
+	//
+	// An item whose dates have become incoherent should be VISIBLE as incoherent, and the
+	// shelf with its reason is how this view already says so. `ends` belongs to a gesture
+	// that grips an end and can be made stale by a type change mid-drag; this is a pick on
+	// a row `canSetIteration` has already refused for a marker, so there is no shape to
+	// disagree about either.
 	const axis = timeframeOf(item, target);
 	if (!linkChanges && axis === undefined) return [];
 	return [{ file: item.file, ...(linkChanges ? { iteration: target.file } : {}), ...(axis ? { axis } : {}) }];
@@ -421,6 +439,14 @@ export function computeIterationWrites(item: BacklogItem, target: BacklogItem | 
  * It asks the READINGS rather than the settings, which is what keeps an unconfigured
  * start or target key out of the plan without a second gate: `readGated` already answers
  * absence for a key no property names, so neither side of the comparison can exist.
+ *
+ * Which is worth stating plainly, because the caller is handed a `BacklogSettings` and
+ * this function applies no gate from it: the readings were built by the model, under the
+ * settings the MODEL was built with. Those are the same settings at the one caller —
+ * `addIterationItems` passes `host.settings`, the same object `host.model` was built from
+ * — and a caller that passed a different one would get a plan gated by the model's keys
+ * rather than by the ones it named. There is no such caller, and this paragraph is why
+ * one should not be added without a key gate here.
  */
 function timeframeOf(item: BacklogItem, target: BacklogItem): AxisWrite | undefined {
 	const wanted = statedEnds(target);

@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { settingsWith } from '../helpers/settings';
 import { BacklogItem, buildModel } from '../../src/domain/model';
 import { computeIterationWrites } from '../../src/domain/writePlan';
+import { readDate } from '../../src/domain/noteFields';
+import { reversedSpan } from '../../src/domain/timeline';
 import { FakeVault } from '../helpers/vault';
 
 /**
@@ -126,6 +128,24 @@ describe('computeIterationWrites — the timeframe', () => {
 		const [write] = computeIterationWrites(pbi, kickoff, dated);
 		expect(write.axis?.target).toBeUndefined();
 		expect(write.axis).toEqual({ start: '2026-09-07' });
+	});
+
+	it('leaves a reversed span behind rather than refusing the join or moving the target', () => {
+		// This write states no `axis.ends`, so the writer's reversed-span guard
+		// (`refusesAxis`) never runs on it — deliberately. Refusing would contradict the
+		// overwrite rule, and adjusting the item's target is the decision the
+		// `undefined`-never-`null` rule forbids: the sprint states no target to adjust it
+		// to. The pair lands incoherent, the roadmap shelves the card with its reason, and
+		// that is the intended outcome rather than a missed guard.
+		const { pbi, kickoff } = datedFixture({ due: '2026-05-30' });
+
+		const [write] = computeIterationWrites(pbi, kickoff, dated);
+		// Not refused, and the target is untouched — neither written nor deleted.
+		expect(write.axis).toEqual({ start: '2026-09-07' });
+		// No `ends`, which is what takes the write past `refusesAxis` unexamined.
+		expect(write.axis?.ends).toBeUndefined();
+		// And the pair that lands is reversed, by the roadmap's own criterion for it.
+		expect(reversedSpan(readDate(write.axis?.start).value, pbi.plannedTarget.value)).toBe(true);
 	});
 
 	it('omits a date the item already matches', () => {
