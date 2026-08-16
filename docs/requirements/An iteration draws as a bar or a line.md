@@ -63,17 +63,20 @@ and three of them do not say "marker", they say **Milestone**:
 So a sprint is presented as a milestone in the lane caption, the legend and the announced
 sentence. The last is the worst of the three, because it is what a screen reader says.
 
-**Two of the three are cheap and one is a decision.** The lane caption looks expensive and
-is not: the markers row is *never* folded — `const collapsed = !lane.markers &&
-folded.lane(lane.name)` — so renaming it drops no stored fold, unlike every other band.
-`spanText` is cheaper still: it should name the item's own type instead of one marker's.
+**All three are cheap, and none of them is a colour question.** The lane caption looks
+expensive and is not: the markers row is *never* folded — `const collapsed = !lane.markers
+&& folded.lane(lane.name)` — so renaming it drops no stored fold, unlike every other band.
+`spanText` should name the item's own type instead of one marker's. And the legend swatch
+needs only a **word**, because an `Iteration` badge ships **cyan**, the same hue as
+`Milestone` ([[An iteration is a note of its own]]) — so one cyan swatch is already
+honest about both markers and only its caption lies.
 
-The **colour** is the decision, and it is not this note's to take alone. The legend swatch
-is cyan because the milestone diamond is cyan; an `Iteration` now carries a purple badge
-([[An iteration is a note of its own]]). Either the two markers share the cyan mark and
-one swatch honestly named for both, or an iteration draws its own purple mark and the
-legend gains a second entry — and that is a question about the roadmap's colour budget,
-which [[A badge when the palette is full]] already owns the shape of.
+*This paragraph said the opposite for twenty minutes on 2026-08-16*, claiming a purple
+badge and a colour-budget decision to be taken. It was written from the plan that proposed
+purple rather than from the stylesheet, which had already chosen cyan and said why: purple
+is `.pbl-lvl-1`, Feature's, and all eight theme tokens were taken before this type
+existed. A note asserting a fact about code it did not read, in a register whose own rule
+is to read the code first.
 
 **This is why the labels are named here rather than left to the `drawsAsPoint` split.**
 That split decides whether an iteration is a point or a bar; these three are wrong in
