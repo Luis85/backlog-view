@@ -12,9 +12,9 @@ files:
   - src/commands/scaffold.ts
 started: ""
 finished: ""
-horizon: ""
-start: ""
-due: ""
+horizon: Later
+start: 2026-08-31
+due: 2026-09-06
 risk: ""
 assignee: ""
 ---

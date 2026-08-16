@@ -1,19 +1,17 @@
 ---
 type: Feature
 parent: "[[Product Backlog]]"
-order: 5
+order: 6.25
 status: Open
 created: 2026-08-01
 source: user request
 started: ""
 finished: ""
 horizon: ""
-start: 2026-10-05
-due: 2026-10-11
+start: 2026-08-10
+due: 2026-09-13
 risk: ""
 assignee: Alex
-dependsOn:
-  - "[[Ship the roadmap epic]]"
 ---
 
 # User manual

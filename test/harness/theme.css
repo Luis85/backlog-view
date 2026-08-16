@@ -112,8 +112,18 @@ body {
  */
 /*
  * The menu and the dialog the harness draws for itself (`test/harness/chrome.ts`),
- * because the module mock records them and renders nothing. Stand-ins for Obsidian's
- * widgets: enough to read, click and screenshot, and not a claim about either.
+ * because the module mock records them and renders nothing. The MENU below is a stand-in
+ * for Obsidian's widget: enough to read, click and screenshot, and not a claim about it.
+ *
+ * The dialog is only half a stand-in since 2026-08-15. `.pbl-harness-modal` is the
+ * overlay — placement the harness owns, because Obsidian's own `.modal-container` rules
+ * are not in the vendored sheet (nothing here ever drew one, so the reduction never kept
+ * them). The BOX under it was `.pbl-harness-modal-box`, a hand-written background,
+ * border, radius and padding drawn while app.css's `.modal` sat in the sheet resolving
+ * correctly and unused — the disclosure episode in a second place, and the one the
+ * manual's own partial leans on hardest (`.modal.mod-settings`, `.modal-sidebar-inner`,
+ * `.is-phone .modal.mod-sidebar-layout`). It is deleted: `chrome.ts` now appends the
+ * mock's `modalEl`, which carries Obsidian's `modal` class and takes Obsidian's rule.
  */
 .pbl-harness-menu {
 	position: fixed;
@@ -161,14 +171,6 @@ body {
 	align-items: center;
 	justify-content: center;
 	background-color: rgba(0, 0, 0, 0.5);
-}
-
-.pbl-harness-modal-box {
-	min-width: 320px;
-	padding: var(--size-4-4);
-	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--radius-l);
-	background-color: var(--background-primary);
 }
 
 [data-icon-missing]::after {

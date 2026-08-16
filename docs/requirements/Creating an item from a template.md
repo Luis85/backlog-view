@@ -5,9 +5,9 @@ order: 20
 status: Open
 started: ""
 finished: ""
-horizon: ""
-start: ""
-due: ""
+horizon: Next
+start: 2026-08-31
+due: 2026-09-06
 risk: ""
 assignee: ""
 ---

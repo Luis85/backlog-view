@@ -1,4 +1,5 @@
 import { BasesQueryResult, setIcon, setTooltip } from 'obsidian';
+import { t } from '../../i18n/t';
 import { BacklogViewHost } from '../host';
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { displayType, isDeliverableType } from '../../domain/itemTypes';
@@ -49,7 +50,7 @@ export function syncCountLabel(host: BacklogViewHost, barEl: HTMLElement): void 
 	// included, so this asks the one question rather than choosing between two.
 	const total = population.length;
 	const shown = population.filter((item) => !host.isRowHidden(item)).length;
-	setTextIfChanged(label, shown === total ? `${total} item${total === 1 ? '' : 's'}` : `${shown} of ${total}`);
+	setTextIfChanged(label, shown === total ? t('count.items', { count: total }) : t('count.shownOfTotal', { shown, total }));
 	// The tooltip is guarded the same way and for a sharper reason than the text: this
 	// element is `aria-live`, and `setTooltip` attaches Obsidian's hover handling on every
 	// call and has set `aria-label` in some versions — see `syncBusyLabel`, which avoids
@@ -71,11 +72,8 @@ export function renderIgnoredNote(barEl: HTMLElement, model: BacklogModel): void
 	const n = model.ignoredCount;
 	const note = barEl.createDiv({ cls: 'pbl-toolbar-note pbl-ignored-note' });
 	setIcon(note.createSpan({ cls: 'pbl-toolbar-note-icon' }), 'filter-x');
-	note.createSpan({ text: `${n} note${n === 1 ? '' : 's'} ignored` });
-	setTooltip(
-		note,
-		`${n} note${n === 1 ? ' in this base is' : 's in this base are'} not backlog items — no supported type and no parent. Turn off "Ignore notes outside the hierarchy" in the view options to show them.`,
-	);
+	note.createSpan({ text: t('toolbar.ignoredNotes', { count: n }) });
+	setTooltip(note, t('toolbar.ignoredTooltip', { count: n }));
 }
 
 /**

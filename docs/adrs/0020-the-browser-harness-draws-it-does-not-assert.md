@@ -107,6 +107,23 @@ which jsdom cannot do at all, since it returns zeros from `getBoundingClientRect
   Obsidian's, and it is the reason the guarantee is written as *the entries and the actions
   are the view's* rather than *the menus are real*. A review found the page advertising
   menus it could never show; the honest sentence is narrower than the one it replaced.
+  **Update (2026-08-15):** half of this closed the same way the button did, and it had the
+  same shape — the harness drew a hand-written `.pbl-harness-modal-box` while `.modal`,
+  `.modal.mod-settings` and `.modal-sidebar-inner` sat in the vendored sheet resolving
+  correctly and matching nothing, which is the exact configuration this record's own
+  "two answers to one question" verdict rules out. The mock's `Modal` now carries
+  Obsidian's `modalEl`, the harness appends that, and only the OVERLAY is still the
+  harness's. The menu is unchanged and this bullet still holds for it. What the change
+  does not close is the reduction's own bound: `.modal-container`, `.modal-bg`,
+  `.modal-title` and `.modal-content` were never driven, so they are not in the file and
+  the dialog's title and content pane are visibly unstyled here until someone re-derives
+  against a local install. A visible absence rather than a silent stand-in is the trade
+  this record already settles — taken with eyes open, because it is not free: no rule in
+  the sheet widens a settings dialog past `--dialog-width`, so the manual now clips its
+  prose at 560px where the guessed box happened to size to its content. One projection of
+  the dialog reads worse and every other reads for real, which is the trade this record
+  would make again; what would be indefensible is a hand-written width that draws
+  confidently and is checked by nothing.
 - A page that is not a test can rot. Two checks cost nothing extra to run and stop the two
   ways it rots that anyone can see: it stops building, or its theme stub stops covering
   the stylesheet — `harness.test.ts` and `themeStub.test.ts`. Neither notices that it

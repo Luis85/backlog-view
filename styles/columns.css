@@ -6,12 +6,25 @@
 /* Like the property columns it never shrinks: the title truncates instead (it has
    an ellipsis and a tooltip), and a column that ran out of room drops out whole
    rather than sliding out from under its neighbours on rows with long titles. */
+/* The lane is anchored at its END, so its width decides where the bar STARTS — and the
+   bar plus the label can outgrow 84px, which is what put the bars of `0/3` and `44/136`
+   rows on different lines in a vault of 800-odd PBIs (2026-08-15). `--pbl-meta-col` is
+   already that width: `metaColWidth` sizes it from this tree's widest label and
+   `columnFit` budgets with the same call, so the layout and the fit cannot describe
+   different rows.
+   The second term keeps the label FITTING beside the bar, which is all it has to do now
+   that the bar is pinned (see `.pbl-progress` below): TS budgets a digit at a ceiling of
+   8px, and `ch` is exact for whatever font is in front of the reader. They agree at the
+   12px default and at Obsidian's 16px mobile text size (a figure is ~7.7px there); they
+   part only above about 17px of interface text, where the lane grows past what
+   `columnFit` set aside and the fit is a few pixels optimistic at an exact boundary. The
+   bars stay level either way — that is the pinning's job, not this term's. */
 .pbl-meta-col {
 	display: flex;
 	align-items: center;
 	justify-content: flex-end;
 	flex: 0 0 auto;
-	width: var(--pbl-meta-col, 84px);
+	width: max(var(--pbl-meta-col, 84px), calc(48px + var(--size-4-1) + var(--pbl-rollup-label, 0px)));
 }
 
 /* An ancestor the Base's filter excluded: context for the tree, not a result */
@@ -60,16 +73,37 @@
 	opacity: 0.6;
 }
 
-/* Rollup progress on parent rows when a state property is configured */
+/* Rollup progress on parent rows when a state property is configured.
+
+   **The group FILLS the lane and the bar is pinned to its start.** That is what makes
+   every bar in the column share one x, and it is the second design of this: the first
+   reserved the label's width instead, so the bar's position was whatever the label left
+   over. A reservation can only ever be as good as the metric it is stated in — and the
+   label's own metric is not constant, because `.pbl-complete` below draws it at
+   `--font-medium` and a font's medium figures need not have its regular figures' advance
+   (Codex, PR #153). With the bar pinned, the label's width stops deciding anything: it
+   can be any weight, any font, any number of digits, and the bar has not moved.
+   The lane's own width is the same for every row (`--pbl-meta-col`, from `metaColWidth`),
+   so "pinned to the start of the lane" IS "aligned down the column". What the label's
+   width still has to do is fit — which is the `max()` above, not a reservation here. */
 .pbl-progress {
 	display: flex;
 	align-items: center;
 	gap: var(--size-4-1);
-	flex: 0 0 auto;
+	flex: 1 1 auto;
+	justify-content: space-between;
+	min-width: 0;
 }
 
+/* `flex: 0 0 48px`, not a bare `width` — because the group above is now sized by the lane
+   rather than by its content, so anything shrinkable inside it absorbs an overflow. A
+   bare width leaves the default `flex-shrink: 1`, and the bar is what a too-narrow lane
+   would take it out of: the fill is a PERCENTAGE of this box, so a shrunk bar does not
+   merely look wrong, it reports a different quantity — two rows at the same ratio drawn
+   at two lengths. The label yields instead, which costs a digit and states nothing false.
+   (Codex, PR #153, on the change that pinned the bar.) */
 .pbl-progress-bar {
-	width: 48px;
+	flex: 0 0 48px;
 	height: 5px;
 	border-radius: 3px;
 	background-color: var(--background-modifier-border);
@@ -83,10 +117,14 @@
 	background-color: rgb(var(--color-green-rgb));
 }
 
+/* No width reservation here, deliberately: the bar is pinned by the rule above, so the
+   label's own box decides nothing about it. Tabular figures stay, for the label's own
+   sake rather than the bar's — the group's end is fixed, so without them a rollup ticking
+   from `9/17` to `10/17` would reflow its own digits. */
 .pbl-progress-label {
 	font-size: var(--font-ui-smaller);
+	font-variant-numeric: tabular-nums;
 	color: var(--text-muted);
-	min-width: 28px;
 	text-align: end;
 }
 

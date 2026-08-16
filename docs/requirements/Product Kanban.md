@@ -1,17 +1,16 @@
 ---
 type: Epic
 order: 30
-status: Active
+status: Open
 created: 2026-08-01
 source: user request
-horizon: Next
 area: product
 started: ""
 finished: ""
 risk: ""
 assignee: Chris
-start: 2026-08-11
-due: 2026-08-28
+start: 2026-08-03
+due: 2026-09-06
 ---
 
 # Product Kanban

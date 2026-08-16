@@ -12,7 +12,7 @@
     "isolatedModules": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "lib": ["DOM", "ES2020"]
+    "lib": ["DOM", "ES2020", "ES2021.Intl"]
   },
   "include": ["src/**/*.ts"]
 }

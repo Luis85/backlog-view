@@ -352,6 +352,11 @@ export default defineConfig([
 		'storage/ persists what it is given. It may use domain types but must not reach into the view or the plugin shell.',
 	),
 	forbidden('ui', ['view', 'commands', 'domain', 'storage'], 'ui/ holds standalone dialogs; it must stay free of app structure.'),
+	forbidden(
+		'i18n',
+		['view', 'commands', 'domain', 'storage', 'ui'],
+		'i18n/ is the leaf below every layer: every one of them renders text, so it may import none of them. An edge back up would make the catalog unreachable from whichever layer it reached into.',
+	),
 	forbidden('view', ['commands'], 'The view is mounted by the plugin shell, not the other way round.'),
 	// -- invariants that are checked rather than described -----------------------
 	// Disjoint regions of src/; see the note above `syntaxRules`. Two splits are one

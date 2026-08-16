@@ -1,4 +1,5 @@
 import { Menu, setIcon, setTooltip } from 'obsidian';
+import { t } from '../../i18n/t';
 import { BacklogViewHost, Projection } from '../host';
 import { newItemType, promptCreateItem } from '../interactions/create';
 import { showMenuForClick } from '../interactions/menu';
@@ -236,7 +237,7 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	const count = population.length;
 	const countEl = barEl.createSpan({
 		cls: 'pbl-count-label',
-		text: `${count} item${count === 1 ? '' : 's'}`,
+		text: t('count.items', { count }),
 		attr: { 'aria-live': 'polite' },
 	});
 	setTooltip(countEl, levelBreakdown(population));

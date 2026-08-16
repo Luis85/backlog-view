@@ -344,6 +344,40 @@ but only with the ordering understood: **lint alone leaves the indirection hole 
 which is the hole that started this. Shipping step 3 and calling the PBI done would
 reproduce the first design under a different name.
 
+### The spike ran (2026-08-15), and the design holds
+
+Run before `t()` was written, because `t()`'s parameter type is the thing the spike
+decides. About forty lines: two `unique symbol` intersection brands, a `Displayable` union,
+a helper taking it, a mint for each brand, and a `@ts-expect-error` on every form this note
+claims must fail. All of them fired, and every legal form compiled. Specifically —
+
+- **Widening is free.** `{ displayName: t('a') }` satisfies an interface declaring
+  `displayName: string` with no cast, because a brand is an intersection with `string`. So
+  the local-branded-option-type plan for `viewOptions.ts` works as written.
+- **Both indirection patterns fail at the sink**, which is the criterion the sink-list
+  designs could not meet: a literal assigned to a local first, and a template literal built
+  from variables, are both rejected where a `Displayable` is expected.
+- **Transformations do drop the brand**, as the note predicted — `title.substring(0, 4)` is
+  a plain `string` and is rejected. That confirms the "transform inside the module that owns
+  the brand" rule rather than casting at call sites.
+- **`Intl` output is rejected too**, which is the contradiction this note flagged between
+  itself and the two `Intl` criteria elsewhere. The resolution stands: the formatters have
+  to live inside the module and return a brand.
+- **A literal parameter cannot launder itself.** With parameters typed `Displayable | number`,
+  `t('tag.pill', { tag: 'hard-coded' })` does not compile. That is the front door closed.
+- **`value ?? t('state.unset')` typechecks** under the union, which is the two-brand
+  design's own worked example.
+
+**No nominal wrapper with an explicit `.value` is needed.** The intersection brand answers
+every question this note raised, so the criteria above can be implemented as written.
+
+One thing the spike does NOT settle, and it is the reason `t()` ships returning plain
+`string` rather than `Translated`: the brands only pay for themselves once the sinks demand
+them, and no `UserText` mint point exists until the sweep builds one. Typing the parameters
+`Displayable | number` today would make `t()` unusable by every call site that passes a note
+title. Narrowing both is a one-line change per signature, compiler-guided from there — which
+is what this PBI's own work is.
+
 ### Spike this before treating the criteria as final
 
 This design has now been rewritten five times without a line of code: sinks, then literal

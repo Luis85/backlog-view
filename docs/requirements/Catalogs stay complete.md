@@ -47,7 +47,9 @@ half-English view.
 - **3a — a translation drops a parameter.** Caught here. A typed catalog only guarantees
   the call site is right, not the translation.
 - **4a — the locale has fewer categories than English.** Not an error. English supplying
-  `one` and `other` must not force Japanese to invent a second form.
+  `one` and `other` must not force Japanese to invent a second form. `other` is the floor
+  and not a category this check has to police: the type already requires it, so a plural
+  entry without one does not compile. See `Plurals and interpolation`.
 - **4b — the locale supplies a category it does not have.** An error.
 
 ## The two failure modes

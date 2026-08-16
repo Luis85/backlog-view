@@ -8,6 +8,8 @@ finished: ""
 horizon: ""
 risk: ""
 assignee: Chris
+start: 2026-08-03
+due: 2026-08-14
 ---
 
 # Work item hierarchy

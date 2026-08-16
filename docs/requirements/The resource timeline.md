@@ -2,14 +2,14 @@
 type: Feature
 parent: "[[Product Roadmap]]"
 order: -5
-status: Open
+status: Active
 created: 2026-08-13
 source: user request
 started: ""
 finished: ""
 horizon: ""
-start: 2026-09-21
-due: 2026-09-27
+start: 2026-08-10
+due: 2026-08-16
 risk: ""
 assignee: Sarah
 ---

@@ -1,4 +1,5 @@
 import { Notice } from 'obsidian';
+import { list, t } from '../../i18n/t';
 import { reorderableGroup } from '../../domain/dropTargets';
 import { keepsProjection } from '../../domain/itemTypes';
 import { BacklogViewHost } from '../host';
@@ -145,12 +146,15 @@ export async function runInit(host: BacklogViewHost): Promise<void> {
 	const applied = writes.length > 0 && (await host.applySafely(writes)) !== null;
 	const done: string[] = [];
 	if (adopted.length > 0) done.push(`set up ${adopted.map((property) => property.suggested).join(', ')}`);
-	if (applied) done.push(`updated ${writes.length} item${writes.length === 1 ? '' : 's'}`);
+	if (applied) done.push(t('init.updatedItems', { count: writes.length }));
 	// Half the loop this action exists to close is outside it: a bound property draws no
 	// column until the base SHOWS it, and `BasesViewConfig` exposes no way to set the
 	// order from here. Naming the menu is the whole fix.
 	const next = adopted.length > 0 ? ' Add them in the properties menu to show them as columns.' : '';
-	if (done.length > 0) new Notice(`Product Backlog: ${done.join(' and ')}.${next}`);
+	// ponytail: the outer sentence is still assembled from fragments here — `Every surface
+	// translated` is what turns it into one key. The joiner is the half that is grammar,
+	// and it is the half `Plurals and interpolation` asked for.
+	if (done.length > 0) new Notice(`Product Backlog: ${list(done)}.${next}`);
 	// Nothing bound and nothing to write is the one case with no outcome to report;
 	// a failed batch has already reported itself.
 	else if (writes.length === 0) new Notice('All items already have the properties this view writes.');

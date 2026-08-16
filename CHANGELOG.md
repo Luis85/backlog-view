@@ -14,37 +14,20 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 ### Added
 
 - **Fold a type group in the shelf.** Each type group in the expanded shelf now has a
-  disclosure beside its name. Fold one and its cards go while its header and its true
-  count stay — the difference from the type filter, which takes the whole group away. The
-  folds are remembered per saved view on this device, beside the board's and the horizon
-  axis's own.
+  disclosure beside its name.
 
 - **A toggle for the bucket grid on the horizon roadmap.** A wide bucket reflows its cards
   into several columns, which is right for a backlog slice and wrong for a short list you
   are reading down. The toolbar now carries a toggle for it while the horizon axis is
-  showing: press it and every bucket lists its cards one per row. The grid stays the
-  default, and the pick is remembered per saved view on this device — nothing is written
-  to the `.base`.
+  showing: press it and every bucket lists its cards one per row.
 
 - **Every milestone in one row above the roster.** On the resources axis a milestone is no
   longer filed under whoever is named on it — where folding that person's band took the
-  date off screen — and one naming nobody no longer waits on the shelf. Every placed
-  milestone draws as a diamond in a single row above the first resource, nothing can fold
-  it away, and two milestones on the same day stack instead of hiding one another. Drag
-  from a diamond to make something wait for that date, exactly as on the plain dated axis.
+  date off screen — and one naming nobody no longer waits on the shelf.
 
 - **One row per resource, whatever they have.** An absence used to draw a blocked line of
   its own beneath its resource's header; it draws inside the header itself now, and two that
-  share a day pack into their own sub-lanes rather than either one hiding the other. The
-  header's own pill says how many weeks of it are still ahead — counted from today, so a
-  stretch already under way reports what is left of it rather than its whole length:
-  `3 wk away`, dropped entirely once nothing is left, and called out when the same person
-  also has work booked —
-  beside an item count that disappears the same way when a row has nothing in it. A bar
-  scheduled straight across a stretch now says what that costs right in its own title,
-  `15d lost` or `all 10d` when the crossing swallows the whole bar, with the full sentence
-  for a screen reader and a **Days lost** key on the legend wherever the token is actually
-  on screen.
+  share a day pack into their own sub-lanes rather than either one hiding the other.
 
 - **Fold a board column or a horizon bucket** — press the chevron in its header and the
   column narrows to a strip, keeping its name, its count and its ability to take a drop.
@@ -63,17 +46,11 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 - **How far along a roadmap bar is** — a bar on the dated axis now carries a band
   showing the share of the work beneath it that is done, and every row with
-  descendants carries the count the tree's rollup column shows. The band draws inside
-  the bar without covering it, so a bar whose span is inferred still reads as
-  inferred and an open end still reads as open. With no workflow property configured
-  there is nothing to call done, so the count is the whole report — exactly as in the
-  tree.
+  descendants carries the count the tree's rollup column shows.
 
 - **The roadmap says what your search found underneath** — filter the roadmap and any
   bucket card, bar, shelf card or context row that is only on screen because something
-  beneath it matched now names those matches, each one opening its note. They are in
-  the row menu too, so this needs no pointer. Previously a match three levels down was
-  found, counted, and impossible to reach.
+  beneath it matched now names those matches, each one opening its note.
 
 - **Resize the tree's property columns** — drag the grip at a column header's trailing
   edge, double click it to put it back, or focus it and use the arrow keys. Each column keeps
@@ -83,39 +60,15 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Changed
 
-- **The column resize handle is easier to find, and no longer looks like it belongs to
-  the next column.** Hovering a column's name shows a faint mark at its trailing edge, and
-  the handle itself lights up when you point at it. The mark runs the full height of the
-  header row and sits in the gap rather than against the next column's first letter —
-  property columns gained a small leading gutter to make that gap real — and the area you
-  can grab is now the whole gutter, top to bottom, rather than a 6px strip.
-
 - **The board and the shelf only draw the cards you can see** — a column, a horizon bucket
   and the shelf now let the browser skip the layout and paint of cards scrolled out of
   view, which the tree's rows have done since 0.7. Measured over ~800 notes in the
   development harness, switching to the board went from 330ms to 126ms and to the roadmap
-  from 557ms to 203ms. Nothing about what is on screen changes, and the timeline's rows are
-  deliberately left as they were — its dependency arrows have to measure them.
+  from 557ms to 203ms.
 
-- **Your working position resets once on upgrade.** Which rows, bands and columns were
-  folded, the projection each view was showing, the roadmap axis, zoom, density and lead
-  width, the property-column widths, the focus level, the click behaviour and the shelf's
-  own controls are stored under a new key and the old one is not read. Open each view
-  once and set it up again; nothing in your `.base` files and nothing in your notes is
-  touched. This is the last reset of its kind: each entry now records the shape it was
-  written in, so a future change to it can be migrated instead.
+- **Recording an absence now asks for the dates alone.**
 
-- **Recording an absence asks for the dates alone.** The note is named
-  `<resource> away <start> → <end>` from the facts you enter, so there is no title to think
-  of — and editing a date renames the note to match. An absence that already exists keeps
-  its name until you edit it; a name you set by hand in Obsidian is replaced the next time
-  you edit the stretch.
-
-- **State colours no longer offer a done state.** A finished bar is drawn green whatever
-  is stored against it, so the swatch for a done state could never change anything on the
-  grid or in the legend. The dialog now lists the open states only, and says so; a colour
-  a `.base` still holds for a done state is ignored. Done is read per workflow, so a value
-  only one of your two workflows finishes on still gets a swatch for the other.
+- **State colours no longer offer a done state.**
 
 ### Fixed
 
@@ -135,11 +88,15 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   checks that the vault can see the base of the view doing the saving before it believes
   any of the answers.
 
+- **Progress bars line up again in a big backlog.** The bar and its count share a lane
+  anchored at the right, and the count had a fixed reservation that only held two digits
+  over two — so a row counting hundreds pushed its own bar left, and rows counting units,
+  tens and hundreds each drew their bar in a different place.
+
 - **Folding every resource row no longer reports the plan as empty.** The roadmap counted
   the rows it had drawn, and a folded band draws none — so shutting the last open band
   answered with "all your items are done and hidden" beside the headers, counts and rails
-  still on screen. It counts what the axis holds now, which also covers a plan whose only
-  visible note is a milestone.
+  still on screen.
 
 - **A bar drag or resize no longer loses its release.** If the vault changed while a bar was
   in the air — which happens most often in the first minutes after a view is opened, while
@@ -147,39 +104,16 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   dates it meant, the bar snapped back, and nothing was said about it. The view now waits for
   the gesture to finish before it rebuilds.
 
-- **Dragging a bar into someone else's row lands there.** The drag preview itself was taking
-  the release: it is drawn in the row the bar came from, so a body drag — whose pointer sits
-  inside the ghost by construction — was answered with the row it started in, leaving the
-  bar with its original owner and never lighting up the row it was aimed at. End grips were
-  unaffected, since a resize never asks which row it landed in.
-
-- **Lanes will not be built** on the roadmap or the board. They were tried and refused.
-
-- **Double click either resize grip to reset it** — the tree's new property-column grips
-  and the roadmap timeline's lead-column grip. A mouse never focuses a grip, so the Home
-  key that resets one was reachable only by tabbing onto it first.
-
 - **The Property column width option is gone.** The width is a per-column pick you drag
   now, kept on the device rather than in the shared `.base`
-  ([ADR 0011](docs/adrs/0011-keep-collapse-state-out-of-the-base-file.md): a value is
-  configuration or working position, never both). A base written with a
-  `propertyColumnWidth` key keeps a setting nothing reads; every column starts at the
-  same 132px it did and moves from there.
 
 ### Removed
 
-- **The card's right-click menu no longer offers Expand/Collapse unplaced** — the shelf
-  still collapses, from its own header, which is where the control has always been. Its
-  sort and type filter stay on the menu whenever the shelf is open. The header's
-  disclosure is now reachable with Tab, so the shelf can still be opened and shut without
-  a pointer.
+- **The card's right-click menu no longer offers Expand/Collapse unplaced**.
 
 - **The card's right-click menu no longer lists the children one by one** — the
   **Show/Hide children** toggle stays, and so does the list on the card itself. A card with
-  many children no longer pushes the rest of its menu off the screen. A child that matches
-  the quick filter is still offered in the menu, as a match. **While a focus level is
-  set**, where a child has no card of its own, the menu still offers **Open child** for it
-  — otherwise the only way to it would be a mouse.
+  many children no longer pushes the rest of its menu off the screen.
 
 ## [0.8.0] - 2026-08-14
 

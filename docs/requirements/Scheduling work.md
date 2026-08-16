@@ -2,15 +2,15 @@
 type: Feature
 parent: "[[Product Roadmap]]"
 order: -10
-status: Open
+status: Active
 created: 2026-08-01
 started: ""
 finished: ""
 horizon: ""
 risk: ""
 assignee: Chris
-start: ""
-due: ""
+start: 2026-08-03
+due: 2026-08-16
 ---
 
 # Scheduling work

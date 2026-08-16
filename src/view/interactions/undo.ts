@@ -1,4 +1,5 @@
 import { App, Notice } from 'obsidian';
+import { t } from '../../i18n/t';
 import { applyRestores, RestoreOutcome, RestoreWrite } from '../../storage/frontmatter';
 
 /**
@@ -111,11 +112,7 @@ export class UndoRecovery {
 /** Say what an undo could not put back; a clean undo shows in the tree itself. */
 function reportRestoreOutcome(outcome: RestoreOutcome): void {
 	const parts: string[] = [];
-	if (outcome.conflicts > 0) {
-		parts.push(`${outcome.conflicts} value${outcome.conflicts === 1 ? ' was' : 's were'} edited since and kept`);
-	}
-	if (outcome.missing > 0) {
-		parts.push(`${outcome.missing} note${outcome.missing === 1 ? '' : 's'} no longer exist`);
-	}
+	if (outcome.conflicts > 0) parts.push(t('undo.conflicts', { count: outcome.conflicts }));
+	if (outcome.missing > 0) parts.push(t('undo.missing', { count: outcome.missing }));
 	if (parts.length > 0) new Notice(`Undo: ${parts.join('; ')}.`);
 }

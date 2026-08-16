@@ -1,15 +1,14 @@
 ---
 type: Epic
 order: 10
-status: Active
-horizon: Now
+status: Open
 area: product
 started: ""
 finished: ""
 risk: ""
 assignee: Evi
-start: 2026-09-03
-due: 2026-10-02
+start: 2026-08-03
+due: 2026-09-13
 ---
 
 # Product Backlog

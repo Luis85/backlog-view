@@ -3,10 +3,14 @@ import { CREATE_BACKLOG_COMMAND_ID, promptCreateBacklogBase } from './commands/s
 import { WRITE_README_COMMAND_ID, writeBacklogReadmeCommand } from './commands/readme';
 import { rekeyBase } from './storage/viewStateStore';
 import { getViewOptions } from './domain/viewOptions';
+import { initLocale } from './i18n/t';
 import { PRODUCT_BACKLOG_VIEW_TYPE, ProductBacklogView } from './view/backlogView';
 
 export default class ProductBacklogPlugin extends Plugin {
 	onload(): void {
+		// Once, before anything registers a name: Obsidian needs a restart to change its
+		// language, so re-reading it per render would be cost with no observable benefit.
+		initLocale();
 		this.registerBasesView(PRODUCT_BACKLOG_VIEW_TYPE, {
 			name: 'Product Backlog',
 			icon: 'lucide-list-tree',

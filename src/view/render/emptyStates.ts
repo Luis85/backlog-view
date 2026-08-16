@@ -1,4 +1,5 @@
 import { setIcon } from 'obsidian';
+import { t } from '../../i18n/t';
 import { BacklogViewHost } from '../host';
 import { newItemType, promptCreateItem } from '../interactions/create';
 import { runInit } from '../interactions/structure';
@@ -119,7 +120,7 @@ function emptyHint(host: BacklogViewHost, focused: boolean, topLevel: string): s
 	}
 	const ignored = host.model?.ignoredCount ?? 0;
 	if (ignored > 0) {
-		return `${ignored} note${ignored === 1 ? '' : 's'} in this base ${ignored === 1 ? 'has' : 'have'} no supported type and no parent, so ${ignored === 1 ? 'it is' : 'they are'} not treated as backlog items. Create your first ${topLevel}, or turn off "Ignore notes outside the hierarchy" in the view options to organize the existing notes.`;
+		return t('emptyState.ignored', { count: ignored, topLevel });
 	}
 	return `Point this base's filter at your backlog folder, then create your first ${topLevel}. New items automatically get the parent, order and type properties this view needs.`;
 }
@@ -286,7 +287,7 @@ export function renderAllDoneState(
 	total: number,
 	root: HTMLElement = treeEl,
 ): void {
-	const empty = noticeShell(treeEl, 'circle-check', `All ${total} item${total === 1 ? ' is' : 's are'} done and hidden.`);
+	const empty = noticeShell(treeEl, 'circle-check', t('emptyState.allDone', { count: total }));
 	const btn = empty.createEl('button', { text: 'Show completed items' });
 	btn.addEventListener('click', () => host.config.set('showCompleted', true));
 	manualLink(empty, host.app, manualSections(), { sectionId: 'finding', label: 'What shows here?', root });

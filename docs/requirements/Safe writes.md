@@ -1,13 +1,15 @@
 ---
 type: Feature
 parent: "[[Product Backlog]]"
-order: 60
-status: Done
+order: 0.625
+status: Open
 started: ""
-finished: ""
 horizon: ""
 risk: ""
 assignee: Evi
+start: 2026-08-03
+due: 2026-08-30
+finished: ""
 ---
 
 # Safe writes

@@ -32,6 +32,15 @@ export function stringifyYaml(obj: unknown): string {
 	);
 }
 
+/**
+ * The app's configured language. Obsidian's own defaults to `'en'` and so does this —
+ * a test that cares drives `setLocale` directly rather than reaching through here,
+ * because resolution happens once at load and nothing re-reads it.
+ */
+export function getLanguage(): string {
+	return 'en';
+}
+
 export function normalizePath(path: string): string {
 	return path
 		.replace(/\\/g, '/')
@@ -392,14 +401,24 @@ export class Setting {
 	 * two apart or it would find the name's own elements too.
 	 */
 	controlEl: HTMLElement;
+	/**
+	 * The name's own wrapper, and the reason it exists is ORDER. `.setting-item` is a flex
+	 * row, so what is appended first sits first — and with the control built in the
+	 * constructor and the name appended by `setName`, every dialog drew its input to the
+	 * LEFT of its label, mirrored against every vault. Invisible to the suite, which reads
+	 * `.setting-item-name` by class; visible the moment the browser harness drew a dialog
+	 * in Obsidian's own modal (2026-08-15) and someone looked at it.
+	 */
+	private readonly infoEl: HTMLElement;
 	constructor(containerEl: HTMLElement) {
 		this.settingEl = containerEl.createDiv({ cls: 'setting-item' });
+		this.infoEl = this.settingEl.createDiv({ cls: 'setting-item-info' });
 		this.controlEl = this.settingEl.createDiv({ cls: 'setting-item-control' });
 	}
 	setName(name: string): this {
 		// Rendered, unlike the description below: a dialog built from a list is checked by
 		// WHICH ROWS it offers, and the name is the only thing that says which row this is.
-		this.settingEl.createDiv({ cls: 'setting-item-name', text: name });
+		this.infoEl.createDiv({ cls: 'setting-item-name', text: name });
 		return this;
 	}
 	setDesc(_desc: string): this {
@@ -434,12 +453,32 @@ export class Modal {
 	/** The modal most recently opened — flows that create modals internally are tested through this. */
 	static lastOpened: Modal | null = null;
 	app: unknown;
+	/**
+	 * The dialog's own frame, and the element a caller writes classes to: `manualDialog`
+	 * puts `mod-settings mod-sidebar-layout` here, which is what `.is-phone .modal
+	 * .mod-sidebar-layout` and `.modal.mod-settings` in Obsidian's own sheet require.
+	 *
+	 * Absent until 2026-08-15, so that call was optional-chained through a cast and its
+	 * own comment said nothing in the suite could catch either class being wrong. It is
+	 * real API surface (`Modal.modalEl` in the typings), and the three elements carry the
+	 * classes Obsidian gives them, so the harness can hand the frame to app.css's `.modal`
+	 * rule rather than draw a box of its own. Nothing here APPENDS any of them — the
+	 * harness does that (`test/harness/chrome.ts`), which is what keeps the suite
+	 * measuring through `lastOpened` exactly as before.
+	 */
+	modalEl: HTMLElement;
 	titleEl: HTMLElement;
 	contentEl: HTMLElement;
 	constructor(app: unknown) {
 		this.app = app;
+		// `classList` rather than `addClass`: this constructor runs in files that never
+		// called `installObsidianDom()`, and the prototype extension is not there for them.
+		this.modalEl = document.createElement('div');
+		this.modalEl.classList.add('modal');
 		this.titleEl = document.createElement('div');
+		this.titleEl.classList.add('modal-title');
 		this.contentEl = document.createElement('div');
+		this.contentEl.classList.add('modal-content');
 	}
 	open(): void {
 		Modal.lastOpened = this;
