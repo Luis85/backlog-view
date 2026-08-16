@@ -264,6 +264,31 @@ describe('what a bar SAYS it costs to cross an absence', () => {
 		expect(token?.closest('.pbl-bar-label')).toBe(label);
 	});
 
+	it('speaks in the singular for a single lost day, in both forms of the sentence', () => {
+		// Every other count on this screen pluralizes through the catalog's one/other
+		// forms; the cost sentence hardcoded its `s` and told a reader "1 days lost".
+		// Both branches of `absenceCost` are asked, because each writes its own sentence:
+		// a one-day overlap on a longer bar, and a stretch covering a one-day bar whole.
+		const vault = new FakeVault();
+		vault.addFile('Work.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
+		});
+		vault.addFile('Whole.md', {
+			frontmatter: { type: 'Epic', order: 20, assignee: 'Alice', start: '2026-08-04', due: '2026-08-04' },
+		});
+		vault.addFile('Alice away.md', {
+			frontmatter: { type: 'Absence', assignee: 'Alice', start: '2026-08-04', due: '2026-08-04' },
+		});
+		const { containerEl } = laneRoadmap(vault);
+		const saidOn = (title: string): string =>
+			Array.from(rowFor(containerEl, title)?.querySelectorAll<HTMLElement>('.pbl-sr-only') ?? [])
+				.map((span) => span.textContent ?? '')
+				.find((text) => text.startsWith('Crosses')) ?? '';
+
+		expect(saidOn('Work')).toContain('1 day lost to absence:');
+		expect(saidOn('Whole')).toContain('all 1 day lost:');
+	});
+
 	it('says so differently when the stretch covers the bar whole', () => {
 		const vault = new FakeVault();
 		vault.addFile('Short.md', {
