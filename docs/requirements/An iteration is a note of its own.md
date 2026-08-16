@@ -146,10 +146,23 @@ declared name owes: a default subfolder, an icon and a badge colour.
   remove — "unresolved is not unset" (4a) applied to the menu's own gate rather than to
   the plan behind it. With no link and no targets there is genuinely nothing to do, and
   the submenu is absent.
-- **4c — the row is itself an `Iteration`.** `Set iteration` is not offered: an iteration
-  is the scope a board is chosen by, never something put inside one. The board's
-  population refuses one too, rather than trusting the menu — a key written by hand would
-  otherwise make one iteration a card on another's board.
+- **4c — the row is a MARKER**, an `Iteration` or a `Milestone` alike. `Set iteration` is
+  not offered, and the board's population refuses one too rather than trusting the menu —
+  a key written by hand would otherwise draw it as a card.
+
+  **Asked of `isMarkerType`, never of the two names.** A marker occupies no rung, holds
+  nothing and hangs from nothing, which is `typeVocabulary.ts`' own definition of one and
+  amounts to *a marker is not work*. A sprint is a commitment to finish some work, so
+  nothing that is not work can join one. Written as a rule about markers it also holds for
+  a third marker nobody has declared yet; written as `isIterationType` it holds for one
+  name and silently fails for the other.
+
+  This note named `Iteration` alone until 2026-08-16, and the omission was not cosmetic. A
+  `Milestone` passed every other refusal, so `Set iteration` was offered on one — and
+  picking an iteration writes the **two dates** as well as the link
+  ([[An iteration's timeframe schedules its items]]), which would overwrite the milestone's
+  own target. A milestone *is* its date; there is nothing else in it to keep. The one type
+  where the write is most destructive was the one the rule did not cover.
 - **5a — the item carries an iteration and its parent carries a different one.** Both are
   true and neither is derived. Nothing inherits an iteration down the tree, which is what
   makes the board's population a plain question about one note

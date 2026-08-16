@@ -185,10 +185,16 @@ the value IS, and this one is a link. The plan therefore carries the target **fi
 a serialized string. The three rules the label list keeps are kept here too: an
 unconfigured key is never written, `null` deletes, `undefined` leaves the key alone.
 
-**Never put in one.** An `Iteration` is not offered `Set iteration`, and the board
-population refuses one as a card rather than trusting the menu to have prevented it — a
-key written by hand would otherwise make one iteration a card on another's board, which
-the badge decision leans on being impossible.
+**Never put in one.** No **marker** is offered `Set iteration` — an `Iteration` or a
+`Milestone` alike — and the board population refuses one as a card rather than trusting
+the menu to have prevented it, so a key written by hand cannot draw one either.
+
+Asked of `isMarkerType`, never of a name. A marker occupies no rung, holds nothing and
+hangs from nothing, which is `typeVocabulary.ts`' own definition and amounts to *a marker
+is not work*; a sprint is a commitment to finish some work. Naming `Iteration` alone —
+which this section did until 2026-08-16 — leaves a `Milestone` offered the menu, and §9's
+dates then overwrite its target. A milestone *is* its date, so the name the rule omitted
+was the one where the write destroys most.
 
 **Setting it.** A `Set iteration` submenu on the row and card context menus, offering
 every Iteration note plus `None`. Picking one plans **three** writes rather than one —

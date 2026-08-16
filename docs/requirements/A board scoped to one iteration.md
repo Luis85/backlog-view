@@ -361,11 +361,17 @@ the moment the populations diverged, which is exactly what happened.
   never the model: a Sprint 13 card counted on Sprint 12's Open column is the same defect
   a model-wide observed list would have been one level up, and handing the builder the
   population rather than the model retires both at once.
-- **3l — an `Iteration` note itself carries an iteration link**, written by hand rather
-  than through a menu that refuses to offer it. It is not a card. An iteration is the
-  scope a board is chosen by, and the population refuses one rather than trusting the
-  menu to have prevented it — a rule the population keeps holds against a note nobody
-  edited through the UI.
+- **3l — a MARKER carries an iteration link**, written by hand rather than through a menu
+  that refuses to offer it. It is not a card, and that covers a `Milestone` exactly as it
+  covers an `Iteration`. The population asks `isMarkerType` rather than naming either,
+  because the reason is what a marker *is*: no rung, no children, nothing hanging from it
+  — **not work**. A sprint is a commitment to finish some work, so a board scoped to one
+  draws work and nothing else.
+
+  Refused in the population rather than trusted to the menu, so the rule holds against a
+  note nobody edited through the UI. And stated as a rule about markers rather than about
+  two names, so a third marker inherits it instead of reopening the hole: this extension
+  said `Iteration` alone until 2026-08-16, which drew a `Milestone` as a sprint card.
 - **4a — no state property is configured at all.** The scope is still **enterable** and
   the board shows the unconfigured empty state, naming the option to set and where. A
   resolved key is what the COLUMNS need, never what the scope needs: gating scope
@@ -564,8 +570,9 @@ the moment the populations diverged, which is exactly what happened.
   unconfigured guidance rather than putting every card in the Open column.
 - Every column's `count`, `fullCount`, `held` and `openWork` are measured over **this
   scope's carriers**, so a card in another iteration is never counted here.
-- No `Iteration` note is ever a card on an iteration board, whatever its own frontmatter
-  says.
+- **No marker is ever a card on an iteration board** — an `Iteration` or a `Milestone`
+  alike, whatever its own frontmatter says. Checked with a hand-written link on each, and
+  asked of `isMarkerType` so a third marker needs no third test.
 - The columns are exactly three — **Open**, **In Progress**, **Resolved** — over the
   resolved **product** state key. `iterationOpenStates` and `iterationResolvedStates` name
   which product states fall in the outer two; every other state, and only those, land in

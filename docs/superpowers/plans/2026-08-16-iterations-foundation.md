@@ -560,11 +560,13 @@ function with no caller fails both the coverage floor and fallow's dead-code che
 this submenu — refusing the row on an `Iteration` itself — is `isIterationType`'s first
 real consumer, so it is written where it is first called.
 
-**Five refusals, and each is a different rule.** The submenu is absent when the **iteration property is unconfigured** (below), on a **context row** (never a write target), on a **catalog member** (a `Test suite`, a `Test case`, or a `Task` beneath one — the population it would join is the plan's, so the link would be stored where no card can draw), on an **`Iteration`** itself (an iteration is a scope, never something put inside one), and when there is **neither a link nor a target** (genuinely nothing to do). It is **present with `None` alone** when the item holds a link and the model has no Iteration notes left — no targets is not the same as nothing to do, and hiding it there would leave a value on screen the reader cannot remove.
+**Five refusals, and each is a different rule.** The submenu is absent when the **iteration property is unconfigured** (below), on a **context row** (never a write target), on a **catalog member** (a `Test suite`, a `Test case`, or a `Task` beneath one — the population it would join is the plan's, so the link would be stored where no card can draw), on any **marker** — an `Iteration` *or* a `Milestone`, asked through `isMarkerType` (below) — and when there is **neither a link nor a target** (genuinely nothing to do). It is **present with `None` alone** when the item holds a link and the model has no Iteration notes left — no targets is not the same as nothing to do, and hiding it there would leave a value on screen the reader cannot remove.
 
 **The unconfigured-key gate is the one that does not follow from the others**, and it was missing from this list until 2026-08-16. A vault can hold `Iteration` notes while `iterationProperty` is unset — nothing stops a user typing the notes before naming the key — so Step 3's target list is non-empty and every other refusal passes. The submenu would then render a full list of iterations, tick one of them, and write **nothing** on every pick, because Task 4's planner returns `[]` with no key. Actions that look available, look current, and are inert. `An iteration is a note of its own` extension 2b says the opposite: with the property unconfigured, no item can be put in an iteration.
 
 It cannot be got from the plan's emptiness either, which is the trap worth naming: an empty plan is also what a **correct** no-op pick returns, so a menu that hid entries whose plan is empty would hide the current iteration too.
+
+**The marker refusal is `isMarkerType`, not `isIterationType`**, and the difference is destructive rather than tidy. A marker is not work — no rung, no children, nothing hanging from it — so nothing that is not work can join a sprint. Written as one name, a `Milestone` passes every refusal and gets `Set iteration` offered; picking an iteration then writes the **two dates** as well as the link (Task 7), overwriting the milestone's own target. A milestone *is* its date. The one type where this write destroys the most was the one a name-based rule did not cover, which is why the predicate is the one that means "not work" rather than the one that means "an iteration".
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -575,9 +577,12 @@ describe('Set iteration', () => {
 	it('offers every Iteration in the model plus None, whatever the focus level', () => { /* … */ });
 	it('is absent on a context row', () => { /* … */ });
 	it('is absent on a catalog member', () => { /* … */ });
-	it('is absent on an Iteration row', () => { /* … */ });
 	it('renders with None alone when the item holds a link and no Iteration is left', () => { /* … */ });
 	it('is absent with no link and no targets', () => { /* … */ });
+	it('is absent on a Milestone row, not only an Iteration one', () => {
+		// A marker is not work. Named as one rule so a third marker inherits it — and
+		// checked on the MILESTONE, because that is the one the dates would destroy.
+	});
 	it('is absent when the iteration property is unconfigured, even with Iterations in the model', () => {
 		// The gate that follows from none of the others: the targets exist, so every
 		// other refusal passes, and each pick would write nothing while looking current.
