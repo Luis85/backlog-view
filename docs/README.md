@@ -200,9 +200,10 @@ property every screen must hold, but a public site — built with Astro, hosted 
 Pages — that shows someone who has never opened this repository what the plugin does.
 `README.md` already pitches the plugin and walks a visitor who found the repository
 through installing it; this epic is the richer, visual surface a search result or the
-repository's own GitHub Pages link reaches directly, not a second README. One feature is
-specified so far, the page's own content and structure; the build and the GitHub Pages
-deploy that ship it are still open design.
+repository's own GitHub Pages link reaches directly, not a second README. Three features
+are specified: the page's own content and structure, a site built from its own directory
+independent of the plugin's own toolchain, and its publish to GitHub Pages from a
+dedicated workflow — all still design, nothing built yet.
 
 `Issue`, `Bug` and `Idea` hang from whichever requirement they concern, which is exactly
 what those types are for: they hold Tasks, they are never re-typed by a move, and they
