@@ -638,3 +638,20 @@ describe('tag inverses', () => {
 		expect(vault.fm('Item.md')).toEqual({ tags: ['alpha', 'beta'] });
 	});
 });
+
+describe('iteration inverses', () => {
+	const withIteration = { ...settings, iterationKey: 'iteration' };
+
+	it('takes an iteration link back with the one undo slot', async () => {
+		const vault = new FakeVault();
+		const pbi = vault.addFile('PBI-1.md');
+		const sprint12 = vault.addFile('Sprint 12.md', { frontmatter: { type: 'Iteration' } });
+
+		const inverses = await writeCapturing(vault, [{ file: pbi, iteration: sprint12 }], withIteration);
+		expect(vault.fm('PBI-1.md')['iteration']).toBe('[[Sprint 12]]');
+
+		await applyRestores(vault.app, inverses);
+
+		expect(vault.fm('PBI-1.md')['iteration']).toBeUndefined();
+	});
+});

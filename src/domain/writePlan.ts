@@ -107,6 +107,13 @@ export interface ItemWrite {
 	stubs?: OptionalField[];
 	/** Prerequisites to add and remove. Ignored when no depends-on property is configured. */
 	dependsOn?: DependsOnDelta;
+	/**
+	 * The iteration this item belongs to — a FILE, never a serialized string, and
+	 * **null to remove the key**. The writer spells the link itself, path-aware like the
+	 * parent's (`wikilinkTo`), because a link built from a basename here would resolve to
+	 * whichever of two same-named notes Obsidian picks. `undefined` leaves the key alone.
+	 */
+	iteration?: TFile | null;
 }
 
 export interface TagDelta {
@@ -337,6 +344,35 @@ export function computeAssigneeWrites(item: BacklogItem, value: string | null): 
 	if (value === null) return item.ownKeys.assignee ? [{ file: item.file, assignee: null }] : [];
 	if (sameValue(item.assigneeValue, value)) return [];
 	return [{ file: item.file, assignee: value }];
+}
+
+/**
+ * Everything ONE iteration change writes: the link alone, for now — a later task adds
+ * the two dates the iteration's own timeframe supplies, in this same batch.
+ *
+ * `target` is the iteration's ITEM, not its `TFile`: the write below takes `.file` for
+ * the link, but the item is what a later join needs to reach the iteration's own `start`
+ * and `target` readings, which live on `BacklogItem` because that is where `readItems.ts`
+ * parses them — a `TFile` is a path and a name and nothing else. This module is pure
+ * domain, so it cannot look either up itself; the caller already holds the item, because
+ * the menu that calls this built its entries from the model.
+ *
+ * An unconfigured key plans nothing — absence is a value.
+ *
+ * Emptiness is what a later task's menu asks of this output for its checkmark, so a pick
+ * that changes nothing must return `[]` rather than a write the applier happens to no-op.
+ */
+export function computeIterationWrites(item: BacklogItem, target: BacklogItem | null, settings: BacklogSettings): ItemWrite[] {
+	if (!settings.iterationKey) return [];
+	const current = item.iterationEntry;
+	// Compared by PATH, never by the raw text: two spellings of one note are one
+	// iteration. A link that resolved to nothing has no path and is therefore never
+	// "already there" — which is what makes a broken value clearable: a None pick against
+	// a broken entry still has something present (`current !== null`) to take away, so it
+	// is not treated as already matching the "no iteration" target either.
+	const same = target === null ? current === null : current?.file?.path === target.file.path;
+	if (same) return [];
+	return [{ file: item.file, iteration: target === null ? null : target.file }];
 }
 
 /**

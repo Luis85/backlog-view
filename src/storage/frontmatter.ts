@@ -197,6 +197,7 @@ function applyInto(
 	// question, and the boundary rule believes the wrong one.
 	const leaving = settings.stateKey ? readString(ownValue(fm, settings.stateKey)) : null;
 	applyHierarchy(app, fm, settings, write);
+	applyIteration(app, fm, settings, write);
 	// The stateKey may be unset (progress tracking off) — never write to an empty key.
 	if (write.removeStateKey && settings.stateKey) delete fm[settings.stateKey];
 	else if (write.state !== undefined && settings.stateKey) setOwn(fm, settings.stateKey, write.state);
@@ -234,6 +235,18 @@ function applyHierarchy(app: App, fm: Record<string, unknown>, settings: Backlog
 	}
 	if (write.order !== undefined) setOwn(fm, settings.orderKey, write.order);
 	if (write.typeName !== undefined) setOwn(fm, settings.typeKey, write.typeName);
+}
+
+/**
+ * The iteration link — path-aware like the parent's, and for the parent's reason: a link
+ * serialized from a basename would resolve to whichever of two same-named notes Obsidian
+ * picks, so this spells it from the editing note's own path with `wikilinkTo`, exactly as
+ * `applyHierarchy` does for the parent. Never a key no property names; `null` removes it.
+ */
+function applyIteration(app: App, fm: Record<string, unknown>, settings: BacklogSettings, write: ItemWrite): void {
+	if (write.iteration === undefined || !settings.iterationKey) return;
+	if (write.iteration === null) delete fm[settings.iterationKey];
+	else setOwn(fm, settings.iterationKey, wikilinkTo(app, write.iteration, write.file.path));
 }
 
 /**
