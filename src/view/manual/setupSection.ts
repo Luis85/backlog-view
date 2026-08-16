@@ -57,6 +57,15 @@ export const SETUP: ManualSection = {
 			keys: ['riskProperty', 'riskValues'],
 		},
 		{
+			term: 'Priority',
+			text:
+				'The property Set priority and the priority chip write to, and the levels ' +
+				'offered. Ships holding MoSCoW — 1 - Must, 2 - Should, 3 - Could, 4 - Won\'t — ' +
+				'and the words are yours to change. Clear the list and the chip and the menu go ' +
+				'away, leaving an ordinary property Obsidian\'s own editor still edits.',
+			keys: ['priorityProperty', 'priorityValues'],
+		},
+		{
 			term: 'Placing work on the roadmap',
 			text:
 				'The horizon property and its buckets; the start and target date properties the ' +

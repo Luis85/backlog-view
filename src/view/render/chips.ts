@@ -1,7 +1,7 @@
 import { setTooltip } from 'obsidian';
 import { drawIcon } from './icons';
 import { BacklogViewHost, Column } from '../host';
-import { showAssigneeMenu, showRiskMenu } from '../interactions/menu';
+import { showAssigneeMenu, showPriorityMenu, showRiskMenu } from '../interactions/menu';
 import { ownWorkflowReading, stateKeyFor } from '../../domain/board';
 import { PlacementEnd, placementEnds } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
@@ -153,7 +153,7 @@ export function renderHorizonChip(host: BacklogViewHost, col: HTMLElement, item:
  * an unset chip is an INVITATION, not a placement, so it says what could go there rather
  * than the horizon's `Unplaced`.
  */
-export const LABEL_CHIPS: Record<'risk' | 'assignee', LabelChip> = {
+export const LABEL_CHIPS: Record<'risk' | 'priority' | 'assignee', LabelChip> = {
 	risk: {
 		valueOf: (item) => item.riskValue,
 		cls: 'pbl-risk-chip',
@@ -163,6 +163,16 @@ export const LABEL_CHIPS: Record<'risk' | 'assignee', LabelChip> = {
 		placeholder: 'Risk',
 		noun: 'risk',
 		showMenu: showRiskMenu,
+	},
+	priority: {
+		valueOf: (item) => item.priorityValue,
+		cls: 'pbl-priority-chip',
+		unsetCls: 'pbl-priority-unset',
+		icon: 'flag',
+		unsetIcon: 'flag-off',
+		placeholder: 'Priority',
+		noun: 'priority',
+		showMenu: showPriorityMenu,
 	},
 	assignee: {
 		valueOf: (item) => item.assigneeValue,

@@ -37,7 +37,7 @@ import { BacklogViewHost, Column } from './host';
  *
  * | read | covered by |
  * | --- | --- |
- * | `typeName` `tags` `horizon` `riskValue` `assigneeValue` `plannedStart` `plannedTarget` `stateValue` and both secondary state values | the frontmatter term — one term, so nobody has to predict which keys a column is pointed at tomorrow |
+ * | `typeName` `tags` `horizon` `riskValue` `priorityValue` `assigneeValue` `plannedStart` `plannedTarget` `stateValue` and both secondary state values | the frontmatter term — one term, so nobody has to predict which keys a column is pointed at tomorrow |
  * | `entry` (every `note.*` cell) | the frontmatter term, given {@link reusableColumns} refused every other source, plus {@link renderInputs}' per-column type probe |
  * | `levelIndex` (the badge's text) | `displayType(item)` — the answer the badge draws, rather than the fields behind it |
  * | `ladder` | **no term here at all — projection MEMBERSHIP.** See below; this is the one read with nothing in this file behind it. |

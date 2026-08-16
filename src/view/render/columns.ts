@@ -6,7 +6,7 @@ import { dateChipFor, LABEL_CHIPS, renderDateChip, renderHorizonChip, renderLabe
 import { DEFAULT_PROP_COLUMN_WIDTH } from '../../storage/viewStateStore';
 import { BacklogItem } from '../../domain/model';
 import { hasHorizonAxis } from '../../domain/roadmap';
-import { BacklogSettings, hasRiskLevels } from '../../domain/settings';
+import { BacklogSettings, hasPriorityLevels, hasRiskLevels } from '../../domain/settings';
 import { resolvedDeliverableStateKey, resolvedTestStateKey } from '../../domain/optionalProperties';
 import { hasRollup, projectionPopulation, treeShaped } from '../projection';
 
@@ -272,10 +272,11 @@ export function resolveColumns(host: BacklogViewHost): Column[] {
  * but that predicate is not one rule for all of them, and saying so would be claiming
  * more than these five lines do:
  *
- * - `horizon` and `risk` are a PAIR, a key AND a declared vocabulary (`hasHorizonAxis`,
- *   `hasRiskLevels`), because neither menu has anywhere else to get its values. With the
- *   list cleared the property falls through to `value` and renders as an ordinary column,
- *   which is the behaviour the risk chip already had and is now stated for both of them.
+ * - `horizon`, `risk` and `priority` are a PAIR each, a key AND a declared vocabulary
+ *   (`hasHorizonAxis`, `hasRiskLevels`, `hasPriorityLevels`), because none of those menus
+ *   has anywhere else to get its values. With the list cleared the property falls through
+ *   to `value` and renders as an ordinary column, which is the behaviour the risk chip
+ *   already had and is now stated for all three.
  * - `state` is the KEY alone, deliberately: `stateMenuValues` falls back to the states
  *   observed on the results (plus a done value), so a state property with no configured
  *   list still has a menu with something in it. Pairing it would withhold the chip from
@@ -312,6 +313,7 @@ function columnKind(settings: BacklogSettings, prop: BasesPropertyId): ColumnKin
 		[resolvedTestStateKey(settings), 'state'],
 		[hasHorizonAxis(settings) ? settings.horizonKey : '', 'horizon'],
 		[hasRiskLevels(settings) ? settings.riskKey : '', 'risk'],
+		[hasPriorityLevels(settings) ? settings.priorityKey : '', 'priority'],
 		[settings.assigneeKey, 'assignee'],
 		[settings.startKey, 'start'],
 		[settings.targetKey, 'target'],
@@ -500,7 +502,7 @@ function renderCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem,
 	if (column.kind === 'tags') return renderTagCell(host, cell, item, column);
 	if (column.kind === 'state') return renderStateChip(host, cell, item, column);
 	if (column.kind === 'horizon') return renderHorizonChip(host, cell, item, column.label);
-	if (column.kind === 'risk' || column.kind === 'assignee')
+	if (column.kind === 'risk' || column.kind === 'priority' || column.kind === 'assignee')
 		return renderLabelChip(host, cell, item, column.label, LABEL_CHIPS[column.kind]);
 	// A date is the one kind that draws DIFFERENTLY per projection, and the asymmetry is
 	// the point rather than an exception waiting to be smoothed away: a card has to keep

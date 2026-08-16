@@ -13,6 +13,14 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Added
 
+- **A MoSCoW priority on every row.** Name a priority property under the new
+  **Prioritization** view options and each row draws a priority chip: press it, or use
+  **Set priority** in the row menu, to pick a rung. The ladder ships holding
+  `1 - Must, 2 - Should, 3 - Could, 4 - Won't` and is yours to rewrite; clearing it takes
+  the chip and the menu away and leaves an ordinary property. The ✨ button binds and
+  backfills it like every other optional property, clearing removes the key rather than
+  blanking it, and every write is one undoable batch.
+
 - **Fold a type group in the shelf.** Each type group in the expanded shelf now has a
   disclosure beside its name.
 
