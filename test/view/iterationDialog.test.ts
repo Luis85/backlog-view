@@ -121,6 +121,21 @@ describe('New iteration…', () => {
 		expect(Modal.lastOpened?.contentEl.querySelector('.pbl-modal-error')?.textContent).toContain('before the start');
 	});
 
+	it('follows the latest sprint even with a focus level retained', async () => {
+		// The picker reads the focus-immune set and this must too: read off
+		// `model.results`, a retained `PBI` focus left the derivation with no predecessor,
+		// prefilling from today while the picker beside it still offered the later sprint.
+		const vault = sprintVault();
+		const harness = makeView(vault, OPTIONS, { base: 'Plan.base', focus: 'PBI' });
+		harness.view.setBoardScope(SPRINT);
+		harness.containerEl
+			.querySelector<HTMLElement>('.pbl-scope-btn')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		Menu.lastShown?.item('New iteration…')?.click();
+		await submitDialog({ Name: 'Sprint 13' });
+		expect(vault.fm('Sprint 13.md').start).toBe('2026-08-17');
+	});
+
 	it('is offered on the product scope too, where Edit is not', () => {
 		open(OPTIONS, null);
 		const titles = (Menu.lastShown?.items ?? []).map((mi) => mi.titleText);

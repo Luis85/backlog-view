@@ -82,6 +82,14 @@ describe('the three-bucket board', () => {
 			frontmatter: { type: 'PBI', order: 30, status: 'New', iteration: '[[Sprint 13]]' },
 			parentLink: 'Carrier',
 		});
+		// A child retyped to a MARKER keeps its parent and its link. The population refuses
+		// it a card; membership has to refuse it too, or it is listed on its parent's face
+		// and its title can keep that parent on screen through a filter match. One rule,
+		// one statement (`inIteration`) — this was reported twice before it was shared.
+		vault.addFile('Retyped marker.md', {
+			frontmatter: { type: 'Milestone', order: 40, iteration: '[[Sprint 12]]' },
+			parentLink: 'Carrier',
+		});
 		const harness = makeView(vault, OPTIONS, { base: 'Plan.base' });
 		harness.view.setBoardScope(SPRINT);
 		const card = cardByTitle(harness.containerEl, 'Carrier');

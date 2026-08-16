@@ -1,5 +1,5 @@
 import { inCatalog, isDeliverableType, isMarkerType, ladderFor } from '../domain/itemTypes';
-import { BacklogItem, BacklogModel, ProjectionPopulation } from '../domain/model';
+import { BacklogItem, BacklogModel, inIteration, ProjectionPopulation } from '../domain/model';
 import { BacklogViewHost, Projection } from './host';
 import { ALL_TYPES } from '../domain/typeVocabulary';
 
@@ -166,7 +166,10 @@ export function projectionMember(projection: Projection, scope: string | null = 
 	// takes it away as soon as nothing below it is visible. Asked with no scope — every
 	// caller that has no iteration in hand — this is the plan's answer unchanged.
 	if (projection === 'iteration' && scope !== null) {
-		return (item) => !inCatalog(item) && (item.outsideFilter || item.iterationEntry?.file?.path === scope);
+		// `inIteration` and NOT a second spelling of its three refusals: with the marker
+		// refusal in the population and not here, a note retyped to `Milestone` kept its
+		// link and stayed listed on its parent's card. One statement, two callers.
+		return (item) => item.outsideFilter ? !inCatalog(item) : inIteration(item, scope);
 	}
 	return (item) => !inCatalog(item);
 }

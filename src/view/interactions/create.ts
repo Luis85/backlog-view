@@ -252,7 +252,12 @@ function inferFolder(model: BacklogModel | null): string {
  */
 export function promptNewIteration(host: BacklogViewHost, model: BacklogModel): void {
 	if (refusedByConfig(host)) return;
-	const previous = previousIteration(model.results);
+	// The FOCUS-IMMUNE population, the same one the scope picker reads (`model.byPath`):
+	// `model.results` is narrowed to the focused forest, so with a `PBI` focus retained
+	// this found no predecessor and prefilled from today — while the picker beside it went
+	// on offering a later sprint, and accepting the prefill would create an iteration
+	// overlapping it. Found by review (Codex, PR #154).
+	const previous = previousIteration([...model.byPath.values()].filter((item) => !item.outsideFilter));
 	const dates = nextIterationDates(previous, todayCivil(), host.settings.iterationLengthDays);
 	openIterationPrompt(host, {
 		heading: 'New iteration',

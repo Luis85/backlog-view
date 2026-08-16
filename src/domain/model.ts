@@ -293,11 +293,7 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
  * matches" advisory.
  */
 export function iterationResults(model: BacklogModel, path: string): BacklogItem[] {
-	const carries = (item: BacklogItem): boolean =>
-		!item.outsideFilter &&
-		!isMarkerType(item.typeName) &&
-		!inCatalog(item) &&
-		item.iterationEntry?.file?.path === path;
+	const carries = (item: BacklogItem): boolean => !item.outsideFilter && inIteration(item, path);
 	const drawn: BacklogItem[] = [];
 	const walk = (items: BacklogItem[]): void => {
 		for (const item of items) {
@@ -311,6 +307,26 @@ export function iterationResults(model: BacklogModel, path: string): BacklogItem
 	};
 	walk(model.realRoots);
 	return drawn;
+}
+
+/**
+ * Whether this item is IN that iteration — the membership rule itself, stated once
+ * because it is asked from two directions and the two drifted the moment they were
+ * spelled separately.
+ *
+ * `iterationResults` asks it to choose CARDS. `projectionMember` (`view/projection.ts`)
+ * asks it to decide what this board draws at all — a carrier's own child list, the quick
+ * filter's index, a drop target. With the marker refusal in the first and not the second,
+ * a note retyped to `Milestone` kept its link and its parent: refused a card, and still
+ * listed on its parent's card face and still able to keep that parent on screen through a
+ * filter match. Found by review (Codex, PR #154), which is the second time this exact
+ * shape has been reported on this feature.
+ *
+ * The three refusals are the population's, minus `outsideFilter` — a context row is
+ * placement rather than membership, and each caller answers that its own way.
+ */
+export function inIteration(item: BacklogItem, path: string): boolean {
+	return !isMarkerType(item.typeName) && !inCatalog(item) && item.iterationEntry?.file?.path === path;
 }
 
 /**
