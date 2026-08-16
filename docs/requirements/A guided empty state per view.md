@@ -24,14 +24,21 @@ Obsidian's picker can offer them.
 Recommended defaults initialize only the properties that view needs, and an existing value
 is never overwritten silently.
 
-**A view that writes nothing backfills nothing.** [[Product Analytics]] and
-[[Product Portfolio]] both promise they never write, and a setup action that stamped empty
-keys across every note in their base would break that promise on the largest possible
-scale — at the one moment a reader is least expecting a write, having asked only to be told
-what to configure. So for a reporting view the guided empty state stops at the first half:
-it says which keys it needs and binds them, and the picker learns the names from the notes
-that already carry them. A key nothing has written stays unbound and its figure stays
-undrawn, which is what those views already say happens.
+**Every key a view reads is bound; only a key that view *writes* is backfilled.** The
+question is asked per property, not per view, because most views are partly writable and
+classifying a whole one gets both halves wrong: [[Product Dependencies]] writes the edge and
+nothing else, yet reads a prerequisite state key it must never stamp across the base, and
+Release Planning writes membership while reading an estimate, a risk and a testing state that
+belong to other capabilities. A setup action that backfilled a key its own view does not
+write would put empty workflow data on every note in the base to configure a feature that
+only reads it.
+
+[[Product Analytics]] and [[Product Portfolio]] are the limit of that rule rather than an
+exception to it: they write nothing, so they backfill nothing, and their guided empty state
+stops at binding — which is also the largest possible version of the mistake, a write across
+every note at the one moment a reader asked only to be told what to configure. A key nothing
+has written stays unbound and its figure stays undrawn, which is what those views already say
+happens.
 
 **A relationship key is bound but never backfilled.** An empty `depends-on` or `evidence` on
 every note asserts a relationship nobody stated and puts a stub on notes the feature has

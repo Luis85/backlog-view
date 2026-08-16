@@ -26,8 +26,19 @@ release carrying `capacity: 40` is forty of something, and what that something i
 **one unit string in this view's own options**, stated once for the whole view rather than
 per release. Two properties would let a release disagree with its neighbour about the unit
 while the comparison added them up, and a compound value like `40 points` is a string nothing
-can sum. Commitment is the same unit by construction — it is the effort estimate rolled up
+can sum. Commitment is the same unit by construction — it is the effort estimate summed
 over the release's members, so the view names that key too and never converts between them.
+
+**Each member's own estimate is counted once, and nothing is derived from anybody's
+children.** An estimate property is a number on a note, so the commitment is the sum over the
+notes whose own property names this release ([[What is in a release]]) — an epic and its
+feature both in the release contribute both estimates. Counting leaves only would throw away
+a direct estimate on parent work, which some vaults keep and nothing here forbids. **Where a
+member's estimate is meant to cover its descendants, that is double counting, and the view
+says so rather than resolving it**: members carrying an estimate while a descendant in the
+same release carries one are counted and named beside the figure. Only the vault knows
+whether its parent estimates are aggregates, and a view that guessed would be wrong silently
+in whichever direction it guessed.
 With capacity unconfigured, or a release carrying no number where the key points, there is no
 comparison for that release: the commitment is still shown, and the missing half is named.
 **The unit is part of the mapping, not a decoration on it**: with no unit set there is no
