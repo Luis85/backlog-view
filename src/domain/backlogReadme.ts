@@ -328,10 +328,13 @@ function stateSection(settings: BacklogSettings, states: StateEntry[]): string[]
 
 /**
  * Who writes the planning keys, named only where each can fire — the menu offers per
- * axis, so a horizon-only view has no Schedule and a dated one no Set horizon. Two are
+ * axis, so a horizon-only view has no Schedule and a dated one no Set horizon. Three are
  * not edits to an existing placement at all: **New** inside a bucket writes the horizon
- * into the note it creates, and the backfill leaves the keys empty without placing
- * anything, which is the only way one appears that a reader cannot trace to a placement.
+ * into the note it creates, **Set iteration** copies the iteration's own dates onto the
+ * note in the same write that joins it (only where an iteration property AND a date axis
+ * are both configured — `computeIterationWrites` plans no date otherwise), and the
+ * backfill leaves the keys empty without placing anything — the two ways a date appears
+ * that a reader cannot trace to a placement.
  */
 function planningWriters(settings: BacklogSettings): string {
 	const actions = [
@@ -339,12 +342,16 @@ function planningWriters(settings: BacklogSettings): string {
 		...(hasDateAxis(settings) ? ['Schedule and Unschedule'] : []),
 	];
 	const horizons = hasHorizonAxis(settings);
+	const joinsDates = settings.iterationKey !== '' && hasDateAxis(settings);
 	const writers = [
 		`the view's own placement ${actions.length > 1 ? 'actions' : 'action'} — ${actions.join(', ')}, ` +
 			'each writing or removing exactly the keys named here' +
 			(horizons ? ', and the drag that does the same thing: a card moved into a bucket or onto the shelf' : ''),
 		...(horizons
 			? ['**New** inside a horizon on the roadmap, which writes that horizon into the note it creates, in the same write that creates it']
+			: []),
+		...(joinsDates
+			? ["**Set iteration**, which copies the iteration's own dates onto the note in the same write that joins it"]
 			: []),
 		'**Assign missing properties**, which adds the keys *empty* to items that lack them and places nothing',
 	];

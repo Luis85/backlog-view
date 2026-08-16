@@ -358,6 +358,32 @@ describe('backlogReadmeContent', () => {
 		expect(content).toContain('adds the keys *empty* to items that lack them and places nothing');
 	});
 
+	it('names Set iteration among the things that write a planning key, when it can copy dates', () => {
+		// computeIterationWrites rides the iteration's own start/target onto the item in the
+		// same write that joins it — a second write path, beside the backfill, that leaves
+		// the keys holding a date the reader cannot trace to Schedule, Set horizon or a drag.
+		const content = readme(settingsWith({ startKey: 'start', targetKey: 'due', iterationKey: 'sprint' }));
+		expect(content).toContain('**Set iteration**');
+		expect(content).toContain("copies the iteration's own dates");
+	});
+
+	it('does not name Set iteration when no date axis is configured', () => {
+		// With neither start nor target key, `timeframeOf` has no ends to state, so joining
+		// an iteration still writes the link and never a date — nothing here fires.
+		const content = readme(
+			settingsWith({ horizonKey: 'horizon', horizonValues: ['Now'], startKey: '', targetKey: '', iterationKey: 'sprint' }),
+		);
+		expect(content).not.toContain('Set iteration');
+	});
+
+	it('does not name Set iteration when no iteration property is configured', () => {
+		// `computeIterationWrites` returns `[]` outright when `settings.iterationKey` is
+		// unset, whatever the date axis looks like — listing the entry here would send a
+		// reader looking for a menu action this view never offers.
+		const content = readme(settingsWith({ startKey: 'start', targetKey: 'due', iterationKey: '' }));
+		expect(content).not.toContain('Set iteration');
+	});
+
 	it('says a folder note the base leaves out cannot be a parent, where that is true', () => {
 		// Inference walks the notes this view LOADED. With outside parents on, the ancestor
 		// is fetched from the vault and the promise holds whatever the filter says; with it
