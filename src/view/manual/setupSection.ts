@@ -59,8 +59,9 @@ export const SETUP: ManualSection = {
 		{
 			term: 'Iteration',
 			text:
-				'The property that will hold which iteration an item is in. Naming it here reserves ' +
-				'the key; nothing reads or writes it yet.',
+				'The property that records which iteration an item is in. The view reads it, and ' +
+				'the toolbar\'s ✨ Assign missing properties will create the empty key on notes ' +
+				'that lack it.',
 			keys: ['iterationProperty'],
 		},
 		{
