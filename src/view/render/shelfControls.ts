@@ -1,4 +1,5 @@
 import { Menu, setIcon, setTooltip } from 'obsidian';
+import { t } from '../../i18n/t';
 import { BacklogViewHost } from '../host';
 import { showMenuAtElement, showMenuForClick } from '../interactions/menu';
 import { addShelfSortItems, addShelfTypeItems } from '../interactions/shelfMenu';
@@ -65,7 +66,10 @@ export function renderShelfControls(host: BacklogViewHost, headerEl: HTMLElement
 	disclosure.createSpan({ cls: 'pbl-shelf-count', text: String(shelf.length) });
 	// `aria-expanded` carries the state an icon and a chevron only show: without it a
 	// screen-reader user at this button cannot tell a shut shelf from an open one.
-	const action = `${collapsed ? 'Expand' : 'Collapse'} ${SHELF_LABEL} (${shelf.length})`;
+	const action = t(collapsed ? 'fold.expandShelf' : 'fold.collapseShelf', {
+		name: SHELF_LABEL,
+		count: shelf.length,
+	});
 	disclosure.setAttribute('aria-label', action);
 	setTooltip(disclosure, action);
 	disclosure.addEventListener('click', () => {

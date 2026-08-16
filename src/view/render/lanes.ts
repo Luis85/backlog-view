@@ -370,7 +370,11 @@ function renderLaneChevron(host: BacklogViewHost, lead: HTMLElement, lane: Resou
 	const state = {
 		hasChildren: true,
 		collapsed,
-		label: `${collapsed ? 'Show' : 'Hide'} ${lane.markers ? lane.name.toLowerCase() : `${lane.name}'s work`}`,
+		// Always a resource's band: the one call site is guarded by `!lane.markers`, and the
+		// markers row is never folded at all (see `laneEntries`). This read `lane.markers ?
+		// … : …` until the i18n sweep asked what the other half said, and the answer was
+		// nothing — the branch had no reachable caller.
+		label: t(collapsed ? 'fold.showResource' : 'fold.hideResource', { name: lane.name }),
 		toggle: () => host.setLaneCollapsed(lane.name, !collapsed),
 	};
 	// The whole projection redraws — the window, the gridlines and every full-height mark

@@ -233,7 +233,11 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	// drawn or it did not.
 	if (barEl.childElementCount > beforeAdvisories) {
 		const survives = barEl.querySelector('.pbl-config-warning') !== null;
-		barEl.createDiv({ cls: `pbl-toolbar-sep pbl-count-sep${survives ? '' : ' pbl-count-sep-with-notes'}` });
+		// Built by class rather than by interpolation: the ternary-in-a-template ban below
+		// cannot tell a class name from a sentence, and this is the one place in render/
+		// that shape was not text.
+		const sep = barEl.createDiv({ cls: 'pbl-toolbar-sep pbl-count-sep' });
+		if (!survives) sep.addClass('pbl-count-sep-with-notes');
 	}
 	// This projection's own population — `countedPopulation`, the same one
 	// `syncCountLabel` and `renderCompletedToggle` read — never the Base's raw results:

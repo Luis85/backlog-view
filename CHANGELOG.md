@@ -11,6 +11,16 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+### Changed
+
+- **Fold controls read as whole sentences.** Expanding or collapsing a board column, the
+  roadmap's unplaced shelf, or a resource's band on the roadmap now takes its wording from
+  the message catalog rather than swapping a verb inside one. Nothing about the wording
+  changes in English; what changes is that a translation can reorder or inflect the whole
+  sentence instead of being handed two halves. A resource band's chevron also stopped
+  carrying an unreachable second label for the milestones row, which draws no chevron at
+  all.
+
 ## [0.9.0] - 2026-08-16
 
 ### Changed

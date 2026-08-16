@@ -311,6 +311,32 @@ const CARD_MOVES = 'src/view/cardMoves.ts';
 // second file in the directory earns the same exemption on its own facts.
 const TYPES_SECTION = 'src/view/manual/typesSection.ts';
 
+// A sentence assembled inside a template literal by picking between two string
+// literals — `${n === 1 ? '' : 's'}`, `${folded ? 'Expand' : 'Collapse'} ${label}`. Both
+// are the same defect: a two-form rule with the forms hard-coded at the call site, which
+// no locale can reorder, inflect, or give a third form to. Nineteen of the first shape
+// were swept into the catalog and the twentieth still arrived, in a merge, written the
+// old way because the old way was the only way when it was written — so the rule is put
+// on the SHAPE rather than left to a grep somebody remembers to run.
+//
+// **It is scoped to render/, and that is narrower than the invariant.** It says nothing
+// about `src/view/manual/`, which still holds one (`typesSection.ts`, an `are`/`is`
+// agreement inside a prose block that has to become one key rather than a patched
+// clause), nor about `interactions/`, `domain/` or anywhere else a sentence may yet be
+// built this way. render/ is where all nineteen lived and where the churn is; widen it a
+// directory at a time as each is swept, and until `A bare string cannot reach the UI`
+// lands this is the whole of what stops the next one.
+//
+// It cannot tell a class name from a sentence — `styles`-bound interpolation has to be
+// written another way under it, which `render/toolbar.ts` now is. That is the accepted
+// cost of checking the shape: the alternative is a rule that reads the string's meaning,
+// and there is no such selector.
+const TEXT_TERNARY = {
+	selector: "TemplateLiteral > ConditionalExpression[consequent.type='Literal'][alternate.type='Literal']",
+	message:
+		'A sentence picked between two literals inside a template cannot be translated — no locale can reorder or inflect either half. Give each direction its own catalog key in src/i18n/en.ts and call t(). If this is a class name rather than text, build it with addClass instead.',
+};
+
 const syntaxRules = (selectors) => ({ 'no-restricted-syntax': ['error', ...selectors] });
 
 export default defineConfig([
@@ -448,6 +474,7 @@ export default defineConfig([
 			ALL_TYPES_IMPORT,
 			CHILD_TYPE_CHOICES_NULL,
 			DELIVERABLE_FIELD_READ,
+			TEXT_TERNARY,
 		]),
 	},
 	{
@@ -456,7 +483,7 @@ export default defineConfig([
 		// cards — it is the board's workflow, not a per-item type dispatch, so
 		// DELIVERABLE_FIELD_READ does not apply here. Everything else RENDER carries does.
 		files: [RENDER_BOARD],
-		rules: syntaxRules([...SVG_CLASS_TOKENS, ...WRITE_BOUNDARY, MENU_ANCHOR, TREE_SCAN, ALL_TYPES_IMPORT, CHILD_TYPE_CHOICES_NULL]),
+		rules: syntaxRules([...SVG_CLASS_TOKENS, ...WRITE_BOUNDARY, MENU_ANCHOR, TREE_SCAN, ALL_TYPES_IMPORT, CHILD_TYPE_CHOICES_NULL, TEXT_TERNARY]),
 	},
 	{
 		// The row's own controls, carved out of RENDER: everything RENDER carries, plus
@@ -474,6 +501,7 @@ export default defineConfig([
 			CHILD_TYPE_CHOICES_NULL,
 			DELIVERABLE_FIELD_READ,
 			ROW_LISTENER,
+			TEXT_TERNARY,
 		]),
 	},
 	{
