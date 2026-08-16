@@ -19,6 +19,8 @@ demonstrating itself:
 | `tests/cases/` | One executable test each — a Preconditions line plus whatever shape it already had | `Test case` |
 | [`adrs/`](adrs/README.md) | **How** it is built — architecture decision records | *(none — not backlog items)* |
 | `superpowers/` | Claude's own design specs and implementation plans, not the product's | *(none — not backlog items)* |
+| `prds/` | Requirements documents as received, the source epics here are derived from | *(none — not backlog items)* |
+| `sdds/` | Design documents as received, the architecture those epics are built against | *(none — not backlog items)* |
 
 `tests/cases/` holds the checks CI cannot run — appearance, base identity, anything that
 needs a live vault — and `RELEASING.md`'s release sweep reads it, deriving its set from
@@ -43,6 +45,20 @@ match, so a coincidental `superpowers/` nested somewhere else in the register is
 held to the ordinary rules. It is **not** exempt from the basename rule two paragraphs up:
 a generated spec or plan is still ordinary prose a `[[wikilink]]` can name, so it still
 claims its name against every other note in `docs/`.
+
+`prds/` and `sdds/` are exempt on the same terms and for a sharper reason: **a requirements
+or design document is what a backlog is derived from, not a thing in it.** It arrives from
+outside, it is kept verbatim so the notes that cite it are citing something that has not been
+edited to agree with them, and giving it a `type`, a rank and a status would file the
+evidence as work — the same mistake as writing a customer interview into the backlog because
+it is important. Each is named for the date it arrived and what it covers, and claims its
+basename like everything else, so a document and the epic derived from it can never share a
+name.
+
+An SDD is not an ADR and does not replace one. It is what somebody *proposed*; an ADR is what
+this codebase *decided*, and where the two disagree — as they currently do about the layer
+names — the ADR and the lint rule are what hold, with the disagreement recorded as an issue
+until somebody settles it.
 
 ## The trees
 
@@ -165,6 +181,33 @@ line now renders unlabeled. The title column is the reader's to size rather than
 constant: a grip on its edge resizes it by drag or by keyboard, remembered per saved view
 per device like the zoom beside it.
 
+**Business value estimation** is the first epic that is not a projection of the tree at
+all: it is the plugin's **second Bases view**, registered beside the backlog one with its
+own options, its own state and its own screen, because a form over one item, a ranked
+table and a value-against-effort scatter make no tree easier to read and the toolbar has
+four positions already. Eight value dimensions scored 1–5 against stated meanings, a
+confidence in the evidence behind them, and an effort kept out of both produce a weighted
+value that **is written back to the note**, so the backlog, the board and the roadmap read
+a plain property and none of them learns the model. It opens with the argument for
+existing at all — a single `Business value: 5` compares two items that mean opposite
+things as equal — and its definition of done is mostly about what a number may not do: one
+derivation leaves the view and the rest are recomputed on read, a written total records
+the model that made it and says `Needs re-estimation` when that model moves on, a merged
+number never stands in for its inputs, and nothing ranks the backlog on its own behalf.
+Specification only, from a product requirements document of 2026-08-16, with **eight
+features** under it: the scoring model and its rubrics, the weighted score, the presets, the
+ranked list, the matrix, the scenarios and the decomposition.
+
+**Two** of the five questions it opened are answered there. The partial profile is settled
+outright: the score renormalizes over the answered dimensions and reports its coverage, and
+the matrix plots every item that has both axis values, marking the coverage rather than
+dropping a thin point, and shelves the ones missing an axis beside the plot rather than
+inventing a position for them. A weight change is settled with one thing left over: stored totals are not
+rewritten and read as needing re-estimation, but whether a bulk re-estimation clears a
+hundred of those flags at once is undecided. **Three** stay open whole: the dozen-odd
+properties to bind, **inheritance**, which has no mechanism, and the **estimation status** as
+a second workflow.
+
 **Test Management** is a **fifth** projection's worth of design without a projection's
 worth of drawing: an end-to-end test catalog kept as work items beside the work it
 checks. Fifth because the toolbar already carries four — the backlog tree, the
@@ -186,6 +229,66 @@ is a result — no pass, no fail, no run history, no automation — since a run 
 item family and the checklist this register already walks by hand — the smoke test
 suites already living in the catalog — is the evidence that the catalog is the part
 worth having first.
+
+**A view per capability** is the direction the rest of the register now sits inside, from a
+product requirements document of 2026-08-16 kept in [`prds/`](prds): the plugin stops being
+one view with a growing toolbar and becomes a family of Bases views over the same notes, one
+per capability, each with its own options, state and empty state, sharing nothing at runtime
+but the layers below the screen. The rule that makes it work is the data contract — **views
+communicate only through the vault** — so a hidden store between two views would be the
+proprietary database this plugin has always refused, arriving by the back door. Its features
+are the shared kernel every view reads the vault with, the registration, settings scoped to
+the view that uses them, a guided empty state that can configure itself, navigation between
+the views a base actually has, one suggested name per concept that the user maps, and the
+staged extraction of the board, the roadmap and the Deliverables board out of the backlog
+view. A software design document of 2026-08-16 in [`sdds/`](sdds) states the architecture it
+is built against, and the epic follows its migration order — kernel first, then the registry,
+then the projections already built, then new views — because a view registered against logic
+still tangled with another view's DOM copies the tangle instead of sharing the logic. What
+that document does **not** settle is the directory structure it also proposes, which this
+repository already has in another shape with a lint rule behind it: that is
+[[The SDD's layers are not the four this repository enforces]], and until it is answered the
+four enforced layers are what hold. A review of the whole set found the other thing nobody
+had counted — the capability epics ask for **seventeen new item types** against the
+eleven declared and the eight hues Obsidian ships — so
+[[Ten capabilities want seventeen new types]] blocks any of them from shipping until each name
+is placed in one of three buckets, and the register's own default is that most are not types
+at all: a type is for something the tree ranks, everything else is a note a property points
+at.
+
+**Nine capability epics** hang off that direction, all specification, in the delivery order
+the document argues for. **Backlog Health** comes first with prioritization, because every
+later view depends on the quality of the data: stated rules, findings that explain
+themselves, a score that decomposes into them, and repairs offered only where they are
+unambiguous. Then the chain that differentiates the product — **Product Discovery** (a
+lifecycle before the backlog, assumptions with their own validation state, and one exit:
+promotion that creates a backlog item and leaves the discovery record linked and in place),
+**Product Strategy** (objectives and jobs to be done as links rather than rungs, and the
+backward read that names work answering to nothing), and **Product Evidence** (what the vault
+already holds — interviews, tickets, analytics — connected to the work it argues for, and the
+three gaps that read exposes). Then planning: **Release Planning** (scope, capacity in the
+vault's own unit, a scenario that writes nothing until it is applied, and a readiness
+checklist that refuses nothing), **Product Dependencies** (one canonical direction, a graph
+and a table over it, a stated rule for what counts as blocked, and cycles reported rather
+than resolved). Then governance: **Product Portfolio**, **Product Analytics** (every figure
+naming its population and reporting what it could not measure rather than counting it as
+zero) and **Decision Management** (the register's own argument about keeping closed notes,
+applied to the product plan instead of the architecture).
+
+Three of the document's twelve epics are already here under other names — its Product
+Backlog is [[Product Backlog]], its Prioritization is [[Business value estimation]], its
+Roadmap is [[Product Roadmap]] — so they gained what they were missing rather than a
+duplicate: bulk edits on a selection, lanes by a property, and the eight features of the
+scoring model.
+
+One thing in that document is **declined rather than absorbed**: its Product Backlog asks for
+configurable level names and configurable allowed children, and
+[ADR 0013](adrs/0013-fix-the-type-vocabulary-at-six-names.md) fixes the vocabulary instead —
+after [ADR 0012](adrs/0012-make-the-type-vocabulary-configurable.md) had made it
+configurable, which is the version of this idea that was built and withdrawn. The reasoning is
+in the ADR and is not reopened by a requirements document restating the wish; what it costs a
+vault is the one thing a reader should be able to find, so it is recorded here rather than
+left as an absence somebody has to notice.
 
 **Cross-cutting concerns** is the fourth kind: properties that have to be true of
 everything, or they are true of nothing. `Multilang` (every string comes out of a
@@ -255,19 +358,32 @@ npm run docs   # and as part of npm run check, and in CI
 `docs-check.mjs` enforces everything this file claims — an advertised invariant nobody
 can run is worse than none, because it invites trust it has not earned:
 
-1. Every note outside `adrs/` and `superpowers/` carries a `type`, an `order` and a
-   supported `status` — the three fields the conventions table below calls required —
-   every parent link resolves, and every parent/child pair is legal. A note that lost
+1. Every note outside `adrs/`, `superpowers/`, `prds/` and `sdds/` carries a `type`, an
+   `order` and a supported `status` — the three the conventions table below calls
+   required — every parent link resolves, and every parent/child pair is legal. A note that lost
    its frontmatter is reported rather than skipped: a skipped file is checked for
    nothing and says so to nobody. Two notes may not share a **basename**, in any
    folders, because the register addresses work items by name and a collision makes
-   every `[[wikilink]]` and `parent:` to either one ambiguous.
+   every `[[wikilink]]` and `parent:` to either one ambiguous. **ADRs and index pages
+   are outside that one rule**, and are the only class that is: they are addressed by
+   path — `adrs/README.md`, `adrs/0013-….md` — which is why this file and `adrs/README.md`
+   can both be called `README` without the register losing an address. Nothing else is
+   exempt: `superpowers/`, `prds/` and `sdds/` are outside the frontmatter half of this
+   rule and claim their names like every other note.
 2. No two siblings share an `order` — the register must not demonstrate the one ranking
    limitation the plugin has.
 3. Every wikilink resolves to a note, and **every relative markdown link resolves to a
    file** — anywhere in `docs/`, whatever it points at, percent-encoding decoded and
    anchors stripped. Links inside code spans are examples, not references, and are
-   skipped; so are external URLs.
+   skipped; so are external URLs. **`prds/` and `sdds/` are outside this rule and the
+   `**Checked by**` rule below**, and they are the only two folders that are: a received
+   document names notes, files and interviews from wherever it was written, so checking
+   them would force the one edit the verbatim rule exists to prevent, and the marker is
+   this repository's convention rather than a fact about prose. `superpowers/` is written
+   HERE and points at this register, so it keeps every rule in this list except the
+   frontmatter in rule 1. The cost is stated rather than hidden: a link in a received
+   document that does name a note here is unverified, which is why the editorial preamble
+   on each one names its notes in prose instead of linking them.
 4. Every `src/` or `test/` path named by a note in **`requirements/` or `adrs/`** exists.
    Those two describe the code as it is now. `tasks/`, `issues/` and `bugs/` are records
    of a moment and may legitimately name a file since split away — rewriting them would
