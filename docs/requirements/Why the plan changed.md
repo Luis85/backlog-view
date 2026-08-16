@@ -17,9 +17,9 @@ assignee: ""
 # Why the plan changed
 
 A reordering that surprises somebody a quarter later can be traced to the reasoning rather
-than to a commit — and the trace is read **backward from the decision**, which is the only
-side this epic stores. Opening an item shows the decisions naming it, exactly as the
-evidence and objective reads work.
+than to a commit. The trace starts **at the item** and finds the decisions that name it —
+the inverse of the link the decision stores, the same backward read the evidence and
+objective questions use — because the decision's side is the only side this epic writes.
 
 The requirements document suggests a `decision:` property on the item as well. It is refused
 here for the reason this register keeps refusing second copies: the same relationship written
