@@ -297,15 +297,17 @@ function renderAxisPicker(host: BacklogViewHost, zone: HTMLElement, barEl: HTMLE
 /**
  * Which board the `Board` position opens: the product's, or one iteration's.
  *
- * **Two conditions, both required.** The iteration property must be configured, or every
- * entry would open a board no card could reach; and at least one `Iteration` note must be
- * in the model, which is `renderAxisPicker`'s own refusal for a single configured axis —
- * with nothing to choose between, a picker is a control that can only re-pick what is
- * already chosen.
+ * **One condition.** The iteration property must be configured, or every entry would open
+ * a board no card could reach. Deliberately NOT `renderAxisPicker`'s second refusal — an
+ * empty list — which this paragraph demanded until 2026-08-16 while the body beside it
+ * refused to make it: this picker carries the only `New iteration…`, so withholding it
+ * from a vault with no iterations withholds the feature from every vault that has not
+ * started using one.
  *
- * It draws in EVERY projection rather than in the board's zone, and that is the point of
- * it: this is how the iteration board is reached at all, so a picker that appeared only
- * once the reader was already on the board it chooses would sit behind the door it opens.
+ * It draws at the BOARD's own toolbar position and nowhere else, which is the reversal
+ * this paragraph also outlived: it was in every projection on the argument that a control
+ * behind the door it opens is no way in, and the answer is that the door is the `Board`
+ * button and this picker says which board came through it.
  *
  * The entries are read off `model.byPath` for `iterationTargets`' reason
  * (`interactions/labels.ts`): a focus set on another projection re-roots what is DRAWN,
@@ -387,8 +389,9 @@ const SCOPE_PRODUCT = 'Product';
 
 /**
  * The picker's own slot in the row, made on demand: it sits with the switcher rather than
- * in the projection zone, and a wrapper drawn unconditionally would be an empty box in
- * every vault that has no iterations.
+ * in the projection zone, and a wrapper drawn before the refusals above would be an empty
+ * box in every projection that is not the board and every vault that names no iteration
+ * property.
  */
 function zoneFor(barEl: HTMLElement): HTMLElement {
 	return barEl.createDiv({ cls: 'pbl-zone pbl-zone-scope' });

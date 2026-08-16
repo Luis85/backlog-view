@@ -132,11 +132,15 @@ export function renderBoard(
 	// extension 3b of the requirement is about. Found by review (Codex, PR #140).
 	const foldsFinished = opts.foldsFinished ?? true;
 	const folds = board.columns.map((col) =>
-		// The BUCKET is the identity where there is one: two buckets with nothing to write
-		// both carry `state: null`, so a fold keyed on the state alone shuts them together.
+		// `columnFoldValue`, which is what the header below and the column menu ask. This
+		// line spelled the same expression out until 2026-08-16 and AGREED with them — the
+		// honest statement, since nothing was broken by it. What it was, was a second
+		// spelling of an identity extracted into one function precisely because the render
+		// and the two controls had already disagreed about it once (an Open bucket drawn
+		// from `open` while its disclosure toggled `new`, found by review, PR #154).
 		ctx.host.columnCollapsed(
 			opts.scope,
-			col.bucket ?? col.state,
+			columnFoldValue(col),
 			foldsFinished && col.done && col.held > 0 && !col.openWork,
 		),
 	);

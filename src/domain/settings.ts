@@ -172,7 +172,10 @@ export interface BacklogSettings extends ItemHandling {
 	assigneeKey: string;
 	/**
 	 * Frontmatter key holding the iteration an item is in, or '' when no iteration
-	 * property is named. Nothing reads or writes it yet — later work does.
+	 * property is named. The value is a LINK to the `Iteration` note, spelled by the
+	 * writer from the editing note's own path — never a name, since two iterations may
+	 * share a basename. Unconfigured it is never written to, and the board a scope would
+	 * open is unreachable: `effectiveScope` answers null without it.
 	 */
 	iterationKey: string;
 	/**

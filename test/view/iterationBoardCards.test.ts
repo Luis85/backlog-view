@@ -101,6 +101,26 @@ describe('the three-bucket board', () => {
 		expect(card.querySelector('.pbl-card-kids-count')?.textContent).toContain('1');
 	});
 
+	it('draws an empty Open as a column, not as the no-state drop strip', () => {
+		// The DEFAULT configuration reaches this: with `iterationOpenStates` unset, Open's
+		// representative is the key removal — a `state: null` that takes a drop — so with
+		// nothing unstarted, every term of the product board's empty-no-state test was
+		// true of it, and one of three promised columns drew as a nameless 44px sliver
+		// labelled "dropping here clears the state". These three are named stages drawn
+		// structurally, so no bucket is ever that strip.
+		const vault = new FakeVault();
+		vault.addFile(SPRINT, { frontmatter: { type: 'Iteration', order: 10 } });
+		vault.addFile('Working.md', {
+			frontmatter: { type: 'PBI', order: 20, status: 'Doing', iteration: '[[Sprint 12]]' },
+		});
+		const { containerEl } = onBoard({ iterationOpenStates: '' }, vault);
+		const open = columnByName(containerEl, OPEN);
+		expect(open.classList.contains('pbl-board-strip')).toBe(false);
+		// The header keeps what the strip withholds: its count and its disclosure.
+		expect(open.querySelector('.pbl-board-col-count')).not.toBeNull();
+		expect(open.querySelector('.pbl-chevron')).not.toBeNull();
+	});
+
 	it('keeps finished work on screen, whatever the completed toggle says', () => {
 		// The Resolved column IS the finished work, so hiding a done subtree would empty
 		// the column this board exists to show.

@@ -698,10 +698,21 @@ function fillColumns(
  * to a strip, which would say the work is gone rather than merely unmatched.
  */
 export function emptyNoState(col: BoardColumn): boolean {
-	// `takesDrop` as well as the null, and that is the whole difference between this
-	// column and an unwritable bucket: the strip exists so clearing a state by drag stays
-	// possible with nothing in the column, and a bucket that takes no drop would shrink to
-	// a 44px box offering the one thing it cannot do.
+	// **No BUCKET is ever this column**, whatever its representative comes out as, and
+	// that refusal is about the other board rather than about a write. The strip is what a
+	// column with no NAME of its own shrinks to; the iteration board's three are named
+	// stages drawn structurally — "a stage of the workflow with nothing in it is a stage
+	// with nothing in it" ([[A board scoped to one iteration]] 4d) — so Open collapsing to
+	// a nameless 44px box is one of three promised columns going missing. It is the
+	// DEFAULT configuration that reaches it: with `iterationOpenStates` unset, Open's
+	// representative is the key removal (4f), which is a `state: null` that takes a drop,
+	// so every other term here was already true of an empty Open.
+	//
+	// `takesDrop` stays, for the case it was added for: an unwritable bucket carries the
+	// same null and would otherwise shrink to a box offering the one thing it cannot do.
+	// Both terms are now covered by the bucket refusal; neither is removed, because each
+	// states a rule about a different half of `state === null`.
+	if (col.bucket !== undefined) return false;
 	return col.state === null && col.takesDrop && col.cards.length === 0 && col.fullCount === 0;
 }
 

@@ -1,24 +1,19 @@
 import { Notice, TFile } from 'obsidian';
 import { BacklogViewHost } from '../host';
-import { TitlePromptModal } from '../../ui/prompts';
+import { IterationPromptModal, IterationResult, TitlePromptModal } from '../../ui/prompts';
 import { manualLink } from '../../ui/manualDialog';
 import { manualSections } from '../manual/sections';
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { focusTarget, folderForType, isIterationType } from '../../domain/itemTypes';
-import { ORDER_SPACING } from '../../domain/writePlan';
+import { AxisWrite, computeIterationNoteWrites, ORDER_SPACING } from '../../domain/writePlan';
 import { createBacklogItem } from '../../storage/createNote';
-import { IterationPromptModal, IterationResult } from '../../ui/prompts';
-import { computeIterationNoteWrites } from '../../domain/writePlan';
 import { nextIterationDates, nextIterationName, previousIteration } from '../../domain/iterations';
-import { ITERATION_TYPE } from '../../domain/typeVocabulary';
-import { daysBetween } from '../../domain/timeline';
+import { ITERATION_TYPE, LEVELS } from '../../domain/typeVocabulary';
+import { daysBetween, formatCivil } from '../../domain/timeline';
 import { readDate, todayCivil } from '../../domain/noteFields';
 import { statedEnds } from '../../domain/bars';
-import { formatCivil } from '../../domain/timeline';
-import { AxisWrite } from '../../domain/writePlan';
 import { BacklogSettings } from '../../domain/settings';
 import { configProblems } from '../../domain/settingsConsistency';
-import { LEVELS } from '../../domain/typeVocabulary';
 
 /**
  * Type for the primary New button: whatever the view is focused on when it is focused —

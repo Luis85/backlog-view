@@ -338,5 +338,3 @@ function renderRoadmapContent(ctx: RowContext, treeEl: HTMLElement, dnd: CardDra
 	const roadmap = renderRoadmap(ctx, treeEl, axis, todayCivil(), dnd);
 	return { board: null, roadmap, role: roadmap.cards.length > 0 ? 'listbox' : 'region', label };
 }
-
-

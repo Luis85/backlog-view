@@ -112,10 +112,15 @@ the moment the populations diverged, which is exactly what happened.
   same. Anything less asks the reader to choose between two identical words while the
   write underneath goes to real trouble to keep them distinct
   ([[An iteration is a note of its own]] extension 4b).
-- **1a — no `Iteration` note is in the model.** The picker does not render at all. With
-  nothing to choose between there is no choice to offer — the refusal the axis picker
-  already makes with a single configured axis, and the reason board mode is unchanged for
-  a vault that never adopted iterations.
+- **1a — no `Iteration` note is in the model.** The picker **still renders**, naming
+  `Product` and carrying `New iteration…` and nothing else. This extension said the
+  opposite until 2026-08-16 — *"the picker does not render at all"*, the refusal the axis
+  picker makes with a single configured axis — and the reversal is kept rather than
+  overwritten, because the two controls read alike and are not: an axis picker with one
+  axis can only re-pick what is already picked, while this one carries the ONLY way to
+  make a first iteration. Withheld here, the feature is unreachable in exactly the vault
+  that has not adopted it yet, which is every vault on the day it updates. The
+  preconditions above record the same removal.
 - **1b — the iteration property is unconfigured** ([[An iteration is a note of its own]]
   extension 2b). No item can name an iteration, so the picker offers nothing but
   `Product` and is not drawn.
@@ -424,6 +429,17 @@ the moment the populations diverged, which is exactly what happened.
   something exact without any list being set, and the removal lands the card in Open by
   the **reading** rather than by a lookup. In Progress and Resolved have no such natural
   reading, which is why they decline instead.
+
+  **And Open still draws as a COLUMN while it is empty**, which is 4d applied to the one
+  configuration that nearly escaped it. The product board shrinks its empty no-state
+  column to a bare 44px drop strip — no name, no count, no disclosure — and Open's
+  key-removal representative is a `state: null` that takes a drop, so every term of that
+  test was true of an empty Open in the DEFAULT configuration: both lists unset, no
+  unstarted work, and one of the three promised columns drawn as a nameless sliver
+  labelled *dropping here clears the state*. The strip is what a column with no name of
+  its own shrinks to; these three are named stages drawn structurally, so no bucket is
+  ever it. Fixed 2026-08-16, in `emptyNoState` rather than at either surface that reads
+  it, since the header and the column menu both ask that one function.
 - **4g — the first state in `iterationOpenStates` is also a done value, or is named in
   `iterationResolvedStates`.** It is **not** Open's representative. 4c routes it to
   Resolved, so writing it on a drop would land the card in a column it was not dropped on
@@ -498,11 +514,11 @@ the moment the populations diverged, which is exactly what happened.
 ## Acceptance criteria
 
 - In board mode the toolbar offers a scope picker naming `Product` and every `Iteration`
-  note **while the iteration property is configured** (the second half of this condition —
-  at least one `Iteration` note — was removed on 2026-08-16; see the preconditions) and is
-  in the model**, and does not render it otherwise. Both halves: with no configured
-  property nothing can join a scope, so a picker offering scopes would be a control whose
-  every entry draws an empty board (1b).
+  note in the model **while the iteration property is configured**, and does not render it
+  otherwise. One condition, not two: with no configured property nothing can join a scope,
+  so a picker offering scopes would be a control whose every entry draws an empty board
+  (1b) — while an empty LIST is no refusal at all, since the picker carries the only
+  `New iteration…` (1a). The second half was removed on 2026-08-16; see the preconditions.
 - The scope is enterable with no state key resolved, which is the only way extension 4a's
   guidance can be reached. A resolved key gates the columns, never the scope.
 - The scope persists per saved view in the collapse store's vault-scoped localStorage,
