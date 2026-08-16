@@ -57,6 +57,18 @@ render — the seam Task 1 took out of `backlogView.ts` — so the row walk it d
 one place a kept element can be compared against a rebuilt one, and the one place the
 per-pass string is computed once for every row to be measured against.
 
+`src/view/render/reconcile.ts` is that walk. It places one sibling group after another,
+claims an element whose signature is unchanged instead of building one, carries the
+claimed row's child group with it, and forgets what it detaches. It arrived inside
+`src/view/render/rows.ts` and was moved out on 2026-08-16, when that file met its
+400-line cap — the seam is the one the dependency already ran along, since the walk calls
+`buildRow` and nothing in the row's own content calls the walk. `rows.ts` keeps what a
+row IS and the pane's delegated listeners; this file keeps which rows survive and where
+each one goes, with the invariants no type can hold — a claimed row also needs its
+`ctx.rows` entry, the empty states fire after the reuse decision and before anything
+prunes, a row's group is read off the previous element before anything moves — as
+comments beside the lines they govern.
+
 The two halves are different SHAPES on purpose. `renderInputs` puts `host.settings` in
 whole, so it is safe by construction: a settings-derived rendering decision written next
 year is covered without anyone remembering to add a term. `rowSignature` is an

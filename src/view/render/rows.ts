@@ -6,285 +6,18 @@ import { showItemMenu, showHorizonMenu, showStateMenu, showTagMenu } from '../in
 import { promptSchedule } from '../interactions/plan';
 import { removeTag } from '../interactions/tags';
 import { offerableTypes } from '../projection';
-import { renderAllDoneState, renderEmptyState, renderFilterEmptyState } from './emptyStates';
-import { projectionPopulation } from '../projection';
 import { badgeStyleFor } from './badges';
 import { LABEL_CHIPS } from './chips';
-import { rowSignature } from '../rowSignature';
 import { BacklogItem } from '../../domain/model';
 import { childTypeChoices, displayType } from '../../domain/itemTypes';
 import { ownWorkflowReading } from '../../domain/board';
-import { columnWidth, columnWidthVar } from '../interactions/columnResize';
-import {
-	INDENT_PER_DEPTH,
-	META_COL_WIDTH,
-	renderAddSpacer,
-	renderColumnHeader,
-	renderRowColumns,
-	RowContext,
-} from './columns';
+import { renderAddSpacer, renderRowColumns, RowContext } from './columns';
 
 /** Why an implied badge is marked, said once: the render sets the class, the pass reads it. */
 const IMPLIED_TYPE_TOOLTIP =
 	'Type property not set — level implied from position. Use "Assign missing properties" to write it.';
-/** Render the tree content (or the empty state) into the tree element. */
-export function renderTree(ctx: RowContext, treeEl: HTMLElement): void {
-	const model = ctx.host.model;
-	if (!model) return;
-	// Column widths are the same for every row, so they live on the scroller and
-	// are inherited — including by the subtrees a targeted refresh re-renders, and by
-	// the grip that writes one of them straight back mid-drag.
-	// Geometry lives in one place: columnFit budgets with these numbers and the
-	// stylesheet lays out with them, so the two cannot drift apart.
-	const widths: Record<string, string> = {
-		'--pbl-meta-col': `${META_COL_WIDTH}px`,
-		'--pbl-indent': `${INDENT_PER_DEPTH}px`,
-	};
-	for (const [index, column] of ctx.columns.entries()) {
-		widths[columnWidthVar(index)] = `${columnWidth(ctx.host, column.prop)}px`;
-	}
-	treeEl.setCssProps(widths);
-	// THIS projection's population, on all three lines. Both decisions below used to read
-	// the shared arrays, which hold every item the model kept: a base returning twelve
-	// test notes and no plan work would be told "All 12 items are done and hidden", with a
-	// Show completed items button that reveals nothing — because nothing is completed and
-	// nothing is hidden by completion. A control offering to reveal what it cannot show.
-	//
-	// "Is there anything here" is asked of the RESULTS and not of the items, which is the
-	// same distinction one line further down rather than a second rule: a context row is
-	// placement, never population. A base returning one `PBI` whose excluded parent is a
-	// `Test case` gives the catalog exactly one item — that context row — and it is hidden,
-	// since the only child it places is a plan row. Counting it as population walked past
-	// this branch into "All 0 items are done and hidden", offering a completed toggle in a
-	// projection that hides nothing by completion at all.
-	const population = projectionPopulation(ctx.host.projection, model);
-	if (population.results.length === 0) {
-		emptyTree(ctx, treeEl);
-		renderEmptyState(ctx.host, treeEl);
-		return;
-	}
-	// Whether any row will render is knowable before rendering one: renderForest draws
-	// a row per root isRowHidden lets through. Asking first keeps the header — which is
-	// not a row — from having to be built and then thrown away again.
-	if (!population.roots.some((root) => !ctx.host.isRowHidden(root))) {
-		emptyTree(ctx, treeEl);
-		if (ctx.host.isFiltering()) renderFilterEmptyState(ctx.host, treeEl);
-		else renderAllDoneState(ctx.host, treeEl, population.results.length);
-		return;
-	}
-	// Left alone when it is already there. Everything this header draws from — the columns,
-	// their widths, the rollup predicate, the fit verdict — is in the fingerprint that
-	// decided this pass may reuse, so an existing header is correct for the same reason the
-	// rows are, and a pass that may NOT reuse emptied the tree above, so there is none and
-	// one is built. Found by direct traversal rather than a query: `treeEl.querySelector` is
-	// banned (`TREE_SCAN` in `eslint.config.mjs`) for walking every rendered row, and the
-	// header is one step away — it is the tree's first element child by construction.
-	const first = treeEl.firstElementChild;
-	const header =
-		first instanceof HTMLElement && first.hasClass('pbl-cols') ? first : renderColumnHeader(ctx, treeEl);
-	// The walk starts AFTER the header, so its prune can never reach a node that is not a
-	// row and that the index cannot see.
-	renderForest(ctx, treeEl, population.roots, header ? header.nextElementSibling : treeEl.firstElementChild);
-}
-
-/**
- * Drop everything on screen, for a branch that will render no rows.
- *
- * The three empty states above fire AFTER the reuse decision and BEFORE anything prunes: a
- * data update that empties the tree leaves the shared inputs identical and the index
- * non-empty, so reuse is chosen and the message would be appended UNDER the rows it says
- * are gone. Marking the last open item done is an ordinary write, not a corner.
- */
-function emptyTree(ctx: RowContext, treeEl: HTMLElement): void {
-	treeEl.empty();
-	ctx.host.clearRowIndex();
-}
-
-/**
- * Re-render one row's child group in place. Expanding and collapsing is the most
- * frequent interaction in a large backlog; rebuilding the whole tree for it would
- * cost hundreds of rows of DOM work to change one subtree.
- */
-export function refreshRowChildren(ctx: RowContext, item: BacklogItem, row: HTMLElement): void {
-	const collapsed = ctx.host.isCollapsed(item.file.path);
-	const hasChildren = item.children.some((c) => !ctx.host.isRowHidden(c));
-	row.querySelector('.pbl-chevron')?.classList.toggle('pbl-expanded', hasChildren && !collapsed);
-	if (hasChildren) row.setAttribute('aria-expanded', String(!collapsed));
-
-	const existing = groupAfter(row);
-	if (existing) {
-		forgetElement(ctx, existing);
-		existing.detach();
-	}
-	const parentEl = row.parentElement;
-	if (!hasChildren || collapsed || !parentEl) return;
-	// createDiv appends to the container; move the group up to sit after its row.
-	const childrenEl = childGroupEl(parentEl, item, null);
-	parentEl.insertBefore(childrenEl, row.nextSibling);
-	renderForest(ctx, childrenEl, item.children);
-}
-
-/**
- * Drop a detached element's rows from the index and from the signatures — reached from the
- * DOM rather than from the model, because at the moment something is pruned the model no
- * longer describes what is on screen.
- *
- * A ROW holds no rows: its child group is its SIBLING, so a row answers for its own path
- * and stops. Anything else — a `.pbl-children` group — is walked, which is what makes this
- * exact where a walk of the model's child edges was not. A non-member's subtree can hold a
- * member this projection renders as a promoted ROOT, whose row is somewhere else entirely
- * and is not being detached; deleting that row's entry while its DOM stays on screen breaks
- * everything that reaches a row by lookup (selection cannot mark or announce it, a
- * keyboard-opened menu loses its anchor). Asking the detached DOM cannot make that mistake:
- * it forgets exactly what it removed.
- *
- * Both maps, never one — because they have one lifetime, not because a stray signature is
- * itself dangerous: a claim also needs the `ctx.rows` entry the line above deletes, so a
- * signature left behind alone is inert. Deleting it here is what keeps the pair readable as
- * one fact rather than two that happen to agree.
- */
-function forgetElement(ctx: RowContext, el: Element): void {
-	const path = el.getAttribute('data-path');
-	if (path) {
-		ctx.rows.delete(path);
-		ctx.sigs.delete(path);
-		return;
-	}
-	for (const child of Array.from(el.children)) forgetElement(ctx, child);
-}
-
-/**
- * Render a sibling group, skipping hidden items so aria positions stay true.
- *
- * The walk CLAIMS rather than builds where it can: an element whose path is indexed and
- * whose signature is unchanged is moved into place instead of rebuilt. With an empty index
- * and an empty container this is exactly a build, which is why there is one path here and
- * not two. `start` is where the walk begins — the tree passes the node after its header, so
- * the prune below can never reach it.
- */
-function renderForest(
-	ctx: RowContext,
-	containerEl: HTMLElement,
-	siblings: BacklogItem[],
-	start?: Element | null,
-): void {
-	const visible = siblings.filter((item) => !ctx.host.isRowHidden(item));
-	// ELEMENTS, never child nodes: everything a render puts in one of these containers is a
-	// row or a child group, so the two walks are the same walk — and this one needs no
-	// per-node narrowing to reach a path or a subtree.
-	let cursor: Element | null = start === undefined ? containerEl.firstElementChild : start;
-	visible.forEach((item, i) => {
-		cursor = renderItem(ctx, containerEl, item, { pos: i + 1, count: visible.length }, cursor);
-	});
-	// Everything left after the last claimed node is a row this pass did not draw.
-	while (cursor) {
-		const next: Element | null = cursor.nextElementSibling;
-		forgetElement(ctx, cursor);
-		cursor.detach();
-		cursor = next;
-	}
-}
-
-/**
- * Draw ONE item at the cursor and return the node the walk should look at next.
- *
- * The row and its child group are one structural unit, and the group is the row's NEXT
- * SIBLING rather than its descendant (`childGroupEl` builds it in the container, and
- * `refreshRowChildren` reaches it by `row.nextElementSibling`). So they move together, are
- * replaced together and are detached together.
- */
-function renderItem(
-	ctx: RowContext,
-	containerEl: HTMLElement,
-	item: BacklogItem,
-	place: { pos: number; count: number },
-	cursor: Element | null,
-): Element | null {
-	const host = ctx.host;
-	const path = item.file.path;
-	// A row whose children are all hidden renders as a leaf: a chevron expanding
-	// into an empty group would be a lie (its progress bar tells the story).
-	const hasChildren = item.children.some((c) => !host.isRowHidden(c));
-	const collapsed = host.isCollapsed(path);
-	const sig = rowSignature(host, item, place);
-	const previous = ctx.rows.get(path) ?? null;
-	// Read off the PREVIOUS element and before anything moves: a row that travels leaves its
-	// group behind unless the group is carried with it. Whether the group should exist AT
-	// ALL is asked of the item further down, never of what happened to the row.
-	const group = groupAfter(previous);
-	// A null signature is a row that could not be signed (its note is not in the metadata
-	// cache yet); an absent one is a row whose signature was withheld for what it DREW.
-	// Different reasons, one consequence, stated once here: nothing recorded, so nothing to
-	// match, so never claimed.
-	let after = cursor;
-	let row = previous !== null && sig !== null && ctx.sigs.get(path) === sig ? previous : null;
-	let drewOthers = false;
-	if (!row) {
-		if (previous) after = dropReplaced(previous, cursor);
-		row = buildRow(ctx, containerEl, item, { hasChildren, collapsed, place });
-		drewOthers = drewOtherNotes(row);
-	}
-	if (row !== after) containerEl.insertBefore(row, after);
-	ctx.rows.set(path, row);
-	if (sig === null || drewOthers) ctx.sigs.delete(path);
-	else ctx.sigs.set(path, sig);
-	// Asked of the ITEM — any visible child, and not collapsed — and answered the same way
-	// whether the row was kept, replaced or built. "A replaced row keeps its group" is wrong
-	// in both directions: `Collapse all` flips the collapse bit, so the signature changes and
-	// the row is REPLACED while its group has to go, and expanding an already-indexed row is
-	// the mirror — the row is not new and needs a group it does not have.
-	if (hasChildren && !collapsed) {
-		const childrenEl = childGroupEl(containerEl, item, group);
-		containerEl.insertBefore(childrenEl, row.nextSibling);
-		renderForest(ctx, childrenEl, item.children);
-		return childrenEl.nextElementSibling;
-	}
-	if (group) {
-		forgetElement(ctx, group);
-		group.detach();
-	}
-	return row.nextElementSibling;
-}
-
-/**
- * Take a row that is about to be replaced off the screen, and hand back the node the
- * walk's cursor should point at now.
- *
- * Detached HERE rather than left to the prune at the end of the sibling walk: the prune
- * forgets every path it detaches, and by then this path names the row that replaced it.
- */
-function dropReplaced(previous: HTMLElement, cursor: Element | null): Element | null {
-	const after = previous === cursor ? cursor.nextElementSibling : cursor;
-	previous.detach();
-	return after;
-}
-
-/**
- * Did this row draw content belonging to ANOTHER note?
- *
- * `reusableColumns` asks where a value comes FROM and cannot ask what it renders INTO: a
- * `note.related` holding `[[Other note]]` draws a link whose text is the target's, and an
- * embed draws that note's content outright. Rename or edit the other note and this row's
- * own frontmatter — and so its signature — is identical. Predicting which values do that
- * means reimplementing Bases' renderer in a predicate, so the rendered DOM is asked instead.
- *
- * Asked of the whole ROW rather than cell by cell: one query per built row instead of one
- * per column, and nothing else a row draws is an anchor, an embed or an image, so the two
- * give the same answer. Were that ever to change, the error is a REFUSED reuse — one wasted
- * row build, the direction every judgement in ADR 0029 takes.
- */
-function drewOtherNotes(row: HTMLElement): boolean {
-	return row.querySelector('a, .internal-embed, img') !== null;
-}
-
-/** A row's child group, which is its next SIBLING; null where it has none. */
-function groupAfter(row: HTMLElement | null): HTMLElement | null {
-	const next = row?.nextElementSibling ?? null;
-	return next instanceof HTMLElement && next.hasClass('pbl-children') ? next : null;
-}
-
-/** Everything a row element IS, for the walk above to place. */
-function buildRow(
+/** Everything a row element IS, for the walk in `render/reconcile.ts` to place. */
+export function buildRow(
 	ctx: RowContext,
 	containerEl: HTMLElement,
 	item: BacklogItem,
@@ -323,21 +56,6 @@ function buildRow(
 	renderRowLead(ctx, row, item, state);
 	renderRowTrailing(ctx, row, item, childTypes);
 	return row;
-}
-
-/**
- * The child group of a row — claimed where one survived, created where none did. Its
- * indent guide aligns under the parent's chevron column.
- *
- * `--pbl-depth` is written on BOTH arms rather than at creation alone, and that is the
- * whole reason the two arms live in one function: a group is an element with state too.
- * Reparent an expanded item to a different depth and its row rebuilds — `depth` is a
- * signature term — while a group merely reused would keep the old indent guide.
- */
-function childGroupEl(containerEl: HTMLElement, item: BacklogItem, existing: HTMLElement | null): HTMLElement {
-	const childrenEl = existing ?? containerEl.createDiv({ cls: 'pbl-children', attr: { role: 'group' } });
-	childrenEl.setCssProps({ '--pbl-depth': String(item.depth) });
-	return childrenEl;
 }
 
 /** Grip, chevron, badge and title. */
@@ -669,41 +387,21 @@ export function foldOnClick(
 }
 
 /**
- * The item a row-aimed event is about, or null off the rows entirely. Resolved at EVENT
- * time from the row's `data-path` against the current model, never captured at render:
- * the tree's listeners live on the pane (one set for the view, not one per row — the
- * measurement that retired the per-row set is in
+ * The item an event is about, or null where its target is outside `scope`. Resolved at
+ * EVENT time from `data-path` against the current model, never captured at render: the
+ * listeners live on the pane (one set for the view, not one per row — the measurement
+ * that retired the per-row set is in
  * `docs/bugs/The render is the whole cost of a data update.md`), so there is no
  * wire-time item to capture and nothing to go stale when a data update replaces the
- * model.
+ * model. That is also what lets a render KEEP a row element instead of rebuilding it: a
+ * chip that closed over its item would point into the previous model the moment an
+ * update landed.
  *
- * `.pbl-row` is the tree's alone — cards and timeline rows are `.pbl-card` — so on a card
- * projection every one of these handlers resolves nothing and stands aside.
+ * The SCOPE is the caller's, because it is the only thing the two callers below disagree
+ * about — each states its own selector's reason where it passes it.
  */
-function rowItem(host: BacklogViewHost, evt: Event): BacklogItem | null {
-	const row = evt.target instanceof Element ? evt.target.closest('.pbl-row') : null;
-	const path = row instanceof HTMLElement ? row.dataset.path : undefined;
-	return path ? (host.model?.byPath.get(path) ?? null) : null;
-}
-
-/**
- * The item any row- or card-aimed event is about, or null off both. Resolved at EVENT
- * time from `data-path` against the current model, never captured at render — which is
- * what lets a render KEEP a row element instead of rebuilding it. A chip that closed
- * over its item would point into the previous model the moment an update landed.
- *
- * `[data-path]` rather than `.pbl-row`: `renderPropCells` is shared with both card
- * projections, whose mount is `.pbl-card`, so narrowing to the tree's own row class
- * would leave every card chip inert. `rowItem` above keeps its narrower selector — it
- * is the tree's own row activation, not a chip.
- *
- * Not exported: `wireChipEvents` below is its only caller today. A sibling task
- * delegating the row's remaining controls can add `export` on the line it needs it —
- * that is a one-word diff, not a reason to carry the keyword now for a consumer that
- * does not exist yet.
- */
-function itemForEvent(host: BacklogViewHost, evt: Event): BacklogItem | null {
-	const el = evt.target instanceof Element ? evt.target.closest('[data-path]') : null;
+function itemAt(host: BacklogViewHost, evt: Event, scope: string): BacklogItem | null {
+	const el = evt.target instanceof Element ? evt.target.closest(scope) : null;
 	const path = el instanceof HTMLElement ? el.dataset.path : undefined;
 	return path ? (host.model?.byPath.get(path) ?? null) : null;
 }
@@ -785,6 +483,11 @@ const CHIPS = Object.keys(CHIP_ACTIONS)
  * The tree's row activation, wired ONCE on the pane — called from the view's
  * constructor, beside the keydown it mirrors. The per-row wiring this replaces cost a
  * listener set per row and rebuilt them all on every data update.
+ *
+ * Its scope is `.pbl-row`, the tree's alone — cards and timeline rows are `.pbl-card` —
+ * so on a card projection every one of these three handlers resolves nothing and stands
+ * aside. That is narrower than `wireChipEvents`' scope below on purpose: this is the
+ * tree's own row activation, not a chip.
  */
 export function wireRowEvents(host: BacklogViewHost, treeEl: HTMLElement): void {
 	treeEl.addEventListener('click', (evt) => {
@@ -793,7 +496,7 @@ export function wireRowEvents(host: BacklogViewHost, treeEl: HTMLElement): void 
 		// a chevron click would fold twice; folding on an add-button click would fold on
 		// the way to a modal.
 		if (fromRowControl(evt)) return;
-		const item = rowItem(host, evt);
+		const item = itemAt(host, evt, '.pbl-row');
 		if (!item) return;
 		host.selectItem(item, false);
 		const spent = foldOnClick(host, item, evt, {
@@ -807,11 +510,11 @@ export function wireRowEvents(host: BacklogViewHost, treeEl: HTMLElement): void 
 	});
 	treeEl.addEventListener('auxclick', (evt) => {
 		if (evt.button !== 1 || fromRowControl(evt)) return;
-		const item = rowItem(host, evt);
+		const item = itemAt(host, evt, '.pbl-row');
 		if (item) host.openItemIn(item, 'tab');
 	});
 	treeEl.addEventListener('contextmenu', (evt) => {
-		const item = rowItem(host, evt);
+		const item = itemAt(host, evt, '.pbl-row');
 		if (item) showItemMenu(host, evt, item, offerableTypes(host, childTypeChoices(item)));
 	});
 }
@@ -824,13 +527,17 @@ export function wireRowEvents(host: BacklogViewHost, treeEl: HTMLElement): void 
  * `CHIP_ACTIONS` rather than tested by an if-chain, so a chip added to that table without
  * a class `wireChipEvents` recognises does nothing — never a fallthrough to some other
  * chip's write.
+ *
+ * Its scope is `[data-path]` rather than `.pbl-row`: `renderPropCells` is shared with both
+ * card projections, whose mount is `.pbl-card`, so narrowing to the tree's own row class
+ * would leave every card chip inert.
  */
 export function wireChipEvents(host: BacklogViewHost, treeEl: HTMLElement): void {
 	treeEl.addEventListener('click', (evt) => {
 		const target = evt.target instanceof Element ? evt.target : null;
 		const chip = target?.closest(CHIPS);
 		if (!(chip instanceof HTMLElement)) return;
-		const item = itemForEvent(host, evt);
+		const item = itemAt(host, evt, '[data-path]');
 		if (!item) return;
 		const cls = Object.keys(CHIP_ACTIONS).find((c) => chip.classList.contains(c));
 		if (cls) CHIP_ACTIONS[cls](host, evt, item, chip);

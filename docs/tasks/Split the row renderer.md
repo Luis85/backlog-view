@@ -2,16 +2,18 @@
 type: Task
 order: 70
 parent: "[[One file per concern]]"
-status: Open
+status: Done
 priority: P2
 area: refactor
 created: 2026-08-15
+closed: 2026-08-16
 source: measured after the row reconcile landed (ADR 0029)
 files:
   - src/view/render/rows.ts
+  - src/view/render/reconcile.ts
   - eslint.config.mjs
 started: ""
-finished: ""
+finished: 2026-08-16
 horizon: ""
 start: ""
 due: ""
@@ -90,3 +92,41 @@ render/rows.ts`, has to follow it.
 prunes, that a row's group is read off the previous element before anything moves — each is
 a comment beside the line it governs and not a type. A split that moves any of them moves
 the comments verbatim, and passes `test/view/rowReuse.test.ts` with no assertion touched.
+
+## Outcome
+
+**Done on 2026-08-16: 395 → 249 effective lines, a hundred and fifty-one of headroom.**
+The new `src/view/render/reconcile.ts` is 137. One seam, and it is the one the
+`## Approach` above listed third.
+
+**The reconcile walk moved**, whole and verbatim: `renderTree`, `emptyTree`,
+`refreshRowChildren`, `forgetElement`, `renderForest`, `renderItem`, `dropReplaced`,
+`drewOtherNotes`, `groupAfter` and `childGroupEl`, with every comment that states one of
+their invariants beside the line it governs. Only two modules outside imported any of
+them — `renderTree` from `render/projections.ts` and `refreshRowChildren` from
+`backlogView.ts` — so the seam costs two rewritten import lines.
+
+**`buildRow` stayed**, which is the one place this differs from the grouping the note
+sketched. The walk PLACES rows and `rows.ts` says what a row IS; `buildRow` is the second
+of those, and leaving it where its two helpers already live (`renderRowLead`,
+`renderRowTrailing`) crosses the seam with ONE new export rather than two. The dependency
+then runs one way and is stated as such in ADR 0029's `## Decision`, which names the new
+module — the whole path, as rule 7 requires.
+
+**The delegation did NOT move**, for the reason `## Risks` gives: `ROW_LISTENER` is scoped
+by FILE. `wireRowEvents`, `wireChipEvents`, `CHIP_ACTIONS`, `CHIPS`, `fromRowControl` and
+`foldOnClick` are all still in `rows.ts`, so the ban and its six named exemptions are
+untouched and the rule's message still names the file it points at.
+`src/view/render/reconcile.ts` joined `ROW_CONTROLS` anyway: the walk is where a row
+element is KEPT, so a render module outside that list is exactly the hole the rule exists
+to close.
+
+**One duplication retired on the way through** — the reviewer's F4. `rowItem` and
+`itemForEvent` were the same three lines twice, differing only in the selector, and are
+now one `itemAt(host, evt, scope)`. Each caller states its own scope's reason where it
+passes it: `wireRowEvents` says why `.pbl-row` is the tree's alone, `wireChipEvents` says
+why a chip needs `[data-path]` to reach a card.
+
+No test was edited. `npm run check` is green, and `npm run analyze` reports duplication
+unchanged at 16 lines across 2 files — the two merged functions were below its threshold
+separately, so the merge is a readability gain rather than a metric one.

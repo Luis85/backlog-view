@@ -276,8 +276,17 @@ const RENDER_BOARD = 'src/view/render/board.ts';
 // `columns.ts` draws the state and horizon chips those delegate for, and `chips.ts`
 // draws the rest of them (the label and date chips) — main moved the chip renderers
 // there once `columns.ts` hit its own line budget, so a rule that stopped at the first
-// two would leave that third file free to grow a captured listener again.
-const ROW_CONTROLS = ['src/view/render/rows.ts', 'src/view/render/columns.ts', 'src/view/render/chips.ts'];
+// two would leave that third file free to grow a captured listener again. `reconcile.ts`
+// is the same story a third time: the walk that PLACES rows came out of `rows.ts` when it
+// hit ITS budget, and a render module outside this list is a render module free to wire a
+// listener onto a row element it is about to keep. The rule names FILES, so every file the
+// row path is split across has to be in it.
+const ROW_CONTROLS = [
+	'src/view/render/rows.ts',
+	'src/view/render/reconcile.ts',
+	'src/view/render/columns.ts',
+	'src/view/render/chips.ts',
+];
 // The rest of view/, once menu.ts, render/ and create.ts are carved out below.
 const VIEW = 'src/view/**/*.ts';
 // The card-move orchestration, exempt from DELIVERABLE_FIELD_READ for the same reason
