@@ -36,6 +36,17 @@ clamped to it and reported rather than silently extending the scale; a value tha
 number is a missing score, which is the partial-profile rule and not an arithmetic
 question.
 
+**The written total is rounded to two decimals, and every comparison is made against that
+rounded number.** A renormalized partial profile divides by weights that do not divide
+evenly, so the exact value repeats, and a total stored at full precision would be a long
+number nobody chose in a note somebody reads. So: compute at full precision, round once at
+the point of writing, and when [[Business value estimation]] asks whether a stored total
+still equals what the model computes, round the recomputation the same way before comparing
+it. Comparing a rounded stored value against an unrounded fresh one marks every partial
+profile stale the moment it is written, which is the failure this sentence exists to prevent.
+Two decimals because the default range is 1–5 and `4.27` is already finer than any answer
+behind it.
+
 **A range must increase and it must be whole**: `min < max`, both integers, one point per
 step. `min == max` divides by zero and `min > max` makes the clamp and the direction mean
 two things at once; fractional bounds are refused for a different reason — a range of 0–1.5
