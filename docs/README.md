@@ -241,9 +241,9 @@ that document does **not** settle is the directory structure it also proposes, w
 repository already has in another shape with a lint rule behind it: that is
 [[The SDD's layers are not the four this repository enforces]], and until it is answered the
 four enforced layers are what hold. A review of the whole set found the other thing nobody
-had counted — the capability epics ask for roughly **sixteen new item types** against the
+had counted — the capability epics ask for **seventeen new item types** against the
 eleven declared and the eight hues Obsidian ships — so
-[[Ten capabilities want sixteen new types]] blocks any of them from shipping until each name
+[[Ten capabilities want seventeen new types]] blocks any of them from shipping until each name
 is placed in one of three buckets, and the register's own default is that most are not types
 at all: a type is for something the tree ranks, everything else is a note a property points
 at.

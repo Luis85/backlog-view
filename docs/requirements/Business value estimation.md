@@ -226,11 +226,14 @@ make the work twice as large after it starts:
    that writes one derivation back must not start writing this one too: an inherited score
    copied onto a child is a second copy of a fact, and it stops tracking its source the
    moment the parent changes.
-3. **Changing the weights invalidates every stored total at once.** A weight is one number
-   in one view's options; the totals it produced are on hundreds of notes. Rewriting them
-   is a mass write nobody asked for, and leaving them is a backlog of numbers that quietly
-   disagree with the model on screen. Neither is obviously right, and the answer decides
-   whether a weight is editable at all after the first estimate.
+3. **Changing the weights is answered, and what follows from it is not.** The behaviour is
+   already settled above and is not reopened here: weights stay editable, nothing is
+   rewritten in the background, and every total the old model produced fails the stamp
+   comparison and reads as `Needs re-estimation` until something rewrites it. What is open
+   is the ergonomics of the aftermath — whether a bulk re-estimation exists to clear a
+   hundred flags in one gated batch, or whether each item is opened, and whether the weight
+   editor says how many stored totals its change is about to invalidate before the change
+   lands.
 4. **An estimation status is a second workflow.** Not estimated → draft → estimated →
    validated → needs re-estimation is a state machine over a property that is not the
    board's, and the board already learned what a second workflow costs

@@ -19,14 +19,14 @@ risk: ""
 assignee: ""
 ---
 
-# Ten capabilities want sixteen new types
+# Ten capabilities want seventeen new types
 
 ## The question
 
 Read together, the epics derived from the 2026-08-16 requirements document ask for
 `Opportunity`, `Assumption`, `Experiment`, `Problem`, `Objective`, `Outcome`, `Theme`,
 `Vision`, `OKR`, `JTBD`, `Initiative`, `Evidence`, `Release`, `Portfolio`, `Product`,
-`Domain` and `Decision`. The plugin declares **eleven** types today. Nobody wrote that number
+`Domain` and `Decision` — **seventeen** names. The plugin declares **eleven** types today. Nobody wrote that number
 down while writing the epics, which is exactly how a vocabulary triples without a decision.
 
 Adding a type is not one edit. It is `ALL_TYPES` and `EXTRA_TYPES` in
@@ -34,7 +34,7 @@ Adding a type is not one edit. It is `ALL_TYPES` and `EXTRA_TYPES` in
 hierarchy table in `docs/README.md`, which that gate checks both ways; a hue in
 `styles/badges.css`, where **eight** theme families already carry nine badges and one pair
 shares deliberately; a per-type creation folder key in the view options; and a row in every
-menu that offers a child type. Sixteen of those is not a backlog — it is a different plugin.
+menu that offers a child type. Seventeen of those is not a backlog — it is a different plugin.
 
 ## Why it is not obvious
 
@@ -44,7 +44,7 @@ not hold, for two reasons the register has already met:
 - **`parent` decides level, rank, rollup and focus.** A type that is not work has no business
   in that map — which is why the test catalog got a ladder of its own and why dependency,
   coverage and strategic alignment are each **a property, not a second graph**. Most of the
-  sixteen are in that category: an objective is not ranked among features, and an evidence
+  seventeen are in that category: an objective is not ranked among features, and an evidence
   note is not work at all.
 - **A type is a promise about colour and menus, vault-wide.** Types are not scoped to the
   view that introduced them: a vault that adds Discovery gets `Opportunity` in every type
@@ -57,7 +57,7 @@ not hold, for two reasons the register has already met:
 
 The default this register's own precedents point at: **a type is for something the tree
 ranks; everything else is a note a property points at.** Applied here, that suggests three
-buckets, and the work is to place each of the sixteen in one of them rather than to argue
+buckets, and the work is to place each of the seventeen in one of them rather than to argue
 them one at a time:
 
 1. **No plugin type at all** — the note is addressed only by link, the way an ADR is. Likely
@@ -75,7 +75,7 @@ palette question — and answering it once, as a rule, is the thing
 
 ## Acceptance criteria
 
-- Each of the sixteen names is placed in one of the three buckets, in writing, before any of
+- Each of the seventeen names is placed in one of the three buckets, in writing, before any of
   them is added to `ALL_TYPES`.
 - The number reaching bucket 3 is stated, and the palette rule for that number is decided
   once rather than pair by pair.
