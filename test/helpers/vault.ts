@@ -166,7 +166,18 @@ export class FakeVault {
 			 */
 			getFirstLinkpathDest: (linkpath: string, _sourcePath: string) =>
 				this.files.get(linkpath) ?? this.files.get(`${linkpath}.md`) ?? this.byBasename().get(linkpath) ?? null,
-			fileToLinktext: (file: TFile, _sourcePath: string) => file.basename,
+			/**
+			 * Obsidian's "shortest path when possible": the basename while it names this
+			 * file and no other, and the path without its extension once two files share
+			 * one. The bare basename alone made this fake KINDER than the app — two notes
+			 * called `Sprint 12` produced the same link text, so a write aimed at either
+			 * looked identical on disk and a test asserting which one was picked could
+			 * only ever pass. Same class of gap as `createSvg` in `dom.ts`.
+			 */
+			fileToLinktext: (file: TFile, _sourcePath: string) =>
+				this.ambiguousBasenames().has(file.basename)
+					? file.path.slice(0, -(file.extension.length + 1))
+					: file.basename,
 		},
 		vault: {
 			getAbstractFileByPath: (path: string) =>
@@ -278,11 +289,25 @@ export class FakeVault {
 	private byBasename(): Map<string, TFile> {
 		if (this.basenameIndex !== null && this.indexedVersion === this.files.version) return this.basenameIndex;
 		const index = new Map<string, TFile>();
-		for (const file of this.files.values()) if (!index.has(file.basename)) index.set(file.basename, file);
+		const ambiguous = new Set<string>();
+		for (const file of this.files.values()) {
+			if (index.has(file.basename)) ambiguous.add(file.basename);
+			else index.set(file.basename, file);
+		}
 		this.basenameIndex = index;
+		this.ambiguous = ambiguous;
 		this.indexedVersion = this.files.version;
 		return index;
 	}
+
+	/** The basenames more than one file carries — built with the index above. */
+	private ambiguousBasenames(): Set<string> {
+		this.byBasename();
+		return this.ambiguous;
+	}
+
+	/** Filled by `byBasename`, which is the only thing that may write it. */
+	private ambiguous = new Set<string>();
 
 	/** The `files.version` `basenameIndex` was built at — see `basenameIndex`. */
 	private indexedVersion = -1;

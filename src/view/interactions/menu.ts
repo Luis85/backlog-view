@@ -13,7 +13,7 @@ import {
 	computeTestStateWrites,
 	ItemWrite,
 } from '../../domain/writePlan';
-import { addAssigneeItems, addRiskItems } from './labels';
+import { addAssigneeItems, addIterationItems, addRiskItems, canSetIteration } from './labels';
 import { BoardModel, deliverablesWorkflow, ownWorkflowReading, stateKeyFor } from '../../domain/board';
 import { ShelfCard } from '../../domain/bars';
 import { organizeShelf, ShelfSort } from '../../domain/shelf';
@@ -145,6 +145,11 @@ function addEditableSections(host: BacklogViewHost, model: BacklogModel, menu: M
 	// no second half to be missing, which is why there is no `hasAssignees` beside
 	// `hasRiskLevels` — a predicate that could only ever answer the same thing as this.
 	if (host.settings.assigneeKey) addSetAssigneeMenu(host, menu, item);
+	// Four refusals of its own, none of which follows from the others, and all of them
+	// stated at `canSetIteration` rather than here: an unconfigured key, a marker, a
+	// catalog member, and nothing to do. The fifth is the `editable` gate this whole
+	// section sits behind — a context row is never a write target.
+	if (canSetIteration(host, item)) addSetIterationMenu(host, menu, item);
 	// Per axis, and absent rather than inert when one is not configured — the state
 	// chip's own rule.
 	if (hasHorizonAxis(host.settings)) addSetHorizonMenu(host, menu, item);
@@ -712,6 +717,19 @@ function addSetAssigneeMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem
 	menu.addItem((mi) => {
 		mi.setTitle('Set assignee').setIcon('user');
 		addAssigneeItems(host, submenuOf(mi), item);
+	});
+}
+
+/**
+ * Which iteration this row is in. The type's own icon, so the entry and the badge that
+ * will draw the answer say the same thing. There is deliberately no chip beside it: no
+ * column draws an iteration on a row at all yet, and a chip menu with nothing to open
+ * from would be an export nothing calls.
+ */
+function addSetIterationMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
+	menu.addItem((mi) => {
+		mi.setTitle('Set iteration').setIcon('calendar-clock');
+		addIterationItems(host, submenuOf(mi), item);
 	});
 }
 
