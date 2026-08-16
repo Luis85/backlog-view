@@ -17,8 +17,9 @@ due: 2026-08-30
 # A page that explains the plugin
 
 The page's content and structure: a pitch, a feature tour with screenshots of the tree,
-the board and the roadmap, an install guide, and links out to the changelog and the
-repository — rather than a second copy of either.
+the board and the roadmap, and links out to `README.md`'s own install instructions, the
+changelog and the repository — rather than a second copy of any of them.
 
 **Outcome** — A visitor who has never used the plugin can tell what it does, see it in
-use, and know how to install it, without opening this repository.
+use, and reach `README.md`'s install steps in one click, without opening this repository
+first.

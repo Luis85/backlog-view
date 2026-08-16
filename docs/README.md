@@ -195,6 +195,15 @@ they meet at the layout: translated text is longer, shorter and sometimes right-
 and the stylesheet is what absorbs it. Specification only — nothing under this epic is
 built yet, and what it asks for applies to the board as much as to the tree.
 
+**The Product Page** is the odd one out: not a projection of the backlog and not a
+property every screen must hold, but a public site — built with Astro, hosted on GitHub
+Pages — that shows someone who has never opened this repository what the plugin does.
+`README.md` already pitches the plugin and walks a visitor who found the repository
+through installing it; this epic is the richer, visual surface a search result or the
+repository's own GitHub Pages link reaches directly, not a second README. One feature is
+specified so far, the page's own content and structure; the build and the GitHub Pages
+deploy that ship it are still open design.
+
 `Issue`, `Bug` and `Idea` hang from whichever requirement they concern, which is exactly
 what those types are for: they hold Tasks, they are never re-typed by a move, and they
 attach to an Epic, a Feature or a PBI alike. The plugin also lets one hang from nothing;
