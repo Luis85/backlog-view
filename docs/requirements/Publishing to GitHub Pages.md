@@ -44,8 +44,11 @@ finishing out of order can never step the page backward.
   push can still finish after a later push has already landed; comparing against what is
   actually live is what lets that earlier push publish on its own merit instead of being
   suppressed by a push that arrived after it. On the very first deployment, with nothing
-  live yet to compare against, any successful build publishes — the guard applies from
-  the second deployment on.
+  live yet to compare against, the ordering half of the guard is skipped — but not the
+  default-branch requirement: the first publish still has to be a successful build of a
+  commit that is actually on the default branch, so a manual dispatch against a feature
+  branch or a tag cannot become the page's own first version. The ordering guard applies
+  from the second deployment on.
 - A failing build fails only that workflow run; the previously published page stays live,
   and the plugin's own CI and release workflows are unaffected.
 - No new secret beyond what GitHub Pages itself provides (`GITHUB_TOKEN`) — nothing to
