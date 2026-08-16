@@ -225,6 +225,10 @@ function renderSearch(host: BacklogViewHost, headerEl: HTMLElement): void {
 	});
 	input.value = host.shelfSearch;
 	setTooltip(box, label);
+	// **While a composition is live, the keystrokes are the IME's and not this box's** —
+	// one rule, asked of both listeners below, because both of them would otherwise answer
+	// a keystroke that was never addressed to them.
+	//
 	// An IME reports its intermediate keystrokes as `input` events with `isComposing` set,
 	// and the rebuild below destroys the very field being composed into — which interrupts
 	// a CJK word or commits it half-typed. The narrowing waits for the composition to end
@@ -242,7 +246,10 @@ function renderSearch(host: BacklogViewHost, headerEl: HTMLElement): void {
 	});
 	input.addEventListener('compositionend', () => runSearch(host, input.value, input.selectionStart));
 	input.addEventListener('keydown', (evt) => {
-		if (evt.key !== 'Escape' || input.value === '') return;
+		// Escape mid-composition dismisses the IME's candidates, which is a keystroke this
+		// box must neither answer nor `preventDefault` — doing both would take the whole
+		// query away in place of the candidate the reader was rejecting.
+		if (evt.isComposing || evt.key !== 'Escape' || input.value === '') return;
 		// The pane's key handler answers only to events targeting the pane itself, so this
 		// Escape is already this input's alone; stopping it keeps a clear from also
 		// reaching whatever sits above the view.

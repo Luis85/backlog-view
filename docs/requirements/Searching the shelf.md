@@ -72,9 +72,12 @@ open-pick, and "show me only Epics" had no entry at all.
 - **2b — the search runs while a type is hidden, or a group is folded.** They compose in
   one direction each and never disagree: the search decides which cards exist, the type
   filter which groups are drawn at all, the fold whether a drawn group shows its cards.
-- **2c — the title is being composed through an IME.** The narrowing waits for the
-  composition to end: a rebuild mid-composition destroys the field being typed into and
-  commits a CJK word half-finished. (Found by review, Codex on PR #161.)
+- **2c — the title is being composed through an IME.** Every keystroke of a live
+  composition belongs to the IME rather than to this box: the narrowing waits for the
+  composition to end, since a rebuild mid-composition destroys the field being typed into
+  and commits a CJK word half-finished, and an Escape dismissing the IME's candidates
+  neither clears the search nor is prevented from reaching the IME. (Found by review,
+  Codex on PR #161.)
 - **4a — a keyboard user has no pointer to click the box with.** The card menu carries
   **Search unplaced...**, which opens a prompt, and **Clear unplaced search** while one
   runs — the same obligation every `tabindex="-1"` control here carries, and the same
@@ -98,7 +101,9 @@ open-pick, and "show me only Epics" had no entry at all.
 - The box keeps focus AND the caret across the rebuild each keystroke causes — every
   other shelf control hands focus to the pane, and doing that here would end the search
   at its first keystroke.
-- Escape clears the search; the card menu offers the same clear while one runs.
+- Escape clears the search — except while an IME composition is live, where it is the
+  IME's own cancel and passes through untouched. The card menu offers the same clear while
+  a search runs.
 - The search box is `tabindex="-1"` wherever the pane is a composite and returns to the
   tab order wherever the pane draws no card, exactly as the two pickers do.
 - The type picker reopens after each pick, carrying the checkmarks that pick produced,
@@ -131,11 +136,12 @@ disclosure and the two resize grips already pay: a focusable non-`option` inside
 `listbox`. What a screen reader makes of a text field there is a live-vault question, not
 one this suite can answer (ADR 0020). `runSearch` beside it is the third answer to the
 focus question `refocus` asks: the replacement box takes focus even where cards remain,
-and the caret travels with it. It is also why the box listens for `compositionend` as well
-as `input`, and skips a composing one: rebuilding the pane replaces the field, which is
-harmless between keystrokes and destructive in the middle of a composed word. Both events
-are wired because Chromium and WebKit order them oppositely, and the one that arrives
-second finds the value unchanged.
+and the caret travels with it. It is also why both listeners on the box ask
+whether a composition is live first: rebuilding the pane replaces the field, which is
+harmless between keystrokes and destructive in the middle of a composed word, so the
+narrowing waits for `compositionend` (wired beside `input` because Chromium and WebKit
+order the two oppositely, the second arrival finding the value unchanged) and Escape stays
+the IME's while it is cancelling a candidate.
 
 `src/view/render/shelf.ts` reads the two in order (`searchShelf`, then `organizeShelf`),
 so a searched-away card is simply not drawn — and therefore not in `RoadmapSnapshot.cards`,

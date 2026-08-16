@@ -118,6 +118,21 @@ describe("the shelf's own search", () => {
 		expect(shelfTitles(containerEl)).toHaveLength(4);
 	});
 
+	it('leaves an Escape that is dismissing the IME to the IME', () => {
+		const { containerEl } = makeRoadmap(searchVault());
+		typeSearch(containerEl, 'billing');
+		const input = searchBox(containerEl);
+
+		const evt = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true, isComposing: true });
+		input.dispatchEvent(evt);
+
+		// That Escape is rejecting a candidate, not the search: answering it would take
+		// the whole query away, and `preventDefault` would stop the IME cancelling at all.
+		expect(evt.defaultPrevented).toBe(false);
+		expect(searchBox(containerEl).value).toBe('billing');
+		expect(shelfTitles(containerEl)).toEqual(['Billing export']);
+	});
+
 	it('goes back into the tab order when the search itself empties the pane', () => {
 		const vault = new FakeVault();
 		vault.addFile('Untriaged.md', { frontmatter: { type: 'Epic', order: 10 } });
