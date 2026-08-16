@@ -6,8 +6,8 @@ status: Active
 started: ""
 finished: ""
 horizon: Now
-start: 2026-08-15
-due: 2026-08-21
+start: ""
+due: ""
 risk: ""
 assignee: ""
 ---

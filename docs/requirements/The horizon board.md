@@ -9,8 +9,8 @@ finished: ""
 horizon: ""
 risk: ""
 assignee: Sarah
-start: 2026-08-03
-due: 2026-08-14
+start: ""
+due: ""
 ---
 
 # The horizon board

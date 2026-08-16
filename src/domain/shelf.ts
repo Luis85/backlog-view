@@ -34,6 +34,18 @@ function compareCards(sort: ShelfSort, a: ShelfCard, b: ShelfCard): number {
 }
 
 /**
+ * The shelf's own title search, applied BEFORE the grouping rather than inside it: the
+ * type picker is built from the unsearched grouping, so a search can never take a type's
+ * own way back off the list that restores it — the same rule hiding already keeps.
+ * Display-only like the sort and the type filter; nothing here is ever written to a note.
+ */
+export function searchShelf(cards: ShelfCard[], search: string): ShelfCard[] {
+	const needle = search.trim().toLowerCase();
+	if (needle === '') return cards;
+	return cards.filter((card) => card.item.title.toLowerCase().includes(needle));
+}
+
+/**
  * Group the shelf's cards by the type each one's own badge already shows, in
  * `ALL_TYPES` order plus a trailing `OTHER_GROUP` — never the input order. A group is
  * omitted whole when it is empty or its type is hidden. Within a surviving group, sort

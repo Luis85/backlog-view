@@ -13,7 +13,7 @@ import { BacklogItem } from '../../domain/model';
 import { placeItem, ShelfCard, statedEnds, UNSCHEDULED_LABEL, withoutEnds } from '../../domain/bars';
 import { placementEnds } from '../../domain/itemTypes';
 import { drawsGrid, RoadmapAxis, SHELF_LABEL } from '../../domain/roadmap';
-import { organizeShelf, ShelfGroup } from '../../domain/shelf';
+import { organizeShelf, searchShelf, ShelfGroup } from '../../domain/shelf';
 
 /** What dropping a card on the shelf MEANS, the words that promise it, and its preview. */
 /**
@@ -134,10 +134,11 @@ function removalOutcome(item: BacklogItem): string {
 }
 
 /**
- * Everything the axis could not place, in sibling order, counted, grouped by type,
- * sorted within each group and filtered by type — all three of the last display-only,
- * never written. The roadmap reports how much of the backlog is not yet planned
- * instead of implying the plan is the whole story.
+ * Everything the axis could not place, in sibling order, counted, narrowed by the
+ * shelf's own title search, grouped by type, sorted within each group and filtered by
+ * type — all four of the last display-only, never written. The count above them stays
+ * the TRUE total whatever they leave showing, so the roadmap reports how much of the
+ * backlog is not yet planned instead of implying the plan is the whole story.
  *
  * An EMPTY shelf stays in the DOM regardless of axis: a drop on it means something on
  * both now — un-placing a horizon or a bar's own dates — and a target that exists only
@@ -199,7 +200,9 @@ export function renderShelf(
 	// `renderShelfCard`.
 	const wiring: ShelfWiring = { dnd, removal, conflicts: shelf.conflicts, axis: shelf.axis };
 	const cards: BacklogItem[] = [];
-	for (const group of organizeShelf(shelfCards, host.shelfSort, host.shelfHiddenTypes)) {
+	// Searched first, then grouped: `searchShelf` states why that order is the rule.
+	const shown = searchShelf(shelfCards, host.shelfSearch);
+	for (const group of organizeShelf(shown, host.shelfSort, host.shelfHiddenTypes)) {
 		cards.push(...renderShelfGroup(ctx, shelfEl, group, wiring));
 	}
 	return { cards, el: shelfEl };

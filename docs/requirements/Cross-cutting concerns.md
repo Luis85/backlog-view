@@ -8,8 +8,8 @@ started: ""
 finished: ""
 risk: ""
 assignee: Igmar
-start: 2026-08-15
-due: 2026-10-04
+start: ""
+due: ""
 ---
 
 # Cross-cutting concerns

@@ -101,6 +101,14 @@ export abstract class ViewStateSurface extends BasesView {
 		this.ui.setShelfHiddenTypes(types);
 	}
 
+	get shelfSearch(): string {
+		return this.ui.shelfSearch;
+	}
+
+	setShelfSearch(text: string): void {
+		this.ui.setShelfSearch(text);
+	}
+
 	isLaneCollapsed(name: string): boolean {
 		// The quick filter overrides every fold, exactly as `isCollapsed` does for a row:
 		// while a search runs, everything on a path to a match renders open.

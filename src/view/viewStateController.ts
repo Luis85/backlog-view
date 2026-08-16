@@ -137,6 +137,24 @@ export class ViewStateController {
 		this.hooks.renderTreeContent();
 	}
 
+	/**
+	 * The one pick here that `ViewState` never sees: the shelf's search is session state,
+	 * like the toolbar's quick filter beside it, so it lives on this controller as a plain
+	 * field and dies with the view. Persisting it would open a saved view onto a shelf
+	 * silently narrowed by a search nobody remembers typing.
+	 */
+	private shelfSearchText = '';
+
+	get shelfSearch(): string {
+		return this.shelfSearchText;
+	}
+
+	setShelfSearch(text: string): void {
+		if (text === this.shelfSearchText) return;
+		this.shelfSearchText = text;
+		this.hooks.renderTreeContent();
+	}
+
 	isLaneCollapsed(name: string): boolean {
 		return this.state.isLaneCollapsed(name);
 	}

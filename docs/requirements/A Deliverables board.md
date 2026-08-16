@@ -7,8 +7,8 @@ created: 2026-08-06
 started: ""
 finished: ""
 horizon: ""
-start: 2026-08-03
-due: 2026-08-09
+start: ""
+due: ""
 risk: ""
 assignee: ""
 ---

@@ -19,8 +19,8 @@ finished: ""
 horizon: ""
 risk: ""
 assignee: ""
-start: ""
-due: ""
+start: 2026-08-16
+due: 2026-08-16
 ---
 
 # The MoSCoW priority on a row
