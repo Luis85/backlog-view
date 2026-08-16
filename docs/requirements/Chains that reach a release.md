@@ -20,5 +20,11 @@ Dependency chains ending in something with a date or a commitment — a release,
 high-priority work, an objective — are highlighted, because those are the ones whose delay
 costs something specific.
 
-**Outcome** — The dependencies that matter this quarter stand out from the ones that do
-not.
+**Each of those endpoints is a key this view names for itself**: the release membership, the
+alignment link, the priority, the dates. It reads no other view's settings, and an endpoint
+whose key is unconfigured simply does not make a chain critical — the chain still draws, it
+is just not highlighted. Highlighting everything because a property could not be found would
+be the same false alarm the health rules refuse.
+
+**Outcome** — The dependencies that matter this quarter stand out from the ones that do not,
+by criteria this view was told about rather than ones it guessed.

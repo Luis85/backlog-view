@@ -179,9 +179,15 @@ Three quantities stay **outside** that sum and beside it:
   is removed by the next estimation action on that item or by an explicit cleanup the reader
   invokes — never on a render pass, never by a sweep. A gate that writes while nobody is
   looking is a worse failure than a stale number that says it is stale.
-- **A result can always be decomposed.** Anywhere a score appears, the dimensions and
-  weights that produced it are reachable. A number a reader cannot take apart is the
-  problem this epic was opened about.
+- **A result can always be decomposed — on an estimation surface.** Wherever this view shows
+  a score, the dimensions and weights that produced it are reachable, and so is the coverage.
+  Elsewhere that is not possible and the epic does not pretend otherwise: a backlog row, a
+  Bases filter and another plugin see the total and its stamp, because those are the only two
+  things written. So **the stamp carries the coverage** — how many of the enabled dimensions
+  were answered, beside the fingerprint of the model — which costs no extra property and lets
+  any reader tell a total resting on the whole model from one resting on a quarter of it,
+  without being able to take it apart. Decomposition needs the model; knowing how much of it
+  was used does not.
 - **A merged number never stands in for the ones it merged.** The two combinations this
   epic asks for are legitimate and named — confidence-adjusted value, and the
   value-to-effort indicator — but each carries its own label and appears *beside* its

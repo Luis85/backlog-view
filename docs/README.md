@@ -194,11 +194,13 @@ things as equal — and its definition of done is mostly about what a number may
 derivation leaves the view and the rest are recomputed on read, a written total records
 the model that made it and says `Needs re-estimation` when that model moves on, a merged
 number never stands in for its inputs, and nothing ranks the backlog on its own behalf.
-Specification only, from a product requirements document of 2026-08-16; no feature under
-it yet, and five questions it names — fourteen new optional properties, inheritance with
-no mechanism, what changing a weight does to every stored total, an estimation status that
-is a second workflow, and what a partial profile scores — are what the first feature has
-to answer.
+Specification only, from a product requirements document of 2026-08-16, with **eight
+features** under it: the scoring model and its rubrics, the weighted score, the presets, the
+ranked list, the matrix, the scenarios and the decomposition. Three of the five questions it
+opened are answered in those — the partial profile renormalizes and reports its coverage, a
+weight change leaves stored totals alone and flags them, and the range-and-direction
+arithmetic is stated — and three remain genuinely open: the dozen-odd properties to bind,
+**inheritance**, which has no mechanism, and the **estimation status** as a second workflow.
 
 **Test Management** is a **fifth** projection's worth of design without a projection's
 worth of drawing: an end-to-end test catalog kept as work items beside the work it
