@@ -52,6 +52,15 @@ prefilled with the type and the source link, instead of writing a note with a ty
 nothing to hold it. An item created with no position is the orphan the backlog view spends
 its own rules avoiding.
 
+**The structural properties are not settings anybody has to borrow.** `type`, `parent` and
+`order` are the plugin's own schema, fixed for every view and every vault
+([ADR 0013](../adrs/0013-fix-the-type-vocabulary-at-six-names.md) for the vocabulary, and the
+creation flow lives below the views with the rest of the kernel) — which is exactly why the
+key list this view declares is the short one: the source link and the lifecycle pair. So
+promotion in a vault with no backlog view installed writes the same three properties as
+promotion beside one, and reads nobody's options to do it. Only what a *vault* may rename is
+a per-view key, and none of these three is that.
+
 **The source link is a key this view names**, like every other property it writes, and it is
 the one promotion cannot do without: without it the promotion is an ordinary creation and the
 record of what a piece of work came from is gone. So promotion is offered only once that key
