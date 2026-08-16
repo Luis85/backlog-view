@@ -236,15 +236,37 @@ following are checked:
 - The closing message carries the fenced handoff prompt and nothing else in the block.
 
 **The GREEN result.** Run on the same prompt, in the same repository, with the skill
-present: it invoked the skill as its first action, sent **one** message containing **one**
-question — which of `Epic`, `Feature` or `PBI` — wrote **no files at all** (`git status
---short` empty), touched nothing under `src/`, `test/` or `styles/`, and stopped at phase
-0 waiting for an answer it had no way to get. It found the same prior art the baseline
-found, `Done columns stay lean`, and said out loud that it was holding it for phase 3
-rather than settling it.
+present, and driven all the way through the close with relayed answers — because a run
+that stops at the first question verifies phase 0 and nothing else, and claiming otherwise
+would be the guarantee written ahead of the check.
 
-The contrast is the whole result: an identical request produced a finished note without
-the skill and an unanswered question with it.
+Eleven messages, **ten questions, one per message, never two**. **Zero files on disk**
+until the phase 4 gate passed — `git status --short` empty at every intermediate step.
+Nothing under `src/`, `test/` or `styles/` at any point. Then the close in order: the
+note, `npm run docs` green, one commit, and the fenced handoff prompt.
+
+Four things it did that the baseline did not, and that this skill exists for:
+
+- **It refused a coordinator's go-ahead as a substitute for the owner's.** Told to
+  "continue to phase 4 and then the close", it presented the readback and stopped, on the
+  ground that an instruction to proceed is not the confirmation the gate asks for. That is
+  the one pressure most likely to break the gate, and it held.
+- **It withheld a recommendation it had already formed**, saying the register conflict it
+  had found belonged in phase 3 and not before the owner's answer.
+- **It raised four contradictions, one at a time**, each with options and a recommendation,
+  and resolved none of them itself. Two were found by reading the actual notes rather than
+  reasoning: that most legacy `Done` notes carry `finished: ""`, which defeats the stated
+  job outright, and that the toolbar's hidden-count is measured by a rule the change would
+  stop matching. One option in the second set it labelled as another option restated,
+  rather than padding the list.
+- **It found a *closed* note still claiming a question** the new item would take over, and
+  proposed the supersedes line instead of letting the two disagree quietly.
+
+**The note this run produced was deleted, and that is a rule.** Its content came from
+answers invented to drive the interview, not from a product owner — so it is evidence
+about the skill and not a decision about the product. A GREEN run's note is read, reported
+and thrown away; committing one would put a fabricated requirement into the register, and
+in this run it would also have rewritten a closed note on the strength of it.
 
 **What the matrix covers, and what it does not.** Review asked for a GREEN run per
 supported type, and for the `Epic` prompt to be baselined in RED as well. Half of that is
