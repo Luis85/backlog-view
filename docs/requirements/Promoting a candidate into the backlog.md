@@ -21,8 +21,16 @@ type the vault configures. The promotion creates the backlog note through the on
 boundary, links it back to the discovery item, and leaves the discovery item where it is.
 
 **"Validated" there describes the normal case; it is not a precondition, and nothing is
-gated on it.** The action is offered on any **opportunity** — the discovery type this epic
-promotes, and the only one whose promotion produces work somebody can point back at. An
+gated on it.** The action is offered on any **opportunity**, and *opportunity* is a value of
+the discovery lifecycle rather than a type or a shape: this view names the **lifecycle key**
+and the **values that may be promoted** — the opportunity state by default — and offers the
+action on those and nothing else. Not a type, because [[Ideas as a type beside the ladder]]
+already makes `Idea` a backlog type and [[An idea becomes an opportunity]] keeps the same
+note through the change; not field completeness, because that would make the action appear
+and disappear as somebody types. With either half unconfigured the action is offered nowhere
+and says which is missing, the same answer as the source key below.
+
+It is the only discovery state whose promotion produces work somebody can point back at. An
 assumption or an experiment is a thing done *about* an opportunity, so promoting one would
 file work whose recorded source is a question rather than the thing that was asked, and the
 opportunity holding it would still have nothing pointing back. What the action does not look
