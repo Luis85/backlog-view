@@ -76,7 +76,8 @@ what a dimension is.
 ## The default model
 
 The value dimensions and their default weights, which must total 100 and must be
-configurable per vault:
+configurable — **on the estimation view itself**, like every other setting this plugin
+has, saved in its `.base` file:
 
 | Dimension | Asks | Weight |
 | --- | --- | --- |
@@ -98,6 +99,18 @@ for confidence, and for effort and complexity alike. The requirements document t
 came from carries a default set to start from. Until they are written, nothing under this
 epic is buildable — a 1–5 selector with no rubric behind it is the arbitrary number this
 epic exists to replace, wearing eight faces instead of one.
+
+**So a vault can hold two models, and that is a real consequence rather than an
+oversight.** Nothing here is stored at vault scope, because nothing in this plugin is: a
+setting lives on the saved view, and a second estimation view is a second set of weights
+the same way a second board is a second workflow. Two of them can estimate the same note
+and overwrite one another's total. What keeps that legible is the provenance the written
+total already has to carry — a total stamped by a model that is not the one on screen
+reads as foreign, not as current — and the honest advice, which belongs in the view's own
+documentation rather than in a mechanism: **one estimation view per vault** unless two
+models are genuinely wanted. A vault-scoped store would be new machinery for a
+configuration nobody has yet asked to share, and it would break the rule that a `.base`
+file carries its view's settings.
 
 Three quantities stay **outside** that sum and beside it:
 
