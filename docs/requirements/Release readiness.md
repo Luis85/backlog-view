@@ -22,9 +22,12 @@ the items already carry, each shown as satisfied, partly satisfied or not, and n
 blocking anything.
 
 Each criterion reads a property this view names for itself — the estimate, the dependency
-edge, the risk, the testing state, the release membership — never one borrowed from the view
-that writes it, and a criterion whose key is unconfigured is listed as unconfigured rather
-than as failed or passed. [[Settings scoped to their view]] is where that rule lives.
+edge **and the prerequisite state and values that clear it**, the risk, the testing state,
+the release membership — never one borrowed from the view that writes it, and a criterion
+whose key is unconfigured is listed as unconfigured rather than as failed or passed. The
+dependency criterion needs all three: an edge says what a thing waits for and nothing about
+whether the wait is over, so with no state key bound it is exactly as unconfigured as a
+criterion with no property at all. [[Settings scoped to their view]] is where that rule lives.
 
 **Outcome** — A release decision is made against stated criteria instead of a feeling, and
 a criterion nobody configured never reads as a verdict.
