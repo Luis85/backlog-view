@@ -63,7 +63,7 @@ declared name owes: a default subfolder, an icon and a badge colour.
 | **Actor** | Backlog owner |
 | **Trigger** | Creating an iteration, or setting an item's iteration from the row or card menu |
 | **Preconditions** | The iteration property is configured, or bound by the toolbar's setup action ([[Bind a property by using it]]) |
-| **Guarantee** | The link is read, never guessed: no property is matched by name, an unconfigured key is never written, and setting an iteration writes one key on one note through the gate every other write goes through. |
+| **Guarantee** | The link is read, never guessed: no property is matched by name, and an unconfigured key is never written. Setting an iteration writes **one batch on one note** — up to three keys, the link and the two dates the iteration's timeframe supplies ([[An iteration's timeframe schedules its items]]) — through the gate every other write goes through, taken back by one undo. |
 
 **Main flow**
 

@@ -376,8 +376,18 @@ simple Open, In Progress, Done workflow based on products workflow."* Withdrawn 
 second property survive being unset. A fallback is machinery for reconciling two sources
 of truth; deleting the second source deletes the need for it.
 
-The board reads **`settings.stateKey`** — the product board's own resolved key, through
-`stateKeyFor` like every other reader of it — and puts each card in one of three columns:
+The board reads **`settings.stateKey` directly**, and puts each card in one of three
+columns:
+
+**Not through `stateKeyFor`**, which is the function this sentence originally named and
+the one an implementer will reach for, because it looks like the reader of the product
+key and is what every other board uses. It is not: it **dispatches on the item** —
+`resolvedDeliverableStateKey` for a `Deliverable`, `resolvedTestStateKey` for a catalog
+member, `settings.stateKey` for everything else. Following it here would bucket and move a
+`Deliverable` by the Deliverables workflow, which is the exact opposite of §4's rule that
+one board has one vocabulary, and would silently contradict the documented outcome that a
+Deliverable with a separate state property sits in Open. One board, one key, read without
+asking the card what it is.
 
 | Column | Holds | A drop writes |
 | --- | --- | --- |

@@ -83,8 +83,9 @@ the moment the populations diverged, which is exactly what happened.
 3. The cards are the results whose iteration link resolves to that note, and no others:
    carriers only, never a descendant that did not say so itself — whatever their type,
    `Deliverable` included (3e).
-4. The columns are always three, in this order, over the product board's own resolved
-   state key:
+4. The columns are always three, in this order, over `settings.stateKey` — the product
+   board's own key, read **directly** and never through the type-dispatching selector
+   every other board reaches for (3f):
 
    | Column | Holds | A drop writes |
    | --- | --- | --- |
@@ -305,13 +306,19 @@ the moment the populations diverged, which is exactly what happened.
   has one column list; a board that columned some cards by one vocabulary and some by
   another would not be a board.
 
+  **The key is read directly, and the function that looks right is the wrong one.**
+  `stateKeyFor` is how every other board reads the product key, and it **dispatches on the
+  item** — the Deliverable key for a `Deliverable`, the test key for a catalog member.
+  Reaching for it here would column and move a Deliverable card by the Deliverables
+  workflow while it sits in this board's bucket, which is the very thing this extension
+  refuses, and would do it while looking like the conventional call. So this board asks
+  `settings.stateKey` and never asks the card what it is.
+
   **The price is named rather than paid quietly.** A vault that configured a separate
-  `deliverableStateProperty` has Deliverables carrying no value under the key this board
-  reads, so every one of them sits in **Open** here — permanently, whatever the Deliverable
-  workflow says. That is accepted, not corrected. Reading each card by its own workflow's
-  key would give one board two vocabularies, which is the thing this very extension
-  refuses, and the escape a vault already has is the shared key: leave
-  `deliverableStateProperty` unset and it falls back to `stateKey`, which is the
+  `deliverableStateProperty` has Deliverables carrying no value under that key, so every
+  one of them sits in **Open** here — permanently, whatever the Deliverable workflow says.
+  That is accepted, not corrected: the escape a vault already has is the shared key, since
+  leaving `deliverableStateProperty` unset falls back to `stateKey`, which is the
   arrangement the codebase's own suggestion machinery steers a first-run setup into
   anyway.
 - **3g — the same card's FINISHED STYLING is asked for.** It comes from the item's **own**
