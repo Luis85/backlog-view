@@ -10,8 +10,8 @@ finished: ""
 horizon: ""
 risk: ""
 assignee: ""
-start: 2026-08-16
-due: 2026-08-30
+start: ""
+due: ""
 ---
 
 # A page that explains the plugin

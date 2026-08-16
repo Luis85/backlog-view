@@ -10,8 +10,8 @@ finished: ""
 horizon: ""
 risk: ""
 assignee: ""
-start: 2026-08-16
-due: 2026-09-06
+start: ""
+due: ""
 ---
 
 # A site built from its own directory
