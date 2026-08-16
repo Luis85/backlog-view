@@ -301,6 +301,12 @@ function iterationsGroup(): BasesAllOptions {
 				default: String(DEFAULT_ITERATION_DAYS),
 				placeholder: String(DEFAULT_ITERATION_DAYS),
 			},
+			{
+				type: 'toggle',
+				key: 'iterationBars',
+				displayName: 'Draw iterations as bars',
+				default: false,
+			},
 		],
 	};
 }

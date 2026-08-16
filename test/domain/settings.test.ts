@@ -84,6 +84,11 @@ describe('resolveSettings', () => {
 		expect(resolveSettings(fakeConfig({ hierarchyOnly: false })).hierarchyOnly).toBe(false);
 	});
 
+	it('iterationBars defaults off and resolves the toggle', () => {
+		expect(resolveSettings(new FakeViewConfig({})).iterationBars).toBe(false);
+		expect(resolveSettings(new FakeViewConfig({ iterationBars: true })).iterationBars).toBe(true);
+	});
+
 	it('reads a WIP limit and a policy for each configured state', () => {
 		const settings = resolveSettings(
 			fakeConfig({

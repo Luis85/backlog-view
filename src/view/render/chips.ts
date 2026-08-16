@@ -308,7 +308,7 @@ export function renderDateChip(host: BacklogViewHost, col: HTMLElement, item: Ba
 	// their own type.md`, reaching the chip through the same `placementEnds` call every
 	// other date path asks. The cell itself is still rendered by `renderPropCells`, so the
 	// columns after it stay under their headers on that row.
-	if (!placementEnds(item.typeName).includes(spec.end)) return false;
+	if (!placementEnds(item.typeName, host.settings.iterationBars).includes(spec.end)) return false;
 	// A value the reader refuses is not a date: the timeline shelves such a bar with the
 	// reason on its face, and the chip says the same thing — nothing, and why — rather
 	// than showing a date the axis would not honor. So unset and unreadable wear one face

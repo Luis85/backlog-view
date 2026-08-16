@@ -179,6 +179,12 @@ export interface BacklogSettings extends ItemHandling {
 	 */
 	iterationKey: string;
 	/**
+	 * Draw an iteration as a start→target bar instead of a point at its target. Off by
+	 * default: an iteration is a marker (`MARKER_TYPES`) and reduces to its target date
+	 * exactly as a milestone does until this is turned on — see `drawsAsPoint`.
+	 */
+	iterationBars: boolean;
+	/**
 	 * Frontmatter key holding what an iteration is FOR, in one line, or '' when unnamed.
 	 * A plain string on the Iteration note alone — never backfilled, unlike every other
 	 * optional property here, because a goal on every other note in the vault means
@@ -333,6 +339,7 @@ export function defaultSettings(): BacklogSettings {
 		priorityValues: [...DEFAULT_PRIORITY_VALUES],
 		assigneeKey: '',
 		iterationKey: '',
+		iterationBars: false,
 		iterationGoalKey: '',
 		iterationOpenStates: [],
 		iterationResolvedStates: [],

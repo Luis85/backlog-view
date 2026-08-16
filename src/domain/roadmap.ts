@@ -396,7 +396,7 @@ export function buildRoadmap(
 	if (axis === 'horizons') deriveBuckets(rows, settings, roadmap, visible);
 	else if (axis === 'resources') deriveLanes(rows, settings, roadmap, model.absences);
 	else {
-		const dated = deriveBars(rows);
+		const dated = deriveBars(rows, settings.iterationBars);
 		roadmap.bars = dated.bars;
 		roadmap.shelf = dated.shelf;
 		roadmap.context = dated.context;
@@ -511,8 +511,8 @@ function deriveLanes(
 	const byName = new Map<string, ResourceLane>(lanes.map((lane) => [lane.name.toLowerCase(), lane]));
 	for (const item of rows) {
 		if (item.outsideFilter) continue;
-		if (isMarkerType(item.typeName)) placeBar(item, () => markers, roadmap);
-		else placeAssigned(item, lanes, byName, roadmap);
+		if (isMarkerType(item.typeName)) placeBar(item, () => markers, roadmap, settings);
+		else placeAssigned(item, lanes, byName, roadmap, settings);
 	}
 	// Second, so a resource a result already named keeps the casing that result gave its
 	// row — and third-source minting: unlike a context row, an absence MAY create one,
@@ -538,13 +538,14 @@ function placeAssigned(
 	lanes: ResourceLane[],
 	byName: Map<string, ResourceLane>,
 	roadmap: RoadmapModel,
+	settings: BacklogSettings,
 ): void {
 	const name = item.assigneeValue;
 	if (name === null) {
 		roadmap.shelf.push({ item, reason: null });
 		return;
 	}
-	placeBar(item, () => laneNamed(name, lanes, byName), roadmap);
+	placeBar(item, () => laneNamed(name, lanes, byName), roadmap, settings);
 }
 
 /**
@@ -553,8 +554,8 @@ function placeAssigned(
  * has always kept for an undeclared assignee, and the same reason the milestones' row is
  * absent from a base whose only marker has no readable date.
  */
-function placeBar(item: BacklogItem, lane: () => ResourceLane, roadmap: RoadmapModel): void {
-	const placement = placeItem(item, statedEnds(item));
+function placeBar(item: BacklogItem, lane: () => ResourceLane, roadmap: RoadmapModel, settings: BacklogSettings): void {
+	const placement = placeItem(item, statedEnds(item), settings.iterationBars);
 	if (placement.kind === 'shelf') {
 		roadmap.shelf.push({ item, reason: placement.reason });
 		return;

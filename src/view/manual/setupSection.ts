@@ -82,13 +82,17 @@ export const SETUP: ManualSection = {
 				'counts as done is Resolved — so with both lists empty the outer columns still ' +
 				'fill and the middle one takes every remaining state. ' +
 				'The length is how many days a new iteration runs for ' +
-				'when the board derives one — a whole number of days, 14 if it cannot be read.',
+				'when the board derives one — a whole number of days, 14 if it cannot be read. ' +
+				'Draw iterations as bars switches an iteration\'s own reading on the roadmap ' +
+				'between a single point at its target date — the default, the same reduction a ' +
+				'Milestone always gets — and a span from its start to its target.',
 			keys: [
 				'iterationProperty',
 				'iterationGoalProperty',
 				'iterationOpenStates',
 				'iterationResolvedStates',
 				'iterationLengthDays',
+				'iterationBars',
 			],
 		},
 		{

@@ -136,12 +136,15 @@ describe('getViewOptions', () => {
 		expect(keys).toEqual(['deliverableStateProperty', 'deliverableStateValues', 'deliverableDoneValues']);
 	});
 
-	it('exposes an Iterations group with the two properties and the three board options', () => {
+	it('exposes an Iterations group with the two properties and the four board options', () => {
 		// No state PROPERTY here — the iteration board reads the product state key and
-		// narrows it, so there is no second one to configure. The three that ARE here say
-		// how it narrows: which product states fall in the two outer columns, and how long
-		// a derived iteration runs. The goal is a property of a different kind again: what
-		// the iteration is FOR, not how it moves.
+		// narrows it, so there is no second one to configure. Three of the four that ARE
+		// here say how it narrows: which product states fall in the two outer columns, and
+		// how long a derived iteration runs. The fourth, `iterationBars`, is the roadmap's
+		// own reading rather than the board's — whether an iteration draws as a point or a
+		// span — and it sits in this group anyway because the property it narrows
+		// (`iteration`) is declared here. The goal is a property of a different kind again:
+		// what the iteration is FOR, not how it moves.
 		const groups = getViewOptions(fakeConfig());
 		const group = groups.find((g) => 'displayName' in g && g.displayName === 'Iterations');
 		if (!group || !('items' in group)) throw new Error('Iterations group missing');
@@ -152,6 +155,7 @@ describe('getViewOptions', () => {
 			'iterationOpenStates',
 			'iterationResolvedStates',
 			'iterationLengthDays',
+			'iterationBars',
 		]);
 	});
 

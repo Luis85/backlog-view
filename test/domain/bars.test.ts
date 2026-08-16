@@ -4,6 +4,7 @@ import { buildModel } from '../../src/domain/model';
 import { resolveSettings } from '../../src/domain/settingsResolve';
 import { FakeViewConfig } from '../helpers/vault';
 import { barHolds, deriveBars, placeItem, statedEnds, timelineRows, withoutEnds } from '../../src/domain/bars';
+import { drawsAsPoint, placementEnds } from '../../src/domain/itemTypes';
 
 const DATE_AXIS = { startProperty: 'note.start', targetProperty: 'note.target' };
 
@@ -30,8 +31,8 @@ describe('placeItem', () => {
 		vault.addFile('Child.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-10', target: '2026-08-20' }, parentLink: 'Parent' });
 		const { item } = itemFor(vault, 'Parent.md');
 
-		expect(placeItem(item, statedEnds(item)).kind).toBe('bar');
-		const left = placeItem(item, withoutEnds(statedEnds(item), ['start', 'target']));
+		expect(placeItem(item, statedEnds(item), false).kind).toBe('bar');
+		const left = placeItem(item, withoutEnds(statedEnds(item), ['start', 'target']), false);
 		expect(left.kind).toBe('bar');
 		// Its own dates gone, the descendants still supply a span: it keeps a bar,
 		// inferred, and the shelf preview would be a lie.
@@ -46,7 +47,7 @@ describe('placeItem', () => {
 		vault.addFile('Child.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Parent' });
 		const { item } = itemFor(vault, 'Parent.md');
 
-		expect(placeItem(item, withoutEnds(statedEnds(item), ['start'])).kind).toBe('shelf');
+		expect(placeItem(item, withoutEnds(statedEnds(item), ['start']), false).kind).toBe('shelf');
 	});
 
 	it('shelves a marker whose target goes, however stale a start it keeps', () => {
@@ -57,7 +58,7 @@ describe('placeItem', () => {
 		vault.addFile('Ship.md', { frontmatter: { type: 'Milestone', order: 10, start: '2026-07-01', target: '2026-09-30' } });
 		const { item } = itemFor(vault, 'Ship.md');
 
-		const left = placeItem(item, withoutEnds(statedEnds(item), ['target']));
+		const left = placeItem(item, withoutEnds(statedEnds(item), ['target']), false);
 		expect(left.kind).toBe('shelf');
 		if (left.kind !== 'shelf') throw new Error('unreachable');
 		expect(left.reason).toBeNull();
@@ -68,12 +69,12 @@ describe('placeItem', () => {
 		vault.addFile('Broken.md', { frontmatter: { type: 'PBI', order: 10, start: 'soon', target: '2026-08-01' } });
 		vault.addFile('Backwards.md', { frontmatter: { type: 'PBI', order: 20, start: '2026-08-31', target: '2026-08-01' } });
 
-		expect(placeItem(itemFor(vault, 'Broken.md').item, statedEnds(itemFor(vault, 'Broken.md').item))).toEqual({
+		expect(placeItem(itemFor(vault, 'Broken.md').item, statedEnds(itemFor(vault, 'Broken.md').item), false)).toEqual({
 			kind: 'shelf',
 			reason: 'Unreadable start date',
 		});
 		const backwards = itemFor(vault, 'Backwards.md').item;
-		expect(placeItem(backwards, statedEnds(backwards))).toEqual({
+		expect(placeItem(backwards, statedEnds(backwards), false)).toEqual({
 			kind: 'shelf',
 			reason: 'Target date precedes the start date',
 		});
@@ -84,7 +85,7 @@ describe('timelineRows', () => {
 	/** The bars of a whole vault, in row order, with the named paths shut. */
 	function rowsOf(vault: FakeVault, collapsed: string[] = []) {
 		const built = model(vault);
-		const bars = deriveBars([...built.model.results]).bars;
+		const bars = deriveBars([...built.model.results], false).bars;
 		return timelineRows(bars, (path) => collapsed.includes(path));
 	}
 
@@ -226,5 +227,75 @@ describe('barHolds', () => {
 
 		expect(placement.bar.inferredEnd).toBe(true);
 		expect(barHolds(item, settings, placement.bar)).toEqual(['start']);
+	});
+});
+
+describe('drawsAsPoint', () => {
+	it('splits the drawing question off the structural one', () => {
+		// A milestone IS a point; an iteration is one exactly while the option is off.
+		expect(drawsAsPoint('Milestone', false)).toBe(true);
+		expect(drawsAsPoint('Milestone', true)).toBe(true);
+		expect(drawsAsPoint('Iteration', false)).toBe(true);
+		expect(drawsAsPoint('Iteration', true)).toBe(false);
+		expect(drawsAsPoint('PBI', false)).toBe(false);
+		expect(drawsAsPoint(null, false)).toBe(false);
+	});
+
+	it('narrows placementEnds: a point admits its target alone', () => {
+		expect(placementEnds('Iteration', false)).toEqual(['target']);
+		expect(placementEnds('Iteration', true)).toEqual(['start', 'target']);
+		expect(placementEnds('Milestone', true)).toEqual(['target']);
+	});
+});
+
+describe('an iteration on the dated axis', () => {
+	function sprintVault(fm: Record<string, unknown>): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Sprint 12.md', { frontmatter: { type: 'Iteration', order: 10, ...fm } });
+		return vault;
+	}
+
+	it('is a point at its target while the option is off, its start ignored', () => {
+		const { item } = itemFor(sprintVault({ start: '2026-09-07', target: '2026-09-20' }), 'Sprint 12.md');
+		const placed = placeItem(item, statedEnds(item), false);
+		if (placed.kind !== 'bar') throw new Error('expected a bar');
+		expect(placed.bar.span).toEqual({ start: placed.bar.span.target, target: placed.bar.span.target });
+	});
+
+	it('is a start→target span while the option is on', () => {
+		const { item } = itemFor(sprintVault({ start: '2026-09-07', target: '2026-09-20' }), 'Sprint 12.md');
+		const placed = placeItem(item, statedEnds(item), true);
+		if (placed.kind !== 'bar') throw new Error('expected a bar');
+		expect(placed.bar.span.start).toEqual({ year: 2026, month: 9, day: 7 });
+		expect(placed.bar.span.target).toEqual({ year: 2026, month: 9, day: 20 });
+	});
+
+	it('shelves with no target in line mode, places open-ended on a start in bar mode', () => {
+		const { item } = itemFor(sprintVault({ start: '2026-09-07' }), 'Sprint 12.md');
+		expect(placeItem(item, statedEnds(item), false).kind).toBe('shelf');
+		const barMode = placeItem(item, statedEnds(item), true);
+		expect(barMode.kind).toBe('bar');
+	});
+
+	it('shelves a reversed span in bar mode with the ordinary reason', () => {
+		const { item } = itemFor(sprintVault({ start: '2026-09-20', target: '2026-09-07' }), 'Sprint 12.md');
+		const placed = placeItem(item, statedEnds(item), true);
+		if (placed.kind !== 'shelf') throw new Error('expected the shelf');
+		expect(placed.reason).toBe('Target date precedes the start date');
+	});
+
+	it('holds: body-only as a point, grips per configured key as a bar', () => {
+		const { item, settings } = itemFor(sprintVault({ start: '2026-09-07', target: '2026-09-20' }), 'Sprint 12.md');
+		const point = placeItem(item, statedEnds(item), false);
+		if (point.kind !== 'bar') throw new Error('unreachable');
+		expect(barHolds(item, settings, point.bar)).toEqual(['body']);
+		const span = placeItem(item, { ...statedEnds(item) }, true);
+		if (span.kind !== 'bar') throw new Error('unreachable');
+		const on = { ...settings, iterationBars: true };
+		expect(barHolds(item, on, span.bar)).toEqual(['start', 'end', 'body']);
+		// The configuration still decides writable: no start property, no start grip —
+		// `startKey` is the settings field `optionalKeyFor(settings, 'start')` reads.
+		const noStart = { ...on, startKey: '' };
+		expect(barHolds(item, noStart, span.bar)).not.toContain('start');
 	});
 });

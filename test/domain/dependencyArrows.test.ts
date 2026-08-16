@@ -18,7 +18,7 @@ const settings = settingsWith({ dependsOnKey: 'dependsOn', startKey: 'start', ta
 
 function datedAxis(vault: FakeVault): DatedAxis {
 	const model = buildModel(vault.app, vault.entries(), settings);
-	return deriveBars(model.items);
+	return deriveBars(model.items, false);
 }
 
 /** Titles, so a test reads as the sentence it is checking. */
@@ -78,7 +78,7 @@ describe('which edges draw', () => {
 		// The resolved edge is real — Waiter's row still states it (step 3, Task 3's concern).
 		expect(model.byPath.get('Waiter.md')?.prerequisites.map((p) => p.title)).toEqual(['Epic']);
 
-		expect(edges(deriveBars(model.items))).toEqual([]);
+		expect(edges(deriveBars(model.items, false))).toEqual([]);
 	});
 
 	it('draws nothing for an edge the model already marked broken (1d)', () => {
@@ -93,7 +93,7 @@ describe('which edges draw', () => {
 		const model = buildModel(vault.app, vault.entries(), settings);
 		expect(model.byPath.get('A.md')?.brokenPrerequisites).toEqual(['B']);
 
-		expect(edges(deriveBars(model.items))).toEqual([]);
+		expect(edges(deriveBars(model.items, false))).toEqual([]);
 	});
 
 	it('takes part like anything else for a milestone (1e), whose two ends are the same day', () => {
@@ -146,7 +146,7 @@ describe('conflict — dependent.start <= prerequisite.end', () => {
 		const model = buildModel(vault.app, vault.entries(), settings);
 		const parent = model.byPath.get('Parent.md');
 		expect(parent?.plannedTarget.value).not.toBeNull(); // stated
-		const axis = deriveBars(model.items);
+		const axis = deriveBars(model.items, false);
 		const parentBar = axis.bars.find((b) => b.item.title === 'Parent');
 		expect(parentBar?.inferredStart).toBe(true); // rolled up, and irrelevant to the comparison
 
@@ -162,7 +162,7 @@ describe('conflict — dependent.start <= prerequisite.end', () => {
 			frontmatter: { type: 'PBI', order: 20, dependsOn: 'Parent', start: '2026-08-10', target: '2026-08-20' },
 		});
 		const model = buildModel(vault.app, vault.entries(), settings);
-		const axis = deriveBars(model.items);
+		const axis = deriveBars(model.items, false);
 		const parentBar = axis.bars.find((b) => b.item.title === 'Parent');
 		expect(parentBar?.inferredEnd).toBe(true);
 
