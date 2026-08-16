@@ -208,31 +208,40 @@ free of runtime code so imports stay cycle-free.
   so pressing ✨ leaves each of them a key this menu cannot remove. Recorded rather than
   fixed, and not a reason to switch gates — the presence gate would be absent on the shipped
   default, where nothing is stubbed because the key falls back.
-- **The two LABEL menus are the state menu's shape without a projection**: Set risk and
-  Set assignee, both rendered inside `buildItemMenu`'s `editable` guard, both offering a
-  list plus the item's own unlisted value, both checked from the PLAN
-  (`computeRiskWrites`, `computeAssigneeWrites`) rather than from a comparison beside it,
-  and both with a Clear foot gated on `item.ownKeys`. Their offers live together in
+- **The three LABEL menus are the state menu's shape without a projection**: Set risk, Set
+  priority and Set assignee, all rendered inside `buildItemMenu`'s `editable` guard, all
+  offering a list plus the item's own unlisted value, all checked from the PLAN
+  (`computeRiskWrites`, `computePriorityWrites`, `computeAssigneeWrites`) rather than from
+  a comparison beside it,
+  and all with a Clear foot gated on `item.ownKeys`. Their offers live together in
   `interactions/labels.ts` and not in `interactions/plan.ts`: a label is an attribute of
   the item, not a position on an axis. Where they differ is the GATE, and it follows from
-  where each list comes from — risk needs `hasRiskLevels` (a property AND a declared list,
-  so a submenu never opens onto nothing), while the assignee needs the KEY alone, because
+  where each list comes from — risk and priority need `hasRiskLevels` / `hasPriorityLevels`
+  (a property AND a declared list, so a submenu never opens onto nothing), while the
+  assignee needs the KEY alone, because
   its list is observed and `New assignee...` is in it whatever the results carry. There is
-  deliberately no `hasAssignees` predicate beside `hasRiskLevels`: it could only ever
-  answer what the key already does. Two inputs each — the menu and the chip below — and
+  deliberately no `hasAssignees` predicate beside those two: it could only ever
+  answer what the key already does. The two DECLARED ladders share `declaredChoices` and
+  differ in nothing but which list and which value they hand it — which is what a third
+  ladder costs, and why there is no `labelChoices(host, item, 'risk')` taking a field name
+  instead. Two inputs each — the menu and the chip below — and
   still no `performRiskMove`, because the second input does not plan beside the first: it
   opens the same builder. The rule is about a second PLAN, not a second surface.
 - **The label chips are the state chip again** (`renderLabelChip` in `render/columns.ts`,
-  driven by a table of the two rather than a renderer each), each on the same test its own
+  driven by `LABEL_CHIPS`, a table of the three rather than a renderer each), each on the
+  same test its own
   menu is gated on, so a chip whose menu could set nothing is not a state either side can
-  reach alone — opening `addRiskItems` / `addAssigneeItems` through `showRiskMenu` /
-  `showAssigneeMenu`, and drawn as that property's OWN cell like the other two, so the row
+  reach alone — opening `addRiskItems` / `addPriorityItems` / `addAssigneeItems` through
+  `showRiskMenu` / `showPriorityMenu` / `showAssigneeMenu`, and drawn as that property's OWN
+  cell like the other two, so the row
   never draws the value twice with one of them inert. They differ from the horizon's in one
-  place: an unset note draws a dashed *Risk* or *Assignee* chip rather than nothing, because
+  place: an unset note draws a dashed *Risk*, *Priority* or *Assignee* chip rather than
+  nothing, because
   absence here is an invitation and not a placement the shelf already names. Their columns
   drop where the properties menu put them, like every other column.
-- **The five per-row menus are one function**: `chipMenu` in `interactions/menu.ts`, with
-  `showStateMenu` / `showHorizonMenu` / `showRiskMenu` / `showAssigneeMenu` / `showTagMenu`
+- **The six per-row menus are one function**: `chipMenu` in `interactions/menu.ts`, with
+  `showStateMenu` / `showHorizonMenu` / `showRiskMenu` / `showPriorityMenu` /
+  `showAssigneeMenu` / `showTagMenu`
   as one-line exports over it. What stops a control from also activating the row it sits
   on is `fromRowControl` (`render/rows.ts`), asked by `wireRowEvents` before
   `wireChipEvents` — both delegated on `treeEl` — ever runs; `chipMenu`'s own
@@ -364,14 +373,17 @@ free of runtime code so imports stay cycle-free.
   only place those tags appear at all and the set it calls current would be one nothing
   on screen shows. **That is a rule about the tags column, and it stops there.** Its
   siblings in `addEditableSections` gate on the settings predicates instead —
-  `stateKeyFor`, `hasRiskLevels`, `settings.assigneeKey`, `hasHorizonAxis` — so Set state,
-  Set risk, Set assignee and Set horizon stay offered on a property the properties menu is
+  `stateKeyFor`, `hasRiskLevels`, `hasPriorityLevels`, `settings.assigneeKey`,
+  `hasHorizonAxis` — so Set state,
+  Set risk, Set priority, Set assignee and Set horizon stay offered on a property the
+  properties menu is
   hiding, and those DO write something the row is not showing. Deliberate, not a set of cases waiting to be
   smoothed into one: the plugin cannot write the visible order back (ADR 0023's
   first-run gap), so withholding the write with the column would leave a base whose only
   remaining route to the property is opening the note. Do not generalise the tags rule
   to reach them — the honest statement is that state still shows through the rollup and
-  `pbl-done` while risk, the assignee and the horizon show nowhere else in the tree, and the asymmetry is
+  `pbl-done` while risk, the priority, the assignee and the horizon show nowhere else in the
+  tree, and the asymmetry is
   recorded in ADR 0023's Consequences rather than argued into a rule. That
   is a question about the Base's configuration, not about the pane: narrowing is a space
   decision — the pane draws fewer of the resolved columns (`host.columnFit`) and the

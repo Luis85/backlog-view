@@ -90,14 +90,16 @@ can be checked by reading one directory.
   `2026-08-01 Planning` parses as a date — treated as one, re-picking `2026-08-01 Review`
   compares equal and writes nothing, and the merge carries ` Planning` onto its
   replacement. `axisEntries` yields the FIELD with the key so that stays decidable.
-- The LABEL properties (`ItemWrite.risk`, `ItemWrite.assignee`) are those same two rules a
-  third time, in `applyLabels`, and they share the axis's writer with neither: a label is a
-  value the user picked or typed, so it takes the horizon's plain `setOwn` rather than the
-  dated ends' civil-date equality and datetime merge. One loop over a list pairing each
-  planned value with its configured key, because the two want the identical two lines —
+- The LABEL properties (`ItemWrite.risk`, `ItemWrite.priority`, `ItemWrite.assignee`) are
+  those same two rules a
+  third time, in `applyLabels`, and they share the axis's writer with none of them: a label
+  is a value the user picked or typed, so it takes the horizon's plain `setOwn` rather than
+  the dated ends' civil-date equality and datetime merge. One loop over a list pairing each
+  planned value with its configured key, because they want the identical two lines —
   `applyRisk` alone was the third restatement of the rule, and the assignee was the fourth
-  property, which is where the root guide said copying stops paying. A fifth label is a row
-  in that list. Each key joins `touchedKeys` on the very condition the writer writes on,
+  property, which is where the root guide said copying stops paying. The priority is the
+  proof it stopped: a third label cost one row in that list and nothing else here, and a
+  fourth is another row. Each key joins `touchedKeys` on the very condition the writer writes on,
   which is what makes a label and its removal undoable — a key written but not captured is
   a change no undo could reach.
 - Two writes here are not work items — the `.base` file and the generated README — and

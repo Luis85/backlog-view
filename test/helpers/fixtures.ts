@@ -93,6 +93,10 @@ export function demoOptions(): Record<string, unknown> {
 		// The levels are left at the shipped default, so the harness draws the chip against
 		// the vocabulary a vault gets by pressing ✨ rather than one invented here.
 		riskProperty: 'note.risk',
+		// The second declared ladder, left at ITS shipped default for the same reason — so
+		// the harness draws the MoSCoW chip a vault gets from pressing ✨, beside the risk
+		// chip it has to be told apart from at a glance.
+		priorityProperty: 'note.priority',
 		// A key and nothing beside it — the whole configuration the CHIP takes, and the
 		// reason the harness can draw it against a vocabulary the fixture's own notes
 		// supply rather than one declared here.
@@ -145,7 +149,17 @@ export function demoOrder(): string[] {
 	// `note.points` is the one column here that is NOT one of ours: a plain Bases value,
 	// which is what `renderCell` falls through to and what every vault has. Nothing in any
 	// fixture drew that branch until 2026-08-15.
-	return ['note.status', 'note.horizon', 'note.risk', 'note.assignee', 'note.start', 'note.due', 'note.points', 'note.tags'];
+	return [
+		'note.status',
+		'note.horizon',
+		'note.risk',
+		'note.priority',
+		'note.assignee',
+		'note.start',
+		'note.due',
+		'note.points',
+		'note.tags',
+	];
 }
 
 /**
@@ -185,6 +199,9 @@ export function demoVault(layout: Layout = 'flat', extra = 0): FakeVault {
 	// The three risk cases the chip has to draw, on rows that sit near each other: a level
 	// from the declared list here, one the list does not name on `Offline-first sync`, and
 	// every other row unjudged — which is the dashed, inviting chip and the commonest face.
+	// The priority chip's three faces are the same three, on the same rows and for the same
+	// reason, which is also what puts two ladders side by side: the widest MoSCoW rung here,
+	// an unlisted `P0` on `Offline-first sync`, and the dashed invitation everywhere else.
 	// The assignee chip's two faces sit beside the risk chip's for the same reason: a name
 	// here and on `Welcome tour` below, every other row unassigned — the dashed, inviting
 	// chip, which is the commonest face of both.
@@ -192,7 +209,7 @@ export function demoVault(layout: Layout = 'flat', extra = 0): FakeVault {
 	// they wrap and where the row's own width is spent), exactly one, and — everywhere
 	// else — none, since an empty tags cell is the commonest face of that column and the
 	// one a row full of pills has to be read against.
-	add('Single sign-on', { type: 'PBI', order: 20, status: 'Review', started: '2026-07-20', horizon: 'Now', start: '2026-07-20', due: '2026-08-15', risk: '1 - High', assignee: 'Dana', tags: ['auth', 'security', 'needs-design'] }, 'Sign-up flow', 'Use cases');
+	add('Single sign-on', { type: 'PBI', order: 20, status: 'Review', started: '2026-07-20', horizon: 'Now', start: '2026-07-20', due: '2026-08-15', risk: '1 - High', priority: '2 - Should', assignee: 'Dana', tags: ['auth', 'security', 'needs-design'] }, 'Sign-up flow', 'Use cases');
 	add('Provider handshake', { type: 'Task', order: 10, status: 'Active' }, 'Single sign-on');
 	add('Token refresh', { type: 'Task', order: 20 }, 'Single sign-on');
 	add('Welcome tour', { type: 'Feature', order: 20, status: 'Ready', horizon: 'Next', assignee: 'Kim', tags: ['onboarding'] }, 'Onboarding');
@@ -206,7 +223,7 @@ export function demoVault(layout: Layout = 'flat', extra = 0): FakeVault {
 	// rung two below the Epic holding it. Dated, so an extra type draws a bar as well.
 	// Waits for `Single sign-on`, which ends 08-15 — after this one starts. A CONFLICT
 	// arrow, and the marker on this row.
-	add('Offline-first sync', { type: 'Idea', order: 30, status: 'Active', horizon: 'Next', start: '2026-08-10', due: '2026-10-15', dependsOn: '[[Single sign-on]]', risk: 'Existential' }, 'Onboarding');
+	add('Offline-first sync', { type: 'Idea', order: 30, status: 'Active', horizon: 'Next', start: '2026-08-10', due: '2026-10-15', dependsOn: '[[Single sign-on]]', risk: 'Existential', priority: 'P0' }, 'Onboarding');
 	add('Survey the storage APIs', { type: 'Task', order: 10, status: 'Active' }, 'Offline-first sync');
 	// A bar exactly one day wide — start and target on the same date, an ordinary PBI
 	// rather than a Milestone, so it draws the diamond from its GEOMETRY. The case where
@@ -260,9 +277,9 @@ export function demoVault(layout: Layout = 'flat', extra = 0): FakeVault {
 	add('Dana has a training week', { type: 'Absence', assignee: 'Dana', start: '2026-08-12', due: '2026-08-18' });
 
 	// A parent the Base excludes, with a child it returns: the context row on screen.
-	// Carries a risk and an assignee too, so the context row draws both STATIC chips beside
+	// Carries a risk, a priority and an assignee too, so the context row draws all three STATIC chips beside
 	// the static state — and its name is one the menus must never offer to a result.
-	add(OUTSIDE, { type: 'Epic', order: 30, status: 'Done', risk: '3 - Low', assignee: 'Dana' });
+	add(OUTSIDE, { type: 'Epic', order: 30, status: 'Done', risk: '3 - Low', priority: '3 - Could', assignee: 'Dana' });
 	add('Legacy importer', { type: 'Feature', order: 10, status: 'Ready' }, 'Retired platform');
 
 	// Deliverables, on their own workflow: one per column so the fourth projection draws
@@ -368,6 +385,7 @@ function addBulk(add: ReturnType<typeof adder>, count: number): void {
 			// would have been measuring the shelf instead of the bars. (Codex, PR #128.)
 			due: bulkDate(i, 20),
 			...(i % 11 === 0 ? { risk: '2 - Medium' } : {}),
+			...(i % 7 === 0 ? { priority: '1 - Must' } : {}),
 			...(i % 13 === 0 ? { assignee: 'Dana' } : {}),
 		};
 		if (at === 0) add((epic = `Bulk epic ${i + 1}`), { ...fm, type: 'Epic' });

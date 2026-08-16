@@ -281,13 +281,14 @@ and the column or bucket just vacated may be gone with its last card.
 before adding another optional property. The state key guards inline
 (`write.removeStateKey && settings.stateKey` in `applyInto`); the axis keys go through
 `axisEntries`, where `key !== ''` drops an unconfigured one and a `null` value means
-delete; the plain LABEL properties — the risk level and the assignee — go through
-`applyLabels`, one loop over a list pairing each planned value with its configured key.
+delete; the plain LABEL properties — the risk level, the priority and the assignee — go
+through `applyLabels`, one loop over a list pairing each planned value with its configured
+key.
 That third shape was `applyRisk`, a four-line restatement of the rule, until the assignee
 arrived (2026-08-10) — which is exactly the case this paragraph said to re-examine at: a
 fourth property wanting those two lines and none of the axis's civil-date equality or
-datetime merge. It was extracted rather than copied, so a fifth label is a row in that
-list. What has NOT been extracted is the rule across all three shapes, and that is still
+datetime merge. It was extracted rather than copied, and the priority (2026-08-16) is what
+collected on that: a third label property cost one row in the list and no new shape at all. What has NOT been extracted is the rule across all three shapes, and that is still
 deliberate: a helper general enough to cover the axis too would have to carry the date
 handling past the properties that must not have it. This paragraph said the opposite until
 2026-08-08, naming a `writeOptional` and a `removeHorizonKey` that have never existed: a

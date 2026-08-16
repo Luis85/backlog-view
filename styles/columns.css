@@ -178,9 +178,9 @@
 	}
 }
 
-/* Clickable workflow-state, horizon, risk and assignee chips (real buttons, minus the
-   button chrome). One shape for four properties: they sit in adjacent columns on the same
-   row, and a second look would read as a second kind of thing.
+/* Clickable workflow-state, horizon, risk, priority and assignee chips (real buttons,
+   minus the button chrome). One shape for five properties: they sit in adjacent columns on
+   the same row, and a second look would read as a second kind of thing.
 
    All of them are real `<button>`s (see `renderStateChip`/`renderHorizonChip`/`renderLabelChip` in
    `render/columns.ts`), which lose `color`, `background-color` AND `box-shadow` to
@@ -197,11 +197,13 @@
 .pbl-state-chip,
 .pbl-horizon-chip,
 .pbl-risk-chip,
+.pbl-priority-chip,
 .pbl-assignee-chip,
 .pbl-date-chip,
 button.pbl-state-chip,
 button.pbl-horizon-chip,
 button.pbl-risk-chip,
+button.pbl-priority-chip,
 button.pbl-assignee-chip,
 button.pbl-date-chip {
 	appearance: none;
@@ -230,6 +232,7 @@ button.pbl-date-chip {
 .pbl-state-chip:not(.pbl-state-static):hover,
 .pbl-horizon-chip:not(.pbl-state-static):hover,
 .pbl-risk-chip:not(.pbl-state-static):hover,
+.pbl-priority-chip:not(.pbl-state-static):hover,
 .pbl-assignee-chip:not(.pbl-state-static):hover,
 .pbl-date-chip:not(.pbl-state-static):hover {
 	background-color: var(--background-modifier-hover);
@@ -247,6 +250,7 @@ button.pbl-date-chip {
 .pbl-state-chip:focus-visible,
 .pbl-horizon-chip:focus-visible,
 .pbl-risk-chip:focus-visible,
+.pbl-priority-chip:focus-visible,
 .pbl-assignee-chip:focus-visible,
 .pbl-date-chip:focus-visible {
 	outline: 1px solid var(--interactive-accent);
@@ -262,6 +266,7 @@ button.pbl-date-chip {
 .pbl-state-chip .svg-icon,
 .pbl-horizon-chip .svg-icon,
 .pbl-risk-chip .svg-icon,
+.pbl-priority-chip .svg-icon,
 .pbl-assignee-chip .svg-icon,
 .pbl-date-chip .svg-icon {
 	width: var(--icon-xs);
@@ -286,15 +291,18 @@ button.pbl-date-chip {
 .pbl-state-chip.pbl-state-unset,
 .pbl-horizon-chip.pbl-horizon-unset,
 .pbl-risk-chip.pbl-risk-unset,
+.pbl-priority-chip.pbl-priority-unset,
 .pbl-assignee-chip.pbl-assignee-unset,
 .pbl-date-chip.pbl-date-unset {
 	color: var(--text-faint);
 	border-style: dashed;
 }
 
-/* Five chip classes now appear in each of the five lists above, and the next chip makes
-   it six in each. That is an enumeration, and it is kept deliberately rather than
+/* Six chip classes now appear in each of the five lists above, and the next chip makes it
+   seven in each. That is an enumeration, and it is still kept deliberately rather than
    collapsed onto a shared marker class: doing so means adding a class in every chip
    renderer and re-checking every test that asserts on chip markup, which is a larger and
-   riskier change than the one it would save. Collapse it when a chip is added for a
-   reason of its own, not on the way past. */
+   riskier change than the one it would save. The priority chip did not earn it — it is a
+   LABEL chip, so it took `LABEL_CHIPS`' existing row and asked nothing of these lists that
+   the assignee had not already asked. Collapse it when a chip arrives that needs a shape
+   of its own, not on the way past. */
