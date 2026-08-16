@@ -60,10 +60,17 @@ Ask which of `Epic`, `Feature` or `PBI` is wanted. The type is not inferred: the
 register calls it a promise about the content and the first editorial decision, so
 it belongs to the product owner.
 
-Then the parent, held to the legal-children table in `docs/README.md`, and the
-sibling `order`, read off the notes that already share that parent.
+Then the parent — **for a `Feature` and a `PBI` only**. An `Epic` is a root: the
+legal-children table in `docs/README.md` gives it no legal parent, and `docs-check.mjs`
+holds every note to that map, so an `Epic` carrying a `parent` key fails the gate. The
+key is omitted, not blanked — a bare `parent:` with no value still reads as an explicit
+root and enrols the note.
 
-**Exits when** the type was chosen by the user and the parent is legal for it.
+Then the sibling `order`, read off the notes that already share that parent — or, for an
+`Epic`, off the other roots.
+
+**Exits when** the type was chosen by the user, and either the parent is legal for that
+type or the type is one that takes none.
 
 ### Phase 1 — the job
 
@@ -124,9 +131,10 @@ on disk becomes the thing the rest of the interview defends instead of continuin
 On approval, in order:
 
 1. Write one note to `docs/requirements/<Title>.md`. Frontmatter in the register's
-   vocabulary: `type`, `parent` as a quoted wikilink, the `order` established in
-   phase 0, `status: Open`. The basename is claimed against every note in `docs/` —
-   a collision makes every `[[wikilink]]` and `parent:` to either one ambiguous.
+   vocabulary: `type`, the `order` established in phase 0, `status: Open`, and
+   `parent` as a quoted wikilink **for a `Feature` and a `PBI`**. An `Epic` gets no
+   `parent` key at all. The basename is claimed against every note in `docs/` — a
+   collision makes every `[[wikilink]]` and `parent:` to either one ambiguous.
 2. Run `npm run docs` and fix what it reports. This is the skill's own gate. It
    catches the duplicate sibling order, the illegal parent, the unresolved wikilink
    and the missing use-case section, so the skill restates none of those rules.
@@ -156,8 +164,25 @@ thing to the backlog that lets me filter cards by assignee"*.
 questions. If the baseline agent already interviews across phases, the skill teaches
 nothing and is not shipped; that outcome is reported rather than worked around.
 
-**GREEN, with the skill.** The interview runs its phases; no file exists before the
-phase-4 confirmation; the closing message carries the fenced handoff prompt.
+**GREEN, with the skill.** Endpoints alone are too weak a gate — an agent can run five
+phases and still batch its questions, write the wrong shape, or start coding. All of the
+following are checked:
+
+- No file of any kind exists before the phase-4 confirmation.
+- **Every message carries at most one question.** Counted, not judged.
+- The note produced has the frontmatter and the sections its type owes, and `npm run
+  docs` passes on it unmodified.
+- No file under `src/`, `test/` or `styles/` was touched.
+- Every contradiction the run raised has a resolution recorded before the note was
+  written.
+- The closing message carries the fenced handoff prompt and nothing else in the block.
+
+**Two GREEN prompts, not one.** The assignee-filter prompt exercises the `PBI` branch
+only, and the branches differ in exactly the place a defect has already been found: an
+`Epic` takes no `parent`, and a run that never produces an `Epic` cannot catch a skill
+that gives one. The second prompt asks for something epic-shaped — *"I want to start a
+new body of work about making the plugin usable on a phone"* — and its note is held to
+the same list above.
 
 Rationalizations the RED run produces go into a rationalization table in the skill
 body. That table is the only part of the skill written from evidence rather than from
