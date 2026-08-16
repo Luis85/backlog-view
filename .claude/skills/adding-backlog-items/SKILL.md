@@ -11,6 +11,24 @@ Interview the product owner until you share one understanding of the item, then 
 **Announce at start:** "Using adding-backlog-items to interview you before anything is
 written."
 
+## Precedence over brainstorming
+
+`superpowers:brainstorming` matches the same requests and, as a process skill, would
+normally win. **For a request to record something in the backlog, this skill takes
+precedence and `brainstorming` is not invoked.** Do not run both.
+
+The reason is their endings, which are incompatible rather than merely different:
+`brainstorming`'s terminal state is invoking `writing-plans`, and this skill's terminal
+state is a backlog note plus a prompt for a *separate* session. An agent that starts in
+`brainstorming` ends in an implementation plan, which is the one outcome the product owner
+did not ask for.
+
+This skill *is* the brainstorming process for a backlog item — the interview, the options,
+the design gate — targeted at the register's own note shapes.
+
+If the user asks to design or build the thing rather than to record it, that is
+`brainstorming`'s request, not this one. Hand it over.
+
 ## What this skill teaches, and what it does not
 
 Baseline runs without this skill already research `docs/` for prior art, find the note
