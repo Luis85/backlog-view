@@ -34,11 +34,19 @@ clamped to it and reported rather than silently extending the scale; a value tha
 number is a missing score, which is the partial-profile rule and not an arithmetic
 question.
 
-**A range must increase**: `min < max`, refused at the point it is configured, because
-`min == max` divides by zero and `min > max` makes the clamp and the direction mean two
-things at once. A saved model that already holds an invalid range computes nothing and says
-which dimension is wrong — the same shape as this plugin's existing configuration warnings,
-where a view that cannot be trusted to write says so instead of writing.
+**A range must increase and it must be whole**: `min < max`, both integers, one point per
+step. `min == max` divides by zero and `min > max` makes the clamp and the direction mean
+two things at once; fractional bounds are refused for a different reason — a range of 0–1.5
+cannot say how many scores exist, so the selector, the rubric's one-sentence-per-point rule
+([[A rubric for every point]]) and the fingerprint would each have to guess, and would guess
+differently. Whole bounds make the count arithmetic: `max − min + 1`. A saved model holding a
+range that breaks either rule computes nothing and says which dimension is wrong — the same
+shape as this plugin's existing configuration warnings, where a view that cannot be trusted
+to write says so instead of writing.
+
+A finer scale is a wider range, not a fractional step: a team wanting halves between 1 and 5
+declares 2–10. Steps of their own are refused for the reason the whole register refuses
+options — nothing needs one that a range cannot already express.
 
 **Outcome** — A team scores what it actually cares about, under the property names its
 vault already uses, and any two implementations of the model agree on the number.

@@ -142,6 +142,15 @@ Three quantities stay **outside** that sum and beside it:
   ([[Setting the risk on an item]]) — the view names its keys in the view options and
   invents none, an unconfigured key is never written, and a vault with nothing configured
   gets no estimation surface rather than a broken one.
+
+  **The total and its stamp are one key pair, not two settings.** Scoring is offered only
+  where both are bound, because either one alone breaks a guarantee below rather than
+  weakening it: a total with no stamp is the unattributed number that
+  [[Comparing across products]] counts separately, and a stamp with no total describes a
+  model that wrote nothing. So the view refuses to score until both are named — the same refusal it makes
+  for a broken range, in the same place, saying which of the two is missing — and never
+  the partial behaviour that would otherwise be an implementer's choice between
+  suppressing scoring, dropping the total and persisting an unstamped one.
 - **The consolidated value is written back; nothing else is.** The business value is the
   one derivation that leaves the view, because its whole job is to be read by views that
   do not implement the model — the backlog row, a Bases filter, a sort, another plugin. It
