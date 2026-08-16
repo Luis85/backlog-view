@@ -17,7 +17,7 @@ started: ""
 finished: ""
 horizon: ""
 start: 2026-08-14
-due: 2026-08-15
+due: 2026-08-14
 risk: ""
 assignee: ""
 ---
