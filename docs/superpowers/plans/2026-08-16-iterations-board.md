@@ -62,7 +62,7 @@ Identical to the foundation plan's — reproduced so this file stands alone.
 | `src/view/interactions/cardDrag.ts` | `announceBoardMove` asks the bucket question |
 | `src/ui/iterationDialog.ts` | **new** — the create/edit modal |
 | `src/view/interactions/create.ts` | the `NewItemSpec` carries the scope's link and dates |
-| `src/storage/frontmatter.ts` | `NewItemSpec` gains the iteration and the axis |
+| `src/storage/frontmatter.ts` | `NewItemSpec` gains the iteration and the axis (Task 8), and the goal (Task 9) |
 | `src/domain/writePlan.ts` | `computeIterationNoteWrites` (the edit) |
 | `styles/board.css` | the goal line |
 
@@ -456,12 +456,40 @@ Colliding basenames are qualified, **and only where they collide**.
 ### Task 6: Moves, and the guard that a bucket is not a state
 
 **Files:**
-- Modify: `src/view/cardMoves.ts`, `src/view/interactions/cardDrag.ts`
+- Modify: `src/view/cardMoves.ts` — the method
+- Modify: `src/view/interactions/cardDrag.ts` — the drop, and `announceBoardMove`
+- Modify: `src/view/interactions/keyboard.ts` — the Alt+arrow route
+- Modify: `src/view/interactions/menu.ts` — `chooseState`, and its checkmark planner
 - Test: `test/view/contextCardWrites.test.ts`, `test/view/iterationBoard.test.ts`
 
 **Interfaces:**
-- Consumes: `bucketOf`, `bucketRepresentative` (Task 2).
+- Consumes: `bucketOf`, `bucketRepresentative` (Task 2), `toolbarPosition` and the projection questions (Task 4).
 - Produces: `host.performIterationBoardMove(item: BacklogItem, bucket: IterationBucket): Promise<boolean>`.
+
+**Adding the method is not the task. Routing to it is.** Two of the three inputs reach a
+move method by asking the item's **type before** the projection, and both are wrong here
+for different reasons — so a Task 6 that added the guard and stopped would ship a board
+whose drag obeyed it and whose keyboard and menu did not.
+
+- **`keyboard.ts`** ends its board handler with `if (isDeliverableType(card.typeName))
+  void host.performDeliverablesBoardMove(card, state); else void
+  host.performBoardMove(card, state);`. On an iteration board a `Deliverable` therefore
+  moves by Alt+arrow into the **Deliverables** state key — a second vocabulary on a board
+  that has one — and every other card bypasses the bucket guard entirely.
+- **`menu.ts`**'s `chooseState` is worse, and its own comment says so out loud: *"The
+  item's TYPE picks the move method FIRST, before either projection test."* A Deliverable
+  goes to the Deliverables move as above; and its next test is `host.projection ===
+  'board'`, which is **false** for `'iteration'` — so an ordinary PBI's `Set state` falls
+  through to the **tree's** branch and plans `computeStateWrites` directly, reaching no
+  board move method at all.
+
+`chooseState`'s comment is right about the Deliverables board and wrong as a general rule
+the moment a third card projection exists. The projection is asked **first** here; the
+type keeps deciding only once the projection has not claimed the move.
+
+**And the menu's checkmark planner has the same exact-state defect as the move.** It asks
+what a pick would write, so on this board it must ask the **bucket** — otherwise `Ready`'s
+row shows Open unchecked while the card is visibly sitting in it.
 
 **Two sites break if the bucket question is not asked, and they break differently.**
 
@@ -482,11 +510,56 @@ it('writes the bucket representative when the bucket changes', async () => { /* 
 it('announces the bucket it came from, not a column matched by exact state', async () => { /* … */ });
 it('refuses a drop on a bucket with nothing to write', async () => { /* … */ });
 it('removes the key on a drop on Open when no open state survives', async () => { /* … */ });
+
+// The routing, which is the half a guard alone does not buy.
+it('writes the PRODUCT key for a Deliverable, on every input', async () => {
+	// Alt+arrow and Set state both dispatch on the type BEFORE the projection today, so
+	// a Deliverable reaches `performDeliverablesBoardMove` and writes the wrong key.
+	// A PBI takes the right path under either order — so this must be asserted with a
+	// Deliverable on each input, never once with whatever card is handy.
+});
+it('reaches a board move method at all for an ordinary card in the menu', async () => {
+	// `chooseState` tests `host.projection === 'board'`, which is FALSE for 'iteration',
+	// so a PBI's Set state falls through to the TREE branch and plans
+	// `computeStateWrites` directly — no bucket guard, no announcement.
+});
+it('checks the bucket the card is in, not the column whose state it matches', async () => {
+	// The checkmark planner has the move's exact-state defect: `Ready` in an Open bucket
+	// whose representative is `New` would render Open unchecked while the card sits in it.
+});
 ```
 
-Drive each through **all three inputs** — the drag, Alt+arrow and the card menu — as `contextCardWrites.test.ts` already does for the other boards. A PBI takes the right path under either order; the rule has to be checked with a `Deliverable` on each input rather than once.
+Drive each through **all three inputs** — the drag, Alt+arrow and the card menu — as `contextCardWrites.test.ts` already does for the other boards.
 
-- [ ] **Step 2–5:** run and watch them fail; implement; watch them pass; then make `performIterationBoardMove` delegate unconditionally and watch the same-bucket test go red. Commit.
+- [ ] **Step 2: Run and watch them fail**
+
+Run: `npx vitest run test/view/iterationBoard.test.ts test/view/contextCardWrites.test.ts`
+
+- [ ] **Step 3: Add the method, then route to it**
+
+`performIterationBoardMove` in `cardMoves.ts`, then **both** routing modules:
+
+- `keyboard.ts`'s board handler asks the projection before the type, and hands the
+  **bucket** rather than a column state.
+- `chooseState` in `menu.ts` asks the projection first, and its comment is rewritten:
+  what it says today is true of the Deliverables board and false as a general rule now a
+  third card projection exists.
+- the checkmark planner beside it asks `bucketOf` on this board.
+
+- [ ] **Step 4: Run and watch them pass**
+
+- [ ] **Step 5: Break each half separately, and watch the right test go red**
+
+Three reverts, one at a time — the bucket guard, the keyboard's routing, the menu's
+routing. Each must redden its own test and no other. Two defects fixed by one change is a
+sign the tests do not distinguish them, and these three fail in different places.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src/view/cardMoves.ts src/view/interactions/ test/
+git commit -m "Route every board input through the bucket question"
+```
 
 ---
 
@@ -580,6 +653,7 @@ git commit -m "Create a card into the iteration it was created on"
 **Files:**
 - Create: `src/ui/iterationDialog.ts`, `src/domain/iterations.ts`
 - Modify: `src/view/render/toolbarControls.ts`, `src/domain/writePlan.ts`, `src/view/interactions/structure.ts`
+- Modify: `src/storage/frontmatter.ts` — `NewItemSpec.iterationGoal`, written by `createBacklogItem`
 - Test: `test/domain/iterationSchedule.test.ts` (create), `test/view/iterationBoard.test.ts`
 
 **Interfaces:**
@@ -621,10 +695,27 @@ it('abuts rather than overlaps: start is the previous target plus one day', () =
 
 Creating goes through `createBacklogItem` with the type, the folder, both dates and the goal in **one** write, then opens the note. Editing plans `computeIterationNoteWrites` and applies through `applySafely`.
 
+**`NewItemSpec` needs a third new field, and this task adds it.** Task 8 gave it
+`iteration` and `axis`, which is what a *card* created on a board carries — a card has no
+goal. The dialog's create carries one, and there is no field to serialize it in the
+initial `vault.create`, so without this the note would need a second write and the
+one-write shape this task promises is unreachable. `iterationGoal?: string` on
+`NewItemSpec`, written by `createBacklogItem` under `settings.iterationGoalKey` on the
+same condition `applyLabels` writes it on — and only while that key is configured, like
+every other optional key.
+
+That is why `src/storage/frontmatter.ts` is in this task's file list and its commit. Two
+tasks extending one interface is fine; two tasks extending it and only one remembering the
+module is how an API ends up unable to express what a caller was promised.
+
 - [ ] **Step 6: Test the write shapes**
 
 ```ts
-it('creates with the type, both dates and the goal in one write', () => { /* never a create then a write */ });
+it('creates with the type, both dates and the goal in one write', () => {
+	// One `vault.create`, no `applySafely` afterwards — asserted on the calls, as Task 8
+	// does, because create-then-write also ends up correct.
+});
+it('writes no goal when the goal property is unconfigured', () => { /* … */ });
 it('omits a field whose property is unconfigured, on both paths', () => {
 	// The goal and each date separately, and all three unset — where the dialog is a
 	// name alone and the action still works. An unconfigured key is never written, so a
@@ -646,7 +737,7 @@ Add a member re-stamp to the edit plan. The "names one file" test must go red. R
 
 ```bash
 npm run check
-git add src/ui src/domain src/view test/ && git commit -m "Create and edit an iteration from the board's scope picker"
+git add src/ui src/domain src/view src/storage test/ && git commit -m "Create and edit an iteration from the board's scope picker"
 ```
 
 ---
@@ -677,4 +768,6 @@ git add src/ui src/domain src/view test/ && git commit -m "Create and edit an it
 
 **Coverage, re-run after review.** The first version of this plan had nine tasks and no task for extension 5c, so every one of them could have gone green while a card created from an iteration board's `+` carried no iteration and no dates and vanished on the next refresh. `src/view/interactions/create.ts` is the New flow's own route and is a different module from Task 9's dialog, which is how a plan that named the dialog read as though creation were covered. Task 8 is that gap, and the lesson generalises: when a spec says *created into X*, check the create path and the dialog separately, because they are two modules and only one of them is obvious.
 
-**Type consistency.** `IterationBucket` is `'open' | 'inProgress' | 'resolved'` everywhere. `bucketRepresentative` returns `string | null | undefined` in Tasks 2, 6 and 7, with `undefined` meaning "no drop" in all three. `performIterationBoardMove(item, bucket)` takes the **bucket**, never a state — the whole point of Task 6. `ViewPrefs.scope` is a path in Tasks 4, 8 and 9. `NewItemSpec.iteration` is a `TFile` in Task 8, matching `ItemWrite.iteration` in the foundation plan — both are files because both are written by `wikilinkTo`.
+**Coverage, second re-run.** Two more gaps of the Task-8 kind, both found by review rather than by this checklist. Task 6 defined the bucket guard and named only the drag's modules, leaving `keyboard.ts` and `menu.ts` routed around it — and `chooseState`'s `host.projection === 'board'` test is false for `'iteration'`, so an ordinary card's `Set state` would not have reached a board move method at all. Task 9 promised a one-write create carrying the goal while no task gave `NewItemSpec` a field to hold one. Both are the same shape as Task 8's: **a rule stated in one module and reached through others.** The check that finds them is not "does each spec section have a task" but "for each behaviour, which modules does an input traverse to reach it" — asked of the call sites, not of the section headings.
+
+**Type consistency.** `IterationBucket` is `'open' | 'inProgress' | 'resolved'` everywhere. `bucketRepresentative` returns `string | null | undefined` in Tasks 2, 6 and 7, with `undefined` meaning "no drop" in all three. `performIterationBoardMove(item, bucket)` takes the **bucket**, never a state — the whole point of Task 6. `ViewPrefs.scope` is a path in Tasks 4, 8 and 9. `NewItemSpec.iteration` is a `TFile` in Task 8, matching `ItemWrite.iteration` in the foundation plan — both are files because both are written by `wikilinkTo`. `NewItemSpec.iterationGoal` is a `string` in Task 9, matching `ItemWrite.iterationGoal`; `src/storage/frontmatter.ts` is in the file list and the commit of both tasks that extend that interface.
