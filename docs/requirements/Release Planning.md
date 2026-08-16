@@ -34,6 +34,18 @@ The scenario is the part that decides the design: trying a scope change must not
 anything until it is committed, which means the view holds a proposed membership beside the
 real one and says clearly which is on screen.
 
+## A release is not a milestone, and both stay
+
+The register already has a `Milestone`: a date owned by nobody, holding nothing, counting for
+nothing, hanging from nothing ([[Milestones]]). A release is the other half of that question —
+it **holds** scope, work points at it, and it has numbers of its own. Keeping both is
+deliberate: "the date we promised" and "the set of things going out" are different facts, and
+a vault that only wants the first still gets it without configuring a release.
+
+They meet on the roadmap, where a release may draw as a marker the same way a milestone does,
+and nowhere else. Neither is a rung: work names its release in a property, exactly as it
+names an objective or a dependency.
+
 ## Definition of done, for anything under this epic
 
 - Membership is one property naming a release note. Nothing is duplicated into the release.

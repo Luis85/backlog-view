@@ -60,6 +60,13 @@ The two are not the same shape with different labels:
   flat one. A rename touches every import, every layer rule, every `## Where it lives`
   section in the register, and the docs check that verifies them.
 
+**The test tree is the same disagreement, one directory down.** The document proposes
+`tests/unit`, `tests/integration` and `tests/fixtures`; this repository's `test/` mirrors
+`src/` directory for directory, which is what makes "where does the test for this module
+live" answerable without a convention nobody can check. Whichever way the source tree goes,
+these two answers have to agree, because a test tree organised by *kind* and a source tree
+organised by *layer* is the arrangement where a moved module leaves its test behind.
+
 ## What a decision would look like
 
 Not a big-bang rename. The parts that can be answered separately:

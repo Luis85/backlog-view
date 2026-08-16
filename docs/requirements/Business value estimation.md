@@ -77,6 +77,14 @@ writes a consolidated value onto the note; the backlog view reads it if it has b
 which key holds it, exactly as it reads a risk level today, and shows it without knowing
 what a dimension is.
 
+**This is not the MoSCoW priority the backlog already has.** [[Prioritization]] reads a
+priority a person *states* on the row — must, should, could, won't — and that is a judgement,
+made in one move, needing no evidence. This epic derives a number from answers and says what
+went into it. The two are complementary and must not be wired together: a score never writes
+the priority property, and a priority never enters the model. Where they disagree, that
+disagreement is information — a `Must` scoring 2.1 is a conversation worth having, and a view
+that silently reconciled them would delete it.
+
 ## The default model
 
 The value dimensions and their default weights, which must total 100 and must be
@@ -162,8 +170,14 @@ Three quantities stay **outside** that sum and beside it:
   call a total current that its own inputs contradict. A different stamp means another
   model produced it; an absent one means it was written by hand or by something else. None
   of the three failures is shown as current, and the estimation status is where that
-  surfaces — `Needs re-estimation`, not a silent pass. A total whose inputs are gone is removed, not left
-  standing.
+  surfaces — `Needs re-estimation`, not a silent pass.
+
+  **A total whose inputs are gone is reported, and removed by an action.** Scores deleted in
+  Obsidian's property editor or by another plugin leave an orphan behind, and no rule here
+  may turn that into a write nobody asked for: the view says the total has no inputs, and it
+  is removed by the next estimation action on that item or by an explicit cleanup the reader
+  invokes — never on a render pass, never by a sweep. A gate that writes while nobody is
+  looking is a worse failure than a stale number that says it is stale.
 - **A result can always be decomposed.** Anywhere a score appears, the dimensions and
   weights that produced it are reachable. A number a reader cannot take apart is the
   problem this epic was opened about.

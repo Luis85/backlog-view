@@ -65,6 +65,21 @@ That disagreement is [[The SDD's layers are not the four this repository enforce
 is answered there, not here: this epic needs one implementation of each concept, and is
 indifferent to which directory it sits in.
 
+## What the capabilities cost the vocabulary
+
+The epics under and beside this one ask, between them, for about sixteen new item types —
+against the eleven the plugin declares and the eight hues Obsidian ships. A type is not
+scoped to the view that wanted it: it appears in every type menu, needs a badge nothing else
+wears, and enters the map that decides what a drag means. That is
+[[Ten capabilities want sixteen new types]], and no capability here ships a type before that
+issue places it, because the alternative is what happened to the palette once already —
+each type reaching for whichever hue looked least crowded, on branches that could not see
+each other.
+
+The default the register's own precedents point at is that most of them are not types at
+all: a type is for something the tree ranks, and everything else is a note a property points
+at.
+
 ## Definition of done, for anything under this epic
 
 - A capability is a registered view type with its own options, its own state and its own
