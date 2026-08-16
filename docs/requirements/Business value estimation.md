@@ -63,10 +63,14 @@ easier to read.
 So it registers separately, as its own view type beside the backlog's: its own name and icon
 in Obsidian's view picker, its own view options describing estimation keys and weights only,
 its own entry in the view-state store — and a vault chooses it per saved view, the way it
-chooses any Bases view. It is the first capability to follow [[A view per capability]], and
-the shared kernel that epic extracts is what it reads the tree with. The backlog view's toolbar does not grow, its options do not gain a section nobody
-using the tree will read, and the two views share the layers below them: one write
-boundary, one gate, one undo history, one model of what a work item is.
+chooses any Bases view. The backlog view's toolbar does not grow, its options do not gain a
+section nobody using the tree will read, and the two views share the layers below them: one
+write boundary, one gate, one undo history, one model of what a work item is.
+
+It is the first capability to follow [[A view per capability]], and the shared kernel that
+epic extracts is what it reads the tree with — which is also why the kernel comes first: an
+estimation view built against the backlog view's own internals would be the second
+implementation of a work item, not the second view of one.
 
 What the two views share on the *screen* is a property, not code. The estimation view
 writes a consolidated value onto the note; the backlog view reads it if it has been told
@@ -143,7 +147,9 @@ Three quantities stay **outside** that sum and beside it:
   action that changes any of its inputs, and it is **stamped with the model that produced
   it** — a second property beside the total, holding a fingerprint of **everything that
   decides the arithmetic**: which dimensions are enabled, their weights, the property each
-  one reads, its range and its direction. Not the weights alone — a dimension repointed at
+  one reads, its range, its direction, **and the rubric sentences themselves** — a reach of
+  5 redefined is a 5 that means something else, and every note holding one was scored
+  against the old sentence. Not the weights alone — a dimension repointed at
   a different property that happens to hold the same number today produces the same total
   from a different model, and a fingerprint that cannot see that is a stamp that lies
   exactly when it matters. The total itself stays a plain sortable number, which is why

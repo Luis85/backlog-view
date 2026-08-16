@@ -135,8 +135,19 @@ const NOT_WORK_ITEMS = /(^|[/\\])(adrs[/\\].*|README)\.md$/;
  * `docs/requirements/superpowers/`, and `walk` descends nested directories so that would go
  * unnoticed rather than unmatched.
  */
-const SOURCE_DOCS = [path.join(DOCS, "superpowers"), path.join(DOCS, "prds"), path.join(DOCS, "sdds")];
+const RECEIVED_DOCS = [path.join(DOCS, "prds"), path.join(DOCS, "sdds")];
+const SOURCE_DOCS = [path.join(DOCS, "superpowers"), ...RECEIVED_DOCS];
 const isSourceDoc = (file) => SOURCE_DOCS.some((dir) => file.startsWith(dir + path.sep));
+/**
+ * The narrower half, and the distinction matters: a **received** document was written
+ * somewhere else. Only those two folders are outside this repository's prose conventions —
+ * every cross-reference rule and the checked-claim marker — because their author owed this
+ * repository nothing and editing them to pass is the one thing the verbatim rule forbids.
+ * `superpowers/` is written HERE: it needs no backlog frontmatter, but its links point at
+ * this register and are checked like anyone else's, or a generated spec quietly accumulates
+ * broken ones.
+ */
+const isReceivedDoc = (file) => RECEIVED_DOCS.some((dir) => file.startsWith(dir + path.sep));
 
 const problems = [];
 const fail = (where, message) => problems.push(`${where}: ${message}`);
@@ -429,10 +440,11 @@ for (const file of files) {
 	// from another vault, an illustrative `[[Release 2.4]]` — and none of that is a
 	// reference this repository owes a file. Checking it would force the one edit the
 	// verbatim rule exists to prevent, so `prds/` and `sdds/` are outside every link rule
-	// below as well as outside the backlog shape. The cost is real and accepted: a link in
-	// a source document that DOES name a note here is unverified, so an editorial preamble
-	// on one of them names its notes in prose rather than pretending to a checked link.
-	if (isSourceDoc(file)) continue;
+	// below as well as outside the backlog shape. `superpowers/` is NOT: it is written
+	// here, so its links are checked like anyone else's. The cost is real and accepted: a
+	// link in a received document that DOES name a note here is unverified, so an editorial
+	// preamble on one names its notes in prose rather than pretending to a checked link.
+	if (isReceivedDoc(file)) continue;
 	// A link the 100-column wrap breaks across two lines used to be captured with the
 	// newline inside it, fail the stem lookup, and report as unresolved — a documented
 	// limitation with no detection, so the contributor saw only a false "unresolved
@@ -550,6 +562,10 @@ for (const file of [...files, "README.md"]) {
 	// real possibility here in a way no `docs/` file's is — and a gate that CRASHED on a
 	// tree without one would take every other rule down with it, reporting nothing. The
 	// planted trees in `test/docs/` are exactly such a tree.
+	// A received document may contain the words this convention is spelled with, in bold,
+	// meaning something else entirely — it was written before it ever reached this
+	// repository, and the marker is this repository's convention, not a fact about prose.
+	if (isReceivedDoc(file)) continue;
 	const text = texts.get(file) ?? ((await exists(file)) ? await readText(file) : "");
 	const spans = proseWithSpans(text);
 	// The markers are the PARSER's bold nodes, not a pattern over the source. Three
