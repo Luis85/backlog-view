@@ -16,7 +16,15 @@ assignee: ""
 
 # Work in progress by stage
 
-The current population of each workflow state, read from the same workflow the board
-declares, so the analytics view and the board never disagree about what is in progress.
+The current population of each workflow stage, over a state property and a state list this
+view names for itself. It defaults to the same suggestion every other view starts from, so
+an ordinary vault sees the same stages here as on its board — but the setting is this
+view's own, and nothing here reads another view's configuration or requires that view to
+exist.
 
-**Outcome** — Where the work is sitting right now is one number per stage.
+Where the two are configured differently, this view reports what it was configured to
+report. That is the cost of the rule and it is the right way round: a number that silently
+changed meaning because a different view was reconfigured would be worse.
+
+**Outcome** — Where the work is sitting right now is one number per stage, in a view that
+works whether or not a board was ever added.

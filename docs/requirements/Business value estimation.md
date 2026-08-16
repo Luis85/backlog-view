@@ -141,9 +141,13 @@ Three quantities stay **outside** that sum and beside it:
   **A written total is a copy, and a copy can be wrong.** That cost is accepted here
   rather than waved away, so two things are required of it: it is rewritten by the same
   action that changes any of its inputs, and it is **stamped with the model that produced
-  it** — a second property beside the total, holding a fingerprint of the enabled
-  dimensions and their weights, since the total itself must stay a plain sortable number
-  that any view can read. **Current means two things, and the stamp answers only one of
+  it** — a second property beside the total, holding a fingerprint of **everything that
+  decides the arithmetic**: which dimensions are enabled, their weights, the property each
+  one reads, its range and its direction. Not the weights alone — a dimension repointed at
+  a different property that happens to hold the same number today produces the same total
+  from a different model, and a fingerprint that cannot see that is a stamp that lies
+  exactly when it matters. The total itself stays a plain sortable number, which is why
+  the fingerprint is a property of its own. **Current means two things, and the stamp answers only one of
   them**: the stamp must match the model on screen, *and* the total must equal what that
   model computes from the scores on the note as they are now — which the view has already
   computed, since it draws the decomposition beside it. A score edited in Obsidian's own
