@@ -38,7 +38,14 @@ its own number — a percentage of a plan half of which has no estimate is a fac
 estimates, and hiding that in the denominator makes every objective look small for a reason
 nobody can see.
 
-The denominator is that measure over the population the base returned, and the work aligned
+The denominator is that measure over the population the base returned **minus the strategic
+notes in it**, told apart by the type key and value list
+[[Work with no strategy behind it]] declares — the same discriminator, because this is the
+same population seen from the other side. The base has to return the strategy to draw the
+tree, and counting it here would let an isolated objective lower every objective's coverage
+without adding a day of work to the plan.
+
+The work aligned
 to nothing is reported as its own figure rather than left out: an objective with 20% of the
 plan means something different when half the plan is aligned to no objective at all.
 
