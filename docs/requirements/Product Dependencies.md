@@ -18,8 +18,10 @@ assignee: ""
 
 **What has to happen first is a fact about the plan, and today it is invisible.** This view
 reads the dependency edges the notes already carry, draws them, says which items are
-blocked and why, finds the cycles, and highlights the chains that reach a release or a
-milestone.
+blocked and why, finds the cycles, and highlights the chains that reach something with a
+date or a commitment — a release, an objective, high-priority work, a dated item. Not a
+milestone: nothing points at one, so no chain can be shown to reach it, and
+[[Chains that reach a release]] says why in full.
 
 **Outcome** — Sequencing stops being something a person holds in their head while looking
 at a backlog that cannot show it.
