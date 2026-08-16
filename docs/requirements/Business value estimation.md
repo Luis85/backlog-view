@@ -239,12 +239,12 @@ make the work twice as large after it starts:
    validated → needs re-estimation is a state machine over a property that is not the
    board's, and the board already learned what a second workflow costs
    ([[A Deliverable is coloured by its own workflow]]).
-5. **A partial profile is the normal case, and it has no arithmetic yet.** Dimensions are
-   optional per level and every score property is optional per note, so most items will
-   have some dimensions answered and some not. Three candidate rules — suppress the total,
-   renormalize the weights over the answered dimensions, or score a missing dimension as
-   its lowest point — give the same item three different values and three different
-   positions in the matrix, so exactly one of them has to be chosen and stated before any
-   two items are compared. Whichever it is, the rule this epic already holds applies to it:
-   **a partial profile never looks like a complete one**, and a displayed total says how
-   much of the model it rests on.
+5. **A partial profile is the normal case, and its arithmetic is chosen.** Dimensions are
+   optional per level and every score property is optional per note, so most items will have
+   some answered and some not. [[The weighted score]] settles it — the answered dimensions'
+   weights are renormalized and the coverage is shown beside every total, with no total at
+   all for an item that has answered nothing — and the two refused alternatives are named
+   there. What stays open is only where that leaves the **matrix**: a point plotted from a
+   quarter of the model sits beside one plotted from all of it, and whether the plot marks
+   that, dims it, or drops it below a stated coverage is a drawing decision the matrix
+   feature makes.

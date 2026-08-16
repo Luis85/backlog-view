@@ -28,9 +28,10 @@ instead of from memory.
 
 Every number here is a count over the same items other views draw, and none of them helps
 anyone read a tree. Its settings are its own and complete: the periods, the buckets, the
-state property and its states, and **the keys the transition stamps live under** — a
-started key and a finished key this view names for itself, defaulting to the same
-suggestions every other view starts from. Analytics that had to read a board's options
+state property and its states, and **every date key it reads** — a created key, a
+meaningful-change key, a started key and a finished key, each named by this view for itself
+and defaulting to the same suggestion every other view starts from. Four keys, because four
+of its figures rest on dates: age, staleness, throughput and cycle time. Analytics that had to read a board's options
 could not run in a base without a board, and would silently change meaning when somebody
 reconfigured one. It writes nothing at all.
 
