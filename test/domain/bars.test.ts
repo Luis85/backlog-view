@@ -159,7 +159,7 @@ describe('barHolds', () => {
 		const vault = new FakeVault();
 		vault.addFile('Item.md', { frontmatter: { order: 10, ...frontmatter } });
 		const { item, settings } = itemFor(vault, 'Item.md', values);
-		const placement = placeItem(item, statedEnds(item));
+		const placement = placeItem(item, statedEnds(item), false);
 		if (placement.kind !== 'bar') throw new Error('expected a bar');
 		return barHolds(item, settings, placement.bar);
 	}
@@ -193,7 +193,7 @@ describe('barHolds', () => {
 		// With no target property there is no bar either, so the shelf card is what a
 		// gesture would have to grip — and it offers nothing. Asserted through the
 		// placement so the two answers cannot disagree.
-		expect(placeItem(item, statedEnds(item)).kind).toBe('shelf');
+		expect(placeItem(item, statedEnds(item), false).kind).toBe('shelf');
 		expect(barHolds(item, settings, { item, span: { start: null, target: null }, inferredStart: false, inferredEnd: false })).toEqual([]);
 	});
 
@@ -207,7 +207,7 @@ describe('barHolds', () => {
 		vault.addFile('Parent.md', { frontmatter: { type: 'Feature', order: 10 } });
 		vault.addFile('Child.md', { frontmatter: { type: 'PBI', order: 10, target: '2026-09-01' }, parentLink: 'Parent' });
 		const { item, settings } = itemFor(vault, 'Parent.md');
-		const placement = placeItem(item, statedEnds(item));
+		const placement = placeItem(item, statedEnds(item), false);
 		if (placement.kind !== 'bar') throw new Error('expected a bar');
 
 		expect(placement.bar.inferredStart).toBe(false);
@@ -222,7 +222,7 @@ describe('barHolds', () => {
 		vault.addFile('Parent.md', { frontmatter: { type: 'Feature', order: 10, start: '2026-08-01' } });
 		vault.addFile('Child.md', { frontmatter: { type: 'PBI', order: 10, target: '2026-08-20' }, parentLink: 'Parent' });
 		const { item, settings } = itemFor(vault, 'Parent.md');
-		const placement = placeItem(item, statedEnds(item));
+		const placement = placeItem(item, statedEnds(item), false);
 		if (placement.kind !== 'bar') throw new Error('expected a bar');
 
 		expect(placement.bar.inferredEnd).toBe(true);
