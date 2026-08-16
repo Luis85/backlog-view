@@ -219,6 +219,28 @@ describe('computeInitWrites — the test workflow state stub', () => {
 	});
 });
 
+describe('computeInitWrites — the iteration goal stub', () => {
+	it('never stubs the iteration goal onto any note, including an Iteration itself', () => {
+		// A goal belongs to one type; ✨ must not create it as an empty property on every
+		// other note in the vault. Driven over one of each level plus the Iteration itself,
+		// so the exclusion is checked against the type it is FOR and not only against types
+		// it obviously should not touch.
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feature.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
+		vault.addFile('Item.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature' });
+		vault.addFile('Job.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'Item' });
+		vault.addFile('Sprint.md', { frontmatter: { type: 'Iteration', order: 10 } });
+		const settings = settingsWith({ iterationGoalKey: 'goal', stateKey: 'status' });
+		const model = buildModel(vault.app, vault.entries(), settings);
+
+		const writes = computeInitWrites(model, settings);
+		for (const write of writes) {
+			expect(stubKeys(settings, write.stubs)).not.toContain('goal');
+		}
+	});
+});
+
 describe('computeRiskWrites', () => {
 	const risky = { ...settings, riskKey: 'risk' };
 

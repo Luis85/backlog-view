@@ -61,8 +61,10 @@ export const SETUP: ManualSection = {
 			text:
 				'The property that records which iteration an item is in. The view reads it, and ' +
 				'the toolbar\'s ✨ Assign missing properties will create the empty key on notes ' +
-				'that lack it.',
-			keys: ['iterationProperty'],
+				'that lack it. The iteration goal property holds what that iteration is FOR, in ' +
+				'one line, on the Iteration note alone — nothing reads it yet, and ✨ never ' +
+				'creates it, since a goal on every other note in the vault would mean nothing.',
+			keys: ['iterationProperty', 'iterationGoalProperty'],
 		},
 		{
 			term: 'Placing work on the roadmap',

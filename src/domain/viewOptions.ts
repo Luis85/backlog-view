@@ -260,7 +260,10 @@ function iterationsGroup(): BasesAllOptions {
 	return {
 		type: 'group',
 		displayName: 'Iterations',
-		items: [optionalPropertyOption('iteration', 'Iteration property')],
+		items: [
+			optionalPropertyOption('iteration', 'Iteration property'),
+			optionalPropertyOption('iterationGoal', 'Iteration goal property'),
+		],
 	};
 }
 

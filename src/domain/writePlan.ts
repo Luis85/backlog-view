@@ -114,6 +114,13 @@ export interface ItemWrite {
 	 * whichever of two same-named notes Obsidian picks. `undefined` leaves the key alone.
 	 */
 	iteration?: TFile | null;
+	/**
+	 * What an iteration is FOR, in one line, or **null to remove the key**. A plain
+	 * string on the Iteration note — `risk`'s and `assignee`'s rule exactly, so it is
+	 * written through the same label list in `storage/frontmatter.ts` rather than a
+	 * function of its own. `undefined` leaves the key alone.
+	 */
+	iterationGoal?: string | null;
 }
 
 export interface TagDelta {
@@ -559,6 +566,13 @@ function missingKeyStubs(item: BacklogItem, settings: BacklogSettings): Optional
 		// to leave behind, so backfilling one would have ✨ create what a remove must
 		// clean up.
 		if (field === 'dependsOn') continue;
+		// A goal belongs to one type. `✨` stubs an empty key on every note that lacks one,
+		// which is honest for a state or a date — an empty slot the reader is invited to
+		// fill — and dishonest here: a `goal` on every PBI, Feature and Task in the vault is
+		// a property that means nothing on the note it lands on. Its own return rather than a
+		// widening of `dependsOn`'s: that one's reason is that an empty prerequisite list is a
+		// false claim about a relationship. Two rules that agree today are still two rules.
+		if (field === 'iterationGoal') continue;
 		if (optionalKeyFor(settings, field) === '' || item.ownKeys[field]) continue;
 		stubs.push(field);
 	}

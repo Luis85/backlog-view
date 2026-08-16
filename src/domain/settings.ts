@@ -167,6 +167,13 @@ export interface BacklogSettings extends ItemHandling {
 	 * property is named. Nothing reads or writes it yet — later work does.
 	 */
 	iterationKey: string;
+	/**
+	 * Frontmatter key holding what an iteration is FOR, in one line, or '' when unnamed.
+	 * A plain string on the Iteration note alone — never backfilled, unlike every other
+	 * optional property here, because a goal on every other note in the vault means
+	 * nothing.
+	 */
+	iterationGoalKey: string;
 }
 
 /**
@@ -268,6 +275,7 @@ export function defaultSettings(): BacklogSettings {
 		riskValues: [...DEFAULT_RISK_VALUES],
 		assigneeKey: '',
 		iterationKey: '',
+		iterationGoalKey: '',
 		...defaultItemHandling(),
 	};
 }

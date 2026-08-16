@@ -120,6 +120,14 @@ export interface RawItem {
 	 */
 	assigneeValue: string | null;
 	/**
+	 * What the note's own iteration is FOR, in one line, if an iteration goal property is
+	 * configured. `riskValue`'s reason exactly: a plain string with no reading to refuse,
+	 * and no goal is a fact about the note rather than a missing one. Meaningful only on
+	 * an `Iteration` note — nothing narrows the read to that type, the same "read on every
+	 * item, no membership question here" choice `deliverableStateValue` already makes.
+	 */
+	iterationGoalValue: string | null;
+	/**
 	 * The iteration this note is in, if an iteration property is configured — the
 	 * `raw`/`file` pair `readLinkList` returns, not collapsed to one. Unresolved is not
 	 * unset: a link naming a deleted note has a `raw` and no `file`, and reading that as
@@ -168,6 +176,16 @@ export function createItems(app: App, entries: BasesEntry[], settings: BacklogSe
 	// of the ancestors themselves is optional.
 	if (settings.showOutsideParents) loadOutsideParents(app, store, parents, settings);
 	return store;
+}
+
+/**
+ * A plain optional-property string, unconfigured reading as absent — the shape
+ * `riskValue`, `assigneeValue` and `iterationGoalValue` all share. Pulled out of
+ * `addItem` once a third field wanted it: each inline ternary counts against that
+ * function's own complexity budget, and a shared reader does not.
+ */
+function readOptionalString(fm: Record<string, unknown> | undefined, key: string): string | null {
+	return key ? readString(ownValue(fm, key)) : null;
 }
 
 /**
@@ -241,8 +259,9 @@ function addItem(
 		horizon: readGated(settings.horizonKey, fm, readPlacement),
 		plannedStart: readGated(settings.startKey, fm, readDate),
 		plannedTarget: readGated(settings.targetKey, fm, readDate),
-		riskValue: settings.riskKey ? readString(ownValue(fm, settings.riskKey)) : null,
-		assigneeValue: settings.assigneeKey ? readString(ownValue(fm, settings.assigneeKey)) : null,
+		riskValue: readOptionalString(fm, settings.riskKey),
+		assigneeValue: readOptionalString(fm, settings.assigneeKey),
+		iterationGoalValue: readOptionalString(fm, settings.iterationGoalKey),
 		ownKeys: readOwnKeys(fm, settings),
 		iterationEntry: readIterationEntry(app, file, cache, settings.iterationKey),
 		// NOT read for a context row, which is the same test `outsideFilter` is made of

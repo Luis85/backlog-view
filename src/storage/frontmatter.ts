@@ -301,10 +301,10 @@ function applyAxis(fm: Record<string, unknown>, settings: BacklogSettings, write
 }
 
 /**
- * The plain LABEL properties — the risk level, and who the item is assigned to — under
- * this module's two standing rules: never a key no property names, and a null REMOVES
- * rather than blanks, because a note nobody has judged and a note nobody is on carry no
- * such key at all.
+ * The plain LABEL properties — the risk level, who the item is assigned to, and what an
+ * iteration is FOR — under this module's two standing rules: never a key no property
+ * names, and a null REMOVES rather than blanks, because a note nobody has judged, a note
+ * nobody is on and an iteration nobody has stated a goal for carry no such key at all.
  *
  * One loop rather than a statement per property, which is the trade-off the root
  * `CLAUDE.md` said to re-examine at the fourth optional property and this is it: a label
@@ -312,12 +312,14 @@ function applyAxis(fm: Record<string, unknown>, settings: BacklogSettings, write
  * wants exactly these two lines is where a shared statement starts costing less than
  * another copy of them. The state key still guards inline and the axis keys still go
  * through `axisEntries` — this covers what is genuinely the same, and a fifth label
- * property is a row in the list rather than a fifth restatement.
+ * property (the iteration's goal, here) is a row in the list rather than a fifth
+ * restatement.
  */
 function applyLabels(fm: Record<string, unknown>, settings: BacklogSettings, write: ItemWrite): void {
 	const labels: [string | null | undefined, string][] = [
 		[write.risk, settings.riskKey],
 		[write.assignee, settings.assigneeKey],
+		[write.iterationGoal, settings.iterationGoalKey],
 	];
 	for (const [value, key] of labels) {
 		if (value === undefined || !key) continue;
