@@ -57,6 +57,13 @@ export const SETUP: ManualSection = {
 			keys: ['riskProperty', 'riskValues'],
 		},
 		{
+			term: 'Iteration',
+			text:
+				'The property that will hold which iteration an item is in. Naming it here reserves ' +
+				'the key; nothing reads or writes it yet.',
+			keys: ['iterationProperty'],
+		},
+		{
 			term: 'Placing work on the roadmap',
 			text:
 				'The horizon property and its buckets; the start and target date properties the ' +

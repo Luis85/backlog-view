@@ -59,6 +59,7 @@ export function getViewOptions(config: BasesViewConfig): BasesAllOptions[] {
 		hierarchyGroup(),
 		progressGroup(settings),
 		deliverablesGroup(),
+		iterationsGroup(),
 		testManagementGroup(),
 		roadmapGroup(),
 		riskGroup(),
@@ -247,6 +248,19 @@ function deliverablesGroup(): BasesAllOptions {
 				placeholder: DEFAULT_DONE_VALUES.join(', '),
 			},
 		],
+	};
+}
+
+/**
+ * The iterations group. It holds no workflow options and that is the decision, not an
+ * omission: the iteration board reads the PRODUCT state key and narrows it, so there is
+ * no second property to configure here. See the 2026-08-16 revision of the design.
+ */
+function iterationsGroup(): BasesAllOptions {
+	return {
+		type: 'group',
+		displayName: 'Iterations',
+		items: [optionalPropertyOption('iteration', 'Iteration property')],
 	};
 }
 

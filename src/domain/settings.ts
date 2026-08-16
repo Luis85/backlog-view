@@ -162,6 +162,11 @@ export interface BacklogSettings extends ItemHandling {
 	 * recommendation on top rather than the vocabulary.
 	 */
 	assigneeKey: string;
+	/**
+	 * Frontmatter key holding the iteration an item is in, or '' when no iteration
+	 * property is named. Nothing reads or writes it yet — later work does.
+	 */
+	iterationKey: string;
 }
 
 /**
@@ -262,6 +267,7 @@ export function defaultSettings(): BacklogSettings {
 		riskKey: '',
 		riskValues: [...DEFAULT_RISK_VALUES],
 		assigneeKey: '',
+		iterationKey: '',
 		...defaultItemHandling(),
 	};
 }

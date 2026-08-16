@@ -38,7 +38,8 @@ export type OptionalField =
 	| 'risk'
 	| 'assignee'
 	| 'deliverableState'
-	| 'testState';
+	| 'testState'
+	| 'iteration';
 
 /**
  * The `BacklogSettings` field one optional property's key lands in. Spelled as a union
@@ -56,7 +57,8 @@ export type OptionalSettingsKey =
 	| 'riskKey'
 	| 'assigneeKey'
 	| 'deliverableStateKey'
-	| 'testStateKey';
+	| 'testStateKey'
+	| 'iterationKey';
 
 /**
  * One such property: the option that names it, the key it adopts when nothing does,
@@ -129,6 +131,10 @@ const PROPERTY_TABLE: Record<OptionalField, Omit<OptionalProperty, 'field'>> = {
 	// Prerequisites, suggested by the name the Tasks plugin already uses for the same
 	// idea — offered as a placeholder, never matched by name.
 	dependsOn: { option: 'dependsOnProperty', suggested: 'dependsOn', label: 'depends on', settingsKey: 'dependsOnKey' },
+	// The link an item carries to say which time box it is in. Suggested by the name the
+	// concept has, and — like every other row here — offered as a placeholder rather than
+	// matched: nothing reads a property because of what it is called.
+	iteration: { option: 'iterationProperty', suggested: 'iteration', label: 'iteration', settingsKey: 'iterationKey' },
 };
 
 /** The declaration for one field, for the callers that hold a field rather than a row. */

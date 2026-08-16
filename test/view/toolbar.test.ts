@@ -88,11 +88,12 @@ describe('toolbar backfill', () => {
 			due: '',
 			risk: '',
 			assignee: '',
+			iteration: '',
 		});
 		expect(view.settings.stateKey).toBe('status');
 		expect(
 			Notice.messages.some((m) =>
-				m.includes('set up status, started, finished, horizon, start, due, risk, assignee, dependsOn'),
+				m.includes('set up status, started, finished, horizon, start, due, risk, assignee, dependsOn, iteration'),
 			),
 		).toBe(true);
 	});

@@ -300,6 +300,27 @@ describe('resolveSettings display options', () => {
 
 });
 
+describe('resolveSettings iteration property', () => {
+	it('resolves the iteration property into its own key', () => {
+		const settings = resolveSettings(fakeConfig({ iterationProperty: 'note.sprint' }));
+		expect(settings.iterationKey).toBe('sprint');
+		expect(optionalKeyFor(settings, 'iteration')).toBe('sprint');
+	});
+
+	it('leaves the iteration key empty when nothing names it', () => {
+		const settings = resolveSettings(fakeConfig({}));
+		expect(settings.iterationKey).toBe('');
+		expect(optionalKeyFor(settings, 'iteration')).toBe('');
+	});
+
+	it('refuses an iteration key that collides with a key this view owns', () => {
+		const problems = configProblems(
+			resolveSettings(fakeConfig({ iterationProperty: 'note.status', stateProperty: 'note.status' })),
+		);
+		expect(problems.join(' ')).toContain('iteration');
+	});
+});
+
 describe('stateMenuValues', () => {
 	it('prefers the configured states verbatim', () => {
 		const settings = settingsWith({ states: ['New', 'Active', 'Done'] });
@@ -358,6 +379,7 @@ describe('optionalKeyFor', () => {
 			deliverableStateKey: 'deliverableStatus',
 			testStateKey: 'testStatus',
 			dependsOnKey: 'dependsOn',
+			iterationKey: 'sprint',
 		});
 		// Every field of the table, so a switch that fell through would be caught here
 		// rather than by whichever feature happened to read the wrong key.
@@ -373,9 +395,11 @@ describe('optionalKeyFor', () => {
 			'deliverableStatus',
 			'testStatus',
 			'dependsOn',
+			'sprint',
 		]);
 		// Unconfigured is '', which every caller reads as "no key to write".
 		expect(OPTIONAL_FIELDS.map((field) => optionalKeyFor(defaultSettings(), field))).toEqual([
+			'',
 			'',
 			'',
 			'',
@@ -407,6 +431,7 @@ describe('the optional-property table', () => {
 			'deliverableState',
 			'testState',
 			'dependsOn',
+			'iteration',
 		]);
 		expect(OPTIONAL_FIELDS.map(optionalProperty)).toEqual(OPTIONAL_PROPERTIES);
 	});
@@ -416,7 +441,7 @@ describe('adoptableProperties', () => {
 	it('offers the shipped key for every optional property nobody has named', () => {
 		const config = fakeConfig({});
 
-		// Nine, not eleven: `deliverableState` and `testState` both suggest the SAME key
+		// Ten, not twelve: `deliverableState` and `testState` both suggest the SAME key
 		// `state` does ('status'), and `state` is declared first, so its own adoption
 		// claims 'status' before the loop ever reaches either of them — the existing
 		// "don't suggest an already-taken key" guard (below) skips both, leaving the
@@ -432,6 +457,7 @@ describe('adoptableProperties', () => {
 			'risk',
 			'assignee',
 			'dependsOn',
+			'iteration',
 		]);
 	});
 

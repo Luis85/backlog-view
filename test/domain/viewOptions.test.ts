@@ -136,6 +136,16 @@ describe('getViewOptions', () => {
 		expect(keys).toEqual(['deliverableStateProperty', 'deliverableStateValues', 'deliverableDoneValues']);
 	});
 
+	it('exposes an Iterations group with just the iteration property', () => {
+		// No workflow options here — the iteration board reads the product state key
+		// and narrows it, so there is no second property to configure.
+		const groups = getViewOptions(fakeConfig());
+		const group = groups.find((g) => 'displayName' in g && g.displayName === 'Iterations');
+		if (!group || !('items' in group)) throw new Error('Iterations group missing');
+		const keys = group.items.map((item) => item.key);
+		expect(keys).toEqual(['iterationProperty']);
+	});
+
 	it('exposes a Test management group with its own state property, states and done values', () => {
 		const groups = getViewOptions(fakeConfig());
 		const group = groups.find((g) => 'displayName' in g && g.displayName === 'Test management');
