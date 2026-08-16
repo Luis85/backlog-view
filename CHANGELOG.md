@@ -11,6 +11,8 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-08-16
+
 ### Changed
 
 - **Milestones now share one row at the top of the dated roadmap.** Instead of a row each
