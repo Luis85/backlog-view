@@ -166,7 +166,7 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 			render: () => this.render(),
 			renderTreeContent: () => this.renderTreeContent(),
 			refreshFromData: () => this.refreshFromData(),
-			recomputeFilter: () => this.filter.recompute(this.model, this.projection),
+			recomputeFilter: () => this.filter.recompute(this.model, this.projection, this.effectiveScope),
 		});
 		this.dnd = new DragDropController(this, {
 			viewEl: this.viewEl,
@@ -245,7 +245,7 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 		// against the collapsed-by-default rule every other projection keeps. The same
 		// split `collapsiblePopulation` states for the buttons, at the other end of it.
 		this.state.collapseNewParents([...this.model.items, ...this.model.deliverableResults, ...this.model.catalog.items]);
-		this.filter.recompute(this.model, this.projection);
+		this.filter.recompute(this.model, this.projection, this.effectiveScope);
 		this.render();
 	}
 
@@ -301,7 +301,7 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 
 	setFilter(text: string): void {
 		this.filter.text = text;
-		this.filter.recompute(this.model, this.projection);
+		this.filter.recompute(this.model, this.projection, this.effectiveScope);
 		this.renderTreeContent();
 	}
 
@@ -310,11 +310,11 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 	}
 
 	isRowHidden(item: BacklogItem): boolean {
-		return rowHidden(item, visibilityRule(this.filter, this.settings, this.projection, true));
+		return rowHidden(item, visibilityRule(this.filter, this.settings, this.projection, true, this.effectiveScope));
 	}
 
 	isRowHiddenUnfiltered(item: BacklogItem): boolean {
-		return rowHidden(item, visibilityRule(this.filter, this.settings, this.projection, false));
+		return rowHidden(item, visibilityRule(this.filter, this.settings, this.projection, false, this.effectiveScope));
 	}
 
 	isFilterMatch(item: BacklogItem): boolean {

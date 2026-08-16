@@ -150,8 +150,25 @@ export function projectionPopulation(projection: Projection, model: BacklogModel
  * under a `Test case` is a catalog root's child, hidden here, and a root of the plan's own
  * forest over there.
  */
-export function projectionMember(projection: Projection): (item: { ladder: string[] }) => boolean {
-	return projection === 'catalog' ? inCatalog : (item) => !inCatalog(item);
+export function projectionMember(projection: Projection, scope: string | null = null): (item: BacklogItem) => boolean {
+	if (projection === 'catalog') return inCatalog;
+	// **The iteration board's membership is the LINK**, not merely "a row of the plan",
+	// and it has to be asked here rather than only where the cards are chosen. Every
+	// consumer of this predicate reads the answer for something other than a card:
+	// `listedChildren` puts a carrier's children on its face, the quick filter's index
+	// decides which rows a needle keeps, and a drop target asks what may receive a row.
+	// With the plan's own answer, a carrier's child that names no iteration — or names
+	// ANOTHER one — was listed on the card, which is the no-inheritance rule broken at
+	// the one surface that does not go through `iterationResults`. Found by review
+	// (Codex, PR #154).
+	//
+	// A context row still passes: it is placement, and `rowHidden`'s own last clause
+	// takes it away as soon as nothing below it is visible. Asked with no scope — every
+	// caller that has no iteration in hand — this is the plan's answer unchanged.
+	if (projection === 'iteration' && scope !== null) {
+		return (item) => !inCatalog(item) && (item.outsideFilter || item.iterationEntry?.file?.path === scope);
+	}
+	return (item) => !inCatalog(item);
 }
 
 /**

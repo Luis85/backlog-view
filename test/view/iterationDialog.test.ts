@@ -84,6 +84,10 @@ describe('New iteration…', () => {
 			goal: 'Finish the importer',
 		});
 		expect(harness.vault.writeLog).toEqual([]);
+		// And it OPENS, unlike the ordinary New flow: an iteration is filed in its own
+		// subfolder and draws nothing on the board that made it, so left closed it is a
+		// note the reader has to go and find.
+		expect(harness.vault.opened.map((o) => o.path)).toEqual(['Sprint 13.md']);
 	});
 
 	it('writes no goal KEY when the goal is left blank and the property IS configured', async () => {

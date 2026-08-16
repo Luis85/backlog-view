@@ -59,6 +59,40 @@ describe('the three-bucket board', () => {
 		expect(cardTitles(columnByName(containerEl, RESOLVED))).toEqual(['Finished']);
 	});
 
+	it('lists no child on a card unless the child is in the iteration too', () => {
+		// Nothing is inherited down the tree, and that rule has to hold at the one surface
+		// that does not go through `iterationResults`: a carrier's card lists its children
+		// on its face. With the plan's own membership, a child naming no iteration — or
+		// naming another — was listed there. Found by review (Codex, PR #154).
+		const vault = new FakeVault();
+		vault.addFile(SPRINT, { frontmatter: { type: 'Iteration', order: 10 } });
+		vault.addFile('Sprint 13.md', { frontmatter: { type: 'Iteration', order: 20 } });
+		vault.addFile('Carrier.md', {
+			frontmatter: { type: 'Feature', order: 10, status: 'New', iteration: '[[Sprint 12]]' },
+		});
+		vault.addFile('In sprint too.md', {
+			frontmatter: { type: 'PBI', order: 10, status: 'New', iteration: '[[Sprint 12]]' },
+			parentLink: 'Carrier',
+		});
+		vault.addFile('Loose child.md', {
+			frontmatter: { type: 'PBI', order: 20, status: 'New' },
+			parentLink: 'Carrier',
+		});
+		vault.addFile('Other sprint child.md', {
+			frontmatter: { type: 'PBI', order: 30, status: 'New', iteration: '[[Sprint 13]]' },
+			parentLink: 'Carrier',
+		});
+		const harness = makeView(vault, OPTIONS, { base: 'Plan.base' });
+		harness.view.setBoardScope(SPRINT);
+		const card = cardByTitle(harness.containerEl, 'Carrier');
+		// The list draws behind the card's own disclosure, which starts shut.
+		card.querySelector<HTMLElement>('.pbl-card-kids-toggle')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		const listed = Array.from(card.querySelectorAll<HTMLElement>('.pbl-card-kid-title')).map((el) => el.textContent);
+		expect(listed).toEqual(['In sprint too']);
+		// And the count on the disclosure counts the same one.
+		expect(card.querySelector('.pbl-card-kids-count')?.textContent).toContain('1');
+	});
+
 	it('keeps finished work on screen, whatever the completed toggle says', () => {
 		// The Resolved column IS the finished work, so hiding a done subtree would empty
 		// the column this board exists to show.

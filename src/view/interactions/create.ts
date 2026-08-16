@@ -372,6 +372,13 @@ async function createIteration(host: BacklogViewHost, result: IterationResult): 
 			...(host.settings.iterationGoalKey && result.goal ? { iterationGoal: result.goal } : {}),
 		});
 		new Notice(`Created "${file.basename}".`);
+		// **Opened, unlike the ordinary New flow**, and the difference is the register's
+		// (main flow 3) rather than an inconsistency: an ordinary new item lands in the
+		// tree the reader is already looking at, while an iteration is filed in its own
+		// subfolder and draws NOTHING on the board that made it — a marker is not work, so
+		// the population refuses it. Left closed, the one thing the reader would want to
+		// write next is a note they have to go and find. Found by review (Codex, PR #154).
+		void host.app.workspace.getLeaf(false).openFile(file);
 	} catch (e) {
 		console.error('Product Backlog: failed to create iteration', e);
 		new Notice('Could not create the iteration. See the developer console for details.');
