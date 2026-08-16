@@ -119,9 +119,9 @@ one of the two things this repository cannot test.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** `src/storage/frontmatter.ts` holds all three
-writers — `applyWrites`, `applyRestores` and
-`createBacklogItem` · `src/storage/baseFile.ts` writes the scaffolded `.base` and owns the
+**Nothing yet — this note is design.** `src/storage/frontmatter.ts` holds the two writers
+that EDIT a note — `applyWrites` and `applyRestores` — and `src/storage/createNote.ts` the
+one that makes one, `createBacklogItem` · `src/storage/baseFile.ts` writes the scaffolded `.base` and owns the
 `docs` and `Product Backlog` defaults · `src/storage/viewStateStore.ts` keys the view state
 on the base's path · `src/domain/typeVocabulary.ts` derives `typeFolderKey` from a type name.
 Tests: `test/storage/frontmatter.test.ts`, `test/storage/restore.test.ts`,

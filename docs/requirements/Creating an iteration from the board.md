@@ -209,7 +209,7 @@ note names. The two rules meet in one place: the exact path is written into this
 `iterationLengthDays` option is declared in `src/domain/viewOptions.ts` and resolved in
 `src/domain/settings.ts`. The two picker entries are drawn in
 `src/view/render/toolbarControls.ts`, where the scope picker itself is. Creating goes
-through `createBacklogItem` in `src/storage/frontmatter.ts` by way of
+through `createBacklogItem` in `src/storage/createNote.ts` by way of
 `src/view/interactions/structure.ts`; editing is planned in `src/domain/writePlan.ts` and
 applied by `src/storage/frontmatter.ts` through `src/view/writeGate.ts`. Driven in
 `test/domain/itemTypes.test.ts` for the derivation and `test/view/board.test.ts` for the

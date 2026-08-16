@@ -3,7 +3,7 @@ import { AbsenceFacts } from '../domain/absences';
 import { BacklogSettings } from '../domain/settings';
 import { vaultFolder } from '../domain/settingsResolve';
 import { ABSENCE_TYPE } from '../domain/typeVocabulary';
-import { ensureFolder, uniqueNotePath } from './frontmatter';
+import { ensureFolder, uniqueNotePath } from './createNote';
 import { setOwn } from './ownProperty';
 
 /**

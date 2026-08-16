@@ -128,5 +128,5 @@ Nothing yet — this note is design. `src/ui/prompts.ts` (`TitlePromptModal` —
 picker and body field) · `src/view/interactions/create.ts` (`promptCreateItem`,
 `createFromPrompt` — resolving templates for the chosen type, stripping the plugin-owned
 keys from a template's frontmatter before passing the body and what remains through) ·
-`src/storage/frontmatter.ts` (`createBacklogItem`, `NewItemSpec` — accepting a body and
+`src/storage/createNote.ts` (`createBacklogItem`, `NewItemSpec` — accepting a body and
 already-stripped extra frontmatter).

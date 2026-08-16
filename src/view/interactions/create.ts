@@ -6,7 +6,7 @@ import { manualSections } from '../manual/sections';
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { focusTarget, folderForType } from '../../domain/itemTypes';
 import { ORDER_SPACING } from '../../domain/writePlan';
-import { createBacklogItem } from '../../storage/frontmatter';
+import { createBacklogItem } from '../../storage/createNote';
 import { BacklogSettings } from '../../domain/settings';
 import { configProblems } from '../../domain/settingsConsistency';
 import { LEVELS } from '../../domain/typeVocabulary';
