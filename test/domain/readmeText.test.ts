@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cell, code, list, yamlScalar } from '../../src/domain/readmeText';
+import { andList, cell, code, list, yamlScalar } from '../../src/domain/readmeText';
 
 /**
  * Every value in the generated README is data somebody typed into the view's options or
@@ -77,6 +77,27 @@ describe('a list of values in a sentence', () => {
 		// quoting it would show a reader the markup instead of the sentence.
 		expect(list(['Epic', 'a|b'])).toBe('`Epic`, `a\\|b`');
 		expect(list(['*(nothing — it is a root)*', 'Epic'])).toBe('*(nothing — it is a root)*, `Epic`');
+	});
+});
+
+describe('values joined as an exhaustive prose list', () => {
+	// Every arm driven directly: `backlogReadmeContent`'s own callers no longer exercise
+	// the one-name form on their own (`MARKER_TYPES` is two names now, not one), so a
+	// vocabulary that shrank back to one name would have nothing left to catch it here.
+	it('says nothing for an empty list, rather than trailing off', () => {
+		expect(andList([])).toBe('');
+	});
+
+	it('names one value bare', () => {
+		expect(andList(['Epic'])).toBe('Epic');
+	});
+
+	it('joins two with "and", never a comma', () => {
+		expect(andList(['Epic', 'Milestone'])).toBe('Epic and Milestone');
+	});
+
+	it('commas every value but the last, which takes "and"', () => {
+		expect(andList(['Issue', 'Bug', 'Idea', 'Deliverable'])).toBe('Issue, Bug, Idea and Deliverable');
 	});
 });
 

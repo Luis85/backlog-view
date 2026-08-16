@@ -511,12 +511,16 @@ describe('the test workflow resolves like the Deliverable one', () => {
 });
 
 describe('the marker category', () => {
-	it('declares Milestone outside both the ladder and the extra types', () => {
+	it('declares every marker outside both the ladder and the extra types', () => {
 		// The whole point of the third category: every rule that reads EXTRA_TYPES keeps
-		// meaning exactly what `Types beside the ladder` says it means.
+		// meaning exactly what `Types beside the ladder` says it means. Looped over
+		// MARKER_TYPES rather than named at 'Milestone' alone, so a third marker joining
+		// the category is covered without anyone remembering to extend this test.
 		expect(MARKER_TYPES).toEqual(['Milestone', 'Iteration']);
-		expect(LEVELS).not.toContain('Milestone');
-		expect(EXTRA_TYPES).not.toContain('Milestone');
+		for (const marker of MARKER_TYPES) {
+			expect(LEVELS).not.toContain(marker);
+			expect(EXTRA_TYPES).not.toContain(marker);
+		}
 		expect(ALL_TYPES).toEqual([...LEVELS, ...EXTRA_TYPES, ...MARKER_TYPES, ...TEST_LEVELS.filter((t) => t !== 'Task')]);
 	});
 

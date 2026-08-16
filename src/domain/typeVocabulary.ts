@@ -48,8 +48,9 @@ export const DELIVERABLE_TYPE = 'Deliverable';
 export const EXTRA_TYPES = ['Issue', 'Bug', 'Idea', DELIVERABLE_TYPE];
 /**
  * The second declared marker. Named once, like `DELIVERABLE_TYPE`, so `MARKER_TYPES`
- * and every `isIterationType` call site read the identical string rather than two
- * spellings that can drift.
+ * reads the same string rather than a second spelling that could drift from it. A
+ * predicate reading it by name (`isIterationType`, the same shape as
+ * `isDeliverableType`) arrives with its first caller, `Set iteration`.
  */
 export const ITERATION_TYPE = 'Iteration';
 /**

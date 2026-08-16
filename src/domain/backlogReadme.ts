@@ -123,7 +123,7 @@ function typeSection(settings: BacklogSettings): string[] {
 			`${andList(EXTRA_TYPES)} sit *beside* it — they hang from any rung above the ` +
 			`deepest and hold ${code(LEVELS[LEVELS.length - 1])} items wherever they hang, which ` +
 			'is why they are types rather than levels. ' +
-			`${andList(MARKER_TYPES)} is neither: a ` +
+			`${andList(MARKER_TYPES)} ${MARKER_TYPES.length > 1 ? 'are' : 'is'} neither: a ` +
 			`marker hangs from nothing and holds nothing, and states a date rather than work. ` +
 			`${TEST_LEVELS.slice(0, -1).join(' → ')} is a **second ladder**, for tests rather than ` +
 			`for work: a ${code(TEST_LEVELS[0])} hangs from nothing, and the two ladders share only ` +
@@ -387,16 +387,17 @@ function planningSection(settings: BacklogSettings): string[] {
 	// Say which key a marker actually reads, in the one voice this file has.
 	if (dateKeys.length > 0 && settings.targetKey === '') {
 		lines.push(
-			`A ${code(MARKER_TYPES[0])} is the exception, and this view cannot place one: a marker's ` +
-				`date is the **target** property, and the only date property here is ` +
-				`${code(settings.startKey)}. One waits, unplaced, until a target property is picked — ` +
-				'and Schedule is withheld from it rather than opened onto a date its own type ignores.',
+			`A **marker** (${andList(MARKER_TYPES.map(code))}) is the exception, and this view cannot ` +
+				`place one: a marker's date is the **target** property, and the only date property ` +
+				`here is ${code(settings.startKey)}. One waits, unplaced, until a target property is ` +
+				'picked — and Schedule is withheld from it rather than opened onto a date its own type ' +
+				'ignores.',
 		);
 	} else if (dateKeys.length === 2) {
 		lines.push(
-			`A ${code(MARKER_TYPES[0])} is the exception: it is a point by **type** rather than by how ` +
-				`many dates it states, so it reads ${code(settings.targetKey)} alone. A ` +
-				`${code(settings.startKey)} on one is ignored — never rewritten, and never removed.`,
+			`A **marker** (${andList(MARKER_TYPES.map(code))}) is the exception: it is a point by ` +
+				`**type** rather than by how many dates it states, so it reads ${code(settings.targetKey)} ` +
+				`alone. A ${code(settings.startKey)} on one is ignored — never rewritten, and never removed.`,
 		);
 	}
 	if (lines.length > 0) {

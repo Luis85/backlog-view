@@ -905,7 +905,7 @@ git commit -m "Close the two iteration foundation use cases"
 
 `npm run check` cannot answer these, and the jsdom harness cannot either. Run `npm run test-build` and open this repository as a vault:
 
-- The `Iteration` badge colour and the `calendar-clock` icon against a real theme. Landed as CYAN, shared with `Milestone` (purple was the plan's original pick and was wrong — see Task 1, Step 8 — every theme token was already claimed, so the twelfth badge inevitably shares one). Nothing but the icon and the type name tells a Milestone badge from an Iteration one today; whether that reads as "these two are markers" or as one collision too many is exactly the live-vault question this line exists to ask.
+- The `Iteration` badge colour and the `calendar-clock` icon against a real theme. Landed as CYAN, shared with `Milestone` (purple was the plan's original pick and was wrong — see Task 1, Step 4 — every theme token was already claimed, so the twelfth badge inevitably shares one). Nothing but the icon and the type name tells a Milestone badge from an Iteration one today; whether that reads as "these two are markers" or as one collision too many is exactly the live-vault question this line exists to ask.
 - `Set iteration`'s submenu length in a vault with many iterations, and whether the collision-qualified labels stay readable.
 - That a real `[[Sprint 12]]` written by the plugin resolves in Obsidian's own link handling from a note in a different folder.
 

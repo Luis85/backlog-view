@@ -79,7 +79,7 @@ export function typesSection(): ManualSection {
 			`${LEVELS.join(' → ')} is a ladder: each level holds the next one down. ` +
 			`${EXTRA_TYPES.join(', ')} sit beside it — the + offers one under an Epic, a Feature or a ` +
 			`PBI, but its rank is pinned: its children are always ${LEVELS[LEVELS.length - 1]}s, wherever ` +
-			`it hangs. ${MARKER_TYPES.join(', ')} is neither: no + offers to create one as a child, ` +
+			`it hangs. ${MARKER_TYPES.join(', ')} ${MARKER_TYPES.length > 1 ? 'are' : 'is'} neither: no + offers to create one as a child, ` +
 			`and none draws a + of its own — though nothing stops a drag or Set type from doing ` +
 			`either by hand.`,
 		entries: [

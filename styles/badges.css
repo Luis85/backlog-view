@@ -70,7 +70,8 @@
 .pbl-lvl-issue { --pbl-badge-rgb: var(--color-pink-rgb); }
 .pbl-lvl-bug { --pbl-badge-rgb: var(--color-red-rgb); }
 .pbl-lvl-idea { --pbl-badge-rgb: var(--color-yellow-rgb); }
-/* A marker is not work, so it takes the one colour no rung and no other type uses. */
+/* A marker is not work, so it takes cyan — shared below by `Test case` and, since
+ * `Iteration` (the second marker), by a third badge; see that comment for why. */
 .pbl-lvl-milestone { --pbl-badge-rgb: var(--color-cyan-rgb); }
 /*
  * TWELVE badges now, still eight theme tokens, and this is the first hue THREE badges
@@ -90,15 +91,17 @@
 .pbl-lvl-deliverable { --pbl-badge-rgb: var(--color-green-rgb); }
 
 /*
- * ELEVEN badges, still eight theme tokens, and this is where the pair-by-pair answer had to
+ * TWELVE badges, still eight theme tokens, and this is where the pair-by-pair answer had to
  * become a rule: Idea/Task was one sharing decision taken alone, and two more taken the same
  * way is how Idea and Deliverable both reached for green on branches that could not see each
- * other. The rule: HUE IS IDENTITY, and each pair that shares one relies on whatever else
- * keeps it apart — the type NAME and the ladder's indentation for Idea and Task (neither
- * wears the axis below), the test axis for the two pairs a test type is in, since
- * `.pbl-lvl-test-suite` and `.pbl-lvl-test-case` both carry it and neither sharer does.
- * Which pair shares, and what separates it, is a decision recorded here, never "whichever
- * looked least crowded".
+ * other. The rule: HUE IS IDENTITY, and each sharer relies on whatever else keeps it apart
+ * from every other wearer of its hue — the type NAME and the ladder's indentation for Idea
+ * and Task (neither wears the axis below), the test axis for the two test types, since
+ * `.pbl-lvl-test-suite` and `.pbl-lvl-test-case` both carry it and no other sharer does. Cyan
+ * is now the one hue with a THIRD wearer (`Milestone`, `Test case`, `Iteration`) rather than
+ * a pair, and only `Test case` has that axis — see `.pbl-lvl-iteration`'s own comment above
+ * for what is and is not settled between the other two. Which hue shares, and what separates
+ * each of its wearers, is a decision recorded here, never "whichever looked least crowded".
  *
  * A `Test suite` takes ORANGE, Epic's. An Epic is a root by POSITION in the plan and a suite
  * is a root by NATURE in the catalog, and the two populations are disjoint by construction
