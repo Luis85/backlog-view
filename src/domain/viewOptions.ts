@@ -4,6 +4,7 @@ import {
 	columnPolicyKey,
 	DEFAULT_DONE_VALUES,
 	DEFAULT_HORIZON_VALUES,
+	DEFAULT_ITERATION_DAYS,
 	DEFAULT_PRIORITY_VALUES,
 	DEFAULT_RISK_VALUES,
 	wipLimitKey,
@@ -261,9 +262,14 @@ function deliverablesGroup(): BasesAllOptions {
 }
 
 /**
- * The iterations group. It holds no workflow options and that is the decision, not an
+ * The iterations group. It holds no state PROPERTY and that is the decision, not an
  * omission: the iteration board reads the PRODUCT state key and narrows it, so there is
  * no second property to configure here. See the 2026-08-16 revision of the design.
+ *
+ * What it does hold is which of the product's own states fall in the two outer columns.
+ * Everything unnamed is In Progress, so an unconfigured pair is a board that says nothing
+ * rather than one that refuses to draw — which is why neither list ships a default: a
+ * guessed Open column would sort a vault's cards by a vocabulary nobody chose.
  */
 function iterationsGroup(): BasesAllOptions {
 	return {
@@ -272,6 +278,29 @@ function iterationsGroup(): BasesAllOptions {
 		items: [
 			optionalPropertyOption('iteration', 'Iteration property'),
 			optionalPropertyOption('iterationGoal', 'Iteration goal property'),
+			{
+				type: 'text',
+				key: 'iterationOpenStates',
+				displayName: 'Product states an iteration has not started',
+				default: '',
+				placeholder: 'New, Ready',
+			},
+			{
+				type: 'text',
+				key: 'iterationResolvedStates',
+				displayName: 'Product states an iteration is finished with',
+				default: '',
+				placeholder: 'In review, Done',
+			},
+			// Bases has no number option, so a length is text and `resolveIterationDays`
+			// is what makes it a number of days.
+			{
+				type: 'text',
+				key: 'iterationLengthDays',
+				displayName: 'Default iteration length in days',
+				default: String(DEFAULT_ITERATION_DAYS),
+				placeholder: String(DEFAULT_ITERATION_DAYS),
+			},
 		],
 	};
 }

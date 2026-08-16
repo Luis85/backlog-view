@@ -35,7 +35,7 @@ Identical to the foundation plan's — reproduced so this file stands alone.
 - **Definition of done is `npm run check`** — build, lint, coverage-thresholded tests, fallow, docs register. Coverage thresholds only ever go up.
 - **Layers:** `main → commands → view → storage → domain`, each may reach anything below and nothing above. `ui/` is a leaf; `i18n/` is a leaf one level lower.
 - **400-line max per `src/` file**, function 100, complexity 16, depth 4, params 5 — all skipping blanks and comments. `test/**` budget is 450.
-- **Never write frontmatter outside `src/storage/frontmatter.ts`.** `processFrontMatter`, `vault.create` and `load/saveLocalStorage` are banned outside `storage/`.
+- **Never write frontmatter outside `src/storage/frontmatter.ts`** (editing a note) **and `src/storage/createNote.ts`** (making one). `processFrontMatter`, `vault.create` and `load/saveLocalStorage` are banned outside `storage/` — the ban is on the directory, which is why the 2026-08-16 split changed nothing about it.
 - **Every write path goes through the `configProblems` gate**; forward batches are refused whole if any write targets an `outsideFilter` item.
 - **Every view-option key must be named in `docs/requirements/`** in a code span. `iterationOpenStates`, `iterationResolvedStates` and `iterationLengthDays` already are.
 - **`docs-check.mjs` checks both directions, and they close on each other.** A module in `src/` that no note names fails rule 7; a path named in a current note that does not exist fails the reference check. So the exact path goes into a note's `## Where it lives` **in the same commit as the file it names** — never before, never after. This plan adds two modules, `src/ui/iterationDialog.ts` (Task 9) and `src/domain/iterations.ts` (Task 9), and `Creating an iteration from the board.md` describes both **without spelling either**, precisely so the register is green today. Task 9 writes the two paths in.
@@ -66,7 +66,7 @@ Identical to the foundation plan's — reproduced so this file stands alone.
 | `src/view/interactions/cardDrag.ts` | `announceBoardMove` asks the bucket question |
 | `src/ui/iterationDialog.ts` | **new** — the create/edit modal |
 | `src/view/interactions/create.ts` | the `NewItemSpec` carries the scope's link and dates |
-| `src/storage/frontmatter.ts` | `NewItemSpec` gains the iteration and the axis (Task 8), and the goal (Task 9) |
+| `src/storage/createNote.ts` | `NewItemSpec` gains the iteration and the axis (Task 8), and the goal (Task 9) — the creation half, split out of `frontmatter.ts` on 2026-08-16 |
 | `src/domain/writePlan.ts` | `computeIterationNoteWrites` (the edit) |
 | `styles/board.css` | the goal line |
 
@@ -702,7 +702,7 @@ projection is unreachable.
 
 **Files:**
 - Modify: `src/view/interactions/create.ts` — the `NewItemSpec` the New flow sends
-- Modify: `src/storage/frontmatter.ts` — `NewItemSpec` gains `iteration` and `axis`
+- Modify: `src/storage/createNote.ts` — `NewItemSpec` gains `iteration` and `axis`
 - Test: `test/view/iterationBoard.test.ts`, `test/view/contextCardWrites.test.ts`
 
 **Interfaces:**
@@ -763,7 +763,7 @@ Make the create path write the link in a second `applySafely` batch. The "SAME c
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/view/interactions/create.ts src/storage/frontmatter.ts test/
+git add src/view/interactions/create.ts src/storage/createNote.ts test/
 git commit -m "Create a card into the iteration it was created on"
 ```
 
@@ -774,7 +774,7 @@ git commit -m "Create a card into the iteration it was created on"
 **Files:**
 - Create: `src/ui/iterationDialog.ts`, `src/domain/iterations.ts`
 - Modify: `src/view/render/toolbarControls.ts`, `src/domain/writePlan.ts`, `src/view/interactions/structure.ts`
-- Modify: `src/storage/frontmatter.ts` — `NewItemSpec.iterationGoal`, written by `createBacklogItem`
+- Modify: `src/storage/createNote.ts` — `NewItemSpec.iterationGoal`, written by `createBacklogItem`
 - Test: `test/domain/iterationSchedule.test.ts` (create), `test/view/iterationBoard.test.ts`
 
 **Interfaces:**
@@ -839,7 +839,7 @@ a string writes. The EDIT path keeps the distinction that create has no use for 
 a goal that was set is `null`, since there the key exists and 3a says removing it is the
 point.
 
-That is why `src/storage/frontmatter.ts` is in this task's file list and its commit. Two
+That is why `src/storage/createNote.ts` is in this task's file list and its commit. Two
 tasks extending one interface is fine; two tasks extending it and only one remembering the
 module is how an API ends up unable to express what a caller was promised.
 
@@ -914,4 +914,4 @@ git add src/ui src/domain src/view src/storage test/ && git commit -m "Create an
 
 **Coverage, fourth re-run — the model had no identity to fold, offer or refuse by.** Task 2 filled `BoardColumn.state` from `bucketRepresentative` and left 4e's refusal to the move method returning early. Three consumers already read `state` as the column's identity rather than as its write value — `columnKey` folds by it, `stateChoices` offers every column by it, `renderColumn` wires every column as a drop target — so two buckets with nothing to write would have shared one fold key with each other **and** with Open's legitimate key removal, and both would still have been offered in the menu and accepted a drag. `undefined` did not typecheck into `state: string | null` either, which is the compiler catching the smaller half of it. The fix is the two fields in Task 2 and the four consumer sites in Tasks 4, 6 and 7. Same shape as the re-runs above, one layer out: **a refusal stated in the move method is not stated at the sites that OFFER the move.**
 
-**Type consistency.** `IterationBucket` is `'open' | 'inProgress' | 'resolved'` everywhere. `bucketRepresentative` returns `string | null | undefined` in Tasks 2, 6 and 7, with `undefined` meaning "no drop" in all three — a column stores that as `takesDrop: false` with `state: null`, never as an `undefined` state. `BoardColumn.bucket` is optional and absent on the other two boards, where the state is the identity. `performIterationBoardMove(item, bucket)` takes the **bucket**, never a state — the whole point of Task 6. `ViewPrefs.scope` is a path in Tasks 4, 8 and 9. `NewItemSpec.iteration` is a `TFile` in Task 8, matching `ItemWrite.iteration` in the foundation plan — both are files because both are written by `wikilinkTo`. `NewItemSpec.iterationGoal` is a `string` in Task 9, matching `ItemWrite.iterationGoal`; `src/storage/frontmatter.ts` is in the file list and the commit of both tasks that extend that interface.
+**Type consistency.** `IterationBucket` is `'open' | 'inProgress' | 'resolved'` everywhere. `bucketRepresentative` returns `string | null | undefined` in Tasks 2, 6 and 7, with `undefined` meaning "no drop" in all three — a column stores that as `takesDrop: false` with `state: null`, never as an `undefined` state. `BoardColumn.bucket` is optional and absent on the other two boards, where the state is the identity. `performIterationBoardMove(item, bucket)` takes the **bucket**, never a state — the whole point of Task 6. `ViewPrefs.scope` is a path in Tasks 4, 8 and 9. `NewItemSpec.iteration` is a `TFile` in Task 8, matching `ItemWrite.iteration` in the foundation plan — both are files because both are written by `wikilinkTo`. `NewItemSpec.iterationGoal` is a `string` in Task 9, matching `ItemWrite.iterationGoal`; `src/storage/createNote.ts` — which is where `NewItemSpec` and `createBacklogItem` live since the 2026-08-16 split — is in the file list and the commit of both tasks that extend that interface.

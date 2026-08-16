@@ -72,8 +72,19 @@ export const SETUP: ManualSection = {
 				'the toolbar\'s ✨ Assign missing properties will create the empty key on notes ' +
 				'that lack it. The iteration goal property holds what that iteration is FOR, in ' +
 				'one line, on the Iteration note alone — nothing reads it yet, and ✨ never ' +
-				'creates it, since a goal on every other note in the vault would mean nothing.',
-			keys: ['iterationProperty', 'iterationGoalProperty'],
+				'creates it, since a goal on every other note in the vault would mean nothing. ' +
+				'The two state lists say how a board scoped to one iteration narrows your own ' +
+				'workflow into three columns: the states it reads as not started, the states it ' +
+				'reads as finished, and everything else in between. Name neither and every card ' +
+				'sits in the middle column. The length is how many days a new iteration runs for ' +
+				'when the board derives one — a whole number of days, 14 if it cannot be read.',
+			keys: [
+				'iterationProperty',
+				'iterationGoalProperty',
+				'iterationOpenStates',
+				'iterationResolvedStates',
+				'iterationLengthDays',
+			],
 		},
 		{
 			term: 'Placing work on the roadmap',

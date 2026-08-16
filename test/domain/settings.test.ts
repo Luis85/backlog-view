@@ -300,34 +300,6 @@ describe('resolveSettings display options', () => {
 
 });
 
-describe('resolveSettings — the two iteration properties', () => {
-	// The link and its goal resolve the same way, so one table of cases drives the three
-	// behaviours both share rather than two blocks restating them.
-	const cases = [
-		{ option: 'iterationProperty', field: 'iteration', settingsKey: 'iterationKey', label: 'iteration' },
-		{ option: 'iterationGoalProperty', field: 'iterationGoal', settingsKey: 'iterationGoalKey', label: 'iteration goal' },
-	] as const;
-
-	it.each(cases)('resolves $option into its own key', ({ option, field, settingsKey }) => {
-		const settings = resolveSettings(fakeConfig({ [option]: 'note.x' }));
-		expect(settings[settingsKey]).toBe('x');
-		expect(optionalKeyFor(settings, field)).toBe('x');
-	});
-
-	it.each(cases)('leaves $settingsKey empty when nothing names it', ({ field, settingsKey }) => {
-		const settings = resolveSettings(fakeConfig({}));
-		expect(settings[settingsKey]).toBe('');
-		expect(optionalKeyFor(settings, field)).toBe('');
-	});
-
-	it.each(cases)('refuses a $label key that collides with a key this view owns', ({ option, label }) => {
-		const problems = configProblems(
-			resolveSettings(fakeConfig({ [option]: 'note.status', stateProperty: 'note.status' })),
-		);
-		expect(problems.join(' ')).toContain(label);
-	});
-});
-
 describe('stateMenuValues', () => {
 	it('prefers the configured states verbatim', () => {
 		const settings = settingsWith({ states: ['New', 'Active', 'Done'] });

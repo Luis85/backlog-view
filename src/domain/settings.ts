@@ -182,6 +182,22 @@ export interface BacklogSettings extends ItemHandling {
 	 * nothing.
 	 */
 	iterationGoalKey: string;
+	/**
+	 * Which PRODUCT states the iteration board reads as its Open column, and which as its
+	 * Resolved one; everything else is In Progress. Two lists rather than a second
+	 * workflow, which is this feature's central decision: an iteration board narrows the
+	 * product's own vocabulary instead of holding a vocabulary of its own, so there is no
+	 * second property for a state to be wrong in and no fallback reconciling two of them.
+	 * Empty is legal on both — an unconfigured pair puts every card In Progress, which is
+	 * a board that says nothing rather than a board that refuses to draw.
+	 */
+	iterationOpenStates: string[];
+	iterationResolvedStates: string[];
+	/**
+	 * How many days a new iteration runs for, when the dialog derives one. Whole and
+	 * positive; see {@link resolveIterationDays} for why the fallback is load-bearing.
+	 */
+	iterationLengthDays: number;
 }
 
 /**
@@ -210,6 +226,26 @@ export function columnPolicyKey(state: string): string {
 export function parseWipLimit(raw: string): number | null {
 	const n = Number(raw.trim());
 	return Number.isInteger(n) && n >= 1 ? n : null;
+}
+
+/** How long a new iteration runs when nothing usable is configured. */
+export const DEFAULT_ITERATION_DAYS = 14;
+
+/**
+ * A whole, positive number of days, or the shipped default. Bases has no number option,
+ * so this parses text a user can put anything in — and the fallback is load-bearing
+ * rather than polite: zero or a negative length yields a target before its start, which
+ * shelves the new iteration with the reversed-span reason for a value nobody meant to
+ * enter. A fraction is refused too: half a day is not a number of days, and rounding it
+ * would be a decision the reader cannot see.
+ *
+ * `parseWipLimit`'s shape, and deliberately not its function: that one answers `null` for
+ * "no limit", which is a meaning this question does not have — every iteration has a
+ * length, so the unusable value falls back to one rather than turning the feature off.
+ */
+export function resolveIterationDays(raw: string): number {
+	const n = Number(raw.trim());
+	return Number.isInteger(n) && n > 0 ? n : DEFAULT_ITERATION_DAYS;
 }
 
 /**
@@ -295,6 +331,9 @@ export function defaultSettings(): BacklogSettings {
 		assigneeKey: '',
 		iterationKey: '',
 		iterationGoalKey: '',
+		iterationOpenStates: [],
+		iterationResolvedStates: [],
+		iterationLengthDays: DEFAULT_ITERATION_DAYS,
 		...defaultItemHandling(),
 	};
 }

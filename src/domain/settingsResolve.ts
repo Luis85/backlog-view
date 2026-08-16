@@ -7,6 +7,7 @@ import {
 	defaultSettings,
 	nameTable,
 	parseWipLimit,
+	resolveIterationDays,
 	wipLimitKey,
 } from './settings';
 import { OPTIONAL_PROPERTIES, OptionalSettingsKey } from './optionalProperties';
@@ -306,6 +307,13 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		// The same clearable default, for the same reason: an emptied ladder means "no
 		// levels", not the MoSCoW four this plugin shipped.
 		priorityValues: clearable('priorityValues', fallback.priorityValues, () => dedupe(list('priorityValues'))),
+		// No `clearable` on either list: their default is EMPTY, so "never set" and
+		// "cleared" mean the same thing here and there is nothing for the distinction to
+		// protect. Deduped like every other state vocabulary — the same value named in one
+		// list twice is one bucket rule, not two.
+		iterationOpenStates: dedupe(list('iterationOpenStates')),
+		iterationResolvedStates: dedupe(list('iterationResolvedStates')),
+		iterationLengthDays: resolveIterationDays(str('iterationLengthDays')),
 		...resolveItemHandling(config),
 	};
 }
