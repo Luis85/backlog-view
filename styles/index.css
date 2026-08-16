@@ -87,3 +87,7 @@
    property, resolved by value regardless of which partial's rule set it) and defines no
    selector any other partial also targets, so it can sit anywhere in this list. */
 @import "./legend.css";
+/* Position NOT load-bearing for anything above: `.pbl-est-*` is new vocabulary this
+   list defines nowhere else. Last because it is the newest partial — a future view,
+   previewed in `test/harness/mock.ts` (uncommitted) before its render modules exist. */
+@import "./estimation.css";

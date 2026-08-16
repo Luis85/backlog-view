@@ -1,0 +1,362 @@
+/* ==========================================================================
+   The estimation view: a flat results table beside a per-item rubric panel.
+
+   Previewed here before the view exists — `docs/superpowers/specs/2026-08-16-
+   estimation-view-refactor-design.md` is the design, `test/harness/mock.ts`
+   (uncommitted) is the hand-drawn markup that argues this layout against the real
+   stylesheet. The render modules land in `src/view/estimation/` from Task 6 on; this
+   partial is the vocabulary they render into (`.pbl-est-*`, named in the task brief).
+   ========================================================================== */
+
+/*
+ * Table left, panel right — CSS Grid, not flex-wrap, and that choice is load-bearing
+ * rather than a style preference. Flex-wrap was tried first (the panel's floor and
+ * ceiling as its flex-basis, the table given a real floor so the pair could run out
+ * of room and wrap): measured in this harness, a WRAPPING flex row sizes its single
+ * line from the items' own unconstrained content height rather than the container's
+ * — `min-height: 0` does not stop it — so a panel with enough dimensions to need
+ * scrolling instead pulled the whole row (table included) up to its full unclipped
+ * content height. `flex-wrap: nowrap` and grid both measured correctly; grid is the
+ * one of those two that still lays two items side by side.
+ *
+ * The trade this costs: an explicit two-track grid does not reflow on its own, so
+ * "panel stacks below at narrow width" is not what this gives — `@container` is not
+ * available and neither is a media query that knows the pane's own width here (see
+ * `test/CLAUDE.md`, "Looking at it"). What it gives instead: the table's `minmax(0,
+ * …)` floor lets it shrink first, so a narrow pane squeezes the table before the
+ * panel ever loses its 280px floor — graceful, not stacked. A real breakpoint wants
+ * a live vault's actual pane widths, not a guess made here.
+ */
+.pbl-est-view {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+	align-items: stretch;
+	gap: var(--size-4-3);
+	padding: var(--size-4-3);
+	min-height: 0;
+}
+
+.pbl-est-table {
+	display: flex;
+	flex-direction: column;
+	/* A grid item's height floor is its content by default (the same `min-height:
+	   auto` story flex items have), which would grow the row to fit every result
+	   instead of ever reaching `overflow-y: auto` below — zeroed so the track height
+	   `.pbl-est-view` resolves (`align-items: stretch`) is the height it keeps. */
+	min-height: 0;
+	overflow-y: auto;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+}
+
+.pbl-est-panel {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-3);
+	min-height: 0;
+	overflow-y: auto;
+	padding: var(--size-4-3);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background-color: var(--background-secondary);
+}
+
+/* The panel's own heading reuses the table's title class — both name the same
+   fact about the same note — widened to wrap rather than the table cell's single
+   line, since nothing beside it needs the room back. */
+.pbl-est-panel > .pbl-est-title {
+	flex: 0 0 auto;
+	font-size: var(--font-ui-medium);
+	font-weight: var(--font-semibold);
+	color: var(--text-normal);
+	white-space: normal;
+}
+
+.pbl-est-panel h4 {
+	margin: 0;
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-medium);
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.02em;
+}
+
+/* ==========================================================================
+   The table: a header row plus one flex row per result — no tree, no context
+   rows (every row here is a result, per the design), so nothing here reads
+   `--pbl-depth` or an indent guide the way tree.css's rows do.
+   ========================================================================== */
+
+.pbl-est-head,
+.pbl-est-row {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	min-height: 32px;
+	padding: var(--size-4-1) var(--size-4-3);
+}
+
+.pbl-est-head {
+	/* Stays put while the rows below it scroll inside `.pbl-est-table` — an opaque
+	   background is load-bearing here, not decoration, or a scrolled row shows
+	   through the labels. */
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	background-color: var(--background-primary);
+	border-bottom: 1px solid var(--background-modifier-border);
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-medium);
+	color: var(--text-muted);
+}
+
+.pbl-est-row {
+	border-bottom: 1px solid var(--background-modifier-border);
+	cursor: pointer;
+}
+
+.pbl-est-row:last-child {
+	border-bottom: none;
+}
+
+.pbl-est-row:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+/* The same idiom `.pbl-row.pbl-selected` (tree.css) and `.pbl-card.pbl-selected`
+   (cards.css) already use: the row whose panel is on screen, not a filter or a
+   write target of its own — the shared class name says so is the same fact
+   everywhere it appears. */
+.pbl-est-row.pbl-selected {
+	background-color: var(--background-modifier-hover);
+	box-shadow: inset 2px 0 0 var(--interactive-accent);
+}
+
+.pbl-est-title {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--text-normal);
+}
+
+/* The plain numeric columns — confidence and effort carry no state of their own,
+   so they get no dedicated class, only the shared sizing every fixed column
+   needs. `.pbl-est-total` and `.pbl-est-coverage` add their own colour and
+   weight below but share this same box. */
+.pbl-est-cell,
+.pbl-est-total,
+.pbl-est-coverage {
+	flex: 0 0 72px;
+	width: 72px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	text-align: end;
+	font-variant-numeric: tabular-nums;
+	color: var(--text-muted);
+}
+
+.pbl-est-total {
+	color: var(--text-normal);
+	font-weight: var(--font-medium);
+}
+
+/* A dash rather than an empty box: `test/CLAUDE.md`'s absence rule for the tree
+   applies here too — nothing computed reads as a stated absence, not as a blank
+   cell that could be mistaken for a render that has not finished yet. The mock
+   spells the dash in markup; a real row would test the same case against
+   `result === null`. */
+.pbl-est-cell:empty::before,
+.pbl-est-total:empty::before,
+.pbl-est-coverage:empty::before {
+	content: '\2013';
+}
+
+/* ==========================================================================
+   The currency chip — the derived word for whether a stored total can be
+   trusted (Current / Needs re-estimation / Another model / Hand-written / No
+   total). Sized to its own content rather than the fixed 72px numeric columns:
+   the words are prose, not digits, and "Needs re-estimation" and "Current"
+   have no width in common to share.
+   ========================================================================== */
+
+.pbl-est-currency {
+	flex: 0 0 auto;
+	min-width: 96px;
+	max-width: 140px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	padding: var(--size-2-1) var(--size-4-2);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	background-color: var(--background-modifier-hover);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-l);
+}
+
+/* The header's own label reuses the column's class so its width tracks the
+   chip below it, stripped of the pill shell — that shell is for a VALUE, and
+   the heading is not one. */
+.pbl-est-head .pbl-est-currency {
+	background: none;
+	border-color: transparent;
+	color: var(--text-muted);
+}
+
+/* A stored total that no longer matches the live model or the note's current
+   answers — the one state this partial gives its own colour, per the brief.
+   Text and border both, not text alone: a chip's border is part of its shape,
+   and leaving it the neutral colour beside warning text reads as unfinished
+   rather than as one signal. */
+.pbl-est-currency.pbl-est-stale {
+	color: var(--text-warning);
+	border-color: var(--text-warning);
+}
+
+/* ==========================================================================
+   The panel: one selector row per enabled dimension (plus confidence, effort
+   and complexity, which are scales of the same shape), then the decomposition.
+   ========================================================================== */
+
+.pbl-est-dim {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-2);
+	padding-block: var(--size-4-2);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.pbl-est-dim:last-of-type {
+	border-bottom: none;
+	padding-bottom: 0;
+}
+
+.pbl-est-dim-label {
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-medium);
+	color: var(--text-normal);
+}
+
+.pbl-est-points {
+	display: flex;
+	gap: var(--size-2-2);
+}
+
+/*
+ * Real `<button>`s, minus the button chrome — the same recipe
+ * `button.pbl-card-kids-toggle` (cardChildren.css) states in full: `appearance:
+ * none` plus a zeroed border/margin/background is not enough on its own,
+ * because Obsidian's `button:not(.clickable-icon)` sets background-color and
+ * box-shadow at (0,1,1), and a bare class selector is (0,1,0) — losing
+ * regardless of source order. Qualifying with the element ties the
+ * specificity and this partial's later load order wins it (the 2026-08-08
+ * bug this recipe exists to not repeat: a disclosure button that looked right
+ * here and wrong in a vault because nothing had beaten the real default).
+ */
+button.pbl-est-point {
+	appearance: none;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	margin: 0;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	background-color: var(--background-primary);
+	box-shadow: none;
+	color: var(--text-muted);
+	font-family: inherit;
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-medium);
+	font-variant-numeric: tabular-nums;
+	line-height: 1;
+	cursor: pointer;
+}
+
+/* Restated on hover and not left to the rule above: a browser resolves the
+   winning declaration per property, so that rule's win at rest says nothing
+   about Obsidian's own `button:hover` fill, which is also (0,1,1). */
+button.pbl-est-point:hover {
+	color: var(--text-normal);
+	border-color: var(--text-muted);
+	box-shadow: none;
+}
+
+.pbl-est-point:focus-visible {
+	outline: 1px solid var(--interactive-accent);
+	outline-offset: 1px;
+}
+
+/* The point this note's answer names — checked against the write PLAN once a
+   plan exists, never against a comparison written beside it (`CLAUDE.md`, "A
+   Set menu's checkmark is asked of the PLAN"). `.is-active` rather than
+   `.pbl-selected`: this is the chosen VALUE of a control, the same fact
+   `.pbl-mode-btn.is-active` (toolbar.css) marks for a projection toggle, not
+   the keyboard/detail selection `.pbl-selected` marks on a row or a card. */
+button.pbl-est-point.is-active {
+	background-color: var(--interactive-accent);
+	border-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.pbl-est-rubric {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+/* ==========================================================================
+   The decomposition: the total, its coverage, and the two derived numbers
+   beside it — one wrapping row, so a narrow panel stacks them without a
+   second breakpoint to maintain.
+   ========================================================================== */
+
+.pbl-est-decomp {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: var(--size-4-2) var(--size-4-4);
+	padding-top: var(--size-4-3);
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+/* The total and its coverage read large here — a glanceable answer, not a
+   table cell — so both drop the 72px column width the table gave them. */
+.pbl-est-decomp .pbl-est-total {
+	flex: 0 0 auto;
+	width: auto;
+	text-align: start;
+	font-size: var(--font-ui-large);
+	font-weight: var(--font-semibold);
+}
+
+.pbl-est-decomp .pbl-est-coverage {
+	flex: 0 0 auto;
+	width: auto;
+	text-align: start;
+	font-size: var(--font-ui-small);
+}
+
+/* Confidence-adjusted value and value-to-effort — derived on read, never
+   written (`CLAUDE.md`'s write-back rule), which is why both are labelled
+   rather than left to stand as bare numbers beside the total they are not. */
+.pbl-est-derived {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-4-1) var(--size-4-3);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+.pbl-est-derived strong {
+	color: var(--text-normal);
+	font-weight: var(--font-medium);
+	font-variant-numeric: tabular-nums;
+}
