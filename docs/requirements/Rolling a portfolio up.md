@@ -20,5 +20,9 @@ Progress, item count, value, effort, release distribution, health and risk aggre
 portfolio level, each from the property that holds it, each naming its unit, and each
 reporting how much of the population could not be measured.
 
+Every one of those is a key this view names — progress, item count, value, effort, release,
+health, risk — on the terms [[Settings scoped to their view]] states, and an aggregate whose
+key is unconfigured is absent from the rollup rather than counted as zero.
+
 **Outcome** — Two products can be compared on the same numbers, with the gaps in those
 numbers visible.

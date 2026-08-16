@@ -20,5 +20,10 @@ A decision links to the features, epics, objectives, releases, opportunities and
 concerns, from the decision's side. The affected items are found by reading those links
 backward, so no item has to carry a list that can fall out of step.
 
+The affected-items link, the decision's date and its status are keys this view names for
+itself, on the terms [[Settings scoped to their view]] states for every view here: nothing is
+borrowed, and an unconfigured key means that part of the register is not drawn rather than
+guessed.
+
 **Outcome** — An item shows the decisions that shaped it without maintaining a second copy
 of the relationship.
