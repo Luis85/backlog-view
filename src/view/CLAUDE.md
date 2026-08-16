@@ -892,9 +892,23 @@ free of runtime code so imports stay cycle-free.
   until a drag is live. A target that exists only while it is occupied is one nothing can
   ever reach. Whether it actually appears under a dragged card is a vault check.
 - The shelf's own header carries its controls — a disclosure, a sort pick, a type
-  filter — and the two PICKERS follow the per-row control rule exactly: `tabindex="-1"`
+  filter and a title SEARCH — and the two PICKERS follow the per-row control rule exactly:
+  `tabindex="-1"`
   buttons opening a `Menu`, never form controls, with the card menu's shelf section as
-  the keyboard path (`addShelfSection`). One builder feeds both surfaces. The one case a
+  the keyboard path (`addShelfSection`). One builder feeds both surfaces — all of them in
+  `interactions/shelfMenu.ts`, which is where a shelf pick's menu items live now, the
+  section that assembles them staying in `interactions/menu.ts` with the submenus.
+  **The SEARCH is the one form control the header may hold**, because a menu cannot be
+  typed into: it keeps the half of that rule that is about Tab and pays the same ARIA
+  deviation, with a prompt in the card menu as its keyboard path. Its state is session
+  state — `shelfSearch` is a plain field on `ViewStateController`, the one shelf pick the
+  view-state store never sees, for `FilterState`'s reason — and it narrows through
+  `searchShelf` BEFORE `organizeShelf`, so the type picker's list is never narrowed by a
+  search. **The type picker reopens itself after a pick** (`reopenTypeMenu`), which is
+  what "stays open" can mean against an Obsidian `Menu`: the pick rebuilt the pane
+  anyway, so the fresh menu is what carries the new checkmarks. The card menu's submenu
+  passes no `after` and keeps a menu's ordinary behaviour — the one line those two
+  surfaces may differ on. The one case a
   menu cannot cover is an all-shelved, collapsed roadmap, where no card renders and so
   no card menu opens: there the pane is a `region` rather than a composite, and
   `syncShelfTabStops` puts every picker back in the tab order, decided from the
@@ -904,7 +918,10 @@ free of runtime code so imports stay cycle-free.
   the button pressed, so `refocus` puts focus back — on the PANE where cards remain, on
   the control's replacement where none do. Not interchangeable: the pane's key handler
   ignores any event whose target is not the pane itself, so focusing a `tabindex="-1"`
-  control inside a composite silently kills the arrows while looking correct.
+  control inside a composite silently kills the arrows while looking correct. The SEARCH
+  box takes a third answer for that same reason read the other way (`runSearch`): its own
+  replacement in both pane shapes, caret carried across, because handing the pane focus
+  under a keystroke would end the search at its first character.
   **The DISCLOSURE is out of that rule and is a permanent tab stop** (2026-08-15), on the
   same terms the resize grips above are — chrome fixed to the frame, never among the
   cards, unable to compete with a roving selection the pane only hears about through
