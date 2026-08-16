@@ -4,6 +4,7 @@ import { BacklogViewHost } from '../host';
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { projectionPopulation, toolbarPosition, treeShaped } from '../projection';
 import { isIterationType } from '../../domain/itemTypes';
+import { selectableIteration } from '../../domain/iterations';
 import { activeAxis, configuredAxes, drawsGrid, RoadmapAxis } from '../../domain/roadmap';
 import { ScaleId } from '../../domain/timeline';
 import { showMenuForClick } from '../interactions/menu';
@@ -326,11 +327,15 @@ export function renderBoardScopePicker(host: BacklogViewHost, barEl: HTMLElement
 	const labelOf = (item: BacklogItem): string =>
 		(seen.get(item.title) ?? 0) > 1 ? item.file.path.slice(0, -(item.file.extension.length + 1)) : item.title;
 
-	// The EFFECTIVE scope names the button, never the stored path: a scope that no longer
-	// resolves draws the product board, and a button naming the missing sprint would be
-	// the one thing on screen disagreeing with every other.
-	const scope = host.effectiveScope;
-	const current = scope === null ? null : (model.byPath.get(scope) ?? null);
+	// The RETAINED scope names the button, as long as it still names a selectable
+	// iteration — which is not the same as `effectiveScope`, and the difference is this
+	// control's whole job. Off Board mode the effective scope is null, while `Board` still
+	// reopens the retained one: named from the effective scope, the button said `Product`
+	// over a button that would open Sprint 12. A scope that no longer RESOLVES falls back
+	// to `Product` on both, because then nothing reopens it either. Found by review
+	// (Codex, PR #154).
+	const current = selectableIteration(iterations, host.boardScope);
+	const scope = current?.file.path ?? null;
 	const name = current === null ? SCOPE_PRODUCT : labelOf(current);
 	const btn = menuButton(zoneFor(barEl), 'target', name, 'scope', `Board scope: ${name}`);
 	btn.addClass('pbl-scope-btn');

@@ -93,6 +93,30 @@ describe('the iteration scope', () => {
 		expect(harness.view.effectiveScope).toBe(SPRINT);
 	});
 
+	it('refuses a scope the Base excluded, which the picker cannot name either', () => {
+		// An excluded iteration still loads as one when a hand-edited item names it as a
+		// parent, and both the picker and `Set iteration` refuse it — so accepting it here
+		// stranded the view on a board no control could name or re-select.
+		const vault = sprintVault();
+		vault.addFile('Names it as parent.md', { frontmatter: { type: 'PBI', order: 40 }, parentLink: 'Sprint 12' });
+		const harness = makeView(vault, OPTIONS, { base: 'Plan.base', only: ['Names it as parent.md', 'Sprint 13.md'] });
+		harness.view.setBoardScope(SPRINT);
+		expect(harness.view.model?.byPath.get(SPRINT)?.outsideFilter).toBe(true);
+		expect(harness.view.effectiveScope).toBeNull();
+	});
+
+	it('names the retained scope on the picker even off Board mode', () => {
+		// The button says which board `Board` will open, and off Board mode the effective
+		// scope is null while the retained one still reopens — named from the effective
+		// scope, the control said `Product` over a button that would open Sprint 12.
+		const harness = makeView(sprintVault(), OPTIONS, { base: 'Plan.base' });
+		harness.view.setBoardScope(SPRINT);
+		harness.view.setProjection('tree');
+		expect(harness.containerEl.querySelector('.pbl-scope-btn')?.getAttribute('aria-label')).toBe(
+			'Board scope: Sprint 12',
+		);
+	});
+
 	it('reads the whole view as Product when the stored path names no Iteration', () => {
 		// Resolved ONCE, upstream: resolving it only where the content is drawn leaves
 		// every other gate — the count, the offered types, the filter index — still

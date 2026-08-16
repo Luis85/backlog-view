@@ -14,6 +14,25 @@ import { addDays, daysBetween, formatCivil } from './timeline';
  */
 
 /**
+ * The `Iteration` a path names, or null — the one test for "is this a scope anything may
+ * be on", asked by every surface that has a scope in hand.
+ *
+ * Three refusals and the third is the one that was missing: the note must be in the
+ * model, it must be typed `Iteration`, and it must **not be a context row**. An excluded
+ * iteration still loads as one when a hand-edited item names it as a parent, and the
+ * scope picker and `Set iteration` both exclude it from what they offer — so a view that
+ * accepted it was stranded on a board the picker could neither name nor re-select. Found
+ * by review (Codex, PR #154).
+ */
+export function selectableIteration(items: Iterable<BacklogItem>, path: string | null): BacklogItem | null {
+	if (path === null) return null;
+	for (const item of items) {
+		if (item.file.path === path) return isIterationType(item.typeName) && !item.outsideFilter ? item : null;
+	}
+	return null;
+}
+
+/**
  * The iteration a new one FOLLOWS: the one ending latest, ties broken by start and then
  * by path so the answer is total and cannot depend on the order the vault loaded in.
  *

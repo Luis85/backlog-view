@@ -19,7 +19,8 @@ import { handleProjectionKeydown } from './interactions/keyboard';
 import { showColumnMenuForIndex } from './interactions/columnMenu';
 import { showContextMenu } from './interactions/menu';
 import { BacklogItem, BacklogModel, buildModel } from '../domain/model';
-import { isIterationType, PlacementEnd } from '../domain/itemTypes';
+import { PlacementEnd } from '../domain/itemTypes';
+import { selectableIteration } from '../domain/iterations';
 import { IterationBucket } from '../domain/board';
 import { DropTarget } from '../domain/dropTargets';
 import { activeAxis, drawsGrid } from '../domain/roadmap';
@@ -345,9 +346,11 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 		// scopes. Asked without that first clause, an iteration's carriers were counted on
 		// the PRODUCT board, because clicking Board leaves the pick retained (which is the
 		// point of retaining it). Found by review (Codex, PR #154).
-		const path = this.boardScope;
-		if (super.projection !== 'iteration' || path === null || !this.settings.iterationKey) return null;
-		return isIterationType(this.model?.byPath.get(path)?.typeName ?? null) ? path : null;
+		if (super.projection !== 'iteration' || !this.settings.iterationKey) return null;
+		// `selectableIteration` and not a type test written here: an excluded iteration is
+		// still typed `Iteration`, and accepting one left this view on a board the picker
+		// could neither name nor re-select.
+		return selectableIteration(this.model?.byPath.values() ?? [], this.boardScope)?.file.path ?? null;
 	}
 
 	/**
