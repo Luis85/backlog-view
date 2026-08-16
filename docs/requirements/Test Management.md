@@ -9,8 +9,8 @@ started: ""
 finished: ""
 risk: ""
 assignee: Alex
-start: 2026-08-03
-due: 2026-09-13
+start: ""
+due: ""
 ---
 
 # Test Management

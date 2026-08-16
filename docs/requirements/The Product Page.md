@@ -9,8 +9,8 @@ started: ""
 finished: ""
 risk: ""
 assignee: Sam
-start: 2026-08-16
-due: 2026-09-27
+start: ""
+due: ""
 ---
 
 # The Product Page

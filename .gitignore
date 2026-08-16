@@ -23,4 +23,7 @@ dist/
 # subagent-driven-development scratch: ledgers, briefs, review packages
 .superpowers/
 
+# the throwaway git worktrees an isolated subagent runs in
+.claude/worktrees/
+
 docs/absences

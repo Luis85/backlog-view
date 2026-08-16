@@ -21,8 +21,8 @@ finished: ""
 horizon: ""
 risk: ""
 assignee: Ben
-start: ""
-due: ""
+start: 2026-08-01
+due: 2026-08-15
 ---
 
 # Drag from the shelf to schedule

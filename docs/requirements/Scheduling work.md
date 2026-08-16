@@ -9,8 +9,8 @@ finished: ""
 horizon: ""
 risk: ""
 assignee: Chris
-start: 2026-08-03
-due: 2026-08-16
+start: ""
+due: ""
 ---
 
 # Scheduling work
