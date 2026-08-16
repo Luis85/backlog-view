@@ -26,7 +26,12 @@ item nobody stamped from work still in progress, and a view reading only dates r
 open item as unknown throughput. So this view names the **state key and the values that count
 as done** for itself, exactly as [[The release summary]] does for progress, and the
 classification is the pair: done with a stamp is throughput in that period, done without one
-is unknown, not done is neither. With no state key configured the unknown bucket is
-everything undated, and the view says that is what it is measuring.
+is unknown, not done is neither.
+
+**Without both, the metric is unconfigured rather than approximate.** There is no useful
+fallback: with no state key every undated item is a candidate, so an ordinary backlog reports
+its open work as unknown completions, which is the exact ambiguity the two keys exist to
+resolve, restated as a number. So the view says which key is missing and measures nothing,
+the way an unconfigured rule in [[Rules that say what is wrong]] is listed rather than run.
 
 **Outcome** — The pace of delivery is readable, with the gaps in its evidence stated.
