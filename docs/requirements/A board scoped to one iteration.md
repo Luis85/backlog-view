@@ -69,7 +69,7 @@ the moment the populations diverged, which is exactly what happened.
 | **Actor** | Backlog owner |
 | **Trigger** | Choosing an iteration from the board's scope picker |
 | **Preconditions** | Board mode is on, the iteration property is configured, and at least one `Iteration` note is in the model. A resolved state key is **not** a precondition: it is what the columns need, not what entering the scope needs, and 4a is the guidance shown when there is none |
-| **Guarantee** | One model, one write gate, one undo history, exactly as [[Product Kanban]]'s own guarantee states. Switching scope re-runs no query and writes nothing; a move writes the product state key alone, and a move onto the bucket a card already sits in writes nothing at all. |
+| **Guarantee** | One model, one write gate, one undo history, exactly as [[Product Kanban]]'s own guarantee states. Switching scope re-runs no query and writes nothing; a move writes the product state key **and any configured transition stamps**, exactly as the product board's own move does, and a move onto the bucket a card already sits in writes nothing at all. |
 
 **Main flow**
 
@@ -524,8 +524,18 @@ the moment the populations diverged, which is exactly what happened.
   scope's carriers — one function, so they cannot disagree.
 - Every projection-shaped question — filter index, count, completed toggle, offered types,
   membership, **and which toolbar position is pressed** — is answered from the projection
-  value in `projection.ts`, so a new one cannot be added without the compiler asking for
-  it.
+  value in `projection.ts`, rather than by a comparison written beside its caller.
+
+  **What enforces that, exactly**, because the sentence here promised more than anything
+  delivers until 2026-08-16: one total `Record<Projection, …>` (`PROJECTION_MODE`) fails to
+  compile with a member unanswered, and that is the whole of the compiler's contribution.
+  `INERT_FOCUS` is a `Partial` record and compiles clean with a hole in it, and the ~20
+  bare `projection === '…'` comparisons across `view/` are invisible to it. So a further
+  projection can still miss the count, the completed toggle, the offered types or the
+  filter index silently — which is exactly what [[The projection predicate has no lint
+  rule behind it]] is open about. Until that lands, the check is a repository sweep for
+  both spellings, run when a projection is added, and this criterion asks for the sweep
+  rather than for a guarantee nothing makes.
 - Choosing a scope leaves the picker on screen and the `Board` position pressed, checked
   by picking one and inspecting the rebuilt toolbar.
 - Leaving `Board` and returning restores the iteration that was showing, and the stored
@@ -566,6 +576,14 @@ the moment the populations diverged, which is exactly what happened.
   gate and is taken back by the one undo slot, writing the first state in the bucket it
   lands on; and a move onto the bucket the card is already in writes **nothing**, checked
   on all three inputs.
+- **The configured transition stamps ride that move**, as they do on the product board.
+  `computeStateWrites` returns the state write spread with `stampWrites`, so a
+  `startedDateKey` or `finishedDateKey` is written here too — and that is wanted rather
+  than tolerated: this board writes the product workflow's own state, so a transition made
+  here is a product transition and must be stamped like any other. Suppressing the stamps
+  to keep a narrower promise would make the history depend on which screen the user
+  happened to be looking at, which is the defect the tree's own `Set state` routes through
+  this planner to avoid.
 - Each bucket's representative is the first state **the bucket rule itself places in that
   bucket** — checked with an `iterationOpenStates` whose first entry is also a done value,
   asserting the drop does not write it and the card does not land in Resolved.
