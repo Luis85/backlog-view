@@ -22,7 +22,9 @@ Not here: §8, `An iteration draws as a bar or a line` — independent, touches 
 
 An earlier revision of the design made the iteration board a **scope field** consulted at call sites, keeping `host.projection === 'board'`. Seven review rounds then found seven separate functions that answer for the product board while an iteration is chosen — `filterScopeFor`, `countedPopulation`, `hideCompleted`, the columns dispatch, the `Set state` gate, its checkmark planner, `byProjectionType` — each found one at a time, each fix correct and one case short of the next.
 
-`src/view/projection.ts` predicted it in the file itself: *"A projection added beside `'tree'` rather than **as** a tree fails each of those gates silently and differently."* As a projection, `Record<Projection, …>` fails to compile until every question has an answer — an instrument that can see the whole set, rather than a review round per member of it.
+`src/view/projection.ts` predicted it in the file itself: *"A projection added beside `'tree'` rather than **as** a tree fails each of those gates silently and differently."*
+
+Making it a projection puts every question in one module and gives **one** of them a compile-time check. It does not give them all one — see Task 4, which measures what the compiler actually catches instead of assuming. The same file says why: *"there is no `no-restricted-syntax` rule forbidding a bare `projection === 'tree'` outside this file."* So the discipline is that the questions live in `projection.ts`; the sweep in Task 4 is how you find the callers that never ask it.
 
 **This does not change the control.** The toolbar still shows one `Board` position and a scope picker. What it changes is where the question is asked.
 
@@ -51,7 +53,9 @@ Identical to the foundation plan's — reproduced so this file stands alone.
 | `src/domain/model.ts` | `iterationResults(path)` |
 | `src/domain/iterations.ts` | **new** — the previous-iteration rule and the two date sums |
 | `src/view/host.ts` | `Projection` gains `'iteration'`; `boardScope` / `setBoardScope` |
-| `src/storage/viewStateStore.ts` | `scope` in `ViewPrefs` + `PREF_READERS`; the rename walk reaches it |
+| `src/storage/viewStateStore.ts` | `scope` in `ViewPrefs` + `PREF_READERS`; the rename walk reaches it and the fold keys |
+| `src/view/viewState.ts` | the `PROJECTION_MODE` row; `columnKey` / `ColumnScope` carry the iteration path |
+| `src/view/render/toolbar.ts` | the `INERT_FOCUS` row — a `Partial` record, so its absence is silent |
 | `src/view/projection.ts` | every projection question answered for `'iteration'`; `toolbarPosition` |
 | `src/view/viewStateController.ts` | the `PROJECTION_MODE` row, `boardScope()` / `setBoardScope()` |
 | `src/view/render/toolbarControls.ts` | `renderBoardScopePicker`, and its two action entries |
@@ -378,13 +382,33 @@ git commit -m "Card an iteration's carriers, and the ancestors that place them"
 ### Task 4: `'iteration'` becomes a projection
 
 **Files:**
-- Modify: `src/view/host.ts`, `src/view/projection.ts`, `src/view/viewStateController.ts`, `src/storage/viewStateStore.ts`, `src/view/render/toolbarStatus.ts`
+- Modify: `src/view/host.ts`, `src/view/projection.ts`, `src/view/viewStateController.ts`, `src/storage/viewStateStore.ts`
+- Modify: `src/view/render/toolbarStatus.ts` — `countedPopulation`
+- Modify: `src/view/render/toolbar.ts` — `INERT_FOCUS`
+- Modify: `src/view/viewState.ts` — `columnKey` / `ColumnScope` carry the iteration
 - Test: `test/storage/viewStateStore.test.ts`, `test/view/iterationBoard.test.ts` (create)
 
 **Interfaces:**
 - Produces: `Projection` gains `'iteration'`; `toolbarPosition(projection): Projection`; `host.boardScope: string | null` and `host.setBoardScope(path: string | null): void`; `ViewPrefs.scope?: string`.
 
-**The compiler is the instrument.** Adding `'iteration'` to `Projection` breaks every `Record<Projection, …>` until each question has an answer. Do **not** silence one with a default case; the point is being asked.
+**The compiler is NOT the instrument, and this plan claimed it was.** The sentence here until 2026-08-16 said adding `'iteration'` to `Projection` "breaks every `Record<Projection, …>` until each question has an answer". That is measured now rather than assumed, and it is wrong in the direction that matters:
+
+| | |
+| --- | --- |
+| `PROJECTION_MODE` (`src/view/viewState.ts`) | a **total** `Record<Projection, …>` — this one does fail to compile |
+| `INERT_FOCUS` (`src/view/render/toolbar.ts`) | `Partial<Record<Projection, …>>` — **compiles clean** with no entry, and the focus picker silently renders as though a focus applied |
+| ~20 bare `projection === '…'` comparisons across `view/` | invisible to the compiler entirely |
+
+One map, not "every map". `projection.ts`'s own comment says the rest out loud — *"there is no `no-restricted-syntax` rule forbidding a bare `projection === 'tree'` outside this file"* — and this plan asserted the opposite two screens above it.
+
+So the work is enumerated rather than delegated to a build error. **Run the sweep yourself before starting, and treat the result as the task list:**
+
+```bash
+grep -rn "Record<Projection" src --include=*.ts        # the maps: one total, one Partial
+grep -rn "projection === '\|projection !== '" src --include=*.ts   # everything the compiler cannot see
+```
+
+Every hit is a decision: does this comparison mean the *projection* or the *toolbar position*, and what is the answer for an iteration board? Do **not** silence a total map with a default case — but do not expect the partial one or the comparisons to raise their hands either.
 
 **The split has a price and it falls on the toolbar.** Two controls compare the projection to a *position* — `renderProjectionZone`'s switch, and the toggle's `is-active` / `aria-pressed`. Both are wrong once the internal identity and the control identity differ: the picker would delete itself on first use, and no position would render pressed. `toolbarPosition` answers `'board'` for `'iteration'`, and both controls ask it.
 
@@ -406,6 +430,32 @@ it('reads the whole view as Product when the stored path names no Iteration', ()
 it('retains the stale stored path rather than rewriting it', () => { /* 2a */ });
 it('carries the stored scope through a rename of the note, and of a folder above it', () => { /* 2e */ });
 it('rebuilds the filter index when the scope changes', () => { /* 2c */ });
+
+it('falls back to Product when the iteration PROPERTY is cleared', () => {
+	// 2g, and a second condition rather than a second symptom. The stored path still
+	// names a real Iteration, so the "note is gone" test above passes it — but with no
+	// configured key every item reads a null iteration, the picker is gone (1b) and the
+	// pressed Board position is a deliberate no-op (1d). The reader would be stranded on
+	// a permanently empty board with no control to leave it. The CONFIGURED KEY is part
+	// of resolving the effective scope, not just the path's validity.
+});
+it('retains the stored path when the property is cleared, and restores the scope when it is set again', () => { /* 2g */ });
+
+it('folds a column on ONE iteration only', () => {
+	// 2h. `columnKey(scope, value)` keys a fold by ColumnScope plus the state string, so
+	// a shared 'iteration' scope folds Resolved on Sprint 13 because the reader folded it
+	// on Sprint 12 — the product board's own collision, one level in.
+});
+it('carries a folded column with its iteration through a rename', () => {
+	// 2h's price, and half of it is not an option: a path inside a fold key must be
+	// migrated, or the board reopens columns the reader closed and the store keeps
+	// entries nothing will ever match.
+});
+
+it('renders no focus menu, no label and no clear button, with a focus inherited', () => {
+	// 3h. `INERT_FOCUS` is a PARTIAL record, so a missing entry compiles clean and the
+	// ordinary focus picker draws — a control whose every setting is a no-op here.
+});
 ```
 
 - [ ] **Step 2: Run, watch them fail**
@@ -414,13 +464,21 @@ Run: `npx vitest run test/view/iterationBoard.test.ts test/storage/viewStateStor
 
 - [ ] **Step 3: Add the projection and answer every question**
 
-Add `'iteration'` to `Projection`, then let the compiler walk you through `projection.ts`: `treeShaped` false, `hidesCompleted` **false**, `hasRollup` false, `projectionPopulation` → Task 3's carriers, `projectionMember` → `!inCatalog`, `filterScopeFor` → `'whole'`, `offerableTypes` → `Deliverable` yes and `Iteration` no. Add `toolbarPosition`.
+Add `'iteration'` to `Projection`, then answer each question in `projection.ts`: `treeShaped` false, `hidesCompleted` **false**, `hasRollup` false, `projectionPopulation` → Task 3's carriers, `projectionMember` → `!inCatalog`, `filterScopeFor` → `'whole'`, `offerableTypes` → `Deliverable` yes and `Iteration` no. Add `toolbarPosition`.
 
 `filterScopeFor` is the one that takes argument: the population ignores the focus, so the match index must too, or the promise holds for the cards and breaks for the search.
 
+Then the three the compiler will **not** ask you for, each found by review rather than by a build error:
+
+- **`INERT_FOCUS`** in `src/view/render/toolbar.ts` gains its row. It is a `Partial` record, so its absence is silent, and the symptom is a focus picker offering settings that cannot change anything on this board.
+- **`columnKey` / `ColumnScope`** in `src/view/viewState.ts` carry the chosen iteration's path, so a fold belongs to one iteration. And the rename walk must migrate that key too — this is the second path-bearing stored value, after `ViewPrefs.scope`, and it has the same obligation.
+- **The effective-scope resolution** takes the configured key as well as the path (see step 4).
+
 - [ ] **Step 4: Store the scope**
 
-`ViewPrefs.scope?: string` with a `PREF_READERS` row, the amended comment, and the rename walk reaching `prefs.scope`. The stored **mode** does not distinguish the two boards — the scope does, and choosing `Product` clears it. Two values that cannot contradict each other need no guard on any route in.
+`ViewPrefs.scope?: string` with a `PREF_READERS` row, the amended comment, and the rename walk reaching `prefs.scope` **and the fold keys**. The stored **mode** does not distinguish the two boards — the scope does, and choosing `Product` clears it. Two values that cannot contradict each other need no guard on any route in.
+
+**Resolving the EFFECTIVE scope takes two inputs, not one.** The stored path must name a live `Iteration` **and** `settings.iterationKey` must be configured. Either failing falls the whole view back to `Product`; neither rewrites the stored path, so restoring the note — or re-configuring the property — restores the saved choice. Resolving on the path alone leaves the second case as an `'iteration'` projection with no picker to escape from and no card able to match, which is a reader stranded by a settings change made elsewhere.
 
 - [ ] **Step 5: Count this scope's carriers**
 
@@ -767,6 +825,8 @@ git add src/ui src/domain src/view src/storage test/ && git commit -m "Create an
 **Placeholders.** Tasks 5, 6 and 7 give their test names and their rules but compress the step scaffolding, and Task 3's test bodies are named rather than written. That is a real trade and worth naming rather than hiding: each of those drives the jsdom harness through helpers whose signatures belong to `test/view/`, and a plan that guesses at them teaches a second way to open a menu. Tasks 1, 2, 8 and 9 — every rule with an argument behind it — carry their code in full.
 
 **Coverage, re-run after review.** The first version of this plan had nine tasks and no task for extension 5c, so every one of them could have gone green while a card created from an iteration board's `+` carried no iteration and no dates and vanished on the next refresh. `src/view/interactions/create.ts` is the New flow's own route and is a different module from Task 9's dialog, which is how a plan that named the dialog read as though creation were covered. Task 8 is that gap, and the lesson generalises: when a spec says *created into X*, check the create path and the dialog separately, because they are two modules and only one of them is obvious.
+
+**Coverage, third re-run — and the instrument was the problem.** Three further gaps (the cleared iteration property, the per-iteration column fold, the inert focus control) were all specified in `A board scoped to one iteration.md` as extensions 2g, 2h and 3h, and all three were missing from Task 4 because this plan trusted a compile error to find them. It said `Record<Projection, …>` would fail until every question had an answer. Measured: **one** map is total (`PROJECTION_MODE`), one is `Partial` and compiles clean with a hole in it (`INERT_FOCUS`), and roughly twenty bare `projection === '…'` comparisons are invisible to the compiler entirely. That is this register's own rule broken by me — *measure a set with an instrument that can see all of it, and test the instrument first* — and the fix is the two `grep` commands now in Task 4, run before the work rather than after review.
 
 **Coverage, second re-run.** Two more gaps of the Task-8 kind, both found by review rather than by this checklist. Task 6 defined the bucket guard and named only the drag's modules, leaving `keyboard.ts` and `menu.ts` routed around it — and `chooseState`'s `host.projection === 'board'` test is false for `'iteration'`, so an ordinary card's `Set state` would not have reached a board move method at all. Task 9 promised a one-write create carrying the goal while no task gave `NewItemSpec` a field to hold one. Both are the same shape as Task 8's: **a rule stated in one module and reached through others.** The check that finds them is not "does each spec section have a task" but "for each behaviour, which modules does an input traverse to reach it" — asked of the call sites, not of the section headings.
 
