@@ -162,8 +162,8 @@ Three quantities stay **outside** that sum and beside it:
   a different property that happens to hold the same number today produces the same total
   from a different model, and a fingerprint that cannot see that is a stamp that lies
   exactly when it matters. The total itself stays a plain sortable number, which is why
-  the fingerprint is a property of its own. **Current means two things, and the stamp answers only one of
-  them**: the stamp must match the model on screen, *and* the total must equal what that
+  the fingerprint is a property of its own. **Current means two things, and the stamp
+  answers only one of them**: the stamp must match the model on screen, *and* the total must equal what that
   model computes from the scores on the note as they are now — which the view has already
   computed, since it draws the decomposition beside it. A score edited in Obsidian's own
   property editor, or by another plugin, moves no stamp, so a stamp comparison alone would

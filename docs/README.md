@@ -240,7 +240,13 @@ still tangled with another view's DOM copies the tangle instead of sharing the l
 that document does **not** settle is the directory structure it also proposes, which this
 repository already has in another shape with a lint rule behind it: that is
 [[The SDD's layers are not the four this repository enforces]], and until it is answered the
-four enforced layers are what hold.
+four enforced layers are what hold. A review of the whole set found the other thing nobody
+had counted — the capability epics ask for roughly **sixteen new item types** against the
+eleven declared and the eight hues Obsidian ships — so
+[[Ten capabilities want sixteen new types]] blocks any of them from shipping until each name
+is placed in one of three buckets, and the register's own default is that most are not types
+at all: a type is for something the tree ranks, everything else is a note a property points
+at.
 
 **Nine capability epics** hang off that direction, all specification, in the delivery order
 the document argues for. **Backlog Health** comes first with prioritization, because every
@@ -325,8 +331,8 @@ npm run docs   # and as part of npm run check, and in CI
 can run is worse than none, because it invites trust it has not earned:
 
 1. Every note outside `adrs/`, `superpowers/`, `prds/` and `sdds/` carries a `type`, an
-   `order` and a supported `status` — the three fields the conventions table below calls required —
-   every parent link resolves, and every parent/child pair is legal. A note that lost
+   `order` and a supported `status` — the three the conventions table below calls
+   required — every parent link resolves, and every parent/child pair is legal. A note that lost
    its frontmatter is reported rather than skipped: a skipped file is checked for
    nothing and says so to nobody. Two notes may not share a **basename**, in any
    folders, because the register addresses work items by name and a collision makes
