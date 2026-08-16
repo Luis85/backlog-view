@@ -918,11 +918,14 @@ free of runtime code so imports stay cycle-free.
   state — `shelfSearch` is a plain field on `ViewStateController`, the one shelf pick the
   view-state store never sees, for `FilterState`'s reason — and it narrows through
   `searchShelf` BEFORE `organizeShelf`, so the type picker's list is never narrowed by a
-  search. **The type picker reopens itself after a pick** (`reopenTypeMenu`), which is
+  search. **The type picker reopens itself after a pick** (`showTypeMenu`), which is
   what "stays open" can mean against an Obsidian `Menu`: the pick rebuilt the pane
   anyway, so the fresh menu is what carries the new checkmarks. The card menu's submenu
   passes no `after` and keeps a menu's ordinary behaviour — the one line those two
-  surfaces may differ on. The one case a
+  surfaces may differ on. **A picker that reopens is anchored to its BUTTON on the first
+  open as well**, which is the one place `showMenuForClick` is the wrong helper: it
+  honours a real pointer's position, so the menu opened under the cursor and then jumped
+  to the button's edge on every pick after it. The one case a
   menu cannot cover is an all-shelved, collapsed roadmap, where no card renders and so
   no card menu opens: there the pane is a `region` rather than a composite, and
   `syncShelfTabStops` puts every picker back in the tab order, decided from the

@@ -1,6 +1,6 @@
 import { Menu, setIcon, setTooltip } from 'obsidian';
 import { BacklogViewHost } from '../host';
-import { showMenuForClick } from '../interactions/menu';
+import { showMenuAtElement, showMenuForClick } from '../interactions/menu';
 import { addShelfSortItems, addShelfTypeItems } from '../interactions/shelfMenu';
 import { organizeShelf } from '../../domain/shelf';
 import { ShelfCard } from '../../domain/bars';
@@ -175,13 +175,7 @@ function renderTypeFilter(host: BacklogViewHost, headerEl: HTMLElement, shelf: S
 	// built from.
 	const hiding = organizeShelf(shelf, 'tree', new Set()).some((group) => host.shelfHiddenTypes.has(group.type));
 	btn.toggleClass('is-active', hiding);
-	btn.addEventListener('click', (evt) => showMenuForClick(typeMenu(host, shelf), evt));
-}
-
-function typeMenu(host: BacklogViewHost, shelf: ShelfCard[]): Menu {
-	const menu = new Menu();
-	addShelfTypeItems(host, menu, shelf, () => reopenTypeMenu(host));
-	return menu;
+	btn.addEventListener('click', () => showTypeMenu(host));
 }
 
 /**
@@ -193,19 +187,29 @@ function typeMenu(host: BacklogViewHost, shelf: ShelfCard[]): Menu {
  * it. The card menu's own submenu passes no `after` and so keeps a menu's ordinary
  * behaviour — the one line the two surfaces are allowed to differ on.
  *
+ * "At the same place" is why the FIRST open is anchored to the button too, through this
+ * one function rather than through `showMenuForClick`. That helper anchors a real pointer
+ * click at the CURSOR, which is correct for a menu opened once and wrong for one that
+ * comes back: the menu appeared under the mouse, then jumped to the button's own edge on
+ * every pick after it. A picker that stays open has to stay in one place, so the button
+ * is the anchor in both — the sort picker beside it opens once and keeps the pointer's.
+ *
  * Everything is re-read from the host rather than captured: the button pressed and the
  * element it sat in are both gone with the frame, and a shelf array from before the
  * rebuild would count cards the pane no longer holds.
  */
-function reopenTypeMenu(host: BacklogViewHost): void {
-	// Before the menu, not instead of it: Obsidian's menu takes focus while it is open and
-	// gives it back on Escape, so this is what decides where Escape lands.
-	refocus(host, '.pbl-shelf-filter');
+function showTypeMenu(host: BacklogViewHost): void {
 	const shelf = host.roadmap?.roadmap.shelf ?? [];
 	const btn = host.roadmap?.shelfEl?.querySelector<HTMLElement>('.pbl-shelf-filter');
 	if (shelf.length === 0 || !btn) return;
-	const rect = btn.getBoundingClientRect();
-	typeMenu(host, shelf).showAtPosition({ x: rect.left, y: rect.bottom });
+	const menu = new Menu();
+	addShelfTypeItems(host, menu, shelf, () => {
+		// Before the menu, not instead of it: Obsidian's menu takes focus while it is open
+		// and gives it back on Escape, so this is what decides where Escape lands.
+		refocus(host, '.pbl-shelf-filter');
+		showTypeMenu(host);
+	});
+	showMenuAtElement(menu, btn);
 }
 
 /**
@@ -214,17 +218,21 @@ function reopenTypeMenu(host: BacklogViewHost): void {
  * not that. Nothing is written; `searchShelf` (`domain/shelf.ts`) is the whole rule.
  */
 function renderSearch(host: BacklogViewHost, headerEl: HTMLElement): void {
-	const box = headerEl.createDiv({ cls: 'pbl-shelf-search' });
-	setIcon(box.createSpan({ cls: 'pbl-shelf-search-icon' }), 'search');
 	const label = `Search ${SHELF_LABEL.toLowerCase()}`;
+	// The input IS the box — no wrapper drawing a second one around it. Obsidian styles
+	// `input[type='search']` itself, and that selector outranks a single class, so a
+	// wrapper with its own border and background put a bordered field inside a bordered
+	// field. Whatever the theme gives a search input is what this one wears.
+	//
 	// `type="search"` rather than `text` plus a clear button of our own: the platform draws
-	// that button, and only while there is something to clear.
-	const input = box.createEl('input', {
+	// that button, and only while there is something to clear. It is also what supplies the
+	// magnifier the wrapper used to draw beside it.
+	const input = headerEl.createEl('input', {
 		cls: 'pbl-shelf-search-input',
 		attr: { type: 'search', tabindex: '-1', placeholder: label, 'aria-label': label },
 	});
 	input.value = host.shelfSearch;
-	setTooltip(box, label);
+	setTooltip(input, label);
 	// **While a composition is live, the keystrokes are the IME's and not this box's** —
 	// one rule, asked of both listeners below, because both of them would otherwise answer
 	// a keystroke that was never addressed to them.

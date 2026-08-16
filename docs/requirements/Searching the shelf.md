@@ -155,15 +155,30 @@ controls and the card menu's shelf section (`addShelfSection` stays in
 kept that file inside its line budget, and the split is by subject rather than by size —
 these three build the shelf's own picks and nothing else does.
 
-Staying open is a fresh menu at the same button (`reopenTypeMenu` in `shelfControls.ts`):
+Staying open is a fresh menu at the same button (`showTypeMenu` in `shelfControls.ts`):
 Obsidian's `Menu` closes itself on a pick and offers no way not to, and the pick has
 rebuilt the pane anyway, which is what puts the new checkmarks and counts in it. The card
 menu's submenu passes no `after` and so keeps a menu's ordinary behaviour — the one line
 the two surfaces are allowed to differ on.
 
+"At the same button" is why the FIRST open goes through that one function too, rather than
+through `showMenuForClick` like the sort picker beside it. That helper anchors a real
+pointer click at the CURSOR, which is right for a menu opened once and wrong for one that
+comes back: the menu appeared under the mouse and then jumped to the button's own edge on
+every pick after it (2026-08-16). A picker that reopens has to reopen in one place, so the
+button is the anchor in both — asserted on the POSITION rather than on which call was made,
+in `test/view/shelfSearch.test.ts`.
+
 Driven in `test/view/shelfSearch.test.ts` (the box, the caret, the tab-order lift, the
 keyboard path, the reopen and the two bulk entries) and `test/domain/shelf.test.ts`
-(`searchShelf` itself). `styles/shelf.css` carries the box, which yields its width rather
-than claiming one — the header is one row that also holds the disclosure, both pickers and
-the dated axis's outcome line. Whether it reads well at a narrow pane, and in a themed
-vault, is the usual live-vault remainder.
+(`searchShelf` itself). `styles/shelf.css` sizes the field and draws nothing around it: the
+input IS the box, and it yields its width rather than claiming one — the header is one row
+that also holds the disclosure, both pickers and the dated axis's outcome line. It sat in a
+wrapper div with a border and a background of its own until 2026-08-16, which put a
+bordered field inside a bordered field in a real vault. What the wrapper undid to hide
+that could not work: Obsidian styles `input[type='search']` itself, and an attribute
+selector outranks the single class that was blanking it. Nothing here can see that — the
+harness's stub theme gives a bare input no chrome at all — so the two boxes were a vault
+report and the fix is a vault check. The magnifier the wrapper drew goes with it; the
+platform draws one, along with the clear button, and only while there is something to
+clear.
