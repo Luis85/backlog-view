@@ -71,8 +71,10 @@ export const SETUP: ManualSection = {
 				'The property that records which iteration an item is in. The view reads it, and ' +
 				'the toolbar\'s ✨ Assign missing properties will create the empty key on notes ' +
 				'that lack it. The iteration goal property holds what that iteration is FOR, in ' +
-				'one line, on the Iteration note alone — nothing reads it yet, and ✨ never ' +
-				'creates it, since a goal on every other note in the vault would mean nothing. ' +
+				'one line, on the Iteration note alone. It is drawn above the columns of a board ' +
+				'scoped to that iteration, and it fills the goal field of the scope picker\'s ' +
+				'Edit iteration dialog. ✨ never creates it, since a goal on every other note in ' +
+				'the vault would mean nothing. ' +
 				'The two state lists say how a board scoped to one iteration narrows your own ' +
 				'workflow into three columns: the states it reads as not started, the states it ' +
 				'reads as finished, and everything else in between. Two readings hold whether or ' +
