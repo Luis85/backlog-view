@@ -103,6 +103,17 @@ one line, and the work starts at the top of the grid.
   rather than losing it: `stateNote` moved into `render/lanes.ts` and both a bar row and a
   diamond now read it, so a done marker is no longer a green diamond and nothing else on
   either axis. That is the one thing the resources axis's own row shipped without.
+- **3d — a match found BELOW a milestone, or the milestone itself matching.** The diamond IS
+  registered as drawn (`ctx.placed`, with `face: 'none'`), and that half is not optional:
+  `nameMatches` reads its "already on screen" set from that register, so a marker drawn and
+  not registered reads as one that did not draw — the bar ABOVE it then counted a match the
+  reader is looking at in the row overhead, and offered an `Open match` entry in its menu for
+  the same note. Found in review (2026-08-16), on both grid axes at once, since the row is
+  one row. What the diamond cannot do is carry an affordance of its OWN: it is 12px of
+  rotated mark with no lead, no count slot and no room for a chip, so a match beneath a
+  milestone is named nowhere on the grid. A loss, stated rather than drawn badly — and the
+  distinction it rests on is that registering is about what is ON SCREEN while `face` is
+  about what can be written there.
 - **4a — the bucket axis.** Nothing here applies: a marker is an ordinary card there.
 - **5a — a marker the Base excluded.** Unchanged. `deriveBars` routes a context row to
   `RoadmapModel.context` before any span is computed, so it never reaches this row — the
@@ -146,10 +157,17 @@ null on this axis skipped its ARGUMENTS too and the row silently never drew; and
 a band, every work row on this axis was described as "Assigned to Milestones" and washed with
 absences it cannot have.
 
+`PlacedMount.face` gained `'none'` in `src/view/host.ts` for 3d — a surface
+that drew an item and can write nothing on it — and `renderCardMatches` returns on it before
+the match walk. Registering is about what is ON SCREEN; `face` is about what can be written
+there, and conflating the two is what made the parent over-report.
+
 `renderRowFacts` in the same file **lost its marker branch**, which is 3b as code: it wrote a
 marker's explicit label, and `renderBarRow` can no longer be handed one. `stateNote` moved
 from there into `render/lanes.ts` so the diamond can read it too (3c) — `edgeClasses`' own
 reason, since the grid imports that module and never the other way.
+
+`test/view/roadmapMatches.test.ts` drives 3d's registration, watched failing without it.
 
 Driven in `test/view/roadmapMarkers.test.ts` (one row of diamonds ahead of the bars, the
 minting rule, no disclosure, the two outside-window cases and the mark's own name),

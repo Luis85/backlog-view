@@ -833,6 +833,12 @@ export function drawMarkerDiamonds(
 		// it on the row): the link drag's own sweep reads it back to mark what a held gesture
 		// may not be dropped on, and here the mark is the only element that is one marker's.
 		el.dataset.pblPath = bar.item.file.path;
+		// REGISTERED even though a diamond can carry no match affordance (`face: 'none'`):
+		// `nameMatches` takes its "already on screen" set from this register, so a marker
+		// drawn and not registered reads as one that did not draw, and the parent bar above
+		// it counts a match the reader is looking at in the row overhead. It stays off the
+		// KEYBOARD walk regardless — that list is `drawnCards`, read from the entries.
+		ctx.placed.set(bar.item.file.path, { item: bar.item, mount: el, listsChildren: false, face: 'none' });
 		mounts.tracks.set(bar.item.file.path, track);
 		// The TRACK is where a move's preview mounts, and it is this one shared box; the
 		// ANCHOR an arrow reads a Y off is the diamond, because a sub-lane is one marker's

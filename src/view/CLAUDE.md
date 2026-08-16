@@ -972,6 +972,12 @@ free of runtime code so imports stay cycle-free.
   longer exported. What it cost — a marker with descendants announces its rollup to nobody
   — is [[Milestones in one row on the dated axis]] 3b. Its state is not lost with it:
   `stateNote` moved into `render/lanes.ts` and the diamond folds it into its own label.
+  **The diamond still REGISTERS in `ctx.placed`, with `face: 'none'`**, and the two are
+  different questions: registering says the item is ON SCREEN, which is what `carded` is
+  read from, while `face` says what can be WRITTEN on the mount. Drawn and unregistered, a
+  marker made the bar above it count a match the reader was looking at, and offered an
+  `Open match` for it in that bar's menu. So a surface that draws an item registers it,
+  whatever it can afford to show — see [[Milestones in one row on the dated axis]] 3d.
   `PlacedMount` itself is declared in `host.ts` beside `DrawnColors` and for that type's
   reason: a `render/` type imported back into `host.ts` turns the
   `columns.ts` ↔ `menu.ts` ↔ `host.ts` web into sixteen cycles `npm run analyze` refuses

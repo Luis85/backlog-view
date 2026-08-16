@@ -669,6 +669,9 @@ export function renderCardMatches(ctx: RowContext, carded: Set<string>, placed: 
 	const host: BacklogViewHost = ctx.host;
 	if (!host.isFiltering()) return;
 	const { item, mount, listsChildren } = placed;
+	// A surface that drew the item with nowhere to write on it — see `PlacedMount.face`.
+	// Asked BEFORE the walk, since there is nothing to do with its answer.
+	if (placed.face === 'none') return;
 	const matches = undisclosedMatches(host, item, carded, listsChildren ? listedChildren(host, item) : []);
 	if (matches.length === 0) return;
 	if (placed.face === 'count') return renderMatchCount(ctx, mount, item, matches.length);
