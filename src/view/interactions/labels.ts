@@ -340,12 +340,29 @@ function iterationTargets(host: BacklogViewHost): IterationTarget[] {
  * there is genuinely nothing to do — which is not the same as no TARGETS: an item holding
  * a link keeps the submenu, with `None` alone, since this is the only place offering to
  * take that value off.
+ *
+ * **A link, asked of the parsed ENTRY, and not of key presence** — which is where this
+ * gate and `computeIterationWrites` deliberately disagree, so read both before making them
+ * match. ✨ Assign missing properties stubs `iteration: ''` onto every eligible note
+ * (`missingKeyStubs` skips only `horizon` and `dependsOn`), so in a vault where it ran
+ * before any `Iteration` note existed, presence is true on EVERY row while there is
+ * neither an assignment to clear nor anywhere to go: `Set iteration` on all of them,
+ * holding `None` alone. `iterationEntry` is non-null for a resolved link and for a broken
+ * one alike (`readLinkList` keeps `{ raw, file: null }`) and null for a blank stub, which
+ * is the question this gate is actually asking. What a `None` pick WRITES stays key
+ * presence, and must: that is what keeps a reader-refused value (`iteration: ''`,
+ * `iteration: 12`) clearable whenever the menu is shown at all.
+ *
+ * The corner that accepts: a note whose key holds a refused non-empty value in a vault
+ * with no `Iteration` notes AT ALL is offered nothing, so that value is unclearable until
+ * one exists. Deliberate — far narrower than a `None`-only menu on every row, and the
+ * first iteration created brings the menu back with the clear in it.
  */
 export function canSetIteration(host: BacklogViewHost, item: BacklogItem): boolean {
 	if (!host.settings.iterationKey) return false;
 	if (isMarkerType(item.typeName)) return false;
 	if (inCatalog(item)) return false;
-	return item.ownKeys.iteration || iterationTargets(host).length > 0;
+	return item.iterationEntry !== null || iterationTargets(host).length > 0;
 }
 
 /**

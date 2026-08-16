@@ -126,6 +126,21 @@ describe('Set iteration', () => {
 		expect('iteration' in vault.fm('PBI.md')).toBe(false);
 	});
 
+	it('is absent on a key the backfill stubbed, with no link and no targets', () => {
+		// ✨ Assign missing properties stubs `iteration: ''` onto every eligible note —
+		// `missingKeyStubs` skips only `horizon` and `dependsOn` — so in a vault where it has
+		// run before any Iteration exists, key PRESENCE is true on every row while there is
+		// neither an assignment to clear nor anywhere to go.
+		const vault = new FakeVault();
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10, iteration: '' } });
+		const { containerEl, view } = makeView(vault, ITERATION_KEY);
+
+		// Not vacuous: the key really is there, and the gate ignores it all the same.
+		expect(view.model?.byPath.get('PBI.md')?.ownKeys.iteration).toBe(true);
+		expect(view.model?.byPath.get('PBI.md')?.iterationEntry).toBeNull();
+		expect(iterationEntries(containerEl, 'PBI')).toBeNull();
+	});
+
 	it('is absent with no link and no targets', () => {
 		const vault = new FakeVault();
 		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10 } });
