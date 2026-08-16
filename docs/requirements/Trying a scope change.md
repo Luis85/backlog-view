@@ -30,4 +30,12 @@ stamp key configured the value impact is not shown at all: capacity, risk and de
 still answer, and the missing one is named. Capacity is the opposite case and sums, because
 effort is a quantity.
 
+**The risk and dependency impacts are the release summary's own figures, recomputed over the
+proposed scope** — [[The release summary]] defines both, so a scenario that counted them
+differently would report a change that vanishes the moment it is committed. Blocked items and
+critical unaddressed risks, each counted once per item, each shown as the pair *now → if
+applied*, using the predicates [[Release readiness]] declares. A scenario's whole claim is
+that the numbers it shows are the numbers it will produce; anything computed a second way
+here breaks that.
+
 **Outcome** — "What if we cut this" can be answered without changing anything.

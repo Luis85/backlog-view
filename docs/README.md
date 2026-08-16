@@ -280,6 +280,15 @@ Backlog is [[Product Backlog]], its Prioritization is [[Business value estimatio
 Roadmap is [[Product Roadmap]] — so they gained what they were missing rather than a
 duplicate: bulk edits on a selection, and the eight features of the scoring model.
 
+One thing in that document is **declined rather than absorbed**: its Product Backlog asks for
+configurable level names and configurable allowed children, and
+[ADR 0013](adrs/0013-fix-the-type-vocabulary-at-six-names.md) fixes the vocabulary instead —
+after [ADR 0012](adrs/0012-make-the-type-vocabulary-configurable.md) had made it
+configurable, which is the version of this idea that was built and withdrawn. The reasoning is
+in the ADR and is not reopened by a requirements document restating the wish; what it costs a
+vault is the one thing a reader should be able to find, so it is recorded here rather than
+left as an absence somebody has to notice.
+
 **Cross-cutting concerns** is the fourth kind: properties that have to be true of
 everything, or they are true of nothing. `Multilang` (every string comes out of a
 per-locale catalog) and `Theming and styling` (every pixel comes from Obsidian's design
