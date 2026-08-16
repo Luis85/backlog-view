@@ -235,6 +235,17 @@ following are checked:
   written.
 - The closing message carries the fenced handoff prompt and nothing else in the block.
 
+**The GREEN result.** Run on the same prompt, in the same repository, with the skill
+present: it invoked the skill as its first action, sent **one** message containing **one**
+question — which of `Epic`, `Feature` or `PBI` — wrote **no files at all** (`git status
+--short` empty), touched nothing under `src/`, `test/` or `styles/`, and stopped at phase
+0 waiting for an answer it had no way to get. It found the same prior art the baseline
+found, `Done columns stay lean`, and said out loud that it was holding it for phase 3
+rather than settling it.
+
+The contrast is the whole result: an identical request produced a finished note without
+the skill and an unanswered question with it.
+
 **What the matrix covers, and what it does not.** Review asked for a GREEN run per
 supported type, and for the `Epic` prompt to be baselined in RED as well. Half of that is
 taken and half is refused, so the reason for each is written here rather than left to be
