@@ -393,12 +393,16 @@ export function canSetIteration(host: BacklogViewHost, item: BacklogItem): boole
  * the identity. What it shares instead is that helper's rules, one of them narrowed.
  * Checked is asked of the PLAN, never by a comparison written beside the plan and
  * expected to agree with it — but of the plan's LINK component alone, see below. And
- * `None` appears only while the note carries the key (`ownKeys`, presence and not value),
- * so it can never write nothing, and it removes the key rather than blanking it.
+ * `None` is unconditional, always the last entry, and checked exactly like every other
+ * one — when `computeIterationWrites(item, null, …)` is empty, which is precisely an
+ * item with no `iteration` key at all. Hiding it while unassigned was the inverted
+ * version of this: `None` is the entry that MARKS "in no iteration", not a write guard —
+ * `writes(null)` being empty is `None`'s own current-state case, not a reason to hide it.
  */
 export function addIterationItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
 	const writes = (target: BacklogItem | null): ItemWrite[] => computeIterationWrites(item, target, host.settings);
-	for (const target of iterationTargets(host)) {
+	const targets = iterationTargets(host);
+	for (const target of targets) {
 		menu.addItem((si) => {
 			si.setTitle(target.label).onClick(() => void host.applySafely(writes(target.item)));
 			// Narrowed deliberately when the plan grew a timeframe. The register's usual
@@ -412,12 +416,11 @@ export function addIterationItems(host: BacklogViewHost, menu: Menu, item: Backl
 			if (!writes(target.item).some((w) => w.iteration !== undefined)) si.setChecked(true);
 		});
 	}
-	if (!item.ownKeys.iteration) return;
-	menu.addSeparator();
-	menu.addItem((si) =>
-		si
-			.setTitle('None')
+	if (targets.length > 0) menu.addSeparator();
+	menu.addItem((si) => {
+		si.setTitle('None')
 			.setIcon('eraser')
-			.onClick(() => void host.applySafely(writes(null))),
-	);
+			.onClick(() => void host.applySafely(writes(null)));
+		if (writes(null).length === 0) si.setChecked(true);
+	});
 }

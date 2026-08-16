@@ -80,7 +80,7 @@ describe('Set iteration', () => {
 		const { containerEl, view } = makeView(vault, ITERATION_KEY, { only: ['Sprint 11.md', 'PBI.md'] });
 
 		expect(view.model?.byPath.get('Sprint 12.md')?.outsideFilter).toBe(true);
-		expect(titlesIn(iterationEntries(containerEl, 'PBI'))).toEqual(['Sprint 11']);
+		expect(titlesIn(iterationEntries(containerEl, 'PBI'))).toEqual(['Sprint 11', 'None']);
 	});
 
 	it('is absent on a catalog member', () => {
@@ -160,6 +160,20 @@ describe('Set iteration', () => {
 		]);
 	});
 
+	it('offers None checked on an item in no iteration, with targets in the model', () => {
+		// The gate this codebase's rule exists for: None is the entry that marks "this item
+		// is in no iteration", so hiding it while unassigned is the bug, not a feature.
+		const vault = new FakeVault();
+		vault.addFile('Sprint 11.md', { frontmatter: { type: 'Iteration' } });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10 } });
+		const { containerEl } = makeView(vault, ITERATION_KEY);
+
+		expect((iterationEntries(containerEl, 'PBI') ?? []).map((e) => [e.titleText, e.checked])).toEqual([
+			['Sprint 11', false],
+			['None', true],
+		]);
+	});
+
 	/** The two sprints with timeframes of their own, and a PBI in one whose dates drifted. */
 	function driftedVault(): FakeVault {
 		const vault = new FakeVault();
@@ -214,7 +228,7 @@ describe('Set iteration', () => {
 		const entries = iterationEntries(containerEl, 'PBI') ?? [];
 		// Only where they COLLIDE: qualifying the third would make the ordinary case
 		// unreadable to fix a rare one.
-		expect(titlesIn(entries)).toEqual(['A/Sprint 12', 'B/Sprint 12', 'Sprint 11']);
+		expect(titlesIn(entries)).toEqual(['A/Sprint 12', 'B/Sprint 12', 'Sprint 11', 'None']);
 
 		entries[1].click();
 		await flush();
