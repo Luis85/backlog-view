@@ -38,7 +38,11 @@ export function scrollToToday(roadmap: RoadmapSnapshot | null): void {
  * about is `drawsGrid`, not the plain dated axis.
  */
 export function syncProjectionClasses(viewEl: HTMLElement, projection: Projection, axis: RoadmapAxis | null): void {
-	viewEl.toggleClass('pbl-board-mode', projection === 'board' || projection === 'deliverables');
+	// Three projections draw cards in columns, so three wear the board's own layout class.
+	viewEl.toggleClass(
+		'pbl-board-mode',
+		projection === 'board' || projection === 'deliverables' || projection === 'iteration',
+	);
 	viewEl.toggleClass('pbl-roadmap-mode', projection === 'roadmap');
 	viewEl.toggleClass('pbl-roadmap-dates', axis !== null && drawsGrid(axis));
 }

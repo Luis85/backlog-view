@@ -11,7 +11,7 @@ import { handleProjectionKeydown } from './interactions/keyboard';
 import { showColumnMenuForIndex } from './interactions/columnMenu';
 import { showContextMenu } from './interactions/menu';
 import { BacklogItem, BacklogModel, buildModel } from '../domain/model';
-import { PlacementEnd } from '../domain/itemTypes';
+import { isIterationType, PlacementEnd } from '../domain/itemTypes';
 import { DropTarget } from '../domain/dropTargets';
 import { activeAxis, drawsGrid } from '../domain/roadmap';
 import { ItemWrite, ScheduleGesture, SchedulePlan } from '../domain/writePlan';
@@ -314,6 +314,26 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 
 	isFiltering(): boolean {
 		return this.filter.active;
+	}
+
+	/**
+	 * The iteration this view is actually SHOWING — the stored path, resolved.
+	 *
+	 * TWO inputs, and either failing falls the whole view back to the product board.
+	 * The path must still name a live `Iteration`, and `settings.iterationKey` must be
+	 * configured: with no key every item reads a null iteration, so the board can never
+	 * hold a card, its picker is gone and the reader is stranded on an empty screen by a
+	 * settings change made elsewhere. Neither failure rewrites the stored path — see
+	 * `ViewPrefs.scope`.
+	 *
+	 * A getter rather than a field for the reason `activeAxis` is a function: it is a
+	 * question about the CURRENT model and settings, and a value resolved once at the
+	 * pick would answer for a vault that has changed under it.
+	 */
+	get effectiveScope(): string | null {
+		const path = this.boardScope;
+		if (path === null || !this.settings.iterationKey) return null;
+		return isIterationType(this.model?.byPath.get(path)?.typeName ?? null) ? path : null;
 	}
 
 	// ----------------------------------------------------------- collapse state

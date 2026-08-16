@@ -1,7 +1,7 @@
 import { BasesQueryResult, setIcon, setTooltip } from 'obsidian';
 import { t } from '../../i18n/t';
 import { BacklogViewHost } from '../host';
-import { BacklogItem, BacklogModel } from '../../domain/model';
+import { BacklogItem, BacklogModel, iterationResults } from '../../domain/model';
 import { displayType, isDeliverableType } from '../../domain/itemTypes';
 import { setTextIfChanged } from './toolbarControls';
 import { projectionPopulation } from '../projection';
@@ -78,7 +78,7 @@ export function renderIgnoredNote(barEl: HTMLElement, model: BacklogModel): void
 
 /**
  * What this projection is counting — its own population, which is not the same question
- * for all five. The Deliverables board draws `model.deliverableResults`; the
+ * for all six. The Deliverables board draws `model.deliverableResults`; the
  * requirements board draws every result EXCEPT a Deliverable, which it excludes by
  * construction; the test catalog draws its own forest's results; and the tree and the
  * roadmap draw what is left, which is the PLAN's population — `model.results` excludes
@@ -92,6 +92,14 @@ export function renderIgnoredNote(barEl: HTMLElement, model: BacklogModel): void
 export function countedPopulation(host: BacklogViewHost, model: BacklogModel): BacklogItem[] {
 	if (host.projection === 'deliverables') return model.deliverableResults;
 	if (host.projection === 'board') return model.results.filter((item) => !isDeliverableType(item.typeName));
+	// This scope's CARRIERS, which `iterationResults` already returns with the excluded
+	// ancestors mixed in — they are placement rather than population, so they are dropped
+	// here by the same `outsideFilter` test every other count in this codebase makes.
+	// `effectiveScope` and not `boardScope`: a stale path draws the product board, and a
+	// count that answered otherwise would report zero items over a board full of them.
+	if (host.effectiveScope !== null) {
+		return iterationResults(model, host.effectiveScope).filter((item) => !item.outsideFilter);
+	}
 	// The catalog's own RESULTS — the tests and the `Task`s beneath them, no context row.
 	// Not "tests and only tests", which is a re-listed population that disagrees with the
 	// membership rule about a `Task`; and not "what it draws" either, which would sweep in

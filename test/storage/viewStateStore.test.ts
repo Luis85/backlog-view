@@ -40,6 +40,9 @@ const FULL_PREFS: Required<ViewPrefs> = {
 	shelfSort: 'modified',
 	shelfHiddenTypes: ['Task'],
 	colWidths: { 'note.owner': 200 },
+	// The one pref the VAULT owns — a note path, retained through a note that has gone
+	// and migrated through a rename, unlike every other value in this bucket.
+	scope: 'sprints/Sprint 12.md',
 };
 
 const FULL_FOLDS: Required<ViewFolds> = {

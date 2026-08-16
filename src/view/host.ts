@@ -15,11 +15,11 @@ import { WriteOutcome } from '../storage/frontmatter';
 export const PRODUCT_BACKLOG_VIEW_TYPE = 'product-backlog';
 
 /**
- * The five readings of one backlog. UI state, not a base setting: the choice
+ * The six readings of one backlog. UI state, not a base setting: the choice
  * lives in the view-state store's vault-scoped localStorage — per saved view,
  * per device — and never in the `.base`.
  */
-export type Projection = 'tree' | 'board' | 'roadmap' | 'deliverables' | 'catalog';
+export type Projection = 'tree' | 'board' | 'roadmap' | 'deliverables' | 'catalog' | 'iteration';
 
 /**
  * Which screen a folded column was folded on. Four words that are almost the projection
@@ -34,7 +34,7 @@ export type Projection = 'tree' | 'board' | 'roadmap' | 'deliverables' | 'catalo
  * the mechanism: the key space is "a word on one screen", and a type is a word the same
  * way a column's state is.
  */
-export type ColumnScope = 'board' | 'deliverables' | 'horizons' | 'shelf';
+export type ColumnScope = 'board' | 'deliverables' | 'horizons' | 'shelf' | 'iteration';
 
 /**
  * A column of the trailing strip: the property id to read, the label the header shows,
@@ -372,6 +372,23 @@ export interface BacklogViewHost {
 	readonly projection: Projection;
 	/** Switch the projection and re-render; the view-state store persists the choice. */
 	setProjection(mode: Projection): void;
+	/**
+	 * The `Iteration` note a board is scoped to, as the reader LEFT it — retained through
+	 * a note that has gone and through the property being cleared, so restoring either
+	 * restores the choice. Never the scope to DRAW: ask {@link effectiveScope}, which is
+	 * the same rule `axisPick` and `activeAxis` already keep one projection over.
+	 */
+	readonly boardScope: string | null;
+	/** Scope the board to an iteration by path, or to the product with null. */
+	setBoardScope(path: string | null): void;
+	/**
+	 * The iteration this view is actually SHOWING: the stored path when it names a live
+	 * `Iteration` and an iteration property is configured, null otherwise. Resolved once,
+	 * upstream of every gate — a view that resolved it only where content is drawn would
+	 * count, offer types and index the filter as an iteration board while drawing the
+	 * product one.
+	 */
+	readonly effectiveScope: string | null;
 	/** The board of the last render, or null while the view is not a board (or has no workflow). */
 	readonly board: BoardSnapshot | null;
 	/** The roadmap of the last render, or null while the view is not a roadmap (or has no axis). */

@@ -1,4 +1,4 @@
-import { inCatalog, isDeliverableType, ladderFor } from '../domain/itemTypes';
+import { inCatalog, isDeliverableType, isMarkerType, ladderFor } from '../domain/itemTypes';
 import { BacklogItem, BacklogModel, ProjectionPopulation } from '../domain/model';
 import { BacklogViewHost, Projection } from './host';
 import { ALL_TYPES } from '../domain/typeVocabulary';
@@ -72,7 +72,11 @@ export function treeShaped(projection: Projection): boolean {
  * opting out of a feature opts out of the COMPUTATION, not just the control.
  */
 export function hidesCompleted(projection: Projection): boolean {
-	return projection !== 'deliverables' && projection !== 'catalog';
+	// The iteration board joins the two that opt out, and for a reason of its own rather
+	// than theirs: its Resolved column IS the finished work, so hiding a done subtree
+	// would empty the column the board exists to show — a sprint review reading as a
+	// sprint nobody finished.
+	return projection !== 'deliverables' && projection !== 'catalog' && projection !== 'iteration';
 }
 
 /**
@@ -85,6 +89,20 @@ export function hidesCompleted(projection: Projection): boolean {
  */
 export function hasRollup(projection: Projection): boolean {
 	return projection !== 'catalog';
+}
+
+/**
+ * Which toolbar POSITION draws this projection. The iteration board is its own
+ * projection and the `Board` button's own position: the scope picker beside that button
+ * is what chooses between them, so the control the reader sees is one.
+ *
+ * Two controls need this rather than the projection — `renderProjectionZone`'s switch and
+ * the toggle's `is-active`/`aria-pressed`. Both are wrong once the internal identity and
+ * the control identity differ, and they fail in opposite directions: the picker deletes
+ * itself the first time it is used, and no position ever draws as pressed.
+ */
+export function toolbarPosition(projection: Projection): Projection {
+	return projection === 'iteration' ? 'board' : projection;
 }
 
 /**
@@ -211,10 +229,21 @@ export function offerableTypes(host: BacklogViewHost, types: string[] = ALL_TYPE
 	return projected.filter((t) => inCatalog({ ladder: ladderFor(t, row?.parent?.ladder ?? null) }) === wanted);
 }
 
-/** The two boards' own narrowing: one shows no Deliverable, the other shows nothing else. */
+/**
+ * The three boards' own narrowing: one shows no Deliverable, one shows nothing else, and
+ * the iteration board shows no MARKER.
+ *
+ * That last one is asked through `isMarkerType` and never through `isIterationType`, the
+ * same spelling `iterationResults` refuses a carrier by — and the two work together, which
+ * is why the spelling has to match. Offering `Milestone` under `New` or `Set type` here
+ * lets a reader create or retype a note and watch the population's own marker guard delete
+ * it from the board that made it. A type this board cannot draw must not be a type it
+ * offers.
+ */
 function byProjectionType(projection: Projection, types: string[]): string[] {
 	if (projection === 'board') return types.filter((type) => !isDeliverableType(type));
 	if (projection === 'deliverables') return types.filter((type) => isDeliverableType(type));
+	if (projection === 'iteration') return types.filter((type) => !isMarkerType(type));
 	return types;
 }
 
@@ -245,5 +274,9 @@ export function retypeChoices(host: BacklogViewHost, item: BacklogItem): string[
  * three share: it is a fact about the projection, not about the object drawing it.
  */
 export function filterScopeFor(projection: Projection): FilterScope {
-	return projection === 'deliverables' ? 'whole' : 'focused';
+	// The iteration board answers `'whole'` for the Deliverables board's reason, arrived at
+	// from its own population: `iterationResults` is read off `realRoots`, so a focus set
+	// on another projection narrows neither. An index built on the focused forest would
+	// hold the promise for the cards and break it for the search.
+	return projection === 'deliverables' || projection === 'iteration' ? 'whole' : 'focused';
 }

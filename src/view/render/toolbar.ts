@@ -24,7 +24,7 @@ import { focusInBar } from './toolbarFit';
 import { renderBusyIndicator } from './toolbarBusy';
 import { countedPopulation, levelBreakdown, renderIgnoredNote } from './toolbarStatus';
 import { renderFilterBox } from './toolbarFilter';
-import { hidesCompleted, offerableTypes } from '../projection';
+import { hidesCompleted, offerableTypes, toolbarPosition } from '../projection';
 import { BacklogModel } from '../../domain/model';
 import { focusTarget } from '../../domain/itemTypes';
 import { DELIVERABLE_TYPE } from '../../domain/typeVocabulary';
@@ -428,6 +428,14 @@ const INERT_FOCUS: Partial<Record<Projection, { label: string; tip: string }>> =
 		label: 'Tests',
 		tip: 'The focus level names the plan’s own levels, so it has no effect on the test catalog',
 	},
+	// A third, and the compiler asked for none of them: this is a PARTIAL record, so a
+	// missing row is silent and the symptom is an ordinary focus picker offering settings
+	// that change nothing. The board is scoped by a LINK, and `iterationResults` reads the
+	// whole unfocused tree, so a rung narrows nothing here.
+	iteration: {
+		label: 'Iteration',
+		tip: 'This board shows every item in the chosen iteration — the focus level has no effect here',
+	},
 };
 
 function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: BacklogModel): void {
@@ -527,8 +535,12 @@ function renderModeToggle(host: BacklogViewHost, barEl: HTMLElement): void {
 		const btn = iconButton(wrap, icon, label);
 		btn.addClass('pbl-mode-btn');
 		btn.createSpan({ cls: 'pbl-btn-label', text: word });
-		btn.toggleClass('is-active', host.projection === mode);
-		btn.setAttribute('aria-pressed', String(host.projection === mode));
+		// The POSITION, never the projection: an iteration board is drawn from the `Board`
+		// button, with the scope picker beside it choosing which. Compared directly, no
+		// position would draw as pressed on an iteration scope.
+		const active = toolbarPosition(host.projection) === mode;
+		btn.toggleClass('is-active', active);
+		btn.setAttribute('aria-pressed', String(active));
 		btn.addEventListener('click', () => host.setProjection(mode));
 	};
 	position('tree', 'list-tree', 'Show as backlog tree', 'Tree');

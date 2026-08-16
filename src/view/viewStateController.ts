@@ -64,6 +64,28 @@ export class ViewStateController {
 		this.hooks.render();
 	}
 
+	get boardScope(): string | null {
+		return this.state.boardScope();
+	}
+
+	/**
+	 * Scope the board to one iteration, or back to the product with null. It sets the
+	 * PROJECTION too, because the two are one choice: `Product` is the board projection
+	 * and an iteration is the iteration projection, and two stored values that cannot
+	 * contradict each other need no guard on any route in.
+	 *
+	 * The filter index is rebuilt for `setProjection`'s reason, which applies a second
+	 * time here: the population changes with the scope, and an index built for the old
+	 * one is correct when built and wrong the moment the thing it describes is replaced.
+	 */
+	setBoardScope(path: string | null): void {
+		if (path === this.boardScope && (path === null) === (this.projection !== 'iteration')) return;
+		this.state.setBoardScope(path);
+		this.state.setProjection(path === null ? 'board' : 'iteration');
+		this.hooks.recomputeFilter();
+		this.hooks.render();
+	}
+
 	get axisPick(): string | null {
 		return this.state.axisPick();
 	}

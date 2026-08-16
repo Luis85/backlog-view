@@ -2,7 +2,7 @@ import { Menu, setIcon, setTooltip } from 'obsidian';
 import { hasColorableStates, openStateColors } from '../interactions/stateColors';
 import { BacklogViewHost } from '../host';
 import { BacklogItem, BacklogModel } from '../../domain/model';
-import { projectionPopulation, treeShaped } from '../projection';
+import { projectionPopulation, toolbarPosition, treeShaped } from '../projection';
 import { activeAxis, configuredAxes, drawsGrid, RoadmapAxis } from '../../domain/roadmap';
 import { ScaleId } from '../../domain/timeline';
 import { showMenuForClick } from '../interactions/menu';
@@ -191,7 +191,10 @@ function menuButton(
  */
 export function renderProjectionZone(host: BacklogViewHost, barEl: HTMLElement): void {
 	const zone = barEl.createDiv({ cls: 'pbl-zone pbl-zone-projection' });
-	switch (host.projection) {
+	// The POSITION rather than the projection, so the zone a control was drawn FROM is
+	// the zone it is drawn in again on the next pass — asked directly, the board's zone
+	// would vanish the moment its own picker moved the view to an iteration.
+	switch (toolbarPosition(host.projection)) {
 		case 'roadmap':
 			renderAxisPicker(host, zone, barEl);
 			renderBucketGridToggle(host, zone);

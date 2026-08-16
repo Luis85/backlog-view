@@ -24,7 +24,12 @@ function visibleItems(host: BacklogViewHost, model: BacklogModel): BacklogItem[]
 
 /** One keydown entry for the scroller: the projection decides which handler runs. */
 export function handleProjectionKeydown(host: BacklogViewHost, evt: KeyboardEvent): void {
-	if (host.projection === 'board' || host.projection === 'deliverables') handleBoardKeydown(host, evt);
+	// Every board projection takes the board's keys — the iteration board's columns are
+	// board columns, and a selection that could not walk them would leave its cards
+	// reachable by pointer alone.
+	if (host.projection === 'board' || host.projection === 'deliverables' || host.projection === 'iteration') {
+		handleBoardKeydown(host, evt);
+	}
 	else if (host.projection === 'roadmap') handleRoadmapKeydown(host, evt);
 	else handleTreeKeydown(host, evt);
 }

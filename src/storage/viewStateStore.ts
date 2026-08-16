@@ -65,6 +65,13 @@ export const DELIVERABLES_MODE = 'deliverables';
 /** The value the `mode` field holds while the view is the test catalog. */
 export const CATALOG_MODE = 'catalog';
 /**
+ * The value the `mode` field holds while the view is a board scoped to one iteration.
+ * WHICH iteration is `ViewPrefs.scope` beside it, and the two cannot contradict each
+ * other because choosing `Product` clears the scope and the mode together — so no route
+ * in needs a guard against a mode without a scope.
+ */
+export const ITERATION_MODE = 'iteration';
+/**
  * Every value the `mode` field may hold — the one list, read by {@link PREF_READERS}
  * below and published as the TYPE beneath it.
  *
@@ -80,7 +87,7 @@ export const CATALOG_MODE = 'catalog';
  * the constant and then renders, and the render asks which projection this is, so the
  * toggle would do nothing the moment it was clicked.
  */
-const PROJECTION_MODES = [BOARD_MODE, ROADMAP_MODE, DELIVERABLES_MODE, CATALOG_MODE] as const;
+const PROJECTION_MODES = [BOARD_MODE, ROADMAP_MODE, DELIVERABLES_MODE, CATALOG_MODE, ITERATION_MODE] as const;
 /**
  * One of those values, and the whole of what crosses the layer boundary.
  * `view/viewState.ts` types its `Projection → constant` map to this, which makes the
@@ -150,7 +157,13 @@ export interface ViewFolds {
 	expandedColumns: string[];
 }
 
-/** Everything else: keyed by nothing the vault owns, so never pruned and never renamed. */
+/**
+ * Everything else: keyed by nothing the vault owns — **with one exception, `scope`**,
+ * which is a note path and therefore has to be renamed like a fold. It is still a pref
+ * rather than a fold, because the other half of what `folds` means does not hold for it:
+ * a scope whose note the vault has lost is RETAINED, never pruned, so restoring the note
+ * restores the reader's choice. See {@link ViewPrefs.scope}.
+ */
 export interface ViewPrefs {
 	mode?: string;
 	axis?: string;
@@ -179,6 +192,19 @@ export interface ViewPrefs {
 	 * an afternoon comes back the width its reader left it.
 	 */
 	colWidths?: Record<string, number>;
+	/**
+	 * The `Iteration` note a board is scoped to, as a vault path — the one value in this
+	 * bucket the VAULT owns, and the reason the comment above this interface carries an
+	 * exception.
+	 *
+	 * Two obligations follow, and half of them is not an option. The rename walk must
+	 * reach it, matching the path **or its `oldPath/` prefix**, so a folder anybody tidies
+	 * does not strand every scope inside it. And the prune must NOT: a stale path is
+	 * retained rather than rewritten, since the note may come back — a deletion undone, a
+	 * filter widened, a vault synced late — and spending the reader's choice on a
+	 * condition that is often temporary is worse than an empty board they can leave.
+	 */
+	scope?: string;
 }
 
 export interface ViewStateSnapshot {
@@ -293,6 +319,10 @@ export const PREF_READERS: { [K in keyof ViewPrefs]-?: Reader<NonNullable<ViewPr
 	shelfSort: oneOf(SHELF_SORT_VALUES),
 	shelfHiddenTypes: nonEmptyTexts,
 	colWidths: eachInRange(MIN_PROP_COLUMN_WIDTH, MAX_PROP_COLUMN_WIDTH),
+	// Any name, like `focus`: a path is checked by RESOLVING it against the vault, which
+	// this layer cannot do and which the view redoes on every render anyway. What a reader
+	// refuses here is a value of the wrong shape, not one naming a note that has moved.
+	scope: anyName,
 };
 
 /** A record, or an empty one for anything that is not a plain object. */
