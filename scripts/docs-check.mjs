@@ -124,15 +124,19 @@ const isLiving = (file) => LIVING.some((dir) => file.startsWith(dir + path.sep))
 /** The only files legitimately outside the work-item hierarchy: ADRs, and the index pages. */
 const NOT_WORK_ITEMS = /(^|[/\\])(adrs[/\\].*|README)\.md$/;
 /**
- * Where the `brainstorming` and `writing-plans` skills save design specs and
- * implementation plans (CLAUDE.md) — plain markdown, never a backlog note or an ADR, so
- * it carries none of the frontmatter this file requires of everything else. Anchored to
- * the `docs/` root exactly like `LIVING`, rather than a bare `superpowers[/\\].*` regex: an
- * unanchored pattern would also exempt a coincidental `docs/requirements/superpowers/`, and
- * `walk` descends nested directories so that would go unnoticed rather than unmatched.
+ * The two folders of plain markdown that are not work items and never become any:
+ * `superpowers/`, where the `brainstorming` and `writing-plans` skills save design specs
+ * and implementation plans (CLAUDE.md), and `prds/`, where a requirements document arrives
+ * from outside and is kept verbatim as the evidence the register's own notes cite. Neither
+ * carries the frontmatter this file requires of everything else — a PRD is the source a
+ * backlog is derived FROM, so giving it a `type` and a rank would file the evidence as
+ * work. Both are anchored to the `docs/` root exactly like `LIVING`, rather than a bare
+ * `superpowers[/\\].*` regex: an unanchored pattern would also exempt a coincidental
+ * `docs/requirements/superpowers/`, and `walk` descends nested directories so that would go
+ * unnoticed rather than unmatched.
  */
-const SUPERPOWERS = path.join(DOCS, "superpowers");
-const isSuperpowers = (file) => file.startsWith(SUPERPOWERS + path.sep);
+const SOURCE_DOCS = [path.join(DOCS, "superpowers"), path.join(DOCS, "prds")];
+const isSourceDoc = (file) => SOURCE_DOCS.some((dir) => file.startsWith(dir + path.sep));
 
 const problems = [];
 const fail = (where, message) => problems.push(`${where}: ${message}`);
@@ -345,8 +349,9 @@ for (const file of files) {
 	if (!type) {
 		// ADRs and the index files are deliberately not work items, and never claim a name.
 		if (NOT_WORK_ITEMS.test(file)) continue;
-		// A superpowers doc claims its name like any other note, but needs no backlog shape.
-		if (isSuperpowers(file)) {
+		// A spec, a plan or a PRD claims its name like any other note, but needs no backlog
+		// shape: a wikilink can still resolve to one, so the name is still spoken for.
+		if (isSourceDoc(file)) {
 			claimName(file, name);
 			continue;
 		}

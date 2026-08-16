@@ -140,10 +140,14 @@ Three quantities stay **outside** that sum and beside it:
 
   **A written total is a copy, and a copy can be wrong.** That cost is accepted here
   rather than waved away, so two things are required of it: it is rewritten by the same
-  action that changes any of its inputs, and it records the model that produced it, so a
-  total computed under weights nobody uses any more can be told from a current one. That
-  is what the estimation status exists for — a stale total says `Needs re-estimation`
-  rather than passing as fresh. A total whose inputs are gone is removed, not left
+  action that changes any of its inputs, and it is **stamped with the model that produced
+  it** — a second property beside the total, holding a fingerprint of the enabled
+  dimensions and their weights, since the total itself must stay a plain sortable number
+  that any view can read. The comparison is that stamp against the model on screen: equal
+  means current, different means the total was produced by a model this view is not using,
+  absent means it was written by hand or by something else. Neither of the last two is
+  shown as current, and the estimation status is where that surfaces — `Needs
+  re-estimation`, not a silent pass. A total whose inputs are gone is removed, not left
   standing.
 - **A result can always be decomposed.** Anywhere a score appears, the dimensions and
   weights that produced it are reachable. A number a reader cannot take apart is the
@@ -155,13 +159,16 @@ Three quantities stay **outside** that sum and beside it:
   that has quietly absorbed value, confidence or cost and no longer says which.
 - **Writes go through the one gate**, as one undoable batch, and never touch a note the
   base excluded.
-- **Nothing here decides anything.** The matrix, the indicator and the ranking are read;
-  no ordering is applied to the backlog on their behalf.
+- **Nothing here decides anything.** The estimation view ranks its own table by whatever
+  the reader picks — that is what a comparison surface is for. What it never does is write
+  that order anywhere: the backlog's `order`, the sibling ranking and any priority property
+  are untouched by a score. Sorting a table is reading; renumbering a backlog is deciding.
 
 ## What this epic will not do
 
-- **Decide priority.** No automatic ranking, no sorting the tree by score, no ROI, NPV or
-  financial forecasting. The output is an input to a conversation.
+- **Decide priority.** No score writes an order, reorders the tree or sets a priority
+  property, and no ROI, NPV or financial forecasting is computed. The output is an input to
+  a conversation.
 - **Replace effort estimation, discovery or research.** It records what those produced.
 - **Keep an estimation history.** A revision log — who estimated what, when, and what
   changed the number — is a second item family, refused here for exactly the reason
@@ -178,8 +185,9 @@ Three quantities stay **outside** that sum and beside it:
 Five questions have to be answered in the features under this epic, because each one can
 make the work twice as large after it starts:
 
-1. **Roughly thirteen new optional properties**, one per dimension plus confidence,
-   effort, complexity, the consolidated value and the estimation status. Obsidian's picker
+1. **Roughly fourteen new optional properties**, one per dimension plus confidence,
+   effort, complexity, the consolidated value, its model stamp and the estimation status.
+   Obsidian's picker
    offers only properties a vault already has, so this view needs the same bind-and-backfill
    action the backlog view has in `src/domain/optionalProperties.ts` — reused rather than
    copied, over its own key list — and both halves of it are needed before a single score

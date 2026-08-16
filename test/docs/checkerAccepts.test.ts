@@ -494,6 +494,15 @@ describe('the gate accepts valid documents', () => {
 		await expectAccepted(files);
 	});
 
+	it('accepts a PRD with no backlog frontmatter', async () => {
+		// docs/prds/ holds the requirements documents the register's own epics are derived
+		// FROM — evidence kept verbatim, never a work item, so it carries no type or rank.
+		const files = baseRegister();
+		files['docs/prds/2026-08-02 Some product direction.md'] = '# PRD — some direction\n\nWhat was asked for.\n';
+
+		await expectAccepted(files);
+	});
+
 	it('accepts a supersession chain declared from both ends', async () => {
 		const files = baseRegister();
 		files['docs/adrs/0001-the-first-decision.md'] = adr(1, 'the-first-decision', {

@@ -19,6 +19,7 @@ demonstrating itself:
 | `tests/cases/` | One executable test each — a Preconditions line plus whatever shape it already had | `Test case` |
 | [`adrs/`](adrs/README.md) | **How** it is built — architecture decision records | *(none — not backlog items)* |
 | `superpowers/` | Claude's own design specs and implementation plans, not the product's | *(none — not backlog items)* |
+| `prds/` | Requirements documents as received, the source epics here are derived from | *(none — not backlog items)* |
 
 `tests/cases/` holds the checks CI cannot run — appearance, base identity, anything that
 needs a live vault — and `RELEASING.md`'s release sweep reads it, deriving its set from
@@ -43,6 +44,14 @@ match, so a coincidental `superpowers/` nested somewhere else in the register is
 held to the ordinary rules. It is **not** exempt from the basename rule two paragraphs up:
 a generated spec or plan is still ordinary prose a `[[wikilink]]` can name, so it still
 claims its name against every other note in `docs/`.
+
+`prds/` is exempt on the same terms and for a sharper reason: **a PRD is what a backlog is
+derived from, not a thing in it.** It arrives from outside, it is kept verbatim so the notes
+that cite it are citing something that has not been edited to agree with them, and giving it
+a `type`, a rank and a status would file the evidence as work — the same mistake as writing a
+customer interview into the backlog because it is important. Each is named for the date it
+arrived and what it asked for, and claims its basename like everything else, so a PRD and the
+epic derived from it can never share a name.
 
 ## The trees
 
@@ -179,7 +188,7 @@ derivation leaves the view and the rest are recomputed on read, a written total 
 the model that made it and says `Needs re-estimation` when that model moves on, a merged
 number never stands in for its inputs, and nothing ranks the backlog on its own behalf.
 Specification only, from a product requirements document of 2026-08-16; no feature under
-it yet, and five questions it names — thirteen new optional properties, inheritance with
+it yet, and five questions it names — fourteen new optional properties, inheritance with
 no mechanism, what changing a weight does to every stored total, an estimation status that
 is a second workflow, and what a partial profile scores — are what the first feature has
 to answer.
