@@ -30,6 +30,15 @@ nothing is double counted no matter how deep the tree runs. Alignment through th
 hierarchy is not inherited here — an item aligns because it says so, not because its parent
 did — and the count is of items, never of links, so an item is one item wherever it appears.
 
+**The value measure carries a stamp key or it is not offered.** A total is only comparable
+with another total from the same model ([[Business value estimation]] allows a vault two),
+so measuring coverage by value means naming the stamp key beside the value key and reporting
+**one coverage figure per fingerprint**, each saying how much of the plan it speaks for —
+the same rule [[Rolling a portfolio up]] applies to its average. Summing a 4 from a 1–5 model
+with an 80 from a 0–100 one gives one objective an arbitrary share of the plan. Unstamped
+totals are their own figure, unattributed; with no stamp key configured the value measure is
+not offered at all, and item count and estimate still are.
+
 **Numerator and denominator are the same measure**, which is the only arithmetic that gives
 a share: with item count both are counts; with an estimate or a value score both are sums of
 that property, aligned over total, never points over items. An item carrying no value where

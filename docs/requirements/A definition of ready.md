@@ -40,4 +40,12 @@ property of its own — somebody recording that they looked — and with none co
 unconfigured like any other missing input. Inventing an empty relationship to mean "checked"
 would put a fake edge in the vault to answer a question about process.
 
+**It is a state test like design and refinement, not a presence test**: the assessment key
+comes with the values that mean *checked*, declared here, and the criterion passes only on
+one of them. A presence test would clear the criterion on `Unchecked`, `No` or `In progress`
+— every value somebody writes to record that they have **not** finished looking — which is
+the opposite of what the property is for. A bound key with no value list is unconfigured, and
+a value outside the list does not clear the criterion and is shown as written, so a
+vocabulary somebody extended is visible rather than silently failing.
+
 **Outcome** — "Is this ready" has one answer everybody can see.
