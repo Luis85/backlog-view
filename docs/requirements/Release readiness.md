@@ -53,10 +53,14 @@ the criterion cannot read — no value where it looks — are counted as not cle
 reported separately, because an unanswered item is not a passing one.
 
 **Two criteria are exceptions to that, and both for the same reason: absence is an answer
-there.** An item with no risk value carries no critical risk, so it clears the risk criterion
-— a release of risk-free work would otherwise need a synthetic "no risk" value written onto
-every item to become ready, which is the plugin inventing data to satisfy its own check. The
-other is the dependency criterion, and it has to be: an empty edge list
+there.** The risk criterion asks whether **critical** risks are addressed, so an item clears
+it by being **not critical or addressed** — a `Low` is not an outstanding critical risk, and
+neither is a missing value. Reading it as "addressed or nothing" is the version that fails a
+release for every ordinary low and medium risk in it, and demands a synthetic value on
+risk-free items besides, which is the plugin inventing data to satisfy its own check. Only a
+critical value that is not among the addressed ones costs the criterion an item, which is
+what the criterion's own name says. The
+other exception is the dependency criterion, and it has to be: an empty edge list
 is removed rather than stored ([[A definition of ready]]), so an item that waits for nothing
 has no value where this criterion looks, and the blanket rule would leave a release full of
 independent work unable to satisfy it at all. **No edges is resolved** — there is nothing

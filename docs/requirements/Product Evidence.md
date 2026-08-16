@@ -46,6 +46,15 @@ how much of what a feature claims is actually supported.
   has evidenced, and with neither it is evidence nobody has used. That is what keeps the two
   reports apart — a zero-evidence Feature is work, an unlinked interview note is evidence,
   and neither is guessed at.
+- **A discovery opportunity needs one more key, because it can have neither.** An
+  opportunity is an opportunity by its lifecycle value
+  ([[An idea becomes an opportunity]]), so a vault keeping them outside the type ladder has
+  notes with no type, no parent and — exactly when the report is wanted — no evidence link,
+  which the rule above would file as unused evidence. The very notes "opportunities with no
+  evidence" was written for would be missing from it. So this view names the **discovery
+  lifecycle key** for itself, one more key like every other it reads, and a note carrying any
+  value under it is work. Unconfigured, the scope rule stands alone and the view says which
+  report that leaves incomplete rather than reporting a shorter list as the whole one.
 - **A link out of the population is a link, not a count.** An item linking a design note the
   base did not return gets a link that resolves and no count: the note is drawn as linked and
   named as outside the population, the way a context row is drawn and not counted. Widening
