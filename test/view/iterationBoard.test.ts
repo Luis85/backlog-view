@@ -127,6 +127,49 @@ describe('the iteration scope', () => {
 	});
 });
 
+describe('a fold belongs to one iteration', () => {
+	function scoped(path: string) {
+		const vault = new FakeVault();
+		vault.addFile('sprints/Sprint 12.md', { frontmatter: { type: 'Iteration', order: 10 } });
+		vault.addFile('sprints/Sprint 13.md', { frontmatter: { type: 'Iteration', order: 20 } });
+		const harness = makeView(vault, OPTIONS, { base: 'Plan.base' });
+		harness.view.setBoardScope(path);
+		return { ...harness, vault };
+	}
+
+	it('folds a column on ONE iteration only', () => {
+		// The three buckets wear the same three names on every scope, so a key without
+		// the path folds Resolved on Sprint 13 because the reader folded it on Sprint 12 —
+		// the product board's own collision, one level in.
+		const harness = scoped('sprints/Sprint 12.md');
+		harness.view.setColumnCollapsed('iteration', 'resolved', true);
+		expect(harness.view.columnCollapsed('iteration', 'resolved', false)).toBe(true);
+
+		harness.view.setBoardScope('sprints/Sprint 13.md');
+		expect(harness.view.columnCollapsed('iteration', 'resolved', false)).toBe(false);
+	});
+
+	it('folds two buckets with nothing to write apart', () => {
+		// The value is the BUCKET, never the representative: two buckets with nothing to
+		// write both carry `state: null`, so a fold keyed on the state shuts them together.
+		const harness = scoped('sprints/Sprint 12.md');
+		harness.view.setColumnCollapsed('iteration', 'inProgress', true);
+		expect(harness.view.columnCollapsed('iteration', 'resolved', false)).toBe(false);
+	});
+
+	it('carries a folded column with its iteration through a rename', () => {
+		// Half of this is not an option: a path inside a fold key must be migrated, or the
+		// board reopens columns the reader closed and the store keeps entries nothing will
+		// ever match.
+		const harness = scoped('sprints/Sprint 12.md');
+		harness.view.setColumnCollapsed('iteration', 'resolved', true);
+
+		harness.vault.renameFolder('sprints', 'planning/sprints');
+		expect(harness.view.boardScope).toBe('planning/sprints/Sprint 12.md');
+		expect(harness.view.columnCollapsed('iteration', 'resolved', false)).toBe(true);
+	});
+});
+
 describe('the iteration board answers as itself', () => {
 	function onSprint() {
 		const vault = sprintVault();
