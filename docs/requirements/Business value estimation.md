@@ -255,5 +255,7 @@ make the work twice as large after it starts:
    weights are renormalized and the coverage is shown beside every total, with no total at
    all for an item that has answered nothing — and the two refused alternatives are named
    there. [[The value against effort matrix]] answers what that leaves for the
-   plot — every item with a total is plotted and its point carries its coverage, with no
-   threshold that hides one — so this question is closed rather than delegated onward.
+   plot — an item with both axis values is plotted whatever its coverage, its point carrying
+   that coverage, with no threshold that hides one, and an item missing an axis sits on the
+   counted shelf beside the plot rather than being dropped — so this question is closed
+   rather than delegated onward.
