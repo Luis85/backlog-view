@@ -147,7 +147,8 @@ Three quantities stay **outside** that sum and beside it:
   action that changes any of its inputs, and it is **stamped with the model that produced
   it** — a second property beside the total, holding a fingerprint of **everything that
   decides the arithmetic**: which dimensions are enabled, their weights, the property each
-  one reads, its range, its direction, **and the rubric sentences themselves** — a reach of
+  one reads, its range, its direction, the formula that combines them, **and the rubric
+  sentences themselves** — a reach of
   5 redefined is a 5 that means something else, and every note holding one was scored
   against the old sentence. Not the weights alone — a dimension repointed at
   a different property that happens to hold the same number today produces the same total

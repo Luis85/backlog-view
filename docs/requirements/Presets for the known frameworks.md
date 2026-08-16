@@ -21,4 +21,8 @@ RICE, ICE, WSJF, plain weighted score — each of which only sets dimensions, we
 formula. A preset is a starting point that can be edited afterwards, and it changes nothing
 outside this view.
 
+A preset's formula is part of the model like everything else it sets, so it is inside the
+stamp a written total carries: editing the formula makes every total produced by the old one
+stale, whether or not the new one happens to agree about a particular item.
+
 **Outcome** — A team that already works one of these ways can start in a minute.

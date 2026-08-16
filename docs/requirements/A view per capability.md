@@ -76,7 +76,19 @@ indifferent to which directory it sits in.
   key nothing has named is read as nothing, never as an error.
 - Nothing is written that only the plugin can read. Every property a view writes is one a
   human, a Bases filter or another plugin can read without this plugin installed.
-- What the views share is code below the screen and properties in the vault. Never state.
+- What the views share is code below the screen, properties in the vault, and **exactly one
+  piece of runtime state: the write path.** The gate and the undo history are plugin-wide,
+  deliberately — two views writing the same note have to be serialized against each other,
+  and an undo has to be able to take back the last write whoever made it, so a gate per view
+  would be two views racing on one vault with two ideas of what "the last batch" was. The
+  visible cost is stated rather than discovered: a write in one view makes the other's write
+  briefly unavailable, and an undo in either takes back the most recent batch, not that
+  view's most recent batch.
+
+  Everything else is per view and shared with nobody: configuration, selection, folds,
+  filters, scroll, zoom, the projection on screen. A view reading another view's settings or
+  UI state is the coupling this epic exists to prevent, and no exception to that is
+  contemplated.
 
 ## What this epic will not do
 
