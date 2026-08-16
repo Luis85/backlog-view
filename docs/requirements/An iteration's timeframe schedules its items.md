@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[An Iterations board]]"
 order: 15
-status: Open
+status: Active
 priority: P2
 created: 2026-08-16
 source: user request

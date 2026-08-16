@@ -368,7 +368,11 @@ git commit -m "Narrow the product workflow into three buckets"
 
 **Candidates are not population**, and the distinction is the task. An in-scope carrier hanging from an excluded ancestor needs that ancestor drawn to be placed at all, so the board is built from carriers **plus** their excluded ancestors — while the carriers **alone** are what is counted, what may be written to, and what supplies nothing else.
 
-Four refusals: no descendant by inheritance (nothing is inherited down the tree); no catalog member (`inProjection` answers first, and *no needle makes a `Test case` a row of the plan*); **no marker**, whatever its own frontmatter says; and `Deliverable` **is** included, with no type filter at all.
+Five refusals: no descendant by inheritance (nothing is inherited down the tree); no catalog member (`inProjection` answers first, and *no needle makes a `Test case` a row of the plan*); **no marker**, whatever its own frontmatter says; **no context row**, however its own key reads; and `Deliverable` **is** included, with no type filter at all.
+
+**The context-row refusal is the one this plan did not state until 2026-08-16**, and it does not follow from the others. `iterationEntry` is read on EVERY item, `outsideFilter` rows included — unlike `declaredEdges`, which skips them deliberately (*an excluded note may be NAMED by a result and may never do the naming*). So an excluded note holding `iteration: [[Sprint 12]]` is a candidate on the strength of its own frontmatter, and a carrier list that filters by the link alone would card it: counted in the toolbar's figures, drawn as a card the reader can drag, and a write target for every card move on this board. That is the root guide's rule exactly — an `outsideFilter` row *renders, it parents, and that is all* — reached by a new population rather than a new write path, which is why it has to be refused where carriers are chosen and not only at `applySafely`.
+
+It stays an ANCESTOR, though: a context row between a carrier and the root is drawn to place that carrier, on the same terms every other excluded ancestor is. Carrier and ancestor are two questions here, which is what the paragraph above already says, and this refusal is about the first one alone.
 
 **The marker refusal asks `isMarkerType`, not `isIterationType`.** A marker occupies no rung, holds nothing and hangs from nothing — `typeVocabulary.ts`' own definition, which amounts to *a marker is not work*. A sprint is a commitment to finish some work, so a board scoped to one draws work and nothing else. Written as the one name, a hand-written link on a `Milestone` draws it as a sprint card; written as the predicate, a third marker inherits the rule instead of reopening the hole.
 
@@ -381,6 +385,12 @@ it('excludes a catalog member that names it', () => { /* … */ });
 it('refuses any MARKER that names an iteration', () => {
 	// Both names, hand-written keys — and asked of `isMarkerType`, so the Milestone case
 	// is not a second rule. This test named `Iteration` alone until 2026-08-16.
+});
+it('refuses a CONTEXT ROW that names the iteration, and still draws it as an ancestor', () => {
+	// One fixture, both halves: an `outsideFilter` note carrying the link is not a
+	// carrier, and an `outsideFilter` note BETWEEN a carrier and the root still comes
+	// back as placement. Splitting them into two tests would let a filter that drops
+	// excluded notes from the whole walk pass the first while breaking the second.
 });
 it('draws an excluded ancestor as placement, and does not count it', () => { /* … */ });
 it('draws no ancestor for a match in a DIFFERENT iteration', () => {

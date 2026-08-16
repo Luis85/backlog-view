@@ -2,7 +2,7 @@
 type: Feature
 parent: "[[Product Kanban]]"
 order: 65
-status: Open
+status: Active
 created: 2026-08-15
 source: user request
 started: ""
