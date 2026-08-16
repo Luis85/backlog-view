@@ -204,6 +204,11 @@ BUILDS rather than reuses pays about +0.11 ms per row for signing a row it canno
 
 ## Where to look
 
+**Kept as the record of what was known while this note was OPEN — `## Fix` above is the
+answer it was asking for, and diffing is what won.** Read the figures here as dated: the
+0.6 ms/row below is the top table's, before `content-visibility: auto` took it to ~0.3
+ms/row (2026-08-10) and the reconcile took it to ~0.10 (2026-08-15).
+
 The per-row render path, not the model. `src/view/CLAUDE.md`'s own cost section names the
 lever in the sentence quoted above: a data update rebuilds every row, and skipping that
 "needs to account for arbitrary chip property values". 0.6 ms/row is the number that makes

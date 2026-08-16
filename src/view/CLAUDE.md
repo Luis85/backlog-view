@@ -12,7 +12,11 @@ free of runtime code so imports stay cycle-free.
   (`rowEls`) plus the selected row, so rows are reached by lookup rather than by
   searching for them — a `treeEl.querySelector`/`querySelectorAll` naming the receiver,
   dotted (`this.els.treeEl`), bare or computed (`els['treeEl']`), fails lint
-  (`no-restricted-syntax`, the receiver is the ban), an aliased one
+  (`no-restricted-syntax`, the receiver is the ban) — **everywhere except the delegation
+  block in `render/rows.ts`**, where the `eslint-disable` that lets `wireRowEvents` and
+  `wireChipEvents` add the pane's listeners switches off every `no-restricted-syntax`
+  selector over that region, TREE_SCAN among them, because ESLint cannot scope a disable to
+  one selector. An aliased one
   (`const el = this.els.treeEl; el.querySelectorAll(...)`) is caught only if it is on a
   path the spy in `test/view/renderCost.test.ts` drives — selection, subtree refresh and
   drag cleanup. That spy is a regression guard for the paths that exist; the lint rule is
@@ -71,8 +75,10 @@ free of runtime code so imports stay cycle-free.
   join `rowSignature` by hand**: nothing enforces the enumeration, so the build says
   nothing, the suite says nothing, and the symptom is a stale cell on screen — four review
   rounds found that list short, two of them inside the fix for the previous one. The
-  sweep to reconcile against, and the four terms no test can fail without, are in
-  `rowSignature.ts`'s own header rather than restated here. It costs about
+  sweep to reconcile against, and the five terms no test can fail without — eleven of the
+  sixteen hold, measured by deleting each in turn and running `test/view/rowSignature.test.ts`
+  AND `test/view/rowReuse.test.ts`, the walk's suite as well as the signature's own — are
+  in `rowSignature.ts`'s own header rather than restated here. It costs about
   **+0.11 ms per row BUILT** — signing a row that cannot be kept — against about
   **−0.22 ms per row on a reuse pass** (0.324 → 0.104 ms/row for an `update` at 832
   expanded rows), so every build pass, the mount included, pays a little for it.

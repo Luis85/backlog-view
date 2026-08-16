@@ -83,10 +83,14 @@ import { BacklogViewHost, Column } from './host';
  *
  * ## What the checks under this list actually reach
  *
- * `test/view/rowSignature.test.ts` was run with each term deleted in turn. **Twelve of
- * the sixteen have a test that fails without them.** The other four are stated here
- * rather than left reading as checked, because a term nothing can fail on is exactly the
- * shape this file exists to distrust:
+ * Each of the sixteen terms was deleted in turn and BOTH `test/view/rowSignature.test.ts`
+ * and `test/view/rowReuse.test.ts` were run — the walk's suite as well as the signature's
+ * own, because a term this file states can be held by the render that spends it. **Eleven
+ * of the sixteen have a test that fails without them**, and the two instruments agree on
+ * which eleven: the wider one is named because it is what the count was taken with, not
+ * because it reaches further here. The other five are stated below rather than left
+ * reading as checked, because a term nothing can fail on is exactly the shape this file
+ * exists to distrust. Five in FOUR bullets — the first names two, held only as a pair:
  *
  * - `displayType(item)` and `offerableTypes(host, childTypeChoices(item))` are held as a
  *   PAIR — the parent-retype test fails only when BOTH go. Neither could be isolated: a

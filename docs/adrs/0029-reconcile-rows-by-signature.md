@@ -128,9 +128,12 @@ would have drawn differently ships a stale row. Every judgement here takes the f
 frontmatter goes in whole rather than key by key, four terms are kept that no test can
 fail without, and a single non-`note.` column refuses reuse for the whole pass.
 
-**Twelve of the sixteen per-row terms have a test that fails without them.** The other
-four are named in `rowSignature.ts` with the reason each cannot be isolated, rather than
-left reading as checked.
+**Eleven of the sixteen per-row terms have a test that fails without them.** Measured by
+deleting each term in turn and running `test/view/rowSignature.test.ts` **and**
+`test/view/rowReuse.test.ts` — the walk's suite as well as the signature's own; the two
+agree on which eleven. The other five are named in `rowSignature.ts`, in FOUR bullets
+because the first names two held only as a pair, with the reason each cannot be isolated
+rather than left reading as checked.
 
 **What it bought, measured.** Interleaved A/B against `86b1170` — the last commit before
 the reconcile, same fixture, same seven columns — four alternated runs, medians of the
