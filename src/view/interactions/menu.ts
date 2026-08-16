@@ -2,7 +2,7 @@ import { Menu, MenuItem } from 'obsidian';
 import { hasRiskLevels, menuValues, stateMenuValues } from '../../domain/settings';
 import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
 import { inferFolderParent } from '../../domain/folderNotes';
-import { inCatalog, isDeliverableType, keepsProjection } from '../../domain/itemTypes';
+import { childTypeChoices, inCatalog, isDeliverableType, keepsProjection } from '../../domain/itemTypes';
 
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { sameValue, todayStamp } from '../../domain/noteFields';
@@ -59,7 +59,7 @@ export function showItemMenu(host: BacklogViewHost, evt: MouseEvent, item: Backl
 }
 
 /** Assemble the row menu; the caller decides where to show it. */
-export function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childTypes: string[]): Menu | null {
+function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childTypes: string[]): Menu | null {
 	const model = host.model;
 	if (!model) return null;
 	const menu = new Menu();
@@ -251,9 +251,15 @@ function addMoveSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): v
  * a focused button synthesizes a click at (0, 0), and anchoring a menu there drops
  * it in the viewport corner instead of beside the control the user is standing on.
  * Every menu opened from a button goes through here.
+ *
+ * The BUTTON the user activated, not `evt.currentTarget`: the per-item chips are
+ * delegated at the pane now (`wireChipEvents` in `render/rows.ts`), so `currentTarget`
+ * is `treeEl` rather than the chip, and anchoring to it would drop the menu under the
+ * whole tree instead of beside the control. A direct listener's `currentTarget` and
+ * `target` resolve to the same button, so this needs no second code path for one.
  */
 export function showMenuForClick(menu: Menu, evt: MouseEvent): void {
-	const el = evt.currentTarget;
+	const el = (evt.target instanceof Element ? evt.target.closest('button') : null) ?? evt.currentTarget;
 	if (evt.clientX === 0 && evt.clientY === 0 && el instanceof HTMLElement) {
 		const rect = el.getBoundingClientRect();
 		menu.showAtPosition({ x: rect.left, y: rect.bottom });
@@ -276,7 +282,7 @@ export function showMenuForClick(menu: Menu, evt: MouseEvent): void {
  * The corner fallback is a ROW's, not deliberately a column's too: `colEls` and
  * `board.columns` are built by the same `.map()` over the same array (`renderBoard`), so
  * an index that resolves a column always resolves an element, and that branch stays
- * unreachable from `showColumnMenuFor`.
+ * unreachable from `showColumnMenu` (`interactions/columnMenu.ts`).
  */
 export function showMenuAtElement(menu: Menu | null, el: HTMLElement | null): boolean {
 	if (!menu) return false;
@@ -286,13 +292,25 @@ export function showMenuAtElement(menu: Menu | null, el: HTMLElement | null): bo
 }
 
 /**
+ * The row context menu, opened at the item's own row — the keyboard path (Menu key /
+ * Shift+F10) and the whole of `BacklogViewHost.showContextMenuFor`, kept here as one
+ * delegation on the view so `BacklogViewHost` still resolves to that one class.
+ */
+export function showContextMenu(host: BacklogViewHost, item: BacklogItem, rowEl: HTMLElement | null): void {
+	showMenuAtElement(buildItemMenu(host, item, childTypeChoices(item)), rowEl);
+}
+
+/**
  * A per-row control's own menu. Each of the four below opens exactly what the row menu's
  * matching section offers — one builder per property, never a second list — so a chip and
  * the context menu cannot disagree about what is offered or which entry is current.
  *
- * The click belongs to the control, not to the row it sits on: `stopPropagation` here is
- * what keeps pressing a chip from also activating the row. (`fromRowControl` in
- * `render/rows.ts` covers a control that forgets; this one does not have to.)
+ * The click belongs to the control, not to the row it sits on — but the guard for that is
+ * `fromRowControl` in `render/rows.ts`, asked by `wireRowEvents` before `wireChipEvents`
+ * ever runs, not `stopPropagation` here: both are delegated listeners on `treeEl` now, so
+ * this one firing does not stop a sibling listener on the same element that already ran.
+ * `stopPropagation` still matters for what sits ABOVE `treeEl` — nothing there should see
+ * a chip's click either — but it is not what keeps the row from also activating.
  */
 function chipMenu(
 	host: BacklogViewHost,

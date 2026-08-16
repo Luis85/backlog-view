@@ -37,7 +37,17 @@ Two corollaries follow from the same principle:
   `DropTarget` and `DropZone` live in `domain/dropTargets.ts`. Both sat upstream once and
   made the pure layer depend on the effectful one.
 - **The view is reached through an interface.** Modules take `BacklogViewHost`, and
-  `src/view/host.ts` holds no runtime code, so imports stay cycle-free.
+  `src/view/host.ts` holds no runtime code, so imports stay cycle-free. `src/view/renderPass.ts`
+  is the render pass itself, split out along that same boundary once the class implementing
+  the interface hit its own 400-line cap: a free function over `BacklogViewHost` that draws
+  one frame, publishing the snapshots it produced through a hook at the point the view used
+  to assign them, so the interface's one implementing class stays the only place `board` and
+  `roadmap` are actually written. `src/view/viewStateSurface.ts` is the other half of that
+  same cap, and takes the opposite shape for a reason the interface itself sets: a member
+  `BacklogViewHost` names has to BE on the object modules are handed, so the twenty-five
+  view-state forwards cannot move to a delegate the way the render pass could. They move to
+  an abstract base class the view extends instead — one implementation still, and still the
+  only place the controller behind them is built.
 
 ## Consequences
 

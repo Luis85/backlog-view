@@ -72,6 +72,22 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Fixed
 
+- **The pause after a write on a large backlog is gone.** Every change used to redraw the
+  whole tree, so on a vault of around eight hundred notes with the tree open, each move,
+  each state change and each undo was followed by roughly half a second of nothing. The
+  view now redraws only the rows that would look different — measured at about a third of
+  the old cost per row, on the same expanded tree at every size tried. Three things switch
+  it off, and on a vault that shows one of them nothing changes: a column that is not a
+  note property (a file's modified time, a formula), a row whose cell draws a link or an
+  embed rather than plain text, and a row whose file Obsidian has not finished indexing —
+  each redraws as it always did, so nothing can go stale on screen.
+
+- **One view saving can no longer forget every other view's working position.** Saving
+  tidies away entries for `.base` files the vault no longer has — and if the vault could
+  not answer at that moment, every entry looked gone and every one was dropped. It now
+  checks that the vault can see the base of the view doing the saving before it believes
+  any of the answers.
+
 - **Progress bars line up again in a big backlog.** The bar and its count share a lane
   anchored at the right, and the count had a fixed reservation that only held two digits
   over two — so a row counting hundreds pushed its own bar left, and rows counting units,

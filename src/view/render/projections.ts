@@ -2,7 +2,7 @@ import { renderDeliverablesBoard, renderRequirementsBoard } from './board';
 import { RowContext } from './columns';
 import { renderBoardNoWorkflowState, renderDeliverablesBoardNoWorkflowState, renderRoadmapNoAxisState } from './emptyStates';
 import { renderRoadmap } from './roadmap';
-import { renderTree } from './rows';
+import { renderTree } from './reconcile';
 import { TIMELINE_LEAD_PX } from './timeline';
 import { BoardSnapshot, Projection, RoadmapSnapshot, ScrollBox } from '../host';
 import { CardDragController } from '../interactions/cardDrag';

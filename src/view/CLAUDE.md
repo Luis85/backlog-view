@@ -12,7 +12,11 @@ free of runtime code so imports stay cycle-free.
   (`rowEls`) plus the selected row, so rows are reached by lookup rather than by
   searching for them — a `treeEl.querySelector`/`querySelectorAll` naming the receiver,
   dotted (`this.els.treeEl`), bare or computed (`els['treeEl']`), fails lint
-  (`no-restricted-syntax`, the receiver is the ban), an aliased one
+  (`no-restricted-syntax`, the receiver is the ban) — **everywhere except the delegation
+  block in `render/rows.ts`**, where the `eslint-disable` that lets `wireRowEvents` and
+  `wireChipEvents` add the pane's listeners switches off every `no-restricted-syntax`
+  selector over that region, TREE_SCAN among them, because ESLint cannot scope a disable to
+  one selector. An aliased one
   (`const el = this.els.treeEl; el.querySelectorAll(...)`) is caught only if it is on a
   path the spy in `test/view/renderCost.test.ts` drives — selection, subtree refresh and
   drag cleanup. That spy is a regression guard for the paths that exist; the lint rule is
@@ -31,15 +35,53 @@ free of runtime code so imports stay cycle-free.
   `render/timelineArrows.ts` measures them to draw an arrow. So the declaration in
   `styles/cards.css` names the three CONTAINERS rather than `.pbl-card` — see
   [[Every card renders, on screen or not]]. `refreshRowChildren` must prune the subtree it removes
-  from `rowEls`. The row and drag listeners live on the PANE, one delegated set for the
-  view (`wireRowEvents` in `render/rows.ts`, `wireTree` in `interactions/dragDrop.ts`),
-  resolving their row by `data-path` against the current model per event — so nothing
-  about a row is captured at wire time, a targeted refresh that leaves surrounding rows
-  in place cannot leave a handler holding a stale item, and a data update rebuilds rows
-  without rebuilding listeners. Per-row icons are cloned from per-name templates
-  (`drawIcon` in `render/icons.ts`) rather than re-parsed through `setIcon`. Data updates
-  still rebuild everything — skipping that needs to account for arbitrary chip property
-  values.
+  from `rowEls`. The row, chip and drag listeners live on the PANE, one delegated set
+  each for the view (`wireRowEvents` and `wireChipEvents` in `render/rows.ts`, `wireTree`
+  in `interactions/dragDrop.ts`), resolving their row or item by `data-path` against the
+  current model per event. **No per-row control's LISTENER closes over its item** — two
+  controls do carry their own listener rather than routing through that delegation, and
+  both are named exemptions from the lint rule below rather than an oversight:
+  `renderChevron`'s `click` (`render/rows.ts`) closes over `state.toggle`, `redraw` and
+  the element, never a `BacklogItem`, and the title's `mouseover` there closes over the
+  row's path as a plain string. A render that KEEPS a row element must not leave a
+  handler pointing into the model the update replaced, and a targeted refresh that
+  leaves surrounding rows in place cannot leave one holding a stale item — a data update
+  rebuilds rows without rebuilding listeners. The check cannot see what a closure
+  captures, so it bans the CALL instead: a direct `addEventListener` anywhere in
+  `render/rows.ts`, `render/columns.ts` or `render/chips.ts` fails lint unless it is one
+  of the six named exemptions in `render/rows.ts` (the two above plus the four calls
+  that ARE the delegation); an aliased one is caught only on a path
+  `test/view/rowControls.test.ts` drives. `wireChipEvents` is
+  what a KEPT row depends on: a render that reused a row element instead of rebuilding it
+  would still carry a stale-closured chip if that chip's own listener were wired at
+  render time, so the delegation had to exist before that reuse could be safe. Per-row
+  icons are cloned from per-name templates
+  (`drawIcon` in `render/icons.ts`) rather than re-parsed through `setIcon`.
+  **A data update no longer rebuilds everything** (ADR 0029): `renderPass.ts` asks two
+  questions, and they fail differently on purpose. `renderInputs` (`rowSignature.ts`) is
+  the PASS-level fingerprint — `host.settings` whole, the columns, the projection, the
+  filter text, the fit verdict, the stored column widths and a probe of each column's
+  RENDERED value type — so a settings-derived rendering decision written next year is
+  covered without anyone remembering it, and beside it `reusableColumns` refuses the whole
+  pass unless every column is `note.`-backed. `rowSignature` is the PER-ROW question, and
+  it is an enumeration: that note's whole frontmatter as one term, plus the derived values
+  a row shows that its own note cannot give. Matching, the walk in `render/rows.ts` keeps
+  the element and carries its child group with it; unsignable (its note is not in the
+  metadata cache yet) or drawing another note's content, it is never claimed. Two
+  consequences bind anything written here from now on. **A row is no longer a clean
+  slate** — it carries whatever the last pass put on it, so a class, an attribute or a
+  `dataset` key set on one branch must be UNSET on the other, and that failure needs two
+  passes in the right order to show at all. And **a new per-ITEM rendering term has to
+  join `rowSignature` by hand**: nothing enforces the enumeration, so the build says
+  nothing, the suite says nothing, and the symptom is a stale cell on screen — four review
+  rounds found that list short, two of them inside the fix for the previous one. The
+  sweep to reconcile against, and the five terms no test can fail without — eleven of the
+  sixteen hold, measured by deleting each in turn and running `test/view/rowSignature.test.ts`
+  AND `test/view/rowReuse.test.ts`, the walk's suite as well as the signature's own — are
+  in `rowSignature.ts`'s own header rather than restated here. It costs about
+  **+0.11 ms per row BUILT** — signing a row that cannot be kept — against about
+  **−0.22 ms per row on a reuse pass** (0.324 → 0.104 ms/row for an `update` at 832
+  expanded rows), so every build pass, the mount included, pays a little for it.
 - **No input handler reads layout to answer a question the event did not ask**, and think
   hard before a RENDER does either. A layout read forces the browser to flush pending
   style and layout synchronously; in an input handler the pending work is largest, because
@@ -71,6 +113,15 @@ free of runtime code so imports stay cycle-free.
   own; the toolbar and the tree are the view's, reached through the two hooks it is
   constructed with) and reads view state through `BacklogViewHost` like every other
   module.
+- **Two shapes take work out of `backlogView.ts`, and which one applies is decided by the
+  interface rather than by taste.** Anything the modules do NOT ask the host for can leave
+  as a delegate the view owns — `WriteGate`, `CardMoveController`, `ViewStateController` —
+  or, where it needs no state at all, as a free function over `BacklogViewHost`, which is
+  what `renderPass.ts` is. A member `BacklogViewHost` NAMES cannot: it has to be on the
+  object the modules are handed, so the view-state forwards moved to `viewStateSurface.ts`,
+  an abstract class the view extends. Still one implementation, and the delegate still
+  holds the behaviour — only the surface moved. Adding a view-state value is therefore two
+  files: the controller for what it does, that surface for the two members that expose it.
 - A batch write is one refresh, not one per file. Every file `applyWrites` touches
   comes back as its own `onDataUpdated`, so mid-batch the view would rebuild the model
   and every row hundreds of times, each pass rendering a half-applied tree. While
@@ -182,8 +233,11 @@ free of runtime code so imports stay cycle-free.
   drop where the properties menu put them, like every other column.
 - **The five per-row menus are one function**: `chipMenu` in `interactions/menu.ts`, with
   `showStateMenu` / `showHorizonMenu` / `showRiskMenu` / `showAssigneeMenu` / `showTagMenu`
-  as one-line exports over it. It is what stops a control from also activating the row it sits on — the reason
-  every one of them was five identical lines before.
+  as one-line exports over it. What stops a control from also activating the row it sits
+  on is `fromRowControl` (`render/rows.ts`), asked by `wireRowEvents` before
+  `wireChipEvents` — both delegated on `treeEl` — ever runs; `chipMenu`'s own
+  `stopPropagation` only reaches ancestors above `treeEl` now, since a sibling listener on
+  the same element already ran by the time it fires.
 - **The horizon chip is that same shape over the placement** (`renderHorizonChip`,
   beside the state chip in `render/columns.ts`): rendered on `hasHorizonAxis` — the one
   definition of a configured bucket axis, never a second opinion — static for a context
