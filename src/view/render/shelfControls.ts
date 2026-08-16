@@ -1,6 +1,7 @@
 import { Menu, setIcon, setTooltip } from 'obsidian';
 import { BacklogViewHost } from '../host';
-import { addShelfSortItems, addShelfTypeItems, showMenuForClick } from '../interactions/menu';
+import { showMenuForClick } from '../interactions/menu';
+import { addShelfSortItems, addShelfTypeItems } from '../interactions/shelfMenu';
 import { organizeShelf } from '../../domain/shelf';
 import { ShelfCard } from '../../domain/bars';
 import { SHELF_LABEL } from '../../domain/roadmap';
@@ -21,9 +22,22 @@ import { SHELF_LABEL } from '../../domain/roadmap';
  * menu's own shelf section (`interactions/menu.ts`), built from the same two item
  * builders these buttons use, so neither surface can offer what the other does not.
  *
- * The count is the shelf's TRUE total, never what the type filter currently leaves
- * showing: hiding a type is a display choice, and a count that moved with it would stop
- * answering the question the shelf exists to answer.
+ * **The search box is a form control and cannot be anything else** — a menu cannot be
+ * typed into — so it keeps the half of that rule that is about TAB rather than the half
+ * that is about elements: `tabindex="-1"` like the pickers, lifted with them by
+ * `syncShelfTabStops`, with the card menu's own Search unplaced entry (a prompt) as the
+ * keyboard path, and Escape clearing it. What is left unpaid is the ARIA deviation the
+ * shelf's disclosure and the two resize grips already state: a focusable non-`option`
+ * inside a `listbox`, here a text field rather than a button. Narrower than it reads —
+ * nothing here says how a screen reader announces one, and the live-vault sweep is what
+ * stands for that.
+ *
+ * The count is the shelf's TRUE total, never what the type filter or the search
+ * currently leave showing: narrowing is a display choice, and a count that moved with it
+ * would stop answering the question the shelf exists to answer. Each narrowing says on
+ * its own face that it is one — the filter button goes active, the search keeps the text
+ * that caused it — since a shelf whose count and contents disagree with nothing
+ * explaining why reads as a bug.
  */
 export function renderShelfControls(host: BacklogViewHost, headerEl: HTMLElement, shelf: ShelfCard[]): void {
 	// An empty shelf is a bare label: it renders only so a drag has somewhere to land,
@@ -63,6 +77,7 @@ export function renderShelfControls(host: BacklogViewHost, headerEl: HTMLElement
 	if (collapsed) return;
 	renderSortPicker(host, headerEl);
 	renderTypeFilter(host, headerEl, shelf);
+	renderSearch(host, headerEl);
 }
 
 /**
@@ -90,9 +105,11 @@ export function renderShelfControls(host: BacklogViewHost, headerEl: HTMLElement
  */
 export function syncShelfTabStops(shelfEl: HTMLElement, paneIsComposite: boolean): void {
 	const tabindex = paneIsComposite ? '-1' : '0';
-	for (const btn of Array.from(
-		shelfEl.querySelectorAll<HTMLElement>('.pbl-shelf-header button:not(.pbl-shelf-disclosure)'),
-	)) {
+	// The SEARCH box is in this set for the rule's own reason rather than as a courtesy: a
+	// search narrow enough to hide the last card empties the pane by itself, exactly as
+	// hiding the last visible type does, and the control that caused it has to be reachable.
+	const controls = '.pbl-shelf-header button:not(.pbl-shelf-disclosure), .pbl-shelf-search-input';
+	for (const btn of Array.from(shelfEl.querySelectorAll<HTMLElement>(controls))) {
 		btn.setAttribute('tabindex', tabindex);
 	}
 }
@@ -152,15 +169,86 @@ function renderSortPicker(host: BacklogViewHost, headerEl: HTMLElement): void {
 /** Which type groups show. */
 function renderTypeFilter(host: BacklogViewHost, headerEl: HTMLElement, shelf: ShelfCard[]): void {
 	const btn = headerButton(headerEl, 'pbl-shelf-filter', 'list-filter', 'Filter the shelf by type');
-	// The filter is the one of the two picks that can HIDE work, so it says on its face
-	// that it is doing so — a shelf whose count and contents disagree, with nothing
-	// explaining why, reads as a bug. The UNFILTERED grouping decides that, the same
-	// list the menu itself is built from.
+	// The filter is the pick that can HIDE work, so it says on its face that it is doing
+	// so — a shelf whose count and contents disagree, with nothing explaining why, reads
+	// as a bug. The UNFILTERED grouping decides that, the same list the menu itself is
+	// built from.
 	const hiding = organizeShelf(shelf, 'tree', new Set()).some((group) => host.shelfHiddenTypes.has(group.type));
 	btn.toggleClass('is-active', hiding);
-	btn.addEventListener('click', (evt) => {
-		const menu = new Menu();
-		addShelfTypeItems(host, menu, shelf, () => refocus(host, '.pbl-shelf-filter'));
-		showMenuForClick(menu, evt);
+	btn.addEventListener('click', (evt) => showMenuForClick(typeMenu(host, shelf), evt));
+}
+
+function typeMenu(host: BacklogViewHost, shelf: ShelfCard[]): Menu {
+	const menu = new Menu();
+	addShelfTypeItems(host, menu, shelf, () => reopenTypeMenu(host));
+	return menu;
+}
+
+/**
+ * Picking a type is a narrowing someone does several times in a row — show only Epics,
+ * then also PBIs, then everything again — so this picker comes straight back instead of
+ * making the reader reopen it per pick. An Obsidian `Menu` closes itself on a pick and
+ * offers no way not to, so "stays open" is a fresh menu at the same place: the pick
+ * rebuilt the pane anyway, and rebuilding is what puts the new checkmarks and counts in
+ * it. The card menu's own submenu passes no `after` and so keeps a menu's ordinary
+ * behaviour — the one line the two surfaces are allowed to differ on.
+ *
+ * Everything is re-read from the host rather than captured: the button pressed and the
+ * element it sat in are both gone with the frame, and a shelf array from before the
+ * rebuild would count cards the pane no longer holds.
+ */
+function reopenTypeMenu(host: BacklogViewHost): void {
+	// Before the menu, not instead of it: Obsidian's menu takes focus while it is open and
+	// gives it back on Escape, so this is what decides where Escape lands.
+	refocus(host, '.pbl-shelf-filter');
+	const shelf = host.roadmap?.roadmap.shelf ?? [];
+	const btn = host.roadmap?.shelfEl?.querySelector<HTMLElement>('.pbl-shelf-filter');
+	if (shelf.length === 0 || !btn) return;
+	const rect = btn.getBoundingClientRect();
+	typeMenu(host, shelf).showAtPosition({ x: rect.left, y: rect.bottom });
+}
+
+/**
+ * The shelf's own title search: a narrowing scoped to the untriaged work rather than to
+ * the whole view, which is what the toolbar's quick filter already does and why this is
+ * not that. Nothing is written; `searchShelf` (`domain/shelf.ts`) is the whole rule.
+ */
+function renderSearch(host: BacklogViewHost, headerEl: HTMLElement): void {
+	const box = headerEl.createDiv({ cls: 'pbl-shelf-search' });
+	setIcon(box.createSpan({ cls: 'pbl-shelf-search-icon' }), 'search');
+	const label = `Search ${SHELF_LABEL.toLowerCase()}`;
+	// `type="search"` rather than `text` plus a clear button of our own: the platform draws
+	// that button, and only while there is something to clear.
+	const input = box.createEl('input', {
+		cls: 'pbl-shelf-search-input',
+		attr: { type: 'search', tabindex: '-1', placeholder: label, 'aria-label': label },
 	});
+	input.value = host.shelfSearch;
+	setTooltip(box, label);
+	input.addEventListener('input', () => runSearch(host, input.value, input.selectionStart));
+	input.addEventListener('keydown', (evt) => {
+		if (evt.key !== 'Escape' || input.value === '') return;
+		// The pane's key handler answers only to events targeting the pane itself, so this
+		// Escape is already this input's alone; stopping it keeps a clear from also
+		// reaching whatever sits above the view.
+		evt.preventDefault();
+		evt.stopPropagation();
+		runSearch(host, '', 0);
+	});
+}
+
+/**
+ * Narrow, then put the reader back where they were typing. `refocus`'s two answers are
+ * both wrong for a text field and this is the third: the rebuild destroys the input
+ * mid-word, so focus goes to its REPLACEMENT even where cards remain and the pane owns
+ * the arrows — a caret in a search box is not a selection in a composite, and handing
+ * the pane focus here would end the search at its first keystroke. The caret travels
+ * with it, or every edit would jump to the end of the word.
+ */
+function runSearch(host: BacklogViewHost, text: string, caret: number | null): void {
+	host.setShelfSearch(text);
+	const input = host.roadmap?.shelfEl?.querySelector<HTMLInputElement>('.pbl-shelf-search-input');
+	if (!input) return;
+	input.focus();
+	if (caret !== null) input.setSelectionRange(caret, caret);
 }
