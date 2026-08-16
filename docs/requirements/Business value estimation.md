@@ -92,8 +92,11 @@ Three quantities stay **outside** that sum and beside it:
 - **A result can always be decomposed.** Anywhere a score appears, the dimensions and
   weights that produced it are reachable. A number a reader cannot take apart is the
   problem this epic was opened about.
-- **Value, confidence and cost are never merged in a display.** Where one number has to
-  stand alone, it says which of the three it is.
+- **A merged number never stands in for the ones it merged.** The two combinations this
+  epic asks for are legitimate and named — confidence-adjusted value, and the
+  value-to-effort indicator — but each carries its own label and appears *beside* its
+  inputs, never instead of them. What is banned is the unlabelled composite: one figure
+  that has quietly absorbed value, confidence or cost and no longer says which.
 - **Writes go through the one gate**, as one undoable batch, and never touch a note the
   base excluded.
 - **Nothing here decides anything.** The matrix, the indicator and the ranking are read;
