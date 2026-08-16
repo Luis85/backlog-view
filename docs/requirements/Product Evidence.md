@@ -38,7 +38,7 @@ how much of what a feature claims is actually supported.
   place to put a customer interview.
 - The link is one property, resolved the way every other link property is.
 - **The base returns both populations, and the relationship tells them apart.** This view
-  needs the work *and* the evidence — a feature with no evidence is one of its four reports —
+  needs the work *and* the evidence — work with no evidence is one of its three reports —
   so one base holds both, and no marker property or evidence type is invented to label them.
   A returned note that **names** evidence is analyzed work; a returned note that is **named
   by** one is evidence. A note in neither relationship is placed by the register's own scope

@@ -16,10 +16,16 @@ assignee: ""
 
 # What has no evidence
 
-The four gaps the backward read exposes: opportunities with no evidence, features with no
-evidence, evidence linked to nothing, and the items resting on the most evidence. None of
-them is an error — some work needs no argument — so each is listed and counted rather than
-flagged.
+The three gaps the backward read exposes: **work with no evidence**, evidence linked to
+nothing, and the items resting on the most evidence. None of them is an error — some work
+needs no argument — so each is listed and counted rather than flagged.
+
+**Work with no evidence is one report, not one per kind of work.** It was two — opportunities
+and features — until telling them apart was priced: this view would need its own type key,
+its own lifecycle key and both value lists, to sort a list whose rows already show what each
+row is. So every unevidenced item appears in one list, each row carrying the type and
+lifecycle value **as the note wrote them**, unread and uninterpreted, and a reader who wants
+only the opportunities sorts or filters the column. Nothing is lost except a setting.
 
 The first three are a count of zero and need nothing else said. **The fourth is a ranking,
 not a threshold**: the items with the most linked evidence, ordered by that count, longest

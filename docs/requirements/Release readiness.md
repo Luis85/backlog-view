@@ -50,7 +50,15 @@ membership [[What is in a release]] defines and the same population every other 
 figure uses. All of them clear it and it is satisfied; none do and it is not; anything
 between is partly, and it says how many, which is the number somebody actually acts on. Items
 the criterion cannot read — no value where it looks — are counted as not clearing it and
-reported separately, because an unanswered item is not a passing one. An empty release
+reported separately, because an unanswered item is not a passing one.
+
+**The dependency criterion is the exception to that**, and it has to be: an empty edge list
+is removed rather than stored ([[A definition of ready]]), so an item that waits for nothing
+has no value where this criterion looks, and the blanket rule would leave a release full of
+independent work unable to satisfy it at all. **No edges is resolved** — there is nothing
+outstanding, which is the question this criterion asks. It is a different question from
+"dependencies known", which asks whether anybody looked and therefore needs the assessment
+property that feature describes; only that one cannot be answered by an absent list. An empty release
 satisfies nothing: with no items in scope every criterion reads as having nothing to check.
 
 **Outcome** — A release decision is made against stated criteria instead of a feeling, and
