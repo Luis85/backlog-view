@@ -30,5 +30,9 @@ of the backlog's rank, rollup and focus while still giving strategy a shape.
 Absent that link a strategic note is a root, which is the ordinary answer for a vault
 keeping objectives and nothing else: a flat list of objectives is a working strategy view.
 
+Because these are ordinary notes with a `parent`, a backlog base that returns them draws them
+too — keeping the two lists apart is the base's own filter, on the terms
+[[A view per capability]] states for every family that is not work.
+
 **Outcome** — Strategy has a shape a reader can navigate, and the backlog's ranking is
 untouched by it.

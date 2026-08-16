@@ -65,6 +65,22 @@ That disagreement is [[The SDD's layers are not the four this repository enforce
 is answered there, not here: this epic needs one implementation of each concept, and is
 indifferent to which directory it sits in.
 
+## Notes that are not work still look like work
+
+This register's scope rule is that **a note belongs to the backlog if it has a supported type
+or a parent** ([[What counts as a work item]]). Several capabilities here keep families that
+use `parent` among their own notes — strategy entities, portfolio groupings, discovery
+candidates — so a backlog base that returns those notes will draw them, rank them and roll
+them up. Nothing about owning a separate view changes that, and no hidden discriminator will
+be added to pretend otherwise.
+
+**The mechanism is the base's own filter**, which is what every vault already uses to exclude
+done items or Deliverables, and each view's guided empty state offers the filter it needs on
+both sides: its own base returns its family, and a backlog base that does not want them
+excludes them by the same property. The cost is stated wherever it applies: a vault that
+configures neither filter sees both families in both places, which is visible, ordinary and
+fixable — unlike a rule the plugin would enforce behind the reader's back.
+
 ## What the capabilities cost the vocabulary
 
 The epics under and beside this one ask, between them, for seventeen new item types —

@@ -29,6 +29,10 @@ item.
 
 A vault that declares no grouping levels sees no portfolio anywhere.
 
+Grouping notes are ordinary notes, so a backlog base that returns them draws them: keeping
+them out of the tree is the base's own filter, on the terms [[A view per capability]] states
+for every family that is not work.
+
 The second half of that is not a preference. `Epic` is a root by position in this plugin's own type map,
 and `parent` is what decides level, rank, rollup, focus and what a drag means; hanging epics
 under a product would give every existing vault a new depth, renumber nothing correctly, and
