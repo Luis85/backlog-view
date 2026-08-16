@@ -4,7 +4,7 @@ import { TitlePromptModal } from '../../ui/prompts';
 import { manualLink } from '../../ui/manualDialog';
 import { manualSections } from '../manual/sections';
 import { BacklogItem, BacklogModel } from '../../domain/model';
-import { focusTarget, folderForType } from '../../domain/itemTypes';
+import { focusTarget, folderForType, isIterationType } from '../../domain/itemTypes';
 import { ORDER_SPACING } from '../../domain/writePlan';
 import { createBacklogItem } from '../../storage/createNote';
 import { IterationPromptModal, IterationResult } from '../../ui/prompts';
@@ -282,16 +282,40 @@ export function promptEditIteration(host: BacklogViewHost, item: BacklogItem): v
 		start: ends.start.value === null ? '' : formatCivil(ends.start.value),
 		target: ends.target.value === null ? '' : formatCivil(ends.target.value),
 		goal: item.iterationGoalValue ?? '',
-		onSubmit: (result) =>
-			void host.applySafely(
-				computeIterationNoteWrites(item, {
-					axis: axisFrom(host, result),
-					// A cleared goal REMOVES the key here, which is the edit path's own case:
-					// the key exists, and taking it off is what clearing means.
-					goal: host.settings.iterationGoalKey ? (result.goal || null) : undefined,
-				}),
-			),
+		onSubmit: (result) => void saveIteration(host, item, result),
 	});
+}
+
+/**
+ * The edit, re-asked of the LIVE note before it is planned.
+ *
+ * A dialog stays open across refreshes, so the `BacklogItem` it was opened on is a
+ * snapshot: the note can be retyped or deleted while the reader is typing, and an
+ * unconditional write would then put an iteration's dates and goal onto a work item — or
+ * onto a `Milestone`, whose own target the axis write would overwrite. `applySafely`
+ * cannot catch it, because it checks the configuration and the filter and neither has
+ * changed. Found by review (Codex, PR #154).
+ *
+ * A view-layer re-read rather than an expectation carried into the write boundary, and
+ * the narrower fix is deliberate: this closes the one path a reader can actually take,
+ * while the general question — whether a plan should carry what it expected the note to
+ * be, so `storage/` can refuse a stale batch — is open across `writePlan.ts` and
+ * `labels.ts` and is escalated rather than answered here.
+ */
+function saveIteration(host: BacklogViewHost, item: BacklogItem, result: IterationResult): void {
+	const live = host.model?.byPath.get(item.file.path);
+	if (!live || !isIterationType(live.typeName)) {
+		new Notice('That iteration is no longer there. Nothing was written.');
+		return;
+	}
+	void host.applySafely(
+		computeIterationNoteWrites(live, {
+			axis: axisFrom(host, result),
+			// A cleared goal REMOVES the key here, which is the edit path's own case:
+			// the key exists, and taking it off is what clearing means.
+			goal: host.settings.iterationGoalKey ? (result.goal || null) : undefined,
+		}),
+	);
 }
 
 /**

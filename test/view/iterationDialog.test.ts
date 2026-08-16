@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { Menu, Modal } from 'obsidian';
 import { FakeVault } from '../helpers/vault';
-import { flush, makeView, submitButton, useViewHarness } from '../helpers/view';
+import { flush, makeView, refresh, submitButton, useViewHarness } from '../helpers/view';
 
 useViewHarness();
 
@@ -217,5 +217,25 @@ describe('the gate, before the dialog', () => {
 		await submitDialog({ Name: '   ' });
 		expect(Modal.lastOpened?.contentEl.querySelector('.pbl-modal-error')?.textContent).toContain('name');
 		expect(harness.vault.fm('Sprint 13.md')).toEqual({});
+	});
+});
+
+describe('the dialog outlives the model it was opened on', () => {
+	it('writes nothing when the iteration is retyped while the dialog is open', async () => {
+		// A dialog stays open across refreshes, so the item it holds is a snapshot. Retyped
+		// to a work item — or to a `Milestone`, whose own target the axis write would
+		// overwrite — an unconditional write would put an iteration's dates on the wrong
+		// kind of note. `applySafely` cannot catch it: the configuration and the filter are
+		// both unchanged. Found by review (Codex, PR #154).
+		const vault = sprintVault();
+		const harness = open(OPTIONS, SPRINT, vault);
+		Menu.lastShown?.item('Edit iteration…')?.click();
+
+		vault.setFrontmatter(SPRINT, { type: 'Milestone', order: 10, due: '2026-08-16' });
+		refresh(harness.view, vault);
+		await submitDialog({ Start: '2026-09-01', Target: '2026-09-14' });
+
+		expect(vault.writeLog).toEqual([]);
+		expect(vault.fm(SPRINT).due).toBe('2026-08-16');
 	});
 });
