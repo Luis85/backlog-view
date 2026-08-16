@@ -963,7 +963,9 @@ export function drawBandCollision(bar: { row: HTMLElement; lead: HTMLElement; tr
 function absenceCost(row: TimelineRow, crossed: Absence[]): { short: string; full: string } {
 	const lost = daysLost(row.bar.span, crossed);
 	const whole = lost >= daysBetween((row.bar.span.start ?? row.bar.span.target) as CivilDate, (row.bar.span.target ?? row.bar.span.start) as CivilDate) + 1;
-	return whole ? { short: `all ${lost}d`, full: `all ${lost} days lost` } : { short: `${lost}d lost`, full: `${lost} days lost to absence` };
+	return whole
+		? { short: `all ${lost}d`, full: t('lane.daysLostWhole', { count: lost }) }
+		: { short: `${lost}d lost`, full: t('lane.daysLost', { count: lost }) };
 }
 
 /**

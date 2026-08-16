@@ -139,6 +139,15 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   dates it meant, the bar snapped back, and nothing was said about it. The view now waits for
   the gesture to finish before it rebuilds.
 
+- **Drawing a dependency no longer loses its release either.** The wait above covered a
+  bar's own moves and resizes but not the dependency connector: a vault change mid-draw
+  took the preview line with it and the release wrote no dependency, silently. A link
+  gesture now holds the rebuild back the same way.
+
+- **A one-day absence crossing reads "1 day lost", not "1 days lost".** The cost sentence
+  in the crossing's tooltip and its screen-reader text now pluralizes like every other
+  count on the roadmap.
+
 - **The Property column width option is gone.** The width is a per-column pick you drag
   now, kept on the device rather than in the shared `.base`
 

@@ -348,6 +348,33 @@ describe('drawing a dependency from one bar to another', () => {
 		expect(vault.fm('Alpha.md')['due']).toBe('2026-08-10');
 	});
 
+	it('holds a Bases update back while the gesture is in flight, so the release still writes', async () => {
+		// The failure this is the check for, one gesture over from `cardDrag.test.ts`'s
+		// "the update waits for the drop": an `onDataUpdated` mid-drag re-renders,
+		// `onRenderStart` unhooks the link's drop targets and preview monitor, and the
+		// release reaches no `onDrop` — the dependency the user drew is silently not
+		// written. The monitor that defers the update has to cover a LINK drag too, not
+		// only a card move's.
+		const vault = barVault();
+		const { containerEl, view } = datedLinkView(vault);
+		// One element for the whole gesture: the release a stationary pointer makes lands
+		// on the bar the drag ENTERED — re-querying after the refresh would model a
+		// gesture that moved again and hide the case.
+		const beta = barFor(containerEl, 'Beta');
+
+		const gesture = gridDrag.start(connectorFor(containerEl, 'Alpha') as HTMLElement);
+		// Entering the target flushes the adapter's scheduled `onDragStart`, so the
+		// monitor knows a drag is in flight before the update arrives — the order a real
+		// gesture has anyway, since updates arrive while the pointer is over the grid.
+		gesture.over(beta, { clientX: 10 });
+
+		refresh(view, vault);
+		gesture.drop(beta, { clientX: 10 });
+		await flush();
+
+		expect(vault.fm('Beta.md')['dependsOn']).toEqual(['[[Alpha]]']);
+	});
+
 	it('writes nothing when released on an illegal target', async () => {
 		// Beta already waits for Alpha, so Alpha onto Beta would write the line on disk.
 		const vault = barVault();
@@ -507,10 +534,12 @@ describe('a render mid-drag mints a box the drag state cannot reach', () => {
 		// The gesture starts on the OLD connector, which is what populates `live` keyed by
 		// the OLD content box.
 		const gesture = gridDrag.start(connectorFor(containerEl, 'Alpha') as HTMLElement);
-		// The Bases round trip a mid-drag write can trigger: the grid is torn down and
-		// redrawn from scratch, exactly as `refresh` already does for the board's columns
-		// in `cardDrag.test.ts`'s "a drop whose note went away mid-drag".
-		refresh(view, vault);
+		// The render is driven DIRECTLY rather than through a data update, and that is
+		// the point rather than a convenience: a data update is deferred while a gesture
+		// is in flight now (the deferral test above), so driving one here would no longer
+		// cross a render at all and this would assert nothing. A resize still can, so
+		// `live`'s content-box keying is still what this box relies on.
+		view.render();
 		const newContent = containerEl.querySelector<HTMLElement>('.pbl-timeline-content');
 		if (!newContent) throw new Error('no content box after refresh');
 

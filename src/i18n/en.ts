@@ -66,6 +66,9 @@ export const en = {
 		one: 'Crosses an absence, {cost}: {spans}',
 		other: 'Crosses {count} absences, {cost}: {spans}',
 	},
+	/** The {cost} above, when the stretch takes part of the bar — and when it takes it whole. */
+	'lane.daysLost': { one: '{count} day lost to absence', other: '{count} days lost to absence' },
+	'lane.daysLostWhole': { one: 'all {count} day lost', other: 'all {count} days lost' },
 
 	'card.hiddenChildren': {
 		one: '{count} more is hidden by the current view',
