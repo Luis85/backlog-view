@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { Menu } from 'obsidian';
 import { FakeVault } from '../helpers/vault';
 import { cardTitles, columnByName } from '../helpers/board';
-import { makeView, refresh, useViewHarness } from '../helpers/view';
+import { clickExpandAll, makeView, refresh, rowByTitle, titlesOf, useViewHarness } from '../helpers/view';
 
 useViewHarness();
 
@@ -105,16 +105,21 @@ describe('the iteration scope', () => {
 		expect(harness.view.effectiveScope).toBeNull();
 	});
 
-	it('names the retained scope on the picker even off Board mode', () => {
-		// The button says which board `Board` will open, and off Board mode the effective
-		// scope is null while the retained one still reopens — named from the effective
-		// scope, the control said `Product` over a button that would open Sprint 12.
+	it('names the retained scope while it is drawn, and is not drawn off the board', () => {
+		// The button says which board `Board` will open, so it is named from the RETAINED
+		// scope rather than the effective one — those differ, and naming it from the
+		// effective scope said `Product` over a button that would open Sprint 12.
+		//
+		// Off the board it is not drawn at all: the picker belongs to the board, and the
+		// way back to one is the `Board` button beside it.
 		const harness = makeView(sprintVault(), OPTIONS, { base: 'Plan.base' });
 		harness.view.setBoardScope(SPRINT);
-		harness.view.setProjection('tree');
 		expect(harness.containerEl.querySelector('.pbl-scope-btn')?.getAttribute('aria-label')).toBe(
 			'Board scope: Sprint 12',
 		);
+
+		harness.view.setProjection('tree');
+		expect(harness.containerEl.querySelector('.pbl-scope-btn')).toBeNull();
 	});
 
 	it('reads the whole view as Product when the stored path names no Iteration', () => {
@@ -191,6 +196,42 @@ describe('the iteration scope', () => {
 	});
 });
 
+describe('an iteration is not a row of the plan', () => {
+	it('draws no tree row for one, and keeps a work item parented to one on screen', () => {
+		// The container a board is scoped to, not work the backlog holds. The second half
+		// is what makes the first half safe: `projectionForest` PROMOTES a member whose
+		// parent is not one, and `rowHidden` drops a non-member — asked differently, a
+		// `PBI` parented to an iteration is hidden with its parent and appears nowhere,
+		// because `renderForest` drops a hidden sibling without descending through it.
+		const vault = new FakeVault();
+		vault.addFile(SPRINT, { frontmatter: { type: 'Iteration', order: 10 } });
+		vault.addFile('Hung under it.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Sprint 12' });
+		vault.addFile('Ordinary.md', { frontmatter: { type: 'PBI', order: 20 } });
+		const harness = makeView(vault, OPTIONS, { base: 'Plan.base' });
+		clickExpandAll(harness.containerEl);
+
+		expect(titlesOf(harness.containerEl)).toEqual(['Hung under it', 'Ordinary']);
+		// And it is still in the model, because `Set iteration` and the picker read it.
+		expect(harness.view.model?.byPath.get(SPRINT)).toBeDefined();
+	});
+
+	it('offers the type in no New menu and no Set type', () => {
+		// One control makes them — the board's scope picker — and it derives the number,
+		// the dates and the folder a New menu would leave to the reader.
+		const harness = makeView(sprintVault(), OPTIONS, { base: 'Plan.base' });
+		harness.containerEl
+			.querySelector<HTMLElement>('.pbl-new-more')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect((Menu.lastShown?.items ?? []).map((mi) => mi.titleText)).not.toContain('New Iteration');
+
+		rowByTitle(harness.containerEl, 'In sprint').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const types = (Menu.lastShown?.item('Set type')?.submenu?.items ?? []).map((mi) => mi.titleText);
+		expect(types).not.toContain('Iteration');
+		// Not vacuous: the other marker is still offered.
+		expect(types).toContain('Milestone');
+	});
+});
+
 describe('the scope picker', () => {
 	const picker = (containerEl: HTMLElement) => containerEl.querySelector<HTMLElement>('.pbl-scope-btn');
 
@@ -207,28 +248,30 @@ describe('the scope picker', () => {
 		expect(entries(harness.containerEl)).toEqual(['Product', 'Sprint 12', 'Sprint 13', 'New iteration…']);
 	});
 
-	it('is absent with no iteration property, and with no Iteration note', () => {
-		// Two conditions, both required. With no notes there is nothing to choose between
-		// — `renderAxisPicker`'s refusal for a single configured axis. With no property,
-		// every entry would draw a board no card could ever reach.
+	it('draws with no Iteration note at all, because it is how the first one is made', () => {
+		// **No emptiness refusal**, unlike the axis picker: that one with a single axis can
+		// only re-pick what is picked, while this one carries `New iteration…`. Withheld on
+		// an empty vault it would withhold the feature from every vault that has not
+		// started using it.
 		const empty = new FakeVault();
 		empty.addFile('A PBI.md', { frontmatter: { type: 'PBI', order: 10, status: 'New' } });
-		const noNotes = makeView(empty, OPTIONS, { base: 'Plan.base' });
-		noNotes.view.setProjection('board');
-		expect(picker(noNotes.containerEl)).toBeNull();
+		const harness = makeView(empty, OPTIONS, { base: 'Plan.base' });
+		harness.view.setProjection('board');
+		expect(entries(harness.containerEl)).toEqual(['Product', 'New iteration…']);
+	});
 
+	it('is absent with no iteration property, and absent off the board', () => {
+		// With no property every entry would draw a board no card could ever reach. Off the
+		// board there is no board for it to scope: the picker belongs to the board, and the
+		// way back to one is the `Board` button beside it.
 		const { iterationProperty, ...noKey } = OPTIONS;
 		expect(iterationProperty).toBe('note.iteration');
 		const noProperty = makeView(sprintVault(), noKey, { base: 'Plan.base' });
 		noProperty.view.setProjection('board');
 		expect(picker(noProperty.containerEl)).toBeNull();
-	});
 
-	it('draws on the tree as well, since it is what chooses the board to open', () => {
-		// The picker sits beside the Board button rather than inside the board, so a
-		// reader on the tree can go straight to a sprint.
-		const harness = makeView(sprintVault(), OPTIONS, { base: 'Plan.base' });
-		expect(picker(harness.containerEl)).not.toBeNull();
+		const onTree = makeView(sprintVault(), OPTIONS, { base: 'Plan.base' });
+		expect(picker(onTree.containerEl)).toBeNull();
 	});
 
 	it('scopes the view to the note that was picked, not to its label', () => {

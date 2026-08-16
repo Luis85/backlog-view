@@ -68,7 +68,7 @@ the moment the populations diverged, which is exactly what happened.
 | --- | --- |
 | **Actor** | Backlog owner |
 | **Trigger** | Choosing an iteration from the board's scope picker |
-| **Preconditions** | Board mode is on, the iteration property is configured, and at least one `Iteration` note is in the model. A resolved state key is **not** a precondition: it is what the columns need, not what entering the scope needs, and 4a is the guidance shown when there is none |
+| **Preconditions** | Board mode is on and the iteration property is configured. **Not** "at least one `Iteration` note" — that was a precondition until 2026-08-16 and it locked the feature out of every vault that had not started using it, since the picker carries the only `New iteration…`. A resolved state key is not one either: it is what the columns need, not what entering the scope needs, and 4a is the guidance shown when there is none |
 | **Guarantee** | One model, one write gate, one undo history, exactly as [[Product Kanban]]'s own guarantee states. Switching scope re-runs no query and writes nothing; a move writes the product state key **and any configured transition stamps**, exactly as the product board's own move does, and a move onto the bucket a card already sits in writes nothing at all. |
 
 **Main flow**
@@ -498,7 +498,8 @@ the moment the populations diverged, which is exactly what happened.
 ## Acceptance criteria
 
 - In board mode the toolbar offers a scope picker naming `Product` and every `Iteration`
-  note **while the iteration property is configured and at least one `Iteration` note is
+  note **while the iteration property is configured** (the second half of this condition —
+  at least one `Iteration` note — was removed on 2026-08-16; see the preconditions) and is
   in the model**, and does not render it otherwise. Both halves: with no configured
   property nothing can join a scope, so a picker offering scopes would be a control whose
   every entry draws an empty board (1b).
@@ -639,9 +640,11 @@ exists to protect. The entry is restored and debounce-saved by
 `src/view/viewState.ts`, read and written through `src/view/viewStateController.ts` and declared
 on the host in `src/view/host.ts`. The picker is `renderBoardScopePicker` in
 `src/view/render/toolbarControls.ts`, built the way `renderAxisPicker` beside it is —
-drawn beside the projection switcher in EVERY projection rather than inside the board's
-own zone, since it is how this board is reached and a control behind the door it opens
-would be no way in at all;
+drawn after the `New` button and **only at the board's own toolbar position** — it was in
+every projection until 2026-08-16, on the argument that a control behind the door it opens
+is no way in; the user's answer is the simpler one, that the door is the `Board` button
+and this picker says which board came through it. It draws with no iteration in the vault
+at all, because it carries the only `New iteration…`;
 the board itself is `src/view/render/iterationBoard.ts` — its own module since
 2026-08-16, when `src/view/render/board.ts` reached its line cap as the dated axis's
 milestone lane landed beside it; that file keeps the shared frame this one draws through

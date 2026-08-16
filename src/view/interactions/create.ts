@@ -9,7 +9,7 @@ import { ORDER_SPACING } from '../../domain/writePlan';
 import { createBacklogItem } from '../../storage/createNote';
 import { IterationPromptModal, IterationResult } from '../../ui/prompts';
 import { computeIterationNoteWrites } from '../../domain/writePlan';
-import { nextIterationDates, previousIteration } from '../../domain/iterations';
+import { nextIterationDates, nextIterationName, previousIteration } from '../../domain/iterations';
 import { ITERATION_TYPE } from '../../domain/typeVocabulary';
 import { daysBetween } from '../../domain/timeline';
 import { readDate, todayCivil } from '../../domain/noteFields';
@@ -257,12 +257,15 @@ export function promptNewIteration(host: BacklogViewHost, model: BacklogModel): 
 	// this found no predecessor and prefilled from today — while the picker beside it went
 	// on offering a later sprint, and accepting the prefill would create an iteration
 	// overlapping it. Found by review (Codex, PR #154).
-	const previous = previousIteration([...model.byPath.values()].filter((item) => !item.outsideFilter));
+	const population = [...model.byPath.values()].filter((item) => !item.outsideFilter);
+	const previous = previousIteration(population);
 	const dates = nextIterationDates(previous, todayCivil(), host.settings.iterationLengthDays);
 	openIterationPrompt(host, {
 		heading: 'New iteration',
 		cta: 'Create',
-		name: '',
+		// Numbered, so a folder of iterations sorts in the order they run — and a prefill
+		// like every other field here, typed over by anyone who names their sprints.
+		name: nextIterationName(population),
 		start: dates.start,
 		target: dates.target,
 		goal: '',
@@ -400,14 +403,12 @@ async function createIteration(host: BacklogViewHost, result: IterationResult): 
 			axis: { ...(axis.start ? { start: axis.start } : {}), ...(axis.target ? { target: axis.target } : {}) },
 			...(host.settings.iterationGoalKey && result.goal ? { iterationGoal: result.goal } : {}),
 		});
+		// **Not opened**, like every other creation this plugin makes. It was opened for
+		// one round on the argument that an iteration draws nowhere and would otherwise be
+		// a note to go and find; the user's answer is that making a sprint is a planning
+		// act and taking the reader off the board they are planning ON is the cost that
+		// argument did not count. The scope picker names it either way.
 		new Notice(`Created "${file.basename}".`);
-		// **Opened, unlike the ordinary New flow**, and the difference is the register's
-		// (main flow 3) rather than an inconsistency: an ordinary new item lands in the
-		// tree the reader is already looking at, while an iteration is filed in its own
-		// subfolder and draws NOTHING on the board that made it — a marker is not work, so
-		// the population refuses it. Left closed, the one thing the reader would want to
-		// write next is a note they have to go and find. Found by review (Codex, PR #154).
-		void host.app.workspace.getLeaf(false).openFile(file);
 	} catch (e) {
 		console.error('Product Backlog: failed to create iteration', e);
 		new Notice('Could not create the iteration. See the developer console for details.');

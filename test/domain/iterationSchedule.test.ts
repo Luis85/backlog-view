@@ -27,7 +27,10 @@ function iterations(spec: Record<string, { start?: string; due?: string }>) {
 	for (const [path, ends] of Object.entries(spec)) {
 		vault.addFile(path, { frontmatter: { type: 'Iteration', order: (order += 10), ...ends } });
 	}
-	return buildModel(vault.app, vault.entries(), settings).results;
+	// `byPath`, not `results`: an `Iteration` is not a row of the plan, so the plan's
+	// population no longer holds one — which is exactly why the caller reads the same
+	// focus-immune set the scope picker does.
+	return [...buildModel(vault.app, vault.entries(), settings).byPath.values()];
 }
 
 describe('previousIteration', () => {
@@ -66,7 +69,7 @@ describe('previousIteration', () => {
 	it('never follows a note that is not an Iteration', () => {
 		const vault = new FakeVault();
 		vault.addFile('A PBI.md', { frontmatter: { type: 'PBI', order: 10, due: '2026-12-31' } });
-		expect(previousIteration(buildModel(vault.app, vault.entries(), settings).results)).toBeNull();
+		expect(previousIteration([...buildModel(vault.app, vault.entries(), settings).byPath.values()])).toBeNull();
 	});
 });
 

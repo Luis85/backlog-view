@@ -363,8 +363,11 @@ describe('write safety with context rows, across every entry point', () => {
 	// being one test.
 	it('never writes to one, whatever is done to any row', async () => {
 		const { containerEl, vault } = stressView();
+		// Six, not seven: `Sprint 12` is in the model as a `Set iteration` target and the
+		// tree does not DRAW an iteration, which is what it means for one to be the
+		// container of a board rather than a row of the plan.
 		const allRows = rows(containerEl);
-		expect(allRows).toHaveLength(7);
+		expect(allRows).toHaveLength(6);
 
 		// Every drag of every row onto every other row, in all three zones
 		for (const from of allRows) {

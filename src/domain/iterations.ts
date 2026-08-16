@@ -1,5 +1,6 @@
 import { statedEnds } from './bars';
 import { isIterationType } from './itemTypes';
+import { ITERATION_TYPE } from './typeVocabulary';
 import { BacklogItem } from './model';
 import { CivilDate } from './noteFields';
 import { addDays, daysBetween, formatCivil } from './timeline';
@@ -75,6 +76,39 @@ function later(
 	if (a.start === null || b.start === null) return b.start === null && a.start !== null;
 	const byStart = daysBetween(b.start, a.start);
 	return byStart !== 0 ? byStart > 0 : a.path > b.path;
+}
+
+/**
+ * What the create dialog prefills the NAME with: the next index, then the word.
+ *
+ * The index is one past the highest numeric prefix any iteration already carries — read
+ * off the NAMES rather than off a count, because a vault that deletes Sprint 3 must not
+ * mint a second one, and a base that filters some out must not renumber over them. A
+ * vault with no numbered iteration starts at 1.
+ *
+ * The prefix is what makes a folder of iterations sort in the order they run: a note
+ * called `Iteration` sorts beside `Iteration 10` and nowhere near `2 - Iteration`. It is
+ * a PREFILL like every other value in this dialog — a reader who wants `Q3 hardening`
+ * types it over.
+ */
+export function nextIterationName(items: Iterable<BacklogItem>): string {
+	let highest = 0;
+	for (const item of items) {
+		if (!isIterationType(item.typeName) || item.outsideFilter) continue;
+		const index = leadingIndex(item.title);
+		if (index > highest) highest = index;
+	}
+	return `${highest + 1} - ${ITERATION_TYPE}`;
+}
+
+/**
+ * The number a title LEADS with, or 0 for one that leads with none. Deliberately blind to
+ * a number anywhere else: `Sprint 12 - review of 3` leads with nothing, and reading the
+ * `3` out of it would number the next iteration from a word.
+ */
+function leadingIndex(title: string): number {
+	const found = /^\s*(\d+)/.exec(title);
+	return found === null ? 0 : Number(found[1]);
 }
 
 /**

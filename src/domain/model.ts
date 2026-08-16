@@ -9,6 +9,7 @@ import {
 	focusTarget,
 	inCatalog,
 	isDeliverableType,
+	isIterationType,
 	isExtraType,
 	isMarkerType,
 	ladderFor,
@@ -236,7 +237,7 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	// this decides which of those rows the plan actually draws.
 	const focused = focusIdx >= 0 || focusExtra !== '';
 	const focusRoots = focused ? collectFocusRoots(roots, focusIdx, focusExtra, settings) : roots;
-	const plan = projectionForest(focusRoots, (item) => !inCatalog(item), settings, false);
+	const plan = projectionForest(focusRoots, inPlan, settings, false);
 	// `rest` LAST, and the order is load-bearing: both objects carry the same `observed*`
 	// lists, and the plan's must be the whole-tree-minus-catalog ones in `rest` rather than
 	// the forest's own. A forest's vocabulary is collected from what it RENDERS, which a
@@ -310,6 +311,26 @@ export function iterationResults(model: BacklogModel, path: string): BacklogItem
 }
 
 /**
+ * Whether this item is a row of the PLAN — everything the backlog holds, minus the test
+ * catalog and minus the iterations.
+ *
+ * An `Iteration` is the container a board is scoped to rather than work the backlog
+ * holds: nothing hangs from it, nothing rolls up into it, and a reader scanning the tree
+ * for what is left to do is not looking for a fortnight. A `Milestone` stays, and the
+ * difference is not tidiness — a milestone is a date the plan answers to, and it reads as
+ * a row among the work it dates.
+ *
+ * **Stated once because the forest and the hiding must agree.** `projectionForest`
+ * PROMOTES a member whose parent is not one, and `rowHidden` drops a non-member; asked
+ * differently, a `PBI` somebody parented to an iteration was hidden along with its parent
+ * and appeared nowhere at all — `renderForest` drops a hidden sibling without descending
+ * through it, which is the failure `projectionForest`'s own comment exists to name.
+ */
+export function inPlan(item: { ladder: string[]; typeName: string | null }): boolean {
+	return !inCatalog(item) && !isIterationType(item.typeName);
+}
+
+/**
  * Whether this item is IN that iteration — the membership rule itself, stated once
  * because it is asked from two directions and the two drifted the moment they were
  * spelled separately.
@@ -326,7 +347,7 @@ export function iterationResults(model: BacklogModel, path: string): BacklogItem
  * placement rather than membership, and each caller answers that its own way.
  */
 export function inIteration(item: BacklogItem, path: string): boolean {
-	return !isMarkerType(item.typeName) && !inCatalog(item) && item.iterationEntry?.file?.path === path;
+	return !isMarkerType(item.typeName) && inPlan(item) && item.iterationEntry?.file?.path === path;
 }
 
 /**

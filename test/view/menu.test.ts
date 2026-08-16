@@ -73,7 +73,6 @@ describe('context menu', () => {
 			'Idea',
 			'Deliverable',
 			'Milestone',
-			'Iteration',
 		]);
 		expect(submenu.item('Epic')?.checked).toBe(true);
 		submenu.item('Task')?.click();

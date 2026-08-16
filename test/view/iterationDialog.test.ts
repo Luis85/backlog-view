@@ -39,7 +39,10 @@ function sprintVault(): FakeVault {
 
 function open(options: Record<string, unknown> = OPTIONS, scope: string | null = SPRINT, vault = sprintVault()) {
 	const harness = makeView(vault, options, { base: 'Plan.base' });
+	// The picker is the BOARD's control, so the view has to be on a board to open it —
+	// `setBoardScope(null)` is the product board, not the tree.
 	harness.view.setBoardScope(scope);
+	if (scope === null) harness.view.setProjection('board');
 	harness.containerEl
 		.querySelector<HTMLElement>('.pbl-scope-btn')
 		?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -84,10 +87,31 @@ describe('New iteration…', () => {
 			goal: 'Finish the importer',
 		});
 		expect(harness.vault.writeLog).toEqual([]);
-		// And it OPENS, unlike the ordinary New flow: an iteration is filed in its own
-		// subfolder and draws nothing on the board that made it, so left closed it is a
-		// note the reader has to go and find.
-		expect(harness.vault.opened.map((o) => o.path)).toEqual(['Sprint 13.md']);
+		// And it does NOT open, like every other creation this plugin makes: making a
+		// sprint is a planning act, and taking the reader off the board they are planning
+		// on is what opening it would cost.
+		expect(harness.vault.opened).toEqual([]);
+	});
+
+	it('prefills the name with the next index', async () => {
+		// Numbered so a folder of iterations sorts in the order they run — `Iteration`
+		// sorts beside `Iteration 10` and nowhere near `2 - Iteration`. One past the
+		// highest numeric prefix any iteration already carries, read off the NAMES: a
+		// vault that deleted Sprint 3 must not mint a second one.
+		const numbered = sprintVault();
+		numbered.addFile('3 - Iteration.md', { frontmatter: { type: 'Iteration', order: 20 } });
+		const harness = open(OPTIONS, SPRINT, numbered);
+		Menu.lastShown?.item('New iteration…')?.click();
+		const name = Modal.lastOpened?.contentEl.querySelector('input');
+		expect(name?.value).toBe('4 - Iteration');
+
+		// And 1 in a vault with no numbered iteration at all.
+		const fresh = new FakeVault();
+		fresh.addFile('Loose.md', { frontmatter: { type: 'PBI', order: 10 } });
+		open(OPTIONS, null, fresh);
+		Menu.lastShown?.item('New iteration…')?.click();
+		expect(Modal.lastOpened?.contentEl.querySelector('input')?.value).toBe('1 - Iteration');
+		expect(harness.vault.writeLog).toEqual([]);
 	});
 
 	it('writes no goal KEY when the goal is left blank and the property IS configured', async () => {

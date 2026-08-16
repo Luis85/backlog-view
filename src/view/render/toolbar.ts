@@ -60,11 +60,6 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	// 1 — where am I. The switcher leads: it says what the rest of the row is about, and
 	// what the primary action beside it will make.
 	renderModeToggle(host, barEl);
-	// 1b — WHICH board the Board position opens. Beside the switcher rather than inside
-	// the projection zone, and drawn in every projection, because it is how the iteration
-	// board is REACHED: a picker that only appeared once the reader was already on the
-	// board it chooses would be a control behind the door it opens.
-	renderBoardScopePicker(host, barEl, model);
 
 	// 2 — what you came to do. The one control here that ADDS to the backlog, kept at the
 	// head of the row with the switcher: the clip at a very narrow pane runs from the
@@ -73,6 +68,12 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	// `.pbl-btn-group`, so the boxes already say where one control ends and the next
 	// begins, and a line between them draws a boundary that is drawn twice.
 	renderNewButton(host, barEl, model);
+
+	// 2b — WHICH board this is, after the action that fills it. On the board and nowhere
+	// else: it drew in every projection until 2026-08-16 on the argument that a control
+	// behind the door it opens is no way in, and the user's answer is the simpler one —
+	// the door is the `Board` button, and this picker says which board came through it.
+	renderBoardScopePicker(host, barEl, model);
 
 	// 3 — what THIS projection owns, and nothing at all when it owns none. Set off from
 	// the two groups above by its own spacing rather than by a divider, so an empty zone

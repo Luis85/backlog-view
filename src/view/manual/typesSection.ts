@@ -26,7 +26,9 @@ const INTENT: Record<string, string> = {
 		'existing row, or Set type from turning any row into one.',
 	Iteration:
 		'A time box items are scheduled into. Items link to an iteration rather than hanging from ' +
-		'one, so like a Milestone it holds nothing and the + never offers to create one as a child.',
+		'one, so like a Milestone it holds nothing. It is the only type no New menu offers and ' +
+		'no tree row draws: an iteration is the container a board is scoped to rather than work ' +
+		'the backlog holds, and the board\'s own scope picker is what makes one.',
 	'Test suite':
 		'A walkable group of end-to-end tests, and a root by nature — it hangs from nothing and ' +
 		'lives in the test catalog rather than in the plan. Holds Test cases.',

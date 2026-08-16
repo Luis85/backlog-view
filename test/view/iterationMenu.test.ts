@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { Menu, MenuItem } from '../helpers/obsidian-mock';
-import { clickExpandAll, flush, makeView, projectionButton, rowByTitle, useViewHarness } from '../helpers/view';
+import { clickExpandAll, flush, makeView, projectionButton, rowByTitle, rows, useViewHarness } from '../helpers/view';
 
 /**
  * `Set iteration` — five refusals and one presence, each of them a different rule.
@@ -93,13 +93,17 @@ describe('Set iteration', () => {
 		expect(iterationEntries(containerEl, 'Case')).toBeNull();
 	});
 
-	it('is absent on a Milestone row, not only an Iteration one', () => {
-		// A marker is not work. Named as one rule so a third marker inherits it — and
-		// checked on the MILESTONE, because that is the one the dates would destroy.
-		const { containerEl } = makeView(iterationVault(), ITERATION_KEY);
+	it('is absent on a Milestone row', () => {
+		// A marker is not work. Named as one rule (`isMarkerType`) so a third marker
+		// inherits it — and checked on the MILESTONE, which is the one the dates would
+		// destroy and, since 2026-08-16, the only marker the tree still draws: an
+		// `Iteration` is the container a board is scoped to and is not a row of the plan,
+		// so there is no row of one to open a menu on.
+		const { containerEl, view } = makeView(iterationVault(), ITERATION_KEY);
 
 		expect(iterationEntries(containerEl, 'M1')).toBeNull();
-		expect(iterationEntries(containerEl, 'Sprint 12')).toBeNull();
+		expect(view.model?.byPath.get('Sprint 12.md')).toBeDefined();
+		expect(rows(containerEl).some((row) => row.textContent?.includes('Sprint 12'))).toBe(false);
 	});
 
 	it('is absent when the iteration property is unconfigured, even with Iterations in the model', () => {

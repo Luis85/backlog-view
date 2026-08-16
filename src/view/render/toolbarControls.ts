@@ -316,11 +316,16 @@ function renderAxisPicker(host: BacklogViewHost, zone: HTMLElement, barEl: HTMLE
  * case unreadable. What a pick carries is the NOTE either way.
  */
 export function renderBoardScopePicker(host: BacklogViewHost, barEl: HTMLElement, model: BacklogModel): void {
-	if (!host.settings.iterationKey) return;
+	// The BOARD's control, so it draws at the board's own position and nowhere else.
+	if (toolbarPosition(host.projection) !== 'board' || !host.settings.iterationKey) return;
 	const iterations = [...model.byPath.values()].filter(
 		(item) => isIterationType(item.typeName) && !item.outsideFilter,
 	);
-	if (iterations.length === 0) return;
+	// **No emptiness refusal**, unlike `renderAxisPicker`, and the difference is what the
+	// two controls are FOR: an axis picker with one axis can only re-pick what is already
+	// picked, while this one carries `New iteration…` — so on a vault with no iterations
+	// at all it is the only way to make the first, and withholding it would be withholding
+	// the feature from every vault that has not started using it.
 
 	const seen = new Map<string, number>();
 	for (const item of iterations) seen.set(item.title, (seen.get(item.title) ?? 0) + 1);
@@ -352,6 +357,9 @@ export function renderBoardScopePicker(host: BacklogViewHost, barEl: HTMLElement
 					.onClick(() => pickAndRefocus(barEl, 'scope', () => host.setBoardScope(path))),
 			);
 		choice(SCOPE_PRODUCT, null);
+		// The whole backlog is not one of the iterations, so a rule says so: the scopes
+		// below this line are a list of notes, and `Product` is the absence of one.
+		menu.addSeparator();
 		for (const item of iterations) choice(labelOf(item), item.file.path);
 		menu.addSeparator();
 		// Below the scopes, and the edit only while an iteration IS the chosen scope —

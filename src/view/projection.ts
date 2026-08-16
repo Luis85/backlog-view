@@ -1,5 +1,5 @@
-import { inCatalog, isDeliverableType, isMarkerType, ladderFor } from '../domain/itemTypes';
-import { BacklogItem, BacklogModel, inIteration, ProjectionPopulation } from '../domain/model';
+import { inCatalog, isDeliverableType, isIterationType, isMarkerType, ladderFor } from '../domain/itemTypes';
+import { BacklogItem, BacklogModel, inIteration, inPlan, ProjectionPopulation } from '../domain/model';
 import { BacklogViewHost, Projection } from './host';
 import { ALL_TYPES } from '../domain/typeVocabulary';
 
@@ -169,9 +169,13 @@ export function projectionMember(projection: Projection, scope: string | null = 
 		// `inIteration` and NOT a second spelling of its three refusals: with the marker
 		// refusal in the population and not here, a note retyped to `Milestone` kept its
 		// link and stayed listed on its parent's card. One statement, two callers.
-		return (item) => item.outsideFilter ? !inCatalog(item) : inIteration(item, scope);
+		return (item) => (item.outsideFilter ? inPlan(item) : inIteration(item, scope));
 	}
-	return (item) => !inCatalog(item);
+	// `inPlan`, which refuses an `Iteration` as well as the catalog — and it is the same
+	// function `projectionForest` builds the plan's forest from, because the forest and
+	// the hiding must agree: promoted by one and hidden by the other, a `PBI` parented to
+	// an iteration would appear nowhere at all.
+	return inPlan;
 }
 
 /**
@@ -264,7 +268,12 @@ function byProjectionType(projection: Projection, types: string[]): string[] {
 	if (projection === 'board') return types.filter((type) => !isDeliverableType(type));
 	if (projection === 'deliverables') return types.filter((type) => isDeliverableType(type));
 	if (projection === 'iteration') return types.filter((type) => !isMarkerType(type));
-	return types;
+	// **No creation surface offers `Iteration`.** One control makes them — the board's
+	// scope picker — and it derives the number, the dates and the folder that a `New`
+	// menu would leave to the reader. A second door onto the same note is a second set of
+	// defaults to keep in step, and the one that offers less is the one that would be
+	// used by accident.
+	return types.filter((type) => !isIterationType(type));
 }
 
 /**

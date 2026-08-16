@@ -44,11 +44,19 @@ user confirmed, never a rule applied at write time that the reader could not see
 1. In board mode the scope picker draws `New iteration…` below the scopes, and
    `Edit iteration…` above it while an iteration is chosen.
 2. `New iteration…` opens a dialog with a name, a start date, a target date and a goal.
-   The dates are prefilled: **start** is the previous iteration's target **+ 1 day**, and
+   The **name** is prefilled `<next index> - Iteration` — one past the highest numeric
+   prefix any iteration already carries, so a folder of them sorts in the order they run
+   (`Iteration` sorts beside `Iteration 10` and nowhere near `2 - Iteration`). Read off
+   the NAMES rather than a count, so a vault that deleted Sprint 3 does not mint a second
+   one. The dates are prefilled: **start** is the previous iteration's target **+ 1 day**, and
    **target** is start + `iterationLengthDays` **− 1**.
 3. Confirming creates the note through the plugin's own creation path — typed
    `Iteration`, into the `iterations` subfolder the type declares, with both dates and the
-   goal in the **same** write — and opens it.
+   goal in the **same** write. It is **not opened**: making a sprint is a planning act,
+   and taking the reader off the board they are planning on is what opening it would cost.
+   That reverses this step as written until 2026-08-16, when the argument for opening was
+   that an iteration draws nowhere and would otherwise be a note to go and find — true,
+   and outweighed. The scope picker names it either way.
 4. `Edit iteration…` opens the same dialog on the chosen iteration, prefilled from it,
    with the name field absent (2c).
 5. Confirming writes the dates and the goal to that note through `applySafely`, taken back
