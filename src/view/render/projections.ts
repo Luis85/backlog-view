@@ -6,7 +6,7 @@ import { renderTree } from './reconcile';
 import { TIMELINE_LEAD_PX } from './timeline';
 import { BoardSnapshot, Projection, RoadmapSnapshot, ScrollBox } from '../host';
 import { CardDragController } from '../interactions/cardDrag';
-import { CivilDate } from '../../domain/noteFields';
+import { CivilDate, todayCivil } from '../../domain/noteFields';
 import { activeAxis, drawsGrid, RoadmapAxis } from '../../domain/roadmap';
 import { resolvedDeliverableStateKey } from '../../domain/optionalProperties';
 import { daysBetween, dayAt } from '../../domain/timeline';
@@ -338,8 +338,4 @@ function renderRoadmapContent(ctx: RowContext, treeEl: HTMLElement, dnd: CardDra
 	return { board: null, roadmap, role: roadmap.cards.length > 0 ? 'listbox' : 'region', label };
 }
 
-/** The reader's own calendar date — the one thing on the roadmap that is theirs, not the notes'. */
-function todayCivil(): CivilDate {
-	const now = new Date();
-	return { year: now.getFullYear(), month: now.getMonth() + 1, day: now.getDate() };
-}
+

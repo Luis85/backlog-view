@@ -2,12 +2,12 @@
 type: PBI
 parent: "[[An Iterations board]]"
 order: 25
-status: Open
+status: Done
 priority: P3
 created: 2026-08-16
 source: user request
 started: ""
-finished: ""
+finished: 2026-08-16
 horizon: ""
 start: ""
 due: ""
@@ -192,25 +192,30 @@ user confirmed, never a rule applied at write time that the reader could not see
 
 ## Where it lives
 
-The dialog is a module of its own in `src/ui/`, beside `src/ui/stateColorsDialog.ts` — the
-leaf directory of reusable Obsidian dialogs that knows about no layer, which is what lets
-the board open it without the picker reaching upward. The derivation is pure and belongs
-below it, in a module of its own under `src/domain/`: the previous-iteration rule and the
-two date sums, reading the model's items and the settings, so they are answered by a
-function rather than by a screen.
+The dialog is `IterationPromptModal` in `src/ui/prompts.ts` — **not a module of its own**,
+which is what this section said until it was built. `src/ui/` is still the leaf that knows
+about no layer, and that is the part the argument rested on; what changed is that
+`prompts.ts` already holds `PromptModal` and `refusableBody` — the base class, the
+description line, the refusal box that keeps the entry in place, and the Enter-to-submit
+wiring — and had ninety counted lines of headroom. A new module would have re-exported
+those or copied them. `AbsencePromptModal` beside it is the same shape for the same reason:
+one form for making and for editing, because the validator and the field list are the same
+questions whether the note exists yet or not.
 
-**Neither is spelled here yet, and that is the gate's doing rather than vagueness.**
-`docs-check.mjs` checks a named path *exists*, so a note naming a module before the commit
-that creates it fails the register — while rule 7 fails the commit that creates a module no
-note names. The two rules meet in one place: the exact path is written into this section
-**in the same commit as the file**, never before it. The
+The derivation IS a module of its own, `src/domain/iterations.ts`: the previous-iteration
+rule and the two date sums, reading the model's items and the settings, so they are
+answered by a function rather than by a screen. The actions that open the dialog are
+`promptNewIteration` and `promptEditIteration` in `src/view/interactions/create.ts` — the
+module that already owns every gated creation flow — and both run `configProblems` before
+opening rather than at submit.
 
 
 `iterationLengthDays` option is declared in `src/domain/viewOptions.ts` and resolved in
 `src/domain/settings.ts`. The two picker entries are drawn in
 `src/view/render/toolbarControls.ts`, where the scope picker itself is. Creating goes
 through `createBacklogItem` in `src/storage/createNote.ts` by way of
-`src/view/interactions/structure.ts`; editing is planned in `src/domain/writePlan.ts` and
+`src/view/interactions/create.ts`; editing is planned in `src/domain/writePlan.ts` and
 applied by `src/storage/frontmatter.ts` through `src/view/writeGate.ts`. Driven in
-`test/domain/itemTypes.test.ts` for the derivation and `test/view/board.test.ts` for the
-two picker entries and the dialog's round trip.
+`test/domain/iterationSchedule.test.ts` for the derivation and
+`test/view/iterationDialog.test.ts` for the two picker entries, both write shapes and the
+one-file guarantee on the edit.

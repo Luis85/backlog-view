@@ -8,6 +8,7 @@ import { activeAxis, configuredAxes, drawsGrid, RoadmapAxis } from '../../domain
 import { ScaleId } from '../../domain/timeline';
 import { showMenuForClick } from '../interactions/menu';
 import { runInit } from '../interactions/structure';
+import { promptEditIteration, promptNewIteration } from '../interactions/create';
 import { focusInBar } from './toolbarFit';
 import { openManual } from '../../ui/manualDialog';
 import { manualSections } from '../manual/sections';
@@ -347,6 +348,23 @@ export function renderBoardScopePicker(host: BacklogViewHost, barEl: HTMLElement
 			);
 		choice(SCOPE_PRODUCT, null);
 		for (const item of iterations) choice(labelOf(item), item.file.path);
+		menu.addSeparator();
+		// Below the scopes, and the edit only while an iteration IS the chosen scope —
+		// there is nothing else it could be editing.
+		menu.addItem((mi) =>
+			mi
+				.setTitle('New iteration…')
+				.setIcon('calendar-plus')
+				.onClick(() => promptNewIteration(host, model)),
+		);
+		if (current !== null) {
+			menu.addItem((mi) =>
+				mi
+					.setTitle('Edit iteration…')
+					.setIcon('pencil')
+					.onClick(() => promptEditIteration(host, current)),
+			);
+		}
 		showMenuForClick(menu, evt);
 	});
 }

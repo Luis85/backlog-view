@@ -21,6 +21,12 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   backfills it like every other optional property, clearing removes the key rather than
   blanking it, and every write is one undoable batch.
 
+- **Make and edit an iteration from the board.** The scope picker carries
+  `New iteration…` and, on a chosen sprint, `Edit iteration…`. A new one is dated for you
+  — the day after the last sprint ends, running for the length you configure — and every
+  field is a prefill you can change before it is written. Editing writes to the iteration
+  note alone: it never re-stamps the work already in it.
+
 - **A board scoped to one iteration.** Pick a sprint from the scope picker beside the
   projection switcher and the Board position draws that iteration alone, in three columns
   over your own workflow: Open, In progress and Resolved. Which of your states fall in the

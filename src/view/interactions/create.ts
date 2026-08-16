@@ -7,6 +7,12 @@ import { BacklogItem, BacklogModel } from '../../domain/model';
 import { focusTarget, folderForType } from '../../domain/itemTypes';
 import { ORDER_SPACING } from '../../domain/writePlan';
 import { createBacklogItem } from '../../storage/createNote';
+import { IterationPromptModal, IterationResult } from '../../ui/prompts';
+import { computeIterationNoteWrites } from '../../domain/writePlan';
+import { nextIterationDates, previousIteration } from '../../domain/iterations';
+import { ITERATION_TYPE } from '../../domain/typeVocabulary';
+import { daysBetween } from '../../domain/timeline';
+import { readDate, todayCivil } from '../../domain/noteFields';
 import { statedEnds } from '../../domain/bars';
 import { formatCivil } from '../../domain/timeline';
 import { AxisWrite } from '../../domain/writePlan';
@@ -230,4 +236,144 @@ function inferFolder(model: BacklogModel | null): string {
 		}
 	}
 	return best === '/' ? '' : best;
+}
+
+/**
+ * Make an iteration, or edit the one this board is scoped to — the two entries under the
+ * scope picker, and the one dialog behind both.
+ *
+ * **Both gate `configProblems` before OPENING.** `createBacklogItem` performs no
+ * validation of its own — the ordinary New flow runs the gate before reaching it — so a
+ * toolbar action calling it directly would be a creation surface accepting a
+ * configuration every other one refuses: with the goal property colliding with the type
+ * key, the goal overwrites `type: Iteration` and the new note is not an iteration at all.
+ * `runInit` is the precedent and the reason. Gated on open rather than on submit, so the
+ * reader is told what to fix before typing a name and two dates.
+ */
+export function promptNewIteration(host: BacklogViewHost, model: BacklogModel): void {
+	if (refusedByConfig(host)) return;
+	const previous = previousIteration(model.results);
+	const dates = nextIterationDates(previous, todayCivil(), host.settings.iterationLengthDays);
+	openIterationPrompt(host, {
+		heading: 'New iteration',
+		cta: 'Create',
+		name: '',
+		start: dates.start,
+		target: dates.target,
+		goal: '',
+		onSubmit: (result) => void createIteration(host, result),
+	});
+}
+
+export function promptEditIteration(host: BacklogViewHost, item: BacklogItem): void {
+	if (refusedByConfig(host)) return;
+	const ends = statedEnds(item);
+	openIterationPrompt(host, {
+		heading: `Edit "${item.title}"`,
+		cta: 'Save',
+		// No name field: renaming an iteration is renaming a note, and Obsidian does that
+		// better — the stored scope already follows a rename either way.
+		name: null,
+		start: ends.start.value === null ? '' : formatCivil(ends.start.value),
+		target: ends.target.value === null ? '' : formatCivil(ends.target.value),
+		goal: item.iterationGoalValue ?? '',
+		onSubmit: (result) =>
+			void host.applySafely(
+				computeIterationNoteWrites(item, {
+					axis: axisFrom(host, result),
+					// A cleared goal REMOVES the key here, which is the edit path's own case:
+					// the key exists, and taking it off is what clearing means.
+					goal: host.settings.iterationGoalKey ? (result.goal || null) : undefined,
+				}),
+			),
+	});
+}
+
+/**
+ * Whether the confirmed pair runs backwards. Read through `readDate`, the same tolerant
+ * reader the model uses, so a value this view cannot read is not called reversed — the
+ * refusal is about an order, never about a spelling.
+ */
+function reversed(start: string, target: string): boolean {
+	const from = readDate(start).value;
+	const to = readDate(target).value;
+	return from !== null && to !== null && daysBetween(from, to) < 0;
+}
+
+function refusedByConfig(host: BacklogViewHost): boolean {
+	const problems = configProblems(host.settings);
+	if (problems.length === 0) return false;
+	new Notice(`Fix the view options first: ${problems[0]}`);
+	return true;
+}
+
+/** The two ends a confirmed entry states — absent where no property could hold one. */
+function axisFrom(host: BacklogViewHost, result: IterationResult): AxisWrite {
+	const axis: AxisWrite = {};
+	if (host.settings.startKey) axis.start = result.start || null;
+	if (host.settings.targetKey) axis.target = result.target || null;
+	return axis;
+}
+
+/**
+ * The dialog itself, with the one validation both paths share: a confirmed target before
+ * its start is refused HERE rather than at the write, because the write path's honest
+ * answer to a reversed span is to shelve the note — and a dialog that produced one on
+ * purpose would be a control creating the thing the roadmap has to apologise for.
+ */
+function openIterationPrompt(
+	host: BacklogViewHost,
+	spec: {
+		heading: string;
+		cta: string;
+		name: string | null;
+		start: string;
+		target: string;
+		goal: string;
+		onSubmit: (result: IterationResult) => void;
+	},
+): void {
+	new IterationPromptModal(host.app, {
+		...spec,
+		description: 'Dates are inclusive: an iteration runs from its start to its target, both days included.',
+		fields: {
+			start: host.settings.startKey !== '',
+			target: host.settings.targetKey !== '',
+			goal: host.settings.iterationGoalKey !== '',
+		},
+		validate: (result) => {
+			if (spec.name !== null && result.name === '') return 'Give the iteration a name.';
+			if (result.start && result.target && reversed(result.start, result.target)) {
+				return 'The target is before the start.';
+			}
+			return null;
+		},
+	}).open();
+}
+
+/**
+ * The create half — one write carrying the type, the folder, both dates and the goal, so
+ * the note is never momentarily an iteration its own frontmatter does not describe.
+ *
+ * A blank goal is an OMITTED field rather than an empty string: `createBacklogItem`
+ * writes what it is given, so `''` would land as `goal: ''` — a key the register says is
+ * not written at all, and the placeholder the board is refused from drawing.
+ */
+async function createIteration(host: BacklogViewHost, result: IterationResult): Promise<void> {
+	const axis = axisFrom(host, result);
+	try {
+		const file = await createBacklogItem(host.app, host.settings, {
+			folder: folderForType(ITERATION_TYPE, host.settings) || host.settings.homeFolder,
+			title: result.name,
+			typeName: ITERATION_TYPE,
+			parent: null,
+			order: endOfSiblingsOrder(host.model?.realRoots ?? []),
+			axis: { ...(axis.start ? { start: axis.start } : {}), ...(axis.target ? { target: axis.target } : {}) },
+			...(host.settings.iterationGoalKey && result.goal ? { iterationGoal: result.goal } : {}),
+		});
+		new Notice(`Created "${file.basename}".`);
+	} catch (e) {
+		console.error('Product Backlog: failed to create iteration', e);
+		new Notice('Could not create the iteration. See the developer console for details.');
+	}
 }

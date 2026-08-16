@@ -303,6 +303,20 @@ export function todayStamp(): string {
 	return dateStamp(new Date());
 }
 
+/**
+ * Today as a civil date, for the callers that need to compute WITH it rather than write
+ * it — the iteration dialog derives a span from it.
+ *
+ * Derived from {@link todayStamp} rather than reading the clock a second time, so "the
+ * one clock read in the domain" stays literally true and the two answers can never
+ * disagree across midnight. It lived in `view/render/projections.ts` until 2026-08-16,
+ * where every non-render caller reaching it created an import cycle — 19 of them.
+ */
+export function todayCivil(): CivilDate {
+	const [year, month, day] = todayStamp().split('-').map(Number);
+	return { year, month, day };
+}
+
 /** The stamp for a given date, so the formatting is testable without the clock. */
 export function dateStamp(now: Date): string {
 	const pad = (n: number): string => String(n).padStart(2, '0');

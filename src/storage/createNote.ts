@@ -40,6 +40,16 @@ export interface NewItemSpec {
 	 * frontmatter contradicts the board that made it, even if only until the next edit.
 	 */
 	axis?: AxisWrite;
+	/**
+	 * What the new iteration is FOR, when the dialog collected one — the third field this
+	 * interface gained for iterations, and the one a CARD never has.
+	 *
+	 * A blank goal is an OMITTED field, never `''`: this writes what it is given, so an
+	 * empty string would land as `goal: ''` — a key the register says is not written at
+	 * all, and exactly the placeholder the board is refused from drawing. The caller
+	 * normalises, because this writer's values are already spoken for.
+	 */
+	iterationGoal?: string;
 }
 
 /** Create a new backlog note in the configured folder with its hierarchy properties set. */
@@ -60,6 +70,7 @@ export async function createBacklogItem(app: App, settings: BacklogSettings, spe
 	// same axis list the edit path uses — so it is never momentarily a note sitting in
 	// a bucket its own frontmatter does not name, and never a write to an unconfigured
 	// key. `axisEntries` yields nothing here when the horizon axis is off.
+	if (spec.iterationGoal && settings.iterationGoalKey) setOwn(fm, settings.iterationGoalKey, spec.iterationGoal);
 	if (spec.iteration && settings.iterationKey) {
 		setOwn(fm, settings.iterationKey, wikilinkTo(app, spec.iteration, path));
 	}

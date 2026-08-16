@@ -440,6 +440,33 @@ export function computeIterationWrites(item: BacklogItem, target: BacklogItem | 
 }
 
 /**
+ * Editing the iteration NOTE itself: its two dates and its goal, in one batch on one file.
+ *
+ * **It re-stamps no member.** An iteration's dates are copied onto an item when it JOINS
+ * (`computeIterationWrites`), and that is a commitment made at that moment — a cascade
+ * here would silently reschedule work somebody had since moved, on a screen showing none
+ * of it. The batch names one file, and `test/view/iterationDialog.test.ts` asserts the
+ * count rather than the contents, because a cascade would still produce a correct-looking
+ * batch for the note itself.
+ *
+ * A `null` goal REMOVES the key, which is the edit path's own case: clearing a goal that
+ * was set is exactly what extension 3a says removing the key means. The create path has
+ * no use for that distinction and passes `undefined`.
+ */
+export function computeIterationNoteWrites(
+	item: BacklogItem,
+	edit: { axis: AxisWrite; goal: string | null | undefined },
+): ItemWrite[] {
+	const write: ItemWrite = { file: item.file };
+	// Absence is a value here as everywhere: an unconfigured key is dropped by
+	// `axisEntries` and by `applyLabels`, so this states what was CONFIRMED and lets the
+	// writer decide what it may put on disk.
+	if (edit.axis.start !== undefined || edit.axis.target !== undefined) write.axis = edit.axis;
+	if (edit.goal !== undefined) write.iterationGoal = edit.goal;
+	return [write];
+}
+
+/**
  * The iteration's timeframe as the ends this write has to state, or undefined where it
  * has to state none. Three rules, and each is a separate decision:
  *

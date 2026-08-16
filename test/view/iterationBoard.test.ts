@@ -179,7 +179,8 @@ describe('the scope picker', () => {
 		const vault = sprintVault();
 		const harness = makeView(vault, OPTIONS, { base: 'Plan.base' });
 		harness.view.setProjection('board');
-		expect(entries(harness.containerEl)).toEqual(['Product', 'Sprint 12', 'Sprint 13']);
+		// The two actions sit below the scopes, behind a separator.
+		expect(entries(harness.containerEl)).toEqual(['Product', 'Sprint 12', 'Sprint 13', 'New iteration…']);
 	});
 
 	it('is absent with no iteration property, and with no Iteration note', () => {
@@ -214,7 +215,7 @@ describe('the scope picker', () => {
 		harness.view.setProjection('board');
 		// Qualified only where they collide: qualifying every entry to separate a rare
 		// pair makes the ordinary case unreadable.
-		expect(entries(harness.containerEl)).toEqual(['Product', 'q3/Sprint 12', 'q4/Sprint 12']);
+		expect(entries(harness.containerEl)).toEqual(['Product', 'q3/Sprint 12', 'q4/Sprint 12', 'New iteration…']);
 
 		Menu.lastShown?.item('q4/Sprint 12')?.click();
 		expect(harness.view.boardScope).toBe('q4/Sprint 12.md');
