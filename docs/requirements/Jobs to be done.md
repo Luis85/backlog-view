@@ -21,5 +21,11 @@ it, the features serving it, and the evidence behind either. It is the same back
 as objective coverage, over a different property, and it is what connects discovery to the
 plan without either one owning the other.
 
-**Outcome** — A job someone is trying to get done can be traced to everything the vault
-knows about it.
+**The evidence hop is a key this view names for itself**, like every hop that leaves the
+relationships an epic owns — Strategy owns alignment, and reads evidence only because it was
+told which property holds it. Unconfigured, the evidence column is not drawn and the rest of
+the read still works: the opportunities and features are found through Strategy's own
+alignment link and need nobody else's settings.
+
+**Outcome** — A job someone is trying to get done can be traced through whichever links the
+vault has configured, and a missing one costs that column rather than the view.

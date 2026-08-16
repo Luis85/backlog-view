@@ -28,10 +28,13 @@ instead of from memory.
 
 Every number here is a count over the same items other views draw, and none of them helps
 anyone read a tree. Its settings are its own and complete: the periods, the buckets, the
-state property and its states, and **every date key it reads** — a created key, a
-meaningful-change key, a started key and a finished key, each named by this view for itself
-and defaulting to the same suggestion every other view starts from. Four keys, because four
-of its figures rest on dates: age, staleness, throughput and cycle time. Analytics that had to read a board's options
+state property and its states, every date key it reads — created, meaningful change,
+started, finished — and **a key for every other property any of its figures counts by**:
+the estimate, the objective, the release, the owner, the tags, the horizon. The rule rather
+than the list is what matters, because the list was short by two the first time it was
+written and by four the second: **every property this view reads is a key this view names**,
+each defaulting to the same suggestion every other view starts from, and a figure whose key
+is unconfigured is not drawn rather than guessed. Analytics that had to read a board's options
 could not run in a base without a board, and would silently change meaning when somebody
 reconfigured one. It writes nothing at all.
 
