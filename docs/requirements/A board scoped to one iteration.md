@@ -399,17 +399,25 @@ the moment the populations diverged, which is exactly what happened.
   an Alt+arrow. A column that accepted a drop it could not express would write nothing and
   announce a move, which is worse than one that declines.
 
-  Four configurations produce it, and one rule covers all four rather than four guards
-  written where each was noticed: `iterationOpenStates` unset; every one of its entries
-  claimed by Resolved (4g); every declared state claimed by the two lists, so In Progress
+  **Only In Progress and Resolved can be in this state**, and listing Open here was a
+  defect this note carried until 2026-08-16: two of the four configurations it named were
+  Open's own — `iterationOpenStates` unset, and every one of its entries claimed by
+  Resolved (4g) — and 4f answers both with a key removal, which is a drop that lands. A
+  criterion reading 4e and one reading 4f would have been given opposite answers for the
+  DEFAULT configuration, where both lists are empty.
+
+  So two configurations produce it, one rule covering both rather than a guard written
+  where each was noticed: every declared state claimed by the two lists, so In Progress
   has none; and `iterationResolvedStates` unset with no done values either. The bucket's
-  write target is a **lookup**, and a lookup can come back empty.
+  write target is a **lookup**, and a lookup can come back empty — for these two buckets,
+  which have no reading to fall back on.
 - **4f — Open has no usable state, and a card is dropped on it.** Its state key is
-  **removed**. That is not an exception to 4e but the leading column's own long-standing
-  semantics: Open is the bucket that holds the state-less cards, so "put this card in
-  Open" already means something exact without any list being set, and the removal lands
-  the card in Open by the **reading** rather than by a lookup. In Progress and Resolved
-  have no such natural reading, which is why they decline instead.
+  **removed**, and the drop lands — this is why Open is never one of 4e's buckets rather
+  than an exception to it. The leading column's own long-standing semantics say it: Open
+  is the bucket that holds the state-less cards, so "put this card in Open" already means
+  something exact without any list being set, and the removal lands the card in Open by
+  the **reading** rather than by a lookup. In Progress and Resolved have no such natural
+  reading, which is why they decline instead.
 - **4g — the first state in `iterationOpenStates` is also a done value, or is named in
   `iterationResolvedStates`.** It is **not** Open's representative. 4c routes it to
   Resolved, so writing it on a drop would land the card in a column it was not dropped on
