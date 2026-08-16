@@ -157,12 +157,23 @@ On approval, in order:
 
 ## How the skill itself is checked
 
-`writing-skills` RED then GREEN, two subagent runs on one prompt — *"I want to add a
-thing to the backlog that lets me filter cards by assignee"*.
+`writing-skills` RED then GREEN, subagent runs on a request shaped like an ordinary one
+from a product owner: a wanted capability in one sentence, with the type unstated.
 
-**RED, without the skill.** The expected baseline is a note written after zero or one
-questions. If the baseline agent already interviews across phases, the skill teaches
-nothing and is not shipped; that outcome is reported rather than worked around.
+**The prompts are not written down here, and this is the rule rather than an omission.**
+The first baseline run was void because of it: the spec quoted its eval prompt verbatim,
+the spec lives in the repository the eval runs in, the baseline agent searched `docs/`,
+found this file, and came back with questions in this file's own phrasing. A control
+that has read the treatment is not a control. So a prompt is composed at run time and
+never committed, and a run whose report shows it read this file is discarded rather than
+interpreted.
+
+**RED, without the skill.** The run happens in a checkout of a commit that predates both
+the skill and this spec, outside the working tree, so the isolation is structural rather
+than an instruction the agent is asked to honour. The expected baseline is a note written
+after zero or one questions. If the baseline agent already interviews across phases, the
+skill teaches nothing and is not shipped; that outcome is reported rather than worked
+around.
 
 **GREEN, with the skill.** Endpoints alone are too weak a gate — an agent can run five
 phases and still batch its questions, write the wrong shape, or start coding. All of the
@@ -177,12 +188,11 @@ following are checked:
   written.
 - The closing message carries the fenced handoff prompt and nothing else in the block.
 
-**Two GREEN prompts, not one.** The assignee-filter prompt exercises the `PBI` branch
+**Two GREEN prompts, not one.** A single flow-shaped request exercises the `PBI` branch
 only, and the branches differ in exactly the place a defect has already been found: an
 `Epic` takes no `parent`, and a run that never produces an `Epic` cannot catch a skill
-that gives one. The second prompt asks for something epic-shaped — *"I want to start a
-new body of work about making the plugin usable on a phone"* — and its note is held to
-the same list above.
+that gives one. The second prompt asks for a body of work rather than a capability, and
+its note is held to the same list above.
 
 Rationalizations the RED run produces go into a rationalization table in the skill
 body. That table is the only part of the skill written from evidence rather than from
