@@ -26,9 +26,12 @@ point carries its **coverage** — how much of the model the position rests on �
 derived from two dimensions reads differently from one derived from eight without being
 argued away. There is **no threshold below which a point is dropped**: hiding an item because
 its estimate is thin is the suppression [[The weighted score]] already refused, and it is
-worse on a plot, where absence reads as "nothing there" rather than as "not estimated". An
-item with no total at all is not on the plot, because it has no position — and the count of
-those is shown beside it.
+worse on a plot, where absence reads as "nothing there" rather than as "not estimated". **An item with no position sits on a shelf beside the plot**, counted and reachable, the way
+the roadmap already holds what it cannot place. That is not an exception for broken data: the
+effort score is optional like every other, so an item with a value and no effort is an
+ordinary partial profile, and a plot that silently dropped it would hide exactly the items
+somebody still has to estimate. The shelf holds those and the ones with no total at all, says
+which is which, and opens an item like any point does.
 
 **Outcome** — Cheap high-value work and expensive low-value work are visible as positions
 rather than as arithmetic, and a position nobody should trust yet says so where it sits.

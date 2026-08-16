@@ -28,6 +28,12 @@ prefilled with the type and the source link, instead of writing a note with a ty
 nothing to hold it. An item created with no position is the orphan the backlog view spends
 its own rules avoiding.
 
+**The source link is a key this view names**, like every other property it writes, and it is
+the one promotion cannot do without: without it the promotion is an ordinary creation and the
+record of what a piece of work came from is gone. So promotion is offered only once that key
+is bound — the guided empty state offers to bind it, as it does for the rest — rather than
+proceeding silently unlinked and leaving a discovery item nothing points back to.
+
 **"Advanced" is not a rule, so the state is named.** The lifecycle is the vault's own and
 may be renamed, reordered or extended, and the default has two states after `validated` —
 so "the next one" and "the last one" are different answers and neither is inferable. This
