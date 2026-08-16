@@ -36,7 +36,7 @@ Identical to the foundation plan's — reproduced so this file stands alone.
 - **Never write frontmatter outside `src/storage/frontmatter.ts`.** `processFrontMatter`, `vault.create` and `load/saveLocalStorage` are banned outside `storage/`.
 - **Every write path goes through the `configProblems` gate**; forward batches are refused whole if any write targets an `outsideFilter` item.
 - **Every view-option key must be named in `docs/requirements/`** in a code span. `iterationOpenStates`, `iterationResolvedStates` and `iterationLengthDays` already are.
-- **`docs-check.mjs` checks both directions, and they close on each other.** A module in `src/` that no note names fails rule 7; a path named in a current note that does not exist fails the reference check. So the exact path goes into a note's `## Where it lives` **in the same commit as the file it names** — never before, never after. This plan adds two modules, `src/ui/iterationDialog.ts` (Task 8) and `src/domain/iterations.ts` (Task 8), and `Creating an iteration from the board.md` describes both **without spelling either**, precisely so the register is green today. Task 8 writes the two paths in.
+- **`docs-check.mjs` checks both directions, and they close on each other.** A module in `src/` that no note names fails rule 7; a path named in a current note that does not exist fails the reference check. So the exact path goes into a note's `## Where it lives` **in the same commit as the file it names** — never before, never after. This plan adds two modules, `src/ui/iterationDialog.ts` (Task 9) and `src/domain/iterations.ts` (Task 9), and `Creating an iteration from the board.md` describes both **without spelling either**, precisely so the register is green today. Task 9 writes the two paths in.
 - **Sentence-case UI text**, `setCssProps` over inline styles, `normalizePath` on user paths, no global `app`.
 - **An invariant asserted in a comment gets a test that fails without it, and the test is watched failing.**
 - The stylesheet is one partial per concern under `styles/`; `styles.css` is generated.
@@ -61,6 +61,8 @@ Identical to the foundation plan's — reproduced so this file stands alone.
 | `src/view/cardMoves.ts` | `performIterationBoardMove` |
 | `src/view/interactions/cardDrag.ts` | `announceBoardMove` asks the bucket question |
 | `src/ui/iterationDialog.ts` | **new** — the create/edit modal |
+| `src/view/interactions/create.ts` | the `NewItemSpec` carries the scope's link and dates |
+| `src/storage/frontmatter.ts` | `NewItemSpec` gains the iteration and the axis |
 | `src/domain/writePlan.ts` | `computeIterationNoteWrites` (the edit) |
 | `styles/board.css` | the goal line |
 
@@ -502,7 +504,78 @@ Drive each through **all three inputs** — the drag, Alt+arrow and the card men
 
 ---
 
-### Task 8: Creating and editing an iteration
+### Task 8: Creating a card into the chosen iteration
+
+**Files:**
+- Modify: `src/view/interactions/create.ts` — the `NewItemSpec` the New flow sends
+- Modify: `src/storage/frontmatter.ts` — `NewItemSpec` gains `iteration` and `axis`
+- Test: `test/view/iterationBoard.test.ts`, `test/view/contextCardWrites.test.ts`
+
+**Interfaces:**
+- Consumes: `host.boardScope` (Task 4), `computeIterationWrites`' timeframe rule (foundation plan, Task 7).
+- Produces: `NewItemSpec` carrying the iteration link and the two dates, so `createBacklogItem` writes them with the type and the parent.
+
+**This task exists because the plan was missing it**, and the gap is the kind worth naming rather than quietly filling. Tasks 1–7 and 9 could all be complete and green while a card created from an iteration board's `+` still carried no iteration and no dates — so it would draw once and **vanish on the next refresh**, which is exactly the failure `A board scoped to one iteration` extension 5c exists to prevent. Nothing in the earlier task list touched `src/view/interactions/create.ts`, which is the New flow's own route and is a different module from the dialog in Task 9.
+
+**One create, never a create then a write.** The precedent is the horizon's: a note created from a bucket claims that bucket in the *same* write, so it is never momentarily a note whose own frontmatter contradicts where it was made. Here that covers the dates too — a new card scheduled outside the sprint it was created on is the same incoherence, one property over.
+
+**Everything unconfigured writes nothing**, as everywhere else: no iteration key, no link; no date key, no date. And creation stays **outside the undo history**, because undo never deletes a note.
+
+- [ ] **Step 1: Write the failing tests**
+
+```ts
+it('creates a card into the iteration the board is scoped to', async () => {
+	await createFrom(boardScopedTo(sprint12), { typeName: 'PBI', title: 'New work' });
+	expect(created.frontmatter.iteration).toBe('[[Sprint 12]]');
+	expect(created.frontmatter.start).toBe('2026-09-07');
+	expect(created.frontmatter.due).toBe('2026-09-20');
+});
+
+it('writes the link and the dates in the SAME create, not a second write', async () => {
+	// One `vault.create`, and no `applySafely` batch afterwards. Asserted on the calls,
+	// because "it ends up correct" is also true of create-then-write, and that shape is
+	// what leaves a note briefly contradicting the board that made it.
+	expect(createCalls).toHaveLength(1);
+	expect(applySafely).not.toHaveBeenCalled();
+});
+
+it('spells the link from the NEW note\'s own path', async () => {
+	// Two iterations sharing a basename still get distinct links — the path-aware
+	// generation, from a path that did not exist when the menu was built.
+});
+
+it('writes no iteration and no dates on the product board', async () => { /* … */ });
+it('writes nothing unconfigured', async () => {
+	// iteration key unset: no link. Date keys unset: no dates. Both, independently.
+});
+it('stays outside the undo history', async () => { /* undo never deletes a note */ });
+```
+
+- [ ] **Step 2: Run and watch them fail**
+
+Run: `npx vitest run test/view/iterationBoard.test.ts`
+Expected: FAIL — the created note has no `iteration` key.
+
+- [ ] **Step 3: Carry the scope into the spec**
+
+`NewItemSpec` gains `iteration?: TFile` and `axis?: AxisWrite`; `createBacklogItem` writes them through the same `wikilinkTo` and `axisEntries` the edit path uses, so there is one statement of "how an iteration link is spelled" and one of "which date keys may be written".
+
+`src/view/interactions/create.ts` fills them from `host.boardScope` — **only** on the iteration projection, asked through `projection.ts` rather than by comparing the value.
+
+- [ ] **Step 4: Run, watch them pass, then break it deliberately**
+
+Make the create path write the link in a second `applySafely` batch. The "SAME create" test must go red. Restore.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/view/interactions/create.ts src/storage/frontmatter.ts test/
+git commit -m "Create a card into the iteration it was created on"
+```
+
+---
+
+### Task 9: Creating and editing an iteration
 
 **Files:**
 - Create: `src/ui/iterationDialog.ts`, `src/domain/iterations.ts`
@@ -552,6 +625,11 @@ Creating goes through `createBacklogItem` with the type, the folder, both dates 
 
 ```ts
 it('creates with the type, both dates and the goal in one write', () => { /* never a create then a write */ });
+it('omits a field whose property is unconfigured, on both paths', () => {
+	// The goal and each date separately, and all three unset — where the dialog is a
+	// name alone and the action still works. An unconfigured key is never written, so a
+	// field whose value has nowhere to go is a control that discards what it collects.
+});
 it('writes to the iteration note alone when editing, whatever it holds', () => {
 	// An iteration with several members: assert the batch names ONE file.
 });
@@ -573,7 +651,7 @@ git add src/ui src/domain src/view test/ && git commit -m "Create and edit an it
 
 ---
 
-### Task 9: Close the register
+### Task 10: Close the register
 
 - [ ] Set `A board scoped to one iteration` and `Creating an iteration from the board` to `Done` with today's `finished`.
 - [ ] Close the **Feature** `An Iterations board` only if `An iteration draws as a bar or a line` has also landed. If it has not, the Feature stays `Open` — a Feature closed over an unbuilt use case is a defect this register has recorded before.
@@ -593,8 +671,10 @@ git add src/ui src/domain src/view test/ && git commit -m "Create and edit an it
 
 ## Self-review
 
-**Spec coverage.** §3 → Tasks 4, 5. §4 → Task 3. §5 → Tasks 1, 2. §6 → Task 6. §7 → Task 7. §10 → Task 8. §8 is out of scope and says so. §1, §2 and §9 are the foundation plan's.
+**Spec coverage.** §3 → Tasks 4, 5. §4 → Tasks 3, 8. §5 → Tasks 1, 2. §6 → Task 6. §7 → Task 7. §10 → Task 9. §8 is out of scope and says so. §1, §2 and §9 are the foundation plan's.
 
-**Placeholders.** Tasks 5, 6 and 7 give their test names and their rules but compress the step scaffolding, and Task 3's test bodies are named rather than written. That is a real trade and worth naming rather than hiding: each of those drives the jsdom harness through helpers whose signatures belong to `test/view/`, and a plan that guesses at them teaches a second way to open a menu. Tasks 1, 2 and 8 — every rule with an argument behind it — carry their code in full.
+**Placeholders.** Tasks 5, 6 and 7 give their test names and their rules but compress the step scaffolding, and Task 3's test bodies are named rather than written. That is a real trade and worth naming rather than hiding: each of those drives the jsdom harness through helpers whose signatures belong to `test/view/`, and a plan that guesses at them teaches a second way to open a menu. Tasks 1, 2, 8 and 9 — every rule with an argument behind it — carry their code in full.
 
-**Type consistency.** `IterationBucket` is `'open' | 'inProgress' | 'resolved'` everywhere. `bucketRepresentative` returns `string | null | undefined` in Tasks 2, 6 and 7, with `undefined` meaning "no drop" in all three. `performIterationBoardMove(item, bucket)` takes the **bucket**, never a state — the whole point of Task 6. `ViewPrefs.scope` is a path in Tasks 4 and 8.
+**Coverage, re-run after review.** The first version of this plan had nine tasks and no task for extension 5c, so every one of them could have gone green while a card created from an iteration board's `+` carried no iteration and no dates and vanished on the next refresh. `src/view/interactions/create.ts` is the New flow's own route and is a different module from Task 9's dialog, which is how a plan that named the dialog read as though creation were covered. Task 8 is that gap, and the lesson generalises: when a spec says *created into X*, check the create path and the dialog separately, because they are two modules and only one of them is obvious.
+
+**Type consistency.** `IterationBucket` is `'open' | 'inProgress' | 'resolved'` everywhere. `bucketRepresentative` returns `string | null | undefined` in Tasks 2, 6 and 7, with `undefined` meaning "no drop" in all three. `performIterationBoardMove(item, bucket)` takes the **bucket**, never a state — the whole point of Task 6. `ViewPrefs.scope` is a path in Tasks 4, 8 and 9. `NewItemSpec.iteration` is a `TFile` in Task 8, matching `ItemWrite.iteration` in the foundation plan — both are files because both are written by `wikilinkTo`.

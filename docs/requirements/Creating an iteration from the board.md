@@ -36,8 +36,8 @@ user confirmed, never a rule applied at write time that the reader could not see
 | --- | --- |
 | **Actor** | Backlog owner |
 | **Trigger** | `New iteration…` or `Edit iteration…` in the board's scope picker |
-| **Preconditions** | Board mode. The scope picker is drawn, so the iteration property is configured. `Edit iteration…` additionally needs an iteration to be the chosen scope |
-| **Guarantee** | The create is one write, carrying the type, the folder, the dates and the goal together; the edit is one batch through the same gate as every other write. Nothing computed at write time — the dialog writes the values it showed. |
+| **Preconditions** | Board mode. The scope picker is drawn, so the iteration property is configured. `Edit iteration…` additionally needs an iteration to be the chosen scope. The two date properties are **not** preconditions — see 3c |
+| **Guarantee** | The create is one write, carrying the type, the folder, and every **configured** field together; the edit is one batch through the same gate as every other write. An unconfigured key is never written, and a field whose key is unconfigured is never shown. Nothing computed at write time — the dialog writes the values it showed. |
 
 **Main flow**
 
@@ -119,6 +119,23 @@ user confirmed, never a rule applied at write time that the reader could not see
 - **3b — the goal property is unconfigured.** The field is absent from the dialog. An
   unconfigured key is never written, so offering a field whose value has nowhere to go
   would be a control that discards what it collects.
+- **3c — a date property is unconfigured.** That field is absent too, by **3b's rule and
+  not a second one**: a field whose key has nowhere to go is a control that discards what
+  it collects, whichever property it belongs to. With neither date property configured the
+  dialog is a name and a goal, and the action is **not gated** — an `Iteration` note with
+  no timeframe is a coherent thing to make, and it stamps nothing on its members for the
+  reason [[An iteration's timeframe schedules its items]] extension 2b already gives.
+
+  This is stated because the three sentences around it pulled apart. The preconditions
+  admit the dialog on the iteration property alone; `startKey` and `targetKey` default to
+  empty; and the guarantee promised both dates were written. An implementer reading all
+  three had to choose between silently dropping a value the user typed and writing an
+  unconfigured key — and the second breaks the rule every write path in this plugin keeps.
+  Removing the field removes the choice: there is no confirmed value to drop, because
+  there was nothing to type it into.
+
+  1c's fallback is unaffected. `iterationLengthDays` is a length, not a date property, so
+  it still resolves — it simply has no target field to fill.
 - **4a — `Edit iteration…` while the scope is `Product`.** It is not offered. There is
   nothing to edit, and offering it would need a second picker inside the dialog to say
   which iteration — a control inside a control, to replace the one the user already used.
@@ -168,8 +185,10 @@ user confirmed, never a rule applied at write time that the reader could not see
   `applySafely`, taken back by the one undo slot, and **no item is re-stamped** — checked
   by editing an iteration holding several members and asserting the batch names one file.
 - The name field is on the create path only; nothing here renames a note.
-- With the goal property unconfigured the field is absent; with the goal empty nothing is
-  written and the board draws no goal line.
+- A field whose property is unconfigured is **absent from the dialog** — checked for the
+  goal and for each date separately, and with all three unset, where the dialog is a name
+  alone and the action still works. No unconfigured key is ever written on either path.
+- With the goal empty nothing is written and the board draws no goal line.
 
 ## Where it lives
 
