@@ -219,6 +219,21 @@ describe("the shelf's type picker", () => {
 		expect(shelfGroupHeaders(containerEl)).toEqual([]);
 	});
 
+	it('keeps Show all live for a hidden type this shelf has no card of', () => {
+		const { containerEl, view } = makeRoadmap(searchVault());
+		// Nothing here is a Bug, so hiding one changes nothing on screen — and clearing it
+		// is the only way to stop the next shelved Bug arriving already hidden. Gated on
+		// the groups in front of the reader, this entry was dead in the one state it is
+		// for; it asks the STORE, which is what its own handler clears.
+		view.setShelfHiddenTypes(new Set(['Bug']));
+		expect(shelfGroupHeaders(containerEl)).toEqual(['Epic', 'Task']);
+
+		const entry = openTypeMenu(containerEl).items.find((i) => i.titleText === 'Show all types');
+		expect(entry?.disabled).toBe(false);
+		entry?.click();
+		expect(view.shelfHiddenTypes.size).toBe(0);
+	});
+
 	it('withholds each bulk entry exactly where it would change nothing', () => {
 		const { containerEl, view } = makeRoadmap(searchVault());
 		const entry = (title: string) => openTypeMenu(containerEl).items.find((i) => i.titleText === title);

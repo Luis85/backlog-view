@@ -79,12 +79,15 @@ open-pick, and "show me only Epics" had no entry at all.
   **Search unplaced...**, which opens a prompt, and **Clear unplaced search** while one
   runs — the same obligation every `tabindex="-1"` control here carries, and the same
   builder behind both surfaces.
-- **5a — a bulk entry would change nothing.** It is disabled rather than offered: Show all
-  with nothing hidden, Hide all with everything hidden.
+- **5a — a bulk entry would change nothing.** It is disabled rather than offered, and each
+  asks what its OWN handler would change: Show all with the stored set empty, Hide all with
+  every group on screen already hidden.
 - **5b — a type is hidden while nothing of it is shelved.** Hide all ADDS to the stored
   set rather than replacing it, so that remembered hiding survives — 4a in
   [[The shelf, organized]]. Show all is the deliberate opposite: it clears the set whole,
-  because that is what the entry says. (Both found by review, Codex on PR #161.)
+  because that is what the entry says — and it stays LIVE for a hidden type this shelf has
+  no card of, since clearing is the only way to take that remembered hiding back. (All
+  found by review, Codex on PR #161.)
 
 ## Acceptance criteria
 
@@ -100,7 +103,8 @@ open-pick, and "show me only Epics" had no entry at all.
   tab order wherever the pane draws no card, exactly as the two pickers do.
 - The type picker reopens after each pick, carrying the checkmarks that pick produced,
   and offers Show all / Hide all — on the header's surface and in the card menu alike.
-  Hide all leaves a type hidden that has no cards to hide; Show all clears it.
+  Hide all leaves a type hidden that has no cards to hide; Show all clears it, and is
+  offered whenever the stored set holds anything at all.
 - Nothing is written to a note by any of it, and nothing reaches the `.base`.
 
 ## Where it lives

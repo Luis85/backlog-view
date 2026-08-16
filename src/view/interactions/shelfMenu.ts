@@ -64,6 +64,15 @@ export function addShelfSortItems(host: BacklogViewHost, menu: Menu, after?: () 
  * than it asks — while `Hide all` ADDS to it rather than replacing it, since a set built
  * from the groups on screen would silently un-hide exactly those remembered types, and
  * the un-hiding would only show up the day one of them was shelved again.
+ *
+ * **Each gate asks what its OWN handler would change, and the two therefore ask different
+ * sets.** `Show all` clears the STORE, so it is live whenever the store holds anything —
+ * including a type with no card on this shelf, which is the only way to take a remembered
+ * hiding back and, gated on the groups on screen, was an entry disabled in exactly the
+ * state it exists for. `Hide all` writes the union, so it is dead once every group in
+ * front of the reader is hidden, whatever else the store remembers. A gate copied from
+ * the entry beside it would be wrong in one direction or the other; both were, one round
+ * apart (found by review, Codex on PR #161).
  */
 export function addShelfTypeItems(host: BacklogViewHost, menu: Menu, shelf: ShelfCard[], after?: () => void): void {
 	const groups = organizeShelf(shelf, 'tree', new Set());
@@ -75,7 +84,7 @@ export function addShelfTypeItems(host: BacklogViewHost, menu: Menu, shelf: Shel
 		mi
 			.setTitle('Show all types')
 			.setIcon('eye')
-			.setDisabled(!groups.some((group) => host.shelfHiddenTypes.has(group.type)))
+			.setDisabled(host.shelfHiddenTypes.size === 0)
 			.onClick(() => apply([])),
 	);
 	menu.addItem((mi) =>
