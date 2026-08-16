@@ -36,9 +36,16 @@ how much of what a feature claims is actually supported.
 
 - Evidence lives in ordinary notes the vault already keeps. Nothing here creates a second
   place to put a customer interview.
-- The link is one property, resolved the way every other link property is, and a note that
-  is not evidence is never treated as evidence for having been linked.
-- Every count says what it counted and never counts a note the base excluded.
+- The link is one property, resolved the way every other link property is.
+- **What counts as evidence is what this view's base returns**, and that is the whole
+  discriminator — no evidence type, no marker property, nothing for a vault to maintain
+  besides the base it already writes. So an item linking a design note gets a link that
+  resolves and no count: the note is drawn as linked and named as outside the evidence
+  population, the way a context row is drawn and not counted. The alternative is a second
+  vocabulary the vault has to keep in step with its own folders, which is what the kind
+  mapping stays optional to avoid.
+- Every count says what it counted and never counts a note the base excluded — the two
+  sentences above are the same sentence, and it is the one this epic's counts rest on.
 
 ## What this epic will not do
 
