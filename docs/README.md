@@ -215,6 +215,42 @@ item family and the checklist this register already walks by hand — the smoke 
 suites already living in the catalog — is the evidence that the catalog is the part
 worth having first.
 
+**A view per capability** is the direction the rest of the register now sits inside, from a
+product requirements document of 2026-08-16 kept in [`prds/`](prds): the plugin stops being
+one view with a growing toolbar and becomes a family of Bases views over the same notes, one
+per capability, each with its own options, state and empty state, sharing nothing at runtime
+but the layers below the screen. The rule that makes it work is the data contract — **views
+communicate only through the vault** — so a hidden store between two views would be the
+proprietary database this plugin has always refused, arriving by the back door. Its features
+are the registration, settings scoped to the view that uses them, a guided empty state that
+can configure itself, navigation between the views a base actually has, one suggested name
+per concept that the user maps, and the staged extraction of the board, the roadmap and the
+Deliverables board out of the backlog view.
+
+**Nine capability epics** hang off that direction, all specification, in the delivery order
+the document argues for. **Backlog Health** comes first with prioritization, because every
+later view depends on the quality of the data: stated rules, findings that explain
+themselves, a score that decomposes into them, and repairs offered only where they are
+unambiguous. Then the chain that differentiates the product — **Product Discovery** (a
+lifecycle before the backlog, assumptions with their own validation state, and one exit:
+promotion that creates a backlog item and leaves the discovery record linked and in place),
+**Product Strategy** (objectives and jobs to be done as links rather than rungs, and the
+backward read that names work answering to nothing), and **Product Evidence** (what the vault
+already holds — interviews, tickets, analytics — connected to the work it argues for, and the
+four gaps that read exposes). Then planning: **Release Planning** (scope, capacity in the
+vault's own unit, a scenario that writes nothing until it is applied, and a readiness
+checklist that refuses nothing), **Product Dependencies** (one canonical direction, a graph
+and a table over it, a stated rule for what counts as blocked, and cycles reported rather
+than resolved). Then governance: **Product Portfolio**, **Product Analytics** (every figure
+naming its population and reporting what it could not measure rather than counting it as
+zero) and **Decision Management** (the register's own argument about keeping closed notes,
+applied to the product plan instead of the architecture).
+
+Three of the document's twelve epics are already here under other names — its Product
+Backlog is [[Product Backlog]], its Prioritization is [[Business value estimation]], its
+Roadmap is [[Product Roadmap]] — so they gained what they were missing rather than a
+duplicate: bulk edits on a selection, and the eight features of the scoring model.
+
 **Cross-cutting concerns** is the fourth kind: properties that have to be true of
 everything, or they are true of nothing. `Multilang` (every string comes out of a
 per-locale catalog) and `Theming and styling` (every pixel comes from Obsidian's design

@@ -143,11 +143,15 @@ Three quantities stay **outside** that sum and beside it:
   action that changes any of its inputs, and it is **stamped with the model that produced
   it** — a second property beside the total, holding a fingerprint of the enabled
   dimensions and their weights, since the total itself must stay a plain sortable number
-  that any view can read. The comparison is that stamp against the model on screen: equal
-  means current, different means the total was produced by a model this view is not using,
-  absent means it was written by hand or by something else. Neither of the last two is
-  shown as current, and the estimation status is where that surfaces — `Needs
-  re-estimation`, not a silent pass. A total whose inputs are gone is removed, not left
+  that any view can read. **Current means two things, and the stamp answers only one of
+  them**: the stamp must match the model on screen, *and* the total must equal what that
+  model computes from the scores on the note as they are now — which the view has already
+  computed, since it draws the decomposition beside it. A score edited in Obsidian's own
+  property editor, or by another plugin, moves no stamp, so a stamp comparison alone would
+  call a total current that its own inputs contradict. A different stamp means another
+  model produced it; an absent one means it was written by hand or by something else. None
+  of the three failures is shown as current, and the estimation status is where that
+  surfaces — `Needs re-estimation`, not a silent pass. A total whose inputs are gone is removed, not left
   standing.
 - **A result can always be decomposed.** Anywhere a score appears, the dimensions and
   weights that produced it are reachable. A number a reader cannot take apart is the

@@ -499,6 +499,11 @@ describe('the gate accepts valid documents', () => {
 		// FROM — evidence kept verbatim, never a work item, so it carries no type or rank.
 		const files = baseRegister();
 		files['docs/prds/2026-08-02 Some product direction.md'] = '# PRD — some direction\n\nWhat was asked for.\n';
+		// And one that arrived with frontmatter of its own: a document written elsewhere may
+		// say `type: requirements` about itself, which is not this register's vocabulary and
+		// must not be read as a backlog note that forgot its rank.
+		files['docs/prds/2026-08-03 A document with its own metadata.md'] =
+			'---\ntype: requirements\nauthor: Someone\n---\n\n# PRD — with metadata\n\nAs received.\n';
 
 		await expectAccepted(files);
 	});

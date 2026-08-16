@@ -346,15 +346,19 @@ for (const file of files) {
 	const fm = frontmatter(texts.get(file));
 	const type = fm?.field("type");
 	const name = path.basename(file, ".md");
+	// A spec, a plan or a PRD claims its name like any other note, but needs no backlog
+	// shape: a wikilink can still resolve to one, so the name is still spoken for. Asked
+	// BEFORE the type, not inside the `!type` branch: a document written elsewhere may
+	// legitimately carry frontmatter of its own — a PRD with `type: requirements` is not a
+	// backlog note that forgot its rank, and reading its `type` as this register's
+	// vocabulary would fail it for having said something about itself.
+	if (isSourceDoc(file)) {
+		claimName(file, name);
+		continue;
+	}
 	if (!type) {
 		// ADRs and the index files are deliberately not work items, and never claim a name.
 		if (NOT_WORK_ITEMS.test(file)) continue;
-		// A spec, a plan or a PRD claims its name like any other note, but needs no backlog
-		// shape: a wikilink can still resolve to one, so the name is still spoken for.
-		if (isSourceDoc(file)) {
-			claimName(file, name);
-			continue;
-		}
 		// Anything else without a type is a note that has silently fallen out of the
 		// register — no parent checked, no order, no use-case shape — which is the
 		// failure mode a skip hides best.
