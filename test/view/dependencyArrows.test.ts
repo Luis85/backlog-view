@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { useViewHarness } from '../helpers/view';
-import { roadmapView, rowFor, shelfOf, shelfTitles, timelineRows } from '../helpers/roadmap';
+import { markersLane, markFor, roadmapView, rowFor, shelfOf, shelfTitles, timelineRows } from '../helpers/roadmap';
 
 /**
  * The arrow layer on the dated axis — `renderDependencyArrows` in
@@ -210,15 +210,16 @@ describe("the row's accessible name states what it waits for", () => {
 		// case being reversed is the case being read: a marker whose note still SAYS
 		// `dependsOn: A`, and a prerequisite whose span would have conflicted with it.
 		//
-		// Nothing about the label's mechanism changed; there is simply nothing to fold in
-		// now, because `readItems` gives a marker no entries to derive from.
+		// The row it was asked of is gone as of 2026-08-16 — a marker is a diamond in the
+		// milestones' shared row — so the same question is asked of the MARK, which is the
+		// element that inherited every fact the row used to carry.
 		const vault = new FakeVault();
 		vault.addFile('A.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-01', due: '2026-08-20' } });
 		vault.addFile('Ship.md', { frontmatter: { type: 'Milestone', order: 20, dependsOn: 'A', due: '2026-08-05' } });
 		const { containerEl } = roadmapView(vault, { ...DATES });
 
-		expect(rowFor(containerEl, 'Ship')?.getAttribute('aria-label')).toBe('Ship — Milestone 2026-08-05');
-		expect(rowFor(containerEl, 'Ship')?.hasClass('pbl-row-conflict')).toBe(false);
+		expect(markFor(containerEl, 'Ship').getAttribute('aria-label')).toBe('Ship — Milestone 2026-08-05');
+		expect(markersLane(containerEl)?.hasClass('pbl-row-conflict')).toBe(false);
 		// And no arrow, from either end: the declaration is gone, not merely unspoken.
 		expect(arrows(containerEl)).toHaveLength(0);
 	});

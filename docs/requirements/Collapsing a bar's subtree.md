@@ -74,11 +74,15 @@ reading the plan move the reader's place in the tree (2026-08-08).
 - **1b — nobody has ruled on the row yet.** It opens collapsed, the tree's rule and for
   the tree's reason: a backlog of any size opens readable. The toolbar's Expand all is
   one click from the whole plan.
-- **2a — a milestone is among the rows hidden.** It goes with them, and so does the
-  full-height line it draws: the line belongs to a row, and nothing stands in for it —
-  a marker's date is never evidence, so it cannot roll up into the bar above it the way
-  work does. The date is one expand away, which is what makes this a fold rather than a
-  loss.
+- **2a — a milestone hangs under the folded row.** It stays on screen, line and all. A
+  **REVERSAL of 2026-08-16**, and the reversal is the point rather than a side effect: a
+  marker no longer has a row on this axis at all, it is a diamond in the milestones' own
+  row at the head of the grid ([[Milestones in one row on the dated axis]]), which is not
+  under anybody. That row exists so that no fold anywhere can remove a date the whole plan
+  is measured against, so a fold reaching one would defeat it. What the fold still takes is
+  ordinary WORK under the same parent, which is every other line of this note intact. This
+  extension said the opposite until then, for the reason it was true at the time — the line
+  belongs to a row, and a row that is not drawn draws nothing.
 - **2b — the reader has no pointer.** The row's menu carries the same toggle, named for
   what it will do, and it is the keyboard path for a control that is deliberately not a
   tab stop — the same answer the tree gives for its add button and the card gives for

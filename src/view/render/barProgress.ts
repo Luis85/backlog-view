@@ -80,14 +80,14 @@ export function renderBarProgress(
  * `rollupReport`'s long form, falling back to the face plus a noun where no workflow makes
  * a ratio (`8` alone announces a bare number).
  *
- * Exported for the ONE row that cannot use the span above: a marker's row carries an
- * explicit `aria-label` (`renderRowFacts` in `./timeline.ts`), and an explicit label
- * REPLACES the content-derived name — taking the span with it. So that row folds these
- * words into its own label instead, from here rather than from a second phrasing, which is
- * the rule `rollupReport` already states for the two RENDERERS and now for the two things
- * that say it out loud.
+ * NOT exported since 2026-08-16. Its one outside caller was a marker's row, which carried an
+ * explicit `aria-label` and folded these words into it because the label REPLACES the
+ * content-derived name and took the span with it. A marker draws in the milestones' shared
+ * row on both grid axes now and has no row at all, so nothing says its rollup — a stated
+ * loss, recorded in [[Milestones out of the resource rows]] rather than kept as an export
+ * with no consumer.
  */
-export function progressNote(report: RollupReport | null): string {
+function progressNote(report: RollupReport | null): string {
 	if (!report || !report.label) return '';
 	return report.tooltip || `${report.label} items`;
 }

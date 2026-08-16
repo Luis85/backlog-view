@@ -206,6 +206,26 @@ export function rowFor(containerEl: HTMLElement, title: string): HTMLElement | n
 	return timelineRows(containerEl).find((r) => r.querySelector('.pbl-card-title')?.textContent === title) ?? null;
 }
 
+/**
+ * The milestones' own shared row, on EITHER grid axis — null where no marker placed and the
+ * row was therefore never minted.
+ */
+export function markersLane(containerEl: HTMLElement): HTMLElement | null {
+	return containerEl.querySelector<HTMLElement>('.pbl-lane-markers');
+}
+
+/**
+ * One marker's diamond in that row, by title — what replaced its bar ROW on both grid axes.
+ * Found by the mark's own accessible name rather than by its path, because that is the fact
+ * a reader gets and the one every projection has to keep.
+ */
+export function markFor(containerEl: HTMLElement, title: string): HTMLElement {
+	const marks = Array.from(markersLane(containerEl)?.querySelectorAll<HTMLElement>('.pbl-bar') ?? []);
+	const mark = marks.find((el) => el.getAttribute('aria-label')?.startsWith(`${title} — `));
+	if (!mark) throw new Error(`no marker diamond for ${title}`);
+	return mark;
+}
+
 /** The bar inside the timeline row for a given title. */
 export function barFor(containerEl: HTMLElement, title: string): HTMLElement {
 	const row = rowFor(containerEl, title);
@@ -213,9 +233,17 @@ export function barFor(containerEl: HTMLElement, title: string): HTMLElement {
 	return barOf(row);
 }
 
-/** One of a bar's grips, by which hold it is. */
+/**
+ * One of a bar's grips, by which hold it is — off its bar row, or off its diamond in the
+ * milestones' shared row, which is where a marker lives on both grid axes.
+ *
+ * Asked of the MARK rather than of its parent, which is the shared track for a marker and
+ * would hand back whichever diamond drew first.
+ */
 export function gripOf(containerEl: HTMLElement, title: string, hold: 'body' | 'start' | 'end'): HTMLElement {
-	const el = barFor(containerEl, title).parentElement?.querySelector<HTMLElement>(`[data-pbl-hold="${hold}"]`);
+	const mark = rowFor(containerEl, title) !== null ? barFor(containerEl, title) : markFor(containerEl, title);
+	// The body hold IS the bar element on every grid; the edge grips are its children.
+	const el = mark.dataset.pblHold === hold ? mark : mark.querySelector<HTMLElement>(`[data-pbl-hold="${hold}"]`);
 	if (!el) throw new Error(`no ${hold} grip on ${title}`);
 	return el;
 }

@@ -3,14 +3,19 @@ import { describe, expect, it } from 'vitest';
 import { todayStamp } from '../../src/domain/noteFields';
 import { FakeVault } from '../helpers/vault';
 import { useViewHarness } from '../helpers/view';
-import { barFor, gripNames, labelTexts, roadmapView, rowFor, timelineRows } from '../helpers/roadmap';
+import { barFor, gripNames, labelTexts, markersLane, markFor, roadmapView, rowFor, timelineRows } from '../helpers/roadmap';
 
 /**
- * Markers on the dated axis: a milestone's own bar (reduced to a point, drawn
- * clipped rather than as a diamond once wholly outside the window) and the
- * milestone LINE that crosses the whole grid for a date one or more of them share
- * — split out of `roadmapFrame.test.ts`, which the marker and grab-cursor
- * describe blocks pushed past the test-file line budget.
+ * Markers on the dated axis: a milestone's own mark (reduced to a point, drawn clipped
+ * rather than as a diamond once wholly outside the window) and the milestone LINE that
+ * crosses the whole grid for a date one or more of them share — split out of
+ * `roadmapFrame.test.ts`, which the marker and grab-cursor describe blocks pushed past the
+ * test-file line budget.
+ *
+ * Since 2026-08-16 that mark is a diamond in ONE shared row at the head of the grid, never a
+ * row apiece — the resources axis's rule ([[Milestones out of the resource rows]]) read on
+ * the axis it came from. So every fact that used to be asked of a marker's row is asked of
+ * its mark here, which is what `markFor` names.
  */
 
 useViewHarness();
@@ -20,32 +25,41 @@ const DATES = { startProperty: 'note.start', targetProperty: 'note.due' };
 const TODAY_ISO = todayStamp();
 
 describe('a marker on the dated axis', () => {
-	it('says its own progress in the name that REPLACES its content', () => {
-		// A marker's row is the one that carries an explicit `aria-label`, because neither
-		// its line nor its diamond is focusable. An explicit label REPLACES the
-		// content-derived name, so the `.pbl-sr-only` progress span `renderBarProgress`
-		// puts on the row is swallowed by it — announced to nobody, which is the exact
-		// defect that span exists to prevent, one surface further along.
-		//
-		// The case is reachable even though the ladder treats a marker as a point:
-		// `childTypeChoices` returns [] for a marker parent but refuses no move the user
-		// makes deliberately, and `assignAll` counts children by STRUCTURE — a marker
-		// contributes 0 itself and still accumulates the subtree below it. Where it truly
-		// has none, `rollupReport` returns an empty label and nothing is drawn or said.
+	it('draws every marker in ONE row at the head of the grid, never a row apiece', () => {
+		// The change of 2026-08-16: a date is a point, so a column of one-diamond rows spent a
+		// row each saying what one row says and pushed the work down the pane. The work rows
+		// are asserted beside it, or "no row for a marker" would also pass on a grid that drew
+		// no rows at all.
 		const vault = new FakeVault();
-		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10, due: '2026-08-10', status: 'New' } });
-		vault.addFile('Cut the branch.md', {
-			frontmatter: { type: 'PBI', order: 10, status: 'Done' },
-			parentLink: 'Ship 1.0',
-		});
-		const { containerEl } = roadmapView(vault, { ...DATES, stateProperty: 'note.status', doneValues: 'Done' });
+		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10, due: '2026-08-10' } });
+		vault.addFile('Contract ends.md', { frontmatter: { type: 'Milestone', order: 20, due: '2026-08-20' } });
+		vault.addFile('A story.md', { frontmatter: { type: 'PBI', order: 30, due: '2026-09-01' } });
+		const { containerEl } = roadmapView(vault, { ...DATES });
 
-		const row = rowFor(containerEl, 'Ship 1.0');
-		// Drawn on the row, and drawn in the lead — neither of which a replaced name keeps.
-		expect(row?.querySelector('.pbl-bar-count')?.textContent).toBe('1/1');
-		// So the words have to be in the name itself, and they are the SAME words the span
-		// carries rather than a second phrasing of one fact.
-		expect(row?.getAttribute('aria-label')).toContain('1 of 1 items done');
+		const markers = markersLane(containerEl);
+		expect(markers?.querySelector('.pbl-lane-name')?.textContent).toBe('Milestones');
+		expect(markers?.querySelectorAll('.pbl-bar-milestone')).toHaveLength(2);
+		expect(rowFor(containerEl, 'Ship 1.0')).toBeNull();
+		expect(rowFor(containerEl, 'Contract ends')).toBeNull();
+		expect(rowFor(containerEl, 'A story')).not.toBeNull();
+		// Drawn FIRST, ahead of the work it is read against — the whole of "at the top".
+		expect(markers?.nextElementSibling).toBe(rowFor(containerEl, 'A story'));
+	});
+
+	it('mints that row only where a marker actually places, and folds it by nothing', () => {
+		const vault = new FakeVault();
+		vault.addFile('A story.md', { frontmatter: { type: 'PBI', order: 10, due: '2026-09-01' } });
+		const { containerEl } = roadmapView(vault, { ...DATES });
+
+		// A header standing for nothing on every base is a row that says nothing.
+		expect(markersLane(containerEl)).toBeNull();
+
+		const dated = new FakeVault();
+		dated.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10, due: '2026-12-01' } });
+		const withMarker = roadmapView(dated, { ...DATES });
+		// No disclosure: there is nothing under it to fold, and a bit able to take the dates the
+		// whole plan is measured against off screen is what this row exists to prevent.
+		expect(markersLane(withMarker.containerEl)?.querySelector('.pbl-chevron')).toBeNull();
 	});
 
 	it('draws no diamond for a milestone past the window edge, only the direction it lies past', () => {
@@ -54,12 +68,12 @@ describe('a marker on the dated axis', () => {
 		vault.addFile('A story.md', { frontmatter: { type: 'PBI', order: 20, due: '2026-09-01' } });
 		const { containerEl } = roadmapView(vault, { ...DATES });
 
-		const bar = barFor(containerEl, 'Ship 1.0');
-		expect(bar.classList.contains('pbl-bar-milestone')).toBe(false);
-		expect(bar.classList.contains('pbl-bar-outside')).toBe(true);
-		expect(bar.classList.contains('pbl-bar-open-end')).toBe(true);
-		// The exact date is never lost — it stays where the row's accessible name puts it.
-		expect(rowFor(containerEl, 'Ship 1.0')?.getAttribute('aria-label')).toContain('2200-01-01');
+		const mark = markFor(containerEl, 'Ship 1.0');
+		expect(mark.classList.contains('pbl-bar-milestone')).toBe(false);
+		expect(mark.classList.contains('pbl-bar-outside')).toBe(true);
+		expect(mark.classList.contains('pbl-bar-open-end')).toBe(true);
+		// The exact date is never lost — it stays where the mark's accessible name puts it.
+		expect(mark.getAttribute('aria-label')).toContain('2200-01-01');
 	});
 
 	it('draws no diamond for a milestone before the window edge either, marked open at the START', () => {
@@ -71,18 +85,23 @@ describe('a marker on the dated axis', () => {
 		vault.addFile('A story.md', { frontmatter: { type: 'PBI', order: 20, due: '2026-09-01' } });
 		const { containerEl } = roadmapView(vault, { ...DATES });
 
-		const bar = barFor(containerEl, 'Kickoff');
-		expect(bar.classList.contains('pbl-bar-outside')).toBe(true);
-		expect(bar.classList.contains('pbl-bar-open-start')).toBe(true);
-		expect(rowFor(containerEl, 'Kickoff')?.getAttribute('aria-label')).toContain('1900-01-01');
+		const mark = markFor(containerEl, 'Kickoff');
+		expect(mark.classList.contains('pbl-bar-outside')).toBe(true);
+		expect(mark.classList.contains('pbl-bar-open-start')).toBe(true);
+		expect(mark.getAttribute('aria-label')).toContain('1900-01-01');
 	});
 
-	it('puts the milestone’s name and exact date in its row’s accessible name', () => {
+	it('puts the milestone’s name and exact date on the mark itself', () => {
+		// The row's lead named it until 2026-08-16 and there is no lead any more, so the
+		// diamond is the only place a name can be: bare marks in a shared track are legible
+		// because the mark says where and the full-height line's label says what.
 		const vault = new FakeVault();
 		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10, due: '2026-12-01' } });
 		const { containerEl } = roadmapView(vault, { ...DATES });
 
-		expect(rowFor(containerEl, 'Ship 1.0')?.getAttribute('aria-label')).toBe('Ship 1.0 — Milestone 2026-12-01');
+		const mark = markFor(containerEl, 'Ship 1.0');
+		expect(mark.getAttribute('aria-label')).toBe('Ship 1.0 — Milestone 2026-12-01');
+		expect(mark.dataset.tooltip).toBe('Ship 1.0 — Milestone 2026-12-01');
 	});
 });
 
@@ -149,7 +168,7 @@ describe('the grab-cursor class', () => {
 });
 
 describe('milestone lines', () => {
-	it('draws one line per readable milestone inside the window, each with a row of its own', () => {
+	it('draws one line per readable milestone inside the window, each with a mark of its own', () => {
 		const vault = new FakeVault();
 		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10, due: '2026-12-01' } });
 		vault.addFile('A story.md', {
@@ -158,8 +177,9 @@ describe('milestone lines', () => {
 		const { containerEl } = roadmapView(vault, { ...DATES });
 
 		expect(containerEl.querySelectorAll('.pbl-milestone-line')).toHaveLength(1);
-		// Every line has a row: no milestone is visible only as a line.
-		expect(rowFor(containerEl, 'Ship 1.0')).not.toBeNull();
+		// Every line has a MARK: no milestone is visible only as a line. The row it used to
+		// have is gone; the diamond in the shared row is what carries the claim now.
+		expect(markFor(containerEl, 'Ship 1.0')).not.toBeNull();
 		expect(labelTexts(containerEl)).toEqual(['Ship 1.0']);
 	});
 
@@ -252,7 +272,9 @@ describe('milestone lines', () => {
 		const { containerEl } = roadmapView(vault, { ...DATES, stateProperty: 'note.status', showCompleted: false });
 
 		expect(containerEl.querySelectorAll('.pbl-milestone-line')).toHaveLength(0);
-		expect(rowFor(containerEl, 'Ship 1.0')).toBeNull();
+		// And the mark goes with it — the shared row is minted by a PLACED marker, so with the
+		// only one hidden there is no row at all rather than an empty header.
+		expect(markersLane(containerEl)).toBeNull();
 	});
 
 	it('makes neither the line nor its label a second selection stop', () => {

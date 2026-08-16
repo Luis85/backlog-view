@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { useViewHarness } from '../helpers/view';
 import { Menu } from '../helpers/obsidian-mock';
-import { rowFor, roadmapView, timelineTitles } from '../helpers/roadmap';
+import { markFor, rowFor, roadmapView, timelineTitles } from '../helpers/roadmap';
 import { rowByTitle, titlesOf } from '../helpers/view';
 
 useViewHarness();
@@ -245,24 +245,34 @@ describe('collapsing a bar’s subtree', () => {
 		expect(menuTitles().some((t) => t === 'Show children' || t === 'Hide children')).toBe(false);
 	});
 
-	it('takes a hidden row’s marks with it, not only its bar', () => {
-		// A milestone under a collapsed row draws no full-height line either: the line
-		// belongs to a row, so a row that is not drawn draws nothing. Nothing stands in
-		// for it — a marker's date is never evidence, so it cannot roll up into the bar
-		// above it the way ordinary work does.
+	it('leaves a MARKER under a collapsed row on screen, line and all', () => {
+		// A deliberate REVERSAL, 2026-08-16. This asserted the opposite while a marker had a
+		// row of its own under its parent — folding the parent took the diamond and its
+		// full-height line with it. A marker now draws in the milestones' shared row at the
+		// head of the grid, which is not under anybody: no fold anywhere can take a date the
+		// whole plan is measured against off screen, which is the row's whole purpose.
+		//
+		// What the fold still takes is ordinary WORK below the same parent, asserted beside
+		// it so this is not "the chevron stopped working".
 		const vault = new FakeVault();
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, start: '2026-08-01', due: '2026-08-31' } });
 		vault.addFile('Ship.md', {
 			frontmatter: { type: 'Milestone', order: 10, due: '2026-09-30' },
 			parentLink: 'Epic',
 		});
+		vault.addFile('Work.md', {
+			frontmatter: { type: 'PBI', order: 20, start: '2026-08-02', due: '2026-08-10' },
+			parentLink: 'Epic',
+		});
 		const { containerEl } = roadmapView(vault, { ...DATES });
 		click(chevronOf(containerEl, 'Epic')!);
-		expect(timelineTitles(containerEl)).toEqual(['Epic', 'Ship']);
+		expect(timelineTitles(containerEl)).toEqual(['Epic', 'Work']);
 		expect(containerEl.querySelectorAll('.pbl-milestone-line')).toHaveLength(1);
 
 		click(chevronOf(containerEl, 'Epic')!);
 
-		expect(containerEl.querySelectorAll('.pbl-milestone-line')).toHaveLength(0);
+		expect(timelineTitles(containerEl)).toEqual(['Epic']);
+		expect(markFor(containerEl, 'Ship')).not.toBeNull();
+		expect(containerEl.querySelectorAll('.pbl-milestone-line')).toHaveLength(1);
 	});
 });

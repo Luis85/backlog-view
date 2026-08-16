@@ -11,10 +11,11 @@ import { wireBarLink } from '../interactions/linkDrag';
 import { BacklogViewHost, DrawnColors } from '../host';
 import { Absence, absencesConfigured, absenceTitle, awayWeeks, crossedAbsences, daysLost, packLanes } from '../../domain/absences';
 import { barHolds, timelineRows, TimelineBar, TimelineRow } from '../../domain/bars';
+import { isMarkerType } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
 import { CivilDate } from '../../domain/noteFields';
-import { ResourceLane } from '../../domain/roadmap';
-import { ownWorkflowReading } from '../../domain/board';
+import { markerLane, ResourceLane } from '../../domain/roadmap';
+import { ownWorkflowReading, stateKeyFor, WorkflowReading } from '../../domain/board';
 import { sanitizeTitle } from '../../storage/frontmatter';
 import {
 	BarGeometry,
@@ -101,9 +102,34 @@ function edgeClasses(geometry: BarGeometry): string[] {
 	return classes;
 }
 
-/** The dated axis's own entries: every row, in order, and nothing else. */
-export function barEntries(rows: TimelineRow[]): TimelineEntry[] {
-	return rows.map((row): TimelineEntry => ({ kind: 'row', row }));
+/**
+ * The dated axis's own entries: the milestones' row first, then every work row in order.
+ *
+ * **A marker is drawn in one shared row here too, exactly as it is on the resources axis**
+ * ([[Milestones out of the resource rows]]) — one `lane` entry holding every marker on the
+ * grid, never a `row` entry apiece. A point in time has no duration to read along and no
+ * subtree to fold, so a column of one-diamond rows spent a row each saying what one row says,
+ * pushing the work down the pane the more dates the plan commits to. What a reader needs of a
+ * milestone is where it falls against the bars beneath it, and the diamond plus the
+ * full-height line ([[A milestone line across the plan]]) is that whole answer.
+ *
+ * The row is minted by its first PLACED marker and is absent otherwise — a header standing
+ * for nothing on every base says nothing — and it is never folded, because it produces no
+ * rows to fold.
+ *
+ * The split happens BEFORE `timelineRows` rather than after it, and that is the load-bearing
+ * part: the fold walk decides a chevron from the bars it is HANDED, so a marker left in the
+ * list would go on standing between a work bar and its drawn ancestor. Handed the work alone,
+ * a chevron reaches exactly the bars it sits above — the same argument that makes a fold safe
+ * per band one axis over.
+ */
+export function datedEntries(bars: TimelineBar[], collapsed: (path: string) => boolean): TimelineEntry[] {
+	const markers = bars.filter((bar) => isMarkerType(bar.item.typeName));
+	const work = bars.filter((bar) => !isMarkerType(bar.item.typeName));
+	const entries: TimelineEntry[] =
+		markers.length > 0 ? [{ kind: 'lane', lane: markerLane(markers), collapsed: false }] : [];
+	for (const row of timelineRows(work, collapsed)) entries.push({ kind: 'row', row });
+	return entries;
 }
 
 /**
@@ -796,7 +822,11 @@ export function drawMarkerDiamonds(
 		const sublane = stacked.get(geometry.startDay) ?? 0;
 		stacked.set(geometry.startDay, sublane + 1);
 		el.setCssProps({ '--pbl-sublane': String(sublane) });
-		const said = `${bar.item.title} — ${spanText(bar)}`;
+		// The state in words, folded into the mark's OWN label: the diamond has no row to put
+		// a `.pbl-sr-only` span in, and done is a green mark and nothing else without it —
+		// colour alone, which WCAG 1.4.1 refuses and a screen reader gets none of.
+		const state = stateNote(stateKeyFor(ctx.host.settings, bar.item), ownWorkflowReading(bar.item));
+		const said = `${bar.item.title} — ${spanText(bar)}${state ? ` — ${state}` : ''}`;
 		el.setAttribute('aria-label', said);
 		setTooltip(el, said);
 		// The path on the MARK, which is where every other grid puts it (`renderBarRow` puts
@@ -955,6 +985,30 @@ export function barClasses(bar: TimelineBar, geometry: BarGeometry, hasBodyHold:
 	// target date at all. The two want different connector placement: an open end has an
 	// on-screen edge to sit past, a clamped one does not.
 	return [cls, edges].filter(Boolean).join(' ') + inferred + holdable;
+}
+
+/**
+ * A mark's workflow state in words, or '' where there is none to say.
+ *
+ * A grid axis draws state as a bar COLOUR and nothing else: `renderStateChip`'s only call
+ * site is a tree row's own column, so without these words the slot colours are the whole of
+ * it — unreadable to a screen reader, and colour alone for everyone else (WCAG 1.4.1). Done
+ * is spelt out for the same reason: `pbl-done` is a class and a green bar.
+ *
+ * Two callers with two placements, decided by what the mark HAS. A bar row puts it in the
+ * row's own visually hidden CONTENT, never an `aria-label` anywhere: `.pbl-bar` is a plain
+ * div — role `generic`, where ARIA prohibits an accessible name — and a label on the row
+ * would REPLACE the badge and title the row derives its name from. A DIAMOND has no row and
+ * no content of its own, so it folds these words into the label it already carries.
+ *
+ * Here rather than in `./timeline.ts`, `edgeClasses`' reason exactly: the grid imports this
+ * module and never the other way, so anything both a bar row and a diamond need has to live
+ * on this side of that edge.
+ */
+export function stateNote(stateKey: string, reading: WorkflowReading): string {
+	if (!stateKey) return '';
+	if (reading.done) return reading.value === null ? 'Done' : `${reading.value} — done`;
+	return reading.value ?? '';
 }
 
 /** One sentence about a span, said identically on the grid and in the drop ghost. */

@@ -35,9 +35,12 @@ shape, drawn once across the grid from a single date, so the marker is a second 
 a thing that works rather than a new drawing layer.
 
 The rule that keeps it honest is that the line is never the only place a milestone exists.
-It is decoration of a row — [[Milestones as their own type]] renders that row — so
-everything reachable by hovering a line is reachable from the row it belongs to, and
-nothing about the line is ever written anywhere.
+It is decoration of a MARK — [[Milestones as their own type]] renders that mark — so
+everything reachable by hovering a line is reachable from the mark it belongs to, and
+nothing about the line is ever written anywhere. That mark was a row of its own until
+2026-08-16 and is a diamond in the milestones' shared row since
+([[Milestones in one row on the dated axis]]); the rule is unchanged and only the element
+carrying it moved.
 
 ## Use case
 

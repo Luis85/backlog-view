@@ -157,6 +157,10 @@ can fold them away.
 - **3a — the row's absence control.** Absent. The row stands for nobody, so there is
   nobody to be away, and [[Resource absences]]' Add button is withheld rather than opening
   a form whose resource would be a caption.
+- **3d — a milestone's own workflow state.** Said in words on the mark since 2026-08-16,
+  which this row shipped WITHOUT: `pbl-done` repaints the diamond green and nothing said so,
+  which is state in colour alone. `stateNote` is read by a bar row and a diamond alike now —
+  see [[Milestones in one row on the dated axis]] 3c, which is where the fix came from.
 - **3b — a milestone dated on its own assignee's away day.** Nothing is said about it, and
   this is a **loss** rather than an omission — it was reported until 2026-08-15, as the
   `· away` token and the sentence beside it. What that mark means is that a bar and a
@@ -171,15 +175,23 @@ can fold them away.
   one item waits for a date. A diamond in a shared header is not an `option` and has no
   element the roving selection could point `aria-activedescendant` at, so listing one would
   put the walk on a stop that does not exist. Its name and date are still announced on the
-  mark itself, and the plain dated axis still draws every marker as its own selectable row
-  — which is the projection to use when a milestone has to be reached without a pointer.
+  mark itself. This paragraph used to end with a fallback — "the plain dated axis still
+  draws every marker as its own selectable row, which is the projection to use when a
+  milestone has to be reached without a pointer" — and [[Milestones in one row on the dated
+  axis]] SPENT it on 2026-08-16 by taking this row to that axis too. What is left is the
+  tree and the board, where a milestone is an ordinary card with an ordinary row menu; the
+  gap on the grid is [[Keyboard and menu on the roadmap]]'s to close, on both axes at once.
 - **4a — a marker the Base excluded.** It joins the axis's undifferentiated context beside
   the shelf, never a band, and never the milestones' row either: a context row is placement
   and this row places by a bar. "A milestone is in no resource's row" is a rule about the
   row rather than about the bar, so the one path that positions nothing must keep it too.
-- **5a — the bucket axis or the plain dated axis is the active one.** Nothing here applies.
-  This row exists only where rows do, and on the dated axis a marker is already one line
-  among the bars.
+- **5a — the bucket axis is the active one.** Nothing here applies: a marker is an ordinary
+  card there. The plain DATED axis was named in this extension until 2026-08-16 for the same
+  reason — a marker was one line among its bars — and [[Milestones in one row on the dated
+  axis]] moved it to this row as well, from `markerLane` rather than from a second literal.
+  So what is stated here is now true of that axis too, with the two differences that note
+  owns: the split happens where its entry list is built, and a release on its grid names a
+  day and never a row.
 - **6a — a milestone is marked done.** The diamond draws green, like every other done bar.
   The class is on the **mark** and not on the row, which is the one place this row departs
   from the grid's own rule: the row is shared by every marker, and one of them being
