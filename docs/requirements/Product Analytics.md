@@ -27,8 +27,12 @@ instead of from memory.
 ## Why it is its own view
 
 Every number here is a count over the same items other views draw, and none of them helps
-anyone read a tree. Its settings are periods, buckets and which two states a duration runs
-between — nothing another view needs — and it writes nothing at all.
+anyone read a tree. Its settings are its own and complete: the periods, the buckets, the
+state property and its states, and **the keys the transition stamps live under** — a
+started key and a finished key this view names for itself, defaulting to the same
+suggestions every other view starts from. Analytics that had to read a board's options
+could not run in a base without a board, and would silently change meaning when somebody
+reconfigured one. It writes nothing at all.
 
 The honesty rule is the whole epic: **a metric states what it counted.** A throughput chart
 built from notes that carry no completion date is a chart of what the vault happens to have

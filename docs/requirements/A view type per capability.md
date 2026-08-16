@@ -17,9 +17,10 @@ assignee: ""
 # A view type per capability
 
 Each capability registers its own Bases view type, with its own name and icon in Obsidian's
-picker, its own options schema and its own view-state entry. Registration stays in one
-place — the plugin's single entry point — but the views themselves know nothing of each
-other.
+picker, its own options schema and its own view-state entry. The plugin's entry point
+composes — it builds the shared services once and hands them to one registration per view —
+and each view owns the registration of itself, so adding a capability adds a file rather
+than a branch in a growing function. The views themselves know nothing of each other.
 
 **Outcome** — A vault adds a capability by adding a view to a base, and removes it by
 removing the view.

@@ -124,18 +124,18 @@ const isLiving = (file) => LIVING.some((dir) => file.startsWith(dir + path.sep))
 /** The only files legitimately outside the work-item hierarchy: ADRs, and the index pages. */
 const NOT_WORK_ITEMS = /(^|[/\\])(adrs[/\\].*|README)\.md$/;
 /**
- * The two folders of plain markdown that are not work items and never become any:
+ * The folders of plain markdown that are not work items and never become any:
  * `superpowers/`, where the `brainstorming` and `writing-plans` skills save design specs
- * and implementation plans (CLAUDE.md), and `prds/`, where a requirements document arrives
- * from outside and is kept verbatim as the evidence the register's own notes cite. Neither
- * carries the frontmatter this file requires of everything else — a PRD is the source a
- * backlog is derived FROM, so giving it a `type` and a rank would file the evidence as
- * work. Both are anchored to the `docs/` root exactly like `LIVING`, rather than a bare
+ * and implementation plans (CLAUDE.md), and `prds/` and `sdds/`, where a requirements or
+ * design document arrives from outside and is kept verbatim as the evidence the register's
+ * own notes cite. None of them carries the frontmatter this file requires of everything
+ * else — those documents are the source a backlog is derived FROM, so giving one a `type`
+ * and a rank would file the evidence as work. Both are anchored to the `docs/` root exactly like `LIVING`, rather than a bare
  * `superpowers[/\\].*` regex: an unanchored pattern would also exempt a coincidental
  * `docs/requirements/superpowers/`, and `walk` descends nested directories so that would go
  * unnoticed rather than unmatched.
  */
-const SOURCE_DOCS = [path.join(DOCS, "superpowers"), path.join(DOCS, "prds")];
+const SOURCE_DOCS = [path.join(DOCS, "superpowers"), path.join(DOCS, "prds"), path.join(DOCS, "sdds")];
 const isSourceDoc = (file) => SOURCE_DOCS.some((dir) => file.startsWith(dir + path.sep));
 
 const problems = [];
@@ -425,6 +425,14 @@ for (const [name, note] of notes) {
 const historical = [];
 for (const file of files) {
 	const text = texts.get(file);
+	// A received document names whatever its author named — a customer interview, a note
+	// from another vault, an illustrative `[[Release 2.4]]` — and none of that is a
+	// reference this repository owes a file. Checking it would force the one edit the
+	// verbatim rule exists to prevent, so `prds/` and `sdds/` are outside every link rule
+	// below as well as outside the backlog shape. The cost is real and accepted: a link in
+	// a source document that DOES name a note here is unverified, so an editorial preamble
+	// on one of them names its notes in prose rather than pretending to a checked link.
+	if (isSourceDoc(file)) continue;
 	// A link the 100-column wrap breaks across two lines used to be captured with the
 	// newline inside it, fail the stem lookup, and report as unresolved — a documented
 	// limitation with no detection, so the contributor saw only a false "unresolved

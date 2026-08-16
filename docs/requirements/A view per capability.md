@@ -43,10 +43,35 @@ Any hidden channel between two views — a shared store, a cache, a plugin-level
 file — is the proprietary database this plugin has always refused, arriving by the back
 door.
 
+## The design it is being built against
+
+A software design document of 2026-08-16 ([`sdds/`](../sdds)) states the target
+architecture: a view registry, a shared product kernel, a vault infrastructure layer, and
+one Bases view per capability on top of them, with `ProductEntity` as the normalized note
+every service reads and a property-mapping layer between a domain concept and whatever the
+vault calls it. Two of its claims are the load-bearing ones for this epic — **the product
+model is the vault, not the views**, and **no view implements hierarchy traversal or
+frontmatter mutation for itself**.
+
+Its migration order is the one this epic follows, and it is deliberately not
+newest-first: extract the shared kernel without changing behaviour, then the registry, then
+the projections already built, then the new views. Extraction before registration matters —
+a second view registered against logic that is still tangled with the first view's DOM
+copies that tangle rather than sharing the logic.
+
+**What the document does not settle is the directory structure**, which it also proposes,
+and which this repository already has in a different shape with a lint rule holding it up.
+That disagreement is [[The SDD's layers are not the four this repository enforces]] and it
+is answered there, not here: this epic needs one implementation of each concept, and is
+indifferent to which directory it sits in.
+
 ## Definition of done, for anything under this epic
 
 - A capability is a registered view type with its own options, its own state and its own
   empty state. A setting appears in exactly one view's options: the view that uses it.
+- Every concept two views share is implemented once, below both of them — and a view
+  reaching for a second implementation is the signal that the kernel is missing something,
+  never that the view needs its own.
 - No view requires another to be present or configured. Absence is a value here too — a
   key nothing has named is read as nothing, never as an error.
 - Nothing is written that only the plugin can read. Every property a view writes is one a

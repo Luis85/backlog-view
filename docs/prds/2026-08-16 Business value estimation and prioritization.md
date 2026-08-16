@@ -1,7 +1,7 @@
 # PRD — Business Value Estimation & Prioritization View
 
-*Received 2026-08-16. Kept verbatim as the source [[Business value estimation]] was derived
-from. The register's notes are what this plugin will build; this document is the evidence
+*Received 2026-08-16. Kept verbatim as the source the epic "Business value estimation" was
+derived from. The register's notes are what this plugin will build; this document is the evidence
 they cite, and it is not edited to follow decisions taken after it arrived.*
 
 ## 1. Product summary

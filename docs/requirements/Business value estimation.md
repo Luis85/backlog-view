@@ -60,11 +60,11 @@ numbers the tree does not hold, and a scatter of value against effort; it has it
 properties, its own vocabulary and its own configuration, and none of it makes a tree
 easier to read.
 
-So it registers separately. `main.ts` names a second Bases view beside
-`PRODUCT_BACKLOG_VIEW_TYPE` — its own name and icon in Obsidian's view picker, its own
-`getViewOptions` describing estimation keys and weights only, its own entry in the
-view-state store — and a vault chooses it per saved view, the way it chooses any Bases
-view. The backlog view's toolbar does not grow, its options do not gain a section nobody
+So it registers separately, as its own view type beside the backlog's: its own name and icon
+in Obsidian's view picker, its own view options describing estimation keys and weights only,
+its own entry in the view-state store — and a vault chooses it per saved view, the way it
+chooses any Bases view. It is the first capability to follow [[A view per capability]], and
+the shared kernel that epic extracts is what it reads the tree with. The backlog view's toolbar does not grow, its options do not gain a section nobody
 using the tree will read, and the two views share the layers below them: one write
 boundary, one gate, one undo history, one model of what a work item is.
 

@@ -20,6 +20,7 @@ demonstrating itself:
 | [`adrs/`](adrs/README.md) | **How** it is built — architecture decision records | *(none — not backlog items)* |
 | `superpowers/` | Claude's own design specs and implementation plans, not the product's | *(none — not backlog items)* |
 | `prds/` | Requirements documents as received, the source epics here are derived from | *(none — not backlog items)* |
+| `sdds/` | Design documents as received, the architecture those epics are built against | *(none — not backlog items)* |
 
 `tests/cases/` holds the checks CI cannot run — appearance, base identity, anything that
 needs a live vault — and `RELEASING.md`'s release sweep reads it, deriving its set from
@@ -45,13 +46,19 @@ held to the ordinary rules. It is **not** exempt from the basename rule two para
 a generated spec or plan is still ordinary prose a `[[wikilink]]` can name, so it still
 claims its name against every other note in `docs/`.
 
-`prds/` is exempt on the same terms and for a sharper reason: **a PRD is what a backlog is
-derived from, not a thing in it.** It arrives from outside, it is kept verbatim so the notes
-that cite it are citing something that has not been edited to agree with them, and giving it
-a `type`, a rank and a status would file the evidence as work — the same mistake as writing a
-customer interview into the backlog because it is important. Each is named for the date it
-arrived and what it asked for, and claims its basename like everything else, so a PRD and the
-epic derived from it can never share a name.
+`prds/` and `sdds/` are exempt on the same terms and for a sharper reason: **a requirements
+or design document is what a backlog is derived from, not a thing in it.** It arrives from
+outside, it is kept verbatim so the notes that cite it are citing something that has not been
+edited to agree with them, and giving it a `type`, a rank and a status would file the
+evidence as work — the same mistake as writing a customer interview into the backlog because
+it is important. Each is named for the date it arrived and what it covers, and claims its
+basename like everything else, so a document and the epic derived from it can never share a
+name.
+
+An SDD is not an ADR and does not replace one. It is what somebody *proposed*; an ADR is what
+this codebase *decided*, and where the two disagree — as they currently do about the layer
+names — the ADR and the lint rule are what hold, with the disagreement recorded as an issue
+until somebody settles it.
 
 ## The trees
 
@@ -222,10 +229,18 @@ per capability, each with its own options, state and empty state, sharing nothin
 but the layers below the screen. The rule that makes it work is the data contract — **views
 communicate only through the vault** — so a hidden store between two views would be the
 proprietary database this plugin has always refused, arriving by the back door. Its features
-are the registration, settings scoped to the view that uses them, a guided empty state that
-can configure itself, navigation between the views a base actually has, one suggested name
-per concept that the user maps, and the staged extraction of the board, the roadmap and the
-Deliverables board out of the backlog view.
+are the shared kernel every view reads the vault with, the registration, settings scoped to
+the view that uses them, a guided empty state that can configure itself, navigation between
+the views a base actually has, one suggested name per concept that the user maps, and the
+staged extraction of the board, the roadmap and the Deliverables board out of the backlog
+view. A software design document of 2026-08-16 in [`sdds/`](sdds) states the architecture it
+is built against, and the epic follows its migration order — kernel first, then the registry,
+then the projections already built, then new views — because a view registered against logic
+still tangled with another view's DOM copies the tangle instead of sharing the logic. What
+that document does **not** settle is the directory structure it also proposes, which this
+repository already has in another shape with a lint rule behind it: that is
+[[The SDD's layers are not the four this repository enforces]], and until it is answered the
+four enforced layers are what hold.
 
 **Nine capability epics** hang off that direction, all specification, in the delivery order
 the document argues for. **Backlog Health** comes first with prioritization, because every
