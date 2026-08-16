@@ -3,6 +3,7 @@ import { hasColorableStates, openStateColors } from '../interactions/stateColors
 import { BacklogViewHost } from '../host';
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { projectionPopulation, toolbarPosition, treeShaped } from '../projection';
+import { isIterationType } from '../../domain/itemTypes';
 import { activeAxis, configuredAxes, drawsGrid, RoadmapAxis } from '../../domain/roadmap';
 import { ScaleId } from '../../domain/timeline';
 import { showMenuForClick } from '../interactions/menu';
@@ -289,6 +290,77 @@ function renderAxisPicker(host: BacklogViewHost, zone: HTMLElement, barEl: HTMLE
 		for (const axis of axes) choice(axis);
 		showMenuForClick(menu, evt);
 	});
+}
+
+/**
+ * Which board the `Board` position opens: the product's, or one iteration's.
+ *
+ * **Two conditions, both required.** The iteration property must be configured, or every
+ * entry would open a board no card could reach; and at least one `Iteration` note must be
+ * in the model, which is `renderAxisPicker`'s own refusal for a single configured axis —
+ * with nothing to choose between, a picker is a control that can only re-pick what is
+ * already chosen.
+ *
+ * It draws in EVERY projection rather than in the board's zone, and that is the point of
+ * it: this is how the iteration board is reached at all, so a picker that appeared only
+ * once the reader was already on the board it chooses would sit behind the door it opens.
+ *
+ * The entries are read off `model.byPath` for `iterationTargets`' reason
+ * (`interactions/labels.ts`): a focus set on another projection re-roots what is DRAWN,
+ * and an iteration hangs from nothing, so a top-level one would go unofferable exactly
+ * when the reader had narrowed the tree. Context rows are excluded — an excluded note is
+ * not this base's vocabulary — and colliding basenames are qualified by path, ONLY where
+ * they collide, since qualifying every entry to separate a rare pair makes the ordinary
+ * case unreadable. What a pick carries is the NOTE either way.
+ */
+export function renderBoardScopePicker(host: BacklogViewHost, barEl: HTMLElement, model: BacklogModel): void {
+	if (!host.settings.iterationKey) return;
+	const iterations = [...model.byPath.values()].filter(
+		(item) => isIterationType(item.typeName) && !item.outsideFilter,
+	);
+	if (iterations.length === 0) return;
+
+	const seen = new Map<string, number>();
+	for (const item of iterations) seen.set(item.title, (seen.get(item.title) ?? 0) + 1);
+	const labelOf = (item: BacklogItem): string =>
+		(seen.get(item.title) ?? 0) > 1 ? item.file.path.slice(0, -(item.file.extension.length + 1)) : item.title;
+
+	// The EFFECTIVE scope names the button, never the stored path: a scope that no longer
+	// resolves draws the product board, and a button naming the missing sprint would be
+	// the one thing on screen disagreeing with every other.
+	const scope = host.effectiveScope;
+	const current = scope === null ? null : (model.byPath.get(scope) ?? null);
+	const name = current === null ? SCOPE_PRODUCT : labelOf(current);
+	const btn = menuButton(zoneFor(barEl), 'target', name, 'scope', `Board scope: ${name}`);
+	btn.addClass('pbl-scope-btn');
+	setTooltip(btn, 'Which board the Board position opens');
+	btn.addEventListener('click', (evt) => {
+		const menu = new Menu();
+		const choice = (title: string, path: string | null) =>
+			menu.addItem((mi) =>
+				mi
+					.setTitle(title)
+					.setChecked(path === scope)
+					// `barEl`, not the wrapper: the pick rebuilds the row, and the bar is
+					// what survives it.
+					.onClick(() => pickAndRefocus(barEl, 'scope', () => host.setBoardScope(path))),
+			);
+		choice(SCOPE_PRODUCT, null);
+		for (const item of iterations) choice(labelOf(item), item.file.path);
+		showMenuForClick(menu, evt);
+	});
+}
+
+/** What the picker calls the whole backlog — the scope every board had before this one. */
+const SCOPE_PRODUCT = 'Product';
+
+/**
+ * The picker's own slot in the row, made on demand: it sits with the switcher rather than
+ * in the projection zone, and a wrapper drawn unconditionally would be an empty box in
+ * every vault that has no iterations.
+ */
+function zoneFor(barEl: HTMLElement): HTMLElement {
+	return barEl.createDiv({ cls: 'pbl-zone pbl-zone-scope' });
 }
 
 /**

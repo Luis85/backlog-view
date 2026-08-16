@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
+import { Menu } from 'obsidian';
 import { FakeVault } from '../helpers/vault';
 import { makeView, refresh, useViewHarness } from '../helpers/view';
 
@@ -124,6 +125,78 @@ describe('the iteration scope', () => {
 		// stored path alone strands every scope inside a folder anybody tidies.
 		vault.renameFolder('sprints', 'planning/sprints');
 		expect(harness.view.boardScope).toBe('planning/sprints/Sprint twelve.md');
+	});
+});
+
+describe('the scope picker', () => {
+	const picker = (containerEl: HTMLElement) => containerEl.querySelector<HTMLElement>('.pbl-scope-btn');
+
+	function entries(containerEl: HTMLElement): string[] {
+		picker(containerEl)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		return (Menu.lastShown?.items ?? []).map((mi) => mi.titleText);
+	}
+
+	it('names the product and every iteration in the model', () => {
+		const vault = sprintVault();
+		const harness = makeView(vault, OPTIONS, { base: 'Plan.base' });
+		harness.view.setProjection('board');
+		expect(entries(harness.containerEl)).toEqual(['Product', 'Sprint 12', 'Sprint 13']);
+	});
+
+	it('is absent with no iteration property, and with no Iteration note', () => {
+		// Two conditions, both required. With no notes there is nothing to choose between
+		// — `renderAxisPicker`'s refusal for a single configured axis. With no property,
+		// every entry would draw a board no card could ever reach.
+		const empty = new FakeVault();
+		empty.addFile('A PBI.md', { frontmatter: { type: 'PBI', order: 10, status: 'New' } });
+		const noNotes = makeView(empty, OPTIONS, { base: 'Plan.base' });
+		noNotes.view.setProjection('board');
+		expect(picker(noNotes.containerEl)).toBeNull();
+
+		const { iterationProperty, ...noKey } = OPTIONS;
+		expect(iterationProperty).toBe('note.iteration');
+		const noProperty = makeView(sprintVault(), noKey, { base: 'Plan.base' });
+		noProperty.view.setProjection('board');
+		expect(picker(noProperty.containerEl)).toBeNull();
+	});
+
+	it('draws on the tree as well, since it is what chooses the board to open', () => {
+		// The picker sits beside the Board button rather than inside the board, so a
+		// reader on the tree can go straight to a sprint.
+		const harness = makeView(sprintVault(), OPTIONS, { base: 'Plan.base' });
+		expect(picker(harness.containerEl)).not.toBeNull();
+	});
+
+	it('scopes the view to the note that was picked, not to its label', () => {
+		const vault = new FakeVault();
+		vault.addFile('q3/Sprint 12.md', { frontmatter: { type: 'Iteration', order: 10 } });
+		vault.addFile('q4/Sprint 12.md', { frontmatter: { type: 'Iteration', order: 20 } });
+		const harness = makeView(vault, OPTIONS, { base: 'Plan.base' });
+		harness.view.setProjection('board');
+		// Qualified only where they collide: qualifying every entry to separate a rare
+		// pair makes the ordinary case unreadable.
+		expect(entries(harness.containerEl)).toEqual(['Product', 'q3/Sprint 12', 'q4/Sprint 12']);
+
+		Menu.lastShown?.item('q4/Sprint 12')?.click();
+		expect(harness.view.boardScope).toBe('q4/Sprint 12.md');
+		expect(harness.view.projection).toBe('iteration');
+	});
+
+	it('returns the view to the product board, clearing the scope', () => {
+		const harness = makeView(sprintVault(), OPTIONS, { base: 'Plan.base' });
+		harness.view.setBoardScope(SPRINT);
+		entries(harness.containerEl);
+		Menu.lastShown?.item('Product')?.click();
+		expect(harness.view.boardScope).toBeNull();
+		expect(harness.view.projection).toBe('board');
+	});
+
+	it('checks the scope the view is on', () => {
+		const harness = makeView(sprintVault(), OPTIONS, { base: 'Plan.base' });
+		harness.view.setBoardScope(SPRINT);
+		entries(harness.containerEl);
+		const checked = (Menu.lastShown?.items ?? []).filter((mi) => mi.checked).map((mi) => mi.titleText);
+		expect(checked).toEqual(['Sprint 12']);
 	});
 });
 

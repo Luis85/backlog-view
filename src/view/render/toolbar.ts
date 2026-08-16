@@ -18,6 +18,7 @@ import {
 	pickAndRefocus,
 	refocusByKey,
 	renderOverflow,
+	renderBoardScopePicker,
 	renderProjectionZone,
 } from './toolbarControls';
 import { focusInBar } from './toolbarFit';
@@ -59,6 +60,11 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	// 1 — where am I. The switcher leads: it says what the rest of the row is about, and
 	// what the primary action beside it will make.
 	renderModeToggle(host, barEl);
+	// 1b — WHICH board the Board position opens. Beside the switcher rather than inside
+	// the projection zone, and drawn in every projection, because it is how the iteration
+	// board is REACHED: a picker that only appeared once the reader was already on the
+	// board it chooses would be a control behind the door it opens.
+	renderBoardScopePicker(host, barEl, model);
 
 	// 2 — what you came to do. The one control here that ADDS to the backlog, kept at the
 	// head of the row with the switcher: the clip at a very narrow pane runs from the
