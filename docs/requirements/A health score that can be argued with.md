@@ -21,7 +21,10 @@ lost names the rule and the items that lost it. A score that cannot be taken apa
 single opaque number this register keeps refusing.
 
 **The arithmetic is stated here, because a decomposition only holds if the sum is one
-number.** The score runs 0–100 and starts at 100. Each enabled rule declares a weight, and
+number.** The score runs 0–100 and starts at 100. Each enabled rule declares a weight — a
+finite number, zero or above, refused where it is entered and computing nothing where a saved
+configuration already holds one, because a negative weight makes a firing rule *add* points
+and a backlog scores above 100 for breaking rules — and
 deducts `weight × (items it fired on ÷ items examined)`; the deductions are subtracted and
 the result is floored at 0. So a rule that hits everything costs its whole weight, a rule
 that hits one item in fifty costs a fiftieth of it, and the decomposition is one row per
