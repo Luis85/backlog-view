@@ -196,11 +196,12 @@ the model that made it and says `Needs re-estimation` when that model moves on, 
 number never stands in for its inputs, and nothing ranks the backlog on its own behalf.
 Specification only, from a product requirements document of 2026-08-16, with **eight
 features** under it: the scoring model and its rubrics, the weighted score, the presets, the
-ranked list, the matrix, the scenarios and the decomposition. Three of the five questions it
-opened are answered in those — the partial profile renormalizes and reports its coverage, a
-weight change leaves stored totals alone and flags them, and the range-and-direction
-arithmetic is stated — and three remain genuinely open: the dozen-odd properties to bind,
-**inheritance**, which has no mechanism, and the **estimation status** as a second workflow.
+ranked list, the matrix, the scenarios and the decomposition. **Two** of the five questions it opened are answered in those — the partial profile
+renormalizes and reports its coverage, and a weight change leaves stored totals alone and
+flags them — each leaving one smaller thing behind: what the matrix draws for a thinly
+covered point, and whether a bulk re-estimation clears a hundred flags at once. **Three**
+stay open whole: the dozen-odd properties to bind, **inheritance**, which has no mechanism,
+and the **estimation status** as a second workflow.
 
 **Test Management** is a **fifth** projection's worth of design without a projection's
 worth of drawing: an end-to-end test catalog kept as work items beside the work it
