@@ -76,7 +76,21 @@ cares about.
 count is the population the base returned, counted. **Progress** is derived the way the
 backlog already derives it — from a state property and the values that count as done, over
 the descendants — so what this view names for it is that state key and that done list, not a
-`progress` key. Nothing in this plugin persists a progress figure, and requiring a mapping
+`progress` key.
+
+**"Over the descendants" is three different sums, so the arithmetic is stated here.** The
+denominator is the grouping's population, the same one every other aggregate uses. The
+numerator is the members of that population whose **own** state value is in the done list.
+Every member counts once at every depth: a parent inside the grouping is counted **beside**
+its children rather than instead of them, and no per-parent percentage is computed and then
+averaged — that would weight a ten-item feature the same as a one-item one and give two
+portfolios holding the same work different progress. This is also the one aggregate with no
+unmeasured share, and that is the exception to the denominator paragraph above rather than a
+gap in it: a
+state that is absent, empty or holds a value outside the done list is **not done**, which is
+an answer, and it is the same reading the backlog's own rollup makes. What the state key can
+be is unconfigured, and then there is no progress figure at all, like any other key nobody
+named. Nothing in this plugin persists a progress figure, and requiring a mapping
 for one would make both rollups disappear behind settings for properties that do not exist —
 or worse, invite a vault to maintain a second copy of a number the tree already answers.
 

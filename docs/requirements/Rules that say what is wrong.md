@@ -50,6 +50,21 @@ estimate, the state, the owner, the objective, the evidence link, the release, t
 edge, whatever a rule reads. A rule cannot report a missing field without being told where
 that field lives, and it may not borrow the answer from the view that writes it.
 
+**A threshold is a number against something, so each threshold rule names its operand, its
+unit and its boundary.** A configured number with no declared operand is the arbitrary answer
+this note is written against — one implementation would compare an estimate, the next a
+descendant count and the next the length of the note body, and all three would call themselves
+"oversized". Both threshold rules are therefore stated: **oversized** compares the **estimate
+key** this view already names, read as a number in whatever unit the vault estimates in, and
+reports a result whose value is **greater than** the threshold — never at it, so a threshold of
+`8` passes an eight-point item; **stale** compares the days between today and the **date key**
+this view names, and reports a result older than the threshold, on the same strict boundary.
+Neither invents a size of its own, and neither looks at how many children an item has: a
+big epic is a shape the level model already describes, not a health finding. A result whose
+operand is absent or is not a number is **not** reported by either — that is the
+missing-estimate rule's finding, and reporting it twice under two names is how one gap becomes
+two.
+
 **A rule whose inputs are not configured does not run, and says so.** It is not silently
 skipped and it never reports every item as missing something: the dashboard lists it as
 unconfigured, which is a fact about the setup rather than a finding about the backlog. That

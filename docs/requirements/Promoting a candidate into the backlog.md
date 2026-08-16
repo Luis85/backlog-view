@@ -52,14 +52,21 @@ prefilled with the type and the source link, instead of writing a note with a ty
 nothing to hold it. An item created with no position is the orphan the backlog view spends
 its own rules avoiding.
 
-**The structural properties are not settings anybody has to borrow.** `type`, `parent` and
-`order` are the plugin's own schema, fixed for every view and every vault
-([ADR 0013](../adrs/0013-fix-the-type-vocabulary-at-six-names.md) for the vocabulary, and the
-creation flow lives below the views with the rest of the kernel) — which is exactly why the
-key list this view declares is the short one: the source link and the lifecycle pair. So
-promotion in a vault with no backlog view installed writes the same three properties as
-promotion beside one, and reads nobody's options to do it. Only what a *vault* may rename is
-a per-view key, and none of these three is that.
+**The structural properties are three more keys this view names, defaulting to the same
+three suggestions.** What is fixed is the *schema* — the type vocabulary, which type may hold
+which, and where a new item ranks — because that is the kernel below every view rather than
+anybody's options. The **keys** holding it are not:
+[ADR 0013](../adrs/0013-fix-the-type-vocabulary-at-six-names.md) fixes the vocabulary and says
+in the same paragraph that the property keys stay configurable, and the backlog view resolves
+all three from its own view options today. So this view declares `type`, `parent` and `order`
+for itself, defaulting to those names — sharing a suggestion is not sharing a setting, which
+is the case [[Settings scoped to their view]] makes for exactly this pair of views. The two
+alternatives are both wrong for stated reasons: reading the backlog view's keys is the
+coupling that epic exists to prevent, and writing the three literal names produces, in a vault
+that renamed any of them, a note the backlog reader cannot recognize or place — the orphan the
+paragraph above spends the creation flow avoiding. Promotion in a vault with no backlog view
+installed therefore still writes three structural properties; it just writes them under the
+keys the promoting view was told to use.
 
 **The source link is a key this view names**, like every other property it writes, and it is
 the one promotion cannot do without: without it the promotion is an ordinary creation and the
