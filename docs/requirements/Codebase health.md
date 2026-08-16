@@ -8,8 +8,8 @@ started: ""
 finished: ""
 risk: ""
 assignee: Igmar
-start: 2026-08-03
-due: 2026-08-30
+start: ""
+due: ""
 ---
 
 # Codebase health

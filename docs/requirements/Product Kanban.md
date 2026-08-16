@@ -9,8 +9,8 @@ started: ""
 finished: ""
 risk: ""
 assignee: Chris
-start: 2026-08-03
-due: 2026-09-06
+start: ""
+due: ""
 ---
 
 # Product Kanban

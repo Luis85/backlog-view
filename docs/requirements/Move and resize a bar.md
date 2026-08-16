@@ -17,8 +17,8 @@ finished: ""
 horizon: ""
 risk: ""
 assignee: Chris
-start: ""
-due: ""
+start: 2026-08-09
+due: 2026-08-09
 ---
 
 # Move and resize a bar
