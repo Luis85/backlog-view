@@ -20,6 +20,17 @@ A validated opportunity is promoted into an epic, a feature, a PBI or whichever 
 type the vault configures. The promotion creates the backlog note through the one write
 boundary, links it back to the discovery item, and leaves the discovery item where it is.
 
+**"Validated" there describes the normal case; it is not a precondition, and nothing is
+gated on it.** The action is offered on any discovery item — the one thing it cannot do
+without is the source-link key below. Two reasons, and the second is the deciding one:
+[[Discovery readiness]] already states that nothing is refused for failing its checklist, so
+a promotion that refused would be the same view blocking on the evidence it just said it
+would only report; and a gate would need this view to hold a list of validation values that
+justify commitment, which is a judgement about somebody's product decision rather than a fact
+about their data. A team that commits to an inconclusive opportunity is doing something
+ordinary and often deliberate. The validation state stays where it was written, visible in
+discovery and unchanged by the promotion.
+
 **A type is not a position, so promotion goes through the creation flow rather than around
 it.** A promoted feature needs a parent and a rank among its siblings; a promoted epic needs
 a rank among the roots. Both are what creating an item already decides — the parent picked or

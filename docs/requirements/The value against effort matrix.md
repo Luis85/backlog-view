@@ -30,8 +30,9 @@ be. A team that means "expensive starts at 4 of 5" says so by moving the line, a
 shows where the lines are.
 
 **A thinly estimated item is plotted and marked, never hidden.** The epic leaves the
-treatment to this feature and it is chosen here: every item with a total appears, and its
-point carries its **coverage** — how much of the model the position rests on — so a point
+treatment to this feature and it is chosen here: every item **carrying both axis values**
+appears — a point needs two coordinates, and an item with a value and no effort has one — and
+its point carries its **coverage** — how much of the model the position rests on — so a point
 derived from two dimensions reads differently from one derived from eight without being
 argued away. There is **no threshold below which a point is dropped**: hiding an item because
 its estimate is thin is the suppression [[The weighted score]] already refused, and it is
