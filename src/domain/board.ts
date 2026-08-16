@@ -28,6 +28,29 @@ export interface BoardColumn {
 	/** True when the state counts as done — the column is styled as finished. */
 	done: boolean;
 	/**
+	 * Which of the iteration board's three buckets this column IS — absent on the product
+	 * and Deliverables boards, where the state is the identity.
+	 *
+	 * A bucket is not its state, and the column has to say both. `state` is *what a drop
+	 * writes*, which has two values (a string, or the key removal); a bucket needs an
+	 * identity that survives having nothing to write at all. Two buckets with nothing to
+	 * write both hold `state: null`, and `columnKey` lowercases `state ?? ''` — so without
+	 * this field In progress and Resolved would be ONE fold, colliding with Open's
+	 * legitimate key removal on top.
+	 */
+	bucket?: IterationBucket;
+	/**
+	 * Whether a card may be dropped here. Always true on the other two boards, where every
+	 * column writes a state; false for an iteration bucket whose representative is
+	 * `undefined`, so the refusal happens at the gesture rather than after it.
+	 *
+	 * Stored rather than re-asked of {@link bucketRepresentative} at each site only
+	 * because the sites that need it — the fold key, the drop wiring, the `Set state`
+	 * list — are in `view/` and would each have to thread `settings` to reach the rule. It
+	 * is set by the same call that fills `state`, so the two cannot disagree.
+	 */
+	takesDrop: boolean;
+	/**
 	 * True for a column minted from an observed value the configured workflow does
 	 * not name. Appended after the configured columns and visibly outside the
 	 * workflow: a nudge to adopt the state or re-state the items, never a dropped card.
@@ -91,6 +114,60 @@ export interface BoardModel {
 	columns: BoardColumn[];
 	/** Result cards across all columns — the column counts sum to this. */
 	cardCount: number;
+}
+
+/** The three columns an iteration board narrows the product workflow into. */
+export type IterationBucket = 'open' | 'inProgress' | 'resolved';
+
+/** The label each bucket wears, in the order the board draws them. */
+const BUCKET_LABELS: Record<IterationBucket, string> = {
+	open: 'Open',
+	inProgress: 'In progress',
+	resolved: 'Resolved',
+};
+
+/**
+ * Which of the three columns a product state reads into. The precedence is stated once,
+ * here, because a value read by two membership tests is a value two call sites will
+ * eventually disagree about: RESOLVED wins, and the product's own done values are folded
+ * into it whether or not `iterationResolvedStates` names them — an item the product calls
+ * finished can never be drawn as still in progress.
+ *
+ * No state at all reads as Open. A note nobody has moved has not been started, which is
+ * the same reading the product board's no-state column already carries.
+ */
+export function bucketOf(state: string | null, settings: BacklogSettings): IterationBucket {
+	if (state === null) return 'open';
+	if (settings.iterationResolvedStates.some((v) => sameValue(v, state))) return 'resolved';
+	if (settings.doneValues.some((v) => sameValue(v, state))) return 'resolved';
+	if (settings.iterationOpenStates.some((v) => sameValue(v, state))) return 'open';
+	return 'inProgress';
+}
+
+/**
+ * What a drop on a bucket writes: the first state THE BUCKET RULE ITSELF places there.
+ *
+ * Asked of the reading and never of the list, which is the whole rule.
+ * `iterationOpenStates` can legitimately name a state the precedence above routes to
+ * Resolved, and writing it would land the card in a column it was not dropped on — the
+ * board appearing to disobey the gesture, which is worse than a refusal. Only Open can
+ * break it today; the rule is general because the next configuration to expose it is the
+ * one nobody thought of.
+ *
+ * Three answers, and the third is not an error: a state to write, `null` for Open's key
+ * removal, and `undefined` for a bucket that takes NO DROP. Open alone can fall back to
+ * the removal, because removing the state key is what "not started" MEANS — while a
+ * middle or a finished column with nothing to write has no such equivalent, and offering
+ * one would clear a state in the name of setting it.
+ */
+export function bucketRepresentative(bucket: IterationBucket, settings: BacklogSettings): string | null | undefined {
+	const from = (list: string[]): string | undefined => list.find((v) => bucketOf(v, settings) === bucket);
+	if (bucket === 'open') return from(settings.iterationOpenStates) ?? null;
+	if (bucket === 'resolved') return from(settings.iterationResolvedStates) ?? from(settings.doneValues);
+	// The declared product vocabulary, which is the only list that can hold a middle
+	// state: In progress is defined by what the two outer lists do NOT name, so it has no
+	// list of its own to read.
+	return from(settings.states);
 }
 
 /** The label of the leading column for items without the state property. */
@@ -503,13 +580,85 @@ export function boardColumns(
 		return (state !== null ? byValue.get(state.toLowerCase()) : undefined) ?? noState;
 	};
 
-	const cards = candidates.filter(visible);
+	return fillColumns(columns, columnFor, candidates, { visible, population, owned });
+}
+
+/**
+ * The iteration board's three columns over the population it is handed.
+ *
+ * The state key is read DIRECTLY (`settings.stateKey`) rather than through
+ * `stateKeyFor`, and that is the decision this board rests on: `stateKeyFor` dispatches
+ * on the item, so a `Deliverable` would answer with the Deliverables key and one board
+ * would be drawing two vocabularies. An iteration holds whatever kind of work was
+ * committed to the fortnight, and the whole point of narrowing the PRODUCT workflow is
+ * that there is one of it.
+ *
+ * The predicates default to "everything counts", which is the shape a domain test wants;
+ * the view passes the quick filter and the completed toggle exactly as it does for the
+ * other two boards.
+ */
+export function iterationBuckets(
+	population: BacklogItem[],
+	settings: BacklogSettings,
+	visible: (item: BacklogItem) => boolean = () => true,
+	counted: (item: BacklogItem) => boolean = visible,
+	owned: (item: BacklogItem) => boolean = counted,
+): BoardModel {
+	const columns = (Object.keys(BUCKET_LABELS) as IterationBucket[]).map((bucket) => {
+		const representative = bucketRepresentative(bucket, settings);
+		return {
+			// `undefined` is not a state and must never be stored as one: a bucket with
+			// nothing to write holds `null` and says so through `takesDrop`.
+			state: representative ?? null,
+			label: BUCKET_LABELS[bucket],
+			done: bucket === 'resolved',
+			bucket,
+			takesDrop: representative !== undefined,
+			// Fixed three, so every value has a home and nothing is ever outside the
+			// workflow. A limit and a policy are per STATE and a bucket is not one —
+			// three columns over five states have no agreement to state.
+			outsideWorkflow: false,
+			cards: [],
+			count: 0,
+			fullCount: 0,
+			limit: null,
+			policy: '',
+			openWork: false,
+			held: 0,
+		} satisfies BoardColumn;
+	});
+	const byBucket = new Map(columns.map((col) => [col.bucket, col]));
+	const columnFor = (card: BacklogItem): BoardColumn =>
+		byBucket.get(bucketOf(settings.stateKey ? card.stateValue : null, settings)) ?? columns[0];
+	return fillColumns(columns, columnFor, population, { visible, population: counted, owned });
+}
+
+/**
+ * Placing the cards, ordering them and counting them — everything a board does once its
+ * columns exist and something has said which column a card belongs to.
+ *
+ * Shared by the two builders rather than written twice, because none of it is about
+ * WHERE the columns came from: the requirements board matches a state against a
+ * vocabulary and the iteration board reads one into a bucket, and both then owe the
+ * reader the same sort, the same context-card exclusion and the same counts.
+ */
+function fillColumns(
+	columns: BoardColumn[],
+	columnFor: (card: BacklogItem) => BoardColumn,
+	candidates: BacklogItem[],
+	asks: {
+		visible: (item: BacklogItem) => boolean;
+		population: (item: BacklogItem) => boolean;
+		owned: (item: BacklogItem) => boolean;
+	},
+): BoardModel {
+	const cards = candidates.filter(asks.visible);
 	const sortIndex = new Map<BacklogItem, number>();
 	for (const card of cards) {
 		columnFor(card).cards.push(card);
-		sortIndex.set(card, card.outsideFilter ? firstPlacedIndex(card, visible) : card.entryIndex);
+		sortIndex.set(card, card.outsideFilter ? firstPlacedIndex(card, asks.visible) : card.entryIndex);
 	}
-	tallyColumns(candidates, columnFor, { population, owned });
+	tallyColumns(candidates, columnFor, asks);
 	let cardCount = 0;
 	for (const col of columns) {
 		col.cards.sort((a, b) => (sortIndex.get(a) ?? 0) - (sortIndex.get(b) ?? 0) || a.entryIndex - b.entryIndex);
@@ -563,6 +712,9 @@ function workflowColumns(
 		state,
 		label: state ?? NO_STATE_LABEL,
 		done: state !== null && done.has(state.toLowerCase()),
+		// Every column of a state-matched board takes a drop: it exists because a state
+		// names it, and that state is what the drop writes.
+		takesDrop: true,
 		outsideWorkflow,
 		cards: [],
 		count: 0,
