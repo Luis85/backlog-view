@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { makeView, useViewHarness } from '../helpers/view';
 import { gridDrag, overlayOf } from '../helpers/dnd';
-import { gripOf, rowFor } from '../helpers/roadmap';
+import { gripOf, markFor, rowFor } from '../helpers/roadmap';
 import { TIMELINE_LEAD_PX } from '../../src/view/render/timeline';
 import { readDate, todayStamp } from '../../src/domain/noteFields';
 import { addDays, formatCivil, MAX_TIMELINE_DAYS, MIN_BAR_PX, weekendOffsetDays } from '../../src/domain/timeline';
@@ -115,11 +115,14 @@ describe('grid rhythm', () => {
 });
 
 describe('row tracking', () => {
-	it('stripes alternate rows from the render pass', () => {
+	it('stripes alternate rows from the render pass, counting the milestones’ header as none', () => {
+		// Three results and two rows: the marker among them draws in the milestones' shared
+		// header instead. The header is chrome and never reaches the counter — counting it
+		// would flip the parity of every work row beneath it.
 		const { containerEl } = datedRoadmap(furnishedVault());
 		const rows = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-timeline-row'));
-		expect(rows.length).toBe(3);
-		expect(rows.map((r) => r.classList.contains('pbl-row-even'))).toEqual([false, true, false]);
+		expect(rows.length).toBe(2);
+		expect(rows.map((r) => r.classList.contains('pbl-row-even'))).toEqual([false, true]);
 	});
 });
 
@@ -386,12 +389,14 @@ describe('workflow state on the dated axis', () => {
 		expect(words(row)).toBe('Done — done');
 	});
 
-	it('folds the state into a marker row, whose explicit label replaces its content', () => {
+	it('folds the state into a marker’s own label, which is all a diamond has', () => {
 		const containerEl = statefulRoadmap();
 
-		// The name is the whole of what a marker row announces, so hidden text inside it
-		// would be dropped: the words have to be in the label itself.
-		expect(timelineRow(containerEl, 'Cutover').getAttribute('aria-label')).toBe(
+		// A marker draws in the milestones' shared row since 2026-08-16, so there is no row
+		// to hold a `.pbl-sr-only` span and the mark's own label is the whole of what it
+		// announces. Without these words `pbl-done` is a green diamond and nothing else —
+		// state in colour alone, which is exactly what `stateNote` exists to prevent.
+		expect(markFor(containerEl, 'Cutover').querySelector('.pbl-sr-only')?.textContent).toBe(
 			'Cutover — Milestone 2026-09-15 — Active',
 		);
 	});

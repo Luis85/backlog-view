@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { Menu } from '../helpers/obsidian-mock';
 import { Harness, key, makeView, treeOf, useViewHarness } from '../helpers/view';
-import { bucketByName, laneRoadmap, rowFor } from '../helpers/roadmap';
+import { bucketByName, laneRoadmap, markFor, rowFor } from '../helpers/roadmap';
 
 useViewHarness();
 
@@ -43,6 +43,13 @@ function chipMenu(el: HTMLElement | null | undefined): Menu {
 	if (!chip) throw new Error('no match count chip drawn');
 	chip.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 	if (!Menu.lastShown) throw new Error('the count chip opened no menu');
+	return Menu.lastShown;
+}
+
+/** The row's own context menu — where a chip's matches are named in full. */
+function itemMenu(row: HTMLElement): Menu {
+	row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+	if (!Menu.lastShown) throw new Error('the row opened no menu');
 	return Menu.lastShown;
 }
 
@@ -293,6 +300,31 @@ describe('what a surface already shows, it does not name twice', () => {
 		const row = rowFor(containerEl, 'Epic A');
 		expect(matchCountOn(row)).toBe('1');
 		expect(chipMenu(row).items.map((i) => i.titleText)).toContain('Open in new tab');
+	});
+
+	it('a MILESTONE drawn in the shared row is already on screen, so its parent does not name it', () => {
+		// A marker draws as a diamond in the milestones' row rather than a bar row of its own
+		// ([[Milestones in one row on the dated axis]]), and a surface that draws an item
+		// without REGISTERING it reads as a surface that did not draw it: `nameMatches` takes
+		// `carded` from `ctx.placed`, so an unregistered diamond made its parent report a
+		// match the reader is looking at, at the top of the same grid. Found in review on both
+		// grid axes at once, since the row is one row.
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, start: '2026-08-01', due: '2026-08-10' } });
+		vault.addFile('Ship Login.md', {
+			frontmatter: { type: 'Milestone', order: 10, due: '2026-08-20' },
+			parentLink: 'Epic A',
+		});
+		const { containerEl, view } = roadmap(vault, { ...DATES });
+		view.setFilter('Login');
+
+		// The diamond really is drawn, or "no match counted" would pass on an empty grid.
+		expect(markFor(containerEl, 'Ship Login')).not.toBeNull();
+		expect(matchCountOn(rowFor(containerEl, 'Epic A'))).toBe('');
+		// And the row menu is the chip's own list, so it must agree: no `Open match` for a
+		// note the reader can already see.
+		const menu = itemMenu(rowFor(containerEl, 'Epic A')!);
+		expect(menu.items.map((i) => i.titleText).filter((t) => t.includes('Ship Login'))).toEqual([]);
 	});
 
 	it('a bucket card lists that same child, so it is not named a second time', () => {

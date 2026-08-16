@@ -39,9 +39,17 @@ the repository is open as a vault with `docs/Product Backlog.base` showing the t
 
 Switch to the roadmap's dated axis.
 
-- **The cyan badge and diamond** — `Ship the roadmap epic`'s row carries the cyan
-  `diamond` badge ([[Tree badges and icons]] checks the same badge in the tree; confirm
-  it also reads correctly here), and its bar is a diamond mark rather than a rectangle.
+- **One row of diamonds, at the top** (added 2026-08-16,
+  [[Milestones in one row on the dated axis]]) — every milestone is a diamond in a single
+  `Milestones` row drawn ahead of the first bar, not a row apiece. Confirm the row reads as a
+  header rather than as a work row, that the bare diamonds are findable in it without the
+  lead column that used to name them, and that each one lines up with its own full-height
+  line. With two milestones a few weeks apart at a coarse zoom, confirm they read as two
+  dates rather than one — the open half of that note's packing question, since only marks on
+  the SAME drawn day are stacked.
+- **The cyan diamond** — `Ship the roadmap epic` draws a diamond mark rather than a
+  rectangle, in cyan. Its badge is the tree's to check ([[Tree badges and icons]]): the row
+  that used to carry it here is gone.
 - **The full-height line and its label** — a line runs the whole grid at the milestone's
   date, behind the bars, with a label in the header band naming it. Confirm the line
   does not visually compete with the bars it crosses, and the label sits legibly above

@@ -130,6 +130,20 @@ export interface HorizonBucket {
  */
 const MILESTONE_LANE = 'Milestones';
 
+/**
+ * The milestones' own row, holding the bars handed to it. **BOTH grid axes draw one**, which
+ * is why it is a function here rather than an object literal inside `deriveLanes`: the name
+ * and the three empty fields are the same statement on either, and a second literal spelt in
+ * `view/render/lanes.ts` is a caption free to drift from the one the fold key, the roster
+ * refusals and `assignableLanes` all read.
+ *
+ * A row is still minted by the bar that LANDS in it: the caller decides whether an empty one
+ * is drawn at all, and neither axis draws it empty.
+ */
+export function markerLane(bars: TimelineBar[]): ResourceLane {
+	return { name: MILESTONE_LANE, declared: true, markers: true, bars, absences: [], context: [] };
+}
+
 export interface ResourceLane {
 	/** The assignee value this row stands for, in its first-seen casing. */
 	name: string;
@@ -490,7 +504,7 @@ function deriveLanes(
 	roadmap: RoadmapModel,
 	absences: Absence[],
 ): void {
-	const markers: ResourceLane = { name: MILESTONE_LANE, declared: true, markers: true, bars: [], absences: [], context: [] };
+	const markers = markerLane([]);
 	const lanes = settings.resourceNames.map(
 		(name): ResourceLane => ({ name, declared: true, markers: false, bars: [], absences: [], context: [] }),
 	);

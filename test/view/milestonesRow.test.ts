@@ -65,12 +65,18 @@ describe('the milestones row', () => {
 		expect(alice.querySelector('.pbl-chevron')).not.toBeNull();
 	});
 
-	it('names each diamond, since the row’s lead column names none of them', () => {
+	it('names each diamond in CONTENT, since a plain div may carry no accessible name', () => {
+		// `.pbl-bar` is a div, so its implicit role is `generic` and ARIA prohibits a name on
+		// it — an `aria-label` there may be announced by nobody, which for a mark with no row
+		// of its own means the name is lost rather than moved. `stateNote` states that rule
+		// for this element and this row broke it until 2026-08-16 (found in review).
 		const harness = laneRoadmap(markerVault());
 		const diamonds = lanesOf(harness.containerEl)[0].querySelectorAll<HTMLElement>('.pbl-bar-milestone');
 
-		expect(diamonds[0].getAttribute('aria-label')).toContain('Ship');
-		expect(diamonds[0].getAttribute('aria-label')).toContain('2026-08-07');
+		const said = diamonds[0].querySelector('.pbl-sr-only')?.textContent ?? '';
+		expect(said).toContain('Ship');
+		expect(said).toContain('2026-08-07');
+		expect(diamonds[0].hasAttribute('aria-label')).toBe(false);
 	});
 
 	it('withholds the absence control — the row stands for nobody', () => {
@@ -86,7 +92,7 @@ describe('the milestones row', () => {
 		const marks = lanesOf(containerEl)[0].querySelectorAll<HTMLElement>('.pbl-bar-milestone');
 		return new Map(
 			Array.from(marks, (el) => [
-				(el.getAttribute('aria-label') ?? '').split(' — ')[0],
+				(el.querySelector('.pbl-sr-only')?.textContent ?? '').split(' — ')[0],
 				el.style.getPropertyValue('--pbl-sublane'),
 			]),
 		);

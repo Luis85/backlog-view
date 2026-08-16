@@ -281,6 +281,26 @@ describe('the legend keys exactly the colours the grid draws', () => {
 		return slot ?? 'pbl-legend-other';
 	}
 
+	/**
+	 * What a MARKER's diamond draws. Asked of the mark rather than of a row, because since
+	 * 2026-08-16 a marker has none on either grid axis — it is a diamond in the milestones'
+	 * shared row, and `drawMarkerDiamonds` puts `pbl-done` on the mark for exactly that
+	 * reason: the row is shared and one marker being finished says nothing about the next.
+	 * There is no state slot to find: a diamond takes no palette paint.
+	 */
+	function markColourKey(mark: HTMLElement): string {
+		if (mark.classList.contains('pbl-done')) return 'pbl-legend-done';
+		if (mark.classList.contains('pbl-bar-milestone')) return 'pbl-legend-milestone';
+		return 'pbl-legend-other';
+	}
+
+	/** Every colour this grid actually painted — the work rows AND the milestones' marks. */
+	function drawnKeys(containerEl: HTMLElement): string[] {
+		const rows = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-timeline-row'));
+		const marks = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-lane-markers .pbl-bar'));
+		return [...rows.map(barColourKey), ...marks.map(markColourKey)];
+	}
+
 	function swatchKeys(containerEl: HTMLElement): string[] {
 		return Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-legend-swatch')).map(
 			(el) => Array.from(el.classList).find((c) => c !== 'pbl-legend-swatch') ?? '',
@@ -337,13 +357,12 @@ describe('the legend keys exactly the colours the grid draws', () => {
 		view.setProjection('roadmap');
 
 		const keyed = new Set(swatchKeys(containerEl));
-		const rows = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-timeline-row'));
-		expect(rows.length).toBeGreaterThan(0);
+		const drawn = drawnKeys(containerEl);
+		expect(drawn.length).toBeGreaterThan(0);
 
 		// Every colour drawn is keyed.
-		for (const row of rows) {
-			const title = row.querySelector('.pbl-card-title')?.textContent;
-			expect(keyed, `${title} draws ${barColourKey(row)}, which the legend does not key`).toContain(barColourKey(row));
+		for (const key of drawn) {
+			expect(keyed, `the grid draws ${key}, which the legend does not key`).toContain(key);
 		}
 		// Two swatches may share a colour ONLY where the vocabulary outruns the palette,
 		// which `STATE_COLOR_SLOTS` documents as its accepted limit. Anywhere else a colour
@@ -355,20 +374,18 @@ describe('the legend keys exactly the colours the grid draws', () => {
 		// Today is always drawn, so it is always keyed.
 		expect(keyed).toContain('pbl-legend-today');
 		// Milestone is NOT: most of these cases carry no marker at all, so nothing draws
-		// the cyan diamond and the swatch must not claim a colour absent from every row —
-		// defect 2 of this pass, keyed unconditionally before this fix. Asked of the rows
-		// rather than of the case's own `marker` field, so this states the rule rather
-		// than restating the fixture.
-		const milestoneDrawn = rows.some((row) => barColourKey(row) === 'pbl-legend-milestone');
-		expect(keyed.has('pbl-legend-milestone')).toBe(milestoneDrawn);
+		// the cyan diamond and the swatch must not claim a colour absent from the grid —
+		// defect 2 of this pass, keyed unconditionally before this fix. Asked of what was
+		// PAINTED rather than of the case's own `marker` field, so this states the rule
+		// rather than restating the fixture.
+		expect(keyed.has('pbl-legend-milestone')).toBe(drawn.includes('pbl-legend-milestone'));
 		// The accent, both ways round for the same reason — the loop above only ever
-		// asks "is what this row draws keyed", so a swatch keying a colour NO row draws
-		// passed it. `renderBarRow` reports the accent only where no other override
-		// won, the milestone diamond included: drop that term and an in-window marker
-		// reports its own cyan AND the accent, and `Other` appears for a colour nothing
-		// on this grid paints.
-		const accentDrawn = rows.some((row) => barColourKey(row) === 'pbl-legend-other');
-		expect(keyed.has('pbl-legend-other')).toBe(accentDrawn);
+		// asks "is what this mark draws keyed", so a swatch keying a colour NOTHING draws
+		// passed it. Both drawers report the accent only where no other override won, the
+		// milestone diamond included: drop that term and an in-window marker reports its
+		// own cyan AND the accent, and `Other` appears for a colour nothing on this grid
+		// paints.
+		expect(keyed.has('pbl-legend-other')).toBe(drawn.includes('pbl-legend-other'));
 	});
 });
 
@@ -472,7 +489,9 @@ describe('a milestone line is cyan whatever its own bar draws', () => {
 
 		// The cyan line really is on the grid, and its bar really did go green.
 		expect(containerEl.querySelector('.pbl-milestone-line')).not.toBeNull();
-		expect(containerEl.querySelector('.pbl-timeline-row.pbl-done .pbl-bar')).not.toBeNull();
+		// The done class is on the MARK, not on a row: the milestones' row is shared, and one
+		// marker being finished says nothing about the next.
+		expect(containerEl.querySelector('.pbl-lane-markers .pbl-bar.pbl-done')).not.toBeNull();
 		expect(swatchLabels(containerEl)).toContain('Milestone');
 	});
 

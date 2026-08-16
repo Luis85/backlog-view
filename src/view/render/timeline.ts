@@ -1,8 +1,8 @@
 import { setTooltip } from 'obsidian';
 import { drawIcon } from './icons';
 import { renderBarLabel } from './barLabel';
-import { bandMount, progressNote, renderBarProgress } from './barProgress';
-import { rollupReport, RowContext } from './columns';
+import { bandMount, renderBarProgress } from './barProgress';
+import { RowContext } from './columns';
 import {
 	barClasses,
 	drawBandCollision,
@@ -13,6 +13,7 @@ import {
 	renderLaneHead,
 	renderLaneRowDescription,
 	spanText,
+	stateNote,
 	TimelineEntry,
 } from './lanes';
 import { createCard, wireCardActivation } from './board';
@@ -26,7 +27,6 @@ import { BacklogViewHost, BarColors, DrawnColors } from '../host';
 import { BacklogItem } from '../../domain/model';
 import { barHolds, ShelfCard, TimelineBar, TimelineRow } from '../../domain/bars';
 import { dependencyArrows } from '../../domain/dependencies';
-import { isMarkerType } from '../../domain/itemTypes';
 import {
 	ownWorkflowReading,
 	paletteFor,
@@ -415,20 +415,31 @@ function drawEntries(entries: TimelineEntry[], pass: EntryPass): void {
 	const { scale, laneElement } = pass.drawing;
 	let drawnRows = 0;
 	let lane: ResourceLane | null = null;
-	// Both things a line of a band owes, from the ONE place a line is finished: whose row
-	// it is in (the header is a sibling div and cannot label what follows it) and its
-	// membership of the band, which has no container to name and so is a LIST of siblings.
-	// `named` is false for the header alone, which already carries the resource's name as
-	// its own content.
-	const inBand = (el: HTMLElement, named = true): void => {
+	// Both things a ROW of a band owes, from the ONE place a row is finished: whose row it is
+	// in (the header is a sibling div and cannot label what follows it) and its membership of
+	// the band, which has no container to name and so is a LIST of siblings. A header needs
+	// neither — it names itself, and it registers as its OWN lane below.
+	const inBand = (el: HTMLElement): void => {
 		if (!lane) return;
-		if (named) renderLaneRowDescription(el, lane.name);
+		renderLaneRowDescription(el, lane.name);
 		laneElement?.(el, lane);
 	};
 	for (const entry of entries) {
 		if (entry.kind === 'lane') {
-			lane = entry.lane;
-			inBand(drawBand(entry, pass), false);
+			// Drawn on its own line and reported after, NEVER as `laneElement?.(drawBand(…))`:
+			// an optional call whose callee is null skips its ARGUMENTS too, so on the dated
+			// axis — where `laneElement` is null by definition — that spelling drew no header
+			// at all and the milestones' row silently vanished while its lines still crossed
+			// the grid.
+			const head = drawBand(entry, pass);
+			// The header belongs to its own row whatever that row is, the milestones' included:
+			// a release in it is a real gesture, and what it MEANS is the caller's business.
+			laneElement?.(head, entry.lane);
+			// It opens no BAND for the rows after it, though. The milestones' row stands for no
+			// resource, and on the DATED axis it is the first entry with every work row behind
+			// it and no resource lane ever following — so left set, each of those rows would be
+			// described as "Assigned to Milestones" and washed with absences it cannot have.
+			lane = entry.lane.markers ? null : entry.lane;
 			continue;
 		}
 		let row: HTMLElement;
@@ -656,7 +667,7 @@ function renderBarRow(
 	wireBarLink(ctx, { dnd: mounts.dnd, content: mounts.content, row, barEl: el, outside: geometry.outside, item: bar.item });
 	const label = renderBarLabel(track, bar, geometry, scale, window);
 	renderBarProgress(ctx.host, { row, bar: bandMount(el, drawnWidthPx, geometry), lead }, bar.item);
-	renderRowFacts(row, ctx, bar, { dates, own, conflictedPrereqs: mounts.conflictedPrereqs, lead });
+	renderRowFacts(row, ctx, bar, { own, conflictedPrereqs: mounts.conflictedPrereqs, lead });
 	// The one caller that passes a fold: this row has a chevron, so "clicking an item
 	// expands or collapses it" means here exactly what it means in the tree. Its two
 	// answers are this axis's own — `entry.hasChildren` is what `timelineRows` decided
@@ -688,25 +699,28 @@ function renderBarRow(
  * Every fact this row states beyond the bar's own colour and shape: its workflow
  * state, what it waits for, and which of that conflicts — extracted out of
  * `renderBarRow` to keep that function's own branching under budget, since these
- * four guards are independent of everything else it does.
+ * guards are independent of everything else it does.
  *
- * The row is the timeline's one selection stop, so a MARKER'S row is where the line
- * and the diamond's facts have to be readable (criterion 4a: neither is focusable,
- * so nothing about a milestone may exist only under a hover). An ordinary row is
- * left to its content-derived name — badge, title, and the bar's own `aria-label`
- * (`dates`), which the accessible-name computation already folds in — the same
- * reason `createCard`'s outside marker uses `aria-description` rather than
- * `aria-label`: an explicit label REPLACES that name instead of adding to it, and
- * would cost every dated row its type word for a fact the bar already states. A
- * marker's explicit label therefore REPLACES the row's content, the hidden state
- * and dependency spans included, so the same words are folded into it instead.
+ * The row is left to its content-derived name — badge, title, and the bar's own
+ * `aria-label` (`dates`), which the accessible-name computation already folds in — the
+ * same reason `createCard`'s outside marker uses `aria-description` rather than
+ * `aria-label`: an explicit label REPLACES that name instead of adding to it, and would
+ * cost every dated row its type word for a fact the bar already states.
+ *
+ * **There is no marker branch here any more, and its absence is the rule rather than an
+ * omission.** One stood here writing a marker's explicit label — its dates, its state, what
+ * it waits for and its rollup, folded into one string because the label replaced the row's
+ * own content. Since 2026-08-16 a marker draws in the milestones' shared row on BOTH grid
+ * axes, so `renderBarRow` never sees one and the branch was unreachable; a branch nothing can
+ * reach is a claim nothing keeps. What that costs a marker with descendants — the rollup it
+ * announced and nothing else states — is recorded in
+ * [[Milestones out of the resource rows]] rather than kept as dead code.
  */
 function renderRowFacts(
 	row: HTMLElement,
 	ctx: RowContext,
 	bar: TimelineBar,
 	said: {
-		dates: string;
 		own: WorkflowReading;
 		conflictedPrereqs: ReadonlyMap<string, ReadonlySet<string>>;
 		lead: HTMLElement;
@@ -714,7 +728,7 @@ function renderRowFacts(
 ): void {
 	// Said in words on the row itself, because on this axis the state is otherwise a
 	// bar COLOUR and nothing else — see `stateNote`.
-	const { dates, own, conflictedPrereqs, lead } = said;
+	const { own, conflictedPrereqs, lead } = said;
 	const state = stateNote(stateKeyFor(ctx.host.settings, bar.item), own);
 	if (state) row.createSpan({ cls: 'pbl-sr-only', text: state });
 	// What this row waits for, which of those conflicts, and which is broken (1d) —
@@ -740,18 +754,6 @@ function renderRowFacts(
 		// screen reader. The row's own accessible name already carries it, so the tooltip
 		// is a second route to one fact rather than the only route to a hidden one.
 		setTooltip(lead, `${bar.item.title} — ${waits}`);
-	}
-	if (isMarkerType(bar.item.typeName)) {
-		// The label REPLACES this row's content, and the progress span `renderBarProgress`
-		// just put there is part of it — so a marker with descendants says its rollup here
-		// or says it to nobody. A marker is a point by the ladder and not by enforcement:
-		// `childTypeChoices` offers it no children and refuses no deliberate move, while
-		// `assignAll` counts by structure. Same words as the span, from the same report.
-		const progress = progressNote(rollupReport(ctx.host, bar.item));
-		row.setAttribute(
-			'aria-label',
-			`${bar.item.title} — ${dates}${state ? ` — ${state}` : ''}${waits ? ` — ${waits}` : ''}${progress ? ` — ${progress}` : ''}`,
-		);
 	}
 }
 
@@ -800,30 +802,6 @@ function renderRowChevron(ctx: RowContext, lead: HTMLElement, entry: TimelineRow
 function refocusPane(host: BacklogViewHost): void {
 	host.roadmap?.scroller?.closest<HTMLElement>('.pbl-tree')?.focus();
 }
-
-/**
- * The row's workflow state in words, or '' where there is none to say.
- *
- * This axis draws state as a bar COLOUR and nothing else: `renderStateChip`'s only call
- * site is a tree row's own column, so without these words the
- * slot colours are the whole of it — unreadable to a screen reader, and colour alone
- * for everyone else (WCAG 1.4.1). Done is spelt out for the same reason: `pbl-done` is a
- * class and a green bar.
- *
- * Visually hidden text in the ROW's content, not an `aria-label` anywhere. `.pbl-bar` is
- * a plain div — role `generic`, where ARIA prohibits an accessible name, so appending to
- * the label it already carries may be announced by nobody — and a label on the row would
- * REPLACE the badge and title the row derives its name from, which is exactly what
- * `renderBarRow` avoids for an ordinary row. Content adds to that name instead. It stays
- * out of the visible row on purpose: the layout is a lead column and a track, and a
- * sixth thing in the lead is what the colour was chosen to avoid.
- */
-function stateNote(stateKey: string, reading: WorkflowReading): string {
-	if (!stateKey) return '';
-	if (reading.done) return reading.value === null ? 'Done' : `${reading.value} — done`;
-	return reading.value ?? '';
-}
-
 
 
 function todayOffset(window: TimelineWindow, today: CivilDate, scale: TimelineScale): number {

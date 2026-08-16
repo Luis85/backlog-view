@@ -6,14 +6,13 @@ import { RowContext } from './columns';
 import { renderAllDoneState, renderEmptyState, renderFilterEmptyState } from './emptyStates';
 import { renderContextStrip, renderShelf, shelfRemoval } from './shelf';
 import { syncShelfTabStops } from './shelfControls';
-import { barEntries, laneEntries } from './lanes';
+import { datedEntries, laneEntries } from './lanes';
 import { renderTimeline, TimelineRender } from './timeline';
 import { BacklogViewHost, DrawnColors, PlacedMount, RoadmapSnapshot, ScrollBox } from '../host';
 import { CardDragController } from '../interactions/cardDrag';
 import { newItemType, promptCreateItem } from '../interactions/create';
 import { gestureAt, previewer, submitGesture, TimelineParts, wireTimelineDrag } from '../interactions/timelineDrag';
 import { StatePalette, statePalettes } from '../../domain/board';
-import { timelineRows } from '../../domain/bars';
 import { isMarkerType } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
 import { axisPopulation, buildRoadmap, HorizonBucket, ResourceLane, RoadmapAxis, RoadmapModel } from '../../domain/roadmap';
@@ -190,8 +189,10 @@ interface GridDrawing {
  * **The entry list.** Both ask `timelineRows` about what a collapsed bar above them is
  * holding shut — here rather than inside `buildRoadmap`, because collapse is the view's own
  * state and a row hidden by a disclosure has not become unplaced. The difference is the
- * ARGUMENT: the dated axis asks it once, of every bar on the grid, and the resources axis
- * asks it once PER BAND, which is what confines a chevron to its own row.
+ * ARGUMENT: the dated axis asks it once, of the work bars on the grid, and the resources axis
+ * asks it once PER BAND, which is what confines a chevron to its own row. Both also draw the
+ * milestones' shared row ahead of everything else and keep its markers out of that argument —
+ * `datedEntries` and `laneEntries` respectively, one rule stated per entry list.
  *
  * **What a release MEANS.** Both axes read the pointer's X as a date, from one module
  * (`interactions/timelineDrag.ts`); what differs is what that answer is combined with.
@@ -220,7 +221,7 @@ function renderGridAxis(
 					lane: (name) => ctx.host.isLaneCollapsed(name),
 					row: (path) => ctx.host.isCollapsed(path),
 				})
-			: barEntries(timelineRows(roadmap.bars, (path) => ctx.host.isCollapsed(path)));
+			: datedEntries(roadmap.bars, (path) => ctx.host.isCollapsed(path));
 	const band: { el: HTMLElement; lane: ResourceLane }[] = [];
 	const timeline = renderTimeline(ctx, frameEl, entries, {
 		today,

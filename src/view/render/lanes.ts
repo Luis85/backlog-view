@@ -1,20 +1,21 @@
 import { setTooltip } from 'obsidian';
 import { t } from '../../i18n/t';
-import { createCard, wireCardActivation } from './board';
+import { createCard, wireCardActivation, wireItemMenu, wireOpenGestures } from './board';
 import { renderBarProgress } from './barProgress';
 import { RowContext } from './columns';
 import { drawIcon } from './icons';
-import { fromRowControl, renderBadge, renderChevron, renderTitleText } from './rows';
+import { renderBadge, renderChevron, renderTitleText } from './rows';
 import { promptAddAbsence, showAbsenceMenu } from '../interactions/absences';
 import { CardDragController } from '../interactions/cardDrag';
 import { wireBarLink } from '../interactions/linkDrag';
 import { BacklogViewHost, DrawnColors } from '../host';
 import { Absence, absencesConfigured, absenceTitle, awayWeeks, crossedAbsences, daysLost, packLanes } from '../../domain/absences';
 import { barHolds, timelineRows, TimelineBar, TimelineRow } from '../../domain/bars';
+import { isMarkerType } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
 import { CivilDate } from '../../domain/noteFields';
-import { ResourceLane } from '../../domain/roadmap';
-import { ownWorkflowReading } from '../../domain/board';
+import { markerLane, ResourceLane } from '../../domain/roadmap';
+import { ownWorkflowReading, stateKeyFor, WorkflowReading } from '../../domain/board';
 import { sanitizeTitle } from '../../storage/frontmatter';
 import {
 	BarGeometry,
@@ -101,9 +102,34 @@ function edgeClasses(geometry: BarGeometry): string[] {
 	return classes;
 }
 
-/** The dated axis's own entries: every row, in order, and nothing else. */
-export function barEntries(rows: TimelineRow[]): TimelineEntry[] {
-	return rows.map((row): TimelineEntry => ({ kind: 'row', row }));
+/**
+ * The dated axis's own entries: the milestones' row first, then every work row in order.
+ *
+ * **A marker is drawn in one shared row here too, exactly as it is on the resources axis**
+ * ([[Milestones out of the resource rows]]) — one `lane` entry holding every marker on the
+ * grid, never a `row` entry apiece. A point in time has no duration to read along and no
+ * subtree to fold, so a column of one-diamond rows spent a row each saying what one row says,
+ * pushing the work down the pane the more dates the plan commits to. What a reader needs of a
+ * milestone is where it falls against the bars beneath it, and the diamond plus the
+ * full-height line ([[A milestone line across the plan]]) is that whole answer.
+ *
+ * The row is minted by its first PLACED marker and is absent otherwise — a header standing
+ * for nothing on every base says nothing — and it is never folded, because it produces no
+ * rows to fold.
+ *
+ * The split happens BEFORE `timelineRows` rather than after it, and that is the load-bearing
+ * part: the fold walk decides a chevron from the bars it is HANDED, so a marker left in the
+ * list would go on standing between a work bar and its drawn ancestor. Handed the work alone,
+ * a chevron reaches exactly the bars it sits above — the same argument that makes a fold safe
+ * per band one axis over.
+ */
+export function datedEntries(bars: TimelineBar[], collapsed: (path: string) => boolean): TimelineEntry[] {
+	const markers = bars.filter((bar) => isMarkerType(bar.item.typeName));
+	const work = bars.filter((bar) => !isMarkerType(bar.item.typeName));
+	const entries: TimelineEntry[] =
+		markers.length > 0 ? [{ kind: 'lane', lane: markerLane(markers), collapsed: false }] : [];
+	for (const row of timelineRows(work, collapsed)) entries.push({ kind: 'row', row });
+	return entries;
 }
 
 /**
@@ -796,13 +822,31 @@ export function drawMarkerDiamonds(
 		const sublane = stacked.get(geometry.startDay) ?? 0;
 		stacked.set(geometry.startDay, sublane + 1);
 		el.setCssProps({ '--pbl-sublane': String(sublane) });
-		const said = `${bar.item.title} — ${spanText(bar)}`;
-		el.setAttribute('aria-label', said);
+		// The state in words, folded into the mark's OWN label: the diamond has no row to put
+		// a `.pbl-sr-only` span in, and done is a green mark and nothing else without it —
+		// colour alone, which WCAG 1.4.1 refuses and a screen reader gets none of.
+		const state = stateNote(stateKeyFor(ctx.host.settings, bar.item), ownWorkflowReading(bar.item));
+		const said = `${bar.item.title} — ${spanText(bar)}${state ? ` — ${state}` : ''}`;
+		// **CONTENT, never an `aria-label`** — this repository's own rule about this exact
+		// element, stated at `stateNote` and broken here until 2026-08-16: `.pbl-bar` is a
+		// plain div, so its implicit role is `generic`, and ARIA PROHIBITS an accessible name
+		// on one. A label there may be announced by nobody, which would mean the words a
+		// marker's row used to carry were LOST when the row went rather than moved. Text is in
+		// the accessibility tree whatever the element's role is. Found in review, on both grid
+		// axes, since the mark is one mark. The tooltip beside it is the pointer's own route to
+		// the same sentence and needs no role at all.
+		el.createSpan({ cls: 'pbl-sr-only', text: said });
 		setTooltip(el, said);
 		// The path on the MARK, which is where every other grid puts it (`renderBarRow` puts
 		// it on the row): the link drag's own sweep reads it back to mark what a held gesture
 		// may not be dropped on, and here the mark is the only element that is one marker's.
 		el.dataset.pblPath = bar.item.file.path;
+		// REGISTERED even though a diamond can carry no match affordance (`face: 'none'`):
+		// `nameMatches` takes its "already on screen" set from this register, so a marker
+		// drawn and not registered reads as one that did not draw, and the parent bar above
+		// it counts a match the reader is looking at in the row overhead. It stays off the
+		// KEYBOARD walk regardless — that list is `drawnCards`, read from the entries.
+		ctx.placed.set(bar.item.file.path, { item: bar.item, mount: el, listsChildren: false, face: 'none' });
 		mounts.tracks.set(bar.item.file.path, track);
 		// The TRACK is where a move's preview mounts, and it is this one shared box; the
 		// ANCHOR an arrow reads a Y off is the diamond, because a sub-lane is one marker's
@@ -818,14 +862,21 @@ export function drawMarkerDiamonds(
 		}
 		// `row` is the diamond itself — see `BarLinkParts.row`, and 2d in the note above.
 		wireBarLink(ctx, { dnd: mounts.dnd, content: mounts.content, row: el, barEl: el, outside: geometry.outside, item: bar.item });
-		// The row is not a card, so `wireCardActivation` has nothing to wire: the diamond is
-		// the whole of what a reader can click here, and opening the note is what a click on a
-		// bar already does everywhere else on this grid. Its filter is not, though — the
-		// connector above is a control inside this element and a click on it must not open
-		// the note, which is what `fromRowControl` answers for every other row on the grid.
-		el.addEventListener('click', (evt) => {
-			if (!fromRowControl(evt)) ctx.host.openItem(bar.item, evt);
-		});
+		// **The mark carries every gesture a bar ROW carried, minus the selection.** The row
+		// went and `wireCardActivation` went with it, and what was written here in its place
+		// was the primary click alone — so a middle click opened no tab (a browser fires no
+		// `click` for it) and a right click reached no menu, which on this grid is the only
+		// pointer route to Schedule, Unschedule and Set state for a date. Both found in
+		// review (2026-08-16), and both are the same mistake: a mark that inherits a row's
+		// job inherits all of it.
+		//
+		// What it does NOT inherit is `selectItem`. A diamond is not an `option` and has no
+		// element `aria-activedescendant` could point at ([[Milestones out of the resource
+		// rows]] 3c), so selecting one would leave the pane's roving walk on a path with no
+		// stop. `wireOpenGestures` and `wireItemMenu` are the two halves of
+		// `wireCardActivation` that do not need one; a card still gets both through it.
+		wireOpenGestures(ctx.host, el, bar.item);
+		wireItemMenu(ctx.host, el, bar.item);
 		// `barClasses` gives a wholly-outside mark no `pbl-bar-milestone`, so it draws the
 		// plain accent rather than the cyan diamond — the legend has to key what was
 		// actually painted, which is `Other` and not `Milestone`. Reported here rather than
@@ -955,6 +1006,30 @@ export function barClasses(bar: TimelineBar, geometry: BarGeometry, hasBodyHold:
 	// target date at all. The two want different connector placement: an open end has an
 	// on-screen edge to sit past, a clamped one does not.
 	return [cls, edges].filter(Boolean).join(' ') + inferred + holdable;
+}
+
+/**
+ * A mark's workflow state in words, or '' where there is none to say.
+ *
+ * A grid axis draws state as a bar COLOUR and nothing else: `renderStateChip`'s only call
+ * site is a tree row's own column, so without these words the slot colours are the whole of
+ * it — unreadable to a screen reader, and colour alone for everyone else (WCAG 1.4.1). Done
+ * is spelt out for the same reason: `pbl-done` is a class and a green bar.
+ *
+ * Two callers with two placements, decided by what the mark HAS. A bar row puts it in the
+ * row's own visually hidden CONTENT, never an `aria-label` anywhere: `.pbl-bar` is a plain
+ * div — role `generic`, where ARIA prohibits an accessible name — and a label on the row
+ * would REPLACE the badge and title the row derives its name from. A DIAMOND has no row and
+ * no content of its own, so it folds these words into the label it already carries.
+ *
+ * Here rather than in `./timeline.ts`, `edgeClasses`' reason exactly: the grid imports this
+ * module and never the other way, so anything both a bar row and a diamond need has to live
+ * on this side of that edge.
+ */
+export function stateNote(stateKey: string, reading: WorkflowReading): string {
+	if (!stateKey) return '';
+	if (reading.done) return reading.value === null ? 'Done' : `${reading.value} — done`;
+	return reading.value ?? '';
 }
 
 /** One sentence about a span, said identically on the grid and in the drop ghost. */

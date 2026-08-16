@@ -190,8 +190,17 @@ export interface PlacedMount {
 	 * that gained a match rendered one character of its own name at the default 220px
 	 * width while its neighbours showed theirs in full. A row that gains matches must not
 	 * lose its identity, so the row's face costs a fixed width or nothing.
+	 *
+	 * `'none'` is a surface that DREW the item and can show nothing on it — a milestone's
+	 * diamond, which is 12px of rotated mark with no lead, no count slot and no room for a
+	 * chip. It registers all the same, and that is the whole reason the value exists:
+	 * `nameMatches` reads `carded` off this register, so an item drawn and not registered
+	 * reads as an item NOT drawn, and its parent names a match the reader is already
+	 * looking at. Registering is about what is on screen; `face` is about what can be
+	 * written on it. What it costs — a match BENEATH a milestone gets no affordance
+	 * anywhere on the grid — is stated in [[Milestones in one row on the dated axis]] 3d.
 	 */
-	face: 'links' | 'count';
+	face: 'links' | 'count' | 'none';
 }
 
 /**

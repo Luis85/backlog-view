@@ -405,8 +405,9 @@ free of runtime code so imports stay cycle-free.
   one rebuilds on every data update. Obsidian's plugin review flags `:has` for the same
   reason. State CSS depends on belongs on the element, put there where the state changes.
 - **A row's activation asks whether the event began on the ROW, not on a control it
-  contains** — `fromRowControl` in `render/rows.ts`, asked by both wirings
-  (`wireRowEvents` for the tree, `wireCardActivation` for cards and timeline rows). It
+  contains** — `fromRowControl` in `render/rows.ts`, asked by every wiring
+  (`wireRowEvents` for the tree, `wireOpenGestures` for cards, timeline rows and a
+  milestone's diamond — `wireCardActivation` is that plus a selection and `wireItemMenu`). It
   replaced ten per-control `stopPropagation` calls, and the reason is the failure they
   produced twice: opting out was the control's job to remember, and the dependency
   connector and the bar grips both forgot, shipping handles that opened the note. Moving
@@ -416,7 +417,10 @@ free of runtime code so imports stay cycle-free.
   than a list of remembered places: the tab-stop rule below already requires every new
   per-row control to be a real `<button>`, so one written tomorrow is covered without
   editing the selector. `auxclick` asks separately because a middle click never fires
-  `click` — the reason every one of those per-control guards came in pairs.
+  `click` — the reason every one of those per-control guards came in pairs, and the reason
+  the two OPEN gestures are wired as a pair (`wireOpenGestures`) rather than left to each
+  surface: a milestone's diamond wired the primary click alone and lost "open in a new tab"
+  silently, which no test named the surface for.
 - Two tab-stop zones, and a control's element type follows from which one it is in.
   The **toolbar** is ordinary UI: every activatable control is a real `<button>`
   (`iconButton`, both clear buttons), so Tab reaches all of them. The **tree** is one
@@ -833,9 +837,19 @@ free of runtime code so imports stay cycle-free.
   day still read as one mark, behind the bars and under the today line — which keeps its
   pixel and its place on top, the milestone's line stepping aside inside the same day
   cell instead of either being suppressed. The line is decoration only: nothing about it
-  is focusable or written, so the milestone's own row carries the name and the exact
-  dates together in its accessible name, which is where a fact the line shows must also
-  be reachable without it.
+  is focusable or written, so the milestone's own DIAMOND carries the name, the exact date
+  and its state together in its accessible name, which is where a fact the line shows must
+  also be reachable without it.
+- **A marker draws in one shared row on BOTH grid axes, never a row apiece** — the dated
+  axis joined the resources axis on 2026-08-16 ([[Milestones in one row on the dated axis]]).
+  `markerLane` (`domain/roadmap.ts`) is the row on either, and each axis's own entry list
+  puts it first and keeps its markers out of the fold walk: `datedEntries` and `laneEntries`
+  in `render/lanes.ts`. Three consequences bind anything written for either grid. A marker
+  is on `RoadmapModel.bars` and on no `'row'` entry, so the lines and the arrows still see
+  it and `drawnCards` — the keyboard walk — does not. Every fact a bar ROW would carry has
+  to be asked of the MARK, because the row is shared: the path, the holds, the link classes,
+  `pbl-done`, the sub-lane index and the state words all sit on the diamond. And a fold
+  anywhere may never reach one, which is what the row exists for.
 - **A drop target's POSITION is part of what it can mean, and that is one method rather
   than two.** `wireDropTarget` carries the pointer to `plan` and to an optional `onDrag`;
   a target whose meaning is "this region" ignores the second argument, and one whose
@@ -972,12 +986,24 @@ free of runtime code so imports stay cycle-free.
   see; what the suite holds is the substitution itself (`test/view/roadmapMatches.test.ts`,
   which jsdom CAN see) and the declarations that let the chip yield
   (`test/view/timelineBoxing.test.ts`).
-  **A marker's row cannot use an sr-only span for any of this.** `renderRowFacts` gives it
-  an explicit `aria-label`, which REPLACES the content-derived name and takes the progress
-  span with it — so that row folds `progressNote` (`render/barProgress.ts`) into its own
-  label, from the one report rather than a second phrasing. Reachable because
-  `childTypeChoices` offers a marker no children and refuses no deliberate move, while
-  `assignAll` counts by structure.
+  **A marker has no row here at all since 2026-08-16**, so none of this reaches one.
+  `renderRowFacts` used to give a marker's row an explicit `aria-label` that REPLACED the
+  content-derived name and took the progress span with it, folding `progressNote` in
+  instead; with the row gone that branch was unreachable and went, and `progressNote` is no
+  longer exported. What it cost — a marker with descendants announces its rollup to nobody
+  — is [[Milestones in one row on the dated axis]] 3b. Its state is not lost with it:
+  `stateNote` moved into `render/lanes.ts` and the diamond folds it into its own visually
+  hidden CONTENT — never an `aria-label`, which `stateNote`'s comment has always refused for
+  this element: `.pbl-bar` is a plain div, role `generic`, where ARIA prohibits an accessible
+  name, so a label there may be announced by nobody. A mark with no row has nowhere else for
+  the words to be, which is what made breaking that rule a LOSS rather than a lesser
+  announcement.
+  **The diamond still REGISTERS in `ctx.placed`, with `face: 'none'`**, and the two are
+  different questions: registering says the item is ON SCREEN, which is what `carded` is
+  read from, while `face` says what can be WRITTEN on the mount. Drawn and unregistered, a
+  marker made the bar above it count a match the reader was looking at, and offered an
+  `Open match` for it in that bar's menu. So a surface that draws an item registers it,
+  whatever it can afford to show — see [[Milestones in one row on the dated axis]] 3d.
   `PlacedMount` itself is declared in `host.ts` beside `DrawnColors` and for that type's
   reason: a `render/` type imported back into `host.ts` turns the
   `columns.ts` ↔ `menu.ts` ↔ `host.ts` web into sixteen cycles `npm run analyze` refuses
