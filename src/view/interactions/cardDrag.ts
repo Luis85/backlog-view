@@ -295,15 +295,19 @@ export class CardDragController {
 	 * full-grid overlay then swallows every pointer event for the life of the view. No
 	 * row hover, no connector, no way to start another drag.
 	 *
-	 * Gated to `'move'`, which is what a link drag is NOT: the class means a card move is
-	 * in flight, and `.pbl-linking` is the link's own.
+	 * The monitor watches EVERY drag of this view — both kinds — because `dragging` is
+	 * what `deferUpdate` reads, and a render mid-flight destroys a link gesture exactly
+	 * as it does a move's: the targets, the preview monitor and the legality marks are
+	 * all per-render registrations. The CLASS stays gated to `'move'`, which is what a
+	 * link drag is NOT: it means a card move is in flight, and `.pbl-linking` is the
+	 * link's own — `test/view/linkDrag.test.ts` asserts that absence mid-gesture.
 	 */
 	private markViewWhileDragging(): () => void {
 		return monitorForElements({
-			canMonitor: ({ source }) => this.mine(source.data, 'move'),
-			onDragStart: () => {
+			canMonitor: ({ source }) => source.data.view === this.token,
+			onDragStart: ({ source }) => {
 				this.dragging = true;
-				this.viewEl.addClass('pbl-dragging');
+				if (kindOf(source.data) === 'move') this.viewEl.addClass('pbl-dragging');
 			},
 			onDrop: () => {
 				this.dragging = false;
