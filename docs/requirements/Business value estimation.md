@@ -163,14 +163,18 @@ Three quantities stay **outside** that sum and beside it:
   a different property that happens to hold the same number today produces the same total
   from a different model, and a fingerprint that cannot see that is a stamp that lies
   exactly when it matters. The total itself stays a plain sortable number, which is why
-  the fingerprint is a property of its own. **Current means two things, and the stamp
-  answers only one of them**: the stamp must match the model on screen, *and* the total must equal what that
+  the fingerprint is a property of its own. **Current means three things, and the stamp
+  answers only one of them**: the stamp must match the model on screen, the **coverage it
+  records** must match the dimensions answered on the note right now — a dimension deleted
+  outside the view can leave the renormalized total unchanged, and a stamp still claiming
+  `2/2` for a `1/2` item is exactly the lie other views are relying on — *and* the total must
+  equal what that
   model computes from the scores on the note as they are now — which the view has already
   computed, since it draws the decomposition beside it. A score edited in Obsidian's own
   property editor, or by another plugin, moves no stamp, so a stamp comparison alone would
   call a total current that its own inputs contradict. A different stamp means another
   model produced it; an absent one means it was written by hand or by something else. None
-  of the three failures is shown as current, and the estimation status is where that
+  of these failures is shown as current, and the estimation status is where that
   surfaces — `Needs re-estimation`, not a silent pass.
 
   **A total whose inputs are gone is reported, and removed by an action.** Scores deleted in
