@@ -179,10 +179,18 @@ describe('write safety with context rows, across every entry point', () => {
 	function stressView() {
 		const vault = new FakeVault();
 		vault.addFile('Epic.md', {
-			frontmatter: { type: 'Epic', order: 10, status: 'Active', tags: ['ctx'], risk: '1 - High', assignee: 'Dana' },
+			frontmatter: {
+				type: 'Epic',
+				order: 10,
+				status: 'Active',
+				tags: ['ctx'],
+				risk: '1 - High',
+				priority: '1 - Must',
+				assignee: 'Dana',
+			},
 		});
 		vault.addFile('Feature A.md', {
-			frontmatter: { type: 'Feature', order: 10, tags: ['ctx'], risk: '3 - Low', assignee: 'Dana' },
+			frontmatter: { type: 'Feature', order: 10, tags: ['ctx'], risk: '3 - Low', priority: '3 - Could', assignee: 'Dana' },
 			parentLink: 'Epic',
 		});
 		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: 20, tags: ['a'] }, parentLink: 'Epic' });
@@ -198,6 +206,7 @@ describe('write safety with context rows, across every entry point', () => {
 				status: 'Done',
 				tags: ['ctx'],
 				risk: '2 - Normal',
+				priority: '2 - Should',
 				assignee: 'Dana',
 				dependsOn: 'Task',
 			},
@@ -224,6 +233,10 @@ describe('write safety with context rows, across every entry point', () => {
 			// this sweep drives. The context rows each hold a level, so the removal is
 			// offered on them and not merely withheld for having nothing to remove.
 			riskProperty: 'note.risk',
+			// The second declared ladder, and a second pair of entry points for the same
+			// reason: Set priority and Clear priority, each offered on a context row that
+			// carries a level, so the removal is refused rather than merely unoffered.
+			priorityProperty: 'note.priority',
 			// The assignee is a write surface with a vocabulary taken off the RESULTS, so
 			// it is two entry points in this sweep at once: Set assignee and Clear
 			// assignee on a context row, and — the reason the names below sit on context
@@ -236,7 +249,16 @@ describe('write safety with context rows, across every entry point', () => {
 		// the sweep only reaches them if the base shows their properties. Without this
 		// the state, horizon and risk chips are absent and each `?.dispatchEvent` below
 		// drives nothing while still passing.
-		config.order = ['note.tags', 'note.status', 'note.horizon', 'note.risk', 'note.assignee', 'note.start', 'note.due'];
+		config.order = [
+			'note.tags',
+			'note.status',
+			'note.horizon',
+			'note.risk',
+			'note.priority',
+			'note.assignee',
+			'note.start',
+			'note.due',
+		];
 		anyView.config = config;
 		anyView.data = {
 			data: vault.entries().filter((e) => !CONTEXT_PATHS.includes(e.file.path)),
@@ -335,7 +357,13 @@ describe('write safety with context rows, across every entry point', () => {
 		const chipsDriven = new Set<string>();
 		for (const row of allRows) {
 			await triggerEveryCommand(row);
-			for (const chipClass of ['.pbl-state-chip', '.pbl-horizon-chip', '.pbl-risk-chip', '.pbl-assignee-chip']) {
+			for (const chipClass of [
+				'.pbl-state-chip',
+				'.pbl-horizon-chip',
+				'.pbl-risk-chip',
+				'.pbl-priority-chip',
+				'.pbl-assignee-chip',
+			]) {
 				const chip = row.querySelector<HTMLElement>(chipClass);
 				if (!chip) continue;
 				chipsDriven.add(chipClass);
@@ -374,6 +402,7 @@ describe('write safety with context rows, across every entry point', () => {
 			'.pbl-assignee-chip',
 			'.pbl-date-chip',
 			'.pbl-horizon-chip',
+			'.pbl-priority-chip',
 			'.pbl-risk-chip',
 			'.pbl-state-chip',
 		]);

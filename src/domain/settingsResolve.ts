@@ -303,6 +303,9 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		// switchable off, and an emptied list means "no levels" rather than the three
 		// this plugin shipped.
 		riskValues: clearable('riskValues', fallback.riskValues, () => dedupe(list('riskValues'))),
+		// The same clearable default, for the same reason: an emptied ladder means "no
+		// levels", not the MoSCoW four this plugin shipped.
+		priorityValues: clearable('priorityValues', fallback.priorityValues, () => dedupe(list('priorityValues'))),
 		...resolveItemHandling(config),
 	};
 }

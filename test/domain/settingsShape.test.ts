@@ -145,6 +145,18 @@ describe('settingsInconsistency, and what the only producer guarantees', () => {
 		).toContain('states repeats');
 		expect(settingsInconsistency({ ...base, horizonValues: ['Now', 'NOW'] })).toContain('horizonValues repeats');
 		expect(settingsInconsistency({ ...base, startedStates: ['A', 'a'] })).toContain('startedStates repeats');
+		expect(settingsInconsistency({ ...base, resourceNames: ['Dana', 'dana'] })).toContain('resourceNames repeats');
+		// The two declared LADDERS, which take `dedupe(list(...))` like every vocabulary
+		// above and were in this list neither. `riskValues` had been deduped and unchecked
+		// since the day it shipped; it was found only because `priorityValues` arrived
+		// beside it with the identical hole (Codex, PR #156). Every field the resolver
+		// dedupes is asserted here now, so the array cannot go short again without one of
+		// these lines failing.
+		expect(settingsInconsistency({ ...base, riskValues: ['1 - High', '1 - high'] })).toContain('riskValues repeats');
+		expect(settingsInconsistency({ ...base, priorityValues: ['1 - Must', '1 - MUST'] })).toContain(
+			'priorityValues repeats',
+		);
+		expect(settingsInconsistency({ ...base, priorityValues: ['1 - Must', ' '] })).toContain('priorityValues holds');
 		// The two DONE lists are deliberately exempt: they take `list()` without `dedupe()`,
 		// so a repeat there is a configuration a user can actually set, and rejecting it
 		// would refuse a real vault. This is the half of the rule that keeps it honest.

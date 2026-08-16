@@ -13,6 +13,14 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Added
 
+- **A MoSCoW priority on every row.** Name a priority property under the new
+  **Prioritization** view options and each row draws a priority chip: press it, or use
+  **Set priority** in the row menu, to pick a rung. The ladder ships holding
+  `1 - Must, 2 - Should, 3 - Could, 4 - Won't` and is yours to rewrite; clearing it takes
+  the chip and the menu away and leaves an ordinary property. The ✨ button binds and
+  backfills it like every other optional property, clearing removes the key rather than
+  blanking it, and every write is one undoable batch.
+
 - **An iteration to put work in.** A note typed `Iteration` is a time box: name its
   property in the view options (a goal property too, for later), then, from any row's
   or card's menu, put an item in it with `Set iteration` (or take it back out with

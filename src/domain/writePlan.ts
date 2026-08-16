@@ -91,6 +91,12 @@ export interface ItemWrite {
 	 */
 	risk?: string | null;
 	/**
+	 * The item's priority, or **null to remove the key** — the risk field's rule and its
+	 * reason: nobody has ranked it is a fact, and a blank would read as a rung named
+	 * nothing.
+	 */
+	priority?: string | null;
+	/**
 	 * Who the item is assigned to, or **null to remove the key** — the risk field's rule,
 	 * for the same reason: nobody assigned is a fact about the item, and a blank name
 	 * would read as someone called nothing.
@@ -340,6 +346,18 @@ export function computeRiskWrites(item: BacklogItem, value: string | null): Item
 	if (value === null) return item.ownKeys.risk ? [{ file: item.file, risk: null }] : [];
 	if (sameValue(item.riskValue, value)) return [];
 	return [{ file: item.file, risk: value }];
+}
+
+/**
+ * The write a priority pick means — `computeRiskWrites`' two rules over the other declared
+ * ladder, and the same reason they are two functions rather than one parameterised by
+ * field: each reads its own `item` field by name, and a table lookup would trade three
+ * legible lines for an indirection the compiler could no longer check as exhaustively.
+ */
+export function computePriorityWrites(item: BacklogItem, value: string | null): ItemWrite[] {
+	if (value === null) return item.ownKeys.priority ? [{ file: item.file, priority: null }] : [];
+	if (sameValue(item.priorityValue, value)) return [];
+	return [{ file: item.file, priority: value }];
 }
 
 /**

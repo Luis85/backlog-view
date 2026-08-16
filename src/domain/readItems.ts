@@ -114,6 +114,12 @@ export interface RawItem {
 	 */
 	riskValue: string | null;
 	/**
+	 * The priority the note declares, if a priority property is configured. `riskValue`'s
+	 * shape and rule exactly — a label off the user's own ladder, with absence meaning
+	 * nobody has ranked it, which is a different fact from the lowest rung.
+	 */
+	priorityValue: string | null;
+	/**
 	 * Who the note says it is assigned to, if an assignee property is configured. A plain
 	 * value for `riskValue`'s reason — a name the user typed or picked, with no reading
 	 * to refuse — and absence means nobody is on it, which is a fact, not a missing one.
@@ -176,16 +182,6 @@ export function createItems(app: App, entries: BasesEntry[], settings: BacklogSe
 	// of the ancestors themselves is optional.
 	if (settings.showOutsideParents) loadOutsideParents(app, store, parents, settings);
 	return store;
-}
-
-/**
- * A plain optional-property string, unconfigured reading as absent — the shape
- * `riskValue`, `assigneeValue` and `iterationGoalValue` all share. Pulled out of
- * `addItem` once a third field wanted it: each inline ternary counts against that
- * function's own complexity budget, and a shared reader does not.
- */
-function readOptionalString(fm: Record<string, unknown> | undefined, key: string): string | null {
-	return key ? readString(ownValue(fm, key)) : null;
 }
 
 /**
@@ -259,9 +255,10 @@ function addItem(
 		horizon: readGated(settings.horizonKey, fm, readPlacement),
 		plannedStart: readGated(settings.startKey, fm, readDate),
 		plannedTarget: readGated(settings.targetKey, fm, readDate),
-		riskValue: readOptionalString(fm, settings.riskKey),
-		assigneeValue: readOptionalString(fm, settings.assigneeKey),
-		iterationGoalValue: readOptionalString(fm, settings.iterationGoalKey),
+		riskValue: readLabel(settings.riskKey, fm),
+		priorityValue: readLabel(settings.priorityKey, fm),
+		assigneeValue: readLabel(settings.assigneeKey, fm),
+		iterationGoalValue: readLabel(settings.iterationGoalKey, fm),
 		ownKeys: readOwnKeys(fm, settings),
 		iterationEntry: readIterationEntry(app, file, cache, settings.iterationKey),
 		// NOT read for a context row, which is the same test `outsideFilter` is made of
@@ -337,6 +334,17 @@ function readGated<T>(
 	read: (value: unknown) => FieldReading<T>,
 ): FieldReading<T> {
 	return key ? read(ownValue(fm, key)) : absentReading();
+}
+
+/**
+ * A LABEL field read on the same gate, and the reason it is not `readGated<string>`: a
+ * label is a plain value the user picked or typed, so there is no reading for it to
+ * refuse and an unconfigured key is simply nothing. `readString` throughout, the tolerant
+ * reader the state uses — a label written as a one-item list or a number is the value it
+ * looks like.
+ */
+function readLabel(key: string, fm: Record<string, unknown> | undefined): string | null {
+	return key ? readString(ownValue(fm, key)) : null;
 }
 
 /**

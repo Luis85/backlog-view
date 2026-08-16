@@ -36,6 +36,7 @@ export type OptionalField =
 	| 'target'
 	| 'dependsOn'
 	| 'risk'
+	| 'priority'
 	| 'assignee'
 	| 'deliverableState'
 	| 'testState'
@@ -56,6 +57,7 @@ export type OptionalSettingsKey =
 	| 'targetKey'
 	| 'dependsOnKey'
 	| 'riskKey'
+	| 'priorityKey'
 	| 'assigneeKey'
 	| 'deliverableStateKey'
 	| 'testStateKey'
@@ -99,6 +101,10 @@ const PROPERTY_TABLE: Record<OptionalField, Omit<OptionalProperty, 'field'>> = {
 	start: { option: 'startProperty', suggested: 'start', label: 'start', settingsKey: 'startKey' },
 	target: { option: 'targetProperty', suggested: 'due', label: 'target', settingsKey: 'targetKey' },
 	risk: { option: 'riskProperty', suggested: 'risk', label: 'risk', settingsKey: 'riskKey' },
+	// The second label property with a declared ladder, risk's row exactly. Its suggestion
+	// is the plain word rather than `moscow`: what the option holds is an ordered
+	// vocabulary, and MoSCoW is only the one this view ships prefilled.
+	priority: { option: 'priorityProperty', suggested: 'priority', label: 'priority', settingsKey: 'priorityKey' },
 	assignee: { option: 'assigneeProperty', suggested: 'assignee', label: 'assignee', settingsKey: 'assigneeKey' },
 	deliverableState: {
 		option: 'deliverableStateProperty',

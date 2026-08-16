@@ -1,5 +1,5 @@
 import { Menu, MenuItem } from 'obsidian';
-import { hasRiskLevels, menuValues, stateMenuValues } from '../../domain/settings';
+import { hasPriorityLevels, hasRiskLevels, menuValues, stateMenuValues } from '../../domain/settings';
 import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
 import { inferFolderParent } from '../../domain/folderNotes';
 import { childTypeChoices, inCatalog, isDeliverableType, keepsProjection } from '../../domain/itemTypes';
@@ -13,7 +13,7 @@ import {
 	computeTestStateWrites,
 	ItemWrite,
 } from '../../domain/writePlan';
-import { addAssigneeItems, addIterationItems, addRiskItems, canSetIteration } from './labels';
+import { addAssigneeItems, addIterationItems, addPriorityItems, addRiskItems, canSetIteration } from './labels';
 import { BoardModel, deliverablesWorkflow, ownWorkflowReading, stateKeyFor } from '../../domain/board';
 import { ShelfCard } from '../../domain/bars';
 import { organizeShelf, ShelfSort } from '../../domain/shelf';
@@ -140,6 +140,8 @@ function addEditableSections(host: BacklogViewHost, model: BacklogModel, menu: M
 	// levels with no property have nowhere to go, so the entry is absent rather
 	// than inert — the state chip's rule, and the horizon's above.
 	if (hasRiskLevels(host.settings)) addSetRiskMenu(host, menu, item);
+	// The same pair, for the same reason — a ladder with no property has nowhere to go.
+	if (hasPriorityLevels(host.settings)) addSetPriorityMenu(host, menu, item);
 	// The KEY alone, unlike risk above: **New assignee...** is always in that submenu, so
 	// a named property with nobody observed still opens onto something to pick. There is
 	// no second half to be missing, which is why there is no `hasAssignees` beside
@@ -341,6 +343,10 @@ export const showHorizonMenu = (host: BacklogViewHost, evt: MouseEvent, item: Ba
 /** Risk menu for the row's risk chip — the same list the row menu's Set risk offers. */
 export const showRiskMenu = (host: BacklogViewHost, evt: MouseEvent, item: BacklogItem): void =>
 	chipMenu(host, evt, item, addRiskItems);
+
+/** Priority menu for the row's priority chip — the same list Set priority offers. */
+export const showPriorityMenu = (host: BacklogViewHost, evt: MouseEvent, item: BacklogItem): void =>
+	chipMenu(host, evt, item, addPriorityItems);
 
 /** Assignee menu for the row's assignee chip — the same list Set assignee offers. */
 export const showAssigneeMenu = (host: BacklogViewHost, evt: MouseEvent, item: BacklogItem): void =>
@@ -710,6 +716,13 @@ function addSetRiskMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): v
 	menu.addItem((mi) => {
 		mi.setTitle('Set risk').setIcon('shield-alert');
 		addRiskItems(host, submenuOf(mi), item);
+	});
+}
+
+function addSetPriorityMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
+	menu.addItem((mi) => {
+		mi.setTitle('Set priority').setIcon('flag');
+		addPriorityItems(host, submenuOf(mi), item);
 	});
 }
 

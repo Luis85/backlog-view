@@ -318,6 +318,7 @@ function applyAxis(fm: Record<string, unknown>, settings: BacklogSettings, write
 function applyLabels(fm: Record<string, unknown>, settings: BacklogSettings, write: ItemWrite): void {
 	const labels: [string | null | undefined, string][] = [
 		[write.risk, settings.riskKey],
+		[write.priority, settings.priorityKey],
 		[write.assignee, settings.assigneeKey],
 		[write.iterationGoal, settings.iterationGoalKey],
 	];

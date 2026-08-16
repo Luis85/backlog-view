@@ -1,5 +1,13 @@
 import { BasesAllOptions, BasesOptions, BasesPropertyId, BasesViewConfig } from 'obsidian';
-import { BacklogSettings, columnPolicyKey, DEFAULT_DONE_VALUES, DEFAULT_HORIZON_VALUES, DEFAULT_RISK_VALUES, wipLimitKey } from './settings';
+import {
+	BacklogSettings,
+	columnPolicyKey,
+	DEFAULT_DONE_VALUES,
+	DEFAULT_HORIZON_VALUES,
+	DEFAULT_PRIORITY_VALUES,
+	DEFAULT_RISK_VALUES,
+	wipLimitKey,
+} from './settings';
 import { OptionalField, optionalProperty } from './optionalProperties';
 import { resolveSettings } from './settingsResolve';
 import { ABSENCE_TYPE, ALL_TYPES, DEFAULT_HOME_FOLDER, defaultTypeFolder, typeFolderKey } from './typeVocabulary';
@@ -63,6 +71,7 @@ export function getViewOptions(config: BasesViewConfig): BasesAllOptions[] {
 		testManagementGroup(),
 		roadmapGroup(),
 		riskGroup(),
+		priorityGroup(),
 		newItemsGroup(settings.homeFolder),
 		handlingItemsGroup(),
 		displayGroup(),
@@ -365,6 +374,35 @@ function riskGroup(): BasesAllOptions {
 				displayName: 'Risk levels (in order)',
 				default: DEFAULT_RISK_VALUES.join(', '),
 				placeholder: DEFAULT_RISK_VALUES.join(', '),
+			},
+		],
+	};
+}
+
+/**
+ * How important an item is, read off a property and chosen from a declared list — the
+ * risk group's two halves and its `hasPriorityLevels` pair, over the ladder a backlog is
+ * ordinarily ranked by. Its own group rather than two more rows under **Risk management**:
+ * the group's display name is a promise about what is inside it, and a priority is not a
+ * risk.
+ *
+ * The list ships holding MoSCoW because that is the vocabulary most backlogs already use,
+ * and it is editable for `riskValues`' reason — the words belong to the reader. The
+ * default is spelled as the text the box shows, so the shipped default and the parsed one
+ * cannot drift.
+ */
+function priorityGroup(): BasesAllOptions {
+	return {
+		type: 'group',
+		displayName: 'Prioritization',
+		items: [
+			optionalPropertyOption('priority', 'Priority property'),
+			{
+				type: 'text',
+				key: 'priorityValues',
+				displayName: 'Priority levels (in order)',
+				default: DEFAULT_PRIORITY_VALUES.join(', '),
+				placeholder: DEFAULT_PRIORITY_VALUES.join(', '),
 			},
 		],
 	};
