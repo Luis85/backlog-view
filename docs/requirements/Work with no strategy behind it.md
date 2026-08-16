@@ -23,14 +23,20 @@ not an error — some work is maintenance and says so.
 **The strategy tree is not part of the population it measures.** The base returns the
 strategic entities too — [[The strategy hierarchy]] has to draw them — and they relate to each
 other with `parent` rather than the work-side alignment property, so counting every returned
-note would report the strategy itself as work answering to nothing. The view already knows
-which notes those are: it built the tree from them. **A note in that tree is excluded from
-both the count and the list**, and no new type list or marker property is added to say so.
+note would report the strategy itself as work answering to nothing. **A strategic note is
+excluded from both the count and the list**, and what makes a note strategic is the pair this
+view already needs to label its tree: a **type key** and the **values that are strategic** —
+objective, outcome, initiative, or whatever the vault calls them. The same two-part shape
+every vocabulary in these views uses, and no new item type is declared for it, which is what
+keeps [[Ten capabilities want seventeen new types]] out of the way of this feature.
 
-The tree is what the alignment links point at, plus everything connected to those by `parent`,
-which leaves one case the view cannot see: a strategic note nothing aligns to and nothing
-hangs from looks exactly like an unaligned item. That is the base's own filter, on the terms
-[[A view per capability]] states for every family that is not work — visible and fixable,
-rather than a discriminator the plugin invents.
+Recognising them by their links was the first answer here and it is not enough: an isolated
+objective — nothing aligned to it, nothing hanging from it — is exactly the note the strategy
+tree must show, and a base filter that hid it from this report would hide it from the tree
+along with it. One base, two roles, decided by a declared value rather than by what happens
+to point at what.
+
+With the pair unconfigured this report is not drawn and says which half is missing, because
+a count of unaligned work that cannot tell strategy from work is a number nobody can act on.
 
 **Outcome** — Work that answers to nothing becomes visible instead of accumulating quietly.

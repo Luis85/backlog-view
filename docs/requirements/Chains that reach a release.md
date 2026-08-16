@@ -21,7 +21,15 @@ high-priority work, an objective — are highlighted, because those are the ones
 costs something specific.
 
 **Each of those endpoints is a key this view names for itself**: the release membership, the
-alignment link, the priority, the dates. It reads no other view's settings, and an endpoint
+alignment link, the priority, the dates. **The priority endpoint needs a value list as well
+as a key**, declared here: a key says where the priority lives and nothing about which of its
+values is high, and a vocabulary is the vault's own — so without the list this view would
+highlight `Won't` as readily as `Must`. It is the same two-part shape
+[[Release readiness]] uses for every criterion reading a vocabulary, and the same rule holds
+for a bound key with no list: unconfigured, not empty. The other three endpoints need no
+vocabulary — a release, an objective and a date are present or absent.
+
+It reads no other view's settings, and an endpoint
 whose key is unconfigured simply does not make a chain critical — the chain still draws, it
 is just not highlighted. Highlighting everything because a property could not be found would
 be the same false alarm the health rules refuse.
