@@ -278,7 +278,8 @@ applied to the product plan instead of the architecture).
 Three of the document's twelve epics are already here under other names — its Product
 Backlog is [[Product Backlog]], its Prioritization is [[Business value estimation]], its
 Roadmap is [[Product Roadmap]] — so they gained what they were missing rather than a
-duplicate: bulk edits on a selection, and the eight features of the scoring model.
+duplicate: bulk edits on a selection, lanes by a property, and the eight features of the
+scoring model.
 
 One thing in that document is **declined rather than absorbed**: its Product Backlog asks for
 configurable level names and configurable allowed children, and
