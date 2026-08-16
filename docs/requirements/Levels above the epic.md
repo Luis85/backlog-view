@@ -17,10 +17,19 @@ assignee: ""
 # Levels above the epic
 
 A vault may declare grouping levels above its work ladder — portfolio, product, domain —
-each an ordinary note, each optional, and each reached by a **property on the work, not by
-`parent`**. A vault that declares none sees no portfolio anywhere.
+each an ordinary note, each optional.
 
-The property is not a preference. `Epic` is a root by position in this plugin's own type map,
+**Two relationships, and each one is the plainest available.** The grouping notes hold each
+other with `parent`, among themselves, exactly as strategy notes and test suites do: a domain
+is a child of a product, a product of a portfolio, and a note with no parent is a top-level
+grouping. Work reaches that ladder through **one property naming its innermost grouping** —
+never through `parent` — and the view walks up from there, so an epic filed under a domain
+rolls into that domain's product and portfolio without anybody restating the path on the
+item.
+
+A vault that declares no grouping levels sees no portfolio anywhere.
+
+The second half of that is not a preference. `Epic` is a root by position in this plugin's own type map,
 and `parent` is what decides level, rank, rollup, focus and what a drag means; hanging epics
 under a product would give every existing vault a new depth, renumber nothing correctly, and
 make a portfolio note compete with features for order. It is the shape the register has now

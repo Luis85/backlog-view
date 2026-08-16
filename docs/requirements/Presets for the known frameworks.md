@@ -29,8 +29,11 @@ indicator and leaves the value model alone; the number written back to the note 
 value-only total, because a stored figure that has absorbed effort is exactly the composite
 this epic exists to refuse.
 
-A preset's formula is part of the model like everything else it sets, so it is inside the
-stamp a written total carries: editing the formula makes every total produced by the old one
-stale, whether or not the new one happens to agree about a particular item.
+**Only the value model's formula is stamped**, because only it decides the number that gets
+written: editing it makes every total the old one produced stale, whether or not the new one
+happens to agree about a particular item. An indicator's formula is stamped nowhere and
+invalidates nothing — it persists no figure, so there is nothing for a stale mark to be about,
+and marking every stored value stale because somebody edited a RICE denominator would be the
+same false alarm in the opposite direction.
 
 **Outcome** — A team that already works one of these ways can start in a minute.
