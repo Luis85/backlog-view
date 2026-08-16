@@ -22,12 +22,17 @@ stamp** properties it names for itself. Four keys, all its own; that is the whol
 and it is deliberately the only one: the model that produced a score lives in an estimation
 view's own settings, which this view may not read and must not require to exist.
 
-So a portfolio comparison is honest about what it is showing. The stamps are compared with
-each other — this view never asks what any of them means, only whether they agree — and
-where two products carry two different stamps the comparison says so rather than averaging
-across it. **An absent stamp is its own answer**, not a match: a score written by hand or by
-something else is shown and counted as unattributed, because treating it as agreeing with
-whatever it sits beside is the silent version of the problem this note exists to avoid. With
+So a portfolio comparison is honest about what it is showing. **The stamp has two parts and
+only one of them is compared**: the model fingerprint answers "same model?", and the coverage
+beside it answers "how much of it?", so comparing the whole stamp would report two models for
+two ordinary partial profiles scored by one. The fingerprints are compared with each other —
+this view never asks what any of them means, only whether they agree — and the coverage is
+reported per item beside its number. Where two products carry two different fingerprints the
+comparison says so rather than averaging across it.
+
+**An absent stamp is its own answer**, not a match: a score written by hand or by something
+else is shown and counted as unattributed, because treating it as agreeing with whatever it
+sits beside is the silent version of the problem this note exists to avoid. With
 no stamp key configured at all, the comparison drops the claim rather than making it — it
 compares the numbers and says it cannot tell which models produced them. Rescoring a
 cross-product population under one model is what an estimation view over that population is
