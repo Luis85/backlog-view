@@ -235,11 +235,27 @@ following are checked:
   written.
 - The closing message carries the fenced handoff prompt and nothing else in the block.
 
-**Two GREEN prompts, not one.** A single flow-shaped request exercises the `PBI` branch
-only, and the branches differ in exactly the place a defect has already been found: an
-`Epic` takes no `parent`, and a run that never produces an `Epic` cannot catch a skill
-that gives one. The second prompt asks for a body of work rather than a capability, and
-its note is held to the same list above.
+**What the matrix covers, and what it does not.** Review asked for a GREEN run per
+supported type, and for the `Epic` prompt to be baselined in RED as well. Half of that is
+taken and half is refused, so the reason for each is written here rather than left to be
+re-derived.
+
+Every criterion above except one is **type-independent**: stopping before the write,
+asking the type instead of inferring it, one question per message, handing contradictions
+back, touching no code. Those are the whole of what this skill teaches, and a second and
+third run of them against a differently-shaped request re-measures the same behaviour.
+
+The exception is the `Epic`'s missing `parent` key, which the skill does state, and which
+`npm run docs` gates — the close runs that gate, so a skill that gets it wrong fails at
+step 2 of its own close rather than passing quietly.
+
+**The limit, stated rather than covered.** A `Feature`'s `Outcome` sentence and the
+ownership rule on its landmines are **not** gated by `npm run docs` — `docs/README.md`
+says the Feature and Task conventions rest on whoever writes them. The skill delegates
+that shape to `docs/README.md` instead of restating it, and **nothing here verifies that
+the delegation works.** A `Feature` note produced with no `Outcome` would pass every check
+this matrix runs. That is an unverified claim, and it is written as one instead of being
+dressed as coverage: the first `Feature` this skill produces is worth reading by hand.
 
 Rationalizations the RED run produces go into a rationalization table in the skill
 body. That table is the only part of the skill written from evidence rather than from
