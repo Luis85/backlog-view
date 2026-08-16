@@ -21,10 +21,29 @@ assignee: ""
 a workflow of its own, **so that** what is in flight for the next two weeks is not read
 off a board holding everything the product will ever do.
 
-This is the board [[Columns from the workflow]] already describes, projected a third
-time: the same rule — the workflow the view options define **is** the column
-configuration — over a second independent property, with a population narrowed by a
-link rather than by a type.
+This is the board [[Columns from the workflow]] already describes, projected a third time
+— but **not** over a second property. It reads the product board's own state key and
+narrows that one workflow into three columns: **Open**, the iteration backlog;
+**In Progress**; and **Resolved**. Which product states fall in the two outer buckets is
+configured; everything else is In Progress. The population is narrowed by a link rather
+than by a type.
+
+**That reverses what this note said until 2026-08-16**, and the reversal is kept rather
+than overwritten. An iteration workflow with its own state property, its own ordered
+states, its own done values and a field-by-field fallback was specified here in full, on
+[[A Deliverables board]]'s argument: what "in progress" means inside a two-week box is
+not what it means across a release. The user refused it before it was built — *"I don't
+want to add another workflow… the same workflow as the product just narrower"* — and the
+refusal is the better reading. Two properties for one question is two places a state can
+be wrong, and a fallback is machinery whose only job is reconciling them. Two boards over
+one backlog differ by which **states** matter, not by which property holds them.
+
+**`Resolved`, not `Done`, and the difference is the feature.** A product workflow can hold
+states downstream of the moment a sprint is finished with an item — `In review`,
+`Released`, `Verified` — so this board's terminal column claims the weaker verdict. The
+column is styled as finished; the cards in it usually are not, because a card's finished
+styling follows its own workflow (3g) and `In review` is in nobody's done values. A
+column's verdict and a card's are different questions asked of different vocabularies.
 
 It is reached differently from [[A Deliverables board]], on purpose, and the reason is
 **arithmetic, not scope**. That board took a toggle position because there is exactly one
@@ -49,8 +68,8 @@ the moment the populations diverged, which is exactly what happened.
 | --- | --- |
 | **Actor** | Backlog owner |
 | **Trigger** | Choosing an iteration from the board's scope picker |
-| **Preconditions** | Board mode is on, the iteration property is configured, and at least one `Iteration` note is in the model. A resolved workflow is **not** a precondition: it is what the columns need, not what entering the scope needs, and 4a is the guidance shown when there is none |
-| **Guarantee** | One model, one write gate, one undo history, exactly as [[Product Kanban]]'s own guarantee states. Switching scope re-runs no query and writes nothing; a move writes the *resolved* iteration state key alone. |
+| **Preconditions** | Board mode is on, the iteration property is configured, and at least one `Iteration` note is in the model. A resolved state key is **not** a precondition: it is what the columns need, not what entering the scope needs, and 4a is the guidance shown when there is none |
+| **Guarantee** | One model, one write gate, one undo history, exactly as [[Product Kanban]]'s own guarantee states. Switching scope re-runs no query and writes nothing; a move writes the product state key alone, and a move onto the bucket a card already sits in writes nothing at all. |
 
 **Main flow**
 
@@ -64,14 +83,21 @@ the moment the populations diverged, which is exactly what happened.
 3. The cards are the results whose iteration link resolves to that note, and no others:
    carriers only, never a descendant that did not say so itself — whatever their type,
    `Deliverable` included (3e).
-4. The columns are the workflow the `Iterations` options group defines — its own state
-   property when one is configured, or the product workflow's resolved key when it is
-   not. Either way the columns run: no-state first, the configured states in order, then
-   any observed value the configuration does not name.
-5. A drag, an Alt+Left/Right or the card menu's `Set state` all write the resolved
-   iteration state key alone, through the gate every other move goes through, and
-   announce themselves in the same words from the same live region
-   ([[Keyboard and menu moves]]).
+4. The columns are always three, in this order, over the product board's own resolved
+   state key:
+
+   | Column | Holds | A drop writes |
+   | --- | --- | --- |
+   | **Open** — the iteration backlog | no state at all, plus any state named in `iterationOpenStates` | the first value in `iterationOpenStates`, or **removes the key** when that list is empty |
+   | **In Progress** | every state neither outer bucket claims | the first `stateValues` entry in no bucket |
+   | **Resolved** | any state in `iterationResolvedStates`, **plus** every product done value | the first value in `iterationResolvedStates`, or the first done value when that list is empty |
+
+5. If the chosen iteration carries a goal, one line of it draws above the columns.
+6. A drag, an Alt+Left/Right or the card menu's `Set state` all write the **product**
+   state key, through the gate every other move goes through, and announce themselves in
+   the same words from the same live region ([[Keyboard and menu moves]]). Moving a card
+   here therefore moves it on the product board too: that is what one workflow at two
+   granularities means, not a side effect to design away.
 
 **Extensions**
 
@@ -265,7 +291,7 @@ the moment the populations diverged, which is exactly what happened.
   So the population is a plain question about one link, asked of every result whatever
   its type — no type filter, and none of the product board's `!isDeliverableType`.
 - **3f — a `Deliverable` card is on this board and its column is asked for.** The
-  **iteration** workflow decides, exactly as it does for every other card here — and so do
+  **product** state key decides, exactly as it does for every other card here — and so do
   its `Set state` entries and its checkmark. Every routing question on this board is
   answered by the PROJECTION before it is answered by the item's type; asking the type
   first would give a Deliverable card another board's states while it sits in this board's
@@ -275,13 +301,29 @@ the moment the populations diverged, which is exactly what happened.
   with a Deliverable on each input rather than once. One board
   has one column list; a board that columned some cards by one vocabulary and some by
   another would not be a board.
-- **3g — the same card's FINISHED STYLING is asked for.** It comes from the item's **own**
-  workflow, not from this board's — a Deliverable's from the Deliverable workflow, a PBI's
-  from the product one — so on an iteration board **no** card's `pbl-done` is decided by
-  the iteration workflow, and a card can sit in a column this board calls done while not
-  being styled as done.
 
-  That reads like an inconsistency and is a deliberate rule kept where it is decided.
+  **The price is named rather than paid quietly.** A vault that configured a separate
+  `deliverableStateProperty` has Deliverables carrying no value under the key this board
+  reads, so every one of them sits in **Open** here — permanently, whatever the Deliverable
+  workflow says. That is accepted, not corrected. Reading each card by its own workflow's
+  key would give one board two vocabularies, which is the thing this very extension
+  refuses, and the escape a vault already has is the shared key: leave
+  `deliverableStateProperty` unset and it falls back to `stateKey`, which is the
+  arrangement the codebase's own suggestion machinery steers a first-run setup into
+  anyway.
+- **3g — the same card's FINISHED STYLING is asked for.** It comes from the item's **own**
+  workflow, not from the column it sits in — a Deliverable's from the Deliverable workflow,
+  a PBI's from the product one — so **no** card's `pbl-done` on this board is decided by
+  which bucket holds it, and a card can sit in `Resolved` while not being styled as done.
+
+  Since the revision that is the **ordinary** case rather than an oddity, and it is what
+  the rename buys: `Resolved` means the sprint is finished with the item, `done` means the
+  product is, and a workflow with `In review` between them makes the two verdicts differ
+  on purpose. The column is still `done: true` — it is this board's terminal stage, so it
+  takes the finished column styling, the settled-fold default and the no-WIP-limit rule.
+  A column's verdict and a card's are different questions.
+
+  The underlying rule is older than this board and is kept where it is decided.
   `createCard` asks `ownWorkflowReading(item)` and takes **no** completion parameter, and
   its comment records why: it *was* a parameter with an `item.done` default and a
   per-board override, which is a category invariant asked at the places someone thought
@@ -296,69 +338,113 @@ the moment the populations diverged, which is exactly what happened.
   **type-dispatch** rule; the parameter it describes had already been removed. A sentence
   about code, written from another note rather than from the code, and wrong in the one
   direction that would have shipped.
-- **3j — a value under the iteration state key is carried only by a `Deliverable`.** It
-  mints a column here like any other observed value, because a Deliverable card can land
-  in it. This is the mirror image of the product board's rule, and the same rule
-  underneath: a board's stray columns come from **its own** population, so a column
-  nothing on this board could reach is never drawn, and a column something on it holds is
-  never withheld.
-- **3k — a value under the iteration state key is carried only by ANOTHER iteration's
-  work.** It mints no column here. "Its own population" means **this scope's carriers**,
-  not every carrier in the base: a `Deferred` used only in Sprint 13 must not open an
-  empty `Deferred` column on Sprint 12, nor offer it as a Set-state target there. So the
-  observed vocabulary is collected from the population the board is drawing, the way
-  `requirementsWorkflow` collects from the results rather than reading
-  `model.observedStates` — and never from a model-wide list that no scope could narrow.
+- **3j — a card carries a state neither list names.** It lands in **In Progress**, with
+  everything else the two lists do not claim, and mints no column of its own. The
+  `outsideWorkflow` stray column the product board grows has **no counterpart here**, and
+  that is a deletion rather than an omission: with a fixed three, every value has a home
+  by construction, so there is nothing for a stray column to rescue. The two extensions
+  that stood here — one about a value only a Deliverable carries minting a column, one
+  about another iteration's vocabulary leaking in — are answered by there being no
+  observed vocabulary on this board at all.
+- **3k — the counts, then, are what the population still decides.** Each column's
+  `count`, `fullCount`, `held` and `openWork` are measured over **this scope's carriers**,
+  never the model: a Sprint 13 card counted on Sprint 12's Open column is the same defect
+  a model-wide observed list would have been one level up, and handing the builder the
+  population rather than the model retires both at once.
 - **3l — an `Iteration` note itself carries an iteration link**, written by hand rather
   than through a menu that refuses to offer it. It is not a card. An iteration is the
   scope a board is chosen by, and the population refuses one rather than trusting the
   menu to have prevented it — a rule the population keeps holds against a note nobody
   edited through the UI.
-- **4a — neither the iteration state property nor the product one is configured.** The
-  scope is still **enterable** and the board shows the unconfigured empty state, naming
-  the option to set and where. A workflow is what the COLUMNS need, never what the scope
-  needs: gating scope selection on a resolved workflow would make this very guidance
-  unreachable, since the only way to see it is to be on the board that has none. The
-  fallback means an unconfigured iteration state property alone is not enough to trigger
-  it — the product `stateKey` has to be missing too.
-- **4b — the iteration state property is configured on its own key, but its states or
-  done values are not.** They fall through to **this** workflow's own observed values or
-  the shipped default, never to the product workflow's declared states or customized done
-  values. What the key decides is which fallback an **empty** list takes — never whether
-  a list the user populated is used. **A list you set always wins**, shared key or not:
-  the all-or-nothing rule is about borrowing, not overriding. This is the sentence
-  [[A board scoped to Deliverables]] got wrong the same day a check asserting the
-  opposite landed, so it is stated in the direction the check reads.
-- **4c — a value under the configured iteration state key sits on a note in no
-  iteration.** It never mints a stray column here and is never offered on a Set-state
-  menu: a column no card on this board could land in is not a target this board offers.
+- **4a — no state property is configured at all.** The scope is still **enterable** and
+  the board shows the unconfigured empty state, naming the option to set and where. A
+  resolved key is what the COLUMNS need, never what the scope needs: gating scope
+  selection on it would make this very guidance unreachable, since the only way to see it
+  is to be on the board that has none.
+
+  Since the revision the key in question is the **product** `stateProperty`, so this state
+  and the product board's own are one condition seen from two screens rather than two
+  conditions to configure. A vault with a working product board can never reach it here.
+- **4b — neither `iterationOpenStates` nor `iterationResolvedStates` is set.** The board
+  still draws three working columns: Open holds the state-less cards alone, Resolved holds
+  the product done values, and In Progress holds the rest. **That is what replaces the
+  field-by-field fallback** the withdrawn workflow needed. A fallback exists to reconcile
+  two sources of truth; one source needs none, and the defaults are a reading of the
+  product workflow rather than a borrowing from it.
+
+  What a list DOES do when set is claim states for its bucket, and nothing else — there is
+  no all-or-nothing, no key to share, and no direction for the two to disagree in.
+- **4c — a state is named in both lists.** It counts as **Resolved**: the rightmost bucket
+  wins. Stated once and implemented once, because a value read by two membership tests is
+  a value two call sites will eventually disagree about. The product's own done values are
+  folded into Resolved by the same rule — an item the product calls finished can never be
+  drawn as still in progress — which also spares every user from restating their done
+  values in a second list.
+- **4d — a state named in a list is carried by no card in this iteration.** Its column
+  still draws, empty. The three are structural, not observed: a stage of the workflow with
+  nothing in it is a stage with nothing in it, which is exactly what the product board's
+  own empty columns already say.
+- **4e — a bucket has no state to write.** It **takes no drop**: the column draws, it
+  holds whatever reads into it, and it offers no `Set state` entry and refuses a drag and
+  an Alt+arrow. A column that accepted a drop it could not express would write nothing and
+  announce a move, which is worse than one that declines.
+
+  Three configurations produce it, and one rule covers all three rather than three guards
+  written where each was noticed: `iterationOpenStates` unset, so no open state exists to
+  name; every declared state claimed by the two lists, so In Progress has none; and
+  `iterationResolvedStates` unset with no done values either. The bucket's write target is
+  a **lookup**, and a lookup can come back empty.
+- **4f — `iterationOpenStates` is unset, and a card is dropped on Open.** Its state key is
+  **removed**. That is not an exception to 4e but the leading column's own long-standing
+  semantics: Open is the bucket that holds the state-less cards, so "put this card in
+  Open" already means something exact without any list being set. In Progress and Resolved
+  have no such natural reading, which is why they decline instead.
 - **5a — the move takes the card out of this scope**, because the base's filter names the
   state property. The card leaves in silence, as it already does on every other board:
   nothing correlates a Bases pass with a write, so no outcome report is attempted here
   either. The open question is recorded, not reopened.
 - **5c — a new item is created from this board's toolbar or a card's child menu.** It is
   created **into this iteration**: the scope's link is written in the same create as the
-  type and the parent, never as a second write afterwards. Otherwise the new card is
+  type and the parent — and since the revision, so are the iteration's two dates
+  ([[An iteration's timeframe schedules its items]] extension 5a) — never as a second write
+  afterwards. Otherwise the new card is
   missing this board's own property and vanishes on the next refresh — the same failure
   the offered-types rule prevents, arriving through the other door. The precedent is the
   horizon's: a note created from a bucket claims that bucket in the SAME write, so it is
   never momentarily a note sitting somewhere its own frontmatter does not name. With the
   iteration property unconfigured nothing is written, as everywhere else. Creation stays
   outside the undo history, since undo never deletes a note.
+- **5d — a card is dropped on, moved into, or Set-state'd to the bucket it is already
+  in.** **Nothing is written.** Three product states can map to one column, so "the card is
+  already here" and "the write is a no-op" stop being the same sentence — and without this
+  guard a card in `Ready` dragged onto Open would be silently rewritten to whatever
+  `iterationOpenStates` names first, restating the user's own state and spending the undo
+  slot to do it. This is the checkmark rule at a third surface: **ask the plan, and refuse
+  an action that would write nothing.** It has to hold for the drag, the keyboard and the
+  menu alike, since all three reach the one host method.
 - **5b — "Show completed items" is off.** It does not reach this board, and that is one
   field rather than a per-caller choice: `hideCompleted` is false in this projection's
   `VisibilityRule`, exactly as it is for the Deliverables board. The toggle describes the
-  **requirements** rollup (`item.subtreeDone`), and this board's completion is a question
-  the iteration workflow answers, so letting it through would hide a card by a verdict
-  from a workflow this board does not draw. A card whose *product* state reads as done
+  **requirements** rollup (`item.subtreeDone`) — a verdict about a whole subtree — while
+  this board draws individual cards in a `Resolved` column, so letting it through would
+  empty the column that exists to show them. A card whose product state reads as done
   therefore still renders here, and the control is absent from the toolbar rather than
-  present and inert. Answering completion properly needs a rollup over the iteration
-  workflow, which nothing has asked for yet.
+  present and inert.
+
+  The revision makes this cheaper to state, not harder. The board and the toggle now read
+  the same key, and they still ask different questions of it: one about a card, one about
+  everything under a card.
 
   The rule is set in the one predicate rather than at the call sites for the reason that
   predicate's own comment records: it was a per-caller choice for three surfaces and the
   fourth forgot, emptying a card's child disclosure from a setting flipped on another
   projection.
+- **6a — the chosen iteration carries a goal.** One line of it draws above the columns.
+  Three refusals keep it from becoming furniture: no goal, no line — never an empty one,
+  and never a placeholder inviting a value; on `Product` scope no line at all, since there
+  is no iteration to have one; and the line is **text, not a control**, set from the dialog
+  in [[Creating an iteration from the board]] and by editing the note, so nothing about
+  this board's write surface changes to carry it.
 
 ## Acceptance criteria
 
@@ -367,8 +453,8 @@ the moment the populations diverged, which is exactly what happened.
   in the model**, and does not render it otherwise. Both halves: with no configured
   property nothing can join a scope, so a picker offering scopes would be a control whose
   every entry draws an empty board (1b).
-- The scope is enterable with no workflow resolved, which is the only way extension 4a's
-  guidance can be reached. A resolved workflow gates the columns, never the scope.
+- The scope is enterable with no state key resolved, which is the only way extension 4a's
+  guidance can be reached. A resolved key gates the columns, never the scope.
 - The scope persists per saved view in the collapse store's vault-scoped localStorage,
   survives a restart on that device, and never touches the `.base`. A stale stored scope
   makes the WHOLE view read as `Product` — cards, count, completed toggle, offered types
@@ -390,13 +476,13 @@ the moment the populations diverged, which is exactly what happened.
 - "Show completed items" does not reach this board: `hideCompleted` is false in its
   `VisibilityRule`, so a card whose product state reads as done still renders, and the
   toolbar omits the control rather than showing an inert one.
-- A `Deliverable` naming the iteration draws a card here and is columned by the iteration
-  workflow. Its **finished styling** comes from its own workflow, as every card's does in
-  every projection — `createCard` asks `ownWorkflowReading(item)` and takes no completion
-  parameter — so no card's `pbl-done` on this board is decided by the iteration workflow,
-  and a card may sit in a done column without being styled done. Restoring a per-board
-  completion override is explicitly refused: it is the category invariant `createCard`'s
-  own comment records removing.
+- A `Deliverable` naming the iteration draws a card here and is bucketed by the **product**
+  state key, like every other card. Its **finished styling** comes from its own workflow,
+  as every card's does in every projection — `createCard` asks `ownWorkflowReading(item)`
+  and takes no completion parameter — so no card's `pbl-done` on this board is decided by
+  the bucket holding it, and a card may sit in `Resolved` without being styled done.
+  Restoring a per-board completion override is explicitly refused: it is the category
+  invariant `createCard`'s own comment records removing.
 - The quick filter is indexed over the whole tree in an iteration scope, so an inherited
   focus cannot hide a matching card through the filter that the population ignores.
 - The toolbar's item count and the completed toggle's "(N hidden)" both describe this
@@ -409,10 +495,11 @@ the moment the populations diverged, which is exactly what happened.
   by picking one and inspecting the rebuilt toolbar.
 - Leaving `Board` and returning restores the iteration that was showing, and the stored
   mode and scope cannot describe different boards.
-- An item created from this board carries the iteration it was created on, written in the
-  same create as its type and parent — spelled from the NEW note's own path, so two
-  iterations sharing a basename still get distinct links — and so it appears as a card
-  immediately rather than vanishing on refresh.
+- An item created from this board carries the iteration it was created on **and that
+  iteration's two dates**, written in the same create as its type and parent — the link
+  spelled from the NEW note's own path, so two iterations sharing a basename still get
+  distinct links — and so it appears as a card immediately rather than vanishing on
+  refresh.
 - Column folding is scoped to this board: folding a column here folds it nowhere else.
 - Clearing the iteration property falls back to the product board and retains the stored
   scope.
@@ -420,27 +507,46 @@ the moment the populations diverged, which is exactly what happened.
   **yes**, because it draws them; `Iteration` **no**, because it never draws one. Offering
   a type the board cannot show lets a reader create an item and watch it vanish from the
   board it was created on, which is the same defect as withholding one it does show.
-- With cards present but no workflow resolved, the board shows the unconfigured guidance
-  rather than putting every card in a no-state column.
-- The board's observed vocabulary is collected from **this scope's carriers**, so a value
-  only a `Deliverable` carries mints a column here, while a value carried only by items in
-  no iteration — or in a DIFFERENT iteration — mints none.
+- With cards present but no state property configured at all, the board shows the
+  unconfigured guidance rather than putting every card in the Open column.
+- Every column's `count`, `fullCount`, `held` and `openWork` are measured over **this
+  scope's carriers**, so a card in another iteration is never counted here.
 - No `Iteration` note is ever a card on an iteration board, whatever its own frontmatter
   says.
-- Columns come from the `iterationStateProperty` / `iterationStateValues` /
-  `iterationDoneValues` group, falling back to the product workflow field by field — the
-  key when no iteration state property is set, each list only while it is itself empty.
-- A move — drag, Alt+arrow or menu — writes the resolved iteration state key alone,
-  through the same gate, and is taken back by the one undo slot.
-- A context row is never a card, a write target, a count or a source of columns.
+- The columns are exactly three — **Open**, **In Progress**, **Resolved** — over the
+  resolved **product** state key. `iterationOpenStates` and `iterationResolvedStates` name
+  which product states fall in the outer two; every other state, and only those, land in
+  In Progress. Checked by asserting that every value in `stateValues` plus the no-state
+  case lands in exactly one bucket, so a state cannot be dropped or double-counted by a
+  rule written for the buckets one at a time.
+- Both lists may be empty and the board still reads correctly: Open holds the state-less
+  cards, Resolved holds the product done values. A state named in both lists counts as
+  Resolved, and every product done value counts as Resolved whether or not the list names
+  it.
+- The `Resolved` column is `done: true` — the finished column styling, the settled-fold
+  default, no WIP limit — while the cards in it keep their own workflow's `pbl-done`. Both
+  halves checked, because they look like a contradiction and are the point of the name.
+- No stray `outsideWorkflow` column is ever drawn on this board.
+- A move — drag, Alt+arrow or menu — writes the **product** state key through the same
+  gate and is taken back by the one undo slot, writing the first state in the bucket it
+  lands on; and a move onto the bucket the card is already in writes **nothing**, checked
+  on all three inputs.
+- A bucket with no state to write takes no drop, offers no `Set state` entry and refuses
+  the keyboard — checked in all three configurations that produce one. The single
+  exception is Open with `iterationOpenStates` unset, where a drop **removes** the key.
+- A context row is never a card, a write target or a count.
 - An iteration holding no items says so in its own words, not the product board's.
+- The chosen iteration's goal draws as one line above the columns when it has one, and
+  nothing draws when it has none or when the scope is `Product`.
 
 ## Where it lives
 
-The workflow is a third `Workflow` factory in `src/domain/board.ts`, beside
-`requirementsWorkflow` and `deliverablesWorkflow`, over a settings group added to
-`src/domain/viewOptions.ts` and resolved in `src/domain/settings.ts`, whose key resolver
-joins `resolvedDeliverableStateKey` in `src/domain/optionalProperties.ts`. The population
+The three buckets are built in `src/domain/board.ts` beside `requirementsWorkflow` and
+`deliverablesWorkflow`, and deliberately **not** as a third `Workflow` instance: that
+interface exists to say which property a board reads and what its vocabulary is, and this
+board answers neither question for itself — it reads the product key through the resolver
+`src/domain/settings.ts` already exposes. The two list options are declared in
+`src/domain/viewOptions.ts` and resolved in `src/domain/settings.ts`. The population
 is derived in `src/domain/model.ts`. The scope is a `prefs` value beside `axis` in the
 per-view entry of `src/storage/viewStateStore.ts` — a name rather than a path, so neither
 the prune nor the rename touches it — restored and debounce-saved by
@@ -449,10 +555,12 @@ on the host in `src/view/host.ts`. The picker is a `board` case in `renderProjec
 in `src/view/render/toolbarControls.ts`, built the way `renderAxisPicker` beside it is;
 the board itself is `src/view/render/board.ts` under the fork in
 `src/view/render/projections.ts`, with its empty states in
-`src/view/render/emptyStates.ts`. Moves reach the one host method in
+`src/view/render/emptyStates.ts`, and the goal line drawn from the chosen iteration's
+item. Moves reach the board's **existing** host method in
 `src/view/cardMoves.ts` from `src/view/interactions/cardDrag.ts`,
 `src/view/interactions/keyboard.ts` and `src/view/interactions/menu.ts`, planned by
 `src/domain/writePlan.ts` and applied by `src/storage/frontmatter.ts` through
-`src/view/writeGate.ts`. Driven in `test/view/board.test.ts` and
+`src/view/writeGate.ts` — no method of its own, since there is no second key to write and
+so no second idea of what a move is. Driven in `test/view/board.test.ts` and
 `test/view/contextCardWrites.test.ts`, with the store round-trip in
 `test/storage/viewStateStore.test.ts`.

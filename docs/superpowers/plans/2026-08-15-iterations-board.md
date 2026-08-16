@@ -1,5 +1,20 @@
 # Iterations board implementation plan
 
+> **STALE as of 2026-08-16 — do not execute.** The design this plans was revised before
+> any of it was built. Part B builds an iteration workflow of its own
+> (`iterationStateProperty`, `iterationStateValues`, `iterationDoneValues`,
+> `resolvedIterationStateKey`, `iterationWorkflow`, `performIterationBoardMove`,
+> `computeIterationStateWrites`), and **all of that is withdrawn**: the board now narrows
+> the *product* workflow into three buckets. Joining an iteration also writes dates now,
+> an iteration carries a goal, and iterations are created and edited from the scope
+> picker. See the "What the 2026-08-16 revision changed" section of
+> `docs/superpowers/specs/2026-08-15-iterations-design.md`.
+>
+> This file is kept rather than deleted because Part A (the type and the `iteration`
+> property) is substantially unchanged, and because a plan that records what was going to
+> be built is evidence for the next one. It is re-written from the revised spec, not
+> patched — a plan half-corrected is worse than one plainly marked stale.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add an `Iteration` note type and an `iteration` link property, then give board mode a scope picker that shows one iteration's work in a workflow of its own.
