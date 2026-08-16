@@ -197,10 +197,30 @@ interpreted.
 
 **RED, without the skill.** The run happens in a checkout of a commit that predates both
 the skill and this spec, outside the working tree, so the isolation is structural rather
-than an instruction the agent is asked to honour. The expected baseline is a note written
-after zero or one questions. If the baseline agent already interviews across phases, the
-skill teaches nothing and is not shipped; that outcome is reported rather than worked
-around.
+than an instruction the agent is asked to honour.
+
+**What the baseline actually did, and what it cost this design.** The expectation above —
+a note written after zero or one questions — was wrong, and the run is the reason the
+skill shipped narrower than this spec first described it. Given an archiving request, the
+baseline swept `docs/` for prior art, found the note that had *refused* the move-to-archive
+design and *deferred* the age-based one behind a named blocker, confirmed that blocker had
+since cleared, chose a legal parent and a free sibling `order`, wrote a complete use case
+with a guarantee and ten extensions, passed `npm run docs`, and then planted an `order`
+collision to confirm the gate was watching.
+
+So the research half, the shape half and the gate half are **baseline behaviour**, and a
+skill that taught them would be teaching what an agent already does. The skill teaches
+only what both baselines failed at:
+
+| Measured baseline failure | What the skill adds |
+| --- | --- |
+| Inferred the type and proceeded | Phase 0 asks; the type is the owner's decision |
+| Resolved its own contradictions by assumption | Phase 3 hands each one back, alone, with options |
+| Treated writing the note as the way to finish | Nothing on disk before phase 4 |
+| Offered no follow-up | The close prints the handoff prompt |
+
+Everything else the skill points at rather than restating: `docs/README.md` for the
+shapes, `npm run docs` for the gate.
 
 **GREEN, with the skill.** Endpoints alone are too weak a gate — an agent can run five
 phases and still batch its questions, write the wrong shape, or start coding. All of the
