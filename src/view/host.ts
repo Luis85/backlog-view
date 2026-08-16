@@ -1,5 +1,5 @@
 import { App, BasesPropertyId, BasesViewConfig } from 'obsidian';
-import { BoardModel, StatePalette } from '../domain/board';
+import { BoardModel, IterationBucket, StatePalette } from '../domain/board';
 import { BacklogItem, BacklogModel } from '../domain/model';
 import { DropTarget } from '../domain/dropTargets';
 import { RoadmapAxis, RoadmapModel } from '../domain/roadmap';
@@ -370,6 +370,16 @@ export interface BacklogViewHost {
 	 * per device — and never in the `.base`.
 	 */
 	readonly projection: Projection;
+	/**
+	 * Move a card between the iteration board's three buckets — the one method its drop,
+	 * its Alt+arrow and its `Set state` all land on, taking the BUCKET rather than a
+	 * state. Two things break if a state is passed instead, and they break differently:
+	 * `computeStateWrites` compares the exact value, so a card in `Ready` dropped on an
+	 * Open bucket whose representative is `New` is a change by that test and gets
+	 * rewritten; and the announcement matches a column by exact state, so a correct move
+	 * is announced from a column the board does not name.
+	 */
+	performIterationBoardMove(item: BacklogItem, bucket: IterationBucket): Promise<boolean>;
 	/** Switch the projection and re-render; the view-state store persists the choice. */
 	setProjection(mode: Projection): void;
 	/**

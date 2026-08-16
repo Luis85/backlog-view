@@ -12,6 +12,7 @@ import { showColumnMenuForIndex } from './interactions/columnMenu';
 import { showContextMenu } from './interactions/menu';
 import { BacklogItem, BacklogModel, buildModel } from '../domain/model';
 import { isIterationType, PlacementEnd } from '../domain/itemTypes';
+import { IterationBucket } from '../domain/board';
 import { DropTarget } from '../domain/dropTargets';
 import { activeAxis, drawsGrid } from '../domain/roadmap';
 import { ItemWrite, ScheduleGesture, SchedulePlan } from '../domain/writePlan';
@@ -518,6 +519,10 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 
 	performDeliverablesBoardMove(item: BacklogItem, state: string | null): Promise<boolean> {
 		return this.cardMoves.performDeliverablesBoardMove(item, state);
+	}
+
+	performIterationBoardMove(item: BacklogItem, bucket: IterationBucket): Promise<boolean> {
+		return this.cardMoves.performIterationBoardMove(item, bucket);
 	}
 
 	performHorizonMove(item: BacklogItem, horizon: string | null): Promise<boolean> {

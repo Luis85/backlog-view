@@ -19,9 +19,11 @@ import { todayStamp } from '../domain/noteFields';
 import { WriteOutcome } from '../storage/frontmatter';
 import { BacklogViewHost } from './host';
 import { declareResource } from './interactions/labels';
+import { BUCKET_LABELS, bucketOf, bucketRepresentative, IterationBucket } from '../domain/board';
 import {
 	announceBoardMove,
 	announceHorizonMove,
+	announceMove,
 	announceResourceMove,
 	announceScheduleMove,
 } from './interactions/cardDrag';
@@ -51,6 +53,38 @@ export class CardMoveController {
 		const columns = this.host.board?.board;
 		return this.applyCardMove(item, computeStateWrites(item, state, this.host.settings, todayStamp()), () =>
 			announceBoardMove(columns, item.title, from, state),
+		);
+	}
+
+	/**
+	 * A move between the iteration board's three buckets, and the guard that a bucket is
+	 * not a state.
+	 *
+	 * The bucket question is asked FIRST and asked once: a card already in the target
+	 * bucket has nothing to change, whatever state it holds. Without that, two sites break
+	 * differently — `computeStateWrites` compares the EXACT state, so `Ready` dropped on
+	 * an Open bucket representing `New` is a change by that test and gets rewritten,
+	 * restating the reader's own state and spending the undo slot; and `columnLabelFor`
+	 * matches a column by exact state too, so a correct move would be announced from a
+	 * column this board does not name.
+	 *
+	 * A bucket with nothing to write returns having done nothing. That is the last of
+	 * three refusals rather than the only one: the drop is never wired and the menu never
+	 * offers the entry, because a board that advertises a move it will not make is worse
+	 * than one that offers less.
+	 */
+	async performIterationBoardMove(item: BacklogItem, bucket: IterationBucket): Promise<boolean> {
+		const settings = this.host.settings;
+		const from = bucketOf(item.stateValue, settings);
+		const state = bucketRepresentative(bucket, settings);
+		if (from === bucket || state === undefined) return false;
+		// Named from `BUCKET_LABELS` rather than from the drawn board, which is the one
+		// place this move differs from every other in this file: the three labels are
+		// CONSTANTS, not user data, so there is nothing to capture before the await and
+		// nothing a rebuilt board could take away — the sentence says what the header says
+		// by construction.
+		return this.applyCardMove(item, computeStateWrites(item, state, settings, todayStamp()), () =>
+			announceMove(item.title, BUCKET_LABELS[from], BUCKET_LABELS[bucket]),
 		);
 	}
 

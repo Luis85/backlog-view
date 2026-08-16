@@ -1,4 +1,4 @@
-import { renderDeliverablesBoard, renderRequirementsBoard } from './board';
+import { renderDeliverablesBoard, renderIterationBoard, renderRequirementsBoard } from './board';
 import { RowContext } from './columns';
 import { renderBoardNoWorkflowState, renderDeliverablesBoardNoWorkflowState, renderRoadmapNoAxisState } from './emptyStates';
 import { renderRoadmap } from './roadmap';
@@ -251,6 +251,7 @@ export function renderProjectionContent(
 	if (projection === 'board') return renderBoardContent(ctx, treeEl, dnd);
 	if (projection === 'roadmap') return renderRoadmapContent(ctx, treeEl, dnd);
 	if (projection === 'deliverables') return renderDeliverablesBoardContent(ctx, treeEl, dnd);
+	if (projection === 'iteration') return renderIterationBoardContent(ctx, treeEl, dnd);
 	// A BRANCH, not a fallthrough. The catalog wants the tree renderer and not the tree's
 	// identity: falling through would give it the backlog's accessible name for free, so a
 	// screen-reader user who switched projections would be told they are still in the
@@ -277,6 +278,28 @@ function renderBoardContent(ctx: RowContext, treeEl: HTMLElement, dnd: CardDragC
 		return { board: null, roadmap: null, role: 'region', label };
 	}
 	return { board: renderRequirementsBoard(ctx, treeEl, dnd), roadmap: null, role: 'listbox', label };
+}
+
+/**
+ * The board for one iteration — the same guidance-or-columns rule the other two boards
+ * follow, gated on the PRODUCT state property, which is the one this board narrows.
+ *
+ * A scope that no longer resolves is not an error state of its own: `effectiveScope` has
+ * already fallen the whole view back, so the product board is what draws, and the reader
+ * is on the screen every other gate already agrees they are on.
+ */
+function renderIterationBoardContent(ctx: RowContext, treeEl: HTMLElement, dnd: CardDragController): ProjectionContent {
+	const scope = ctx.host.effectiveScope;
+	if (scope === null) return renderBoardContent(ctx, treeEl, dnd);
+	const label = 'Iteration board';
+	// The product board's own guidance, reached from a second screen: a vault with no
+	// `stateProperty` at all reaches it on both boards at once, which is the same
+	// condition described twice rather than a second thing to configure.
+	if (!ctx.host.settings.stateKey) {
+		renderBoardNoWorkflowState(ctx.host, treeEl);
+		return { board: null, roadmap: null, role: 'region', label };
+	}
+	return { board: renderIterationBoard(ctx, treeEl, dnd, scope), roadmap: null, role: 'listbox', label };
 }
 
 /**

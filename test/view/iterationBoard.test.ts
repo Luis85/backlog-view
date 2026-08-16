@@ -2,7 +2,9 @@
 import { describe, expect, it } from 'vitest';
 import { Menu } from 'obsidian';
 import { FakeVault } from '../helpers/vault';
-import { makeView, refresh, useViewHarness } from '../helpers/view';
+import { cardByTitle, cardTitles, columnByName, columnNames } from '../helpers/board';
+import { cardDrag } from '../helpers/dnd';
+import { flush, key, makeView, refresh, treeOf, useViewHarness } from '../helpers/view';
 
 useViewHarness();
 
@@ -279,5 +281,205 @@ describe('the iteration board answers as itself', () => {
 		const focus = harness.containerEl.querySelector<HTMLButtonElement>('.pbl-focus-btn');
 		expect(focus?.disabled).toBe(true);
 		expect(focus?.querySelector('.pbl-btn-label')?.textContent).toBe('Iteration');
+	});
+});
+
+describe('the three-bucket board', () => {
+	const OPEN = 'Open';
+	const RESOLVED = 'Resolved';
+
+	function boardVault(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile(SPRINT, { frontmatter: { type: 'Iteration', order: 10, goal: 'Ship the importer' } });
+		vault.addFile('Ready one.md', {
+			frontmatter: { type: 'PBI', order: 10, status: 'New', iteration: '[[Sprint 12]]' },
+		});
+		vault.addFile('Working.md', {
+			frontmatter: { type: 'PBI', order: 20, status: 'Doing', iteration: '[[Sprint 12]]' },
+		});
+		vault.addFile('Finished.md', {
+			frontmatter: { type: 'PBI', order: 30, status: 'Done', iteration: '[[Sprint 12]]' },
+		});
+		vault.addFile('Not in it.md', { frontmatter: { type: 'PBI', order: 40, status: 'New' } });
+		return vault;
+	}
+
+	function onBoard(extra: Record<string, unknown> = {}, vault = boardVault()) {
+		const harness = makeView(vault, { ...OPTIONS, iterationGoalProperty: 'note.goal', ...extra }, { base: 'Plan.base' });
+		harness.view.setBoardScope(SPRINT);
+		return { ...harness, vault };
+	}
+
+	it('draws three columns over the product workflow, holding this iteration only', () => {
+		const { containerEl } = onBoard();
+		expect(columnNames(containerEl)).toEqual([OPEN, 'In progress', RESOLVED]);
+		expect(cardTitles(columnByName(containerEl, OPEN))).toEqual(['Ready one']);
+		expect(cardTitles(columnByName(containerEl, 'In progress'))).toEqual(['Working']);
+		expect(cardTitles(columnByName(containerEl, RESOLVED))).toEqual(['Finished']);
+	});
+
+	it('keeps finished work on screen, whatever the completed toggle says', () => {
+		// The Resolved column IS the finished work, so hiding a done subtree would empty
+		// the column this board exists to show.
+		const { containerEl } = onBoard({ showCompleted: false });
+		expect(cardTitles(columnByName(containerEl, RESOLVED))).toEqual(['Finished']);
+	});
+
+	it('draws the goal above the columns, as text and not a control', () => {
+		const { containerEl } = onBoard();
+		const goal = containerEl.querySelector<HTMLElement>('.pbl-iteration-goal');
+		expect(goal?.textContent).toBe('Ship the importer');
+		expect(goal?.querySelector('button, a, input, [tabindex]')).toBeNull();
+	});
+
+	it('draws no goal line when there is no goal, and none on Product', () => {
+		const noGoal = new FakeVault();
+		noGoal.addFile(SPRINT, { frontmatter: { type: 'Iteration', order: 10 } });
+		expect(onBoard({}, noGoal).containerEl.querySelector('.pbl-iteration-goal')).toBeNull();
+
+		const product = onBoard();
+		product.view.setBoardScope(null);
+		expect(product.containerEl.querySelector('.pbl-iteration-goal')).toBeNull();
+	});
+
+	it('says the iteration is empty rather than that everything is done', () => {
+		// Never the product board's "All N items are done and hidden", which cannot tell an
+		// empty base from an empty scope.
+		const empty = new FakeVault();
+		empty.addFile(SPRINT, { frontmatter: { type: 'Iteration', order: 10 } });
+		empty.addFile('Elsewhere.md', { frontmatter: { type: 'PBI', order: 10, status: 'New' } });
+		const { containerEl } = onBoard({}, empty);
+		expect(containerEl.textContent).toContain('No items in this iteration yet');
+	});
+
+	it('offers the product board’s workflow guidance with no state property', () => {
+		const vault = boardVault();
+		const { stateProperty, ...noWorkflow } = OPTIONS;
+		expect(stateProperty).toBe('note.status');
+		const harness = makeView(vault, noWorkflow, { base: 'Plan.base' });
+		harness.view.setBoardScope(SPRINT);
+		expect(harness.containerEl.querySelector('.pbl-board-col')).toBeNull();
+	});
+});
+
+describe('one move, three inputs, all through the bucket', () => {
+	function movingVault(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile(SPRINT, { frontmatter: { type: 'Iteration', order: 10 } });
+		// `Ready` and `New` both read as Open, which is the whole point: a move planned
+		// from the column's STATE would rewrite one as the other.
+		vault.addFile('Ready one.md', {
+			frontmatter: { type: 'PBI', order: 10, status: 'Ready', iteration: '[[Sprint 12]]' },
+		});
+		vault.addFile('A deliverable.md', {
+			frontmatter: { type: 'Deliverable', order: 20, status: 'New', iteration: '[[Sprint 12]]' },
+		});
+		return vault;
+	}
+
+	function moving(extra: Record<string, unknown> = {}) {
+		const vault = movingVault();
+		const harness = makeView(
+			vault,
+			{ ...OPTIONS, stateValues: 'New, Ready, Doing, Done', iterationOpenStates: 'New, Ready', ...extra },
+			{ base: 'Plan.base' },
+		);
+		harness.view.setBoardScope(SPRINT);
+		return { ...harness, vault };
+	}
+
+	it('writes nothing when the card is already in the target bucket', async () => {
+		const { view, vault } = moving();
+		const card = view.model?.byPath.get('Ready one.md');
+		await view.performIterationBoardMove(card as never, 'open');
+		await flush();
+		expect(vault.writeLog).toEqual([]);
+	});
+
+	it('writes the bucket representative when the bucket changes', async () => {
+		const { view, vault } = moving();
+		const card = view.model?.byPath.get('Ready one.md');
+		await view.performIterationBoardMove(card as never, 'inProgress');
+		await flush();
+		expect(vault.fm('Ready one.md').status).toBe('Doing');
+	});
+
+	it('refuses a move onto a bucket with nothing to write', async () => {
+		// Every declared state named by the two outer lists, so In progress has no
+		// representative — and no drop, no menu entry and no keyboard target either.
+		const { view, vault, containerEl } = moving({ iterationOpenStates: 'New, Ready, Doing' });
+		const card = view.model?.byPath.get('Ready one.md');
+		await view.performIterationBoardMove(card as never, 'inProgress');
+		await flush();
+		expect(vault.writeLog).toEqual([]);
+		// And the column is not drawn as the key-removal one either: it carries the same
+		// `state: null` and means the opposite, so the strip, the class and the "dropping
+		// here clears the state" name all ask `takesDrop` rather than the null.
+		expect(columnByName(containerEl, 'In progress').classList.contains('pbl-col-nostate')).toBe(false);
+
+		view.showContextMenuFor(card as never);
+		const setState = Menu.lastShown?.item('Set state');
+		expect((setState?.submenu?.items ?? []).map((mi) => mi.titleText)).toEqual(['Open', 'Resolved']);
+	});
+
+	it('writes the PRODUCT key for a Deliverable, from the menu and the keyboard alike', async () => {
+		// Both inputs dispatch on the TYPE before the projection unless the projection is
+		// asked first — so a Deliverable would reach the Deliverables move and write a
+		// second vocabulary onto a board that narrows one.
+		const { view, vault, containerEl } = moving({ deliverableStateProperty: 'note.deliverableStatus' });
+		const card = view.model?.byPath.get('A deliverable.md');
+		view.showContextMenuFor(card as never);
+		Menu.lastShown?.item('Set state')?.submenu?.item('In progress')?.click();
+		await flush();
+		expect(vault.fm('A deliverable.md').status).toBe('Doing');
+		expect(vault.fm('A deliverable.md').deliverableStatus).toBeUndefined();
+
+		const tree = treeOf(containerEl);
+		view.selectItem(view.model?.byPath.get('A deliverable.md') as never);
+		key(tree, 'ArrowRight', { altKey: true });
+		await flush();
+		expect(vault.fm('A deliverable.md').status).toBe('Doing');
+		expect(vault.fm('A deliverable.md').deliverableStatus).toBeUndefined();
+	});
+
+	// What DISTINGUISHES the keyboard's routing is the Deliverable above, and only that:
+	// for every other card, `performBoardMove(card, col.state)` and the bucket move plan
+	// the same write, because three buckets over three columns make the representative and
+	// the column's state the same string. A test asserting the no-op case cannot reach it
+	// either — the card sits in the first column, where the edge guard returns before any
+	// routing runs. So the claim is narrow and stated as such: the keyboard reaches the
+	// bucket method, proven where the two routes write different KEYS.
+
+	it('writes the bucket a card is DROPPED on, and refuses the bucket with nothing to write', async () => {
+		// The third input. A drop carries the COLUMN rather than its state, which is what
+		// lets a bucket be moved to at all — two of them can hold `state: null`.
+		const { vault, containerEl } = moving();
+		cardDrag(cardByTitle(containerEl, 'Ready one'), columnByName(containerEl, 'In progress'));
+		await flush();
+		expect(vault.fm('Ready one.md').status).toBe('Doing');
+
+		// And an unwritable bucket is not wired as a target at all — the refusal is at the
+		// gesture rather than after it.
+		const claimed = moving({ iterationOpenStates: 'New, Ready, Doing' });
+		cardDrag(cardByTitle(claimed.containerEl, 'Ready one'), columnByName(claimed.containerEl, 'In progress'));
+		await flush();
+		expect(claimed.vault.writeLog).toEqual([]);
+	});
+
+	it('says nothing matched rather than that the iteration is empty, while filtering', async () => {
+		const { view, containerEl } = moving();
+		view.setFilter('zzz nothing');
+		await flush();
+		expect(containerEl.textContent).not.toContain('No items in this iteration yet');
+	});
+
+	it('checks the bucket the card is in, not the column whose state it matches', async () => {
+		const { view } = moving();
+		const card = view.model?.byPath.get('Ready one.md');
+		view.showContextMenuFor(card as never);
+		const checked = (Menu.lastShown?.item('Set state')?.submenu?.items ?? [])
+			.filter((mi) => mi.checked)
+			.map((mi) => mi.titleText);
+		expect(checked).toEqual(['Open']);
 	});
 });

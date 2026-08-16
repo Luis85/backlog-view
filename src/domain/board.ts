@@ -119,8 +119,13 @@ export interface BoardModel {
 /** The three columns an iteration board narrows the product workflow into. */
 export type IterationBucket = 'open' | 'inProgress' | 'resolved';
 
-/** The label each bucket wears, in the order the board draws them. */
-const BUCKET_LABELS: Record<IterationBucket, string> = {
+/**
+ * The label each bucket wears, in the order the board draws them. Exported because the
+ * MOVE announcement names its two ends from it: the labels are constants rather than user
+ * data, so reading them here says exactly what the column header says, without the
+ * announcement having to find a column that may have been rebuilt under it.
+ */
+export const BUCKET_LABELS: Record<IterationBucket, string> = {
 	open: 'Open',
 	inProgress: 'In progress',
 	resolved: 'Resolved',
@@ -604,7 +609,7 @@ export function iterationBuckets(
 	counted: (item: BacklogItem) => boolean = visible,
 	owned: (item: BacklogItem) => boolean = counted,
 ): BoardModel {
-	const columns = (Object.keys(BUCKET_LABELS) as IterationBucket[]).map((bucket) => {
+	const column = (bucket: IterationBucket): BoardColumn => {
 		const representative = bucketRepresentative(bucket, settings);
 		return {
 			// `undefined` is not a state and must never be stored as one: a bucket with
@@ -625,11 +630,21 @@ export function iterationBuckets(
 			policy: '',
 			openWork: false,
 			held: 0,
-		} satisfies BoardColumn;
-	});
-	const byBucket = new Map(columns.map((col) => [col.bucket, col]));
+		};
+	};
+	// A RECORD over the three rather than a map with a fallback: `bucketOf` answers one of
+	// exactly these names, so the lookup is total and the compiler is what says so — a
+	// `?? columns[0]` beside it would be an unreachable branch pretending to be a guard.
+	const byBucket: Record<IterationBucket, BoardColumn> = {
+		open: column('open'),
+		inProgress: column('inProgress'),
+		resolved: column('resolved'),
+	};
+	const columns = [byBucket.open, byBucket.inProgress, byBucket.resolved];
+	// With no state property there is no state to read, so every card reads as Open — the
+	// same answer a note with no state key gets, arrived at one level up.
 	const columnFor = (card: BacklogItem): BoardColumn =>
-		byBucket.get(bucketOf(settings.stateKey ? card.stateValue : null, settings)) ?? columns[0];
+		byBucket[bucketOf(settings.stateKey ? card.stateValue : null, settings)];
 	return fillColumns(columns, columnFor, population, { visible, population: counted, owned });
 }
 
@@ -683,7 +698,11 @@ function fillColumns(
  * to a strip, which would say the work is gone rather than merely unmatched.
  */
 export function emptyNoState(col: BoardColumn): boolean {
-	return col.state === null && col.cards.length === 0 && col.fullCount === 0;
+	// `takesDrop` as well as the null, and that is the whole difference between this
+	// column and an unwritable bucket: the strip exists so clearing a state by drag stays
+	// possible with nothing in the column, and a bucket that takes no drop would shrink to
+	// a 44px box offering the one thing it cannot do.
+	return col.state === null && col.takesDrop && col.cards.length === 0 && col.fullCount === 0;
 }
 
 /**

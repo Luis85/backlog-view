@@ -14,7 +14,14 @@ import {
 	ItemWrite,
 } from '../../domain/writePlan';
 import { addAssigneeItems, addIterationItems, addPriorityItems, addRiskItems, canSetIteration } from './labels';
-import { BoardModel, deliverablesWorkflow, ownWorkflowReading, stateKeyFor } from '../../domain/board';
+import {
+	BoardModel,
+	bucketOf,
+	deliverablesWorkflow,
+	IterationBucket,
+	ownWorkflowReading,
+	stateKeyFor,
+} from '../../domain/board';
 import { canReorder, indent, moveToEdge, moveWithinSiblings, outdent, outdentTarget, visibleNeighbor } from './structure';
 import { promptCreateItem } from './create';
 import { addShelfSearchItems, addShelfSortItems, addShelfTypeItems } from './shelfMenu';
@@ -465,6 +472,12 @@ function addChildrenSection(host: BacklogViewHost, menu: Menu, item: BacklogItem
 interface StateChoice {
 	state: string | null;
 	label: string;
+	/**
+	 * Which bucket this entry IS, on the iteration board — absent everywhere else, where
+	 * the state is the identity. Carried rather than re-derived, so the entry the menu
+	 * offers and the move it plans cannot describe different columns.
+	 */
+	bucket?: IterationBucket;
 }
 
 /**
@@ -505,7 +518,14 @@ function deliverableOrTestValues(host: BacklogViewHost, item: BacklogItem, model
 
 function stateChoices(host: BacklogViewHost, item: BacklogItem): StateChoice[] {
 	const board = activeBoard(host);
-	if (board) return board.columns.map((col) => ({ state: col.state, label: col.label }));
+	// A column that takes no drop is offered no entry either. A refusal inside the move
+	// method is not the whole rule: every entry point that OFFERS the target has to
+	// decline too, or the board advertises a move it will not make.
+	if (board) {
+		return board.columns
+			.filter((col) => col.takesDrop)
+			.map((col) => ({ state: col.state, label: col.label, bucket: col.bucket }));
+	}
 	const model = host.model;
 	const values =
 		deliverableOrTestValues(host, item, model) ??
@@ -527,6 +547,13 @@ function stateChoices(host: BacklogViewHost, item: BacklogItem): StateChoice[] {
  * workflows share `choice.state === null`.
  */
 function chooseState(host: BacklogViewHost, item: BacklogItem, choice: StateChoice): Promise<unknown> {
+	// **The PROJECTION first**, and the comment above is what changed with it: what it
+	// says is true of the Deliverables board and false as a general rule the moment a
+	// third card projection exists. Left as it was, an ordinary PBI's pick on an
+	// iteration board fell past `host.projection === 'board'` — false for `'iteration'` —
+	// into the TREE's branch, planning `computeStateWrites` directly with no bucket
+	// guard and no announcement at all.
+	if (choice.bucket) return host.performIterationBoardMove(item, choice.bucket);
 	if (isDeliverableType(item.typeName)) return host.performDeliverablesBoardMove(item, choice.state);
 	// A catalog row has no board to move on, so its pick plans through the test
 	// workflow's own function rather than either board move method.
@@ -545,7 +572,16 @@ function chooseState(host: BacklogViewHost, item: BacklogItem, choice: StateChoi
  * branching because it picks a move METHOD rather than a planner: two of its three
  * answers are host methods that announce, and only the last is a plan handed to the gate.
  */
-function stateWrites(host: BacklogViewHost, item: BacklogItem, state: string | null): ItemWrite[] {
+function stateWrites(host: BacklogViewHost, item: BacklogItem, choice: StateChoice): ItemWrite[] {
+	const { state } = choice;
+	// The BUCKET where there is one, for the move's own reason: `Ready` in an Open bucket
+	// whose representative is `New` would otherwise render Open unchecked while the card
+	// is visibly sitting in it.
+	if (choice.bucket) {
+		return bucketOf(item.stateValue, host.settings) === choice.bucket
+			? []
+			: computeStateWrites(item, state, host.settings, todayStamp());
+	}
 	if (isDeliverableType(item.typeName)) return computeDeliverableStateWrites(item, state);
 	return inCatalog(item) ? computeTestStateWrites(item, state) : computeStateWrites(item, state, host.settings, todayStamp());
 }
@@ -568,7 +604,7 @@ function addStateItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): vo
 	for (const choice of stateChoices(host, item)) {
 		menu.addItem((si) => {
 			si.setTitle(choice.label).onClick(() => void chooseState(host, item, choice));
-			if (stateWrites(host, item, choice.state).length === 0) si.setChecked(true);
+			if (stateWrites(host, item, choice).length === 0) si.setChecked(true);
 		});
 	}
 	// The way back OFF a test state, as the foot this menu already uses for a removal —
