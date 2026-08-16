@@ -148,10 +148,18 @@ function colourProblem(settings: BacklogSettings): string | null {
  * loops rather than one.
  *
  * `list()` splits, trims and drops empties, and EVERY list goes through it. `dedupe()`
- * runs case-insensitively over the five VOCABULARIES only; the three done lists take
+ * runs case-insensitively over the VOCABULARIES only; the three done lists take
  * `list()` alone, so a repeat there is a configuration a user can actually set and
  * rejecting it would refuse a real vault. Checking the narrower set against the wider
  * rule was this predicate's recurring mistake, so the two spans are written out.
+ *
+ * **The list below is the one thing here that can silently go short**, and it did: the
+ * prose said "the five vocabularies" while the array held six, and `riskValues` — deduped
+ * since the day it shipped — was in neither. A missing entry fails open, so nothing
+ * reports it; the way to re-derive the set is to grep `dedupe(` in `settingsResolve.ts`
+ * and read off which SETTINGS FIELD each result lands in, rather than to trust this
+ * sentence. Counted that way on 2026-08-16 when `priorityValues` arrived: eight fields,
+ * seven `dedupe(` call sites (the workflow states resolve through one shared helper).
  *
  * Its own function to keep `settingsInconsistency` inside its complexity budget.
  */
@@ -163,6 +171,8 @@ function listProblem(settings: BacklogSettings): string | null {
 		'startedStates',
 		'horizonValues',
 		'resourceNames',
+		'riskValues',
+		'priorityValues',
 	] as const;
 	for (const field of [...vocabularies, 'doneValues', 'deliverableDoneValues', 'testDoneValues'] as const) {
 		const untrimmed = settings[field].find((value) => value.trim() !== value || value === '');

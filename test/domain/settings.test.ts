@@ -354,6 +354,7 @@ describe('optionalKeyFor', () => {
 			startKey: 'start',
 			targetKey: 'due',
 			riskKey: 'risk',
+			priorityKey: 'priority',
 			assigneeKey: 'assignee',
 			deliverableStateKey: 'deliverableStatus',
 			testStateKey: 'testStatus',
@@ -369,13 +370,18 @@ describe('optionalKeyFor', () => {
 			'start',
 			'due',
 			'risk',
+			'priority',
 			'assignee',
 			'deliverableStatus',
 			'testStatus',
 			'dependsOn',
 		]);
-		// Unconfigured is '', which every caller reads as "no key to write".
+		// Unconfigured is '', which every caller reads as "no key to write". Spelled as a
+		// literal list rather than `OPTIONAL_FIELDS.map(() => '')`: a generated expectation
+		// would agree with any table at all, including one whose new field defaulted to a
+		// key. The count is part of the claim, so the list grows with the table.
 		expect(OPTIONAL_FIELDS.map((field) => optionalKeyFor(defaultSettings(), field))).toEqual([
+			'',
 			'',
 			'',
 			'',
@@ -403,6 +409,7 @@ describe('the optional-property table', () => {
 			'start',
 			'target',
 			'risk',
+			'priority',
 			'assignee',
 			'deliverableState',
 			'testState',
@@ -430,6 +437,7 @@ describe('adoptableProperties', () => {
 			'start',
 			'due',
 			'risk',
+			'priority',
 			'assignee',
 			'dependsOn',
 		]);

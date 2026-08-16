@@ -152,6 +152,14 @@ export interface BacklogSettings extends ItemHandling {
 	 * property with no levels is still a property worth creating on a note.
 	 */
 	riskValues: string[];
+	/** Frontmatter key holding the item's priority, or '' when no priority property is named. */
+	priorityKey: string;
+	/**
+	 * Declared priority levels, in the order the menu offers them. `riskValues`' rule for
+	 * a second ladder: ships prefilled with MoSCoW, clearing it withdraws the Set priority
+	 * menu and the chip, and the property stays backfillable either way.
+	 */
+	priorityValues: string[];
 	/**
 	 * Frontmatter key holding who the item is assigned to, or '' when no assignee
 	 * property is named. Its companion list is OPTIONAL where risk's and the horizon's
@@ -223,6 +231,15 @@ export const DEFAULT_HORIZON_VALUES = ['Now', 'Next', 'Later'];
  * write down. A default the user edits freely, never a fixed list.
  */
 export const DEFAULT_RISK_VALUES = ['1 - High', '2 - Normal', '3 - Low'];
+/**
+ * The shipped priority vocabulary — MoSCoW, numbered for `DEFAULT_RISK_VALUES`' reason:
+ * a priority is read as a ranking, and a list that sorts the way it reads costs nothing
+ * to write down. `Won't` is the fourth rung and is deliberately kept: dropping it makes
+ * "not this time" indistinguishable from "nobody has judged it yet", which is the one
+ * distinction absence already carries. A default the user edits freely, never a fixed
+ * list — MoSCoW is what this ships with, not what the property means.
+ */
+export const DEFAULT_PRIORITY_VALUES = ['1 - Must', '2 - Should', '3 - Could', "4 - Won't"];
 
 export function defaultSettings(): BacklogSettings {
 	return {
@@ -261,6 +278,8 @@ export function defaultSettings(): BacklogSettings {
 		testDoneValues: [...DEFAULT_DONE_VALUES],
 		riskKey: '',
 		riskValues: [...DEFAULT_RISK_VALUES],
+		priorityKey: '',
+		priorityValues: [...DEFAULT_PRIORITY_VALUES],
 		assigneeKey: '',
 		...defaultItemHandling(),
 	};
@@ -376,4 +395,15 @@ export function mergedValues(...lists: readonly string[][]): string[] {
  */
 export function hasRiskLevels(settings: BacklogSettings): boolean {
 	return settings.riskKey !== '' && settings.riskValues.length > 0;
+}
+
+/**
+ * Whether priority is configured enough to be SET from the view — {@link hasRiskLevels}
+ * asked of the other declared ladder, and separate rather than parameterised for the
+ * reason `resolvedTestStateKey` gives beside `resolvedDeliverableStateKey`: the callers
+ * read these by name, and a `hasLevels(settings, 'priority')` would make every one of
+ * them worse to read.
+ */
+export function hasPriorityLevels(settings: BacklogSettings): boolean {
+	return settings.priorityKey !== '' && settings.priorityValues.length > 0;
 }

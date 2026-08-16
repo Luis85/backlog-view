@@ -5,40 +5,43 @@ import { sameValue } from '../../domain/noteFields';
 import { assignableLanes } from '../../domain/roadmap';
 import { mergedValues } from '../../domain/settings';
 import { resolveSettings } from '../../domain/settingsResolve';
-import { computeAssigneeWrites, computeRiskWrites, ItemWrite } from '../../domain/writePlan';
+import { computeAssigneeWrites, computePriorityWrites, computeRiskWrites, ItemWrite } from '../../domain/writePlan';
 import { ValuePromptModal } from '../../ui/prompts';
 import { rowVocabulary } from '../projection';
 
 /**
- * What the row offers for the two LABEL properties — the risk level, and who the item is
- * assigned to. Both are one plain value chosen from a list, set from a submenu whose foot
- * clears the key, so they sit together rather than beside the state and placement actions
- * in `menu.ts`, which is what the ROW is offered rather than what a label means.
+ * What the row offers for the three LABEL properties — the risk level, the priority, and
+ * who the item is assigned to. Each is one plain value chosen from a list, set from a
+ * submenu whose foot clears the key, so they sit together rather than beside the state and
+ * placement actions in `menu.ts`, which is what the ROW is offered rather than what a
+ * label means.
  *
  * Where they differ is the only interesting thing about them, and it is the list: risk's
- * vocabulary is DECLARED and nothing else, while the assignee's is a union of everything
- * that can name a person — an optional roster, the names the results carry, the rows its
- * own axis draws — and is extended by typing on top of all three. That difference is
- * stated in `riskChoices` and `assigneeChoices` and nowhere else; the writes, the
- * checkmarks and the clear entries are the same two rules for both.
+ * and priority's vocabularies are DECLARED and nothing else, while the assignee's is a
+ * union of everything that can name a person — an optional roster, the names the results
+ * carry, the rows its own axis draws — and is extended by typing on top of all three. That
+ * difference is stated in `declaredChoices` and `assigneeChoices` and nowhere else; the
+ * writes, the checkmarks and the clear entries are the same two rules for all three.
  */
 
 /**
- * What Set risk offers: the DECLARED levels, plus the item's own value when that list
- * does not name it, so the current one can always render checked.
+ * What Set risk and Set priority offer: the DECLARED levels, plus the item's own value
+ * when that list does not name it, so the current one can always render checked.
  *
  * Declared alone, deliberately — not the horizon's declared ∪ observed union. That union
  * exists because an undeclared horizon is a bucket a drag can already drop into, so a
  * menu offering less than the roadmap could reach would be the one input that goes quiet.
- * Risk feeds no projection, so it has no second surface to fall short of, and an
- * unexpected value on one note is not a vocabulary this base recommends to the rest.
+ * Neither ladder feeds a projection, so neither has a second surface to fall short of, and
+ * an unexpected value on one note is not a vocabulary this base recommends to the rest.
+ *
+ * Takes the list and the value rather than the host and the item, which is what lets the
+ * two ladders share it: the rule is about a vocabulary and a current value, and naming the
+ * item would have made it about risk with priority as a copy.
  */
-function riskChoices(host: BacklogViewHost, item: BacklogItem): string[] {
-	const values = host.settings.riskValues;
-	const current = item.riskValue;
+function declaredChoices(values: string[], current: string | null): string[] {
 	// The empty key the ✨ backfill leaves behind adds no nameless entry here, and that
 	// is `readString`'s doing rather than this line's: it answers null for a blank, so
-	// `riskValue` is a level or nothing and never the empty string. Guarding for `''`
+	// the value is a level or nothing and never the empty string. Guarding for `''`
 	// beside this would be a second, unreachable statement of a rule the reader already
 	// keeps — the shape `stateChoices` has, for the same reason.
 	if (current === null || values.some((v) => sameValue(v, current))) return values;
@@ -219,10 +222,20 @@ function addLabelItems(
 /** Set risk's entries — the declared levels, then the way to clear the key. */
 export function addRiskItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
 	addLabelItems(menu, host, item, {
-		choices: riskChoices(host, item),
+		choices: declaredChoices(host.settings.riskValues, item.riskValue),
 		writes: (value) => computeRiskWrites(item, value),
 		present: item.ownKeys.risk,
 		clearTitle: 'Clear risk',
+	});
+}
+
+/** Set priority's entries — {@link addRiskItems} over the other declared ladder. */
+export function addPriorityItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
+	addLabelItems(menu, host, item, {
+		choices: declaredChoices(host.settings.priorityValues, item.priorityValue),
+		writes: (value) => computePriorityWrites(item, value),
+		present: item.ownKeys.priority,
+		clearTitle: 'Clear priority',
 	});
 }
 
