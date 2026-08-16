@@ -494,6 +494,27 @@ describe('the gate accepts valid documents', () => {
 		await expectAccepted(files);
 	});
 
+	it('accepts a PRD or an SDD with no backlog frontmatter', async () => {
+		// docs/prds/ and docs/sdds/ hold the requirements and design documents the register's
+		// own epics are derived FROM — evidence kept verbatim, never a work item, so neither
+		// carries a type or a rank.
+		const files = baseRegister();
+		files['docs/sdds/2026-08-02 Some target architecture.md'] = '# SDD — some architecture\n\nThe design.\n';
+		// Verbatim means verbatim: a received document names notes and files from wherever it
+		// was written, and this repository owes none of them a target. Checking those links
+		// would force the one edit the rule exists to prevent.
+		files['docs/prds/2026-08-04 A document naming other things.md'] =
+			'# PRD — with links\n\nSee [[Customer Interview — ACME]] and [the appendix](appendix/none.md).\n';
+		files['docs/prds/2026-08-02 Some product direction.md'] = '# PRD — some direction\n\nWhat was asked for.\n';
+		// And one that arrived with frontmatter of its own: a document written elsewhere may
+		// say `type: requirements` about itself, which is not this register's vocabulary and
+		// must not be read as a backlog note that forgot its rank.
+		files['docs/prds/2026-08-03 A document with its own metadata.md'] =
+			'---\ntype: requirements\nauthor: Someone\n---\n\n# PRD — with metadata\n\nAs received.\n';
+
+		await expectAccepted(files);
+	});
+
 	it('accepts a supersession chain declared from both ends', async () => {
 		const files = baseRegister();
 		files['docs/adrs/0001-the-first-decision.md'] = adr(1, 'the-first-decision', {

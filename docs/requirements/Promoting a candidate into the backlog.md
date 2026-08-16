@@ -1,0 +1,95 @@
+---
+type: Feature
+parent: "[[Product Discovery]]"
+order: 60
+status: Open
+created: 2026-08-16
+source: product requirements document, 2026-08-16
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
+---
+
+# Promoting a candidate into the backlog
+
+A validated opportunity is promoted into an epic, a feature, a PBI or whichever backlog
+type the vault configures. The promotion creates the backlog note through the one write
+boundary, links it back to the discovery item, and leaves the discovery item where it is.
+
+**"Validated" there describes the normal case; it is not a precondition, and nothing is
+gated on it.** The action is offered on any **opportunity**, and *opportunity* is a value of
+the discovery lifecycle rather than a type or a shape: this view names the **lifecycle key**
+and the **values that may be promoted** — the opportunity state by default — and offers the
+action on those and nothing else. Not a type, because [[Ideas as a type beside the ladder]]
+already makes `Idea` a backlog type and [[An idea becomes an opportunity]] keeps the same
+note through the change; not field completeness, because that would make the action appear
+and disappear as somebody types. With either half unconfigured the action is offered nowhere
+and says which is missing, the same answer as the source key below.
+
+It is the only discovery state whose promotion produces work somebody can point back at. An
+assumption or an experiment is a thing done *about* an opportunity, so promoting one would
+file work whose recorded source is a question rather than the thing that was asked, and the
+opportunity holding it would still have nothing pointing back. What the action does not look
+at is the validation state, and the one thing it cannot do without is the source-link key
+below. Two reasons, and the second is the deciding one:
+[[Discovery readiness]] already states that nothing is refused for failing its checklist, so
+a promotion that refused would be the same view blocking on the evidence it just said it
+would only report; and a gate would need this view to hold a list of validation values that
+justify commitment, which is a judgement about somebody's product decision rather than a fact
+about their data. A team that commits to an inconclusive opportunity is doing something
+ordinary and often deliberate. The validation state stays where it was written, visible in
+discovery and unchanged by the promotion.
+
+**A type is not a position, so promotion goes through the creation flow rather than around
+it.** A promoted feature needs a parent and a rank among its siblings; a promoted epic needs
+a rank among the roots. Both are what creating an item already decides — the parent picked or
+implied, the order taken from the end of that sibling group — so promotion reuses that path,
+prefilled with the type and the source link, instead of writing a note with a type and
+nothing to hold it. An item created with no position is the orphan the backlog view spends
+its own rules avoiding.
+
+**The structural properties are three more keys this view names, defaulting to the same
+three suggestions.** What is fixed is the *schema* — the type vocabulary, which type may hold
+which, and where a new item ranks — because that is the kernel below every view rather than
+anybody's options. The **keys** holding it are not:
+[ADR 0013](../adrs/0013-fix-the-type-vocabulary-at-six-names.md) fixes the vocabulary and says
+in the same paragraph that the property keys stay configurable, and the backlog view resolves
+all three from its own view options today. So this view declares `type`, `parent` and `order`
+for itself, defaulting to those names — sharing a suggestion is not sharing a setting, which
+is the case [[Settings scoped to their view]] makes for exactly this pair of views. The two
+alternatives are both wrong for stated reasons: reading the backlog view's keys is the
+coupling that epic exists to prevent, and writing the three literal names produces, in a vault
+that renamed any of them, a note the backlog reader cannot recognize or place — the orphan the
+paragraph above spends the creation flow avoiding. Promotion in a vault with no backlog view
+installed therefore still writes three structural properties; it just writes them under the
+keys the promoting view was told to use.
+
+**The source link is a key this view names**, like every other property it writes, and it is
+the one promotion cannot do without: without it the promotion is an ordinary creation and the
+record of what a piece of work came from is gone. So promotion is offered only once that key
+is bound — the guided empty state offers to bind it, as it does for the rest — rather than
+proceeding silently unlinked and leaving a discovery item nothing points back to.
+
+**"Advanced" is not a rule, so the state is named.** The lifecycle is the vault's own and
+may be renamed, reordered or extended, and the default has two states after `validated` —
+so "the next one" and "the last one" are different answers and neither is inferable. This
+view names the **promoted state** it writes, one value from its own lifecycle, in its own
+options. With none named the promotion writes no state at all: it creates the backlog note
+and the link, and the reader moves the card if they want it moved. Guessing which column
+somebody meant is how a promotion quietly files a validated opportunity as planned.
+
+**Promoting twice is allowed, and the second time says what the first produced.** One
+opportunity legitimately becomes several backlog items — an epic and the feature beside it,
+or the same problem split across two products — which is why
+[[The evidence explorer]] draws that hop as one-to-many. So nothing blocks a repeat, and
+nothing is deduplicated behind the reader's back. What the action does is show the backlog
+items that already name this opportunity, on the screen where the promotion is confirmed, so
+a second promotion is a decision rather than an accident — which matters most where no
+promoted state is configured and the lifecycle value therefore never moves.
+
+**Outcome** — Committed work names the opportunity it came from, the discovery record
+survives the commitment, and its state changes only to a value somebody chose.
