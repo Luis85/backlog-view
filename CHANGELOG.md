@@ -11,6 +11,20 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+### Changed
+
+- **Milestones now share one row at the top of the dated roadmap.** Instead of a row each
+  among the bars, every milestone draws as a diamond in a single `Milestones` row ahead of
+  the first bar — the same row the resources axis already had — so the dates the plan is
+  measured against read across the work beneath them and the work starts at the top of the
+  grid. Each diamond names itself (title, exact date and workflow state) and opens its note
+  on a click; the full-height line and its label are unchanged, and so is everything about
+  where a milestone lands, what a drag writes and what the shelf does with it. Two
+  consequences worth knowing: no fold can take a milestone off the grid any more, not even
+  folding its parent — that is the point of the row — and a milestone is no longer a stop
+  for the roadmap's arrow keys, so reach one from the tree or the board when there is no
+  pointer.
+
 ### Added
 
 - **A MoSCoW priority on every row.** Name a priority property under the new
@@ -106,6 +120,12 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 - **State colours no longer offer a done state.**
 
 ### Fixed
+
+- **Two rough edges on the shelf's own controls.** The type filter's menu opened under the
+  mouse the first time and then reopened at the button's edge after every pick, so the
+  menu moved the moment it was used; it now opens in the same place both times. And the
+  search box drew a border and a background inside the theme's own, giving the field a
+  double outline; it is now a plain search field wearing whatever the theme gives one.
 
 - **The pause after a write on a large backlog is gone.** Every change used to redraw the
   whole tree, so on a vault of around eight hundred notes with the tree open, each move,

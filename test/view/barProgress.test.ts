@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { demoOptions, demoResults } from '../helpers/fixtures';
 import { Harness, useViewHarness } from '../helpers/view';
-import { barFor, laneRoadmap, roadmapView, rowFor } from '../helpers/roadmap';
+import { barFor, laneRoadmap, markersLane, markFor, roadmapView, rowFor } from '../helpers/roadmap';
 import { MIN_BAR_PX } from '../../src/domain/timeline';
 
 /**
@@ -92,16 +92,20 @@ describe('the band inside a bar', () => {
 	});
 
 	it('draws no band for a milestone, even with descendants — its mark is a point, not a span', () => {
+		// A marker has no ROW to carry a band or a count since 2026-08-16: it is a diamond in
+		// the milestones' shared row, and the band is a fill inside a bar's own span. What is
+		// asserted is the diamond, and the absence of any progress furniture in the row that
+		// holds it — the rollup a marker's row used to announce is a stated loss, recorded in
+		// [[Milestones out of the resource rows]].
 		const vault = new FakeVault();
 		vault.addFile('Ship.md', { frontmatter: { type: 'Milestone', order: 10, due: '2026-09-30' } });
 		vault.addFile('Prep.md', { frontmatter: { type: 'Task', order: 10, status: 'Done' }, parentLink: 'Ship' });
 		const { containerEl } = datedRoadmap(vault);
 
-		const bar = barFor(containerEl, 'Ship');
-		expect(bar.classList.contains('pbl-bar-milestone')).toBe(true);
-		const row = rowFor(containerEl, 'Ship');
-		expect(row?.querySelector('.pbl-bar-progress')).toBeNull();
-		expect(row?.querySelector('.pbl-bar-count')?.textContent).toBe('1/1');
+		const mark = markFor(containerEl, 'Ship');
+		expect(mark.classList.contains('pbl-bar-milestone')).toBe(true);
+		expect(markersLane(containerEl)?.querySelector('.pbl-bar-progress')).toBeNull();
+		expect(markersLane(containerEl)?.querySelector('.pbl-bar-count')).toBeNull();
 	});
 
 	it('draws no band for an outside-window arrow, even with descendants', () => {

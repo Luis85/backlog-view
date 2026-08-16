@@ -6,7 +6,6 @@ import { renderPropCells, renderRollup, RowContext } from './columns';
 import {
 	renderAllDoneState,
 	renderBoardExcludedFocusState,
-	renderEmptyIterationState,
 	renderEmptyState,
 	renderFilterEmptyState,
 	renderNoDeliverablesState,
@@ -25,14 +24,13 @@ import {
 	deliverablesWorkflow,
 	columnFoldValue,
 	emptyNoState,
-	iterationBuckets,
 	overBy,
 	ownWorkflowReading,
 	requirementsFocusRoots,
 	requirementsWorkflow,
 } from '../../domain/board';
 import { childTypeChoices, focusTarget, isDeliverableType } from '../../domain/itemTypes';
-import { BacklogItem, iterationResults } from '../../domain/model';
+import { BacklogItem } from '../../domain/model';
 import { listedChildren, undisclosedMatches } from '../childrenList';
 
 /** What differs between the two board-shaped projections' render passes. */
@@ -103,7 +101,7 @@ interface ColumnFrame {
  * costs no information about an item. Shared by both board-shaped projections; what
  * differs between them (whose workflow, whose move, whose empty state) rides in `opts`.
  */
-function renderBoard(
+export function renderBoard(
 	ctx: RowContext,
 	boardEl: HTMLElement,
 	dnd: CardDragController,
@@ -217,67 +215,6 @@ export function renderRequirementsBoard(ctx: RowContext, boardEl: HTMLElement, d
 			else renderAllDoneState(h, aside, population.length, root);
 		},
 	});
-}
-
-/**
- * The board for ONE iteration: its goal above three columns over the PRODUCT workflow.
- *
- * Its population is `iterationResults` — the carriers plus the excluded ancestors that
- * place them — and its columns are `iterationBuckets`, which reads `settings.stateKey`
- * directly rather than through `stateKeyFor`: that function dispatches on the item, so a
- * `Deliverable` would answer with the Deliverables key and one board would be drawing two
- * vocabularies. A sprint holds whatever kind of work was committed to the fortnight.
- *
- * The scope is already resolved (`host.effectiveScope`) — a caller that reached here with
- * a stale path would be drawing a board the rest of the view has fallen back from.
- */
-export function renderIterationBoard(
-	ctx: RowContext,
-	boardEl: HTMLElement,
-	dnd: CardDragController,
-	scope: string,
-): BoardSnapshot {
-	const host: BacklogViewHost = ctx.host;
-	const model = host.model;
-	if (!model) return { board: { columns: [], cardCount: 0 }, colEls: [], scope: 'iteration' };
-	const iteration = model.byPath.get(scope);
-	const population = iterationResults(model, scope);
-	renderIterationGoal(host, boardEl, iteration);
-	const board = iterationBuckets(
-		population,
-		host.settings,
-		(item) => !host.isRowHidden(item),
-		(item) => !host.isRowHiddenUnfiltered(item),
-		// What this board OWNS is its population outright — membership is a link, and
-		// nothing about it is hidden by a toggle. Both predicates above carry the
-		// completed-items filter, which is exactly what `held` may not be measured through.
-		() => true,
-	);
-	return renderBoard(ctx, boardEl, dnd, board, {
-		scope: 'iteration',
-		foldsFinished: false,
-		// The BUCKET, never the column's state: `Ready` and `New` can both read as Open,
-		// and a move planned from the state would rewrite one as the other.
-		move: (item, col) => void (col.bucket && host.performIterationBoardMove(item, col.bucket)),
-		stateOptionLabel: 'Workflow states (in order)',
-		drawEmpty: (h, aside, root) => {
-			if (h.isFiltering()) renderFilterEmptyState(h, aside, root);
-			else renderEmptyIterationState(aside, iteration?.title ?? 'this iteration');
-		},
-	});
-}
-
-/**
- * What this iteration is FOR, above its columns — and three refusals rather than a
- * conditional: no goal draws no line at all (never an empty one, and never a placeholder
- * inviting a value), an unconfigured goal property is the same absence, and the line is
- * TEXT. Nothing in it is focusable or clickable: a goal is a fact about the sprint, and a
- * control here would be a second way to edit a note whose own dialog owns that.
- */
-function renderIterationGoal(host: BacklogViewHost, boardEl: HTMLElement, iteration: BacklogItem | undefined): void {
-	const goal = host.settings.iterationGoalKey ? (iteration?.iterationGoalValue ?? '') : '';
-	if (goal.trim() === '') return;
-	boardEl.createDiv({ cls: 'pbl-iteration-goal', text: goal.trim() });
 }
 
 /**
@@ -713,23 +650,55 @@ export function wireCardActivation(
 	// (the disclosure, the match links, the chips, the add) and a timeline row contains
 	// two more that are not buttons (the bar grips, the connector's neighbours), and none
 	// of them means "open this note".
-	card.addEventListener('click', (evt) => {
-		if (fromRowControl(evt)) return;
+	wireOpenGestures(ctx.host, card, item, (evt) => {
 		ctx.host.selectItem(item, false);
 		// Selected first either way, and opened only if the fold did not spend the click —
 		// the tree's own order in `wireRowEvents`, so one gesture cannot both fold a row
 		// and open its note.
-		if (fold?.(evt)) return;
-		ctx.host.openItem(item, evt);
+		return fold?.(evt) ?? false;
 	});
-	card.addEventListener('auxclick', (evt) => {
-		if (evt.button === 1 && !fromRowControl(evt)) ctx.host.openItemIn(item, 'tab');
+	wireItemMenu(ctx.host, card, item);
+}
+
+/**
+ * The two gestures that OPEN a note, wired as a pair because they are one affordance and
+ * a browser splits them: a middle click never fires `click` at all, so a surface that
+ * wires only the primary one silently loses "open in a new tab" — which is how it left a
+ * milestone's diamond when that mark inherited the row's job (review, 2026-08-16).
+ *
+ * Both ask `fromRowControl`, the receiver's own filter: a card contains buttons (the
+ * disclosure, the match links, the chips, the add), a timeline row contains two that are
+ * not buttons (the bar grips), and a diamond contains the dependency connector. None of
+ * them means "open this note".
+ *
+ * `before` runs on the primary click only and returns whether it SPENT the gesture — the
+ * one thing that differs between a card, which selects and may fold, and a mark that is no
+ * selection stop at all. A middle click has no such question: it always opens a tab.
+ */
+export function wireOpenGestures(
+	host: BacklogViewHost,
+	el: HTMLElement,
+	item: BacklogItem,
+	before?: (evt: MouseEvent) => boolean,
+): void {
+	el.addEventListener('click', (evt) => {
+		if (fromRowControl(evt)) return;
+		if (before?.(evt)) return;
+		host.openItem(item, evt);
 	});
-	// The menu is the non-drag path, and on touch the only one — so a card carries it
-	// exactly as a row does, whichever projection drew it. What it offers differs per
-	// projection (see `buildItemMenu`): a board card has no visible neighbours to
-	// rank against, and its Set state is the board's columns.
-	card.addEventListener('contextmenu', (evt) => showItemMenu(ctx.host, evt, item, childTypeChoices(item)));
+	el.addEventListener('auxclick', (evt) => {
+		if (evt.button === 1 && !fromRowControl(evt)) host.openItemIn(item, 'tab');
+	});
+}
+
+/**
+ * The item menu, which is the non-drag path to everything a pointer drag does and on touch
+ * the only one — so every surface that draws an item carries it, whichever projection drew
+ * it. What it OFFERS differs per surface (see `buildItemMenu`): a board card has no visible
+ * neighbours to rank against, and its Set state is the board's columns.
+ */
+export function wireItemMenu(host: BacklogViewHost, el: HTMLElement, item: BacklogItem): void {
+	el.addEventListener('contextmenu', (evt) => showItemMenu(host, evt, item, childTypeChoices(item)));
 }
 
 /**
@@ -765,6 +734,9 @@ export function renderCardMatches(ctx: RowContext, carded: Set<string>, placed: 
 	const host: BacklogViewHost = ctx.host;
 	if (!host.isFiltering()) return;
 	const { item, mount, listsChildren } = placed;
+	// A surface that drew the item with nowhere to write on it — see `PlacedMount.face`.
+	// Asked BEFORE the walk, since there is nothing to do with its answer.
+	if (placed.face === 'none') return;
 	const matches = undisclosedMatches(host, item, carded, listsChildren ? listedChildren(host, item) : []);
 	if (matches.length === 0) return;
 	if (placed.face === 'count') return renderMatchCount(ctx, mount, item, matches.length);

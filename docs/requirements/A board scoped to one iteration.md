@@ -642,7 +642,10 @@ on the host in `src/view/host.ts`. The picker is `renderBoardScopePicker` in
 drawn beside the projection switcher in EVERY projection rather than inside the board's
 own zone, since it is how this board is reached and a control behind the door it opens
 would be no way in at all;
-the board itself is `src/view/render/board.ts` under the fork in
+the board itself is `src/view/render/iterationBoard.ts` — its own module since
+2026-08-16, when `src/view/render/board.ts` reached its line cap as the dated axis's
+milestone lane landed beside it; that file keeps the shared frame this one draws through
+(`renderBoard`, the columns, the cards, the advisory) — under the fork in
 `src/view/render/projections.ts`, with its empty states in
 `src/view/render/emptyStates.ts`, and the goal line drawn from the chosen iteration's
 item. Moves reach one host method of this board's own in `src/view/cardMoves.ts` from

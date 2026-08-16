@@ -207,6 +207,31 @@ describe("the shelf's type picker", () => {
 		expect(shelfGroupHeaders(containerEl)).toEqual(['Epic']);
 	});
 
+	it('opens under its own button both times, so a reopen never moves the menu', () => {
+		const { containerEl } = makeRoadmap(searchVault());
+		const btn = containerEl.querySelector<HTMLButtonElement>('.pbl-shelf-filter');
+		if (!btn) throw new Error('no type filter rendered');
+		// Every frame's button reports the same box, which is what a stable anchor means:
+		// the pick below destroys this one and the reopen anchors to its replacement.
+		const rect = { left: 44, bottom: 26, top: 0, right: 0, width: 0, height: 0, x: 0, y: 0, toJSON: () => ({}) };
+		Object.defineProperty(HTMLButtonElement.prototype, 'getBoundingClientRect', {
+			configurable: true,
+			value: () => rect as DOMRect,
+		});
+
+		// A real pointer, which `showAtMouseEvent` would have honoured — dropping the first
+		// menu at the cursor and every one after it at the button, so the picker jumped the
+		// moment it was used. A picker that comes back has to come back in one place.
+		const first = openTypeMenu(containerEl);
+		expect(Menu.lastPosition).toEqual({ x: 44, y: 26 });
+
+		Menu.lastPosition = null;
+		first.items.find((i) => i.titleText === 'Task (1)')?.click();
+		expect(Menu.lastPosition).toEqual({ x: 44, y: 26 });
+
+		Reflect.deleteProperty(HTMLButtonElement.prototype, 'getBoundingClientRect');
+	});
+
 	it('hides every type at once, and shows every one back', () => {
 		const { containerEl } = makeRoadmap(searchVault());
 

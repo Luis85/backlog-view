@@ -95,7 +95,10 @@ date.
 5. On the dated axis it renders as a diamond **at its date**, with no open end, because
    nothing is missing — and only where that date is inside the drawn window, since a
    diamond anywhere else would be a date the milestone does not have
-   ([[A milestone line across the plan]] settles the off-window row).
+   ([[A milestone line across the plan]] settles the off-window mark). Since 2026-08-16 that
+   diamond is in the milestones' own shared row at the head of the grid rather than in a row
+   of its own — [[Milestones in one row on the dated axis]], which changes where the mark is
+   drawn and nothing about what it means or where it lands.
 6. Everywhere else it is an ordinary row that **aggregates** into nothing: no ancestor's
    rollup, progress figure, done-subtree state or inferred span is ever computed from it.
    Both rollups this model runs are covered, and for the same reason — a marker is not
@@ -234,13 +237,14 @@ date.
   span, wherever it sits in the tree: both the progress count
   ([[Rollups and hiding finished work]]) and the date evidence
   ([[Spans roll up the tree]]) skip it, so a milestone nested under a dateless epic leaves
-  that epic's bar exactly as its work left it — while its own row narrows under
+  that epic's bar exactly as its work left it — while its own mark narrows under
   "Show completed items" and the
-  quick filter exactly as any other row does, and its line goes with it
-  ([[A milestone line across the plan]]). The two are different rules and the note must
+  quick filter exactly as any other result does, and its line goes with it
+  ([[A milestone line across the plan]]). A hidden marker takes the milestones' row with it
+  where it was the only one placed, since that row is minted by a placed marker. The two are different rules and the note must
   not be read as one: never counted is about aggregation, not about visibility.
 - On the dated axis it draws as a diamond at its date with no open end, and a diamond is
-  drawn nowhere else: a date outside the drawn window leaves the row marked as lying past
+  drawn nowhere else: a date outside the drawn window leaves the mark marked as lying past
   that edge rather than clamped onto it; an unreadable date shelves it with the reason
   visible; on the bucket axis it places by its horizon or shelves, and its date is never
   read as one.

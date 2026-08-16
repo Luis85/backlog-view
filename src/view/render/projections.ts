@@ -1,4 +1,5 @@
-import { renderDeliverablesBoard, renderIterationBoard, renderRequirementsBoard } from './board';
+import { renderDeliverablesBoard, renderRequirementsBoard } from './board';
+import { renderIterationBoard } from './iterationBoard';
 import { RowContext } from './columns';
 import { renderBoardNoWorkflowState, renderDeliverablesBoardNoWorkflowState, renderRoadmapNoAxisState } from './emptyStates';
 import { renderRoadmap } from './roadmap';

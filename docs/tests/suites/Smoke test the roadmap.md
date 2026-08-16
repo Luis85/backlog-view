@@ -137,7 +137,10 @@ catalog migration and was not part of that run.
   pitch in the header track's `min-height` — and `test/view/timelineBoxing.test.ts` ties the
   two together, with `test/view/resourceAbsences.test.ts` asserting the index each mark
   actually carries. A look would answer it more slowly and less reliably than the suite does.
-- The milestones' own row (added 2026-08-15, [[Milestones out of the resource rows]]), which
+- The milestones' own row (added 2026-08-15, [[Milestones out of the resource rows]]; drawn
+  on the plain DATED axis too since 2026-08-16,
+  [[Milestones in one row on the dated axis]], so every point below is now owed on both
+  axes and the dated one is the easier place to look), which
   is the same packing question asked of a mark that is 12px and rotated: whether two
   diamonds stacked on one day read as two dates rather than as one mark drawn oddly, and
   whether a mark a day or two from its neighbour at a coarse zoom — which stacks NOT, by
