@@ -365,14 +365,20 @@ export function computeAssigneeWrites(item: BacklogItem, value: string | null): 
 export function computeIterationWrites(item: BacklogItem, target: BacklogItem | null, settings: BacklogSettings): ItemWrite[] {
 	if (!settings.iterationKey) return [];
 	const current = item.iterationEntry;
+	// A None pick is asked of PRESENCE (`ownKeys`), never of the PARSED entry — the same
+	// split `computeAssigneeWrites`/`computeRiskWrites` make. `readLinkList` refuses a
+	// non-string or an empty value outright, so a hand-edited `iteration: ''` or
+	// `iteration: 12` reads as `iterationEntry === null` while the key still visibly
+	// holds something on the note; asking the parsed entry here would tick the menu's
+	// None checkmark on a note the reader can see is not empty, and picking it would
+	// then write nothing. `ownKeys.iteration` answers "is there a key to remove", which
+	// is the question a removal is actually asking.
+	if (target === null) return item.ownKeys.iteration ? [{ file: item.file, iteration: null }] : [];
 	// Compared by PATH, never by the raw text: two spellings of one note are one
 	// iteration. A link that resolved to nothing has no path and is therefore never
-	// "already there" — which is what makes a broken value clearable: a None pick against
-	// a broken entry still has something present (`current !== null`) to take away, so it
-	// is not treated as already matching the "no iteration" target either.
-	const same = target === null ? current === null : current?.file?.path === target.file.path;
-	if (same) return [];
-	return [{ file: item.file, iteration: target === null ? null : target.file }];
+	// "already there" for any target.
+	const same = current?.file?.path === target.file.path;
+	return same ? [] : [{ file: item.file, iteration: target.file }];
 }
 
 /**

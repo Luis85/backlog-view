@@ -60,4 +60,20 @@ describe('computeIterationWrites — the link', () => {
 		expect(pbi.iterationEntry?.file).toBeNull();
 		expect(computeIterationWrites(pbi, null, settings)).toEqual([{ file: pbi.file, iteration: null }]);
 	});
+
+	it('offers a removal for a key that failed to parse as a link at all — presence, not the parsed entry', () => {
+		// `readLinkList` refuses a non-string value outright, so a hand-edited `iteration: 12`
+		// reads as no ENTRY (`iterationEntry === null`) while the KEY is still visibly there on
+		// the note. Asking the parsed entry for "is there something to clear" would report
+		// nothing to remove on a note the reader can plainly see is not empty — the same
+		// drift `computeAssigneeWrites` avoids by asking `ownKeys` instead of the reading.
+		const vault = new FakeVault();
+		vault.addFile('PBI-1.md', { frontmatter: { type: 'PBI', order: 10, iteration: 12 } });
+		const model = buildModel(vault.app, vault.entries(), settings);
+		const pbi = model.byPath.get('PBI-1.md')!;
+
+		expect(pbi.iterationEntry).toBeNull();
+		expect(pbi.ownKeys.iteration).toBe(true);
+		expect(computeIterationWrites(pbi, null, settings)).toEqual([{ file: pbi.file, iteration: null }]);
+	});
 });
