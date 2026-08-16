@@ -20,6 +20,15 @@ Items plotted on two configurable axes, with the four quadrants named — quick 
 strategic bets, fill-ins, reconsider — and a point that opens its item. The quadrant is a
 label on a region of the plot, never a property written to a note.
 
+**Each dividing line is a number, defaulting to the midpoint of its axis's declared range**
+and settable per axis — two thresholds, one per axis, in this view's own options. Explicitly
+**not the median of what is plotted**: a line that follows the population moves when
+somebody adds an item, so an item nobody touched changes quadrant because of a neighbour,
+and two bases over the same notes cut the same vault in two different places. A midpoint of a
+declared range is a statement about the scale, which is what a quadrant name is claiming to
+be. A team that means "expensive starts at 4 of 5" says so by moving the line, and the plot
+shows where the lines are.
+
 **A thinly estimated item is plotted and marked, never hidden.** The epic leaves the
 treatment to this feature and it is chosen here: every item with a total appears, and its
 point carries its **coverage** — how much of the model the position rests on — so a point

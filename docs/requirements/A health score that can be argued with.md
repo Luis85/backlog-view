@@ -34,6 +34,18 @@ are three problems. And **the denominator is the population the base returned**,
 one the item count reports, so two bases over the same vault can score it differently and
 each score says what it examined.
 
+**A rule that does not run is not a rule that found nothing.** A rule missing an input is
+listed as unconfigured by [[Rules that say what is wrong]], and it is left out of this
+arithmetic entirely rather than contributing a zero share — a zero share is a clean bill of
+health, and the score would climb as the setup got emptier until an unconfigured view read
+100. So the score says **how many of the enabled rules it ran**, the way every other figure
+in this register carries its coverage, and where none ran there is no score at all: the
+dashboard shows the unconfigured list, which is the only honest thing to show.
+
+**An empty population has no score either.** With nothing examined every share is `0 ÷ 0`,
+and the two available lies are a `NaN` and a perfect 100 for a backlog nobody has looked at.
+The view says the base returned nothing, and the decomposition is that sentence.
+
 Weights do not have to total 100 and are not renormalized — that is what lets a rule be
 switched off without moving everybody else's contribution. Where they total more, the floor
 is what a very unhealthy backlog reaches; where they total less, so does the worst possible

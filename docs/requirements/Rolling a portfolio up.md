@@ -34,6 +34,15 @@ categorical, and an average of low, medium and high is a number no one can act o
 single figure is wanted from either, it is the **worst** category present and the count at
 it, which is a statement anybody can check against the list.
 
+**"Worst" needs an order, and this view declares its own** — one ordered list of labels per
+categorical key, beside the key itself, worst first. A property key says where the values
+live and nothing about what they mean, and the ordering the backlog view uses for risk
+belongs to that view's settings, which [[Settings scoped to their view]] forbids reading. So
+an unordered key gets its **distribution and no single figure**: the counts are still true,
+and a worst-of picked from an order nobody declared is the arbitrary answer this whole note
+is written against. A value outside the declared order is counted, shown, and named as
+unranked rather than sorted to one end.
+
 The denominator is the same for all of them: the items in the grouping, which
 [[Levels above the epic]] defines as the ones whose nearest grouping statement is this one
 or something under it. Each aggregate reports how much of that population it could not

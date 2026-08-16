@@ -25,9 +25,13 @@ strategic entity — each
 defaulting to the same suggestion the view that writes it uses, and none of them read from
 another view's settings. A hop with no key configured is simply not drawn, and the chain says
 where it stopped rather than presenting a shorter path as the whole one. The middle hop is
-read **backward**, from the side that stores it: [[Promoting a candidate into the backlog]]
-writes the link on the created backlog note, so the opportunity finds what it became by being
-named, not by naming. A vault with no
+**stored on one side and walked from the other**: [[Promoting a candidate into the backlog]]
+writes the link on the created backlog note, so an opportunity holds no list of what it
+became, and the traversal starts at the opportunity and collects the backlog items whose
+source link names it. One opportunity can therefore have several, or none, and none is drawn
+as an end rather than as a gap. Walking it the other way — expecting the opportunity to name
+its items — finds nothing on every vault, which is a middle hop that reads as absent
+everywhere. A vault with no
 Discovery and no Strategy still gets the evidence-to-item hop, which is the one this epic
 owns outright.
 
