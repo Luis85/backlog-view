@@ -78,6 +78,13 @@ frontmatter before it lands anything.
 A render can still cross a gesture by another route — a pane resize — which is why the
 monitor stays what owns the drag class rather than that becoming redundant.
 
+The monitor watched only card moves at first, so a **link drag** still lost its release
+exactly this way — the preview line vanished and the dependency was silently not written.
+Found by review on 2026-08-16: the monitor now watches every drag of this view for the
+deferral, while `.pbl-dragging` stays the card move's own
+(`test/view/linkDrag.test.ts`, "holds a Bases update back while the gesture is in
+flight").
+
 ## The tests
 
 `test/view/cardDrag.test.ts`, "still writes what the release named — the update waits for
