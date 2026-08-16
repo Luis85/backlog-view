@@ -10,7 +10,7 @@ started: ""
 finished: ""
 horizon: ""
 start: ""
-due: ""
+due: 2026-08-05
 risk: ""
 assignee: Chris
 ---
