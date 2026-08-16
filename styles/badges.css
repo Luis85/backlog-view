@@ -72,6 +72,20 @@
 .pbl-lvl-idea { --pbl-badge-rgb: var(--color-yellow-rgb); }
 /* A marker is not work, so it takes the one colour no rung and no other type uses. */
 .pbl-lvl-milestone { --pbl-badge-rgb: var(--color-cyan-rgb); }
+/*
+ * TWELVE badges now, still eight theme tokens, and this is the first hue THREE badges
+ * share rather than two. The plan that added `Iteration` reached for purple on the
+ * premise that no rung or extra type used it — wrong: purple is `.pbl-lvl-1`, Feature's,
+ * so every one of the eight tokens was already spoken for before this badge existed. It
+ * takes CYAN instead, joining Milestone and Test case there: a marker is a date, and
+ * pairing the two markers is the one sharing decision this addition can still make on
+ * THEME rather than by default. What keeps Test case's cyan apart from Milestone's — the
+ * test axis border, below — does not reach here, so today the icon (`calendar-clock`
+ * against Milestone's `diamond`) and the type name are the whole of what separates a
+ * Milestone badge from an Iteration one. Whether that reads as "these two are markers" or
+ * as one more collision is a live-vault question, unresolved by this file.
+ */
+.pbl-lvl-iteration { --pbl-badge-rgb: var(--color-cyan-rgb); }
 /* Green, which no level uses and no extra type shares now that Idea has moved off it. */
 .pbl-lvl-deliverable { --pbl-badge-rgb: var(--color-green-rgb); }
 

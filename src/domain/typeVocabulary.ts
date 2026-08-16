@@ -47,6 +47,12 @@ export const TEST_LEVELS = ['Test suite', 'Test case', LEVELS[LEVELS.length - 1]
 export const DELIVERABLE_TYPE = 'Deliverable';
 export const EXTRA_TYPES = ['Issue', 'Bug', 'Idea', DELIVERABLE_TYPE];
 /**
+ * The second declared marker. Named once, like `DELIVERABLE_TYPE`, so `MARKER_TYPES`
+ * and every `isIterationType` call site read the identical string rather than two
+ * spellings that can drift.
+ */
+export const ITERATION_TYPE = 'Iteration';
+/**
  * The third category: a declared **marker**. It occupies no rung, holds nothing, and
  * hangs from nothing — the opposite of an extra type on all three counts, which is why
  * the name is here rather than in `EXTRA_TYPES`. That list means *pinned at
@@ -54,7 +60,7 @@ export const EXTRA_TYPES = ['Issue', 'Bug', 'Idea', DELIVERABLE_TYPE];
  * (`itemTypes.ts` states it), so adding a marker to it would not extend the contract but
  * falsify it, and `isExtraType` would start meaning two things at four call sites.
  */
-export const MARKER_TYPES = ['Milestone'];
+export const MARKER_TYPES = ['Milestone', ITERATION_TYPE];
 /**
  * The one DECLARED name that is not a work-item type at all — a resource's own
  * unavailable stretch. It joins none of the lists above and, deliberately, not
@@ -106,6 +112,7 @@ const DEFAULT_TYPE_SUBFOLDERS: Record<string, string> = Object.assign(Object.cre
 	idea: 'ideas',
 	deliverable: 'deliverables',
 	milestone: 'milestones',
+	iteration: 'iterations',
 	// The catalog files under one root of its own, one folder per rung — the shape
 	// `requirements/` already has for the three types that share it.
 	'test suite': 'tests/suites',

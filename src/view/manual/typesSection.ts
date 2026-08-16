@@ -24,6 +24,9 @@ const INTENT: Record<string, string> = {
 		'A date the plan answers to. The + never offers to create one as a child, and draws no + of ' +
 		'its own — but that is what is OFFERED: nothing stops a drag from nesting one under an ' +
 		'existing row, or Set type from turning any row into one.',
+	Iteration:
+		'A time box items are scheduled into. Items link to an iteration rather than hanging from ' +
+		'one, so like a Milestone it holds nothing and the + never offers to create one as a child.',
 	'Test suite':
 		'A walkable group of end-to-end tests, and a root by nature — it hangs from nothing and ' +
 		'lives in the test catalog rather than in the plan. Holds Test cases.',

@@ -54,6 +54,7 @@ const LEGAL_CHILDREN = Object.assign(Object.create(null), {
 	Deliverable: new Set(["Task"]),
 	// A marker holds nothing and hangs from nothing: no children, and a root of its own.
 	Milestone: new Set(),
+	Iteration: new Set(),
 	// The test catalog's own ladder — a second one, and it touches the first nowhere
 	// except at `Task`, the rung they share. Neither test type is ever a legal child of a
 	// plan type or the reverse: the relationship between a test and the work it checks is
@@ -66,13 +67,14 @@ const LEGAL_CHILDREN = Object.assign(Object.create(null), {
  * above — only this one decides whether a parentless note is rejected, so a type added to
  * the table and not to this list is a type the register cannot hold as a root.
  *
- * An `Epic` is a root by POSITION — the top of the ladder — while a `Milestone` and a
- * `Test suite` are roots by NATURE: a release date is owned by the plan rather than by an
- * epic, and a suite hangs from nothing because the tests are their own list rather than a
- * branch of the plan. The suite is the first root by nature that has CHILDREN, which is
- * what makes these two questions rather than one.
+ * An `Epic` is a root by POSITION — the top of the ladder — while a `Milestone`, a
+ * `Test suite` and an `Iteration` are roots by NATURE: a release date and a time box are
+ * both owned by the plan rather than by an epic, and a suite hangs from nothing because
+ * the tests are their own list rather than a branch of the plan. The suite is the first
+ * root by nature that has CHILDREN, which is what makes these two questions rather than
+ * one.
  */
-const ROOT_TYPES = new Set(["Epic", "Milestone", "Test suite"]);
+const ROOT_TYPES = new Set(["Epic", "Milestone", "Test suite", "Iteration"]);
 
 /** `a, b or c` — so the rejection message stays a sentence as this set grows. */
 const andList = (names) =>

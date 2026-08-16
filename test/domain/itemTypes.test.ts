@@ -11,7 +11,15 @@ import {
 } from '../../src/domain/itemTypes';
 import { defaultSettings } from '../../src/domain/settings';
 import { resolveSettings } from '../../src/domain/settingsResolve';
-import { ALL_TYPES, defaultTypeFolder, EXTRA_TYPES, LEVELS, MARKER_TYPES } from '../../src/domain/typeVocabulary';
+import {
+	ALL_TYPES,
+	defaultTypeFolder,
+	EXTRA_TYPES,
+	ITERATION_TYPE,
+	LEVELS,
+	MARKER_TYPES,
+	typeFolderKey,
+} from '../../src/domain/typeVocabulary';
 import { FakeVault } from '../helpers/vault';
 
 const settings = defaultSettings();
@@ -164,6 +172,7 @@ describe('childTypeChoices', () => {
 			'Idea',
 			'Deliverable',
 			'Milestone',
+			'Iteration',
 			'Test suite',
 			'Test case',
 		]);
@@ -298,6 +307,26 @@ describe('isMarkerType', () => {
 		expect(isMarkerType('Spike')).toBe(false);
 		expect(isMarkerType(null)).toBe(false);
 		expect(MARKER_TYPES.some((m) => isExtraType(m))).toBe(false);
+	});
+});
+
+describe('Iteration is a declared marker', () => {
+	it('is a marker type and a member of the whole vocabulary', () => {
+		expect(ITERATION_TYPE).toBe('Iteration');
+		expect(MARKER_TYPES).toContain('Iteration');
+		expect(ALL_TYPES).toContain('Iteration');
+	});
+
+	it('inherits every marker rule rather than declaring one', () => {
+		expect(isMarkerType('Iteration')).toBe(true);
+		// A marker holds nothing, so nothing is offered beneath it.
+		expect(childTypeChoices({ typeName: 'Iteration', levelIndex: -1, effectiveLevelIndex: 0, ladder: LEVELS })).toEqual(
+			[],
+		);
+	});
+
+	it('files into its own subfolder', () => {
+		expect(typeFolderKey('Iteration')).toBe('typeFolder.iteration');
 	});
 });
 

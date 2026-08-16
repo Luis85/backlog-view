@@ -15,6 +15,7 @@ demonstrating itself:
 | `bugs/` | Defects, with what was learned from them | `Bug` |
 | `deliverables/` | Things this project has to produce that are not code | `Deliverable` |
 | `milestones/` | Dates the plan is answerable to, owned by no item | `Milestone` |
+| `iterations/` | Time boxes items are scheduled into, owned by no item | `Iteration` |
 | `tests/suites/` | Walkable groups of end-to-end tests, their own list rather than a branch of the plan | `Test suite` |
 | `tests/cases/` | One executable test each — a Preconditions line plus whatever shape it already had | `Test case` |
 | [`adrs/`](adrs/README.md) | **How** it is built — architecture decision records | *(none — not backlog items)* |
@@ -205,6 +206,10 @@ requirement it concerns, and `docs-check.mjs` holds it to that.
 counts for nothing. It states a date rather than work, so it never enters a rollup — a
 number reporting progress must only ever count work — and it files into `milestones/`.
 
+`Iteration` is the second marker, the same three ways: no rung, no children, no parent.
+Items **link** to an iteration rather than hanging from one, so it never enters a rollup
+either, and it files into `iterations/`.
+
 ## The hierarchy is the point
 
 This register is the plugin's own schema, so a wrong parent here is a bug in the example.
@@ -218,6 +223,7 @@ Every pair holds:
 | `Task` | `PBI`, `Issue`, `Bug`, `Idea`, `Deliverable`, `Test case` | *(nothing)* |
 | `Issue` / `Bug` / `Idea` / `Deliverable` | `Epic`, `Feature` or `PBI` | `Task` |
 | `Milestone` | *(nothing — a root by nature)* | *(nothing)* |
+| `Iteration` | *(nothing — a root by nature)* | *(nothing)* |
 | `Test suite` | *(nothing — a root by nature)* | `Test case` |
 | `Test case` | `Test suite` | `Task` |
 

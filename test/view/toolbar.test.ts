@@ -237,6 +237,7 @@ describe('toolbar controls', () => {
 			'New Idea',
 			'New Deliverable',
 			'New Milestone',
+			'New Iteration',
 		]);
 
 		picker?.item('New PBI')?.click();

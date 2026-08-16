@@ -70,14 +70,26 @@ New test files: `test/domain/iterationDates.test.ts`. Extended: `test/domain/set
 **Files:**
 - Modify: `src/domain/typeVocabulary.ts` — `MARKER_TYPES`, `DEFAULT_TYPE_SUBFOLDERS`
 - Modify: `src/view/render/badges.ts` — `NAMED_TYPE_STYLE`
+- Modify: `src/view/manual/typesSection.ts` — an `INTENT` entry for `Iteration`, or
+  `test/view/manualTypes.test.ts`'s "gives every type entry a non-empty explanation" fails
+  (`entryFor` reads `INTENT[typeName]` with no fallback, by design)
 - Modify: `styles/badges.css`
 - Modify: `scripts/docs-check.mjs` — `LEGAL_CHILDREN`, `ROOT_TYPES`
 - Modify: `docs/README.md` — hierarchy table, folder table
 - Modify: `docs/adrs/0013-fix-the-type-vocabulary-at-six-names.md`
 - Test: `test/domain/itemTypes.test.ts`
+- Test (ripple effects of widening `MARKER_TYPES`/`ALL_TYPES`, not called out above but
+  required for `npm run check` to pass): `test/domain/settings.test.ts` (`MARKER_TYPES`
+  literal), `test/domain/backlogReadme.test.ts` (`'Milestone is neither'` substring),
+  `test/helpers/register.ts` (the fixture's own hard-coded hierarchy table — every
+  `checkerAccepts`/`checkerRejects`/`checkerRejectsAdrs` test runs the real
+  `docs-check.mjs` against it), `test/docs/checkerRejects.test.ts` (two root-rejection
+  messages naming the legal root types), `test/view/menu.test.ts`,
+  `test/view/testCatalog.test.ts`, `test/view/toolbar.test.ts` (three hard-coded
+  "every declared type" lists a top-level `Set type` / `New` menu offers)
 
 **Interfaces:**
-- Produces: `ITERATION_TYPE: string` (the literal `'Iteration'`) exported from `src/domain/typeVocabulary.ts`, and `isIterationType(typeName: string): boolean` from `src/domain/itemTypes.ts`. Later tasks import both. `ALL_TYPES` gains `'Iteration'`; `typeFolderKey('Iteration')` answers `typeFolder.iteration`.
+- Produces: `ITERATION_TYPE: string` (the literal `'Iteration'`) exported from `src/domain/typeVocabulary.ts`. `ALL_TYPES` gains `'Iteration'`; `MARKER_TYPES` gains it too, so `isMarkerType('Iteration')` is `true` for free; `typeFolderKey('Iteration')` answers `typeFolder.iteration`. **Not produced here:** `isIterationType` — it has no caller until Task 5 (the `Set iteration` menu), which is where it is written; see that task.
 
 **Why a marker.** A marker occupies no rung, holds nothing and hangs from nothing, which is exactly what an iteration is — items *link* to it, they are never its children. Every structural rule then follows without being written: no rung in the ladder, no `+` offering to create a child under it, no **outgoing** dependency edge, ranked out of the ladder by `itemTypes.ts`. Do **not** add it to `EXTRA_TYPES`; that list means *pinned at `EXTRA_TYPE_RANK`, children are Tasks, hangs from an Epic, a Feature or a PBI*, and adding a marker would falsify the contract rather than extend it.
 
@@ -98,8 +110,13 @@ describe('Iteration is a declared marker', () => {
 
 	it('inherits every marker rule rather than declaring one', () => {
 		expect(isMarkerType('Iteration')).toBe(true);
-		// A marker holds nothing, so nothing is offered beneath it.
-		expect(childTypeChoices('Iteration')).toEqual([]);
+		// A marker holds nothing, so nothing is offered beneath it. `childTypeChoices` takes
+		// a `LadderPosition | null`, never a bare type name — the snippet this plan carried
+		// passed the string `'Iteration'` directly, which does not satisfy that interface and
+		// would not compile. Build the minimal shape instead.
+		expect(
+			childTypeChoices({ typeName: 'Iteration', levelIndex: -1, effectiveLevelIndex: 0, ladder: LEVELS }),
+		).toEqual([]);
 	});
 
 	it('files into its own subfolder', () => {
@@ -141,39 +158,25 @@ In `src/view/render/badges.ts`, in `NAMED_TYPE_STYLE`:
 	iteration: { icon: 'calendar-clock', badge: 'pbl-lvl-iteration' },
 ```
 
-In `styles/badges.css`, beside the milestone rule:
+In `styles/badges.css`, beside the milestone rule. **The paragraph below is wrong and was
+never built as written**: purple is not unclaimed — it is `.pbl-lvl-1`, Feature's, already
+— so every one of Obsidian's eight tokens is spoken for before this badge exists. There is
+no unused hue left to reach for; the twelfth badge has to share one, same as three pairs
+already do. It takes CYAN, joining Milestone (see the actual comment landed in
+`styles/badges.css` for the corrected reasoning — this block is left here only as the
+record of what was wrong):
 
 ```css
-/*
- * The second marker, and the first badge to SHARE a hue by decision rather than by
- * running out: purple is the one theme token no rung and no extra type uses. It sits
- * beside Milestone's cyan because the two are read together — a marker is a date, and
- * the pair being adjacent hues is what says so at a glance.
- */
+/* WRONG — do not build this. Purple already belongs to `.pbl-lvl-1` (Feature). */
 .pbl-lvl-iteration { --pbl-badge-rgb: var(--color-purple-rgb); }
 ```
 
-- [ ] **Step 5: Add the predicate**
-
-In `src/domain/itemTypes.ts`, beside `isMarkerType`:
-
-```ts
-/**
- * One marker by name. Asked only where a rule is about ITERATIONS specifically — the
- * board's population refusing one as a card, the menu declining to offer `Set iteration`
- * on one. Every STRUCTURAL question is `isMarkerType`, which both markers answer alike.
- */
-export function isIterationType(typeName: string): boolean {
-	return typeName.toLowerCase() === ITERATION_TYPE.toLowerCase();
-}
-```
-
-- [ ] **Step 6: Run the test and watch it pass**
+- [ ] **Step 5: Run the test and watch it pass**
 
 Run: `npx vitest run test/domain/itemTypes.test.ts`
 Expected: PASS.
 
-- [ ] **Step 7: Teach the register gate the same name**
+- [ ] **Step 6: Teach the register gate the same name**
 
 In `scripts/docs-check.mjs`, in `LEGAL_CHILDREN`, beside `Milestone`:
 
@@ -189,19 +192,34 @@ const ROOT_TYPES = new Set(["Epic", "Milestone", "Test suite", "Iteration"]);
 
 In `docs/README.md`, add a hierarchy-table row — `Iteration` | `—` | `—` — matching `LEGAL_CHILDREN` exactly, and a folder-table row for `iterations/`. The gate checks the table against the map in **both** directions, so a mismatch in either fails.
 
-- [ ] **Step 8: Amend ADR 0013**
+- [ ] **Step 7: Amend ADR 0013**
 
 Add a dated amendment for the twelfth declared name, in the shape the Milestone addition on 2026-08-02 already used. Do not change the ADR's `status` — it is still `Accepted`; an amendment records a name joining the fixed vocabulary, not a decision being superseded.
 
-- [ ] **Step 9: Run the whole gate**
+- [ ] **Step 8: Run the whole gate**
 
 Run: `npm run check`
 Expected: all five steps pass. `test/docs/surfaces.test.ts` is the one to watch — it checks the generated `typeFolder.iteration` key is named in `docs/requirements/`, and it already is.
 
-- [ ] **Step 10: Commit**
+**A first pass at this task added `isIterationType` here (a former Step 5), on the
+brief's instruction to place it "beside `isMarkerType`".** It has no caller until Task 5
+(the `Set iteration` menu) — a predicate written before its first call site fails BOTH
+`npm run test:coverage`'s function-coverage floor and `npm run analyze` (fallow)'s
+dead-code check independently, for the same reason: a test-only export is exactly what
+fallow's "no known consumers" exists to catch, so adding a unit test to satisfy coverage
+would leave fallow correctly failing anyway. **Decision:** `isIterationType` moved to
+Task 5, its first real consumer. Task 1 now produces only the name, its membership and
+its folder key, and `npm run check` passes clean on that alone.
+
+- [ ] **Step 9: Commit**
 
 ```bash
-git add src/domain/typeVocabulary.ts src/domain/itemTypes.ts src/view/render/badges.ts styles/badges.css scripts/docs-check.mjs docs/README.md docs/adrs test/domain/itemTypes.test.ts
+git add src/domain/typeVocabulary.ts src/view/render/badges.ts src/view/manual/typesSection.ts \
+  styles/badges.css scripts/docs-check.mjs docs/README.md docs/adrs \
+  test/domain/itemTypes.test.ts test/domain/settings.test.ts test/domain/backlogReadme.test.ts \
+  test/helpers/register.ts test/docs/checkerRejects.test.ts \
+  test/view/menu.test.ts test/view/testCatalog.test.ts test/view/toolbar.test.ts \
+  docs/superpowers/plans/2026-08-16-iterations-foundation.md
 git commit -m "Declare Iteration, the twelfth name and the second marker"
 ```
 
@@ -527,12 +545,20 @@ git commit -m "Plan, write and capture an item's iteration"
 ### Task 5: `Set iteration` on the row and card menus
 
 **Files:**
+- Modify: `src/domain/itemTypes.ts` — `isIterationType`
 - Modify: `src/view/interactions/labels.ts`
 - Test: `test/view/contextRowWrites.test.ts`
 
 **Interfaces:**
-- Consumes: `computeIterationWrites` (Task 4), `isIterationType` (Task 1).
-- Produces: `addIterationItems(menu, host, item)` — called from the row and card menu builders, beside the assignee's.
+- Consumes: `computeIterationWrites` (Task 4).
+- Produces: `isIterationType(typeName: string): boolean` from `src/domain/itemTypes.ts`, and
+  `addIterationItems(menu, host, item)` — called from the row and card menu builders,
+  beside the assignee's.
+
+**Why the predicate is written here and not in Task 1**, which declared the name: a
+function with no caller fails both the coverage floor and fallow's dead-code check, and
+this submenu — refusing the row on an `Iteration` itself — is `isIterationType`'s first
+real consumer, so it is written where it is first called.
 
 **Five refusals, and each is a different rule.** The submenu is absent on a **context row** (never a write target), on a **catalog member** (a `Test suite`, a `Test case`, or a `Task` beneath one — the population it would join is the plan's, so the link would be stored where no card can draw), on an **`Iteration`** itself (an iteration is a scope, never something put inside one), and when there is **neither a link nor a target** (genuinely nothing to do). It is **present with `None` alone** when the item holds a link and the model has no Iteration notes left — no targets is not the same as nothing to do, and hiding it there would leave a value on screen the reader cannot remove.
 
@@ -560,25 +586,42 @@ Fill each body using this file's existing menu-driving helpers — it already dr
 Run: `npx vitest run test/view/contextRowWrites.test.ts`
 Expected: FAIL — no `Set iteration` entry exists.
 
-- [ ] **Step 3: Build the submenu**
+- [ ] **Step 3: Add the predicate**
+
+In `src/domain/itemTypes.ts`, beside `isMarkerType`:
+
+```ts
+/**
+ * One marker by name. Asked only where a rule is about ITERATIONS specifically — the
+ * board's population refusing one as a card, the menu declining to offer `Set iteration`
+ * on one. Every STRUCTURAL question is `isMarkerType`, which both markers answer alike.
+ */
+export function isIterationType(typeName: string): boolean {
+	return typeName.toLowerCase() === ITERATION_TYPE.toLowerCase();
+}
+```
+
+Import `ITERATION_TYPE` from `./typeVocabulary` beside the module's other imports from it.
+
+- [ ] **Step 4: Build the submenu**
 
 In `src/view/interactions/labels.ts`, beside the assignee's builder. Read the targets from **`host.model.byPath`**, not the results — a focus set elsewhere must not make a top-level iteration unofferable — filtering to `isIterationType` and excluding `outsideFilter` rows.
 
 The checkmark asks `computeIterationWrites(item, target, settings).length === 0`. **Once Task 7 lands, that stops being the whole plan** — see Task 7, Step 6, which narrows this call to the link component. Write it against the plan now so there is one thing to narrow later, never a value comparison beside it.
 
-- [ ] **Step 4: Name colliding basenames apart**
+- [ ] **Step 5: Name colliding basenames apart**
 
 Two Iteration notes sharing a basename are qualified with enough of each path to separate them, **and only where they collide** — qualifying every entry to fix a rare case makes the ordinary one unreadable. The value behind each entry is the note, never its label.
 
-- [ ] **Step 5: Run the tests and watch them pass**
+- [ ] **Step 6: Run the tests and watch them pass**
 
 Run: `npx vitest run test/view/contextRowWrites.test.ts`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add src/view/interactions/labels.ts test/view/contextRowWrites.test.ts
+git add src/domain/itemTypes.ts src/view/interactions/labels.ts test/view/contextRowWrites.test.ts
 git commit -m "Put an item in an iteration from the row and the card"
 ```
 
@@ -862,7 +905,7 @@ git commit -m "Close the two iteration foundation use cases"
 
 `npm run check` cannot answer these, and the jsdom harness cannot either. Run `npm run test-build` and open this repository as a vault:
 
-- The `Iteration` badge colour and the `calendar-clock` icon against a real theme, and whether purple beside Milestone's cyan reads as "these two are markers".
+- The `Iteration` badge colour and the `calendar-clock` icon against a real theme. Landed as CYAN, shared with `Milestone` (purple was the plan's original pick and was wrong — see Task 1, Step 8 — every theme token was already claimed, so the twelfth badge inevitably shares one). Nothing but the icon and the type name tells a Milestone badge from an Iteration one today; whether that reads as "these two are markers" or as one collision too many is exactly the live-vault question this line exists to ask.
 - `Set iteration`'s submenu length in a vault with many iterations, and whether the collision-qualified labels stay readable.
 - That a real `[[Sprint 12]]` written by the plugin resolves in Obsidian's own link handling from a note in a different folder.
 

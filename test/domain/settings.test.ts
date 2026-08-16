@@ -514,7 +514,7 @@ describe('the marker category', () => {
 	it('declares Milestone outside both the ladder and the extra types', () => {
 		// The whole point of the third category: every rule that reads EXTRA_TYPES keeps
 		// meaning exactly what `Types beside the ladder` says it means.
-		expect(MARKER_TYPES).toEqual(['Milestone']);
+		expect(MARKER_TYPES).toEqual(['Milestone', 'Iteration']);
 		expect(LEVELS).not.toContain('Milestone');
 		expect(EXTRA_TYPES).not.toContain('Milestone');
 		expect(ALL_TYPES).toEqual([...LEVELS, ...EXTRA_TYPES, ...MARKER_TYPES, ...TEST_LEVELS.filter((t) => t !== 'Task')]);

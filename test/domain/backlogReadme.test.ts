@@ -38,7 +38,7 @@ describe('backlogReadmeContent', () => {
 		// asserted because both have a live caller — the one-name form is the markers'
 		// today, and it is the arm that would otherwise be reachable code nothing checks.
 		expect(content).toContain('Issue, Bug, Idea and Deliverable sit *beside* it');
-		expect(content).toContain('Milestone is neither');
+		expect(content).toContain('Milestone and Iteration is neither');
 		expect(content).not.toContain('and Bug and');
 	});
 

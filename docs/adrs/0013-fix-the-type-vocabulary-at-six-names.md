@@ -71,6 +71,13 @@ same name alone as a *descendant* — an asymmetry nobody chose, deleted with th
   it. What would supersede this ADR is a name a *user* supplies, not one this plugin
   ships. Every count in the title, the filename and the prose above is left as written,
   for the reason the previous amendment gives.
+- **Amended 2026-08-16 (`Iteration`).** The twelfth name, a second marker beside
+  `Milestone` ([[An iteration is a note of its own]]). A marker occupies no rung, holds
+  nothing and hangs from nothing — items *link* to an iteration, they are never its
+  children — so it costs the same one line and the same three shipped opinions the
+  first marker did, and nothing this ADR decided changed: still fixed, still not an
+  option, still matched case-insensitively. Every count in the title, the filename and
+  the prose above is left as written, for the reason the first amendment gives.
 
 ## Alternatives
 
