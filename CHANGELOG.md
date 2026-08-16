@@ -38,6 +38,13 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 - **Fold a type group in the shelf.** Each type group in the expanded shelf now has a
   disclosure beside its name.
 
+- **Search the shelf, and pick its types without the menu shutting.** The expanded shelf's
+  header carries a search box: type and it narrows to the unplaced cards whose title
+  matches, leaving the placed half of the roadmap alone, and its count keeps reporting the
+  true total. Escape clears it, and the card menu offers **Search unplaced...** for a
+  keyboard. The type filter now stays open across a pick and leads with **Show all types**
+  and **Hide all types**, so "only the type I want" is two picks in one menu.
+
 - **A toggle for the bucket grid on the horizon roadmap.** A wide bucket reflows its cards
   into several columns, which is right for a backlog slice and wrong for a short list you
   are reading down. The toolbar now carries a toggle for it while the horizon axis is

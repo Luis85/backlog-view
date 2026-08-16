@@ -440,6 +440,18 @@ export interface BacklogViewHost {
 	readonly shelfHiddenTypes: ReadonlySet<string>;
 	setShelfHiddenTypes(types: ReadonlySet<string>): void;
 	/**
+	 * The shelf's own title search — a second narrowing beside the type filter, scoped to
+	 * the shelf rather than to the view, so a reader can dig through untriaged work without
+	 * the toolbar's quick filter narrowing the plan beside it.
+	 *
+	 * SESSION state, and the one shelf pick the view-state store does not hold: a search is
+	 * something someone is doing right now, not a property of the view — `FilterState`'s own
+	 * rule, applied to the same kind of value.
+	 */
+	readonly shelfSearch: string;
+	/** Narrow the shelf by title and re-render the content pane; '' clears it. */
+	setShelfSearch(text: string): void;
+	/**
 	 * Whether one resource's whole BAND is folded shut on the resources axis — its bars and
 	 * the notes it places, leaving the header. Not its absences: those draw in the header's
 	 * own track since 2026-08-14, so a fold leaves them exactly where they were.

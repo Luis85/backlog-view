@@ -15,10 +15,9 @@ import {
 } from '../../domain/writePlan';
 import { addAssigneeItems, addPriorityItems, addRiskItems } from './labels';
 import { BoardModel, deliverablesWorkflow, ownWorkflowReading, stateKeyFor } from '../../domain/board';
-import { ShelfCard } from '../../domain/bars';
-import { organizeShelf, ShelfSort } from '../../domain/shelf';
 import { canReorder, indent, moveToEdge, moveWithinSiblings, outdent, outdentTarget, visibleNeighbor } from './structure';
 import { promptCreateItem } from './create';
+import { addShelfSearchItems, addShelfSortItems, addShelfTypeItems } from './shelfMenu';
 import { addHorizonItems, canSchedule, carriesDates, promptSchedule, unschedule } from './plan';
 import { addTagItems, tagsColumnVisible } from './tags';
 import { addDependencyItems, dependenciesAvailable } from './dependencies';
@@ -601,65 +600,6 @@ function addStateItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): vo
 }
 
 /**
- * `setSubmenu` is missing from the published obsidian typings, not from the app:
- * submenus predate the 1.12.0 this plugin requires, so the cast asserts what is
- * always there rather than guarding against its absence.
- */
-const SHELF_SORTS: { value: ShelfSort; label: string }[] = [
-	{ value: 'tree', label: 'Sibling order' },
-	{ value: 'title', label: 'Title (A to Z)' },
-	{ value: 'modified', label: 'Last modified' },
-];
-
-/**
- * The shelf's display picks as menu items. ONE builder serves both surfaces — the
- * shelf header's own pickers and the keyboard path below — for the reason the horizon
- * chip and its menu share one: two builders offering the same choices are one edit from
- * disagreeing about what is offered or which entry is checked.
- *
- * `after` is where the two surfaces legitimately differ, and the only place they may.
- * A pick rebuilds the pane and destroys the button its menu was opened from; a menu
- * opened from the shelf's HEADER has to give focus back to that header's replacement,
- * while one opened from a CARD leaves focus where the card left it. Passing the
- * difference in keeps a single builder rather than forking it over one line.
- */
-export function addShelfSortItems(host: BacklogViewHost, menu: Menu, after?: () => void): void {
-	for (const { value, label } of SHELF_SORTS) {
-		menu.addItem((mi) =>
-			mi
-				.setTitle(label)
-				.setChecked(host.shelfSort === value)
-				.onClick(() => {
-					host.setShelfSort(value);
-					after?.();
-				}),
-		);
-	}
-}
-
-/**
- * One entry per type ON the shelf, from the UNFILTERED grouping: hiding a type must
- * never remove its own way back, so the list a hidden type is restored from cannot be
- * narrowed by the hiding.
- */
-export function addShelfTypeItems(host: BacklogViewHost, menu: Menu, shelf: ShelfCard[], after?: () => void): void {
-	for (const group of organizeShelf(shelf, 'tree', new Set())) {
-		menu.addItem((mi) =>
-			mi
-				.setTitle(`${group.type} (${group.cards.length})`)
-				.setChecked(!host.shelfHiddenTypes.has(group.type))
-				.onClick(() => {
-					const hidden = new Set(host.shelfHiddenTypes);
-					if (hidden.has(group.type)) hidden.delete(group.type);
-					else hidden.add(group.type);
-					host.setShelfHiddenTypes(hidden);
-					after?.();
-				}),
-		);
-	}
-}
-
-/**
  * The shelf's controls, reachable without a pointer. Its header buttons are
  * `tabindex="-1"` like every control in the one-tab-stop pane, so this menu is their
  * keyboard path — the same answer the board's hidden-match links give, and for the same
@@ -694,8 +634,14 @@ function addShelfSection(host: BacklogViewHost, menu: Menu): void {
 		mi.setTitle('Filter unplaced by type').setIcon('list-filter');
 		addShelfTypeItems(host, submenuOf(mi), shelf);
 	});
+	addShelfSearchItems(host, menu);
 }
 
+/**
+ * `setSubmenu` is missing from the published obsidian typings, not from the app:
+ * submenus predate the 1.12.0 this plugin requires, so the cast asserts what is
+ * always there rather than guarding against its absence.
+ */
 function submenuOf(item: MenuItem): Menu {
 	return (item as MenuItem & { setSubmenu: () => Menu }).setSubmenu();
 }
