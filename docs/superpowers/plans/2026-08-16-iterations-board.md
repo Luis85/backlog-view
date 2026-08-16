@@ -655,8 +655,21 @@ git commit -m "Route every board input through the bucket question"
 ### Task 7: The board, its empty states, and the goal line
 
 **Files:**
+- Modify: `src/view/render/projections.ts` — the `'iteration'` branch in `renderProjectionContent`
 - Modify: `src/view/render/board.ts`, `src/view/render/emptyStates.ts`, `styles/board.css`
 - Test: `test/view/iterationBoard.test.ts`
+
+**Nothing draws it until the dispatcher says so.** `renderProjectionContent`
+(`src/view/render/projections.ts`) tests `'board'`, `'roadmap'`, `'deliverables'` and
+`'catalog'` and otherwise renders the TREE — so every other task in this plan can land
+with the three-bucket renderer built and unreachable, the view drawing the product
+backlog. It takes a **branch**, for the reason the catalog's own comment beside it gives:
+a fallthrough hands back `label: 'Product backlog'`, so a screen-reader user who chose an
+iteration would be told they are still in the product backlog, and nothing on screen would
+contradict it. Returning `{ board, roadmap: null, role: 'board', label: … }` is also what
+puts the container in board mode at all. Test through this dispatcher, never by calling
+the bucket renderer directly — a test that renders the board itself passes while the
+projection is unreachable.
 
 **Two empty states.** *No state property configured at all* — the product board's own guidance, reached from a second screen. *The iteration holds no items* — **"No items in this iteration yet"**, never the product board's "All N items are done and hidden", which cannot tell an empty base from an empty scope.
 
@@ -664,7 +677,7 @@ git commit -m "Route every board input through the bucket question"
 
 **A column that takes no drop is not wired as one.** `renderColumn` calls `wireDropTarget` on every column unconditionally today; it asks `col.takesDrop` instead, so a card cannot be dragged onto a bucket with nothing to write — 4e's refusal at the gesture rather than after it. The two affordances keyed on `col.state === null` — the `pbl-col-nostate` class and the *"dropping a card here removes it"* tooltip, plus the empty-no-state strip — ask it as well: an unwritable bucket holds `state: null` without meaning a key removal, and both would otherwise promise a drop that never lands.
 
-- [ ] Tests: both empty states; the goal line drawn, absent when empty, absent on `Product`; that nothing in the goal line is focusable or clickable; and that a bucket with nothing to write is neither a drop target nor drawn as the key-removal column. Then implement, watch pass, commit.
+- [ ] Tests: the dispatcher renders the three buckets and reports `role: 'board'` with a label of its own rather than `'Product backlog'`; both empty states; the goal line drawn, absent when empty, absent on `Product`; that nothing in the goal line is focusable or clickable; and that a bucket with nothing to write is neither a drop target nor drawn as the key-removal column. Then implement, watch pass, commit.
 
 ---
 
@@ -795,6 +808,16 @@ one-write shape this task promises is unreachable. `iterationGoal?: string` on
 same condition `applyLabels` writes it on — and only while that key is configured, like
 every other optional key.
 
+**A blank goal is an OMITTED field, not an empty string.** `applyLabels` skips only
+`undefined` and deletes only on `null`, so handing it `''` writes `goal: ''` onto the new
+note — a key extension 3a says is not written at all, and the placeholder that same
+extension refuses the board from drawing. The dialog therefore normalises a blank to
+`undefined` *before* the create rather than relying on the writer to notice, because the
+writer's three values are already spoken for: `undefined` leaves alone, `null` deletes,
+a string writes. The EDIT path keeps the distinction that create has no use for — clearing
+a goal that was set is `null`, since there the key exists and 3a says removing it is the
+point.
+
 That is why `src/storage/frontmatter.ts` is in this task's file list and its commit. Two
 tasks extending one interface is fine; two tasks extending it and only one remembering the
 module is how an API ends up unable to express what a caller was promised.
@@ -807,6 +830,11 @@ it('creates with the type, both dates and the goal in one write', () => {
 	// does, because create-then-write also ends up correct.
 });
 it('writes no goal when the goal property is unconfigured', () => { /* … */ });
+it('writes no goal KEY when the goal is left blank and the property IS configured', () => {
+	// Not the same case as the line above, and the one the writer gets wrong on its own:
+	// `applyLabels` skips `undefined` and deletes on `null`, so `''` lands as `goal: ''`.
+	// Assert the key is absent, never that its value is empty.
+});
 it('omits a field whose property is unconfigured, on both paths', () => {
 	// The goal and each date separately, and all three unset — where the dialog is a
 	// name alone and the action still works. An unconfigured key is never written, so a
