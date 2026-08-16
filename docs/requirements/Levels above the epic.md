@@ -27,6 +27,19 @@ never through `parent` — and the view walks up from there, so an epic filed un
 rolls into that domain's product and portfolio without anybody restating the path on the
 item.
 
+**Membership descends the work tree, and the nearest statement wins.** An item with no
+grouping of its own belongs to the innermost grouping named by its nearest ancestor that
+names one, so filing an epic under a domain files everything beneath it — which is the point
+of the property, and the alternative is the restating this note just refused. An item that
+names its own grouping overrides its ancestors for itself and everything below it, because a
+feature genuinely belonging to another product is the case the override exists for. An item
+whose ancestors name nothing belongs to no grouping and is reported as unplaced rather than
+filed under a default.
+
+That makes every item's grouping exactly one, which is what keeps a rollup honest: an item
+is counted at its own grouping and at every grouping above it, once each, and never twice
+because two ancestors disagreed — the nearer one is the answer.
+
 A vault that declares no grouping levels sees no portfolio anywhere.
 
 Grouping notes are ordinary notes, so a backlog base that returns them draws them: keeping
