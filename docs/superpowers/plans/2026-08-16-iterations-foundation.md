@@ -34,7 +34,8 @@ Every task's requirements implicitly include this section.
 - **400-line max per `src/` file**, `max-lines-per-function` 100, `complexity` 16, `max-depth` 4, `max-params` 5 — all with `skipBlankLines: true, skipComments: true`, so a 700-line file with heavy documentation is legal. `test/**` has a 450-line budget.
 - **Never write frontmatter outside `src/storage/frontmatter.ts`.** `processFrontMatter`, `vault.create` and `load/saveLocalStorage` are banned by `no-restricted-syntax` everywhere outside `storage/`.
 - **Every write path goes through the `configProblems` gate**, and forward batches are refused whole if any write targets an `outsideFilter` item.
-- **Every module in `src/` must be specified** by a use case's `## Where it lives` or an ADR's `## Decision`, or `npm run docs` fails. This plan adds no new `src/` module, so nothing new needs specifying — but a path named in a note that does not exist is not checked, while a **test** path named in a current note IS checked for existence. Do not name a test file in `docs/requirements/` before you create it.
+- **Every module in `src/` must be specified** by a use case's `## Where it lives` or an ADR's `## Decision`, or `npm run docs` fails. This plan adds no new `src/` module, so nothing new needs specifying.
+- **`docs-check.mjs` checks both directions, and they close on each other.** A path named in a current `docs/requirements/` note must **exist**, and a module in `src/` that no note names fails rule 7. So the exact path goes into a note's `## Where it lives` **in the same commit as the file it names** — never before it, and never after. The same holds for a test path. (This plan originally claimed only test paths were checked for existence; `npm run docs` says otherwise, and it was right.)
 - **Every view-option key must be named in `docs/requirements/`** in a code span, or `test/docs/surfaces.test.ts` fails. The keys this plan adds — `iterationProperty`, `iterationGoalProperty`, and the generated `typeFolder.iteration` — are already named there.
 - **Sentence-case UI text**, `setCssProps` over inline styles, `normalizePath` on user paths, no global `app`.
 - **An invariant asserted in a comment gets a test that fails without it, and the test is watched failing.** Revert the fix, run it, see red, restore.
@@ -384,11 +385,22 @@ git commit -m "Read an item's iteration, keeping unresolved apart from unset"
   // on ItemWrite
   iteration?: TFile | null;   // a FILE, never a serialized string; null removes the key
   // in writePlan.ts
-  export function computeIterationWrites(item: BacklogItem, target: TFile | null, settings: BacklogSettings): ItemWrite[]
+  export function computeIterationWrites(item: BacklogItem, target: BacklogItem | null, settings: BacklogSettings): ItemWrite[]
   ```
   Task 7 extends this same function with the dates. Task 5 calls it.
 
-**The plan carries the FILE, never a string**, and this is the one design point in the task. The writer spells the link with Obsidian's own path-aware generation, from the editing note's path to the target's — which is what `wikilinkTo` does for the parent link. A link serialized from a basename would resolve to whichever of two same-named notes Obsidian picks, and the menu would look right while the write went elsewhere. That is also why this write sits beside the parent link's in `applyInto` and **not** in `applyLabels`: that list is for plain strings and carries neither the app nor a source path.
+**`target` is the iteration's ITEM, and the write carries its `.file`.** Those are two
+different types on purpose, and taking the file as the argument — which an earlier
+revision of this plan did — makes Task 7 impossible to build. The dates a join writes are
+the iteration's own `start` and `target` **readings**, which live on its `BacklogItem`
+because that is where `readItems.ts` parses them; a `TFile` is a path and a name and
+nothing else. `writePlan.ts` is pure domain: it cannot reach the model to look the item
+up, and it must not reach the metadata cache to re-parse the note. So the caller — which
+holds the model already, because the menu built its entries from it — passes the item, and
+the planner takes `.file` for the link. Getting this wrong does not fail in Task 4; it
+fails in Task 7, as a missing argument with no legal way to supply it.
+
+**The plan carries the FILE, never a string**, and this is the other design point. The writer spells the link with Obsidian's own path-aware generation, from the editing note's path to the target's — which is what `wikilinkTo` does for the parent link. A link serialized from a basename would resolve to whichever of two same-named notes Obsidian picks, and the menu would look right while the write went elsewhere. That is also why this write sits beside the parent link's in `applyInto` and **not** in `applyLabels`: that list is for plain strings and carries neither the app nor a source path.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -398,22 +410,22 @@ Create `test/domain/iterationDates.test.ts`:
 describe('computeIterationWrites — the link', () => {
 	it('plans the link when the item is not already in that iteration', () => {
 		const settings = settingsWith({ iterationKey: 'iteration' });
-		const writes = computeIterationWrites(itemIn(null), sprint12, settings);
-		expect(writes).toEqual([{ file: pbiFile, iteration: sprint12 }]);
+		const writes = computeIterationWrites(itemIn(null), sprint12Item, settings);
+		expect(writes).toEqual([{ file: pbiFile, iteration: sprint12Item.file }]);
 	});
 
 	it('plans nothing when the item is already in that iteration', () => {
 		const settings = settingsWith({ iterationKey: 'iteration' });
-		expect(computeIterationWrites(itemIn(sprint12), sprint12, settings)).toEqual([]);
+		expect(computeIterationWrites(itemIn(sprint12Item), sprint12Item, settings)).toEqual([]);
 	});
 
 	it('plans a removal for None', () => {
 		const settings = settingsWith({ iterationKey: 'iteration' });
-		expect(computeIterationWrites(itemIn(sprint12), null, settings)).toEqual([{ file: pbiFile, iteration: null }]);
+		expect(computeIterationWrites(itemIn(sprint12Item), null, settings)).toEqual([{ file: pbiFile, iteration: null }]);
 	});
 
 	it('plans nothing at all when no iteration key is configured', () => {
-		expect(computeIterationWrites(itemIn(null), sprint12, settingsWith({ iterationKey: '' }))).toEqual([]);
+		expect(computeIterationWrites(itemIn(null), sprint12Item, settingsWith({ iterationKey: '' }))).toEqual([]);
 	});
 
 	it('clears a link that resolved to nothing', () => {
@@ -446,15 +458,15 @@ In `src/domain/writePlan.ts`:
  * Emptiness is what the MENU's checkmark is asked of, so this must return `[]` for a
  * pick that changes nothing rather than a write the applier happens to no-op.
  */
-export function computeIterationWrites(item: BacklogItem, target: TFile | null, settings: BacklogSettings): ItemWrite[] {
+export function computeIterationWrites(item: BacklogItem, target: BacklogItem | null, settings: BacklogSettings): ItemWrite[] {
 	if (!settings.iterationKey) return [];
 	const current = item.iterationEntry;
 	// Compared by PATH, not by the raw text: two spellings of one note are one iteration.
 	// A link that resolved to nothing has no path and is therefore never "already there",
 	// which is what makes a broken value clearable.
-	const same = target === null ? current === null : current?.file?.path === target.path;
+	const same = target === null ? current === null : current?.file?.path === target.file.path;
 	if (same) return [];
-	return [{ file: item.file, iteration: target }];
+	return [{ file: item.file, iteration: target.file }];
 }
 ```
 
@@ -489,7 +501,7 @@ In `test/domain/writePlanProperties.test.ts` (or the storage suite that already 
 
 ```ts
 it('takes an iteration back with the one undo slot', async () => {
-	await applyWrites(app, settings, [{ file: pbiFile, iteration: sprint12 }]);
+	await applyWrites(app, settings, [{ file: pbiFile, iteration: sprint12File }]);
 	expect(frontmatterOf(pbiFile).iteration).toBe('[[Sprint 12]]');
 	await undoLast();
 	expect(frontmatterOf(pbiFile).iteration).toBeUndefined();
@@ -699,40 +711,40 @@ describe('computeIterationWrites — the timeframe', () => {
 	const settings = settingsWith({ iterationKey: 'iteration', startKey: 'start', targetKey: 'due' });
 
 	it('writes the iteration\'s dates over whatever the item held', () => {
-		const [write] = computeIterationWrites(itemDated('2026-05-01', '2026-05-30'), sprint12, settings);
+		const [write] = computeIterationWrites(itemDated('2026-05-01', '2026-05-30'), sprint12Item, settings);
 		expect(write.axis).toEqual({ start: '2026-09-07', target: '2026-09-20' });
 	});
 
 	it('leaves an end the iteration does not carry alone, rather than deleting it', () => {
-		const [write] = computeIterationWrites(itemDated('2026-05-01', null), sprintWithStartOnly, settings);
+		const [write] = computeIterationWrites(itemDated('2026-05-01', null), sprintStartOnlyItem, settings);
 		expect(write.axis?.target).toBeUndefined();
 	});
 
 	it('omits a date the item already matches', () => {
-		const [write] = computeIterationWrites(itemDated('2026-09-07', '2026-01-01'), sprint12, settings);
+		const [write] = computeIterationWrites(itemDated('2026-09-07', '2026-01-01'), sprint12Item, settings);
 		expect(write.axis).toEqual({ target: '2026-09-20' });
 	});
 
 	it('writes no date under an unconfigured key', () => {
 		const bare = settingsWith({ iterationKey: 'iteration', startKey: '', targetKey: '' });
-		expect(computeIterationWrites(itemDated(null, null), sprint12, bare)[0].axis).toBeUndefined();
+		expect(computeIterationWrites(itemDated(null, null), sprint12Item, bare)[0].axis).toBeUndefined();
 	});
 
 	it('re-syncs the dates when the picked iteration is the one it is already in', () => {
-		const [write] = computeIterationWrites(itemIn(sprint12, '2026-01-01', '2026-01-14'), sprint12, settings);
+		const [write] = computeIterationWrites(itemIn(sprint12Item, '2026-01-01', '2026-01-14'), sprint12Item, settings);
 		expect(write.iteration).toBeUndefined();
 		expect(write.axis).toEqual({ start: '2026-09-07', target: '2026-09-20' });
 	});
 
 	it('plans the link removal alone for None, leaving the dates', () => {
-		const writes = computeIterationWrites(itemIn(sprint12, '2026-09-07', '2026-09-20'), null, settings);
+		const writes = computeIterationWrites(itemIn(sprint12Item, '2026-09-07', '2026-09-20'), null, settings);
 		expect(writes).toEqual([{ file: pbiFile, iteration: null }]);
 	});
 
 	// The category invariant, asked of the planner because every input routes through it.
 	it('never names a state key, on any path', () => {
-		for (const target of [sprint12, sprint13, null]) {
-			for (const item of [itemIn(null), itemIn(sprint12), itemInState('Doing')]) {
+		for (const target of [sprint12Item, sprint13Item, null]) {
+			for (const item of [itemIn(null), itemIn(sprint12Item), itemInState('Doing')]) {
 				for (const write of computeIterationWrites(item, target, settings)) {
 					expect(write.state).toBeUndefined();
 					expect(write.removeStateKey).toBeUndefined();
@@ -753,7 +765,7 @@ Expected: FAIL — `write.axis` is undefined on every case.
 Replace the early `if (same) return []` with a plan that keeps the two questions apart — the link changes, and the dates follow the target:
 
 ```ts
-export function computeIterationWrites(item: BacklogItem, target: TFile | null, settings: BacklogSettings): ItemWrite[] {
+export function computeIterationWrites(item: BacklogItem, target: BacklogItem | null, settings: BacklogSettings): ItemWrite[] {
 	if (!settings.iterationKey) return [];
 	const linkChanges = !sameIteration(item, target);
 	// `None` is a removal and nothing else. Leaving a sprint is not a reschedule: the item
@@ -762,7 +774,7 @@ export function computeIterationWrites(item: BacklogItem, target: TFile | null, 
 	if (target === null) return linkChanges ? [{ file: item.file, iteration: null }] : [];
 	const axis = timeframeOf(item, target, settings);
 	if (!linkChanges && axis === undefined) return [];
-	return [{ file: item.file, ...(linkChanges ? { iteration: target } : {}), ...(axis ? { axis } : {}) }];
+	return [{ file: item.file, ...(linkChanges ? { iteration: target.file } : {}), ...(axis ? { axis } : {}) }];
 }
 ```
 

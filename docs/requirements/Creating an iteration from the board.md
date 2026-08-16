@@ -173,12 +173,20 @@ user confirmed, never a rule applied at write time that the reader could not see
 
 ## Where it lives
 
-The dialog is a new leaf in `src/ui/`, beside `src/ui/stateColorsDialog.ts` — the
-directory of reusable Obsidian dialogs that knows about no layer, which is what lets the
-board open it without the picker reaching upward. The derivation is pure and belongs
-below it: the previous-iteration rule and the two date sums sit in
-`src/domain/itemTypes.ts`' neighbour for iteration questions, reading the model's items
-and the settings, so they are answered by a function rather than by a screen. The
+The dialog is a module of its own in `src/ui/`, beside `src/ui/stateColorsDialog.ts` — the
+leaf directory of reusable Obsidian dialogs that knows about no layer, which is what lets
+the board open it without the picker reaching upward. The derivation is pure and belongs
+below it, in a module of its own under `src/domain/`: the previous-iteration rule and the
+two date sums, reading the model's items and the settings, so they are answered by a
+function rather than by a screen.
+
+**Neither is spelled here yet, and that is the gate's doing rather than vagueness.**
+`docs-check.mjs` checks a named path *exists*, so a note naming a module before the commit
+that creates it fails the register — while rule 7 fails the commit that creates a module no
+note names. The two rules meet in one place: the exact path is written into this section
+**in the same commit as the file**, never before it. The
+
+
 `iterationLengthDays` option is declared in `src/domain/viewOptions.ts` and resolved in
 `src/domain/settings.ts`. The two picker entries are drawn in
 `src/view/render/toolbarControls.ts`, where the scope picker itself is. Creating goes

@@ -586,8 +586,23 @@ board answers neither question for itself — it reads the product key through t
 `src/domain/settings.ts` already exposes. The two list options are declared in
 `src/domain/viewOptions.ts` and resolved in `src/domain/settings.ts`. The population
 is derived in `src/domain/model.ts`. The scope is a `prefs` value beside `axis` in the
-per-view entry of `src/storage/viewStateStore.ts` — a name rather than a path, so neither
-the prune nor the rename touches it — restored and debounce-saved by
+per-view entry of `src/storage/viewStateStore.ts`, and it is a **PATH**.
+
+That sentence said the opposite until 2026-08-16 — *"a name rather than a path, so neither
+the prune nor the rename touches it"* — and contradicted extension 2e three screens above
+it, which argues at length that the scope follows a rename and calls this the first UI
+state whose value is a path. A basename cannot be the value: two iterations sharing one is
+the case 1e makes the picker qualify labels for, and storing the name would reunite what
+the picker went to trouble to keep apart.
+
+So the path is the value, and it costs two things that a `prefs` field does not normally
+cost. `ViewPrefs`' own comment — *"keyed by nothing the vault owns, so never pruned and
+never renamed"* — stops being true of the whole shape and must be amended to name this
+field as the exception. And the rename walk has to reach `prefs`, matching the path or its
+`oldPath/` prefix so a folder rename counts. Half that price is not an option: without the
+migration the stored path goes stale on a rename and drops the reader to `Product`, which
+is a choice silently undone — the opposite of what 2a's "retained, not rewritten" rule
+exists to protect. The entry is restored and debounce-saved by
 `src/view/viewState.ts`, read and written through `src/view/viewStateController.ts` and declared
 on the host in `src/view/host.ts`. The picker is a `board` case in `renderProjectionZone`
 in `src/view/render/toolbarControls.ts`, built the way `renderAxisPicker` beside it is;
