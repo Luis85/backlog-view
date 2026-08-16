@@ -1,4 +1,4 @@
-import { Notice } from 'obsidian';
+import { Notice, TFile } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { TitlePromptModal } from '../../ui/prompts';
 import { manualLink } from '../../ui/manualDialog';
@@ -7,6 +7,9 @@ import { BacklogItem, BacklogModel } from '../../domain/model';
 import { focusTarget, folderForType } from '../../domain/itemTypes';
 import { ORDER_SPACING } from '../../domain/writePlan';
 import { createBacklogItem } from '../../storage/createNote';
+import { statedEnds } from '../../domain/bars';
+import { formatCivil } from '../../domain/timeline';
+import { AxisWrite } from '../../domain/writePlan';
 import { BacklogSettings } from '../../domain/settings';
 import { configProblems } from '../../domain/settingsConsistency';
 import { LEVELS } from '../../domain/typeVocabulary';
@@ -119,6 +122,37 @@ function promptDetail(parentItem: BacklogItem | null, folder: string): string {
 	return parentItem ? `Under "${parentItem.title}" · ${where}` : `${where[0].toUpperCase()}${where.substring(1)}`;
 }
 
+/**
+ * The iteration a new card joins, and the timeframe that comes with it — everything
+ * `createBacklogItem` needs to make a card that BELONGS to the board it was made on.
+ *
+ * This exists because a card created on an iteration board without it would draw once
+ * and vanish on the next refresh: the population is the notes that NAME the iteration, so
+ * a card that names none is not in it. `A board scoped to one iteration` extension 5c is
+ * the criterion; the horizon's own "created in a bucket claims that bucket in the same
+ * write" is the precedent, and the dates are that rule read one property further — a card
+ * scheduled outside the sprint it was created on is the same incoherence.
+ *
+ * Asked of `effectiveScope` rather than of the projection, which is the same question one
+ * step earlier: a scope that no longer resolves has already fallen the whole view back to
+ * the product board, and a card made there is a product card.
+ */
+function iterationOf(host: BacklogViewHost): { iteration?: TFile; axis?: AxisWrite } {
+	const scope = host.effectiveScope;
+	const iteration = scope === null ? undefined : host.model?.byPath.get(scope);
+	if (!iteration) return {};
+	// `statedEnds` reads what the ITERATION carries, gated on the date keys being
+	// configured — so an unconfigured end is absent here rather than dropped downstream,
+	// and an end the sprint does not state is never invented for the card.
+	const ends = statedEnds(iteration);
+	const axis: AxisWrite = {};
+	for (const end of ['start', 'target'] as const) {
+		const date = ends[end].value;
+		if (date !== null) axis[end] = formatCivil(date);
+	}
+	return { iteration: iteration.file, ...(axis.start || axis.target ? { axis } : {}) };
+}
+
 interface CreateRequest {
 	levelName: string;
 	parentItem: BacklogItem | null;
@@ -149,6 +183,7 @@ async function createFromPrompt(host: BacklogViewHost, request: CreateRequest): 
 			// Parentless items rank among the real top level, not the focus rows.
 			order: endOfSiblingsOrder(parentItem ? parentItem.children : host.model?.realRoots ?? []),
 			horizon: request.horizon,
+			...iterationOf(host),
 		});
 		new Notice(`Created "${file.basename}".`);
 	} catch (e) {

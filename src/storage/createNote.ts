@@ -1,5 +1,6 @@
 import { App, normalizePath, stringifyYaml, TFile } from 'obsidian';
 import { BacklogSettings } from '../domain/settings';
+import { AxisWrite } from '../domain/writePlan';
 import { vaultFolder } from '../domain/settingsResolve';
 import { setOwn } from './ownProperty';
 import { axisEntries } from './writeKeys';
@@ -25,6 +26,20 @@ export interface NewItemSpec {
 	order: number;
 	/** The bucket it was created in, when it was created from one. */
 	horizon?: string;
+	/**
+	 * The iteration it was created ON, when it was created from an iteration board — a
+	 * FILE, never a serialized string, for `ItemWrite.iteration`'s reason: a link built
+	 * from a basename resolves to whichever of two same-named notes Obsidian picks, and
+	 * the path this one is spelled from does not exist until the line below runs.
+	 */
+	iteration?: TFile;
+	/**
+	 * The dates that iteration carries, so a card made on a sprint board is scheduled for
+	 * that sprint in the same write that makes it. The horizon's own rule, one property
+	 * over: a card created outside the fortnight it was created ON is a note whose
+	 * frontmatter contradicts the board that made it, even if only until the next edit.
+	 */
+	axis?: AxisWrite;
 }
 
 /** Create a new backlog note in the configured folder with its hierarchy properties set. */
@@ -45,7 +60,12 @@ export async function createBacklogItem(app: App, settings: BacklogSettings, spe
 	// same axis list the edit path uses — so it is never momentarily a note sitting in
 	// a bucket its own frontmatter does not name, and never a write to an unconfigured
 	// key. `axisEntries` yields nothing here when the horizon axis is off.
-	for (const { key, value } of axisEntries(settings, spec.horizon ? { horizon: spec.horizon } : undefined)) {
+	if (spec.iteration && settings.iterationKey) {
+		setOwn(fm, settings.iterationKey, wikilinkTo(app, spec.iteration, path));
+	}
+	// One list for both placements, so "which keys may be written" is stated once: a key
+	// no property names is dropped here exactly as it is on the edit path.
+	for (const { key, value } of axisEntries(settings, { ...spec.axis, ...(spec.horizon ? { horizon: spec.horizon } : {}) })) {
 		if (value !== null) setOwn(fm, key, value);
 	}
 	return app.vault.create(path, `---\n${stringifyYaml(fm)}---\n`);
