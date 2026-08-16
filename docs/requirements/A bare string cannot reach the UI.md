@@ -473,17 +473,26 @@ merge. What this note still asks for is the harder thing: a bare string reaching
 SINK it was never routed through the catalog for, which no AST shape can see. Read the ban
 as evidence the mechanism works in this config, not as the requirement met.
 
-Three limits, stated because each is a place the next one gets in:
+Four limits, stated because each is a place the next one gets in:
 
 - **`src/view/render/` only.** `src/view/manual/typesSection.ts` still holds an `are`/`is`
   agreement inside a concatenated prose block — a real instance, left because the correct
   fix is one catalog key for the whole paragraph rather than a patched clause, which is its
-  own slice. `interactions/`, `ui/` and `commands/` are unswept and unbanned.
+  own slice. `interactions/`, `ui/` and `commands/` are unswept and unbanned, and so is
+  `domain/settingsConsistency.ts`, which held one of the nineteen.
+- **The TEMPLATE is half the selector, and dropping it is the plainest way past the
+  rule.** `` `${a ? 'x' : 'y'} …` `` is refused; `const label = a ? 'x' : 'y'` one line
+  above is not, and it renders the same sentence. Two live instances sit in the swept
+  directory — `render/timeline.ts`'s `'Show children'`/`'Hide children'` and
+  `render/cardChildren.ts`'s tooltip, which also concatenates with `+`. Neither is a
+  regression this ban let in; both predate it, and naming them is what stops the ban being
+  read as "render/ is clean". Widening the selector to a bare `ConditionalExpression`
+  between two `Literal`s means sweeping those two first, which is the next slice.
 - **It cannot tell a class name from a sentence.** `render/toolbar.ts` built a CSS class
   that way and now uses `addClass`; that is the accepted cost of checking a shape rather
   than a meaning.
-- **It sees one spelling.** A sentence assembled by `+`, by `.join()`, or by a ternary
-  between two template literals rather than two `Literal`s passes it untouched.
+- **It sees one spelling.** Beyond the two above, a sentence assembled by `+`, by
+  `.join()`, or by a ternary between two template literals passes untouched.
 
 The rest of this note is still design.
 

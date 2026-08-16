@@ -132,14 +132,19 @@ main brought the shelf's new type-group fold, and its `aria-label` was written t
 because the old way was still the only way when it was written. It reused
 `roadmap.groupLabel` unchanged.
 
-**Nothing now stops the twentieth in `render/`, and the count stayed at nineteen through
-250 commits of main.** That was measured after a rebase onto 0.9.0 — iterations, the
-MoSCoW priority, the scope picker and the shelf search all landed in between — with the
-regex checked against a planted instance first, since a grep that silently matches nothing
-reads exactly like a clean tree. `TEXT_TERNARY` in `eslint.config.mjs` now refuses the
-shape in `src/view/render/**`, which is where all nineteen lived; its three limits are on
-`A bare string cannot reach the UI`, and the honest one to carry here is that
-`view/manual/typesSection.ts` still holds an `are`/`is` agreement the ban does not reach.
+**A twentieth in `render/` is now refused by lint, and the count stayed at nineteen
+through 250 commits of main.** That was measured after a rebase onto 0.9.0 — iterations,
+the MoSCoW priority, the scope picker and the shelf search all landed in between — with
+the regex checked against a planted instance first, since a grep that silently matches
+nothing reads exactly like a clean tree. `TEXT_TERNARY` in `eslint.config.mjs` is the
+refusal, and **`render/` is where MOST of the nineteen lived rather than all of them**:
+the `' and '` joiner named above was in `domain/settingsConsistency.ts`, which the ban
+does not cover, and neither did an earlier draft of this paragraph that said "all". The
+scoping is a claim about churn, not about completeness — the four limits are on
+`A bare string cannot reach the UI`, and the two to carry here are that
+`view/manual/typesSection.ts` still holds an `are`/`is` agreement, and that a ternary
+written OUTSIDE a template literal is the plainest way past the rule and is live in the
+swept directory twice.
 
 **The ban is a wider rule than plurals, and the sweep that turned it on found that out.**
 Clearing `render/` of the shape meant clearing three sentences built by choosing between

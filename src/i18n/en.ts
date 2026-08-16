@@ -94,8 +94,16 @@ export const en = {
 	 * verb swapped inside one. `Expand`/`Collapse` and `Show`/`Hide` were ternaries in
 	 * the template, which is the same defect as `item${s}` with a word in place of a
 	 * suffix: a language that reorders the verb, or inflects the name after it, cannot
-	 * reach either half. The name is always a parameter — a column's label, the shelf's
-	 * and a resource's are all user data.
+	 * reach either half.
+	 *
+	 * `{name}` is a parameter because the SURFACE cannot know what it holds, not because
+	 * every value is user data. A column's label and a resource's are; two are plugin
+	 * constants that are still English — `SHELF_LABEL` ('Unplaced', `domain/roadmap.ts`)
+	 * and `NO_STATE_LABEL` ('No state', `domain/board.ts`) — so a translated catalog would
+	 * render `Erweitern Unplaced (3)` today. They are display-only, matched and persisted
+	 * nowhere, so they belong in this catalog and are owed to the sweep; `domain/` is
+	 * unswept and each is read from a dozen surfaces, which is why they did not move here
+	 * beside a fold label.
 	 */
 	'fold.expandColumn': 'Expand {name}',
 	'fold.collapseColumn': 'Collapse {name}',

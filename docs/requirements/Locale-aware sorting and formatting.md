@@ -71,6 +71,16 @@ bug that exists today and that this PBI is the natural place to fix.
 Formatting is the other half: `columns.ts:276` renders `${done}/${total}` and
 `columns.ts:280` a bare descendant count. Both are numbers shown to a person.
 
+**One of those bare counts now disagrees with a formatted one beside it, and that is this
+PBI's boundary made visible rather than a new defect.** The shelf's disclosure renders its
+count twice: `.pbl-shelf-count` puts `String(shelf.length)` on screen, while the same
+number goes through `t('fold.expandShelf')` for the accessible name and is formatted by
+`Intl.NumberFormat` in the USER's locale. Below a thousand they agree; at 1000 the span
+says `1000` and a screen reader hears `1,000`. `Plurals and interpolation` drew that line
+on purpose — a number inside a sentence is grammar and was in scope, a bare count outside
+one is data presentation and is this note's — so the fix belongs here with the other two
+counts and not beside the fold label that exposed it. Found by review on PR #167.
+
 ## Case folding is the same split again
 
 `toLowerCase()` appears **47 times** in `src/` — call expressions, not lines; an earlier
