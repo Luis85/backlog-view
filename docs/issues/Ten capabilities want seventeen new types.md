@@ -29,8 +29,12 @@ Read together, the epics derived from the 2026-08-16 requirements document ask f
 `Domain` and `Decision` — **seventeen** names. The plugin declares **eleven** types today. Nobody wrote that number
 down while writing the epics, which is exactly how a vocabulary triples without a decision.
 
-Adding a type is not one edit. It is `ALL_TYPES` and `EXTRA_TYPES`, which are declared in
-`src/domain/typeVocabulary.ts` and only imported by `src/domain/itemTypes.ts`; `LEGAL_CHILDREN` and `EXTRA` in the register's own gate; the
+Adding a type is not one edit, and **which** edit depends on the bucket: a type on a ladder
+of its own joins that ladder's list the way the test types join `TEST_LEVELS`, while an extra
+type beside the plan joins `EXTRA_TYPES` and takes its pinned-rank, plan-work semantics with
+it. Putting an own-ladder type in `EXTRA_TYPES` would make it a rung and an extra at once.
+Either way it reaches `ALL_TYPES`, and all of those live in `src/domain/typeVocabulary.ts`,
+which `src/domain/itemTypes.ts` only imports. Then there is `LEGAL_CHILDREN` and `EXTRA` in the register's own gate; the
 hierarchy table in `docs/README.md`, which that gate checks both ways; a hue in
 `styles/badges.css`, where **eight** theme families already carry nine badges and one pair
 shares deliberately; a per-type creation folder key in the view options; and a row in every

@@ -200,8 +200,9 @@ ranked list, the matrix, the scenarios and the decomposition.
 
 **Two** of the five questions it opened are answered there. The partial profile is settled
 outright: the score renormalizes over the answered dimensions and reports its coverage, and
-the matrix plots every item that has a total, marking the coverage rather than dropping a
-thin point. A weight change is settled with one thing left over: stored totals are not
+the matrix plots every item that has both axis values, marking the coverage rather than
+dropping a thin point, and shelves the ones missing an axis beside the plot rather than
+inventing a position for them. A weight change is settled with one thing left over: stored totals are not
 rewritten and read as needing re-estimation, but whether a bulk re-estimation clears a
 hundred of those flags at once is undecided. **Three** stay open whole: the dozen-odd
 properties to bind, **inheritance**, which has no mechanism, and the **estimation status** as
