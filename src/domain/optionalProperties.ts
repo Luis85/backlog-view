@@ -39,7 +39,9 @@ export type OptionalField =
 	| 'priority'
 	| 'assignee'
 	| 'deliverableState'
-	| 'testState';
+	| 'testState'
+	| 'iteration'
+	| 'iterationGoal';
 
 /**
  * The `BacklogSettings` field one optional property's key lands in. Spelled as a union
@@ -58,7 +60,9 @@ export type OptionalSettingsKey =
 	| 'priorityKey'
 	| 'assigneeKey'
 	| 'deliverableStateKey'
-	| 'testStateKey';
+	| 'testStateKey'
+	| 'iterationKey'
+	| 'iterationGoalKey';
 
 /**
  * One such property: the option that names it, the key it adopts when nothing does,
@@ -135,6 +139,15 @@ const PROPERTY_TABLE: Record<OptionalField, Omit<OptionalProperty, 'field'>> = {
 	// Prerequisites, suggested by the name the Tasks plugin already uses for the same
 	// idea — offered as a placeholder, never matched by name.
 	dependsOn: { option: 'dependsOnProperty', suggested: 'dependsOn', label: 'depends on', settingsKey: 'dependsOnKey' },
+	// The link an item carries to say which time box it is in. Suggested by the name the
+	// concept has, and — like every other row here — offered as a placeholder rather than
+	// matched: nothing reads a property because of what it is called.
+	iteration: { option: 'iterationProperty', suggested: 'iteration', label: 'iteration', settingsKey: 'iterationKey' },
+	// What an iteration is FOR, in one line. A plain string on the Iteration note — never a
+	// link, so unlike `iteration` it is a row in the label list (`applyLabels`) rather than
+	// a write of its own, and unlike every other row here it is never backfilled: see the
+	// `iterationGoal` early return in `missingKeyStubs` (`writePlan.ts`).
+	iterationGoal: { option: 'iterationGoalProperty', suggested: 'goal', label: 'iteration goal', settingsKey: 'iterationGoalKey' },
 };
 
 /** The declaration for one field, for the callers that hold a field rather than a row. */

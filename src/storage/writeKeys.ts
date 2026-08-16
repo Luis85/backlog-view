@@ -58,7 +58,7 @@ export function touchedKeys(settings: BacklogSettings, write: ItemWrite): string
 	if (write.order !== undefined) keys.push(settings.orderKey);
 	if (write.typeName !== undefined) keys.push(settings.typeKey);
 	if ((write.removeStateKey || write.state !== undefined) && settings.stateKey) keys.push(settings.stateKey);
-	// One rule, five-now-seven properties: listed whenever the write TOUCHES the key and a
+	// One rule, five-now-eight properties: listed whenever the write TOUCHES the key and a
 	// property names it — the same condition each `apply*` writes on, so applying and
 	// capturing cannot drift. A key written but not captured is a change no undo could
 	// reach; a key whose value did not change emits no inverse anyway, which is what lets
@@ -74,6 +74,8 @@ export function touchedKeys(settings: BacklogSettings, write: ItemWrite): string
 		[write.risk !== undefined, settings.riskKey],
 		[write.priority !== undefined, settings.priorityKey],
 		[write.assignee !== undefined, settings.assigneeKey],
+		[write.iteration !== undefined, settings.iterationKey],
+		[write.iterationGoal !== undefined, settings.iterationGoalKey],
 		// Not "carries a value": this is the ONLY prerequisite change listed here, for the
 		// whole-key REMOVAL alone. The add and the entry removals restore as a DELTA,
 		// exactly as the tags do — listing a key for both would have undo put the prior

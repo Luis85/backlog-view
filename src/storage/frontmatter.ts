@@ -1,4 +1,4 @@
-import { App, normalizePath, Notice, stringifyYaml, TFile } from 'obsidian';
+import { App, Notice, TFile } from 'obsidian';
 import { StatedEnds } from '../domain/bars';
 import { placementEnds, PlacementEnd } from '../domain/itemTypes';
 import {
@@ -14,9 +14,9 @@ import {
 } from '../domain/noteFields';
 import { BacklogSettings, isDoneValue } from '../domain/settings';
 import { optionalKeyFor, resolvedDeliverableStateKey, resolvedTestStateKey } from '../domain/optionalProperties';
-import { vaultFolder } from '../domain/settingsResolve';
 import { DateSpan, daysBetween, reversedSpan } from '../domain/timeline';
 import { ItemWrite, TagDelta } from '../domain/writePlan';
+import { wikilinkTo } from './createNote';
 import { DependsOnRestore, dependsOnRestore, restoreDependsOn } from './dependsOnWrite';
 import { setOwn } from './ownProperty';
 import { axisEntries, stubKeys, touchedKeys } from './writeKeys';
@@ -197,6 +197,7 @@ function applyInto(
 	// question, and the boundary rule believes the wrong one.
 	const leaving = settings.stateKey ? readString(ownValue(fm, settings.stateKey)) : null;
 	applyHierarchy(app, fm, settings, write);
+	applyIteration(app, fm, settings, write);
 	// The stateKey may be unset (progress tracking off) — never write to an empty key.
 	if (write.removeStateKey && settings.stateKey) delete fm[settings.stateKey];
 	else if (write.state !== undefined && settings.stateKey) setOwn(fm, settings.stateKey, write.state);
@@ -234,6 +235,18 @@ function applyHierarchy(app: App, fm: Record<string, unknown>, settings: Backlog
 	}
 	if (write.order !== undefined) setOwn(fm, settings.orderKey, write.order);
 	if (write.typeName !== undefined) setOwn(fm, settings.typeKey, write.typeName);
+}
+
+/**
+ * The iteration link — path-aware like the parent's, and for the parent's reason: a link
+ * serialized from a basename would resolve to whichever of two same-named notes Obsidian
+ * picks, so this spells it from the editing note's own path with `wikilinkTo`, exactly as
+ * `applyHierarchy` does for the parent. Never a key no property names; `null` removes it.
+ */
+function applyIteration(app: App, fm: Record<string, unknown>, settings: BacklogSettings, write: ItemWrite): void {
+	if (write.iteration === undefined || !settings.iterationKey) return;
+	if (write.iteration === null) delete fm[settings.iterationKey];
+	else setOwn(fm, settings.iterationKey, wikilinkTo(app, write.iteration, write.file.path));
 }
 
 /**
@@ -288,10 +301,10 @@ function applyAxis(fm: Record<string, unknown>, settings: BacklogSettings, write
 }
 
 /**
- * The plain LABEL properties — the risk level, and who the item is assigned to — under
- * this module's two standing rules: never a key no property names, and a null REMOVES
- * rather than blanks, because a note nobody has judged and a note nobody is on carry no
- * such key at all.
+ * The plain LABEL properties — the risk level, who the item is assigned to, and what an
+ * iteration is FOR — under this module's two standing rules: never a key no property
+ * names, and a null REMOVES rather than blanks, because a note nobody has judged, a note
+ * nobody is on and an iteration nobody has stated a goal for carry no such key at all.
  *
  * One loop rather than a statement per property, which is the trade-off the root
  * `CLAUDE.md` said to re-examine at the fourth optional property and this is it: a label
@@ -299,13 +312,15 @@ function applyAxis(fm: Record<string, unknown>, settings: BacklogSettings, write
  * wants exactly these two lines is where a shared statement starts costing less than
  * another copy of them. The state key still guards inline and the axis keys still go
  * through `axisEntries` — this covers what is genuinely the same, and a fifth label
- * property is a row in the list rather than a fifth restatement.
+ * property (the iteration's goal, here) is a row in the list rather than a fifth
+ * restatement.
  */
 function applyLabels(fm: Record<string, unknown>, settings: BacklogSettings, write: ItemWrite): void {
 	const labels: [string | null | undefined, string][] = [
 		[write.risk, settings.riskKey],
 		[write.priority, settings.priorityKey],
 		[write.assignee, settings.assigneeKey],
+		[write.iterationGoal, settings.iterationGoalKey],
 	];
 	for (const [value, key] of labels) {
 		if (value === undefined || !key) continue;
@@ -635,109 +650,4 @@ function applyTagDelta(fm: Record<string, unknown>, key: string, delta: TagDelta
 	if (next.length > 0) setOwn(fm, key, next);
 	else delete fm[key];
 	return { add: added, remove: removed };
-}
-
-export interface NewItemSpec {
-	folder: string;
-	title: string;
-	typeName: string;
-	parent: TFile | null;
-	order: number;
-	/** The bucket it was created in, when it was created from one. */
-	horizon?: string;
-}
-
-/** Create a new backlog note in the configured folder with its hierarchy properties set. */
-export async function createBacklogItem(app: App, settings: BacklogSettings, spec: NewItemSpec): Promise<TFile> {
-	const folder = vaultFolder(spec.folder);
-	await ensureFolder(app, folder);
-	const path = uniqueNotePath(app, folder, spec.title);
-
-	// One atomic write: a create-then-update pair could fail in between and leave
-	// a blank note without its hierarchy properties behind.
-	const fm: Record<string, unknown> = { [settings.typeKey]: spec.typeName };
-	if (spec.parent) setOwn(fm, settings.parentKey, wikilinkTo(app, spec.parent, path));
-	// In folder mode a missing parent key would let folder inference nest this
-	// intentionally top-level note — pin it with an explicitly empty parent.
-	else if (settings.folderHierarchy) setOwn(fm, settings.parentKey, '');
-	setOwn(fm, settings.orderKey, spec.order);
-	// A note created from a bucket claims that bucket in the SAME write, through the
-	// same axis list the edit path uses — so it is never momentarily a note sitting in
-	// a bucket its own frontmatter does not name, and never a write to an unconfigured
-	// key. `axisEntries` yields nothing here when the horizon axis is off.
-	for (const { key, value } of axisEntries(settings, spec.horizon ? { horizon: spec.horizon } : undefined)) {
-		if (value !== null) setOwn(fm, key, value);
-	}
-	return app.vault.create(path, `---\n${stringifyYaml(fm)}---\n`);
-}
-
-/**
- * Always write parents as quoted wikilinks so the metadata cache picks them up
- * as frontmatter links regardless of the user's link format setting.
- */
-function wikilinkTo(app: App, target: TFile, sourcePath: string): string {
-	return '[[' + app.metadataCache.fileToLinktext(target, sourcePath) + ']]';
-}
-
-/**
- * The path a new note takes: the sanitized title in the folder, suffixed until nothing is
- * there. Shared by both creators in this directory, so an absence and a work item cannot
- * disagree about what a title becomes on disk or about what happens when the name is
- * taken.
- *
- * `self` is the file being RENAMED, and its own path is free rather than taken. A creator
- * passes nothing — there is no file yet — but a rename asks this question about a note
- * that is already on disk, and counting its own path as occupied appends a number to a
- * name it already answers to. That is not a hypothetical: a derived name collides once,
- * lands at `X 1`, and every later rename to the same derived name then finds `X` taken and
- * `X 1` taken by the note itself, so the suffix ratchets (`X 2`, `X 3`) with every edit and
- * rewrites every link naming it. Driven by "leaves a note that already landed on a collided
- * name where it is" in `test/view/resourceAbsences.test.ts`.
- */
-export function uniqueNotePath(app: App, folder: string, title: string, self?: TFile): string {
-	const base = sanitizeTitle(title);
-	const filePath = (name: string) => (folder ? normalizePath(`${folder}/${name}.md`) : `${name}.md`);
-	const taken = (path: string) => path !== self?.path && app.vault.getAbstractFileByPath(path) !== null;
-	let path = filePath(base);
-	for (let i = 1; taken(path); i++) path = filePath(`${base} ${i}`);
-	return path;
-}
-
-/**
- * What a title becomes on disk, before any collision suffix.
- *
- * Exported for the one caller that has to ask the question WITHOUT taking a path:
- * `absenceSaid` (`view/render/lanes.ts`) compares a note's BASENAME against the name
- * `absenceTitle` derives from its facts, and those are two strings for one file name the
- * moment a resource holds a character this replaces — `A/B away …` is filed as `A-B away
- * …`. Sanitizing the derived side is what makes that comparison ask about the name the
- * note actually has.
- *
- * `view/` may reach `storage/` (the layering is main → commands → view → storage →
- * domain, and `eslint.config.mjs` forbids only view → commands); `domain/` may not, which
- * is why this question is asked in the view rather than beside `absenceTitle`.
- */
-export function sanitizeTitle(title: string): string {
-	const cleaned = title
-		.replace(/[\\/:*?"<>|#^[\]]/g, '-')
-		.replace(/\s+/g, ' ')
-		.trim()
-		.replace(/^[-\s.]+|[-\s]+$/g, '');
-	return cleaned.length > 0 ? cleaned : 'Untitled';
-}
-
-export async function ensureFolder(app: App, folder: string): Promise<void> {
-	if (!folder) return;
-	const parts = folder.split('/');
-	let current = '';
-	for (const part of parts) {
-		current = current ? `${current}/${part}` : part;
-		if (app.vault.getAbstractFileByPath(current) === null) {
-			try {
-				await app.vault.createFolder(current);
-			} catch {
-				// Folder may have been created concurrently; creation of the note will surface real errors.
-			}
-		}
-	}
 }

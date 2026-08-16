@@ -73,7 +73,7 @@ export function renderCardChildren(ctx: RowContext, card: HTMLElement, item: Bac
 	// filter. Subtracting the second from the first counted a catalog child as a plan row
 	// the view was choosing to hide, and this note says exactly that. Absent from this
 	// ladder is not hidden by this view.
-	const drawn = item.children.filter(projectionMember(host.projection));
+	const drawn = item.children.filter(projectionMember(host.projection, host.effectiveScope));
 	const omitted = drawn.length - children.length;
 	const note = omitted > 0 ? ` — ${t('card.hiddenChildren', { count: omitted })}` : '';
 

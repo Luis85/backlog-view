@@ -1,5 +1,5 @@
-import { inCatalog, isDeliverableType, ladderFor } from '../domain/itemTypes';
-import { BacklogItem, BacklogModel, ProjectionPopulation } from '../domain/model';
+import { inCatalog, isDeliverableType, isIterationType, isMarkerType, ladderFor } from '../domain/itemTypes';
+import { BacklogItem, BacklogModel, inIteration, inPlan, ProjectionPopulation } from '../domain/model';
 import { BacklogViewHost, Projection } from './host';
 import { ALL_TYPES } from '../domain/typeVocabulary';
 
@@ -72,7 +72,11 @@ export function treeShaped(projection: Projection): boolean {
  * opting out of a feature opts out of the COMPUTATION, not just the control.
  */
 export function hidesCompleted(projection: Projection): boolean {
-	return projection !== 'deliverables' && projection !== 'catalog';
+	// The iteration board joins the two that opt out, and for a reason of its own rather
+	// than theirs: its Resolved column IS the finished work, so hiding a done subtree
+	// would empty the column the board exists to show — a sprint review reading as a
+	// sprint nobody finished.
+	return projection !== 'deliverables' && projection !== 'catalog' && projection !== 'iteration';
 }
 
 /**
@@ -85,6 +89,23 @@ export function hidesCompleted(projection: Projection): boolean {
  */
 export function hasRollup(projection: Projection): boolean {
 	return projection !== 'catalog';
+}
+
+/**
+ * Which toolbar POSITION draws this projection. Every board is the `Board` button's
+ * position now: the scope picker beside that button chooses WHICH — the product's, the
+ * Deliverables board's, or one iteration's — so the control the reader sees is one.
+ * The Deliverables board held a toggle position of its own until 2026-08-16, when the
+ * user moved it under the picker's `Product` entry; the register records the reversal
+ * ([[An Iterations board]], "Why a scope").
+ *
+ * Two controls need this rather than the projection — `renderProjectionZone`'s switch and
+ * the toggle's `is-active`/`aria-pressed`. Both are wrong once the internal identity and
+ * the control identity differ, and they fail in opposite directions: the picker deletes
+ * itself the first time it is used, and no position ever draws as pressed.
+ */
+export function toolbarPosition(projection: Projection): Projection {
+	return projection === 'iteration' || projection === 'deliverables' ? 'board' : projection;
 }
 
 /**
@@ -132,8 +153,32 @@ export function projectionPopulation(projection: Projection, model: BacklogModel
  * under a `Test case` is a catalog root's child, hidden here, and a root of the plan's own
  * forest over there.
  */
-export function projectionMember(projection: Projection): (item: { ladder: string[] }) => boolean {
-	return projection === 'catalog' ? inCatalog : (item) => !inCatalog(item);
+export function projectionMember(projection: Projection, scope: string | null = null): (item: BacklogItem) => boolean {
+	if (projection === 'catalog') return inCatalog;
+	// **The iteration board's membership is the LINK**, not merely "a row of the plan",
+	// and it has to be asked here rather than only where the cards are chosen. Every
+	// consumer of this predicate reads the answer for something other than a card:
+	// `listedChildren` puts a carrier's children on its face, the quick filter's index
+	// decides which rows a needle keeps, and a drop target asks what may receive a row.
+	// With the plan's own answer, a carrier's child that names no iteration — or names
+	// ANOTHER one — was listed on the card, which is the no-inheritance rule broken at
+	// the one surface that does not go through `iterationResults`. Found by review
+	// (Codex, PR #154).
+	//
+	// A context row still passes: it is placement, and `rowHidden`'s own last clause
+	// takes it away as soon as nothing below it is visible. Asked with no scope — every
+	// caller that has no iteration in hand — this is the plan's answer unchanged.
+	if (projection === 'iteration' && scope !== null) {
+		// `inIteration` and NOT a second spelling of its three refusals: with the marker
+		// refusal in the population and not here, a note retyped to `Milestone` kept its
+		// link and stayed listed on its parent's card. One statement, two callers.
+		return (item) => (item.outsideFilter ? inPlan(item) : inIteration(item, scope));
+	}
+	// `inPlan`, which refuses an `Iteration` as well as the catalog — and it is the same
+	// function `projectionForest` builds the plan's forest from, because the forest and
+	// the hiding must agree: promoted by one and hidden by the other, a `PBI` parented to
+	// an iteration would appear nowhere at all.
+	return inPlan;
 }
 
 /**
@@ -211,11 +256,27 @@ export function offerableTypes(host: BacklogViewHost, types: string[] = ALL_TYPE
 	return projected.filter((t) => inCatalog({ ladder: ladderFor(t, row?.parent?.ladder ?? null) }) === wanted);
 }
 
-/** The two boards' own narrowing: one shows no Deliverable, the other shows nothing else. */
+/**
+ * The three boards' own narrowing: one shows no Deliverable, one shows nothing else, and
+ * the iteration board shows no MARKER.
+ *
+ * That last one is asked through `isMarkerType` and never through `isIterationType`, the
+ * same spelling `iterationResults` refuses a carrier by — and the two work together, which
+ * is why the spelling has to match. Offering `Milestone` under `New` or `Set type` here
+ * lets a reader create or retype a note and watch the population's own marker guard delete
+ * it from the board that made it. A type this board cannot draw must not be a type it
+ * offers.
+ */
 function byProjectionType(projection: Projection, types: string[]): string[] {
 	if (projection === 'board') return types.filter((type) => !isDeliverableType(type));
 	if (projection === 'deliverables') return types.filter((type) => isDeliverableType(type));
-	return types;
+	if (projection === 'iteration') return types.filter((type) => !isMarkerType(type));
+	// **No creation surface offers `Iteration`.** One control makes them — the board's
+	// scope picker — and it derives the number, the dates and the folder that a `New`
+	// menu would leave to the reader. A second door onto the same note is a second set of
+	// defaults to keep in step, and the one that offers less is the one that would be
+	// used by accident.
+	return types.filter((type) => !isIterationType(type));
 }
 
 /**
@@ -245,5 +306,9 @@ export function retypeChoices(host: BacklogViewHost, item: BacklogItem): string[
  * three share: it is a fact about the projection, not about the object drawing it.
  */
 export function filterScopeFor(projection: Projection): FilterScope {
-	return projection === 'deliverables' ? 'whole' : 'focused';
+	// The iteration board answers `'whole'` for the Deliverables board's reason, arrived at
+	// from its own population: `iterationResults` is read off `realRoots`, so a focus set
+	// on another projection narrows neither. An index built on the focused forest would
+	// hold the promise for the cards and break it for the search.
+	return projection === 'deliverables' || projection === 'iteration' ? 'whole' : 'focused';
 }

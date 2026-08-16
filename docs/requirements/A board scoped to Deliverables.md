@@ -53,13 +53,17 @@ narrowed to one type.
 | | |
 | --- | --- |
 | **Actor** | Backlog owner |
-| **Trigger** | Toggling the toolbar to the Deliverables board |
+| **Trigger** | Choosing `Deliverables` from the board scope picker (a fourth toggle position until 2026-08-16 — the user moved it under the picker's `Product` entry; [[An Iterations board]], "Why a scope", records the reversal) |
 | **Preconditions** | A Deliverable workflow resolves to some key — the Deliverable state property when it is configured, or (falling back) the requirements board's own `stateKey` when it is not (`resolvedDeliverableStateKey`, `deliverableKeyFallsBack` in `resolveSettings`). The two value lists follow that key only while they are EMPTY: a `deliverableStates`/`deliverableDoneValues` the user populated is used whatever the key does (2a) |
 | **Guarantee** | One model, one write gate, one undo history, exactly as [[Product Kanban]]'s own guarantee states — and a move here writes the *resolved* Deliverable state key: the Deliverable's own configured property when one is set, or (falling back) the requirements board's `stateKey` itself — in which case the two boards share one property rather than each owning a different one. |
 
 **Main flow**
 
-1. The toolbar toggle grows a fourth position: Tree, Board, Roadmap, Deliverables.
+1. The board scope picker names `Deliverables` directly under `Product`, each entry
+   under the icon its surface already wears (`square-kanban`, `package`). Until
+   2026-08-16 this step read "the toolbar toggle grows a fourth position" — the
+   projection is unchanged; only its door moved, and the `Board` position now draws as
+   pressed while this board is showing.
 2. Choosing it shows a board whose columns are the workflow the "Deliverables" settings
    group defines — its own state property when `deliverableStateProperty` is configured,
    or (falling back — `deliverableKeyFallsBack` in `resolveSettings`) the requirements
@@ -349,8 +353,11 @@ risk below is closed rather than open: a readout added in
   when falling back, never a third, uninvolved property.
 - Picking the Deliverables board survives closing and reopening the view, the same way
   Board and Roadmap already do — not merely reverting to the tree because the stored
-  value went unrecognised.
-- Selecting the fourth toggle actually renders the Deliverables board's columns and
+  value went unrecognised. Since 2026-08-16 the pick is also RETAINED like an iteration
+  scope: leaving the `Board` position and returning reopens this board, remembered as a
+  stored word beside the stored scope path, and the two clear each other so they cannot
+  contradict.
+- Selecting the picker's entry actually renders the Deliverables board's columns and
   cards into the pane — asserted directly, not inferred from the board model existing.
 - A drop on a Deliverables-board column writes `deliverableState` alone — the drag input
   gets the same wrong-property regression coverage the menu input does, since the two
@@ -482,16 +489,18 @@ silently drop that behavior.
 than the raw key — so the "no workflow" guidance shows only when NEITHER workflow
 resolves — returning its board through the same `ProjectionContent.board` field
 `renderBoardContent` already uses — there is no second snapshot field; without this
-branch the fourth toggle falls through to `renderTree` and nothing computes a board at
+branch the projection falls through to `renderTree` and nothing computes a board at
 all.
-`src/view/backlogView.ts` — the fourth toggle, `renderTreeContent`'s `pbl-board-mode`
+`src/view/backlogView.ts` — the projection's stored round trip, `renderTreeContent`'s `pbl-board-mode`
 class condition widens to `projection === 'board' || projection === 'deliverables'`
 (`backlogView.ts:468`) — the two are shaped alike and share the class, rather than the
 Deliverables board inheriting the tree's overflow and root drop zone by omission — and
 the view's private `visibility()` assembles the one `VisibilityRule` its three public
 predicates share, which is where `hideCompleted: this.projection !== 'deliverables'` is
 stated — once, for every reader.
-`src/view/render/toolbar.ts` — the fourth toggle; `renderCompletedToggle`'s gate adds
+`src/view/render/toolbar.ts` — the toggle position until 2026-08-16, and since then the
+way in is `renderBoardScopePicker` in `src/view/render/toolbarControls.ts`, whose
+`Deliverables` entry sits under `Product`; `renderCompletedToggle`'s gate adds
 `&& host.projection !== 'deliverables'` · `src/view/render/toolbarStatus.ts` —
 `syncCountLabel`, which runs every render
 regardless of projection, asks the one `isRowHidden` — found by review: before the

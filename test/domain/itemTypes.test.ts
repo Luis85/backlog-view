@@ -11,7 +11,15 @@ import {
 } from '../../src/domain/itemTypes';
 import { defaultSettings } from '../../src/domain/settings';
 import { resolveSettings } from '../../src/domain/settingsResolve';
-import { ALL_TYPES, defaultTypeFolder, EXTRA_TYPES, LEVELS, MARKER_TYPES } from '../../src/domain/typeVocabulary';
+import {
+	ALL_TYPES,
+	defaultTypeFolder,
+	EXTRA_TYPES,
+	ITERATION_TYPE,
+	LEVELS,
+	MARKER_TYPES,
+	typeFolderKey,
+} from '../../src/domain/typeVocabulary';
 import { FakeVault } from '../helpers/vault';
 
 const settings = defaultSettings();
@@ -146,8 +154,13 @@ describe('childTypeChoices', () => {
 
 	it('still refuses to put a marker under anything', () => {
 		const { get } = fixture();
+		// Every declared marker, not just the one the fixture happens to build a row for —
+		// a second marker joining `MARKER_TYPES` without its own fixture entry still has to
+		// answer this for every real rung.
 		for (const parent of [...LEVELS, ...EXTRA_TYPES]) {
-			expect(childTypeChoices(get(parent))).not.toContain('Milestone');
+			for (const marker of MARKER_TYPES) {
+				expect(childTypeChoices(get(parent))).not.toContain(marker);
+			}
 		}
 	});
 
@@ -164,6 +177,7 @@ describe('childTypeChoices', () => {
 			'Idea',
 			'Deliverable',
 			'Milestone',
+			'Iteration',
 			'Test suite',
 			'Test case',
 		]);
@@ -298,6 +312,34 @@ describe('isMarkerType', () => {
 		expect(isMarkerType('Spike')).toBe(false);
 		expect(isMarkerType(null)).toBe(false);
 		expect(MARKER_TYPES.some((m) => isExtraType(m))).toBe(false);
+	});
+});
+
+describe('Iteration is a declared marker', () => {
+	it('is a marker type and a member of the whole vocabulary', () => {
+		expect(ITERATION_TYPE).toBe('Iteration');
+		expect(MARKER_TYPES).toContain('Iteration');
+		expect(ALL_TYPES).toContain('Iteration');
+	});
+
+	it('inherits every marker rule rather than declaring one', () => {
+		expect(isMarkerType('Iteration')).toBe(true);
+		// A marker holds nothing, so nothing is offered beneath it.
+		expect(childTypeChoices({ typeName: 'Iteration', levelIndex: -1, effectiveLevelIndex: 0, ladder: LEVELS })).toEqual(
+			[],
+		);
+	});
+
+	it('files into its own subfolder', () => {
+		expect(typeFolderKey('Iteration')).toBe('typeFolder.iteration');
+		// The key alone proves nothing about where a note actually lands: `typeFolderKey`
+		// derives its answer from the type NAME, so a missing or misspelt row in
+		// `DEFAULT_TYPE_SUBFOLDERS` would still pass a key-only assertion. One of ADR
+		// 0013's three owed opinions is the shipped default folder itself, so assert the
+		// resolved VALUE too, following the marker default's own test in `settings.test.ts`.
+		expect(defaultTypeFolder('Iteration')).toBe('docs/iterations');
+		expect(defaultTypeFolder('Iteration', 'work')).toBe('work/iterations');
+		expect(defaultSettings().typeFolders.iteration).toBe('docs/iterations');
 	});
 });
 

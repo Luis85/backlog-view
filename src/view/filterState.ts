@@ -122,7 +122,7 @@ export class FilterState {
 	 * rather than a second walk — and the scopes coincide, which is exactly right: a
 	 * distinction that only exists under a focus should cost nothing without one.
 	 */
-	recompute(model: BacklogModel | null, projection: Projection): void {
+	recompute(model: BacklogModel | null, projection: Projection, scope: string | null = null): void {
 		const needle = this.text.trim().toLowerCase();
 		if (!model || needle === '') {
 			this.focused = null;
@@ -137,7 +137,10 @@ export class FilterState {
 		// screen in the catalog while nothing in the catalog matched at all; the inverse
 		// happens in the plan.
 		const roots = projectionPopulation(projection, model).roots;
-		const member = projectionMember(projection);
+		// Scoped like every other reader of this predicate: without it, a needle matching a
+		// child that is in NO iteration kept its carrier on screen, so a search on a sprint
+		// board answered about work the board is not showing.
+		const member = projectionMember(projection, scope);
 		this.focused = indexMatches(roots, needle, member);
 		// The `whole` index takes the SAME membership rule and differs only in where it
 		// starts: the whole tree rather than this projection's forest, because the

@@ -5,6 +5,7 @@ import {
 	byName,
 	DELIVERABLE_TYPE,
 	EXTRA_TYPES,
+	ITERATION_TYPE,
 	LEVELS,
 	MARKER_TYPES,
 	TEST_LEVELS,
@@ -194,6 +195,17 @@ export function isMarkerType(typeName: string | null): boolean {
 	if (typeName === null) return false;
 	const name = typeName.toLowerCase();
 	return MARKER_TYPES.some((t) => t.toLowerCase() === name);
+}
+
+/**
+ * One marker BY NAME. Asked only where a rule is about ITERATIONS specifically — the
+ * menu picking out which notes an item may be put in. Every STRUCTURAL question is
+ * {@link isMarkerType}, which both markers answer alike, and the difference is
+ * destructive rather than tidy: a rule about *not work* written as this predicate offers
+ * `Set iteration` on a `Milestone`, whose own target date a pick would then overwrite.
+ */
+export function isIterationType(typeName: string | null): boolean {
+	return typeName !== null && typeName.toLowerCase() === ITERATION_TYPE.toLowerCase();
 }
 
 /**

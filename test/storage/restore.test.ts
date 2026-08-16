@@ -638,3 +638,46 @@ describe('tag inverses', () => {
 		expect(vault.fm('Item.md')).toEqual({ tags: ['alpha', 'beta'] });
 	});
 });
+
+describe('iteration inverses', () => {
+	const withIteration = { ...settings, iterationKey: 'iteration' };
+
+	it('takes an iteration link back with the one undo slot', async () => {
+		const vault = new FakeVault();
+		const pbi = vault.addFile('PBI-1.md');
+		const sprint12 = vault.addFile('Sprint 12.md', { frontmatter: { type: 'Iteration' } });
+
+		const inverses = await writeCapturing(vault, [{ file: pbi, iteration: sprint12 }], withIteration);
+		expect(vault.fm('PBI-1.md')['iteration']).toBe('[[Sprint 12]]');
+
+		await applyRestores(vault.app, inverses);
+
+		expect(vault.fm('PBI-1.md')['iteration']).toBeUndefined();
+	});
+
+	it('deletes the key for a removal, and undo puts it back', async () => {
+		const vault = new FakeVault();
+		const pbi = vault.addFile('PBI-1.md', { frontmatter: { iteration: '[[Sprint 12]]' } });
+
+		const inverses = await writeCapturing(vault, [{ file: pbi, iteration: null }], withIteration);
+		expect(vault.fm('PBI-1.md')).toEqual({});
+
+		await applyRestores(vault.app, inverses);
+
+		expect(vault.fm('PBI-1.md')['iteration']).toBe('[[Sprint 12]]');
+	});
+
+	it('never writes to an unconfigured key', async () => {
+		const vault = new FakeVault();
+		const pbi = vault.addFile('PBI-1.md');
+		const sprint12 = vault.addFile('Sprint 12.md', { frontmatter: { type: 'Iteration' } });
+
+		const inverses = await writeCapturing(vault, [{ file: pbi, iteration: sprint12 }], {
+			...settings,
+			iterationKey: '',
+		});
+
+		expect(vault.fm('PBI-1.md')).toEqual({});
+		expect(inverses).toEqual([]);
+	});
+});

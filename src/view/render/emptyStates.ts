@@ -223,6 +223,24 @@ export function renderNoDeliverablesState(treeEl: HTMLElement): void {
 }
 
 /**
+ * An iteration board whose iteration holds nothing yet.
+ *
+ * Never the product board's "All N items are done and hidden", which cannot tell an
+ * empty base from an empty scope: on this board the base is usually full and the
+ * SPRINT is what is empty, so that sentence would report finished work where none has
+ * been committed.
+ */
+export function renderEmptyIterationState(treeEl: HTMLElement, name: string): void {
+	guidanceShell(
+		treeEl,
+		'calendar-clock',
+		'No items in this iteration yet',
+		`Nothing names ${name} yet. Put work in it with Set iteration from any row's or ` +
+			'card\'s menu, which also takes the iteration\'s own start and target dates.',
+	);
+}
+
+/**
  * Roadmap mode with no axis configured: guidance naming both ways to get one and
  * where each is set. The one roadmap case with no frame — a frame here would be
  * a lie about an axis that does not exist — and when a horizon property is set

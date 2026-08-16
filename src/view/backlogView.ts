@@ -1,7 +1,15 @@
 import { QueryController } from 'obsidian';
 import { CARD_SCOPE, TIMELINE_SCOPE, ViewState } from './viewState';
 import { FilterState } from './filterState';
-import { BacklogViewHost, BoardSnapshot, Column, ColumnFit, PRODUCT_BACKLOG_VIEW_TYPE, RoadmapSnapshot } from './host';
+import {
+	BacklogViewHost,
+	BoardSnapshot,
+	Column,
+	ColumnFit,
+	PRODUCT_BACKLOG_VIEW_TYPE,
+	Projection,
+	RoadmapSnapshot,
+} from './host';
 import { OpenController } from './openTarget';
 import { WriteGate } from './writeGate';
 import { CardMoveController } from './cardMoves';
@@ -12,6 +20,8 @@ import { showColumnMenuForIndex } from './interactions/columnMenu';
 import { showContextMenu } from './interactions/menu';
 import { BacklogItem, BacklogModel, buildModel } from '../domain/model';
 import { PlacementEnd } from '../domain/itemTypes';
+import { selectableIteration } from '../domain/iterations';
+import { IterationBucket } from '../domain/board';
 import { DropTarget } from '../domain/dropTargets';
 import { activeAxis, drawsGrid } from '../domain/roadmap';
 import { ItemWrite, ScheduleGesture, SchedulePlan } from '../domain/writePlan';
@@ -157,7 +167,7 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 			render: () => this.render(),
 			renderTreeContent: () => this.renderTreeContent(),
 			refreshFromData: () => this.refreshFromData(),
-			recomputeFilter: () => this.filter.recompute(this.model, this.projection),
+			recomputeFilter: () => this.filter.recompute(this.model, this.projection, this.effectiveScope),
 		});
 		this.dnd = new DragDropController(this, {
 			viewEl: this.viewEl,
@@ -236,7 +246,7 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 		// against the collapsed-by-default rule every other projection keeps. The same
 		// split `collapsiblePopulation` states for the buttons, at the other end of it.
 		this.state.collapseNewParents([...this.model.items, ...this.model.deliverableResults, ...this.model.catalog.items]);
-		this.filter.recompute(this.model, this.projection);
+		this.filter.recompute(this.model, this.projection, this.effectiveScope);
 		this.render();
 	}
 
@@ -292,7 +302,7 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 
 	setFilter(text: string): void {
 		this.filter.text = text;
-		this.filter.recompute(this.model, this.projection);
+		this.filter.recompute(this.model, this.projection, this.effectiveScope);
 		this.renderTreeContent();
 	}
 
@@ -301,11 +311,11 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 	}
 
 	isRowHidden(item: BacklogItem): boolean {
-		return rowHidden(item, visibilityRule(this.filter, this.settings, this.projection, true));
+		return rowHidden(item, visibilityRule(this.filter, this.settings, this.projection, true, this.effectiveScope));
 	}
 
 	isRowHiddenUnfiltered(item: BacklogItem): boolean {
-		return rowHidden(item, visibilityRule(this.filter, this.settings, this.projection, false));
+		return rowHidden(item, visibilityRule(this.filter, this.settings, this.projection, false, this.effectiveScope));
 	}
 
 	isFilterMatch(item: BacklogItem): boolean {
@@ -314,6 +324,48 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 
 	isFiltering(): boolean {
 		return this.filter.active;
+	}
+
+	/**
+	 * The iteration this view is actually SHOWING — the stored path, resolved.
+	 *
+	 * TWO inputs, and either failing falls the whole view back to the product board.
+	 * The path must still name a live `Iteration`, and `settings.iterationKey` must be
+	 * configured: with no key every item reads a null iteration, so the board can never
+	 * hold a card, its picker is gone and the reader is stranded on an empty screen by a
+	 * settings change made elsewhere. Neither failure rewrites the stored path — see
+	 * `ViewPrefs.scope`.
+	 *
+	 * A getter rather than a field for the reason `activeAxis` is a function: it is a
+	 * question about the CURRENT model and settings, and a value resolved once at the
+	 * pick would answer for a vault that has changed under it.
+	 */
+	get effectiveScope(): string | null {
+		// The STORED projection, never `this.projection` below, which is derived from this
+		// getter — and the scope only means anything while the reader is on the board it
+		// scopes. Asked without that first clause, an iteration's carriers were counted on
+		// the PRODUCT board, because clicking Board leaves the pick retained (which is the
+		// point of retaining it). Found by review (Codex, PR #154).
+		if (super.projection !== 'iteration' || !this.settings.iterationKey) return null;
+		// `selectableIteration` and not a type test written here: an excluded iteration is
+		// still typed `Iteration`, and accepting one left this view on a board the picker
+		// could neither name nor re-select.
+		return selectableIteration(this.model?.byPath.values() ?? [], this.boardScope)?.file.path ?? null;
+	}
+
+	/**
+	 * Which projection this view is actually ON — the stored one, except that an iteration
+	 * board whose scope no longer resolves IS the product board.
+	 *
+	 * Resolved here rather than at each gate, because the renderer alone falling back is
+	 * exactly the split this feature's own plan warned about: with the content drawing the
+	 * product board and every other gate still answering `'iteration'`, the count included
+	 * Deliverables, the focus control stayed inert, the filter used the whole-tree index,
+	 * and `offerableTypes` offered a `Deliverable` that vanished from the board that
+	 * created it. One resolution, upstream of all of them. Found by review (Codex, PR #154).
+	 */
+	override get projection(): Projection {
+		return super.projection === 'iteration' && this.effectiveScope === null ? 'board' : super.projection;
 	}
 
 	// ----------------------------------------------------------- collapse state
@@ -498,6 +550,10 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 
 	performDeliverablesBoardMove(item: BacklogItem, state: string | null): Promise<boolean> {
 		return this.cardMoves.performDeliverablesBoardMove(item, state);
+	}
+
+	performIterationBoardMove(item: BacklogItem, bucket: IterationBucket): Promise<boolean> {
+		return this.cardMoves.performIterationBoardMove(item, bucket);
 	}
 
 	performHorizonMove(item: BacklogItem, horizon: string | null): Promise<boolean> {

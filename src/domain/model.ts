@@ -9,6 +9,7 @@ import {
 	focusTarget,
 	inCatalog,
 	isDeliverableType,
+	isIterationType,
 	isExtraType,
 	isMarkerType,
 	ladderFor,
@@ -236,7 +237,7 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	// this decides which of those rows the plan actually draws.
 	const focused = focusIdx >= 0 || focusExtra !== '';
 	const focusRoots = focused ? collectFocusRoots(roots, focusIdx, focusExtra, settings) : roots;
-	const plan = projectionForest(focusRoots, (item) => !inCatalog(item), settings, false);
+	const plan = projectionForest(focusRoots, inPlan, settings, false);
 	// `rest` LAST, and the order is load-bearing: both objects carry the same `observed*`
 	// lists, and the plan's must be the whole-tree-minus-catalog ones in `rest` rather than
 	// the forest's own. A forest's vocabulary is collected from what it RENDERS, which a
@@ -244,6 +245,109 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	// the plan, where it would make what a Set state or Set horizon menu can reach depend
 	// on which subtree happens to be focused.
 	return { ...plan, ...rest, focused };
+}
+
+/**
+ * The board population for ONE iteration: every item that names it, plus the excluded
+ * ancestors those items need to be placed at all.
+ *
+ * **Candidates are not population, and the distinction is the whole function.** An
+ * in-scope carrier hanging from an excluded ancestor needs that ancestor drawn or it has
+ * nowhere to sit, so the list carries both — while the CARRIERS alone are counted, are
+ * writable, and supply anything derived. Nothing here has to enforce that second half:
+ * an ancestor arrives `outsideFilter`, which is the question every count, every rollup
+ * and every write gate in this codebase already asks.
+ *
+ * A function rather than a `BacklogModel` field, unlike `deliverableResults` beside it,
+ * because the iteration is a runtime PICK: one model serves whichever scope the toolbar
+ * is on, and a field would have to be rebuilt on a choice that changes nothing about the
+ * vault.
+ *
+ * Read off `realRoots` — the whole, unfocused tree — for `deliverableResults`' reason: a
+ * focus level set on another projection must not narrow a board scoped to a fortnight.
+ *
+ * Four refusals decide a CARRIER, and each is its own rule:
+ *
+ * - **Nothing is inherited down the tree.** Committing a parent to a sprint does not
+ *   commit its subtree, so a child with no link of its own is not on the board.
+ * - **No catalog member.** `inCatalog` answers first and unconditionally — no needle
+ *   makes a `Test case` a row of the plan, and a link is a needle like any other.
+ * - **No marker**, asked of `isMarkerType` and never of `isIterationType`. A marker
+ *   occupies no rung, holds nothing and hangs from nothing — it is not work, and a board
+ *   scoped to a commitment to finish some work draws work. Written as the one name, a
+ *   hand-written link on a `Milestone` cards it as a sprint item; written as the
+ *   predicate, a third marker inherits the rule rather than reopening the hole.
+ * - **No context row.** This one follows from none of the others and was the refusal
+ *   this function's plan did not state: `iterationEntry` is read on EVERY item,
+ *   `outsideFilter` rows included — unlike `declaredEdges`, which skips them, because an
+ *   excluded note may be NAMED by a result and may never do the naming. So an excluded
+ *   note holding the link is a candidate on the strength of its own frontmatter, and a
+ *   list filtered by the link alone would card it, count it and take a drop on it. It
+ *   renders, it parents, and that is all.
+ *
+ * A `Deliverable` is included, with no type filter at all — not the product board's
+ * `!isDeliverableType` and not its mirror. A sprint is a commitment to finish some work,
+ * and a concept or a design is part of what it commits to.
+ *
+ * The membership question is asked INSIDE the walk. Scoping the output instead would let
+ * a match in ANOTHER iteration keep an ancestor on this board and swallow its "nothing
+ * matches" advisory.
+ */
+export function iterationResults(model: BacklogModel, path: string): BacklogItem[] {
+	const carries = (item: BacklogItem): boolean => !item.outsideFilter && inIteration(item, path);
+	const drawn: BacklogItem[] = [];
+	const walk = (items: BacklogItem[]): void => {
+		for (const item of items) {
+			const mark = drawn.length;
+			if (carries(item)) drawn.push(item);
+			walk(item.children);
+			// An excluded ancestor joins only once something below it has — inserted at the
+			// mark so the list reads top-down, the order a board places cards in.
+			if (item.outsideFilter && drawn.length > mark) drawn.splice(mark, 0, item);
+		}
+	};
+	walk(model.realRoots);
+	return drawn;
+}
+
+/**
+ * Whether this item is a row of the PLAN — everything the backlog holds, minus the test
+ * catalog and minus the iterations.
+ *
+ * An `Iteration` is the container a board is scoped to rather than work the backlog
+ * holds: nothing hangs from it, nothing rolls up into it, and a reader scanning the tree
+ * for what is left to do is not looking for a fortnight. A `Milestone` stays, and the
+ * difference is not tidiness — a milestone is a date the plan answers to, and it reads as
+ * a row among the work it dates.
+ *
+ * **Stated once because the forest and the hiding must agree.** `projectionForest`
+ * PROMOTES a member whose parent is not one, and `rowHidden` drops a non-member; asked
+ * differently, a `PBI` somebody parented to an iteration was hidden along with its parent
+ * and appeared nowhere at all — `renderForest` drops a hidden sibling without descending
+ * through it, which is the failure `projectionForest`'s own comment exists to name.
+ */
+export function inPlan(item: { ladder: string[]; typeName: string | null }): boolean {
+	return !inCatalog(item) && !isIterationType(item.typeName);
+}
+
+/**
+ * Whether this item is IN that iteration — the membership rule itself, stated once
+ * because it is asked from two directions and the two drifted the moment they were
+ * spelled separately.
+ *
+ * `iterationResults` asks it to choose CARDS. `projectionMember` (`view/projection.ts`)
+ * asks it to decide what this board draws at all — a carrier's own child list, the quick
+ * filter's index, a drop target. With the marker refusal in the first and not the second,
+ * a note retyped to `Milestone` kept its link and its parent: refused a card, and still
+ * listed on its parent's card face and still able to keep that parent on screen through a
+ * filter match. Found by review (Codex, PR #154), which is the second time this exact
+ * shape has been reported on this feature.
+ *
+ * The three refusals are the population's, minus `outsideFilter` — a context row is
+ * placement rather than membership, and each caller answers that its own way.
+ */
+export function inIteration(item: BacklogItem, path: string): boolean {
+	return !isMarkerType(item.typeName) && inPlan(item) && item.iterationEntry?.file?.path === path;
 }
 
 /**

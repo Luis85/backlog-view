@@ -94,7 +94,7 @@ The write half is the bucket's own New button, added to the header in
 `src/view/render/roadmap.ts`. It runs the one gated creation flow —
 `promptCreateItem` in `src/view/interactions/create.ts`, which now takes what the
 surface a note was created FROM adds to it — and the placement rides the single
-`createBacklogItem` call in `src/storage/frontmatter.ts` beside the type, the rank and
+`createBacklogItem` call in `src/storage/createNote.ts` beside the type, the rank and
 the parent link. One write, so there is no moment at which the note exists in a bucket
 its frontmatter does not claim; everything that governed creation before still governs
 it, type folders and the config-problems gate included. Driven in

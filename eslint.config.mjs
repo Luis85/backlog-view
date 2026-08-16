@@ -48,11 +48,12 @@ const pluginRules = obsidianmd.configs.recommended.map((c) => ({ ...c, ignores: 
 const WRITE_BOUNDARY = [
 	{
 		selector: "MemberExpression[property.name='processFrontMatter']",
-		message: 'All frontmatter writes go through src/storage/frontmatter.ts (applyWrites / createBacklogItem).',
+		message:
+			'All frontmatter writes go through src/storage/ — frontmatter.ts (applyWrites / applyRestores) edits a note, createNote.ts (createBacklogItem) makes one.',
 	},
 	{
 		selector: "CallExpression[callee.property.name='create'][callee.object.property.name='vault']",
-		message: 'Creating files in the vault belongs in src/storage/ (createBacklogItem / createBacklogBase).',
+		message: 'Creating files in the vault belongs in src/storage/ (createNote.ts / createBacklogBase).',
 	},
 	{
 		selector: "MemberExpression[property.name=/^(save|load)LocalStorage$/]",

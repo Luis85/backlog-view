@@ -1,5 +1,5 @@
 import { App, normalizePath, TFile } from 'obsidian';
-import { ensureFolder } from './frontmatter';
+import { ensureFolder } from './createNote';
 import { vaultFolder } from '../domain/settingsResolve';
 
 /**

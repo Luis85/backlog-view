@@ -415,6 +415,80 @@ export class AbsencePromptModal extends PromptModal<AbsencePromptOptions> {
 	}
 }
 
+export interface IterationResult {
+	/** Empty on the edit path, which shows no name field — see {@link IterationPromptOptions.name}. */
+	name: string;
+	start: string;
+	target: string;
+	/** Blank means "no goal", which the two write paths spell differently — see the option. */
+	goal: string;
+}
+
+export interface IterationPromptOptions extends Refusable<IterationResult> {
+	heading: string;
+	/**
+	 * The name to prefill, or **null on the edit path**, where there is no name field at
+	 * all: renaming an iteration is renaming a note, Obsidian does it better, and the
+	 * stored scope already follows a rename.
+	 */
+	name: string | null;
+	/** Prefilled dates. Every computed value here is a PREFILL — what is written is what was confirmed. */
+	start: string;
+	target: string;
+	goal: string;
+	/** Which fields have a property to be written to; one with none is not shown at all. */
+	fields: { start: boolean; target: boolean; goal: boolean };
+	cta: string;
+}
+
+/**
+ * Make an iteration, or edit the one this board is scoped to — one form for both acts,
+ * `AbsencePromptModal`'s reason exactly: the validator and the field list are the same
+ * questions whether the note exists yet or not, and two forms are two answers waiting to
+ * disagree.
+ *
+ * A field whose property is unconfigured is ABSENT rather than disabled. An unconfigured
+ * key is never written, so a box that collected a value with nowhere to put it would be a
+ * control that discards what it is given — and with all three unconfigured this is a name
+ * alone, which still makes a perfectly good iteration note.
+ */
+export class IterationPromptModal extends PromptModal<IterationPromptOptions> {
+	onOpen(): void {
+		this.titleEl.setText(this.options.heading);
+		const values: IterationResult = {
+			name: this.options.name ?? '',
+			start: this.options.start,
+			target: this.options.target,
+			goal: this.options.goal,
+		};
+		const { errorEl, submit } = refusableBody(this, this.options, () => ({
+			name: values.name.trim(),
+			start: values.start.trim(),
+			target: values.target.trim(),
+			goal: values.goal.trim(),
+		}));
+		const field = (label: string, key: keyof IterationResult, setup?: (input: HTMLInputElement) => void) => {
+			new Setting(this.contentEl).setName(label).addText((text) => {
+				text.setValue(values[key]);
+				text.onChange((v) => {
+					values[key] = v;
+					// The refusal was about what was entered, so it stops being true the
+					// moment the entry changes.
+					errorEl.setText('');
+				});
+				setup?.(text.inputEl);
+				submitOnEnter(text.inputEl, submit, key === (this.options.name === null ? 'start' : 'name'));
+			});
+		};
+
+		if (this.options.name !== null) field('Name', 'name');
+		if (this.options.fields.start) field('Start', 'start', (input) => (input.type = 'date'));
+		if (this.options.fields.target) field('Target', 'target', (input) => (input.type = 'date'));
+		if (this.options.fields.goal) field('Goal', 'goal');
+		this.cta(this.options.cta, submit);
+	}
+}
+
 /** Prompt asking for the title (and, when needed, target folder) of a new backlog item. */
 export class TitlePromptModal extends PromptModal<NewItemPromptOptions> {
 	onOpen(): void {

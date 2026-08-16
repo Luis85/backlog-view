@@ -209,6 +209,13 @@ describe('write safety with context rows, across every entry point', () => {
 				priority: '2 - Should',
 				assignee: 'Dana',
 				dependsOn: 'Task',
+				// A context row that is IN an iteration, so a `None` pick would have something
+				// to remove here rather than nothing to do. What withholds it is the
+				// `editable` gate — and that gate is NOT what this sweep proves: dropping it
+				// (tried, 2026-08-16) leaves this test green, because `applySafely` then
+				// refuses the batch structurally. Two defences, and the sweep asserts the
+				// outcome both produce.
+				iteration: '[[Sprint 12]]',
 			},
 			parentLink: 'Feature B',
 		});
@@ -216,6 +223,12 @@ describe('write safety with context rows, across every entry point', () => {
 		vault.addFile('Task.md', {
 			frontmatter: { type: 'Task', order: 10, status: 'New', dependsOn: 'Mid' },
 			parentLink: 'Mid',
+		});
+		// A target for `Set iteration`, dated so the pick writes a timeframe as well as a
+		// link — three keys through one entry point. A marker hangs from nothing, so it
+		// draws as a row of its own and the sweep drags it about like any other.
+		vault.addFile('Sprint 12.md', {
+			frontmatter: { type: 'Iteration', order: 30, start: '2026-09-07', due: '2026-09-18' },
 		});
 
 		const containerEl = document.body.createDiv();
@@ -244,6 +257,12 @@ describe('write safety with context rows, across every entry point', () => {
 			// offers to the results it does return.
 			assigneeProperty: 'note.assignee',
 			dependsOnProperty: 'note.dependsOn',
+			// `Set iteration` writes a LINK and, with both date keys named above, the
+			// iteration's own timeframe with it — the widest single menu write there is, and
+			// the one whose targets are notes rather than a declared vocabulary. Without this
+			// the entry is withheld everywhere and the sweep drove nothing, which the
+			// `commandsDriven` check now refuses to let happen again.
+			iterationProperty: 'note.iteration',
 		});
 		// Every chip is a write surface too, and a chip is drawn by a VISIBLE column, so
 		// the sweep only reaches them if the base shows their properties. Without this
@@ -268,10 +287,19 @@ describe('write safety with context rows, across every entry point', () => {
 		return { view, containerEl, vault };
 	}
 
+	/**
+	 * Which command titles the sweep actually found, for the same reason `chipsDriven`
+	 * exists below: an entry withheld because its property is unconfigured leaves this
+	 * loop driving nothing while every assertion still passes. A write path that is
+	 * offered nowhere in the fixture is not being swept, however many rows it runs over.
+	 */
+	const commandsDriven = new Set<string>();
+
 	/** Fire every menu command on a row, including the ones nested in submenus. */
 	async function triggerEveryCommand(row: HTMLElement): Promise<void> {
 		row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 		for (const item of Menu.lastShown?.items ?? []) {
+			commandsDriven.add(item.titleText);
 			item.clickHandler?.();
 			await flush();
 			// A command that opens a prompt has not written anything yet, so the prompt
@@ -335,6 +363,9 @@ describe('write safety with context rows, across every entry point', () => {
 	// being one test.
 	it('never writes to one, whatever is done to any row', async () => {
 		const { containerEl, vault } = stressView();
+		// Six, not seven: `Sprint 12` is in the model as a `Set iteration` target and the
+		// tree does not DRAW an iteration, which is what it means for one to be the
+		// container of a board rather than a row of the plan.
 		const allRows = rows(containerEl);
 		expect(allRows).toHaveLength(6);
 
@@ -398,6 +429,13 @@ describe('write safety with context rows, across every entry point', () => {
 				await flush();
 			}
 		}
+		// Every write path that reaches the frontmatter through a MENU, named. A property
+		// left unconfigured in the fixture withholds its entries, and the sweep then
+		// reports safety it never tested — which is exactly what happened to
+		// `Set iteration`, offered nowhere here until 2026-08-16.
+		for (const command of ['Set state', 'Set type', 'Set risk', 'Set priority', 'Set assignee', 'Set iteration']) {
+			expect(commandsDriven).toContain(command);
+		}
 		expect([...chipsDriven].sort()).toEqual([
 			'.pbl-assignee-chip',
 			'.pbl-date-chip',
@@ -424,6 +462,11 @@ describe('write safety with context rows, across every entry point', () => {
 		expect(touched.filter((p) => CONTEXT_PATHS.includes(p))).toEqual([]);
 		// Not vacuous: the result rows really were written to along the way
 		expect(touched.length).toBeGreaterThan(0);
+		// And the newest entry point genuinely LANDED a write rather than merely being
+		// offered — a submenu whose picks all no-op would satisfy `commandsDriven` above
+		// while writing nothing anywhere. `Sprint 12` carries two dates, so this is the
+		// link and the timeframe through one pick.
+		expect(vault.writeLog.some((w) => w.fm.iteration === '[[Sprint 12]]' && w.fm.start === '2026-09-07')).toBe(true);
 	}, 20_000);
 });
 

@@ -18,13 +18,14 @@ import {
 	pickAndRefocus,
 	refocusByKey,
 	renderOverflow,
+	renderBoardScopePicker,
 	renderProjectionZone,
 } from './toolbarControls';
 import { focusInBar } from './toolbarFit';
 import { renderBusyIndicator } from './toolbarBusy';
 import { countedPopulation, levelBreakdown, renderIgnoredNote } from './toolbarStatus';
 import { renderFilterBox } from './toolbarFilter';
-import { hidesCompleted, offerableTypes } from '../projection';
+import { hidesCompleted, offerableTypes, toolbarPosition } from '../projection';
 import { BacklogModel } from '../../domain/model';
 import { focusTarget } from '../../domain/itemTypes';
 import { DELIVERABLE_TYPE } from '../../domain/typeVocabulary';
@@ -67,6 +68,12 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	// `.pbl-btn-group`, so the boxes already say where one control ends and the next
 	// begins, and a line between them draws a boundary that is drawn twice.
 	renderNewButton(host, barEl, model);
+
+	// 2b — WHICH board this is, after the action that fills it. On the board and nowhere
+	// else: it drew in every projection until 2026-08-16 on the argument that a control
+	// behind the door it opens is no way in, and the user's answer is the simpler one —
+	// the door is the `Board` button, and this picker says which board came through it.
+	renderBoardScopePicker(host, barEl, model);
 
 	// 3 — what THIS projection owns, and nothing at all when it owns none. Set off from
 	// the two groups above by its own spacing rather than by a divider, so an empty zone
@@ -428,6 +435,14 @@ const INERT_FOCUS: Partial<Record<Projection, { label: string; tip: string }>> =
 		label: 'Tests',
 		tip: 'The focus level names the plan’s own levels, so it has no effect on the test catalog',
 	},
+	// A third, and the compiler asked for none of them: this is a PARTIAL record, so a
+	// missing row is silent and the symptom is an ordinary focus picker offering settings
+	// that change nothing. The board is scoped by a LINK, and `iterationResults` reads the
+	// whole unfocused tree, so a rung narrows nothing here.
+	iteration: {
+		label: 'Iteration',
+		tip: 'This board shows every item in the chosen iteration — the focus level has no effect here',
+	},
 };
 
 function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: BacklogModel): void {
@@ -527,17 +542,20 @@ function renderModeToggle(host: BacklogViewHost, barEl: HTMLElement): void {
 		const btn = iconButton(wrap, icon, label);
 		btn.addClass('pbl-mode-btn');
 		btn.createSpan({ cls: 'pbl-btn-label', text: word });
-		btn.toggleClass('is-active', host.projection === mode);
-		btn.setAttribute('aria-pressed', String(host.projection === mode));
+		// The POSITION, never the projection: an iteration board is drawn from the `Board`
+		// button, with the scope picker beside it choosing which. Compared directly, no
+		// position would draw as pressed on an iteration scope.
+		const active = toolbarPosition(host.projection) === mode;
+		btn.toggleClass('is-active', active);
+		btn.setAttribute('aria-pressed', String(active));
 		btn.addEventListener('click', () => host.setProjection(mode));
 	};
 	position('tree', 'list-tree', 'Show as backlog tree', 'Tree');
 	position('board', 'square-kanban', 'Show as kanban board', 'Board');
 	position('roadmap', 'map', 'Show as roadmap', 'Roadmap');
-	position('deliverables', 'package', 'Show as Deliverables board', 'Deliverables');
-	// FIFTH, not fourth: the toggle has carried four since the Deliverables board shipped,
-	// and a control that counted the three it had heard of would have REPLACED that board
-	// rather than joining it.
+	// No Deliverables position since 2026-08-16, by the user's own call: every board is
+	// the `Board` button now, and the scope picker beside it says which — `Product`,
+	// `Deliverables`, or an iteration. The projection still exists; only its door moved.
 	position('catalog', 'flask-conical', 'Show as test catalog', 'Tests');
 }
 

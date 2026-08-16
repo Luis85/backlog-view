@@ -29,16 +29,18 @@ describe('backlogReadmeContent', () => {
 		for (const type of ALL_TYPES) expect(typeRow(content, type)).toContain(type);
 	});
 
-	it('names each category as a list a person would write, at one name and at three', () => {
+	it('names each category as a list a person would write, and agrees the verb with it', () => {
 		const content = readme(settingsWith(), []);
 		// The prose above the table names two categories whose lengths are `settings.ts`'s
 		// business, and joining either with ` and ` between every pair reads as English
 		// only at two: three shipped "Issue and Bug and Idea", and there are four now that
-		// `Idea` and `Deliverable` were merged into one vocabulary. Both lengths are
-		// asserted because both have a live caller — the one-name form is the markers'
-		// today, and it is the arm that would otherwise be reachable code nothing checks.
+		// `Idea` and `Deliverable` were merged into one vocabulary. `andList`'s own arms
+		// (one name, two, three-or-more) are driven directly in `readmeText.test.ts`; what
+		// this test owns is that the SENTENCE built from it reads as English at the lengths
+		// this vocabulary actually has today — four extra types, two markers — including
+		// the verb, which has to agree with a marker count that grew from one to two.
 		expect(content).toContain('Issue, Bug, Idea and Deliverable sit *beside* it');
-		expect(content).toContain('Milestone is neither');
+		expect(content).toContain('Milestone and Iteration are neither');
 		expect(content).not.toContain('and Bug and');
 	});
 
@@ -175,7 +177,10 @@ describe('backlogReadmeContent', () => {
 		// it. Left unsaid, the README tells a user to write the one date it documents and
 		// the milestone stays unplaced with no control offered to correct it.
 		const startOnly = readme(settingsWith({ startKey: 'start', targetKey: '', horizonKey: '' }), []);
-		expect(startOnly).toContain('`Milestone` is the exception, and this view cannot place one');
+		// Named as the CATEGORY, not as one type — the rule is `placementEnds`'s, which every
+		// declared marker answers alike, so the sentence names the whole list rather than
+		// whichever marker happens to sit first in it.
+		expect(startOnly).toContain('A **marker** (`Milestone` and `Iteration`) is the exception, and this view cannot place one');
 		expect(startOnly).toContain('the only date property here is `start`');
 	});
 
@@ -351,6 +356,32 @@ describe('backlogReadmeContent', () => {
 		const content = readme(settingsWith({ horizonKey: 'horizon', horizonValues: ['Now'] }));
 		expect(content).toContain('**Assign missing properties**');
 		expect(content).toContain('adds the keys *empty* to items that lack them and places nothing');
+	});
+
+	it('names Set iteration among the things that write a planning key, when it can copy dates', () => {
+		// computeIterationWrites rides the iteration's own start/target onto the item in the
+		// same write that joins it — a second write path, beside the backfill, that leaves
+		// the keys holding a date the reader cannot trace to Schedule, Set horizon or a drag.
+		const content = readme(settingsWith({ startKey: 'start', targetKey: 'due', iterationKey: 'sprint' }));
+		expect(content).toContain('**Set iteration**');
+		expect(content).toContain("copies the iteration's own dates");
+	});
+
+	it('does not name Set iteration when no date axis is configured', () => {
+		// With neither start nor target key, `timeframeOf` has no ends to state, so joining
+		// an iteration still writes the link and never a date — nothing here fires.
+		const content = readme(
+			settingsWith({ horizonKey: 'horizon', horizonValues: ['Now'], startKey: '', targetKey: '', iterationKey: 'sprint' }),
+		);
+		expect(content).not.toContain('Set iteration');
+	});
+
+	it('does not name Set iteration when no iteration property is configured', () => {
+		// `computeIterationWrites` returns `[]` outright when `settings.iterationKey` is
+		// unset, whatever the date axis looks like — listing the entry here would send a
+		// reader looking for a menu action this view never offers.
+		const content = readme(settingsWith({ startKey: 'start', targetKey: 'due', iterationKey: '' }));
+		expect(content).not.toContain('Set iteration');
 	});
 
 	it('says a folder note the base leaves out cannot be a parent, where that is true', () => {

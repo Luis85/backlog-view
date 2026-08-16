@@ -4,6 +4,7 @@ import {
 	BOARD_MODE,
 	CATALOG_MODE,
 	DELIVERABLES_MODE,
+	ITERATION_MODE,
 	ProjectionMode,
 	ROADMAP_MODE,
 	dropViewState,
@@ -35,6 +36,7 @@ const PROJECTION_MODE: Record<Projection, ProjectionMode | null> = {
 	roadmap: ROADMAP_MODE,
 	deliverables: DELIVERABLES_MODE,
 	catalog: CATALOG_MODE,
+	iteration: ITERATION_MODE,
 };
 
 /** The projection a stored `mode` names — {@link PROJECTION_MODE} read backwards. */
@@ -104,8 +106,32 @@ function laneKey(name: string): string {
  * {@link TIMELINE_SCOPE} uses one: a state value is user data and may contain anything a
  * user can type.
  */
-function columnKey(scope: ColumnScope, value: string | null): string {
-	return `${scope}\u0000${(value ?? '').toLowerCase()}`;
+function columnKey(scope: ColumnScope, value: string | null, iteration: string | null = null): string {
+	// The iteration board's columns are folded PER ITERATION: its three buckets wear the
+	// same three names on every scope, so a key without the path folds Resolved on Sprint
+	// 13 because the reader folded it on Sprint 12 — the collision the scope prefix
+	// already prevents between screens, one level in. The path is not lower-cased: it is a
+	// vault path, and two notes differing only in case are two notes.
+	const scoped = scope === 'iteration' ? `${scope}\u0000${iteration ?? ''}` : scope;
+	return `${scoped}\u0000${(value ?? '').toLowerCase()}`;
+}
+
+/** Marks a fold key as one of the iteration board's, whose middle field is a note path. */
+const ITERATION_COLUMN_PREFIX = 'iteration\u0000';
+
+/**
+ * The same key with its iteration path moved — or null for a key this rename does not
+ * touch. The second path-bearing stored value after `ViewPrefs.scope`, and it carries
+ * that field's obligation exactly: a fold whose note is renamed must move with it, or the
+ * board reopens columns the reader closed and the store keeps entries nothing will match.
+ */
+function movedColumnKey(key: string, oldPath: string, newPath: string): string | null {
+	if (!key.startsWith(ITERATION_COLUMN_PREFIX)) return null;
+	const rest = key.slice(ITERATION_COLUMN_PREFIX.length);
+	const cut = rest.indexOf('\u0000');
+	if (cut < 0) return null;
+	const moved = movedPath(rest.slice(0, cut), oldPath, newPath);
+	return moved === null ? null : ITERATION_COLUMN_PREFIX + moved + rest.slice(cut);
 }
 
 /** The scope prefix a settled key carries, or '' for the tree's own bare path. */
@@ -259,6 +285,33 @@ export class ViewState {
 		// The tree is the default and needs no stored value; a stored entry saved
 		// before a projection existed reads back as the tree the same way.
 		this.setPref('mode', PROJECTION_MODE[mode]);
+	}
+
+	/**
+	 * The `Iteration` note a board is scoped to, as the reader LEFT it — a path this
+	 * module never resolves. Whether that path still names an iteration, and whether the
+	 * property is even configured, is the view's question and is asked on every render;
+	 * retaining it here is what lets a note that comes back restore the reader's choice.
+	 */
+	boardScope(): string | null {
+		return this.prefs.scope ?? null;
+	}
+
+	setBoardScope(path: string | null): void {
+		this.setPref('scope', path);
+	}
+
+	/**
+	 * Which board the `Board` position opens when no iteration scope is set — the stored
+	 * word, `deliverables` or null for the product. Retained and cleared by the
+	 * controller, which keeps it and `scope` from ever both being set.
+	 */
+	boardPick(): string | null {
+		return this.prefs.board ?? null;
+	}
+
+	setBoardPick(value: string | null): void {
+		this.setPref('board', value);
 	}
 
 	/** The retained roadmap-axis pick — kept even while its axis is unconfigured. */
@@ -418,7 +471,7 @@ export class ViewState {
 	 * open is remembered against exactly this default and is never taken back.
 	 */
 	columnCollapsed(scope: ColumnScope, value: string | null, autoCollapse: boolean): boolean {
-		const key = columnKey(scope, value);
+		const key = columnKey(scope, value, this.boardScope());
 		if (this.foldedColumns.has(key)) return true;
 		// Open is the default, so an unfolded column nobody has ruled on needs no entry —
 		// only an open that CONTRADICTS a fold does, which is what `openedColumns` holds.
@@ -429,7 +482,7 @@ export class ViewState {
 	}
 
 	setColumnCollapsed(scope: ColumnScope, value: string | null, collapsed: boolean): void {
-		const key = columnKey(scope, value);
+		const key = columnKey(scope, value, this.boardScope());
 		// Exclusive: the two sets are one tri-state (folded, opened, never ruled on), so a
 		// key in both would make "did the reader open this against its default" unanswerable.
 		if (collapsed) {
@@ -498,7 +551,38 @@ export class ViewState {
 			if (this.collapsed.delete(key)) this.collapsed.add(next);
 			changed = true;
 		}
+		if (this.renameScoped(oldPath, newPath)) changed = true;
 		if (changed) this.scheduleSave();
+	}
+
+	/**
+	 * The two stored values that hold a note path without being a fold KEYED by one: the
+	 * iteration this board is scoped to, and the column folds keyed by that same path.
+	 *
+	 * Out of line from the loop above rather than merged into it, because they are a
+	 * different question asked of a different collection — that loop walks `settled`,
+	 * whose every entry IS a note path, while these two carry one inside a value. What
+	 * they share is the reason: a rename is an edit to the same note, and a stored pick
+	 * that does not follow it silently stops matching.
+	 */
+	private renameScoped(oldPath: string, newPath: string): boolean {
+		let changed = false;
+		const scope = this.boardScope();
+		const movedScope = scope === null ? null : movedPath(scope, oldPath, newPath);
+		if (movedScope !== null) {
+			this.setBoardScope(movedScope);
+			changed = true;
+		}
+		for (const set of [this.foldedColumns, this.openedColumns]) {
+			for (const key of [...set]) {
+				const moved = movedColumnKey(key, oldPath, newPath);
+				if (moved === null) continue;
+				set.delete(key);
+				set.add(moved);
+				changed = true;
+			}
+		}
+		return changed;
 	}
 
 	/**

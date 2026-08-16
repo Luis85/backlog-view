@@ -16,7 +16,7 @@ import { BacklogItem } from '../../domain/model';
 import { CivilDate } from '../../domain/noteFields';
 import { markerLane, ResourceLane } from '../../domain/roadmap';
 import { ownWorkflowReading, stateKeyFor, WorkflowReading } from '../../domain/board';
-import { sanitizeTitle } from '../../storage/frontmatter';
+import { sanitizeTitle } from '../../storage/createNote';
 import {
 	BarGeometry,
 	barGeometry,

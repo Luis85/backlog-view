@@ -42,6 +42,11 @@ describe('write safety with context rows, across the board’s entry points', ()
 		// Context, between results: its parent and the Task below it are both results.
 		vault.addFile('Mid.md', { frontmatter: { type: 'PBI', order: 10, status: 'Done' }, parentLink: 'Feature B' });
 		vault.addFile('Task.md', { frontmatter: { type: 'Task', order: 10, status: 'New' }, parentLink: 'Mid' });
+		// Somewhere for `Set iteration` to point. It never draws a card here — a marker
+		// hangs from nothing and the focus is on PBI — and it does not need to: the entry
+		// is built from the MODEL, which is the reason the menu can offer an iteration the
+		// current projection is not showing.
+		vault.addFile('Sprint 12.md', { frontmatter: { type: 'Iteration', order: 30, start: '2026-09-07', due: '2026-09-18' } });
 		const containerEl = document.body.createDiv();
 		const view = new ProductBacklogView({} as never, containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
@@ -49,6 +54,7 @@ describe('write safety with context rows, across the board’s entry points', ()
 		anyView.config = new FakeViewConfig({
 			stateProperty: 'note.status',
 			stateValues: 'New, Active, Done',
+			iterationProperty: 'note.iteration',
 		});
 		anyView.data = { data: vault.entries().filter((e) => !['Epic.md', 'Mid.md'].includes(e.file.path)) };
 		view.onDataUpdated();
@@ -100,7 +106,16 @@ describe('write safety with context rows, across the board’s entry points', ()
 		view.showContextMenuFor(mid as never);
 		expect(Menu.lastShown?.item('Set state')).toBeUndefined();
 		expect(Menu.lastShown?.item('Set type')).toBeUndefined();
+		expect(Menu.lastShown?.item('Set iteration')).toBeUndefined();
 		expect(vault.writeLog).toEqual([]);
+
+		// Withheld, not merely unconfigured: the same menu on a LIVE card offers it, so
+		// the three assertions above are about this card rather than about a property
+		// nobody named. The card menu is a second set of entry points onto one rule, which
+		// is what this file exists to ask — and `Set iteration` reached it (2026-08-16)
+		// asserting nothing until this line.
+		view.showContextMenuFor(view.model?.byPath.get('PBI.md') as never);
+		expect(Menu.lastShown?.item('Set iteration')).toBeDefined();
 	});
 
 	it('refuses the whole batch if a board write ever names a context item', async () => {

@@ -98,7 +98,10 @@ instead of being spent on which folder, which type and which order number.
 ## Where it lives
 
 `src/view/interactions/create.ts` (the flow and folder inference) ·
-`src/ui/prompts.ts` (the modal) · `src/storage/frontmatter.ts` (`createBacklogItem` —
-the only place a note is created) · `src/domain/itemTypes.ts` (`childTypeChoices`).
+`src/ui/prompts.ts` (the modal) · `src/storage/createNote.ts` (`createBacklogItem`, and
+the path and folder helpers it shares with the absence writer — the only place a work
+item is created; split out of `src/storage/frontmatter.ts` on 2026-08-16, which keeps
+the editing half and the write boundary the whole directory states) ·
+`src/domain/itemTypes.ts` (`childTypeChoices`).
 Tests: `test/view/creation.test.ts`, `test/ui/prompts.test.ts`,
 `test/domain/itemTypes.test.ts`.

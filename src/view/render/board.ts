@@ -22,6 +22,7 @@ import {
 	BoardModel,
 	cardPaths,
 	deliverablesWorkflow,
+	columnFoldValue,
 	emptyNoState,
 	overBy,
 	ownWorkflowReading,
@@ -36,7 +37,14 @@ import { listedChildren, undisclosedMatches } from '../childrenList';
 interface BoardRenderOptions {
 	/** Which screen these columns are drawn on, so two boards' `Done` are two folds. */
 	scope: ColumnScope;
-	move: (item: BacklogItem, state: string | null) => void;
+	/**
+	 * What a drop on a column MEANS, handed the COLUMN rather than its state. A bucket is
+	 * not its state — two of them can hold `state: null` meaning different things — so a
+	 * signature taking the state alone cannot express an iteration move at all, and the
+	 * one board where that matters would have had to reach round this option to plan its
+	 * own write.
+	 */
+	move: (item: BacklogItem, col: BoardColumn) => void;
 	// `root` is `boardEl` — the STABLE element this whole render pass was handed, never
 	// `aside` itself: `aside` is the fresh `.pbl-board-advisory` div this same pass just
 	// created, torn down and rebuilt on the next one, so `manualLink`'s default refocus
@@ -52,6 +60,17 @@ interface BoardRenderOptions {
 	 * ignores entirely.
 	 */
 	stateOptionLabel: string;
+	/**
+	 * Whether a done column holding only finished work folds itself the first time that is
+	 * true of it. The two product-shaped boards say yes — "done columns stay lean", and
+	 * finished work should not take a stage's room.
+	 *
+	 * The iteration board says no, for the reason `hidesCompleted` is false for it: its
+	 * Resolved column IS what the sprint finished, so a default that shut it would fold
+	 * away the answer to the question the board is opened to ask. Nothing stops a reader
+	 * folding it by hand, and that fold is remembered per iteration.
+	 */
+	foldsFinished?: boolean;
 }
 
 /**
@@ -82,7 +101,7 @@ interface ColumnFrame {
  * costs no information about an item. Shared by both board-shaped projections; what
  * differs between them (whose workflow, whose move, whose empty state) rides in `opts`.
  */
-function renderBoard(
+export function renderBoard(
 	ctx: RowContext,
 	boardEl: HTMLElement,
 	dnd: CardDragController,
@@ -111,8 +130,19 @@ function renderBoard(
 	// completed-items toggle lives in that, so with finished work hidden a done column FULL
 	// of finished work reported zero and refused the fold in exactly the configuration
 	// extension 3b of the requirement is about. Found by review (Codex, PR #140).
+	const foldsFinished = opts.foldsFinished ?? true;
 	const folds = board.columns.map((col) =>
-		ctx.host.columnCollapsed(opts.scope, col.state, col.done && col.held > 0 && !col.openWork),
+		// `columnFoldValue`, which is what the header below and the column menu ask. This
+		// line spelled the same expression out until 2026-08-16 and AGREED with them — the
+		// honest statement, since nothing was broken by it. What it was, was a second
+		// spelling of an identity extracted into one function precisely because the render
+		// and the two controls had already disagreed about it once (an Open bucket drawn
+		// from `open` while its disclosure toggled `new`, found by review, PR #154).
+		ctx.host.columnCollapsed(
+			opts.scope,
+			columnFoldValue(col),
+			foldsFinished && col.done && col.held > 0 && !col.openWork,
+		),
 	);
 	// A folded column draws no cards, and the SNAPSHOT is where that is said, because the
 	// keyboard reads the snapshot: `boardPosition`, `nextBoardPosition` and Alt+arrow all
@@ -169,7 +199,7 @@ export function renderRequirementsBoard(ctx: RowContext, boardEl: HTMLElement, d
 	);
 	return renderBoard(ctx, boardEl, dnd, board, {
 		scope: 'board',
-		move: (item, state) => void host.performBoardMove(item, state),
+		move: (item, col) => void host.performBoardMove(item, col.state),
 		stateOptionLabel: 'Workflow states (in order)',
 		drawEmpty: (h, aside, root) => {
 			const m = h.model;
@@ -215,7 +245,7 @@ export function renderDeliverablesBoard(ctx: RowContext, boardEl: HTMLElement, d
 	);
 	return renderBoard(ctx, boardEl, dnd, board, {
 		scope: 'deliverables',
-		move: (item, state) => void host.performDeliverablesBoardMove(item, state),
+		move: (item, col) => void host.performDeliverablesBoardMove(item, col.state),
 		stateOptionLabel: 'Deliverable workflow states (in order)',
 		drawEmpty: (h, aside, root) => {
 			const m = h.model;
@@ -302,7 +332,9 @@ function renderColumn(
 			'pbl-board-col' +
 			(col.done ? ' pbl-col-done' : '') +
 			(col.outsideWorkflow ? ' pbl-col-outside' : '') +
-			(col.state === null ? ' pbl-col-nostate' : '') +
+			// The key-removal column, which is a `state: null` that TAKES a drop — an
+			// unwritable bucket holds the same null and means the opposite.
+			(col.state === null && col.takesDrop ? ' pbl-col-nostate' : '') +
 			(frame.strip ? ' pbl-board-strip' : '') +
 			(folded ? ' pbl-board-collapsed' : ''),
 		attr: { role: 'group', 'aria-label': columnLabel(col, frame) },
@@ -312,7 +344,10 @@ function renderColumn(
 	for (const card of col.cards) renderCard(ctx, cardsEl, card, render);
 	// What a drop on this column MEANS is the board's; the controller only resolves
 	// the card that was dragged and hands it here.
-	render.dnd.wireDropTarget(colEl, (source) => render.opts.move(source.item, col.state));
+	// A column with nothing to write is not wired as a target at all: the refusal belongs
+	// at the gesture rather than after it, and every other affordance below asks the same
+	// bit, so the board never promises a drop that cannot land.
+	if (col.takesDrop) render.dnd.wireDropTarget(colEl, (source) => render.opts.move(source.item, col));
 	render.dnd.wireScroller(cardsEl);
 	return colEl;
 }
@@ -322,7 +357,9 @@ function columnLabel(col: BoardColumn, frame: ColumnFrame): string {
 	// when a real state claims it, and an accessible name that kept the old text
 	// would disagree with the screen — unreachable by the very speech input that
 	// targets columns by their visible name.
-	const label = col.state === null ? `${col.label} — dropping here clears the state` : col.label;
+	// Only where the drop actually clears the key: an unwritable bucket carries the same
+	// `state: null` and would otherwise promise a clearing drop it never takes.
+	const label = col.state === null && col.takesDrop ? `${col.label} — dropping here clears the state` : col.label;
 	// Filtered, the count is a pair and has to be spoken as one: "2 cards" in a column
 	// of eleven would tell a screen-reader user the stage had emptied.
 	const counts = frame.filtering
@@ -360,7 +397,7 @@ function renderColumnHeader(
 	});
 	// The empty no-state strip is the one header with nothing to fold: it holds no card
 	// in any filter state, so a disclosure there would offer to shut what is already shut.
-	if (!strip) renderColumnFold(ctx.host, header, opts.scope, col.state, { folded: frame.folded, label: col.label });
+	if (!strip) renderColumnFold(ctx.host, header, opts.scope, columnFoldValue(col), { folded: frame.folded, label: col.label });
 	if (col.done) drawIcon(header.createSpan({ cls: 'pbl-board-col-icon' }), 'circle-check');
 	if (col.state === null) drawIcon(header.createSpan({ cls: 'pbl-board-col-icon' }), 'circle-dashed');
 	header.createSpan({ cls: 'pbl-board-col-name', text: col.label });

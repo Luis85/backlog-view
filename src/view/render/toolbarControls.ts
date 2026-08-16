@@ -2,11 +2,14 @@ import { Menu, setIcon, setTooltip } from 'obsidian';
 import { hasColorableStates, openStateColors } from '../interactions/stateColors';
 import { BacklogViewHost } from '../host';
 import { BacklogItem, BacklogModel } from '../../domain/model';
-import { projectionPopulation, treeShaped } from '../projection';
+import { projectionPopulation, toolbarPosition, treeShaped } from '../projection';
+import { isIterationType } from '../../domain/itemTypes';
+import { selectableIteration } from '../../domain/iterations';
 import { activeAxis, configuredAxes, drawsGrid, RoadmapAxis } from '../../domain/roadmap';
 import { ScaleId } from '../../domain/timeline';
 import { showMenuForClick } from '../interactions/menu';
 import { runInit } from '../interactions/structure';
+import { promptEditIteration, promptNewIteration } from '../interactions/create';
 import { focusInBar } from './toolbarFit';
 import { openManual } from '../../ui/manualDialog';
 import { manualSections } from '../manual/sections';
@@ -191,7 +194,10 @@ function menuButton(
  */
 export function renderProjectionZone(host: BacklogViewHost, barEl: HTMLElement): void {
 	const zone = barEl.createDiv({ cls: 'pbl-zone pbl-zone-projection' });
-	switch (host.projection) {
+	// The POSITION rather than the projection, so the zone a control was drawn FROM is
+	// the zone it is drawn in again on the next pass — asked directly, the board's zone
+	// would vanish the moment its own picker moved the view to an iteration.
+	switch (toolbarPosition(host.projection)) {
 		case 'roadmap':
 			renderAxisPicker(host, zone, barEl);
 			renderBucketGridToggle(host, zone);
@@ -286,6 +292,121 @@ function renderAxisPicker(host: BacklogViewHost, zone: HTMLElement, barEl: HTMLE
 		for (const axis of axes) choice(axis);
 		showMenuForClick(menu, evt);
 	});
+}
+
+/**
+ * Which board the `Board` position opens: the product's, the Deliverables board's, or
+ * one iteration's. The Deliverables entry sits directly under `Product` — it held a
+ * toggle position of its own until 2026-08-16, when the user moved it here; the two are
+ * the boards over a whole population, so they share the head of the menu and both wear
+ * an icon, while the iterations below the separator are a list of notes.
+ *
+ * **Unconditional at the board's position** since the same day: the picker used to gate
+ * on the iteration property, and now only its ITERATION section does — with the property
+ * unconfigured the menu is `Product` and `Deliverables` alone, because the Deliverables
+ * board needs nothing configured to exist. It still carries the only `New iteration…`
+ * (never withheld on an empty vault, which is every vault that has not started), and it
+ * draws at the BOARD's own toolbar position and nowhere else — the door is the `Board`
+ * button, and this picker says which board came through it.
+ *
+ * The iteration entries are read off `model.byPath` for `iterationTargets`' reason
+ * (`interactions/labels.ts`): a focus set on another projection re-roots what is DRAWN,
+ * and an iteration hangs from nothing, so a top-level one would go unofferable exactly
+ * when the reader had narrowed the tree. Context rows are excluded — an excluded note is
+ * not this base's vocabulary — and colliding basenames are qualified by path, ONLY where
+ * they collide, since qualifying every entry to separate a rare pair makes the ordinary
+ * case unreadable. What a pick carries is the NOTE either way.
+ */
+export function renderBoardScopePicker(host: BacklogViewHost, barEl: HTMLElement, model: BacklogModel): void {
+	// The BOARD's control, so it draws at the board's own position and nowhere else.
+	if (toolbarPosition(host.projection) !== 'board') return;
+	// Empty with the property unconfigured, deliberately, rather than the list the model
+	// could still supply: a scope no card can ever reach must be neither offered nor
+	// allowed to NAME the button — a stale retained path would otherwise caption a button
+	// whose board draws the product.
+	const iterations = !host.settings.iterationKey
+		? []
+		: [...model.byPath.values()].filter((item) => isIterationType(item.typeName) && !item.outsideFilter);
+
+	const seen = new Map<string, number>();
+	for (const item of iterations) seen.set(item.title, (seen.get(item.title) ?? 0) + 1);
+	const labelOf = (item: BacklogItem): string =>
+		(seen.get(item.title) ?? 0) > 1 ? item.file.path.slice(0, -(item.file.extension.length + 1)) : item.title;
+
+	// The RETAINED scope names the button, as long as it still names a selectable
+	// iteration — which is not the same as `effectiveScope`, and the difference is this
+	// control's whole job. Off Board mode the effective scope is null, while `Board` still
+	// reopens the retained one: named from the effective scope, the button said `Product`
+	// over a button that would open Sprint 12. A scope that no longer RESOLVES falls back
+	// to `Product` on both, because then nothing reopens it either. Found by review
+	// (Codex, PR #154).
+	const onDeliverables = host.projection === 'deliverables';
+	const current = selectableIteration(iterations, host.boardScope);
+	const scope = current?.file.path ?? null;
+	const name = onDeliverables ? SCOPE_DELIVERABLES : current === null ? SCOPE_PRODUCT : labelOf(current);
+	const btn = menuButton(zoneFor(barEl), 'target', name, 'scope', `Board scope: ${name}`);
+	btn.addClass('pbl-scope-btn');
+	setTooltip(btn, 'Which board the Board position opens');
+	btn.addEventListener('click', (evt) => {
+		const menu = new Menu();
+		const choice = (title: string, icon: string | null, checked: boolean, act: () => void) =>
+			menu.addItem((mi) => {
+				// `barEl`, not the wrapper: the pick rebuilds the row, and the bar is
+				// what survives it.
+				mi.setTitle(title)
+					.setChecked(checked)
+					.onClick(() => pickAndRefocus(barEl, 'scope', act));
+				if (icon !== null) mi.setIcon(icon);
+			});
+		// The two whole-population boards lead, each under the icon its toolbar control
+		// wears elsewhere — the Board button's own for the product, the Deliverable type's
+		// for its board — so the entry and the surface it opens say the same thing.
+		choice(SCOPE_PRODUCT, 'square-kanban', !onDeliverables && scope === null, () => host.setBoardScope(null));
+		choice(SCOPE_DELIVERABLES, 'package', onDeliverables, () => host.setProjection('deliverables'));
+		// The boards are not among the iterations, so a rule says so: the scopes below
+		// this line are a list of notes, and each board is the absence of one.
+		if (iterations.length > 0) {
+			menu.addSeparator();
+			for (const item of iterations) {
+				choice(labelOf(item), null, item.file.path === scope, () => host.setBoardScope(item.file.path));
+			}
+		}
+		if (host.settings.iterationKey) {
+			menu.addSeparator();
+			// Below the scopes, and the edit only while an iteration IS the chosen scope —
+			// there is nothing else it could be editing.
+			menu.addItem((mi) =>
+				mi
+					.setTitle('New iteration…')
+					.setIcon('calendar-plus')
+					.onClick(() => promptNewIteration(host, model)),
+			);
+			if (current !== null) {
+				menu.addItem((mi) =>
+					mi
+						.setTitle('Edit iteration…')
+						.setIcon('pencil')
+						.onClick(() => promptEditIteration(host, current)),
+				);
+			}
+		}
+		showMenuForClick(menu, evt);
+	});
+}
+
+/** What the picker calls the whole backlog — the scope every board had before this one. */
+const SCOPE_PRODUCT = 'Product';
+/** The Deliverables board's entry, directly under Product — its toggle position until 2026-08-16. */
+const SCOPE_DELIVERABLES = 'Deliverables';
+
+/**
+ * The picker's own slot in the row, made on demand: it sits with the switcher rather than
+ * in the projection zone, and a wrapper drawn before the refusals above would be an empty
+ * box in every projection that is not the board and every vault that names no iteration
+ * property.
+ */
+function zoneFor(barEl: HTMLElement): HTMLElement {
+	return barEl.createDiv({ cls: 'pbl-zone pbl-zone-scope' });
 }
 
 /**

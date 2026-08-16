@@ -47,6 +47,42 @@ would draw, and neither grip would appear. It is the third question the one pred
 answers today — what a *gesture* may take hold of — and it is why this note lists the
 call sites rather than trusting a rule to reach them.
 
+## The type is declared before this lands, and three labels are wrong meanwhile
+
+*(Added 2026-08-16, after `Iteration` joined `MARKER_TYPES` and a Codex review on PR #154
+found what that reaches.)* Declaring the type makes an `Iteration` draw on the roadmap
+**today**, through every caller that was written when `Milestone` was the only marker —
+and three of them do not say "marker", they say **Milestone**:
+
+| | |
+| --- | --- |
+| `deriveLanes` (`src/domain/roadmap.ts`) | every marker goes in a lane literally named `Milestones` |
+| `renderLegend` (`src/view/render/legend.ts`) | the swatch reads `Milestone`, in `--color-cyan` |
+| `spanText` (`src/view/render/lanes.ts`) | a zero-length span announces `Milestone <date>` |
+
+So a sprint is presented as a milestone in the lane caption, the legend and the announced
+sentence. The last is the worst of the three, because it is what a screen reader says.
+
+**All three are cheap, and none of them is a colour question.** The lane caption looks
+expensive and is not: the markers row is *never* folded — `const collapsed = !lane.markers
+&& folded.lane(lane.name)` — so renaming it drops no stored fold, unlike every other band.
+`spanText` should name the item's own type instead of one marker's. And the legend swatch
+needs only a **word**, because an `Iteration` badge ships **cyan**, the same hue as
+`Milestone` ([[An iteration is a note of its own]]) — so one cyan swatch is already
+honest about both markers and only its caption lies.
+
+*This paragraph said the opposite for twenty minutes on 2026-08-16*, claiming a purple
+badge and a colour-budget decision to be taken. It was written from the plan that proposed
+purple rather than from the stylesheet, which had already chosen cyan and said why: purple
+is `.pbl-lvl-1`, Feature's, and all eight theme tokens were taken before this type
+existed. A note asserting a fact about code it did not read, in a register whose own rule
+is to read the code first.
+
+**This is why the labels are named here rather than left to the `drawsAsPoint` split.**
+That split decides whether an iteration is a point or a bar; these three are wrong in
+**either** mode, so fixing them is not a consequence of the toggle and must not wait for
+the reader to turn it on.
+
 ## Use case
 
 | | |
@@ -131,6 +167,10 @@ call sites rather than trusting a rule to reach them.
   body slide, both grips, and the writer — narrows by asking the predicate, never by
   restating it.
 - Changing the option rewrites nothing on any note.
+- **No surface calls an `Iteration` a milestone**, in either mode — checked at the three
+  that do today: the marker lane's caption, the legend swatch, and `spanText`'s announced
+  sentence. The last is asserted on the string a screen reader receives, not on the class
+  drawn beside it.
 
 ## Where it lives
 

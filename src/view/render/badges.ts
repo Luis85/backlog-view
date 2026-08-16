@@ -40,6 +40,7 @@ const NAMED_TYPE_STYLE: Record<string, { icon: string; badge: string }> = {
 	bug: { icon: 'bug', badge: 'pbl-lvl-bug' },
 	idea: { icon: 'lightbulb', badge: 'pbl-lvl-idea' },
 	milestone: { icon: 'diamond', badge: 'pbl-lvl-milestone' },
+	iteration: { icon: 'calendar-clock', badge: 'pbl-lvl-iteration' },
 	deliverable: { icon: 'package', badge: 'pbl-lvl-deliverable' },
 	'test suite': { icon: 'folder-check', badge: 'pbl-lvl-test-suite' },
 	'test case': { icon: 'flask-conical', badge: 'pbl-lvl-test-case' },

@@ -47,6 +47,15 @@ export abstract class ViewStateSurface extends BasesView {
 		this.ui.setProjection(mode);
 	}
 
+	/** The stored iteration scope — see `BacklogViewHost.boardScope` for what it is not. */
+	get boardScope(): string | null {
+		return this.ui.boardScope;
+	}
+
+	setBoardScope(path: string | null): void {
+		this.ui.setBoardScope(path);
+	}
+
 	/** The retained roadmap-axis pick for this saved view; null before the user picks. */
 	get axisPick(): string | null {
 		return this.ui.axisPick;

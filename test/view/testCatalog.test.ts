@@ -67,16 +67,16 @@ function catalog(containerEl: HTMLElement): void {
 }
 
 describe('the test catalog projection', () => {
-	it('is a fifth position that activates and survives a reload', () => {
+	it('is its own toggle position that activates and survives a reload', () => {
 		// Two assertions, not one, because they fail at different places: the toggle does
 		// nothing at all if the stored constant cannot be mapped back, and it
 		// works-then-forgets if the store discards the value on the way in. Neither is
 		// caught by setting the projection and asking the view what it is — that path can
-		// pass while both halves are wrong.
+		// pass while both halves are wrong. (Deliverables lost its position to the board
+		// scope picker on 2026-08-16; the catalog keeps its own.)
 		const vault = bothFamilies();
 		const { containerEl, view } = makeView(vault, {}, { base: 'Work.base' });
 		expect(projectionButton(containerEl, 'Show as backlog tree')).toBeTruthy();
-		expect(projectionButton(containerEl, 'Show as Deliverables board')).toBeTruthy();
 
 		catalog(containerEl);
 		expect(view.projection).toBe('catalog');
@@ -492,9 +492,7 @@ describe('the catalog is tree-shaped, and the plan keeps its place', () => {
 			parentLink: 'Case',
 		});
 		const { containerEl, view } = makeView(vault, { deliverableStateProperty: 'note.docStatus' });
-		projectionButton(containerEl, 'Show as Deliverables board').dispatchEvent(
-			new MouseEvent('click', { bubbles: true }),
-		);
+		view.setProjection('deliverables');
 		expect(cardTitles(containerEl)).toContain('Runbook');
 		view.setFilter('Runbook');
 		expect(cardTitles(containerEl)).toEqual(['Runbook']);
@@ -546,9 +544,7 @@ describe('the catalog is tree-shaped, and the plan keeps its place', () => {
 			parentLink: 'Bridge case',
 		});
 		const { containerEl, view } = makeView(vault, { deliverableStateProperty: 'note.docStatus' });
-		projectionButton(containerEl, 'Show as Deliverables board').dispatchEvent(
-			new MouseEvent('click', { bubbles: true }),
-		);
+		view.setProjection('deliverables');
 		expect(cardTitles(containerEl)).toContain('Runbook');
 		view.setFilter('Epic');
 		expect(cardTitles(containerEl)).toEqual([]);
@@ -566,9 +562,7 @@ describe('the catalog is tree-shaped, and the plan keeps its place', () => {
 			parentLink: 'Guide',
 		});
 		const { containerEl, view } = makeView(vault, { deliverableStateProperty: 'note.docStatus' });
-		projectionButton(containerEl, 'Show as Deliverables board').dispatchEvent(
-			new MouseEvent('click', { bubbles: true }),
-		);
+		view.setProjection('deliverables');
 		expect(cardTitles(containerEl)).toContain('Guide');
 		view.setFilter('Guide check');
 		expect(cardTitles(containerEl)).toEqual([]);

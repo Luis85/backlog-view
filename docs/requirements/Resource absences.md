@@ -522,7 +522,7 @@ with no per-field clear button — an empty end is not a real answer here) opene
 `promptAddAbsence` in `src/view/interactions/absences.ts`, which runs the `configProblems`
 gate BEFORE the form so no typing is taken for a write that would be refused. The write
 itself is `createAbsenceNote` in `src/storage/absenceNotes.ts` — a module of its own rather
-than a function beside `createBacklogItem`, because `src/storage/frontmatter.ts` is at its
+than a function beside `createBacklogItem`, because the file that held it was at its
 line budget and because neither act goes through `applyWrites`: an absence is not a write
 target of this backlog, so there is no batch, no captured inverse and no undo slot. What
 they share is the rule that makes `storage/` a boundary — everything that puts bytes in the

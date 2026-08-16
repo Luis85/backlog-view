@@ -61,6 +61,7 @@ export function visibilityRule(
 	settings: BacklogSettings,
 	projection: Projection,
 	applyFilter: boolean,
+	scope: string | null = null,
 ): VisibilityRule {
 	return {
 		filter,
@@ -68,7 +69,7 @@ export function visibilityRule(
 		applyFilter,
 		scope: filterScopeFor(projection),
 		hideCompleted: hidesCompleted(projection),
-		inProjection: projectionMember(projection),
+		inProjection: projectionMember(projection, scope),
 	};
 }
 

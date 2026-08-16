@@ -24,6 +24,11 @@ const INTENT: Record<string, string> = {
 		'A date the plan answers to. The + never offers to create one as a child, and draws no + of ' +
 		'its own — but that is what is OFFERED: nothing stops a drag from nesting one under an ' +
 		'existing row, or Set type from turning any row into one.',
+	Iteration:
+		'A time box items are scheduled into. Items link to an iteration rather than hanging from ' +
+		'one, so like a Milestone it holds nothing. It is the only type no New menu offers and ' +
+		'no tree row draws: an iteration is the container a board is scoped to rather than work ' +
+		'the backlog holds, and the board\'s own scope picker is what makes one.',
 	'Test suite':
 		'A walkable group of end-to-end tests, and a root by nature — it hangs from nothing and ' +
 		'lives in the test catalog rather than in the plan. Holds Test cases.',
@@ -76,7 +81,7 @@ export function typesSection(): ManualSection {
 			`${LEVELS.join(' → ')} is a ladder: each level holds the next one down. ` +
 			`${EXTRA_TYPES.join(', ')} sit beside it — the + offers one under an Epic, a Feature or a ` +
 			`PBI, but its rank is pinned: its children are always ${LEVELS[LEVELS.length - 1]}s, wherever ` +
-			`it hangs. ${MARKER_TYPES.join(', ')} is neither: no + offers to create one as a child, ` +
+			`it hangs. ${MARKER_TYPES.join(', ')} ${MARKER_TYPES.length > 1 ? 'are' : 'is'} neither: no + offers to create one as a child, ` +
 			`and none draws a + of its own — though nothing stops a drag or Set type from doing ` +
 			`either by hand.`,
 		entries: [

@@ -24,7 +24,12 @@ function visibleItems(host: BacklogViewHost, model: BacklogModel): BacklogItem[]
 
 /** One keydown entry for the scroller: the projection decides which handler runs. */
 export function handleProjectionKeydown(host: BacklogViewHost, evt: KeyboardEvent): void {
-	if (host.projection === 'board' || host.projection === 'deliverables') handleBoardKeydown(host, evt);
+	// Every board projection takes the board's keys — the iteration board's columns are
+	// board columns, and a selection that could not walk them would leave its cards
+	// reachable by pointer alone.
+	if (host.projection === 'board' || host.projection === 'deliverables' || host.projection === 'iteration') {
+		handleBoardKeydown(host, evt);
+	}
 	else if (host.projection === 'roadmap') handleRoadmapKeydown(host, evt);
 	else handleTreeKeydown(host, evt);
 }
@@ -299,14 +304,23 @@ function handleBoardMoveKey(
 	// The edges hold rather than wrap: a card in the last column has nowhere further
 	// to advance, and wrapping would send finished work back to the start unasked.
 	if (target < 0 || target >= snapshot.board.columns.length) return;
-	const state = snapshot.board.columns[target].state;
-	// The Deliverables board is the requirements board's own handler, over a different
-	// workflow: same navigation, same guards, but the write lands on the Deliverable
-	// property alone — never on the requirements one this handler otherwise writes.
-	// Asked of the CARD's type, the same question `chooseState` asks, so the keyboard
-	// and the menu cannot route one item's move to two different workflows.
-	if (isDeliverableType(card.typeName)) void host.performDeliverablesBoardMove(card, state);
-	else void host.performBoardMove(card, state);
+	const col = snapshot.board.columns[target];
+	// **The PROJECTION is asked first, and the type only once it has not claimed the
+	// move.** Written the other way round — which is how this read until 2026-08-16 — a
+	// `Deliverable` on an iteration board moves by Alt+arrow into the DELIVERABLES state
+	// key, a second vocabulary on a board that narrows one, and every other card bypasses
+	// the bucket guard entirely. The type question below is still right about the
+	// Deliverables board, which is what it was written for.
+	if (col.bucket) {
+		void host.performIterationBoardMove(card, col.bucket);
+		return;
+	}
+	// Same navigation, same guards, but the write lands on the Deliverable property alone
+	// — never on the requirements one this handler otherwise writes. Asked of the CARD's
+	// type, the same question `chooseState` asks, so the keyboard and the menu cannot
+	// route one item's move to two different workflows.
+	if (isDeliverableType(card.typeName)) void host.performDeliverablesBoardMove(card, col.state);
+	else void host.performBoardMove(card, col.state);
 }
 
 /** The keys that are not navigation: undo, the column-stop Escape, and the filter pair. */

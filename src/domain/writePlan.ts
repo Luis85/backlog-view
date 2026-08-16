@@ -2,7 +2,9 @@ import { TFile } from 'obsidian';
 import { DropTarget } from './dropTargets';
 import { BacklogItem, BacklogModel } from './model';
 import { childLevelIndex, PlacementEnd } from './itemTypes';
+import { statedEnds } from './bars';
 import { readDate, sameValue } from './noteFields';
+import { daysBetween, formatCivil } from './timeline';
 import { hasHorizonAxis } from './roadmap';
 import { stateKeyFor } from './board';
 import { BacklogSettings, isDoneValue, isStartedValue } from './settings';
@@ -113,6 +115,20 @@ export interface ItemWrite {
 	stubs?: OptionalField[];
 	/** Prerequisites to add and remove. Ignored when no depends-on property is configured. */
 	dependsOn?: DependsOnDelta;
+	/**
+	 * The iteration this item belongs to — a FILE, never a serialized string, and
+	 * **null to remove the key**. The writer spells the link itself, path-aware like the
+	 * parent's (`wikilinkTo`), because a link built from a basename here would resolve to
+	 * whichever of two same-named notes Obsidian picks. `undefined` leaves the key alone.
+	 */
+	iteration?: TFile | null;
+	/**
+	 * What an iteration is FOR, in one line, or **null to remove the key**. A plain
+	 * string on the Iteration note — `risk`'s and `assignee`'s rule exactly, so it is
+	 * written through the same label list in `storage/frontmatter.ts` rather than a
+	 * function of its own. `undefined` leaves the key alone.
+	 */
+	iterationGoal?: string | null;
 }
 
 export interface TagDelta {
@@ -358,6 +374,142 @@ export function computeAssigneeWrites(item: BacklogItem, value: string | null): 
 }
 
 /**
+ * Everything ONE iteration change writes: the link, and the timeframe that comes with
+ * it — joining a sprint is joining its dates.
+ *
+ * `target` is the iteration's ITEM, not its `TFile`: the write takes `.file` for the
+ * link, but the dates are the iteration's own `start` and `target` READINGS, which live
+ * on `BacklogItem` because that is where `readItems.ts` parses them — a `TFile` is a path
+ * and a name and nothing else. This module is pure domain, so it cannot look either up
+ * itself; the caller already holds the item, because the menu that calls this built its
+ * entries from the model.
+ *
+ * **One write on one file, not three.** The dates ride the same `ItemWrite` as the link,
+ * through the `AxisWrite` that already keeps the two rules they need — an unconfigured key
+ * is dropped and a null deletes (`axisEntries` in `storage/writeKeys.ts`, already captured
+ * for undo) — so the link and the schedule apply and undo together. Two records naming one
+ * file would capture two inverses, and an undo could then return the link and keep the
+ * dates: a state the single pick cannot describe.
+ *
+ * An unconfigured iteration key plans nothing — absence is a value.
+ *
+ * Emptiness still means "this pick would change nothing", so a fully-agreeing re-pick
+ * returns `[]` rather than a write the applier happens to no-op. What the MENU asks of
+ * this output is narrower now — see `addIterationItems`.
+ */
+export function computeIterationWrites(item: BacklogItem, target: BacklogItem | null, settings: BacklogSettings): ItemWrite[] {
+	if (!settings.iterationKey) return [];
+	// A None pick is asked of PRESENCE (`ownKeys`), never of the PARSED entry — the same
+	// split `computeAssigneeWrites`/`computeRiskWrites` make. `readLinkList` refuses a
+	// non-string or an empty value outright, so a hand-edited `iteration: ''` or
+	// `iteration: 12` reads as `iterationEntry === null` while the key still visibly
+	// holds something on the note; asking the parsed entry here would tick the menu's
+	// None checkmark on a note the reader can see is not empty, and picking it would
+	// then write nothing. `ownKeys.iteration` answers "is there a key to remove", which
+	// is the question a removal is actually asking.
+	//
+	// It plans the removal and NOTHING ELSE: leaving a sprint is not a reschedule, so the
+	// item keeps whatever plan it had. Deleting two date keys on the way out is a decision
+	// nobody made.
+	if (target === null) return item.ownKeys.iteration ? [{ file: item.file, iteration: null }] : [];
+	// Compared by PATH, never by the raw text: two spellings of one note are one
+	// iteration. A link that resolved to nothing has no path and is therefore never
+	// "already there" for any target.
+	const linkChanges = item.iterationEntry?.file?.path !== target.file.path;
+	// **This axis write states no `ends`, deliberately — so the writer's reversed-span
+	// guard does not run on it.** `refusesAxis` (`storage/frontmatter.ts`) returns false
+	// outright without them, which means joining a START-ONLY iteration can leave
+	// `start > target` on the note, and the roadmap then shelves that card as a reversed
+	// span. That outcome is the accepted one, not a missed guard:
+	//
+	// - REFUSING the batch would contradict the rule above it — the iteration's dates
+	//   overwrite whatever the item held — and would make a legitimate join fail because
+	//   of a date the join is not touching.
+	// - ADJUSTING the item's target to make the pair coherent is exactly the decision the
+	//   `undefined`-never-`null` rule exists to forbid: the sprint states no target, so
+	//   nothing here knows what the item's should become.
+	//
+	// An item whose dates have become incoherent should be VISIBLE as incoherent, and the
+	// shelf with its reason is how this view already says so. `ends` belongs to a gesture
+	// that grips an end and can be made stale by a type change mid-drag; this is a pick on
+	// a row `canSetIteration` has already refused for a marker, so there is no shape to
+	// disagree about either.
+	const axis = timeframeOf(item, target);
+	if (!linkChanges && axis === undefined) return [];
+	return [{ file: item.file, ...(linkChanges ? { iteration: target.file } : {}), ...(axis ? { axis } : {}) }];
+}
+
+/**
+ * Editing the iteration NOTE itself: its two dates and its goal, in one batch on one file.
+ *
+ * **It re-stamps no member.** An iteration's dates are copied onto an item when it JOINS
+ * (`computeIterationWrites`), and that is a commitment made at that moment — a cascade
+ * here would silently reschedule work somebody had since moved, on a screen showing none
+ * of it. The batch names one file, and `test/view/iterationDialog.test.ts` asserts the
+ * count rather than the contents, because a cascade would still produce a correct-looking
+ * batch for the note itself.
+ *
+ * A `null` goal REMOVES the key, which is the edit path's own case: clearing a goal that
+ * was set is exactly what extension 3a says removing the key means. The create path has
+ * no use for that distinction and passes `undefined`.
+ */
+export function computeIterationNoteWrites(
+	item: BacklogItem,
+	edit: { axis: AxisWrite; goal: string | null | undefined },
+): ItemWrite[] {
+	const write: ItemWrite = { file: item.file };
+	// Absence is a value here as everywhere: an unconfigured key is dropped by
+	// `axisEntries` and by `applyLabels`, so this states what was CONFIRMED and lets the
+	// writer decide what it may put on disk.
+	if (edit.axis.start !== undefined || edit.axis.target !== undefined) write.axis = edit.axis;
+	if (edit.goal !== undefined) write.iterationGoal = edit.goal;
+	return [write];
+}
+
+/**
+ * The iteration's timeframe as the ends this write has to state, or undefined where it
+ * has to state none. Three rules, and each is a separate decision:
+ *
+ * - The iteration's dates OVERWRITE the item's. No merge and no fill-only-what-is-empty:
+ *   a sprint's dates are the item's dates once it is in the sprint, so a card committed
+ *   to a band must not keep the one it came from.
+ * - An end the ITERATION does not carry is left alone — `undefined`, never `null`, which
+ *   in an `AxisWrite` is a REMOVAL and would delete the item's own date because the
+ *   sprint has none.
+ * - An end the item already states is absent from the plan, compared as a CIVIL date the
+ *   way every other comparison of these values is: `2026-9-7` and `2026-09-07T09:00` both
+ *   spell the day the sprint starts, and rewriting either would spend an undo slot on a
+ *   spelling.
+ *
+ * It asks the READINGS rather than the settings, which is what keeps an unconfigured
+ * start or target key out of the plan without a second gate: `readGated` already answers
+ * absence for a key no property names, so neither side of the comparison can exist.
+ *
+ * Which is worth stating plainly, because the caller is handed a `BacklogSettings` and
+ * this function applies no gate from it: the readings were built by the model, under the
+ * settings the MODEL was built with. Those are the same settings at the one caller —
+ * `addIterationItems` passes `host.settings`, the same object `host.model` was built from
+ * — and a caller that passed a different one would get a plan gated by the model's keys
+ * rather than by the ones it named. There is no such caller, and this paragraph is why
+ * one should not be added without a key gate here.
+ */
+function timeframeOf(item: BacklogItem, target: BacklogItem): AxisWrite | undefined {
+	const wanted = statedEnds(target);
+	const held = statedEnds(item);
+	const axis: AxisWrite = {};
+	let planned = false;
+	for (const end of ['start', 'target'] as const) {
+		const date = wanted[end].value;
+		if (date === null) continue;
+		const own = held[end].value;
+		if (own !== null && daysBetween(date, own) === 0) continue;
+		axis[end] = formatCivil(date);
+		planned = true;
+	}
+	return planned ? axis : undefined;
+}
+
+/**
  * A move on the resources axis, where a release answers TWO questions at once: which row
  * it landed in, and which day. Both halves are the existing planners' — this function
  * adds no rule of its own about either — and what it does is put them on ONE `ItemWrite`,
@@ -535,6 +687,13 @@ function missingKeyStubs(item: BacklogItem, settings: BacklogSettings): Optional
 		// to leave behind, so backfilling one would have ✨ create what a remove must
 		// clean up.
 		if (field === 'dependsOn') continue;
+		// A goal belongs to one type. `✨` stubs an empty key on every note that lacks one,
+		// which is honest for a state or a date — an empty slot the reader is invited to
+		// fill — and dishonest here: a `goal` on every PBI, Feature and Task in the vault is
+		// a property that means nothing on the note it lands on. Its own return rather than a
+		// widening of `dependsOn`'s: that one's reason is that an empty prerequisite list is a
+		// false claim about a relationship. Two rules that agree today are still two rules.
+		if (field === 'iterationGoal') continue;
 		if (optionalKeyFor(settings, field) === '' || item.ownKeys[field]) continue;
 		stubs.push(field);
 	}

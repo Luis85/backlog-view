@@ -1,11 +1,18 @@
 import { Menu } from 'obsidian';
 import { BacklogViewHost } from '../host';
+import { inCatalog, isIterationType, isMarkerType } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
 import { sameValue } from '../../domain/noteFields';
 import { assignableLanes } from '../../domain/roadmap';
 import { mergedValues } from '../../domain/settings';
 import { resolveSettings } from '../../domain/settingsResolve';
-import { computeAssigneeWrites, computePriorityWrites, computeRiskWrites, ItemWrite } from '../../domain/writePlan';
+import {
+	computeAssigneeWrites,
+	computeIterationWrites,
+	computePriorityWrites,
+	computeRiskWrites,
+	ItemWrite,
+} from '../../domain/writePlan';
 import { ValuePromptModal } from '../../ui/prompts';
 import { rowVocabulary } from '../projection';
 
@@ -15,6 +22,12 @@ import { rowVocabulary } from '../projection';
  * submenu whose foot clears the key, so they sit together rather than beside the state and
  * placement actions in `menu.ts`, which is what the ROW is offered rather than what a
  * label means.
+ *
+ * `Set iteration` is at the foot of this file and is the third of that shape without being
+ * a label at all: its value is a NOTE, so its entries carry a derived name and its refusals
+ * are about what an iteration MEANS rather than about a key being configured. What it
+ * shares — a list, one checkmark asked of the plan, a foot that removes the key — is why it
+ * is here and not in `menu.ts`; what it does not share is why it is not `addLabelItems`.
  *
  * Where they differ is the only interesting thing about them, and it is the list: risk's
  * and priority's vocabularies are DECLARED and nothing else, while the assignee's is a
@@ -281,4 +294,133 @@ function promptNewAssignee(host: BacklogViewHost, item: BacklogItem): void {
 		known: assigneeChoices(host, item),
 		onSubmit: (value) => void chooseAssignee(host, item, value.trim()),
 	}).open();
+}
+
+/**
+ * One iteration a row may be put into: the NOTE, and the name the entry wears. The two
+ * are separate fields because they can differ — see {@link iterationTargets} — and the
+ * value behind an entry is always the note, never its label.
+ */
+interface IterationTarget {
+	item: BacklogItem;
+	label: string;
+}
+
+/**
+ * Every `Iteration` this row may join, named apart only where two of them collide.
+ *
+ * Read off `model.byPath` and never off the results or the rendered forest: a focus set
+ * on another projection re-roots what is DRAWN, and an iteration hangs from nothing, so
+ * a top-level one would go unofferable exactly when a reader had narrowed the tree to
+ * the rung they were assigning. Context rows are excluded for the ordinary reason — an
+ * excluded note is not this base's vocabulary — while the row's OWN refusals live in
+ * {@link canSetIteration}.
+ *
+ * The label is the basename, and the whole path (minus the extension) for the notes that
+ * share one. Only where they collide: qualifying every entry to separate a rare pair
+ * makes the ordinary case unreadable, and the write is unaffected either way — the plan
+ * carries the FILE and `wikilinkTo` spells the link from the editing note's own path.
+ */
+function iterationTargets(host: BacklogViewHost): IterationTarget[] {
+	const found = [...(host.model?.byPath.values() ?? [])].filter(
+		(candidate) => isIterationType(candidate.typeName) && !candidate.outsideFilter,
+	);
+	const seen = new Map<string, number>();
+	for (const target of found) seen.set(target.title, (seen.get(target.title) ?? 0) + 1);
+	return found.map((target) => ({
+		item: target,
+		label:
+			(seen.get(target.title) ?? 0) > 1
+				? target.file.path.slice(0, -(target.file.extension.length + 1))
+				: target.title,
+	}));
+}
+
+/**
+ * Whether this row is offered `Set iteration` at all. Four refusals, each a different
+ * rule, and the fifth — a context row — is the caller's `editable` gate, which withholds
+ * every entry that edits the row's own frontmatter.
+ *
+ * **The KEY gate follows from none of the others.** A vault can hold `Iteration` notes
+ * while the property is unnamed, so the target list is non-empty and every other refusal
+ * passes; the submenu would then render a full list, tick one of them, and write nothing
+ * on each pick, because `computeIterationWrites` returns `[]` with no key. It cannot be
+ * had from the plan's emptiness either: an empty plan is also what a CORRECT no-op pick
+ * returns, so hiding the entries whose plan is empty would hide the current iteration.
+ *
+ * **The marker refusal is `isMarkerType`, never `isIterationType`.** A marker occupies no
+ * rung, holds nothing and hangs from nothing — it is not work, and a sprint is a
+ * commitment to finish some. Written as the narrow name a `Milestone` passes every
+ * refusal and is offered the action, and a pick writes the iteration's two dates over the
+ * milestone's own target. A milestone IS its date; there is nothing else in it to keep.
+ *
+ * A catalog member is refused because the population it would join is the plan's, so the
+ * link would be stored where no card can draw it. And with neither a link nor a target
+ * there is genuinely nothing to do — which is not the same as no TARGETS: an item holding
+ * a link keeps the submenu, with `None` alone, since this is the only place offering to
+ * take that value off.
+ *
+ * **A link, asked of the parsed ENTRY, and not of key presence** — which is where this
+ * gate and `computeIterationWrites` deliberately disagree, so read both before making them
+ * match. ✨ Assign missing properties stubs `iteration: ''` onto every eligible note
+ * (`missingKeyStubs` skips only `horizon` and `dependsOn`), so in a vault where it ran
+ * before any `Iteration` note existed, presence is true on EVERY row while there is
+ * neither an assignment to clear nor anywhere to go: `Set iteration` on all of them,
+ * holding `None` alone. `iterationEntry` is non-null for a resolved link and for a broken
+ * one alike (`readLinkList` keeps `{ raw, file: null }`) and null for a blank stub, which
+ * is the question this gate is actually asking. What a `None` pick WRITES stays key
+ * presence, and must: that is what keeps a reader-refused value (`iteration: ''`,
+ * `iteration: 12`) clearable whenever the menu is shown at all.
+ *
+ * The corner that accepts: a note whose key holds a refused non-empty value in a vault
+ * with no `Iteration` notes AT ALL is offered nothing, so that value is unclearable until
+ * one exists. Deliberate — far narrower than a `None`-only menu on every row, and the
+ * first iteration created brings the menu back with the clear in it.
+ */
+export function canSetIteration(host: BacklogViewHost, item: BacklogItem): boolean {
+	if (!host.settings.iterationKey) return false;
+	if (isMarkerType(item.typeName)) return false;
+	if (inCatalog(item)) return false;
+	return item.iterationEntry !== null || iterationTargets(host).length > 0;
+}
+
+/**
+ * Set iteration's entries — every iteration in the model, then the way back out of one.
+ *
+ * Not through `addLabelItems` above: a label is a plain string that IS its own entry
+ * title, while an iteration is a NOTE whose title is derived and can differ from it, so
+ * the shared helper would have to carry a label accessor two of its three callers pass as
+ * the identity. What it shares instead is that helper's rules, one of them narrowed.
+ * Checked is asked of the PLAN, never by a comparison written beside the plan and
+ * expected to agree with it — but of the plan's LINK component alone, see below. And
+ * `None` is unconditional, always the last entry, and checked exactly like every other
+ * one — when `computeIterationWrites(item, null, …)` is empty, which is precisely an
+ * item with no `iteration` key at all. Hiding it while unassigned was the inverted
+ * version of this: `None` is the entry that MARKS "in no iteration", not a write guard —
+ * `writes(null)` being empty is `None`'s own current-state case, not a reason to hide it.
+ */
+export function addIterationItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
+	const writes = (target: BacklogItem | null): ItemWrite[] => computeIterationWrites(item, target, host.settings);
+	const targets = iterationTargets(host);
+	for (const target of targets) {
+		menu.addItem((si) => {
+			si.setTitle(target.label).onClick(() => void host.applySafely(writes(target.item)));
+			// Narrowed deliberately when the plan grew a timeframe. The register's usual
+			// rule — checked exactly when picking it would write nothing — was the same
+			// question as "which iteration is this item in" only while the plan held ONE
+			// write. Now a re-pick of the current iteration re-syncs its dates, so an item
+			// whose dates have drifted plans something for every entry and NO entry would
+			// show as current. The menu's question is the second one, so it asks the
+			// component that answers it. Still asked of the plan, so nothing compares
+			// values beside it — which is the drift the original rule exists to prevent.
+			if (!writes(target.item).some((w) => w.iteration !== undefined)) si.setChecked(true);
+		});
+	}
+	if (targets.length > 0) menu.addSeparator();
+	menu.addItem((si) => {
+		si.setTitle('None')
+			.setIcon('eraser')
+			.onClick(() => void host.applySafely(writes(null)));
+		if (writes(null).length === 0) si.setChecked(true);
+	});
 }

@@ -143,3 +143,45 @@ describe('writing the priority', () => {
 		expect(vault.fm('Item.md')).toEqual({ type: 'PBI', priority: '2 - Should' });
 	});
 });
+
+describe('writing the iteration goal', () => {
+	// A plain string on the Iteration note, so it takes the SAME writer as risk and the
+	// assignee — one more row in `applyLabels`' list, never a function of its own.
+	const goaled = { ...settings, iterationGoalKey: 'goal' };
+
+	it('sets a goal, and a null removes the key rather than blanking it', async () => {
+		const vault = new FakeVault();
+		const file = vault.addFile('Sprint.md', { frontmatter: { type: 'Iteration' } });
+
+		await applyWrites(vault.app, goaled, [{ file, iterationGoal: 'Ship the board' }]);
+		expect(vault.fm('Sprint.md')).toEqual({ type: 'Iteration', goal: 'Ship the board' });
+
+		await applyWrites(vault.app, goaled, [{ file, iterationGoal: null }]);
+		// Absence is the value that means nobody has stated a goal, so the key goes.
+		expect(vault.fm('Sprint.md')).toEqual({ type: 'Iteration' });
+	});
+
+	it('writes nothing when no iteration goal property is configured', async () => {
+		const vault = new FakeVault();
+		const file = vault.addFile('Sprint.md', { frontmatter: { type: 'Iteration' } });
+
+		// The rule at the boundary, asked of the third label property: the shared writer
+		// must not invent a key for a field no property names, whatever reached this
+		// module carrying one.
+		await applyWrites(vault.app, settings, [{ file, iterationGoal: 'Ship the board' }]);
+
+		expect(vault.fm('Sprint.md')).toEqual({ type: 'Iteration' });
+	});
+
+	it('captures an inverse, so a goal is undoable and a removal restorable', async () => {
+		const vault = new FakeVault();
+		const file = vault.addFile('Sprint.md', { frontmatter: { type: 'Iteration', goal: 'Ship the board' } });
+		const inverses: RestoreWrite[] = [];
+
+		await applyWrites(vault.app, goaled, [{ file, iterationGoal: null }], undefined, (inv) => inverses.push(inv));
+		expect(vault.fm('Sprint.md')).toEqual({ type: 'Iteration' });
+
+		await applyRestores(vault.app, inverses);
+		expect(vault.fm('Sprint.md')).toEqual({ type: 'Iteration', goal: 'Ship the board' });
+	});
+});

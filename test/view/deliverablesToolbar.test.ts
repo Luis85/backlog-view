@@ -1,20 +1,61 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
-import { Modal } from '../helpers/obsidian-mock';
+import { Menu, Modal } from '../helpers/obsidian-mock';
 import { fixture, makeView, projectionButton, refresh, useViewHarness } from '../helpers/view';
 import { collapseAll, expandAll } from '../../src/view/render/toolbarControls';
 
 useViewHarness();
 
-describe('the Deliverables board toggle', () => {
-	it('offers a fourth toggle position for the Deliverables board', () => {
+describe('the Deliverables board entry', () => {
+	it('is reached from the board scope picker, not from a toggle position of its own', () => {
+		// The toggle carried a Deliverables position until 2026-08-16, when the user moved
+		// it under the picker's Product entry: every board is the Board button now, and
+		// the picker beside it says which. Driven through the real controls end to end.
 		const { containerEl, view } = makeView(fixture());
-		const btn = projectionButton(containerEl, 'Show as Deliverables board');
-		expect(btn).toBeTruthy();
+		expect(() => projectionButton(containerEl, 'Show as Deliverables board')).toThrow();
 
-		btn?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		projectionButton(containerEl, 'Show as kanban board').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		containerEl.querySelector<HTMLElement>('.pbl-scope-btn')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		const entry = Menu.lastShown?.item('Deliverables');
+		// Directly under Product, and both entries wear an icon — the request that moved it.
+		expect((Menu.lastShown?.items ?? []).map((mi) => mi.titleText).slice(0, 2)).toEqual([
+			'Product',
+			'Deliverables',
+		]);
+		expect(Menu.lastShown?.item('Product')?.iconName).toBe('square-kanban');
+		expect(entry?.iconName).toBe('package');
+
+		entry?.click();
 		expect(view.projection).toBe('deliverables');
+		// The Board position stays pressed, the picker names the chosen board, and its
+		// entry is the checked one.
+		const board = projectionButton(containerEl, 'Show as kanban board');
+		expect(board.getAttribute('aria-pressed')).toBe('true');
+		expect(containerEl.querySelector('.pbl-scope-btn')?.getAttribute('aria-label')).toBe(
+			'Board scope: Deliverables',
+		);
+		containerEl.querySelector<HTMLElement>('.pbl-scope-btn')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(Menu.lastShown?.item('Deliverables')?.checked).toBe(true);
+		expect(Menu.lastShown?.item('Product')?.checked).toBe(false);
+	});
+
+	it('retains the pick: Board reopens Deliverables after a trip through the tree', () => {
+		// The scope's own retention rule, extended to the second board: `Board` means the
+		// board this view was last on. Product then clears the pick, so the round trip
+		// after it lands on the product board again.
+		const { containerEl, view } = makeView(fixture());
+		view.setProjection('deliverables');
+		view.setProjection('tree');
+		projectionButton(containerEl, 'Show as kanban board').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(view.projection).toBe('deliverables');
+
+		containerEl.querySelector<HTMLElement>('.pbl-scope-btn')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		Menu.lastShown?.item('Product')?.click();
+		expect(view.projection).toBe('board');
+		view.setProjection('tree');
+		projectionButton(containerEl, 'Show as kanban board').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(view.projection).toBe('board');
 	});
 
 	it('hides "Show completed items" on the Deliverables board even with a requirements state key', () => {

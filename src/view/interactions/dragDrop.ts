@@ -66,7 +66,7 @@ export class DragDropController {
 				return;
 			}
 			const zone = this.zoneFor(evt, row, this.hasVisibleChildren(item));
-			const dropTarget = dropTargetFor(drag.model, item, zone, drag.dragged, projectionMember(this.host.projection));
+			const dropTarget = dropTargetFor(drag.model, item, zone, drag.dragged, projectionMember(this.host.projection, this.host.effectiveScope));
 			if (!dropTarget) {
 				this.setDropIndicator(row, null);
 				return;
@@ -96,7 +96,7 @@ export class DragDropController {
 			const zone = this.zoneFor(evt, target.row, this.hasVisibleChildren(target.item));
 			const dropTarget =
 				drag && drag.dragged !== target.item
-					? dropTargetFor(drag.model, target.item, zone, drag.dragged, projectionMember(this.host.projection))
+					? dropTargetFor(drag.model, target.item, zone, drag.dragged, projectionMember(this.host.projection, this.host.effectiveScope))
 					: null;
 			this.clearDragState();
 			if (drag && dropTarget) void this.host.performDrop(drag.dragged, dropTarget);

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 // @ts-expect-error — a build script, deliberately outside tsconfig's `src/**` include.
 import { assembleStyles } from '../../scripts/styles-assemble.mjs';
 import { FakeVault } from '../helpers/vault';
-import { ALL_TYPES, EXTRA_TYPES, MARKER_TYPES } from '../../src/domain/typeVocabulary';
+import { ALL_TYPES, EXTRA_TYPES, ITERATION_TYPE, MARKER_TYPES } from '../../src/domain/typeVocabulary';
 import { Menu, Notice } from '../helpers/obsidian-mock';
 import { clickExpandAll, drag, fixture, flush, key, makeView, rowByTitle, rows, titlesOf, treeOf, useViewHarness } from '../helpers/view';
 import { inCatalog, ladderFor } from '../../src/domain/itemTypes';
@@ -80,7 +80,14 @@ describe('rendering', () => {
 		const { containerEl, view } = makeView(vault);
 
 		const seen = new Set<string>();
-		for (const type of ALL_TYPES) {
+		// `Iteration` is drawn by NO projection this test can reach: it left the tree on
+		// 2026-08-16 (it is the container a board is scoped to, not a row of the plan), the
+		// board cards its members rather than the iteration itself, and the roadmap draws
+		// one only once it carries dates — which is `An iteration draws as a bar or a line`
+		// and is unbuilt. So its badge is checked below for the two properties this loop
+		// checks and not for the third, and the sentence is narrowed rather than the check
+		// quietly dropped: nothing here renders one.
+		for (const type of ALL_TYPES.filter((t) => t !== ITERATION_TYPE)) {
 			view.setProjection(inCatalog({ ladder: ladderFor(type, null) }) ? 'catalog' : 'tree');
 			clickExpandAll(containerEl);
 			const badge = rowByTitle(containerEl, type).querySelector<HTMLElement>('.pbl-badge');
@@ -94,6 +101,12 @@ describe('rendering', () => {
 			expect(seen.has(colour ?? '')).toBe(false);
 			seen.add(colour ?? '');
 		}
+
+		// The one type nothing on screen draws yet, held to what can still be asked of it:
+		// the stylesheet paints its class, and the class is its own. What is NOT checked
+		// is that a rendered badge finds it — the third assertion above — because there is
+		// no row to render.
+		expect(styles).toContain('.pbl-lvl-iteration {');
 	});
 
 	it('gives each shipped extra type its own icon and badge colour', () => {
@@ -539,7 +552,12 @@ describe('rendering', () => {
 		// minus the test types, which this picker must never offer: focusing one narrows
 		// the PLAN to roots it excludes and leaves it empty, the same reason `Deliverable`
 		// is withheld on the requirements board.
-		const planTypes = ALL_TYPES.filter((t) => !inCatalog({ ladder: ladderFor(t, null) }));
+		// Minus the test types AND `Iteration`, both for one reason read twice: focusing a
+		// type this projection does not draw narrows the tree to nothing. An iteration is
+		// the container a board is scoped to, not a row of the plan.
+		const planTypes = ALL_TYPES.filter(
+			(t) => !inCatalog({ ladder: ladderFor(t, null) }) && t !== ITERATION_TYPE,
+		);
 		expect(Menu.lastShown?.items.map((i) => i.titleText)).toEqual(['All types', ...planTypes]);
 		expect(Menu.lastShown?.item('All types')?.checked).toBe(true);
 		Menu.lastShown?.item('Feature')?.click();

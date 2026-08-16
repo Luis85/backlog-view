@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { Menu } from '../helpers/obsidian-mock';
-import { flush, makeView, projectionButton, useViewHarness } from '../helpers/view';
+import { flush, makeView, useViewHarness } from '../helpers/view';
 import { cardDrag } from '../helpers/dnd';
 import {
 	BOARD_WORKFLOW,
@@ -267,12 +267,10 @@ describe('a card names only what this projection draws beneath it', () => {
 		return vault;
 	}
 
-	/** The Deliverables board through its own toolbar button, already narrowing. */
+	/** The Deliverables board, already narrowing. */
 	function deliverables(vault: FakeVault, needle: string) {
 		const harness = makeView(vault, { deliverableStateProperty: 'note.docStatus' });
-		projectionButton(harness.containerEl, 'Show as Deliverables board').dispatchEvent(
-			new MouseEvent('click', { bubbles: true }),
-		);
+		harness.view.setProjection('deliverables');
 		harness.view.setFilter(needle);
 		return harness;
 	}

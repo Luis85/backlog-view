@@ -359,6 +359,8 @@ describe('optionalKeyFor', () => {
 			deliverableStateKey: 'deliverableStatus',
 			testStateKey: 'testStatus',
 			dependsOnKey: 'dependsOn',
+			iterationKey: 'sprint',
+			iterationGoalKey: 'goal',
 		});
 		// Every field of the table, so a switch that fell through would be caught here
 		// rather than by whichever feature happened to read the wrong key.
@@ -375,6 +377,8 @@ describe('optionalKeyFor', () => {
 			'deliverableStatus',
 			'testStatus',
 			'dependsOn',
+			'sprint',
+			'goal',
 		]);
 		// Unconfigured is '', which every caller reads as "no key to write". Spelled as a
 		// literal list rather than `OPTIONAL_FIELDS.map(() => '')`: a generated expectation
@@ -393,6 +397,8 @@ describe('optionalKeyFor', () => {
 			'',
 			'',
 			'',
+			'',
+					'',
 		]);
 	});
 });
@@ -414,6 +420,8 @@ describe('the optional-property table', () => {
 			'deliverableState',
 			'testState',
 			'dependsOn',
+			'iteration',
+			'iterationGoal',
 		]);
 		expect(OPTIONAL_FIELDS.map(optionalProperty)).toEqual(OPTIONAL_PROPERTIES);
 	});
@@ -423,7 +431,7 @@ describe('adoptableProperties', () => {
 	it('offers the shipped key for every optional property nobody has named', () => {
 		const config = fakeConfig({});
 
-		// Nine, not eleven: `deliverableState` and `testState` both suggest the SAME key
+		// Eleven, not thirteen: `deliverableState` and `testState` both suggest the SAME key
 		// `state` does ('status'), and `state` is declared first, so its own adoption
 		// claims 'status' before the loop ever reaches either of them — the existing
 		// "don't suggest an already-taken key" guard (below) skips both, leaving the
@@ -440,6 +448,8 @@ describe('adoptableProperties', () => {
 			'priority',
 			'assignee',
 			'dependsOn',
+			'iteration',
+			'goal',
 		]);
 	});
 
@@ -519,12 +529,16 @@ describe('the test workflow resolves like the Deliverable one', () => {
 });
 
 describe('the marker category', () => {
-	it('declares Milestone outside both the ladder and the extra types', () => {
+	it('declares every marker outside both the ladder and the extra types', () => {
 		// The whole point of the third category: every rule that reads EXTRA_TYPES keeps
-		// meaning exactly what `Types beside the ladder` says it means.
-		expect(MARKER_TYPES).toEqual(['Milestone']);
-		expect(LEVELS).not.toContain('Milestone');
-		expect(EXTRA_TYPES).not.toContain('Milestone');
+		// meaning exactly what `Types beside the ladder` says it means. Looped over
+		// MARKER_TYPES rather than named at 'Milestone' alone, so a third marker joining
+		// the category is covered without anyone remembering to extend this test.
+		expect(MARKER_TYPES).toEqual(['Milestone', 'Iteration']);
+		for (const marker of MARKER_TYPES) {
+			expect(LEVELS).not.toContain(marker);
+			expect(EXTRA_TYPES).not.toContain(marker);
+		}
 		expect(ALL_TYPES).toEqual([...LEVELS, ...EXTRA_TYPES, ...MARKER_TYPES, ...TEST_LEVELS.filter((t) => t !== 'Task')]);
 	});
 

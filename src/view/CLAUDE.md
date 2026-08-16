@@ -554,7 +554,7 @@ free of runtime code so imports stay cycle-free.
   `listbox` and the keydown dispatched to `handleBoardKeydown`. The column fit is the
   tree's — entering board mode resets the verdict to null and clears `pbl-hide-meta`, or a
   narrow-pane decision from tree mode would strip cells off cards.
-- The mode is `host.projection` — five of them now — backed by the
+- The mode is `host.projection` — six of them now, two reached through the board scope picker rather than a toggle position of their own — backed by the
   view-state store (UI state, per saved view, per device) — never `settings` and never
   the `.base`: base settings are saved on the view, working position in localStorage.
   **What a projection IS is meant to be asked, never compared**: `view/projection.ts`

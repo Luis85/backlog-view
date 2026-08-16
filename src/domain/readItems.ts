@@ -1,4 +1,4 @@
-import { App, BasesEntry, TFile } from 'obsidian';
+import { App, BasesEntry, CachedMetadata, TFile } from 'obsidian';
 import { nearestFolderNote } from './folderNotes';
 import {
 	absentReading,
@@ -126,6 +126,23 @@ export interface RawItem {
 	 */
 	assigneeValue: string | null;
 	/**
+	 * What the note's own iteration is FOR, in one line, if an iteration goal property is
+	 * configured. `riskValue`'s reason exactly: a plain string with no reading to refuse,
+	 * and no goal is a fact about the note rather than a missing one. Meaningful only on
+	 * an `Iteration` note — nothing narrows the read to that type, the same "read on every
+	 * item, no membership question here" choice `deliverableStateValue` already makes.
+	 */
+	iterationGoalValue: string | null;
+	/**
+	 * The iteration this note is in, if an iteration property is configured — the
+	 * `raw`/`file` pair `readLinkList` returns, not collapsed to one. Unresolved is not
+	 * unset: a link naming a deleted note has a `raw` and no `file`, and reading that as
+	 * "no value" would tick `None` as the current iteration while the frontmatter still
+	 * visibly holds a link, leaving nothing for the reader to clear. Null only when no
+	 * key is configured or the note carries nothing under it.
+	 */
+	iterationEntry: LinkEntry | null;
+	/**
 	 * Which configured optional keys the note CARRIES — presence, not value, and the
 	 * two are different questions here: an empty horizon reads as absent (untriaged)
 	 * while the key is still on the note. Removal actions offer themselves on presence,
@@ -241,7 +258,9 @@ function addItem(
 		riskValue: readLabel(settings.riskKey, fm),
 		priorityValue: readLabel(settings.priorityKey, fm),
 		assigneeValue: readLabel(settings.assigneeKey, fm),
+		iterationGoalValue: readLabel(settings.iterationGoalKey, fm),
 		ownKeys: readOwnKeys(fm, settings),
+		iterationEntry: readIterationEntry(app, file, cache, settings.iterationKey),
 		// NOT read for a context row, which is the same test `outsideFilter` is made of
 		// two lines up. An excluded note may be NAMED by a result and may never do the
 		// naming, and until now that rule was kept only downstream, by `declaredEdges`
@@ -293,6 +312,16 @@ function divertAbsence(
 	const absence = readAbsence(file, fm, settings);
 	if (absence) store.absences.push(absence);
 	return null;
+}
+
+/**
+ * The iteration a note declares, gated on the key being configured — out of line so
+ * `addItem` stays under its complexity budget. An item is in ONE iteration: taking [0]
+ * is deliberate, since a list-valued key is a note the user hand-edited, and its first
+ * entry is the honest reading rather than an error.
+ */
+function readIterationEntry(app: App, file: TFile, cache: CachedMetadata | null, key: string): LinkEntry | null {
+	return key ? (readLinkList(app, file, cache, key)[0] ?? null) : null;
 }
 
 /**

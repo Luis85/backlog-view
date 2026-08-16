@@ -35,6 +35,40 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   backfills it like every other optional property, clearing removes the key rather than
   blanking it, and every write is one undoable batch.
 
+- **The Deliverables board moved into the scope picker.** Its toolbar toggle position is
+  gone: every board is the `Board` button now, and the picker beside it says which —
+  `Product` and `Deliverables` lead the menu, each under its own icon, with the
+  iterations below. The pick is remembered like an iteration scope, so leaving `Board`
+  and returning reopens the board you were on.
+
+- **The scope picker is the board's own control.** It draws after the New button, on the
+  board and nowhere else, and it draws even in a vault with no iterations yet — because it
+  carries the only way to make the first one. Iterations no longer appear in the tree or in
+  any New menu: an iteration is the container a board is scoped to, not work the backlog
+  holds. A new one is named `1 - Iteration` by default, numbered so a folder of them sorts
+  in the order they run.
+
+- **Make and edit an iteration from the board.** The scope picker carries
+  `New iteration…` and, on a chosen sprint, `Edit iteration…`. A new one is dated for you
+  — the day after the last sprint ends, running for the length you configure — and every
+  field is a prefill you can change before it is written. The note is not opened: making a
+  sprint is a planning act, and the board you are planning on stays in front of you.
+  Editing writes to the iteration note alone: it never re-stamps the work already in it.
+
+- **A board scoped to one iteration.** Pick a sprint from the scope picker beside the
+  projection switcher and the Board position draws that iteration alone, in three columns
+  over your own workflow: Open, In progress and Resolved. Which of your states fall in the
+  two outer columns is configured; everything else is in between. The iteration's goal
+  draws above the columns, a card moves between buckets by drag, Alt+arrow or its menu, and
+  the choice of scope is remembered per view, per device — through a rename of the note or
+  of a folder above it.
+
+- **An iteration to put work in.** A note typed `Iteration` is a time box: name its
+  property in the view options (a goal property too, for later), then, from any row's
+  or card's menu, put an item in it with `Set iteration` (or take it back out with
+  `None`). Joining one takes its start and target dates in the same action, so
+  scheduling a sprint is one pick rather than three.
+
 - **Fold a type group in the shelf.** Each type group in the expanded shelf now has a
   disclosure beside its name.
 

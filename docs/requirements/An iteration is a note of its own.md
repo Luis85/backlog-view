@@ -2,12 +2,12 @@
 type: PBI
 parent: "[[An Iterations board]]"
 order: 10
-status: Open
+status: Done
 priority: P2
 created: 2026-08-15
 source: user request
 started: ""
-finished: ""
+finished: 2026-08-16
 horizon: ""
 start: ""
 due: ""
@@ -17,11 +17,19 @@ assignee: ""
 
 # An iteration is a note of its own
 
-A twelfth declared type, and one optional property that points at it.
+A twelfth declared type, one optional property that points at it, and one the iteration
+itself carries.
 
 **As** someone running the backlog in time boxes, **I want** an iteration to be a note I
 can open, date and write a goal into, **so that** "Sprint 12" is something the vault
 holds rather than a string repeated across thirty items.
+
+The **goal** is a property rather than the note's body, and the ladder is what decided
+it. A body needs no code at all and would be the cheaper answer if nothing had to read
+it — but the goal draws above the board's columns ([[A board scoped to one iteration]]),
+and reaching a body means an async read in the view layer plus a rule for which part of
+it counts as the goal. A property is read by machinery this plugin already has: the
+fifth LABEL property, which is one row in the list `applyLabels` loops over.
 
 The alternatives were weighed and refused. A plain property with an ordered value list —
 the [[Buckets from a horizon property]] shape — makes an iteration a word, so it can
@@ -55,7 +63,7 @@ declared name owes: a default subfolder, an icon and a badge colour.
 | **Actor** | Backlog owner |
 | **Trigger** | Creating an iteration, or setting an item's iteration from the row or card menu |
 | **Preconditions** | The iteration property is configured, or bound by the toolbar's setup action ([[Bind a property by using it]]) |
-| **Guarantee** | The link is read, never guessed: no property is matched by name, an unconfigured key is never written, and setting an iteration writes one key on one note through the gate every other write goes through. |
+| **Guarantee** | The link is read, never guessed: no property is matched by name, and an unconfigured key is never written. Setting an iteration writes **one batch on one note** — up to three keys, the link and the two dates the iteration's timeframe supplies ([[An iteration's timeframe schedules its items]]) — through the gate every other write goes through, taken back by one undo. |
 
 **Main flow**
 
@@ -68,10 +76,12 @@ declared name owes: a default subfolder, an icon and a badge colour.
    a top-level iteration unofferable — plus `None`.
 4. Picking one writes a wikilink to that note under the configured key — spelled by
    Obsidian's own path-aware link generation, from this note to that one — through
-   `applySafely`, and the write can be taken back by the one undo slot
+   `applySafely`, in one batch with the two dates the iteration's timeframe supplies
+   ([[An iteration's timeframe schedules its items]]), taken back by the one undo slot
    ([[Undo and redo]]).
-5. The tree, both roadmap axes and the product board are unchanged by the value: it
-   places nothing and hides nothing on its own.
+5. The tree and the product board are unchanged by the link itself: it places nothing and
+   hides nothing on its own. The roadmap is not, and that is the dates rather than the
+   link — an item joining a sprint moves to that sprint's two weeks, which is the point.
 
 **Extensions**
 
@@ -94,10 +104,21 @@ declared name owes: a default subfolder, an icon and a badge colour.
   store a value no board can ever draw — a link accepted and silently dropped, which is
   worse than an action that is simply absent.
 - **3b — the value the note already holds is the entry being offered.** Its checkmark is
-  asked of the **plan** — checked exactly when picking it would write nothing — never by
-  a comparison written beside the plan. The two drifted once already on the horizon menu,
-  where a value the reader refuses read as no value and offered a key removal as the
-  current state.
+  asked of the **plan**, never by a comparison written beside the plan. The two drifted
+  once already on the horizon menu, where a value the reader refuses read as no value and
+  offered a key removal as the current state.
+
+  Which **part** of the plan is where this menu differs from every other Set menu, and
+  the difference is stated here rather than left to be inferred. The plan carries three
+  writes, so the register's usual sentence — checked exactly when picking it would write
+  nothing — would leave the current iteration **unchecked** whenever the item's dates
+  had drifted from it, and no entry would show as current. So the checkmark asks the
+  plan's **LINK** component alone: the menu's question is *"which iteration is this item
+  in"*, which is only the same question as *"would this write nothing"* while the plan
+  holds one write.
+
+  What that earns is the recovery path [[Creating an iteration from the board]] needs:
+  picking the **checked** iteration is not a no-op, it re-applies the timeframe.
 - **4a — the link names a note that does not exist, or was renamed.** Read the way
   `parent` and `dependsOn` already are, through the metadata cache: a broken link is kept
   and rendered, never silently dropped and never repaired by a write nobody asked for
@@ -125,26 +146,68 @@ declared name owes: a default subfolder, an icon and a badge colour.
   remove — "unresolved is not unset" (4a) applied to the menu's own gate rather than to
   the plan behind it. With no link and no targets there is genuinely nothing to do, and
   the submenu is absent.
-- **4c — the row is itself an `Iteration`.** `Set iteration` is not offered: an iteration
-  is the scope a board is chosen by, never something put inside one. The board's
-  population refuses one too, rather than trusting the menu — a key written by hand would
-  otherwise make one iteration a card on another's board.
+- **4c — the row is a MARKER**, an `Iteration` or a `Milestone` alike. `Set iteration` is
+  not offered, and the board's population refuses one too rather than trusting the menu —
+  a key written by hand would otherwise draw it as a card.
+
+  **Asked of `isMarkerType`, never of the two names.** A marker occupies no rung, holds
+  nothing and hangs from nothing, which is `typeVocabulary.ts`' own definition of one and
+  amounts to *a marker is not work*. A sprint is a commitment to finish some work, so
+  nothing that is not work can join one. Written as a rule about markers it also holds for
+  a third marker nobody has declared yet; written as `isIterationType` it holds for one
+  name and silently fails for the other.
+
+  This note named `Iteration` alone until 2026-08-16, and the omission was not cosmetic. A
+  `Milestone` passed every other refusal, so `Set iteration` was offered on one — and
+  picking an iteration writes the **two dates** as well as the link
+  ([[An iteration's timeframe schedules its items]]), which would overwrite the milestone's
+  own target. A milestone *is* its date; there is nothing else in it to keep. The one type
+  where the write is most destructive was the one the rule did not cover.
 - **5a — the item carries an iteration and its parent carries a different one.** Both are
   true and neither is derived. Nothing inherits an iteration down the tree, which is what
   makes the board's population a plain question about one note
   ([[A board scoped to one iteration]]).
+- **2c — the toolbar's setup action runs with the goal property configured.** It binds
+  the key like any other and then **skips it in the backfill**. Every other optional
+  property gets an empty key stubbed onto every note that lacks one, which is honest for
+  a state or a date — an empty slot the reader is invited to fill — and dishonest for
+  this one: a `goal` on every PBI, Feature and Task in the vault is a property that means
+  nothing on the note it lands on. So `missingKeyStubs` gains a **third** early return,
+  beside `horizon`'s and `dependsOn`'s and with its own reason written at it rather than
+  folded into either. `dependsOn`'s reason is that an empty prerequisite list is a false
+  claim about a relationship; this one's is that the property belongs to one type. Two
+  rules that agree today are still two rules.
+- **2d — a note that is not an `Iteration` carries a value under the goal key**, written
+  by hand. Nothing refuses it and nothing reads it. The property is simply never offered,
+  never stubbed, and read only from the iteration a board is scoped to — so a type test
+  on a plain label would buy nothing the absence of an offer does not already buy, and it
+  would be the first such test in the codebase.
 
 ## Acceptance criteria
 
 - `Iteration` is a declared type in `MARKER_TYPES` with a default subfolder, an icon and
   a badge colour, and ADR 0013 records the twelfth name. It files into
   `typeFolder.iteration` — shipped default `iterations` under the home folder — and takes
-  the `calendar-clock` icon and the purple badge.
+  the `calendar-clock` icon and a **cyan** badge, shared with Milestone and Test case.
+  This criterion said *purple* until 2026-08-16, on the same false premise the stylesheet
+  comment carried — purple is `.pbl-lvl-1`, Feature's, and all eight theme tokens were
+  spoken for before this badge existed. Cyan is a sharing decision made on theme rather
+  than by exhaustion (a marker is a date), and what it costs is stated where it is paid:
+  only the icon and the type name separate an `Iteration` badge from a `Milestone` one,
+  since Test case's cyan is held apart by a test-axis border that does not reach a marker.
+  Whether that reads as *"these two are markers"* is a live-vault question this criterion
+  records rather than settles.
 - The register's own gate knows the type too: `docs-check.mjs`'s `LEGAL_CHILDREN` and
   `ROOT_TYPES` carry it, matched by the hierarchy table in `docs/README.md`, so an
   `Iteration` note can live in this backlog rather than being rejected as an unknown type.
 - The `iterationProperty` view option names the frontmatter key; `iteration` is the
   suggested placeholder, offered by the setup action and never matched by name.
+- The `iterationGoalProperty` view option names the key an iteration's goal is stored
+  under; `goal` is the suggested placeholder. It is a plain string, written through the
+  label list beside the risk and the assignee, and it is the one optional property the
+  backfill **skips** — checked by running the setup action over a tree of every type and
+  asserting no note but an `Iteration` gains the key, and that even an `Iteration` gains
+  no empty stub.
 - The value is a wikilink to the Iteration note, read through the same link handling
   `parent` and `dependsOn` use, and WRITTEN through the same path-aware generation the
   parent link uses — so two iterations sharing a basename still get distinct links.
@@ -153,23 +216,48 @@ declared name owes: a default subfolder, an icon and a badge colour.
 - `Set iteration` appears on the row and card menus of **plan** rows, offers every
   `Iteration` note plus `None` **whatever focus level is active**, checks its entries from
   the plan, and is absent on a context row, on a catalog member and on an `Iteration` row.
-- The write goes through `applySafely`, writes only the configured key, is never written
-  when the key is unconfigured, and is undone by the one undo slot.
+- The write goes through `applySafely`, is never written when the key is unconfigured, and
+  is undone by the one undo slot — in one batch with the dates
+  [[An iteration's timeframe schedules its items]] adds, so a reader can never take back
+  half a commitment.
+- **Both new keys are captured for undo**, which is a separate statement from being
+  written: `touchedKeys` lists them on the same condition the writer writes on, so undo
+  restores the goal and the link and not only the dates that ride the axis capture.
+  Checked by writing each and asserting the undo restores the previous value, not by
+  reading the list.
+- `Set iteration`'s checkmark is asked of the plan's **link** component, so the current
+  iteration stays checked when the item's dates have drifted from it, and picking it
+  re-applies the timeframe rather than doing nothing.
 - No iteration is ever inherited from a parent item.
 
 ## Where it lives
 
 The type name and its default subfolder join `src/domain/typeVocabulary.ts`; the marker
-rules it inherits are already in `src/domain/itemTypes.ts` and need no edit. The property
-is one row in `PROPERTY_TABLE` in `src/domain/optionalProperties.ts`, which is what buys
-the `iterationProperty` option in `src/domain/viewOptions.ts`, the resolved key in
-`src/domain/settings.ts`, the collision gate in `src/domain/settingsConsistency.ts` and
-the setup action's binding. Reading the link is `src/domain/readItems.ts` over
-`src/domain/noteFields.ts`; the write is one more pair in `applyLabels`'
-in `src/storage/frontmatter.ts` beside the parent link's own write — NOT in `applyLabels`,
-which carries plain strings and neither the app nor a source path — planned by
+rules it inherits are already in `src/domain/itemTypes.ts` and need no edit. Both
+properties are rows in `PROPERTY_TABLE` in `src/domain/optionalProperties.ts`, which is
+what buys the `iterationProperty` and `iterationGoalProperty` options in
+`src/domain/viewOptions.ts`, the resolved keys in `src/domain/settings.ts`, the collision
+gate in `src/domain/settingsConsistency.ts` and the setup action's binding. Reading both
+is `src/domain/readItems.ts` over `src/domain/noteFields.ts`.
+
+The two writes are deliberately different shapes in `src/storage/frontmatter.ts`. The
+**link** is its own pair beside the parent link's own write — NOT in `applyLabels`, which
+carries plain strings and neither the app nor a source path — planned by
 `src/domain/writePlan.ts`, which carries the target file rather than a serialized string.
-The menu
-entry is `src/view/interactions/labels.ts`, beside the assignee's
-([[Setting the assignee on an item]]). Driven in `test/domain/settings.test.ts` and
-`test/view/contextRowWrites.test.ts`.
+The **goal** is a plain string, so it is one more row in the list `applyLabels` already
+loops over. Reuse is judged by what the value is, and these two values are not the same
+kind of thing.
+
+**Both keys also need a row in `touchedKeys`' `carried` list in
+`src/storage/writeKeys.ts`**, on the same condition the writer writes on. That is not a
+detail of where code sits: `applySafely` captures each write's inverse from that list, so
+a key written and not listed is a change **no undo can reach** — the single undo slot
+would put the dates back and leave the goal or the link as the write left them. The list's
+own comment states the rule and names the assignee as the property that followed it, which
+is the shape both of these take. An earlier revision of this note omitted the module
+entirely and would have had an implementer ship exactly that hole.
+
+The backfill exclusion is a third early return in `missingKeyStubs`, in
+`src/domain/writePlan.ts`. The menu entry is `src/view/interactions/labels.ts`, beside
+the assignee's ([[Setting the assignee on an item]]). Driven in
+`test/domain/settings.test.ts` and `test/view/contextRowWrites.test.ts`.

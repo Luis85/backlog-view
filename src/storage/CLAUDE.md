@@ -10,9 +10,13 @@ can be checked by reading one directory.
 
 ## Writing the vault
 
-- Never write frontmatter outside `frontmatter.ts` (`applyWrites` / `applyRestores` /
-  `createBacklogItem`), and every write path — including creation — goes through the
-  `configProblems` gate.
+- Never write frontmatter outside `frontmatter.ts` (`applyWrites` / `applyRestores`) and
+  `createNote.ts` (`createBacklogItem`), and every write path — including creation — goes
+  through the `configProblems` gate. Two files rather than one since 2026-08-16, on the
+  line cap: **editing** a note grows a row in a list per optional property, **making** one
+  grows a field on `NewItemSpec`, and the second was the faster half. The boundary is
+  unchanged and is still the DIRECTORY's — `no-restricted-syntax` bans the calls
+  everywhere outside it, not outside a file.
 - `applyWrites` is serialized but not transactional: a mid-batch failure leaves the
   earlier writes applied (orders self-correct on the next renumbering drop). A date
   batch REFUSED against the live note stops there for the same reason and reports what

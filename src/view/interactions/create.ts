@@ -1,15 +1,19 @@
-import { Notice } from 'obsidian';
+import { Notice, TFile } from 'obsidian';
 import { BacklogViewHost } from '../host';
-import { TitlePromptModal } from '../../ui/prompts';
+import { IterationPromptModal, IterationResult, TitlePromptModal } from '../../ui/prompts';
 import { manualLink } from '../../ui/manualDialog';
 import { manualSections } from '../manual/sections';
 import { BacklogItem, BacklogModel } from '../../domain/model';
-import { focusTarget, folderForType } from '../../domain/itemTypes';
-import { ORDER_SPACING } from '../../domain/writePlan';
-import { createBacklogItem } from '../../storage/frontmatter';
+import { focusTarget, folderForType, isIterationType } from '../../domain/itemTypes';
+import { AxisWrite, computeIterationNoteWrites, ORDER_SPACING } from '../../domain/writePlan';
+import { createBacklogItem } from '../../storage/createNote';
+import { nextIterationDates, nextIterationName, previousIteration } from '../../domain/iterations';
+import { ITERATION_TYPE, LEVELS } from '../../domain/typeVocabulary';
+import { daysBetween, formatCivil } from '../../domain/timeline';
+import { readDate, todayCivil } from '../../domain/noteFields';
+import { statedEnds } from '../../domain/bars';
 import { BacklogSettings } from '../../domain/settings';
 import { configProblems } from '../../domain/settingsConsistency';
-import { LEVELS } from '../../domain/typeVocabulary';
 
 /**
  * Type for the primary New button: whatever the view is focused on when it is focused —
@@ -119,6 +123,37 @@ function promptDetail(parentItem: BacklogItem | null, folder: string): string {
 	return parentItem ? `Under "${parentItem.title}" · ${where}` : `${where[0].toUpperCase()}${where.substring(1)}`;
 }
 
+/**
+ * The iteration a new card joins, and the timeframe that comes with it — everything
+ * `createBacklogItem` needs to make a card that BELONGS to the board it was made on.
+ *
+ * This exists because a card created on an iteration board without it would draw once
+ * and vanish on the next refresh: the population is the notes that NAME the iteration, so
+ * a card that names none is not in it. `A board scoped to one iteration` extension 5c is
+ * the criterion; the horizon's own "created in a bucket claims that bucket in the same
+ * write" is the precedent, and the dates are that rule read one property further — a card
+ * scheduled outside the sprint it was created on is the same incoherence.
+ *
+ * Asked of `effectiveScope` rather than of the projection, which is the same question one
+ * step earlier: a scope that no longer resolves has already fallen the whole view back to
+ * the product board, and a card made there is a product card.
+ */
+function iterationOf(host: BacklogViewHost): { iteration?: TFile; axis?: AxisWrite } {
+	const scope = host.effectiveScope;
+	const iteration = scope === null ? undefined : host.model?.byPath.get(scope);
+	if (!iteration) return {};
+	// `statedEnds` reads what the ITERATION carries, gated on the date keys being
+	// configured — so an unconfigured end is absent here rather than dropped downstream,
+	// and an end the sprint does not state is never invented for the card.
+	const ends = statedEnds(iteration);
+	const axis: AxisWrite = {};
+	for (const end of ['start', 'target'] as const) {
+		const date = ends[end].value;
+		if (date !== null) axis[end] = formatCivil(date);
+	}
+	return { iteration: iteration.file, ...(axis.start || axis.target ? { axis } : {}) };
+}
+
 interface CreateRequest {
 	levelName: string;
 	parentItem: BacklogItem | null;
@@ -149,6 +184,7 @@ async function createFromPrompt(host: BacklogViewHost, request: CreateRequest): 
 			// Parentless items rank among the real top level, not the focus rows.
 			order: endOfSiblingsOrder(parentItem ? parentItem.children : host.model?.realRoots ?? []),
 			horizon: request.horizon,
+			...iterationOf(host),
 		});
 		new Notice(`Created "${file.basename}".`);
 	} catch (e) {
@@ -195,4 +231,181 @@ function inferFolder(model: BacklogModel | null): string {
 		}
 	}
 	return best === '/' ? '' : best;
+}
+
+/**
+ * Make an iteration, or edit the one this board is scoped to — the two entries under the
+ * scope picker, and the one dialog behind both.
+ *
+ * **Both gate `configProblems` before OPENING.** `createBacklogItem` performs no
+ * validation of its own — the ordinary New flow runs the gate before reaching it — so a
+ * toolbar action calling it directly would be a creation surface accepting a
+ * configuration every other one refuses: with the goal property colliding with the type
+ * key, the goal overwrites `type: Iteration` and the new note is not an iteration at all.
+ * `runInit` is the precedent and the reason. Gated on open rather than on submit, so the
+ * reader is told what to fix before typing a name and two dates.
+ */
+export function promptNewIteration(host: BacklogViewHost, model: BacklogModel): void {
+	if (refusedByConfig(host)) return;
+	// The FOCUS-IMMUNE population, the same one the scope picker reads (`model.byPath`):
+	// `model.results` is narrowed to the focused forest, so with a `PBI` focus retained
+	// this found no predecessor and prefilled from today — while the picker beside it went
+	// on offering a later sprint, and accepting the prefill would create an iteration
+	// overlapping it. Found by review (Codex, PR #154).
+	const population = [...model.byPath.values()].filter((item) => !item.outsideFilter);
+	const previous = previousIteration(population);
+	const dates = nextIterationDates(previous, todayCivil(), host.settings.iterationLengthDays);
+	openIterationPrompt(host, {
+		heading: 'New iteration',
+		cta: 'Create',
+		// Numbered, so a folder of iterations sorts in the order they run — and a prefill
+		// like every other field here, typed over by anyone who names their sprints.
+		name: nextIterationName(population),
+		start: dates.start,
+		target: dates.target,
+		goal: '',
+		onSubmit: (result) => void createIteration(host, result),
+	});
+}
+
+export function promptEditIteration(host: BacklogViewHost, item: BacklogItem): void {
+	if (refusedByConfig(host)) return;
+	const ends = statedEnds(item);
+	openIterationPrompt(host, {
+		heading: `Edit "${item.title}"`,
+		cta: 'Save',
+		// No name field: renaming an iteration is renaming a note, and Obsidian does that
+		// better — the stored scope already follows a rename either way.
+		name: null,
+		start: ends.start.value === null ? '' : formatCivil(ends.start.value),
+		target: ends.target.value === null ? '' : formatCivil(ends.target.value),
+		goal: item.iterationGoalValue ?? '',
+		onSubmit: (result) => void saveIteration(host, item, result),
+	});
+}
+
+/**
+ * The edit, re-asked of the LIVE note before it is planned.
+ *
+ * A dialog stays open across refreshes, so the `BacklogItem` it was opened on is a
+ * snapshot: the note can be retyped or deleted while the reader is typing, and an
+ * unconditional write would then put an iteration's dates and goal onto a work item — or
+ * onto a `Milestone`, whose own target the axis write would overwrite. `applySafely`
+ * cannot catch it, because it checks the configuration and the filter and neither has
+ * changed. Found by review (Codex, PR #154).
+ *
+ * A view-layer re-read rather than an expectation carried into the write boundary, and
+ * the narrower fix is deliberate: this closes the one path a reader can actually take,
+ * while the general question — whether a plan should carry what it expected the note to
+ * be, so `storage/` can refuse a stale batch — is open across `writePlan.ts` and
+ * `labels.ts` and is escalated rather than answered here.
+ */
+function saveIteration(host: BacklogViewHost, item: BacklogItem, result: IterationResult): void {
+	const live = host.model?.byPath.get(item.file.path);
+	if (!live || !isIterationType(live.typeName)) {
+		new Notice('That iteration is no longer there. Nothing was written.');
+		return;
+	}
+	void host.applySafely(
+		computeIterationNoteWrites(live, {
+			axis: axisFrom(host, result),
+			// A cleared goal REMOVES the key here, which is the edit path's own case:
+			// the key exists, and taking it off is what clearing means.
+			goal: host.settings.iterationGoalKey ? (result.goal || null) : undefined,
+		}),
+	);
+}
+
+/**
+ * Whether the confirmed pair runs backwards. Read through `readDate`, the same tolerant
+ * reader the model uses, so a value this view cannot read is not called reversed — the
+ * refusal is about an order, never about a spelling.
+ */
+function reversed(start: string, target: string): boolean {
+	const from = readDate(start).value;
+	const to = readDate(target).value;
+	return from !== null && to !== null && daysBetween(from, to) < 0;
+}
+
+function refusedByConfig(host: BacklogViewHost): boolean {
+	const problems = configProblems(host.settings);
+	if (problems.length === 0) return false;
+	new Notice(`Fix the view options first: ${problems[0]}`);
+	return true;
+}
+
+/** The two ends a confirmed entry states — absent where no property could hold one. */
+function axisFrom(host: BacklogViewHost, result: IterationResult): AxisWrite {
+	const axis: AxisWrite = {};
+	if (host.settings.startKey) axis.start = result.start || null;
+	if (host.settings.targetKey) axis.target = result.target || null;
+	return axis;
+}
+
+/**
+ * The dialog itself, with the one validation both paths share: a confirmed target before
+ * its start is refused HERE rather than at the write, because the write path's honest
+ * answer to a reversed span is to shelve the note — and a dialog that produced one on
+ * purpose would be a control creating the thing the roadmap has to apologise for.
+ */
+function openIterationPrompt(
+	host: BacklogViewHost,
+	spec: {
+		heading: string;
+		cta: string;
+		name: string | null;
+		start: string;
+		target: string;
+		goal: string;
+		onSubmit: (result: IterationResult) => void;
+	},
+): void {
+	new IterationPromptModal(host.app, {
+		...spec,
+		description: 'Dates are inclusive: an iteration runs from its start to its target, both days included.',
+		fields: {
+			start: host.settings.startKey !== '',
+			target: host.settings.targetKey !== '',
+			goal: host.settings.iterationGoalKey !== '',
+		},
+		validate: (result) => {
+			if (spec.name !== null && result.name === '') return 'Give the iteration a name.';
+			if (result.start && result.target && reversed(result.start, result.target)) {
+				return 'The target is before the start.';
+			}
+			return null;
+		},
+	}).open();
+}
+
+/**
+ * The create half — one write carrying the type, the folder, both dates and the goal, so
+ * the note is never momentarily an iteration its own frontmatter does not describe.
+ *
+ * A blank goal is an OMITTED field rather than an empty string: `createBacklogItem`
+ * writes what it is given, so `''` would land as `goal: ''` — a key the register says is
+ * not written at all, and the placeholder the board is refused from drawing.
+ */
+async function createIteration(host: BacklogViewHost, result: IterationResult): Promise<void> {
+	const axis = axisFrom(host, result);
+	try {
+		const file = await createBacklogItem(host.app, host.settings, {
+			folder: folderForType(ITERATION_TYPE, host.settings) || host.settings.homeFolder,
+			title: result.name,
+			typeName: ITERATION_TYPE,
+			parent: null,
+			order: endOfSiblingsOrder(host.model?.realRoots ?? []),
+			axis: { ...(axis.start ? { start: axis.start } : {}), ...(axis.target ? { target: axis.target } : {}) },
+			...(host.settings.iterationGoalKey && result.goal ? { iterationGoal: result.goal } : {}),
+		});
+		// **Not opened**, like every other creation this plugin makes. It was opened for
+		// one round on the argument that an iteration draws nowhere and would otherwise be
+		// a note to go and find; the user's answer is that making a sprint is a planning
+		// act and taking the reader off the board they are planning ON is the cost that
+		// argument did not count. The scope picker names it either way.
+		new Notice(`Created "${file.basename}".`);
+	} catch (e) {
+		console.error('Product Backlog: failed to create iteration', e);
+		new Notice('Could not create the iteration. See the developer console for details.');
+	}
 }

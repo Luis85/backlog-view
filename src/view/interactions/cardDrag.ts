@@ -67,7 +67,7 @@ function at(location: DragLocationHistory): PointerAt {
  * taken, the shelf rather than a horizon nothing shows. No projection on screen, no
  * announcement: there is no vocabulary to say it in.
  */
-function announceMove(title: string, from: string, to: string, also = ''): void {
+export function announceMove(title: string, from: string, to: string, also = ''): void {
 	announce(`Moved "${title}" from ${from} to ${to}${also}`);
 }
 
