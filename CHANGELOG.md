@@ -13,6 +13,11 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Added
 
+- **An iteration to put work in.** A note typed `Iteration` is a time box: give it a
+  goal and, from any row's or card's menu, put an item in it with `Set iteration` (or
+  take it back out with `None`). Joining one takes its start and target dates in the
+  same action, so scheduling a sprint is one pick rather than three.
+
 - **Fold a type group in the shelf.** Each type group in the expanded shelf now has a
   disclosure beside its name.
 
