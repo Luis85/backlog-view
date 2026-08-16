@@ -165,6 +165,19 @@ line now renders unlabeled. The title column is the reader's to size rather than
 constant: a grip on its edge resizes it by drag or by keyboard, remembered per saved view
 per device like the zoom beside it.
 
+**Business value estimation** is the epic that is not a projection of the tree but a
+reading of each item in it: eight value dimensions scored 1–5 against stated meanings, a
+confidence in the evidence behind them, and an effort kept out of both, from which a
+weighted value is derived and shown beside its own derivation. It opens with the argument
+for existing at all — a single `Business value: 5` compares two items that mean opposite
+things as equal — and its definition of done is mostly about what a number may not do:
+every score is an ordinary property under a key the vault names, every total is derived
+and written nowhere, and nothing ranks the backlog on its own behalf. Specification only,
+from a product requirements document of 2026-08-16; no feature under it yet, and four
+questions it names — a dozen new optional properties, inheritance with no mechanism, where
+a value-against-effort matrix lives, and an estimation status that is a second workflow —
+are what the first feature has to answer.
+
 **Test Management** is a **fifth** projection's worth of design without a projection's
 worth of drawing: an end-to-end test catalog kept as work items beside the work it
 checks. Fifth because the toolbar already carries four — the backlog tree, the
