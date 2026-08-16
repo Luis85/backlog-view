@@ -37,6 +37,13 @@ Neither can be inferred from a property key, both differ between vaults, and the
 view's risk vocabulary belongs to that view. A key bound with no value list is unconfigured,
 not empty — the same answer as no key at all, and for the same reason.
 
+**An estimate clears its criterion by being a number**, the same predicate
+[[A definition of ready]] states and for the same reason: `TBD`, an empty string and anything
+non-finite are the missing estimate wearing a value, and a criterion that accepted them would
+report a release as fully estimated on the strength of somebody's placeholder. Every other
+criterion here reads a vocabulary and clears on a declared value; this one reads a quantity
+and clears on being one.
+
 **Satisfied, partly and not are a count, not a judgement.** Each criterion is evaluated per
 item over one denominator — the items whose own property names this release, which is the
 membership [[What is in a release]] defines and the same population every other release

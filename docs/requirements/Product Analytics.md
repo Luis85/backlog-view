@@ -46,8 +46,11 @@ stamped, and saying so is the difference between a measurement and a decoration.
 
 - Every figure names its population, its unit and its period, and reports what it could not
   measure rather than counting it as zero.
-- Nothing is inferred from file modification times where a property exists to say it, and
-  where one does not, the view says the number rests on the file system.
+- **Nothing is inferred from file modification times at all.** A timestamp says a file was
+  written, which is not the question any figure here asks, so where the property is missing
+  the figure is missing too — the same answer as every other unconfigured key. This bullet
+  offered the file system as a fallback until 2026-08-16, which contradicted the rule two
+  paragraphs above it and would have shipped a caption in place of a measurement.
 - Nothing here writes anything.
 
 ## What this epic will not do
