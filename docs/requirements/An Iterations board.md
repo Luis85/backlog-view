@@ -82,7 +82,35 @@ backlog column because it has not been started, never because joining stamped it
 
 ## Outcome
 
-*(Written when the work lands.)*
+**Four of five use cases landed on 2026-08-16.** A vault that names an iteration
+property has a twelfth type, a link that puts work in a time box and takes its dates with
+it, and a board scoped to one sprint reached from a picker beside the projection
+switcher. `An iteration draws as a bar or a line` has not landed, which is why this
+Feature is still `Active` rather than `Done` — a Feature closed over an unbuilt use case
+is a defect this register has recorded before.
+
+**What the build settled that the design could not.** Three of them are worth carrying
+forward, because each was a place a value was defined once and read another way.
+
+A bucket is **not** its state. `BoardColumn` carries `bucket` and `takesDrop` beside
+`state`, because two buckets with nothing to write both hold `state: null` — so a fold
+key, a drop wiring, a column class and a menu entry all keyed on that null would have
+treated them as one column, colliding with the legitimate key-removal column on top.
+`columnFoldValue` is the single statement of that identity.
+
+The **effective scope is resolved once, upstream**, and so is the projection it implies.
+Falling only the renderer back to the product board left every other gate answering as an
+iteration board — the count included Deliverables, the focus control stayed inert, the
+filter used the whole-tree index. An iteration board whose scope no longer resolves IS
+the product board, everywhere.
+
+And the **done-column fold default is off here**, for the reason the completed-items
+toggle is: Resolved is what the sprint finished, so a default that shut it would fold
+away the answer the board is opened to read.
+
+**Still owed, and not answerable here**: the scope picker's fit in a one-line toolbar
+once a vault holds many iterations, the goal line and the dialog against a real theme,
+and whether three columns read as a board rather than as a product board missing some.
 
 ## Use cases
 
