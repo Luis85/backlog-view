@@ -18,13 +18,17 @@ assignee: ""
 
 **An item's value is a set of answers, not a number.** Each backlog item can carry an
 estimation profile: eight value dimensions scored 1–5, a confidence in the evidence behind
-them, and an effort and complexity kept apart from both. The view reads those properties,
-derives a weighted business value from them, and shows the derivation beside the result —
-in the row, on the card, and in a value-against-effort projection of the whole backlog.
+them, and an effort and complexity kept apart from both. A weighted business value is
+derived from those answers and **written back to the item's own note**, so every other
+view reads a plain property and no other view has to know the model.
+
+This is the plugin's **second Bases view** — its own registration, its own view options,
+its own state, its own screen — not a fifth position on the backlog view's toolbar.
 
 **Outcome** — Someone comparing two items can see *why* each one scores what it scores,
 how sure anyone is of it, and what it would cost, without any of the three being folded
-into the others.
+into the others — and the backlog, the board and the roadmap can show the result without
+learning any of it.
 
 ## Why this exists
 
@@ -46,6 +50,28 @@ belief, and how does it compare to the others?**
 
 It is decision *support*. The moment a derived number is read as the decision, this epic
 has made prioritization less honest rather than more.
+
+## A second view, not a fifth toggle
+
+The backlog view already carries four projections behind one toolbar — tree, board,
+roadmap, Deliverables board — and each one is a different *drawing of the same tree*.
+Estimation is not that. It is a form over one item at a time, a table of items ranked by
+numbers the tree does not hold, and a scatter of value against effort; it has its own
+properties, its own vocabulary and its own configuration, and none of it makes a tree
+easier to read.
+
+So it registers separately. `main.ts` names a second Bases view beside
+`PRODUCT_BACKLOG_VIEW_TYPE` — its own name and icon in Obsidian's view picker, its own
+`getViewOptions` describing estimation keys and weights only, its own entry in the
+view-state store — and a vault chooses it per saved view, the way it chooses any Bases
+view. The backlog view's toolbar does not grow, its options do not gain a section nobody
+using the tree will read, and the two views share the layers below them: one write
+boundary, one gate, one undo history, one model of what a work item is.
+
+What the two views share on the *screen* is a property, not code. The estimation view
+writes a consolidated value onto the note; the backlog view reads it if it has been told
+which key holds it, exactly as it reads a risk level today, and shows it without knowing
+what a dimension is.
 
 ## The default model
 
@@ -91,10 +117,21 @@ Three quantities stay **outside** that sum and beside it:
   ([[Setting the risk on an item]]) — the view names its keys in the view options and
   invents none, an unconfigured key is never written, and a vault with nothing configured
   gets no estimation surface rather than a broken one.
-- **Every derived number is derived, and written nowhere.** Business value,
-  confidence-adjusted value and the indicator are inferences over the scores, recomputed
-  on read, the same way a parent's roadmap span is drawn as the inference it is. A
-  persisted total is a copy that can disagree with its inputs.
+- **The consolidated value is written back; nothing else is.** The business value is the
+  one derivation that leaves the view, because its whole job is to be read by views that
+  do not implement the model — the backlog row, a Bases filter, a sort, another plugin. It
+  lands as an ordinary property through the one write boundary, in the same gated,
+  undoable batch as the score that changed it, never on a render pass and never by a
+  background sweep. Everything else — the confidence-adjusted value, the indicator, the
+  matrix position — stays an inference recomputed on read.
+
+  **A written total is a copy, and a copy can be wrong.** That cost is accepted here
+  rather than waved away, so two things are required of it: it is rewritten by the same
+  action that changes any of its inputs, and it records the model that produced it, so a
+  total computed under weights nobody uses any more can be told from a current one. That
+  is what the estimation status exists for — a stale total says `Needs re-estimation`
+  rather than passing as fresh. A total whose inputs are gone is removed, not left
+  standing.
 - **A result can always be decomposed.** Anywhere a score appears, the dimensions and
   weights that produced it are reachable. A number a reader cannot take apart is the
   problem this epic was opened about.
@@ -128,19 +165,22 @@ Three quantities stay **outside** that sum and beside it:
 Five questions have to be answered in the features under this epic, because each one can
 make the work twice as large after it starts:
 
-1. **Roughly twelve new optional properties.** Obsidian's picker offers only properties a
-   vault already has, so the suggest-and-backfill action in `src/domain/optionalProperties.ts`
-   has to bind and backfill them — a dozen keys at once is a different action from the
-   handful it binds today, and both halves of it are needed before a single score can be
-   entered.
+1. **Roughly thirteen new optional properties**, one per dimension plus confidence,
+   effort, complexity, the consolidated value and the estimation status. Obsidian's picker
+   offers only properties a vault already has, so this view needs the same bind-and-backfill
+   action the backlog view has in `src/domain/optionalProperties.ts` — reused rather than
+   copied, over its own key list — and both halves of it are needed before a single score
+   can be entered.
 2. **Inheritance has no mechanism yet.** "Strategic alignment inherited from the parent
-   Epic" is a value that is displayed, marked with its source, and written nowhere. That is
-   a third kind of derived value in a view that already has two, and it must not become a
-   write.
-3. **The matrix is another projection.** The toolbar already carries four toggles, with a
-   test catalog wanting a fifth ([[Test Management]]); a value-against-effort plot is
-   either a sixth or something that lives inside the estimation view. Decide which before
-   drawing it.
+   Epic" is a value that is displayed, marked with its source, and written nowhere. A view
+   that writes one derivation back must not start writing this one too: an inherited score
+   copied onto a child is a second copy of a fact, and it stops tracking its source the
+   moment the parent changes.
+3. **Changing the weights invalidates every stored total at once.** A weight is one number
+   in one view's options; the totals it produced are on hundreds of notes. Rewriting them
+   is a mass write nobody asked for, and leaving them is a backlog of numbers that quietly
+   disagree with the model on screen. Neither is obviously right, and the answer decides
+   whether a weight is editable at all after the first estimate.
 4. **An estimation status is a second workflow.** Not estimated → draft → estimated →
    validated → needs re-estimation is a state machine over a property that is not the
    board's, and the board already learned what a second workflow costs

@@ -165,18 +165,24 @@ line now renders unlabeled. The title column is the reader's to size rather than
 constant: a grip on its edge resizes it by drag or by keyboard, remembered per saved view
 per device like the zoom beside it.
 
-**Business value estimation** is the epic that is not a projection of the tree but a
-reading of each item in it: eight value dimensions scored 1–5 against stated meanings, a
-confidence in the evidence behind them, and an effort kept out of both, from which a
-weighted value is derived and shown beside its own derivation. It opens with the argument
-for existing at all — a single `Business value: 5` compares two items that mean opposite
-things as equal — and its definition of done is mostly about what a number may not do:
-every score is an ordinary property under a key the vault names, every total is derived
-and written nowhere, and nothing ranks the backlog on its own behalf. Specification only,
-from a product requirements document of 2026-08-16; no feature under it yet, and four
-questions it names — a dozen new optional properties, inheritance with no mechanism, where
-a value-against-effort matrix lives, and an estimation status that is a second workflow —
-are what the first feature has to answer.
+**Business value estimation** is the first epic that is not a projection of the tree at
+all: it is the plugin's **second Bases view**, registered beside the backlog one with its
+own options, its own state and its own screen, because a form over one item, a ranked
+table and a value-against-effort scatter make no tree easier to read and the toolbar has
+four positions already. Eight value dimensions scored 1–5 against stated meanings, a
+confidence in the evidence behind them, and an effort kept out of both produce a weighted
+value that **is written back to the note**, so the backlog, the board and the roadmap read
+a plain property and none of them learns the model. It opens with the argument for
+existing at all — a single `Business value: 5` compares two items that mean opposite
+things as equal — and its definition of done is mostly about what a number may not do: one
+derivation leaves the view and the rest are recomputed on read, a written total records
+the model that made it and says `Needs re-estimation` when that model moves on, a merged
+number never stands in for its inputs, and nothing ranks the backlog on its own behalf.
+Specification only, from a product requirements document of 2026-08-16; no feature under
+it yet, and five questions it names — thirteen new optional properties, inheritance with
+no mechanism, what changing a weight does to every stored total, an estimation status that
+is a second workflow, and what a partial profile scores — are what the first feature has
+to answer.
 
 **Test Management** is a **fifth** projection's worth of design without a projection's
 worth of drawing: an end-to-end test catalog kept as work items beside the work it
