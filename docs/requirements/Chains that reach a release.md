@@ -16,9 +16,16 @@ assignee: ""
 
 # Chains that reach a release
 
-Dependency chains ending in something with a date or a commitment — a release, a milestone,
-high-priority work, an objective — are highlighted, because those are the ones whose delay
+Dependency chains ending in something with a date or a commitment — a release, high-priority
+work, an objective, a dated item — are highlighted, because those are the ones whose delay
 costs something specific.
+
+**Milestones are deliberately not in that list**, although the source document names them.
+A milestone holds no work and nothing points at it ([[A release is a note of its own]]) —
+there is no item-side milestone property anywhere in this register, on purpose — so no chain
+can be shown to reach one, and an endpoint the view cannot recognise is a promise it cannot
+keep. A vault that wants a milestone to be reachable gives it a release's shape, which is the
+existing answer rather than a new relationship invented for a highlight.
 
 **Each of those endpoints is a key this view names for itself**: the release membership, the
 alignment link, the priority, the dates. **The priority endpoint needs a value list as well

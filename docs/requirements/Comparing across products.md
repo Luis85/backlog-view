@@ -34,9 +34,16 @@ comparison says so rather than averaging across it.
 else is shown and counted as unattributed, because treating it as agreeing with whatever it
 sits beside is the silent version of the problem this note exists to avoid. With
 no stamp key configured at all, the comparison drops the claim rather than making it — it
-compares the numbers and says it cannot tell which models produced them. Rescoring a
-cross-product population under one model is what an estimation view over that population is
-for.
+compares the numbers and says it cannot tell which models produced them.
+
+**Rescoring the selection under one model is declined here, deliberately, and the source
+document asked for it.** Sending a population from this view into a prioritization engine
+would be one view driving another — a command channel between views, which is the coupling
+[[A view per capability]] exists to prevent, and a second implementation of the model besides.
+The vault already does it in one move: an estimation view whose base returns that population
+*is* the cross-product rescoring, with its own model, its own settings and the same stamped
+totals this view then reads. What is lost is a button; what is kept is that no view can
+change what another view means.
 
 **Outcome** — Investment choices between products use the same recorded numbers everyone
 else sees, and a comparison across two different models says so instead of pretending to

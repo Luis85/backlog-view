@@ -52,7 +52,11 @@ between is partly, and it says how many, which is the number somebody actually a
 the criterion cannot read — no value where it looks — are counted as not clearing it and
 reported separately, because an unanswered item is not a passing one.
 
-**The dependency criterion is the exception to that**, and it has to be: an empty edge list
+**Two criteria are exceptions to that, and both for the same reason: absence is an answer
+there.** An item with no risk value carries no critical risk, so it clears the risk criterion
+— a release of risk-free work would otherwise need a synthetic "no risk" value written onto
+every item to become ready, which is the plugin inventing data to satisfy its own check. The
+other is the dependency criterion, and it has to be: an empty edge list
 is removed rather than stored ([[A definition of ready]]), so an item that waits for nothing
 has no value where this criterion looks, and the blanket rule would leave a release full of
 independent work unable to satisfy it at all. **No edges is resolved** — there is nothing
