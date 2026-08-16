@@ -21,7 +21,7 @@ across products, domains or workstreams without any of those teams changing how 
 backlog is shaped.
 
 **Outcome** — Someone overseeing several product areas can compare them on progress, size,
-value and health, and each area still runs its own backlog its own way.
+value and risk, and each area still runs its own backlog its own way.
 
 ## Why it is its own view
 

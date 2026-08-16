@@ -16,12 +16,12 @@ assignee: ""
 
 # Rolling a portfolio up
 
-Progress, item count, value, effort, release distribution, health and risk aggregated per
+Progress, item count, value, effort, release distribution and risk aggregated per
 portfolio level, each from the property that holds it, each naming its unit, and each
 reporting how much of the population could not be measured.
 
 Every **property-backed** one of those is a key this view names — value, the **model stamp**
-beside it, effort, release, health, risk — on the terms [[Settings scoped to their view]]
+beside it, effort, release, risk — on the terms [[Settings scoped to their view]]
 states, and an aggregate whose key is unconfigured is absent from the rollup rather than
 counted as zero.
 
@@ -36,13 +36,17 @@ folded into a fingerprint's average. With no stamp key configured there is no av
 value column shows the population and says it cannot tell which models produced it.
 
 **Each one names its operator too, because "aggregated" is not an instruction.** Effort is
-**summed** — it is a quantity, and two items cost what they cost. Value is **averaged**, and
+**summed** — it is a quantity, and two items cost what they cost — with the same rule
+[[Capacity against commitment]] states for a release: each item's **own** estimate counted
+once, nothing derived from anybody's children, and members whose estimate may already cover
+a descendant in the same grouping counted and named beside the figure rather than resolved.
+Only the vault knows whether its parent estimates are aggregates. Value is **averaged**, and
 never summed: a score on a 1–5 scale is a position on a scale, so adding two of them says
 nothing, and the average is reported beside the count it came from. Release is a
 **distribution** — how many items per release, unreleased included — not a single value.
-Health and risk are **distributions as well, and are never mapped to numbers**: they are
+Risk is a **distribution as well, and is never mapped to a number**: it is
 categorical, and an average of low, medium and high is a number no one can act on. Where a
-single figure is wanted from either, it is the **worst** category present and the count at
+single figure is wanted from it, it is the **worst** category present and the count at
 it, which is a statement anybody can check against the list.
 
 **"Worst" needs an order, and this view declares its own** — one ordered list of labels per
@@ -59,12 +63,14 @@ The denominator is the same for all of them: the items in the grouping, which
 or something under it. Each aggregate reports how much of that population it could not
 measure, and the unmeasured are never zeros in the numerator.
 
-**The health here is a recorded property, not the derived score.**
-[[A health score that can be argued with]] computes its number from the rules that fired
-against one base, persists nothing, and is therefore not an input to anything: the two are not a pipeline, and a vault
-where nothing writes a health property gets no health rollup, exactly as an unconfigured key
-gets none. Reading another view's rule configuration to recompute it here is what
-[[Settings scoped to their view]] refuses.
+**There is no health aggregate here, and that is a removal rather than an omission.** The
+only health number this plugin produces is [[A health score that can be argued with]], which
+computes from the rules that fired against one base and **persists nothing** — so a rollup of
+it would have to recompute it from another view's rule configuration, which
+[[Settings scoped to their view]] refuses, or read a property no capability writes, which is
+an aggregate that can only ever be empty. Risk covers the recorded judgement and the health
+view covers the derived one; a portfolio wanting the second opens it over the population it
+cares about.
 
 **Two of them are not property-backed and must not be treated as if they were.** The item
 count is the population the base returned, counted. **Progress** is derived the way the
