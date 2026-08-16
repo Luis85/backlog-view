@@ -101,6 +101,12 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Fixed
 
+- **Two rough edges on the shelf's own controls.** The type filter's menu opened under the
+  mouse the first time and then reopened at the button's edge after every pick, so the
+  menu moved the moment it was used; it now opens in the same place both times. And the
+  search box drew a border and a background inside the theme's own, giving the field a
+  double outline; it is now a plain search field wearing whatever the theme gives one.
+
 - **The pause after a write on a large backlog is gone.** Every change used to redraw the
   whole tree, so on a vault of around eight hundred notes with the tree open, each move,
   each state change and each undo was followed by roughly half a second of nothing. The
