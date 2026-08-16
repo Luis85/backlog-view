@@ -324,8 +324,8 @@ npm run docs   # and as part of npm run check, and in CI
 `docs-check.mjs` enforces everything this file claims — an advertised invariant nobody
 can run is worse than none, because it invites trust it has not earned:
 
-1. Every note outside `adrs/` and `superpowers/` carries a `type`, an `order` and a
-   supported `status` — the three fields the conventions table below calls required —
+1. Every note outside `adrs/`, `superpowers/`, `prds/` and `sdds/` carries a `type`, an
+   `order` and a supported `status` — the three fields the conventions table below calls required —
    every parent link resolves, and every parent/child pair is legal. A note that lost
    its frontmatter is reported rather than skipped: a skipped file is checked for
    nothing and says so to nobody. Two notes may not share a **basename**, in any
@@ -336,7 +336,15 @@ can run is worse than none, because it invites trust it has not earned:
 3. Every wikilink resolves to a note, and **every relative markdown link resolves to a
    file** — anywhere in `docs/`, whatever it points at, percent-encoding decoded and
    anchors stripped. Links inside code spans are examples, not references, and are
-   skipped; so are external URLs.
+   skipped; so are external URLs. **`prds/` and `sdds/` are outside this rule and the
+   `**Checked by**` rule below**, and they are the only two folders that are: a received
+   document names notes, files and interviews from wherever it was written, so checking
+   them would force the one edit the verbatim rule exists to prevent, and the marker is
+   this repository's convention rather than a fact about prose. `superpowers/` is written
+   HERE and points at this register, so it keeps every rule in this list except the
+   frontmatter in rule 1. The cost is stated rather than hidden: a link in a received
+   document that does name a note here is unverified, which is why the editorial preamble
+   on each one names its notes in prose instead of linking them.
 4. Every `src/` or `test/` path named by a note in **`requirements/` or `adrs/`** exists.
    Those two describe the code as it is now. `tasks/`, `issues/` and `bugs/` are records
    of a moment and may legitimately name a file since split away — rewriting them would
