@@ -29,5 +29,11 @@ clamped to it and reported rather than silently extending the scale; a value tha
 number is a missing score, which is the partial-profile rule and not an arithmetic
 question.
 
+**A range must increase**: `min < max`, refused at the point it is configured, because
+`min == max` divides by zero and `min > max` makes the clamp and the direction mean two
+things at once. A saved model that already holds an invalid range computes nothing and says
+which dimension is wrong — the same shape as this plugin's existing configuration warnings,
+where a view that cannot be trusted to write says so instead of writing.
+
 **Outcome** — A team scores what it actually cares about, under the property names its
 vault already uses, and any two implementations of the model agree on the number.
