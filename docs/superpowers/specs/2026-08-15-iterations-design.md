@@ -162,6 +162,15 @@ never stubbed and never read except from the iteration a board is scoped to. A t
 filter on a plain label would be the first in the codebase, and it would buy nothing the
 absence of an offer does not already buy.
 
+**Both keys need a row in `touchedKeys`' `carried` list** (`src/storage/writeKeys.ts`),
+on the same condition the writer writes on. Writing a key and capturing it are two
+statements, and only the second makes the write undoable: `applySafely` builds each
+inverse from that list, so a key written and not listed is a change no undo can reach.
+The single undo slot would put the dates back — they ride `axisEntries`, which is already
+captured — and leave the goal or the link where the write left them. The list's own
+comment states the rule and names the assignee as the property that followed it, which is
+the shape both of these take.
+
 **Reading it.** The value is a wikilink to the Iteration note. `src/domain/noteFields.ts`
 already resolves a link property through the metadata cache — handling wikilinks,
 aliases, bare names and lists — which is how `parent` and `dependsOn` are read.
@@ -372,9 +381,25 @@ The board reads **`settings.stateKey`** — the product board's own resolved key
 
 | Column | Holds | A drop writes |
 | --- | --- | --- |
-| **Open** — the iteration backlog | no state at all, plus any state named in `iterationOpenStates` | the first value in `iterationOpenStates` |
+| **Open** — the iteration backlog | no state at all, plus any state named in `iterationOpenStates` | the first value in `iterationOpenStates` **that reads back into Open** |
 | **In Progress** | every state in neither outer bucket | the first `stateValues` entry in no bucket |
 | **Resolved** | any state in `iterationResolvedStates`, **plus** every product `doneValue` | the first value in `iterationResolvedStates`, or the first `doneValue` when that list is empty |
+
+**Every representative is asked of the reading, never of the list.** One rule covers all
+three cells above: *a bucket's representative is the first state the bucket rule itself
+places in that bucket*. Stated generally rather than as a guard on the one cell that can
+break it, because a lookup and a reading that disagree is the exact drift the checkmark
+rule exists to prevent, and the next configuration to expose it is the one nobody thought
+of.
+
+Only Open can break today, and it takes a misconfiguration to do it: a state named in
+`iterationOpenStates` **and** in `iterationResolvedStates` or the product `doneValues` is
+routed to Resolved by the precedence rule below. Written as the naive "first value in
+`iterationOpenStates`", a drop on Open would write it and then redraw the card in
+Resolved — the card visibly landing in a column it was not dropped on, which is worse
+than either a refusal or a no-op. The other two cells are self-consistent by
+construction: a state in no list *is* In Progress, and anything in
+`iterationResolvedStates` or `doneValues` *is* Resolved, whatever else names it.
 
 Two new options in the `Iterations` group, both `text` lists like `deliverableStateValues`:
 
@@ -389,20 +414,22 @@ empty `iterationResolvedStates` makes Resolved exactly the product `doneValues`.
 that configures neither gets a three-column board that already reads correctly, so
 "unconfigured" needs no separate story here.
 
-**A bucket can have nothing to write, and then it takes no drop.** The table's third
-column is a *lookup*, and three configurations leave it empty: `iterationOpenStates` unset
-(no open state exists to name), every state claimed by the two lists (In Progress has
-none), and `iterationResolvedStates` unset with no `doneValues` either. One rule covers
-all three — **a bucket with no state to write is not a drop target**: it still draws, it
-still holds the cards that read into it, and it offers no `Set state` entry and refuses a
-drag and an Alt+arrow onto it. A column that accepted a drop it could not express would
-write nothing and report a move, which is worse than a column that declines.
+**A bucket can have nothing to write, and then it takes no drop.** The lookup can come
+back empty in four configurations: `iterationOpenStates` unset, every one of its entries
+claimed by Resolved (the case above), every declared state claimed by the two lists so In
+Progress has none, and `iterationResolvedStates` unset with no `doneValues` either. One
+rule covers all four — **a bucket with no state to write is not a drop target**: it still
+draws, it still holds the cards that read into it, and it offers no `Set state` entry and
+refuses a drag and an Alt+arrow onto it. A column that accepted a drop it could not
+express would write nothing and report a move, which is worse than a column that declines.
 
-**Open is the one exception, and it is not a special case.** With `iterationOpenStates`
-empty, a drop on Open **removes the state key** — the leading no-state column's own
-semantics, which the product board has always had. Open is the bucket that holds the
-state-less cards, so "put this card in Open" already has an unambiguous meaning there
-without any list being set.
+**Open is the one exception, and it is not a special case.** With no usable open state —
+the list empty, or every entry of it routed to Resolved — a drop on Open **removes the
+state key**, which lands the card in Open by the reading rather than by a lookup. That is
+the leading no-state column's own semantics, which the product board has always had: Open
+is the bucket that holds the state-less cards, so "put this card in Open" already has an
+unambiguous meaning there without any list being set. In Progress and Resolved have no
+such natural reading, which is why they decline instead.
 
 **`Resolved`, not `Done`, and the difference is the point.** A product workflow may hold
 states downstream of the moment a sprint is finished with an item — `In review`,

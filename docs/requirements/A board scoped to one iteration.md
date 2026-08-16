@@ -88,9 +88,12 @@ the moment the populations diverged, which is exactly what happened.
 
    | Column | Holds | A drop writes |
    | --- | --- | --- |
-   | **Open** — the iteration backlog | no state at all, plus any state named in `iterationOpenStates` | the first value in `iterationOpenStates`, or **removes the key** when that list is empty |
+   | **Open** — the iteration backlog | no state at all, plus any state named in `iterationOpenStates` | the first value in `iterationOpenStates` **that reads back into Open**, or **removes the key** when there is none |
    | **In Progress** | every state neither outer bucket claims | the first `stateValues` entry in no bucket |
    | **Resolved** | any state in `iterationResolvedStates`, **plus** every product done value | the first value in `iterationResolvedStates`, or the first done value when that list is empty |
+
+   Each of those three is one rule rather than three: **a bucket's representative is the
+   first state the bucket rule itself places in that bucket** (4g).
 
 5. If the chosen iteration carries a goal, one line of it draws above the columns.
 6. A drag, an Alt+Left/Right or the card menu's `Set state` all write the **product**
@@ -389,16 +392,31 @@ the moment the populations diverged, which is exactly what happened.
   an Alt+arrow. A column that accepted a drop it could not express would write nothing and
   announce a move, which is worse than one that declines.
 
-  Three configurations produce it, and one rule covers all three rather than three guards
-  written where each was noticed: `iterationOpenStates` unset, so no open state exists to
-  name; every declared state claimed by the two lists, so In Progress has none; and
-  `iterationResolvedStates` unset with no done values either. The bucket's write target is
-  a **lookup**, and a lookup can come back empty.
-- **4f — `iterationOpenStates` is unset, and a card is dropped on Open.** Its state key is
+  Four configurations produce it, and one rule covers all four rather than four guards
+  written where each was noticed: `iterationOpenStates` unset; every one of its entries
+  claimed by Resolved (4g); every declared state claimed by the two lists, so In Progress
+  has none; and `iterationResolvedStates` unset with no done values either. The bucket's
+  write target is a **lookup**, and a lookup can come back empty.
+- **4f — Open has no usable state, and a card is dropped on it.** Its state key is
   **removed**. That is not an exception to 4e but the leading column's own long-standing
   semantics: Open is the bucket that holds the state-less cards, so "put this card in
-  Open" already means something exact without any list being set. In Progress and Resolved
+  Open" already means something exact without any list being set, and the removal lands
+  the card in Open by the **reading** rather than by a lookup. In Progress and Resolved
   have no such natural reading, which is why they decline instead.
+- **4g — the first state in `iterationOpenStates` is also a done value, or is named in
+  `iterationResolvedStates`.** It is **not** Open's representative. 4c routes it to
+  Resolved, so writing it on a drop would land the card in a column it was not dropped on
+  — visibly worse than either a refusal or a no-op, because the board would appear to
+  disobey the gesture.
+
+  The fix is a rule and not a guard, because the guard would be on the one cell someone
+  noticed: **a bucket's representative is the first state the bucket rule itself places in
+  that bucket.** Asked of the reading, never of the list. Only Open can break it today —
+  a state in no list *is* In Progress, and anything in `iterationResolvedStates` or the
+  done values *is* Resolved, whatever else names it — but a lookup and a reading that
+  disagree is the drift the checkmark rule exists to prevent, and the next configuration
+  to expose it is the one nobody thought of. With no entry surviving the test, Open falls
+  to 4f and the other two to 4e.
 - **5a — the move takes the card out of this scope**, because the base's filter names the
   state property. The card leaves in silence, as it already does on every other board:
   nothing correlates a Bases pass with a write, so no outcome report is attempted here
@@ -541,9 +559,12 @@ the moment the populations diverged, which is exactly what happened.
   gate and is taken back by the one undo slot, writing the first state in the bucket it
   lands on; and a move onto the bucket the card is already in writes **nothing**, checked
   on all three inputs.
+- Each bucket's representative is the first state **the bucket rule itself places in that
+  bucket** — checked with an `iterationOpenStates` whose first entry is also a done value,
+  asserting the drop does not write it and the card does not land in Resolved.
 - A bucket with no state to write takes no drop, offers no `Set state` entry and refuses
-  the keyboard — checked in all three configurations that produce one. The single
-  exception is Open with `iterationOpenStates` unset, where a drop **removes** the key.
+  the keyboard — checked in all four configurations that produce one. The single exception
+  is Open, where a drop **removes** the key.
 - A context row is never a card, a write target or a count.
 - An iteration holding no items says so in its own words, not the product board's.
 - The chosen iteration's goal draws as one line above the columns when it has one, and

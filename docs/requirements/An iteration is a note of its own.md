@@ -199,6 +199,11 @@ declared name owes: a default subfolder, an icon and a badge colour.
   is undone by the one undo slot — in one batch with the dates
   [[An iteration's timeframe schedules its items]] adds, so a reader can never take back
   half a commitment.
+- **Both new keys are captured for undo**, which is a separate statement from being
+  written: `touchedKeys` lists them on the same condition the writer writes on, so undo
+  restores the goal and the link and not only the dates that ride the axis capture.
+  Checked by writing each and asserting the undo restores the previous value, not by
+  reading the list.
 - `Set iteration`'s checkmark is asked of the plan's **link** component, so the current
   iteration stays checked when the item's dates have drifted from it, and picking it
   re-applies the timeframe rather than doing nothing.
@@ -221,6 +226,15 @@ carries plain strings and neither the app nor a source path — planned by
 The **goal** is a plain string, so it is one more row in the list `applyLabels` already
 loops over. Reuse is judged by what the value is, and these two values are not the same
 kind of thing.
+
+**Both keys also need a row in `touchedKeys`' `carried` list in
+`src/storage/writeKeys.ts`**, on the same condition the writer writes on. That is not a
+detail of where code sits: `applySafely` captures each write's inverse from that list, so
+a key written and not listed is a change **no undo can reach** — the single undo slot
+would put the dates back and leave the goal or the link as the write left them. The list's
+own comment states the rule and names the assignee as the property that followed it, which
+is the shape both of these take. An earlier revision of this note omitted the module
+entirely and would have had an implementer ship exactly that hole.
 
 The backfill exclusion is a third early return in `missingKeyStubs`, in
 `src/domain/writePlan.ts`. The menu entry is `src/view/interactions/labels.ts`, beside

@@ -126,7 +126,9 @@ Nothing is deleted on the way out. Nothing branches on what the item already hel
 ## Acceptance criteria
 
 - Picking an iteration plans the link and both dates in **one** batch through
-  `applySafely`, and one undo takes the whole batch back.
+  `applySafely`, and one undo takes the whole batch back — the link included, which needs
+  its own row in `touchedKeys` and is checked by undoing a join and asserting all three
+  keys are back, never by reading the list.
 - The dates written are the iteration note's own start and target, overwriting whatever
   the item held, with no branch on the item's existing values.
 - An end the iteration does not carry is left alone on the item — not written, not
@@ -151,8 +153,12 @@ reads come off the iteration item the model already holds, through
 `src/domain/readItems.ts` over `src/domain/noteFields.ts`, and the civil-date comparison
 that decides whether an end is already in step is the axis writes' own in
 `src/domain/writePlan.ts`. Applying it is `src/storage/frontmatter.ts` — the link beside
-the parent link's write, the two dates through `axisEntries`, which already carries the
-"an unconfigured key is dropped, a `null` deletes" rule this note leans on. The batch
+the parent link's write, the two dates through `axisEntries` in
+`src/storage/writeKeys.ts`, which already carries the "an unconfigured key is dropped, a
+`null` deletes" rule this note leans on **and** is already captured for undo. The link is
+not: it needs its own row in that module's `carried` list, on the writer's own condition,
+or the one undo slot would restore the dates and leave the link — half a commitment taken
+back, which is the state this note's one-batch rule exists to make impossible. The batch
 reaches the gate through `src/view/writeGate.ts`. The menu that triggers it is
 `src/view/interactions/labels.ts`, and the create path is
 `src/view/interactions/structure.ts`. Driven in `test/domain/writePlanProperties.test.ts`
