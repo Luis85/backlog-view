@@ -29,8 +29,10 @@ repository stuck.
 ## Acceptance criteria
 
 - A dedicated workflow file (not `release.yml` or the plugin's CI workflow) builds
-  `site/` and deploys it to GitHub Pages, on push to the default branch and by manual
-  dispatch.
+  `site/` and deploys it to GitHub Pages, on push to the default branch or by manual
+  dispatch — and manual dispatch always builds the default branch's current head, never
+  an arbitrary selected ref or a rerun of an older commit, so it can only republish what
+  is already true rather than roll the page back.
 - A failing build fails only that workflow run; the previously published page stays live,
   and the plugin's own CI and release workflows are unaffected.
 - No new secret beyond what GitHub Pages itself provides (`GITHUB_TOKEN`) — nothing to

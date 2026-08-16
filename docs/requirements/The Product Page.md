@@ -39,8 +39,9 @@ paragraph does.
   `main.js`.
 - It deploys to GitHub Pages from its own GitHub Actions workflow, on a push to the
   default branch, without touching the plugin's own build or release workflow.
-- `README.md` stays the one place installation is written step by step; the site links
-  to it rather than keeping a second copy that can drift from the first. The same rule
-  covers the changelog — the site links out to it and to the repository rather than
-  restating either, so a shipped feature or a version bump can never leave the page
-  describing a plugin that no longer exists.
+- `README.md` stays the one place installation is written step by step, and the
+  changelog stays the one record of what shipped when; the site links to both rather
+  than keeping a second copy that can drift from either. That guarantee covers only the
+  duplicated material — the page's own pitch and its feature-tour screenshots describe
+  the plugin independently, and nothing here keeps them in step with a rename, a
+  removed feature or a redrawn screen; that is still open.
