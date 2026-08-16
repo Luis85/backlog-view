@@ -39,12 +39,30 @@ a different session*. Overriding another skill's ending costs more than not usin
 
 ```yaml
 name: adding-backlog-items
-description: Use when the user wants to add an Epic, Feature or PBI to the backlog
-  in docs/, or describes a want, problem or idea that should become a backlog note
-  before any code is written
+description: Use when the user wants to add an Epic, Feature, PBI, user story or
+  requirement to the backlog in docs/, or asks for a new capability, outcome or body
+  of work the product does not have yet, before any code is written
 ```
 
-The description states triggering conditions and no workflow. `writing-skills`
+Two properties, and they pull against each other.
+
+**Wide enough to fire on trigger words.** The skill has to activate on how a product
+owner actually opens — *"I want a feature that…"*, *"add a story for…"*, *"new epic"*,
+*"put this on the backlog"* — not only on its own name typed as a command. That is what
+the vocabulary in the description is for; a skill nobody invokes is a skill that does not
+exist.
+
+**Narrow enough not to fire on what it cannot write.** An earlier draft said "a want,
+problem or idea", which matches a `Bug`, an `Issue` and an `Idea` — three kinds this
+skill does not create and whose folders it never writes. A trigger that matches and then
+forces a defect into `docs/requirements/` as a `PBI` is worse than one that never
+matched, because the register's own rule is that the type is a promise about the content.
+So the second arm is capability-shaped, not problem-shaped.
+
+A description is a fuzzy matcher either way, so the narrowing is not left to it alone —
+phase 0 refuses out loud, below.
+
+The description also states triggering conditions and no workflow. `writing-skills`
 records why: a description that summarises the process becomes the shortcut an agent
 follows *instead of* reading the body — which for this skill means one question and a
 written note, the exact failure it exists to prevent.
@@ -59,6 +77,15 @@ either never terminates or stops at the first plausible answer.
 Ask which of `Epic`, `Feature` or `PBI` is wanted. The type is not inferred: the
 register calls it a promise about the content and the first editorial decision, so
 it belongs to the product owner.
+
+**Refuse the kinds this skill does not write, before asking anything else.** If what the
+user described is a defect, an open question, an accepted limitation, or a thought nobody
+has committed to, it is a `Bug`, an `Issue` or an `Idea` — a different shape, in a
+different folder, and `docs/README.md` says a defect written as the wrong type loses the
+lesson. Say which kind it looks like and where it belongs, offer to write it as that
+instead, and stop. Do not convert it into a `PBI` to stay useful. The description that
+summoned the skill is a fuzzy matcher and will sometimes be wrong; this step is where that
+is caught, because nothing downstream can catch it.
 
 Then the parent — **for a `Feature` and a `PBI` only**. An `Epic` is a root: the
 legal-children table in `docs/README.md` gives it no legal parent, and `docs-check.mjs`
