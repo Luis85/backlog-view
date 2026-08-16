@@ -20,9 +20,20 @@ Progress, item count, value, effort, release distribution, health and risk aggre
 portfolio level, each from the property that holds it, each naming its unit, and each
 reporting how much of the population could not be measured.
 
-Every **property-backed** one of those is a key this view names — value, effort, release,
-health, risk — on the terms [[Settings scoped to their view]] states, and an aggregate whose
-key is unconfigured is absent from the rollup rather than counted as zero.
+Every **property-backed** one of those is a key this view names — value, the **model stamp**
+beside it, effort, release, health, risk — on the terms [[Settings scoped to their view]]
+states, and an aggregate whose key is unconfigured is absent from the rollup rather than
+counted as zero.
+
+**The value average is gated on the stamp**, for the reason
+[[Comparing across products]] already gives: a 4 from a 1–5 model and an 8 from a 0–10 model
+are not two numbers to add up, and an average across them is a figure describing no model at
+all. So the fingerprints are compared with each other — this view never asks what any of them
+means, only whether they agree — and one average is reported per fingerprint, each with its
+count, rather than one
+number across all of them. Unstamped scores are counted and reported as unattributed, never
+folded into a fingerprint's average. With no stamp key configured there is no average: the
+value column shows the population and says it cannot tell which models produced it.
 
 **Each one names its operator too, because "aggregated" is not an instruction.** Effort is
 **summed** — it is a quantity, and two items cost what they cost. Value is **averaged**, and

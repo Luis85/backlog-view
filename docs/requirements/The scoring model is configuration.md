@@ -24,9 +24,11 @@ eight in this epic's default model are a starting set, not a fixed vocabulary.
 because two reasonable readings give the same model two different totals. A raw value is
 placed on its declared range as a proportion — `(value − min) / (max − min)` — inverted to
 `1 −` that when the dimension declares less is better, multiplied by the weight, and the
-weighted sum — a proportion between 0 and 1, since the weights total 100 — is presented on
-**the model's own declared output range**, one pair of numbers beside the weights, mapped
-linearly: `min + proportion × (max − min)`. The default is 1–5, which is what the epic's
+weighted sum **divided by 100** — the weights are percentages, so their sum runs to 100 and
+the proportion that the output mapping needs runs to 1 — is presented on **the model's own
+declared output range**, one pair of numbers beside the weights, mapped linearly:
+`min + proportion × (max − min)`. Skipping that division is not a rounding difference: top
+scores everywhere would map a 1–5 model's total to 401. The default is 1–5, which is what the epic's
 examples show, and a model whose dimensions run 0–10 can declare 0–10 for its total too. The
 range is declared rather than inferred from the dimensions, because dimensions may disagree
 about theirs and a total silently taking the widest one is a number nobody chose. A value outside the declared range is
