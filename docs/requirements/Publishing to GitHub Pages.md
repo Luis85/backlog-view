@@ -20,9 +20,11 @@ A GitHub Actions workflow, separate from the plugin's own build and release work
 builds `site/` and publishes its output to GitHub Pages whenever the default branch
 changes.
 
-**Outcome** — The page in front of a visitor is never more than one push behind the
-default branch, and a broken site build never touches the plugin's own release process or
-leaves a half-built page live.
+**Outcome** — The page in front of a visitor always reflects the most recent
+default-branch push whose build passed. A broken build never replaces it with a
+half-built page, never touches the plugin's own release process — and never blocks the
+push that caused it, so a run of broken pushes leaves the page stale rather than the
+repository stuck.
 
 ## Acceptance criteria
 
