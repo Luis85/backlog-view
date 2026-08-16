@@ -254,7 +254,6 @@ make the work twice as large after it starts:
    some answered and some not. [[The weighted score]] settles it — the answered dimensions'
    weights are renormalized and the coverage is shown beside every total, with no total at
    all for an item that has answered nothing — and the two refused alternatives are named
-   there. What stays open is only where that leaves the **matrix**: a point plotted from a
-   quarter of the model sits beside one plotted from all of it, and whether the plot marks
-   that, dims it, or drops it below a stated coverage is a drawing decision the matrix
-   feature makes.
+   there. [[The value against effort matrix]] answers what that leaves for the
+   plot — every item with a total is plotted and its point carries its coverage, with no
+   threshold that hides one — so this question is closed rather than delegated onward.
