@@ -57,11 +57,24 @@ export class ViewStateController {
 	}
 
 	setProjection(mode: Projection): void {
-		// `Board` means the board this view was last on, which is what makes the scope a
-		// RETAINED pick rather than one spent on the first trip through the tree — the same
-		// rule `activeAxis` keeps for the roadmap's axis. The picker's own `Product` entry
-		// clears the scope first, so it is never redirected back here.
-		if (mode === 'board' && this.state.boardScope() !== null) mode = 'iteration';
+		// `Board` means the board this view was last on — THREE of them now: a retained
+		// iteration scope, the Deliverables pick, or the product. Retained rather than
+		// spent on the first trip through the tree, the same rule `activeAxis` keeps for
+		// the roadmap's axis. The picker's own `Product` entry clears both picks first, so
+		// it is never redirected back here.
+		if (mode === 'board') {
+			if (this.state.boardScope() !== null) mode = 'iteration';
+			else if (this.state.boardPick() !== null) mode = 'deliverables';
+		}
+		// Choosing Deliverables IS a board pick, however this was reached — the picker's
+		// entry, a test, a future command — so the memory is written here rather than at
+		// the one caller someone remembered. It clears the scope, because the redirect
+		// above asks the scope FIRST: left standing, a retained iteration would outrank
+		// the newer choice on the next trip through the tree.
+		if (mode === 'deliverables' && this.state.boardPick() === null) {
+			this.state.setBoardPick('deliverables');
+			this.state.setBoardScope(null);
+		}
 		if (mode === this.projection) return;
 		this.state.setProjection(mode);
 		// Before the render, not after: the render is what reads the index.
@@ -84,7 +97,19 @@ export class ViewStateController {
 	 * one is correct when built and wrong the moment the thing it describes is replaced.
 	 */
 	setBoardScope(path: string | null): void {
-		if (path === this.boardScope && (path === null) === (this.projection !== 'iteration')) return;
+		// The no-op guard asks all three stored values, not two: from the Deliverables
+		// board the scope is already null, so without the `boardPick` term picking
+		// `Product` there would return before clearing the pick that IS the difference.
+		const already =
+			path === this.boardScope &&
+			this.state.boardPick() === null &&
+			(path === null ? this.projection === 'board' : this.projection === 'iteration');
+		if (already) return;
+		// A scope pick spends the Deliverables pick, for the redirect's precedence reason
+		// read the other way: the scope is asked first, so the pick only has to go when
+		// the newest choice is Product — but clearing it on both keeps "the two are never
+		// both set" a rule rather than a case analysis.
+		this.state.setBoardPick(null);
 		this.state.setBoardScope(path);
 		this.state.setProjection(path === null ? 'board' : 'iteration');
 		this.hooks.recomputeFilter();

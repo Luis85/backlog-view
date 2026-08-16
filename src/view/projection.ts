@@ -92,9 +92,12 @@ export function hasRollup(projection: Projection): boolean {
 }
 
 /**
- * Which toolbar POSITION draws this projection. The iteration board is its own
- * projection and the `Board` button's own position: the scope picker beside that button
- * is what chooses between them, so the control the reader sees is one.
+ * Which toolbar POSITION draws this projection. Every board is the `Board` button's
+ * position now: the scope picker beside that button chooses WHICH — the product's, the
+ * Deliverables board's, or one iteration's — so the control the reader sees is one.
+ * The Deliverables board held a toggle position of its own until 2026-08-16, when the
+ * user moved it under the picker's `Product` entry; the register records the reversal
+ * ([[An Iterations board]], "Why a scope").
  *
  * Two controls need this rather than the projection — `renderProjectionZone`'s switch and
  * the toggle's `is-active`/`aria-pressed`. Both are wrong once the internal identity and
@@ -102,7 +105,7 @@ export function hasRollup(projection: Projection): boolean {
  * itself the first time it is used, and no position ever draws as pressed.
  */
 export function toolbarPosition(projection: Projection): Projection {
-	return projection === 'iteration' ? 'board' : projection;
+	return projection === 'iteration' || projection === 'deliverables' ? 'board' : projection;
 }
 
 /**

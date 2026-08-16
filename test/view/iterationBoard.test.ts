@@ -244,8 +244,15 @@ describe('the scope picker', () => {
 		const vault = sprintVault();
 		const harness = makeView(vault, OPTIONS, { base: 'Plan.base' });
 		harness.view.setProjection('board');
-		// The two actions sit below the scopes, behind a separator.
-		expect(entries(harness.containerEl)).toEqual(['Product', 'Sprint 12', 'Sprint 13', 'New iteration…']);
+		// Deliverables directly under Product (its toggle position until 2026-08-16),
+		// then the scopes, then the actions, each group behind a separator.
+		expect(entries(harness.containerEl)).toEqual([
+			'Product',
+			'Deliverables',
+			'Sprint 12',
+			'Sprint 13',
+			'New iteration…',
+		]);
 	});
 
 	it('draws with no Iteration note at all, because it is how the first one is made', () => {
@@ -257,18 +264,21 @@ describe('the scope picker', () => {
 		empty.addFile('A PBI.md', { frontmatter: { type: 'PBI', order: 10, status: 'New' } });
 		const harness = makeView(empty, OPTIONS, { base: 'Plan.base' });
 		harness.view.setProjection('board');
-		expect(entries(harness.containerEl)).toEqual(['Product', 'New iteration…']);
+		expect(entries(harness.containerEl)).toEqual(['Product', 'Deliverables', 'New iteration…']);
 	});
 
-	it('is absent with no iteration property, and absent off the board', () => {
-		// With no property every entry would draw a board no card could ever reach. Off the
-		// board there is no board for it to scope: the picker belongs to the board, and the
-		// way back to one is the `Board` button beside it.
+	it('offers only the two boards with no iteration property, and is absent off the board', () => {
+		// With no property an iteration entry would draw a board no card could ever reach,
+		// so the whole iteration section is withheld — the scopes, `New iteration…` and
+		// the stale retained path that would otherwise NAME the button. The picker itself
+		// stays: since 2026-08-16 it carries the Deliverables board, which needs nothing
+		// configured to exist. Off the board there is no board for it to scope: the way
+		// back to one is the `Board` button beside it.
 		const { iterationProperty, ...noKey } = OPTIONS;
 		expect(iterationProperty).toBe('note.iteration');
 		const noProperty = makeView(sprintVault(), noKey, { base: 'Plan.base' });
 		noProperty.view.setProjection('board');
-		expect(picker(noProperty.containerEl)).toBeNull();
+		expect(entries(noProperty.containerEl)).toEqual(['Product', 'Deliverables']);
 
 		const onTree = makeView(sprintVault(), OPTIONS, { base: 'Plan.base' });
 		expect(picker(onTree.containerEl)).toBeNull();
@@ -282,7 +292,13 @@ describe('the scope picker', () => {
 		harness.view.setProjection('board');
 		// Qualified only where they collide: qualifying every entry to separate a rare
 		// pair makes the ordinary case unreadable.
-		expect(entries(harness.containerEl)).toEqual(['Product', 'q3/Sprint 12', 'q4/Sprint 12', 'New iteration…']);
+		expect(entries(harness.containerEl)).toEqual([
+			'Product',
+			'Deliverables',
+			'q3/Sprint 12',
+			'q4/Sprint 12',
+			'New iteration…',
+		]);
 
 		Menu.lastShown?.item('q4/Sprint 12')?.click();
 		expect(harness.view.boardScope).toBe('q4/Sprint 12.md');

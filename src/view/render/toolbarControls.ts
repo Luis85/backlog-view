@@ -295,21 +295,21 @@ function renderAxisPicker(host: BacklogViewHost, zone: HTMLElement, barEl: HTMLE
 }
 
 /**
- * Which board the `Board` position opens: the product's, or one iteration's.
+ * Which board the `Board` position opens: the product's, the Deliverables board's, or
+ * one iteration's. The Deliverables entry sits directly under `Product` — it held a
+ * toggle position of its own until 2026-08-16, when the user moved it here; the two are
+ * the boards over a whole population, so they share the head of the menu and both wear
+ * an icon, while the iterations below the separator are a list of notes.
  *
- * **One condition.** The iteration property must be configured, or every entry would open
- * a board no card could reach. Deliberately NOT `renderAxisPicker`'s second refusal — an
- * empty list — which this paragraph demanded until 2026-08-16 while the body beside it
- * refused to make it: this picker carries the only `New iteration…`, so withholding it
- * from a vault with no iterations withholds the feature from every vault that has not
- * started using one.
+ * **Unconditional at the board's position** since the same day: the picker used to gate
+ * on the iteration property, and now only its ITERATION section does — with the property
+ * unconfigured the menu is `Product` and `Deliverables` alone, because the Deliverables
+ * board needs nothing configured to exist. It still carries the only `New iteration…`
+ * (never withheld on an empty vault, which is every vault that has not started), and it
+ * draws at the BOARD's own toolbar position and nowhere else — the door is the `Board`
+ * button, and this picker says which board came through it.
  *
- * It draws at the BOARD's own toolbar position and nowhere else, which is the reversal
- * this paragraph also outlived: it was in every projection on the argument that a control
- * behind the door it opens is no way in, and the answer is that the door is the `Board`
- * button and this picker says which board came through it.
- *
- * The entries are read off `model.byPath` for `iterationTargets`' reason
+ * The iteration entries are read off `model.byPath` for `iterationTargets`' reason
  * (`interactions/labels.ts`): a focus set on another projection re-roots what is DRAWN,
  * and an iteration hangs from nothing, so a top-level one would go unofferable exactly
  * when the reader had narrowed the tree. Context rows are excluded — an excluded note is
@@ -319,15 +319,14 @@ function renderAxisPicker(host: BacklogViewHost, zone: HTMLElement, barEl: HTMLE
  */
 export function renderBoardScopePicker(host: BacklogViewHost, barEl: HTMLElement, model: BacklogModel): void {
 	// The BOARD's control, so it draws at the board's own position and nowhere else.
-	if (toolbarPosition(host.projection) !== 'board' || !host.settings.iterationKey) return;
-	const iterations = [...model.byPath.values()].filter(
-		(item) => isIterationType(item.typeName) && !item.outsideFilter,
-	);
-	// **No emptiness refusal**, unlike `renderAxisPicker`, and the difference is what the
-	// two controls are FOR: an axis picker with one axis can only re-pick what is already
-	// picked, while this one carries `New iteration…` — so on a vault with no iterations
-	// at all it is the only way to make the first, and withholding it would be withholding
-	// the feature from every vault that has not started using it.
+	if (toolbarPosition(host.projection) !== 'board') return;
+	// Empty with the property unconfigured, deliberately, rather than the list the model
+	// could still supply: a scope no card can ever reach must be neither offered nor
+	// allowed to NAME the button — a stale retained path would otherwise caption a button
+	// whose board draws the product.
+	const iterations = !host.settings.iterationKey
+		? []
+		: [...model.byPath.values()].filter((item) => isIterationType(item.typeName) && !item.outsideFilter);
 
 	const seen = new Map<string, number>();
 	for (const item of iterations) seen.set(item.title, (seen.get(item.title) ?? 0) + 1);
@@ -341,44 +340,55 @@ export function renderBoardScopePicker(host: BacklogViewHost, barEl: HTMLElement
 	// over a button that would open Sprint 12. A scope that no longer RESOLVES falls back
 	// to `Product` on both, because then nothing reopens it either. Found by review
 	// (Codex, PR #154).
+	const onDeliverables = host.projection === 'deliverables';
 	const current = selectableIteration(iterations, host.boardScope);
 	const scope = current?.file.path ?? null;
-	const name = current === null ? SCOPE_PRODUCT : labelOf(current);
+	const name = onDeliverables ? SCOPE_DELIVERABLES : current === null ? SCOPE_PRODUCT : labelOf(current);
 	const btn = menuButton(zoneFor(barEl), 'target', name, 'scope', `Board scope: ${name}`);
 	btn.addClass('pbl-scope-btn');
 	setTooltip(btn, 'Which board the Board position opens');
 	btn.addEventListener('click', (evt) => {
 		const menu = new Menu();
-		const choice = (title: string, path: string | null) =>
+		const choice = (title: string, icon: string | null, checked: boolean, act: () => void) =>
+			menu.addItem((mi) => {
+				// `barEl`, not the wrapper: the pick rebuilds the row, and the bar is
+				// what survives it.
+				mi.setTitle(title)
+					.setChecked(checked)
+					.onClick(() => pickAndRefocus(barEl, 'scope', act));
+				if (icon !== null) mi.setIcon(icon);
+			});
+		// The two whole-population boards lead, each under the icon its toolbar control
+		// wears elsewhere — the Board button's own for the product, the Deliverable type's
+		// for its board — so the entry and the surface it opens say the same thing.
+		choice(SCOPE_PRODUCT, 'square-kanban', !onDeliverables && scope === null, () => host.setBoardScope(null));
+		choice(SCOPE_DELIVERABLES, 'package', onDeliverables, () => host.setProjection('deliverables'));
+		// The boards are not among the iterations, so a rule says so: the scopes below
+		// this line are a list of notes, and each board is the absence of one.
+		if (iterations.length > 0) {
+			menu.addSeparator();
+			for (const item of iterations) {
+				choice(labelOf(item), null, item.file.path === scope, () => host.setBoardScope(item.file.path));
+			}
+		}
+		if (host.settings.iterationKey) {
+			menu.addSeparator();
+			// Below the scopes, and the edit only while an iteration IS the chosen scope —
+			// there is nothing else it could be editing.
 			menu.addItem((mi) =>
 				mi
-					.setTitle(title)
-					.setChecked(path === scope)
-					// `barEl`, not the wrapper: the pick rebuilds the row, and the bar is
-					// what survives it.
-					.onClick(() => pickAndRefocus(barEl, 'scope', () => host.setBoardScope(path))),
+					.setTitle('New iteration…')
+					.setIcon('calendar-plus')
+					.onClick(() => promptNewIteration(host, model)),
 			);
-		choice(SCOPE_PRODUCT, null);
-		// The whole backlog is not one of the iterations, so a rule says so: the scopes
-		// below this line are a list of notes, and `Product` is the absence of one.
-		menu.addSeparator();
-		for (const item of iterations) choice(labelOf(item), item.file.path);
-		menu.addSeparator();
-		// Below the scopes, and the edit only while an iteration IS the chosen scope —
-		// there is nothing else it could be editing.
-		menu.addItem((mi) =>
-			mi
-				.setTitle('New iteration…')
-				.setIcon('calendar-plus')
-				.onClick(() => promptNewIteration(host, model)),
-		);
-		if (current !== null) {
-			menu.addItem((mi) =>
-				mi
-					.setTitle('Edit iteration…')
-					.setIcon('pencil')
-					.onClick(() => promptEditIteration(host, current)),
-			);
+			if (current !== null) {
+				menu.addItem((mi) =>
+					mi
+						.setTitle('Edit iteration…')
+						.setIcon('pencil')
+						.onClick(() => promptEditIteration(host, current)),
+				);
+			}
 		}
 		showMenuForClick(menu, evt);
 	});
@@ -386,6 +396,8 @@ export function renderBoardScopePicker(host: BacklogViewHost, barEl: HTMLElement
 
 /** What the picker calls the whole backlog — the scope every board had before this one. */
 const SCOPE_PRODUCT = 'Product';
+/** The Deliverables board's entry, directly under Product — its toggle position until 2026-08-16. */
+const SCOPE_DELIVERABLES = 'Deliverables';
 
 /**
  * The picker's own slot in the row, made on demand: it sits with the switcher rather than

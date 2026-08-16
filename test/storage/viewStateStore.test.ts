@@ -43,6 +43,10 @@ const FULL_PREFS: Required<ViewPrefs> = {
 	// The one pref the VAULT owns — a note path, retained through a note that has gone
 	// and migrated through a rename, unlike every other value in this bucket.
 	scope: 'sprints/Sprint 12.md',
+	// A WORD beside the path above — which board the Board position opens with no scope
+	// set. In live state the two are never both set (the controller clears each on the
+	// other's way in); the fixture holds both because the round trip is per key.
+	board: DELIVERABLES_MODE,
 };
 
 const FULL_FOLDS: Required<ViewFolds> = {

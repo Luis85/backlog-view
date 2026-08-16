@@ -35,6 +35,12 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   backfills it like every other optional property, clearing removes the key rather than
   blanking it, and every write is one undoable batch.
 
+- **The Deliverables board moved into the scope picker.** Its toolbar toggle position is
+  gone: every board is the `Board` button now, and the picker beside it says which —
+  `Product` and `Deliverables` lead the menu, each under its own icon, with the
+  iterations below. The pick is remembered like an iteration scope, so leaving `Board`
+  and returning reopens the board you were on.
+
 - **The scope picker is the board's own control.** It draws after the New button, on the
   board and nowhere else, and it draws even in a vault with no iterations yet — because it
   carries the only way to make the first one. Iterations no longer appear in the tree or in

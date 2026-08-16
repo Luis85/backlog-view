@@ -553,10 +553,9 @@ function renderModeToggle(host: BacklogViewHost, barEl: HTMLElement): void {
 	position('tree', 'list-tree', 'Show as backlog tree', 'Tree');
 	position('board', 'square-kanban', 'Show as kanban board', 'Board');
 	position('roadmap', 'map', 'Show as roadmap', 'Roadmap');
-	position('deliverables', 'package', 'Show as Deliverables board', 'Deliverables');
-	// FIFTH, not fourth: the toggle has carried four since the Deliverables board shipped,
-	// and a control that counted the three it had heard of would have REPLACED that board
-	// rather than joining it.
+	// No Deliverables position since 2026-08-16, by the user's own call: every board is
+	// the `Board` button now, and the scope picker beside it says which — `Product`,
+	// `Deliverables`, or an iteration. The projection still exists; only its door moved.
 	position('catalog', 'flask-conical', 'Show as test catalog', 'Tests');
 }
 

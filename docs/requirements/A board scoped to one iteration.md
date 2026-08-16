@@ -51,7 +51,10 @@ of it: its population is a type, the vocabulary is fixed, and the position is as
 permanent as the name. Iterations are unbounded and only ever accumulate — a vault three
 years in has seventy of them. A toggle with seventy positions is not a toggle. So `Board`
 stays one toggle position and grows a **scope**, the shape [[Horizons or dates]] already
-uses to offer the roadmap's two axes from one control.
+uses to offer the roadmap's two axes from one control. (Since 2026-08-16 that picker
+also carries the Deliverables board, directly under `Product` — the user retired its
+toggle position once the picker existed; [[An Iterations board]], "Why a scope", records
+it.)
 
 That is the whole argument, and it deliberately no longer rests on the two boards holding
 the same kind of work. An earlier draft of this note claimed every card here is also a
@@ -74,7 +77,8 @@ the moment the populations diverged, which is exactly what happened.
 **Main flow**
 
 1. In board mode the toolbar draws a scope picker beside the projection toggle, naming
-   `Product` and every `Iteration` note in the model.
+   `Product`, `Deliverables` (since 2026-08-16) and every `Iteration` note in the model —
+   the two boards ahead of the scopes, each under its own icon.
 2. Choosing an iteration stores the chosen note's path — the same per-view collapse-store
    entry the roadmap axis uses, vault-scoped localStorage, per device, never the `.base` —
    and re-renders from the model already in hand. The stored MODE does not distinguish the
@@ -113,7 +117,7 @@ the moment the populations diverged, which is exactly what happened.
   write underneath goes to real trouble to keep them distinct
   ([[An iteration is a note of its own]] extension 4b).
 - **1a — no `Iteration` note is in the model.** The picker **still renders**, naming
-  `Product` and carrying `New iteration…` and nothing else. This extension said the
+  `Product` and `Deliverables` and carrying `New iteration…` and nothing else. This extension said the
   opposite until 2026-08-16 — *"the picker does not render at all"*, the refusal the axis
   picker makes with a single configured axis — and the reversal is kept rather than
   overwritten, because the two controls read alike and are not: an axis picker with one
@@ -122,8 +126,11 @@ the moment the populations diverged, which is exactly what happened.
   that has not adopted it yet, which is every vault on the day it updates. The
   preconditions above record the same removal.
 - **1b — the iteration property is unconfigured** ([[An iteration is a note of its own]]
-  extension 2b). No item can name an iteration, so the picker offers nothing but
-  `Product` and is not drawn.
+  extension 2b). No item can name an iteration, so the picker withholds its whole
+  iteration section — the scopes, `New iteration…`, and the retained path's claim on the
+  button's name — and offers `Product` and `Deliverables` alone. It was not drawn at all
+  until 2026-08-16, when the Deliverables board moved under it and gave it a job no
+  iteration property is part of.
 - **2a — the stored scope names a note that is gone, or is no longer an `Iteration`.**
   The view reads as the **ordinary product board everywhere** — its cards, its count, its
   completed toggle, its offered types, its filter index — and the stored value is
@@ -513,12 +520,14 @@ the moment the populations diverged, which is exactly what happened.
 
 ## Acceptance criteria
 
-- In board mode the toolbar offers a scope picker naming `Product` and every `Iteration`
-  note in the model **while the iteration property is configured**, and does not render it
-  otherwise. One condition, not two: with no configured property nothing can join a scope,
-  so a picker offering scopes would be a control whose every entry draws an empty board
-  (1b) — while an empty LIST is no refusal at all, since the picker carries the only
-  `New iteration…` (1a). The second half was removed on 2026-08-16; see the preconditions.
+- In board mode the toolbar offers a scope picker naming `Product`, `Deliverables`
+  (since 2026-08-16 — see [[An Iterations board]], "Why a scope") and every `Iteration`
+  note in the model. Only its ITERATION section gates on the iteration property: with no
+  configured property nothing can join a scope, so the scopes, `New iteration…` and the
+  retained path's claim on the button's own name are all withheld (1b), while the two
+  board entries stay — the Deliverables board needs nothing configured to exist. An
+  empty iteration LIST is no refusal at all, since the picker carries the only
+  `New iteration…` (1a).
 - The scope is enterable with no state key resolved, which is the only way extension 4a's
   guidance can be reached. A resolved key gates the columns, never the scope.
 - The scope persists per saved view in the collapse store's vault-scoped localStorage,

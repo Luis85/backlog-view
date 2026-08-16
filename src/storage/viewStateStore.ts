@@ -205,6 +205,14 @@ export interface ViewPrefs {
 	 * condition that is often temporary is worse than an empty board they can leave.
 	 */
 	scope?: string;
+	/**
+	 * Which board the `Board` position opens when no iteration scope is set — today the
+	 * one legal value is {@link DELIVERABLES_MODE}, and absence means the product board.
+	 * A WORD, never a path, so unlike `scope` beside it neither the prune nor the rename
+	 * walk may touch it. The two clear each other on the way in (`ViewStateController`),
+	 * so the redirect always answers from the newest pick and they cannot contradict.
+	 */
+	board?: string;
 }
 
 export interface ViewStateSnapshot {
@@ -323,6 +331,7 @@ export const PREF_READERS: { [K in keyof ViewPrefs]-?: Reader<NonNullable<ViewPr
 	// this layer cannot do and which the view redoes on every render anyway. What a reader
 	// refuses here is a value of the wrong shape, not one naming a note that has moved.
 	scope: anyName,
+	board: oneOf([DELIVERABLES_MODE]),
 };
 
 /** A record, or an empty one for anything that is not a plain object. */

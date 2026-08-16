@@ -301,6 +301,19 @@ export class ViewState {
 		this.setPref('scope', path);
 	}
 
+	/**
+	 * Which board the `Board` position opens when no iteration scope is set — the stored
+	 * word, `deliverables` or null for the product. Retained and cleared by the
+	 * controller, which keeps it and `scope` from ever both being set.
+	 */
+	boardPick(): string | null {
+		return this.prefs.board ?? null;
+	}
+
+	setBoardPick(value: string | null): void {
+		this.setPref('board', value);
+	}
+
 	/** The retained roadmap-axis pick — kept even while its axis is unconfigured. */
 	axisPick(): string | null {
 		return this.prefs.axis ?? null;
