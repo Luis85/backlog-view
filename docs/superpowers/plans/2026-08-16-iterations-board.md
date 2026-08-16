@@ -436,6 +436,8 @@ Every hit is a decision: does this comparison mean the *projection* or the *tool
 
 **The split has a price and it falls on the toolbar.** Two controls compare the projection to a *position* — `renderProjectionZone`'s switch, and the toggle's `is-active` / `aria-pressed`. Both are wrong once the internal identity and the control identity differ: the picker would delete itself on first use, and no position would render pressed. `toolbarPosition` answers `'board'` for `'iteration'`, and both controls ask it.
 
+**`offerableTypes` must refuse every marker, not just `Iteration`.** It is the same rule as Task 3's population and must be spelled the same way, because the two work together: offering `Milestone` under `New` or `Set type` on an iteration board lets a reader create or retype a note and watch the population's own marker guard delete it from the board that made it. A type this board cannot draw must not be a type it offers — the criterion `A board scoped to one iteration` already states for `Iteration`, widened to the predicate. Cover `Milestone` in the creation and retype tests, not only `Iteration`.
+
 **The stored scope is a PATH**, which makes it the first `ViewPrefs` field the vault owns. Two consequences, and half of them is not an option: `ViewPrefs`' own comment (*"keyed by nothing the vault owns, so never pruned and never renamed"*) must be amended to name this exception, and the rename walk must reach it, matching the path **or its `oldPath/` prefix** so a folder rename counts.
 
 - [ ] **Step 1: Write the failing tests**
@@ -492,7 +494,7 @@ Run: `npx vitest run test/view/iterationBoard.test.ts test/storage/viewStateStor
 
 - [ ] **Step 3: Add the projection and answer every question**
 
-Add `'iteration'` to `Projection`, then answer each question in `projection.ts`: `treeShaped` false, `hidesCompleted` **false**, `hasRollup` false, `projectionPopulation` → Task 3's carriers, `projectionMember` → `!inCatalog`, `filterScopeFor` → `'whole'`, `offerableTypes` → `Deliverable` yes and `Iteration` no. Add `toolbarPosition`.
+Add `'iteration'` to `Projection`, then answer each question in `projection.ts`: `treeShaped` false, `hidesCompleted` **false**, `hasRollup` false, `projectionPopulation` → Task 3's carriers, `projectionMember` → `!inCatalog`, `filterScopeFor` → `'whole'`, `offerableTypes` → `Deliverable` yes and **no marker** (`Iteration` and `Milestone` alike, asked through `isMarkerType`). Add `toolbarPosition`.
 
 `filterScopeFor` is the one that takes argument: the population ignores the focus, so the match index must too, or the promise holds for the cards and breaks for the search.
 
@@ -802,7 +804,9 @@ it('abuts rather than overlaps: start is the previous target plus one day', () =
 
 `src/ui/iterationDialog.ts` beside `src/ui/stateColorsDialog.ts` — the leaf that knows about no layer, which is what lets the board open it without the picker reaching upward. `New iteration…` below the scopes; `Edit iteration…` above it and **only while an iteration is the chosen scope**.
 
-Creating goes through `createBacklogItem` with the type, the folder, both dates and the goal in **one** write, then opens the note. Editing plans `computeIterationNoteWrites` and applies through `applySafely`.
+Creating goes through `createBacklogItem` with the type, the folder, both dates and the goal in **one** write, then opens the note.
+
+**Gate it on `configProblems` first.** `createBacklogItem` performs no validation of its own — the existing `promptCreateItem` route runs the gate before reaching it, and `runInit` runs the gate itself before touching either half of its work. A dialog calling the storage function directly inherits neither, so `New iteration…` would create malformed frontmatter under a configuration every other creation surface refuses: a goal property colliding with the type key writes the goal over `type: Iteration`, and the note is not an iteration at all. Ask the gate **before opening the dialog**, so a reader is told what to fix rather than filling in fields whose write will be refused. The edit path needs no new gate — it goes through `applySafely`, which runs it. Editing plans `computeIterationNoteWrites` and applies through `applySafely`.
 
 **`NewItemSpec` needs a third new field, and this task adds it.** Task 8 gave it
 `iteration` and `axis`, which is what a *card* created on a board carries — a card has no
