@@ -175,7 +175,15 @@ declared name owes: a default subfolder, an icon and a badge colour.
 - `Iteration` is a declared type in `MARKER_TYPES` with a default subfolder, an icon and
   a badge colour, and ADR 0013 records the twelfth name. It files into
   `typeFolder.iteration` — shipped default `iterations` under the home folder — and takes
-  the `calendar-clock` icon and the purple badge.
+  the `calendar-clock` icon and a **cyan** badge, shared with Milestone and Test case.
+  This criterion said *purple* until 2026-08-16, on the same false premise the stylesheet
+  comment carried — purple is `.pbl-lvl-1`, Feature's, and all eight theme tokens were
+  spoken for before this badge existed. Cyan is a sharing decision made on theme rather
+  than by exhaustion (a marker is a date), and what it costs is stated where it is paid:
+  only the icon and the type name separate an `Iteration` badge from a `Milestone` one,
+  since Test case's cyan is held apart by a test-axis border that does not reach a marker.
+  Whether that reads as *"these two are markers"* is a live-vault question this criterion
+  records rather than settles.
 - The register's own gate knows the type too: `docs-check.mjs`'s `LEGAL_CHILDREN` and
   `ROOT_TYPES` carry it, matched by the hierarchy table in `docs/README.md`, so an
   `Iteration` note can live in this backlog rather than being rejected as an unknown type.
