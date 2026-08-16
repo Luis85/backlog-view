@@ -24,7 +24,8 @@ have to know which of two documents is current. What changed, and what it revers
    **In Progress**, **Resolved** — over two list options that name which product states
    fall in the outer two. One workflow at two granularities, which is what the user asked
    for in those words: *"I don't want to add another workflow… the same workflow as the
-   product just narrower."* §5 is rewritten and §6 mostly deleted.
+   product just narrower."* §5 is rewritten and §6 rewritten around what a bucket costs
+   that a column does not.
 2. **Joining an iteration schedules the item.** `Set iteration` stops being one write and
    becomes a batch of three — the link and the two dates, taken from the iteration's own
    timeframe. §9 is new.
@@ -433,27 +434,44 @@ model-wide list its own argument already refused.
 
 ## 6 — Moves
 
-A column move on an iteration board goes through **`performBoardMove`, unchanged**. Each
-bucket carries the state string a drop on it writes (the table in §5), so a move here is
-the same move it is on the product board: `computeStateWrites` against the product key,
-the same `applySafely` gate, the same single undo slot, the same announcement. Moving a
-card on an iteration board therefore moves it on the product board too, which is what one
+A column move on an iteration board writes the **product** state key, plans through
+`computeStateWrites` and lands in the same `applySafely` gate and the same single undo
+slot. Moving a card here therefore moves it on the product board too, which is what one
 workflow at two granularities means and is not a side effect to be designed away.
 
-`performIterationBoardMove` and `computeIterationStateWrites` are **withdrawn**. The
-section that stood here argued hard for a third host method, and its argument was correct
-about the design it was defending: `performBoardMove` always writes the product key, so a
-board with its OWN key needed its own method. Delete the second key and the objection goes
-with it. The rule — *"adding a projection means adding one such method, not a second idea
-of what a move is"* — is satisfied by there being no second idea at all.
+**`computeIterationStateWrites` is withdrawn** — there is no second key, so there is no
+second planner. `performIterationBoardMove` **stays**, and its reason has changed
+completely. It was a third host method because a second key needed its own write; it is
+now a third host method because **a bucket is not a state**, and exactly two things break
+when that difference is not asked.
 
-**One guard is new, and it is not optional.** A drop on the bucket a card is already in
-writes **nothing**. Without it, a card in `Ready` dragged onto Open — a gesture that
-expresses no change — would be rewritten to whatever `iterationOpenStates` names first,
-silently restating the user's own state and spending the undo slot to do it. Three states
-can map to one column, so "the card is already here" and "the write is a no-op" stop being
-the same sentence; the board must ask the first. This is the checkmark rule (§2, §9) at a
-third surface: **ask the plan, and refuse an action that would write nothing.**
+*An earlier revision of this section said the move went through "`performBoardMove`,
+unchanged", and named the guard below in the next paragraph as if the two could both be
+true. They cannot, and the contradiction is the kind this register keeps proving is
+cheapest to catch at the call:*
+
+- **`computeStateWrites` compares the exact state.** `sameValue(item.stateValue, state)`
+  is what it asks, so a card in `Ready` dropped on an Open bucket whose first value is
+  `Todo` is a change by that test and gets rewritten — silently restating the user's own
+  state and spending the undo slot to do it. Three states map to one column, so *"the card
+  is already here"* and *"the write is a no-op"* stop being the same sentence.
+- **`announceBoardMove` looks a column up by the exact state too.** `columnLabelFor(board,
+  from)` is handed `Ready`, and a bucket carrying only its representative `Todo` does not
+  answer to it — so a correct move would be announced from a column the board does not
+  name.
+
+Both are the same missing question — **which bucket holds this state** — so it is one
+function in `src/domain/board.ts`, asked twice rather than reimplemented at either site.
+`performIterationBoardMove` asks it first and returns having written nothing when the card
+is already in the target bucket, then delegates to `performBoardMove` for everything else:
+one place the batch is planned, one place it is announced, and one place the bucket
+question is asked, with all three inputs still landing on one method.
+
+That is the checkmark rule (§2, §9) at a third surface — **ask the plan, and refuse an
+action that would write nothing** — and it is also the codebase's own rule read correctly
+rather than argued around: *"adding a projection means adding one such method, not a
+second idea of what a move is."* The method is the rule being kept; what the withdrawn
+section got wrong was the reason, not the method.
 
 `applyCardMove`'s capture rule holds here too: the vocabulary that names the move is
 read before the await, because the batch's own refresh rebuilds the board before it
@@ -634,10 +652,16 @@ where `stateColorsDialog.ts` already sits.
 
 **`New iteration…` prefills its dates from the previous iteration.**
 
-- **Previous** is the `Iteration` note with the greatest target date — ties broken by
-  start, then by path, so the answer is total rather than merely usually unique. Not the
-  chosen scope: creating from Sprint 8 while Sprint 12 exists would silently make an
-  iteration overlapping four others. Decided by the user on 2026-08-16.
+- **Previous** is the `Iteration` note **in the model** with the greatest target date —
+  ties broken by start, then by path, so the answer is total rather than merely usually
+  unique. Not the chosen scope: creating from Sprint 8 while Sprint 12 exists would
+  silently make an iteration overlapping four others. Decided by the user on 2026-08-16.
+
+  In the model, not the vault. A base that filters an `Iteration` out leaves it out of
+  this derivation, which is the same limit the scope picker and `Set iteration` already
+  have — and a base hiding iterations hides the picker this action is reached from. Stated
+  as a limit rather than answered by reaching outside the base for a set every other
+  surface reads from the model.
 - **Start** prefills to that target **+ 1 day**. Iterations abut; they do not overlap.
 - **Target** prefills to start + `iterationLengthDays` **− 1**. Inclusive, so a
   fourteen-day iteration starting on a Monday ends on the second Sunday rather than the

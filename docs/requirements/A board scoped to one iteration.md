@@ -416,12 +416,22 @@ the moment the populations diverged, which is exactly what happened.
   outside the undo history, since undo never deletes a note.
 - **5d — a card is dropped on, moved into, or Set-state'd to the bucket it is already
   in.** **Nothing is written.** Three product states can map to one column, so "the card is
-  already here" and "the write is a no-op" stop being the same sentence — and without this
-  guard a card in `Ready` dragged onto Open would be silently rewritten to whatever
-  `iterationOpenStates` names first, restating the user's own state and spending the undo
-  slot to do it. This is the checkmark rule at a third surface: **ask the plan, and refuse
-  an action that would write nothing.** It has to hold for the drag, the keyboard and the
-  menu alike, since all three reach the one host method.
+  already here" and "the write is a no-op" stop being the same sentence, and the board has
+  to ask the first.
+
+  It cannot be got for free from the planner this board otherwise reuses.
+  `computeStateWrites` asks `sameValue(item.stateValue, state)` — the **exact** state — so
+  a card in `Ready` dropped on an Open bucket whose first value is `Todo` reads as a change
+  and is rewritten, restating the user's own state and spending the undo slot to do it.
+  The announcement has the same gap from the same cause: `columnLabelFor` is handed
+  `Ready` and a bucket carrying only `Todo` does not answer to it, so a correct move would
+  be announced from a column the board does not name.
+
+  One missing question — **which bucket holds this state** — asked twice, so this board
+  keeps a host move method of its own after all. Not for a second key, which it does not
+  have, but because a bucket is not a state. It holds for the drag, the keyboard and the
+  menu alike, since all three land on that one method
+  ([[Keyboard and menu moves]]).
 - **5b — "Show completed items" is off.** It does not reach this board, and that is one
   field rather than a per-caller choice: `hideCompleted` is false in this projection's
   `VisibilityRule`, exactly as it is for the Deliverables board. The toggle describes the
@@ -556,11 +566,13 @@ in `src/view/render/toolbarControls.ts`, built the way `renderAxisPicker` beside
 the board itself is `src/view/render/board.ts` under the fork in
 `src/view/render/projections.ts`, with its empty states in
 `src/view/render/emptyStates.ts`, and the goal line drawn from the chosen iteration's
-item. Moves reach the board's **existing** host method in
-`src/view/cardMoves.ts` from `src/view/interactions/cardDrag.ts`,
-`src/view/interactions/keyboard.ts` and `src/view/interactions/menu.ts`, planned by
-`src/domain/writePlan.ts` and applied by `src/storage/frontmatter.ts` through
-`src/view/writeGate.ts` — no method of its own, since there is no second key to write and
-so no second idea of what a move is. Driven in `test/view/board.test.ts` and
+item. Moves reach one host method of this board's own in `src/view/cardMoves.ts` from
+`src/view/interactions/cardDrag.ts`, `src/view/interactions/keyboard.ts` and
+`src/view/interactions/menu.ts` — it asks `src/domain/board.ts`' bucket question, returns
+having written nothing when the card is already there, and otherwise delegates to the
+product board's own move, which plans through `src/domain/writePlan.ts` and applies
+through `src/storage/frontmatter.ts` and `src/view/writeGate.ts`. The announcement in
+`src/view/interactions/cardDrag.ts` asks the same bucket question rather than matching a
+column by its exact state. Driven in `test/view/board.test.ts` and
 `test/view/contextCardWrites.test.ts`, with the store round-trip in
 `test/storage/viewStateStore.test.ts`.

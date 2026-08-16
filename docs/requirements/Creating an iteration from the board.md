@@ -59,11 +59,27 @@ user confirmed, never a rule applied at write time that the reader could not see
 
 **Extensions**
 
-- **1a — the previous iteration.** It is the `Iteration` note with the greatest **target**
-  date, ties broken by start and then by path, so the answer is total rather than merely
-  usually unique. Not the iteration currently chosen in the picker: creating from Sprint 8
-  while Sprint 12 exists would silently make an iteration overlapping four others.
-  Decided by the user on 2026-08-16.
+- **1a — the previous iteration.** It is the `Iteration` note **in the model** with the
+  greatest **target** date, ties broken by start and then by path, so the answer is total
+  rather than merely usually unique. Not the iteration currently chosen in the picker:
+  creating from Sprint 8 while Sprint 12 exists would silently make an iteration
+  overlapping four others. Decided by the user on 2026-08-16.
+
+  **In the model, not in the vault**, and the narrowing is deliberate rather than a
+  shortcut. A base whose filter excludes an `Iteration` note leaves it out of the model
+  entirely — a marker parents nothing, so it never even arrives as a context row — and the
+  derivation would then follow an older, visible iteration and prefill dates overlapping
+  the hidden one. That is a real limit and it is stated here rather than engineered away,
+  for two reasons. It is the **same** limit the scope picker and `Set iteration` already
+  have, both of which offer the iterations the model holds; a dialog reading the whole
+  vault while the picker beside it reads the base would answer two different questions
+  about one word. And a base that hides iterations hides the picker with them
+  ([[A board scoped to one iteration]] extension 1a), so there is no `New iteration…`
+  to reach in the case the wider read exists to serve.
+
+  Reading the vault directly would be a new capability for this plugin, not a wider
+  argument to an existing one. If a vault ever needs it, the thing to change is what the
+  **base** shows.
 - **1b — no `Iteration` note in the vault carries a target date** (there are none at all,
   or none is dated). **Start prefills to today**, and target follows from the length. A
   first sprint has no predecessor, and refusing to prefill would make the empty vault the
@@ -139,7 +155,9 @@ user confirmed, never a rule applied at write time that the reader could not see
 - `New iteration…` prefills start to the greatest-target iteration's target + 1 day, and
   target to start + `iterationLengthDays` − 1 — checked with several iterations, with
   ties, with a predecessor that has no start, and with no dated iteration at all, where
-  start is today.
+  start is today. The candidates are the model's iterations, the same set the scope picker
+  offers, checked by asserting that an `Iteration` the base excludes is not the
+  predecessor.
 - `iterationLengthDays` is a view option in the `Iterations` group, default 14, parsed
   from text, falling back to 14 when it is unset, unparseable or not positive.
 - The prefilled dates are editable and what is confirmed is what is written; a confirmed
