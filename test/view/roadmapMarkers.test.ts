@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
+import { Menu } from '../helpers/obsidian-mock';
 import { todayStamp } from '../../src/domain/noteFields';
 import { FakeVault } from '../helpers/vault';
 import { useViewHarness } from '../helpers/view';
@@ -89,6 +90,42 @@ describe('a marker on the dated axis', () => {
 		expect(mark.classList.contains('pbl-bar-outside')).toBe(true);
 		expect(mark.classList.contains('pbl-bar-open-start')).toBe(true);
 		expect(mark.getAttribute('aria-label')).toContain('1900-01-01');
+	});
+
+	it('opens its note on every gesture a bar row had — click, middle click and the menu', () => {
+		// The diamond inherited `wireCardActivation`'s whole job when the row went, and it
+		// shipped with the primary click alone: a middle click never fires `click` at all, and
+		// nothing else on this grid carries a marker's row menu — which is the only pointer
+		// route to Schedule, Unschedule and Set state for a date. Found in review (2026-08-16).
+		const vault = new FakeVault();
+		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10, due: '2026-12-01' } });
+		const { containerEl } = roadmapView(vault, { ...DATES });
+		const mark = markFor(containerEl, 'Ship 1.0');
+
+		mark.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(vault.opened.map((o) => o.path)).toEqual(['Ship 1.0.md']);
+
+		mark.dispatchEvent(new MouseEvent('auxclick', { bubbles: true, button: 1 }));
+		expect(vault.opened).toHaveLength(2);
+		expect(vault.opened[1]).toMatchObject({ path: 'Ship 1.0.md', mode: 'tab' });
+
+		mark.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		expect(Menu.lastShown?.items.map((i) => i.titleText)).toContain('Open in new tab');
+	});
+
+	it('leaves the connector out of all three, which is what makes the mark a control’s parent', () => {
+		// `fromRowControl`'s own case, asked of the gesture pair rather than of `click` alone:
+		// the connector is a button INSIDE the diamond, so a press on it must start a link
+		// drag and never open the note — the identical defect a bar row's grips produced.
+		const vault = new FakeVault();
+		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10, due: '2026-12-01' } });
+		const { containerEl } = roadmapView(vault, { ...DATES, dependsOnProperty: 'note.dependsOn' });
+		const connector = markFor(containerEl, 'Ship 1.0').querySelector<HTMLElement>('.pbl-bar-connector');
+		if (!connector) throw new Error('no connector on the diamond');
+
+		connector.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		connector.dispatchEvent(new MouseEvent('auxclick', { bubbles: true, button: 1 }));
+		expect(vault.opened).toEqual([]);
 	});
 
 	it('puts the milestone’s name and exact date on the mark itself', () => {

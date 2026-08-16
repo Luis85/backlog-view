@@ -66,6 +66,9 @@ one line, and the work starts at the top of the grid.
    the resources axis. A marker that shelves mints no row.
 6. A diamond is still a drag source and still a dependency source: the body hold slides it,
    writing the target alone, and the connector is where an arrow to a date begins.
+7. Every gesture a bar ROW answered, the mark answers: a click opens the note, a middle
+   click opens it in a tab, and a right click opens its menu — which on this grid is the
+   only pointer route to Schedule, Unschedule and Set state for a date.
 
 **Extensions**
 
@@ -114,6 +117,15 @@ one line, and the work starts at the top of the grid.
   milestone is named nowhere on the grid. A loss, stated rather than drawn badly — and the
   distinction it rests on is that registering is about what is ON SCREEN while `face` is
   about what can be written there.
+- **3e — a gesture the mark inherited and did not get.** A mark that takes over a row's job
+  takes ALL of it. This shipped with the primary click alone: a middle click fires no
+  `click` at all, so opening in a tab did nothing, and a right click reached no handler, so
+  the menu — the only pointer route to Schedule, Unschedule and Set state here — was gone
+  from the grid. Both found in review (2026-08-16), on both axes, and both fixed at the
+  mark. What the diamond deliberately does NOT inherit is `selectItem`: it is no `option`
+  and has no element `aria-activedescendant` could point at, so selecting one would leave
+  the roving walk on a path with no stop. `wireCardActivation` is therefore two halves —
+  `wireOpenGestures` and `wireItemMenu` — and a card still takes both through it.
 - **4a — the bucket axis.** Nothing here applies: a marker is an ordinary card there.
 - **5a — a marker the Base excluded.** Unchanged. `deriveBars` routes a context row to
   `RoadmapModel.context` before any span is computed, so it never reaches this row — the
@@ -167,7 +179,14 @@ marker's explicit label, and `renderBarRow` can no longer be handed one. `stateN
 from there into `render/lanes.ts` so the diamond can read it too (3c) — `edgeClasses`' own
 reason, since the grid imports that module and never the other way.
 
-`test/view/roadmapMatches.test.ts` drives 3d's registration, watched failing without it.
+`wireOpenGestures` and `wireItemMenu` in `src/view/render/board.ts` are 3e: the two halves
+of `wireCardActivation` a mark can take without a selection. The open pair is wired together
+because a browser splits one affordance in two — a middle click never fires `click` — so a
+surface that wires the primary one alone loses the tab silently.
+
+`test/view/roadmapMatches.test.ts` drives 3d's registration, watched failing without it, and
+`test/view/roadmapMarkers.test.ts` drives 3e — all three gestures on the mark, and the
+connector inside it refused by `fromRowControl` on both halves of the pair.
 
 Driven in `test/view/roadmapMarkers.test.ts` (one row of diamonds ahead of the bars, the
 minting rule, no disclosure, the two outside-window cases and the mark's own name),

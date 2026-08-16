@@ -405,8 +405,9 @@ free of runtime code so imports stay cycle-free.
   one rebuilds on every data update. Obsidian's plugin review flags `:has` for the same
   reason. State CSS depends on belongs on the element, put there where the state changes.
 - **A row's activation asks whether the event began on the ROW, not on a control it
-  contains** — `fromRowControl` in `render/rows.ts`, asked by both wirings
-  (`wireRowEvents` for the tree, `wireCardActivation` for cards and timeline rows). It
+  contains** — `fromRowControl` in `render/rows.ts`, asked by every wiring
+  (`wireRowEvents` for the tree, `wireOpenGestures` for cards, timeline rows and a
+  milestone's diamond — `wireCardActivation` is that plus a selection and `wireItemMenu`). It
   replaced ten per-control `stopPropagation` calls, and the reason is the failure they
   produced twice: opting out was the control's job to remember, and the dependency
   connector and the bar grips both forgot, shipping handles that opened the note. Moving
@@ -416,7 +417,10 @@ free of runtime code so imports stay cycle-free.
   than a list of remembered places: the tab-stop rule below already requires every new
   per-row control to be a real `<button>`, so one written tomorrow is covered without
   editing the selector. `auxclick` asks separately because a middle click never fires
-  `click` — the reason every one of those per-control guards came in pairs.
+  `click` — the reason every one of those per-control guards came in pairs, and the reason
+  the two OPEN gestures are wired as a pair (`wireOpenGestures`) rather than left to each
+  surface: a milestone's diamond wired the primary click alone and lost "open in a new tab"
+  silently, which no test named the surface for.
 - Two tab-stop zones, and a control's element type follows from which one it is in.
   The **toolbar** is ordinary UI: every activatable control is a real `<button>`
   (`iconButton`, both clear buttons), so Tab reaches all of them. The **tree** is one

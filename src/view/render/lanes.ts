@@ -1,10 +1,10 @@
 import { setTooltip } from 'obsidian';
 import { t } from '../../i18n/t';
-import { createCard, wireCardActivation } from './board';
+import { createCard, wireCardActivation, wireItemMenu, wireOpenGestures } from './board';
 import { renderBarProgress } from './barProgress';
 import { RowContext } from './columns';
 import { drawIcon } from './icons';
-import { fromRowControl, renderBadge, renderChevron, renderTitleText } from './rows';
+import { renderBadge, renderChevron, renderTitleText } from './rows';
 import { promptAddAbsence, showAbsenceMenu } from '../interactions/absences';
 import { CardDragController } from '../interactions/cardDrag';
 import { wireBarLink } from '../interactions/linkDrag';
@@ -854,14 +854,21 @@ export function drawMarkerDiamonds(
 		}
 		// `row` is the diamond itself — see `BarLinkParts.row`, and 2d in the note above.
 		wireBarLink(ctx, { dnd: mounts.dnd, content: mounts.content, row: el, barEl: el, outside: geometry.outside, item: bar.item });
-		// The row is not a card, so `wireCardActivation` has nothing to wire: the diamond is
-		// the whole of what a reader can click here, and opening the note is what a click on a
-		// bar already does everywhere else on this grid. Its filter is not, though — the
-		// connector above is a control inside this element and a click on it must not open
-		// the note, which is what `fromRowControl` answers for every other row on the grid.
-		el.addEventListener('click', (evt) => {
-			if (!fromRowControl(evt)) ctx.host.openItem(bar.item, evt);
-		});
+		// **The mark carries every gesture a bar ROW carried, minus the selection.** The row
+		// went and `wireCardActivation` went with it, and what was written here in its place
+		// was the primary click alone — so a middle click opened no tab (a browser fires no
+		// `click` for it) and a right click reached no menu, which on this grid is the only
+		// pointer route to Schedule, Unschedule and Set state for a date. Both found in
+		// review (2026-08-16), and both are the same mistake: a mark that inherits a row's
+		// job inherits all of it.
+		//
+		// What it does NOT inherit is `selectItem`. A diamond is not an `option` and has no
+		// element `aria-activedescendant` could point at ([[Milestones out of the resource
+		// rows]] 3c), so selecting one would leave the pane's roving walk on a path with no
+		// stop. `wireOpenGestures` and `wireItemMenu` are the two halves of
+		// `wireCardActivation` that do not need one; a card still gets both through it.
+		wireOpenGestures(ctx.host, el, bar.item);
+		wireItemMenu(ctx.host, el, bar.item);
 		// `barClasses` gives a wholly-outside mark no `pbl-bar-milestone`, so it draws the
 		// plain accent rather than the cyan diamond — the legend has to key what was
 		// actually painted, which is `Other` and not `Milestone`. Reported here rather than

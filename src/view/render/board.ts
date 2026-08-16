@@ -617,23 +617,55 @@ export function wireCardActivation(
 	// (the disclosure, the match links, the chips, the add) and a timeline row contains
 	// two more that are not buttons (the bar grips, the connector's neighbours), and none
 	// of them means "open this note".
-	card.addEventListener('click', (evt) => {
-		if (fromRowControl(evt)) return;
+	wireOpenGestures(ctx.host, card, item, (evt) => {
 		ctx.host.selectItem(item, false);
 		// Selected first either way, and opened only if the fold did not spend the click —
 		// the tree's own order in `wireRowEvents`, so one gesture cannot both fold a row
 		// and open its note.
-		if (fold?.(evt)) return;
-		ctx.host.openItem(item, evt);
+		return fold?.(evt) ?? false;
 	});
-	card.addEventListener('auxclick', (evt) => {
-		if (evt.button === 1 && !fromRowControl(evt)) ctx.host.openItemIn(item, 'tab');
+	wireItemMenu(ctx.host, card, item);
+}
+
+/**
+ * The two gestures that OPEN a note, wired as a pair because they are one affordance and
+ * a browser splits them: a middle click never fires `click` at all, so a surface that
+ * wires only the primary one silently loses "open in a new tab" — which is how it left a
+ * milestone's diamond when that mark inherited the row's job (review, 2026-08-16).
+ *
+ * Both ask `fromRowControl`, the receiver's own filter: a card contains buttons (the
+ * disclosure, the match links, the chips, the add), a timeline row contains two that are
+ * not buttons (the bar grips), and a diamond contains the dependency connector. None of
+ * them means "open this note".
+ *
+ * `before` runs on the primary click only and returns whether it SPENT the gesture — the
+ * one thing that differs between a card, which selects and may fold, and a mark that is no
+ * selection stop at all. A middle click has no such question: it always opens a tab.
+ */
+export function wireOpenGestures(
+	host: BacklogViewHost,
+	el: HTMLElement,
+	item: BacklogItem,
+	before?: (evt: MouseEvent) => boolean,
+): void {
+	el.addEventListener('click', (evt) => {
+		if (fromRowControl(evt)) return;
+		if (before?.(evt)) return;
+		host.openItem(item, evt);
 	});
-	// The menu is the non-drag path, and on touch the only one — so a card carries it
-	// exactly as a row does, whichever projection drew it. What it offers differs per
-	// projection (see `buildItemMenu`): a board card has no visible neighbours to
-	// rank against, and its Set state is the board's columns.
-	card.addEventListener('contextmenu', (evt) => showItemMenu(ctx.host, evt, item, childTypeChoices(item)));
+	el.addEventListener('auxclick', (evt) => {
+		if (evt.button === 1 && !fromRowControl(evt)) host.openItemIn(item, 'tab');
+	});
+}
+
+/**
+ * The item menu, which is the non-drag path to everything a pointer drag does and on touch
+ * the only one — so every surface that draws an item carries it, whichever projection drew
+ * it. What it OFFERS differs per surface (see `buildItemMenu`): a board card has no visible
+ * neighbours to rank against, and its Set state is the board's columns.
+ */
+export function wireItemMenu(host: BacklogViewHost, el: HTMLElement, item: BacklogItem): void {
+	el.addEventListener('contextmenu', (evt) => showItemMenu(host, evt, item, childTypeChoices(item)));
 }
 
 /**

@@ -171,11 +171,15 @@ can fold them away.
   them.
 - **3c — the keyboard walk.** A marker is not one of this axis's card stops, and that is
   the second stated cost. It is the reason 2d's connector is not merely a convenience:
-  with no card stop there is no row menu either, so nothing else on this axis can say that
-  one item waits for a date. A diamond in a shared header is not an `option` and has no
+  a marker's menu refuses both dependency entries by design, so nothing else on this axis
+  can say that one item waits for a date. A diamond in a shared header is not an `option` and has no
   element the roving selection could point `aria-activedescendant` at, so listing one would
   put the walk on a stop that does not exist. Its name and date are still announced on the
-  mark itself. This paragraph used to end with a fallback — "the plain dated axis still
+  mark itself, and a POINTER reaches the mark's own menu (2026-08-16) — the whole of what
+  is lost is the KEYBOARD route, since a menu on the grid is opened from a stop and there is
+  none. That narrowing does not reopen 2d: `addDependencyItems` refuses both entries for a
+  marker whatever surface asks, so the connector is still the only route by which anything
+  comes to wait on a date. This paragraph used to end with a fallback — "the plain dated axis still
   draws every marker as its own selectable row, which is the projection to use when a
   milestone has to be reached without a pointer" — and [[Milestones in one row on the dated
   axis]] SPENT it on 2026-08-16 by taking this row to that axis too. What is left is the
