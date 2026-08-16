@@ -53,19 +53,21 @@ describe('the shelf\'s own header controls', () => {
 		expect(toolbarOf(containerEl).querySelector('.pbl-shelf-toggle')).toBeNull();
 	});
 
-	it('keeps the two pickers out of the listbox tab order, and never renders a form control', () => {
+	it('keeps every header control out of the listbox tab order, form control or not', () => {
 		const { containerEl } = makeRoadmap(horizonVault());
-		// The pane is one tab stop and the shelf sits inside it, so the pickers have to be
-		// `tabindex="-1"` — a focusable form control here would be a second stop in a
-		// composite that has exactly one. The disclosure is the documented exception and
-		// is asserted on its own below.
-		for (const sel of ['.pbl-shelf-sort', '.pbl-shelf-filter']) {
-			const btn = containerEl.querySelector<HTMLElement>(sel);
-			expect(btn, sel).not.toBeNull();
-			expect(btn?.getAttribute('tabindex'), sel).toBe('-1');
+		// The pane is one tab stop and the shelf sits inside it, so nothing it carries may
+		// be a second one. The pickers answer that by being buttons that open a menu; the
+		// search box cannot — a menu cannot be typed into — so it keeps the half of the
+		// rule that is about Tab. The disclosure is the documented exception and is
+		// asserted on its own below.
+		for (const sel of ['.pbl-shelf-sort', '.pbl-shelf-filter', '.pbl-shelf-search-input']) {
+			const el = containerEl.querySelector<HTMLElement>(sel);
+			expect(el, sel).not.toBeNull();
+			expect(el?.getAttribute('tabindex'), sel).toBe('-1');
 		}
 		expect(containerEl.querySelector('.pbl-shelf-header select')).toBeNull();
-		expect(containerEl.querySelector('.pbl-shelf-header input')).toBeNull();
+		// The one form control the header may hold, and only that one.
+		expect(containerEl.querySelectorAll('.pbl-shelf-header input')).toHaveLength(1);
 	});
 
 	it('stays in the tab order when the shut shelf is the only thing in the pane', () => {
@@ -243,8 +245,8 @@ describe('the shelf\'s own header controls', () => {
 		const { containerEl } = makeRoadmap(vault);
 
 		const menu = openMenu(containerEl, '.pbl-shelf-filter');
-		expect(menu.items.map((i) => i.titleText)).toEqual(['Epic (1)', 'Task (1)']);
-		expect(menu.items.every((i) => i.checked)).toBe(true);
+		expect(menu.items.map((i) => i.titleText)).toEqual(['Show all types', 'Hide all types', 'Epic (1)', 'Task (1)']);
+		expect(menu.items.filter((i) => i.checked).map((i) => i.titleText)).toEqual(['Epic (1)', 'Task (1)']);
 
 		itemNamed(menu, 'Task (1)').click();
 		expect(shelfGroupHeaders(containerEl)).toEqual(['Epic']);
@@ -259,7 +261,7 @@ describe('the shelf\'s own header controls', () => {
 
 		// Built from the UNFILTERED shelf: hiding a type must not remove its own way back.
 		const menu = openMenu(containerEl, '.pbl-shelf-filter');
-		expect(menu.items.map((i) => i.titleText)).toEqual(['Epic (1)', 'Task (1)']);
+		expect(menu.items.map((i) => i.titleText)).toEqual(['Show all types', 'Hide all types', 'Epic (1)', 'Task (1)']);
 		expect(itemNamed(menu, 'Task (1)').checked).toBe(false);
 
 		itemNamed(menu, 'Task (1)').click();
@@ -304,7 +306,7 @@ describe('the shelf\'s own header controls', () => {
 		const typeEntries = itemNamed(menu, 'Filter unplaced by type').submenu?.items ?? [];
 		expect(typeEntries.map((i) => i.titleText)).toEqual(headerMenuTitles(containerEl, '.pbl-shelf-filter'));
 
-		itemNamed(menu, 'Filter unplaced by type').submenu!.items[1].click();
+		itemNamed(itemNamed(menu, 'Filter unplaced by type').submenu!, 'Task (1)').click();
 		expect(shelfGroupHeaders(containerEl)).toEqual(['Epic']);
 	});
 

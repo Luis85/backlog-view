@@ -3,7 +3,7 @@ import { BacklogSettings } from '../../src/domain/settings';
 import { settingsWith } from '../helpers/settings';
 import { buildModel } from '../../src/domain/model';
 import { buildRoadmap } from '../../src/domain/roadmap';
-import { organizeShelf } from '../../src/domain/shelf';
+import { organizeShelf, searchShelf } from '../../src/domain/shelf';
 import { FakeVault } from '../helpers/vault';
 
 function shelfFrom(vault: FakeVault, overrides: Partial<BacklogSettings> = {}) {
@@ -91,5 +91,30 @@ describe('organizing the shelf', () => {
 		vault.addFile('lowercase task.md', { frontmatter: { type: 'task', order: 10 } });
 		const groups = organizeShelf(shelfFrom(vault), 'tree', new Set());
 		expect(groups.map((g) => g.type)).toEqual(['Task']);
+	});
+});
+
+describe('searching the shelf', () => {
+	function shelfOf(): ReturnType<typeof shelfFrom> {
+		const vault = new FakeVault();
+		vault.addFile('Login screen.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Billing export.md', { frontmatter: { type: 'Epic', order: 20 } });
+		return shelfFrom(vault);
+	}
+
+	it('keeps the cards whose title holds the needle, whatever its case', () => {
+		expect(titlesOf(searchShelf(shelfOf(), 'LOGIN'))).toEqual(['Login screen']);
+		expect(titlesOf(searchShelf(shelfOf(), 'export'))).toEqual(['Billing export']);
+	});
+
+	it('narrows nothing on an empty or blank needle', () => {
+		// Whitespace is not a search — the same rule `FilterState.active` keeps for the
+		// toolbar's own quick filter, so a stray space never empties the shelf.
+		expect(titlesOf(searchShelf(shelfOf(), ''))).toHaveLength(2);
+		expect(titlesOf(searchShelf(shelfOf(), '   '))).toHaveLength(2);
+	});
+
+	it('keeps the input order, leaving grouping and sort to say what comes first', () => {
+		expect(titlesOf(searchShelf(shelfOf(), 'i'))).toEqual(['Login screen', 'Billing export']);
 	});
 });
