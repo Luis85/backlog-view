@@ -72,17 +72,25 @@ open-pick, and "show me only Epics" had no entry at all.
 - **2b — the search runs while a type is hidden, or a group is folded.** They compose in
   one direction each and never disagree: the search decides which cards exist, the type
   filter which groups are drawn at all, the fold whether a drawn group shows its cards.
+- **2c — the title is being composed through an IME.** The narrowing waits for the
+  composition to end: a rebuild mid-composition destroys the field being typed into and
+  commits a CJK word half-finished. (Found by review, Codex on PR #161.)
 - **4a — a keyboard user has no pointer to click the box with.** The card menu carries
   **Search unplaced...**, which opens a prompt, and **Clear unplaced search** while one
   runs — the same obligation every `tabindex="-1"` control here carries, and the same
   builder behind both surfaces.
 - **5a — a bulk entry would change nothing.** It is disabled rather than offered: Show all
   with nothing hidden, Hide all with everything hidden.
+- **5b — a type is hidden while nothing of it is shelved.** Hide all ADDS to the stored
+  set rather than replacing it, so that remembered hiding survives — 4a in
+  [[The shelf, organized]]. Show all is the deliberate opposite: it clears the set whole,
+  because that is what the entry says. (Both found by review, Codex on PR #161.)
 
 ## Acceptance criteria
 
 - Typing in the box narrows the shelf's cards by title, case-insensitively; a blank or
-  whitespace-only box narrows nothing.
+  whitespace-only box narrows nothing, and an IME's intermediate keystrokes narrow
+  nothing until the composition ends.
 - The shelf's count is unchanged by the search, by the type filter and by both together.
 - The box keeps focus AND the caret across the rebuild each keystroke causes — every
   other shelf control hands focus to the pane, and doing that here would end the search
@@ -92,6 +100,7 @@ open-pick, and "show me only Epics" had no entry at all.
   tab order wherever the pane draws no card, exactly as the two pickers do.
 - The type picker reopens after each pick, carrying the checkmarks that pick produced,
   and offers Show all / Hide all — on the header's surface and in the card menu alike.
+  Hide all leaves a type hidden that has no cards to hide; Show all clears it.
 - Nothing is written to a note by any of it, and nothing reaches the `.base`.
 
 ## Where it lives
@@ -118,7 +127,11 @@ disclosure and the two resize grips already pay: a focusable non-`option` inside
 `listbox`. What a screen reader makes of a text field there is a live-vault question, not
 one this suite can answer (ADR 0020). `runSearch` beside it is the third answer to the
 focus question `refocus` asks: the replacement box takes focus even where cards remain,
-and the caret travels with it.
+and the caret travels with it. It is also why the box listens for `compositionend` as well
+as `input`, and skips a composing one: rebuilding the pane replaces the field, which is
+harmless between keystrokes and destructive in the middle of a composed word. Both events
+are wired because Chromium and WebKit order them oppositely, and the one that arrives
+second finds the value unchanged.
 
 `src/view/render/shelf.ts` reads the two in order (`searchShelf`, then `organizeShelf`),
 so a searched-away card is simply not drawn — and therefore not in `RoadmapSnapshot.cards`,

@@ -225,7 +225,22 @@ function renderSearch(host: BacklogViewHost, headerEl: HTMLElement): void {
 	});
 	input.value = host.shelfSearch;
 	setTooltip(box, label);
-	input.addEventListener('input', () => runSearch(host, input.value, input.selectionStart));
+	// An IME reports its intermediate keystrokes as `input` events with `isComposing` set,
+	// and the rebuild below destroys the very field being composed into — which interrupts
+	// a CJK word or commits it half-typed. The narrowing waits for the composition to end
+	// instead. BOTH events are wired because the two engines this plugin runs on order
+	// them oppositely (Chromium ends the composition before the last `input`, WebKit after
+	// it); whichever fires second finds the value unchanged, and `setShelfSearch` plans
+	// nothing for that.
+	input.addEventListener('input', (evt) => {
+		// The flag is READ off the event rather than reached through `instanceof
+		// InputEvent`: a pop-out window has constructors of its own, so the class test is
+		// false for the very event this guard exists for (`obsidianmd/prefer-instanceof`
+		// says the same thing about every other class).
+		if ('isComposing' in evt && evt.isComposing) return;
+		runSearch(host, input.value, input.selectionStart);
+	});
+	input.addEventListener('compositionend', () => runSearch(host, input.value, input.selectionStart));
 	input.addEventListener('keydown', (evt) => {
 		if (evt.key !== 'Escape' || input.value === '') return;
 		// The pane's key handler answers only to events targeting the pane itself, so this

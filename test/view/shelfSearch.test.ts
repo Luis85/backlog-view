@@ -91,6 +91,22 @@ describe("the shelf's own search", () => {
 		expect(after.selectionStart).toBe(3);
 	});
 
+	it('waits for an IME to finish composing before it rebuilds the pane', () => {
+		const { containerEl } = makeRoadmap(searchVault());
+		const input = searchBox(containerEl);
+		input.value = 'bil';
+
+		// A composing keystroke: narrowing here would destroy the field being composed
+		// into and commit a half-typed word.
+		input.dispatchEvent(new InputEvent('input', { bubbles: true, isComposing: true }));
+		expect(shelfTitles(containerEl)).toHaveLength(4);
+		expect(searchBox(containerEl)).toBe(input);
+
+		input.value = 'billing';
+		input.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true }));
+		expect(shelfTitles(containerEl)).toEqual(['Billing export']);
+	});
+
 	it('clears on Escape and puts every card back', () => {
 		const { containerEl } = makeRoadmap(searchVault());
 		typeSearch(containerEl, 'billing');
@@ -186,6 +202,21 @@ describe("the shelf's type picker", () => {
 
 		openTypeMenu(containerEl).items.find((i) => i.titleText === 'Show all types')?.click();
 		expect(shelfGroupHeaders(containerEl)).toEqual(['Epic', 'Task']);
+	});
+
+	it('leaves a remembered type hidden when hiding all', () => {
+		const { containerEl, view } = makeRoadmap(searchVault());
+		// A type hidden while its last card was shelved stays in the store, unused until
+		// one comes back — nothing on this shelf is a Bug.
+		view.setShelfHiddenTypes(new Set(['Bug']));
+
+		openTypeMenu(containerEl).items.find((i) => i.titleText === 'Hide all types')?.click();
+
+		// Everything on screen is hidden AND the remembered one still is: a set rebuilt
+		// from the groups in front of us would silently un-hide it, and nobody would find
+		// out until the day a Bug was shelved again.
+		expect(view.shelfHiddenTypes.has('Bug')).toBe(true);
+		expect(shelfGroupHeaders(containerEl)).toEqual([]);
 	});
 
 	it('withholds each bulk entry exactly where it would change nothing', () => {

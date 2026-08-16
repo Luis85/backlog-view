@@ -57,10 +57,13 @@ export function addShelfSortItems(host: BacklogViewHost, menu: Menu, after?: () 
  * would change something, the checkmark rule stated as a `setDisabled` — an entry that
  * writes nothing is one this codebase does not offer anywhere else either.
  *
- * `Show all` clears the whole set rather than only the types on the shelf: a type hidden
- * while its last card was still shelved stays hidden in the store (that is 4a in
- * [[The shelf, organized]]), and an entry saying ALL that left one of those standing
- * would be answering a narrower question than it asks.
+ * The two are NOT mirror images, and 4a in [[The shelf, organized]] is what decides it:
+ * a type hidden while its last card was still shelved stays hidden in the store, unused
+ * until a card of that type comes back. `Show all` therefore clears the whole set — an
+ * entry saying ALL that left one of those standing would be answering a narrower question
+ * than it asks — while `Hide all` ADDS to it rather than replacing it, since a set built
+ * from the groups on screen would silently un-hide exactly those remembered types, and
+ * the un-hiding would only show up the day one of them was shelved again.
  */
 export function addShelfTypeItems(host: BacklogViewHost, menu: Menu, shelf: ShelfCard[], after?: () => void): void {
 	const groups = organizeShelf(shelf, 'tree', new Set());
@@ -80,7 +83,7 @@ export function addShelfTypeItems(host: BacklogViewHost, menu: Menu, shelf: Shel
 			.setTitle('Hide all types')
 			.setIcon('eye-off')
 			.setDisabled(groups.every((group) => host.shelfHiddenTypes.has(group.type)))
-			.onClick(() => apply(groups.map((group) => group.type))),
+			.onClick(() => apply([...host.shelfHiddenTypes, ...groups.map((group) => group.type)])),
 	);
 	menu.addSeparator();
 	for (const group of groups) {
