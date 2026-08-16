@@ -2,12 +2,12 @@
 type: PBI
 parent: "[[An Iterations board]]"
 order: 20
-status: Open
+status: Done
 priority: P2
 created: 2026-08-15
 source: user request
 started: ""
-finished: ""
+finished: 2026-08-16
 horizon: ""
 start: ""
 due: ""
@@ -637,8 +637,11 @@ migration the stored path goes stale on a rename and drops the reader to `Produc
 is a choice silently undone — the opposite of what 2a's "retained, not rewritten" rule
 exists to protect. The entry is restored and debounce-saved by
 `src/view/viewState.ts`, read and written through `src/view/viewStateController.ts` and declared
-on the host in `src/view/host.ts`. The picker is a `board` case in `renderProjectionZone`
-in `src/view/render/toolbarControls.ts`, built the way `renderAxisPicker` beside it is;
+on the host in `src/view/host.ts`. The picker is `renderBoardScopePicker` in
+`src/view/render/toolbarControls.ts`, built the way `renderAxisPicker` beside it is —
+drawn beside the projection switcher in EVERY projection rather than inside the board's
+own zone, since it is how this board is reached and a control behind the door it opens
+would be no way in at all;
 the board itself is `src/view/render/board.ts` under the fork in
 `src/view/render/projections.ts`, with its empty states in
 `src/view/render/emptyStates.ts`, and the goal line drawn from the chosen iteration's
@@ -649,6 +652,18 @@ having written nothing when the card is already there, and otherwise delegates t
 product board's own move, which plans through `src/domain/writePlan.ts` and applies
 through `src/storage/frontmatter.ts` and `src/view/writeGate.ts`. The announcement in
 `src/view/interactions/cardDrag.ts` asks the same bucket question rather than matching a
-column by its exact state. Driven in `test/view/board.test.ts` and
-`test/view/contextCardWrites.test.ts`, with the store round-trip in
+column by its exact state. Driven in `test/view/iterationBoard.test.ts` — the scope's round trip, the picker, the
+three buckets, the goal line, both empty states and one move per input — with the
+buckets' own rules in `test/domain/iterationBuckets.test.ts`, the population in
+`test/domain/iterationModel.test.ts`, the options in
+`test/domain/iterationSettings.test.ts` and the stored shape in
 `test/storage/viewStateStore.test.ts`.
+
+**Built 2026-08-16.** Two things landed differently from what is described above and
+both are recorded rather than smoothed over. The move method takes the **bucket**, and
+so does everything that offers one: `BoardColumn` carries `bucket` and `takesDrop`
+beside `state`, because two buckets with nothing to write both hold `state: null` and a
+fold, a drop wiring and a menu entry keyed on that null would treat them as one column.
+And the done-column fold default is **off** on this board, for the reason the completed
+toggle is: Resolved is what the sprint finished, so a default that shut it would fold
+away the answer this board is opened to read.

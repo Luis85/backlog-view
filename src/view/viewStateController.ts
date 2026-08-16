@@ -57,6 +57,11 @@ export class ViewStateController {
 	}
 
 	setProjection(mode: Projection): void {
+		// `Board` means the board this view was last on, which is what makes the scope a
+		// RETAINED pick rather than one spent on the first trip through the tree — the same
+		// rule `activeAxis` keeps for the roadmap's axis. The picker's own `Product` entry
+		// clears the scope first, so it is never redirected back here.
+		if (mode === 'board' && this.state.boardScope() !== null) mode = 'iteration';
 		if (mode === this.projection) return;
 		this.state.setProjection(mode);
 		// Before the render, not after: the render is what reads the index.

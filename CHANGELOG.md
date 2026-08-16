@@ -21,6 +21,14 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   backfills it like every other optional property, clearing removes the key rather than
   blanking it, and every write is one undoable batch.
 
+- **A board scoped to one iteration.** Pick a sprint from the scope picker beside the
+  projection switcher and the Board position draws that iteration alone, in three columns
+  over your own workflow: Open, In progress and Resolved. Which of your states fall in the
+  two outer columns is configured; everything else is in between. The iteration's goal
+  draws above the columns, a card moves between buckets by drag, Alt+arrow or its menu, and
+  the choice of scope is remembered per view, per device — through a rename of the note or
+  of a folder above it.
+
 - **An iteration to put work in.** A note typed `Iteration` is a time box: name its
   property in the view options (a goal property too, for later), then, from any row's
   or card's menu, put an item in it with `Set iteration` (or take it back out with

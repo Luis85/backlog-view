@@ -764,6 +764,19 @@ function workflowColumns(
 	return { columns, byValue, noState };
 }
 
+/**
+ * What a column is FOLDED by — the bucket where there is one, the state everywhere else.
+ *
+ * One statement rather than the expression written at each site, because the render read
+ * it one way and both CONTROLS read it another: an Open bucket represented by `New`
+ * rendered from the `open` key while its own disclosure and its menu entry toggled `new`,
+ * so the control appeared not to work, and two buckets with nothing to write collided on
+ * the null besides. Found by review (Codex, PR #154).
+ */
+export function columnFoldValue(col: BoardColumn): string | null {
+	return col.bucket ?? col.state;
+}
+
 /** Every path with a card of its own — the "already on screen" test `hiddenMatches` takes. */
 export function cardPaths(board: BoardModel): Set<string> {
 	return new Set(board.columns.flatMap((col) => col.cards.map((card) => card.file.path)));

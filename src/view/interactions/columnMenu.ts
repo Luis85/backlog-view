@@ -1,6 +1,6 @@
 import { Menu } from 'obsidian';
 import { BacklogViewHost, BoardSnapshot, ColumnScope } from '../host';
-import { BoardColumn, emptyNoState } from '../../domain/board';
+import { BoardColumn, columnFoldValue, emptyNoState } from '../../domain/board';
 import { showMenuAtElement, showMenuForClick } from './menu';
 
 /**
@@ -37,7 +37,7 @@ function buildColumnMenu(host: BacklogViewHost, scope: ColumnScope, col: BoardCo
 	// `false`: this asks, it must not settle. The default has already been taken by the
 	// render that drew the column this menu is being opened on — see `columnCollapsed`
 	// in `view/viewState.ts`.
-	const folded = host.columnCollapsed(scope, col.state, false);
+	const folded = host.columnCollapsed(scope, columnFoldValue(col), false);
 	// The empty no-state strip has no fold to offer, and the header draws it no disclosure
 	// for the same reason: it is ALREADY a 44px strip with nothing in it, so folding would
 	// swap its dashed frame for a solid one, persist a fold nobody could watch themselves
@@ -78,7 +78,7 @@ function addFoldItem(
 		// Guarded as well as disabled, `renderChevron`'s own belt and braces: what a
 		// disabled `MenuItem` does with a click is Obsidian's business, and this side can
 		// answer for itself in one term.
-		if (!filtering) mi.onClick(() => host.setColumnCollapsed(scope, col.state, !folded));
+		if (!filtering) mi.onClick(() => host.setColumnCollapsed(scope, columnFoldValue(col), !folded));
 	});
 }
 

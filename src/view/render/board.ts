@@ -23,6 +23,7 @@ import {
 	BoardModel,
 	cardPaths,
 	deliverablesWorkflow,
+	columnFoldValue,
 	emptyNoState,
 	iterationBuckets,
 	overBy,
@@ -455,7 +456,7 @@ function renderColumnHeader(
 	});
 	// The empty no-state strip is the one header with nothing to fold: it holds no card
 	// in any filter state, so a disclosure there would offer to shut what is already shut.
-	if (!strip) renderColumnFold(ctx.host, header, opts.scope, col.state, { folded: frame.folded, label: col.label });
+	if (!strip) renderColumnFold(ctx.host, header, opts.scope, columnFoldValue(col), { folded: frame.folded, label: col.label });
 	if (col.done) drawIcon(header.createSpan({ cls: 'pbl-board-col-icon' }), 'circle-check');
 	if (col.state === null) drawIcon(header.createSpan({ cls: 'pbl-board-col-icon' }), 'circle-dashed');
 	header.createSpan({ cls: 'pbl-board-col-name', text: col.label });

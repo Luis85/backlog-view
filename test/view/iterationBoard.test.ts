@@ -56,6 +56,44 @@ describe('the iteration scope', () => {
 		expect(second.view.boardScope).toBe(SPRINT);
 	});
 
+	it('answers as the PRODUCT board everywhere once the scope stops resolving', () => {
+		// The renderer falling back alone is the split this plan warned about: with the
+		// content drawing the product board and every other gate still answering
+		// `'iteration'`, the count included Deliverables, the focus control stayed inert
+		// and `offerableTypes` offered a type that vanished from the board that made it.
+		const vault = sprintVault();
+		const harness = makeView(vault, OPTIONS, { base: 'Plan.base' });
+		harness.view.setBoardScope(SPRINT);
+		expect(harness.view.projection).toBe('iteration');
+
+		vault.files.delete(SPRINT);
+		refresh(harness.view, vault);
+		expect(harness.view.projection).toBe('board');
+		expect(harness.containerEl.querySelector<HTMLButtonElement>('.pbl-focus-btn')?.disabled).toBe(false);
+	});
+
+	it('leaves the product board counting the product, with a scope still retained', () => {
+		// Clicking `Board` retains the pick rather than spending it, so the scope is still
+		// stored — and must mean nothing at all while the reader is not on the board it
+		// scopes, or an iteration's carriers are counted over the whole backlog.
+		const harness = makeView(sprintVault(), OPTIONS, { base: 'Plan.base' });
+		harness.view.setBoardScope(SPRINT);
+		harness.view.setProjection('tree');
+		expect(harness.view.effectiveScope).toBeNull();
+		expect(harness.view.boardScope).toBe(SPRINT);
+	});
+
+	it('reopens the retained iteration when Board is pressed again', () => {
+		// `Board` means the board this view was last on — the rule `activeAxis` keeps for
+		// the roadmap's axis, read onto the one control that can reach two boards.
+		const harness = makeView(sprintVault(), OPTIONS, { base: 'Plan.base' });
+		harness.view.setBoardScope(SPRINT);
+		harness.view.setProjection('tree');
+		harness.view.setProjection('board');
+		expect(harness.view.projection).toBe('iteration');
+		expect(harness.view.effectiveScope).toBe(SPRINT);
+	});
+
 	it('reads the whole view as Product when the stored path names no Iteration', () => {
 		// Resolved ONCE, upstream: resolving it only where the content is drawn leaves
 		// every other gate — the count, the offered types, the filter index — still
@@ -222,6 +260,23 @@ describe('a fold belongs to one iteration', () => {
 
 		harness.view.setBoardScope('sprints/Sprint 13.md');
 		expect(harness.view.columnCollapsed('iteration', 'resolved', false)).toBe(false);
+	});
+
+	it('toggles the same fold from the header disclosure that the render reads', () => {
+		// The render read `col.bucket ?? col.state` while both CONTROLS read `col.state`, so
+		// an Open bucket represented by `New` drew from the `open` key and its own
+		// disclosure toggled `new` — a control that appeared not to work. One statement of
+		// the identity now (`columnFoldValue`), asked by all three.
+		const vault = new FakeVault();
+		vault.addFile(SPRINT, { frontmatter: { type: 'Iteration', order: 10 } });
+		vault.addFile('Card.md', { frontmatter: { type: 'PBI', order: 10, status: 'New', iteration: '[[Sprint 12]]' } });
+		const harness = makeView(vault, OPTIONS, { base: 'Plan.base' });
+		harness.view.setBoardScope(SPRINT);
+
+		const open = columnByName(harness.containerEl, 'Open');
+		open.querySelector<HTMLElement>('.pbl-chevron')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(harness.view.columnCollapsed('iteration', 'open', false)).toBe(true);
+		expect(cardTitles(columnByName(harness.containerEl, 'Open'))).toEqual([]);
 	});
 
 	it('folds two buckets with nothing to write apart', () => {

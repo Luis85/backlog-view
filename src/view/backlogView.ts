@@ -1,7 +1,15 @@
 import { QueryController } from 'obsidian';
 import { CARD_SCOPE, TIMELINE_SCOPE, ViewState } from './viewState';
 import { FilterState } from './filterState';
-import { BacklogViewHost, BoardSnapshot, Column, ColumnFit, PRODUCT_BACKLOG_VIEW_TYPE, RoadmapSnapshot } from './host';
+import {
+	BacklogViewHost,
+	BoardSnapshot,
+	Column,
+	ColumnFit,
+	PRODUCT_BACKLOG_VIEW_TYPE,
+	Projection,
+	RoadmapSnapshot,
+} from './host';
 import { OpenController } from './openTarget';
 import { WriteGate } from './writeGate';
 import { CardMoveController } from './cardMoves';
@@ -332,9 +340,29 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 	 * pick would answer for a vault that has changed under it.
 	 */
 	get effectiveScope(): string | null {
+		// The STORED projection, never `this.projection` below, which is derived from this
+		// getter — and the scope only means anything while the reader is on the board it
+		// scopes. Asked without that first clause, an iteration's carriers were counted on
+		// the PRODUCT board, because clicking Board leaves the pick retained (which is the
+		// point of retaining it). Found by review (Codex, PR #154).
 		const path = this.boardScope;
-		if (path === null || !this.settings.iterationKey) return null;
+		if (super.projection !== 'iteration' || path === null || !this.settings.iterationKey) return null;
 		return isIterationType(this.model?.byPath.get(path)?.typeName ?? null) ? path : null;
+	}
+
+	/**
+	 * Which projection this view is actually ON — the stored one, except that an iteration
+	 * board whose scope no longer resolves IS the product board.
+	 *
+	 * Resolved here rather than at each gate, because the renderer alone falling back is
+	 * exactly the split this feature's own plan warned about: with the content drawing the
+	 * product board and every other gate still answering `'iteration'`, the count included
+	 * Deliverables, the focus control stayed inert, the filter used the whole-tree index,
+	 * and `offerableTypes` offered a `Deliverable` that vanished from the board that
+	 * created it. One resolution, upstream of all of them. Found by review (Codex, PR #154).
+	 */
+	override get projection(): Projection {
+		return super.projection === 'iteration' && this.effectiveScope === null ? 'board' : super.projection;
 	}
 
 	// ----------------------------------------------------------- collapse state
