@@ -344,7 +344,12 @@ can run is worse than none, because it invites trust it has not earned:
    its frontmatter is reported rather than skipped: a skipped file is checked for
    nothing and says so to nobody. Two notes may not share a **basename**, in any
    folders, because the register addresses work items by name and a collision makes
-   every `[[wikilink]]` and `parent:` to either one ambiguous.
+   every `[[wikilink]]` and `parent:` to either one ambiguous. **ADRs and index pages
+   are outside that one rule**, and are the only class that is: they are addressed by
+   path — `adrs/README.md`, `adrs/0013-….md` — which is why this file and `adrs/README.md`
+   can both be called `README` without the register losing an address. Nothing else is
+   exempt: `superpowers/`, `prds/` and `sdds/` are outside the frontmatter half of this
+   rule and claim their names like every other note.
 2. No two siblings share an `order` — the register must not demonstrate the one ranking
    limitation the plugin has.
 3. Every wikilink resolves to a note, and **every relative markdown link resolves to a
