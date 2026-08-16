@@ -182,6 +182,18 @@ git add src/domain test/domain && git commit -m "Configure the two bucket lists 
   export function iterationBuckets(population: BacklogItem[], settings: BacklogSettings): BoardModel;
   ```
   `bucketRepresentative` returns the state string to write, `null` for Open's key removal, and **`undefined` when the bucket takes no drop**. Tasks 5 and 6 depend on all three spellings.
+- Produces, on `BoardColumn` (`src/domain/board.ts`): `bucket?: IterationBucket` and `takesDrop: boolean`.
+
+**A bucket is not its state, and the column has to say both.** `BoardColumn.state` is *what a drop writes* — two values, a string or the key removal — and the three buckets need a third answer plus an identity that survives having no answer at all. Writing `bucketRepresentative`'s `undefined` into `state` does not even typecheck, and coercing it to `null` collapses two buckets onto one identity: `columnKey` lowercases `state ?? ''`, so In Progress and Resolved with nothing to write become **one fold**, and one that also collides with Open's legitimate key removal.
+
+So the column carries the bucket and its writability, and every consumer asks those rather than re-deriving them from `state`:
+
+| | |
+| --- | --- |
+| `bucket` | the identity — undefined on the product and Deliverables boards, where the state IS the identity |
+| `takesDrop` | `bucketRepresentative(...) !== undefined`, answered once by the builder; always `true` for the other two boards |
+
+`takesDrop` is stored rather than asked of the rule at each site only because the sites that need it (the fold key, the drop wiring, the `Set state` list) are in `view/` and would each have to thread `settings` to reach `bucketRepresentative`. It is set by the same call that fills `state`, so the two cannot disagree.
 
 **Four rules, and each needs its own case:**
 
@@ -318,7 +330,14 @@ export function bucketRepresentative(bucket: IterationBucket, settings: BacklogS
 
 - [ ] **Step 4: Build the board model**
 
-`iterationBuckets(population, settings)` reads each card's state off `settings.stateKey` **directly**, buckets it, and fills the same `BoardColumn` shape the product board uses — `state` from `bucketRepresentative`, `done: bucket === 'resolved'`, `outsideWorkflow: false`, `limit: null`, and `count`/`fullCount`/`held`/`openWork` measured the way `requirementsWorkflow` measures them, over the handed population.
+`iterationBuckets(population, settings)` reads each card's state off `settings.stateKey` **directly**, buckets it, and fills the same `BoardColumn` shape the product board uses — `bucket`, `takesDrop` and `state` all from one `bucketRepresentative` call (`undefined` → `takesDrop: false` and `state: null`), `done: bucket === 'resolved'`, `outsideWorkflow: false`, `limit: null`, and `count`/`fullCount`/`held`/`openWork` measured the way `requirementsWorkflow` measures them, over the handed population.
+
+The product board's own `column()` helper gains `takesDrop: true` and no `bucket`. Two tests, beside the representative's:
+
+```ts
+it('keys two unwritable buckets apart', () => { /* distinct `bucket`, both `state: null` */ });
+it('marks a bucket with nothing to write as taking no drop', () => { /* … */ });
+```
 
 - [ ] **Step 5: Run and watch them pass**
 
@@ -442,9 +461,13 @@ it('falls back to Product when the iteration PROPERTY is cleared', () => {
 it('retains the stored path when the property is cleared, and restores the scope when it is set again', () => { /* 2g */ });
 
 it('folds a column on ONE iteration only', () => {
-	// 2h. `columnKey(scope, value)` keys a fold by ColumnScope plus the state string, so
+	// 2h. `columnKey(scope, value)` keys a fold by ColumnScope plus the value, so
 	// a shared 'iteration' scope folds Resolved on Sprint 13 because the reader folded it
 	// on Sprint 12 — the product board's own collision, one level in.
+});
+it('folds two buckets with nothing to write apart', () => {
+	// The value is the BUCKET here, never the representative: both columns carry
+	// `state: null`, so a fold keyed on the state shuts In Progress and Resolved together.
 });
 it('carries a folded column with its iteration through a rename', () => {
 	// 2h's price, and half of it is not an option: a path inside a fold key must be
@@ -471,7 +494,7 @@ Add `'iteration'` to `Projection`, then answer each question in `projection.ts`:
 Then the three the compiler will **not** ask you for, each found by review rather than by a build error:
 
 - **`INERT_FOCUS`** in `src/view/render/toolbar.ts` gains its row. It is a `Partial` record, so its absence is silent, and the symptom is a focus picker offering settings that cannot change anything on this board.
-- **`columnKey` / `ColumnScope`** in `src/view/viewState.ts` carry the chosen iteration's path, so a fold belongs to one iteration. And the rename walk must migrate that key too — this is the second path-bearing stored value, after `ViewPrefs.scope`, and it has the same obligation.
+- **`columnKey` / `ColumnScope`** in `src/view/viewState.ts` carry the chosen iteration's path, so a fold belongs to one iteration, and the folded **value is `col.bucket ?? col.state`** — the bucket is the identity, and two buckets with nothing to write both hold `state: null`. And the rename walk must migrate that key too — this is the second path-bearing stored value, after `ViewPrefs.scope`, and it has the same obligation.
 - **The effective-scope resolution** takes the configured key as well as the path (see step 4).
 
 - [ ] **Step 4: Store the scope**
@@ -567,6 +590,11 @@ it('writes nothing when the card is already in the target bucket', async () => {
 it('writes the bucket representative when the bucket changes', async () => { /* … */ });
 it('announces the bucket it came from, not a column matched by exact state', async () => { /* … */ });
 it('refuses a drop on a bucket with nothing to write', async () => { /* … */ });
+it('offers no Set state entry for a bucket with nothing to write', async () => {
+	// `stateChoices` maps EVERY column to an entry, so a move method that returns early
+	// leaves the menu offering a pick that silently does nothing. `takesDrop` filters
+	// the list — the same bit the drop wiring asks in Task 7.
+});
 it('removes the key on a drop on Open when no open state survives', async () => { /* … */ });
 
 // The routing, which is the half a guard alone does not buy.
@@ -602,6 +630,9 @@ Run: `npx vitest run test/view/iterationBoard.test.ts test/view/contextCardWrite
 - `chooseState` in `menu.ts` asks the projection first, and its comment is rewritten:
   what it says today is true of the Deliverables board and false as a general rule now a
   third card projection exists.
+- `stateChoices` beside it drops a column with `takesDrop: false`. **A refusal inside the
+  move method is not the whole rule**: every entry point that OFFERS the target has to
+  decline too, or the board advertises a move it will not make.
 - the checkmark planner beside it asks `bucketOf` on this board.
 
 - [ ] **Step 4: Run and watch them pass**
@@ -631,7 +662,9 @@ git commit -m "Route every board input through the bucket question"
 
 **The goal line, with three refusals**: no goal, no line — never an empty one and never a placeholder inviting a value; on `Product` scope, no line at all; and it is **text, not a control**.
 
-- [ ] Tests: both empty states; the goal line drawn, absent when empty, absent on `Product`; and that nothing in the goal line is focusable or clickable. Then implement, watch pass, commit.
+**A column that takes no drop is not wired as one.** `renderColumn` calls `wireDropTarget` on every column unconditionally today; it asks `col.takesDrop` instead, so a card cannot be dragged onto a bucket with nothing to write — 4e's refusal at the gesture rather than after it. The two affordances keyed on `col.state === null` — the `pbl-col-nostate` class and the *"dropping a card here removes it"* tooltip, plus the empty-no-state strip — ask it as well: an unwritable bucket holds `state: null` without meaning a key removal, and both would otherwise promise a drop that never lands.
+
+- [ ] Tests: both empty states; the goal line drawn, absent when empty, absent on `Product`; that nothing in the goal line is focusable or clickable; and that a bucket with nothing to write is neither a drop target nor drawn as the key-removal column. Then implement, watch pass, commit.
 
 ---
 
@@ -830,4 +863,6 @@ git add src/ui src/domain src/view src/storage test/ && git commit -m "Create an
 
 **Coverage, second re-run.** Two more gaps of the Task-8 kind, both found by review rather than by this checklist. Task 6 defined the bucket guard and named only the drag's modules, leaving `keyboard.ts` and `menu.ts` routed around it — and `chooseState`'s `host.projection === 'board'` test is false for `'iteration'`, so an ordinary card's `Set state` would not have reached a board move method at all. Task 9 promised a one-write create carrying the goal while no task gave `NewItemSpec` a field to hold one. Both are the same shape as Task 8's: **a rule stated in one module and reached through others.** The check that finds them is not "does each spec section have a task" but "for each behaviour, which modules does an input traverse to reach it" — asked of the call sites, not of the section headings.
 
-**Type consistency.** `IterationBucket` is `'open' | 'inProgress' | 'resolved'` everywhere. `bucketRepresentative` returns `string | null | undefined` in Tasks 2, 6 and 7, with `undefined` meaning "no drop" in all three. `performIterationBoardMove(item, bucket)` takes the **bucket**, never a state — the whole point of Task 6. `ViewPrefs.scope` is a path in Tasks 4, 8 and 9. `NewItemSpec.iteration` is a `TFile` in Task 8, matching `ItemWrite.iteration` in the foundation plan — both are files because both are written by `wikilinkTo`. `NewItemSpec.iterationGoal` is a `string` in Task 9, matching `ItemWrite.iterationGoal`; `src/storage/frontmatter.ts` is in the file list and the commit of both tasks that extend that interface.
+**Coverage, fourth re-run — the model had no identity to fold, offer or refuse by.** Task 2 filled `BoardColumn.state` from `bucketRepresentative` and left 4e's refusal to the move method returning early. Three consumers already read `state` as the column's identity rather than as its write value — `columnKey` folds by it, `stateChoices` offers every column by it, `renderColumn` wires every column as a drop target — so two buckets with nothing to write would have shared one fold key with each other **and** with Open's legitimate key removal, and both would still have been offered in the menu and accepted a drag. `undefined` did not typecheck into `state: string | null` either, which is the compiler catching the smaller half of it. The fix is the two fields in Task 2 and the four consumer sites in Tasks 4, 6 and 7. Same shape as the re-runs above, one layer out: **a refusal stated in the move method is not stated at the sites that OFFER the move.**
+
+**Type consistency.** `IterationBucket` is `'open' | 'inProgress' | 'resolved'` everywhere. `bucketRepresentative` returns `string | null | undefined` in Tasks 2, 6 and 7, with `undefined` meaning "no drop" in all three — a column stores that as `takesDrop: false` with `state: null`, never as an `undefined` state. `BoardColumn.bucket` is optional and absent on the other two boards, where the state is the identity. `performIterationBoardMove(item, bucket)` takes the **bucket**, never a state — the whole point of Task 6. `ViewPrefs.scope` is a path in Tasks 4, 8 and 9. `NewItemSpec.iteration` is a `TFile` in Task 8, matching `ItemWrite.iteration` in the foundation plan — both are files because both are written by `wikilinkTo`. `NewItemSpec.iterationGoal` is a `string` in Task 9, matching `ItemWrite.iterationGoal`; `src/storage/frontmatter.ts` is in the file list and the commit of both tasks that extend that interface.
