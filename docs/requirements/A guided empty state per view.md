@@ -24,5 +24,12 @@ Obsidian's picker can offer them.
 Recommended defaults initialize only the properties that view needs, and an existing value
 is never overwritten silently.
 
+**A relationship key is bound but never backfilled.** An empty `depends-on` or `evidence` on
+every note asserts a relationship nobody stated and puts a stub on notes the feature has
+nothing to do with — which this register already refused twice, for the dependency edge and
+for what a test covers. Backfill is for a property where an empty slot is a thing the reader
+fills in: a score, a state, a date. For the rest, binding the key is the whole job, and
+Obsidian's picker learns the name from the first note that actually uses it.
+
 **Outcome** — An unconfigured view explains itself and can configure itself, instead of
 drawing nothing and blaming the vault.

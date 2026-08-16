@@ -22,6 +22,16 @@ dependency; stale, orphaned or oversized items; an epic with nothing under it. E
 enabled, severity-assigned and threshold-set by the vault, and each is a question about the
 data rather than about the work.
 
+**The two structural rules need a population nobody can infer.** A note that lost both its
+type and its parent is not a work item by this plugin's own scope rule, so "missing type" and
+"missing parent" can never see the item they exist for — and evaluating every result instead
+would report a meeting note in a folder base as unhealthy work. Only the vault can say which
+it is, so this view carries one switch: **whether its base returns work items only**. Off,
+the two rules do not run and are listed as unconfigured, like any rule missing an input; on,
+every result is treated as intended work and a note that has fallen out of the model is
+exactly what they report. It is one deliberate answer per base rather than a discriminator
+the plugin invents.
+
 **Every rule names the properties it inspects, and this view names them for itself** — the
 estimate, the state, the owner, the objective, the evidence link, the release, the dependency
 edge, whatever a rule reads. A rule cannot report a missing field without being told where

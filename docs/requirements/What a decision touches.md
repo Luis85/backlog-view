@@ -17,8 +17,12 @@ assignee: ""
 # What a decision touches
 
 A decision links to the features, epics, objectives, releases, opportunities and evidence it
-concerns, from the decision's side. The affected items are found by reading those links
-backward, so no item has to carry a list that can fall out of step.
+concerns, from the decision's side, so no item has to carry a list that can fall out of step.
+
+**Both directions are read, and each from its own end.** Opening a decision reads its own
+link **forward** — the list is right there — and that is what the register draws. Opening an
+item finds the decisions naming it by reading the same link **backward**, which is the only
+traversal that needs the inverse. One stored relationship, two reads, no second copy.
 
 The affected-items link, the decision's date and its status are keys this view names for
 itself, on the terms [[Settings scoped to their view]] states for every view here: nothing is
