@@ -17,7 +17,15 @@ assignee: ""
 # The evidence explorer
 
 The chain drawn end to end: an evidence note, the opportunities it supports, the features
-those became, and the objectives those serve. Each hop is a link property already in the
-vault; the view is what makes them one path instead of four backlink panes.
+those became, and the objectives those serve.
 
-**Outcome** — Someone can follow an observation all the way to the work it caused.
+**Every hop is a key this view names for itself** — the evidence link, the promotion link a
+discovery item keeps to what it became, and the alignment link to a strategic entity — each
+defaulting to the same suggestion the view that writes it uses, and none of them read from
+another view's settings. A hop with no key configured is simply not drawn, and the chain says
+where it stopped rather than presenting a shorter path as the whole one; a vault with no
+Discovery and no Strategy still gets the evidence-to-item hop, which is the one this epic
+owns outright.
+
+**Outcome** — Someone can follow an observation as far as the vault's own links reach, and
+sees where the trail ends rather than a trail that looks complete.

@@ -16,8 +16,16 @@ assignee: ""
 
 # Why the plan changed
 
-An item may name the decision behind its current priority or placement, so a reordering
-that surprises somebody a quarter later points at the reasoning rather than at a commit.
-The link is written by a person, deliberately: this epic records decisions, not edits.
+A reordering that surprises somebody a quarter later can be traced to the reasoning rather
+than to a commit — and the trace is read **backward from the decision**, which is the only
+side this epic stores. Opening an item shows the decisions naming it, exactly as the
+evidence and objective reads work.
 
-**Outcome** — A surprising priority can be traced to the decision that set it.
+The requirements document suggests a `decision:` property on the item as well. It is refused
+here for the reason this register keeps refusing second copies: the same relationship written
+on both sides is two facts that can disagree, and nothing would say which one is wrong. What
+the item gains instead is the backward read, which cannot drift because there is nothing for
+it to drift from.
+
+**Outcome** — A surprising priority can be traced to the decision that set it, from one
+relationship stored once.
