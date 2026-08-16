@@ -21,8 +21,13 @@ type the vault configures. The promotion creates the backlog note through the on
 boundary, links it back to the discovery item, and leaves the discovery item where it is.
 
 **"Validated" there describes the normal case; it is not a precondition, and nothing is
-gated on it.** The action is offered on any discovery item — the one thing it cannot do
-without is the source-link key below. Two reasons, and the second is the deciding one:
+gated on it.** The action is offered on any **opportunity** — the discovery type this epic
+promotes, and the only one whose promotion produces work somebody can point back at. An
+assumption or an experiment is a thing done *about* an opportunity, so promoting one would
+file work whose recorded source is a question rather than the thing that was asked, and the
+opportunity holding it would still have nothing pointing back. What the action does not look
+at is the validation state, and the one thing it cannot do without is the source-link key
+below. Two reasons, and the second is the deciding one:
 [[Discovery readiness]] already states that nothing is refused for failing its checklist, so
 a promotion that refused would be the same view blocking on the evidence it just said it
 would only report; and a gate would need this view to hold a list of validation values that
