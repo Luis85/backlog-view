@@ -32,7 +32,20 @@ every result is treated as intended work and a note that has fallen out of the m
 exactly what they report. It is one deliberate answer per base rather than a discriminator
 the plugin invents.
 
-**Every rule names the properties it inspects, and this view names them for itself** — the
+**The structural rules are answered by the plugin's own level model, not by a hierarchy this
+view configures.** What may be a root, which parent holds which child, and what an epic is
+are the shared model every view is built on ([[A view per capability]] extracts it as the
+kernel) — reading it is not reading another view's settings, and restating it here would be a
+second idea of the ladder that could disagree with the first. What this view does name is the
+**type key**, because that is a property, and with it the four structural rules are exact: a
+result whose type may not be a root and which has no parent is **missing a parent**; a result
+whose parent is not a level the model allows above it is an **invalid hierarchy**; a result
+whose parent link resolves to nothing is **orphaned**; and a result of the top type with no
+result beneath it is an **empty epic**. Each needs the switch above as well, and a result
+whose type is missing or unknown is reported by the missing-type rule rather than guessed
+into a level.
+
+**Every other rule names the properties it inspects, and this view names them for itself** — the
 estimate, the state, the owner, the objective, the evidence link, the release, the dependency
 edge, whatever a rule reads. A rule cannot report a missing field without being told where
 that field lives, and it may not borrow the answer from the view that writes it.
