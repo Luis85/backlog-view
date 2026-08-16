@@ -21,6 +21,17 @@ present, estimate present, dependencies known, design done, technical refinement
 the view says which items satisfy it. It is a health rule like the others, singled out
 because it is the one teams already argue about by name.
 
+**Each criterion states its input and what passes it**, in the two shapes
+[[Discovery readiness]] uses, because "design done" is a question two implementations answer
+differently. Problem, acceptance criteria and estimate are **presence tests**: one key each,
+named by this view, passing on a non-empty value — and the estimate additionally has to be a
+number, since an estimate that reads `TBD` is the missing estimate wearing a value. Design
+done and technical refinement done are **state tests**: a key and the values that count as
+done, both declared here, passing when the item's value is one of them. A key with no value
+list is unconfigured rather than empty, and an unconfigured criterion is listed as such
+instead of failing every item, which is [[Rules that say what is wrong]]'s rule and applies
+here because this is one of its rules.
+
 **"Dependencies known" is the criterion that cannot be read from the dependency property**,
 and saying so is the point: an empty list is removed rather than stored, and no stub is ever
 backfilled, so a note with no `depends-on` is a note nobody has checked *and* a note with

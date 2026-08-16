@@ -30,7 +30,12 @@ can sum. Commitment is the same unit by construction — it is the effort estima
 over the release's members, so the view names that key too and never converts between them.
 With capacity unconfigured, or a release carrying no number where the key points, there is no
 comparison for that release: the commitment is still shown, and the missing half is named.
-The unit is a label, so an unset one prints nothing and changes no arithmetic.
+**The unit is part of the mapping, not a decoration on it**: with no unit set there is no
+comparison either, for the same reason the release summary states which denominator it used —
+a bare "40 against 52" is two numbers whose meaning the reader supplies, and this feature's
+whole claim is that an over-commitment is legible in the unit the team uses. So the view asks
+for the unit where it asks for the keys, and lists it as missing exactly like an unbound key
+rather than printing unlabelled arithmetic.
 
 **A capacity of zero has no utilization, and that is not an error.** A release that
 deliberately declares zero capacity is a real statement — nothing is planned for it — and
