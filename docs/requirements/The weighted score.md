@@ -17,7 +17,14 @@ assignee: ""
 # The weighted score
 
 The sum of score times weight, normalized to the scale's own range, recomputed the instant
-any input changes and written back to the note with its model stamp. Weights must total 100.
+any input changes and written back to the note with its model stamp.
+
+**Every enabled dimension carries a positive weight, and they total 100.** Totalling 100 is
+not enough on its own: a zero weight makes an answered set that renormalizes by dividing by
+zero, and a negative one pushes the proportion outside 0–1 while the other weights still sum
+correctly. A weight of zero is a dimension nobody wants counted, which is what disabling it
+says properly; both are refused where the model is configured, and a saved model holding one
+computes nothing and names the dimension.
 
 **A partial profile renormalizes, and says so.** Most items will have some dimensions
 answered and some not, so the rule is chosen here rather than left to the implementation: the
