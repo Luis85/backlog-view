@@ -18,10 +18,12 @@ assignee: ""
 
 Items with no meaningful change for a configured period, where "meaningful" is a property
 the vault names rather than a file timestamp — a note reformatted by a plugin has not been
-worked on. Where no such property is configured, this figure — alone among them — falls back to the
-file's modification time and says so on the figure itself. That exception is stated in
-[[Product Analytics]] rather than assumed: everything else in this view suppresses a figure
-whose key is missing.
+worked on. **With no such property configured the figure is not drawn**, like every other
+figure in [[Product Analytics]] whose key is missing, and the exception this note used to
+claim is withdrawn: falling back to the modification time would answer the question with the
+one number the first sentence rejects, and a caption admitting it is what a metric says
+instead of what it counted. A vault that wants this figure names the property; a vault that
+names nothing gets the list of figures it could have.
 
 **Outcome** — Abandoned work is identified without accusing every untouched file of being
 abandoned.

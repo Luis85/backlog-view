@@ -37,13 +37,20 @@ how much of what a feature claims is actually supported.
 - Evidence lives in ordinary notes the vault already keeps. Nothing here creates a second
   place to put a customer interview.
 - The link is one property, resolved the way every other link property is.
-- **What counts as evidence is what this view's base returns**, and that is the whole
-  discriminator — no evidence type, no marker property, nothing for a vault to maintain
-  besides the base it already writes. So an item linking a design note gets a link that
-  resolves and no count: the note is drawn as linked and named as outside the evidence
-  population, the way a context row is drawn and not counted. The alternative is a second
-  vocabulary the vault has to keep in step with its own folders, which is what the kind
-  mapping stays optional to avoid.
+- **The base returns both populations, and the relationship tells them apart.** This view
+  needs the work *and* the evidence — a feature with no evidence is one of its four reports —
+  so one base holds both, and no marker property or evidence type is invented to label them.
+  A returned note that **names** evidence is analyzed work; a returned note that is **named
+  by** one is evidence. A note in neither relationship is placed by the register's own scope
+  rule ([[What counts as a work item]]): with a supported type or a parent it is work nobody
+  has evidenced, and with neither it is evidence nobody has used. That is what keeps the two
+  reports apart — a zero-evidence Feature is work, an unlinked interview note is evidence,
+  and neither is guessed at.
+- **A link out of the population is a link, not a count.** An item linking a design note the
+  base did not return gets a link that resolves and no count: the note is drawn as linked and
+  named as outside the population, the way a context row is drawn and not counted. Widening
+  the base is how a vault includes it, which is one filter rather than a second vocabulary to
+  keep in step — and that is what the kind mapping stays optional to avoid.
 - Every count says what it counted and never counts a note the base excluded — the two
   sentences above are the same sentence, and it is the one this epic's counts rest on.
 
