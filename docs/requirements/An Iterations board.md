@@ -8,8 +8,8 @@ source: user request
 started: ""
 finished: ""
 horizon: ""
-start: 2026-08-31
-due: 2026-09-06
+start: ""
+due: ""
 risk: ""
 assignee: ""
 ---

@@ -6,8 +6,8 @@ status: Open
 started: ""
 finished: ""
 horizon: ""
-start: 2026-09-07
-due: 2026-09-13
+start: ""
+due: ""
 risk: ""
 assignee: ""
 ---

@@ -13,7 +13,7 @@ files:
 started: ""
 finished: ""
 horizon: ""
-start: ""
+start: 2026-08-07
 due: ""
 risk: ""
 assignee: ""
