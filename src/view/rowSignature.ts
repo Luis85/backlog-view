@@ -132,7 +132,6 @@ export function renderInputs(host: BacklogViewHost): string {
 		host.settings,
 		host.columns,
 		host.projection,
-		host.filterText,
 		host.columnFit,
 		// The HEADER's, not the rows': a cell points at its column's published custom
 		// property rather than holding a number, so a resize moves every row without

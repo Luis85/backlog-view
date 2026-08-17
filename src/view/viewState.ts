@@ -208,7 +208,7 @@ function seedCardScope(collapsed: Set<string>, settled: Set<string>): void {
  *
  * KEYS, not paths: a key is a note path, optionally under {@link TIMELINE_SCOPE} or
  * {@link CARD_SCOPE}. The view owns the *policy* on top of this — which scope a caller
- * asks in, and the quick filter's override while it is active — and delegates the
+ * asks in — and delegates the
  * bookkeeping here.
  */
 export class ViewState {

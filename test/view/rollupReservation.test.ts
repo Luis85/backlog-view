@@ -123,28 +123,32 @@ describe('the rollup label reservation', () => {
 	});
 
 	it('sizes from the rows a hiding mode leaves, but never from what is expanded', () => {
-		// Two halves of one rule. A filter that hides the deep subtree must narrow the
-		// reservation — reserving for a label no remaining row draws widens the lane for all
-		// of them and can drop a column (Codex, PR #153). COLLAPSE must not: sizing from the
-		// rows literally rendered would move every bar on screen sideways as a side effect
-		// of expanding one row, which is why the predicate that decides this is
-		// `isRowHidden` and not "did this pass draw it".
+		// Two halves of one rule. A hiding mode that takes the widest row away must narrow
+		// the reservation — reserving for a label no remaining row draws widens the lane for
+		// all of them and can drop a column (Codex, PR #153). COLLAPSE must not: sizing from
+		// the rows literally rendered would move every bar on screen sideways as a side
+		// effect of expanding one row, which is why the predicate that decides this is
+		// `isRowHidden` and not "did this pass draw it". The hiding mode here is the
+		// completed-items toggle, the one this view still has.
 		const vault = new FakeVault();
 		vault.addFile('Small.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active' } });
 		vault.addFile('Only child.md', { frontmatter: { type: 'Feature', order: 10, status: 'Done' }, parentLink: 'Small' });
-		vault.addFile('Big.md', { frontmatter: { type: 'Epic', order: 20, status: 'Active' } });
+		// Wholly finished, so the toggle hides it and its 120 with it — and its own label is
+		// the widest on screen while they are shown.
+		vault.addFile('Big.md', { frontmatter: { type: 'Epic', order: 20, status: 'Done' } });
 		for (let i = 1; i <= 120; i += 1) {
 			vault.addFile(`Big ${i}.md`, {
-				frontmatter: { type: 'Feature', order: i * 10, status: i <= 44 ? 'Done' : 'Active' },
+				frontmatter: { type: 'Feature', order: i * 10, status: 'Done' },
 				parentLink: 'Big',
 			});
 		}
-		const { containerEl, view } = makeView(vault, { stateProperty: 'note.status' }, { collapsed: true });
-		// Collapsed to the two roots — `Big`'s own `44/120` is on screen, and nothing under
+		const { containerEl, view, config } = makeView(vault, { stateProperty: 'note.status' }, { collapsed: true });
+		// Collapsed to the two roots — `Big`'s own `120/120` is on screen, and nothing under
 		// either root is. The reservation is the same as it will be expanded.
-		expect(treeOf(containerEl).style.getPropertyValue('--pbl-rollup-label')).toBe('6ch');
+		expect(treeOf(containerEl).style.getPropertyValue('--pbl-rollup-label')).toBe('7ch');
 
-		view.setFilter('Only child');
+		config.set('showCompleted', false);
+		view.onDataUpdated();
 
 		// `Big` and its 120 are all hidden now, so the widest label left is `Small`'s.
 		expect(rowByTitle(containerEl, 'Small').querySelector('.pbl-progress-label')?.textContent).toBe('1/1');

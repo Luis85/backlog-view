@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { ProductBacklogView } from '../../src/view/backlogView';
 import { FakeVault } from '../helpers/vault';
 import { Menu, Notice } from '../helpers/obsidian-mock';
 import { fixture, flush, key, makeView, rowByTitle, titlesOf, treeOf, useViewHarness } from '../helpers/view';
@@ -107,17 +106,6 @@ describe('view state details', () => {
 		const cell = rowByTitle(containerEl, 'Epic A').querySelector('.pbl-prop');
 		expect(cell).not.toBeNull();
 		expect(cell?.querySelector('.pbl-prop-value')).toBeNull();
-	});
-
-	it('tolerates filter calls before the first data render', () => {
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
-
-		// No model and no rendered toolbar yet — nothing to sync, nothing to focus.
-		view.setFilter('x');
-		view.focusFilter();
-
-		expect(view.filterText).toBe('x');
 	});
 
 	it('carries the full title in a tooltip, without measuring whether one was needed', () => {

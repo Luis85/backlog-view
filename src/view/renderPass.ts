@@ -90,9 +90,6 @@ export function renderPass(host: BacklogViewHost, els: RenderPassEls, deps: Rend
 	els.treeEl.removeAttribute('aria-describedby');
 	deps.dnd.onRenderStart();
 	deps.cardDnd.onRenderStart();
-	// Collapse controls and drag grips are inert while a filter is active.
-	els.viewEl.toggleClass('pbl-filtering', host.isFiltering());
-
 	// Captured from the OLD frame, before its DOM goes: on the dated axis the pane
 	// is not the scroll box, and reading it here would capture zeros.
 	let scroll = captureScroll(els.treeEl, host.roadmap, deps.scroll);

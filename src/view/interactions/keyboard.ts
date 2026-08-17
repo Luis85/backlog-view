@@ -55,7 +55,7 @@ function handleTreeKeydown(host: BacklogViewHost, evt: KeyboardEvent): void {
 	// can empty it while the catalog draws suites off the unfocused tree — so this guard
 	// alone would leave every key inert on a screen full of rows.
 	if (!model || projectionPopulation(host.projection, model).items.length === 0) return;
-	if (handleFilterKey(host, evt)) return;
+	if (handleEscape(host, evt)) return;
 	const visible = visibleItems(host, model);
 	if (visible.length === 0) return;
 
@@ -71,18 +71,10 @@ function handleTreeKeydown(host: BacklogViewHost, evt: KeyboardEvent): void {
 	handleNavigationKey(host, visible, current, evt);
 }
 
-/** `/` jumps to the filter box; Escape backs out of the filter, then the selection. */
-function handleFilterKey(host: BacklogViewHost, evt: KeyboardEvent): boolean {
-	if (evt.key === '/' && !evt.altKey && !evt.ctrlKey && !evt.metaKey) {
-		evt.preventDefault();
-		host.focusFilter();
-		return true;
-	}
+/** Escape backs out of the selection. */
+function handleEscape(host: BacklogViewHost, evt: KeyboardEvent): boolean {
 	if (evt.key !== 'Escape') return false;
-	if (host.filterText !== '') {
-		evt.preventDefault();
-		host.setFilter('');
-	} else if (host.selectedPath !== null) {
+	if (host.selectedPath !== null) {
 		evt.preventDefault();
 		host.clearSelection();
 	}
@@ -171,14 +163,11 @@ function handleExpandCollapseKey(host: BacklogViewHost, current: BacklogItem, ev
 	// leaf here too — collapsing it would invisibly mutate persisted state.
 	const hasChildren = current.children.some((child) => !host.isRowHidden(child));
 	const collapsed = host.isCollapsed(current.file.path);
-	// While filtering, collapse state is overridden and mutating it would be
-	// invisible — navigation still works, state changes wait for a clear filter.
-	const filtering = host.isFiltering();
 
 	if (evt.key === 'ArrowLeft') {
-		if (!filtering && hasChildren && !collapsed) collapseKeepingSelection(host, current, true);
+		if (hasChildren && !collapsed) collapseKeepingSelection(host, current, true);
 		else if (current.parent && !current.focusRoot) host.selectItem(current.parent);
-	} else if (!filtering && hasChildren && collapsed) {
+	} else if (hasChildren && collapsed) {
 		collapseKeepingSelection(host, current, false);
 	} else if (hasChildren) {
 		// The first child may be hidden (filter or completed items); jump to the first rendered one.
@@ -330,13 +319,13 @@ function handleBoardChromeKey(host: BacklogViewHost, evt: KeyboardEvent): boolea
 		void host.undoLast();
 		return true;
 	}
-	// Escape backs out of the column stop the tree does not have, then the filter path.
-	if (evt.key === 'Escape' && host.filterText === '' && host.selectedBoardColumn !== null) {
+	// Escape backs out of the column stop the tree does not have, then the selection.
+	if (evt.key === 'Escape' && host.selectedBoardColumn !== null) {
 		evt.preventDefault();
 		host.selectBoardColumn(null);
 		return true;
 	}
-	return handleFilterKey(host, evt);
+	return handleEscape(host, evt);
 }
 
 // ------------------------------------------------------------------- roadmap

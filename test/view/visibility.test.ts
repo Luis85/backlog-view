@@ -52,15 +52,6 @@ describe('completed items', () => {
 		expect(epic.querySelector('.pbl-progress-label')?.textContent).toBe('2/2');
 	});
 
-	it('suspends hiding while the quick filter is active', () => {
-		const { view, containerEl } = makeView(completedFixture(), hiddenConfig());
-
-		view.setFilter('F done');
-		expect(titlesOf(containerEl)).toEqual(['Epic Y', 'F done']);
-		view.setFilter('');
-		expect(titlesOf(containerEl)).toEqual(['Epic X', 'F open', 'Epic Z']);
-	});
-
 	it('toggles the option from the toolbar eye button', () => {
 		const shown = makeView(completedFixture(), { stateProperty: 'note.status' });
 		shown.containerEl.querySelector<HTMLElement>('.pbl-completed-toggle')

@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { Menu } from '../helpers/obsidian-mock';
 import { syncBusy } from '../../src/view/render/toolbar';
 import { syncToolbarFit } from '../../src/view/render/toolbarFit';
-import { fixture, key, makeView, refresh, treeOf, useViewHarness } from '../helpers/view';
+import { fixture, makeView, refresh, treeOf, useViewHarness } from '../helpers/view';
 
 useViewHarness();
 
@@ -182,22 +182,6 @@ describe('the toolbar fit ladder', () => {
 	 * click — so without this the trailing controls clip under `overflow: hidden` until
 	 * something unrelated happens to re-render.
 	 */
-	it('re-runs when the collapsed filter is revealed', () => {
-		const { containerEl } = makeView(fixture());
-		const bar = toolbarOf(containerEl);
-		stubWidths(bar, 700, { '0': 720, '1': 690, '2': 600, '3': 560, '4': 540, '5': 480 });
-		syncToolbarFit(bar);
-		expect(bar.getAttribute('data-pbl-fit')).toBe('1');
-
-		// The reveal makes the row wider at every step; the ladder has to notice.
-		stubWidths(bar, 700, { '0': 850, '1': 820, '2': 730, '3': 690, '4': 640, '5': 600 });
-		containerEl
-			.querySelector<HTMLElement>('.pbl-filter-reveal')
-			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-
-		expect(bar.getAttribute('data-pbl-fit')).toBe('3');
-	});
-
 	/**
 	 * `/` is the documented keyboard path to the filter, and a step that hides the input
 	 * is where it would quietly stop working: `focus()` on a `display: none` element does
@@ -211,19 +195,6 @@ describe('the toolbar fit ladder', () => {
 	 * the open flag is set, and the ladder has re-run — in the order the CSS needs them.
 	 * That the input is then actually visible to a browser is a vault check.
 	 */
-	it('still reaches the input from the tree when the step has collapsed it', () => {
-		const { containerEl } = makeView(fixture());
-		const bar = toolbarOf(containerEl);
-		stubWidths(bar, 500, { '0': 980, '1': 860, '2': 690, '3': 600, '4': 540, '5': 480 });
-		syncToolbarFit(bar);
-		expect(bar.getAttribute('data-pbl-fit')).toBe('5');
-
-		key(treeOf(containerEl), '/');
-
-		expect(bar.hasClass('pbl-filter-open')).toBe(true);
-		expect(document.activeElement).toBe(containerEl.querySelector('.pbl-filter-input'));
-	});
-
 	/**
 	 * Clearing is the third input to `revealFilter`, and this drives the CLEAR BUTTON
 	 * rather than Escape because the button is the half that still bites. Both run the
@@ -238,27 +209,6 @@ describe('the toolbar fit ladder', () => {
 	 * predicted. `input.focus()` now sets `pbl-filter-open` by itself, and Escape leaves
 	 * focus where it already was, so neither assertion depended on the closure any more.
 	 */
-	it('keeps the filter open and focused when the clear button empties it at a collapsing rung', () => {
-		const vault = fixture();
-		const { view, containerEl } = makeView(vault);
-		const bar = toolbarOf(containerEl);
-
-		view.setFilter('Epic'); // typed while the pane was wide
-		stubWidths(bar, 500, { '0': 980, '1': 860, '2': 690, '3': 600, '4': 540, '5': 480 });
-		syncToolbarFit(bar);
-		expect(bar.getAttribute('data-pbl-fit')).toBe('5');
-
-		// A real press focuses the button it presses; the click alone does not, in jsdom.
-		const clearBtn = containerEl.querySelector<HTMLElement>('.pbl-filter-clear');
-		clearBtn?.focus();
-		clearBtn?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-
-		// The active class is gone with the text; the open flag has to have taken over,
-		// and the cursor has to be back in the input rather than on a hidden button.
-		expect(bar.hasClass('pbl-filter-open')).toBe(true);
-		expect(document.activeElement).toBe(containerEl.querySelector('.pbl-filter-input'));
-	});
-
 	/**
 	 * The fourth variant of one bug, and the reason the rule is now enforced in one place
 	 * rather than at a fourth call site. Typing goes straight to `setFilter` — it does not
@@ -271,79 +221,18 @@ describe('the toolbar fit ladder', () => {
 	 * is, rather than through `setFilter`: the bug is that the listener bypasses the
 	 * closure, so calling the closure would assert the opposite of the thing at issue.
 	 */
-	it('keeps the filter open when its last character is deleted at a collapsing rung', () => {
-		const { containerEl } = makeView(fixture());
-		const bar = toolbarOf(containerEl);
-		const input = containerEl.querySelector<HTMLInputElement>('.pbl-filter-input');
-
-		// Typed while the pane was wide: focusing to type is what arms the rule.
-		input?.focus();
-		if (input) input.value = 'Epic';
-		input?.dispatchEvent(new Event('input', { bubbles: true }));
-
-		stubWidths(bar, 500, { '0': 980, '1': 860, '2': 690, '3': 600, '4': 540, '5': 480 });
-		syncToolbarFit(bar);
-		expect(bar.getAttribute('data-pbl-fit')).toBe('5');
-
-		// Backspace over the last character. The text goes; the cursor does not.
-		if (input) input.value = '';
-		input?.dispatchEvent(new Event('input', { bubbles: true }));
-
-		expect(bar.hasClass('pbl-filter-open')).toBe(true);
-		expect(document.activeElement).toBe(containerEl.querySelector('.pbl-filter-input'));
-	});
-
 	/**
 	 * The release the rule above needs, and the path that shows blur cannot be it: Escape
 	 * in the TREE empties the filter with focus nowhere near the input, so nothing blurs.
 	 * Without `syncFilterUi` clearing the flag, a filter opened once would stay open at
 	 * every narrow width for the life of the view.
 	 */
-	it('lets go of a filter emptied from the tree, where nothing blurs', () => {
-		const { containerEl } = makeView(fixture());
-		const bar = toolbarOf(containerEl);
-		const input = containerEl.querySelector<HTMLInputElement>('.pbl-filter-input');
-
-		input?.focus();
-		if (input) input.value = 'Epic';
-		input?.dispatchEvent(new Event('input', { bubbles: true }));
-		expect(bar.hasClass('pbl-filter-open')).toBe(true);
-
-		// Focus back in the tree, then Escape — the tree's own way to drop a filter.
-		const tree = treeOf(containerEl);
-		tree.focus();
-		key(tree, 'Escape');
-
-		expect(bar.hasClass('pbl-filter-open')).toBe(false);
-	});
-
 	/**
 	 * The other end of the reveal, and the reason it is a blur rather than a timer: the
 	 * row got ~130px wider to hold an input nobody is typing in, so leaving it has to give
 	 * that width back — and only when it is EMPTY, or a filter someone is still using
 	 * would be taken away by clicking anything else.
 	 */
-	it('collapses an empty revealed filter on blur, and keeps one with text in it', () => {
-		const { view, containerEl } = makeView(fixture());
-		const bar = toolbarOf(containerEl);
-		stubWidths(bar, 500, { '0': 980, '1': 860, '2': 690, '3': 600, '4': 540, '5': 480 });
-		syncToolbarFit(bar);
-
-		const input = containerEl.querySelector<HTMLInputElement>('.pbl-filter-input');
-		key(treeOf(containerEl), '/');
-		expect(bar.hasClass('pbl-filter-open')).toBe(true);
-
-		// Typed into, then blurred: the text is the reason to stay open.
-		view.setFilter('Epic');
-		input?.dispatchEvent(new FocusEvent('blur'));
-		expect(bar.hasClass('pbl-filter-open')).toBe(true);
-
-		// Emptied, then blurred: nothing left to keep on the row.
-		view.setFilter('');
-		containerEl.querySelector<HTMLInputElement>('.pbl-filter-input')?.dispatchEvent(new FocusEvent('blur'));
-		expect(bar.hasClass('pbl-filter-open')).toBe(false);
-	});
-
 	/**
 	 * The rebuild path the test above cannot see. An EMPTY revealed filter is the one
 	 * state nothing re-derives: `renderFilterBox` recomputes `pbl-filter-active` from the
@@ -353,22 +242,6 @@ describe('the toolbar fit ladder', () => {
 	 * input, which does nothing and reports nothing. The flag therefore lives on the
 	 * toolbar, which `barEl.empty()` does not destroy.
 	 */
-	it('keeps an empty revealed filter open across a full toolbar rebuild', () => {
-		const vault = fixture();
-		const { view, containerEl } = makeView(vault);
-		const bar = toolbarOf(containerEl);
-		stubWidths(bar, 500, { '0': 980, '1': 860, '2': 690, '3': 600, '4': 540, '5': 480 });
-		syncToolbarFit(bar);
-
-		key(treeOf(containerEl), '/');
-		expect(bar.hasClass('pbl-filter-open')).toBe(true);
-
-		refresh(view, vault); // any data update rebuilds the toolbar
-
-		expect(bar.hasClass('pbl-filter-open')).toBe(true);
-		expect(document.activeElement).toBe(containerEl.querySelector('.pbl-filter-input'));
-	});
-
 	/**
 	 * A theme or a font-size change moves rendered text without moving any box this view
 	 * observes: the only `ResizeObserver` here watches the TREE, and no render follows a

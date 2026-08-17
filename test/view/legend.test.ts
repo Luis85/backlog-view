@@ -446,34 +446,6 @@ describe('the legend keys a milestone only where the grid draws its cyan', () =>
 	});
 });
 
-describe('the legend follows a filter, which redraws content without a full render', () => {
-	it('drops the Other swatch when a filter hides the last bar drawing the accent', () => {
-		// `hasUnkeyedAccent` is reported by the render, so the legend is only as fresh as
-		// the pass that produced it — and `setFilter` re-renders CONTENT alone. Rendered
-		// from `render()` only, the swatch outlived the bar it keyed.
-		const vault = new FakeVault();
-		// Names that do not contain one another: `setFilter` matches on substring, so
-		// filtering for `Listed` would keep `Unlisted` too and test nothing.
-		vault.addFile('Alpha.md', { frontmatter: { type: 'PBI', order: 10, due: '2026-08-05', status: 'New' } });
-		vault.addFile('Beta.md', { frontmatter: { type: 'PBI', order: 20, due: '2026-08-07', status: 'Blocked' } });
-		const { view, containerEl } = makeView(
-			vault,
-			{ ...DATE_AXIS, stateProperty: 'note.status', stateValues: 'New, Active' },
-			{ collapsed: true },
-		);
-		view.setProjection('roadmap');
-		expect(swatchLabels(containerEl)).toContain('Other');
-
-		// A filter that keeps only the listed item takes the accent bar off the grid.
-		view.setFilter('Alpha');
-		expect(swatchLabels(containerEl)).not.toContain('Other');
-
-		// And clearing it brings both back — the swatch has to follow in both directions.
-		view.setFilter('');
-		expect(swatchLabels(containerEl)).toContain('Other');
-	});
-});
-
 describe('a milestone line is cyan whatever its own bar draws', () => {
 	it('keys the milestone when the only marker on the grid is done', () => {
 		// `renderMilestoneLines` draws its full-height cyan line for every in-window

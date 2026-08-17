@@ -684,7 +684,7 @@ export function rollupReport(host: BacklogViewHost, item: BacklogItem): RollupRe
  * workflow there is no bar to be pushed off line, and the count alone is already anchored
  * at the lane's end.
  *
- * **`isRowHidden`, and deliberately not "is this row on screen".** A quick filter or the
+ * **`isRowHidden`, and deliberately not "is this row on screen".** The
  * completed-items toggle can hide a whole deep subtree, and reserving for a label none of
  * the remaining rows draws widens the lane for all of them and can drop a property column
  * at a fit boundary (Codex, PR #153). What that predicate does NOT ask about is COLLAPSE,

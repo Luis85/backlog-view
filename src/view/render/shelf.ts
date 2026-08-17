@@ -265,7 +265,7 @@ function renderShelfGroup(ctx: RowContext, shelfEl: HTMLElement, group: ShelfGro
 function renderShelfCard(ctx: RowContext, cardsEl: HTMLElement, entry: ShelfCard, wiring: ShelfWiring): void {
 	const card = createCard(ctx, cardsEl, entry.item);
 	renderCardBody(ctx, card, entry.item);
-	ctx.placed.set(entry.item.file.path, { item: entry.item, mount: card, listsChildren: true, face: 'links' });
+	ctx.placed.set(entry.item.file.path, { item: entry.item, mount: card });
 	// Unreadable is unplaced, and the card says why rather than rendering
 	// somewhere a guess put it.
 	if (entry.reason !== null) {
@@ -324,7 +324,7 @@ export function renderContextStrip(
 	for (const item of context) {
 		const card = createCard(ctx, cardsEl, item);
 		renderCardBody(ctx, card, item);
-		ctx.placed.set(item.file.path, { item, mount: card, listsChildren: true, face: 'links' });
+		ctx.placed.set(item.file.path, { item, mount: card });
 		wireCardActivation(ctx, card, item);
 	}
 	return { cards: context, el: stripEl };

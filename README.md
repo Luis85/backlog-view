@@ -124,12 +124,13 @@ not show is not on the rows, and that includes the state, horizon, risk and tag 
 | Undo the last change | Click the **↩** toolbar button, or press <kbd>Ctrl/Cmd</kbd>+<kbd>Z</kbd> in the tree |
 | Hide finished work | Click the eye button in the toolbar (or toggle **Show completed items** in the view options) |
 | Open in a new tab or split | Middle-click, Ctrl/Cmd-click, or right-click → Open in new tab / Open to the right |
-| Find items | Type in the toolbar filter (or press <kbd>/</kbd> in the tree) — matches keep their ancestors and subtrees, Escape clears |
+| Find items | Use the Base's own search — the view is given the narrowed results and loads the ancestors they need, so the tree keeps its shape |
 | See counts per type | Hover the item count in the toolbar |
 
-While the filter is active the tree ignores collapsed state and drag and drop is
-disabled (visual neighbors aren't necessarily real siblings); keyboard navigation and
-the context menu keep working on the filtered rows.
+A Base search narrows what the view is given rather than what it draws, so the rows that
+remain keep their place in the hierarchy — an ancestor the search excluded still loads as
+context (shown dimmed, and never written to) so a match is never stranded at the top level.
+The roadmap's unplaced shelf has a search of its own, scoped to the untriaged work beside it.
 
 ### Focus on one type
 
@@ -260,9 +261,8 @@ the list keeps it selectable in its own menu.
 The toolbar's eye button (or the **Show completed items** view option) hides finished
 work: an item disappears once it *and its entire subtree* are done — a done parent with
 open children stays visible, so unfinished work can never hide. Progress bars keep
-counting hidden items, the quick filter still finds them, and moving or dropping rows
-around hidden siblings stays safe because ranking always runs over the real sibling
-lists.
+counting hidden items, and moving or dropping rows around hidden siblings stays safe
+because ranking always runs over the real sibling lists.
 
 While dragging, hovering the middle of a collapsed row expands it after a moment (the
 chevron lights up while the timer runs) so you can drop deeper into the tree. Dropping an
@@ -276,7 +276,7 @@ state — and the view honors reduced-motion and right-to-left settings.
 ### Keyboard
 
 <kbd>Tab</kbd> walks the view's toolbar — new item, the type picker, the focus level,
-backfill, undo, expand and collapse all, the completed-items toggle and the filter box — and
+backfill, undo, expand and collapse all and the completed-items toggle — and
 then reaches the tree as a single stop. Inside the tree the selected row moves with the
 arrow keys rather than with <kbd>Tab</kbd>, so a long backlog never becomes a long tab
 sequence; the row's own controls are reachable through the context menu.
@@ -294,8 +294,7 @@ Once in the tree (mirroring Azure DevOps backlog shortcuts where sensible):
 | <kbd>Alt</kbd>+<kbd>←</kbd> | Outdent — make it a sibling of its parent |
 | <kbd>Alt</kbd>+<kbd>→</kbd> | Indent — nest it under the previous sibling |
 | <kbd>Ctrl/Cmd</kbd>+<kbd>Z</kbd> | Undo the last backlog change (again to redo) |
-| <kbd>/</kbd> | Jump to the filter box |
-| <kbd>Escape</kbd> | Clear the filter, then the selection |
+| <kbd>Escape</kbd> | Clear the selection |
 | <kbd>Menu</kbd> / <kbd>Shift</kbd>+<kbd>F10</kbd> | Open the context menu for the selected item |
 
 ### Undo
@@ -602,8 +601,8 @@ excluded parent.
 
 Columns and a workflow only — no WIP limits, no column policies, no started/finished
 date stamps, and "Show completed items" has no effect here: a Deliverable's
-completion state on either workflow never hides its card, and only the quick filter
-narrows what is shown. **The focus level set elsewhere in the toolbar has no effect on
+completion state on either workflow never hides its card, so only the Base's own
+search narrows what is shown. **The focus level set elsewhere in the toolbar has no effect on
 this board at all** — a focus left on, say, Feature would otherwise make a Deliverable
 outside that subtree confusingly disappear, so the toolbar's **Focus** control always
 reads a plain, disabled "Deliverables" button here, whatever the inherited focus is:

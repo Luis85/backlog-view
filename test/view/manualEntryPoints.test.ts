@@ -93,16 +93,6 @@ describe('the manual is reachable where its questions are asked', () => {
 		expect(openedOn()).toBe('Finding work');
 	});
 
-	it('opens on finding work from the no-match state', () => {
-		const { view, containerEl } = makeView(fixture(), {});
-		view.setFilter('zzzznomatch');
-		// `.pbl-empty-filter`, NOT `.pbl-empty` — `renderFilterEmptyState` builds its own
-		// shell rather than going through `guidanceShell`. Confirmed against
-		// `src/view/render/emptyStates.ts` before writing this selector.
-		containerEl.querySelector<HTMLElement>('.pbl-empty-filter .pbl-help-link')?.click();
-		expect(openedOn()).toBe('Finding work');
-	});
-
 	it('opens on finding work from the all-done state', () => {
 		// Every item done, with Show completed items off. `renderAllDoneState` shares
 		// `noticeShell` with `renderFilterEmptyState` — confirmed in `emptyStates.ts` and

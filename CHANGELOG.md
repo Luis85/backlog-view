@@ -11,6 +11,18 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+### Removed
+
+- **The toolbar's quick filter is gone — use the Base's own search.** Obsidian Bases carries
+  a search of its own now, so the plugin's box was a second search over the same rows. A
+  Base search narrows the results this view is given, and the ancestors those results need
+  are still loaded around them, so a search reads as a tree rather than a flat list of hits.
+  The roadmap's unplaced shelf keeps its own search, which is scoped to the untriaged work
+  beside it. Going with the box: the `/` shortcut, the highlighted match in a title, the
+  "3 of 12" column headers, the match links on a card and the `Open match` menu entries, and
+  the no-match empty state. Nothing was ever written for a filter, so there is nothing to
+  migrate and no stored setting left behind.
+
 ### Added
 
 - **A clear button on the shelf's search.** An x appears beside the box while there is
@@ -27,9 +39,8 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   shelf was already their first stop.
 - **The horizon board's right-click menus no longer carry a children section.** No
   `Show/Hide children` toggle and no `Open child` entries there — the card's own
-  disclosure still lists children on its face. While the quick filter runs, a matched
-  child with no card of its own is offered as `Open match` instead. The kanban board and
-  the dated axis keep their menus as they were.
+  disclosure still lists children on its face. The kanban board and the dated axis keep
+  their menus as they were.
 
 ### Fixed
 

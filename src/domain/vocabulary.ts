@@ -106,7 +106,7 @@ export function collectObservedTags(all: VocabularySource[]): string[] {
  * ranks yields a menu listing the buckets in an order the axis contradicts.
  *
  * That agreement is exact while the roadmap draws every result, and only then. Hiding
- * — a focus level, the quick filter, a finished subtree — can remove a value's first
+ * — a focus level, a finished subtree — can remove a value's first
  * carrier and leave the axis minting its bucket later than this list met it, and the
  * view-level ones are not knowable here at all. So this is the base order, not a
  * promise: the menu takes its order from the buckets it can see when there are any

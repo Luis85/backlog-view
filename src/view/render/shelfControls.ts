@@ -214,7 +214,7 @@ function showTypeMenu(host: BacklogViewHost): void {
 
 /**
  * The shelf's own title search: a narrowing scoped to the untriaged work rather than to
- * the whole view, which is what the toolbar's quick filter already does and why this is
+ * the whole view, which is what the Base's own search already does and why this is
  * not that. Nothing is written; `searchShelf` (`domain/shelf.ts`) is the whole rule.
  */
 function renderSearch(host: BacklogViewHost, headerEl: HTMLElement): void {

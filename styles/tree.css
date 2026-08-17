@@ -75,12 +75,6 @@
 	}
 }
 
-/* The matching part of a title while the quick filter is active */
-.pbl-match {
-	background-color: hsla(var(--interactive-accent-hsl), 0.25);
-	border-radius: 2px;
-}
-
 /* The selection is the focus ring — but only once there is one. Tabbing into an
    unselected tree used to show nothing at all, so the container carries the ring
    until the first row is selected. */

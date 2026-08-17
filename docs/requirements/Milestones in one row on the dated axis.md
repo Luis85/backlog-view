@@ -195,8 +195,10 @@ of `wireCardActivation` a mark can take without a selection. The open pair is wi
 because a browser splits one affordance in two — a middle click never fires `click` — so a
 surface that wires the primary one alone loses the tab silently.
 
-`test/view/roadmapMatches.test.ts` drives 3d's registration, watched failing without it;
-`test/view/milestonesRow.test.ts` and `test/view/roadmapMarkers.test.ts` drive 3f from both
+3d's registration was driven by the quick filter's own suite, deleted with the filter on
+2026-08-17 ([[Remove the quick filter, now that Bases has its own search]]) — the register
+entry still matters, since `cardedPaths` reads it to decide which children a card menu may
+offer, but nothing now drives it through a match. `test/view/milestonesRow.test.ts` and `test/view/roadmapMarkers.test.ts` drive 3f from both
 directions (the words present as content, and no `aria-label` on the mark at all); and
 `test/view/roadmapMarkers.test.ts` drives 3e — all three gestures on the mark, and the
 connector inside it refused by `fromRowControl` on both halves of the pair.

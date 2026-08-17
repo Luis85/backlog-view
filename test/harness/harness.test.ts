@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { mountHarness } from './mount';
 import { applyPlatform } from './theme';
-import { applyWantedFilter, openWantedDialog } from './knobs';
+import { openWantedDialog } from './knobs';
 import { Modal } from '../helpers/obsidian-mock';
 import { installObsidianDom } from '../helpers/dom';
 import { ExtraButtonComponent } from '../helpers/obsidian-mock';
@@ -461,15 +461,6 @@ describe('the page can open a dialog and run a filter by URL', () => {
 		expect(Modal.lastOpened?.titleEl.textContent).toContain('New');
 	});
 
-	it('runs the quick filter, and draws its empty state when nothing matches', () => {
-		const { view, containerEl } = mount();
-
-		applyWantedFilter(view, '?filter=Onboarding');
-		expect(containerEl.querySelector('.pbl-match')).not.toBeNull();
-
-		applyWantedFilter(view, '?filter=zzzznothing');
-		expect(containerEl.querySelector('.pbl-empty-filter')).not.toBeNull();
-	});
 });
 
 /**

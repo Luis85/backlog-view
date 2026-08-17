@@ -140,19 +140,6 @@ describe('folding a board column', () => {
 		expect(folded(columnByName(reopened.containerEl, 'Done'))).toBe(true);
 	});
 
-	it('opens while a quick filter runs, so a search has no silent exception in it', () => {
-		const { view, containerEl } = makeBoard(openVault());
-		foldButton(columnByName(containerEl, 'Done')).click();
-		expect(cardTitles(columnByName(containerEl, 'Done'))).toEqual([]);
-
-		view.setFilter('Shipped');
-		expect(cardTitles(columnByName(containerEl, 'Done'))).toEqual(['Shipped']);
-
-		// Lifted, the fold is exactly where it was — a search does not rule on a column.
-		view.setFilter('');
-		expect(folded(columnByName(containerEl, 'Done'))).toBe(true);
-	});
-
 	it('offers no fold on the empty no-state strip, because it draws no disclosure either', () => {
 		// Found by review (Codex, PR #140), and the SECOND time this pair came apart on
 		// availability rather than on state. The strip is already a 44px box with nothing
@@ -171,30 +158,6 @@ describe('folding a board column', () => {
 		// No policy either, so there is nothing to open at all — and the keyboard path
 		// leaves the key alone rather than swallowing it on a stop where nothing happens.
 		expect(Menu.lastShown).toBeNull();
-	});
-
-	it('offers no fold from the menu while a filter runs, because the button offers none', () => {
-		// Found by review (Codex, PR #140). The disclosure is disabled while filtering and
-		// this entry was not, so a folded column — which the filter override reports as
-		// open — offered an enabled Collapse that wrote a fold nothing on screen could
-		// show, and clearing the search revealed a fold the reader never watched happen.
-		// Two surfaces over one action have to be AVAILABLE at the same times, not only
-		// agree about the state.
-		const { view, containerEl } = makeBoard(openVault());
-		view.setFilter('Epic');
-
-		expect(foldButton(columnByName(containerEl, 'New')).disabled).toBe(true);
-		columnByName(containerEl, 'New')
-			.querySelector('.pbl-board-col-header')
-			?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
-		const entry = Menu.lastShown?.item('Collapse New');
-		expect(entry?.disabled).toBe(true);
-
-		// Disabled AND inert: clicking it anyway writes no fold, so lifting the filter
-		// leaves the column exactly as the reader left it.
-		entry?.click();
-		view.setFilter('');
-		expect(folded(columnByName(containerEl, 'New'))).toBe(false);
 	});
 
 	it('is remembered per board, so two boards’ “Done” are two folds', () => {

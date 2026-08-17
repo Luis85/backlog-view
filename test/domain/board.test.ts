@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
 	boardColumns,
-	BoardColumn,
 	deliverablesWorkflow,
 	NO_STATE_COLLISION_LABEL,
 	NO_STATE_LABEL,
@@ -398,23 +397,6 @@ describe('a column carries its own agreement', () => {
 		const col = column(vaultWith('constructor'), 'constructor', collision);
 		expect(col.limit).toBeNull();
 		expect(col.policy).toBe('');
-	});
-
-	it('counts the overage from the FULL population, never the matches', () => {
-		// Extension 4a: a filter that made an over-limit column look under its limit
-		// would turn a search into a lie about the work.
-		const vault = vaultWith('Active', 'Active', 'Active');
-		const model = buildModel(vault.app, vault.entries(), limited);
-		const filtered = boardColumns(
-			requirementsWorkflow(model, limited),
-			model.focused ? model.roots : model.results,
-			(item) => item.file.path === 'A0.md',
-			() => true,
-		);
-		const col = filtered.columns.find((c) => c.label === 'Active');
-		expect(col?.count).toBe(1);
-		expect(col?.fullCount).toBe(3);
-		expect(overBy(col as BoardColumn)).toBe(1);
 	});
 
 	it('is not over at the limit, and never over without one', () => {

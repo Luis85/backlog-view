@@ -494,10 +494,12 @@ obvious one:
    on screen as an unmatched root, and on the Deliverables board kept a `Deliverable`
    nested under a test as a card, for an ancestry that board draws nowhere.
 
-None is a special case of another, and each is one predicate on its own line in
-`src/view/filterState.ts`. That separateness is the finding, not an accident of the fixes:
+None is a special case of another, and each was one predicate on its own line in the quick
+filter's match walk — deleted with the filter itself on 2026-08-17
+([[Remove the quick filter, now that Bases has its own search]]), which is why this section
+no longer names the module. That separateness was the finding, not an accident of the fixes:
 every round that tried to state two of the four as one rule is what produced the next
-round. The lesson for the next consumer:
+round, and it is still the lesson for the next consumer:
 `projectionPopulation(...).roots` alone is not the forest, and neither is roots plus one use
 of the membership rule.
 

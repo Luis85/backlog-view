@@ -28,7 +28,7 @@ import { addShelfSearchItems, addShelfSortItems, addShelfTypeItems } from './she
 import { addHorizonItems, canSchedule, carriesDates, promptSchedule, unschedule } from './plan';
 import { addTagItems, tagsColumnVisible } from './tags';
 import { addDependencyItems, dependenciesAvailable } from './dependencies';
-import { horizonBoardShowing, matchesFor, menuChildren, cardedPaths } from '../childrenList';
+import { horizonBoardShowing, menuChildren, cardedPaths } from '../childrenList';
 import { offerableTypes, retypeChoices, rowVocabulary, treeShaped } from '../projection';
 
 /**
@@ -96,7 +96,6 @@ function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childTypes: str
 	// there is no rank to move within and no sibling to indent under.
 	if (treeShaped(host.projection)) addMoveSection(host, menu, item);
 	if (editable) addParentLinkSection(host, menu, item);
-	addMatchSection(host, menu, item);
 	addChildrenSection(host, menu, item);
 	addShelfSection(host, menu);
 	menu.addSeparator();
@@ -362,40 +361,6 @@ export const showAssigneeMenu = (host: BacklogViewHost, evt: MouseEvent, item: B
 export const showTagMenu = (host: BacklogViewHost, evt: MouseEvent, item: BacklogItem): void =>
 	chipMenu(host, evt, item, addTagItems);
 
-/**
- * The matches hiding under this card, as menu entries.
- *
- * The board is one tab stop by design, so the match links on a card face carry
- * `tabindex="-1"` — and the menu is their keyboard path, exactly as it is for the
- * tree's add button and state chip. Without it those links would be pointer-only, and
- * a match that only a mouse can reach is the very failure the card face exists to
- * prevent: found, counted in the rollup, and impossible to get to. Offered whether or
- * not the card itself matched, for the same reason the face names them: a match below
- * a matching card is a second result, and it has no card of its own to be reached by.
- *
- * `matchesFor` — the same walk the faces use, asked of whichever projection drew this
- * item and subtracting what THIS menu will itself list. That subtraction is
- * `menuChildren`, not `listedChildren`: the two came apart when the per-child entries
- * were narrowed to the unreachable ones, so a child the menu is not naming can still be
- * named as a match here, and one it is naming is named once. Both directions have been
- * broken here within two days — a walk without the subtraction offered a note twice, and
- * a subtraction of the wider set would drop a match silently. What each surface DRAWS
- * differs; what counts as saying a thing twice does not.
- */
-function addMatchSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
-	if (!host.isFiltering()) return;
-	const matches = matchesFor(host, item);
-	if (matches.length === 0) return;
-	menu.addSeparator();
-	for (const match of matches) {
-		menu.addItem((mi) =>
-			mi
-				.setTitle(`Open match "${match.title}"`)
-				.setIcon('search')
-				.onClick((evt) => host.openItem(match, evt)),
-		);
-	}
-}
 
 /**
  * Folding the children this card is showing, offered where a pointer is not available.
@@ -432,14 +397,11 @@ function addMatchSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): 
  * A second opinion here would be exactly what let a card's toggle and this entry disagree.
  *
  * The toggle leads, because on the timeline it is the whole feature: that chevron hides
- * ROWS, and the entries below open notes rather than standing in for it. It is withheld
- * while the quick filter runs, exactly as the disclosure itself goes `disabled` there and
- * for the same reason — both `isCollapsed` and `isCardCollapsed` report false while it
- * runs, so the write would look inert and then take effect once the filter cleared.
+ * ROWS, and the entries below open notes rather than standing in for it.
  *
  * The HORIZON BOARD carries none of this (asked for directly, 2026-08-17): its menus
  * name no children, so the whole section returns before the separator. `menuChildren`
- * carries the same gate for `matchesFor`'s sake — see its comment — and the two costs
+ * carries the same gate itself — see its comment — and the two costs
  * are recorded in the task note rather than smoothed over: on this board the face
  * disclosure has no keyboard path, and under a focus an unmatched, uncarded child is
  * reachable only from the other projections.
@@ -450,18 +412,16 @@ function addChildrenSection(host: BacklogViewHost, menu: Menu, item: BacklogItem
 	const isBar = (host.roadmap?.roadmap.bars ?? []).some((bar) => bar.item.file.path === item.file.path);
 	menu.addSeparator();
 	const collapsed = isBar ? host.isCollapsed(item.file.path) : host.isCardCollapsed(item.file.path);
-	if (!host.isFiltering()) {
-		menu.addItem((mi) =>
-			mi
-				.setTitle(collapsed ? 'Show children' : 'Hide children')
-				.setIcon(collapsed ? 'chevron-right' : 'chevron-down')
-				.onClick(() => {
-					if (isBar) host.setCollapsed(item.file.path, !collapsed);
-					else host.setCardCollapsed(item.file.path, !collapsed);
-					host.render();
-				}),
-		);
-	}
+	menu.addItem((mi) =>
+		mi
+			.setTitle(collapsed ? 'Show children' : 'Hide children')
+			.setIcon(collapsed ? 'chevron-right' : 'chevron-down')
+			.onClick(() => {
+				if (isBar) host.setCollapsed(item.file.path, !collapsed);
+				else host.setCardCollapsed(item.file.path, !collapsed);
+				host.render();
+			}),
+	);
 	for (const child of menuChildren(host, item, cardedPaths(host))) {
 		menu.addItem((mi) =>
 			mi

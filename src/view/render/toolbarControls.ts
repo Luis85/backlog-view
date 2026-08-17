@@ -605,7 +605,7 @@ export function collapseAll(host: BacklogViewHost): void {
 }
 
 /**
- * When the bulk collapse controls are refused: while a quick filter overrides collapse
+ * When the bulk collapse controls are refused:
  * state, and when nothing currently drawn is a genuine ROW disclosure — a card's own
  * disclosure is never reachable by these buttons at all (see `collapsiblePopulation`), so
  * a screen where every disclosure belongs to a card (an ordinary board, the Deliverables
@@ -619,7 +619,6 @@ export function collapseAll(host: BacklogViewHost): void {
  * the same rule.
  */
 export function collapseCtlsDisabled(host: BacklogViewHost): boolean {
-	if (host.isFiltering()) return true;
 	if (treeShaped(host.projection)) return false;
 	const barPaths = new Set((host.roadmap?.roadmap.bars ?? []).map((bar) => bar.item.file.path));
 	for (const path of host.cardChildrenShown) {

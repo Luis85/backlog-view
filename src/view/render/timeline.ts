@@ -17,7 +17,7 @@ import {
 	TimelineEntry,
 } from './lanes';
 import { createCard, wireCardActivation } from './board';
-import { foldOnClick, renderBadge, renderChevron, renderTitleText } from './rows';
+import { foldOnClick, renderBadge, renderChevron } from './rows';
 import { renderMilestoneLines } from './milestoneLines';
 import { dependencyNote, NO_CONFLICTS, renderDependencyArrows } from './timelineArrows';
 import { CardDragController } from '../interactions/cardDrag';
@@ -600,12 +600,11 @@ function renderBarRow(
 	renderRowChevron(ctx, lead, entry);
 	renderBadge(ctx.host, lead, bar.item);
 	const title = lead.createDiv({ cls: 'pbl-card-title' });
-	renderTitleText(ctx.host, title, bar.item.title);
+	title.setText(bar.item.title);
 	setTooltip(lead, bar.item.title);
 	// The lead is where this row's match affordance goes — the one text region it has, and
 	// a fixed-width COUNT there rather than titles (`face`). It lists no children on its
-	// face either, since the chevron folds ROWS, so `listsChildren` is false.
-	ctx.placed.set(bar.item.file.path, { item: bar.item, mount: lead, listsChildren: false, face: 'count' });
+	ctx.placed.set(bar.item.file.path, { item: bar.item, mount: lead });
 
 	const track = row.createDiv({ cls: 'pbl-timeline-track' });
 	mounts.tracks.set(bar.item.file.path, track);

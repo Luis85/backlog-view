@@ -49,9 +49,9 @@ export function buildRow(
 	if (item.outsideFilter) row.addClass('pbl-outside');
 	row.setCssProps({ '--pbl-depth': String(item.depth) });
 	row.dataset.path = item.file.path;
-	// While filtering, visual neighbors are not real siblings — ranking by drag would
-	// mislead; an ancestor from outside the filter has unknown siblings for the same reason.
-	row.draggable = !host.isFiltering() && !item.outsideFilter;
+	// An ancestor from outside the Base's own results has unknown siblings, so ranking it
+	// by drag would mislead.
+	row.draggable = !item.outsideFilter;
 
 	renderRowLead(ctx, row, item, state);
 	renderRowTrailing(ctx, row, item, childTypes);
@@ -87,7 +87,7 @@ function renderRowLead(
 	renderBadge(host, row, item);
 
 	const title = row.createSpan({ cls: 'pbl-title' });
-	renderTitleText(host, title, item.title);
+	title.setText(item.title);
 	// Set unconditionally, and NOTHING measures whether it was needed. Deciding that costs
 	// a `scrollWidth`/`clientWidth` read per row, which forces layout — as a hover handler
 	// it cost 65.7ms per hover at 832 rows, and as a batched pass it forced the whole tree
@@ -196,15 +196,11 @@ export function renderChevron(
 	const chevron: HTMLElement =
 		label === undefined
 			? rowEl.createDiv({ cls })
-			: disclosureButton(rowEl, cls, { expanded: !state.collapsed, label, disabled: host.isFiltering() });
+			: disclosureButton(rowEl, cls, { expanded: !state.collapsed, label });
 	drawIcon(chevron, 'chevron-right');
 	chevron.toggleClass('pbl-expanded', !state.collapsed);
 	// eslint-disable-next-line no-restricted-syntax -- closes over state.toggle, redraw and the element, never a BacklogItem.
 	chevron.addEventListener('click', () => {
-		// Read here rather than trusted from `disabled`: a click landing on the icon
-		// inside a disabled button still reaches this listener, and the div form has no
-		// `disabled` to read at all.
-		if (host.isFiltering()) return;
 		// Whether this control HELD focus, captured before the redraw that may destroy it —
 		// a caller rebuilding the whole projection has to put focus somewhere, and only
 		// this side knows whether there was any to put. Asked of the element rather than
@@ -226,28 +222,14 @@ export function renderChevron(
 function disclosureButton(
 	rowEl: HTMLElement,
 	cls: string,
-	said: { expanded: boolean; label: string; disabled: boolean },
+	said: { expanded: boolean; label: string },
 ): HTMLElement {
-	const btn = rowEl.createEl('button', {
+	return rowEl.createEl('button', {
 		cls,
 		attr: { type: 'button', tabindex: '-1', 'aria-expanded': String(said.expanded), 'aria-label': said.label },
 	});
-	btn.disabled = said.disabled;
-	return btn;
 }
 
-/** While filtering, the matching substring lights up so hits are scannable. */
-export function renderTitleText(host: BacklogViewHost, titleEl: HTMLElement, text: string): void {
-	const needle = host.filterText.trim().toLowerCase();
-	const idx = needle.length > 0 ? text.toLowerCase().indexOf(needle) : -1;
-	if (idx === -1) {
-		titleEl.setText(text);
-		return;
-	}
-	titleEl.appendText(text.substring(0, idx));
-	titleEl.createSpan({ cls: 'pbl-match', text: text.substring(idx, idx + needle.length) });
-	titleEl.appendText(text.substring(idx + needle.length));
-}
 
 /** Shared with the board's cards: one badge chain, so a type cannot look different per projection. */
 export function renderBadge(host: BacklogViewHost, row: HTMLElement, item: BacklogItem): void {
@@ -380,7 +362,7 @@ export function foldOnClick(
 	row: { hasChildren: boolean; redraw: () => void },
 ): boolean {
 	if (!host.clickFolds || Keymap.isModEvent(evt)) return false;
-	if (host.isFiltering() || !row.hasChildren) return true;
+	if (!row.hasChildren) return true;
 	host.setCollapsed(item.file.path, !host.isCollapsed(item.file.path));
 	row.redraw();
 	return true;

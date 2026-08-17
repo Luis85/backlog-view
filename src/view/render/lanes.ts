@@ -4,7 +4,7 @@ import { createCard, wireCardActivation, wireItemMenu, wireOpenGestures } from '
 import { renderBarProgress } from './barProgress';
 import { RowContext } from './columns';
 import { drawIcon } from './icons';
-import { renderBadge, renderChevron, renderTitleText } from './rows';
+import { renderBadge, renderChevron } from './rows';
 import { promptAddAbsence, showAbsenceMenu } from '../interactions/absences';
 import { CardDragController } from '../interactions/cardDrag';
 import { wireBarLink } from '../interactions/linkDrag';
@@ -434,11 +434,11 @@ export function renderLaneContextRow(ctx: RowContext, content: HTMLElement, item
 	const lead = row.createDiv({ cls: 'pbl-timeline-lead' });
 	renderBadge(ctx.host, lead, item);
 	const title = lead.createDiv({ cls: 'pbl-card-title' });
-	renderTitleText(ctx.host, title, item.title);
+	title.setText(item.title);
 	setTooltip(lead, item.title);
 	renderBarProgress(ctx.host, { row, bar: null, lead }, item);
 	row.createDiv({ cls: 'pbl-timeline-track' });
-	ctx.placed.set(item.file.path, { item, mount: lead, listsChildren: false, face: 'count' });
+	ctx.placed.set(item.file.path, { item, mount: lead });
 	wireCardActivation(ctx, row, item);
 	return row;
 }
@@ -846,7 +846,7 @@ export function drawMarkerDiamonds(
 		// drawn and not registered reads as one that did not draw, and the parent bar above
 		// it counts a match the reader is looking at in the row overhead. It stays off the
 		// KEYBOARD walk regardless — that list is `drawnCards`, read from the entries.
-		ctx.placed.set(bar.item.file.path, { item: bar.item, mount: el, listsChildren: false, face: 'none' });
+		ctx.placed.set(bar.item.file.path, { item: bar.item, mount: el });
 		mounts.tracks.set(bar.item.file.path, track);
 		// The TRACK is where a move's preview mounts, and it is this one shared box; the
 		// ANCHOR an arrow reads a Y off is the diamond, because a sub-lane is one marker's

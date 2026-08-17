@@ -70,15 +70,10 @@ function addFoldItem(
 	column: { col: BoardColumn; folded: boolean },
 ): void {
 	const { col, folded } = column;
-	const filtering = host.isFiltering();
 	menu.addItem((mi) => {
 		mi.setTitle(folded ? `Expand ${col.label}` : `Collapse ${col.label}`)
 			.setIcon(folded ? 'chevron-down' : 'chevron-right')
-			.setDisabled(filtering);
-		// Guarded as well as disabled, `renderChevron`'s own belt and braces: what a
-		// disabled `MenuItem` does with a click is Obsidian's business, and this side can
-		// answer for itself in one term.
-		if (!filtering) mi.onClick(() => host.setColumnCollapsed(scope, columnFoldValue(col), !folded));
+			.onClick(() => host.setColumnCollapsed(scope, columnFoldValue(col), !folded));
 	});
 }
 

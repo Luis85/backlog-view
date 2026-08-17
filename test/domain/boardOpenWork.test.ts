@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { boardColumns, deliverablesWorkflow, requirementsWorkflow } from '../../src/domain/board';
 import { isDeliverableType } from '../../src/domain/itemTypes';
-import { BacklogItem, buildModel } from '../../src/domain/model';
+import { buildModel } from '../../src/domain/model';
 import { BacklogSettings } from '../../src/domain/settings';
 import { resolveSettings } from '../../src/domain/settingsResolve';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
@@ -63,22 +63,6 @@ describe('a column reports whether it still holds open work', () => {
 		const board = boardColumns(requirementsWorkflow(model, settings), model.results, everything);
 
 		expect(board.columns.find((c) => c.label === 'Done')?.openWork).toBe(true);
-	});
-
-	it('reads the POPULATION, so a filter that hid the open card cannot say the column is finished', () => {
-		// The failure this pins: measured over `cards`, a search matching only the tidy
-		// item would report Done as finished, and the board would fold a column holding a
-		// retained card — the user searching their board into a different shape. The
-		// second predicate is the filter; the third is the population it is measured
-		// against, which is exactly what `fullCount` already borrows.
-		const vault = doneVault();
-		const model = buildModel(vault.app, vault.entries(), settings);
-		const matched = (item: BacklogItem) => item.title === 'Shipped';
-		const board = boardColumns(requirementsWorkflow(model, settings), model.results, matched, everything);
-
-		const done = board.columns.find((c) => c.label === 'Done');
-		expect(done?.cards.map((c) => c.title)).toEqual(['Shipped']);
-		expect(done?.openWork).toBe(true);
 	});
 
 	it('ignores a context card, which is placement rather than work', () => {
@@ -160,9 +144,7 @@ describe('a context card speaks for the results below it and for nothing else', 
 		const model = buildModel(vault.app, only(vault, 'PBI.md'), settings);
 		const board = boardColumns(requirementsWorkflow(model, settings), model.roots, everything);
 
-		const done = board.columns.find((c) => c.label === 'Done');
-		expect(done?.count).toBe(0);
-		expect(done?.fullCount).toBe(0);
+		expect(board.columns.find((c) => c.label === 'Done')?.count).toBe(0);
 	});
 });
 

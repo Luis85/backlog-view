@@ -2,7 +2,7 @@ import { setTooltip } from 'obsidian';
 import { t } from '../../i18n/t';
 import { drawIcon } from './icons';
 import { RowContext } from './columns';
-import { renderBadge, renderTitleText } from './rows';
+import { renderBadge } from './rows';
 import { BacklogViewHost } from '../host';
 import { uniqueElementId } from '../selection';
 import { BacklogItem } from '../../domain/model';
@@ -53,14 +53,6 @@ export function renderCardChildren(ctx: RowContext, card: HTMLElement, item: Bac
 	const chevron = toggle.createSpan({ cls: 'pbl-card-kids-chevron' });
 	drawIcon(chevron, 'chevron-right');
 	toggle.createSpan({ cls: 'pbl-card-kids-count', text: childrenLabel(children) });
-	// The quick filter OVERRIDES collapse state without replacing it: `isCardCollapsed`
-	// returns false while it runs, but `setCardCollapsed` still writes. A live toggle would
-	// therefore write state that reads back as expanded, look inert, and then take
-	// effect once the filter cleared. Same real `disabled` flag the toolbar's collapse
-	// controls take, for the same reason — `pointer-events: none` stops a mouse and
-	// nothing else.
-	toggle.disabled = host.isFiltering();
-
 	// The disclosure counts what it LISTS and the rollup beside it counts everything
 	// beneath, so with completed work hidden the two disagree on purpose. Said out loud
 	// only when it is true, and only in the one place a user can ask: two numbers
@@ -91,14 +83,7 @@ export function renderCardChildren(ctx: RowContext, card: HTMLElement, item: Bac
 
 	toggle.addEventListener('click', (evt) => {
 		// The card listens on itself. Without this the note opens AND the card expands
-		// underneath it, so a broken toggle looks like a working one — even while the
-		// toggle itself is `disabled`, since a click on the chevron or count span inside
-		// it still reaches this listener in a real browser (and in jsdom).
-		// `disabled` alone does not stop a click that lands on a CHILD element (the
-		// chevron/count spans) from bubbling to this listener. Mutating here while the
-		// quick filter runs would write collapse state that `isCollapsed` reports as
-		// false until the filter clears — a silent write with no visible effect.
-		if (toggle.disabled) return;
+		// underneath it, so a broken toggle looks like a working one.
 		host.setCardCollapsed(item.file.path, !host.isCardCollapsed(item.file.path));
 		draw();
 	});
@@ -115,9 +100,7 @@ function renderChildEntry(host: BacklogViewHost, list: HTMLElement, child: Backl
 		attr: { type: 'button', tabindex: '-1' },
 	});
 	renderBadge(host, entry, child);
-	// Through `renderTitleText`, so a quick-filter match highlights here exactly as it
-	// does in a row or a card title.
-	renderTitleText(host, entry.createSpan({ cls: 'pbl-card-kid-title' }), child.title);
+	entry.createSpan({ cls: 'pbl-card-kid-title', text: child.title });
 	setTooltip(entry, `Open "${child.title}"`);
 	entry.addEventListener('click', (evt) => host.openItem(child, evt));
 	entry.addEventListener('auxclick', (evt) => {

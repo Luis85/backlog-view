@@ -304,26 +304,6 @@ describe('the Deliverables board’s card menu', () => {
 		expect(vault.fm('D.md')['status']).toBe('Untouched');
 	});
 
-	it('keeps a filtered match under a Deliverable card reachable through the card menu', () => {
-		const vault = new FakeVault();
-		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, deliverableStatus: 'Draft' } });
-		vault.addFile('T.md', { frontmatter: { type: 'Task', order: 10, deliverableStatus: 'irrelevant' }, parentLink: 'D' });
-		const harness = makeView(vault, { deliverableStateProperty: 'note.deliverableStatus' });
-		harness.view.setProjection('deliverables');
-		const { containerEl } = harness;
-		harness.view.setFilter('T');
-
-		cardByTitle(containerEl, 'D').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
-		// The card's own disclosure lists it, and those entries are `tabindex="-1"` — so
-		// the menu is the keyboard path this test is about. WHICH entry answers it has
-		// moved twice: `Open child` until 2026-08-14, `Open match` for a day, and now
-		// `Open child` again, because a Task on the Deliverables board has no card of its
-		// own. What must never move is that there is exactly ONE of them — the match
-		// section subtracts what the disclosure lists, so the two cannot both claim it.
-		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
-		expect(titles.filter((t) => t.endsWith('"T"'))).toEqual(['Open child "T"']);
-	});
-
 	it('gates the tree’s Set state on each item’s OWN workflow key', () => {
 		const vault = new FakeVault();
 		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, deliverableStatus: 'Draft' } });

@@ -7,11 +7,10 @@ import {
 	renderAllDoneState,
 	renderBoardExcludedFocusState,
 	renderEmptyState,
-	renderFilterEmptyState,
 	renderNoDeliverablesState,
 } from './emptyStates';
-import { fromRowControl, renderBadge, renderChevron, renderTitleText } from './rows';
-import { BacklogViewHost, BoardSnapshot, ColumnScope, PlacedMount } from '../host';
+import { fromRowControl, renderBadge, renderChevron } from './rows';
+import { BacklogViewHost, BoardSnapshot, ColumnScope } from '../host';
 import { uniqueElementId } from '../selection';
 import { CardDragController } from '../interactions/cardDrag';
 import { showColumnMenu } from '../interactions/columnMenu';
@@ -31,7 +30,6 @@ import {
 } from '../../domain/board';
 import { childTypeChoices, focusTarget, isDeliverableType } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
-import { listedChildren, undisclosedMatches } from '../childrenList';
 
 /** What differs between the two board-shaped projections' render passes. */
 interface BoardRenderOptions {
@@ -91,7 +89,6 @@ interface ColumnFrame {
 	strip: boolean;
 	/** Folded to that same strip by the reader, or by the done column's own default. */
 	folded: boolean;
-	filtering: boolean;
 }
 
 /**
@@ -118,15 +115,15 @@ export function renderBoard(
 	//
 	// `held > 0` is the load-bearing term and not a tidy-up: settling is permanent, so a
 	// default taken while the column holds NOTHING is a default taken on no evidence. A
-	// board drawn before its results arrive — a Bases pass that has not warmed up, a filter
-	// the reader has just narrowed to nothing — has an empty Done like every other column,
+	// board drawn before its results arrive — a Bases pass that has not warmed up — has an
+	// empty Done like every other column,
 	// and without this term it would shut Done for good and hand the work back folded. Same
 	// hazard `collapseNewParents` states for a model that has not loaded, one projection
 	// over. An empty column is also nothing to hide: "done columns stay lean" is about
 	// finished work taking a stage's room, and no work takes none.
 	//
-	// `held` and not `fullCount`, which was this term's first spelling and got the feature's
-	// own case backwards: `fullCount` is measured through the population predicate, and the
+	// `held` and not `count`, which was this term's first spelling and got the feature's
+	// own case backwards: `count` is measured through the visibility rule, and the
 	// completed-items toggle lives in that, so with finished work hidden a done column FULL
 	// of finished work reported zero and refused the fold in exactly the configuration
 	// extension 3b of the requirement is about. Found by review (Codex, PR #140).
@@ -182,17 +179,16 @@ export function renderRequirementsBoard(ctx: RowContext, boardEl: HTMLElement, d
 	// PBI focus exactly as an Issue or a Bug already is) — every other extra type keeps
 	// the "a context row renders whenever it has a visible child" guarantee, and this
 	// exclusion must not be the one place a Deliverable alone loses it. It still counts
-	// nowhere: `population` below is unchanged, and `boardColumns` already zeroes every
-	// `outsideFilter` card out of both `count` and `fullCount` regardless of type.
+	// nowhere: `boardColumns` already zeroes every `outsideFilter` card out of `count`
+	// regardless of type.
 	const board = boardColumns(
 		// Its `observedValues` is already Deliverable-free — the stray-column half of
 		// this same exclusion, stated in the workflow itself.
 		requirementsWorkflow(model, host.settings),
 		model.focused ? requirementsFocusRoots(model.roots) : model.results,
 		(item) => !host.isRowHidden(item) && (item.outsideFilter || !isDeliverableType(item.typeName)),
-		(item) => !host.isRowHiddenUnfiltered(item) && !isDeliverableType(item.typeName),
 		// What this board OWNS, and nothing about what is hidden inside it: the type alone.
-		// Both predicates above carry the completed-items toggle, which is exactly what
+		// The predicate above carries the completed-items toggle, which is exactly what
 		// `BoardColumn.held` may not be measured through — see the fold default in
 		// `renderBoard`.
 		(item) => !isDeliverableType(item.typeName),
@@ -215,7 +211,6 @@ export function renderRequirementsBoard(ctx: RowContext, boardEl: HTMLElement, d
 			// offering the one type this board cannot show.
 			if (m.focused && isDeliverableType(focusTarget(h.settings))) renderBoardExcludedFocusState(h, aside);
 			else if (population.length === 0) renderEmptyState(h, aside, root);
-			else if (h.isFiltering()) renderFilterEmptyState(h, aside, root);
 			else renderAllDoneState(h, aside, population.length, root);
 		},
 	});
@@ -229,8 +224,7 @@ export function renderRequirementsBoard(ctx: RowContext, boardEl: HTMLElement, d
  * itself narrowed to the focused subtree while a focus is active (`buildModel`'s
  * `shown()`) — `domain/model.ts` builds `deliverableResults` off the whole, unfocused
  * tree for exactly this projection. Every candidate here is already Deliverable-typed
- * by construction, so `population` (the filter-ignoring `fullCount` count) is
- * unconditional. Also regardless of either workflow's completion state (Scope: no
+ * by construction. Also regardless of either workflow's completion state (Scope: no
  * "Show completed items" concept here).
  */
 export function renderDeliverablesBoard(ctx: RowContext, boardEl: HTMLElement, dnd: CardDragController): BoardSnapshot {
@@ -251,7 +245,6 @@ export function renderDeliverablesBoard(ctx: RowContext, boardEl: HTMLElement, d
 			const m = h.model;
 			if (!m) return;
 			if (m.deliverableResults.length === 0) renderNoDeliverablesState(aside);
-			else if (h.isFiltering()) renderFilterEmptyState(h, aside, root);
 		},
 	});
 }
@@ -325,7 +318,6 @@ function renderColumn(
 	const frame: ColumnFrame = {
 		strip: emptyNoState(col) && !folded,
 		folded,
-		filtering: ctx.host.isFiltering(),
 	};
 	const colEl = colsEl.createDiv({
 		cls:
@@ -360,11 +352,7 @@ function columnLabel(col: BoardColumn, frame: ColumnFrame): string {
 	// Only where the drop actually clears the key: an unwritable bucket carries the same
 	// `state: null` and would otherwise promise a clearing drop it never takes.
 	const label = col.state === null && col.takesDrop ? `${col.label} — dropping here clears the state` : col.label;
-	// Filtered, the count is a pair and has to be spoken as one: "2 cards" in a column
-	// of eleven would tell a screen-reader user the stage had emptied.
-	const counts = frame.filtering
-		? t('count.cardsMatching', { count: col.count, total: col.fullCount })
-		: t('count.cards', { count: col.count });
+	const counts = t('count.cards', { count: col.count });
 	// The fold is spoken HERE and not left to the disclosure's own `aria-expanded`, which
 	// nothing on the keyboard path reaches: this string is the stop's `aria-label`, and an
 	// accessible name overrides the children it is set on, so a reader arriving by
@@ -386,7 +374,7 @@ function renderColumnHeader(
 	frame: ColumnFrame,
 	opts: BoardRenderOptions,
 ): void {
-	const { strip, filtering } = frame;
+	const { strip } = frame;
 	// The header doubles as the column's keyboard stop: an option-like element the
 	// selection can make the listbox's active descendant, because the column itself
 	// is a group and a group is not a valid active item — a screen reader told to
@@ -401,7 +389,7 @@ function renderColumnHeader(
 	if (col.done) drawIcon(header.createSpan({ cls: 'pbl-board-col-icon' }), 'circle-check');
 	if (col.state === null) drawIcon(header.createSpan({ cls: 'pbl-board-col-icon' }), 'circle-dashed');
 	header.createSpan({ cls: 'pbl-board-col-name', text: col.label });
-	if (!strip) renderColumnCount(header, col, filtering);
+	if (!strip) renderColumnCount(header, col);
 	renderColumnHints(colEl, header, col, strip, opts.stateOptionLabel);
 	renderColumnPolicy(header, col);
 	// On the header rather than inside `renderColumnPolicy`, because the menu is no longer
@@ -410,14 +398,9 @@ function renderColumnHeader(
 	header.addEventListener('contextmenu', (evt) => showColumnMenu(ctx.host, evt, opts.scope, col));
 }
 
-/**
- * How many cards, and how many the stage agreed to. A column is a stage of the workflow,
- * not a search result: while the filter narrows the cards the header says how many of the
- * stage's work it matched, so nobody reads a filtered board as a column that emptied.
- */
-function renderColumnCount(header: HTMLElement, col: BoardColumn, filtering: boolean): void {
-	const count = filtering ? `${col.count} of ${col.fullCount}` : String(col.count);
-	header.createSpan({ cls: 'pbl-board-col-count' + (filtering ? ' pbl-board-col-count-filtered' : ''), text: count });
+/** How many cards, and how many the stage agreed to. */
+function renderColumnCount(header: HTMLElement, col: BoardColumn): void {
+	header.createSpan({ cls: 'pbl-board-col-count', text: String(col.count) });
 	if (col.limit === null) return;
 	header.createSpan({ cls: 'pbl-board-col-limit', text: `/ ${col.limit}` });
 	// More than colour alone: the class carries the colour, the icon carries the shape,
@@ -517,14 +500,6 @@ function renderColumnPolicy(header: HTMLElement, col: BoardColumn): void {
 function renderCard(ctx: RowContext, cardsEl: HTMLElement, item: BacklogItem, render: ColumnRenderCtx): void {
 	const card = createCard(ctx, cardsEl, item);
 	renderCardBody(ctx, card, item);
-	// Called INLINE here and not from the shared body, because "which items already have
-	// a card" is answerable now on this projection alone: a `BoardModel` is already
-	// narrowed to what draws, so `cardPaths` is the whole answer. The roadmap's model is
-	// not, so it names its own matches in a second pass once every surface has drawn
-	// (`nameMatches` in `render/roadmap.ts`). The mount is stated rather than registered
-	// for the same reason, and both of its answers are this surface's own: a board card
-	// lists its children on its face, and it has the width to name each match.
-	renderCardMatches(ctx, render.carded, { item, mount: card, listsChildren: true, face: 'links' });
 	wireCardActivation(ctx, card, item);
 	render.dnd.wireCard(card, item);
 }
@@ -578,7 +553,7 @@ export function renderCardBody(ctx: RowContext, card: HTMLElement, item: Backlog
 		card.setAttribute('aria-description', "Outside this base's filter — shown for context");
 	}
 	const title = card.createDiv({ cls: 'pbl-card-title' });
-	renderTitleText(host, title, item.title);
+	title.setText(item.title);
 
 	// Where in the tree the card sits — on a board, the hierarchy travels on the
 	// card. An excluded parent still labels it: reading is what context is for.
@@ -705,102 +680,3 @@ export function wireItemMenu(host: BacklogViewHost, el: HTMLElement, item: Backl
 	el.addEventListener('contextmenu', (evt) => showItemMenu(host, evt, item, childTypeChoices(item)));
 }
 
-/**
- * The matches the search found beneath this item, named on the surface that drew it so
- * they can be opened. Whether the surface's own item matched makes no difference: a match
- * below it is a second, distinct result, and one card cannot stand for two. Suppressing
- * these because the card matched too is how the deeper one becomes unreachable — the exact
- * failure this exists to prevent. Nothing is rendered when nothing hides below,
- * which is the ordinary case and needs no special test.
- *
- * Exported, because it is not the board's alone: every roadmap surface calls it through
- * `nameMatches` (`render/roadmap.ts`). It takes the surface's own `PlacedMount` rather
- * than the pieces, because three of that record's fields are exactly the three answers
- * only the surface has — where the links go, what it already lists, and which FACE it can
- * afford — and passing them flat put this function over the repo's `max-params` budget.
- *
- * `listsChildren` decides the subtraction: a board card lists its children and passes
- * `true`; a timeline row draws no disclosure at all and passes `false`, or the
- * subtraction would delete its one direct-child match.
- *
- * `face` decides what is drawn, and the two are separate questions — see `PlacedMount`.
- * A CARD gets a button per match. A ROW gets one fixed-width count chip, because a sticky
- * lead column's only shrinkable items are the row's title and this, so a variable-width
- * list here is width taken out of the row's own name.
- *
- * Buttons with `tabindex="-1"` either way, exactly as the tree's per-row controls are — a
- * card projection is one tab stop, so Tab keeps skipping past the whole projection. That
- * makes the row MENU their keyboard path rather than an extra: `addMatchSection` offers
- * the same matches, from the same walk. Pointer-only links would fail this feature at its
- * own purpose, which is that a found match can be reached.
- */
-export function renderCardMatches(ctx: RowContext, carded: Set<string>, placed: PlacedMount): void {
-	const host: BacklogViewHost = ctx.host;
-	if (!host.isFiltering()) return;
-	const { item, mount, listsChildren } = placed;
-	// A surface that drew the item with nowhere to write on it — see `PlacedMount.face`.
-	// Asked BEFORE the walk, since there is nothing to do with its answer.
-	if (placed.face === 'none') return;
-	const matches = undisclosedMatches(host, item, carded, listsChildren ? listedChildren(host, item) : []);
-	if (matches.length === 0) return;
-	if (placed.face === 'count') return renderMatchCount(ctx, mount, item, matches.length);
-	const list = mount.createDiv({ cls: 'pbl-card-matches' });
-	drawIcon(list.createSpan({ cls: 'pbl-card-matches-icon' }), 'search');
-	for (const match of matches) {
-		const link = list.createEl('button', {
-			cls: 'pbl-card-match',
-			text: match.title,
-			attr: { type: 'button', tabindex: '-1' },
-		});
-		setTooltip(link, `Open "${match.title}"`);
-		// No `stopPropagation`: `fromRowControl` filters this button out of the card's
-		// own handler, so the two cannot both fire and open two different notes.
-		link.addEventListener('click', (evt) => host.openItem(match, evt));
-		link.addEventListener('auxclick', (evt) => {
-			if (evt.button === 1) host.openItemIn(match, 'tab');
-		});
-	}
-}
-
-/**
- * A ROW's answer to the same question: how many, not which — one chip that opens the row's
- * own menu, where the matches are named in full.
- *
- * **It SUBSTITUTES rather than adds, and that is the whole design.** A sticky lead is a
- * fixed-width column whose only shrinkable item is the row's own title, so anything added
- * to it is taken from the row's name — measured twice in the browser harness and wrong
- * both times: match titles in the lead left one character of the row's name at the DEFAULT
- * width (`O… 4/17 ⌕O…`), and a fixed-width chip beside the rollup still cost 34px there
- * and, being unable to yield, hung 28.95px out of the column at the narrowest.
- *
- * The lead already carries a count slot — `.pbl-bar-count`, the rollup — and matches exist
- * only while the quick filter runs. So the slot shows the rollup unfiltered and the match
- * count while filtering, never both: the width budget does not move. It is the better
- * number during a search on its own merits, since a rollup counts every descendant
- * regardless of what the filter narrowed to, and the rollup stays ANNOUNCED either way
- * through `renderBarProgress`'s `.pbl-sr-only` span, which costs no width at all.
- *
- * Replaced in the slot's own PLACE rather than appended after it: `margin-inline-start:
- * auto` on that slot is what anchors the end of the lead, and `renderRowFacts` may draw a
- * dependency flag after it. Where the rollup is off entirely there is no slot and no
- * substitution to make, so the chip is simply the last thing in the lead — which is where
- * its own auto margin puts it.
- *
- * `tabindex="-1"` and no `stopPropagation`, the match link's own bargain: `ROW_CONTROL`
- * covers every `button`, so `fromRowControl` already keeps this out of the row's activation
- * handler — a per-control guard here would be the eleventh of the ten that rule replaced.
- */
-function renderMatchCount(ctx: RowContext, mount: HTMLElement, item: BacklogItem, count: number): void {
-	const said = t('row.searchMatches', { count });
-	const chip = mount.createEl('button', {
-		cls: 'pbl-row-matches',
-		attr: { type: 'button', tabindex: '-1', 'aria-label': said },
-	});
-	drawIcon(chip.createSpan({ cls: 'pbl-row-matches-icon' }), 'search');
-	chip.createSpan({ text: String(count) });
-	setTooltip(chip, `${said} — open the menu to reach them`);
-	chip.addEventListener('click', (evt) => showItemMenu(ctx.host, evt, item, childTypeChoices(item)));
-	// `replaceWith` MOVES the chip into the slot's position, so the element created above
-	// lands where the rollup was rather than after everything drawn since.
-	mount.querySelector('.pbl-bar-count')?.replaceWith(chip);
-}

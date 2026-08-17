@@ -72,20 +72,7 @@ describe('the three-position projection toggle', () => {
 		expect(shelfTitles(containerEl)).toEqual(['Untriaged']);
 	});
 
-	it('carries the quick filter across the switch — session state in all three projections', () => {
-		const vault = roadmapVault();
-		const { view, containerEl } = makeView(vault, { ...AXES }, { collapsed: true });
-		view.setFilter('Untriaged');
-
-		view.setProjection('roadmap');
-		view.setShelfCollapsed(false);
-		expect(view.filterText).toBe('Untriaged');
-		expect(shelfTitles(containerEl)).toEqual(['Untriaged']);
-		// The placed result does not match, so the axis narrows with the shelf.
-		expect(containerEl.querySelectorAll('.pbl-bucket-cards .pbl-card')).toHaveLength(0);
-	});
-
-	it('keeps the collapse controls present but disabled — this fixture has nothing to collapse — beside creation, undo and the filter', () => {
+	it('keeps the collapse controls present but disabled — this fixture has nothing to collapse — beside creation and undo', () => {
 		// Neither epic here is a parent, so no card draws a disclosure: present, not
 		// absent (the projection can still gain one), but with nothing to drive.
 		const { containerEl } = roadmapView(roadmapVault(), { ...AXES });
@@ -94,7 +81,6 @@ describe('the three-position projection toggle', () => {
 		expect(ctls.every((b) => b.disabled)).toBe(true);
 		expect(containerEl.querySelector('.pbl-new-btn')).not.toBeNull();
 		expect(containerEl.querySelector('.pbl-undo-btn')).not.toBeNull();
-		expect(containerEl.querySelector('.pbl-filter-input')).not.toBeNull();
 	});
 
 	it('marks the pane as a listbox while cards render, a labelled region otherwise', () => {
@@ -247,7 +233,7 @@ describe('roadmap keyboard support', () => {
 		expect(Menu.lastShown?.item('Open in new tab')).toBeDefined();
 	});
 
-	it('keeps the chords: Escape clears the selection, / reaches the filter', () => {
+	it('keeps the chord: Escape clears the selection', () => {
 		const { containerEl } = roadmapView(roadmapVault(), { ...AXES });
 		const tree = treeOf(containerEl);
 
@@ -255,9 +241,6 @@ describe('roadmap keyboard support', () => {
 		expect(containerEl.querySelector('.pbl-selected')).not.toBeNull();
 		key(tree, 'Escape');
 		expect(containerEl.querySelector('.pbl-selected')).toBeNull();
-
-		key(tree, '/');
-		expect(document.activeElement?.classList.contains('pbl-filter-input')).toBe(true);
 	});
 });
 

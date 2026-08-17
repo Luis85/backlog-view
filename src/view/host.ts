@@ -160,13 +160,12 @@ export interface DrawnColors {
 export type BarColors = Omit<DrawnColors, 'absence' | 'daysLost'>;
 
 /**
- * A surface that put an item on screen, and where that item's match links go: the card
- * itself, or a row's sticky lead cell.
+ * A surface that put an item on screen: the card itself, or a row's sticky lead cell.
  *
- * `listsChildren` is whether that surface shows the item's children on its own face,
- * which decides whether a match already on the card is named twice. It cannot be read off
- * `RowContext.cardKids`: a timeline row joins that set for its FOLD chevron, which lists
- * nothing.
+ * What it answers is "which paths did this pass draw a card for" — `cardedPaths` reads
+ * exactly that, so `Open child "…"` names only a child no surface has already put on
+ * screen. It carried two more fields until 2026-08-17, both about naming quick-filter
+ * matches on a face; the filter is gone (Bases has its own search) and so are they.
  *
  * Declared HERE, beside `RoadmapSnapshot` and beside `DrawnColors` above, for that type's
  * own reason rather than a new one: the render modules produce it, but they all reach
@@ -178,29 +177,6 @@ export type BarColors = Omit<DrawnColors, 'absence' | 'daysLost'>;
 export interface PlacedMount {
 	item: BacklogItem;
 	mount: HTMLElement;
-	listsChildren: boolean;
-	/**
-	 * How this surface shows what the filter found BELOW the item — a separate question
-	 * from `listsChildren`, and deliberately not inferred from it. `'links'` is a button
-	 * per match, which a card has the width for; `'count'` is one fixed-width chip that
-	 * opens the row menu, which is all a sticky lead COLUMN can afford.
-	 *
-	 * Measured, not preferred. The lead's only shrinkable items are the row's title and
-	 * whatever names the matches, so they shrink together: with titles in the lead, a row
-	 * that gained a match rendered one character of its own name at the default 220px
-	 * width while its neighbours showed theirs in full. A row that gains matches must not
-	 * lose its identity, so the row's face costs a fixed width or nothing.
-	 *
-	 * `'none'` is a surface that DREW the item and can show nothing on it — a milestone's
-	 * diamond, which is 12px of rotated mark with no lead, no count slot and no room for a
-	 * chip. It registers all the same, and that is the whole reason the value exists:
-	 * `nameMatches` reads `carded` off this register, so an item drawn and not registered
-	 * reads as an item NOT drawn, and its parent names a match the reader is already
-	 * looking at. Registering is about what is on screen; `face` is about what can be
-	 * written on it. What it costs — a match BENEATH a milestone gets no affordance
-	 * anywhere on the grid — is stated in [[Milestones in one row on the dated axis]] 3d.
-	 */
-	face: 'links' | 'count' | 'none';
 }
 
 /**
@@ -216,13 +192,7 @@ export interface RoadmapSnapshot {
 	 * the keyboard walk and `aria-activedescendant` never reach past what is on screen.
 	 */
 	cards: BacklogItem[];
-	/**
-	 * What the pass drew, by path — the register `nameMatches` built, kept so the row
-	 * menu can offer the same matches the faces do. The menu is handed an item and no
-	 * surface, so `listsChildren` has to travel with the mount or the menu would have
-	 * to guess: always subtracting loses a row's direct-child match, never subtracting
-	 * offers a card's disclosure entries a second time.
-	 */
+	/** What the pass drew, by path — the register `cardedPaths` reads. */
 	placed: ReadonlyMap<string, PlacedMount>;
 	/**
 	 * The shelf's own element for THIS render. Carried so a control that rebuilt the
@@ -306,13 +276,11 @@ export interface BacklogViewHost {
 	readonly columnFit: ColumnFit | null;
 	setColumnFit(fit: ColumnFit | null): void;
 	readonly selectedPath: string | null;
-	/** Current quick-filter text ('' when inactive). Dragging is disabled while filtering. */
-	readonly filterText: string;
 	/** True when the Base has a group-by configured, which this view does not apply. */
 	readonly groupingIgnored: boolean;
 
 	/**
-	 * True when this item's row is not rendered: excluded by the quick filter or,
+	 * True when this item's row is not rendered: not drawn by this projection at all or,
 	 * while completed items are hidden, part of a fully-done subtree. Rendering,
 	 * keyboard navigation and menus consult this; data operations never do —
 	 * order math always runs over the full sibling lists.
@@ -324,28 +292,6 @@ export interface BacklogViewHost {
 	 * emptied a Deliverable card's child disclosure from a setting flipped elsewhere.
 	 */
 	isRowHidden(item: BacklogItem): boolean;
-	/**
-	 * The same rule with the quick filter suspended: the population a filtered count
-	 * is "of". Everything else that hides rows still applies — a stage's full count
-	 * is the work in it, not the work in it plus what another setting is hiding.
-	 */
-	isRowHiddenUnfiltered(item: BacklogItem): boolean;
-	/**
-	 * True when the quick filter matched this item ITSELF, rather than keeping it on
-	 * screen for a relative that matched. The distinction is what lets a card say
-	 * which of the things below it the search actually found.
-	 */
-	isFilterMatch(item: BacklogItem): boolean;
-	/**
-	 * True while the quick filter is narrowing the tree. Collapse state, dragging
-	 * and their affordances pause on exactly this condition — not on the raw input
-	 * text, which may be whitespace that filters nothing.
-	 */
-	isFiltering(): boolean;
-	/** Update the quick filter, sync the toolbar input, and re-render the tree. */
-	setFilter(text: string): void;
-	/** Move keyboard focus into the toolbar filter input. */
-	focusFilter(): void;
 
 	/**
 	 * Whether this item's ROW is folded — a tree row, or a dated-axis timeline bar. A
@@ -469,7 +415,7 @@ export interface BacklogViewHost {
 	/**
 	 * The shelf's own title search — a second narrowing beside the type filter, scoped to
 	 * the shelf rather than to the view, so a reader can dig through untriaged work without
-	 * the toolbar's quick filter narrowing the plan beside it.
+	 * a narrowing of the plan beside it.
 	 *
 	 * SESSION state, and the one shelf pick the view-state store does not hold: a search is
 	 * something someone is doing right now, not a property of the view — `FilterState`'s own
