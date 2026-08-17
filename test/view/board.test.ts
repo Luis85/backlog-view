@@ -300,13 +300,13 @@ describe('the projection toggle', () => {
 	it('persists in localStorage per saved view — never in the base file', () => {
 		const vault = boardVault();
 		const first = makeView(vault, { ...WORKFLOW }, { base: 'Backlog.base' });
-		const toggle = projectionButton(first.containerEl, 'Show as kanban board');
+		const toggle = projectionButton(first.containerEl, 'Show as kanban boards');
 		expect(toggle.getAttribute('aria-pressed')).toBe('false');
 
 		// The click flips the projection in place — no config write, no Bases refresh.
 		toggle.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		expect(columnsOf(first.containerEl).length).toBeGreaterThan(0);
-		expect(projectionButton(first.containerEl, 'Show as kanban board').getAttribute('aria-pressed')).toBe('true');
+		expect(projectionButton(first.containerEl, 'Show as kanban boards').getAttribute('aria-pressed')).toBe('true');
 		// The rule itself: base settings go on the view; UI state never touches it.
 		expect(first.config.setCalls.some((c) => c.key === 'viewMode')).toBe(false);
 		first.view.onunload();

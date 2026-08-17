@@ -21,6 +21,20 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   carrying an unreachable second label for the milestones row, which draws no chevron at
   all.
 
+- **The board toggle is now called Boards.** Since the scope picker moved every board —
+  Product, Deliverables, and each iteration — behind one toggle position, the switcher
+  says so: the button reads **Boards** and its accessible name is
+  **Show as kanban boards**. Nothing else about the position changed.
+
+- **Column resize follows the pointer now.** A property column's grip moved from its
+  trailing edge to its leading one — the edge that actually moves when a column anchored
+  to the row's end resizes — so the boundary under the pointer tracks the drag instead of
+  standing still while the column grows away from it. The arrow keys still move the
+  boundary the way they point, a double click still resets, and stored widths are
+  untouched. Hovering a column header now also lights the whole column band in the theme's
+  hover colour — the full height of the header strip, square — so the header reads as
+  something to interact with before the mark is found.
+
 ## [0.9.0] - 2026-08-16
 
 ### Changed

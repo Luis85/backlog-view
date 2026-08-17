@@ -55,9 +55,12 @@ describe('the property-column resize grip', () => {
 			const vault = fixture();
 			const { view, containerEl, config } = makeView(vault, {}, COLUMNS);
 
+			// The columns are anchored to the row's END, so the edge that moves — where the
+			// grip is — is the leading one, and dragging it outward (left, here) is what
+			// makes the column wider. The boundary follows the pointer.
 			const el = grip(containerEl);
 			el.dispatchEvent(pointer('pointerdown', 0));
-			el.dispatchEvent(pointer('pointermove', 40));
+			el.dispatchEvent(pointer('pointermove', -40));
 			// Live feedback only: the published width moves, nothing is stored, and neither
 			// the `.base` nor a note is touched.
 			expect(drawn(containerEl)).toBe(`${DEFAULT_PROP_COLUMN_WIDTH + 40}px`);
@@ -66,7 +69,7 @@ describe('the property-column resize grip', () => {
 			expect(config.setCalls).toEqual([]);
 			expect(vault.writeLog).toHaveLength(0);
 
-			el.dispatchEvent(pointer('pointerup', 40));
+			el.dispatchEvent(pointer('pointerup', -40));
 			expect(view.colWidths['note.points']).toBe(DEFAULT_PROP_COLUMN_WIDTH + 40);
 			expect(config.setCalls).toEqual([]);
 			expect(vault.writeLog).toHaveLength(0);
@@ -77,7 +80,7 @@ describe('the property-column resize grip', () => {
 
 			const el = grip(containerEl, 1);
 			el.dispatchEvent(pointer('pointerdown', 0));
-			el.dispatchEvent(pointer('pointerup', 30));
+			el.dispatchEvent(pointer('pointerup', -30));
 
 			expect(view.colWidths['note.owner']).toBe(DEFAULT_PROP_COLUMN_WIDTH + 30);
 			expect(view.colWidths['note.points']).toBeUndefined();
@@ -90,12 +93,12 @@ describe('the property-column resize grip', () => {
 
 			const el = grip(containerEl);
 			el.dispatchEvent(pointer('pointerdown', 0));
-			el.dispatchEvent(pointer('pointerup', 5000));
+			el.dispatchEvent(pointer('pointerup', -5000));
 			expect(view.colWidths['note.points']).toBe(MAX_PROP_COLUMN_WIDTH);
 
 			const wide = grip(containerEl);
 			wide.dispatchEvent(pointer('pointerdown', 0));
-			wide.dispatchEvent(pointer('pointerup', -5000));
+			wide.dispatchEvent(pointer('pointerup', 5000));
 			expect(view.colWidths['note.points']).toBe(MIN_PROP_COLUMN_WIDTH);
 		});
 
@@ -104,7 +107,7 @@ describe('the property-column resize grip', () => {
 
 			const el = grip(containerEl);
 			el.dispatchEvent(pointer('pointerdown', 0));
-			el.dispatchEvent(pointer('pointermove', 60));
+			el.dispatchEvent(pointer('pointermove', -60));
 			el.dispatchEvent(new PointerEvent('pointercancel', { bubbles: true, pointerId: 1 }));
 
 			expect(drawn(containerEl)).toBe(`${DEFAULT_PROP_COLUMN_WIDTH}px`);
@@ -125,7 +128,7 @@ describe('the property-column resize grip', () => {
 			expect(view.colWidths['note.points']).toBeUndefined();
 
 			// The first contact still owns it.
-			el.dispatchEvent(pointer('pointerup', 20));
+			el.dispatchEvent(pointer('pointerup', -20));
 			expect(view.colWidths['note.points']).toBe(DEFAULT_PROP_COLUMN_WIDTH + 20);
 		});
 
@@ -141,7 +144,7 @@ describe('the property-column resize grip', () => {
 
 			const el = grip(containerEl);
 			el.dispatchEvent(pointer('pointerdown', 0));
-			el.dispatchEvent(pointer('pointermove', 80));
+			el.dispatchEvent(pointer('pointermove', -80));
 			el.dispatchEvent(pointer('pointerup', 0));
 
 			expect(drawn(containerEl)).toBe(`${DEFAULT_PROP_COLUMN_WIDTH}px`);
@@ -159,7 +162,7 @@ describe('the property-column resize grip', () => {
 			el.dispatchEvent(pointer('pointerdown', 0));
 			el.dispatchEvent(pointer('pointerup', 0));
 			el.dispatchEvent(pointer('pointerdown', 0));
-			el.dispatchEvent(pointer('pointerup', 400));
+			el.dispatchEvent(pointer('pointerup', -400));
 
 			expect(view.colWidths['note.points']).toBe(MAX_PROP_COLUMN_WIDTH);
 			// The grip is still the one the gesture started on: nothing re-rendered.
@@ -168,11 +171,11 @@ describe('the property-column resize grip', () => {
 	});
 
 	describe('a right-to-left layout', () => {
-		// The grip is pinned with `inset-inline-end`, so it moves to the column's LEFT edge
-		// while `clientX` stays physical — the mismatch the register's own RTL note calls
-		// its third group. Dragging the boundary outward has to widen the column either
-		// way, and the arrow keys move it in the physical direction the separator pattern
-		// says they do.
+		// The grip is pinned with `inset-inline-start`, so it moves to the column's RIGHT
+		// edge while `clientX` stays physical — the mismatch the register's own RTL note
+		// calls its third group. Dragging the boundary outward has to widen the column
+		// either way, and the arrow keys move it in the physical direction the separator
+		// pattern says they do.
 		const rtl = (): void => document.documentElement.setAttribute('dir', 'rtl');
 		const ltr = (): void => document.documentElement.removeAttribute('dir');
 
@@ -182,10 +185,10 @@ describe('the property-column resize grip', () => {
 				const { view, containerEl } = makeView(fixture(), {}, COLUMNS);
 				const el = grip(containerEl);
 				el.dispatchEvent(pointer('pointerdown', 0));
-				el.dispatchEvent(pointer('pointermove', -40));
-				// Outward here is to the LEFT, and the column follows live.
+				el.dispatchEvent(pointer('pointermove', 40));
+				// Outward here is to the RIGHT, and the column follows live.
 				expect(drawn(containerEl)).toBe(`${DEFAULT_PROP_COLUMN_WIDTH + 40}px`);
-				el.dispatchEvent(pointer('pointerup', -40));
+				el.dispatchEvent(pointer('pointerup', 40));
 				expect(view.colWidths['note.points']).toBe(DEFAULT_PROP_COLUMN_WIDTH + 40);
 			} finally {
 				ltr();
@@ -197,7 +200,9 @@ describe('the property-column resize grip', () => {
 			try {
 				const { view, containerEl } = makeView(fixture(), {}, COLUMNS);
 				grip(containerEl).dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
-				expect(view.colWidths['note.points']).toBe(DEFAULT_PROP_COLUMN_WIDTH + 10);
+				// Physically left is INTO the column here — the boundary obeys the key, so
+				// the column narrows.
+				expect(view.colWidths['note.points']).toBe(DEFAULT_PROP_COLUMN_WIDTH - 10);
 			} finally {
 				ltr();
 			}
@@ -206,17 +211,20 @@ describe('the property-column resize grip', () => {
 
 	describe('the keyboard', () => {
 		it('steps the width with the arrow keys and resets it with Home', () => {
+			// The arrows move the BOUNDARY, which sits at the column's leading edge: in this
+			// left-to-right pane, ArrowLeft pushes it outward (wider) and ArrowRight pulls
+			// it back in.
 			const { view, containerEl } = makeView(fixture(), {}, COLUMNS);
 
-			grip(containerEl).dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
-			expect(view.colWidths['note.points']).toBe(DEFAULT_PROP_COLUMN_WIDTH + 10);
 			grip(containerEl).dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+			expect(view.colWidths['note.points']).toBe(DEFAULT_PROP_COLUMN_WIDTH + 10);
+			grip(containerEl).dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
 			// A step that lands back ON the default stores nothing: absence IS the default,
 			// so the entry goes rather than holding the number that means the same thing.
 			expect(view.colWidths['note.points']).toBeUndefined();
 			expect(drawn(containerEl)).toBe(`${DEFAULT_PROP_COLUMN_WIDTH}px`);
 
-			grip(containerEl).dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+			grip(containerEl).dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
 			grip(containerEl).dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
 			// Back to the default, and stored as ABSENCE rather than as the default number.
 			expect(view.colWidths['note.points']).toBeUndefined();

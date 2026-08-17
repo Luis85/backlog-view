@@ -150,15 +150,19 @@ export function renderColumnResize(
 let refocusIndex: number | null = null;
 
 /**
- * Which way a boundary in this strip widens: +1 left to right, -1 right to left. The grip
- * is pinned with `inset-inline-end`, so in a right-to-left layout it sits at the column's
- * LEFT edge and a drag toward the left is what makes the column bigger — while `clientX`
- * stays physical whichever way the text runs. That mismatch is the hazard
- * `docs/requirements/Nothing pins a physical side.md` names as its third group: a logical
- * CSS edge whose offset TypeScript goes on computing physically. One sign covers the
- * pointer and both arrow keys, and it agrees with the separator pattern either way —
- * Arrow Right moves the boundary physically right, which widens the column in one
- * direction and narrows it in the other.
+ * Which way a boundary in this strip widens: -1 left to right, +1 right to left. The
+ * columns are anchored to the row's END — the spacer takes the slack — so the edge that
+ * MOVES when a column resizes is its leading one, and that is where the grip is pinned
+ * (`inset-inline-start`, `styles/propertyColumns.css`; the grip sat on the trailing edge
+ * once, which the columns after it hold in place, so the mark under the pointer stood
+ * still while the column grew away from it). Growth eats the spacer: left to right, the
+ * boundary moves LEFT as the column widens, so a negative `clientX` delta is what wider
+ * means — and the sign flips with the pane's direction while `clientX` stays physical,
+ * the mismatch `docs/requirements/Nothing pins a physical side.md` names as its third
+ * group: a logical CSS edge whose offset TypeScript goes on computing physically. One
+ * sign covers the pointer and both arrow keys, and the boundary obeys them either way —
+ * Arrow Right moves it physically right, wherever that puts the width, which is the
+ * separator pattern's own claim.
  *
  * Asked of the header STRIP rather than of the document: a pane can be given its own
  * direction, and the answer that matters is the one where the grips actually are. Asked
@@ -174,7 +178,7 @@ export function widenSign(strip: HTMLElement): number {
 	// implements the first and not the second, and a reader that answers "left to right"
 	// because the property it asks for is missing would take this whole rule out of every
 	// test while looking like it held.
-	return strip.ownerDocument.defaultView?.getComputedStyle(strip).direction === 'rtl' ? -1 : 1;
+	return strip.ownerDocument.defaultView?.getComputedStyle(strip).direction === 'rtl' ? 1 : -1;
 }
 
 /**
