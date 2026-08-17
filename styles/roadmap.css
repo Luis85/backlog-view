@@ -75,6 +75,29 @@
 	padding-block-start: var(--size-4-2);
 }
 
+/* On the horizon axis the FRAME owns the pane's height too — the board's own shape:
+   the buckets band flexes into what the shelf and the strips leave, each bucket caps
+   and scrolls its own cards, and the shelf sits on screen at the foot instead of below
+   a frame as tall as its tallest bucket (measured at 16258px against a 553px pane at
+   ~800 notes, the shelf at the bottom of all of it). `border-box`, because this axis
+   keeps the top gutter the dated axis zeroes out, and a content-box 100% plus that
+   padding is a frame 8px taller than the pane, scrolling for nothing. */
+.pbl-roadmap-mode:not(.pbl-roadmap-dates) .pbl-roadmap {
+	height: 100%;
+	box-sizing: border-box;
+}
+
+/* The dated axis's band rule, on the axis that was exempt: the shelf, the context strip
+   and the advisory each declare a maximum and scroll themselves, so a full shelf cannot
+   squeeze the buckets down to their floor. The pinning above stays — this axis still
+   scrolls sideways under these bands, which is what the dated axis's own reset is about. */
+.pbl-roadmap-mode:not(.pbl-roadmap-dates) .pbl-shelf,
+.pbl-roadmap-mode:not(.pbl-roadmap-dates) .pbl-roadmap-context,
+.pbl-roadmap-mode:not(.pbl-roadmap-dates) .pbl-board-advisory {
+	max-height: 30%;
+	overflow-y: auto;
+}
+
 /* Pinned to the scrollport: a pan across months must never scroll the unplaced
    work, the context strip or the advisory out of reach. Sticky needs a box
    narrower than its containing block — the lead column's own trick — so the
@@ -107,17 +130,40 @@
 	display: flex;
 	align-items: stretch;
 	gap: var(--size-4-3);
+	/* The explicit floor also replaces the automatic content-based minimum, which is what
+	   lets the band be SHORTER than its tallest bucket at all: `min-height: auto` would
+	   put the whole stack back on screen and the shelf back below it. */
 	min-height: 220px;
 	padding-inline: var(--size-4-3);
+	/* The band takes what the shelf and the strips leave — the timeline's own flex on the
+	   dated axis. Below the floor above, the frame overflows and the pane scrolls, the
+	   band rule's stated fallback. */
+	flex: 1 1 auto;
 }
 
 /* Buckets grow to share the row's full width equally, down to a floor of 280px —
    the explicit min-width is load-bearing: flex-basis alone is not a floor once
    shrinking is enabled, and the shrink would otherwise go all the way to 0. Only
-   past that floor does the row fall back to `.pbl-tree`'s existing horizontal scroll. */
+   past that floor does the row fall back to `.pbl-tree`'s existing horizontal scroll.
+
+   `contain: inline-size` is what makes the first sentence true: the frame is
+   `min-width: max-content` for the pinned strips' sake, so without it a bucket's
+   intrinsic width is its widest card's UNWRAPPED content — and under the cards'
+   `content-visibility: auto` that is a moving answer, a skipped card contributing its
+   placeholder and a rendered one its real width. One page measured 1746px, 2165px and
+   1817px of frame for the same content, which on screen is a board that jumps as cards
+   render and a right edge a scroll cannot reach. Contained, a bucket's contribution is
+   the 280px floor and nothing that renders can move it.
+
+   `max-height: 100%` is the board column's own cap, for its reason: the row stretches
+   every bucket to the tallest, a stretched flex item will not shrink below its content,
+   and the cap is what lets `.pbl-bucket-cards`' `overflow-y: auto` actually scroll
+   instead of the bucket growing past the pane. */
 .pbl-bucket {
 	flex: 1 1 280px;
 	min-width: 280px;
+	max-height: 100%;
+	contain: inline-size;
 	display: flex;
 	flex-direction: column;
 	border: 1px solid var(--background-modifier-border);

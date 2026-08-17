@@ -11,6 +11,16 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+### Fixed
+
+- **The horizon board no longer sizes itself from its cards.** Buckets share the pane's
+  width equally again, down to their 280px floor — in the grid layout and one-card-per-row
+  alike — instead of growing to the widest card and resizing as cards render, which is
+  what made the pane jump near its right edge and the end unreachable. The buckets band
+  now takes the pane's height the way the kanban board's columns do: each bucket scrolls
+  its own cards, and the unplaced shelf stays on screen at the bottom instead of sitting
+  below the tallest bucket.
+
 ## [0.9.0] - 2026-08-16
 
 ### Changed

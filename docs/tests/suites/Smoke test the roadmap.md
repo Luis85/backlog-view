@@ -53,6 +53,12 @@ catalog migration and was not part of that run.
 - [[Roadmap milestone appearance]] — the cyan badge, the diamond, the full-height line
   and its label, two milestones on one date, today's collision, label truncation, and a
   milestone past the window edge. **Seen once, 2026-08-02; no per-point record yet.**
+- The horizon board holds its shape at a real vault's scale
+  ([[The horizon board sized itself from whichever cards had rendered]]): five horizons at
+  a laptop pane scroll sideways at a constant width with a still scrollbar thumb and a
+  reachable end; each bucket scrolls its own hundred cards; the shelf stays on screen at
+  the foot, scrolls within its band, and a drop on it still un-places; a bucket mid-scroll
+  survives a write batch no worse than a board column does. **Never checked.**
 - The grid furniture stays furniture under a real theme: gridlines, weekend banding
   and the row stripes read as background behind the bars, the milestone label stays
   legible over the header cells, the two header tiers stay aligned, bar labels hide
