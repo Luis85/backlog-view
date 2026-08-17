@@ -152,13 +152,14 @@ function renderRowLead(
  *   `docs/issues/A disclosure nested in an option role.md` holds the two redesigns that
  *   would settle it.
  *
- * Everything else is one rule in one place — including the three guards, each of which
- * had to be discovered twice before: the filter override, because `isCollapsed` reports
- * false while a filter runs and a write here would look inert and then take effect once it
- * cleared; the real `disabled` flag that says so on a control assistive tech can actually
- * activate, since `pointer-events: none` stops a mouse and nothing else; and the middle
- * click, which never fires `click` and so never meets the first guard, leaving the row's
- * own `auxclick` to open a note from a control that means something else entirely.
+ * Everything else is one rule in one place: the leaf spacer, which of the two FORMS the
+ * row's own role calls for, the `tabindex="-1"` that keeps the pane one tab stop, and the
+ * focus report. It carried three guards besides, each discovered twice before it was
+ * written once, and none of them lives here now — the quick filter's collapse override
+ * went with the filter on 2026-08-17, taking the real `disabled` flag that announced it
+ * with it, and the middle click moved to the receiver (`fromRowControl`, which names this
+ * div chevron), where it covers a control that forgets rather than one that remembers.
+ * That is the shape to keep: a guard belongs here only while it is this CONTROL's.
  */
 export interface DisclosureState {
 	hasChildren: boolean;
@@ -173,9 +174,8 @@ export interface DisclosureState {
 	 * of them now and they do not share a key space: a tree row and a dated-grid row put the
 	 * same note in two different scopes (`collapseKey`), and a resource BAND is not a note
 	 * at all, so its bit is keyed by name and lives beside the shelf's own picks. What every
-	 * disclosure DOES share is this function — the filter override, the real `disabled`
-	 * flag, the middle-click guard and the focus report — and each of those had to be
-	 * discovered twice before it was written once.
+	 * disclosure DOES share is this function — the two forms, the tab-stop rule and the
+	 * focus report — so the next one inherits them without a fourth caller remembering.
 	 */
 	toggle: () => void;
 }

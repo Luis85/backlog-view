@@ -32,11 +32,18 @@
 
 /* Components, in the order the view builds them */
 @import "./toolbar.css";
-/* Load-bearing: the fit ladder's rules override the base ones they narrow — the filter
-   input's display, and the `⋯`'s and the filter reveal's — at equal specificity. The
-   row's `flex-wrap` is no longer in that list: `toolbar.css` used to say `wrap` and be
-   overridden here, which made a rule that stated the opposite of the guarantee correct
-   only by import order, so it was deleted rather than beaten. */
+/* Position NOT load-bearing, and it stopped being so on 2026-08-17 — checked rather than
+   assumed, because this line claimed the opposite. Two of the three reasons it gave were
+   the quick filter's (the input's display and the reveal button's) and went with it. The
+   survivor is the `⋯`: `toolbar.css` hides `.pbl-overflow-btn` at (0,1,0) and the rung
+   that shows it is `.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']) .pbl-overflow-btn`
+   at (0,4,0), so specificity decides it at any position in this list. Every other selector
+   in `toolbarFit.css` is that same `[data-pbl-fit]` prefix over a class no rule here shares
+   — `.pbl-toolbar` is the one selector both files write, and they declare no property in
+   common. The row's `flex-wrap` was in the list too: `toolbar.css` used to say `wrap` and
+   be overridden here, which made a rule stating the opposite of the guarantee correct only
+   by import order, so it was deleted rather than beaten. Write an unprefixed rule in
+   `toolbarFit.css` and this paragraph is what contradicts you. */
 @import "./toolbarFit.css";
 /* Position NOT load-bearing — see the partial's own header. It came out of `toolbar.css`
    at the 400-line cap and sits here because that is where its rules were. */

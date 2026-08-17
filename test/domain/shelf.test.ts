@@ -108,8 +108,9 @@ describe('searching the shelf', () => {
 	});
 
 	it('narrows nothing on an empty or blank needle', () => {
-		// Whitespace is not a search — the same rule `FilterState.active` keeps for the
-		// toolbar's own quick filter, so a stray space never empties the shelf.
+		// Whitespace is not a search, so a stray space never empties the shelf. The rule
+		// arrived with the toolbar's own quick filter (`FilterState.active`, withdrawn
+		// 2026-08-17) and this is where it still holds.
 		expect(titlesOf(searchShelf(shelfOf(), ''))).toHaveLength(2);
 		expect(titlesOf(searchShelf(shelfOf(), '   '))).toHaveLength(2);
 	});

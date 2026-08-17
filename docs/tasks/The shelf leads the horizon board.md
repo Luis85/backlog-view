@@ -39,6 +39,19 @@ computed by the timeline render, so their shelf cannot be hoisted above it, and 
 was asked of them). The Alt+arrow placement ladder is UNCHANGED — it was already
 shelf-first — and so are the scroll boxes, which are keyed by band, not by position.
 
+**The claim has one stated exception, added the same day.** An EMPTY shelf is out of the
+layout until a drag makes it a target, and revealed in place it inserted a band above the
+buckets and dropped the whole board 41px under the pointer at dragstart (measured in the
+browser harness at 1200x800 with everything placed: the buckets' top went 53px to 94px the
+instant `.pbl-dragging` landed). It takes `order: 1` and is revealed at the FOOT instead —
+the frame is `height: 100%`, so the buckets band gives that room up from its own bottom
+edge and nothing on screen moves. The reason it costs nothing is the reason the shelf leads
+at all: it leads because it is what a card is dragged FROM, and with nothing on it there is
+nothing to drag. The argument lives on the declaration in `styles/shelf.css`, where a
+contributor about to give the empty shelf a focusable control would be standing — that is
+the one thing the exception rests on, since a reordered element out of its reading order is
+a fact about the ELEMENT rather than about drag timing.
+
 ## Checks
 
 The walk order is pinned in `test/view/roadmap.test.ts` (`walks the cards with arrows…`,

@@ -57,7 +57,10 @@ catalog migration and was not part of that run.
   ([[The horizon board sized itself from whichever cards had rendered]]): five horizons at
   a laptop pane scroll sideways at a constant width with a still scrollbar thumb and a
   reachable end; each bucket scrolls its own hundred cards; the shelf stays on screen at
-  the foot, scrolls within its band, and a drop on it still un-places; a bucket mid-scroll
+  the HEAD, where [[The shelf leads the horizon board]] put it, scrolls within its band,
+  auto-scrolls under a card held at its bottom edge, and a drop on it still un-places; with
+  everything placed, the empty shelf's drag-only reveal appears at the FOOT and moves
+  nothing already on screen; a bucket mid-scroll
   survives a write batch no worse than a board column does. **Never checked.**
 - The grid furniture stays furniture under a real theme: gridlines, weekend banding
   and the row stripes read as background behind the bars, the milestone label stays

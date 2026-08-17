@@ -61,10 +61,10 @@ export function renderCardChildren(ctx: RowContext, card: HTMLElement, item: Bac
 	//
 	// The denominator is the children this projection DRAWS, never `item.children` raw:
 	// `projectionMember` answers membership alone, while `isRowHidden` — what
-	// `listedChildren` filters by — conflates it with the completed toggle and the quick
-	// filter. Subtracting the second from the first counted a catalog child as a plan row
-	// the view was choosing to hide, and this note says exactly that. Absent from this
-	// ladder is not hidden by this view.
+	// `listedChildren` filters by — conflates it with the completed toggle. Subtracting the
+	// second from the first counted a catalog child as a plan row the view was choosing to
+	// hide, and this note says exactly that. Absent from this ladder is not hidden by this
+	// view, and a third question added to `isRowHidden` would put the two back out of step.
 	const drawn = item.children.filter(projectionMember(host.projection, host.effectiveScope));
 	const omitted = drawn.length - children.length;
 	const note = omitted > 0 ? ` — ${t('card.hiddenChildren', { count: omitted })}` : '';

@@ -27,10 +27,10 @@ in the 2026-08-11 test catalog migration and was not part of that run.
 
 ## Use cases
 
-- [[Board columns and the filtered header]] — a column per configured state plus the
-  no-state column, and a filtered header reading "3 of 12".
-- [[Board card carrying hidden matches]] — a card showing that a match is hidden beneath
-  it under a narrowed filter.
+- [[Board columns read as a workflow]] — a column per configured state plus the
+  no-state column, and a header count legible beside the longest title.
+- [[Board card carrying hidden matches]] — **dropped** with the quick filter on
+  2026-08-17, kept as the check that would come back with the affordance.
 - [[Board card moves]] — dragging a card between columns, Alt+Left/Right, and the card
   menu's Set state offering the rendered columns.
 - [[Smoke test the board in a live vault]] — the mode toggle, drag, touch, keyboard and

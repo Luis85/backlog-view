@@ -158,12 +158,21 @@
 	flex-direction: column;
 	gap: var(--size-4-2);
 	padding: var(--size-4-3) 0;
-	/* Both terms are load-bearing and neither works alone. The column caps at the pane's
-	   height, but a flex item will not shrink below its own content, so the header ran
-	   past that cap and took the count with it — and clipping it needs somewhere for the
-	   overflow to go. Shrinking lands on the NAME rather than the count, which is what
-	   makes this the right place to allow it: the count declares `flex: 0 0 auto`, so the
-	   rotated name absorbs the whole reduction and ellipsises. */
+	/* The column caps at the pane's height, but a flex item's automatic minimum will not
+	   let it shrink below its own content — so the header ran past that cap and took the
+	   count with it. Shrinking lands on the NAME rather than the count, which is what makes
+	   this the right place to allow it: the count declares `flex: 0 0 auto`, so the rotated
+	   name absorbs the whole reduction and ellipsises.
+	   **Either declaration alone is enough today**, measured in a real browser at 900x320
+	   with a 51-character state name: both 249px, neither 418px (156px outside the column),
+	   `overflow` alone 249px, `min-height` alone 249px. That is not two belts — the
+	   automatic minimum applies only while `overflow` is `visible`, so `hidden` lifts it by
+	   itself and `min-height: 0` is saying the same thing a second way.
+	   **`min-height: 0` is still not dead weight, and this is the edit it is insurance
+	   against**: `overflow: clip` is NOT a scroll container, so it does not lift the
+	   minimum, and a `hidden` → `clip` tidy-up — the exact swap `.pbl-toolbar` in
+	   `toolbarFit.css` makes, for reasons that do not apply here — silently puts the 156px
+	   overhang back. Measured, not reasoned. */
 	min-height: 0;
 	overflow: hidden;
 }

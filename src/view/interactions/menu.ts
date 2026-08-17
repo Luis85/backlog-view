@@ -47,16 +47,18 @@ function isCurrentType(item: BacklogItem, type: string): boolean {
 
 /**
  * The row menu for a click on the row — a `contextmenu` from a pointer, or a plain click
- * on the one BUTTON that opens it this way (the match count chip; the state chip's own
- * menu is `showStateMenu`/`chipMenu`, a separate path this function never sees).
+ * on a BUTTON that opens it this way (the state chip's own menu is
+ * `showStateMenu`/`chipMenu`, a separate path this function never sees).
  *
- * Through `showMenuForClick` for that second kind, and it is the rule rather than this
- * caller's precaution: a button's Enter or Space synthesizes a click at (0, 0), which
- * `showAtMouseEvent` reads as a position and honours, dropping the menu in the viewport
- * corner. A real pointer never reports that, so the pointer path is unchanged. It shipped
- * that way on the match count chip, whose menu is the ONLY route to the matches it counts
- * (`renderMatchCount`, `render/board.ts`) — so the corner was the whole of that
- * affordance's keyboard path.
+ * Through `showMenuForClick` rather than `showAtMouseEvent`, and it is the rule rather
+ * than this caller's precaution: a button's Enter or Space synthesizes a click at (0, 0),
+ * which `showAtMouseEvent` reads as a position and honours, dropping the menu in the
+ * viewport corner. A real pointer never reports that, so the pointer path is unchanged and
+ * the failure is a keyboard user's alone. It shipped that way once, on the board's match
+ * count chip — withdrawn with the quick filter on 2026-08-17 — whose menu was the ONLY
+ * route to the matches it counted, so the corner was the whole of that affordance's
+ * keyboard path. The lint ban on `showAtMouseEvent` outside this module is what makes the
+ * rule hold for the next such button rather than for the one that taught it.
  */
 export function showItemMenu(host: BacklogViewHost, evt: MouseEvent, item: BacklogItem, childTypes: string[]): void {
 	evt.preventDefault();

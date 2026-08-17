@@ -73,14 +73,25 @@ export function visibilityRule(
 		// boolean cannot disagree with itself the way a flag and the settings beside it
 		// could. `hidesCompleted(projection)` is the term with a check under it — dropping
 		// it fails five tests across `deliverablesBoard`, `deliverablesToolbar`,
-		// `iterationBoardCards` and `testCatalog`, which is the Deliverables rule the header
-		// states, held from three directions.
+		// `iterationBoardCards` and `testCatalog`, which is the THREE projections that opt
+		// out of the toggle, held from four directions. Not one rule wearing three names:
+		// the Deliverables board and the catalog opt out because completion there is another
+		// workflow's question, the iteration board because its Resolved column IS what the
+		// sprint finished — a reason of its own rather than theirs, as `hidesCompleted`'s own
+		// body says.
 		//
 		// `stateKey !== ''` has none, and cannot: `readItems` already reads `stateValue` as
 		// null without a configured key, so `done` and `subtreeDone` are false throughout
 		// and this term can change no answer. It is kept as the statement of what
 		// `hideCompleted` MEANS — the toggle actively hiding, not merely switched on — and
-		// measured rather than assumed: removing it leaves all 2904 tests green.
+		// measured rather than assumed: removing it leaves the whole suite green. No count
+		// is quoted, because a total here goes stale on the next unrelated test anywhere in
+		// the repository and the load-bearing claim is only that nothing fails.
+		//
+		// **What would make it load-bearing**: a source of `item.done` that does not go
+		// through a configured state key. The term stops being redundant the moment one
+		// exists and silently becomes the guard — and no test will say so either way, which
+		// is the reason to keep it rather than the reason it is here.
 		hideCompleted: hidesCompleted(projection) && !settings.showCompleted && settings.stateKey !== '',
 		// `iterationsOnTimeline` is taken away HERE rather than inside `projectionMember`,
 		// which has no settings in hand — and an axis this reader has turned iterations off

@@ -11,8 +11,8 @@ useViewHarness();
  * The `⋯` is what makes "the ladder sheds controls" survive the rule that a responsive
  * hide is a space decision and no COMMAND is withheld for it. Two questions, and the
  * second is the one that can go quietly wrong: an entry that stays enabled while the
- * button it duplicates is disabled would write collapse state a quick filter is
- * overriding, from a pane too narrow to show the button refusing it.
+ * button it duplicates is disabled would write collapse state onto a projection with no
+ * disclosure to show it, from a pane too narrow to show the button refusing it.
  */
 describe('the toolbar overflow menu', () => {
 	const openOverflow = (containerEl: HTMLElement) => {

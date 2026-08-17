@@ -165,15 +165,22 @@ export interface DrawnColors {
 export type BarColors = Omit<DrawnColors, 'absence' | 'daysLost'>;
 
 /**
- * The roadmap as last rendered: the derived model, and the rendered cards in
- * reading order — axis first, then the shelf, then the context strip — which is
- * the order the keyboard walks.
+ * The roadmap as last rendered: the derived model, and the rendered cards in the
+ * order the frame drew them, which is the order the keyboard walks. {@link
+ * RoadmapSnapshot.cards} is where that order is stated.
  */
 export interface RoadmapSnapshot {
 	roadmap: RoadmapModel;
 	/**
-	 * The NAVIGABLE cards, in reading order — axis first, then the shelf, then
-	 * context. A collapsed shelf contributes none, exactly as an empty one does, so
+	 * The NAVIGABLE cards, in reading order, and this field is the ONE statement of what
+	 * that order is: the render pushes onto it in draw order and nothing sorts it
+	 * afterwards, so the two cannot disagree. It differs by axis — the shelf leads on the
+	 * HORIZON axis (2026-08-17, [[The shelf leads the horizon board]]), the grid axes stay
+	 * axis-then-shelf because their shelf reads conflicts the grid render produces — and
+	 * the context strip is last on all three. The Alt+arrow ladder is NOT derived from it
+	 * and leads with the shelf everywhere; see `horizonStops` for why that is its own rule.
+	 *
+	 * A collapsed shelf contributes none, exactly as an empty one does, so
 	 * the keyboard walk and `aria-activedescendant` never reach past what is on screen.
 	 */
 	cards: BacklogItem[];
@@ -412,8 +419,10 @@ export interface BacklogViewHost {
 	 * a narrowing of the plan beside it.
 	 *
 	 * SESSION state, and the one shelf pick the view-state store does not hold: a search is
-	 * something someone is doing right now, not a property of the view — `FilterState`'s own
-	 * rule, applied to the same kind of value.
+	 * something someone is doing right now, not a property of the view. Persisting it would
+	 * open a saved view onto a shelf silently narrowed by a search nobody remembers typing —
+	 * the rule the toolbar's own quick filter kept until it was withdrawn (2026-08-17), and
+	 * the one part of it this box inherits.
 	 */
 	readonly shelfSearch: string;
 	/** Narrow the shelf by title and re-render the content pane; '' clears it. */

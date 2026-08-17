@@ -6,7 +6,7 @@ import { assignableLanes, RoadmapModel } from '../../domain/roadmap';
 import { indent, moveWithinSiblings, outdent } from './structure';
 import { projectionPopulation } from '../projection';
 
-/** Items currently rendered, top to bottom, honoring collapsed subtrees and the filter. */
+/** Items currently rendered, top to bottom, honoring collapsed subtrees and `isRowHidden`. */
 function visibleItems(host: BacklogViewHost, model: BacklogModel): BacklogItem[] {
 	const visible: BacklogItem[] = [];
 	const walk = (items: BacklogItem[]) => {
@@ -194,7 +194,7 @@ interface BoardPosition {
 /**
  * Board keyboard support — the same one-tab-stop model as the tree: arrows move
  * the selection across cards and columns, Home and End reach the edges, Enter
- * opens, `/` reaches the filter, Ctrl/Cmd+Z undoes. A column with no card is
+ * opens, Escape backs out, Ctrl/Cmd+Z undoes. A column with no card is
  * still a stop, so an empty board is fully drivable. Alt+Left and Alt+Right move
  * the selected card one column, writing exactly the batch a drop writes.
  */
@@ -312,7 +312,7 @@ function handleBoardMoveKey(
 	else void host.performBoardMove(card, col.state);
 }
 
-/** The keys that are not navigation: undo, the column-stop Escape, and the filter pair. */
+/** The keys that are not navigation: undo, the column-stop Escape, and `handleEscape`. */
 function handleBoardChromeKey(host: BacklogViewHost, evt: KeyboardEvent): boolean {
 	if ((evt.ctrlKey || evt.metaKey) && !evt.altKey && !evt.shiftKey && evt.key.toLowerCase() === 'z') {
 		evt.preventDefault();
@@ -331,11 +331,14 @@ function handleBoardChromeKey(host: BacklogViewHost, evt: KeyboardEvent): boolea
 // ------------------------------------------------------------------- roadmap
 
 /**
- * Roadmap keyboard support — the same one-tab-stop model, over the rendered
- * cards in reading order: axis, then shelf, then context. Arrows in either pair
+ * Roadmap keyboard support — the same one-tab-stop model, over the rendered cards
+ * in the order the FRAME drew them, which the render publishes as `cards` rather
+ * than being restated here: shelf then buckets on the horizon axis since
+ * 2026-08-17, axis then shelf on the two grid axes, context last on all three.
+ * Arrows in either pair
  * step the selection (buckets and the shelf lay out sideways, the timeline
  * stacks, so both pairs work everywhere), Home and End reach the edges, Enter
- * opens, `/` reaches the filter, Ctrl/Cmd+Z undoes, and Alt+Left/Right moves the
+ * opens, Escape backs out, Ctrl/Cmd+Z undoes, and Alt+Left/Right moves the
  * selected card one bucket. The lift that carries a move across two dimensions at
  * once is the scheduling feature's work, on the unmodified Space key, so it
  * arrives beside this rather than contending with it.
@@ -385,14 +388,21 @@ function handleRoadmapNavigationKey(
  * The placements an Alt+arrow steps through on the horizon axis: the shelf first,
  * then the buckets as they render.
  *
- * The shelf leads deliberately, and it is the one place this ladder does NOT follow
- * reading order — the arrows walk the cards axis-first and reach the shelf last.
- * A move ladder is not a reading order: the shelf is the roadmap's no-state column,
- * which the board puts first for the same reason, it is where un-placing lives, and
- * an untriaged card stepping onto the axis should arrive at the FIRST bucket, which
- * is exactly where the lift `docs/requirements/Keyboard and menu on the roadmap.md`
- * specifies enters from the shelf. Ordering it last would make "advance" un-place
- * finished triage and make entry land in the last horizon.
+ * The shelf leads for reasons of the LADDER's own, and that is the load-bearing part
+ * rather than which order the frame happens to draw in. The shelf is the roadmap's
+ * no-state column, which the board puts first for the same reason, it is where
+ * un-placing lives, and an untriaged card stepping onto the axis should arrive at the
+ * FIRST bucket, which is exactly where the lift
+ * `docs/requirements/Keyboard and menu on the roadmap.md` specifies enters from the
+ * shelf. Ordering it last would make "advance" un-place finished triage and make entry
+ * land in the last horizon.
+ *
+ * The frame agreed with none of that until 2026-08-17 and now agrees on this axis alone
+ * ([[The shelf leads the horizon board]]): the reading order is shelf-first here and
+ * still axis-first on the two grid axes, where `resourceStops` below leads with the shelf
+ * regardless. So the agreement is a coincidence of one axis and not a rule — a frame
+ * reordered again may not carry this list with it, and a reader reconciling the two is
+ * reconciling nothing.
  *
  * Null on the dated axis: those moves are the scheduling feature's, and a shortcut
  * that quietly did something else instead would be worse than one that does nothing.

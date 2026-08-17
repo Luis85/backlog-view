@@ -190,7 +190,7 @@ export function projectionMember(
 	// The grid axes draw an `Iteration` in the shared marker row — the one admission,
 	// axis-aware because the horizons axis (buckets and its shelf alike) still refuses
 	// one. Everything downstream inherits this through `rowHidden`, which is the point:
-	// the filter index, the counts and the shelf all read the same predicate.
+	// the rows, the counts and the shelf all read the same predicate.
 	if (projection === 'roadmap' && axis !== null && drawsGrid(axis)) {
 		return (item) => inPlan(item) || isIterationType(item.typeName);
 	}

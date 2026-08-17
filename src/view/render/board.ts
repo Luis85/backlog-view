@@ -72,9 +72,13 @@ interface BoardRenderOptions {
 
 /**
  * Everything `renderColumn`/`renderCard` need beyond `ctx` and the element/model
- * they are rendering — bundled so both stay within the repo's `max-params: 5` lint
- * rule. Found by review: the first draft threaded these as separate trailing
- * parameters, which pushed both functions to six.
+ * they are rendering. Found by review: the first draft threaded these as separate
+ * trailing parameters, which pushed `renderColumn` to six and past the repo's
+ * `max-params: 5`. `renderCard` takes four, so flattening this pair there would land
+ * on exactly five and lint green — the bundle is shared because the two are one
+ * concern, and only one of them is held inside the rule by it. Naming which one is
+ * what keeps this sentence checkable: count the parameters and the arithmetic
+ * either holds or it does not.
  */
 interface ColumnRenderCtx {
 	dnd: CardDragController;
@@ -312,10 +316,12 @@ function renderColumn(
 ): HTMLElement {
 	// The no-state column earns its room only while it holds cards; empty, it
 	// shrinks to a leading drop strip so clearing a state by drag stays possible
-	// without a permanently empty column. "Empty" is about the POPULATION, not the
-	// matches: a filter that hid every stateless card would otherwise collapse the
-	// column to a strip, which says the work is gone rather than merely unmatched —
-	// a stronger lie than the "0" the pair counts exist to prevent.
+	// without a permanently empty column. "Empty" is the CARDS DRAWN, and it is one
+	// reading rather than a choice between two: `emptyNoState` read a lifted population
+	// until the quick filter took that field with it (2026-08-17). The strip is what a
+	// stage with no name of its own and nothing to SHOW shrinks to, and the cards are
+	// what it shows — the argument for which reading, and the one thing that can still be
+	// said structurally about the toggle here, is at `emptyNoState` in `domain/board.ts`.
 	// A folded column reaches the strip WITHOUT being one: `strip` is the empty no-state
 	// column's own case and suppresses the count, while a fold keeps name and count
 	// visible. Two states, one width — see `.pbl-board-collapsed` in `styles/board.css`.
@@ -440,8 +446,8 @@ function renderColumnHints(
 
 /**
  * A column's own disclosure — `renderChevron`, the control every other fold in this plugin
- * draws, so the filter override, the real `disabled` flag, the middle click and the focus
- * report all arrive with it rather than being remembered here.
+ * draws, so the two forms, the `tabindex="-1"` that keeps the pane one tab stop, and the
+ * focus report all arrive with it rather than being remembered here.
  *
  * Exported because a horizon bucket's header is the same control over the same host method
  * (`render/roadmap.ts`): what differs between a column and a bucket is the scope it keys

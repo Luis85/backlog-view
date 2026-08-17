@@ -52,16 +52,19 @@ function buildColumnMenu(host: BacklogViewHost, scope: ColumnScope, col: BoardCo
 }
 
 /**
- * Disabled while a filter runs, because the DISCLOSURE is — `renderChevron` passes
- * `disabled: host.isFiltering()` and reads the flag again on the click.
- *
  * **Two surfaces over one action have to be AVAILABLE at the same times**, which is a
- * second question from agreeing about the state, and this pair has now come apart on it
- * twice: once on the filter (the override makes `columnCollapsed` answer false, so a
- * folded column offered an enabled Collapse that wrote a fold nothing on screen could
- * show), and once on the empty strip above. Both found by review, PR #140. That is why the
- * strip's test is a shared predicate and this one reads `isFiltering` rather than being
- * told: a condition copied here is a condition that can drift from the control it mirrors.
+ * second question from agreeing about the state, and this pair has come apart on it twice.
+ * Once on the quick filter, withdrawn on 2026-08-17: `renderChevron` disabled itself while
+ * one ran and this entry did not, and because the filter override made `columnCollapsed`
+ * answer false, a folded column offered an enabled Collapse that wrote a fold nothing on
+ * screen could show. Once on the empty no-state strip above. Both found by review, PR #140.
+ *
+ * What the second fix does that the first did not is take the chance of a third away:
+ * `foldable` above is `emptyNoState`, the same predicate the HEADER draws its disclosure
+ * from, so this entry cannot be offered where no disclosure is. Nothing is copied here to
+ * drift — which is the whole of the rule the filter case is now only the evidence for. Ask
+ * it of any third surface: not "does it say the same thing" but "is it offered exactly when
+ * the first one is", and then put the answer somewhere both read.
  */
 function addFoldItem(
 	host: BacklogViewHost,

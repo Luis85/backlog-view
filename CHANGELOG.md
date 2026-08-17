@@ -68,8 +68,11 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 - **The unplaced shelf now leads the horizon board.** It renders above the buckets — and
   first in the keyboard's reading order — so the untriaged rest sits where a drag into a
-  column starts, instead of below the tallest column. Alt+arrow moves are unchanged: the
-  shelf was already their first stop.
+  column starts, instead of below the tallest column. One exception: an EMPTY shelf, which
+  is hidden until a drag makes it a target, still appears at the foot of the board — with
+  nothing on it there is nothing to drag from, and putting it back at the top would shove
+  the whole board down under the pointer the moment a drag began. Alt+arrow moves are
+  unchanged: the shelf was already their first stop.
 - **The horizon board's right-click menus no longer carry a children section.** No
   `Show/Hide children` toggle and no `Open child` entries there — the card's own
   disclosure still lists children on its face. The kanban board and the dated axis keep
@@ -82,8 +85,20 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   alike — instead of growing to the widest card and resizing as cards render, which is
   what made the pane jump near its right edge and the end unreachable. The buckets band
   now takes the pane's height the way the kanban board's columns do: each bucket scrolls
-  its own cards, and the unplaced shelf stays on screen at the bottom instead of sitting
-  below the tallest bucket.
+  its own cards, and the unplaced shelf stays on screen — at the top, where it now leads —
+  instead of being pushed off the foot of a frame as tall as its tallest bucket.
+
+- **Dragging to the bottom of the unplaced shelf scrolls it.** The shelf scrolls inside
+  its own band, and a card held at its edge now scrolls it the way a board column, a
+  horizon bucket and the timeline already did. It had no auto-scroll at all, so on a shelf
+  holding more cards than its band could show, everything past the first few was out of
+  reach for the whole drag.
+
+- **The roadmap's empty state is no longer cut off.** The message that explains an empty
+  roadmap — with its ✨ configure action and its link to the manual — was capped at a
+  third of the pane and scrolled inside a box most readers would not know scrolls, so on a
+  short pane half of it was below the fold. It draws only when there is nothing else on
+  screen, so it now takes the room.
 
 ## [0.9.0] - 2026-08-16
 

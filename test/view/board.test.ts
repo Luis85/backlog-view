@@ -331,7 +331,7 @@ describe('the projection toggle', () => {
 		// The board has nothing to disclose that is not a card's own children, and a
 		// card's own toggle is the only thing that may open or close it.
 		expect(ctls.every((b) => b.disabled)).toBe(true);
-		// The rest of the toolbar survives the projection: creation, undo, the filter.
+		// The rest of the toolbar survives the projection: creation and undo.
 		expect(containerEl.querySelector('.pbl-new-btn')).not.toBeNull();
 		expect(containerEl.querySelector('.pbl-undo-btn')).not.toBeNull();
 	});

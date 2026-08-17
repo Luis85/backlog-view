@@ -103,8 +103,9 @@
    dragged FROM, and where it now leads the frame. Unshrinkable it takes its content up to
    the cap and no more; the buckets keep `flex: 1 1 auto` and their own floor, so the
    remainder still lands on them and a pane too short for both still scrolls rather than
-   clipping. The pinning below stays — this axis still scrolls sideways under these bands,
-   which is what the dated axis's own reset is about. */
+   clipping. It takes nothing back from `.pbl-roadmap .pbl-shelf` and its two siblings:
+   this axis still scrolls sideways under those bands, which is the whole of what
+   `.pbl-view.pbl-roadmap-dates .pbl-shelf` resets and this axis does not. */
 .pbl-roadmap-mode:not(.pbl-roadmap-dates) .pbl-shelf,
 .pbl-roadmap-mode:not(.pbl-roadmap-dates) .pbl-roadmap-context,
 .pbl-roadmap-mode:not(.pbl-roadmap-dates) .pbl-board-advisory {

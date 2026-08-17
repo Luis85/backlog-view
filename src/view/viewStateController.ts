@@ -81,9 +81,13 @@ export class ViewStateController {
 	 * and an iteration is the iteration projection, and two stored values that cannot
 	 * contradict each other need no guard on any route in.
 	 *
-	 * The filter index is rebuilt for `setProjection`'s reason, which applies a second
-	 * time here: the population changes with the scope, and an index built for the old
-	 * one is correct when built and wrong the moment the thing it describes is replaced.
+	 * A full render for `setProjection`'s reason: no config was set, so no Bases refresh is
+	 * coming and this render IS the change. Nothing derived is rebuilt beside it — the one
+	 * thing that was, the quick filter's match index, went with the filter on 2026-08-17.
+	 * Anything cached against the POPULATION added later has to join this method by hand,
+	 * because the scope is exactly what replaces that population, and no gate anywhere
+	 * would catch the omission: an index is correct when built and wrong when the thing it
+	 * was built FOR changes underneath it.
 	 */
 	setBoardScope(path: string | null): void {
 		// The no-op guard asks all three stored values, not two: from the Deliverables

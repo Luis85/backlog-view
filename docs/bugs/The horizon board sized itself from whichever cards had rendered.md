@@ -58,7 +58,11 @@ horizon axis takes the board's own shape: the frame owns the pane
 (`.pbl-roadmap-mode:not(.pbl-roadmap-dates)`, `height: 100%`), the buckets band flexes,
 `max-height: 100%` on the bucket lets its cards box finally scroll, and the shelf, the
 context strip and the advisory join the dated axis's band rule — a maximum plus their own
-`overflow-y` — while keeping the sticky pinning the dated axis resets.
+`overflow-y` — while keeping the sticky pinning the dated axis resets. The advisory has
+since been taken off the maximum: it draws only when the axis, the shelf and the context
+strip are all empty, so a cap on it could only ever clip the one thing on screen, and did.
+It keeps the `overflow-y`; the two halves are separate declarations for exactly that
+reason.
 
 After, same harness: the frame is 900px in every rendering state — as loaded, planted,
 all-rendered, restored — buckets 284px each at that pane, 517px each at 1600px in both
@@ -81,14 +85,18 @@ a 273px pane the shelf takes 75px and the buckets hold their 220px floor.
 That mattered here rather than being cosmetic, because the shelf is what a card is dragged
 FROM on this axis, and [[The shelf leads the horizon board]] had just put it at the top for
 exactly that reason. Nothing in the suite could see it — jsdom computes no layout — and no
-assertion was wrong; the declaration that states the invariant is now pinned beside the
-other five.
+assertion was wrong; the declaration that states the invariant is pinned beside the others.
 
 ## What is checked, and what is not
 
-`test/view/roadmapBoxing.test.ts` pins the five declarations as text over the stylesheet,
+`test/view/roadmapBoxing.test.ts` pins **seven** declarations as text over two stylesheets
+— six of `roadmap.css`'s own and the bucket's `max-height: 100%`, which is declared in
+`board.css` beside the column's — plus an eighth case that asks the whole of `roadmap.css`
+for a cap on the advisory rather than only the rule anyone thought of. That is
 `timelineBoxing.test.ts`'s shape and its honesty: it fails when one is dropped, and it
-cannot see a later override or tell you what the pane looks like. jsdom computes no
+cannot see a later override or tell you what the pane looks like. The count is written here
+rather than in the test file, and it will go stale the next time a declaration joins — what
+does not is that each of them is one a render does not fail without. jsdom computes no
 layout, so every number above is Chromium's through the harness, and appearance in a
 themed vault stays the release sweep's (ADR 0020).
 

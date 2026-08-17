@@ -418,11 +418,16 @@ free of runtime code so imports stay cycle-free.
   silently, which no test named the surface for.
 - Two tab-stop zones, and a control's element type follows from which one it is in.
   The **toolbar** is ordinary UI: every activatable control is a real `<button>`
-  (`iconButton`, both clear buttons), so Tab reaches all of them. The **tree** is one
+  (`iconButton`, and the focus picker's own `.pbl-focus-clear`), so Tab reaches all of
+  them. The **tree** is one
   stop — arrows move the selection — so its per-row controls (`.pbl-add`, the state
   chip) are buttons with `tabindex="-1"`: activatable by assistive tech, invisible to
   Tab, with the context menu as the documented keyboard path. A `div` with an
-  `aria-label` and a click handler is the thing to avoid in either zone.
+  `aria-label` and a click handler is the thing to avoid in either zone. **A control's
+  zone is where it is DRAWN, not what it does**: the shelf search's own clear button is
+  the same affordance as the toolbar's, and because it is drawn inside the pane it takes
+  the pane's answer — `tabindex="-1"`, with the card menu as its keyboard path and
+  `syncShelfTabStops` as the one exception, for which see the roadmap section below.
 - **A resize grip is a real tab stop wherever it appears, and it is chrome rather
   than content**: the dated axis's lead-resize grip (`renderLeadResize` in
   `interactions/timelineLeadResize.ts`) and one per property column in the tree's header
@@ -557,21 +562,23 @@ free of runtime code so imports stay cycle-free.
 - The mode is `host.projection` — six of them now, two reached through the board scope picker rather than a toggle position of their own — backed by the
   view-state store (UI state, per saved view, per device) — never `settings` and never
   the `.base`: base settings are saved on the view, working position in localStorage.
-  **What a projection IS is meant to be asked, never compared**: `view/projection.ts`
-  holds `treeShaped`, `hidesCompleted`, `filterScopeFor`, `projectionPopulation`,
-  `projectionMember`, `rowVocabulary` and `offerableTypes`, so that "tree-shaped" is one
-  question asked in one place rather than six equality checks scattered beside it.
+  **What a projection IS is meant to be asked, never compared**: every question of the
+  form "what does this projection do" belongs in `view/projection.ts` — is it tree-shaped,
+  does it hide finished work, does it carry a rollup, which toolbar position is it under,
+  what is its population and its membership rule, which types may it offer, whose menus
+  list children — so each is one question asked in one place rather than a handful of
+  equality checks scattered beside it. The module is the list and cannot go stale; what
+  belongs in it is the rule above.
   **Nothing enforces that mechanically** — unlike the SVG-`cls` and `showAtMouseEvent`
   bans above, there is no `no-restricted-syntax` rule forbidding a bare
-  `projection === 'tree'` outside this module, and the gap is not hypothetical: it is
-  already compared directly in `render/emptyStates.ts`, `render/projections.ts`,
-  `render/toolbarStatus.ts`, `render/toolbarControls.ts`, `render/toolbar.ts`,
-  `render/legend.ts`, `interactions/keyboard.ts`, `interactions/plan.ts`,
-  `interactions/menu.ts` and `backlogView.ts`. Some of those are legitimate dispatch —
+  `projection === 'tree'` outside this module, and the gap is not hypothetical — a grep
+  for `projection === '` under `src/view/` is what says how wide it currently is, and no
+  count is written here because one written here goes stale on the next file that compares.
+  Some of those hits are legitimate dispatch —
   `renderProjectionContent`'s if-chain in `render/projections.ts` is a dispatch on the
   projection by design — and some are the drift this module exists to stop; nothing here
-  tells them apart yet (see
-  [[The projection predicate has no lint rule behind it]]). Not routing through the
+  tells them apart yet, and [[The projection predicate has no lint rule behind it]] is
+  where sorting them is owed. Not routing through the
   module has a real cost, which is what makes it worth using rather than only naming: a
   projection added beside `'tree'` rather than as one, wherever a comparison bypasses the
   module, fails silently and differently — no column fitting, no refit on resize, the fit
@@ -584,9 +591,12 @@ free of runtime code so imports stay cycle-free.
   than by a predicate — `PROJECTION_MODE` is a `Record<Projection, ProjectionMode | null>`,
   so a projection mapped to a constant `readEntry` would refuse cannot compile.
   `setProjection` re-renders itself, because no config was set and no Bases refresh is
-  coming, and it recomputes the filter index on the way — no gate anywhere would have
-  caught THAT omission, because an index is correct when built and wrong when the thing it
-  was built FOR changes underneath it. The roadmap-axis pick (`setAxisPick`) follows the
+  coming; `setBoardScope` beside it does the same, and the two carry the rule that
+  outlived what taught it. They used to rebuild the quick filter's match index on the way,
+  and no gate anywhere would have caught its omission — an index is correct when built and
+  wrong when the thing it was built FOR changes underneath it. Nothing derived hangs off
+  either method today, so **anything cached against the population has to join them by
+  hand**. The roadmap-axis pick (`setAxisPick`) follows the
   same re-render rule. **The focus level is that rule with one extra consequence**: it is
   stored the same way
   (`setFocusLevel`), but it re-roots the MODEL rather than only the render, so it
@@ -655,9 +665,11 @@ free of runtime code so imports stay cycle-free.
   once. The two terms beside `done` ask different questions and are deliberately measured
   DIFFERENTLY (`domain/board.ts`) — every review finding against this default was one of
   them measured the other's way.
-  `openWork` asks whether anything here is unfinished, over the POPULATION with the quick
-  the completed toggle carried, so what is hidden inside a stage cannot make it look
-  finished and fold work the reader was holding.
+  `openWork` asks whether anything here is unfinished, of the candidates through the same
+  `visible` that builds `cards` — nothing wider. It read a LIFTED population until the
+  quick filter went (2026-08-17) and took the field behind that reading with it, and
+  nothing was lost by the narrowing: a card `visible` drops for the completed toggle is
+  `subtreeDone`, so every descendant is done and it could never have set this term anyway.
   `held` asks whether the stage holds anything at all, and is NOT population-based: it is
   counted through `owned`, which carries no hiding at all.
   A count cannot serve — the toggle lives in the population predicate, so with finished work
@@ -890,7 +902,8 @@ free of runtime code so imports stay cycle-free.
   typed into: it keeps the half of that rule that is about Tab and pays the same ARIA
   deviation, with a prompt in the card menu as its keyboard path. Its state is session
   state — `shelfSearch` is a plain field on `ViewStateController`, the one shelf pick the
-  view-state store never sees, for `FilterState`'s reason — and it narrows through
+  view-state store never sees, because persisting it would open a saved view onto a shelf
+  silently narrowed by a search nobody remembers typing — and it narrows through
   `searchShelf` BEFORE `organizeShelf`, so the type picker's list is never narrowed by a
   search. **The type picker reopens itself after a pick** (`showTypeMenu`), which is
   what "stays open" can mean against an Obsidian `Menu`: the pick rebuilt the pane
@@ -990,10 +1003,11 @@ free of runtime code so imports stay cycle-free.
   one function and tells them apart by asking `host.roadmap`'s own `bars` whether the path
   it is menuing is a drawn bar — every other caller is wired to one pair and never asks.
   **The HORIZON board's menus carry none of it** (asked for directly, 2026-08-17):
-  `horizonBoardShowing` in `childrenList.ts` returns the whole section unbuilt AND
-  empties `menuChildren`, the second half being what hands a matched uncarded child to
-  `Open match` instead of naming it nowhere — the costs are in
-  [[Drop the children section from the horizon board's card menu]].
+  `menusListChildren` (`view/projection.ts`) returns the whole section unbuilt, and that
+  return is the ONLY gate — `menuChildren` carries no copy of it. It carried one until the
+  same day, for a reason the quick filter's removal had already deleted, and the copy was
+  unreachable behind this line for as long as it outlived it. What the exemption costs is
+  in [[Drop the children section from the horizon board's card menu]].
   The register is
   `RowContext.cardKids` — "what drew a disclosure this pass", never "which projection is
   this" — which is what makes the toolbar's bulk controls and the row menu's section serve

@@ -58,9 +58,9 @@ const stubFlooredWidths = (bar: HTMLElement, pane: number, content: number) => {
  *
  * EVERY partial that writes a rule the questions below read, in the order
  * `styles/index.css` declares them, and that is not tidiness.
- * The `⋯` and the filter's reveal are `display: none` by DEFAULT — that rule is in
- * `toolbar.css` — and `toolbarFit.css` only turns them ON from step 2. Loading the fit
- * partial alone left both reading as visible at step 0, which is precisely the state the
+ * The `⋯` is `display: none` by DEFAULT — that rule is in `toolbar.css` — and
+ * `toolbarFit.css` only turns it ON from step 2. Loading the fit
+ * partial alone left it reading as visible at step 0, which is precisely the state the
  * relaxing-direction test is about, so the test would have asked its question of a
  * document where the answer could not be wrong.
  *
@@ -177,76 +177,21 @@ describe('the toolbar fit ladder', () => {
 	});
 
 	/**
-	 * The review finding this exists for: revealing the collapsed input adds ~130px to a
-	 * row already measured as full, and no resize, render or data update follows the
-	 * click — so without this the trailing controls clip under `overflow: hidden` until
-	 * something unrelated happens to re-render.
-	 */
-	/**
-	 * `/` is the documented keyboard path to the filter, and a step that hides the input
-	 * is where it would quietly stop working: `focus()` on a `display: none` element does
-	 * nothing and reports nothing. Driven through the KEY rather than through
-	 * `focusFilter`, so what is asserted is the path a user actually takes.
+	 * **Anything that changes the row's width without a render behind it has to re-run the
+	 * ladder itself**, and this is one of the two paths in this file that does. Eight cases
+	 * asserting that rule for the quick filter's reveal box stood here until the box was
+	 * withdrawn (2026-08-17); the rule is not the box's and outlived it, so it is stated
+	 * here rather than deleted with them. `syncToolbarFit` at the end of `renderTreeContent`
+	 * covers a full render and a content-only one alike — what it cannot cover is a change
+	 * no render follows, and the trailing controls then clip under the row's own
+	 * `overflow: clip` until something unrelated happens to re-render.
 	 *
-	 * Narrower than it reads, and the narrowing is the point. jsdom applies no stylesheet
-	 * and focuses a `display: none` element happily, so the focus assertion here would
-	 * pass with the refit AFTER the focus, or with the rung's rules absent altogether.
-	 * What this file can hold is the two SIDE EFFECTS `revealFilter` is responsible for —
-	 * the open flag is set, and the ladder has re-run — in the order the CSS needs them.
-	 * That the input is then actually visible to a browser is a vault check.
-	 */
-	/**
-	 * Clearing is the third input to `revealFilter`, and this drives the CLEAR BUTTON
-	 * rather than Escape because the button is the half that still bites. Both run the
-	 * same closure, but pressing the button puts focus on the button — and clearing is
-	 * exactly what unrenders it, so without `revealFilter` the cursor is left on an
-	 * element that is no longer shown. Escape never moves focus off the input, so nothing
-	 * has to put it back.
-	 *
-	 * The version of this test that drove Escape went TAUTOLOGICAL when the rule moved to
-	 * the focus listener, and it was found that way rather than reasoned about: gutting
-	 * `clear()` to a bare `setFilter('')` left it passing on BOTH assertions, not the one
-	 * predicted. `input.focus()` now sets `pbl-filter-open` by itself, and Escape leaves
-	 * focus where it already was, so neither assertion depended on the closure any more.
-	 */
-	/**
-	 * The fourth variant of one bug, and the reason the rule is now enforced in one place
-	 * rather than at a fourth call site. Typing goes straight to `setFilter` — it does not
-	 * pass through the `clear` closure Escape and the clear button share — so deleting the
-	 * last character at a collapsing rung drops `pbl-filter-active` with the text, and
-	 * nothing had ever set `pbl-filter-open`, so the rung hid an input the cursor was
-	 * still in. No call-site fix could have reached this path.
-	 *
-	 * Driven through the real `input` event on an emptied value, which is what a backspace
-	 * is, rather than through `setFilter`: the bug is that the listener bypasses the
-	 * closure, so calling the closure would assert the opposite of the thing at issue.
-	 */
-	/**
-	 * The release the rule above needs, and the path that shows blur cannot be it: Escape
-	 * in the TREE empties the filter with focus nowhere near the input, so nothing blurs.
-	 * Without `syncFilterUi` clearing the flag, a filter opened once would stay open at
-	 * every narrow width for the life of the view.
-	 */
-	/**
-	 * The other end of the reveal, and the reason it is a blur rather than a timer: the
-	 * row got ~130px wider to hold an input nobody is typing in, so leaving it has to give
-	 * that width back — and only when it is EMPTY, or a filter someone is still using
-	 * would be taken away by clicking anything else.
-	 */
-	/**
-	 * The rebuild path the test above cannot see. An EMPTY revealed filter is the one
-	 * state nothing re-derives: `renderFilterBox` recomputes `pbl-filter-active` from the
-	 * input's value on every render, so a filter with text in it survives a refresh by
-	 * itself — but an empty one that `/` just opened would come back from a data update
-	 * with the rung hiding it again, and `refocusByKey` would then focus a `display: none`
-	 * input, which does nothing and reports nothing. The flag therefore lives on the
-	 * toolbar, which `barEl.empty()` does not destroy.
-	 */
-	/**
-	 * A theme or a font-size change moves rendered text without moving any box this view
-	 * observes: the only `ResizeObserver` here watches the TREE, and no render follows a
-	 * theme switch. Without the `css-change` subscription the row keeps a step chosen for
-	 * the old metrics until the pane happens to be resized — which may be never.
+	 * A theme or a font-size change is exactly that: it moves rendered text without moving
+	 * any box this view observes, since the only `ResizeObserver` here watches the TREE.
+	 * Without the `css-change` subscription the row keeps a step chosen for the old metrics
+	 * until the pane happens to be resized — which may be never. The other live path is the
+	 * busy indicator appearing or its count gaining a digit, driven further down this file;
+	 * the third, a pane resize, is the observer's own.
 	 *
 	 * Driven through the workspace event rather than through a method, because the
 	 * subscription is the thing that was missing. Observing `toolbarEl` instead would
@@ -271,8 +216,9 @@ describe('the toolbar fit ladder', () => {
 	/**
 	 * A rung takes a control out of the layout, and the user may be standing on it. Before
 	 * this, narrowing the pane with focus on the ✨ dropped focus to the document and a
-	 * keyboard user had to start the row again — the filter escaped it only because it was
-	 * given three exceptions of its own across three rounds.
+	 * keyboard user had to start the row again. Nothing on the row escapes it now; the one
+	 * control that ever did was the quick filter, and only because it was given three
+	 * exceptions of its own across three rounds before it was withdrawn.
 	 *
 	 * Driven against the real stylesheet (see the `<style>` at the top of this file), so
 	 * "hidden" means what `styles/toolbarFit.css` says rather than what a list here says.
@@ -584,8 +530,8 @@ describe('the toolbar fit ladder', () => {
 	});
 
 	/**
-	 * The manual's `?` is in the SAME step-2 selector list as the filter and the density
-	 * toggle — added to that list rather than a rule of its own, per `toolbarFit.css`'s own
+	 * The manual's `?` is in the SAME step-2 selector list as the density toggle and the
+	 * config help — added to that list rather than a rule of its own, per `toolbarFit.css`'s own
 	 * header — so it has to be gone by the time the `⋯` it sheds into first renders (also
 	 * step 2), and untouched at step 1.
 	 */

@@ -9,6 +9,7 @@ created: 2026-08-17
 closed: 2026-08-17
 source: Asked for directly, alongside putting the shelf first on the horizon board
 files:
+  - src/view/projection.ts
   - src/view/childrenList.ts
   - src/view/interactions/menu.ts
   - test/view/horizonMenu.test.ts
@@ -33,20 +34,27 @@ axis keep the section [[Drop the per-child entries from the card menu]] already 
 and the dated axis's toggle is untouchable anyway — its chevron folds ROWS, which is the
 whole feature there.
 
-## Where the gate lives, and why it is two gates
+## Where the gate lives, and why it is one gate
 
-`horizonBoardShowing` in `src/view/childrenList.ts` — `interactions/plan.ts`'s own
-spelling of "the horizon board is on screen", the projection AND the drawn axis, since
-neither alone can answer it. `addChildrenSection` returns on it before the separator,
-which removes the toggle and the entries from every menu the board builds.
+`menusListChildren` in `src/view/projection.ts` — the projection AND the drawn axis,
+since neither alone can answer it. `addChildrenSection` returns on it before the
+separator, which removes the toggle and the entries from every menu the board builds.
+That return is the whole of the exemption.
 
-`menuChildren` carries the same gate itself rather than trusting the section's, because
-`matchesFor` subtracts exactly that list from the match walk: gated in one place only, a
-matched uncarded child would be ceded to entries no menu draws and named nowhere. With
-the list empty, ownership moves — such a child is offered as `Open match "…"` now — and
-the count invariant ("exactly one menu entry ends in a matched child's title") holds
-through the move, which is the drift it was written to allow. The face's links are
-untouched either way: they subtract `listedChildren`, never `menuChildren`.
+It shipped as TWO gates, and the second was already dead when it was written. This note
+said `menuChildren` had to carry the same gate itself because `matchesFor` subtracted that
+list from the quick filter's match walk — so a matched uncarded child, gated in one place
+only, would be ceded to entries no menu draws and named nowhere. `matchesFor` had been
+deleted before this task started (88e03e8, with the quick filter itself), so the copy was
+never reachable: `addChildrenSection` returns above every caller of it on this board. It
+went on 2026-08-17, and `menuChildren` now records what it is NOT doing, so the copy is
+not re-added for a reason that no longer exists. The face's links are untouched either
+way: they subtract `listedChildren`, never `menuChildren`.
+
+The predicate moved out of `src/view/childrenList.ts` with the second gate. That file is
+pure and DOM-free so the disclosure and its keyboard path can share one answer, and with
+`menuChildren` no longer asking, this answer was the menu's alone — a projection identity
+test, which `src/view/projection.ts` is where this repository already keeps.
 
 ## What this withholds, stated rather than smoothed over
 
@@ -54,15 +62,13 @@ untouched either way: they subtract `listedChildren`, never `menuChildren`.
   `tabindex="-1"` button and the menu entry was that path; on the horizon board the
   disclosure is pointer-only now. The tree and the other card projections still carry
   both.
-- **Under a focus, an unmatched child with no card of its own is unreachable from this
-  board.** The narrowing that brought the entries back on 2026-08-15 existed for exactly
-  that child; here the reader reaches it through the tree, the board, or the quick
-  filter's match entries.
+- **Under a focus, a child with no card of its own is unreachable from this board.** The
+  narrowing that brought the entries back on 2026-08-15 existed for exactly that child;
+  here the reader reaches it through the tree or the kanban board. There is no third route:
+  the quick filter's `Open match` entries were the other one, and they went the same day.
 
 ## Checks
 
 `test/view/horizonMenu.test.ts`: no toggle on a bucket card that drew a disclosure, no
 `Open child` under a focus, no toggle on a shelf card — and the dated axis's shelf card
-keeps its toggle, the boundary that stops the exemption spreading. The ownership move is
-pinned where the old claim was: the bucket-card case in `test/view/roadmapMatches.test.ts`
-now expects `Open match`, absent `Open child`, count exactly one.
+keeps its toggle, the boundary that stops the exemption spreading.

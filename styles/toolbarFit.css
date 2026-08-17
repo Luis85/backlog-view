@@ -67,8 +67,9 @@
 	display: none;
 }
 
-/* Step 2 — the remaining words, the filter collapsing to its own button, and the dated
-   axis's two singles going to the `⋯`.
+/* Step 2 — the remaining words, and the single-purpose buttons going to the `⋯`: the
+   manual, the config help, the horizon axis's bucket-grid toggle and the grid axes' own
+   density and jump-to-today.
 
    The words here are the value-naming ones — which axis, which zoom, which focus level —
    and they go together rather than in some order of usefulness among themselves: they are

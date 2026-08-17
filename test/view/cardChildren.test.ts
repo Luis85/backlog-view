@@ -331,14 +331,6 @@ describe('children on the card', () => {
 		expect(kidTitles(cardByTitle(containerEl, 'Epic B'))).toEqual(['Feature B1', 'Feature B2']);
 	});
 
-	// `disabled` on a <button> stops a click dispatched at the button itself, but not one
-	// that lands on a CHILD element and bubbles — the chevron and count spans are both
-	// inside the toggle. Without the guard this write is invisible on screen
-	// (`isCardCollapsed` reads false under the filter regardless, whatever the write set),
-	// and only shows up once the filter clears — reproducing exactly that: expand for real
-	// first (a card opens collapsed by default, so an unguarded write from THAT state could
-	// land on the same value it started at and prove nothing), then let a filtered click
-	// try to flip it.
 	// The card menu's toggle has to write the same bit the card's own disclosure reads —
 	// `isCardCollapsed`, never `isCollapsed` — or the two would disagree about whether
 	// the card is open. `addChildrenSection` serves both a card's toggle and a dated-axis

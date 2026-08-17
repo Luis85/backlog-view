@@ -197,8 +197,8 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 		// (everything after it already shed by step 5), and so the first thing the last
 		// rung's clip reaches: clipped alone while the DOM still claimed it was there. It
 		// carries `[data-pbl-key='config-help']` for exactly that reason — `toolbarFit.css`'s
-		// step 2 sheds it in the same rule as the help button, the filter and the density
-		// toggle, so it is gone (hidden, not clipped) four rungs before the warning's own
+		// step 2 sheds it in the same rule as the help button and the projection's own
+		// singles, so it is gone (hidden, not clipped) four rungs before the warning's own
 		// clip ever runs. Nothing is withheld by this: `⋯ → Open the manual` survives every
 		// rung and the dialog's own sidebar is one click from `setup`; only the deep link
 		// itself is lost. `root: barEl` and an explicit `onClosed` through `focusInBar`,

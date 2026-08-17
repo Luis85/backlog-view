@@ -276,11 +276,11 @@ function renderSearch(host: BacklogViewHost, headerEl: HTMLElement): void {
  * land on `runSearch`, so the two inputs cannot disagree about what a clear is or about
  * where focus goes afterwards — the "one move, three inputs" rule at its smallest.
  *
- * Rendered only while there IS something to clear, which is what the native button was
- * believed to be doing and what the toolbar's own filter says with a class. A condition
- * here rather than a class, because every keystroke rebuilds this header anyway: nothing
- * is saved by drawing a button that is then hidden, and a control that is absent cannot be
- * focused by assistive tech while it does nothing.
+ * Rendered only while there IS something to clear, which is what the native `type="search"`
+ * button was believed to be doing. A condition here rather than a class, because every
+ * keystroke rebuilds this header anyway: nothing is saved by drawing a button that is then
+ * hidden, and a control that is absent cannot be focused by assistive tech while it does
+ * nothing.
  *
  * `headerButton` makes it the pickers' equal — a real `<button>`, `tabindex="-1"`, named
  * and tooltipped — so `syncShelfTabStops` lifts it with them when the pane holds no cards.
