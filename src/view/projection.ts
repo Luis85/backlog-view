@@ -69,12 +69,16 @@ export function hidesCompleted(projection: Projection): boolean {
  * keep the section, so `'roadmap'` is not the rule, and no other projection has an axis
  * for the second term to read.
  *
- * **It is not the question `chooseHorizon` (`interactions/plan.ts`) and `onResourceAxis`
- * (`interactions/labels.ts`) spell the same way.** Those two ask whether a move on this
- * axis needs the announcing path — a rule about WRITES that merely coincides with this
- * one on the horizons axis today. A later axis could list children and still announce, or
- * announce and list none, so the three stay three statements rather than one shared
- * helper that would have to be split the first time they disagree.
+ * **It is not the question `chooseHorizon` (`interactions/plan.ts`) spells the same way.**
+ * That one reads identically today — roadmap plus horizons — and asks where a horizon
+ * PICK goes: whether the move needs `performHorizonMove`'s announcing path. A later axis
+ * could list children and still need announcing, or announce and list none, so the two
+ * stay two statements rather than one helper to be split the first time they disagree.
+ * `onResourceAxis` (`interactions/labels.ts`) is a third and coincides with neither: it
+ * names the `'resources'` axis, and its own comment records that it is asked twice — for
+ * the assignee menu's VOCABULARY as well as for the write route — so "menu versus write"
+ * does not separate it either. This function names `'horizons'` outright, so it could not
+ * serve that axis whatever the questions turned out to be.
  *
  * The `axis` a caller passes comes off the last roadmap render (`host.roadmap`), and
  * naming the rule here does nothing about that: a snapshot stale across a projection

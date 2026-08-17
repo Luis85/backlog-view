@@ -376,10 +376,12 @@ export const showTagMenu = (host: BacklogViewHost, evt: MouseEvent, item: Backlo
  * FOCUS. Unfocused, every result has a card of its own on both card projections and this
  * list is empty — which is the state the clutter was reported in. Focused, the cards are
  * the focus level's alone, and a child appears only as a `tabindex="-1"` entry on its
- * parent's face, so these entries are the whole keyboard path to it. `menuChildren` is
- * that narrowing plus this section's own gate, stated once in `childrenList.ts` so
- * `matchesFor` can subtract exactly what this loop adds; `cardedPaths` is what each
- * projection answers it with. (Codex, PR #137, pointing at the roadmap half of it.)
+ * parent's face, so these entries are the whole keyboard path to it. `menuChildren`
+ * (`childrenList.ts`) is that narrowing and nothing else — **the horizon board's gate is
+ * this function's own**, stated at the top of the body and nowhere else, so a second
+ * caller of `menuChildren` inherits the narrowing and must ask `menusListChildren` for
+ * itself. `cardedPaths` is what each projection answers the narrowing with. (Codex,
+ * PR #137, pointing at the roadmap half of it.)
  *
  * The gate is `cardChildrenShown`, filled by the render, and not the projection: a card
  * whose children have all hidden draws no disclosure and a dated-axis timeline row draws

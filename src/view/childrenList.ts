@@ -85,8 +85,8 @@ export function cardedPaths(host: BacklogViewHost): Set<string> {
 }
 
 /**
- * What the row MENU will list as `Open child "…"` — the gate and the narrowing together,
- * so the two surfaces below cannot disagree about it.
+ * What the row MENU will list as `Open child "…"` — the `cardChildrenShown` gate and the
+ * `unreachableChildren` narrowing as one answer, so nothing derives half of it.
  *
  * `cardChildrenShown` is the gate `addChildrenSection` opens on, and a timeline row joins
  * that set through its FOLD chevron while listing nothing on its face — which is why the

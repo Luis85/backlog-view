@@ -85,9 +85,8 @@ function includesValue(values: string[], value: string): boolean {
  *
  * The condition is spelled here rather than asked of `menusListChildren`
  * (`view/projection.ts`), which reads identically today: that one declares what a card
- * MENU lists and this one asks where a WRITE goes, so an axis that changed either answer
- * alone would silently change the other. `onResourceAxis` (`interactions/labels.ts`) is
- * this same question on its own axis.
+ * MENU lists and this one decides where a PICK goes, so an axis that changed one answer
+ * would silently change the other.
  */
 function chooseHorizon(host: BacklogViewHost, item: BacklogItem, value: string | null): Promise<unknown> {
 	if (host.projection === 'roadmap' && host.roadmap?.roadmap.axis === 'horizons') {
