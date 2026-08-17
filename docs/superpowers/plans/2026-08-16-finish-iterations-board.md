@@ -277,6 +277,30 @@ In `src/view/filterState.ts` (~143): thread the same axis argument through to it
 
 Leave `dragDrop.ts` and `cardChildren.ts` callers on the two-argument form: the tree's drop targets and a card's child list never meet an iteration (it has no parent and no children), and the two-argument form still means the plan's answer.
 
+**Revision (2026-08-17, from Task 2's blocked first attempt — see the task report):** the
+view-layer wiring above is necessary but not sufficient. `buildModel` narrows
+`model.roots`/`results` through a hardcoded `inPlan` inside `projectionForest`, so the
+hiding predicate never sees an iteration to admit — and a global widen of that forest
+breaks the toolbar counts ("is in no count" fails on "4 of 5"). The fix follows the
+codebase's own `deliverableResults` precedent (`src/domain/model.ts` ~line 220 — a
+parallel population built off `assignAll`'s unfiltered `items`, independent of the plan's
+forest):
+
+- `src/domain/model.ts`: `BacklogModel` gains `iterations: BacklogItem[]`, built in
+  `buildModel` beside `deliverableResults` as
+  `items.filter((item) => !item.outsideFilter && isIterationType(item.typeName))`, with a
+  doc comment stating why it is parallel (the plan's forest, every other projection and
+  every count stay untouched).
+- `src/domain/roadmap.ts`: `roadmapRows` gains the `axis` parameter and, for
+  `drawsGrid(axis)` only, returns
+  `[...rows, ...model.iterations.filter(visible)]` — the same `visible` predicate, so the
+  quick filter and the completed toggle still narrow an iteration through the Task 2
+  `projectionMember` admission; `buildRoadmap` passes its existing `axis` argument
+  through.
+- Consequence the sweep already asserts: iterations join `placedCount`/the shelf on grid
+  axes (the milestone precedent) and never join `model.results`, so the toolbar's counts
+  and the horizons axis stay exactly as they were.
+
 - [ ] **Step 4: Run the reshaped sweep and the full view suite**
 
 Run: `npx vitest run test/view/iterationHidden.test.ts test/view/roadmap.test.ts`
