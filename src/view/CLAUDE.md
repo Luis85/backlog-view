@@ -949,8 +949,10 @@ free of runtime code so imports stay cycle-free.
   anything ADDED to it is taken from the row's name.** Match titles there left one character
   of a row's own name at the default width, and a `flex: 0 0 auto` chip beside the rollup
   cost 34px and, unable to yield, hung 28.95px over the day track at the 160px floor. Both
-  measured in Chromium through `npm run harness`; the declarations that let such a chip
-  yield are still pinned in `test/view/timelineBoxing.test.ts`.
+  measured in Chromium through `npm run harness`. **Nothing pins the yielding**: the chip
+  went with the filter, and `test/view/timelineBoxing.test.ts` names the lead only for its
+  border-box sizing, its tint and the context row's dimming — so the measurements above are
+  the whole of what a chip added here has to answer to.
   **A marker has no row here at all since 2026-08-16**, so none of this reaches one.
   `renderRowFacts` used to give a marker's row an explicit `aria-label` that REPLACED the
   content-derived name and took the progress span with it, folding `progressNote` in

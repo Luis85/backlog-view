@@ -103,6 +103,9 @@ export interface ScrollBox {
  * `TimelineRender.drawn` (`render/timeline.ts`) for where each is decided. Declared
  * here, beside `RoadmapSnapshot`, rather than imported from `render/timeline.ts`: that
  * module reaches `host.ts` (through `RowContext`), so the other direction would cycle.
+ * Measured rather than assumed, on the type that tried it the other way first: a `render/`
+ * type imported back into `host.ts` turned the `columns.ts` ↔ `menu.ts` ↔ `host.ts` web
+ * into **sixteen** cycles `npm run analyze` refuses.
  */
 export interface DrawnColors {
 	/** A bar overridden green by `.pbl-timeline-row.pbl-done .pbl-bar` — wins outright. */
