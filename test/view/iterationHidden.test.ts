@@ -2,6 +2,8 @@
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { clickExpandAll, Harness, makeView, useViewHarness } from '../helpers/view';
+import { shelfOf } from '../helpers/roadmap';
+import type { Projection } from '../../src/view/host';
 
 useViewHarness();
 
@@ -17,8 +19,9 @@ useViewHarness();
  * One test over every projection rather than a case per screen, because that is the shape
  * of the claim: "nowhere but these two" cannot be checked by driving the screens somebody
  * thought of, and the next projection is exactly the one that would draw it wrongly. The
- * list is read from the toolbar's own switcher, so a sixth position added tomorrow is a
- * failing test rather than a gap.
+ * list is maintained by hand, and an assertion verifies it covers every projection plus
+ * the three roadmap axes, so a new projection added tomorrow is a failing test rather than
+ * a gap.
  */
 const OPTIONS = {
 	stateProperty: 'note.status',
@@ -132,6 +135,37 @@ function sweep(harness: Harness): { drew: string[]; empty: string[] } {
 		},
 	];
 
+	// Every projection is either a base screen or a roadmap axis. The screen list must
+	// cover them all, so a new projection added to the source is caught by test failure.
+	const baseProjections: Projection[] = ['tree', 'board', 'roadmap', 'deliverables', 'catalog', 'iteration'];
+	const roadmapAxes = ['horizons', 'dates', 'resources'];
+
+	// Extract unique projections and axes from screen labels.
+	const allScreenLabels = screens.map((s) => s.label);
+	// Map labels to projections: base cases are 1:1, except 'iteration board' → 'iteration'
+	const projectionLabelMap: Record<string, string> = {
+		tree: 'tree',
+		board: 'board',
+		deliverables: 'deliverables',
+		catalog: 'catalog',
+		'iteration board': 'iteration',
+	};
+	const foundProjections = new Set<string>();
+	const foundAxes = new Set<string>();
+
+	for (const label of allScreenLabels) {
+		if (label in projectionLabelMap) {
+			foundProjections.add(projectionLabelMap[label]);
+		} else if (label.startsWith('roadmap — ')) {
+			foundProjections.add('roadmap');
+			const axis = label.split(' — ')[1];
+			if (axis) foundAxes.add(axis);
+		}
+	}
+
+	expect(Array.from(foundProjections).sort()).toEqual([...baseProjections].sort());
+	expect(Array.from(foundAxes).sort()).toEqual([...roadmapAxes].sort());
+
 	// Collected and asserted ONCE rather than per screen, so a failure names every
 	// projection that draws it rather than only the first — an instrument that stops
 	// at the first hit cannot say which of the others it actually covered.
@@ -187,8 +221,15 @@ describe('an Iteration note draws only where a grid axis does', () => {
 		expect(empty, 'screens that drew nothing at all, so proved nothing').toEqual([]);
 		// Extension 3b: a point with no target is nothing to draw, so admission on the grid
 		// axes can only land it on the shelf — the same "Unplaced" strip any other card
-		// without a placement lands on, never a bar and never the marker lane's line.
+		// without a placement lands on.
 		expect(drew.sort(), 'screens that drew the iteration').toEqual(['roadmap — dates', 'roadmap — resources']);
+		// The iteration appears in the shelf specifically, confirming it is shelved.
+		harness.view.setProjection('roadmap');
+		harness.view.setAxisPick('dates');
+		harness.view.setShelfCollapsed(false);
+		clickExpandAll(harness.containerEl);
+		const shelf = shelfOf(harness.containerEl);
+		expect(shelf?.textContent?.includes('Sprint 12'), 'undated iteration in shelf').toBe(true);
 	});
 
 	it('is in no count, on any projection', () => {
