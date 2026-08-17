@@ -398,7 +398,7 @@ describe('the iteration board answers as itself', () => {
 		// itself on first use, and no position would draw as pressed.
 		const { containerEl } = onSprint();
 		const pressed = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-mode-btn[aria-pressed="true"]'));
-		expect(pressed.map((el) => el.querySelector('.pbl-btn-label')?.textContent)).toEqual(['Board']);
+		expect(pressed.map((el) => el.querySelector('.pbl-btn-label')?.textContent)).toEqual(['Boards']);
 	});
 
 	it('counts this scope\'s carriers and nobody else', () => {

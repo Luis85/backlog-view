@@ -364,7 +364,7 @@ export class CardDragController {
 					hold,
 					scrollLeft: originScroll?.() ?? null,
 					span: statedSpan(item),
-					ends: placementEnds(item.typeName),
+					ends: placementEnds(item.typeName, this.host.settings.iterationBars),
 					view: this.token,
 				}),
 				// The card's OWN mark only. What the drag puts on the view is the monitor's

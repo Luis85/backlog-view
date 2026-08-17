@@ -1,4 +1,5 @@
 import { BacklogItem } from '../domain/model';
+import { RoadmapAxis } from '../domain/roadmap';
 import { BacklogSettings } from '../domain/settings';
 import { FilterState } from './filterState';
 import { Projection } from './host';
@@ -55,13 +56,18 @@ export interface VisibilityRule {
  * nothing else. Here rather than in the view for the reason the rule itself is here: the
  * three projection-derived answers above are read from `projection.ts` in one place, so a
  * caller cannot assemble a rule that asks one of them a different way.
+ *
+ * `member` bundles `projectionMember`'s own two narrowings — the iteration board's scope
+ * and the roadmap's axis — into one parameter rather than two positional ones, which is
+ * what keeps this at the five-parameter lint budget; naming it `scope` alongside would
+ * also have shadowed the `FilterScope` this rule already returns under that name.
  */
 export function visibilityRule(
 	filter: FilterState,
 	settings: BacklogSettings,
 	projection: Projection,
 	applyFilter: boolean,
-	scope: string | null = null,
+	member: { scope: string | null; axis: RoadmapAxis | null } = { scope: null, axis: null },
 ): VisibilityRule {
 	return {
 		filter,
@@ -69,7 +75,14 @@ export function visibilityRule(
 		applyFilter,
 		scope: filterScopeFor(projection),
 		hideCompleted: hidesCompleted(projection),
-		inProjection: projectionMember(projection, scope),
+		// `iterationsOnTimeline` is taken away HERE rather than inside `projectionMember`,
+		// which has no settings in hand — and an axis this reader has turned iterations off
+		// for admits exactly what a non-grid axis admits, which is what a null axis already
+		// means to that predicate. One place, because everything downstream reads this same
+		// predicate: `roadmapRows` appends `model.iterations` through it, so an iteration
+		// the option refuses reaches neither a bar, nor a line, nor the shelf that counts
+		// what could not be placed.
+		inProjection: projectionMember(projection, member.scope, settings.iterationsOnTimeline ? member.axis : null),
 	};
 }
 

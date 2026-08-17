@@ -62,10 +62,17 @@ export function renderLegend(
 	// holds that rule for the vocabularies; the two below hold it for the furniture.
 	renderStateSwatches(host, legendEl, palettes, drawn);
 	addSwatch(legendEl, 'pbl-legend-today', 'Today');
-	// Milestone is likewise the render's own report (`drawn.milestone`): a base with no
-	// milestone in the window draws no cyan mark at all, and a swatch left unconditional
-	// here is defect 2 of this pass — the same rule failing the same way as `Other` did.
-	if (drawn.milestone) addSwatch(legendEl, 'pbl-legend-milestone', 'Milestone');
+	// Milestone (and/or Iteration) is likewise the render's own report (`drawn.milestone` /
+	// `drawn.iteration`): a base with no marker in the window draws no cyan mark at all, and
+	// a swatch left unconditional here is defect 2 of this pass — the same rule failing the
+	// same way as `Other` did. The caption names what actually drew, `markerLaneCaption`'s
+	// own rule one element over, never the fixed "Milestone" word this swatch used to carry
+	// regardless of which marker type a vault actually has.
+	if (drawn.milestone || drawn.iteration) {
+		const caption =
+			drawn.milestone && drawn.iteration ? 'Milestone · Iteration' : drawn.iteration ? 'Iteration' : 'Milestone';
+		addSwatch(legendEl, 'pbl-legend-milestone', caption);
+	}
 	// The hatch, on the same rule and reported the same way: `drawn.absence` is the render's
 	// own word for "a stretch drew here", so this appears exactly where the mark does — on
 	// the resources axis, and stays lit through a fold, since a collapsed band's header

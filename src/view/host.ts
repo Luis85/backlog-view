@@ -109,7 +109,9 @@ export interface DrawnColors {
 	done: boolean;
 	/** A bar drawing the cyan diamond (`.pbl-bar-milestone`) — beats a state slot too. */
 	milestone: boolean;
-	/** A bar with none of the above: no slot, no done override, no milestone cyan. */
+	/** An `Iteration` drawing the cyan point diamond — same hue, its own name in the key. */
+	iteration: boolean;
+	/** A bar with none of the above: no slot, no done override, no milestone or iteration cyan. */
 	accent: boolean;
 	/**
 	 * An unavailable stretch drew somewhere on this grid (`.pbl-absence`) — the resources

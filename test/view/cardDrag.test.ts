@@ -163,10 +163,11 @@ describe('a link-kind payload against an ordinary drop target', () => {
 		// a link all carry the same payload shape, so a guard checked through one of them
 		// says nothing about the other three. Same minimal fake host as the test above.
 		// Fuller than the fake above, because `wireCard`'s payload reads the note's stated
-		// dates and its type at drag START (`statedSpan`, `placementEnds`) — a thinner one
-		// throws inside `getInitialData`, pragmatic never registers the drag, and the test
-		// passes having driven nothing at all. That is how the first draft of this test
-		// went green against the bug it was written for.
+		// dates and its type at drag START (`statedSpan`, `placementEnds`, which also reads
+		// `host.settings.iterationBars`) — a thinner one throws inside `getInitialData`,
+		// pragmatic never registers the drag, and the test passes having driven nothing at
+		// all. That is how the first draft of this test went green against the bug it was
+		// written for.
 		const fake = (path: string): BacklogItem =>
 			({
 				file: { path },
@@ -176,7 +177,7 @@ describe('a link-kind payload against an ordinary drop target', () => {
 			}) as unknown as BacklogItem;
 		const item = fake('Alpha.md');
 		const byPath = new Map([['Alpha.md', item]]);
-		const host = { model: { byPath } } as unknown as BacklogViewHost;
+		const host = { model: { byPath }, settings: { iterationBars: false } } as unknown as BacklogViewHost;
 		const viewEl = document.body.createDiv();
 		const dnd = new CardDragController(host, viewEl, () => {});
 		const card = viewEl.createDiv();
@@ -217,7 +218,7 @@ describe('a link-kind payload against an ordinary drop target', () => {
 			}) as unknown as BacklogItem;
 		const item = fake('Alpha.md');
 		const byPath = new Map([['Alpha.md', item]]);
-		const host = { model: { byPath } } as unknown as BacklogViewHost;
+		const host = { model: { byPath }, settings: { iterationBars: false } } as unknown as BacklogViewHost;
 		const viewEl = document.body.createDiv();
 		const dnd = new CardDragController(host, viewEl, () => {});
 		const card = viewEl.createDiv();

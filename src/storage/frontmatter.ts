@@ -123,7 +123,7 @@ export async function applyWrites(
 			// The ends this note's LIVE type answers for. Everything below is narrowed by
 			// them, because a key the projection never drew is not part of what a move
 			// changed — a marker's stale start most of all.
-			const ends = placementEnds(readString(ownValue(fm, settings.typeKey)));
+			const ends = placementEnds(readString(ownValue(fm, settings.typeKey)), settings.iterationBars);
 			const before = axisReadings(fm, settings);
 			// Asked of the LIVE note before this file is touched, so a note that no longer
 			// fits the plan is never half-written. It stops the batch where it stands

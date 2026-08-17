@@ -11,7 +11,47 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+### Changed
+
+- **The board toggle is now called Boards.** Since the scope picker moved every board —
+  Product, Deliverables, and each iteration — behind one toggle position, the switcher
+  says so: the button reads **Boards** and its accessible name is
+  **Show as kanban boards**. Nothing else about the position changed.
+
+- **Column resize follows the pointer now.** A property column's grip moved from its
+  trailing edge to its leading one — the edge that actually moves when a column anchored
+  to the row's end resizes — so the boundary under the pointer tracks the drag instead of
+  standing still while the column grows away from it. The arrow keys still move the
+  boundary the way they point, a double click still resets, and stored widths are
+  untouched. Hovering a column header now also lights the whole column band in the theme's
+  hover colour — the full height of the header strip, square — so the header reads as
+  something to interact with before the mark is found.
+
+- **The write path's serialization and single undo slot are now plugin-wide** — a write
+  in one Bases view briefly holds back the other's write controls, and undo always takes
+  back the vault's last batch, whichever view wrote it
+  ([ADR 0030](docs/adrs/0030-domain-is-the-kernel.md)).
+
 ### Added
+
+- **Set iteration is one undoable step, wherever it happens.** Picking a sprint from
+  `Set iteration` writes the link and both of its dates as a single batch behind a single
+  undo, and a card created straight onto an iteration board carries that same link and
+  both dates in its first write — never a create followed by a second write of its own.
+
+- **Keep iterations off the roadmap timeline.** A new "Show iterations on the roadmap
+  timeline" view option, on by default, decides whether the grid axes draw iterations at
+  all. Turned off, a sprint draws nowhere — no bar, no line, and nothing on the unplaced
+  shelf either — for a plan that is read by milestone alone. Turned off, it also takes
+  "Draw iterations as bars" out of the menu, since there is no reading left to choose;
+  your pick is kept and comes back with the timeline. It writes nothing to any note:
+  turning it back on redraws the same sprints.
+
+- **Draw a sprint as a bar, not only a line.** A new "Draw iterations as bars" view
+  option turns an `Iteration` from a point at its target date into a start→target bar on
+  the roadmap's grid axes, with a grip on each configured end. Either way, the marker
+  row's caption, the legend swatch and the announced sentence now name what is actually
+  drawn — Milestone, Iteration, or both — instead of calling every marker a milestone.
 
 - **A second Bases view, Estimation** (`product-estimation`, its own icon in the view
   picker) — score each item against a configurable weighted model: eight value
@@ -24,13 +64,6 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   gated batch, and the table ranks by whichever column you sort — reading only, never
   the backlog's own order. Rubric sentences ship with the default model and are edited
   in the `.base` file this round, with no options-menu box for one yet.
-
-### Changed
-
-- **The write path's serialization and single undo slot are now plugin-wide** — a write
-  in one Bases view briefly holds back the other's write controls, and undo always takes
-  back the vault's last batch, whichever view wrote it
-  ([ADR 0030](docs/adrs/0030-domain-is-the-kernel.md)).
 
 ## [0.9.0] - 2026-08-16
 

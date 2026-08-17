@@ -49,7 +49,7 @@ It is reached differently from [[A Deliverables board]], on purpose, and the rea
 **arithmetic, not scope**. That board took a toggle position because there is exactly one
 of it: its population is a type, the vocabulary is fixed, and the position is as
 permanent as the name. Iterations are unbounded and only ever accumulate — a vault three
-years in has seventy of them. A toggle with seventy positions is not a toggle. So `Board`
+years in has seventy of them. A toggle with seventy positions is not a toggle. So `Boards`
 stays one toggle position and grows a **scope**, the shape [[Horizons or dates]] already
 uses to offer the roadmap's two axes from one control. (Since 2026-08-16 that picker
 also carries the Deliverables board, directly under `Product` — the user retired its
@@ -150,7 +150,7 @@ the moment the populations diverged, which is exactly what happened.
   restores the scope. The configured key is therefore part of resolving the effective
   scope, not only the stored path: with no key every item reads a null iteration, so the
   path still names a real note that nothing can match, the picker is gone (1b) and the
-  pressed `Board` position is a deliberate no-op (1d) — leaving the reader stranded on a
+  pressed `Boards` position is a deliberate no-op (1d) — leaving the reader stranded on a
   permanently empty board with no control to leave it.
 - **2h — a column is folded on an iteration board.** It folds **on that iteration only**.
   The fold identity carries the chosen iteration, not merely the fact that this is an
@@ -190,32 +190,32 @@ the moment the populations diverged, which is exactly what happened.
   this board never shows, and it drops the Deliverables this board deliberately includes.
   It is one function precisely so the count label and the completed toggle's "(N hidden)"
   cannot disagree, so the scope belongs inside it rather than beside it.
-- **1f — the reader leaves for the tree or the roadmap and comes back to `Board`.** They
+- **1f — the reader leaves for the tree or the roadmap and comes back to `Boards`.** They
   return to **the iteration they left**, exactly as the roadmap returns them to the axis
   they left. The scope is retained state, and retained state that is not restored is a
   choice quietly discarded.
 
   This is why the stored mode does not name which board it is. Storing the two
-  independently needs a guard on every way IN to `Board` to keep them in step, and one
+  independently needs a guard on every way IN to `Boards` to keep them in step, and one
   guard was written for the already-pressed click and did nothing for this route —
   `Sprint 12 → Tree → Board` would have rendered the product board under a picker still
   naming Sprint 12. Values that cannot disagree need no guard on any route.
-- **1d — the `Board` toggle position is clicked while it is already pressed and an
+- **1d — the `Boards` toggle position is clicked while it is already pressed and an
   iteration is chosen.** Nothing happens. It looks like a no-op and is not one unless the
-  click asks the same question the pressed state does: the position is `Board` while the
+  click asks the same question the pressed state does: the position is `Boards` while the
   projection is the iteration's, so a handler comparing the projection would set the
   ordinary board **without** clearing the scope, leaving the stored projection and the
   stored scope disagreeing — exactly what choosing `Product` exists to keep in step. Both
   the pressed state and the click ask the position; leaving a scope is always the scope
   picker's own action, never a bare projection change.
 - **1c — an iteration is chosen and the toolbar rebuilds.** The scope picker is **still
-  there**, naming `Product` and every iteration, and the `Board` position still renders
+  there**, naming `Product` and every iteration, and the `Boards` position still renders
   pressed. Neither is automatic: internally this is its own projection, so a control
   comparing the projection to a toolbar POSITION would drop the picker the instant it was
   used — the control disappearing precisely because it worked — and leave the switcher
   showing nothing selected. Which position a projection lights up is therefore its own
   question, asked in the module that owns projection questions, and the answer for an
-  iteration board is `Board`. Driven through the interaction rather than the end state: a
+  iteration board is `Boards`. Driven through the interaction rather than the end state: a
   test that renders the chosen scope directly passes while the round trip is broken.
 - **2f — a question is asked that depends on WHICH board this is** — what the quick
   filter indexes, what the toolbar counts, whether the completed toggle applies, which
@@ -576,9 +576,9 @@ the moment the populations diverged, which is exactly what happened.
   rule behind it]] is open about. Until that lands, the check is a repository sweep for
   both spellings, run when a projection is added, and this criterion asks for the sweep
   rather than for a guarantee nothing makes.
-- Choosing a scope leaves the picker on screen and the `Board` position pressed, checked
+- Choosing a scope leaves the picker on screen and the `Boards` position pressed, checked
   by picking one and inspecting the rebuilt toolbar.
-- Leaving `Board` and returning restores the iteration that was showing, and the stored
+- Leaving `Boards` and returning restores the iteration that was showing, and the stored
   mode and scope cannot describe different boards.
 - An item created from this board carries the iteration it was created on **and that
   iteration's two dates**, written in the same create as its type and parent — the link
@@ -667,7 +667,7 @@ on the host in `src/view/host.ts`. The picker is `renderBoardScopePicker` in
 `src/view/render/toolbarControls.ts`, built the way `renderAxisPicker` beside it is —
 drawn after the `New` button and **only at the board's own toolbar position** — it was in
 every projection until 2026-08-16, on the argument that a control behind the door it opens
-is no way in; the user's answer is the simpler one, that the door is the `Board` button
+is no way in; the user's answer is the simpler one, that the door is the `Boards` button
 and this picker says which board came through it. It draws with no iteration in the vault
 at all, because it carries the only `New iteration…`;
 the board itself is `src/view/render/iterationBoard.ts` — its own module since

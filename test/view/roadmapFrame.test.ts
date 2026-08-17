@@ -236,7 +236,10 @@ describe('the dated frame', () => {
 		const epic = barOf(timelineRows(containerEl)[0]);
 		expect(epic.hasClass('pbl-bar-milestone')).toBe(true);
 		expect(epic.hasClass('pbl-bar-inferred')).toBe(true);
-		expect(epic.getAttribute('aria-label')).toBe('Milestone 2026-08-10 — inferred from children');
+		// The epic is an Epic, not a Milestone — an inferred equal pair still draws the
+		// diamond, but the sentence now names the item's own type rather than the fixed
+		// word every coincident point used to announce.
+		expect(epic.getAttribute('aria-label')).toBe('Epic 2026-08-10 — inferred from children');
 	});
 });
 

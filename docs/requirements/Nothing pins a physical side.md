@@ -105,7 +105,7 @@ not a substitution:
 **Physical positioning whose value is computed elsewhere.** The category the earlier
 inventory could not have held, because it arrived with the roadmap — and the one construct
 of this shape that is already ANSWERED rather than recorded is the property columns' resize
-grip (2026-08-14, [[Resizable property columns]]): pinned with `inset-inline-end`, dragged
+grip (2026-08-14, [[Resizable property columns]]): pinned with `inset-inline-start`, dragged
 by a physical `clientX`, and mirrored by a sign read off the header cell's own computed
 direction. It is here as the worked example of what this group costs, not as a fourth
 group — one control's gesture is a smaller question than a grid whose every offset

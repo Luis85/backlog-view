@@ -1,5 +1,6 @@
 import { inCatalog, isDeliverableType, isIterationType, isMarkerType, ladderFor } from '../domain/itemTypes';
 import { BacklogItem, BacklogModel, inIteration, inPlan, ProjectionPopulation } from '../domain/model';
+import { RoadmapAxis, drawsGrid } from '../domain/roadmap';
 import { BacklogViewHost, Projection } from './host';
 import { ALL_TYPES } from '../domain/typeVocabulary';
 
@@ -92,7 +93,7 @@ export function hasRollup(projection: Projection): boolean {
 }
 
 /**
- * Which toolbar POSITION draws this projection. Every board is the `Board` button's
+ * Which toolbar POSITION draws this projection. Every board is the `Boards` button's
  * position now: the scope picker beside that button chooses WHICH — the product's, the
  * Deliverables board's, or one iteration's — so the control the reader sees is one.
  * The Deliverables board held a toggle position of its own until 2026-08-16, when the
@@ -153,7 +154,11 @@ export function projectionPopulation(projection: Projection, model: BacklogModel
  * under a `Test case` is a catalog root's child, hidden here, and a root of the plan's own
  * forest over there.
  */
-export function projectionMember(projection: Projection, scope: string | null = null): (item: BacklogItem) => boolean {
+export function projectionMember(
+	projection: Projection,
+	scope: string | null = null,
+	axis: RoadmapAxis | null = null,
+): (item: BacklogItem) => boolean {
 	if (projection === 'catalog') return inCatalog;
 	// **The iteration board's membership is the LINK**, not merely "a row of the plan",
 	// and it has to be asked here rather than only where the cards are chosen. Every
@@ -173,6 +178,13 @@ export function projectionMember(projection: Projection, scope: string | null = 
 		// refusal in the population and not here, a note retyped to `Milestone` kept its
 		// link and stayed listed on its parent's card. One statement, two callers.
 		return (item) => (item.outsideFilter ? inPlan(item) : inIteration(item, scope));
+	}
+	// The grid axes draw an `Iteration` in the shared marker row — the one admission,
+	// axis-aware because the horizons axis (buckets and its shelf alike) still refuses
+	// one. Everything downstream inherits this through `rowHidden`, which is the point:
+	// the filter index, the counts and the shelf all read the same predicate.
+	if (projection === 'roadmap' && axis !== null && drawsGrid(axis)) {
+		return (item) => inPlan(item) || isIterationType(item.typeName);
 	}
 	// `inPlan`, which refuses an `Iteration` as well as the catalog — and it is the same
 	// function `projectionForest` builds the plan's forest from, because the forest and

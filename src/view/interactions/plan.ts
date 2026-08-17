@@ -40,12 +40,12 @@ import { rowVocabulary } from '../projection';
  * a key this type may not touch — so the entry is absent.
  */
 export function canSchedule(settings: BacklogSettings, item: BacklogItem): boolean {
-	return placementEnds(item.typeName).some((end) => optionalKeyFor(settings, end) !== '');
+	return placementEnds(item.typeName, settings.iterationBars).some((end) => optionalKeyFor(settings, end) !== '');
 }
 
 /** True when the note carries a date key this item's placement may take away. */
-export function carriesDates(item: BacklogItem): boolean {
-	return placementEnds(item.typeName).some((end) => item.ownKeys[end]);
+export function carriesDates(item: BacklogItem, settings: BacklogSettings): boolean {
+	return placementEnds(item.typeName, settings.iterationBars).some((end) => item.ownKeys[end]);
 }
 
 /**
@@ -196,9 +196,13 @@ function validateSchedule(values: Record<string, string>, unshown: Partial<Recor
  * reader holding their input since the prompt stays open on what they entered. The defect
  * that rule was written for could wrongly DELETE a value another editor had just fixed.
  */
-function unshownEnds(item: BacklogItem, ends: PlacementEnd[]): Partial<Record<PlacementEnd, string>> {
+function unshownEnds(
+	item: BacklogItem,
+	ends: PlacementEnd[],
+	settings: BacklogSettings,
+): Partial<Record<PlacementEnd, string>> {
 	const unshown: Partial<Record<PlacementEnd, string>> = {};
-	for (const field of placementEnds(item.typeName)) {
+	for (const field of placementEnds(item.typeName, settings.iterationBars)) {
 		if (ends.includes(field)) continue;
 		const stated = statedDate(item, field);
 		if (stated !== '') unshown[field] = stated;
@@ -254,14 +258,14 @@ function planFrom(prefill: Record<string, string>, values: Record<string, string
 export function promptSchedule(
 	host: BacklogViewHost,
 	item: BacklogItem,
-	ends: PlacementEnd[] = placementEnds(item.typeName),
+	ends: PlacementEnd[] = placementEnds(item.typeName, host.settings.iterationBars),
 ): void {
 	const fields = scheduleFields(host, item, ends);
 	// Narrowed to one end by a date CHIP, which writes the end it names and nothing else.
 	// It is the same modal, the same planner and the same host method as the two-field
 	// entry — a one-end prompt is this field list with one row in it, not a second idea of
 	// what scheduling is.
-	const unshown = unshownEnds(item, ends);
+	const unshown = unshownEnds(item, ends, host.settings);
 	// What the inputs were opened with, kept so the submitted values can be compared
 	// against what the reader was actually SHOWN. Built here rather than inside
 	// `planFrom` so there is one reading of the item per prompt: read it again at submit
@@ -284,7 +288,11 @@ export function promptSchedule(
  * plan removes what the gesture actually promised rather than whatever the item now
  * answers for; the writer is what catches the two having drifted apart.
  */
-export function unschedulePlan(item: BacklogItem, ends: PlacementEnd[] = placementEnds(item.typeName)): SchedulePlan {
+export function unschedulePlan(
+	item: BacklogItem,
+	settings: BacklogSettings,
+	ends: PlacementEnd[] = placementEnds(item.typeName, settings.iterationBars),
+): SchedulePlan {
 	const plan: SchedulePlan = {};
 	for (const field of ends) plan[field] = null;
 	return plan;
@@ -292,5 +300,5 @@ export function unschedulePlan(item: BacklogItem, ends: PlacementEnd[] = placeme
 
 /** Take the item off the plan: every date key its own type answers for, in one undoable batch. */
 export function unschedule(host: BacklogViewHost, item: BacklogItem): Promise<boolean> {
-	return host.performScheduleMove(item, unschedulePlan(item));
+	return host.performScheduleMove(item, unschedulePlan(item, host.settings));
 }

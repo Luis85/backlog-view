@@ -62,7 +62,7 @@ narrowed to one type.
 1. The board scope picker names `Deliverables` directly under `Product`, each entry
    under the icon its surface already wears (`square-kanban`, `package`). Until
    2026-08-16 this step read "the toolbar toggle grows a fourth position" — the
-   projection is unchanged; only its door moved, and the `Board` position now draws as
+   projection is unchanged; only its door moved, and the `Boards` position now draws as
    pressed while this board is showing.
 2. Choosing it shows a board whose columns are the workflow the "Deliverables" settings
    group defines — its own state property when `deliverableStateProperty` is configured,
@@ -354,7 +354,7 @@ risk below is closed rather than open: a readout added in
 - Picking the Deliverables board survives closing and reopening the view, the same way
   Board and Roadmap already do — not merely reverting to the tree because the stored
   value went unrecognised. Since 2026-08-16 the pick is also RETAINED like an iteration
-  scope: leaving the `Board` position and returning reopens this board, remembered as a
+  scope: leaving the `Boards` position and returning reopens this board, remembered as a
   stored word beside the stored scope path, and the two clear each other so they cannot
   contradict.
 - Selecting the picker's entry actually renders the Deliverables board's columns and

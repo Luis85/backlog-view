@@ -10,11 +10,11 @@ import { CardDragController } from '../interactions/cardDrag';
 import { wireBarLink } from '../interactions/linkDrag';
 import { BacklogViewHost, DrawnColors } from '../host';
 import { Absence, absencesConfigured, absenceTitle, awayWeeks, crossedAbsences, daysLost, packLanes } from '../../domain/absences';
-import { barHolds, timelineRows, TimelineBar, TimelineRow } from '../../domain/bars';
-import { isMarkerType } from '../../domain/itemTypes';
+import { BarHold, barHolds, timelineRows, TimelineBar, TimelineRow } from '../../domain/bars';
+import { displayType, isIterationType, isMarkerType } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
 import { CivilDate } from '../../domain/noteFields';
-import { markerLane, ResourceLane } from '../../domain/roadmap';
+import { markerLane, markerLaneCaption, ResourceLane } from '../../domain/roadmap';
 import { ownWorkflowReading, stateKeyFor, WorkflowReading } from '../../domain/board';
 import { sanitizeTitle } from '../../storage/createNote';
 import {
@@ -297,7 +297,10 @@ export function renderLaneHead(
 	// the dates the whole plan is measured against off screen is the very thing this row
 	// exists to prevent.
 	if (!lane.markers) renderLaneChevron(ctx.host, lead, lane, collapsed);
-	lead.createSpan({ cls: 'pbl-lane-name', text: lane.name });
+	// The milestones' row captions itself by what it holds (`markerLaneCaption`) — never
+	// `lane.name`, which stays the constant identity every other reader (the fold key, the
+	// roster refusal) has to keep matching. Every other row is still named by itself.
+	lead.createSpan({ cls: 'pbl-lane-name', text: lane.markers ? markerLaneCaption(lane.bars) : lane.name });
 	if (lane.bars.length > 0) {
 		lead.createSpan({ cls: 'pbl-lane-count', text: t('count.items', { count: lane.bars.length }) });
 	}
@@ -754,6 +757,39 @@ export function renderLaneRowDescription(row: HTMLElement, name: string): void {
 }
 
 /**
+ * Every hold a bar or a mark offers, wired to the drag controller — one function because
+ * a bar row (`renderBarRow`, `./timeline.ts`) and a marker's own diamond
+ * (`drawMarkerDiamonds`, below) wire the identical holds through the identical call, and
+ * the second copy of the loop is exactly what a fallow clone group caught (2026-08-17).
+ *
+ * The body hold IS `el` itself — no child created for it, which is what keeps a click on
+ * the bar or the diamond opening its note rather than landing on an invisible grip
+ * covering the whole surface — and every other entry in `holds` becomes its own
+ * `pbl-bar-grip` child. `barHolds` puts `'body'` last whenever it is present at all, so
+ * the loop always finishes the edges before it ever touches the element the caller passed
+ * in; nothing here depends on that order, but nothing needs to fight it either.
+ *
+ * A press that never travels far enough to become a drag still fires `click`, and a grip
+ * is a control inside whatever `wireCardActivation`/`wireOpenGestures` wired on `el` —
+ * `fromRowControl` (`render/rows.ts`) is what keeps that click from opening the note
+ * instead of starting a resize, because `.pbl-bar-grip` is one of `ROW_CONTROL`'s
+ * documented non-buttons. `timelineDrag.test.ts` drives both halves for the bar row — the
+ * grips stay silent, the bar still opens — and the marker's own mark inherits the
+ * identical guard through the identical class.
+ */
+export function wireBarHolds(el: HTMLElement, item: BacklogItem, holds: BarHold[], dnd: CardDragController, scrollLeft: () => number): void {
+	for (const hold of holds) {
+		const target = hold === 'body' ? el : el.createDiv({ cls: `pbl-bar-grip pbl-bar-grip-${hold}` });
+		// Stated on the element like every grip's: what a gesture will be resolved AS is
+		// readable off the thing the reader takes hold of.
+		target.dataset.pblHold = hold;
+		// The scroller's offset at drag start rides the payload, for the delta a hold
+		// measures — see `CardSource.scrollLeft` and `interactions/timelineDrag.ts`.
+		dnd.wireCard(target, item, hold, scrollLeft);
+	}
+}
+
+/**
  * Every marker on the axis, as diamonds in the ONE header track the milestones' row is —
  * [[Milestones out of the resource rows]]. A point in time has no duration to fold and no
  * subtree to disclose, so a row apiece said per row what one row says; what a reader needs
@@ -815,7 +851,12 @@ export function drawMarkerDiamonds(
 	const stacked = new Map<number, number>();
 	for (const bar of band.lane.bars) {
 		const geometry = barGeometry(ruler.window, bar.span);
-		const holdable = barHolds(bar.item, ctx.host.settings, bar).includes('body');
+		// Asked ONCE — `renderBarRow`'s own rule: what looks grabbable (`holdable`, read by
+		// `barClasses` below) and what a gesture actually registers (`wireBarHolds` further
+		// down) have to read the same list, or a mark could look draggable and refuse the
+		// drop, or the reverse.
+		const holds = barHolds(bar.item, ctx.host.settings, bar);
+		const holdable = holds.includes('body');
 		const done = ownWorkflowReading(bar.item).done;
 		const el = track.createDiv({ cls: barClasses(bar, geometry, holdable) + (done ? ' pbl-done' : '') });
 		placeSpan(el, geometry, ruler.scale);
@@ -853,13 +894,10 @@ export function drawMarkerDiamonds(
 		// and the track holds every one of them. Registering the track for both put both
 		// arrows on the header's centre — see `BarRowMounts.anchors`.
 		mounts.anchors.set(bar.item.file.path, el);
-		if (holdable) {
-			// The body hold IS the diamond, the grid's own rule — and the only hold a marker
-			// has, since a point has no end to resize. The scroller's offset rides the payload
-			// for the delta the hold measures, exactly as a bar row's does.
-			el.dataset.pblHold = 'body';
-			mounts.dnd.wireCard(el, bar.item, 'body', () => mounts.scroller.scrollLeft);
-		}
+		// A POINT's `holds` never carries an edge — `barHolds`' own point branch returns at
+		// most `['body']` — so a bar-mode Iteration's own stated ends are what first put a
+		// grip on this row, one per end whose key is actually configured.
+		wireBarHolds(el, bar.item, holds, mounts.dnd, () => mounts.scroller.scrollLeft);
 		// `row` is the diamond itself — see `BarLinkParts.row`, and 2d in the note above.
 		wireBarLink(ctx, { dnd: mounts.dnd, content: mounts.content, row: el, barEl: el, outside: geometry.outside, item: bar.item });
 		// **The mark carries every gesture a bar ROW carried, minus the selection.** The row
@@ -882,8 +920,16 @@ export function drawMarkerDiamonds(
 		// actually painted, which is `Other` and not `Milestone`. Reported here rather than
 		// recomputed in the legend, `reportColors`' own rule: a copy of `barClasses`'
 		// precedence is exactly what missed this case on the dated axis once already.
+		// Milestone and Iteration share the one cyan diamond class (`geometry.milestone`), so
+		// which of the two keys the legend is asked of the ITEM's own type, never of the
+		// mark's colour — the same content-aware split `markerLaneCaption` makes for the row's
+		// own caption. `!geometry.milestone` used to be reachable only through `outside` —
+		// every stated point drew equal-ended — until bar mode gave an Iteration mismatched
+		// ends in this very track: an accent-coloured span, keyed `Other` the same way a
+		// wholly-outside mark already was, never claimed as the cyan `barClasses` did not draw.
 		if (done) drawn.done = true;
-		else if (geometry.outside) drawn.accent = true;
+		else if (geometry.outside || !geometry.milestone) drawn.accent = true;
+		else if (isIterationType(bar.item.typeName)) drawn.iteration = true;
 		else drawn.milestone = true;
 	}
 	band.head.setCssProps({ '--pbl-lane-sublanes': String(Math.max(0, ...stacked.values())) });
@@ -1039,7 +1085,12 @@ export function spanText(bar: TimelineBar): string {
 	const span = bar.span;
 	const inferred = bar.inferredStart || bar.inferredEnd ? ' — inferred from children' : '';
 	if (span.start !== null && span.target !== null) {
-		if (formatCivil(span.start) === formatCivil(span.target)) return `Milestone ${formatCivil(span.start)}${inferred}`;
+		// The item's OWN type, never the literal word "Milestone" — a coincident pair draws
+		// the same diamond whatever the item is (an inferred equal span included), so the
+		// sentence has to say what THIS item is rather than what a point used to always mean.
+		if (formatCivil(span.start) === formatCivil(span.target)) {
+			return `${displayType(bar.item)} ${formatCivil(span.start)}${inferred}`;
+		}
 		return `${formatCivil(span.start)} → ${formatCivil(span.target)}${inferred}`;
 	}
 	if (span.start !== null) return `Starts ${formatCivil(span.start)}, target not set${inferred}`;

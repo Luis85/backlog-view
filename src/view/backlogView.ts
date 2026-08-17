@@ -175,7 +175,10 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 			render: () => this.render(),
 			renderTreeContent: () => this.renderTreeContent(),
 			refreshFromData: () => this.refreshFromData(),
-			recomputeFilter: () => this.filter.recompute(this.model, this.projection, this.effectiveScope),
+			recomputeFilter: () => {
+				const axis = this.projection === 'roadmap' ? activeAxis(this.settings, this.axisPick) : null;
+				this.filter.recompute(this.model, this.projection, this.effectiveScope, axis);
+			},
 		});
 		this.dnd = new DragDropController(this, {
 			viewEl: this.viewEl,
@@ -255,7 +258,8 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 		// against the collapsed-by-default rule every other projection keeps. The same
 		// split `collapsiblePopulation` states for the buttons, at the other end of it.
 		this.state.collapseNewParents([...this.model.items, ...this.model.deliverableResults, ...this.model.catalog.items]);
-		this.filter.recompute(this.model, this.projection, this.effectiveScope);
+		const axis = this.projection === 'roadmap' ? activeAxis(this.settings, this.axisPick) : null;
+		this.filter.recompute(this.model, this.projection, this.effectiveScope, axis);
 		this.render();
 	}
 
@@ -311,7 +315,8 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 
 	setFilter(text: string): void {
 		this.filter.text = text;
-		this.filter.recompute(this.model, this.projection, this.effectiveScope);
+		const axis = this.projection === 'roadmap' ? activeAxis(this.settings, this.axisPick) : null;
+		this.filter.recompute(this.model, this.projection, this.effectiveScope, axis);
 		this.renderTreeContent();
 	}
 
@@ -320,11 +325,13 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 	}
 
 	isRowHidden(item: BacklogItem): boolean {
-		return rowHidden(item, visibilityRule(this.filter, this.settings, this.projection, true, this.effectiveScope));
+		const axis = this.projection === 'roadmap' ? activeAxis(this.settings, this.axisPick) : null;
+		return rowHidden(item, visibilityRule(this.filter, this.settings, this.projection, true, { scope: this.effectiveScope, axis }));
 	}
 
 	isRowHiddenUnfiltered(item: BacklogItem): boolean {
-		return rowHidden(item, visibilityRule(this.filter, this.settings, this.projection, false, this.effectiveScope));
+		const axis = this.projection === 'roadmap' ? activeAxis(this.settings, this.axisPick) : null;
+		return rowHidden(item, visibilityRule(this.filter, this.settings, this.projection, false, { scope: this.effectiveScope, axis }));
 	}
 
 	isFilterMatch(item: BacklogItem): boolean {

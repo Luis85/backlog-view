@@ -289,6 +289,8 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		orderKey: propKey('orderProperty', fallback.orderKey),
 		typeKey: propKey('typeProperty', fallback.typeKey),
 		hierarchyOnly: bool('hierarchyOnly', fallback.hierarchyOnly),
+		iterationsOnTimeline: bool('iterationsOnTimeline', fallback.iterationsOnTimeline),
+		iterationBars: bool('iterationBars', fallback.iterationBars),
 		showOutsideParents: bool('showOutsideParents', fallback.showOutsideParents),
 		folderHierarchy: bool('inferFolderHierarchy', fallback.folderHierarchy),
 		showCounts: bool('showCounts', fallback.showCounts),

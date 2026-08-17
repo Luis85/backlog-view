@@ -376,7 +376,7 @@ describe('what the catalog offers', () => {
 		// it, offer a Set type that moved a card off the screen it was acted on, and focus
 		// a type that emptied it.
 		const { containerEl } = makeView(bothFamilies(), { stateProperty: 'note.status' });
-		projectionButton(containerEl, 'Show as kanban board').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		projectionButton(containerEl, 'Show as kanban boards').dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		containerEl.querySelector<HTMLElement>('.pbl-new-pick')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		const offered = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
 		expect(offered).toContain('New Epic');
