@@ -11,6 +11,27 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+### Added
+
+- **A second Bases view, Estimation** (`product-estimation`, its own icon in the view
+  picker) — score each item against a configurable weighted model: eight value
+  dimensions plus confidence, effort and complexity, each scored against a rubric
+  sentence per point. The consolidated business value writes back to the note with a
+  model stamp and its coverage; everything else derives fresh on every read instead —
+  the confidence-adjusted value, the value-to-effort indicator, and whether a stored
+  total can still be trusted (Current, Needs re-estimation, Another model,
+  Hand-written). A guided empty state binds and backfills the properties it needs in one
+  gated batch, and the table ranks by whichever column you sort — reading only, never
+  the backlog's own order. Rubric sentences ship with the default model and are edited
+  in the `.base` file this round, with no options-menu box for one yet.
+
+### Changed
+
+- **The write path's serialization and single undo slot are now plugin-wide** — a write
+  in one Bases view briefly holds back the other's write controls, and undo always takes
+  back the vault's last batch, whichever view wrote it
+  ([ADR 0030](docs/adrs/0030-domain-is-the-kernel.md)).
+
 ## [0.9.0] - 2026-08-16
 
 ### Changed

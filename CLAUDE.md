@@ -128,7 +128,11 @@ them.
 
 **`view/`** is the DOM and every input that reaches it, so it is the layer the jsdom
 harness exists for. `commands/` is the palette's way in, and `main.ts` is the only place
-anything is registered with Obsidian — the view itself and the commands both.
+anything is registered with Obsidian — the view itself and the commands both. Each view
+owns its own registration file — `registerBacklogView.ts`, and now `view/estimation/`'s own
+for the second, Estimation (`product-estimation`) — so a further capability adds a file
+rather than a branch in `main.ts`, which only composes them behind one shared `WriteLock`
+(ADR 0030).
 
 There is deliberately no list of the modules here. `src/` is the list, one file per
 concern, and it cannot go stale; what a module is *for* is stated where its behaviour is

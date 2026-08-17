@@ -16,8 +16,8 @@ assignee: ""
 
 # The prioritized list
 
-The items and their numbers as a table — rank, item, value, effort, confidence, score,
-state — sorted by whatever the reader picks. Sorting this table is reading; it writes no
+The items and their numbers as a table — item, value, coverage, confidence, effort and
+currency — sorted by whatever the reader picks. Sorting this table is reading; it writes no
 order to the backlog.
 
 **Outcome** — The comparison this view exists for is one screen.
