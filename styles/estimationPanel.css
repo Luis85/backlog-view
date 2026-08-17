@@ -3,10 +3,12 @@
    400-line cap (2026-08-17); the boundary is `estimation.css`'s own view grid and
    table above it versus the panel `.pbl-est-panel` holds below it, one concern
    each. Position after `estimation.css` in `styles/index.css`'s import list is NOT
-   load-bearing: every selector here (`.pbl-est-dim`, `.pbl-est-points`,
-   `button.pbl-est-point`, `.pbl-est-rubric`, `.pbl-est-decomp`, `.pbl-est-derived`)
-   is vocabulary the earlier partial does not also declare, so nothing here is
-   decided by order — see that file's own header.
+   load-bearing, but not because the vocabulary is disjoint: `.pbl-est-decomp
+   .pbl-est-total` and `.pbl-est-decomp .pbl-est-coverage` below DO re-target
+   `estimation.css`'s `.pbl-est-total` / `.pbl-est-coverage`. What decides it is
+   specificity — a two-class descendant selector is (0,2,0) against the single
+   class's (0,1,0) — so this partial wins whichever import runs last, and nothing
+   here is decided by order — see that file's own header.
    ========================================================================== */
 
 /* ==========================================================================

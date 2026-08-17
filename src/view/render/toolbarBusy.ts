@@ -189,7 +189,7 @@ function syncBusyLabel(el: HTMLElement, busy: BusyState | null): boolean {
  * shown-to-hidden edge, onto the same `.pbl-help-btn` destination `focusInBar` already
  * uses for both toolbar doors.
  */
-export function syncBusy(barEl: HTMLElement, busy: BusyState | null, canUndo: boolean, writing = busy !== null): void {
+export function syncBusy(barEl: HTMLElement, busy: BusyState | null, canUndo: boolean, writing: boolean): void {
 	const el = barEl.querySelector<HTMLElement>('.pbl-busy');
 	if (el) {
 		const hadFocus = el.contains(document.activeElement);

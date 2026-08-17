@@ -125,11 +125,12 @@ export class WriteGate<W extends { file: TFile }> {
 	}
 
 	async applySafely(writes: W[]): Promise<WriteOutcome | null> {
-		if (writes.length === 0) return null;
-		// Reset before either branch below: `flushedLastBatch` answers for THIS call, and a
-		// refusal here (outside-filter, or `runExclusively`'s own config/lock checks) flushed
-		// nothing, whatever the previous call left behind.
+		// Reset before every branch below, including the empty-batch return right after it:
+		// `flushedLastBatch` answers for THIS call, and any refusal here — empty, outside-filter,
+		// or `runExclusively`'s own config/lock checks — flushed nothing, whatever the previous
+		// call left behind.
 		this.flushedOnLastBatch = false;
+		if (writes.length === 0) return null;
 		// Notes the Base excluded are context, and nothing may write to them: the
 		// controls that could are withheld and the auto-type cascade stops at them.
 		// If one still arrives, the batch is refused whole — dropping just that write

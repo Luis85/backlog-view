@@ -93,7 +93,10 @@
    import comes after it — moved earlier and the estimation view's two-column layout
    collapses back to the tree's flex column. */
 @import "./estimation.css";
-/* Position NOT load-bearing: `estimationPanel.css` is the same partial split at the
-   400-line cap (2026-08-17) — `.pbl-est-panel-*`/`.pbl-est-dim`/`.pbl-est-point` are not
-   vocabulary any earlier partial also declares. */
+/* Position NOT load-bearing, but not because the vocabulary is disjoint:
+   `.pbl-est-panel` itself is declared in `estimation.css`, and this partial's
+   `.pbl-est-decomp .pbl-est-total` / `.pbl-est-coverage` DO re-target that file's
+   `.pbl-est-total` / `.pbl-est-coverage`. What decides it is specificity — a two-class
+   descendant selector is (0,2,0) against the single class's (0,1,0) — so this partial
+   wins whichever import runs last. */
 @import "./estimationPanel.css";

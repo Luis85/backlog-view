@@ -9,7 +9,7 @@ import type { EstimationItem } from '../../../src/domain/estimationItems';
 import { planOrphanCleanup, planScaleWrite, planScoreWrite } from '../../../src/domain/estimationWritePlan';
 
 /**
- * What a pick WRITES: `scoring.ts`'s planners wired through `estimationView.ts`'s gate,
+ * What a pick WRITES: `estimationWritePlan.ts`'s planners wired through `estimationView.ts`'s gate,
  * and the orphan cleanup action — driven through real clicks on the real panel rather
  * than by calling the planners directly, so the whole path (pick -> plan -> gate ->
  * write -> refresh) is what is under test. What the panel DRAWS, and where focus lands
@@ -356,6 +356,28 @@ describe('the write path exposed for other callers', () => {
 		await flush();
 
 		expect(renderSpy).toHaveBeenCalledTimes(1);
+	});
+
+	it('reports no flush for an empty batch, whatever the previous batch left behind', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Item.md', { frontmatter: { 'strategic-alignment': 5 } });
+		let release: () => void = () => {};
+		vault.beforeWrite = () => new Promise<void>((r) => (release = r));
+		const { view, containerEl } = makeEstimationView(vault, configuredValues());
+		selectItem(containerEl, 'Item.md');
+
+		// Leave flushedLastBatch true first, the same way the deferred-update test above
+		// does, so a stale true is something for the empty call below to fail to reset.
+		click(pointButton(containerEl, 'strategic-alignment', 4));
+		view.onDataUpdated();
+		release();
+		await flush();
+		expect(view.gate.flushedLastBatch).toBe(true);
+
+		const outcome = await view.gate.applySafely([]);
+
+		expect(outcome).toBeNull();
+		expect(view.gate.flushedLastBatch).toBe(false);
 	});
 });
 
