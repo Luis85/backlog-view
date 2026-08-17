@@ -52,7 +52,7 @@ a stored total can be judged current, stale, foreign, hand-written or orphaned a
 Confidence, effort and complexity never reach this module — they play no part in the total,
 so they play no part in the fingerprint either.
 
-`src/view/estimation/scoring.ts` is where a change to any of it is PLANNED —
+`src/domain/estimationWritePlan.ts` is where a change to any of it is PLANNED —
 `planScoreWrite`, `planScaleWrite`, `planOrphanCleanup` — pure functions over an
 `EstimationItem` and its `ScoringModel`, each returning the batch a pick would write or
 `null` when it would write nothing (the checkmark question). A score change plans the

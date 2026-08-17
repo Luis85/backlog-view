@@ -1,15 +1,38 @@
-import { EstimationItem } from '../../domain/estimationItems';
-import { ScaleName } from '../../domain/estimationSettings';
-import { ScoringModel } from '../../domain/scoringModel';
-import { computeTotal, stampValue, TotalResult } from '../../domain/weightedScore';
-import { PropertySet, PropertyWrite } from '../../storage/propertyWrite';
+import { TFile } from 'obsidian';
+import { EstimationItem } from './estimationItems';
+import { ScaleName } from './estimationSettings';
+import { ScoringModel } from './scoringModel';
+import { computeTotal, stampValue, TotalResult } from './weightedScore';
 
 /**
  * The one place an estimation write is planned — pure, so the checkmark question ("would
  * picking this write anything") is answerable without a gate, a vault or a DOM: `null`
  * means no, and `panel.ts` renders the held point from exactly that fact rather than a
  * comparison written beside it.
+ *
+ * A domain module rather than a view one (ADR 0030's own footnote on this file's former
+ * home, `view/estimation/scoring.ts`: "one dependency short of the split this ADR already
+ * defers" — the one dependency was `PropertySet`/`PropertyWrite`, declared beside their
+ * consumer in `storage/propertyWrite.ts` rather than beside the planners that produce
+ * them). Both types moved here with the planners, the same "a type belongs with the code
+ * that produces it" rule `domain/dropTargets.ts` states for `DropTarget`/`DropZone` —
+ * `storage/propertyWrite.ts` now imports them rather than declaring them, and reads no
+ * differently for it.
  */
+
+/** One key to set. `value: null` REMOVES the key; `ifMissing` writes only when the
+ *  live note lacks the key already — never overwriting an answer that is there. */
+export interface PropertySet {
+	key: string;
+	value: unknown;
+	ifMissing?: boolean;
+}
+
+export interface PropertyWrite {
+	file: TFile;
+	sets: PropertySet[];
+}
+
 export function planScoreWrite(
 	model: ScoringModel,
 	item: EstimationItem,
@@ -57,7 +80,7 @@ function writesNothing(item: EstimationItem, key: string, held: number | null, v
 
 /**
  * Removes a stored total and stamp with no live inputs behind them. Offered, and only
- * ever a write, while `item.currency` already reads 'orphan' — rendering never plans
+ * ever a write, while `item.currency` already reads 'orphan'; rendering never plans
  * this on its own.
  */
 export function planOrphanCleanup(model: ScoringModel, item: EstimationItem): PropertyWrite | null {

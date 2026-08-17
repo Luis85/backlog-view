@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { applyPropertyWrites, PropertyWrite } from '../../src/storage/propertyWrite';
+import { PropertyWrite } from '../../src/domain/estimationWritePlan';
+import { applyPropertyWrites } from '../../src/storage/propertyWrite';
 import { applyRestores, RestoreWrite } from '../../src/storage/frontmatter';
 import { FakeVault } from '../helpers/vault';
 

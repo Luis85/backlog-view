@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { clearButton, click, dimRow, makeEstimationView, pointButton, selectItem } from '../../helpers/estimation';
 import { configured, configuredValues } from '../../helpers/estimationModel';
 import { FakeVault } from '../../helpers/vault';
 import { flush } from '../../helpers/view';
 import { computeTotal, stampValue } from '../../../src/domain/weightedScore';
 import type { EstimationItem } from '../../../src/domain/estimationItems';
-import { planOrphanCleanup, planScaleWrite, planScoreWrite } from '../../../src/view/estimation/scoring';
+import { planOrphanCleanup, planScaleWrite, planScoreWrite } from '../../../src/domain/estimationWritePlan';
 
 /**
  * What a pick WRITES: `scoring.ts`'s planners wired through `estimationView.ts`'s gate,
@@ -110,7 +110,7 @@ describe('scoring a dimension', () => {
 		await flush();
 
 		expect(vault.writeLog).toHaveLength(writesAfterFirst);
-		await view.undoLast();
+		await view.gate.undoLast();
 		// Still the customer-value batch — the no-op never installed anything over it.
 		expect(vault.fm('Item.md')).toEqual({ 'strategic-alignment': 5, 'customer-value': 3 });
 	});
@@ -187,7 +187,7 @@ describe('scoring a dimension', () => {
 		await flush();
 		expect(vault.fm('Item.md')['customer-value']).toBe(4);
 
-		await view.undoLast();
+		await view.gate.undoLast();
 
 		expect(vault.fm('Item.md')).toEqual({ 'strategic-alignment': 5, 'customer-value': 3 });
 	});
@@ -280,12 +280,12 @@ describe('the write path exposed for other callers', () => {
 		const vault = new FakeVault();
 		const file = vault.addFile('Item.md', { frontmatter: { 'strategic-alignment': 5 } });
 		const { view } = makeEstimationView(vault, configuredValues());
-		expect(view.canUndo()).toBe(false);
+		expect(view.gate.canUndo()).toBe(false);
 
 		await view.applySafely([{ file, sets: [{ key: 'strategic-alignment', value: 3 }] }]);
 
 		expect(vault.fm('Item.md')['strategic-alignment']).toBe(3);
-		expect(view.canUndo()).toBe(true);
+		expect(view.gate.canUndo()).toBe(true);
 	});
 
 	it('marks the pane aria-busy while a batch is applying, and clears it after', async () => {
@@ -322,6 +322,40 @@ describe('the write path exposed for other callers', () => {
 		await flush();
 
 		expect(pointButton(containerEl, 'strategic-alignment', 4).classList.contains('is-active')).toBe(true);
+	});
+
+	it('skips the extra refresh after a pick when the batch’s own flush already drew this state', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Item.md', { frontmatter: { 'strategic-alignment': 5 } });
+		let release: () => void = () => {};
+		vault.beforeWrite = () => new Promise<void>((r) => (release = r));
+		const { view, containerEl } = makeEstimationView(vault, configuredValues());
+		selectItem(containerEl, 'Item.md');
+		const renderSpy = vi.spyOn(view, 'render');
+
+		click(pointButton(containerEl, 'strategic-alignment', 4));
+		// Mid-batch: the flush this triggers rebuilds the view once, synchronously,
+		// before performScore's own await resolves.
+		view.onDataUpdated();
+		release();
+		await flush();
+
+		// The flush already drew the settled state — performScore's own unconditional
+		// refresh would have been a second full rebuild of the same thing.
+		expect(renderSpy).toHaveBeenCalledTimes(1);
+	});
+
+	it('still refreshes on its own when no mid-batch update arrived to flush', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Item.md', { frontmatter: { 'strategic-alignment': 5 } });
+		const { view, containerEl } = makeEstimationView(vault, configuredValues());
+		selectItem(containerEl, 'Item.md');
+		const renderSpy = vi.spyOn(view, 'render');
+
+		click(pointButton(containerEl, 'strategic-alignment', 4));
+		await flush();
+
+		expect(renderSpy).toHaveBeenCalledTimes(1);
 	});
 });
 

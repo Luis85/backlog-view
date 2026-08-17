@@ -1,26 +1,19 @@
-import { App, TFile } from 'obsidian';
-import { KeyRestore, RestoreWrite, WriteOutcome, rawValueOf, sameRaw } from './frontmatter';
+import { App } from 'obsidian';
+import { PropertyWrite } from '../domain/estimationWritePlan';
+import { captureInverse, RestoreWrite, WriteOutcome, rawValueOf } from './frontmatter';
 import { setOwn } from './ownProperty';
 
 /**
  * Plain key/value frontmatter batches — the estimation view's writer, and the
  * third file inside the write boundary (root CLAUDE.md names all three). It
- * captures the same RestoreWrite inverses `applyWrites` does, so `applyRestores`
+ * captures the same RestoreWrite inverses `applyWrites` does (`captureInverse`,
+ * exported from `frontmatter.ts` for exactly this reuse), so `applyRestores`
  * replays either's batches without knowing which writer produced them.
+ *
+ * `PropertySet`/`PropertyWrite` live in `domain/estimationWritePlan.ts` beside the
+ * planners that produce them, not here beside their consumer — this module reads them,
+ * it does not own them.
  */
-
-/** One key to set. `value: null` REMOVES the key; `ifMissing` writes only when the
- *  live note lacks the key already — never overwriting an answer that is there. */
-export interface PropertySet {
-	key: string;
-	value: unknown;
-	ifMissing?: boolean;
-}
-
-export interface PropertyWrite {
-	file: TFile;
-	sets: PropertySet[];
-}
 
 /**
  * Apply one file's sets inside a single `processFrontMatter` call, so a score, its
@@ -52,19 +45,18 @@ export async function applyPropertyWrites(
 		// or not the callback changed anything.
 		if (sets.length > 0) {
 			await app.fileManager.processFrontMatter(write.file, (fm: Record<string, unknown>) => {
-				const prior = sets.map((s) => rawValueOf(fm, s.key));
+				const keys = sets.map((s) => s.key);
+				const prior = keys.map((key) => rawValueOf(fm, key));
 				for (const s of sets) {
 					if (s.ifMissing) {
 						if (!rawValueOf(fm, s.key).present) setOwn(fm, s.key, s.value);
 					} else if (s.value === null) delete fm[s.key];
 					else setOwn(fm, s.key, s.value);
 				}
-				const changed: KeyRestore[] = [];
-				sets.forEach((s, i) => {
-					const written = rawValueOf(fm, s.key);
-					if (!sameRaw(prior[i], written)) changed.push({ key: s.key, prior: prior[i], written });
-				});
-				if (changed.length > 0) inverse = { file: write.file, keys: changed };
+				// The same inverse capture `applyWrites` uses — this writer has no tags and
+				// no dependsOn list, so it hands `captureInverse` an empty pair rather than
+				// a parallel copy of the same before/after key comparison.
+				inverse = captureInverse(write.file, keys, prior, fm, {});
 			});
 		}
 		if (inverse) {

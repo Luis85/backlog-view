@@ -60,12 +60,18 @@ round, so the two files cannot cycle.
 
 The panel and its write-back are the same split a third time. `src/storage/propertyWrite.ts`
 (`applyPropertyWrites`) is the write boundary's third file: plain key/value frontmatter
-batches, over the same `RestoreWrite` inverses `applyWrites` captures, so one `applyRestores`
-replays either writer's batches without knowing which produced them. `src/view/estimation/scoring.ts`
-is the pure planner beside it — `planScoreWrite`, `planScaleWrite`, `planOrphanCleanup` —
-touching no DOM and no vault, the same `domain/`-shaped purity as every other planner
-in this codebase even though it sits in `view/` for now, one dependency short of the split
-this ADR already defers. `src/view/estimation/panel.ts` is the free function over
+batches, over the same `RestoreWrite` inverses `applyWrites` captures (`captureInverse`,
+exported from `frontmatter.ts`), so one `applyRestores` replays either writer's batches
+without knowing which produced them. `src/domain/estimationWritePlan.ts` is the pure planner
+beside it — `PropertySet`, `PropertyWrite`, `planScoreWrite`, `planScaleWrite`,
+`planOrphanCleanup` — touching no DOM and no vault, the same `domain/`-shaped purity as
+every other planner in this codebase. It started in `view/estimation/scoring.ts`, one
+dependency short of this split: the two types were declared beside `propertyWrite.ts`, their
+consumer, rather than beside the planners that produce them, which was the whole of what
+kept the file out of `domain/`. Moving the types moved the file (2026-08-17) — `storage/propertyWrite.ts`
+now imports them rather than declaring them, the same "a type belongs with the code that
+produces it" rule `domain/dropTargets.ts` states for `DropTarget`/`DropZone`.
+`src/view/estimation/panel.ts` is the free function over
 `EstimationView` that draws the per-item panel and wires its picks to the view's own
 `performScore`/`performScale`/`performOrphanCleanup`, `renderTable.ts`'s shape a second
 time: imported by `estimationView.ts`, never the reverse.
