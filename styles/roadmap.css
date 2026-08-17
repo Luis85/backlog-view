@@ -34,12 +34,16 @@
 	padding-block-start: 0;
 }
 
-/* THE BAND RULE, and it has no exceptions. The timeline takes what is left; every
-   other band declares a maximum and scrolls itself. Saying a band "scrolls itself"
-   creates no scrollport — cards and rows wrap to an intrinsic height — so each one
-   needs its own `overflow-y` as well as its cap, or an unbounded band in a short pane
-   grows until it squeezes the timeline out. A band added later declares a maximum too,
-   and nobody has to remember this paragraph to get that right. */
+/* THE BAND RULE, and it has exactly one exception. The axis takes what is left; every
+   other band scrolls ITSELF, and every band that competes with the axis for the pane
+   declares a maximum as well. Saying a band "scrolls itself" creates no scrollport —
+   cards and rows wrap to an intrinsic height — so each one needs its own `overflow-y`
+   as well as its cap, or an unbounded band in a short pane grows until it squeezes the
+   axis out. Both halves are stated ONCE, on `.pbl-roadmap`'s own bands below, and the
+   two axis rules differ in nothing but `flex`; a band added later joins that list
+   rather than restating it here, which is what this paragraph promised and what the
+   copy in the horizon rule made false. The exception is the ADVISORY, which scrolls and
+   is not capped — see the cap itself for why. */
 .pbl-roadmap-dates .pbl-timeline {
 	flex: 1 1 auto;
 	/* Overrides the flex item's automatic minimum AND sets the floor beneath which the
@@ -55,8 +59,6 @@
 .pbl-view.pbl-roadmap-dates .pbl-roadmap-context,
 .pbl-view.pbl-roadmap-dates .pbl-board-advisory {
 	flex: 0 1 auto;
-	max-height: 30%;
-	overflow-y: auto;
 	position: static;
 	width: auto;
 	/* `align-self` has to be reset with the rest of the pinning, not left standing:
@@ -87,25 +89,20 @@
 	box-sizing: border-box;
 }
 
-/* The dated axis's band rule, on the axis that was exempt: the shelf, the context strip
-   and the advisory each declare a maximum and scroll themselves, so a full shelf cannot
-   squeeze the buckets down to their floor. The pinning above stays — this axis still
-   scrolls sideways under these bands, which is what the dated axis's own reset is about.
-
-   `flex: 0 0 auto` is the half a cap cannot state on its own, and it is why this rule is
-   not the dated axis's `0 1 auto` copied over. A maximum bounds a band; it does not stop
-   the buckets asking for the room inside it. Shrinkable, the shelf came out 109px of its
-   own 225px allowance — its header plus a 35px sliver of a 139px card — on the axis where
-   the shelf is what a card is dragged FROM, and where it now leads the frame. Unshrinkable
-   it takes its content up to the cap and no more; the buckets keep `flex: 1 1 auto` and
-   their own floor, so the remainder still lands on them and a pane too short for both
-   still scrolls rather than clipping. */
+/* The one thing this axis states differently, and the reason the band rule's cap and
+   scrollport are NOT restated here: `flex: 0 0 auto` is the half a cap cannot state on
+   its own. A maximum bounds a band; it does not stop the buckets asking for the room
+   inside it. Shrinkable, the shelf came out 109px of its own 225px allowance — its header
+   plus a 35px sliver of a 139px card — on the axis where the shelf is what a card is
+   dragged FROM, and where it now leads the frame. Unshrinkable it takes its content up to
+   the cap and no more; the buckets keep `flex: 1 1 auto` and their own floor, so the
+   remainder still lands on them and a pane too short for both still scrolls rather than
+   clipping. The pinning below stays — this axis still scrolls sideways under these bands,
+   which is what the dated axis's own reset is about. */
 .pbl-roadmap-mode:not(.pbl-roadmap-dates) .pbl-shelf,
 .pbl-roadmap-mode:not(.pbl-roadmap-dates) .pbl-roadmap-context,
 .pbl-roadmap-mode:not(.pbl-roadmap-dates) .pbl-board-advisory {
 	flex: 0 0 auto;
-	max-height: 30%;
-	overflow-y: auto;
 }
 
 /* Pinned to the scrollport: a pan across months must never scroll the unplaced
@@ -117,6 +114,12 @@
    rather than a second, different margin. Width is reduced by twice the gutter so
    the margin box still fits the scrollport exactly; a bare 100cqw with a margin
    added on top would overflow by 2 * the gutter and reintroduce a scrollbar. */
+/* And THE BAND RULE's scrollport, once, for both axes — the dated axis's own reset below
+   takes the pinning back and deliberately leaves this: a band that is squeezed scrolls
+   rather than clipping, because `.pbl-view` clips and a region nobody can reach is the one
+   thing this must never produce. Declared in this rule rather than a second one with the
+   same selector list, so a check that addresses these three bands by their selectors
+   cannot land on the wrong one. */
 .pbl-roadmap .pbl-shelf,
 .pbl-roadmap .pbl-roadmap-context,
 .pbl-roadmap .pbl-board-advisory {
@@ -126,6 +129,22 @@
 	margin-inline: var(--size-4-3);
 	align-self: flex-start;
 	box-sizing: border-box;
+	overflow-y: auto;
+}
+
+/* THE BAND RULE's maximum, and the line the advisory is on the other side of. The shelf
+   and the context strip COMPETE with the axis for the pane — a full shelf must not squeeze
+   the buckets or the timeline down to their floor — so each is held to 30% of it. The
+   advisory competes with nothing: `renderRoadmapAdvisory` draws it only when the axis, the
+   shelf and the context strip are all empty, so a cap on it can only ever clip the one
+   thing on screen. It did. Measured in the browser harness with no results, at a 1200x553
+   pane: the aside reported `clientHeight: 144` against `scrollHeight: 288` on the horizon
+   axis and 139 against 288 on the dated one — half the empty state cut off, severed
+   mid-sentence, with the ✨ `runInit` CTA and the manual link both below the fold of a box
+   most readers would not know scrolls. */
+.pbl-roadmap .pbl-shelf,
+.pbl-roadmap .pbl-roadmap-context {
+	max-height: 30%;
 }
 
 /* ----- the horizon axis: buckets, styled as the board's columns are */
@@ -165,20 +184,14 @@
    render and a right edge a scroll cannot reach. Contained, a bucket's contribution is
    the 280px floor and nothing that renders can move it.
 
-   `max-height: 100%` is the board column's own cap, for its reason: the row stretches
-   every bucket to the tallest, a stretched flex item will not shrink below its content,
-   and the cap is what lets `.pbl-bucket-cards`' `overflow-y: auto` actually scroll
-   instead of the bucket growing past the pane. */
+   Everything a bucket and a board column agree about — the flex box, the border and the
+   cap at the pane's height — is said once, on `.pbl-board-col, .pbl-bucket` in
+   `board.css`, exactly the way their headers, names and counts already are. What stays
+   here is the three declarations only a bucket makes. */
 .pbl-bucket {
 	flex: 1 1 280px;
 	min-width: 280px;
-	max-height: 100%;
 	contain: inline-size;
-	display: flex;
-	flex-direction: column;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--radius-m);
-	background-color: var(--background-secondary);
 }
 
 /* A value the declared horizons do not name — present, visibly outside them. */
@@ -198,13 +211,21 @@
 	flex-direction: column;
 	gap: var(--size-4-2);
 	padding: var(--size-4-3) 0;
-	/* See the board column's own folded header. The pair does LESS here and is kept for
-	   the same reason: this row has no definite height to clip against — it stretches to
-	   its tallest member — so a long horizon grows the band rather than ellipsising, and
-	   the count stays inside the box the whole way. Measured in the browser harness: a
-	   51-character name took the band from 220px to 383px with the count still in view.
-	   That is what a tall card does too, so it is left alone; what the pair still buys is
-	   the same clipping the moment anything above ever does cap this row. */
+	/* See the board column's own folded header — the same pair, doing the same work, and
+	   load-bearing here TODAY rather than held against a future edit. The bucket caps at
+	   the pane (`max-height: 100%`, shared with `.pbl-board-col` in `board.css`) and a flex
+	   item will not shrink below its own content, so without the pair a long horizon would
+	   run the rotated name past that cap and take the count out of the strip with it.
+	   Shrinking lands on the NAME: `.pbl-bucket-count` declares `flex: 0 0 auto`, so the
+	   name absorbs the whole reduction and ellipsises.
+	   Measured in the browser harness with a 51-character horizon, sweeping the pane from
+	   560px down to 320px: the header's `scrollHeight` equals its `clientHeight` at every
+	   step, so nothing clips; the name's own `clientHeight` falls from 290px to 138px
+	   against an unchanged 290px `scrollHeight`, which is the ellipsis happening; and the
+	   count is inside the header's box the whole way. This paragraph said the opposite until
+	   2026-08-17 — that the row had no definite height to clip against, so a long horizon
+	   grew the band from 220px to 383px instead of ellipsising. That was measured before
+	   the cap existed, and the cap is what makes the pair earn its place. */
 	min-height: 0;
 	overflow: hidden;
 }

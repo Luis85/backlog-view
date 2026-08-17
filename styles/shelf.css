@@ -25,9 +25,23 @@
 	display: none;
 }
 
+/* Revealed while a card is in flight — and revealed at the FOOT of the frame, wherever it
+   was rendered. Since 2026-08-17 the shelf LEADS the horizon frame, so a reveal in place
+   inserted a band ABOVE the buckets and dropped the whole board under the pointer at
+   dragstart: measured in the browser harness at 1200x800 with everything placed, the
+   buckets' top went 53px to 94px the instant `.pbl-dragging` landed — this strip's own
+   29px plus the frame's gap. `order` moves the reveal alone. The frame is `height: 100%`,
+   so the buckets band gives the room up from its own foot, and nothing already on screen
+   moves.
+   The shelf leads because it is what a card is dragged FROM; with nothing on it there is
+   nothing to drag, so leading buys the reader nothing and costs them the board's position.
+   On the dated axis this only moves the strip below the context strip, which is the same
+   foot it already sat at. Nothing focusable is reordered out of its reading order either:
+   the strip is `display: none` until a pointer is already down on a card. */
 .pbl-dragging .pbl-shelf-empty {
 	display: flex;
 	border-style: dashed;
+	order: 1;
 }
 
 /* Collapsed keeps its footprint minimal: the header carries the name, the count and

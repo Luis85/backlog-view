@@ -195,6 +195,16 @@ export function renderShelf(
 		onEnter: (source) => outcomeEl?.setText(removal.outcome?.(source.item) ?? ''),
 		onLeave: () => outcomeEl?.setText(''),
 	});
+	// The shelf is a scrollport of its own — the band rule's cap plus `overflow-y: auto`
+	// (`styles/roadmap.css`) — so a card held at its bottom edge has to scroll it, exactly
+	// as `.pbl-bucket-cards`, `.pbl-board-col-cards` and the timeline's own scroller do.
+	// It had no auto-scroll at all until 2026-08-17: nineteen unplaced cards measured 1301px
+	// of content in a 143px box in the browser harness, so eighteen of them were out of
+	// reach for the whole drag — on the horizon axis, where the shelf is what a card is
+	// dragged FROM. Wired here beside the drop target rather than after the return below:
+	// collapsed there is nothing to scroll, but the scroller and the target are one piece of
+	// drag machinery and splitting them across an early return is how one gets forgotten.
+	dnd.wireScroller(shelfEl);
 	if (empty || collapsed) return { cards: [], el: shelfEl };
 
 	// `dnd` and `removal` travel together to every card below, and now so does which

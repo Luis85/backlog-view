@@ -34,6 +34,23 @@
 	height: 100%;
 }
 
+/* A board column and a horizon bucket are ONE box, and it is said here once — the way
+   their headers, names and counts below already are. `max-height: 100%` is the term worth
+   naming: each row stretches every member to the tallest, a stretched flex item will not
+   shrink below its content, and the cap is what lets `.pbl-board-col-cards` and
+   `.pbl-bucket-cards` actually scroll on their own `overflow-y` instead of the column
+   growing past the pane. What the two do NOT share is their floor width and the bucket's
+   own `contain` — those stay in `roadmap.css`. */
+.pbl-board-col,
+.pbl-bucket {
+	display: flex;
+	flex-direction: column;
+	max-height: 100%;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background-color: var(--background-secondary);
+}
+
 /* Columns share the row's full width equally, down to a floor of 260px — the width they
    used to be fixed at, so nothing is ever narrower than before, only wider. The explicit
    min-width is load-bearing: flex-basis is not a floor once shrinking is enabled, and the
@@ -42,12 +59,6 @@
 .pbl-board-col {
 	flex: 1 1 260px;
 	min-width: 260px;
-	display: flex;
-	flex-direction: column;
-	max-height: 100%;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--radius-m);
-	background-color: var(--background-secondary);
 }
 
 .pbl-board-col-header,
