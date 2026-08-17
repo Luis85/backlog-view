@@ -80,6 +80,21 @@
 	overflow: visible;
 }
 
+/* And the property cells go the rest of the way: `align-self: stretch` fills the strip's
+   CONTENT box, which is the strip minus its own padding, so a cell still stopped 8px short
+   at the top and 4px at the bottom. The strip's padding is backed out as negative margin
+   and put back as padding, so the cell's BOX is the whole strip — its top edge to its
+   bottom border — while its content sits exactly where it did.
+
+   Two things that used to be arranged per child now follow from it: the hover wash below
+   fills the strip because the box does, rather than by painting past its own edges, and
+   the grip needs no negative inset of its own. Not the rollup's header label: it carries
+   no grip and takes no wash, so a full-height box would be a box around nothing. */
+.pbl-cols .pbl-prop {
+	margin-block: calc(-1 * var(--size-4-2)) calc(-1 * var(--size-2-2));
+	padding-block: var(--size-4-2) var(--size-2-2);
+}
+
 /* The column names, once at the top of the scroller instead of on every row */
 .pbl-cols {
 	display: flex;
@@ -124,10 +139,15 @@
    the header is something to interact with, and it spans exactly the column whose
    leading boundary the revealed mark moves — so the wash also says which column the
    handle belongs to. Property cells only: the rollup's header label carries no grip,
-   and a wash on a cell with nothing to press is a promise nothing keeps. */
+   and a wash on a cell with nothing to press is a promise nothing keeps.
+
+   Square, and the full height of the strip — which is the cell's own box now, so this
+   rule is one declaration. A column is a full-height band of the layout and the wash is
+   that band lit up; rounding its corners would draw a chip floating in the header
+   instead, and leave a gap of unlit strip above and below the boundary the reader is
+   about to drag. */
 .pbl-prop.pbl-col-label:hover {
 	background-color: var(--background-modifier-hover);
-	border-radius: var(--radius-s);
 }
 
 /* The resize grip: a wide hit area astride the column's own LEADING boundary, with the
@@ -149,10 +169,12 @@
    a mouse, and a mark as wide as its target reads as a border, not a handle. */
 .pbl-col-grip {
 	position: absolute;
-	/* The header STRIP's height, not the cell's: `.pbl-cols`' own padding backed out, so
-	   the grip meets the strip's top edge and its bottom border. Written as the tokens that
-	   rule sets so the two move together. A taller hit area is the second thing it buys. */
-	inset-block: calc(-1 * var(--size-4-2)) calc(-1 * var(--size-2-2));
+	/* The cell's whole height, which IS the strip's now — the cell backs the strip's padding
+	   out above, so the grip meets the strip's top edge and its bottom border by filling its
+	   own containing block. It backed that padding out itself until 2026-08-17; one box
+	   escaping its parent is a trick, two of them doing it separately is the same arithmetic
+	   written twice, and the wash needed the box to be right rather than the paint. */
+	inset-block: 0;
 	inset-inline-start: calc(-1 * var(--size-4-2));
 	width: var(--size-4-3);
 	cursor: col-resize;

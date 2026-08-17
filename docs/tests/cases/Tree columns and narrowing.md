@@ -60,7 +60,8 @@ the repository is open as a vault with `docs/Product Backlog.base` showing the t
 - A dropped column is not rendered at all, so Tab and the screen reader should find
   nothing where it was — check with a checkbox-rendering property in the last column.
 - **The resize grips** ([[Resizable property columns]]): hover a column header and
-  confirm the cell washes in the hover colour and the mark paints at its leading edge;
+  confirm the whole column band washes in the hover colour — the strip's full height,
+  square corners, no gap above or below — and the mark paints at its leading edge;
   on the mark, confirm the cursor becomes a resize cursor and the accent confirms it;
   drag it and confirm the boundary under the pointer follows it, live, with every row's
   cell in that column moving too and the header still above its own values when you let

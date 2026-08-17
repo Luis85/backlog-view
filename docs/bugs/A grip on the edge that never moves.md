@@ -61,12 +61,29 @@ directions.
 
 The second half of the report, feedback that the header is interactive at all: hovering
 a property header cell washes it in `--background-modifier-hover` (property cells only —
-the rollup label has no grip and gets no wash), beside the existing mark reveal.
+the rollup label has no grip and gets no wash), beside the existing mark reveal. The wash
+is a **full-height square band**, on the reporter's own follow-up the same day: it shipped
+as a rounded chip on the 24px cell inside a 37px strip, which read as something floating
+in the header rather than as the column lighting up, and left unlit strip above and below
+the boundary about to be dragged.
+
+Making the PAINT full height was the wrong half to reach for. The cell's BOX was short —
+`align-self: stretch` fills the strip's content box, and the strip's own padding sits
+outside that — so the cell now backs that padding out as negative margin and puts it back
+as padding: the box is the whole strip, top edge to bottom border, and the content sits
+where it did (measured: the name's offset from the strip's top is unchanged at 12px). Two
+things follow rather than being arranged: the wash fills the strip because the box does,
+and the grip's own negative inset — the third of the three agreeing declarations
+[[A handle nobody could find, glued to the wrong column]] recorded, which is the sentence
+in that note this supersedes — collapses to `inset-block: 0`. One box escaping its parent
+is a trick; two doing it separately is the same arithmetic written twice.
 
 The direction tests in `test/view/columnResize.test.ts` were flipped and watched failing
 against the old sign — eight of them — and `test/view/rendering.test.ts` pins the grip to
-`inset-inline-start` beside the sign that assumes it, plus the wash and its rollup
-scoping.
+`inset-inline-start` beside the sign that assumes it, plus the wash, its rollup scoping,
+the cell's margin/padding pair as ONE pin (the margin alone moves the content, the padding
+alone grows the box the wrong way) and the wash's squareness. Both new pins were watched
+failing against the reverted stylesheet.
 
 ## Lesson
 
@@ -76,3 +93,9 @@ leading one. A gesture module shared between a start-anchored and an end-anchore
 flips correctness silently when copied, and a suite that asserts widths cannot see it —
 the number is right while the motion is backwards. When a shared gesture grows a second
 caller, ask which physical edge each caller's boundary is before reusing the sign.
+
+And the second half is the same lesson in the layout: **when two children of a box each
+have to escape it, the box is the wrong size.** `align-self: stretch` reaching only the
+content box is easy to patch per child and easy to keep patching — the grip did it, and
+the wash would have been the second — where fixing the cell once makes both correct and
+deletes an arithmetic. A child escaping its parent is a signal to measure the parent.

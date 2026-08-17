@@ -313,6 +313,11 @@ describe('rendering', () => {
 		// grip, and a wash on a cell with nothing to press is a promise nothing keeps.
 		expect(ruleAt('.pbl-prop.pbl-col-label:hover', 'background-color: var(--background-modifier-hover);')).toBeGreaterThan(-1);
 		expect(ruleAt('.pbl-meta-col.pbl-col-label:hover', 'background-color:')).toBe(-1);
+		// Square: a column is a full-height band and the wash is that band lit up, so
+		// rounding it would draw a chip floating in the header with unlit strip above and
+		// below the boundary about to be dragged. The full height itself is the cell's box,
+		// pinned in the sibling test above rather than restated here.
+		expect(ruleAt('.pbl-prop.pbl-col-label:hover', 'border-radius:')).toBe(-1);
 	});
 
 	it('lets the column header reveal its resize mark, and the grip outrank that reveal', () => {
@@ -340,7 +345,14 @@ describe('rendering', () => {
 		// the browser rather than by reading a rectangle.
 		expect(ruleAt('.pbl-cols .pbl-props', 'align-self: stretch;')).toBeGreaterThan(-1);
 		expect(ruleAt('.pbl-cols .pbl-props', 'overflow: visible;')).toBeGreaterThan(-1);
-		expect(ruleAt('.pbl-col-grip', 'inset-block: calc(-1 * var(--size-4-2)) calc(-1 * var(--size-2-2));')).toBeGreaterThan(-1);
+		// The cell fills the strip — `align-self: stretch` only reaches its CONTENT box, so
+		// the strip's own padding is backed out as margin and put back as padding. That pair
+		// is what makes both the mark and the hover wash full height, so it is pinned as one:
+		// the margin alone would move the content, the padding alone would grow the box the
+		// wrong way. The grip then needs no escape of its own.
+		expect(ruleAt('.pbl-cols .pbl-prop', 'margin-block: calc(-1 * var(--size-4-2)) calc(-1 * var(--size-2-2));')).toBeGreaterThan(-1);
+		expect(ruleAt('.pbl-cols .pbl-prop', 'padding-block: var(--size-4-2) var(--size-2-2);')).toBeGreaterThan(-1);
+		expect(ruleAt('.pbl-col-grip', 'inset-block: 0;')).toBeGreaterThan(-1);
 		// The cell is spared `.pbl-prop`'s clip by that same (0,2,0) strip rule, which is
 		// what the second pin above covers — its selector list names the cell too. There is
 		// deliberately no pin on `.pbl-col-label` here: one was written, asserting an

@@ -23,8 +23,9 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   to the row's end resizes — so the boundary under the pointer tracks the drag instead of
   standing still while the column grows away from it. The arrow keys still move the
   boundary the way they point, a double click still resets, and stored widths are
-  untouched. Hovering a column header now also washes it in the theme's hover colour, so
-  the header reads as something to interact with before the mark is found.
+  untouched. Hovering a column header now also lights the whole column band in the theme's
+  hover colour — the full height of the header strip, square — so the header reads as
+  something to interact with before the mark is found.
 
 ## [0.9.0] - 2026-08-16
 

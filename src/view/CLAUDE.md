@@ -447,8 +447,13 @@ free of runtime code so imports stay cycle-free.
   edge. The hit area straddles the boundary as the whole inter-column gutter, while the
   2px mark inside it is centred on the boundary — the gutter is wider on the previous
   column's side, so a centred mark sits nearer the label it resizes — and the mark is
-  revealed by hovering the column NAME (which also washes the cell in the hover token),
-  faintly, before the grip confirms it in the accent. The two
+  revealed by hovering the column NAME (which also washes the cell in the hover token, a
+  square band the strip's full height, property cells only), faintly, before the grip
+  confirms it in the accent. **What makes both of those full height is the CELL's box, not
+  their own paint**: `align-self: stretch` reaches only the strip's content box, so the
+  header cell backs the strip's padding out as margin and puts it back as padding — its box
+  is the whole strip, and the grip's negative inset collapsed to `inset-block: 0` when that
+  landed. Two children each escaping one box was the box being the wrong size. The two
   reveals paint one box, so the confirm is written through the label as well to tie their
   specificity and let document order decide; `test/view/rendering.test.ts` pins that order,
   because unscoped it lost and the mark under the pointer stayed faint. Two rules that

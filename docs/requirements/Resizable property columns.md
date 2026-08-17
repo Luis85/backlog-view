@@ -124,7 +124,13 @@ width for every column can only ever do.
   mark, one for finding it and one for being on it ([[A handle nobody could find, glued
   to the wrong column]], which is also where the specificity trap under those two rules
   is recorded). The wash is the property cells' alone: the rollup's header label carries
-  no grip, and a wash on a cell with nothing to press is a promise nothing keeps.
+  no grip, and a wash on a cell with nothing to press is a promise nothing keeps. It is
+  the strip's FULL height and square — a column is a full-height band of the layout and
+  the wash is that band lit up, where a rounded chip inside the strip reads as something
+  floating in the header and leaves the boundary's own ends unlit
+  ([[A grip on the edge that never moves]]). What delivers that is the cell's box rather
+  than the wash's paint: the header cell backs the strip's padding out and puts it back,
+  so its box IS the strip and the grip inside it needs no escape of its own.
 - **1d — a device with no hover.** The grip paints only on hover or focus, which on a
   touch device is never — and a boundary has no menu entry to be found by instead, which
   is what the tree's other hidden controls have. Under `hover: none` its mark paints
