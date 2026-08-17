@@ -289,8 +289,14 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 		return adopting;
 	}
 
+	/**
+	 * The axis is part of what "this projection draws" MEANS on the roadmap — main's
+	 * iteration-admission feature (2026-08-17) is what threads it through, since an
+	 * `Iteration` is a row of the grid axes and of nothing else.
+	 */
 	isRowHidden(item: BacklogItem): boolean {
-		return rowHidden(item, visibilityRule(this.settings, this.projection, this.effectiveScope));
+		const axis = this.projection === 'roadmap' ? activeAxis(this.settings, this.axisPick) : null;
+		return rowHidden(item, visibilityRule(this.settings, this.projection, { scope: this.effectiveScope, axis }));
 	}
 
 	/**

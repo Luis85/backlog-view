@@ -15,6 +15,7 @@ import {
 	spanText,
 	stateNote,
 	TimelineEntry,
+	wireBarHolds,
 } from './lanes';
 import { createCard, wireCardActivation } from './board';
 import { foldOnClick, renderBadge, renderChevron } from './rows';
@@ -273,6 +274,7 @@ export function renderTimeline(
 	const milestoneLines = renderMilestoneLines({ grid: content, headerTrack: header.coarse }, window, bars, today, {
 		scale,
 		leadWidth,
+		iterationBars: ctx.host.settings.iterationBars,
 	});
 	const tracks = new Map<string, HTMLElement>();
 	const anchors = new Map<string, HTMLElement>();
@@ -306,7 +308,14 @@ export function renderTimeline(
 		palettes,
 		conflictedPrereqs: dependencies.conflicts,
 	};
-	const drawn: DrawnColors = { done: false, milestone: milestoneLines, accent: false, absence: false, daysLost: false };
+	const drawn: DrawnColors = {
+		done: false,
+		milestone: milestoneLines.milestone,
+		iteration: milestoneLines.iteration,
+		accent: false,
+		absence: false,
+		daysLost: false,
+	};
 	drawEntries(entries, { ctx, mounts, window, drawing, drawn });
 	// After every row exists, never before: an edge's arrow anchors on the ROWS the
 	// prerequisite and the dependent actually drew, and its Y comes from where those
@@ -631,38 +640,11 @@ function renderBarRow(
 	const dates = spanText(bar);
 	el.setAttribute('aria-label', dates);
 	setTooltip(el, dates);
-	// The EDGES only — the body is the bar itself and is wired once below, whichever hold
-	// it turned out to be.
-	for (const hold of holds.filter((one) => one !== 'body')) {
-		const grip = el.createDiv({ cls: `pbl-bar-grip pbl-bar-grip-${hold}` });
-		grip.dataset.pblHold = hold;
-		// A press that never travels far enough to become a drag still fires `click`, and
-		// a grip is a div inside the bar inside the row `wireCardActivation` wired — whose
-		// handler is unfiltered, so a resize handle did the row's action instead of its
-		// own. The connector's guard, for the same reason and in the same idiom; middle
-		// click needs its own because it never fires `click` at all.
-		//
-		// **Only the edge grips.** The body hold IS the bar element, so guarding every
-		// hold would stop a click on the BAR from opening its note — behaviour a reader
-		// depends on and nobody asked to change. That is the whole subtlety here, and
-		// `timelineDrag.test.ts` holds both halves: the grips stay silent, the bar still
-		// opens.
-		// The scroller's offset at drag start rides the payload, for the delta a hold
-		// measures — see `CardSource.scrollLeft` and `interactions/timelineDrag.ts`.
-		mounts.dnd.wireCard(grip, bar.item, hold, () => mounts.scroller.scrollLeft);
-	}
-	// The bar ITSELF is the body handle, on both grid axes, wired here rather than in the
-	// grip loop so the bar element is claimed once. The scroller's offset at drag start
-	// rides the payload for the delta a hold measures. The connector below is a nearer
-	// draggable, so a drag begun on it is still a link rather than this. A context row never
-	// reaches this function (`deriveBars` routes one away before a bar exists), and
-	// `wireCard` refuses one anyway.
-	if (holdable) {
-		// Stated on the element like every grip's, and for the grips' own reason: what a
-		// gesture will be resolved AS is readable off the thing the reader takes hold of.
-		el.dataset.pblHold = 'body';
-		mounts.dnd.wireCard(el, bar.item, 'body', () => mounts.scroller.scrollLeft);
-	}
+	// Every hold this bar offers, wired through the one function a marker's own mark
+	// shares (`wireBarHolds`, `./lanes.ts`) — the body hold IS `el`, the edges are its
+	// own children, and `timelineDrag.test.ts` "a grip is a handle, not a link" is what
+	// proves a click on a grip stays silent while a click on the bar still opens it.
+	wireBarHolds(el, bar.item, holds, mounts.dnd, () => mounts.scroller.scrollLeft);
 	wireBarLink(ctx, { dnd: mounts.dnd, content: mounts.content, row, barEl: el, outside: geometry.outside, item: bar.item });
 	const label = renderBarLabel(track, bar, geometry, scale, window);
 	renderBarProgress(ctx.host, { row, bar: bandMount(el, drawnWidthPx, geometry), lead }, bar.item);
@@ -690,6 +672,10 @@ function renderBarRow(
 		// `paint === null` IS "no slot", and a choice never creates one, so the plain accent
 		// is still exactly the case where the state is outside its own vocabulary.
 		accent: !own.done && paint === null && !milestoneDrawn,
+		// A bar ROW is never an iteration: an Iteration draws as a point in the milestones'
+		// shared row (`drawMarkerDiamonds`), which has no rows of its own — this report has
+		// nothing to say here.
+		iteration: false,
 	};
 	return { row, colors, lead, track, label };
 }

@@ -70,7 +70,7 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	// 2b — WHICH board this is, after the action that fills it. On the board and nowhere
 	// else: it drew in every projection until 2026-08-16 on the argument that a control
 	// behind the door it opens is no way in, and the user's answer is the simpler one —
-	// the door is the `Board` button, and this picker says which board came through it.
+	// the door is the `Boards` button, and this picker says which board came through it.
 	renderBoardScopePicker(host, barEl, model);
 
 	// 3 — what THIS projection owns, and nothing at all when it owns none. Set off from
@@ -538,7 +538,7 @@ function renderModeToggle(host: BacklogViewHost, barEl: HTMLElement): void {
 		const btn = iconButton(wrap, icon, label);
 		btn.addClass('pbl-mode-btn');
 		btn.createSpan({ cls: 'pbl-btn-label', text: word });
-		// The POSITION, never the projection: an iteration board is drawn from the `Board`
+		// The POSITION, never the projection: an iteration board is drawn from the `Boards`
 		// button, with the scope picker beside it choosing which. Compared directly, no
 		// position would draw as pressed on an iteration scope.
 		const active = toolbarPosition(host.projection) === mode;
@@ -547,10 +547,10 @@ function renderModeToggle(host: BacklogViewHost, barEl: HTMLElement): void {
 		btn.addEventListener('click', () => host.setProjection(mode));
 	};
 	position('tree', 'list-tree', 'Show as backlog tree', 'Tree');
-	position('board', 'square-kanban', 'Show as kanban board', 'Board');
+	position('board', 'square-kanban', 'Show as kanban boards', 'Boards');
 	position('roadmap', 'map', 'Show as roadmap', 'Roadmap');
 	// No Deliverables position since 2026-08-16, by the user's own call: every board is
-	// the `Board` button now, and the scope picker beside it says which — `Product`,
+	// the `Boards` button now, and the scope picker beside it says which — `Product`,
 	// `Deliverables`, or an iteration. The projection still exists; only its door moved.
 	position('catalog', 'flask-conical', 'Show as test catalog', 'Tests');
 }

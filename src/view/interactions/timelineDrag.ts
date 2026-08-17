@@ -259,7 +259,7 @@ function shelfPlan(host: BacklogViewHost, parts: TimelineParts, item: BacklogIte
 
 /** The ends this item's TYPE answers for, narrowed to the keys the view options name. */
 function writableEnds(settings: BacklogSettings, item: BacklogItem): PlacementEnd[] {
-	return placementEnds(item.typeName).filter((end) => optionalKeyFor(settings, end) !== '');
+	return placementEnds(item.typeName, settings.iterationBars).filter((end) => optionalKeyFor(settings, end) !== '');
 }
 
 /**
@@ -424,7 +424,7 @@ function preview(
 ): HTMLElement[] {
 	const plan = planFor(host, parts, source, pointer.clientX, pointer.originX);
 	if (!plan) return [];
-	const placement = placeItem(source.item, plannedEnds(source.item, plan.plan));
+	const placement = placeItem(source.item, plannedEnds(source.item, plan.plan), host.settings.iterationBars);
 	// A drop that shelves draws no ghost on the grid; the shelf's own indicator says so.
 	if (placement.kind !== 'bar') return [];
 	const bar = placement.bar;

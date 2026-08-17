@@ -299,6 +299,27 @@ describe('rendering', () => {
 		);
 	});
 
+	it('pins the resize grip to the column edge that moves, and washes the header it resizes', () => {
+		// The columns are anchored to the row's END, so the edge a resize MOVES is the
+		// leading one — the trailing edge is held in place by the columns after it, and a
+		// grip there sat still while the column grew away from the pointer. The side is
+		// load-bearing rather than taste: `widenSign` (`interactions/columnResize.ts`)
+		// mirrors the drag on the claim that the grip rides the leading boundary, so this
+		// pin and that sign have to name the same edge.
+		expect(ruleAt('.pbl-col-grip', 'inset-inline-start: calc(-1 * var(--size-4-2));')).toBeGreaterThan(-1);
+		expect(ruleAt('.pbl-col-grip', 'inset-inline-end:')).toBe(-1);
+		// And the hovered header cell says which column that boundary moves, in Obsidian's
+		// own hover token. Scoped to the property cells: the rollup's header label has no
+		// grip, and a wash on a cell with nothing to press is a promise nothing keeps.
+		expect(ruleAt('.pbl-prop.pbl-col-label:hover', 'background-color: var(--background-modifier-hover);')).toBeGreaterThan(-1);
+		expect(ruleAt('.pbl-meta-col.pbl-col-label:hover', 'background-color:')).toBe(-1);
+		// Square: a column is a full-height band and the wash is that band lit up, so
+		// rounding it would draw a chip floating in the header with unlit strip above and
+		// below the boundary about to be dragged. The full height itself is the cell's box,
+		// pinned in the sibling test above rather than restated here.
+		expect(ruleAt('.pbl-prop.pbl-col-label:hover', 'border-radius:')).toBe(-1);
+	});
+
 	it('lets the column header reveal its resize mark, and the grip outrank that reveal', () => {
 		// Hovering the NAME is how a reader finds a handle they had no reason to point at.
 		// It hints; the grip itself confirms in the accent. Both paint the same box, so the
@@ -324,7 +345,14 @@ describe('rendering', () => {
 		// the browser rather than by reading a rectangle.
 		expect(ruleAt('.pbl-cols .pbl-props', 'align-self: stretch;')).toBeGreaterThan(-1);
 		expect(ruleAt('.pbl-cols .pbl-props', 'overflow: visible;')).toBeGreaterThan(-1);
-		expect(ruleAt('.pbl-col-grip', 'inset-block: calc(-1 * var(--size-4-2)) calc(-1 * var(--size-2-2));')).toBeGreaterThan(-1);
+		// The cell fills the strip — `align-self: stretch` only reaches its CONTENT box, so
+		// the strip's own padding is backed out as margin and put back as padding. That pair
+		// is what makes both the mark and the hover wash full height, so it is pinned as one:
+		// the margin alone would move the content, the padding alone would grow the box the
+		// wrong way. The grip then needs no escape of its own.
+		expect(ruleAt('.pbl-cols .pbl-prop', 'margin-block: calc(-1 * var(--size-4-2)) calc(-1 * var(--size-2-2));')).toBeGreaterThan(-1);
+		expect(ruleAt('.pbl-cols .pbl-prop', 'padding-block: var(--size-4-2) var(--size-2-2);')).toBeGreaterThan(-1);
+		expect(ruleAt('.pbl-col-grip', 'inset-block: 0;')).toBeGreaterThan(-1);
 		// The cell is spared `.pbl-prop`'s clip by that same (0,2,0) strip rule, which is
 		// what the second pin above covers — its selector list names the cell too. There is
 		// deliberately no pin on `.pbl-col-label` here: one was written, asserting an

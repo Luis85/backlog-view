@@ -1,4 +1,5 @@
 import { BacklogItem } from '../domain/model';
+import { RoadmapAxis } from '../domain/roadmap';
 import { BacklogSettings } from '../domain/settings';
 import { Projection } from './host';
 import { hidesCompleted, projectionMember } from './projection';
@@ -45,16 +46,23 @@ export interface VisibilityRule {
  * The rule assembled for one projection. Here rather than in the view for the reason the
  * rule itself is here: the projection-derived answers are read from `projection.ts` in one
  * place, so a caller cannot assemble a rule that asks one of them a different way.
+ *
+ * `member` bundles `projectionMember`'s own two narrowings — the iteration board's scope
+ * and the roadmap's axis — into one parameter rather than two positional ones. It was
+ * introduced (main, 2026-08-17) while a third argument still lifted the quick filter, which
+ * is what made the bundling a lint-budget necessity; the filter is gone and the budget is no
+ * longer tight, but one parameter naming the two narrowings still reads better than two
+ * positional ones that are only ever passed together.
  */
 export function visibilityRule(
 	settings: BacklogSettings,
 	projection: Projection,
-	scope: string | null = null,
+	member: { scope: string | null; axis: RoadmapAxis | null } = { scope: null, axis: null },
 ): VisibilityRule {
 	return {
 		settings,
 		hideCompleted: hidesCompleted(projection),
-		inProjection: projectionMember(projection, scope),
+		inProjection: projectionMember(projection, member.scope, member.axis),
 	};
 }
 

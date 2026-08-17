@@ -132,7 +132,10 @@ export class CardMoveController {
 		// tell the user to add a date the same release just added. The WORDS are built here
 		// rather than a closure over the item, so what is captured is a string that cannot
 		// go stale behind the write.
-		const stays = name === null ? null : shelvedWords(item, name, placeItem(item, plannedEnds(item, when?.plan ?? {})));
+		const stays =
+			name === null
+				? null
+				: shelvedWords(item, name, placeItem(item, plannedEnds(item, when?.plan ?? {}), this.host.settings.iterationBars));
 		const writes = computeResourceMoveWrites(item, name, when ?? null);
 		if (writes.length === 0) {
 			// 1a says nothing: a bar that stayed exactly where the cursor found it already
@@ -158,9 +161,9 @@ export class CardMoveController {
 		// context card, a config problem — must not leave a `.base` amendment behind the
 		// refusal (`test/view/resourceRoster.test.ts` is the test that fails the other way).
 		declareResource(this.host, name);
-		const spoken = placementEnds(item.typeName);
+		const spoken = placementEnds(item.typeName, this.host.settings.iterationBars);
 		const landed = outcome.dates
-			? { change: outcome.dates, placement: placeItem(item, outcome.dates.after), ends: spoken }
+			? { change: outcome.dates, placement: placeItem(item, outcome.dates.after, this.host.settings.iterationBars), ends: spoken }
 			: undefined;
 		// Both halves in one sentence where both moved; the dated axis's own sentence where
 		// only the dates did, since there is no row change to frame it with.
@@ -185,7 +188,7 @@ export class CardMoveController {
 		// looking like an ordinary end-grip write. The caller that has no captured shape —
 		// the modal, the menu — passes none and gets the item's own, which is right for a
 		// gesture that was planned against it a moment ago.
-		const writes = computeScheduleWrites(item, plan, ends ?? placementEnds(item.typeName), from);
+		const writes = computeScheduleWrites(item, plan, ends ?? placementEnds(item.typeName, this.host.settings.iterationBars), from);
 		if (writes.length === 0) return false;
 		const outcome = await this.applyMove(item, writes);
 		// Not "did the call return" but "did the note change": the planner now hands the
@@ -208,11 +211,11 @@ export class CardMoveController {
 		// so no fresher descendant evidence exists at this point. The narrow claim is
 		// therefore what is stated: the dates this write landed are the writer's, and an
 		// inherited end is as current as the last refresh.
-		const spoken = placementEnds(item.typeName);
+		const spoken = placementEnds(item.typeName, this.host.settings.iterationBars);
 		// `outcome.dates.after` is already the tri-state the writer read back — passing
 		// it straight through is what lets an untouched end's own invalid value survive
 		// into the placement, rather than a wrapper laundering it into absence.
-		announceScheduleMove(item.title, outcome.dates, placeItem(item, outcome.dates.after), spoken);
+		announceScheduleMove(item.title, outcome.dates, placeItem(item, outcome.dates.after, this.host.settings.iterationBars), spoken);
 		return true;
 	}
 

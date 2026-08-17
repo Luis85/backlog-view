@@ -25,6 +25,17 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Added
 
+- **Set iteration is one undoable step, wherever it happens.** Picking a sprint from
+  `Set iteration` writes the link and both of its dates as a single batch behind a single
+  undo, and a card created straight onto an iteration board carries that same link and
+  both dates in its first write — never a create followed by a second write of its own.
+
+- **Draw a sprint as a bar, not only a line.** A new "Draw iterations as bars" view
+  option turns an `Iteration` from a point at its target date into a start→target bar on
+  the roadmap's grid axes, with a grip on each configured end. Either way, the marker
+  row's caption, the legend swatch and the announced sentence now name what is actually
+  drawn — Milestone, Iteration, or both — instead of calling every marker a milestone.
+
 - **A clear button on the shelf's search.** An x appears beside the box while there is
   something to clear and empties the search when pressed, leaving the caret where it was.
   The box is `type="search"` and was built expecting the platform's own clear button;
@@ -32,6 +43,20 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   text by hand. The native button is now suppressed outright, so the field never shows two.
 
 ### Changed
+
+- **The board toggle is now called Boards.** Since the scope picker moved every board —
+  Product, Deliverables, and each iteration — behind one toggle position, the switcher
+  says so: the button reads **Boards** and its accessible name is
+  **Show as kanban boards**. Nothing else about the position changed.
+
+- **Column resize follows the pointer now.** A property column's grip moved from its
+  trailing edge to its leading one — the edge that actually moves when a column anchored
+  to the row's end resizes — so the boundary under the pointer tracks the drag instead of
+  standing still while the column grows away from it. The arrow keys still move the
+  boundary the way they point, a double click still resets, and stored widths are
+  untouched. Hovering a column header now also lights the whole column band in the theme's
+  hover colour — the full height of the header strip, square — so the header reads as
+  something to interact with before the mark is found.
 
 - **The unplaced shelf now leads the horizon board.** It renders above the buckets — and
   first in the keyboard's reading order — so the untriaged rest sits where a drag into a
@@ -51,6 +76,7 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   now takes the pane's height the way the kanban board's columns do: each bucket scrolls
   its own cards, and the unplaced shelf stays on screen at the bottom instead of sitting
   below the tallest bucket.
+
 
 ## [0.9.0] - 2026-08-16
 

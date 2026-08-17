@@ -295,7 +295,7 @@ function renderAxisPicker(host: BacklogViewHost, zone: HTMLElement, barEl: HTMLE
 }
 
 /**
- * Which board the `Board` position opens: the product's, the Deliverables board's, or
+ * Which board the `Boards` position opens: the product's, the Deliverables board's, or
  * one iteration's. The Deliverables entry sits directly under `Product` — it held a
  * toggle position of its own until 2026-08-16, when the user moved it here; the two are
  * the boards over a whole population, so they share the head of the menu and both wear
@@ -306,7 +306,7 @@ function renderAxisPicker(host: BacklogViewHost, zone: HTMLElement, barEl: HTMLE
  * unconfigured the menu is `Product` and `Deliverables` alone, because the Deliverables
  * board needs nothing configured to exist. It still carries the only `New iteration…`
  * (never withheld on an empty vault, which is every vault that has not started), and it
- * draws at the BOARD's own toolbar position and nowhere else — the door is the `Board`
+ * draws at the BOARD's own toolbar position and nowhere else — the door is the `Boards`
  * button, and this picker says which board came through it.
  *
  * The iteration entries are read off `model.byPath` for `iterationTargets`' reason
@@ -335,10 +335,11 @@ export function renderBoardScopePicker(host: BacklogViewHost, barEl: HTMLElement
 
 	// The RETAINED scope names the button, as long as it still names a selectable
 	// iteration — which is not the same as `effectiveScope`, and the difference is this
-	// control's whole job. Off Board mode the effective scope is null, while `Board` still
-	// reopens the retained one: named from the effective scope, the button said `Product`
-	// over a button that would open Sprint 12. A scope that no longer RESOLVES falls back
-	// to `Product` on both, because then nothing reopens it either. Found by review
+	// control's whole job. Off the `Boards` position the effective scope is null, while
+	// `Boards` still reopens the retained one: named from the effective scope, the button
+	// said `Product` over a button that would open Sprint 12. A scope that no longer
+	// RESOLVES falls back to `Product` on both, because then nothing reopens it either.
+	// Found by review
 	// (Codex, PR #154).
 	const onDeliverables = host.projection === 'deliverables';
 	const current = selectableIteration(iterations, host.boardScope);

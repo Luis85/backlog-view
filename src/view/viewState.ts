@@ -302,7 +302,7 @@ export class ViewState {
 	}
 
 	/**
-	 * Which board the `Board` position opens when no iteration scope is set — the stored
+	 * Which board the `Boards` position opens when no iteration scope is set — the stored
 	 * word, `deliverables` or null for the product. Retained and cleared by the
 	 * controller, which keeps it and `scope` from ever both being set.
 	 */

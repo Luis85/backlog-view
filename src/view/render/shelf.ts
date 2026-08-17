@@ -12,6 +12,7 @@ import { canSchedule, unschedulePlan } from '../interactions/plan';
 import { BacklogItem } from '../../domain/model';
 import { placeItem, ShelfCard, statedEnds, UNSCHEDULED_LABEL, withoutEnds } from '../../domain/bars';
 import { placementEnds } from '../../domain/itemTypes';
+import { BacklogSettings } from '../../domain/settings';
 import { drawsGrid, RoadmapAxis, SHELF_LABEL } from '../../domain/roadmap';
 import { organizeShelf, searchShelf, ShelfGroup } from '../../domain/shelf';
 
@@ -102,14 +103,15 @@ export function shelfRemoval(host: BacklogViewHost, axis: RoadmapAxis): ShelfRem
 		// PBI that became a Milestone mid-drag gets refused whole by the writer's own
 		// shape check rather than quietly narrowed to a target-only removal. See
 		// `performScheduleMove`'s own comment on why neither may be recomputed here.
-		plan: (source) => void host.performScheduleMove(source.item, unschedulePlan(source.item, source.ends), undefined, source.ends),
+		plan: (source) =>
+			void host.performScheduleMove(source.item, unschedulePlan(source.item, host.settings, source.ends), undefined, source.ends),
 		tooltip: 'Results this axis cannot place — dropping a bar here removes its dates',
 		// The bar BODY alone: a grip released here is a resize, not an unschedule, and
 		// a shelf card's own hold is null — both refused by the same test. Refused
 		// rather than ignored, so the strip never highlights for a drag it would not
 		// honour.
 		accepts: (source) => source.hold === 'body',
-		outcome: removalOutcome,
+		outcome: (item) => removalOutcome(item, host.settings),
 		canDrag: (item) => canSchedule(host.settings, item),
 	};
 }
@@ -128,8 +130,9 @@ export function shelfRemoval(host: BacklogViewHost, axis: RoadmapAxis): ShelfRem
  * outcome differ. That is true of every preview here and needs no machinery — the
  * announcement names the placement from the REBUILT model instead.
  */
-function removalOutcome(item: BacklogItem): string {
-	const left = placeItem(item, withoutEnds(statedEnds(item), placementEnds(item.typeName)));
+function removalOutcome(item: BacklogItem, settings: BacklogSettings): string {
+	const ends = placementEnds(item.typeName, settings.iterationBars);
+	const left = placeItem(item, withoutEnds(statedEnds(item), ends), settings.iterationBars);
 	return left.kind === 'shelf' ? UNSCHEDULED_LABEL : `Keeps ${spanText(left.bar)}`;
 }
 

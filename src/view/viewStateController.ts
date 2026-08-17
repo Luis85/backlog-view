@@ -48,7 +48,7 @@ export class ViewStateController {
 	}
 
 	setProjection(mode: Projection): void {
-		// `Board` means the board this view was last on — THREE of them now: a retained
+		// `Boards` means the board this view was last on — THREE of them now: a retained
 		// iteration scope, the Deliverables pick, or the product. Retained rather than
 		// spent on the first trip through the tree, the same rule `activeAxis` keeps for
 		// the roadmap's axis. The picker's own `Product` entry clears both picks first, so

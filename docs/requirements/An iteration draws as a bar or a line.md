@@ -2,12 +2,12 @@
 type: PBI
 parent: "[[An Iterations board]]"
 order: 30
-status: Open
+status: Done
 priority: P3
 created: 2026-08-15
 source: user request
 started: ""
-finished: ""
+finished: 2026-08-17
 horizon: ""
 start: ""
 due: ""
@@ -82,6 +82,18 @@ is to read the code first.
 That split decides whether an iteration is a point or a bar; these three are wrong in
 **either** mode, so fixing them is not a consequence of the toggle and must not wait for
 the reader to turn it on.
+
+*Corrected 2026-08-17, now that the increment this section worried about has shipped.*
+Its opening claim — that declaring the type made an `Iteration` draw on the roadmap
+"today", mislabeled — outran what any vault ever showed. `b08097e`, later on the same
+2026-08-16, found the exclusion already held through `inPlan` and gave it a test rather
+than a behaviour change: from that commit on, no projection drew an `Iteration` at all,
+right or wrong. The grid did not draw one until this increment admitted it (`d39858a`),
+and the three labels above were wrong for as long as that admission stood alone — but the
+relabelling (`548d49e`) landed in the same change, before the admission was ever released
+without it. So the gap this section warned about was real in the source and closed before
+it reached anything a vault could open: nothing this repository has shipped has ever
+called a sprint a milestone.
 
 ## Use case
 
@@ -178,9 +190,31 @@ The predicate joins `src/domain/itemTypes.ts` beside `isMarkerType` and `placeme
 which is where it has to be for `src/storage/frontmatter.ts` to reach it without the
 layer rule being broken. `src/domain/bars.ts` asks it **twice** — once in `placeItem`,
 which decides point or span, and once in `barHolds`, which decides what a gesture may
-take hold of and today reaches for `isMarkerType` on a line of its own. The drawing paths
-ask it in `src/view/render/timeline.ts` and `src/view/render/milestoneLines.ts`. The option
-is declared in `src/domain/viewOptions.ts` and resolved in `src/domain/settings.ts`. The
-callers that pass the settings through are `src/view/interactions/timelineDrag.ts` and
-`src/view/interactions/plan.ts`. Driven in `test/domain/bars.test.ts` and
-`test/view/roadmap.test.ts`.
+take hold of and now asks `drawsAsPoint` on its own line, the branch that used to read
+`isMarkerType` instead. The drawing paths ask it in `src/view/render/timeline.ts` and
+`src/view/render/milestoneLines.ts`. The option is declared in `src/domain/viewOptions.ts`,
+typed and defaulted in `src/domain/settings.ts`, and resolved from the `.base` config in
+`src/domain/settingsResolve.ts`. The callers that pass the settings through are
+`src/view/interactions/timelineDrag.ts` and `src/view/interactions/plan.ts`.
+
+A drawn hold becomes a grip in `src/view/render/lanes.ts` — `wireBarHolds`, one function a
+bar row and a marker's own diamond both call, so a bar-mode iteration's stated ends get
+exactly the grips `barHolds` named and nothing wires a second copy of that loop. None of
+the above has an `Iteration` to ask about until the grid admits one, which happens first
+in `src/domain/model.ts`: `BacklogModel.iterations`, a population parallel to `results`
+rather than a wider version of it, read only where a grid axis (`drawsGrid`) asks for it.
+`src/view/projection.ts`'s `projectionMember` takes that axis for the same reason, folded
+into one `member` parameter by `src/view/rowVisibility.ts` — a bundling that was a
+five-parameter budget necessity when the quick filter still added a sixth, and is kept for
+reading rather than for the budget since that filter was withdrawn
+([[Remove the quick filter, now that Bases has its own search]]). The filter had a third
+half of this admission — appending the same population to its own search index, since that
+index walked from `model.roots` and a marker with no parent is never reached by walking from
+one — and it went with the filter; the DRAWING half above is untouched. The three surfaces this note opens by calling wrong are
+`markerLaneCaption` in `src/domain/roadmap.ts`, read by `renderLaneHead` in
+`src/view/render/lanes.ts` (which also hosts `spanText`), and the swatch in
+`src/view/render/legend.ts`.
+
+Driven in `test/domain/bars.test.ts` and `test/view/roadmap.test.ts` for the predicate and
+the placement rules, `test/view/markerLabels.test.ts` for the three renamed surfaces, and
+`test/view/iterationBars.test.ts` for bar mode's drawing and its write-narrowing.

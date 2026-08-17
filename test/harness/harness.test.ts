@@ -146,7 +146,7 @@ describe('the browser harness mounts', () => {
 	it('switches projection through the real toolbar, which is the control being exercised', () => {
 		const { containerEl } = mount();
 
-		projectionButton(containerEl, 'Show as kanban board').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		projectionButton(containerEl, 'Show as kanban boards').dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
 		expect(containerEl.querySelector('.pbl-board-cols')).not.toBeNull();
 	});

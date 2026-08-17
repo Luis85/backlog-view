@@ -680,4 +680,30 @@ describe('iteration inverses', () => {
 		expect(vault.fm('PBI-1.md')).toEqual({});
 		expect(inverses).toEqual([]);
 	});
+
+	it('takes the link and both dates back together, from the one undo slot', async () => {
+		// The join is ONE batch — the link plus both dates on one `ItemWrite` — so the
+		// undo it captures must put back all three, asked of the note itself and never
+		// of `touchedKeys`' own list: a key written but not captured would be a change
+		// no undo could reach, which is exactly how "the dates come back and the link
+		// stays" would happen if the link had no row of its own in that module.
+		const dated = { ...withIteration, startKey: 'start', targetKey: 'due' };
+		const vault = new FakeVault();
+		const pbi = vault.addFile('PBI-1.md');
+		const sprint12 = vault.addFile('Sprint 12.md', {
+			frontmatter: { type: 'Iteration', start: '2026-09-07', due: '2026-09-20' },
+		});
+
+		const inverses = await writeCapturing(
+			vault,
+			[{ file: pbi, iteration: sprint12, axis: { start: '2026-09-07', target: '2026-09-20' } }],
+			dated,
+		);
+		expect(vault.fm('PBI-1.md')).toEqual({ iteration: '[[Sprint 12]]', start: '2026-09-07', due: '2026-09-20' });
+
+		await applyRestores(vault.app, inverses);
+
+		// All three keys gone — not merely the dates, with the link left behind.
+		expect(vault.fm('PBI-1.md')).toEqual({});
+	});
 });

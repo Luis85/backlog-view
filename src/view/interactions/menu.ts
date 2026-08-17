@@ -717,7 +717,7 @@ function addScheduleItems(host: BacklogViewHost, menu: Menu, item: BacklogItem):
 			.onClick(() => promptSchedule(host, item)),
 	);
 	// Like Clear horizon: offered only while there is something to remove.
-	if (!carriesDates(item)) return;
+	if (!carriesDates(item, host.settings)) return;
 	menu.addItem((mi) =>
 		mi
 			.setTitle('Unschedule')
