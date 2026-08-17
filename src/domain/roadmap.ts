@@ -379,9 +379,17 @@ export function resourcePlacementLabel(roadmap: RoadmapModel, source: ResourceSo
  * filter, hidden completed subtrees), passed in whole so the roadmap, the board
  * and the tree cannot disagree about what is hidden. Both sources are already in
  * tree order, which is what the shelf's sibling order rests on.
+ *
+ * A GRID axis appends `model.iterations` — the parallel population `projectionForest`'s
+ * plan forest still excludes (see `BacklogModel.iterations`) — through the SAME `visible`
+ * predicate, so the quick filter and the completed toggle narrow an admitted iteration
+ * exactly as they narrow everything else this axis draws. The horizons axis asks for
+ * none of it, placed or shelved, since `drawsGrid('horizons')` is false — the one place
+ * this function's own axis argument decides the answer rather than only picking a source.
  */
-function roadmapRows(model: BacklogModel, visible: (item: BacklogItem) => boolean): BacklogItem[] {
-	return (model.focused ? model.roots : model.results).filter(visible);
+function roadmapRows(model: BacklogModel, visible: (item: BacklogItem) => boolean, axis: RoadmapAxis): BacklogItem[] {
+	const rows = (model.focused ? model.roots : model.results).filter(visible);
+	return drawsGrid(axis) ? [...rows, ...model.iterations.filter(visible)] : rows;
 }
 
 /** Project the model onto the given axis. */
@@ -391,7 +399,7 @@ export function buildRoadmap(
 	visible: (item: BacklogItem) => boolean,
 	axis: RoadmapAxis,
 ): RoadmapModel {
-	const rows = roadmapRows(model, visible);
+	const rows = roadmapRows(model, visible, axis);
 	const roadmap: RoadmapModel = { axis, buckets: [], bars: [], lanes: [], shelf: [], context: [], placedCount: 0 };
 	if (axis === 'horizons') deriveBuckets(rows, settings, roadmap, visible);
 	else if (axis === 'resources') deriveLanes(rows, settings, roadmap, model.absences);

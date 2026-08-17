@@ -1,4 +1,5 @@
 import { BacklogItem, BacklogModel } from '../domain/model';
+import { RoadmapAxis } from '../domain/roadmap';
 import { Projection } from './host';
 import { FilterScope, projectionMember, projectionPopulation } from './projection';
 
@@ -122,7 +123,12 @@ export class FilterState {
 	 * rather than a second walk — and the scopes coincide, which is exactly right: a
 	 * distinction that only exists under a focus should cost nothing without one.
 	 */
-	recompute(model: BacklogModel | null, projection: Projection, scope: string | null = null): void {
+	recompute(
+		model: BacklogModel | null,
+		projection: Projection,
+		scope: string | null = null,
+		axis: RoadmapAxis | null = null,
+	): void {
 		const needle = this.text.trim().toLowerCase();
 		if (!model || needle === '') {
 			this.focused = null;
@@ -139,8 +145,11 @@ export class FilterState {
 		const roots = projectionPopulation(projection, model).roots;
 		// Scoped like every other reader of this predicate: without it, a needle matching a
 		// child that is in NO iteration kept its carrier on screen, so a search on a sprint
-		// board answered about work the board is not showing.
-		const member = projectionMember(projection, scope);
+		// board answered about work the board is not showing. `axis` is threaded the same
+		// way, for the grid axes' own admission: without it a needle matching an admitted
+		// `Iteration` found nothing, because the index was built from the plan's narrower
+		// membership while the screen it searches draws the wider one.
+		const member = projectionMember(projection, scope, axis);
 		this.focused = indexMatches(roots, needle, member);
 		// The `whole` index takes the SAME membership rule and differs only in where it
 		// starts: the whole tree rather than this projection's forest, because the
