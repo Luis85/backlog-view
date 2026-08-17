@@ -120,27 +120,40 @@
 	text-overflow: ellipsis;
 }
 
-/* The resize grip: a wide hit area pinned inside the column's own trailing edge, with
-   the MARK it draws a separate box inside it (`::before` below).
+/* The hovered header cell washes in Obsidian's own hover token: the plain signal that
+   the header is something to interact with, and it spans exactly the column whose
+   leading boundary the revealed mark moves — so the wash also says which column the
+   handle belongs to. Property cells only: the rollup's header label carries no grip,
+   and a wash on a cell with nothing to press is a promise nothing keeps. */
+.pbl-prop.pbl-col-label:hover {
+	background-color: var(--background-modifier-hover);
+	border-radius: var(--radius-s);
+}
 
-   Two boxes rather than one strip, because the two want different widths. Cells sit
-   flush — cell N's trailing edge IS cell N+1's leading edge, and the next label starts
-   there with no padding of its own — so a visible strip AT the edge touches the next
-   column's first character and reads as its decoration rather than as this column's
-   handle. The mark is therefore inset into this column's own trailing gutter, while the
-   part a pointer has to hit stays as wide as the gutter: a 6px target was small even for
-   a mouse, and shrinking the mark to move it would have made it smaller still.
+/* The resize grip: a wide hit area astride the column's own LEADING boundary, with the
+   MARK it draws a separate box inside it (`::before` below).
 
-   It cannot straddle the boundary the way the timeline's lead grip does: the cell clips
-   its overflow (a value has to end at the column rather than trail into the next one),
-   so a strip hanging past the edge is a strip cut off at it. */
+   The leading edge, because it is the edge that MOVES: the columns are anchored to the
+   row's end, so a column's trailing edge is held in place by the columns after it, and
+   the grip that used to sit there stood still while the column grew away from the
+   pointer — the wonky feel reported 2026-08-17 (docs/bugs/A grip on the edge that never
+   moves.md). Pinned here, the boundary — and the mark on it — follows the drag.
+   `widenSign` (`src/view/interactions/columnResize.ts`) mirrors the delta on exactly
+   this claim, so the two must name the same edge.
+
+   The hit area straddles the boundary and is exactly the inter-column gutter — the
+   previous cell's trailing padding plus this cell's leading one — which the header can
+   afford because its cells stopped clipping when the mark grew to the strip's height
+   (the strip rule above); a ROW's cells still clip, and carry no grip. Two boxes rather
+   than one strip because the two want different widths: a 6px target was small even for
+   a mouse, and a mark as wide as its target reads as a border, not a handle. */
 .pbl-col-grip {
 	position: absolute;
 	/* The header STRIP's height, not the cell's: `.pbl-cols`' own padding backed out, so
 	   the grip meets the strip's top edge and its bottom border. Written as the tokens that
 	   rule sets so the two move together. A taller hit area is the second thing it buys. */
 	inset-block: calc(-1 * var(--size-4-2)) calc(-1 * var(--size-2-2));
-	inset-inline-end: 0;
+	inset-inline-start: calc(-1 * var(--size-4-2));
 	width: var(--size-4-3);
 	cursor: col-resize;
 	z-index: 1;
@@ -152,12 +165,17 @@
 /* The mark: transparent until something says the handle is there, and as tall as the grip
    it sits in — which is the whole header strip, not the label's own 16px line box. A
    boundary that stops short at both ends reads as a tick beside the name; one running the
-   full bar reads as where the column ends. */
+   full bar reads as where the column ends. Centred ON the boundary the drag moves, so it
+   tracks the pointer through the gesture — and the gutter is asymmetric (the previous
+   cell's trailing padding is wider than this cell's leading one), so a centred mark
+   already sits nearer the label of the column it resizes. */
 .pbl-col-grip::before {
 	content: '';
 	position: absolute;
 	inset-block: 0;
-	inset-inline-end: var(--size-4-1);
+	/* The boundary sits the previous cell's trailing padding into this grip; centre the
+	   2px mark on it. */
+	inset-inline-start: calc(var(--size-4-2) - 1px);
 	width: 2px;
 	border-radius: 1px;
 	background-color: transparent;
