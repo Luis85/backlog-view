@@ -15,7 +15,7 @@ export default defineConfig({
 			provider: 'v8',
 			include: ['src/**/*.ts'],
 			// Registration glue that needs the real Obsidian Plugin runtime.
-			exclude: ['src/main.ts', 'src/view/registerBacklogView.ts'],
+			exclude: ['src/main.ts'],
 			reporter: ['text-summary', 'json', 'lcov'],
 			// Thresholds only ever go up. Raise them to what an increment measures,
 			// rounded down to one decimal; never lower one to accommodate a change.
