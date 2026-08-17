@@ -179,6 +179,15 @@ export interface BacklogSettings extends ItemHandling {
 	 */
 	iterationKey: string;
 	/**
+	 * Whether the roadmap's GRID axes draw iterations at all. On by default: the admission
+	 * is what [[An iteration draws as a bar or a line]] specifies, and this only takes it
+	 * back for a reader whose plan is read by milestone alone. Off, an `Iteration` draws on
+	 * no projection whatsoever — not as a bar, not as a line, and not on the shelf, since
+	 * the one predicate every surface reads (`visibilityRule`) is where it is taken away.
+	 * It writes nothing: turning it back on redraws the same notes.
+	 */
+	iterationsOnTimeline: boolean;
+	/**
 	 * Draw an iteration as a start→target bar instead of a point at its target. Off by
 	 * default: an iteration is a marker (`MARKER_TYPES`) and reduces to its target date
 	 * exactly as a milestone does until this is turned on — see `drawsAsPoint`.
@@ -339,6 +348,7 @@ export function defaultSettings(): BacklogSettings {
 		priorityValues: [...DEFAULT_PRIORITY_VALUES],
 		assigneeKey: '',
 		iterationKey: '',
+		iterationsOnTimeline: true,
 		iterationBars: false,
 		iterationGoalKey: '',
 		iterationOpenStates: [],

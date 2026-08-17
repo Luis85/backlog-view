@@ -62,7 +62,14 @@ export function visibilityRule(
 	return {
 		settings,
 		hideCompleted: hidesCompleted(projection),
-		inProjection: projectionMember(projection, member.scope, member.axis),
+		// `iterationsOnTimeline` is taken away HERE rather than inside `projectionMember`,
+		// which has no settings in hand — and an axis this reader has turned iterations off
+		// for admits exactly what a non-grid axis admits, which is what a null axis already
+		// means to that predicate. One place, because everything downstream reads this same
+		// predicate: `roadmapRows` appends `model.iterations` through it, so an iteration
+		// the option refuses reaches neither a bar, nor a line, nor the shelf that counts
+		// what could not be placed.
+		inProjection: projectionMember(projection, member.scope, settings.iterationsOnTimeline ? member.axis : null),
 	};
 }
 

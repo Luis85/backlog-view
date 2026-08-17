@@ -213,6 +213,20 @@ describe('an Iteration note draws only where a grid axis does', () => {
 		// swept here so that stays true, not because this admission is what keeps them clear.
 	});
 
+	it('draws it nowhere at all once the timeline option is off', () => {
+		// `iterationsOnTimeline` takes the one admission back, so the same dated sprint that
+		// draws on both grid axes above draws on none of the eight screens — the shelf
+		// included, which `shown` reaches through the cards on it. Swept rather than checked
+		// on the dated axis alone, for the reason the case above is: the claim is "nowhere",
+		// and a screen nobody drove is a screen this option could be leaking through.
+		const vault = everythingVault();
+		const harness = makeView(vault, { ...OPTIONS, iterationsOnTimeline: false }, { base: 'Plan.base' });
+
+		const { drew, empty } = sweep(harness);
+		expect(empty, 'screens that drew nothing at all, so proved nothing').toEqual([]);
+		expect(drew, 'screens that drew the iteration').toEqual([]);
+	});
+
 	it('shelves the same note, unplaced, where it has no date to draw at', () => {
 		const vault = undatedSprintVault();
 		const harness = makeView(vault, OPTIONS, { base: 'Plan.base' });
