@@ -2,21 +2,17 @@ import { Plugin } from 'obsidian';
 import { CREATE_BACKLOG_COMMAND_ID, promptCreateBacklogBase } from './commands/scaffold';
 import { WRITE_README_COMMAND_ID, writeBacklogReadmeCommand } from './commands/readme';
 import { rekeyBase } from './storage/viewStateStore';
-import { getViewOptions } from './domain/viewOptions';
 import { initLocale } from './i18n/t';
-import { PRODUCT_BACKLOG_VIEW_TYPE, ProductBacklogView } from './view/backlogView';
+import { registerBacklogView } from './view/registerBacklogView';
+import { WriteLock } from './view/writeLock';
 
 export default class ProductBacklogPlugin extends Plugin {
 	onload(): void {
-		// Once, before anything registers a name: Obsidian needs a restart to change its
-		// language, so re-reading it per render would be cost with no observable benefit.
 		initLocale();
-		this.registerBasesView(PRODUCT_BACKLOG_VIEW_TYPE, {
-			name: 'Product Backlog',
-			icon: 'lucide-list-tree',
-			factory: (controller, containerEl) => new ProductBacklogView(controller, containerEl),
-			options: getViewOptions,
-		});
+		// ONE lock for the whole plugin: every view's writes serialize against it and
+		// the undo slot is the vault's last batch, whichever view wrote it (ADR 0030).
+		const lock = new WriteLock();
+		registerBacklogView(this, lock);
 		// View state is keyed on the base's path, so it has to follow the file.
 		// The open view re-resolves its own identity when it saves; this covers the
 		// bases that are not open, whose entries would otherwise be orphaned and then

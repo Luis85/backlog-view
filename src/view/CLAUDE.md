@@ -114,9 +114,8 @@ free of runtime code so imports stay cycle-free.
   with two ideas of what "the last batch" was (ADR 0030). The view owns one gate,
   delegates `applySafely`, `canUndo` and `undoLast` to it, and publishes its progress
   through `syncBusyUi` — reached through the lock's subscription now, rather than a
-  direct call, which is what lets a batch one view writes keep every OTHER subscribed
-  view's busy indicator and undo button in sync too, without either view's own
-  `syncBusy` running twice for its own change. The gate touches none of the view's
+  direct call, which keeps every other subscribed view's undo button following the
+  shared slot; the busy value stays per view deliberately. The gate touches none of the view's
   ELEMENTS (Notices are its own; the toolbar and the tree are the view's, reached
   through the two hooks it is constructed with).
 - **Two shapes take work out of `backlogView.ts`, and which one applies is decided by the

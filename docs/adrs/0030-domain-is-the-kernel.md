@@ -32,6 +32,8 @@ vault-wide half (one batch at a time, one undo slot) becomes a plugin-wide
 `WriteLock`; validation, refusal and busy publication stay per view. The lock
 is `src/view/writeLock.ts`; the gate stays `src/view/writeGate.ts`.
 
+Registration files are `src/view/registerBacklogView.ts`.
+
 A second view nests under `view/` (`view/estimation/`). The per-view split of
 `view/` (`view/backlog/` + a lint edge between view directories) is deferred to
 the extraction feature, where a third directory earns it. Until then, "views
