@@ -612,9 +612,10 @@ function renderBarRow(
 	const title = lead.createDiv({ cls: 'pbl-card-title' });
 	title.setText(bar.item.title);
 	setTooltip(lead, bar.item.title);
-	// The lead is where this row's match affordance goes — the one text region it has, and
-	// a fixed-width COUNT there rather than titles (`face`). It lists no children on its
-	ctx.placed.set(bar.item.file.path, { item: bar.item, mount: lead });
+	// A row is a surface like a card, so it registers by path: `cardedPaths` reads the
+	// register and `menuChildren` subtracts it, so a bar drawn and not registered would be
+	// offered as `Open child "…"` by the menu of the very bar it is nested under.
+	ctx.placed.add(bar.item.file.path);
 
 	const track = row.createDiv({ cls: 'pbl-timeline-track' });
 	mounts.tracks.set(bar.item.file.path, track);

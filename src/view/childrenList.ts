@@ -43,7 +43,7 @@ export function listedChildren(host: BacklogViewHost, item: BacklogItem): Backlo
 function unreachableChildren(
 	host: BacklogViewHost,
 	item: BacklogItem,
-	carded: Set<string>,
+	carded: ReadonlySet<string>,
 ): BacklogItem[] {
 	return listedChildren(host, item).filter((child) => !carded.has(child.file.path));
 }
@@ -76,10 +76,14 @@ export function childrenLabel(children: BacklogItem[]): string {
  * roadmap asks the register its render filled, because its model is not what it draws.
  * Empty on the tree, which is correct rather than a fallback — both callers below are
  * about a card.
+ *
+ * READONLY, and that is what lets the roadmap hand its register straight back rather than
+ * copying it per menu: only `.has` is ever asked of the answer. The register belongs to
+ * one render pass (`rowContext` mints it), so nothing outlives the frame it describes.
  */
-export function cardedPaths(host: BacklogViewHost): Set<string> {
+export function cardedPaths(host: BacklogViewHost): ReadonlySet<string> {
 	const roadmap = host.roadmap;
-	if (roadmap) return new Set(roadmap.placed.keys());
+	if (roadmap) return roadmap.placed;
 	const board = host.board?.board;
 	return board ? cardPaths(board) : new Set();
 }
@@ -102,7 +106,7 @@ export function cardedPaths(host: BacklogViewHost): Set<string> {
  * that reason with `matchesFor` itself. A second caller wanting the exemption asks
  * `menusListChildren` for it, the way this one's caller does.
  */
-export function menuChildren(host: BacklogViewHost, item: BacklogItem, carded: Set<string>): BacklogItem[] {
+export function menuChildren(host: BacklogViewHost, item: BacklogItem, carded: ReadonlySet<string>): BacklogItem[] {
 	return host.cardChildrenShown.has(item.file.path) ? unreachableChildren(host, item, carded) : [];
 }
 

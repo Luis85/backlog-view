@@ -425,10 +425,11 @@ function renderLaneAbsenceAdd(ctx: RowContext, lead: HTMLElement, lane: Resource
  * its match links included — opens on it. That was missing until 2026-08-15; see
  * [[A lane context row could not be reached]].
  *
- * The mount for its matches is the LEAD, the one text region such a row has, so its face
- * is a COUNT rather than the titles a card can afford (`face`, on `PlacedMount`). It lists
- * no children of its own either — `listsChildren: false`, so a matching direct child is
- * counted here rather than subtracted against a disclosure this row never draws.
+ * It REGISTERS in `ctx.placed` like every other surface, which is a claim about being on
+ * screen and not about what it can show: `cardedPaths` reads that register and
+ * `menuChildren` subtracts it, so a row drawn and not registered would have its parent's
+ * menu offer `Open child "…"` for the row the reader is looking at. It draws no disclosure
+ * of its own, so it joins no `cardKids` and hosts no children section itself.
  */
 export function renderLaneContextRow(ctx: RowContext, content: HTMLElement, item: BacklogItem): HTMLElement {
 	const row = createCard(ctx, content, item);
@@ -441,7 +442,7 @@ export function renderLaneContextRow(ctx: RowContext, content: HTMLElement, item
 	setTooltip(lead, item.title);
 	renderBarProgress(ctx.host, { row, bar: null, lead }, item);
 	row.createDiv({ cls: 'pbl-timeline-track' });
-	ctx.placed.set(item.file.path, { item, mount: lead });
+	ctx.placed.add(item.file.path);
 	wireCardActivation(ctx, row, item);
 	return row;
 }
@@ -882,12 +883,14 @@ export function drawMarkerDiamonds(
 		// it on the row): the link drag's own sweep reads it back to mark what a held gesture
 		// may not be dropped on, and here the mark is the only element that is one marker's.
 		el.dataset.pblPath = bar.item.file.path;
-		// REGISTERED even though a diamond can carry no match affordance (`face: 'none'`):
-		// `nameMatches` takes its "already on screen" set from this register, so a marker
-		// drawn and not registered reads as one that did not draw, and the parent bar above
-		// it counts a match the reader is looking at in the row overhead. It stays off the
-		// KEYBOARD walk regardless — that list is `drawnCards`, read from the entries.
-		ctx.placed.set(bar.item.file.path, { item: bar.item, mount: el });
+		// REGISTERED even though the mark draws no card body and no row of its own:
+		// `cardedPaths` takes its "already on screen" set from this register and
+		// `menuChildren` subtracts it, so a marker drawn and not registered makes its
+		// parent bar's menu offer `Open child "…"` for a diamond on the same grid — the
+		// shipped defect [[Milestones in one row on the dated axis]] 3d records. Being on
+		// screen and being NAVIGABLE stay separate: it is off the keyboard walk regardless,
+		// since that list is `drawnCards`, read from the entries.
+		ctx.placed.add(bar.item.file.path);
 		mounts.tracks.set(bar.item.file.path, track);
 		// The TRACK is where a move's preview mounts, and it is this one shared box; the
 		// ANCHOR an arrow reads a Y off is the diamond, because a sub-lane is one marker's

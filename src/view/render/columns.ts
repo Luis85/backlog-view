@@ -1,6 +1,6 @@
 import { BasesPropertyId, NullValue, setTooltip, Value } from 'obsidian';
 import { drawIcon } from './icons';
-import { BacklogViewHost, Column, ColumnFit, ColumnKind, PlacedMount } from '../host';
+import { BacklogViewHost, Column, ColumnFit, ColumnKind } from '../host';
 import { columnWidth, columnWidthVar, renderColumnResize, widenSign } from '../interactions/columnResize';
 import { dateChipFor, LABEL_CHIPS, renderDateChip, renderHorizonChip, renderLabelChip, renderStateChip } from './chips';
 import { DEFAULT_PROP_COLUMN_WIDTH } from '../../storage/viewStateStore';
@@ -26,21 +26,18 @@ export interface RowContext {
 	 */
 	cardKids: Set<string>;
 	/**
-	 * What this pass actually DREW, and where each one's matches go. Filled by the
-	 * surfaces as they render and read after they have all run, so "is this item on
-	 * screen" is a fact rather than a prediction — the same arrangement `cardKids`
-	 * above uses, and for the same reason.
+	 * The paths this pass actually DREW — a card, a timeline row or a marker's diamond.
+	 * Filled by the surfaces as they render and read after they have all run, so "is this
+	 * item on screen" is a fact rather than a prediction — the same arrangement `cardKids`
+	 * above uses, and for the same reason. It is published as `RoadmapSnapshot.placed`,
+	 * whose own comment says why it is paths and not mounts.
 	 *
 	 * The roadmap needs it because its model is not what it draws: `RoadmapModel.shelf`
 	 * holds every shelved item whether or not `host.shelfCollapsed` shows them, and
 	 * `organizeShelf` drops whole groups from an EXPANDED shelf through
-	 * `host.shelfHiddenTypes`. Neither is overridden by an active filter, while a lane
-	 * fold IS — two states that look alike, answering the same question oppositely.
-	 *
-	 * `PlacedMount` is declared in `host.ts` rather than here — see its own comment for
-	 * the cycle that decides it.
+	 * `host.shelfHiddenTypes`.
 	 */
-	placed: Map<string, PlacedMount>;
+	placed: Set<string>;
 	/**
 	 * Signature per rendered path, from the pass that drew it — read to decide whether a
 	 * row may be KEPT (`rowSignature`, and ADR 0029). One lifetime with `rows` beside it,
@@ -65,7 +62,7 @@ export function rowContext(
 	const shown = host.columns.slice(0, host.columnFit?.shown ?? host.columns.length);
 	// Created here rather than on the view: `backlogView.ts` already passes this context
 	// to the whole render pass, and the register is a fact about one pass.
-	return { host, rows, cardKids, placed: new Map(), sigs, columns: shown };
+	return { host, rows, cardKids, placed: new Set(), sigs, columns: shown };
 }
 
 /**

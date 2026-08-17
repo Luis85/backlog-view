@@ -162,26 +162,6 @@ export interface DrawnColors {
 export type BarColors = Omit<DrawnColors, 'absence' | 'daysLost'>;
 
 /**
- * A surface that put an item on screen: the card itself, or a row's sticky lead cell.
- *
- * What it answers is "which paths did this pass draw a card for" — `cardedPaths` reads
- * exactly that, so `Open child "…"` names only a child no surface has already put on
- * screen. It carried two more fields until 2026-08-17, both about naming quick-filter
- * matches on a face; the filter is gone (Bases has its own search) and so are they.
- *
- * Declared HERE, beside `RoadmapSnapshot` and beside `DrawnColors` above, for that type's
- * own reason rather than a new one: the render modules produce it, but they all reach
- * `host.ts` (through `RowContext`), so an import the other way turns the whole
- * `columns.ts` ↔ `menu.ts` ↔ `host.ts` web into sixteen cycles `npm run analyze` refuses.
- * Measured, not assumed — it was written in `render/columns.ts` first and fallow named
- * every one of them.
- */
-export interface PlacedMount {
-	item: BacklogItem;
-	mount: HTMLElement;
-}
-
-/**
  * The roadmap as last rendered: the derived model, and the rendered cards in
  * reading order — axis first, then the shelf, then the context strip — which is
  * the order the keyboard walks.
@@ -194,8 +174,17 @@ export interface RoadmapSnapshot {
 	 * the keyboard walk and `aria-activedescendant` never reach past what is on screen.
 	 */
 	cards: BacklogItem[];
-	/** What the pass drew, by path — the register `cardedPaths` reads. */
-	placed: ReadonlyMap<string, PlacedMount>;
+	/**
+	 * Which paths this pass put on screen — a card, a timeline row or a marker's diamond.
+	 * `cardedPaths` reads exactly this, so `Open child "…"` names only a child no surface
+	 * has already drawn.
+	 *
+	 * Paths and nothing else. It was a map to the item and the ELEMENT it was drawn on
+	 * until 2026-08-17, which nothing ever read: a snapshot outlives its frame on the
+	 * host, so that retained a detached subtree per drawn row for a value only
+	 * `.keys()` was ever asked for.
+	 */
+	placed: ReadonlySet<string>;
 	/**
 	 * The shelf's own element for THIS render. Carried so a control that rebuilt the
 	 * pane can find its own replacement afterwards — the pressed button is gone by

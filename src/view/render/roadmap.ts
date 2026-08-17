@@ -381,7 +381,7 @@ function renderBucket(
 		const card = createCard(ctx, cardsEl, item);
 		renderCardBody(ctx, card, item);
 		wireCardActivation(ctx, card, item);
-		ctx.placed.set(item.file.path, { item, mount: card });
+		ctx.placed.add(item.file.path);
 		dnd.wireCard(card, item);
 	}
 	// The whole bucket is the target, the board's rule: within a bucket the order is

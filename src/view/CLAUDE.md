@@ -929,14 +929,17 @@ free of runtime code so imports stay cycle-free.
   context styling) with a row layout — `.pbl-card.pbl-timeline-row` overrides the
   card's column geometry in CSS.
 - **Every surface that puts an item on screen fills `RowContext.placed` as it draws** —
-  the item and the element it was drawn on — and the register is what `cardedPaths` reads to
+  its PATH, and nothing else — and the register is what `cardedPaths` reads to
   answer "does this child already have a card of its own", which is what keeps the card
   menu's `Open child "…"` from naming something the reader is already looking at. The board
   can ask its own model instead (`cardPaths`): a `BoardModel` is already narrowed to what
   draws, while `RoadmapModel.shelf` holds every shelved item whether `host.shelfCollapsed`
   shows them or not, and `organizeShelf` drops whole groups from an expanded shelf through
   `host.shelfHiddenTypes` — so only the render knows what the roadmap actually drew.
-  It carried two more fields until 2026-08-17 — `listsChildren` and `face`, which said
+  It was a MAP from that path to the item and the element it was drawn on until 2026-08-17,
+  when the last reader of either went: a snapshot outlives its frame on the host, so it was
+  retaining a detached subtree per drawn row for a value only `.keys()` was asked for. Two
+  of the fields on it had gone the same week — `listsChildren` and `face`, which said
   whether a surface listed its children and how it could name a quick-filter match found
   beneath it (a card as links, a row as a count in `.pbl-bar-count`, a marker's diamond not
   at all). All of that went with the filter
@@ -960,16 +963,15 @@ free of runtime code so imports stay cycle-free.
   name, so a label there may be announced by nobody. A mark with no row has nowhere else for
   the words to be, which is what made breaking that rule a LOSS rather than a lesser
   announcement.
-  **The diamond still REGISTERS in `ctx.placed`, with `face: 'none'`**, and the two are
-  different questions: registering says the item is ON SCREEN, which is what `carded` is
-  read from, while `face` says what can be WRITTEN on the mount. Drawn and unregistered, a
-  marker made the bar above it count a match the reader was looking at, and offered an
-  `Open match` for it in that bar's menu. So a surface that draws an item registers it,
-  whatever it can afford to show — see [[Milestones in one row on the dated axis]] 3d.
-  `PlacedMount` itself is declared in `host.ts` beside `DrawnColors` and for that type's
-  reason: a `render/` type imported back into `host.ts` turns the
-  `columns.ts` ↔ `menu.ts` ↔ `host.ts` web into sixteen cycles `npm run analyze` refuses
-  — measured, after writing it the other way first.
+  **The diamond still REGISTERS in `ctx.placed`**, and being ON SCREEN is a different
+  question from being reachable or showable: the mark draws no card body, carries no
+  `option` role and is deliberately absent from `drawnCards`, and it registers all the
+  same. Drawn and unregistered, it is a child with no card of its own as far as
+  `menuChildren` can tell, so the bar it hangs under offers `Open child "…"` for the
+  diamond in the row over its head — see [[Milestones in one row on the dated axis]] 3d,
+  and `test/view/milestonesRow.test.ts` for the check, which needs a second, non-marker
+  child to open the section at all (`datedEntries` and each band both split the markers
+  out before `timelineRows`, so no chevron is ever decided by one).
 - **A timeline row's chevron folds ROWS, and a card's disclosure lists children on its
   face; they are two bits, two host method pairs, and one register (2026-08-09).** A row
   goes through `isCollapsed`/`setCollapsed`, and `collapseKey` is the ONE place that
