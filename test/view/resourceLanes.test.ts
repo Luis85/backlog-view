@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { shelfRemoval } from '../../src/view/render/shelf';
-import { clickExpandAll, Harness, makeView, useViewHarness } from '../helpers/view';
+import { clickExpandAll, Harness, key, makeView, treeOf, useViewHarness } from '../helpers/view';
 import { gripNames, laneAwayOf, laneCountOf, laneNames, laneOrder, lanesOf, rowFor, shelfTitles } from '../helpers/roadmap';
 import { countingVault, resourceVault } from '../helpers/resources';
 import { addDays, formatCivil } from '../../src/domain/timeline';
@@ -398,6 +398,36 @@ describe('a context row inside a resource row', () => {
 		// Placement, not population — the bucket axis's rule over a different property.
 		expect(laneCountOf(lanesOf(harness.containerEl)[0])).toBe('');
 		expect(shelfTitles(harness.containerEl)).toEqual([]);
+	});
+
+	/**
+	 * It claims to be a card — `createCard` gives it `role="option"` — so it has to be one:
+	 * assistive tech counts an `option` a reader cannot land on, which is worse than a row
+	 * that never drew. Two halves, each of which failed on its own, and each of which the
+	 * two cases above pass right through: `drawnCards` is the pane's reading order and used
+	 * to be a bars-only walk, and `renderLaneContextRow` used to draw the row without
+	 * `wireCardActivation`. See [[A lane context row could not be reached]]; this replaces
+	 * the check that went with `roadmapMatches.test.ts`.
+	 */
+	it('takes the keyboard walk’s first stop, where Enter opens its note', () => {
+		const vault = contextVault();
+		const { containerEl } = laneRoadmap(vault, { only: ['Result.md'], focus: 'Epic' });
+
+		key(treeOf(containerEl), 'ArrowDown');
+		expect(containerEl.querySelector('.pbl-selected')?.classList.contains('pbl-lane-context')).toBe(true);
+		key(treeOf(containerEl), 'Enter');
+		expect(vault.opened.map((o) => o.path)).toEqual(['Outside epic.md']);
+	});
+
+	it('opens its note on a click, like every other card on this grid', () => {
+		const vault = contextVault();
+		const { containerEl } = laneRoadmap(vault, { only: ['Result.md'], focus: 'Epic' });
+
+		containerEl
+			.querySelector<HTMLElement>('.pbl-lane-context')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		expect(vault.opened.map((o) => o.path)).toEqual(['Outside epic.md']);
 	});
 });
 

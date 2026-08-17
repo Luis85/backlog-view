@@ -162,6 +162,40 @@ describe('the roadmap legend', () => {
 		expect(swatchLabels(containerEl)).toContain('Unavailable');
 	});
 
+	it('drops a swatch when a content-only render takes the last bar keying it off the grid', () => {
+		// The case above is this same fold from the other direction, and on its own it proves
+		// less than it reads as: a swatch that STAYS is equally true of a legend that never
+		// refreshes at all. This is the removal direction, and it needs a render path that
+		// redraws CONTENT alone — `setLaneCollapsed` is one (`viewStateController`), so the
+		// legend is only as fresh as `syncAfterContent` makes it. Rendered from `render()`
+		// only, the swatch outlives the bar it keys.
+		const vault = new FakeVault();
+		vault.addFile('Alice work.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', status: 'New', start: '2026-08-01', due: '2026-08-10' },
+		});
+		// `Blocked` is outside the declared vocabulary, so this bar takes no slot paint and no
+		// done override: it draws the plain accent, and it is the only thing on the grid
+		// keying `Other`. Folding Bob's band takes its row off the grid entirely.
+		vault.addFile('Bob work.md', {
+			frontmatter: { type: 'Epic', order: 20, assignee: 'Bob', status: 'Blocked', start: '2026-08-01', due: '2026-08-10' },
+		});
+		const { view, containerEl } = makeView(
+			vault,
+			{ ...DATE_AXIS, ...WORKFLOW, stateValues: 'New, Active', assigneeProperty: 'note.assignee', resourceNames: 'Alice, Bob' },
+			{ collapsed: true },
+		);
+		view.setProjection('roadmap');
+		view.setAxisPick('resources');
+		expect(swatchLabels(containerEl)).toContain('Other');
+
+		view.setLaneCollapsed('Bob', true);
+		expect(swatchLabels(containerEl)).not.toContain('Other');
+
+		// And opening it again brings the swatch back — it has to follow in both directions.
+		view.setLaneCollapsed('Bob', false);
+		expect(swatchLabels(containerEl)).toContain('Other');
+	});
+
 	it('sits inside the ancestor --pbl-away is actually scoped to', () => {
 		// The stylesheet-text pairing in `timelineBoxing.test.ts` supplies `.pbl-roadmap-dates`
 		// as the scope selector by hand, so it would catch a REGRESSION back to the old wrong
