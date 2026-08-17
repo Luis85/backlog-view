@@ -601,9 +601,14 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 	/** Publish the gate's progress to the toolbar and the tree, re-rendering nothing. */
 	private syncBusyUi(): void {
 		const busy = this.gate.busy;
-		syncBusy(this.toolbarEl, busy, this.canUndo());
-		// The tree's content is mid-change; say so once, rather than per row.
-		if (busy) this.treeEl.setAttribute('aria-busy', 'true');
+		// The indicator reads this view's own progress; the disabled flags read the
+		// vault-wide lock, because a batch another view is writing is one this view's
+		// controls would be refused for too (`syncBusy`'s own two facts).
+		syncBusy(this.toolbarEl, busy, this.canUndo(), this.gate.writing);
+		// The tree's content is mid-change; say so once, rather than per row. A sibling
+		// view's batch is writing these same notes, and this view's own data update is
+		// deferred on it, so the answer is the lock's rather than this gate's progress.
+		if (this.gate.writing) this.treeEl.setAttribute('aria-busy', 'true');
 		else this.treeEl.removeAttribute('aria-busy');
 	}
 }

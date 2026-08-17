@@ -23,8 +23,24 @@ export class WriteLock {
 		return () => this.listeners.delete(listener);
 	}
 
-	/** Tell every live view the lock changed — the OTHER view's undo button follows the slot. */
+	/**
+	 * Tell every live view the lock changed — the OTHER view's undo button follows the
+	 * slot, and every view with a data update deferred on this batch rebuilds from it.
+	 *
+	 * Each listener is isolated, because a listener does real work: it publishes chrome
+	 * and it can run a whole rebuild, so any bug in one view's render would otherwise
+	 * reach the WRITING gate — which calls this from `setBusy`, once outside its own
+	 * `try` (leaving `applying` stuck true and the plugin's write path dead) and once
+	 * inside its `finally` (reporting a batch that landed as failed, and skipping every
+	 * later listener's flush). One view's failure is not the vault's.
+	 */
 	notify(): void {
-		for (const listener of this.listeners) listener();
+		for (const listener of this.listeners) {
+			try {
+				listener();
+			} catch (e) {
+				console.error('Product Backlog: a view failed to follow the write lock', e);
+			}
+		}
 	}
 }

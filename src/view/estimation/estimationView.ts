@@ -111,9 +111,14 @@ export class EstimationView extends BasesView {
 		renderPanel(this, this.model);
 	}
 
-	/** Publish the gate's progress the one way this view has so far: no toolbar yet. */
+	/**
+	 * Publish the gate's progress the one way this view has so far: no toolbar yet. It
+	 * asks the LOCK rather than this gate's own progress — a batch the backlog view is
+	 * writing changes the very notes this table shows, and this view's own data update is
+	 * deferred on it, so its content is mid-change whoever is doing the writing.
+	 */
 	syncBusy(): void {
-		if (this.gate.busy) this.viewEl.setAttribute('aria-busy', 'true');
+		if (this.gate.writing) this.viewEl.setAttribute('aria-busy', 'true');
 		else this.viewEl.removeAttribute('aria-busy');
 	}
 

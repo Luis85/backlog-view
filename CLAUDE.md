@@ -246,9 +246,14 @@ results.
 ### The write path
 
 Writes go through `applySafely` (forward batches) or `undoLast` (replaying the last
-batch's inverses), both over one gate (`runExclusively`): serialized (`applying` flag)
-and blocked when `configProblems` is non-empty; forward batches are additionally
-refused whole if any write targets an `outsideFilter` item. All three live in
+batch's inverses), both over one gate (`runExclusively`): serialized (`applying` flag,
+which is the plugin-wide `WriteLock`'s and not one view's). **Two of that gate's three
+refusals are the forward path's alone** — blocked when `configProblems` is non-empty, and
+refused whole if any write targets an `outsideFilter` item — and a replay skips both for
+one reason read twice: its authorization came at capture time, and it restores RAW
+captured keys rather than planning against these settings, so a collision that would
+corrupt a note through the planner is unreachable from one. Serialization is the refusal
+all three share. All three live in
 `view/writeGate.ts` — the view owns a `WriteGate`, delegates the host's three write
 methods to it, and publishes its progress; the gate itself touches no DOM. Everything applied was
 planned by `domain/writePlan.ts`, which touches nothing, and applied by

@@ -35,10 +35,14 @@ export type ApplyRun<W> = (
 
 /**
  * The write gate every batch passes: config validation, progress publication, and the
- * outside-filter refusal — the per-view half of the write path. The vault-wide half —
+ * outside-filter refusal — the per-view half of the write path, and both of those
+ * refusals are the FORWARD path's alone (a replay carries its authorization from capture
+ * time and restores raw keys). The vault-wide half —
  * one batch at a time and the single-level undo slot, shared by every view — lives on
  * `WriteLock` (`writeLock.ts`), because a gate per view would be two views racing on one
- * vault with two ideas of what "the last batch" was (ADR 0030).
+ * vault with two ideas of what "the last batch" was (ADR 0030). What the gate publishes
+ * is per view (`busy`) and what it says about the LOCK is not (`writing`): a batch is a
+ * fact about the vault, and every view's chrome has to read it as one.
  */
 export class WriteGate<W extends { file: TFile }> {
 	/** A data update that arrived mid-batch and is waiting for it to finish. */
@@ -53,7 +57,36 @@ export class WriteGate<W extends { file: TFile }> {
 		private readonly lock: WriteLock,
 		private readonly apply: ApplyRun<W>,
 	) {
-		this.unsubscribe = lock.subscribe(() => this.hooks.syncBusy());
+		this.unsubscribe = lock.subscribe(() => this.followLock());
+	}
+
+	/**
+	 * What this view does when the lock moves: publish, and — on the edge where the batch
+	 * ENDS — rebuild from whatever landed while it ran. The flush is here rather than in
+	 * `runExclusively`'s `finally` because `applying` is vault-wide: a SIBLING view defers
+	 * its update on a batch whose `finally` it never reaches, so the writing gate's own
+	 * exit released nobody but itself and every other view's update was swallowed for as
+	 * long as it kept not being the one writing.
+	 *
+	 * Still synchronous inside that `finally` — `setBusy(null)` notifies from there — so
+	 * "anything read after the await already sees the rebuilt model" holds unchanged, and
+	 * a FAILED batch still rebuilds: the writes before the failure are on disk.
+	 */
+	private followLock(): void {
+		this.hooks.syncBusy();
+		if (this.lock.applying || !this.pendingDataUpdate) return;
+		this.pendingDataUpdate = false;
+		this.hooks.flushDataUpdate();
+	}
+
+	/**
+	 * True while a batch is in flight ANYWHERE in the plugin. The chrome's disabled state
+	 * follows this rather than `busy`, which is the writing view's own progress and null
+	 * in every other view (ADR 0030): a sibling view showing enabled write controls
+	 * offers a write the gate is about to refuse.
+	 */
+	get writing(): boolean {
+		return this.lock.applying;
 	}
 
 	/** Stop following the lock — called from the view's own `onunload`. */
@@ -89,8 +122,15 @@ export class WriteGate<W extends { file: TFile }> {
 		return this.runExclusively(writes.length, (onProgress, onInverse) => this.apply(writes, onProgress, onInverse));
 	}
 
+	/**
+	 * Whether there is something to take back AND anything may be written at all. The
+	 * second half is not the button's business to remember: inverses install on the first
+	 * EFFECTIVE write, so mid-batch the slot already holds the applied prefix — an undo
+	 * button armed on the slot alone re-enabled in the middle of the very batch it would
+	 * be undoing part of, in every view at once.
+	 */
 	canUndo(): boolean {
-		return this.lock.lastUndo !== null && this.lock.lastUndo.length > 0;
+		return !this.lock.applying && this.lock.lastUndo !== null && this.lock.lastUndo.length > 0;
 	}
 
 	async undoLast(): Promise<boolean> {
@@ -134,11 +174,19 @@ export class WriteGate<W extends { file: TFile }> {
 		) => Promise<T>,
 		replaying?: RestoreWrite[],
 	): Promise<T | null> {
-		const problems = this.host.writeProblems();
-		if (problems.length > 0) {
-			// Writing with e.g. parent and order on the same key would corrupt notes.
-			new Notice(`Fix the view options first: ${problems[0]}`);
-			return null;
+		// Forward batches only, the same split the outside-filter refusal makes and for the
+		// same reason: a replay's authorization came at capture time, and it restores RAW
+		// captured keys rather than planning against these settings — so a collision this
+		// view's planner would corrupt notes with cannot be reached by one. Asking it of a
+		// replay let a config problem in ONE view veto taking back a batch ANOTHER view
+		// wrote, reported as a notice about options the undo never reads.
+		if (!replaying) {
+			const problems = this.host.writeProblems();
+			if (problems.length > 0) {
+				// Writing with e.g. parent and order on the same key would corrupt notes.
+				new Notice(`Fix the view options first: ${problems[0]}`);
+				return null;
+			}
 		}
 		if (this.lock.applying) {
 			new Notice('Still applying the previous change — try again in a moment.');
@@ -175,14 +223,9 @@ export class WriteGate<W extends { file: TFile }> {
 				this.lock.lastUndo = null;
 			}
 			this.lock.applying = false;
+			// Publishes the end of the batch, which is also what makes every gate flush
+			// its own deferred update — this one's included. See `followLock`.
 			this.setBusy(null);
-			// Whatever landed while the batch ran gets one rebuild, now, against the
-			// finished state. A failed batch takes this path too: the writes before the
-			// failure are applied, and the tree has to show what is actually on disk.
-			if (this.pendingDataUpdate) {
-				this.pendingDataUpdate = false;
-				this.hooks.flushDataUpdate();
-			}
 		}
 	}
 
