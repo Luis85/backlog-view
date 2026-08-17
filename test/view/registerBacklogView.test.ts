@@ -4,7 +4,8 @@ import { BasesViewSpec } from 'obsidian';
 import { registerBacklogView } from '../../src/view/registerBacklogView';
 import { WriteLock } from '../../src/view/writeLock';
 import { PRODUCT_BACKLOG_VIEW_TYPE } from '../../src/view/backlogView';
-import { useViewHarness, fixture } from '../helpers/view';
+import { useViewHarness, fixture, makeView } from '../helpers/view';
+import { FakeViewConfig } from '../helpers/vault';
 
 useViewHarness();
 
@@ -26,40 +27,39 @@ describe('registerBacklogView', () => {
 		expect(spec.icon).toBe('lucide-list-tree');
 	});
 
-	it('factory creates a ProductBacklogView with the shared lock', () => {
+	it('factory-built view shares the lock with other views', async () => {
+		const vault = fixture();
+		const lockA = new WriteLock();
+
+		// Register and capture the spec
 		const specs = new Map<string, BasesViewSpec>();
 		const fakePlugin = {
 			registerBasesView: (type: string, spec: BasesViewSpec) => {
 				specs.set(type, spec);
 			},
 		};
-
-		const lockA = new WriteLock();
 		registerBacklogView(fakePlugin as never, lockA);
 		const spec = specs.get(PRODUCT_BACKLOG_VIEW_TYPE)!;
 
-		// Create the first view through the factory
-		const containerEl = document.body.createDiv();
-		const viewA = spec.factory!({} as never, containerEl);
+		// Create first view via factory
+		const containerA = document.body.createDiv();
+		const viewA = spec.factory!({} as never, containerA) as unknown as Record<string, unknown>;
 
-		expect(viewA).toBeDefined();
-		expect(viewA.constructor.name).toBe('ProductBacklogView');
+		// Set up the necessary properties like makeView does
+		viewA.app = vault.app;
+		viewA.config = new FakeViewConfig({});
+		viewA.data = { data: vault.entries() };
+		(viewA as any).onDataUpdated();
 
-		// The observable proof: write through view A, then create view B with the same lock
-		// and verify undo is available (the undo slot is shared through the lock).
-		const vault = fixture();
-		const lockB = new WriteLock();
+		// Create a second view with the SAME lock using makeView
+		const { view: viewB } = makeView(vault, {}, { lock: lockA });
 
-		// Manually configure view B to be able to call canUndo
-		const containerEl2 = document.body.createDiv();
-		const viewB = spec.factory!({} as never, containerEl2);
+		// Write through view A (factory-built) via applySafely
+		const fileOf = (path: string) => vault.entries().find((e) => e.file.path === path)!.file;
+		await (viewA as any).applySafely([{ file: fileOf('Epic A.md'), order: 99 }]);
 
-		// Since the factory creates the view with the passed lock, both views should
-		// share the same lock. We verify this by checking that the views can access
-		// the lock's methods through their gates (the lock is passed to the constructor).
-		// The fact that the factory call succeeds and returns a ProductBacklogView
-		// confirms the lock argument reaches the constructor properly.
-		expect(viewB).toBeDefined();
-		expect(viewB.constructor.name).toBe('ProductBacklogView');
+		// Observable proof: viewB can undo a write that viewA made
+		// This proves the factory view received the same lock, not a private one
+		expect(viewB.canUndo()).toBe(true);
 	});
 });
