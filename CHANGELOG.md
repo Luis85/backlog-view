@@ -34,6 +34,12 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   undo, and a card created straight onto an iteration board carries that same link and
   both dates in its first write — never a create followed by a second write of its own.
 
+- **Keep iterations off the roadmap timeline.** A new "Show iterations on the roadmap
+  timeline" view option, on by default, decides whether the grid axes draw iterations at
+  all. Turned off, a sprint draws nowhere — no bar, no line, and nothing on the unplaced
+  shelf either — for a plan that is read by milestone alone. It writes nothing to any
+  note: turning it back on redraws the same sprints.
+
 - **Draw a sprint as a bar, not only a line.** A new "Draw iterations as bars" view
   option turns an `Iteration` from a point at its target date into a start→target bar on
   the roadmap's grid axes, with a grip on each configured end. Either way, the marker

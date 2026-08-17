@@ -83,6 +83,9 @@ export const SETUP: ManualSection = {
 				'fill and the middle one takes every remaining state. ' +
 				'The length is how many days a new iteration runs for ' +
 				'when the board derives one — a whole number of days, 14 if it cannot be read. ' +
+				'Show iterations on the roadmap timeline decides whether the dated and resource ' +
+				'axes draw them at all: turned off, an iteration draws nowhere — not as a mark ' +
+				'and not on the unplaced shelf — and no note is changed either way. ' +
 				'Draw iterations as bars switches an iteration\'s own reading on the roadmap ' +
 				'between a single point at its target date — the default, the same reduction a ' +
 				'Milestone always gets — and a span from its start to its target.',
@@ -92,6 +95,7 @@ export const SETUP: ManualSection = {
 				'iterationOpenStates',
 				'iterationResolvedStates',
 				'iterationLengthDays',
+				'iterationsOnTimeline',
 				'iterationBars',
 			],
 		},

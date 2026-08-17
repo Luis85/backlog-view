@@ -155,6 +155,7 @@ describe('getViewOptions', () => {
 			'iterationOpenStates',
 			'iterationResolvedStates',
 			'iterationLengthDays',
+			'iterationsOnTimeline',
 			'iterationBars',
 		]);
 	});

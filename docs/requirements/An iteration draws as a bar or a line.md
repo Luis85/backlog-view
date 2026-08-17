@@ -95,6 +95,25 @@ without it. So the gap this section warned about was real in the source and clos
 it reached anything a vault could open: nothing this repository has shipped has ever
 called a sprint a milestone.
 
+## The admission itself is optional
+
+*(Added 2026-08-17, on user request, after this note's own increment shipped.)* This note
+decides how an iteration draws on a grid axis; `iterationsOnTimeline` decides **whether it
+draws there at all**. It is a second `.base` toggle in the same group, **on** by default,
+so the admission above is what an untouched view keeps — and a reader whose plan is read
+by milestone alone can take it back without retyping or deleting a single sprint note.
+
+Off, an `Iteration` draws on no projection whatsoever: no bar, no boundary line, no
+diamond, and **nothing on the shelf either** — the option is read where every surface
+already asks one question (`visibilityRule`), so it is an item this axis does not draw
+rather than an item it could not place. The unplaced count is a count of work the reader
+can act on, and a sprint they have hidden is not on that list.
+
+It writes nothing and is read at no write path, which is what separates it from
+`iterationBars` (extension 5a): that option decides which date KEYS a placement may touch,
+so `storage/` resolves it; this one decides only what is on screen. Turning it back on
+redraws the same notes, unchanged.
+
 ## Use case
 
 | | |

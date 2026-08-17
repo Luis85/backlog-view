@@ -303,6 +303,12 @@ function iterationsGroup(): BasesAllOptions {
 			},
 			{
 				type: 'toggle',
+				key: 'iterationsOnTimeline',
+				displayName: 'Show iterations on the roadmap timeline',
+				default: true,
+			},
+			{
+				type: 'toggle',
 				key: 'iterationBars',
 				displayName: 'Draw iterations as bars',
 				default: false,
