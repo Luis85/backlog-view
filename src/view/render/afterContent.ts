@@ -25,7 +25,14 @@ export function syncAfterContent(host: BacklogViewHost, els: { toolbarEl: HTMLEl
 	// The legend keys what the grid drew, and `drawn` comes off the snapshot this pass
 	// produced — never a predicate over the results, which cannot see what geometry a bar
 	// ended up with.
-	const drawn = host.roadmap?.drawn ?? { done: false, milestone: false, accent: false, absence: false, daysLost: false };
+	const drawn = host.roadmap?.drawn ?? {
+		done: false,
+		milestone: false,
+		iteration: false,
+		accent: false,
+		absence: false,
+		daysLost: false,
+	};
 	renderLegend(host, els.legendEl, host.roadmap?.palettes ?? [], drawn);
 	// LAST, and after the content rather than with the toolbar: the row's width can have
 	// changed because the projection zone was rebuilt, or the count label grew, or the

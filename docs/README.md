@@ -117,19 +117,22 @@ completion there is a question the Deliverable workflow answers, not the require
 one; its own toolbar creates only Deliverables — and its focus control, briefly
 clear-only while an inherited focus still narrowed this board like any other, was
 later reversed to ignore the focus level outright, since no level narrows this board
-and there is never anything left to clear. What remains under the epic —
-creation from a column, column collapse, the touch verdict a device has to answer,
-and **iterations** — is still design; lanes were tried and refused
-([[Swimlanes by parent]]). That last one multiplies the board a second time and does
-it differently on purpose, for a reason that is arithmetic rather than scope: there is
-exactly one Deliverables board, and sprints only ever accumulate, so a toggle position
-per sprint is not a toggle. `Boards` gains a **scope** picker beside the projection
-toggle — `Product`, or one iteration — the control the roadmap already uses to offer
-its two axes, over a workflow of its own that falls back to the product board's field
-by field. It is also the one board where both kinds of work sit together: a sprint
-commits to finishing a design as readily as a PBI, so a `Deliverable` naming the
-iteration draws a card there, columned by that board's one workflow like everything
-else on it.
+and there is never anything left to clear. What remains under the epic — creation from a
+column, column collapse, and the touch verdict a device has to answer — is still design;
+lanes were tried and refused ([[Swimlanes by parent]]). **Iterations** shipped,
+multiplying the board a second time and doing it differently on purpose, for a reason
+that is arithmetic rather than scope: there is exactly one Deliverables board, and
+sprints only ever accumulate, so a toggle position per sprint is not a toggle. `Boards`
+gains a **scope** picker beside the projection toggle — `Product`, or one iteration —
+the control the roadmap already uses to offer its two axes, over a workflow of its own
+that falls back to the product board's field by field. It is also the one board where
+both kinds of work sit together: a sprint commits to finishing a design as readily as a
+PBI, so a `Deliverable` naming the iteration draws a card there, columned by that board's
+one workflow like everything else on it. Membership is a link rather than a rung — any
+item joins a sprint by naming it, `Deliverable` included — and joining schedules it:
+`Set iteration` writes the sprint's own start and target onto the item in the same batch
+as the link. The roadmap draws that commitment two ways, a line and diamond by default
+or, under its own view option, a start→target bar with a grip on each configured end.
 
 Those use cases are the argument for writing a PBI *before* building it rather than
 after. The ones still open say **nothing yet** (or **partly built**, naming exactly

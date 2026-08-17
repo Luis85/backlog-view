@@ -385,6 +385,42 @@ describe('holding a bar', () => {
 		expect(vault.fm('Ship.md').start).toBe('2026-07-01');
 	});
 
+	it('slides an Iteration by its target alone while bar mode is off, at the writer', async () => {
+		// The identical gesture above, for the OTHER marker type `drawsAsPoint` now
+		// decides between: bar mode defaults off, so an Iteration is a point exactly as
+		// a Milestone is, and `placementEnds` answers `target` alone — extension 5a of
+		// [[An iteration draws as a bar or a line]]. The writer resolves the predicate
+		// from settings itself, so this proves the narrowing end to end rather than at
+		// the plan alone.
+		const vault = new FakeVault();
+		vault.addFile('Sprint 12.md', { frontmatter: { type: 'Iteration', order: 10, start: '2026-09-07', target: '2026-09-20' } });
+		const { containerEl } = datedView(vault);
+
+		gridDrag(gripOf(containerEl, 'Sprint 12', 'body'), overlayOf(containerEl), { from: 1000, clientX: 1000 + 2 * scaleFor('month').dayPx });
+		await flush();
+
+		expect(vault.fm('Sprint 12.md').target).toBe('2026-09-22');
+		expect(vault.fm('Sprint 12.md').start).toBe('2026-09-07');
+	});
+
+	it('resizes an Iteration bar from its own end grip while bar mode is on', async () => {
+		// The mirror of the two tests above, in the OTHER mode: with bar mode on the
+		// sprint is a span, not a point, so it carries its own edge grips — the ones
+		// `drawMarkerDiamonds` now wires through `wireBarHolds` beside the body hold —
+		// and each moves only its own end, `renderBarRow`'s own grip rule extended to
+		// the marker row.
+		const vault = new FakeVault();
+		vault.addFile('Sprint 12.md', { frontmatter: { type: 'Iteration', order: 10, start: '2026-09-07', target: '2026-09-20' } });
+		const { containerEl } = datedView(vault, { ...DATE_AXIS, iterationBars: true });
+		const scale = scaleFor('month');
+
+		gridDrag(gripOf(containerEl, 'Sprint 12', 'end'), overlayOf(containerEl), { from: 1000, clientX: 1000 + 5 * scale.dayPx });
+		await flush();
+
+		expect(vault.fm('Sprint 12.md').target).toBe('2026-09-25');
+		expect(vault.fm('Sprint 12.md').start).toBe('2026-09-07');
+	});
+
 	it('offers no grip where a bar’s end is inferred, and none at all where both are', () => {
 		const vault = new FakeVault();
 		vault.addFile('Parent.md', { frontmatter: { type: 'Feature', order: 10, start: '2026-08-01' } });
