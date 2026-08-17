@@ -72,16 +72,20 @@ property of whichever code path happened to run.
 
 ## Where it lives
 
-`src/view/writeGate.ts` (`WriteGate` — `runExclusively`, `applySafely`, `undoLast`, the
-undo slot and the deferred mid-batch refresh). It moved out of `src/view/backlogView.ts`
+`src/view/writeGate.ts` (`WriteGate` — `runExclusively`, `applySafely`, `undoLast` and
+the deferred mid-batch refresh). It moved out of `src/view/backlogView.ts`
 when the view hit its 400-line cap, the same extraction `filterState.ts` and
 `viewState.ts` already are: five of that class's fields served this one concern and
 only `busy` was read from outside it. The view now owns a gate, delegates the three host
 methods to it, and publishes its progress — `syncBusyUi`, because the gate reaches none
-of the view's elements ·
+of the view's elements. **The undo slot has since moved again**, out of the gate and
+into `src/view/writeLock.ts` (`WriteLock` — `applying`, `lastUndo`, `recovery`), once a
+second view needed the same one-batch-one-undo guarantee over the same vault (ADR 0030):
+the gate keeps validation, the outside-filter refusal and its own progress, and reads the
+slot through the lock it is constructed with rather than holding one of its own ·
 `src/storage/frontmatter.ts` (`applyWrites` — the only module that writes) ·
 `src/domain/writePlan.ts` (planning) · `src/domain/settingsConsistency.ts` (`configProblems`) ·
 `eslint.config.mjs` (`no-restricted-syntax` banning `processFrontMatter` and
 `vault.create` outside `storage/`).
 Tests: `test/storage/frontmatter.test.ts`, `test/view/contextRowWrites.test.ts`,
-`test/view/toolbar.test.ts`.
+`test/view/toolbar.test.ts`, `test/view/writeLock.test.ts`.
