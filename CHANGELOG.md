@@ -11,6 +11,8 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-08-17
+
 ### Removed
 
 - **The toolbar's quick filter is gone — use the Base's own search.** Obsidian Bases carries
