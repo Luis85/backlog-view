@@ -243,9 +243,12 @@ or the guard has to be remembered eleven times.
 **Nothing yet — this note is design.** `src/domain/model.ts` and `src/domain/shelf.ts`
 sort the state and tag vocabularies and the shelf's cards · `src/ui/prompts.ts` sorts and
 filters the folder and tag suggests · `src/view/backlogView.ts` holds the quick filter's
-match · `src/view/render/rows.ts` holds `renderTitleText`, the fold-then-index highlight ·
+match ·
 `src/view/render/columns.ts` renders the counts · `src/domain/settings.ts`,
 `src/domain/itemTypes.ts`, `src/domain/noteFields.ts` and `src/domain/writePlan.ts` hold
 the identity folds that must not change.
-Tests: `test/view/filter.test.ts`, `test/domain/model.test.ts`,
-`test/domain/shelf.test.ts`, `test/domain/noteFields.test.ts`.
+Tests: `test/domain/model.test.ts`, `test/domain/shelf.test.ts`,
+`test/domain/noteFields.test.ts`. The quick filter's own case fold was a fifth reader of this
+rule and went with the filter on 2026-08-17
+([[Remove the quick filter, now that Bases has its own search]]); the shelf's search is the
+title-matching fold that remains.

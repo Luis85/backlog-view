@@ -19,8 +19,8 @@ const FIT_ATTR = 'data-pbl-fit';
 
 /**
  * The last rung. Below it the row genuinely clips: what is left at step 5 is the
- * switcher, the projection's own pickers, the focus, the eye, the filter icon, the `⋯`
- * and New, and none of those has a cheaper form.
+ * switcher, the projection's own pickers, the focus, the eye, the `⋯` and New, and none
+ * of those has a cheaper form.
  *
  * It was 3 until a browser measurement showed step 3 did not mean "fits" — at 500px the
  * row still needed 588 of a 500px pane, and what fell off the right edge was `.pbl-new`
@@ -98,8 +98,8 @@ const LAST_STEP = 6;
  * a tightening path and a relaxing path that drift apart. The first version of this
  * handled tightening only and sent focus to the `⋯` unconditionally, which is wrong in
  * the other direction: relaxing to step 0 or 1 hides the `⋯` ITSELF (it renders from
- * step 2), so widening the pane with focus on it — or on `.pbl-filter-reveal`, which the
- * same relaxation hides — moved focus onto a hidden button and lost it exactly as before.
+ * step 2), so widening the pane with focus on it moved focus onto a hidden button and
+ * lost it exactly as before.
  *
  * The `⋯` is preferred rather than merely allowed because the overflow menu is where a
  * shed control's command went: focus follows the command it was on. When it is hidden
@@ -112,11 +112,12 @@ const LAST_STEP = 6;
  * is a silent no-op that drops focus to the document — the very failure this exists to
  * prevent, reintroduced by the fix.
  *
- * **Not taken: sending the reveal button's focus to the filter INPUT**, which is the same
- * control in its other form and would be the ideal destination for that one case. It does
- * not fall out of the rule — the input precedes the reveal in the box, so neither "the
- * `⋯`" nor "the first visible control" reaches it — and buying it costs a branch naming
- * one control, which is what this function exists to avoid having. That case lands on the
+ * **Not taken: a per-control destination, however ideal for its one case.** Decided
+ * against the quick filter's reveal button, since withdrawn (2026-08-17): its own input
+ * was the same control in another form and the obvious place to send it, it did not fall
+ * out of the rule above, and buying it cost a branch naming one control — which is what
+ * this function exists not to have. Nothing on the row is in two forms today; the refusal
+ * stands for the next control that is, and the price is that its case lands on the
  * switcher with everything else.
  *
  * `target` is checked against the same `shown` list rather than focused and hoped for:

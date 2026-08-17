@@ -2,9 +2,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { clickExpandAll, Harness, makeView, useViewHarness } from '../helpers/view';
-import { barFor, laneNames, lanesOf, rowFor } from '../helpers/roadmap';
+import { barFor, laneNames, lanesOf, markFor, rowFor } from '../helpers/roadmap';
 import { gridDrag } from '../helpers/dnd';
 import { countingVault } from '../helpers/resources';
+import { Menu } from '../helpers/obsidian-mock';
 
 useViewHarness();
 
@@ -245,6 +246,37 @@ describe('the milestones row', () => {
 		expect(lanesOf(harness.containerEl)[0].querySelectorAll('.pbl-bar-milestone')).toHaveLength(1);
 		expect(harness.containerEl.querySelectorAll('.pbl-timeline-row')).toHaveLength(0);
 		expect(harness.containerEl.querySelector('.pbl-board-advisory')).toBeNull();
+	});
+
+	it('registers each diamond, so its parent bar is not offered the child it is looking at', () => {
+		// The mark is the whole of what a marker draws here — no card body, no row of its
+		// own — and `ctx.placed` is where a surface says it drew something. `cardedPaths`
+		// reads that register and `menuChildren` subtracts it, so a diamond drawn and not
+		// registered reads as a child with nowhere to be reached from, and the bar above it
+		// offers `Open child "Ship"` for the mark in the row over its head. Shipped once:
+		// [[Milestones in one row on the dated axis]] 3d.
+		const vault = countingVault([]);
+		vault.addFile('Ship.md', {
+			frontmatter: { type: 'Milestone', order: 20, due: '2026-08-07' },
+			parentLink: 'Work',
+		});
+		// The second child is what OPENS the section at all: `datedEntries` and each band
+		// alike hand `timelineRows` the work bars with the markers split out, so a chevron
+		// is never decided by a marker and a parent whose only child is one draws none.
+		vault.addFile('Follow.md', {
+			frontmatter: { type: 'Feature', order: 30, assignee: 'Alice', start: '2026-08-02', due: '2026-08-09' },
+			parentLink: 'Work',
+		});
+		const harness = laneRoadmap(vault);
+
+		// The premise, stated rather than assumed: the diamond really is on screen, and it
+		// really is a child the section below would have listed.
+		expect(markFor(harness.containerEl, 'Ship')).not.toBeNull();
+		rowFor(harness.containerEl, 'Work')?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const titles = Menu.lastShown?.items.map((one) => one.titleText) ?? [];
+		expect(titles).toContain('Hide children');
+
+		expect(titles.filter((one) => one.startsWith('Open child'))).toEqual([]);
 	});
 
 	it('marks a milestone the held drag may not land on, and clears it when the drag ends', () => {

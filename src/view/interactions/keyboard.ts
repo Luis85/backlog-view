@@ -6,7 +6,7 @@ import { assignableLanes, RoadmapModel } from '../../domain/roadmap';
 import { indent, moveWithinSiblings, outdent } from './structure';
 import { projectionPopulation } from '../projection';
 
-/** Items currently rendered, top to bottom, honoring collapsed subtrees and the filter. */
+/** Items currently rendered, top to bottom, honoring collapsed subtrees and `isRowHidden`. */
 function visibleItems(host: BacklogViewHost, model: BacklogModel): BacklogItem[] {
 	const visible: BacklogItem[] = [];
 	const walk = (items: BacklogItem[]) => {
@@ -55,7 +55,7 @@ function handleTreeKeydown(host: BacklogViewHost, evt: KeyboardEvent): void {
 	// can empty it while the catalog draws suites off the unfocused tree — so this guard
 	// alone would leave every key inert on a screen full of rows.
 	if (!model || projectionPopulation(host.projection, model).items.length === 0) return;
-	if (handleFilterKey(host, evt)) return;
+	if (handleEscape(host, evt)) return;
 	const visible = visibleItems(host, model);
 	if (visible.length === 0) return;
 
@@ -71,18 +71,10 @@ function handleTreeKeydown(host: BacklogViewHost, evt: KeyboardEvent): void {
 	handleNavigationKey(host, visible, current, evt);
 }
 
-/** `/` jumps to the filter box; Escape backs out of the filter, then the selection. */
-function handleFilterKey(host: BacklogViewHost, evt: KeyboardEvent): boolean {
-	if (evt.key === '/' && !evt.altKey && !evt.ctrlKey && !evt.metaKey) {
-		evt.preventDefault();
-		host.focusFilter();
-		return true;
-	}
+/** Escape backs out of the selection. */
+function handleEscape(host: BacklogViewHost, evt: KeyboardEvent): boolean {
 	if (evt.key !== 'Escape') return false;
-	if (host.filterText !== '') {
-		evt.preventDefault();
-		host.setFilter('');
-	} else if (host.selectedPath !== null) {
+	if (host.selectedPath !== null) {
 		evt.preventDefault();
 		host.clearSelection();
 	}
@@ -171,14 +163,11 @@ function handleExpandCollapseKey(host: BacklogViewHost, current: BacklogItem, ev
 	// leaf here too — collapsing it would invisibly mutate persisted state.
 	const hasChildren = current.children.some((child) => !host.isRowHidden(child));
 	const collapsed = host.isCollapsed(current.file.path);
-	// While filtering, collapse state is overridden and mutating it would be
-	// invisible — navigation still works, state changes wait for a clear filter.
-	const filtering = host.isFiltering();
 
 	if (evt.key === 'ArrowLeft') {
-		if (!filtering && hasChildren && !collapsed) collapseKeepingSelection(host, current, true);
+		if (hasChildren && !collapsed) collapseKeepingSelection(host, current, true);
 		else if (current.parent && !current.focusRoot) host.selectItem(current.parent);
-	} else if (!filtering && hasChildren && collapsed) {
+	} else if (hasChildren && collapsed) {
 		collapseKeepingSelection(host, current, false);
 	} else if (hasChildren) {
 		// The first child may be hidden (filter or completed items); jump to the first rendered one.
@@ -205,7 +194,7 @@ interface BoardPosition {
 /**
  * Board keyboard support — the same one-tab-stop model as the tree: arrows move
  * the selection across cards and columns, Home and End reach the edges, Enter
- * opens, `/` reaches the filter, Ctrl/Cmd+Z undoes. A column with no card is
+ * opens, Escape backs out, Ctrl/Cmd+Z undoes. A column with no card is
  * still a stop, so an empty board is fully drivable. Alt+Left and Alt+Right move
  * the selected card one column, writing exactly the batch a drop writes.
  */
@@ -323,30 +312,33 @@ function handleBoardMoveKey(
 	else void host.performBoardMove(card, col.state);
 }
 
-/** The keys that are not navigation: undo, the column-stop Escape, and the filter pair. */
+/** The keys that are not navigation: undo, the column-stop Escape, and `handleEscape`. */
 function handleBoardChromeKey(host: BacklogViewHost, evt: KeyboardEvent): boolean {
 	if ((evt.ctrlKey || evt.metaKey) && !evt.altKey && !evt.shiftKey && evt.key.toLowerCase() === 'z') {
 		evt.preventDefault();
 		void host.undoLast();
 		return true;
 	}
-	// Escape backs out of the column stop the tree does not have, then the filter path.
-	if (evt.key === 'Escape' && host.filterText === '' && host.selectedBoardColumn !== null) {
+	// Escape backs out of the column stop the tree does not have, then the selection.
+	if (evt.key === 'Escape' && host.selectedBoardColumn !== null) {
 		evt.preventDefault();
 		host.selectBoardColumn(null);
 		return true;
 	}
-	return handleFilterKey(host, evt);
+	return handleEscape(host, evt);
 }
 
 // ------------------------------------------------------------------- roadmap
 
 /**
- * Roadmap keyboard support — the same one-tab-stop model, over the rendered
- * cards in reading order: axis, then shelf, then context. Arrows in either pair
+ * Roadmap keyboard support — the same one-tab-stop model, over the rendered cards
+ * in the order the FRAME drew them, which the render publishes as `cards` rather
+ * than being restated here: shelf then buckets on the horizon axis since
+ * 2026-08-17, axis then shelf on the two grid axes, context last on all three.
+ * Arrows in either pair
  * step the selection (buckets and the shelf lay out sideways, the timeline
  * stacks, so both pairs work everywhere), Home and End reach the edges, Enter
- * opens, `/` reaches the filter, Ctrl/Cmd+Z undoes, and Alt+Left/Right moves the
+ * opens, Escape backs out, Ctrl/Cmd+Z undoes, and Alt+Left/Right moves the
  * selected card one bucket. The lift that carries a move across two dimensions at
  * once is the scheduling feature's work, on the unmodified Space key, so it
  * arrives beside this rather than contending with it.
@@ -396,14 +388,21 @@ function handleRoadmapNavigationKey(
  * The placements an Alt+arrow steps through on the horizon axis: the shelf first,
  * then the buckets as they render.
  *
- * The shelf leads deliberately, and it is the one place this ladder does NOT follow
- * reading order — the arrows walk the cards axis-first and reach the shelf last.
- * A move ladder is not a reading order: the shelf is the roadmap's no-state column,
- * which the board puts first for the same reason, it is where un-placing lives, and
- * an untriaged card stepping onto the axis should arrive at the FIRST bucket, which
- * is exactly where the lift `docs/requirements/Keyboard and menu on the roadmap.md`
- * specifies enters from the shelf. Ordering it last would make "advance" un-place
- * finished triage and make entry land in the last horizon.
+ * The shelf leads for reasons of the LADDER's own, and that is the load-bearing part
+ * rather than which order the frame happens to draw in. The shelf is the roadmap's
+ * no-state column, which the board puts first for the same reason, it is where
+ * un-placing lives, and an untriaged card stepping onto the axis should arrive at the
+ * FIRST bucket, which is exactly where the lift
+ * `docs/requirements/Keyboard and menu on the roadmap.md` specifies enters from the
+ * shelf. Ordering it last would make "advance" un-place finished triage and make entry
+ * land in the last horizon.
+ *
+ * The frame agreed with none of that until 2026-08-17 and now agrees on this axis alone
+ * ([[The shelf leads the horizon board]]): the reading order is shelf-first here and
+ * still axis-first on the two grid axes, where `resourceStops` below leads with the shelf
+ * regardless. So the agreement is a coincidence of one axis and not a rule — a frame
+ * reordered again may not carry this list with it, and a reader reconciling the two is
+ * reconciling nothing.
  *
  * Null on the dated axis: those moves are the scheduling feature's, and a shortcut
  * that quietly did something else instead would be worse than one that does nothing.

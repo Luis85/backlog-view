@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { bodyOf } from '../helpers/cssVars';
 
 /**
  * Board columns share the pane's width instead of sitting at a fixed 260px, the same
@@ -14,11 +15,7 @@ import { describe, expect, it } from 'vitest';
 describe('the board columns use the room they have', () => {
 	const css = readFileSync(new URL('../../styles/board.css', import.meta.url), 'utf8');
 
-	function ruleBody(selector: string): string {
-		const start = css.indexOf(`${selector} {`);
-		expect(start, `${selector} is not in the stylesheet`).toBeGreaterThan(-1);
-		return css.slice(start, css.indexOf('}', start));
-	}
+	const ruleBody = (selector: string) => bodyOf(css, selector, 'styles/board.css');
 
 	it('grows the columns, with an explicit floor rather than flex-basis alone', () => {
 		const body = ruleBody('.pbl-board-col');

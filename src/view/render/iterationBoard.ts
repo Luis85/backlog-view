@@ -1,6 +1,6 @@
 import { RowContext } from './columns';
 import { renderBoard } from './board';
-import { renderEmptyIterationState, renderFilterEmptyState } from './emptyStates';
+import { renderEmptyIterationState } from './emptyStates';
 import { BacklogViewHost, BoardSnapshot } from '../host';
 import { CardDragController } from '../interactions/cardDrag';
 import { iterationBuckets } from '../../domain/board';
@@ -44,10 +44,9 @@ export function renderIterationBoard(
 		population,
 		host.settings,
 		(item) => !host.isRowHidden(item),
-		(item) => !host.isRowHiddenUnfiltered(item),
 		// What this board OWNS is its population outright — membership is a link, and
-		// nothing about it is hidden by a toggle. Both predicates above carry the
-		// completed-items filter, which is exactly what `held` may not be measured through.
+		// nothing about it is hidden by a toggle. The predicate above carries the
+		// completed-items toggle, which is exactly what `held` may not be measured through.
 		() => true,
 	);
 	return renderBoard(ctx, boardEl, dnd, board, {
@@ -57,10 +56,7 @@ export function renderIterationBoard(
 		// and a move planned from the state would rewrite one as the other.
 		move: (item, col) => void (col.bucket && host.performIterationBoardMove(item, col.bucket)),
 		stateOptionLabel: 'Workflow states (in order)',
-		drawEmpty: (h, aside, root) => {
-			if (h.isFiltering()) renderFilterEmptyState(h, aside, root);
-			else renderEmptyIterationState(aside, iteration?.title ?? 'this iteration');
-		},
+		drawEmpty: (_h, aside) => renderEmptyIterationState(aside, iteration?.title ?? 'this iteration'),
 	});
 }
 

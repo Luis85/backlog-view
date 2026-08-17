@@ -49,9 +49,9 @@ export function buildRow(
 	if (item.outsideFilter) row.addClass('pbl-outside');
 	row.setCssProps({ '--pbl-depth': String(item.depth) });
 	row.dataset.path = item.file.path;
-	// While filtering, visual neighbors are not real siblings — ranking by drag would
-	// mislead; an ancestor from outside the filter has unknown siblings for the same reason.
-	row.draggable = !host.isFiltering() && !item.outsideFilter;
+	// An ancestor from outside the Base's own results has unknown siblings, so ranking it
+	// by drag would mislead.
+	row.draggable = !item.outsideFilter;
 
 	renderRowLead(ctx, row, item, state);
 	renderRowTrailing(ctx, row, item, childTypes);
@@ -87,7 +87,7 @@ function renderRowLead(
 	renderBadge(host, row, item);
 
 	const title = row.createSpan({ cls: 'pbl-title' });
-	renderTitleText(host, title, item.title);
+	title.setText(item.title);
 	// Set unconditionally, and NOTHING measures whether it was needed. Deciding that costs
 	// a `scrollWidth`/`clientWidth` read per row, which forces layout — as a hover handler
 	// it cost 65.7ms per hover at 832 rows, and as a batched pass it forced the whole tree
@@ -152,13 +152,14 @@ function renderRowLead(
  *   `docs/issues/A disclosure nested in an option role.md` holds the two redesigns that
  *   would settle it.
  *
- * Everything else is one rule in one place — including the three guards, each of which
- * had to be discovered twice before: the filter override, because `isCollapsed` reports
- * false while a filter runs and a write here would look inert and then take effect once it
- * cleared; the real `disabled` flag that says so on a control assistive tech can actually
- * activate, since `pointer-events: none` stops a mouse and nothing else; and the middle
- * click, which never fires `click` and so never meets the first guard, leaving the row's
- * own `auxclick` to open a note from a control that means something else entirely.
+ * Everything else is one rule in one place: the leaf spacer, which of the two FORMS the
+ * row's own role calls for, the `tabindex="-1"` that keeps the pane one tab stop, and the
+ * focus report. It carried three guards besides, each discovered twice before it was
+ * written once, and none of them lives here now — the quick filter's collapse override
+ * went with the filter on 2026-08-17, taking the real `disabled` flag that announced it
+ * with it, and the middle click moved to the receiver (`fromRowControl`, which names this
+ * div chevron), where it covers a control that forgets rather than one that remembers.
+ * That is the shape to keep: a guard belongs here only while it is this CONTROL's.
  */
 export interface DisclosureState {
 	hasChildren: boolean;
@@ -173,9 +174,8 @@ export interface DisclosureState {
 	 * of them now and they do not share a key space: a tree row and a dated-grid row put the
 	 * same note in two different scopes (`collapseKey`), and a resource BAND is not a note
 	 * at all, so its bit is keyed by name and lives beside the shelf's own picks. What every
-	 * disclosure DOES share is this function — the filter override, the real `disabled`
-	 * flag, the middle-click guard and the focus report — and each of those had to be
-	 * discovered twice before it was written once.
+	 * disclosure DOES share is this function — the two forms, the tab-stop rule and the
+	 * focus report — so the next one inherits them without a fourth caller remembering.
 	 */
 	toggle: () => void;
 }
@@ -193,18 +193,21 @@ export function renderChevron(
 		return;
 	}
 	const { label } = state;
+	// The button form is a real control, off the tab order like every other per-row control:
+	// `tabindex="-1"` keeps the pane's single tab stop while leaving it activatable by
+	// assistive tech, with the row menu as the documented keyboard path. `styles/tree.css`
+	// strips Obsidian's button chrome from `button.pbl-chevron`.
 	const chevron: HTMLElement =
 		label === undefined
 			? rowEl.createDiv({ cls })
-			: disclosureButton(rowEl, cls, { expanded: !state.collapsed, label, disabled: host.isFiltering() });
+			: rowEl.createEl('button', {
+					cls,
+					attr: { type: 'button', tabindex: '-1', 'aria-expanded': String(!state.collapsed), 'aria-label': label },
+				});
 	drawIcon(chevron, 'chevron-right');
 	chevron.toggleClass('pbl-expanded', !state.collapsed);
 	// eslint-disable-next-line no-restricted-syntax -- closes over state.toggle, redraw and the element, never a BacklogItem.
 	chevron.addEventListener('click', () => {
-		// Read here rather than trusted from `disabled`: a click landing on the icon
-		// inside a disabled button still reaches this listener, and the div form has no
-		// `disabled` to read at all.
-		if (host.isFiltering()) return;
 		// Whether this control HELD focus, captured before the redraw that may destroy it —
 		// a caller rebuilding the whole projection has to put focus somewhere, and only
 		// this side knows whether there was any to put. Asked of the element rather than
@@ -214,39 +217,6 @@ export function renderChevron(
 		state.toggle();
 		redraw(heldFocus);
 	});
-}
-
-/**
- * The button form of the disclosure: a real control, off the tab order like every other
- * per-row control, carrying the state its row's role cannot. `tabindex="-1"` keeps the
- * pane's single tab stop while leaving it activatable by assistive tech, with the row
- * menu as the documented keyboard path. `styles/tree.css` strips Obsidian's button
- * chrome from `button.pbl-chevron`.
- */
-function disclosureButton(
-	rowEl: HTMLElement,
-	cls: string,
-	said: { expanded: boolean; label: string; disabled: boolean },
-): HTMLElement {
-	const btn = rowEl.createEl('button', {
-		cls,
-		attr: { type: 'button', tabindex: '-1', 'aria-expanded': String(said.expanded), 'aria-label': said.label },
-	});
-	btn.disabled = said.disabled;
-	return btn;
-}
-
-/** While filtering, the matching substring lights up so hits are scannable. */
-export function renderTitleText(host: BacklogViewHost, titleEl: HTMLElement, text: string): void {
-	const needle = host.filterText.trim().toLowerCase();
-	const idx = needle.length > 0 ? text.toLowerCase().indexOf(needle) : -1;
-	if (idx === -1) {
-		titleEl.setText(text);
-		return;
-	}
-	titleEl.appendText(text.substring(0, idx));
-	titleEl.createSpan({ cls: 'pbl-match', text: text.substring(idx, idx + needle.length) });
-	titleEl.appendText(text.substring(idx + needle.length));
 }
 
 /** Shared with the board's cards: one badge chain, so a type cannot look different per projection. */
@@ -380,7 +350,7 @@ export function foldOnClick(
 	row: { hasChildren: boolean; redraw: () => void },
 ): boolean {
 	if (!host.clickFolds || Keymap.isModEvent(evt)) return false;
-	if (host.isFiltering() || !row.hasChildren) return true;
+	if (!row.hasChildren) return true;
 	host.setCollapsed(item.file.path, !host.isCollapsed(item.file.path));
 	row.redraw();
 	return true;

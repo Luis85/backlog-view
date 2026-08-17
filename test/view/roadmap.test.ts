@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { Menu } from 'obsidian';
 import { FakeVault } from '../helpers/vault';
 import {
@@ -14,6 +14,7 @@ import {
 	useViewHarness,
 } from '../helpers/view';
 import { bucketNames, bucketsOf, roadmapView, shelfTitles } from '../helpers/roadmap';
+import { CardDragController } from '../../src/view/interactions/cardDrag';
 import { TIMELINE_LEAD_PX } from '../../src/view/render/timeline';
 
 useViewHarness();
@@ -72,20 +73,7 @@ describe('the three-position projection toggle', () => {
 		expect(shelfTitles(containerEl)).toEqual(['Untriaged']);
 	});
 
-	it('carries the quick filter across the switch — session state in all three projections', () => {
-		const vault = roadmapVault();
-		const { view, containerEl } = makeView(vault, { ...AXES }, { collapsed: true });
-		view.setFilter('Untriaged');
-
-		view.setProjection('roadmap');
-		view.setShelfCollapsed(false);
-		expect(view.filterText).toBe('Untriaged');
-		expect(shelfTitles(containerEl)).toEqual(['Untriaged']);
-		// The placed result does not match, so the axis narrows with the shelf.
-		expect(containerEl.querySelectorAll('.pbl-bucket-cards .pbl-card')).toHaveLength(0);
-	});
-
-	it('keeps the collapse controls present but disabled — this fixture has nothing to collapse — beside creation, undo and the filter', () => {
+	it('keeps the collapse controls present but disabled — this fixture has nothing to collapse — beside creation and undo', () => {
 		// Neither epic here is a parent, so no card draws a disclosure: present, not
 		// absent (the projection can still gain one), but with nothing to drive.
 		const { containerEl } = roadmapView(roadmapVault(), { ...AXES });
@@ -94,7 +82,6 @@ describe('the three-position projection toggle', () => {
 		expect(ctls.every((b) => b.disabled)).toBe(true);
 		expect(containerEl.querySelector('.pbl-new-btn')).not.toBeNull();
 		expect(containerEl.querySelector('.pbl-undo-btn')).not.toBeNull();
-		expect(containerEl.querySelector('.pbl-filter-input')).not.toBeNull();
 	});
 
 	it('marks the pane as a listbox while cards render, a labelled region otherwise', () => {
@@ -218,18 +205,19 @@ describe('roadmap keyboard support', () => {
 		const { containerEl } = roadmapView(vault, { ...AXES });
 		const tree = treeOf(containerEl);
 
-		// Reading order: the placed card, then the shelf.
-		key(tree, 'ArrowDown');
-		expect(containerEl.querySelector('.pbl-selected .pbl-card-title')?.textContent).toBe('Placed');
+		// Reading order: the shelf leads this board, then the buckets — the walk matches
+		// the frame, where the shelf renders first so a drop target is always in reach.
 		key(tree, 'ArrowDown');
 		expect(containerEl.querySelector('.pbl-selected .pbl-card-title')?.textContent).toBe('Untriaged');
+		key(tree, 'ArrowDown');
+		expect(containerEl.querySelector('.pbl-selected .pbl-card-title')?.textContent).toBe('Placed');
 		key(tree, 'ArrowUp');
-		expect(containerEl.querySelector('.pbl-selected .pbl-card-title')?.textContent).toBe('Placed');
-		key(tree, 'End');
 		expect(containerEl.querySelector('.pbl-selected .pbl-card-title')?.textContent).toBe('Untriaged');
+		key(tree, 'End');
+		expect(containerEl.querySelector('.pbl-selected .pbl-card-title')?.textContent).toBe('Placed');
 		key(tree, 'Home');
 		key(tree, 'Enter');
-		expect(vault.opened.map((o) => o.path)).toEqual(['Placed.md']);
+		expect(vault.opened.map((o) => o.path)).toEqual(['Untriaged.md']);
 	});
 
 	it('opens the card menu from the keyboard: ContextMenu, and Shift+F10', () => {
@@ -246,7 +234,7 @@ describe('roadmap keyboard support', () => {
 		expect(Menu.lastShown?.item('Open in new tab')).toBeDefined();
 	});
 
-	it('keeps the chords: Escape clears the selection, / reaches the filter', () => {
+	it('keeps the chord: Escape clears the selection', () => {
 		const { containerEl } = roadmapView(roadmapVault(), { ...AXES });
 		const tree = treeOf(containerEl);
 
@@ -254,9 +242,6 @@ describe('roadmap keyboard support', () => {
 		expect(containerEl.querySelector('.pbl-selected')).not.toBeNull();
 		key(tree, 'Escape');
 		expect(containerEl.querySelector('.pbl-selected')).toBeNull();
-
-		key(tree, '/');
-		expect(document.activeElement?.classList.contains('pbl-filter-input')).toBe(true);
 	});
 });
 
@@ -440,5 +425,56 @@ describe('a shared card is finished by ITS OWN workflow, on every projection tha
 		view.setShelfCollapsed(false);
 
 		expect(doneClasses(containerEl)).toEqual({ Shipped: true, Open: false, Shelved: true });
+	});
+});
+
+describe('a scrollport a card can be dragged into auto-scrolls', () => {
+	/**
+	 * Driven through `CardDragController.prototype.wireScroller` — `linkDrag.test.ts`'s own
+	 * seam — because nothing on the rendered DOM distinguishes a registered auto-scroller
+	 * from none: the drag library keeps its registry to itself, and jsdom lays out nothing,
+	 * so the OVERFLOW this exists for cannot be observed here at all.
+	 *
+	 * That is the whole reach of this test and it is worth stating: it asserts the shelf is
+	 * WIRED, never that a held card scrolls it. The scrolling itself was measured in the
+	 * browser harness — 19 unplaced cards, a 143px scrollport over 1301px of content, 0px
+	 * scrolled before and ~910px after, holding a real drag at the bottom edge for 1.2s.
+	 */
+	function scrollersWiredOn(collapsed: boolean): HTMLElement[] {
+		const { view } = makeView(roadmapVault(), { ...AXES }, { collapsed: true });
+		view.setProjection('roadmap');
+		// Settled into the OPPOSITE state first, so the observed call re-renders rather
+		// than no-opping on the state it is already in — which is what it did when this
+		// asked for `true` against the collapsed default and read zero calls.
+		view.setShelfCollapsed(!collapsed);
+		// The spy starts after the projection is on screen, so the calls counted are one
+		// settled render's and not the mount's — `linkDrag.test.ts` states the same rule
+		// for the same seam.
+		const spy = vi.spyOn(CardDragController.prototype, 'wireScroller');
+		view.setShelfCollapsed(collapsed);
+		return spy.mock.calls.map(([el]) => el);
+	}
+
+	it('wires the shelf, and not only the pane and the buckets', () => {
+		// The shelf caps at 30% of the frame and scrolls itself (`styles/roadmap.css`), and
+		// on the horizon axis it is what a card is dragged FROM — so a drag held at its
+		// bottom edge has to reach the cards below the fold. It had no auto-scroll at all
+		// until 2026-08-17, which nothing in the suite could have told anyone: every other
+		// card container had one and none of the seven call sites was asserted anywhere.
+		const wired = scrollersWiredOn(false);
+		expect(wired.filter((el) => el.classList.contains('pbl-shelf'))).toHaveLength(1);
+		// The buckets keep theirs, so the assertion above is about the shelf rather than
+		// about `wireScroller` having been called at all.
+		expect(wired.filter((el) => el.classList.contains('pbl-bucket-cards')).length).toBeGreaterThan(0);
+	});
+
+	it('wires it collapsed too, because collapsing must never gate the drag machinery', () => {
+		// `renderShelf` wires the drop target and the scroller BEFORE its collapsed/empty
+		// return, on purpose: a collapsed shelf scrolls nothing, but splitting the two
+		// across that return is how one of them comes to be forgotten. This asserts the
+		// SCROLLER half of that order and only it; the drop target's half is checked by
+		// `shelfUx.test.ts`'s "the shelf as a drop target while collapsed", which drops a
+		// card on the folded shelf and reddens if that wiring moves below the return.
+		expect(scrollersWiredOn(true).filter((el) => el.classList.contains('pbl-shelf'))).toHaveLength(1);
 	});
 });

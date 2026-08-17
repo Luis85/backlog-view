@@ -22,15 +22,16 @@ export function detectIgnoredGrouping(data: BasesQueryResult | null | undefined)
 }
 
 /**
- * The toolbar survives content-only renders (the filter keeps its input focus), so
- * the count is synced imperatively per pass. The Base's own results: ancestors
+ * The toolbar survives content-only renders — the shelf's own controls keep their focus
+ * and their DOM across one — so the count is synced imperatively per pass rather than
+ * rebuilt. The Base's own results: ancestors
  * loaded for context are not items of this base and must not inflate the number.
- * Collapsed rows still count as shown — only filtering and hiding narrow it,
- * which `isRowHidden` covers both of, in both projections. The Deliverables board is
+ * Collapsed rows still count as shown — only membership and the completed toggle narrow
+ * it, which `isRowHidden` covers both of, in every projection. The Deliverables board is
  * scoped a third way: its population is `model.deliverableResults` — every
  * Deliverable-typed result, regardless of any active focus level, never the whole
- * base — hidden by the filter-only predicate that board itself renders with rather
- * than the "Show completed items" one, since that toggle does not apply there. Also
+ * base — and `isRowHidden` answers per projection, so the "Show completed items" toggle
+ * it does not honour is already off in the one predicate rather than dodged here. Also
  * fixes the label's own tooltip, which used to be set once by `renderToolbar` at
  * full-render time and never rescoped here — so it could disagree with the text
  * sitting right next to it.

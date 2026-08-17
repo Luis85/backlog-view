@@ -214,7 +214,7 @@ function showTypeMenu(host: BacklogViewHost): void {
 
 /**
  * The shelf's own title search: a narrowing scoped to the untriaged work rather than to
- * the whole view, which is what the toolbar's quick filter already does and why this is
+ * the whole view, which is what the Base's own search already does and why this is
  * not that. Nothing is written; `searchShelf` (`domain/shelf.ts`) is the whole rule.
  */
 function renderSearch(host: BacklogViewHost, headerEl: HTMLElement): void {
@@ -224,9 +224,12 @@ function renderSearch(host: BacklogViewHost, headerEl: HTMLElement): void {
 	// wrapper with its own border and background put a bordered field inside a bordered
 	// field. Whatever the theme gives a search input is what this one wears.
 	//
-	// `type="search"` rather than `text` plus a clear button of our own: the platform draws
-	// that button, and only while there is something to clear. It is also what supplies the
-	// magnifier the wrapper used to draw beside it.
+	// `type="search"` stays for the semantics and for that theming. What it is NOT is the
+	// clear affordance: this comment used to say the platform draws one "only while there
+	// is something to clear", and that was a claim nothing here checked — reported from a
+	// vault as a search with no way back except selecting the text (2026-08-17). The
+	// stylesheet suppresses the native button outright and `renderSearchClear` below draws
+	// the plugin's own, so the field wears exactly one whatever the platform does.
 	const input = headerEl.createEl('input', {
 		cls: 'pbl-shelf-search-input',
 		attr: { type: 'search', tabindex: '-1', placeholder: label, 'aria-label': label },
@@ -265,6 +268,29 @@ function renderSearch(host: BacklogViewHost, headerEl: HTMLElement): void {
 		evt.stopPropagation();
 		runSearch(host, '', 0);
 	});
+	renderSearchClear(host, headerEl);
+}
+
+/**
+ * Empty the search, from a pointer. Escape already does this from the keyboard and both
+ * land on `runSearch`, so the two inputs cannot disagree about what a clear is or about
+ * where focus goes afterwards — the "one move, three inputs" rule at its smallest.
+ *
+ * Rendered only while there IS something to clear, which is what the native `type="search"`
+ * button was believed to be doing. A condition here rather than a class, because every
+ * keystroke rebuilds this header anyway: nothing is saved by drawing a button that is then
+ * hidden, and a control that is absent cannot be focused by assistive tech while it does
+ * nothing.
+ *
+ * `headerButton` makes it the pickers' equal — a real `<button>`, `tabindex="-1"`, named
+ * and tooltipped — so `syncShelfTabStops` lifts it with them when the pane holds no cards.
+ * That state is exactly this button's own: a search matching nothing empties the pane, and
+ * the control that undoes it must be the one thing a keyboard can still reach.
+ */
+function renderSearchClear(host: BacklogViewHost, headerEl: HTMLElement): void {
+	if (host.shelfSearch === '') return;
+	const btn = headerButton(headerEl, 'pbl-shelf-search-clear', 'x', `Clear ${SHELF_LABEL.toLowerCase()} search`);
+	btn.addEventListener('click', () => runSearch(host, '', 0));
 }
 
 /**

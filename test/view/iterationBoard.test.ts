@@ -124,7 +124,7 @@ describe('the iteration scope', () => {
 
 	it('reads the whole view as Product when the stored path names no Iteration', () => {
 		// Resolved ONCE, upstream: resolving it only where the content is drawn leaves
-		// every other gate — the count, the offered types, the filter index — still
+		// every other gate — the count, the offered types, the visibility rule — still
 		// answering as an iteration board.
 		const vault = sprintVault();
 		const harness = makeView(vault, OPTIONS, { base: 'Plan.base' });

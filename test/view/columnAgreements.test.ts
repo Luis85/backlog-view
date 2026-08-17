@@ -4,7 +4,7 @@ import { Menu } from '../helpers/obsidian-mock';
 import { FakeVault } from '../helpers/vault';
 import { cardDrag } from '../helpers/dnd';
 import { flush, key, refresh, treeOf, useViewHarness } from '../helpers/view';
-import { boardVault, cardByTitle, columnByName, columnNames, makeBoard } from '../helpers/board';
+import { boardVault, cardByTitle, cardTitles, columnByName, columnNames, makeBoard } from '../helpers/board';
 
 useViewHarness();
 
@@ -145,6 +145,31 @@ describe('a WIP limit never refuses a write', () => {
 		Menu.lastShown?.item('Set state')?.submenu?.item('Active')?.click();
 		await flush();
 		expect(vault.fm('A.md')['status']).toBe('Active');
+	});
+
+	it('counts the cards this board owns, never a row another projection does', async () => {
+		// The signal is measured off `BoardColumn.held`, which is counted through `owned`
+		// rather than through the visibility rule — otherwise a done column whose finished
+		// work is hidden reports nothing held. `owned` must therefore ask MEMBERSHIP and
+		// not just the type: under a focus the candidates are
+		// `requirementsFocusRoots(model.roots)`, which descends a non-context `Deliverable`
+		// into its raw `children`, and those are not membership-filtered. A `Test suite`
+		// arrives among them, `rowHidden` drops it by membership so it is no card — and a
+		// type-only `owned` still held it, putting a column drawing two cards against a
+		// limit of two one over.
+		const vault = new FakeVault();
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10 } });
+		vault.addFile('Suite.md', { frontmatter: { type: 'Test suite', order: 10, status: 'Active' }, parentLink: 'D' });
+		vault.addFile('P1.md', { frontmatter: { type: 'PBI', order: 20, status: 'Active' } });
+		vault.addFile('P2.md', { frontmatter: { type: 'PBI', order: 30, status: 'Active' } });
+		const { containerEl } = makeBoard(vault, { 'wipLimit.active': '2' }, { focus: 'PBI' });
+
+		const col = columnByName(containerEl, 'Active');
+		expect(cardTitles(col)).toEqual(['P1', 'P2']);
+		expect(headerOf(containerEl, 'Active').classList.contains('pbl-board-col-over')).toBe(false);
+		// The label is where the over-report is actually spoken, so it is asserted whole:
+		// a reader hearing "over by 1" over two cards under a limit of two is the defect.
+		expect(col.getAttribute('aria-label')).toBe('Active, 2 cards, limit 2');
 	});
 
 	it('says the column is over afterwards, rather than having stopped the move', async () => {

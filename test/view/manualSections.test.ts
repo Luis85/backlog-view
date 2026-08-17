@@ -29,7 +29,9 @@ describe('the manual', () => {
 	it('names the states a move is unavailable in, and claims no type refusal', () => {
 		const moving = manualSections().find((s) => s.id === 'moving');
 		const prose = moving?.entries.map((e) => `${e.term} ${e.text}`).join(' ').toLowerCase() ?? '';
-		expect(prose).toContain('quick filter');
+		// The quick filter was a fourth unavailable state until it was withdrawn (2026-08-17);
+		// the three that remain are the ones a move can still be refused for.
+		expect(prose).toContain('excluded');
 		expect(prose).toContain('descendant');
 		expect(prose).not.toContain('nothing is refused');
 		expect(prose).toContain('focus-root row has no previous sibling');

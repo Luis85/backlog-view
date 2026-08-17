@@ -52,15 +52,6 @@ describe('completed items', () => {
 		expect(epic.querySelector('.pbl-progress-label')?.textContent).toBe('2/2');
 	});
 
-	it('suspends hiding while the quick filter is active', () => {
-		const { view, containerEl } = makeView(completedFixture(), hiddenConfig());
-
-		view.setFilter('F done');
-		expect(titlesOf(containerEl)).toEqual(['Epic Y', 'F done']);
-		view.setFilter('');
-		expect(titlesOf(containerEl)).toEqual(['Epic X', 'F open', 'Epic Z']);
-	});
-
 	it('toggles the option from the toolbar eye button', () => {
 		const shown = makeView(completedFixture(), { stateProperty: 'note.status' });
 		shown.containerEl.querySelector<HTMLElement>('.pbl-completed-toggle')
@@ -118,6 +109,32 @@ describe('completed items', () => {
 		// No invisible collapse state is written or persisted for the apparent leaf.
 		expect(config.setCalls.filter((c) => c.key === 'collapsedItems')).toHaveLength(0);
 		expect(rowByTitle(containerEl, 'Epic').classList.contains('pbl-selected')).toBe(true);
+	});
+
+	/**
+	 * The other half of the branch beside it: with SOME children hidden, ArrowRight on an
+	 * already-expanded parent must land on the first child the render actually drew, not on
+	 * `children[0]`. The two fixtures that surround this one cannot see it — the keyboard
+	 * suite's is all-visible, and the case above hides EVERY child, where `hasChildren` is
+	 * false and the branch is never entered at all. Selecting a hidden row points
+	 * `aria-activedescendant` at an element that is not in the document, so both halves are
+	 * asserted: the row that took the selection, and that the announced id resolves.
+	 */
+	it('expands past a hidden first child to the first one on screen', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Open' } });
+		vault.addFile('F done.md', { frontmatter: { order: 10, status: 'Done' }, parentLink: 'Epic' });
+		vault.addFile('F open.md', { frontmatter: { order: 20, status: 'Open' }, parentLink: 'Epic' });
+		const { containerEl } = makeView(vault, hiddenConfig());
+		const tree = treeOf(containerEl);
+		expect(titlesOf(containerEl)).toEqual(['Epic', 'F open']);
+
+		key(tree, 'ArrowDown'); // Epic, expanded
+		key(tree, 'ArrowRight'); // already expanded: jump to the first child
+
+		expect(containerEl.querySelector('.pbl-selected')).toBe(rowByTitle(containerEl, 'F open'));
+		const active = tree.getAttribute('aria-activedescendant') ?? '';
+		expect(document.getElementById(active)).not.toBeNull();
 	});
 
 	it('shows the all-done state with a way back when everything hides', () => {

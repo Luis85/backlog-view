@@ -26,10 +26,9 @@
 export const en = {
 	/** A bare count of items, standing alone as a label. */
 	'count.items': { one: '{count} item', other: '{count} items' },
-	/** The same count, once a filter has made it a pair — the whole is the point. */
+	/** The same count once hiding has made it a pair — the whole is the point. */
 	'count.shownOfTotal': '{shown} of {total}',
 	'count.cards': { one: '{count} card', other: '{count} cards' },
-	'count.cardsMatching': '{count} of {total} cards match',
 	'count.children': { one: '{count} child', other: '{count} children' },
 	/**
 	 * A count of children that all share a type. The type is user data and arrives as a
@@ -73,10 +72,6 @@ export const en = {
 	'card.hiddenChildren': {
 		one: '{count} more is hidden by the current view',
 		other: '{count} more are hidden by the current view',
-	},
-	'row.searchMatches': {
-		one: '{count} search match below',
-		other: '{count} search matches below',
 	},
 
 	'undo.conflicts': {

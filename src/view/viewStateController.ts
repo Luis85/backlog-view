@@ -13,19 +13,10 @@ import { ScaleId, scaleFor } from '../domain/timeline';
 export interface ViewStateHooks {
 	/** No config was set, so no Bases refresh is coming: this render IS the change. */
 	render(): void;
-	/** Content only, like the quick filter — the toolbar keeps its own focus and DOM. */
+	/** Content only — the toolbar keeps its own focus and DOM. */
 	renderTreeContent(): void;
 	/** Re-roots the model, since the change (focus alone) is what it is re-rooted on. */
 	refreshFromData(): void;
-	/**
-	 * Rebuild the quick filter's match index. Only the projection needs it, and no gate
-	 * anywhere would have caught the omission: the index is correct when built and wrong
-	 * when the thing it was built FOR changes underneath it. A switch with a needle still
-	 * in the box would otherwise answer for the projection the user just left — rows that
-	 * do not match staying on screen, matches missing, and the text still in the input
-	 * saying the filter is working.
-	 */
-	recomputeFilter(): void;
 }
 
 /**
@@ -77,8 +68,6 @@ export class ViewStateController {
 		}
 		if (mode === this.projection) return;
 		this.state.setProjection(mode);
-		// Before the render, not after: the render is what reads the index.
-		this.hooks.recomputeFilter();
 		this.hooks.render();
 	}
 
@@ -92,9 +81,13 @@ export class ViewStateController {
 	 * and an iteration is the iteration projection, and two stored values that cannot
 	 * contradict each other need no guard on any route in.
 	 *
-	 * The filter index is rebuilt for `setProjection`'s reason, which applies a second
-	 * time here: the population changes with the scope, and an index built for the old
-	 * one is correct when built and wrong the moment the thing it describes is replaced.
+	 * A full render for `setProjection`'s reason: no config was set, so no Bases refresh is
+	 * coming and this render IS the change. Nothing derived is rebuilt beside it — the one
+	 * thing that was, the quick filter's match index, went with the filter on 2026-08-17.
+	 * Anything cached against the POPULATION added later has to join this method by hand,
+	 * because the scope is exactly what replaces that population, and no gate anywhere
+	 * would catch the omission: an index is correct when built and wrong when the thing it
+	 * was built FOR changes underneath it.
 	 */
 	setBoardScope(path: string | null): void {
 		// The no-op guard asks all three stored values, not two: from the Deliverables
@@ -112,7 +105,6 @@ export class ViewStateController {
 		this.state.setBoardPick(null);
 		this.state.setBoardScope(path);
 		this.state.setProjection(path === null ? 'board' : 'iteration');
-		this.hooks.recomputeFilter();
 		this.hooks.render();
 	}
 
@@ -191,7 +183,7 @@ export class ViewStateController {
 
 	/**
 	 * The one pick here that `ViewState` never sees: the shelf's search is session state,
-	 * like the toolbar's quick filter beside it, so it lives on this controller as a plain
+	 * so it lives on this controller as a plain
 	 * field and dies with the view. Persisting it would open a saved view onto a shelf
 	 * silently narrowed by a search nobody remembers typing.
 	 */
