@@ -61,6 +61,30 @@ export function hidesCompleted(projection: Projection): boolean {
 }
 
 /**
+ * Whether this projection's card menus list children — the `Show/Hide children` toggle
+ * and the `Open child "…"` entries under it. The horizon board is the one that declines
+ * (asked for directly, 2026-08-17); every other projection, tree or card, carries them.
+ *
+ * Both terms are load-bearing and neither answers alone: the dated and resources axes
+ * keep the section, so `'roadmap'` is not the rule, and no other projection has an axis
+ * for the second term to read.
+ *
+ * **It is not the question `chooseHorizon` (`interactions/plan.ts`) and `onResourceAxis`
+ * (`interactions/labels.ts`) spell the same way.** Those two ask whether a move on this
+ * axis needs the announcing path — a rule about WRITES that merely coincides with this
+ * one on the horizons axis today. A later axis could list children and still announce, or
+ * announce and list none, so the three stay three statements rather than one shared
+ * helper that would have to be split the first time they disagree.
+ *
+ * The `axis` a caller passes comes off the last roadmap render (`host.roadmap`), and
+ * naming the rule here does nothing about that: a snapshot stale across a projection
+ * switch is a hazard in the caller's READ, before the call, and this closes none of it.
+ */
+export function menusListChildren(projection: Projection, axis: RoadmapAxis | null): boolean {
+	return !(projection === 'roadmap' && axis === 'horizons');
+}
+
+/**
  * Whether this projection draws the rollup column. The catalog does not, and the reason is
  * the same one that withholds its completed toggle: it has nothing to put in it. `assignAll`
  * counts a child only where the child and the parent are both plan rows, so a suite's

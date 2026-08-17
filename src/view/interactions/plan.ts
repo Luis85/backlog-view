@@ -82,6 +82,12 @@ function includesValue(values: string[], value: string): boolean {
  * than by each input separately. Elsewhere there is no frame to announce into and
  * the planned write goes straight through the gate. `chooseState` splits on the
  * board for the same reason.
+ *
+ * The condition is spelled here rather than asked of `menusListChildren`
+ * (`view/projection.ts`), which reads identically today: that one declares what a card
+ * MENU lists and this one asks where a WRITE goes, so an axis that changed either answer
+ * alone would silently change the other. `onResourceAxis` (`interactions/labels.ts`) is
+ * this same question on its own axis.
  */
 function chooseHorizon(host: BacklogViewHost, item: BacklogItem, value: string | null): Promise<unknown> {
 	if (host.projection === 'roadmap' && host.roadmap?.roadmap.axis === 'horizons') {

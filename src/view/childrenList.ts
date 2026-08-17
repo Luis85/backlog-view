@@ -85,17 +85,6 @@ export function cardedPaths(host: BacklogViewHost): Set<string> {
 }
 
 /**
- * Whether the horizon board is what is on screen — the axis whose card menu carries no
- * children section at all (asked for directly, 2026-08-17; the task note records what
- * that withholds). The spelling is `interactions/plan.ts`'s own for the same question:
- * the snapshot alone cannot answer it, since `host.roadmap` describes the last roadmap
- * render, and the projection alone cannot either, since the dated axis keeps the section.
- */
-export function horizonBoardShowing(host: BacklogViewHost): boolean {
-	return host.projection === 'roadmap' && host.roadmap?.roadmap.axis === 'horizons';
-}
-
-/**
  * What the row MENU will list as `Open child "…"` — the gate and the narrowing together,
  * so the two surfaces below cannot disagree about it.
  *
@@ -105,10 +94,15 @@ export function horizonBoardShowing(host: BacklogViewHost): boolean {
  * `listedChildren`. `unreachableChildren` is the second half: the menu names only a child
  * with no card of its own.
  *
- * Empty on the horizon board, whose card menus carry no children section at all.
+ * The horizon board's exemption is NOT stated here, and that is the whole of what this
+ * function knows about it: `addChildrenSection` — the only caller — returns on
+ * `menusListChildren` before the separator, so a copy of that gate in this body could
+ * never run. There was one until 2026-08-17, kept because `matchesFor` subtracted this
+ * list from the match walk and so needed it EMPTY as well as undrawn; 88e03e8 deleted
+ * that reason with `matchesFor` itself. A second caller wanting the exemption asks
+ * `menusListChildren` for it, the way this one's caller does.
  */
 export function menuChildren(host: BacklogViewHost, item: BacklogItem, carded: Set<string>): BacklogItem[] {
-	if (horizonBoardShowing(host)) return [];
 	return host.cardChildrenShown.has(item.file.path) ? unreachableChildren(host, item, carded) : [];
 }
 

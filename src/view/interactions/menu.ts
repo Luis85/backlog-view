@@ -28,8 +28,8 @@ import { addShelfSearchItems, addShelfSortItems, addShelfTypeItems } from './she
 import { addHorizonItems, canSchedule, carriesDates, promptSchedule, unschedule } from './plan';
 import { addTagItems, tagsColumnVisible } from './tags';
 import { addDependencyItems, dependenciesAvailable } from './dependencies';
-import { horizonBoardShowing, menuChildren, cardedPaths } from '../childrenList';
-import { offerableTypes, retypeChoices, rowVocabulary, treeShaped } from '../projection';
+import { menuChildren, cardedPaths } from '../childrenList';
+import { menusListChildren, offerableTypes, retypeChoices, rowVocabulary, treeShaped } from '../projection';
 
 /**
  * Whichever board-shaped projection is active, or null off both — `host.board` is the
@@ -400,14 +400,17 @@ export const showTagMenu = (host: BacklogViewHost, evt: MouseEvent, item: Backlo
  * ROWS, and the entries below open notes rather than standing in for it.
  *
  * The HORIZON BOARD carries none of this (asked for directly, 2026-08-17): its menus
- * name no children, so the whole section returns before the separator. `menuChildren`
- * carries the same gate itself — see its comment — and the two costs
- * are recorded in the task note rather than smoothed over: on this board the face
- * disclosure has no keyboard path, and under a focus an unmatched, uncarded child is
- * reachable only from the other projections.
+ * name no children, so the whole section returns before the separator. **This return is
+ * the only gate.** `menuChildren` carried a second copy of it until 2026-08-17, for a
+ * reason 88e03e8 had already deleted — `matchesFor` subtracted that list from the match
+ * walk — and the copy was unreachable behind this line for as long as it outlived it.
+ * The two costs are recorded in the task note rather than smoothed over: on this board
+ * the face disclosure has no keyboard path, and under a focus an unmatched, uncarded
+ * child is reachable only from the other projections.
  */
 function addChildrenSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
-	if (horizonBoardShowing(host)) return;
+	// The axis comes off the last roadmap render, which is the only place it is written.
+	if (!menusListChildren(host.projection, host.roadmap?.roadmap.axis ?? null)) return;
 	if (!host.cardChildrenShown.has(item.file.path)) return;
 	const isBar = (host.roadmap?.roadmap.bars ?? []).some((bar) => bar.item.file.path === item.file.path);
 	menu.addSeparator();
