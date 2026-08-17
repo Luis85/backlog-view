@@ -65,6 +65,18 @@
 	font-size: var(--font-ui-smaller);
 }
 
+/* The field wears exactly ONE clear affordance, and it is the plugin's own
+   (`renderSearchClear`). The type was picked believing the platform drew this button
+   whenever the field had a value; a vault reported no way back out of the search, and
+   what a headless Chromium draws for a bare `input[type='search']` here is nothing at
+   all — so the premise is unverifiable from this repository and the drawn button cannot
+   depend on it. Suppressed rather than left to chance: where the platform DOES draw one,
+   two x's sit side by side and only one of them tells the view anything. `-webkit-`
+   because Obsidian is Chromium on every platform it ships for. */
+.pbl-shelf-search-input::-webkit-search-cancel-button {
+	display: none;
+}
+
 /* What this drop would LEAVE, said before the release — only the dated axis draws one. */
 .pbl-shelf-outcome {
 	margin-inline-start: auto;
@@ -188,14 +200,19 @@
 	height: 14px;
 }
 
-/* The two pickers sit together, left of the outcome line's `margin-inline-start: auto`. */
+/* The two pickers sit together, left of the outcome line's `margin-inline-start: auto`.
+   The search's clear button joins them rather than taking a size of its own: it is a
+   header control like the others, and an x drawn at a different weight beside them reads
+   as belonging to something else. */
 .pbl-shelf-sort,
-.pbl-shelf-filter {
+.pbl-shelf-filter,
+.pbl-shelf-search-clear {
 	color: var(--text-muted);
 }
 
 .pbl-shelf-sort .svg-icon,
-.pbl-shelf-filter .svg-icon {
+.pbl-shelf-filter .svg-icon,
+.pbl-shelf-search-clear .svg-icon {
 	width: 14px;
 	height: 14px;
 }

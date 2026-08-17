@@ -11,6 +11,14 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+### Added
+
+- **A clear button on the shelf's search.** An x appears beside the box while there is
+  something to clear and empties the search when pressed, leaving the caret where it was.
+  The box is `type="search"` and was built expecting the platform's own clear button;
+  where that never appeared there was no way out of a search but Escape or selecting the
+  text by hand. The native button is now suppressed outright, so the field never shows two.
+
 ### Changed
 
 - **The unplaced shelf now leads the horizon board.** It renders above the buckets — and

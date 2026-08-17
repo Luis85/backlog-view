@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { Menu, Modal } from 'obsidian';
 import { horizonVault, makeRoadmap, shelfCountOf, shelfGroupHeaders, shelfTitles } from '../helpers/roadmap';
@@ -293,5 +294,95 @@ describe("the shelf's type picker", () => {
 		expect(submenu?.items.map((i) => i.titleText)).toEqual(
 			openTypeMenu(containerEl).items.map((i) => i.titleText),
 		);
+	});
+});
+
+/**
+ * The clear button beside the search box, asked for directly (2026-08-17). The box is
+ * `type="search"` and the comment beside it used to say the PLATFORM draws this button
+ * "only while there is something to clear" — a promise the code never checked and a vault
+ * did not keep. It is the plugin's own control now, on the toolbar filter's pattern, with
+ * the native one suppressed in CSS so the field can never wear two.
+ *
+ * jsdom neither draws nor hides a pseudo-element, so the suppression is a text check over
+ * the stylesheet at the foot of this block — `timelineBoxing.test.ts`'s shape, with its
+ * honesty: it refuses the deletion and cannot tell you what the field looks like. The rest
+ * is the button's own loop — when it exists, what it clears, and that a keyboard can reach
+ * it in the state where it is the only way back.
+ */
+describe("the shelf search's clear button", () => {
+	const clearBtn = (containerEl: HTMLElement) =>
+		containerEl.querySelector<HTMLButtonElement>('.pbl-shelf-search-clear');
+
+	it('is absent while there is nothing to clear', () => {
+		const { containerEl } = makeRoadmap(searchVault());
+
+		expect(clearBtn(containerEl)).toBeNull();
+	});
+
+	it('appears once something is typed, and clears the search when pressed', () => {
+		const { containerEl, view } = makeRoadmap(searchVault());
+		typeSearch(containerEl, 'login');
+		expect(shelfTitles(containerEl)).toHaveLength(3);
+
+		clearBtn(containerEl)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		expect(view.shelfSearch).toBe('');
+		expect(searchBox(containerEl).value).toBe('');
+		// The cards it was hiding are back, and the count never moved — a narrowing is a
+		// display choice, which is the rule the count keeps throughout.
+		expect(shelfTitles(containerEl)).toHaveLength(4);
+		expect(shelfCountOf(containerEl)).toBe('4');
+		expect(clearBtn(containerEl)).toBeNull();
+	});
+
+	it('puts focus back in the box it emptied, not on the pane', () => {
+		// `runSearch`'s third answer, inherited rather than restated: the button is gone
+		// with the rebuild, and a caret in the search box is not a selection in a composite.
+		const { containerEl } = makeRoadmap(searchVault());
+		typeSearch(containerEl, 'login');
+
+		const btn = clearBtn(containerEl);
+		// Named before it is used: without this the click is a no-op on `null` and the
+		// assertion below passes on the focus `runSearch` had already placed.
+		expect(btn).not.toBeNull();
+		btn?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		expect(document.activeElement).toBe(searchBox(containerEl));
+	});
+
+	it('suppresses the native cancel button, so the field can never wear two', () => {
+		// A text check, and its reach is exactly that: jsdom draws no pseudo-element and the
+		// browser harness could not answer what the platform does either — a bare
+		// `input[type='search']` carrying a value cleared nothing when its right edge was
+		// clicked in headless Chromium, so the premise the type was chosen on is
+		// unverifiable here in BOTH directions. What this refuses is the deletion that would
+		// leave the answer to chance.
+		// From the WORKING DIRECTORY, not from `import.meta.url`: this file is jsdom, where
+		// that URL is not a `file:` one and `readFileSync` refuses it — which is why the
+		// other stylesheet checks sit in node-env files. vitest runs from the repository
+		// root, the same resolution every script here uses.
+		const css = readFileSync('styles/shelf.css', 'utf8');
+		const at = css.indexOf(".pbl-shelf-search-input::-webkit-search-cancel-button {");
+		expect(at).toBeGreaterThan(-1);
+		expect(css.slice(at, css.indexOf('}', at))).toContain('display: none;');
+	});
+
+	it('is a named tab-invisible button beside the pickers, lifted with them when the pane empties', () => {
+		const { containerEl } = makeRoadmap(searchVault());
+		// A search that matches nothing: the pane draws no card, so it is a `region` rather
+		// than a composite and every header control has to be tab-reachable — this button
+		// most of all, since it is the one that undoes the state.
+		typeSearch(containerEl, 'zzz');
+		expect(shelfTitles(containerEl)).toEqual([]);
+
+		const btn = clearBtn(containerEl);
+		expect(btn?.tagName).toBe('BUTTON');
+		expect(btn?.getAttribute('aria-label')).toBeTruthy();
+		expect(btn?.getAttribute('tabindex')).toBe('0');
+
+		// And with cards on screen it is out of the tab order like every other picker.
+		typeSearch(containerEl, 'login');
+		expect(clearBtn(containerEl)?.getAttribute('tabindex')).toBe('-1');
 	});
 });
