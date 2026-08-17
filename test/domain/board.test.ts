@@ -347,13 +347,13 @@ describe('a column carries its own agreement', () => {
 		columnPolicies: { active: 'Someone is actually working on it' } as Record<string, string>,
 	};
 
-	function board(vault: FakeVault, s = limited) {
+	function board(vault: FakeVault, s = limited, visible = everything) {
 		const model = buildModel(vault.app, vault.entries(), s);
-		return boardColumns(requirementsWorkflow(model, s), model.focused ? model.roots : model.results, everything);
+		return boardColumns(requirementsWorkflow(model, s), model.focused ? model.roots : model.results, visible);
 	}
 
-	function column(vault: FakeVault, label: string, s = limited) {
-		const col = board(vault, s).columns.find((c) => c.label === label);
+	function column(vault: FakeVault, label: string, s = limited, visible = everything) {
+		const col = board(vault, s, visible).columns.find((c) => c.label === label);
 		if (!col) throw new Error(`column not found: ${label}`);
 		return col;
 	}
@@ -402,6 +402,24 @@ describe('a column carries its own agreement', () => {
 	it('is not over at the limit, and never over without one', () => {
 		expect(overBy(column(vaultWith('Active', 'Active'), 'Active'))).toBe(0);
 		expect(overBy(column(vaultWith('New', 'New', 'New'), 'New'))).toBe(0);
+	});
+
+	it('holds what the completed toggle hides, whatever the caller can see', () => {
+		// Four finished subtrees in Done, with the toggle on: `rowHidden`'s own reading of
+		// it is `item.subtreeDone`, spelled here as the predicate rather than reached for
+		// through the view. Every card goes, so the column draws nothing and counts
+		// nothing — and still HOLDS four.
+		//
+		// `owned` must therefore never DEFAULT to `visible`: falling into that makes
+		// `held` a second name for `count`, and the fold default (`render/board.ts`, which
+		// settles a done column on `col.held > 0 && !col.openWork`) stops firing in exactly
+		// the configuration it was written for — a done column full of finished work,
+		// reading as a column with nothing in it.
+		const col = column(vaultWith('Done', 'Done', 'Done', 'Done'), 'Done', limited, (item) => !item.subtreeDone);
+
+		expect(col.cards).toHaveLength(0);
+		expect(col.count).toBe(0);
+		expect(col.held).toBe(4);
 	});
 });
 

@@ -73,12 +73,20 @@ export interface BoardColumn {
 	/** The working agreement written on this stage in the view options, or ''. */
 	policy: string;
 	/**
-	 * True while any card in this column's POPULATION still carries unfinished work —
-	 * the question a done column's fold default is decided on, so a column of finished
-	 * subtrees can start shut and one holding a retained card cannot.
+	 * True while any card in this column still carries unfinished work — the question a
+	 * done column's fold default is decided on, so a column of finished subtrees can
+	 * start shut and one holding a retained card cannot.
 	 *
-	 * Measured over the column's POPULATION rather than off `cards`, results only like
-	 * `count` — a context card is placement, not work.
+	 * Asked of the CANDIDATES rather than of `cards`, which is what lets a context card
+	 * speak: it is placement and never population, so its own state says nothing here,
+	 * while the results below it are what folding the column would take off the board.
+	 * Every other card is asked through the same `visible` that builds `cards`, and this
+	 * says only that — it claimed a population reading until the quick filter went
+	 * (2026-08-17) and took the field behind it. Nothing is lost by the narrower one: a
+	 * card `visible` drops for membership is not this projection's, and a card it drops
+	 * for the completed toggle is `subtreeDone`, so `col.done` holds and every descendant
+	 * is done — the line below could not have fired for it either way. {@link
+	 * BoardColumn.held} is where the population reading is genuinely still needed.
 	 *
 	 * "Finished" is THIS column's verdict, never `item.subtreeDone`: that field is built on
 	 * `item.done`, the requirements reading, which is the wrong workflow on the Deliverables
@@ -89,6 +97,7 @@ export interface BoardColumn {
 	 * Result cards this stage HOLDS, whatever is currently hidden inside it — the evidence
 	 * the fold default needs beside {@link BoardColumn.openWork}, since settling is
 	 * permanent and a default taken on an empty column is a default taken on no evidence.
+	 * {@link overBy} reads it for its own version of the same rule.
 	 *
 	 * {@link BoardColumn.count} cannot serve: it is measured through the visibility rule,
 	 * which carries the completed-items toggle, so with finished work hidden a done column
@@ -494,17 +503,6 @@ export function paletteDone(palette: StatePalette, state: string): boolean {
 }
 
 /**
- * Project the model onto columns. `visible` is the view's own row-visibility rule
- * (hidden completed subtrees, the context-placement test) passed in
- * whole, so the board and the tree cannot disagree about what is hidden — one
- * predicate answers for both projections.
- *
- * `candidates` is which items become cards — the caller's question, not this
- * function's: unfocused, every result is a card; focused, the rendered roots are —
- * results as live cards, and a focus-level item outside the filter as an inert
- * context card that still places its results ({@link BoardColumn.cards}).
- */
-/**
  * The three per-column tallies, in one walk: what the stage HOLDS, what it counts, and
  * whether any of it is unfinished. One pass because they come from one question asked of
  * each card — three passes would be three chances to disagree about who is in the column.
@@ -558,11 +556,30 @@ function tallyColumns(
 	}
 }
 
+/**
+ * Project the model onto columns. `visible` is the view's own row-visibility rule
+ * (hidden completed subtrees, the context-placement test) passed in
+ * whole, so the board and the tree cannot disagree about what is hidden — one
+ * predicate answers for both projections.
+ *
+ * `candidates` is which items become cards — the caller's question, not this
+ * function's: unfocused, every result is a card; focused, the rendered roots are —
+ * results as live cards, and a focus-level item outside the filter as an inert
+ * context card that still places its results ({@link BoardColumn.cards}).
+ *
+ * `owned` defaults to "everything counts" and never to `visible`, which is the one value
+ * it exists to be measured apart from: falling into `owned = visible` makes
+ * {@link BoardColumn.held} a second name for {@link BoardColumn.count}, so a done column
+ * whose finished work the completed toggle has hidden reports nothing held and the fold
+ * default stops firing in exactly the configuration it was written for. A projection that
+ * omits it over-counts instead, which loses no card. Every caller in `view/` passes its
+ * own, and each differs from that projection's `visible`.
+ */
 export function boardColumns(
 	workflow: Workflow,
 	candidates: BacklogItem[],
 	visible: (item: BacklogItem) => boolean,
-	owned: (item: BacklogItem) => boolean = visible,
+	owned: (item: BacklogItem) => boolean = () => true,
 ): BoardModel {
 	const { columns, byValue, noState } = workflowColumns(workflow);
 	// State-to-column matching is case-insensitive, exactly as doneValues matching
@@ -586,14 +603,15 @@ export function boardColumns(
  * committed to the fortnight, and the whole point of narrowing the PRODUCT workflow is
  * that there is one of it.
  *
- * The predicates default to "everything counts", which is the shape a domain test wants;
- * the view passes the completed toggle exactly as it does for the other two boards.
+ * BOTH predicates default to "everything counts", which is the shape a domain test wants;
+ * the view passes the completed toggle exactly as it does for the other two boards. Never
+ * `owned = visible` — see {@link boardColumns} for the one value that default may not take.
  */
 export function iterationBuckets(
 	population: BacklogItem[],
 	settings: BacklogSettings,
 	visible: (item: BacklogItem) => boolean = () => true,
-	owned: (item: BacklogItem) => boolean = visible,
+	owned: (item: BacklogItem) => boolean = () => true,
 ): BoardModel {
 	const column = (bucket: IterationBucket): BoardColumn => {
 		const representative = bucketRepresentative(bucket, settings);
@@ -694,18 +712,43 @@ export function emptyNoState(col: BoardColumn): boolean {
 	// Both terms are now covered by the bucket refusal; neither is removed, because each
 	// states a rule about a different half of `state === null`.
 	if (col.bucket !== undefined) return false;
-	return col.state === null && col.takesDrop && col.cards.length === 0 && col.count === 0;
+	// ONE reading of empty, and there is no second one to ask. `count` was `fullCount`
+	// here — a population genuinely independent of the drawn cards — and `fullCount` went
+	// with the quick filter (2026-08-17), leaving a term `cards.length === 0` already
+	// forces: `count` is a reduce over `cards`. `held` is not the replacement either: the
+	// no-state column's cards carry no state, so none can be `item.done`, so none is ever
+	// `subtreeDone` and the completed toggle — the one thing `held` is measured apart from
+	// — can never hide one. A `held` term here would be a conjunct no fixture could make
+	// fail, which is the defect this removes rather than a fix for it.
+	return col.state === null && col.takesDrop && col.cards.length === 0;
 }
 
 /**
  * How many cards this column holds beyond what was agreed — 0 at the limit, under it,
  * or with no limit at all.
  *
+ * Read off {@link BoardColumn.held} rather than `count`, which is the WIP limit's own
+ * rule: the signal describes the work, never what happens to be on screen, because a
+ * column made to look under its limit by something the reader is hiding is a lie about
+ * the work (`docs/requirements/WIP limits.md`, extension 4a). It read `fullCount` for
+ * that reason until the quick filter took that field with it (2026-08-17) and left this
+ * on `count`.
+ *
+ * **Nothing can currently tell the two readings apart, and this says so rather than
+ * promising a fix it cannot show.** `held` and `count` differ only for a non-context card
+ * that `owned` keeps and `visible` drops, and on the one board with limits that is only
+ * ever a subtree the completed toggle hides — which is `item.done`, so it is always in a
+ * DONE column, and a done column never carries a limit (`limitedStates` in
+ * `settingsResolve.ts` drops one, and `settingsInconsistency` refuses a fixture that says
+ * otherwise). So this is the reading the requirement states, held against a change in
+ * either of those two facts; it is not a defect anybody can reproduce today, and a test
+ * claiming to distinguish them would be asserting a configuration no view can produce.
+ *
  * Nothing that PLANS a write imports this. A limit never refuses a move, and a planner
  * that cannot see a limit cannot consult one.
  */
 export function overBy(col: BoardColumn): number {
-	return col.limit === null ? 0 : Math.max(0, col.count - col.limit);
+	return col.limit === null ? 0 : Math.max(0, col.held - col.limit);
 }
 
 /**
