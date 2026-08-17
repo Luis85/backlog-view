@@ -103,14 +103,14 @@ describe('the guided empty state’s setup action', () => {
 		const vault = new FakeVault();
 		vault.addFile('A.md');
 		const { view } = makeEstimationView(vault, {});
-		expect(view.canUndo()).toBe(false);
+		expect(view.gate.canUndo()).toBe(false);
 
 		await runEstimationInit(view);
 
-		expect(view.canUndo()).toBe(true);
+		expect(view.gate.canUndo()).toBe(true);
 		expect(vault.fm('A.md')).not.toEqual({});
 
-		const undone = await view.undoLast();
+		const undone = await view.gate.undoLast();
 
 		expect(undone).toBe(true);
 		expect(vault.fm('A.md')).toEqual({});

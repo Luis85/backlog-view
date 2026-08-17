@@ -121,9 +121,16 @@ export function parseStamp(raw: string): ParsedStamp | null {
  */
 export type Currency = 'current' | 'stale' | 'foreign' | 'handwritten' | 'orphan' | 'none';
 
+/**
+ * `fingerprint` is `modelFingerprint(model)`, already computed — optional so every
+ * existing caller keeps working unchanged, but `estimationItems.ts` passes its own
+ * build's fingerprint once rather than paying for this per item: the model is the same
+ * for every item in one build, so recomputing it in a loop was pure loop-invariant cost.
+ */
 export function currencyOf(
 	model: ScoringModel,
 	item: { storedTotal: number | null; storedStamp: string | null; result: TotalResult | null },
+	fingerprint?: string,
 ): Currency {
 	// Currency describes the STORED total; with nothing stored there is nothing to judge.
 	if (item.storedTotal === null) return 'none';
@@ -131,7 +138,7 @@ export function currencyOf(
 	if (item.result === null) return 'orphan';
 	if (item.storedStamp === null) return 'handwritten';
 	const parsed = parseStamp(item.storedStamp);
-	if (!parsed || parsed.fingerprint !== modelFingerprint(model)) return 'foreign';
+	if (!parsed || parsed.fingerprint !== (fingerprint ?? modelFingerprint(model))) return 'foreign';
 	if (parsed.answered !== item.result.coverage.answered || parsed.enabled !== item.result.coverage.enabled) return 'stale';
 	if (item.result.total !== round2(item.storedTotal)) return 'stale';
 	return 'current';

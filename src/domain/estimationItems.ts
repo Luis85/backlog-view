@@ -1,7 +1,7 @@
 import { App, BasesEntry, TFile } from 'obsidian';
 import { ownValue, readNumber, readString } from './noteFields';
 import { boundKeys, ScoringModel } from './scoringModel';
-import { computeTotal, Currency, currencyOf, TotalResult } from './weightedScore';
+import { computeTotal, Currency, currencyOf, modelFingerprint, TotalResult } from './weightedScore';
 
 /**
  * One result note read into what the table and the panel need: its own answers, what is
@@ -41,6 +41,10 @@ export interface EstimationModel {
  */
 export function buildEstimationModel(app: App, entries: BasesEntry[], model: ScoringModel): EstimationModel {
 	const bound = boundKeys(model);
+	// Loop-invariant: the same model scores every item, so its fingerprint (a JSON.stringify
+	// plus a hash over every dimension) is computed once here rather than once per item
+	// inside `currencyOf`.
+	const fingerprint = modelFingerprint(model);
 	const items: EstimationItem[] = [];
 	const byPath = new Map<string, EstimationItem>();
 	for (const entry of entries) {
@@ -65,7 +69,7 @@ export function buildEstimationModel(app: App, entries: BasesEntry[], model: Sco
 			storedTotal,
 			storedStamp,
 			result,
-			currency: currencyOf(model, { storedTotal, storedStamp, result }),
+			currency: currencyOf(model, { storedTotal, storedStamp, result }, fingerprint),
 			ownKeys: new Set(bound.filter((key) => ownValue(fm, key) !== undefined)),
 		};
 		items.push(item);

@@ -1,7 +1,8 @@
 import { BasesViewConfig, Notice } from 'obsidian';
 import { SUGGESTED_KEYS } from '../../domain/defaultModel';
+import { buildEstimationModel } from '../../domain/estimationItems';
 import { resolveEstimationSettings } from '../../domain/estimationSettings';
-import { notePropertyId } from '../../domain/optionalProperties';
+import { adoptCandidates, notePropertyId } from '../../domain/optionalProperties';
 import { boundKeys, modelProblems } from '../../domain/scoringModel';
 import { t } from '../../i18n/t';
 import type { EstimationView } from './estimationView';
@@ -52,16 +53,15 @@ function withPending(config: BasesViewConfig, pending: Map<string, string>): Bas
  */
 export async function runEstimationInit(view: EstimationView): Promise<void> {
 	// Keys already spoken for come from the RESOLVED settings (which keys are taken);
-	// which options were ever touched is asked of the config — adoptableProperties' own
-	// split (`domain/optionalProperties.ts`), over this view's own key list rather than
-	// the backlog's. `config.get(option) !== undefined` is deliberate, not `settings`:
-	// cleared and never-set resolve to the same '' key, and only never-set may adopt a
-	// suggestion — turning a property off is a decision this action must not overrule.
+	// which options were ever touched is asked of the config — the generic adoption rule
+	// (`adoptCandidates`, `domain/optionalProperties.ts`, shared with the backlog's own
+	// `adoptableProperties`), over this view's own key list rather than the backlog's.
+	// `config.get(option) !== undefined` is deliberate, not `settings`: cleared and
+	// never-set resolve to the same '' key, and only never-set may adopt a suggestion —
+	// turning a property off is a decision this action must not overrule.
 	const taken = new Set(boundKeys(view.settings.model));
 	const pending = new Map<string, string>();
-	for (const { option, suggested } of SUGGESTED_KEYS) {
-		if (view.config.get(option) !== undefined || taken.has(suggested)) continue;
-		taken.add(suggested);
+	for (const { option, suggested } of adoptCandidates(view.config, SUGGESTED_KEYS, taken)) {
 		pending.set(option, notePropertyId(suggested));
 	}
 	const model = resolveEstimationSettings(withPending(view.config, pending)).model;
@@ -74,10 +74,22 @@ export async function runEstimationInit(view: EstimationView): Promise<void> {
 		return;
 	}
 	for (const [option, value] of pending) view.config.set(option, value);
-	view.refresh(); // the just-bound model is what the table renders from
+	// Settings AND model, not a full DOM render: the table this would draw is about to be
+	// thrown away the instant the batch below lands, so building it is pure waste — but
+	// the gate reads both before that batch runs. `writeProblems` reads `view.settings`,
+	// and the outside-filter refusal reads `view.model` (`byPath.has`, unset on a note the
+	// batch is about to touch reads as "outside this base" and refuses the whole write) —
+	// a render() rebuilds both together, so skipping it silently broke the second one
+	// until a watched-red run caught an empty vault.fm() where a stub belonged.
+	view.settings = resolveEstimationSettings(view.config);
+	view.model = buildEstimationModel(view.app, view.data?.data ?? [], model);
 	const keys = boundKeys(model);
-	const writes = (view.data?.data ?? [])
-		.filter((e) => e.file?.extension === 'md')
-		.map((e) => ({ file: e.file, sets: keys.map((key) => ({ key, value: '', ifMissing: true })) }));
+	// Every file gets the identical 13-set array — hoisted once rather than rebuilt per
+	// file, since nothing in `applyPropertyWrites` mutates a write's `sets` in place.
+	const sets = keys.map((key) => ({ key, value: '', ifMissing: true }));
+	const writes = (view.data?.data ?? []).filter((e) => e.file?.extension === 'md').map((e) => ({ file: e.file, sets }));
 	await view.applySafely(writes);
+	// The batch's own deferred-update flush already rebuilt this view when one landed
+	// mid-batch (the ordinary case against a real vault); render only when it did not.
+	if (!view.gate.flushedLastBatch) view.render();
 }
