@@ -182,6 +182,18 @@
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	/* Both properties, because this one class draws two different elements: a plain
+	   `<div>` for a row, where `text-align` positions the text, and — for this column's
+	   sortable header — a real `<button>`, where Obsidian's own default
+	   (`display: inline-flex`) makes `text-align` do nothing at all; `justify-content` is
+	   what actually places a flex item's content, the same fact `cardChildren.css` states
+	   for a card's own disclosure toggle. One column, one rule, read by whichever element
+	   needs it — never two rules that can drift, which is what let a
+	   `button.pbl-est-title { text-align: start }` rule ship and do nothing (2026-08-17):
+	   correct for the row's div, inert on the header's flex item, so "Item" rendered
+	   centred over a flush-left column of titles. */
+	text-align: start;
+	justify-content: flex-start;
 	color: var(--text-normal);
 }
 
@@ -198,6 +210,12 @@
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	text-align: end;
+	/* The header button's own alignment — see `.pbl-est-title`'s comment above for why a
+	   flex-item property has to sit beside `text-align` on this same rule. Harmless on
+	   every plain `<div>` this class also draws (the row cell, the panel's decomposition
+	   summary): `justify-content` does nothing to an element that is not itself a flex or
+	   grid container. */
+	justify-content: flex-end;
 	font-variant-numeric: tabular-nums;
 	color: var(--text-muted);
 }
@@ -290,11 +308,4 @@ button.pbl-est-sort[aria-sort] {
 button.pbl-est-sort:focus-visible {
 	outline: 1px solid var(--interactive-accent);
 	outline-offset: 1px;
-}
-
-/* The one column with no alignment rule of its own — the numeric columns
-   already state `text-align: end`, which any author rule beats a UA default
-   on regardless of specificity, but a button centers its text absent one. */
-button.pbl-est-title {
-	text-align: start;
 }

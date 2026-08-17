@@ -112,18 +112,33 @@ button.pbl-est-point.is-active {
 }
 
 /* ==========================================================================
-   The decomposition: the total, its coverage, and the two derived numbers
-   beside it — one wrapping row, so a narrow panel stacks them without a
-   second breakpoint to maintain.
+   The decomposition: one line per answered dimension's contribution, then a
+   summary line — the coverage and the total, set apart from that list rather
+   than sharing the last dimension's line the way flex-wrap once left them
+   (`"Enablement 3 × 5%  8/8  3.49"`, indistinguishable from Enablement's own
+   contribution — 2026-08-17, `docs/requirements/Why this item scored what it
+   scored.md`).
    ========================================================================== */
 
 .pbl-est-decomp {
 	display: flex;
-	flex-wrap: wrap;
-	align-items: baseline;
-	gap: var(--size-4-2) var(--size-4-4);
+	flex-direction: column;
+	gap: var(--size-2-2);
 	padding-top: var(--size-4-3);
 	border-top: 1px solid var(--background-modifier-border);
+}
+
+/* Coverage and the total stay beside each other exactly as before — only the
+   summary's own line moved off the last term's. `panel.ts` wraps the two in
+   this div rather than leaving them flat: nothing here could otherwise say
+   "these last two share a line, every sibling above keeps its own" — a term
+   spanning a two-column grid pulls both columns wide enough for a whole
+   sentence, dragging the total away from coverage instead of stacking it. */
+.pbl-est-summary {
+	display: flex;
+	align-items: baseline;
+	gap: var(--size-4-4);
+	margin-top: var(--size-2-2);
 }
 
 /* The total and its coverage read large here — a glanceable answer, not a

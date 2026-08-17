@@ -148,6 +148,31 @@ describe('the two derived lines', () => {
 	});
 });
 
+describe('the decomposition block', () => {
+	it('renders one term per answered dimension, each its own element, and wraps coverage with the total as the summary line that follows them', () => {
+		const vault = new FakeVault();
+		vault.addFile('Item.md', { frontmatter: { 'strategic-alignment': 5, 'customer-value': 4 } });
+		const { containerEl } = makeEstimationView(vault, configuredValues());
+		selectItem(containerEl, 'Item.md');
+
+		const decomp = containerEl.querySelector('.pbl-est-decomp') as HTMLElement;
+		// One <span> per answered dimension — never one run of text a browser wraps by
+		// available width, which is what let a dimension and the total share a line.
+		const terms = Array.from(decomp.children).filter((el) => el.tagName === 'SPAN');
+		expect(terms.map((el) => el.textContent)).toEqual(['Strategic alignment 5 × 20%', 'Customer value 4 × 20%']);
+
+		// Coverage and the total are the summary's own two children, in that order, and
+		// the summary itself is the last thing in the block — never two more siblings a
+		// term's own line could run into.
+		expect(decomp.lastElementChild?.className).toBe('pbl-est-summary');
+		const summary = decomp.querySelector('.pbl-est-summary') as HTMLElement;
+		expect(Array.from(summary.children).map((el) => el.className)).toEqual(['pbl-est-coverage', 'pbl-est-total']);
+		expect(summary.querySelector('.pbl-est-coverage')?.textContent).toBe('2/8');
+		const result = computeTotal(configured(), new Map([['strategic-alignment', 5], ['customer-value', 4]]))!;
+		expect(summary.querySelector('.pbl-est-total')?.textContent).toBe(String(result.total));
+	});
+});
+
 describe('the reserved panel column when nothing is selected', () => {
 	it('collapses to one track while unselected, and restores the second once a row is picked', () => {
 		const vault = new FakeVault();

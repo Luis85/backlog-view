@@ -185,7 +185,13 @@ function renderClearButton(container: HTMLElement, spec: RowSpec): void {
 }
 
 /** Score × weight per answered dimension, the coverage, and the total — nothing here
- *  when nothing is answered, since there is no decomposition of a total that is not there. */
+ *  when nothing is answered, since there is no decomposition of a total that is not there.
+ *  Coverage and the total are wrapped in their own `.pbl-est-summary` line rather than left
+ *  as two more flow siblings after the terms: a flat list cannot put its last two members
+ *  beside each other while every other member keeps its own line through CSS alone (a grid
+ *  item spanning both of the summary's columns pulls those columns wide enough to fit a
+ *  whole term sentence), so the total — the whole point of the block — stopped reading as
+ *  though it belonged to whichever dimension happened to render last (2026-08-17). */
 function renderDecomposition(panelEl: HTMLElement, item: EstimationItem, model: ScoringModel): void {
 	if (!item.result) return;
 	const decomp = panelEl.createDiv({ cls: 'pbl-est-decomp' });
@@ -194,8 +200,9 @@ function renderDecomposition(panelEl: HTMLElement, item: EstimationItem, model: 
 		if (score === null || score === undefined) continue;
 		decomp.createSpan({ text: t('estimation.panel.term', { label: dimension.label, score, weight: dimension.weight }) });
 	}
-	decomp.createDiv({ cls: 'pbl-est-coverage', text: `${item.result.coverage.answered}/${item.result.coverage.enabled}` });
-	decomp.createDiv({ cls: 'pbl-est-total', text: String(item.result.total) });
+	const summary = decomp.createDiv({ cls: 'pbl-est-summary' });
+	summary.createDiv({ cls: 'pbl-est-coverage', text: `${item.result.coverage.answered}/${item.result.coverage.enabled}` });
+	summary.createDiv({ cls: 'pbl-est-total', text: String(item.result.total) });
 }
 
 /**
