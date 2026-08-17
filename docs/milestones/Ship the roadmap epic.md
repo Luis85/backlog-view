@@ -1,6 +1,6 @@
 ---
 type: Milestone
-order: 70
+order: 80
 status: Open
 created: 2026-08-02
 source: user request
@@ -11,6 +11,7 @@ horizon: ""
 start: ""
 risk: ""
 assignee: Igmar
+parent: "[[Product Roadmap]]"
 ---
 
 # Ship the roadmap epic

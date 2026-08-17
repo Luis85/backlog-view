@@ -1,6 +1,6 @@
 ---
-type: Epic
-order: 100
+type: Feature
+order: 25
 status: Open
 area: product
 created: 2026-08-16
@@ -12,6 +12,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+parent: "[[Cross-cutting concerns]]"
 ---
 
 # A view per capability

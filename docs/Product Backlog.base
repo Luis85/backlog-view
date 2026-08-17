@@ -33,6 +33,25 @@ views:
     dependsOnProperty: note.dependsOn
     resourceNames: Evi, Sarah, Jolanda, Chris, Igmar, Ben, Alex
     typeFolder.absence: docs/absences
+  - type: product-estimation
+    name: Estimation Board
+    filters:
+      and:
+        - type == "Epic"
+    dimensions: strategic-alignment, customer-value, business-impact, reach, risk-reduction, compliance, time-criticality, enablement
+    dimProperty.strategic-alignment: note.strategic-alignment
+    dimProperty.customer-value: note.customer-value
+    dimProperty.business-impact: note.business-impact
+    dimProperty.reach: note.reach
+    dimProperty.risk-reduction: note.risk-reduction
+    dimProperty.compliance: note.compliance
+    dimProperty.time-criticality: note.time-criticality
+    dimProperty.enablement: note.enablement
+    confidenceProperty: note.confidence
+    effortProperty: note.effort
+    complexityProperty: note.complexity
+    valueProperty: note.business-value
+    stampProperty: note.business-value-model
   - type: table
     name: Data Quality
     groupBy:
