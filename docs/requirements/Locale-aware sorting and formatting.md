@@ -45,12 +45,13 @@ alphabet and the filter finds what is plainly on screen.
 - **2a — the operation is grammar rather than data.** Plural categories and list joining
   follow the **catalog** locale; collation and number formatting follow the **requested**
   one.
-- **2b — the comparison decides identity.** It keeps `toLowerCase()`. Thirty-eight calls
+- **2b — the comparison decides identity.** It keeps `toLowerCase()`. Most calls
   canonicalize a type, a tag key or a persisted option key, and folding those with a locale
   would corrupt vaults.
 - **3a — the match feeds a highlight.** Folding is not length-preserving, so an index from
-  the folded string does not address the original. That is a live bug today and needs an
-  index-preserving matcher rather than the boolean filter's recipe.
+  the folded string does not address the original. No highlighter is in the code today, and
+  the one that was is why this extension exists: it needs an index-preserving matcher rather
+  than a boolean match's recipe.
 
 ## Where they are
 
@@ -83,31 +84,46 @@ counts and not beside the fold label that exposed it. Found by review on PR #167
 
 ## Case folding is the same split again
 
-`toLowerCase()` appears **47 times** in `src/` — call expressions, not lines; an earlier
-draft of this paragraph said 41, which was the line count and undercounted the eight lines
-that fold twice. The locale question divides those 47 the way `text is not data` divides
-everything else in this feature, except that here the *dangerous* direction is the sweep
-rather than the omission.
+`toLowerCase()` appears **118 times** in `src/` — call expressions, not lines, in `.ts`
+only. Two earlier figures here were wrong in the same direction and are worth keeping as
+the method: 41 was the LINE count and undercounted every line that folds twice, and 47 was
+the call count when it was taken, before a year of features. A first recount for this
+paragraph said 119 because it swept `src/domain/CLAUDE.md` along with the code. **Recount
+before planning against this number, and check the pattern against a planted call before
+trusting a zero** — `toLocaleLowerCase(` does not contain `toLowerCase(`, so the two do not
+double-count, which was verified rather than assumed.
 
-**Eight sites are user-facing matching, and are wrong today.** They fold a needle and a
+**Four sites are user-facing matching, and are wrong today.** They fold a needle and a
 haystack to compare them, so they should use the **requested** locale:
 
 | Site | Matches |
 | --- | --- |
-| `backlogView.ts:269,280` | Quick filter against note titles |
-| `rows.ts:212-213` | The same match, to highlight it in the title |
-| `prompts.ts:51,54` | Folder suggest |
-| `prompts.ts:81-82` | Tag suggest |
+| `prompts.ts` (`folderQuery`) | Folder suggest |
+| `prompts.ts` (`tagQuery`) | Tag suggest |
+
+**It was eight until 2026-08-17**, and the other four went with the quick filter
+([[Remove the quick filter, now that Bases has its own search]]) rather than being fixed:
+two in `backlogView.ts` matching note titles, two in `rows.ts` highlighting the match. The
+search those served is Bases' own now, so whether it folds for a Turkish reader is Bases'
+question and not this plugin's — a removal is a legitimate way for a site on this list to
+leave it, but it is not a fix, and nothing here can speak for the search that replaced it.
 
 `toLowerCase()` is locale-independent by specification, so in Turkish or Azerbaijani it
 folds `I` to `i` when the language folds it to `ı`. A user types what their keyboard and
 their language produce, and the filter silently fails to find a note that is plainly on
 screen — the worst kind of bug, because nothing is broken enough to report.
 
-### Two of those eight cannot take the same fix, and are already wrong
+### The two that could not take the same fix were deleted rather than fixed
 
-`rows.ts:212-213` is not a boolean match. It folds the title, finds an **index**, and then
-slices the **original**:
+**This section describes code that is gone**, and it is kept because the trap is in the
+shape rather than in the file: the moment anything here matches user text and then
+HIGHLIGHTS it, this is the bug it will have. The highlight went with the quick filter on
+2026-08-17, so a defect this register had tracked since the note was written left the
+codebase without anyone fixing it — which is a real outcome and not a fix, and is the
+reason to read the rest of this section before adding a highlighter back.
+
+`rows.ts` was not a boolean match. It folded the title, found an **index**, and then
+sliced the **original**:
 
 ```ts
 const idx = needle.length > 0 ? text.toLowerCase().indexOf(needle) : -1;
@@ -120,29 +136,38 @@ in both strings. `İx` folds to `i̇x` — 2 UTF-16 units becoming 3, because th
 combining mark — and a search for `x` reports index 2 while `x` sits at index 1 in the
 title. The highlight lands on the wrong characters, or on none.
 
-**This is a defect in shipped code, not one this PBI would introduce.** It reproduces
-today with plain `toLowerCase()`; locale folding only widens the set of titles that hit
-it. Turkish adds more, and so does any language whose case mapping expands.
+**It was a defect in shipped code, not one this PBI would have introduced.** It
+reproduced with plain `toLowerCase()`; locale folding only widened the set of titles that
+hit it. Turkish added more, and so did any language whose case mapping expands.
 
-So these two sites need an **index-preserving matcher**, not the recipe the boolean filter
+So a highlighter needs an **index-preserving matcher**, not the recipe a boolean match
 uses: fold both sides while recording the offset mapping back to the original, or match on
 the original with a case-insensitive comparison that never re-indexes. Applying
-`toLocaleLowerCase` here and calling it done would leave the bug in place and add locales
-to it.
+`toLocaleLowerCase` there and calling it done would have left the bug in place and added
+locales to it.
 
-**Thirty-eight canonicalize identity and must not be touched — three would corrupt
-vaults.** They are not matching user text; they are deciding what something *is*:
+**The rest canonicalize identity and must not be touched — three would corrupt vaults.**
+They are not matching user text; they are deciding what something *is*. That set was
+counted at thirty-eight when this note was written and has NOT been recounted: only the
+user-facing four above were re-measured on 2026-08-17, so treat the list below as the shape
+to check for rather than as a census.
 
-- `settings.ts:114` — `typeFolder.${typeName.toLowerCase()}`, which is a **persisted
-  option key**. Under `toLocaleLowerCase('tr')` an `Issue` folder would key on
-  `typefolder.ıssue`, so every Turkish user's type-folder configuration would silently
-  reset, and a vault configured in one locale would read differently in another. This is
-  precisely what `Persisted keys stay as written` exists to prevent.
-- `noteFields.ts:75` — `tagKey`, which the file already describes as the one place "same
-  tag" is decided.
-- `itemTypes.ts:59-60,105-107`, `model.ts:562-563`, `writePlan.ts:135,154` — matching a
-  `type:` value against the vocabulary. Locale-aware folding here means an Obsidian set to
-  Turkish stops recognizing `Issue`.
+**The hazard outlived the sites that first showed it**, which is the reason to check the
+shape and not the names. Every site this note originally named as a persisted key is gone —
+`typeFolderKey` no longer exists in any form — and the category is as dangerous as ever,
+because two NEW keys arrived in it that nobody wrote this warning for:
+
+- `settings.ts` — `wipLimitKey` and `columnPolicyKey`, which build `wipLimit.${state}` and
+  `columnPolicy.${state}` from a folded **state name**, so both are **persisted option keys
+  keyed on user data**. Under `toLocaleLowerCase('tr')` a state called `In progress` keys
+  on `wiplimit.ın progress`, so every Turkish user's WIP limits and column policy would
+  silently reset, and a vault configured in one locale would read differently in another.
+  This is precisely what `Persisted keys stay as written` exists to prevent.
+- `noteFields.ts` — `tagKey`, which the file already describes as the one place "same tag"
+  is decided. Unchanged and still folding.
+- `itemTypes.ts`, `model.ts`, `vocabulary.ts` — matching a `type:` value against the
+  vocabulary. Locale-aware folding here means an Obsidian set to Turkish stops recognizing
+  `Issue`. `writePlan.ts` was on this list and folds nowhere now.
 
 So the rule is: **fold with the locale when comparing what the user typed against what
 they can see; fold without it when deciding what something *is*.** A blanket sweep to
