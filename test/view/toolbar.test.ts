@@ -514,19 +514,29 @@ describe('long operations stay legible and non-blocking', () => {
 
 	it('keeps the tree interactive while a batch is in flight', async () => {
 		const vault = backfillFixture();
-		const { containerEl, view } = makeView(vault);
+		const { containerEl } = makeView(vault);
+		// Four rows before the batch starts, so the collapsed list below cannot be the DOM
+		// the batch began with. That is the whole instrument: this drove `host.setCollapsed`
+		// from 88e03e8 until 2026-08-17 — a bit in the view-state store and no render — so
+		// it reported the PRE-batch tree and would have passed with the pane frozen solid,
+		// which is the one thing it exists to refuse.
+		expect(titlesOf(containerEl)).toEqual(['Epic', 'F1', 'F2', 'F3']);
 		let collapsedMidBatch: string[] | null = null;
 		onEachWrite(vault, () => {
 			if (collapsedMidBatch) return;
-			// Reading and navigating the tree must keep working during the writes.
-			view.setCollapsed('Epic.md', false);
+			// Through the real control, mid-batch: navigating the tree must keep working
+			// during the writes, and a bulk collapse is a full render — toolbar included —
+			// rather than a state write something else would have to redraw.
+			containerEl
+				.querySelector<HTMLElement>('.pbl-collapse-ctl[aria-label="Collapse all"]')
+				?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 			collapsedMidBatch = titlesOf(containerEl);
 		});
 
 		runBackfill(containerEl);
 		await flush();
 
-		expect(collapsedMidBatch).toEqual(['Epic', 'F1', 'F2', 'F3']);
+		expect(collapsedMidBatch).toEqual(['Epic']);
 		expect(treeOf(containerEl).getAttribute('aria-busy')).toBeNull();
 	});
 });

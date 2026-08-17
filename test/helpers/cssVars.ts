@@ -13,7 +13,36 @@
  * review found it getting wrong: the element a rule matches, the at-rule above it, the
  * two branches of a `var()`, and the difference between resolving a value and finding a
  * cycle. What it deliberately does not model is specificity — see `declarations`.
+ *
+ * `bodyOf` is the plainest thing here and is why this file is now the home for every
+ * stylesheet READ rather than for custom properties alone: three suites assert whole
+ * declarations in a named rule (`roadmapBoxing`, `timelineBoxing`, `shelfSearch`), and
+ * between them they carried four copies of it.
  */
+
+/**
+ * The declarations of one rule, addressed by its selector LIST — pass the whole list,
+ * newlines and all, for a grouped rule. Exact rather than a prefix match, which is
+ * load-bearing now that two rules in `roadmap.css` open on `.pbl-roadmap .pbl-shelf,`
+ * and differ in nothing but which bands follow it.
+ *
+ * The one rule reader the stylesheet suites share, and deliberately not built on
+ * `declarations` or `rules` above: those answer for custom properties and for property
+ * NAMES, and every caller here asserts a whole declaration — `max-height: 30%;`,
+ * `contain: inline-size;` — which only the text of the body carries. It was hand-rolled
+ * in four places until 2026-08-17, one of them slicing from the SELECTOR rather than
+ * from the `{`, so any needle that could appear in a selector passed on the prelude.
+ *
+ * `file` is passed rather than recovered from the text: the caller already knows which
+ * stylesheet it read, and a miss has to name it to be actionable. It THROWS on a miss —
+ * a helper that asserted would report a renamed selector with no test name attached.
+ */
+export function bodyOf(css: string, selector: string, file: string): string {
+	const at = css.indexOf(`\n${selector} {`);
+	if (at === -1) throw new Error(`no rule for ${selector} in ${file}`);
+	const open = css.indexOf('{', at);
+	return css.slice(open + 1, css.indexOf('}', open));
+}
 
 /**
  * The selectors a harness page matches, by the ELEMENT they match — which is two

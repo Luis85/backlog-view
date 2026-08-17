@@ -1,18 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-
-/**
- * The declarations of one rule, addressed by its selector LIST — pass the whole list,
- * newlines and all, for a grouped rule. Exact rather than a prefix match, which is
- * load-bearing now that two rules in `roadmap.css` open on `.pbl-roadmap .pbl-shelf,`
- * and differ in nothing but which bands follow it.
- */
-function bodyOf(css: string, selector: string, file: string): string {
-	const at = css.indexOf(`\n${selector} {`);
-	if (at === -1) throw new Error(`no rule for ${selector} in ${file}`);
-	const open = css.indexOf('{', at);
-	return css.slice(open + 1, css.indexOf('}', open));
-}
+import { bodyOf } from '../helpers/cssVars';
 
 /**
  * The horizon axis's layout rests on declarations whose absence does not fail a render —
@@ -30,6 +18,10 @@ describe('the horizon board boxes that must not size from card content', () => {
 	/** The bands beside the axis, as their two rules address them. */
 	const SCROLLING_BANDS = '.pbl-roadmap .pbl-shelf,\n.pbl-roadmap .pbl-roadmap-context,\n.pbl-roadmap .pbl-board-advisory';
 	const CAPPED_BANDS = '.pbl-roadmap .pbl-shelf,\n.pbl-roadmap .pbl-roadmap-context';
+	/** The horizon axis's own rule over those same three bands. */
+	const HORIZON_BANDS = ['.pbl-shelf', '.pbl-roadmap-context', '.pbl-board-advisory']
+		.map((band) => `.pbl-roadmap-mode:not(.pbl-roadmap-dates) ${band}`)
+		.join(',\n');
 
 	it('keeps card content out of a bucket, and so out of the frame, width', () => {
 		// The frame is `min-width: max-content` for the pinned strips, so without inline-size
@@ -101,13 +93,10 @@ describe('the horizon board boxes that must not size from card content', () => {
 		// shelf is the thing a card is dragged FROM. Measured in the harness at ~800 notes
 		// in a 766px pane. The buckets keep `flex: 1 1 auto` and their 220px floor, so the
 		// remainder still lands on them and the pane still scrolls past it.
-		expect(horizonBands()).toContain('flex: 0 0 auto;');
+		// The whole list, like the two rules above it: a fourth band added to this rule
+		// fails here rather than passing on a prefix — and `bodyOf` THROWS on a rename
+		// rather than asserting inside itself, which this line used to do and so reported
+		// a renamed selector with no test name attached.
+		expect(ruleBody(HORIZON_BANDS)).toContain('flex: 0 0 auto;');
 	});
-
-	/** The horizon axis's band rule — the three bands beside the buckets, in one rule. */
-	function horizonBands(): string {
-		const at = css.indexOf('.pbl-roadmap-mode:not(.pbl-roadmap-dates) .pbl-shelf,');
-		expect(at).toBeGreaterThan(-1);
-		return css.slice(css.indexOf('{', at) + 1, css.indexOf('}', at));
-	}
 });

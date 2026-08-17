@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { Menu } from '../helpers/obsidian-mock';
-import { bucketByName, makeRoadmap, roadmapView } from '../helpers/roadmap';
+import { cardByTitle } from '../helpers/board';
+import { bucketByName, makeRoadmap, roadmapView, shelfOf } from '../helpers/roadmap';
 import { useViewHarness } from '../helpers/view';
 import { FakeVault } from '../helpers/vault';
 
@@ -31,14 +32,32 @@ describe('the horizon board’s card menu carries no children section', () => {
 		return vault;
 	}
 
-	const menuTitles = (card: HTMLElement | null | undefined): string[] => {
-		card?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+	/**
+	 * Every card lookup here goes through a helper that THROWS on a miss, and the type
+	 * of this parameter is the other half of that. Both were hand-rolled until
+	 * 2026-08-17 — `querySelector('.pbl-card')` and a `find` over `.pbl-shelf .pbl-card`
+	 * by path, each answering a miss with `null`, which this function then turned into
+	 * `[]`: three of the four cases below assert that a title is NOT in the list, so a
+	 * lookup that found nothing would have satisfied every one of them. They were all
+	 * finding their card — checked by removing the gate and watching the three fail on
+	 * real menus — but nothing here said so, and a renamed class would have taken the
+	 * evidence away silently rather than loudly.
+	 */
+	const menuTitles = (card: HTMLElement): string[] => {
+		card.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 		return Menu.lastShown?.items.map((i) => i.titleText) ?? [];
 	};
 
+	/** A card on the shelf, by title — scoped, because "on the shelf" is the claim. */
+	function shelfCard(containerEl: HTMLElement, title: string): HTMLElement {
+		const shelf = shelfOf(containerEl);
+		if (!shelf) throw new Error('no shelf rendered');
+		return cardByTitle(shelf, title);
+	}
+
 	it('offers no toggle on a bucket card that draws a disclosure', () => {
 		const { containerEl, view } = makeRoadmap(bucketFamilyVault());
-		const card = bucketByName(containerEl, 'Now').querySelector<HTMLElement>('.pbl-card');
+		const card = cardByTitle(bucketByName(containerEl, 'Now'), 'Epic A');
 
 		// The control half: the face DOES list children — the section is withheld from
 		// the menu, not missing because nothing drew a disclosure.
@@ -50,7 +69,7 @@ describe('the horizon board’s card menu carries no children section', () => {
 
 	it('offers no Open child entries under a focus, where the child has no card', () => {
 		const { containerEl } = makeRoadmap(bucketFamilyVault(), {}, { focus: 'Epic' });
-		const titles = menuTitles(bucketByName(containerEl, 'Now').querySelector<HTMLElement>('.pbl-card'));
+		const titles = menuTitles(cardByTitle(bucketByName(containerEl, 'Now'), 'Epic A'));
 
 		expect(titles.filter((t) => t.startsWith('Open child'))).toEqual([]);
 		expect(titles).not.toContain('Show children');
@@ -62,9 +81,7 @@ describe('the horizon board’s card menu carries no children section', () => {
 		vault.addFile('Untriaged parent.md', { frontmatter: { type: 'Epic', order: 30 } });
 		vault.addFile('Untriaged child.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Untriaged parent' });
 		const { containerEl, view } = makeRoadmap(vault);
-		const card = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-shelf .pbl-card')).find(
-			(el) => el.dataset.path === 'Untriaged parent.md',
-		);
+		const card = shelfCard(containerEl, 'Untriaged parent');
 
 		expect(view.cardChildrenShown.has('Untriaged parent.md')).toBe(true);
 		const titles = menuTitles(card);
@@ -78,10 +95,7 @@ describe('the horizon board’s card menu carries no children section', () => {
 		vault.addFile('Shelf parent.md', { frontmatter: { type: 'Epic', order: 20 } });
 		vault.addFile('Shelf child.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Shelf parent' });
 		const { containerEl } = roadmapView(vault, { startProperty: 'note.start', targetProperty: 'note.due' });
-		const card = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-shelf .pbl-card')).find(
-			(el) => el.dataset.path === 'Shelf parent.md',
-		);
 
-		expect(menuTitles(card)).toContain('Show children');
+		expect(menuTitles(shelfCard(containerEl, 'Shelf parent'))).toContain('Show children');
 	});
 });

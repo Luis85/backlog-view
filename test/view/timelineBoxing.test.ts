@@ -2,15 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { STATE_COLOR_SLOTS } from '../../src/domain/settings';
 import { LABEL_RESERVE_PX } from '../../src/view/render/barLabel';
-import { BODY_SELECTORS, declarations, resolvesValue } from '../helpers/cssVars';
-
-/** The declarations of one rule, by selector — good enough for a single-selector rule. */
-function bodyOf(css: string, selector: string, file: string): string {
-	const at = css.indexOf(`\n${selector} {`);
-	if (at === -1) throw new Error(`no rule for ${selector} in ${file}`);
-	const open = css.indexOf('{', at);
-	return css.slice(open + 1, css.indexOf('}', open));
-}
+import { BODY_SELECTORS, bodyOf, declarations, resolvesValue } from '../helpers/cssVars';
 
 /**
  * The dated axis positions everything it draws — bars, the today line, milestone lines,

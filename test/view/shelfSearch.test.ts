@@ -6,6 +6,7 @@ import { horizonVault, makeRoadmap, shelfCountOf, shelfGroupHeaders, shelfTitles
 import { useViewHarness } from '../helpers/view';
 import { FakeVault } from '../helpers/vault';
 import { cardByTitle } from '../helpers/board';
+import { bodyOf } from '../helpers/cssVars';
 
 useViewHarness();
 
@@ -363,9 +364,13 @@ describe("the shelf search's clear button", () => {
 		// other stylesheet checks sit in node-env files. vitest runs from the repository
 		// root, the same resolution every script here uses.
 		const css = readFileSync('styles/shelf.css', 'utf8');
-		const at = css.indexOf(".pbl-shelf-search-input::-webkit-search-cancel-button {");
-		expect(at).toBeGreaterThan(-1);
-		expect(css.slice(at, css.indexOf('}', at))).toContain('display: none;');
+		// Through the shared reader, which slices from the `{` and throws on a rename. The
+		// copy this replaced sliced from the SELECTOR, so its needle was matched against the
+		// prelude as well as the body — harmless for `display: none;` and a false pass for
+		// any needle a selector could carry.
+		expect(bodyOf(css, '.pbl-shelf-search-input::-webkit-search-cancel-button', 'styles/shelf.css')).toContain(
+			'display: none;',
+		);
 	});
 
 	it('is a named tab-invisible button beside the pickers, lifted with them when the pane empties', () => {
