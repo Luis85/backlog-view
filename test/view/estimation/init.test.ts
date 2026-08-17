@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { makeEstimationView } from '../../helpers/estimation';
+import { Notice } from '../../helpers/obsidian-mock';
 import { FakeVault } from '../../helpers/vault';
 import { flush } from '../../helpers/view';
 import { SUGGESTED_KEYS } from '../../../src/domain/defaultModel';
@@ -62,24 +63,26 @@ describe('the guided empty state’s setup action', () => {
 		expect(containerEl.querySelector('.pbl-est-empty')).toBeNull();
 	});
 
-	it('adopts every suggestion except an option the user CLEARED, and stops before stubbing while the pair stays unmatched', async () => {
+	it('binds NOTHING when the bindings it would make leave the model broken, and says why', async () => {
 		const vault = new FakeVault();
 		vault.addFile('A.md');
 		const { view, config } = makeEstimationView(vault, { valueProperty: '' }); // cleared, not merely unset
+		Notice.reset(); // this file installs no per-test harness, so the slate is made here
 
 		await runEstimationInit(view);
 
-		// Cleared is a decision: never rebound, and never among the recorded set() calls.
+		// Cleared is a decision: never rebound. Binding the stamp property beside it would
+		// leave the pair half named — so the gate runs against the model the bindings WOULD
+		// produce, before the configuration is touched at all. Binding twelve properties
+		// and then having every write refused leaves the view worse than it found it, which
+		// is the rule `runInit` keeps and this action's own comment claimed to keep while
+		// running the loop first (the outcome pinned here until 2026-08-17).
 		expect(config.get('valueProperty')).toBe('');
-		expect(config.setCalls.some((c) => c.key === 'valueProperty')).toBe(false);
-		expect(config.setCalls).toHaveLength(SUGGESTED_KEYS.length - 1);
-		// Its pair partner is untouched and still gets adopted — nothing about the value
-		// property being cleared stops the stamp property from binding.
-		expect(config.get('stampProperty')).toBe('note.business-value-model');
-
-		// valueKey stays '' while stampKey is now bound: modelProblems' pair rule fires, so
-		// the config gate stops the action before a single stub is written.
+		expect(config.setCalls).toHaveLength(0);
+		expect(config.get('stampProperty')).toBeUndefined();
 		expect(vault.fm('A.md')).toEqual({});
+		// Not silent: an action that does nothing has to say so, or the button is dead.
+		expect(Notice.messages.at(-1)).toMatch(/business value property/i);
 	});
 
 	it('pressing it twice binds nothing the second time', async () => {

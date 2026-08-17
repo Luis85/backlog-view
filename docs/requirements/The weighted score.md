@@ -61,7 +61,20 @@ nothing is left answered — never the total alone, never the stamp alone, since
 with no stamp is an unattributed number and a stamp with no total describes a model that
 wrote nothing. `src/storage/propertyWrite.ts` (`applyPropertyWrites`) is what actually
 writes such a batch: plain key/value sets, `null` removing a key, applied inside one
-`processFrontMatter` call per note so the three keys land — or fail to land — together.
+`processFrontMatter` call per note so the three keys land — or fail to land — together,
+and never under a key no property names.
+
+**A clear asks the KEY; only a re-pick asks the value.** A value is what a reader made of
+the note, and the guided setup action's own `''` stub — like a hand-typed word — reads as
+no answer at all, so a clear planned against the VALUE wrote nothing on exactly the notes
+that action had just prepared. Presence (`EstimationItem.ownKeys`) is what the panel draws
+the control on, so presence is what the plan has to answer, which keeps "an offered action
+always writes something" true in both directions.
+
+**The prioritization indicator needs a POSITIVE effort.** Value-to-effort divides by the
+effort, so a stored `0` has no ratio (it divides to infinity) and a negative one has a
+nonsense one; the line is omitted for both rather than printed, and the effort row's own
+out-of-range note is where the reader is told why.
 
 Tests: **`test/domain/weightedScore.test.ts`**, **`test/storage/propertyWrite.test.ts`**,
 **`test/view/estimation/scoring.test.ts`**.

@@ -99,6 +99,9 @@ export const en = {
 		'Bind the suggested properties and stub them onto the results, or name your own in the view options.',
 	'estimation.empty.useDefaults': 'Use recommended defaults',
 	'estimation.problems.lead': 'Fix the estimation model first:',
+	/** The guided setup action refusing itself: the bindings it would make leave the model
+	 *  broken, so nothing is bound and nothing is written. {problem} is the first one. */
+	'estimation.problems.blocked': 'Fix the estimation model first: {problem}',
 	'estimation.empty.noResults': 'No results to estimate.',
 
 	/** The prioritized list's column labels — also each sort button's own accessible
@@ -130,6 +133,8 @@ export const en = {
 	'estimation.panel.effortComplexity': 'Effort and complexity',
 	/** A dimension or scale's stored answer fell outside its own declared range. */
 	'estimation.clamped': 'Out of range — read as {value}',
+	/** In range, so counted as it stands, but not one of the points the rubric describes. */
+	'estimation.betweenPoints': 'Between points — counted as {value}',
 	/** The per-row clear control's accessible name — {label} is the dimension's or
 	 * scale's own (data) label, threaded through rather than joined by this string. */
 	'estimation.panel.clear': 'Clear {label}',

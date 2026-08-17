@@ -75,6 +75,7 @@ function dimSpec(item: EstimationItem, dimension: ScoringModel['dimensions'][num
 
 function scaleSpec(item: EstimationItem, model: ScoringModel, scale: ScaleName, label: string): RowSpec {
 	const config = model[scale];
+	const held = item[scale];
 	return {
 		kind: 'scale',
 		id: scale,
@@ -83,8 +84,13 @@ function scaleSpec(item: EstimationItem, model: ScoringModel, scale: ScaleName, 
 		min: config.min,
 		max: config.max,
 		rubric: config.rubric,
-		held: item[scale],
-		clamped: false, // nothing computes a total off a scale, so nothing ever clamps one
+		held,
+		// Nothing computes a total off a scale, so no arithmetic reports a clamp for one —
+		// which is a different statement from "a note never holds 9 on a five-point scale",
+		// and reading the first as the second drew that row in total silence: no active
+		// point, no rubric, no note. A dimension's own answer comes from `computeTotal`,
+		// which is the authority where there is one.
+		clamped: held !== null && (held < config.min || held > config.max),
 		present: item.ownKeys.has(config.key),
 	};
 }
@@ -114,12 +120,25 @@ function renderScoreRow(panelEl: HTMLElement, spec: RowSpec): void {
 		if (active) btn.setAttribute('aria-pressed', 'true');
 	}
 	if (spec.present) renderClearButton(points, spec);
-	if (spec.clamped && spec.held !== null) {
-		const shown = Math.min(spec.max, Math.max(spec.min, spec.held));
-		row.createDiv({ cls: 'pbl-est-rubric', text: t('estimation.clamped', { value: shown }) });
-	} else if (spec.held !== null && spec.held >= spec.min && spec.held <= spec.max) {
-		row.createDiv({ cls: 'pbl-est-rubric', text: spec.rubric[spec.held - spec.min] });
-	}
+	const note = rubricNote(spec);
+	if (note !== null) row.createDiv({ cls: 'pbl-est-rubric', text: note });
+}
+
+/**
+ * What the held answer MEANS, or why it means nothing nameable — one slot, so a row is
+ * never silent about a value it is holding and never draws a box with nothing in it.
+ * Three answers: the rubric sentence at a point on the scale, the clamp note for a value
+ * outside it, and the between-points note for a fractional one, which names no point and
+ * so indexed `rubric[1.5]` — `undefined`, drawn as an empty box beside a row where no
+ * point looks held either.
+ */
+function rubricNote(spec: RowSpec): string | null {
+	if (spec.held === null) return null;
+	if (spec.clamped) return t('estimation.clamped', { value: Math.min(spec.max, Math.max(spec.min, spec.held)) });
+	// In range and counted as it stands (`computeTotal` takes the raw proportion), so this
+	// is not a clamp — it is a value the rubric has no sentence for.
+	if (!Number.isInteger(spec.held)) return t('estimation.betweenPoints', { value: spec.held });
+	return spec.rubric[spec.held - spec.min] ?? null;
 }
 
 function renderClearButton(container: HTMLElement, spec: RowSpec): void {
@@ -157,7 +176,13 @@ function renderDerived(panelEl: HTMLElement, item: EstimationItem): void {
 	const adjusted = round2((item.result.total * item.confidence) / 5);
 	const derived = panelEl.createDiv({ cls: 'pbl-est-derived' });
 	derivedLine(derived, t('estimation.panel.adjustedLabel'), adjusted);
-	if (item.effort) derivedLine(derived, t('estimation.panel.valueToEffortLabel'), round2(adjusted / item.effort));
+	// A POSITIVE effort, asked explicitly: the ratio divides by it, so a stored 0 gives
+	// `Infinity` and a negative gives a negative ratio beside a table showing the number
+	// the user typed. Neither is a value to show, so the line is omitted — the row for
+	// effort itself says the value is out of its range, which is where that belongs.
+	if (item.effort !== null && item.effort > 0) {
+		derivedLine(derived, t('estimation.panel.valueToEffortLabel'), round2(adjusted / item.effort));
+	}
 }
 
 function derivedLine(container: HTMLElement, label: string, value: number): void {
@@ -196,11 +221,32 @@ function wirePanelEvents(view: EstimationView, panelEl: HTMLElement, item: Estim
 }
 
 /** Plan -> gate -> refresh happens inside the view's own `performScore`/`performScale`;
- *  once that settles, refocus the rebuilt panel's same point button — the shelf
- *  controls' own rule, because the pressed button is gone with the frame it was drawn in. */
+ *  once that settles, refocus the rebuilt panel — the shelf controls' own rule, because
+ *  the pressed button is gone with the frame it was drawn in. */
 async function handlePick(view: EstimationView, item: EstimationItem, kind: string, dim: string, value: number | null): Promise<void> {
 	if (kind === 'scale') await view.performScale(item, dim as ScaleName, value);
 	else await view.performScore(item, dim, value);
-	const next = view.viewEl.querySelector(`.pbl-est-panel button[data-dim="${dim}"][data-value="${value ?? ''}"]`);
-	if (next instanceof HTMLElement) next.focus();
+	refocusPick(view, kind, dim, value);
+}
+
+/**
+ * Focus back onto the button the pick was made on, or — where the pick REMOVED it — onto
+ * the row it was made in. Three things this address has to get right, and it was written
+ * as one interpolated selector that got none of them:
+ *
+ * the ROW, which `data-kind` is part of, because a dimension a user called `confidence`
+ * draws its points beside the fixed confidence scale's and one `data-dim` cannot tell them
+ * apart; the SPELLING, because a dimension id is option text a user typed and a quote in it
+ * makes an interpolated selector a `SyntaxError` rather than a miss — so the address is
+ * read off `dataset` and compared, where no spelling can be a syntax error; and the
+ * FALLBACK, because a clear takes its own control off the panel along with the value it
+ * removed, leaving nothing at that address and focus on `<body>`, which is the pane's
+ * arrow keys silently gone.
+ */
+function refocusPick(view: EstimationView, kind: string, dim: string, value: number | null): void {
+	const row = Array.from(view.viewEl.querySelectorAll<HTMLElement>('.pbl-est-panel button')).filter(
+		(el) => el.dataset.kind === kind && el.dataset.dim === dim,
+	);
+	const next = row.find((el) => el.dataset.value === String(value ?? '')) ?? row[0];
+	next?.focus();
 }

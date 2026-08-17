@@ -44,8 +44,16 @@ the DOM straight from the saved `ScoringModel` (`domain/scoringModel.ts`'s
 `ScoringDimension.rubric` / `ScaleConfig.rubric`), never through the i18n catalog — this
 note's own "the default sentences ship with the model and are editable" is a fact about
 DATA, and a translated catalog entry could not be edited from the view options the way a
-rubric sentence is. A stored answer outside its own range shows the clamp instead of a
-sentence, never silently — `estimation.clamped` in `src/i18n/en.ts`.
+rubric sentence is.
 
-Tests: `test/view/estimation/scoring.test.ts` ("scoring a dimension" and "the confidence,
-effort and complexity rows").
+**A row with an answer is never silent about it, and that takes three answers rather than
+one.** A stored value inside the range and ON a point shows that point's sentence; one
+outside the range shows the clamp (`estimation.clamped`); and one BETWEEN points — `2.5`,
+which is in range and counted as it stands — shows that instead (`estimation.betweenPoints`),
+because it names no point and so has no sentence to show. Both notes hold for the three
+fixed scales exactly as for a dimension: nothing computes a total off confidence, effort or
+complexity, but a note can still hold `9` on a five-point scale, and reading the first fact
+as the second drew that row with no active point, no sentence and no note at all.
+
+Tests: `test/view/estimation/panel.test.ts` (what a row DRAWS for a stored value) and
+`test/view/estimation/scoring.test.ts` (what a pick WRITES).

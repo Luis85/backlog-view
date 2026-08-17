@@ -18,8 +18,7 @@ export function planScoreWrite(
 ): PropertyWrite | null {
 	const dimension = model.dimensions.find((d) => d.id === dimensionId);
 	if (!dimension) return null;
-	const current = item.answers.get(dimensionId) ?? null;
-	if (current === value) return null;
+	if (writesNothing(item, dimension.key, item.answers.get(dimensionId) ?? null, value)) return null;
 	const next = new Map(item.answers);
 	next.set(dimensionId, value);
 	const sets: PropertySet[] = [{ key: dimension.key, value }, ...totalStampSets(model, item, computeTotal(model, next))];
@@ -36,8 +35,24 @@ export function planScaleWrite(
 ): PropertyWrite | null {
 	const config = model[scale];
 	if (config.key === '') return null;
-	if (item[scale] === value) return null;
+	if (writesNothing(item, config.key, item[scale], value)) return null;
 	return { file: item.file, sets: [{ key: config.key, value }] };
+}
+
+/**
+ * Whether a pick would write nothing — the checkmark question, and the one rule both
+ * planners above ask rather than each spelling a comparison of its own.
+ *
+ * A re-pick asks the VALUE. A clear asks the KEY, and that is the correction: the value
+ * is what a reader made of the note, and a stub (`''`, which is exactly what the guided
+ * setup action writes onto every result) and a typed word both read as no answer — so
+ * comparing values made every Clear the setup action leaves behind a no-op, and left a
+ * hand-typed `soon` with no way off the note but the editor. Presence is what the panel
+ * DRAWS the control on (`item.ownKeys`), so asking presence here is what keeps "an
+ * offered action always writes something" true in both directions.
+ */
+function writesNothing(item: EstimationItem, key: string, held: number | null, value: number | null): boolean {
+	return value === null ? !item.ownKeys.has(key) : held === value;
 }
 
 /**

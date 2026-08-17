@@ -1,37 +1,20 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { makeEstimationView } from '../../helpers/estimation';
+import { clearButton, click, dimRow, makeEstimationView, pointButton, selectItem } from '../../helpers/estimation';
 import { configured, configuredValues } from '../../helpers/estimationModel';
 import { FakeVault } from '../../helpers/vault';
 import { flush } from '../../helpers/view';
-import { computeTotal, round2, stampValue } from '../../../src/domain/weightedScore';
+import { computeTotal, stampValue } from '../../../src/domain/weightedScore';
 import type { EstimationItem } from '../../../src/domain/estimationItems';
 import { planOrphanCleanup, planScaleWrite, planScoreWrite } from '../../../src/view/estimation/scoring';
 
 /**
- * The panel's write-back (`scoring.ts`'s planners, wired through `estimationView.ts`'s
- * gate) and the orphan cleanup action — Task 7's own scenarios, driven through real
- * clicks on the real panel rather than by calling the planners directly, so the whole
- * path (pick -> plan -> gate -> write -> refresh -> refocus) is what is under test.
+ * What a pick WRITES: `scoring.ts`'s planners wired through `estimationView.ts`'s gate,
+ * and the orphan cleanup action — driven through real clicks on the real panel rather
+ * than by calling the planners directly, so the whole path (pick -> plan -> gate ->
+ * write -> refresh) is what is under test. What the panel DRAWS, and where focus lands
+ * afterwards, is `panel.test.ts`'s subject.
  */
-
-function row(containerEl: HTMLElement, path: string): HTMLElement {
-	return containerEl.querySelector(`.pbl-est-row[data-path="${path}"]`) as HTMLElement;
-}
-
-function selectItem(containerEl: HTMLElement, path: string): void {
-	row(containerEl, path).dispatchEvent(new MouseEvent('click', { bubbles: true }));
-}
-
-function pointButton(containerEl: HTMLElement, dim: string, value: number): HTMLElement {
-	const btn = containerEl.querySelector(`.pbl-est-panel button[data-dim="${dim}"][data-value="${value}"]`);
-	if (!btn) throw new Error(`no point button for ${dim}=${value}`);
-	return btn as HTMLElement;
-}
-
-function clearButton(containerEl: HTMLElement, dim: string): HTMLElement | null {
-	return containerEl.querySelector(`.pbl-est-panel button[data-dim="${dim}"][data-value=""]`);
-}
 
 function cleanupButton(containerEl: HTMLElement): HTMLElement | null {
 	return containerEl.querySelector('.pbl-est-panel button[data-action="cleanup"]');
@@ -39,18 +22,6 @@ function cleanupButton(containerEl: HTMLElement): HTMLElement | null {
 
 function currencyText(containerEl: HTMLElement): string | null {
 	return containerEl.querySelector('.pbl-est-row.pbl-selected .pbl-est-currency')?.textContent ?? null;
-}
-
-function dimRow(containerEl: HTMLElement, label: string): HTMLElement {
-	const found = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-est-panel .pbl-est-dim')).find(
-		(el) => el.querySelector('.pbl-est-dim-label')?.textContent === label,
-	);
-	if (!found) throw new Error(`no dim row labelled ${label}`);
-	return found;
-}
-
-function click(el: HTMLElement): void {
-	el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 }
 
 /** A minimal `EstimationItem` for testing the planners directly — the shapes
@@ -180,6 +151,32 @@ describe('scoring a dimension', () => {
 		expect(vault.fm('Item.md')).toEqual({});
 	});
 
+	it('clears a key the note carries but no reader can parse — the setup action’s own stub, and a typed word', async () => {
+		const vault = new FakeVault();
+		// '' is exactly what `runEstimationInit` stubs onto every result, and 'soon' is
+		// what a hand edit leaves. Both read as no answer, so a clear compared against the
+		// VALUE planned nothing and the control the panel drew for the key did nothing.
+		vault.addFile('Stubbed.md', { frontmatter: { 'strategic-alignment': '', 'customer-value': 3 } });
+		vault.addFile('Garbage.md', { frontmatter: { 'strategic-alignment': 'soon' } });
+		const { containerEl } = makeEstimationView(vault, configuredValues());
+
+		selectItem(containerEl, 'Stubbed.md');
+		click(clearButton(containerEl, 'strategic-alignment')!);
+		await flush();
+
+		expect(vault.fm('Stubbed.md')).toEqual({
+			'customer-value': 3,
+			'business-value': computeTotal(configured(), new Map([['customer-value', 3]]))!.total,
+			'business-value-model': stampValue(configured(), { answered: 1, enabled: 8 }),
+		});
+
+		selectItem(containerEl, 'Garbage.md');
+		click(clearButton(containerEl, 'strategic-alignment')!);
+		await flush();
+
+		expect(vault.fm('Garbage.md')).toEqual({});
+	});
+
 	it('undo restores all three keys a pick wrote', async () => {
 		const vault = new FakeVault();
 		vault.addFile('Item.md', { frontmatter: { 'strategic-alignment': 5, 'customer-value': 3 } });
@@ -193,17 +190,6 @@ describe('scoring a dimension', () => {
 		await view.undoLast();
 
 		expect(vault.fm('Item.md')).toEqual({ 'strategic-alignment': 5, 'customer-value': 3 });
-	});
-
-	it('a clamped stored value reports itself instead of a rubric sentence, and holds no point active', () => {
-		const vault = new FakeVault();
-		vault.addFile('Item.md', { frontmatter: { 'strategic-alignment': 7 } }); // range is 1-5
-		const { containerEl } = makeEstimationView(vault, configuredValues());
-		selectItem(containerEl, 'Item.md');
-
-		const dim = dimRow(containerEl, 'Strategic alignment');
-		expect(dim.querySelector('.pbl-est-rubric')?.textContent).toBe('Out of range — read as 5');
-		expect(dim.querySelector('button.is-active')).toBeNull();
 	});
 });
 
@@ -286,43 +272,6 @@ describe('the confidence, effort and complexity rows', () => {
 		click(pointButton(containerEl, 'confidence', 4));
 		await flush();
 		expect(vault.writeLog).toHaveLength(1);
-	});
-});
-
-describe('the two derived lines', () => {
-	it('renders each only once its own inputs exist', () => {
-		const vault = new FakeVault();
-		vault.addFile('Neither.md', { frontmatter: { 'strategic-alignment': 5 } });
-		vault.addFile('ConfidenceOnly.md', { frontmatter: { 'strategic-alignment': 5, confidence: 4 } });
-		const values = configuredValues({ confidenceProperty: 'note.confidence' }); // effort left unbound
-		const { containerEl } = makeEstimationView(vault, values);
-
-		selectItem(containerEl, 'Neither.md');
-		expect(containerEl.querySelector('.pbl-est-derived')).toBeNull();
-
-		selectItem(containerEl, 'ConfidenceOnly.md');
-		const derived = containerEl.querySelector('.pbl-est-derived') as HTMLElement;
-		expect(derived).not.toBeNull();
-		expect(derived.querySelectorAll('strong')).toHaveLength(1); // value-to-effort needs effort too
-		const model = configured({ confidenceProperty: 'note.confidence' });
-		const result = computeTotal(model, new Map([['strategic-alignment', 5]]))!;
-		expect(derived.textContent).toContain(String(round2((result.total * 4) / 5)));
-	});
-
-	it('adds value-to-effort once effort is answered too', () => {
-		const vault = new FakeVault();
-		vault.addFile('Item.md', { frontmatter: { 'strategic-alignment': 5, confidence: 4, effort: 2 } });
-		const values = configuredValues({ confidenceProperty: 'note.confidence', effortProperty: 'note.effort' });
-		const { containerEl } = makeEstimationView(vault, values);
-		selectItem(containerEl, 'Item.md');
-
-		const derived = containerEl.querySelector('.pbl-est-derived') as HTMLElement;
-		expect(derived.querySelectorAll('strong')).toHaveLength(2);
-		const model = configured({ confidenceProperty: 'note.confidence', effortProperty: 'note.effort' });
-		const result = computeTotal(model, new Map([['strategic-alignment', 5]]))!;
-		const adjusted = round2((result.total * 4) / 5);
-		expect(derived.textContent).toContain(String(adjusted));
-		expect(derived.textContent).toContain(String(round2(adjusted / 2)));
 	});
 });
 
