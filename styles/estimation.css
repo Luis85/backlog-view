@@ -219,6 +219,38 @@
 	border-color: var(--text-warning);
 }
 
+/* Six real buttons since Task 9 — sortable headers. `button.pbl-est-point`
+   below states the recipe in full: qualifying the reset with the element
+   ties the specificity against Obsidian's `button:not(.clickable-icon)`. */
+button.pbl-est-sort {
+	appearance: none;
+	padding: 0;
+	margin: 0;
+	border: none;
+	background: none;
+	box-shadow: none;
+	font: inherit;
+	color: inherit;
+	cursor: pointer;
+}
+
+button.pbl-est-sort:hover,
+button.pbl-est-sort[aria-sort] {
+	color: var(--text-normal);
+}
+
+button.pbl-est-sort:focus-visible {
+	outline: 1px solid var(--interactive-accent);
+	outline-offset: 1px;
+}
+
+/* The one column with no alignment rule of its own — the numeric columns
+   already state `text-align: end`, which any author rule beats a UA default
+   on regardless of specificity, but a button centers its text absent one. */
+button.pbl-est-title {
+	text-align: start;
+}
+
 /* ==========================================================================
    The panel: one selector row per enabled dimension (plus confidence, effort
    and complexity, which are scales of the same shape), then the decomposition.

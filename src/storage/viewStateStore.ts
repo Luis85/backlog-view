@@ -114,6 +114,29 @@ const DENSITY_VALUES = ['compact'];
 /** The values the `shelfSort` field may hold. Mirrors `ShelfSort` in `domain/shelf.ts`. */
 const SHELF_SORT_VALUES = ['tree', 'title', 'modified'];
 /**
+ * The values the `estimationSort` field may hold: `${column}:${direction}` for the
+ * prioritized list's clickable headers — column ∈
+ * title|total|coverage|confidence|effort|currency, direction ∈ asc|desc. There is no
+ * domain type to mirror the way `AXIS_VALUES` mirrors `RoadmapAxis` above: sorting is
+ * that OTHER view's own question, answered nowhere under `domain/`, so the twelve
+ * combinations are spelled out directly — the same "stored state is not trusted as a
+ * type" rule applied to a vocabulary this module is the only owner of.
+ */
+const ESTIMATION_SORT_VALUES = [
+	'title:asc',
+	'title:desc',
+	'total:asc',
+	'total:desc',
+	'coverage:asc',
+	'coverage:desc',
+	'confidence:asc',
+	'confidence:desc',
+	'effort:asc',
+	'effort:desc',
+	'currency:asc',
+	'currency:desc',
+];
+/**
  * Bounds on the `leadWidth` field, in pixels. Below the minimum the badge and its
  * padding alone would fill the column, leaving no room for a title at all; above the
  * maximum a fat-fingered drag would push most of the grid off screen. Unlike every
@@ -213,6 +236,15 @@ export interface ViewPrefs {
 	 * so the redirect always answers from the newest pick and they cannot contradict.
 	 */
 	board?: string;
+	/**
+	 * The prioritized list's active sort — the OTHER Bases view's own pick, kept in
+	 * this same store because it is the identical question (working position, per
+	 * saved view, per device) asked by a different screen. `${column}:${direction}`,
+	 * validated against the twelve combinations in {@link PREF_READERS}'s row for it.
+	 * Absent means Base order, unsorted — the default, and what a pick back to it
+	 * stores: nothing.
+	 */
+	estimationSort?: string;
 }
 
 export interface ViewStateSnapshot {
@@ -332,6 +364,7 @@ export const PREF_READERS: { [K in keyof ViewPrefs]-?: Reader<NonNullable<ViewPr
 	// refuses here is a value of the wrong shape, not one naming a note that has moved.
 	scope: anyName,
 	board: oneOf([DELIVERABLES_MODE]),
+	estimationSort: oneOf(ESTIMATION_SORT_VALUES),
 };
 
 /** A record, or an empty one for anything that is not a plain object. */

@@ -101,8 +101,8 @@ export const en = {
 	'estimation.problems.lead': 'Fix the estimation model first:',
 	'estimation.empty.noResults': 'No results to estimate.',
 
-	/** The prioritized list's column labels. Sort controls arrive in a later task; these
-	 * are plain labels until then. */
+	/** The prioritized list's column labels — also each sort button's own accessible
+	 * name, so no separate string names the control. */
 	'estimation.column.item': 'Item',
 	'estimation.column.value': 'Value',
 	'estimation.column.coverage': 'Coverage',

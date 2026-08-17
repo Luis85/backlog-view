@@ -33,6 +33,14 @@ export class EstimationView extends BasesView {
 	readonly gate: WriteGate<PropertyWrite>;
 	/** The row whose panel is on screen — set by the table's click and its arrow keys. */
 	selectedPath: string | null = null;
+	/**
+	 * The table's active sort, as `${column}:${direction}` — null for Base order,
+	 * unsorted. Read and written by `renderTable.ts` alone (`restoreSort`/`setSort`),
+	 * the same "a free function mutates a plain field on the view" shape
+	 * `selectedPath` above already uses; persisted per saved view where this view can
+	 * be identified, session-only otherwise (`resolveViewIdentity`'s own rule).
+	 */
+	sortPick: string | null = null;
 	/** The last built model, read by the gate's `outsideFilter` — null before the first
 	 *  successful render (loading, unconfigured, or a broken model scores nothing). */
 	model: EstimationModel | null = null;
