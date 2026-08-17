@@ -11,10 +11,10 @@ import { wireBarLink } from '../interactions/linkDrag';
 import { BacklogViewHost, DrawnColors } from '../host';
 import { Absence, absencesConfigured, absenceTitle, awayWeeks, crossedAbsences, daysLost, packLanes } from '../../domain/absences';
 import { barHolds, timelineRows, TimelineBar, TimelineRow } from '../../domain/bars';
-import { isMarkerType } from '../../domain/itemTypes';
+import { displayType, isIterationType, isMarkerType } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
 import { CivilDate } from '../../domain/noteFields';
-import { markerLane, ResourceLane } from '../../domain/roadmap';
+import { markerLane, markerLaneCaption, ResourceLane } from '../../domain/roadmap';
 import { ownWorkflowReading, stateKeyFor, WorkflowReading } from '../../domain/board';
 import { sanitizeTitle } from '../../storage/createNote';
 import {
@@ -297,7 +297,10 @@ export function renderLaneHead(
 	// the dates the whole plan is measured against off screen is the very thing this row
 	// exists to prevent.
 	if (!lane.markers) renderLaneChevron(ctx.host, lead, lane, collapsed);
-	lead.createSpan({ cls: 'pbl-lane-name', text: lane.name });
+	// The milestones' row captions itself by what it holds (`markerLaneCaption`) — never
+	// `lane.name`, which stays the constant identity every other reader (the fold key, the
+	// roster refusal) has to keep matching. Every other row is still named by itself.
+	lead.createSpan({ cls: 'pbl-lane-name', text: lane.markers ? markerLaneCaption(lane.bars) : lane.name });
 	if (lane.bars.length > 0) {
 		lead.createSpan({ cls: 'pbl-lane-count', text: t('count.items', { count: lane.bars.length }) });
 	}
@@ -882,8 +885,15 @@ export function drawMarkerDiamonds(
 		// actually painted, which is `Other` and not `Milestone`. Reported here rather than
 		// recomputed in the legend, `reportColors`' own rule: a copy of `barClasses`'
 		// precedence is exactly what missed this case on the dated axis once already.
+		// Milestone and Iteration share the one cyan diamond class (`geometry.milestone`), so
+		// which of the two keys the legend is asked of the ITEM's own type, never of the
+		// mark's colour — the same content-aware split `markerLaneCaption` makes for the row's
+		// own caption. `!geometry.milestone` is dead until Task 4 draws span marks in this
+		// lane; it is written now so the report can never claim cyan for a mark `barClasses`
+		// did not give the diamond class.
 		if (done) drawn.done = true;
-		else if (geometry.outside) drawn.accent = true;
+		else if (geometry.outside || !geometry.milestone) drawn.accent = true;
+		else if (isIterationType(bar.item.typeName)) drawn.iteration = true;
 		else drawn.milestone = true;
 	}
 	band.head.setCssProps({ '--pbl-lane-sublanes': String(Math.max(0, ...stacked.values())) });
@@ -1039,7 +1049,12 @@ export function spanText(bar: TimelineBar): string {
 	const span = bar.span;
 	const inferred = bar.inferredStart || bar.inferredEnd ? ' — inferred from children' : '';
 	if (span.start !== null && span.target !== null) {
-		if (formatCivil(span.start) === formatCivil(span.target)) return `Milestone ${formatCivil(span.start)}${inferred}`;
+		// The item's OWN type, never the literal word "Milestone" — a coincident pair draws
+		// the same diamond whatever the item is (an inferred equal span included), so the
+		// sentence has to say what THIS item is rather than what a point used to always mean.
+		if (formatCivil(span.start) === formatCivil(span.target)) {
+			return `${displayType(bar.item)} ${formatCivil(span.start)}${inferred}`;
+		}
 		return `${formatCivil(span.start)} → ${formatCivil(span.target)}${inferred}`;
 	}
 	if (span.start !== null) return `Starts ${formatCivil(span.start)}, target not set${inferred}`;

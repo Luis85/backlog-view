@@ -306,7 +306,14 @@ export function renderTimeline(
 		palettes,
 		conflictedPrereqs: dependencies.conflicts,
 	};
-	const drawn: DrawnColors = { done: false, milestone: milestoneLines, accent: false, absence: false, daysLost: false };
+	const drawn: DrawnColors = {
+		done: false,
+		milestone: milestoneLines.milestone,
+		iteration: milestoneLines.iteration,
+		accent: false,
+		absence: false,
+		daysLost: false,
+	};
 	drawEntries(entries, { ctx, mounts, window, drawing, drawn });
 	// After every row exists, never before: an edge's arrow anchors on the ROWS the
 	// prerequisite and the dependent actually drew, and its Y comes from where those
@@ -691,6 +698,10 @@ function renderBarRow(
 		// `paint === null` IS "no slot", and a choice never creates one, so the plain accent
 		// is still exactly the case where the state is outside its own vocabulary.
 		accent: !own.done && paint === null && !milestoneDrawn,
+		// A bar ROW is never an iteration: an Iteration draws as a point in the milestones'
+		// shared row (`drawMarkerDiamonds`), which has no rows of its own — this report has
+		// nothing to say here.
+		iteration: false,
 	};
 	return { row, colors, lead, track, label };
 }

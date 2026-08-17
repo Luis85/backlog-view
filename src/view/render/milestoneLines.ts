@@ -1,6 +1,6 @@
 import { setTooltip } from 'obsidian';
 import { TimelineBar } from '../../domain/bars';
-import { isMarkerType } from '../../domain/itemTypes';
+import { isIterationType, isMarkerType } from '../../domain/itemTypes';
 import { CivilDate } from '../../domain/noteFields';
 import { barGeometry, daysBetween, TimelineScale, TimelineWindow } from '../../domain/timeline';
 
@@ -25,6 +25,15 @@ import { barGeometry, daysBetween, TimelineScale, TimelineWindow } from '../../d
  * window draws none — `outside` says so, and a line at the edge would claim a date the
  * milestone does not have. Nothing here is focusable and nothing is written: the line is
  * decoration of a row, and every fact it shows is in that row's accessible name.
+ *
+ * **The return is per TYPE, not one boolean.** The caller seeds `DrawnColors` with it
+ * before the diamond's own report runs (`renderTimeline`): the line stays cyan even where
+ * a marker's DIAMOND is repainted green by the done override, so a grid whose only marker
+ * is a done Milestone still has to key cyan for a fact the diamond no longer reports. One
+ * boolean answered that while every marker meant "Milestone"; asked of a mixed or
+ * Iteration-only grid it would seed `drawn.milestone` true from an Iteration's own line —
+ * the caption's content-aware rule broken here instead of at `markerLaneCaption`. Split so
+ * the seed can never claim a colour for a type that drew no line of its own.
  */
 export function renderMilestoneLines(
 	mounts: { grid: HTMLElement; headerTrack: HTMLElement },
@@ -34,17 +43,21 @@ export function renderMilestoneLines(
 	// `scale` and `leadWidth` grouped into one param — both are "how a day converts to a
 	// pixel here", and the pair is what keeps this under the five-parameter budget.
 	ruler: { scale: TimelineScale; leadWidth: number },
-): boolean {
+): { milestone: boolean; iteration: boolean } {
 	const { grid, headerTrack } = mounts;
 	const { scale, leadWidth } = ruler;
 	// Insertion order is bar order, which is row order — so a shared line names its
 	// milestones the way the rows read.
 	const byDay = new Map<number, string[]>();
+	let milestone = false;
+	let iteration = false;
 	for (const bar of bars) {
 		if (!isMarkerType(bar.item.typeName)) continue;
 		const geometry = barGeometry(window, bar.span);
 		if (geometry.outside) continue;
 		byDay.set(geometry.startDay, [...(byDay.get(geometry.startDay) ?? []), bar.item.title]);
+		if (isIterationType(bar.item.typeName)) iteration = true;
+		else milestone = true;
 	}
 	const todayDay = daysBetween(window.start, today);
 	for (const [day, names] of byDay) {
@@ -82,5 +95,5 @@ export function renderMilestoneLines(
 		labelEl.setCssProps({ '--pbl-milestone-left': `${day * scale.dayPx + nudge}px` });
 		setTooltip(labelEl, label);
 	}
-	return byDay.size > 0;
+	return { milestone, iteration };
 }

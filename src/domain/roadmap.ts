@@ -1,7 +1,7 @@
 import { Absence } from './absences';
 import { firstPlacedIndex } from './board';
 import { deriveBars, placeItem, ShelfCard, statedEnds, TimelineBar } from './bars';
-import { isMarkerType } from './itemTypes';
+import { isIterationType, isMarkerType } from './itemTypes';
 import { BacklogItem, BacklogModel } from './model';
 import { FieldReading, sameValue } from './noteFields';
 import { BacklogSettings } from './settings';
@@ -142,6 +142,20 @@ const MILESTONE_LANE = 'Milestones';
  */
 export function markerLane(bars: TimelineBar[]): ResourceLane {
 	return { name: MILESTONE_LANE, declared: true, markers: true, bars, absences: [], context: [] };
+}
+
+/**
+ * What the marker row's header SAYS — presentation derived from what the row holds,
+ * never the lane's identity: `name` stays the constant the fold key and the roster
+ * refusal read, and a caption that named a type the row is not drawing would be the
+ * legend's own lie one element over. Decided by the user 2026-08-16 (content-aware over
+ * a fixed word), spec `2026-08-16-finish-iterations-board-design.md`.
+ */
+export function markerLaneCaption(bars: TimelineBar[]): string {
+	const iterations = bars.some((bar) => isIterationType(bar.item.typeName));
+	const milestones = bars.some((bar) => !isIterationType(bar.item.typeName));
+	if (milestones && iterations) return 'Milestones · Iterations';
+	return iterations ? 'Iterations' : 'Milestones';
 }
 
 export interface ResourceLane {

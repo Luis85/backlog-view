@@ -57,7 +57,7 @@ export function renderRoadmap(
 			window: null,
 			scale: null,
 			leadWidth: null,
-			drawn: { done: false, milestone: false, accent: false, absence: false, daysLost: false },
+			drawn: { done: false, milestone: false, iteration: false, accent: false, absence: false, daysLost: false },
 			palettes: [],
 		};
 	}
@@ -70,7 +70,7 @@ export function renderRoadmap(
 	let window: TimelineWindow | null = null;
 	let scale: TimelineScale | null = null;
 	let leadWidth: number | null = null;
-	let drawn: DrawnColors = { done: false, milestone: false, accent: false, absence: false, daysLost: false };
+	let drawn: DrawnColors = { done: false, milestone: false, iteration: false, accent: false, absence: false, daysLost: false };
 	// The dated axis's own dependency conflicts (see `TimelineRender.dependencyConflicts`)
 	// — empty on the horizon axis, where a shelved dependent's stated START has no
 	// meaning at all.
