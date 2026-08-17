@@ -408,15 +408,34 @@ describe('a context row inside a resource row', () => {
 	 * to be a bars-only walk, and `renderLaneContextRow` used to draw the row without
 	 * `wireCardActivation`. See [[A lane context row could not be reached]]; this replaces
 	 * the check that went with `roadmapMatches.test.ts`.
+	 *
+	 * **The WHERE is a third thing, and it needs a second band to be asked at all.**
+	 * `drawnCards` promises DRAW order — "a kind is inserted where it draws and never
+	 * appended at the end" — and a walk that ends `[...bars, ...contexts]` keeps every
+	 * reachability claim above while sending a reader who arrows down off the row they can
+	 * see into another person's band. With one drawn row in the fixture, "first stop" is
+	 * the only stop and says nothing; Bob's own dated Epic is what makes it an ordering.
+	 * The screen order is asserted first, because "the walk matches the screen" is not a
+	 * claim a walk can make on its own.
 	 */
-	it('takes the keyboard walk’s first stop, where Enter opens its note', () => {
+	it('stops where it DRAWS, above the next band’s bar, and Enter opens its note', () => {
 		const vault = contextVault();
-		const { containerEl } = laneRoadmap(vault, { only: ['Result.md'], focus: 'Epic' });
+		// A RESULT of Bob's, so it draws a bar row in the band below Alice's — the row the
+		// appended walk would visit first.
+		vault.addFile('Bob epic.md', {
+			frontmatter: { type: 'Epic', order: 20, assignee: 'Bob', start: '2026-08-01', due: '2026-08-02' },
+		});
+		const { containerEl } = laneRoadmap(vault, { only: ['Result.md', 'Bob epic.md'], focus: 'Epic' });
+		const tree = treeOf(containerEl);
+		expect(laneOrder(containerEl)).toEqual(['lane:Alice', 'Outside epic', 'lane:Bob', 'Bob epic']);
 
-		key(treeOf(containerEl), 'ArrowDown');
+		key(tree, 'ArrowDown');
 		expect(containerEl.querySelector('.pbl-selected')?.classList.contains('pbl-lane-context')).toBe(true);
-		key(treeOf(containerEl), 'Enter');
+		key(tree, 'Enter');
 		expect(vault.opened.map((o) => o.path)).toEqual(['Outside epic.md']);
+
+		key(tree, 'ArrowDown');
+		expect(containerEl.querySelector('.pbl-selected .pbl-card-title')?.textContent).toBe('Bob epic');
 	});
 
 	it('opens its note on a click, like every other card on this grid', () => {
