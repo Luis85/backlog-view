@@ -109,6 +109,13 @@ already asks one question (`visibilityRule`), so it is an item this axis does no
 rather than an item it could not place. The unplaced count is a count of work the reader
 can act on, and a sprint they have hidden is not on that list.
 
+**It also withholds `iterationBars` while it is off**, which is this note's own "absent
+rather than inert" rule reaching the options menu: the bar option chooses between two
+readings of an iteration on the grid, and with nothing drawn there is no reading to choose.
+Withheld, never reset — the `.base` keeps the key and `resolveSettings` reads it back
+untouched, so turning the timeline on restores the reading the reader last picked. That is
+what makes `iterationsGroup` read the config, the same reason `progressGroup` does.
+
 It writes nothing and is read at no write path, which is what separates it from
 `iterationBars` (extension 5a): that option decides which date KEYS a placement may touch,
 so `storage/` resolves it; this one decides only what is on screen. Turning it back on

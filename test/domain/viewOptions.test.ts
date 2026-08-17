@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BasesViewConfig } from 'obsidian';
 import { getViewOptions } from '../../src/domain/viewOptions';
+import { resolveSettings } from '../../src/domain/settingsResolve';
 import { defaultTypeFolder } from '../../src/domain/typeVocabulary';
 import { FakeViewConfig } from '../helpers/vault';
 
@@ -158,6 +159,19 @@ describe('getViewOptions', () => {
 			'iterationsOnTimeline',
 			'iterationBars',
 		]);
+	});
+
+	it('withholds the bar reading while iterations are off the timeline, and keeps the stored value', () => {
+		// `iterationBars` chooses between two readings of an iteration on the grid, so with
+		// nothing drawn there is no reading to choose — the toggle would be a control that
+		// obeys nothing. The stored value survives being unoffered: `resolveSettings` reads
+		// the key from the `.base` either way, so turning the timeline back on restores the
+		// reading rather than resetting it to lines.
+		const off = fakeConfig({ iterationsOnTimeline: false, iterationBars: true });
+		const group = getViewOptions(off).find((g) => 'displayName' in g && g.displayName === 'Iterations');
+		if (!group || !('items' in group)) throw new Error('Iterations group missing');
+		expect(group.items.map((item) => item.key)).not.toContain('iterationBars');
+		expect(resolveSettings(off).iterationBars).toBe(true);
 	});
 
 	it('exposes a Test management group with its own state property, states and done values', () => {

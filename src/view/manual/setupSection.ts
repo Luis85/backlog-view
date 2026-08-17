@@ -85,7 +85,9 @@ export const SETUP: ManualSection = {
 				'when the board derives one — a whole number of days, 14 if it cannot be read. ' +
 				'Show iterations on the roadmap timeline decides whether the dated and resource ' +
 				'axes draw them at all: turned off, an iteration draws nowhere — not as a mark ' +
-				'and not on the unplaced shelf — and no note is changed either way. ' +
+				'and not on the unplaced shelf — and no note is changed either way. Turned off, ' +
+				'it also takes the bar option below out of the menu, since there is no reading ' +
+				'left to choose; your pick is kept and comes back with the timeline. ' +
 				'Draw iterations as bars switches an iteration\'s own reading on the roadmap ' +
 				'between a single point at its target date — the default, the same reduction a ' +
 				'Milestone always gets — and a span from its start to its target.',
