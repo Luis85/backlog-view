@@ -48,6 +48,16 @@ and the options schema it is read from); `src/view/estimation/estimationView.ts`
 is the view itself and `src/view/estimation/register.ts` is
 `registerEstimationView`, called from `main.ts` beside the backlog's own.
 
+The table itself is a later piece, under the same split. `src/domain/weightedScore.ts`
+is the scoring arithmetic, the model fingerprint and the write-stamp rules — no note, no
+vault, exactly the shape `domain/` already keeps for the backlog's own planners.
+`src/domain/estimationItems.ts` (`buildEstimationModel`) reads the vault into it, one
+`EstimationItem` per result, the same one-`getFileCache`-per-note rule `domain/model.ts`
+keeps for the backlog. `src/view/estimation/renderTable.ts` is the free function over
+`EstimationView` that draws the table and wires its selection and keyboard —
+`renderPass.ts`'s own shape, imported by `estimationView.ts` rather than the other way
+round, so the two files cannot cycle.
+
 ## Consequences
 
 The SDD's directory tree is not adopted. Modules this refactor adds are named

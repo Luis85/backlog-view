@@ -92,11 +92,28 @@ export const en = {
 	'settings.sharedKey': 'The {properties} properties share the key "{key}".',
 
 	/** The estimation view's own states — loading, unconfigured, misconfigured, and its
-	 * own empty result set. The table's row and cell text is not here yet: it lands with
-	 * the table in a later task. */
+	 * own empty result set. */
 	'estimation.loading': 'Loading estimation view…',
 	'estimation.empty.unconfigured': 'No estimation model is configured for this view.',
 	'estimation.empty.hint': 'Name the score properties in the view options, or use the setup action once it is available.',
 	'estimation.problems.lead': 'Fix the estimation model first:',
 	'estimation.empty.noResults': 'No results to estimate.',
+
+	/** The prioritized list's column labels. Sort controls arrive in a later task; these
+	 * are plain labels until then. */
+	'estimation.column.item': 'Item',
+	'estimation.column.value': 'Value',
+	'estimation.column.coverage': 'Coverage',
+	'estimation.column.confidence': 'Confidence',
+	'estimation.column.effort': 'Effort',
+	'estimation.column.currency': 'Currency',
+
+	/** The currency chip's word for what a stored total says about itself — never the
+	 * rubric or a property name, which are data and never enter this catalog. */
+	'estimation.currency.current': 'Current',
+	'estimation.currency.stale': 'Needs re-estimation',
+	'estimation.currency.foreign': 'Another model',
+	'estimation.currency.handwritten': 'Hand-written',
+	'estimation.currency.orphan': 'Inputs gone',
+	'estimation.currency.none': '—',
 } as const;

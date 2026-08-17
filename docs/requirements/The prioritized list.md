@@ -25,11 +25,18 @@ order to the backlog.
 ## Where it lives
 
 `src/view/estimation/estimationView.ts` (the Bases view itself — loading, the guided
-empty state, a config warning naming every problem, and the placeholder frame a
-configured model draws until the table exists) · `src/view/estimation/register.ts`
-(`registerEstimationView`, the view's own registration — ADR 0030).
+empty state, a config warning naming every problem, and now the table for a configured
+model) · `src/view/estimation/register.ts` (`registerEstimationView`, the view's own
+registration — ADR 0030) · `src/domain/estimationItems.ts` (`buildEstimationModel`, one
+item per result — its own answers, what is already stored on it, and what scoring it
+fresh says about that stored value — read off the vault the same one-cache-read-per-note
+way the backlog's own model is) · `src/view/estimation/renderTable.ts` (the header, one
+row per item with its total, coverage, confidence, effort and currency word, and the
+delegated click and keyboard that set `EstimationView.selectedPath` —
+[[Why this item scored what it scored]]'s panel reads it next).
 
-The table this note is named for is not built yet: what exists so far is the frame it
-will render into, and the states it falls back to before a model is fit to score with.
+Sorting by column is not built yet: the header's labels are plain text this round, not
+controls, so nothing here claims a column the reader cannot yet click.
 
-Tests: **`test/view/estimation/states.test.ts`**, `test/view/estimation/register.test.ts`.
+Tests: **`test/view/estimation/states.test.ts`**, `test/view/estimation/register.test.ts`,
+`test/view/estimation/table.test.ts`.

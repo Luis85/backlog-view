@@ -1,0 +1,281 @@
+import { describe, expect, it } from 'vitest';
+import { computeTotal, currencyOf, modelFingerprint, parseStamp, round2, stampValue } from '../../src/domain/weightedScore';
+import { buildEstimationModel } from '../../src/domain/estimationItems';
+import { configured } from '../helpers/estimationModel';
+import { FakeVault } from '../helpers/vault';
+
+// The shipped default model, fully bound — shared by every test below the same way
+// `test/domain/scoringModel.test.ts` shares it, so every arithmetic test here argues
+// from the "everything is fine" shape rather than assembling its own dimension list.
+const model = configured();
+
+describe('computeTotal: the weighted mean, renormalized over what was answered', () => {
+	it('computes the PRD worked example to 3.55', () => {
+		const answers = new Map(
+			Object.entries({
+				'strategic-alignment': 5,
+				'customer-value': 4,
+				'business-impact': 4,
+				reach: 3,
+				'risk-reduction': 2,
+				compliance: 1,
+				'time-criticality': 4,
+				enablement: 3,
+			}),
+		);
+		expect(computeTotal(model, answers)?.total).toBe(3.55);
+		expect(computeTotal(model, answers)?.coverage).toEqual({ answered: 8, enabled: 8 });
+	});
+
+	it('renormalizes a partial profile over the answered weights', () => {
+		const answers = new Map<string, number | null>([
+			['strategic-alignment', 5],
+			['customer-value', 3],
+		]);
+		// proportions 1.0 and 0.5, weights 20/20 → 0.75 → 1 + 0.75*4 = 4
+		expect(computeTotal(model, answers)?.total).toBe(4);
+		expect(computeTotal(model, answers)?.coverage).toEqual({ answered: 2, enabled: 8 });
+	});
+
+	it('no answered dimension means no total at all', () => {
+		expect(computeTotal(model, new Map())).toBeNull();
+	});
+
+	it('clamps an out-of-range value to the scale and reports the dimension', () => {
+		const r = computeTotal(model, new Map([['reach', 9]]));
+		expect(r?.total).toBe(5);
+		expect(r?.clamped).toEqual(['reach']);
+	});
+
+	it('inverts a less-is-better dimension on its declared range', () => {
+		const flipped = structuredClone(model);
+		flipped.dimensions.find((d) => d.id === 'reach')!.lessIsBetter = true;
+		// reach 5 → proportion 1 → inverted 0 → output floor
+		expect(computeTotal(flipped, new Map([['reach', 5]]))?.total).toBe(1);
+		expect(computeTotal(flipped, new Map([['reach', 1]]))?.total).toBe(5);
+	});
+
+	it('rounds once at two decimals', () => {
+		// strategic-alignment 4 (p=0.75, w=20) + business-impact 3 (p=0.5, w=15):
+		// (15 + 7.5) / 35 = 0.642857… → 1 + 0.642857…*4 = 3.571428… → 3.57
+		const r = computeTotal(
+			model,
+			new Map([
+				['strategic-alignment', 4],
+				['business-impact', 3],
+			]),
+		);
+		expect(r?.total).toBe(3.57);
+	});
+});
+
+describe('round2', () => {
+	it('rounds to two decimal places, once', () => {
+		expect(round2(3.5714285714)).toBe(3.57);
+		expect(round2(4)).toBe(4);
+	});
+});
+
+describe('modelFingerprint: stable for the same model, and moved by every arithmetic input', () => {
+	it('is stable for the same model and moves for every arithmetic input', () => {
+		const base = modelFingerprint(model);
+		expect(modelFingerprint(model)).toBe(base);
+		const mutations: ((m: typeof model) => void)[] = [
+			(m) => {
+				m.dimensions[0].weight += 5;
+				m.dimensions[1].weight -= 5;
+			},
+			(m) => {
+				m.dimensions[0].key = 'other-property';
+			},
+			(m) => {
+				m.dimensions[0].rubric = [...m.dimensions[0].rubric];
+				m.dimensions[0].rubric[4] = 'Redefined';
+			},
+			(m) => {
+				m.outputMax = 10;
+			},
+			(m) => {
+				m.dimensions[0].lessIsBetter = true;
+			},
+			(m) => {
+				m.dimensions = m.dimensions.slice(1);
+			},
+		];
+		for (const mutate of mutations) {
+			const copy = structuredClone(model);
+			mutate(copy);
+			expect(modelFingerprint(copy)).not.toBe(base);
+		}
+	});
+
+	it('leaves confidence, effort and complexity out entirely — they never move it', () => {
+		const copy = structuredClone(model);
+		copy.confidence.key = 'note.something-else';
+		copy.effort.rubric = [...copy.effort.rubric.slice(1), 'New sentence'];
+		copy.complexity.min = 0;
+		expect(modelFingerprint(copy)).toBe(modelFingerprint(model));
+	});
+});
+
+describe('stampValue and parseStamp: the round trip a stored total is judged against', () => {
+	it('formats as "answered/enabled fingerprint" and parses back the same three parts', () => {
+		const coverage = { answered: 6, enabled: 8 };
+		const stamp = stampValue(model, coverage);
+		expect(stamp).toBe(`6/8 ${modelFingerprint(model)}`);
+		expect(parseStamp(stamp)).toEqual({ answered: 6, enabled: 8, fingerprint: modelFingerprint(model) });
+	});
+
+	it('refuses anything not shaped like a stamp this module wrote', () => {
+		expect(parseStamp('')).toBeNull();
+		expect(parseStamp('8/8')).toBeNull();
+		expect(parseStamp('8/8 ZZZZZZZZ')).toBeNull();
+		expect(parseStamp('hand-written')).toBeNull();
+	});
+});
+
+describe('currencyOf: what a stored total says about itself', () => {
+	const answers = new Map(
+		Object.entries({
+			'strategic-alignment': 5,
+			'customer-value': 4,
+			'business-impact': 4,
+			reach: 3,
+			'risk-reduction': 2,
+			compliance: 1,
+			'time-criticality': 4,
+			enablement: 3,
+		}),
+	);
+	const result = computeTotal(model, answers)!;
+
+	it('currency: current / stale-by-total / stale-by-coverage / foreign / handwritten / orphan / none', () => {
+		// current: storedStamp = stampValue(model, result.coverage), storedTotal = result.total
+		expect(
+			currencyOf(model, { storedTotal: result.total, storedStamp: stampValue(model, result.coverage), result }),
+		).toBe('current');
+
+		// stale-by-total: storedTotal no longer matches a fresh compute
+		expect(
+			currencyOf(model, { storedTotal: result.total + 0.5, storedStamp: stampValue(model, result.coverage), result }),
+		).toBe('stale');
+
+		// stale-by-coverage: the stamp remembers 8/8, the note's current answers cover 7/8
+		const partial = new Map(answers);
+		partial.delete('enablement');
+		const partialResult = computeTotal(model, partial)!;
+		expect(partialResult.coverage).toEqual({ answered: 7, enabled: 8 });
+		expect(
+			currencyOf(model, {
+				storedTotal: partialResult.total,
+				storedStamp: stampValue(model, result.coverage), // a full-profile stamp, left behind
+				result: partialResult,
+			}),
+		).toBe('stale');
+
+		// foreign: valid shape, wrong fingerprint (a stamp minted from a different model)
+		const otherModel = structuredClone(model);
+		otherModel.outputMax = 10;
+		expect(
+			currencyOf(model, { storedTotal: result.total, storedStamp: stampValue(otherModel, result.coverage), result }),
+		).toBe('foreign');
+
+		// handwritten: a total is set, with no stamp beside it at all
+		expect(currencyOf(model, { storedTotal: result.total, storedStamp: null, result })).toBe('handwritten');
+
+		// orphan: a total is stored, but nothing computes any more (every answer is gone)
+		expect(
+			currencyOf(model, { storedTotal: result.total, storedStamp: stampValue(model, result.coverage), result: null }),
+		).toBe('orphan');
+
+		// none: nothing stored, nothing computed
+		expect(currencyOf(model, { storedTotal: null, storedStamp: null, result: null })).toBe('none');
+	});
+});
+
+describe('buildEstimationModel: one item per result, one getFileCache read per note', () => {
+	it('reads answers, the stored total and stamp, and derives the result and its currency', () => {
+		const vault = new FakeVault();
+		vault.addFile('Full.md', {
+			frontmatter: {
+				'strategic-alignment': 5,
+				'customer-value': 4,
+				'business-impact': 4,
+				reach: 3,
+				'risk-reduction': 2,
+				compliance: 1,
+				'time-criticality': 4,
+				enablement: 3,
+			},
+		});
+		vault.addFile('Partial.md', { frontmatter: { 'strategic-alignment': 5, 'customer-value': 3 } });
+		vault.addFile('Empty.md');
+
+		const { items, byPath } = buildEstimationModel(vault.app, vault.entries(), model);
+
+		expect(items).toHaveLength(3);
+		expect(byPath.get('Full.md')?.result?.total).toBe(3.55);
+		// Nothing is stored on any of these notes yet, so every one reads as 'none'.
+		expect(byPath.get('Full.md')?.currency).toBe('none');
+		expect(byPath.get('Partial.md')?.result?.total).toBe(4);
+		expect(byPath.get('Partial.md')?.result?.coverage).toEqual({ answered: 2, enabled: 8 });
+		expect(byPath.get('Empty.md')?.result).toBeNull();
+		expect(byPath.get('Empty.md')?.currency).toBe('none');
+	});
+
+	it('reports a stored total current against a freshly computed one, and reads the fixed scales when bound', () => {
+		const vault = new FakeVault();
+		const scaled = configured({ confidenceProperty: 'note.confidence', effortProperty: 'note.effort' });
+		const answers = new Map(
+			Object.entries({
+				'strategic-alignment': 5,
+				'customer-value': 4,
+				'business-impact': 4,
+				reach: 3,
+				'risk-reduction': 2,
+				compliance: 1,
+				'time-criticality': 4,
+				enablement: 3,
+			}),
+		);
+		const result = computeTotal(scaled, answers)!;
+		vault.addFile('Current.md', {
+			frontmatter: {
+				...Object.fromEntries(answers),
+				confidence: 4,
+				effort: 2,
+				'business-value': result.total,
+				'business-value-model': stampValue(scaled, result.coverage),
+			},
+		});
+
+		const { byPath } = buildEstimationModel(vault.app, vault.entries(), scaled);
+		const item = byPath.get('Current.md')!;
+		expect(item.currency).toBe('current');
+		expect(item.confidence).toBe(4);
+		expect(item.effort).toBe(2);
+		expect(item.complexity).toBeNull(); // never bound by this model
+	});
+
+	it("collects only the model's own bound keys that the note actually carries", () => {
+		const vault = new FakeVault();
+		vault.addFile('One.md', { frontmatter: { 'strategic-alignment': 5, 'business-value': 3, unrelated: 'x' } });
+		const { byPath } = buildEstimationModel(vault.app, vault.entries(), model);
+		const ownKeys = byPath.get('One.md')!.ownKeys;
+		expect(ownKeys.has('strategic-alignment')).toBe(true);
+		expect(ownKeys.has('business-value')).toBe(true);
+		expect(ownKeys.has('unrelated')).toBe(false);
+		expect(ownKeys.has('customer-value')).toBe(false);
+		expect(ownKeys.has('business-value-model')).toBe(false);
+	});
+
+	it('reads only markdown files and never double-counts a path', () => {
+		const vault = new FakeVault();
+		vault.addFile('Note.md', { frontmatter: { 'strategic-alignment': 5 } });
+		vault.addFile('Attachment.png');
+		const entries = vault.entries();
+		const { items } = buildEstimationModel(vault.app, [...entries, entries[0]], model);
+		expect(items).toHaveLength(1);
+		expect(items[0].file.path).toBe('Note.md');
+	});
+});

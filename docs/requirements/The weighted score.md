@@ -41,3 +41,15 @@ be one.
 
 **Outcome** — One comparable number per item, derived the same way for every item, and never
 readable without knowing how much of the model it rests on.
+
+## Where it lives
+
+`src/domain/weightedScore.ts` (`computeTotal`, `round2`, `modelFingerprint`, `stampValue`,
+`parseStamp`, `currencyOf`) — this note's rules as arithmetic, independent of any note or
+vault: given a model and an answer for each dimension, one total and its coverage; given a
+model alone, a fingerprint that moves with everything the total's arithmetic depends on, so
+a stored total can be judged current, stale, foreign, hand-written or orphaned against it.
+Confidence, effort and complexity never reach this module — they play no part in the total,
+so they play no part in the fingerprint either.
+
+Tests: **`test/domain/weightedScore.test.ts`**.

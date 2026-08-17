@@ -2,19 +2,21 @@ import { BasesView, QueryController } from 'obsidian';
 import { t } from '../../i18n/t';
 import { EstimationSettings, resolveEstimationSettings } from '../../domain/estimationSettings';
 import { estimationUnconfigured, modelProblems } from '../../domain/scoringModel';
+import { buildEstimationModel } from '../../domain/estimationItems';
 import { WriteLock } from '../writeLock';
+import { renderTable } from './renderTable';
 
 export const ESTIMATION_VIEW_TYPE = 'product-estimation';
 
 /**
- * The estimation view: the plugin's second Bases view (ADR 0030). This task builds only
- * its states — loading, the guided-unconfigured empty state, a config warning naming
- * every problem, and a placeholder frame for a configured model — never the table itself,
- * which is Task 6.
+ * The estimation view: the plugin's second Bases view (ADR 0030). Draws its own states —
+ * loading, the guided-unconfigured empty state, a config warning naming every problem —
+ * and, once a model is fit to score with, the table (`renderTable.ts`) that is this
+ * view's main content; the per-item panel beside it is a later task's.
  *
  * Renders straight into `viewEl`, with no intermediate content wrapper: `.pbl-est-view`
  * (`styles/estimation.css`) is a two-column CSS Grid whose track sizing applies to DIRECT
- * children, so the table and the panel Task 6 adds have to land there directly — a
+ * children, so the table and the panel a later task adds have to land there directly — a
  * wrapper here would put both of them, one nested div later, into the grid's single first
  * cell.
  */
@@ -23,6 +25,8 @@ export class EstimationView extends BasesView {
 	readonly viewEl: HTMLElement;
 	settings: EstimationSettings;
 	readonly lock: WriteLock;
+	/** The row whose panel is on screen — set by the table's click and its arrow keys. */
+	selectedPath: string | null = null;
 
 	constructor(controller: QueryController, containerEl: HTMLElement, lock: WriteLock = new WriteLock()) {
 		super(controller);
@@ -63,8 +67,7 @@ export class EstimationView extends BasesView {
 		if (estimationUnconfigured(model)) return this.renderUnconfigured();
 		const problems = modelProblems(model);
 		if (problems.length > 0) return this.renderProblems(problems);
-		// Task 6 replaces this placeholder with the table.
-		this.viewEl.createDiv({ cls: 'pbl-est-table', text: t('estimation.empty.noResults') });
+		renderTable(this, buildEstimationModel(this.app, this.data?.data ?? [], model));
 	}
 
 	private renderUnconfigured(): void {
