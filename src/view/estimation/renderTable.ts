@@ -363,9 +363,21 @@ export function renderTable(view: EstimationView, model: EstimationModel): void 
 	// means what it already means for that honest case: select the first row.
 	if (view.selectedPath !== null && !model.byPath.has(view.selectedPath)) view.selectedPath = null;
 	const pick = parseSort(view.sortPick);
+	// Read off the OLD table before it is replaced. `estimationView.ts`'s `render()`
+	// already emptied `viewEl` by the time this runs, but an emptied, detached node keeps
+	// whatever `scrollTop` it last had, so this is still the reader's real position — the
+	// same fact `panel.ts` leans on for `view.panelEl`. Every rebuild here (a data update,
+	// a sort, a pick made in the panel beside it) redraws the same list rather than a
+	// different note's own content, so — unlike the panel — there is no "different item"
+	// case that should start it back at row one.
+	const previousScrollTop = view.tableEl?.scrollTop ?? 0;
 	const tableEl = view.viewEl.createDiv({ cls: 'pbl-est-table', attr: { role: 'listbox', tabindex: '0' } });
+	view.tableEl = tableEl;
 	renderHead(view, tableEl, pick);
 	const items = sortedItems(model.items, pick);
 	const rows = renderRows(tableEl, items, view.selectedPath);
 	wireEvents(view, tableEl, model, items, rows);
+	// Clamped to the fresh `scrollHeight` so a rebuild with fewer rows (a note leaving the
+	// base's results) cannot park the pane below its own last row.
+	tableEl.scrollTop = Math.min(previousScrollTop, tableEl.scrollHeight);
 }

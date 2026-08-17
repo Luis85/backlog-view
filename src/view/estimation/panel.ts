@@ -47,8 +47,21 @@ interface RowSpec {
  * concern (`src/view/CLAUDE.md`'s "Cost" section). Upgrade path if a model ever grows
  * past that: patch each `RowSpec`'s button state and note in place instead of clearing
  * `view.panelEl` and calling this whole function again.
+ *
+ * The teardown is survivable now rather than free of consequence: `refocusPick` (below)
+ * already put keyboard focus back on the picked address, and this rebuild carries the
+ * OLD panel's `scrollTop` onto the new one too — read off `view.panelEl` before it is
+ * removed, clamped to the fresh `scrollHeight` so a rebuild that comes out SHORTER (a
+ * clear removing its own row's clamp note, say) cannot park the pane below its last row
+ * — but only while the two panels are the SAME item's, compared by the `dataset.path`
+ * stamped on the panel itself rather than by a second field to keep in step. A different
+ * `view.selectedPath` still starts its panel at the top, on purpose: nothing else about
+ * the old nodes survives either, because every one of them really is new.
  */
 export function renderPanel(view: EstimationView, model: EstimationModel): void {
+	const previousPanel = view.panelEl;
+	const previousPath = previousPanel?.dataset.path;
+	const previousScrollTop = previousPanel?.scrollTop ?? 0;
 	view.panelEl?.remove();
 	view.panelEl = null;
 	const item = view.selectedPath ? model.byPath.get(view.selectedPath) : undefined;
@@ -59,6 +72,7 @@ export function renderPanel(view: EstimationView, model: EstimationModel): void 
 	if (!item) return;
 	const scoringModel = view.settings.model;
 	const panelEl = view.viewEl.createDiv({ cls: 'pbl-est-panel' });
+	panelEl.dataset.path = item.file.path;
 	view.panelEl = panelEl;
 	panelEl.createDiv({ cls: 'pbl-est-title', text: item.title });
 
@@ -72,6 +86,8 @@ export function renderPanel(view: EstimationView, model: EstimationModel): void 
 	renderDecomposition(panelEl, item, scoringModel);
 	renderDerived(panelEl, item);
 	if (item.currency === 'orphan') renderCleanupButton(panelEl);
+
+	if (previousPath === item.file.path) panelEl.scrollTop = Math.min(previousScrollTop, panelEl.scrollHeight);
 
 	wirePanelEvents(view, panelEl, item);
 }

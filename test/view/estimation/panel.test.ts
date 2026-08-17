@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
 	clearButton,
 	click,
@@ -209,5 +209,58 @@ describe('where focus lands once a pick has rebuilt the panel', () => {
 		await flush();
 
 		expect(document.activeElement).toBe(pickButton(containerEl, 'confidence', '4', 'scale'));
+	});
+});
+
+describe('the panel scroll position across a rebuild', () => {
+	afterEach(() => vi.restoreAllMocks());
+
+	it('keeps the panel scrolled to the same place after a pick on the same item', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Item.md', { frontmatter: { 'strategic-alignment': 3 } });
+		const { containerEl } = makeEstimationView(vault, configuredValues());
+		selectItem(containerEl, 'Item.md');
+		vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(1000);
+		const panel = containerEl.querySelector('.pbl-est-panel') as HTMLElement;
+		panel.scrollTop = 240;
+
+		click(pointButton(containerEl, 'strategic-alignment', 4));
+		await flush();
+
+		// Rebuilt whole (the ponytail note above states it), not patched — so the scroll
+		// position surviving is the fix, not a coincidence of the same node staying put.
+		const rebuilt = containerEl.querySelector('.pbl-est-panel') as HTMLElement;
+		expect(rebuilt).not.toBe(panel);
+		expect(rebuilt.scrollTop).toBe(240);
+	});
+
+	it("starts a different item's panel at the top rather than carrying the old scroll position over", () => {
+		const vault = new FakeVault();
+		vault.addFile('First.md', { frontmatter: { 'strategic-alignment': 3 } });
+		vault.addFile('Second.md', { frontmatter: { 'strategic-alignment': 3 } });
+		const { containerEl } = makeEstimationView(vault, configuredValues());
+		selectItem(containerEl, 'First.md');
+		(containerEl.querySelector('.pbl-est-panel') as HTMLElement).scrollTop = 240;
+
+		selectItem(containerEl, 'Second.md');
+
+		expect((containerEl.querySelector('.pbl-est-panel') as HTMLElement).scrollTop).toBe(0);
+	});
+
+	it('clamps a restored position to the rebuilt panel when it comes out shorter', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Item.md', { frontmatter: { 'customer-value': 3 } });
+		const { containerEl } = makeEstimationView(vault, configuredValues());
+		selectItem(containerEl, 'Item.md');
+		const scrollHeight = vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(1000);
+		(containerEl.querySelector('.pbl-est-panel') as HTMLElement).scrollTop = 900;
+
+		// Clearing the answer removes that row's own clear button and rubric note — the
+		// rebuilt panel really is shorter, not just told to act like it for this test.
+		scrollHeight.mockReturnValue(120);
+		click(clearButton(containerEl, 'customer-value')!);
+		await flush();
+
+		expect((containerEl.querySelector('.pbl-est-panel') as HTMLElement).scrollTop).toBe(120);
 	});
 });

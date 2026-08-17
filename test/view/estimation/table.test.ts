@@ -267,3 +267,36 @@ describe('the selection when its own row leaves the results', () => {
 		expect(view.selectedPath).toBe('Full.md');
 	});
 });
+
+describe('the table scroll position across a rebuild', () => {
+	afterEach(() => vi.restoreAllMocks());
+
+	it('keeps the table scrolled to the same place after a rebuild', () => {
+		const { view, containerEl } = makeEstimationView(fixture(), configuredValues());
+		vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(1000);
+		const table = containerEl.querySelector('.pbl-est-table') as HTMLElement;
+		table.scrollTop = 180;
+
+		// A data update stands in for any full rebuild here — a picked score elsewhere on
+		// the view included — since none of them is a switch to a different note's own
+		// content the way the panel's rebuild can be, so there is no item to compare.
+		view.onDataUpdated();
+
+		const rebuilt = containerEl.querySelector('.pbl-est-table') as HTMLElement;
+		expect(rebuilt).not.toBe(table);
+		expect(rebuilt.scrollTop).toBe(180);
+	});
+
+	it('clamps a restored position to the rebuilt table when fewer rows remain', () => {
+		const vault = fixture();
+		const { view, containerEl } = makeEstimationView(vault, configuredValues());
+		const scrollHeight = vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(1000);
+		(containerEl.querySelector('.pbl-est-table') as HTMLElement).scrollTop = 900;
+
+		scrollHeight.mockReturnValue(80);
+		(view as unknown as { data: unknown }).data = { data: vault.entries().filter((e) => e.file.path === 'Full.md') };
+		view.onDataUpdated();
+
+		expect((containerEl.querySelector('.pbl-est-table') as HTMLElement).scrollTop).toBe(80);
+	});
+});

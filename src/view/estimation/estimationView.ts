@@ -37,6 +37,10 @@ export class EstimationView extends BasesView {
 	/** The mounted `.pbl-est-panel`, or null while nothing is selected — `panel.ts`'s own
 	 *  field so `renderPanel` removes it by reference rather than by `querySelector`. */
 	panelEl: HTMLElement | null = null;
+	/** The mounted `.pbl-est-table` — `renderTable.ts`'s own field, read for its
+	 *  `scrollTop` before every rebuild so a pick made in the panel beside it does not
+	 *  throw a scrolled reader back to row one. Mirrors `panelEl`, one track over. */
+	tableEl: HTMLElement | null = null;
 	/**
 	 * The table's active sort, as `${column}:${direction}` — null for Base order,
 	 * unsorted. Read and written by `renderTable.ts` alone (`restoreSort`/`setSort`),
