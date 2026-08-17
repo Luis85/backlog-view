@@ -65,13 +65,6 @@ export interface BoardColumn {
 	/** Result cards only. A context card is placement, not population. */
 	count: number;
 	/**
-	 * What `count` would be with the quick filter cleared — equal to it when no filter
-	 * is active. A filtered header says "3 of 12" because a column is a stage of the
-	 * workflow, not a search result: narrowing the cards must never make a stage look
-	 * emptier than the work actually in it.
-	 */
-	fullCount: number;
-	/**
 	 * The agreed work-in-progress limit for this stage, or null for none. Never set on
 	 * the no-state column or a done one — {@link BacklogSettings.wipLimits} is where
 	 * that is decided, so nothing here has to remember it.
@@ -80,15 +73,20 @@ export interface BoardColumn {
 	/** The working agreement written on this stage in the view options, or ''. */
 	policy: string;
 	/**
-	 * True while any card in this column's POPULATION still carries unfinished work —
-	 * the question a done column's fold default is decided on, so a column of finished
-	 * subtrees can start shut and one holding a retained card cannot.
+	 * True while any card in this column still carries unfinished work — the question a
+	 * done column's fold default is decided on, so a column of finished subtrees can
+	 * start shut and one holding a retained card cannot.
 	 *
-	 * Measured over the same pass {@link BoardColumn.fullCount} is, with the quick filter
-	 * lifted, and that is load-bearing rather than a detail of where the loop sits: read
-	 * off `cards`, a search that hid every open card in Done would report the stage
-	 * finished and fold it, so a user would have searched their board into a different
-	 * shape. Results only, like `count` — a context card is placement, not work.
+	 * Asked of the CANDIDATES rather than of `cards`, which is what lets a context card
+	 * speak: it is placement and never population, so its own state says nothing here,
+	 * while the results below it are what folding the column would take off the board.
+	 * Every other card is asked through the same `visible` that builds `cards`, and this
+	 * says only that — it claimed a population reading until the quick filter went
+	 * (2026-08-17) and took the field behind it. Nothing is lost by the narrower one: a
+	 * card `visible` drops for membership is not this projection's, and a card it drops
+	 * for the completed toggle is `subtreeDone`, so `col.done` holds and every descendant
+	 * is done — the line below could not have fired for it either way. {@link
+	 * BoardColumn.held} is where the population reading is genuinely still needed.
 	 *
 	 * "Finished" is THIS column's verdict, never `item.subtreeDone`: that field is built on
 	 * `item.done`, the requirements reading, which is the wrong workflow on the Deliverables
@@ -99,12 +97,15 @@ export interface BoardColumn {
 	 * Result cards this stage HOLDS, whatever is currently hidden inside it — the evidence
 	 * the fold default needs beside {@link BoardColumn.openWork}, since settling is
 	 * permanent and a default taken on an empty column is a default taken on no evidence.
+	 * {@link overBy} reads it for its own version of the same rule.
 	 *
-	 * Neither {@link BoardColumn.count} nor {@link BoardColumn.fullCount} can serve. Both
-	 * are measured through `population`, which carries the completed-items toggle, so with
-	 * finished work hidden a done column full of finished work reports zero — and reads as
-	 * a column with nothing in it rather than the one the fold is for. This is counted
-	 * through `owned` instead, which asks only whether the card is this board's at all.
+	 * {@link BoardColumn.count} cannot serve: it is measured through the visibility rule,
+	 * which carries the completed-items toggle, so with finished work hidden a done column
+	 * full of finished work reports zero — and reads as a column with nothing in it rather
+	 * than the one the fold is for. This is counted through `owned` instead, which asks
+	 * only whether the card is this board's at all — a MEMBERSHIP question, and the whole
+	 * of what this field means rests on the caller asking it as one. See
+	 * {@link boardColumns} for what both readers report when it is asked as anything else.
 	 */
 	held: number;
 }
@@ -504,17 +505,6 @@ export function paletteDone(palette: StatePalette, state: string): boolean {
 }
 
 /**
- * Project the model onto columns. `visible` is the view's own row-visibility rule
- * (quick filter, hidden completed subtrees, the context-placement test) passed in
- * whole, so the board and the tree cannot disagree about what is hidden — one
- * predicate answers for both projections.
- *
- * `candidates` is which items become cards — the caller's question, not this
- * function's: unfocused, every result is a card; focused, the rendered roots are —
- * results as live cards, and a focus-level item outside the filter as an inert
- * context card that still places its results ({@link BoardColumn.cards}).
- */
-/**
  * The three per-column tallies, in one walk: what the stage HOLDS, what it counts, and
  * whether any of it is unfinished. One pass because they come from one question asked of
  * each card — three passes would be three chances to disagree about who is in the column.
@@ -526,7 +516,7 @@ export function paletteDone(palette: StatePalette, state: string): boolean {
 function tallyColumns(
 	candidates: BacklogItem[],
 	columnFor: (card: BacklogItem) => BoardColumn,
-	asks: { population: (item: BacklogItem) => boolean; owned: (item: BacklogItem) => boolean },
+	asks: { visible: (item: BacklogItem) => boolean; owned: (item: BacklogItem) => boolean },
 ): void {
 	for (const card of candidates) {
 		const col = columnFor(card);
@@ -547,13 +537,12 @@ function tallyColumns(
 			continue;
 		}
 		// What the stage HOLDS, whatever is hidden inside it. Counted through `owned` and
-		// never through `population`, because the completed toggle lives in that one: with
-		// finished work hidden, a done column of finished work reports `fullCount === 0`
+		// never through the visibility rule, because the completed toggle lives in that
+		// one: with finished work hidden, a done column of finished work reports no cards
 		// and reads as empty — so a fold default guarding on it would refuse to fire in
 		// exactly the configuration the fold exists for. Found by review (Codex, PR #140).
 		if (asks.owned(card)) col.held += 1;
-		if (!asks.population(card)) continue;
-		col.fullCount += 1;
+		if (!asks.visible(card)) continue;
 		// Asked here rather than of `col.cards` on purpose — see `BoardColumn.openWork`.
 		//
 		// And asked of the COLUMN rather than of `card.subtreeDone`, which is a different
@@ -569,12 +558,37 @@ function tallyColumns(
 	}
 }
 
+/**
+ * Project the model onto columns. `visible` is the view's own row-visibility rule
+ * (hidden completed subtrees, the context-placement test) passed in
+ * whole, so the board and the tree cannot disagree about what is hidden — one
+ * predicate answers for both projections.
+ *
+ * `candidates` is which items become cards — the caller's question, not this
+ * function's: unfocused, every result is a card; focused, the rendered roots are —
+ * results as live cards, and a focus-level item outside the filter as an inert
+ * context card that still places its results ({@link BoardColumn.cards}).
+ *
+ * **`owned` is a MEMBERSHIP question — is this card this board's at all — and never a
+ * type test or a second reading of `visible`.** Both wrong answers have shipped. Defaulted
+ * to `visible` it makes {@link BoardColumn.held} a second name for {@link BoardColumn.count},
+ * so a done column whose finished work the completed toggle has hidden reports nothing held
+ * and the fold default stops firing in exactly the configuration it was written for. Asked
+ * as a type alone it over-counts, and over-counting is not free either: both readers of
+ * `held` then speak for a row the board never draws — {@link overBy} invents an over-limit
+ * warning, and the fold default settles a column permanently shut on evidence nobody can
+ * see (2026-08-17, `renderRequirementsBoard`, whose focused candidates come from
+ * `requirementsFocusRoots` and are not membership-filtered).
+ *
+ * So the default is a FALLBACK for a caller whose candidates are already its own population
+ * — every one of them is this board's — and not a shape to fall into where they are not.
+ * All three callers in `view/` pass their own.
+ */
 export function boardColumns(
 	workflow: Workflow,
 	candidates: BacklogItem[],
 	visible: (item: BacklogItem) => boolean,
-	population: (item: BacklogItem) => boolean = visible,
-	owned: (item: BacklogItem) => boolean = population,
+	owned: (item: BacklogItem) => boolean = () => true,
 ): BoardModel {
 	const { columns, byValue, noState } = workflowColumns(workflow);
 	// State-to-column matching is case-insensitive, exactly as doneValues matching
@@ -585,7 +599,7 @@ export function boardColumns(
 		return (state !== null ? byValue.get(state.toLowerCase()) : undefined) ?? noState;
 	};
 
-	return fillColumns(columns, columnFor, candidates, { visible, population, owned });
+	return fillColumns(columns, columnFor, candidates, { visible, owned });
 }
 
 /**
@@ -598,16 +612,15 @@ export function boardColumns(
  * committed to the fortnight, and the whole point of narrowing the PRODUCT workflow is
  * that there is one of it.
  *
- * The predicates default to "everything counts", which is the shape a domain test wants;
- * the view passes the quick filter and the completed toggle exactly as it does for the
- * other two boards.
+ * BOTH predicates default to "everything counts", which is the shape a domain test wants;
+ * the view passes the completed toggle exactly as it does for the other two boards. Never
+ * `owned = visible` — see {@link boardColumns} for the one value that default may not take.
  */
 export function iterationBuckets(
 	population: BacklogItem[],
 	settings: BacklogSettings,
 	visible: (item: BacklogItem) => boolean = () => true,
-	counted: (item: BacklogItem) => boolean = visible,
-	owned: (item: BacklogItem) => boolean = counted,
+	owned: (item: BacklogItem) => boolean = () => true,
 ): BoardModel {
 	const column = (bucket: IterationBucket): BoardColumn => {
 		const representative = bucketRepresentative(bucket, settings);
@@ -625,7 +638,6 @@ export function iterationBuckets(
 			outsideWorkflow: false,
 			cards: [],
 			count: 0,
-			fullCount: 0,
 			limit: null,
 			policy: '',
 			openWork: false,
@@ -645,7 +657,7 @@ export function iterationBuckets(
 	// same answer a note with no state key gets, arrived at one level up.
 	const columnFor = (card: BacklogItem): BoardColumn =>
 		byBucket[bucketOf(settings.stateKey ? card.stateValue : null, settings)];
-	return fillColumns(columns, columnFor, population, { visible, population: counted, owned });
+	return fillColumns(columns, columnFor, population, { visible, owned });
 }
 
 /**
@@ -663,7 +675,6 @@ function fillColumns(
 	candidates: BacklogItem[],
 	asks: {
 		visible: (item: BacklogItem) => boolean;
-		population: (item: BacklogItem) => boolean;
 		owned: (item: BacklogItem) => boolean;
 	},
 ): BoardModel {
@@ -693,9 +704,6 @@ function fillColumns(
  * that column's menu OFFERS, and the two coming apart is exactly how the strip came to
  * carry a Collapse action with no control on screen for it (found by review, PR #140).
  *
- * "Empty" is about the POPULATION and not the matches, the same reading `count`/`fullCount`
- * already keep apart: a filter that hid every stateless card must not collapse the column
- * to a strip, which would say the work is gone rather than merely unmatched.
  */
 export function emptyNoState(col: BoardColumn): boolean {
 	// **No BUCKET is ever this column**, whatever its representative comes out as, and
@@ -713,20 +721,48 @@ export function emptyNoState(col: BoardColumn): boolean {
 	// Both terms are now covered by the bucket refusal; neither is removed, because each
 	// states a rule about a different half of `state === null`.
 	if (col.bucket !== undefined) return false;
-	return col.state === null && col.takesDrop && col.cards.length === 0 && col.fullCount === 0;
+	// ONE reading of empty. `count` was `fullCount` here — a population genuinely
+	// independent of the drawn cards — and `fullCount` went with the quick filter
+	// (2026-08-17), leaving a term `cards.length === 0` already forces: `count` is a reduce
+	// over `cards`.
+	//
+	// `held` is not the replacement, and only one thing here can be said about it
+	// STRUCTURALLY: a card in this column carries no state, so it cannot be `item.done`, so
+	// it is never `subtreeDone` and the completed toggle can never be what hid it. That is a
+	// claim about the toggle and nothing else — `held` is measured apart from `visible`
+	// WHOLE, and membership is the other half of it, so which of the two is larger here is a
+	// question about the caller's predicate rather than about this column. The strip does not
+	// turn on that question: it is what a stage with no name of its own and nothing to SHOW
+	// shrinks to, and the cards are what it shows.
+	return col.state === null && col.takesDrop && col.cards.length === 0;
 }
 
 /**
  * How many cards this column holds beyond what was agreed — 0 at the limit, under it,
- * or with no limit at all. Reads {@link BoardColumn.fullCount}, never `count`: a filter
- * that made an over-limit column look under its limit would turn a search into a lie
- * about the work.
+ * or with no limit at all.
+ *
+ * Read off {@link BoardColumn.held}: the signal is about what the stage HOLDS, so nothing
+ * the reader is hiding inside it may make an over-limit column look under its limit
+ * (`docs/requirements/WIP limits.md` — the purpose the whole note is written to, its
+ * extension 4a being about the quick filter, which no longer exists). It read `fullCount`
+ * for that reason until the filter took that field with it (2026-08-17) and left this on
+ * `count`.
+ *
+ * **`held` is only that population while `owned` asks MEMBERSHIP**, which is the rule
+ * stated at {@link boardColumns} and the one this depended on before it was true: with a
+ * type-only `owned`, a focused board held rows it never draws and this reported a column
+ * drawing two cards under a limit of two as one over.
+ * `test/view/columnAgreements.test.ts` is the check, and it checks THAT rather than this
+ * reading — with `owned` asking membership, both new tests pass with `count` here too. So
+ * the reading is the requirement's rule, not a difference the suite can currently show; the
+ * honest form of that is "no test here reaches it", which is a statement about this suite
+ * and not about a vault.
  *
  * Nothing that PLANS a write imports this. A limit never refuses a move, and a planner
  * that cannot see a limit cannot consult one.
  */
 export function overBy(col: BoardColumn): number {
-	return col.limit === null ? 0 : Math.max(0, col.fullCount - col.limit);
+	return col.limit === null ? 0 : Math.max(0, col.held - col.limit);
 }
 
 /**
@@ -748,7 +784,6 @@ function workflowColumns(
 		outsideWorkflow,
 		cards: [],
 		count: 0,
-		fullCount: 0,
 		// `byName`, never a bare index: a state value is user data, and a workflow may
 		// legitimately contain a state called `constructor`.
 		limit: byName(workflow.wipLimits, state) ?? null,
@@ -788,55 +823,11 @@ export function columnFoldValue(col: BoardColumn): string | null {
 	return col.bucket ?? col.state;
 }
 
-/** Every path with a card of its own — the "already on screen" test `hiddenMatches` takes. */
+/** Every path with a card of its own — the "already on screen" test the card menu takes. */
 export function cardPaths(board: BoardModel): Set<string> {
 	return new Set(board.columns.flatMap((col) => col.cards.map((card) => card.file.path)));
 }
 
-/**
- * The matches hiding under a card: items in its subtree that the quick filter matched
- * and that no card of their own puts on screen. A focused board shows one card per
- * focus-level item, so a match three levels down has nothing to click — found,
- * counted in the rollup, and unreachable. Naming them on the card is what makes the
- * search's own result something the user can get to.
- *
- * The walk stops at two things. At anything already RENDERED: that card names what
- * hides under it, and a match announced by two cards is a match the user cannot count.
- * And at any row this projection does not DRAW — `drawn`, which the caller supplies,
- * because this module is pure and the answer is the view's (`view/childrenList.ts`
- * passes `!host.isRowHidden`, which is the disclosure's own predicate — `listedChildren`
- * asks exactly it. The ROLLUP stops at the same ladder edge by a different and narrower
- * test of its own (`inCatalog(child) || inCatalog(item)`, in `assignAll`), so the three
- * agree about a test boundary and nothing here says more than that). A row the screen
- * has no line to is not a route to
- * anything either, so that one stops the descent and not just the naming.
- *
- * `drawn` is where the ladder boundary is kept, and it is deliberately NOT kept in
- * `matched`. A `PBI` beneath a `Test case` is a plan member and a genuine match — that
- * is what promotes it to a root of the tree, and the same property is what keeps a
- * `Deliverable` nested under a test on its own board — so a rule of the form "a member
- * below a non-member is not a match" deletes a card that is on screen. What was wrong
- * was only the claim that such a row is beneath THIS card: on the Deliverables board
- * the `Test case` between the two is drawn nowhere, so nothing there relates them.
- * Fix a disagreement about "beneath" in the walk; never in the match set.
- */
-export function hiddenMatches(
-	item: BacklogItem,
-	matched: (item: BacklogItem) => boolean,
-	rendered: Set<string>,
-	drawn: (item: BacklogItem) => boolean,
-): BacklogItem[] {
-	const found: BacklogItem[] = [];
-	const walk = (parent: BacklogItem): void => {
-		for (const child of parent.children) {
-			if (!drawn(child) || rendered.has(child.file.path)) continue;
-			if (matched(child)) found.push(child);
-			walk(child);
-		}
-	};
-	walk(item);
-	return found;
-}
 
 /**
  * What to call the column a state value sits in — by the same case-insensitive

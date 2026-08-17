@@ -18,7 +18,7 @@ import {
 	wireBarHolds,
 } from './lanes';
 import { createCard, wireCardActivation } from './board';
-import { foldOnClick, renderBadge, renderChevron, renderTitleText } from './rows';
+import { foldOnClick, renderBadge, renderChevron } from './rows';
 import { renderMilestoneLines } from './milestoneLines';
 import { dependencyNote, NO_CONFLICTS, renderDependencyArrows } from './timelineArrows';
 import { CardDragController } from '../interactions/cardDrag';
@@ -145,7 +145,8 @@ export interface TimelineDrawing {
 	 * Normally, not always: `renderRoadmap` measures AFTER `treeEl.empty()`, so a
 	 * vertical scrollbar the pane had at resize time is gone at render time and the two
 	 * differ by its width. `.pbl-roadmap-dates .pbl-tree` is `overflow-y: auto` as a
-	 * deliberate fallback (a floor plus four maxima can exceed a short or embedded pane),
+	 * deliberate fallback (this grid's own floor plus every capped band can exceed a short
+	 * or embedded pane — the rule rather than a count, which was already stale twice),
 	 * so this is confined to that case, and it costs at most one extra rebuild — the
 	 * resize branch's idempotence check fails once — and a day track reserved a scrollbar
 	 * too narrow. 0 or less reads as "not measured" — see `effectiveLeadWidth`.
@@ -609,12 +610,12 @@ function renderBarRow(
 	renderRowChevron(ctx, lead, entry);
 	renderBadge(ctx.host, lead, bar.item);
 	const title = lead.createDiv({ cls: 'pbl-card-title' });
-	renderTitleText(ctx.host, title, bar.item.title);
+	title.setText(bar.item.title);
 	setTooltip(lead, bar.item.title);
-	// The lead is where this row's match affordance goes — the one text region it has, and
-	// a fixed-width COUNT there rather than titles (`face`). It lists no children on its
-	// face either, since the chevron folds ROWS, so `listsChildren` is false.
-	ctx.placed.set(bar.item.file.path, { item: bar.item, mount: lead, listsChildren: false, face: 'count' });
+	// A row is a surface like a card, so it registers by path: `cardedPaths` reads the
+	// register and `menuChildren` subtracts it, so a bar drawn and not registered would be
+	// offered as `Open child "…"` by the menu of the very bar it is nested under.
+	ctx.placed.add(bar.item.file.path);
 
 	const track = row.createDiv({ cls: 'pbl-timeline-track' });
 	mounts.tracks.set(bar.item.file.path, track);

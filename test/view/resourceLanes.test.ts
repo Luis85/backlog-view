@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { shelfRemoval } from '../../src/view/render/shelf';
-import { clickExpandAll, Harness, makeView, useViewHarness } from '../helpers/view';
+import { clickExpandAll, Harness, key, makeView, treeOf, useViewHarness } from '../helpers/view';
 import { gripNames, laneAwayOf, laneCountOf, laneNames, laneOrder, lanesOf, rowFor, shelfTitles } from '../helpers/roadmap';
 import { countingVault, resourceVault } from '../helpers/resources';
 import { addDays, formatCivil } from '../../src/domain/timeline';
@@ -398,6 +398,55 @@ describe('a context row inside a resource row', () => {
 		// Placement, not population — the bucket axis's rule over a different property.
 		expect(laneCountOf(lanesOf(harness.containerEl)[0])).toBe('');
 		expect(shelfTitles(harness.containerEl)).toEqual([]);
+	});
+
+	/**
+	 * It claims to be a card — `createCard` gives it `role="option"` — so it has to be one:
+	 * assistive tech counts an `option` a reader cannot land on, which is worse than a row
+	 * that never drew. Two halves, each of which failed on its own, and each of which the
+	 * two cases above pass right through: `drawnCards` is the pane's reading order and used
+	 * to be a bars-only walk, and `renderLaneContextRow` used to draw the row without
+	 * `wireCardActivation`. See [[A lane context row could not be reached]]; this replaces
+	 * the check that went with `roadmapMatches.test.ts`.
+	 *
+	 * **The WHERE is a third thing, and it needs a second band to be asked at all.**
+	 * `drawnCards` promises DRAW order — "a kind is inserted where it draws and never
+	 * appended at the end" — and a walk that ends `[...bars, ...contexts]` keeps every
+	 * reachability claim above while sending a reader who arrows down off the row they can
+	 * see into another person's band. With one drawn row in the fixture, "first stop" is
+	 * the only stop and says nothing; Bob's own dated Epic is what makes it an ordering.
+	 * The screen order is asserted first, because "the walk matches the screen" is not a
+	 * claim a walk can make on its own.
+	 */
+	it('stops where it DRAWS, above the next band’s bar, and Enter opens its note', () => {
+		const vault = contextVault();
+		// A RESULT of Bob's, so it draws a bar row in the band below Alice's — the row the
+		// appended walk would visit first.
+		vault.addFile('Bob epic.md', {
+			frontmatter: { type: 'Epic', order: 20, assignee: 'Bob', start: '2026-08-01', due: '2026-08-02' },
+		});
+		const { containerEl } = laneRoadmap(vault, { only: ['Result.md', 'Bob epic.md'], focus: 'Epic' });
+		const tree = treeOf(containerEl);
+		expect(laneOrder(containerEl)).toEqual(['lane:Alice', 'Outside epic', 'lane:Bob', 'Bob epic']);
+
+		key(tree, 'ArrowDown');
+		expect(containerEl.querySelector('.pbl-selected')?.classList.contains('pbl-lane-context')).toBe(true);
+		key(tree, 'Enter');
+		expect(vault.opened.map((o) => o.path)).toEqual(['Outside epic.md']);
+
+		key(tree, 'ArrowDown');
+		expect(containerEl.querySelector('.pbl-selected .pbl-card-title')?.textContent).toBe('Bob epic');
+	});
+
+	it('opens its note on a click, like every other card on this grid', () => {
+		const vault = contextVault();
+		const { containerEl } = laneRoadmap(vault, { only: ['Result.md'], focus: 'Epic' });
+
+		containerEl
+			.querySelector<HTMLElement>('.pbl-lane-context')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		expect(vault.opened.map((o) => o.path)).toEqual(['Outside epic.md']);
 	});
 });
 

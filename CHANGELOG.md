@@ -11,21 +11,17 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
-### Changed
+### Removed
 
-- **The board toggle is now called Boards.** Since the scope picker moved every board —
-  Product, Deliverables, and each iteration — behind one toggle position, the switcher
-  says so: the button reads **Boards** and its accessible name is
-  **Show as kanban boards**. Nothing else about the position changed.
-
-- **Column resize follows the pointer now.** A property column's grip moved from its
-  trailing edge to its leading one — the edge that actually moves when a column anchored
-  to the row's end resizes — so the boundary under the pointer tracks the drag instead of
-  standing still while the column grows away from it. The arrow keys still move the
-  boundary the way they point, a double click still resets, and stored widths are
-  untouched. Hovering a column header now also lights the whole column band in the theme's
-  hover colour — the full height of the header strip, square — so the header reads as
-  something to interact with before the mark is found.
+- **The toolbar's quick filter is gone — use the Base's own search.** Obsidian Bases carries
+  a search of its own now, so the plugin's box was a second search over the same rows. A
+  Base search narrows the results this view is given, and the ancestors those results need
+  are still loaded around them, so a search reads as a tree rather than a flat list of hits.
+  The roadmap's unplaced shelf keeps its own search, which is scoped to the untriaged work
+  beside it. Going with the box: the `/` shortcut, the highlighted match in a title, the
+  "3 of 12" column headers, the match links on a card and the `Open match` menu entries, and
+  the no-match empty state. Nothing was ever written for a filter, so there is nothing to
+  migrate and no stored setting left behind.
 
 ### Added
 
@@ -47,6 +43,62 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   the roadmap's grid axes, with a grip on each configured end. Either way, the marker
   row's caption, the legend swatch and the announced sentence now name what is actually
   drawn — Milestone, Iteration, or both — instead of calling every marker a milestone.
+
+- **A clear button on the shelf's search.** An x appears beside the box while there is
+  something to clear and empties the search when pressed, leaving the caret where it was.
+  The box is `type="search"` and was built expecting the platform's own clear button;
+  where that never appeared there was no way out of a search but Escape or selecting the
+  text by hand. The native button is now suppressed outright, so the field never shows two.
+
+### Changed
+
+- **The board toggle is now called Boards.** Since the scope picker moved every board —
+  Product, Deliverables, and each iteration — behind one toggle position, the switcher
+  says so: the button reads **Boards** and its accessible name is
+  **Show as kanban boards**. Nothing else about the position changed.
+
+- **Column resize follows the pointer now.** A property column's grip moved from its
+  trailing edge to its leading one — the edge that actually moves when a column anchored
+  to the row's end resizes — so the boundary under the pointer tracks the drag instead of
+  standing still while the column grows away from it. The arrow keys still move the
+  boundary the way they point, a double click still resets, and stored widths are
+  untouched. Hovering a column header now also lights the whole column band in the theme's
+  hover colour — the full height of the header strip, square — so the header reads as
+  something to interact with before the mark is found.
+
+- **The unplaced shelf now leads the horizon board.** It renders above the buckets — and
+  first in the keyboard's reading order — so the untriaged rest sits where a drag into a
+  column starts, instead of below the tallest column. One exception: an EMPTY shelf, which
+  is hidden until a drag makes it a target, still appears at the foot of the board — with
+  nothing on it there is nothing to drag from, and putting it back at the top would shove
+  the whole board down under the pointer the moment a drag began. Alt+arrow moves are
+  unchanged: the shelf was already their first stop.
+- **The horizon board's right-click menus no longer carry a children section.** No
+  `Show/Hide children` toggle and no `Open child` entries there — the card's own
+  disclosure still lists children on its face. The kanban board and the dated axis keep
+  their menus as they were.
+
+### Fixed
+
+- **The horizon board no longer sizes itself from its cards.** Buckets share the pane's
+  width equally again, down to their 280px floor — in the grid layout and one-card-per-row
+  alike — instead of growing to the widest card and resizing as cards render, which is
+  what made the pane jump near its right edge and the end unreachable. The buckets band
+  now takes the pane's height the way the kanban board's columns do: each bucket scrolls
+  its own cards, and the unplaced shelf stays on screen — at the top, where it now leads —
+  instead of being pushed off the foot of a frame as tall as its tallest bucket.
+
+- **Dragging to the bottom of the unplaced shelf scrolls it.** The shelf scrolls inside
+  its own band, and a card held at its edge now scrolls it the way a board column, a
+  horizon bucket and the timeline already did. It had no auto-scroll at all, so on a shelf
+  holding more cards than its band could show, everything past the first few was out of
+  reach for the whole drag.
+
+- **The roadmap's empty state is no longer cut off.** The message that explains an empty
+  roadmap — with its ✨ configure action and its link to the manual — was capped at a
+  third of the pane and scrolled inside a box most readers would not know scrolls, so on a
+  short pane half of it was below the fold. It draws only when there is nothing else on
+  screen, so it now takes the room.
 
 ## [0.9.0] - 2026-08-16
 

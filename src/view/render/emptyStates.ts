@@ -286,17 +286,6 @@ function renderSetupCta(host: BacklogViewHost, empty: HTMLElement, fixes: Option
 	btn.addEventListener('click', () => void runInit(host));
 }
 
-/** `root` — see the doc comment on `renderEmptyState`, above. */
-export function renderFilterEmptyState(host: BacklogViewHost, treeEl: HTMLElement, root: HTMLElement = treeEl): void {
-	const empty = noticeShell(treeEl, 'search-x', `No items match "${host.filterText.trim()}".`);
-	const btn = empty.createEl('button', { text: 'Clear filter' });
-	btn.addEventListener('click', () => {
-		host.setFilter('');
-		host.focusFilter();
-	});
-	manualLink(empty, host.app, manualSections(), { sectionId: 'finding', label: 'What shows here?', root });
-}
-
 /** Everything is done and hidden — celebrate, and offer the way back. `root` — see
  * `renderEmptyState`, above. */
 export function renderAllDoneState(

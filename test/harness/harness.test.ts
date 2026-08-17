@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { mountHarness } from './mount';
 import { applyPlatform } from './theme';
-import { applyWantedFilter, openWantedDialog } from './knobs';
+import { openWantedDialog } from './knobs';
 import { Modal } from '../helpers/obsidian-mock';
 import { installObsidianDom } from '../helpers/dom';
 import { ExtraButtonComponent } from '../helpers/obsidian-mock';
@@ -427,13 +427,15 @@ describe('the chrome the mock only records', () => {
 });
 
 /**
- * The knobs exist because a dialog and a running filter are states no fixture produces
- * and no URL could reach — measured, not guessed: 98 of the classes the stylesheet writes
- * were rendered by no fixture in any projection, and about twenty of them are a dialog's.
- * What is asserted is that each knob still MAKES its state, since a knob that silently
- * stopped is a page that looks fine and answers nothing.
+ * The knobs exist because an open dialog is a state no fixture produces and no other URL
+ * reaches — measured, not guessed: 98 of the classes the stylesheet writes were rendered
+ * by no fixture in any projection, and about twenty of them are a dialog's. What is
+ * asserted is that each knob still MAKES its state, since a knob that silently stopped is
+ * a page that looks fine and answers nothing. `?filter=` was a second knob here until the
+ * quick filter went (2026-08-17); the shelf's own search has no knob, and would want one
+ * for the same reason if its classes ever went unrendered.
  */
-describe('the page can open a dialog and run a filter by URL', () => {
+describe('the page can open a dialog by URL', () => {
 	function mount() {
 		const root = document.createElement('div');
 		document.body.appendChild(root);
@@ -461,15 +463,6 @@ describe('the page can open a dialog and run a filter by URL', () => {
 		expect(Modal.lastOpened?.titleEl.textContent).toContain('New');
 	});
 
-	it('runs the quick filter, and draws its empty state when nothing matches', () => {
-		const { view, containerEl } = mount();
-
-		applyWantedFilter(view, '?filter=Onboarding');
-		expect(containerEl.querySelector('.pbl-match')).not.toBeNull();
-
-		applyWantedFilter(view, '?filter=zzzznothing');
-		expect(containerEl.querySelector('.pbl-empty-filter')).not.toBeNull();
-	});
 });
 
 /**

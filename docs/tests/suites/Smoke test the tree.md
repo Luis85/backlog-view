@@ -34,8 +34,8 @@ is visible rather than assumed.
   shapes a drag can land in, and the background that takes none.
 - [[Tree keyboard moves]] — Alt+arrow move, indent and outdent.
 - [[Tree context menu]] — Set type, Set state and Edit tags.
-- [[Tree quick filter and Show completed items]] — the filter highlighting matches, and
-  Show completed items hiding a done subtree.
+- [[Show completed items in the tree]] — the toggle hiding a done subtree, and putting it
+  back where it was.
 - [[Tree undo]] — undo taking a whole batch back.
 - [[Parent links Obsidian parsed, and ones it did not]] — which of `resolveParent`'s two
   paths a real cache actually takes, and whether the hand-rolled bracket stripper behind

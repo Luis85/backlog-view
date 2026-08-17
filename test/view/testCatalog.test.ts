@@ -2,15 +2,12 @@
 import { describe, expect, it } from 'vitest';
 import { Menu, Modal } from 'obsidian';
 import { FakeVault } from '../helpers/vault';
-import { cardTitles } from '../helpers/board';
 import {
 	clickExpandAll,
-	key,
 	makeView,
 	projectionButton,
 	refresh,
 	rowByTitle,
-	rows,
 	titlesOf,
 	treeOf,
 	useViewHarness,
@@ -430,26 +427,6 @@ describe('the catalog is tree-shaped, and the plan keeps its place', () => {
 		expect(view.projection).toBe('tree');
 	});
 
-	it('walks the same forest the renderer draws, by keyboard and by filter', () => {
-		const { containerEl, view } = makeView(bothFamilies());
-		catalog(containerEl);
-		const tree = treeOf(containerEl);
-		tree.dispatchEvent(new FocusEvent('focus'));
-		// A promoted root is DRAWN; without the keyboard walking the same roots it would be
-		// unreachable — a row that exists only to the mouse.
-		key(tree, 'ArrowDown');
-		expect(view.selectedPath).toBe('Stray case.md');
-
-		// The filter index is rebuilt on the SWITCH, not only on a filter edit: an index
-		// built from the plan's forest would answer for the catalog until something
-		// unrelated refreshed the view — a stale filter showing wrong rows with the right
-		// text still in the box.
-		view.setFilter('Epic');
-		expect(rows(containerEl)).toHaveLength(0);
-		projectionButton(containerEl, 'Show as backlog tree').dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		expect(titlesOf(containerEl)).toContain('Epic');
-	});
-
 	it('is built from the unfocused tree, with a stored plan focus left intact', () => {
 		const { containerEl, view } = makeView(bothFamilies());
 		view.setFocusLevel('PBI');
@@ -462,115 +439,6 @@ describe('the catalog is tree-shaped, and the plan keeps its place', () => {
 		expect(titlesOf(containerEl)).toEqual(['Stray case', 'Suite', 'Case', 'Test task']);
 		projectionButton(containerEl, 'Show as backlog tree').dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		expect(view.settings.focusLevel).toBe('PBI');
-	});
-
-	it('does not keep a plan row visible because a hidden TEST matched', () => {
-		// Handing the index this projection's roots is only half of it: the walk under those
-		// roots still reaches every child, so a needle matching a `Test case` beneath a
-		// `PBI` marks that PBI's whole ancestor chain as visible — rows on screen, none of
-		// them matching, and the text still in the box saying the filter works. That is the
-		// failure this rule exists to prevent, and it is the one that looks most like a
-		// working feature.
-		const { containerEl, view } = makeView(bothFamilies());
-		clickExpandAll(containerEl);
-		view.setFilter('Stray case');
-		expect(titlesOf(containerEl)).toEqual([]);
-		// And the same needle finds it in the projection that draws it.
-		catalog(containerEl);
-		expect(titlesOf(containerEl)).toEqual(['Stray case']);
-	});
-
-	it('still finds a Deliverable nested under a test on the board that draws it', () => {
-		// `deliverableResults` is read off the whole tree by TYPE, so a `Deliverable`
-		// beneath a `Test case` is a card on that board — and its filter index is the
-		// `whole` scope, deliberately focus-immune. Guarding THAT walk by plan membership
-		// stops it at the catalog path and hides a card that is on screen, which is the
-		// regression the projection-traversal fix introduced and this pins.
-		const vault = bothFamilies();
-		vault.addFile('Runbook.md', {
-			frontmatter: { type: 'Deliverable', order: 10, docStatus: 'Draft' },
-			parentLink: 'Case',
-		});
-		const { containerEl, view } = makeView(vault, { deliverableStateProperty: 'note.docStatus' });
-		view.setProjection('deliverables');
-		expect(cardTitles(containerEl)).toContain('Runbook');
-		view.setFilter('Runbook');
-		expect(cardTitles(containerEl)).toEqual(['Runbook']);
-	});
-
-	it('does not carry a match up through a row the projection does not draw', () => {
-		// `Epic → Test case → PBI`, both edges from the advisory drag. The PBI is a plan
-		// member and is drawn as a PROMOTED ROOT — not under that Epic — so a match on it
-		// says nothing about the Epic. Propagating through the hidden case anyway renders an
-		// empty, unmatched Epic beside the row that actually matched.
-		const vault = new FakeVault();
-		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
-		vault.addFile('Bridge case.md', { frontmatter: { type: 'Test case', order: 10 }, parentLink: 'Epic' });
-		vault.addFile('Deep PBI.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Bridge case' });
-		const { containerEl, view } = makeView(vault);
-		clickExpandAll(containerEl);
-		expect(titlesOf(containerEl)).toEqual(['Epic', 'Deep PBI']);
-		view.setFilter('Deep PBI');
-		expect(titlesOf(containerEl)).toEqual(['Deep PBI']);
-	});
-
-	it('does not carry a match DOWN through one either, which is the same edge read backwards', () => {
-		// The same three notes, filtered by the ancestor instead of the descendant. A match
-		// keeps its whole subtree, and `subtree` has to mean the one this projection DRAWS:
-		// the `Deep PBI` is a promoted root, not a row under that Epic, so keeping it for the
-		// Epic's match renders an unmatched root beside the match with no visible relation
-		// to it.
-		const vault = new FakeVault();
-		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
-		vault.addFile('Bridge case.md', { frontmatter: { type: 'Test case', order: 10 }, parentLink: 'Epic' });
-		vault.addFile('Deep PBI.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Bridge case' });
-		const { containerEl, view } = makeView(vault);
-		clickExpandAll(containerEl);
-		view.setFilter('Epic');
-		expect(titlesOf(containerEl)).toEqual(['Epic']);
-	});
-
-	it('keeps that subtree rule on the board too, where the card is the only thing on screen', () => {
-		// The same question asked where there is no tree to read the answer off, and the
-		// match has to be a MEMBER for it to be asked at all: `Epic → Test case → Runbook`,
-		// filtered by the Epic. The Epic matches, and an unguarded subtree walk reaches the
-		// `Runbook` through the case — so the board keeps a card for an ancestry it does not
-		// draw and the user cannot see. Its own title still finds it, which is the test above.
-		const vault = new FakeVault();
-		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
-		vault.addFile('Bridge case.md', { frontmatter: { type: 'Test case', order: 10 }, parentLink: 'Epic' });
-		vault.addFile('Runbook.md', {
-			frontmatter: { type: 'Deliverable', order: 10, docStatus: 'Draft' },
-			parentLink: 'Bridge case',
-		});
-		const { containerEl, view } = makeView(vault, { deliverableStateProperty: 'note.docStatus' });
-		view.setProjection('deliverables');
-		expect(cardTitles(containerEl)).toContain('Runbook');
-		view.setFilter('Epic');
-		expect(cardTitles(containerEl)).toEqual([]);
-	});
-
-	it('never surfaces a test as a match on a board that cannot draw it', () => {
-		// The mirror of the case above, on the same index: a `Test case` nested UNDER a
-		// Deliverable. If the walk counts its title as a match, the Deliverable card stays
-		// on screen for a needle nothing on that board matched, and the card's own match
-		// list then names a row the board excludes everywhere else.
-		const vault = bothFamilies();
-		vault.addFile('Guide.md', { frontmatter: { type: 'Deliverable', order: 40, docStatus: 'Draft' } });
-		vault.addFile('Guide check.md', {
-			frontmatter: { type: 'Test case', order: 10 },
-			parentLink: 'Guide',
-		});
-		const { containerEl, view } = makeView(vault, { deliverableStateProperty: 'note.docStatus' });
-		view.setProjection('deliverables');
-		expect(cardTitles(containerEl)).toContain('Guide');
-		view.setFilter('Guide check');
-		expect(cardTitles(containerEl)).toEqual([]);
-		// The MATCH set itself, not just the cards: `hiddenMatches` reads it to name what a
-		// kept card is hiding, so a catalog row counted as a match here would be printed on
-		// a Deliverable's face even once the card question was answered.
-		const testCase = view.model?.byPath.get('Guide check.md');
-		expect(testCase && view.isFilterMatch(testCase)).toBe(false);
 	});
 
 	it('never lets a focus level promote a catalog Task into the plan', () => {

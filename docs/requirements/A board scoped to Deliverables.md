@@ -491,13 +491,22 @@ resolves — returning its board through the same `ProjectionContent.board` fiel
 `renderBoardContent` already uses — there is no second snapshot field; without this
 branch the projection falls through to `renderTree` and nothing computes a board at
 all.
-`src/view/backlogView.ts` — the projection's stored round trip, `renderTreeContent`'s `pbl-board-mode`
-class condition widens to `projection === 'board' || projection === 'deliverables'`
-(`backlogView.ts:468`) — the two are shaped alike and share the class, rather than the
-Deliverables board inheriting the tree's overflow and root drop zone by omission — and
-the view's private `visibility()` assembles the one `VisibilityRule` its three public
-predicates share, which is where `hideCompleted: this.projection !== 'deliverables'` is
-stated — once, for every reader.
+`src/view/backlogView.ts` — the projection's stored round trip; the `pbl-board-mode`
+class condition widens to admit `'deliverables'` — the two are shaped alike and share the
+class, rather than the Deliverables board inheriting the tree's overflow and root drop zone
+by omission. It is written in `syncProjectionClasses` now, `src/view/render/projections.ts`,
+beside the content fork it mirrors, and the iteration board has since joined it there. And
+`isRowHidden` assembles the one `VisibilityRule` every reader shares through
+`visibilityRule` in `src/view/rowVisibility.ts`, which is where the exception is stated
+once. Two things about it have moved since this was written. The test is
+`hidesCompleted(projection)` in `src/view/projection.ts` rather than a comparison here, and
+it now names three projections rather than one — the catalog for this board's own reason
+(completion is another workflow's question) and the iteration board for a reason of its
+own, its Resolved column being exactly what the sprint finished. And `hideCompleted` MEANS
+something narrower: not "this projection has a completion concept" but "the toggle is
+actively hiding", so it is false wherever the reader has finished work switched on or no
+state property is configured at all. Neither changes what this board does; both change what
+a reader of that field may conclude from it.
 `src/view/render/toolbar.ts` — the toggle position until 2026-08-16, and since then the
 way in is `renderBoardScopePicker` in `src/view/render/toolbarControls.ts`, whose
 `Deliverables` entry sits under `Product`; `renderCompletedToggle`'s gate adds

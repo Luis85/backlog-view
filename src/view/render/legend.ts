@@ -27,7 +27,7 @@ import { activeAxis, drawsGrid } from '../../domain/roadmap';
  * `drawn` is likewise reported by the render rather than recomputed here — see
  * `TimelineRender.drawn`. A predicate over `model.results` alone cannot see what the
  * grid actually drew: `model.results` includes items with no bar at all (unscheduled on
- * the shelf, excluded by a quick filter, or hidden by "Show completed items", which
+ * the shelf, or hidden by "Show completed items", which
  * hides done subtrees specifically), so it can call a colour keyed that nothing visible
  * draws — the done swatch keying green with every done item off screen, or the
  * milestone swatch keying cyan for a base with no milestone at all, are both that same

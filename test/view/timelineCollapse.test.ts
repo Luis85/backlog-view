@@ -171,18 +171,18 @@ describe('collapsing a bar’s subtree', () => {
 
 	it('leaves focus alone when the disclosure did not hold it', () => {
 		// A mouse click does not focus a button in every browser, and focus already
-		// somewhere else — the toolbar's filter box, say — must not be dragged into the
-		// pane by a click that never took it.
+		// somewhere else — a toolbar control, say — must not be dragged into the pane by a
+		// click that never took it.
 		const { containerEl } = roadmapView(nestedVault(), { ...DATES });
-		containerEl.querySelector<HTMLElement>('.pbl-filter-input')!.focus();
+		containerEl.querySelector<HTMLElement>('.pbl-new-btn')!.focus();
 
 		click(chevronOf(containerEl, 'Epic')!);
 
 		// By WHAT holds focus, not by node identity: the toolbar is rebuilt too and
 		// restores focus to the pressed control's replacement (`refocusByKey`), so the
-		// input in hand is detached by now. What this refuses is focus being dragged into
+		// button in hand is detached by now. What this refuses is focus being dragged into
 		// the pane by a click that never took it.
-		expect(document.activeElement?.classList.contains('pbl-filter-input')).toBe(true);
+		expect(document.activeElement?.classList.contains('pbl-new-btn')).toBe(true);
 	});
 
 	it('opens nothing when it is middle-clicked either', () => {
@@ -195,25 +195,6 @@ describe('collapsing a bar’s subtree', () => {
 		chevronOf(containerEl, 'Epic')!.dispatchEvent(new MouseEvent('auxclick', { button: 1, bubbles: true }));
 
 		expect(vault.opened).toEqual([]);
-	});
-
-	it('is inert while the quick filter runs — it overrides collapse state', () => {
-		// `isCollapsed` reports false while a filter narrows the tree, so an unguarded
-		// click would write "collapsed" against a row that reads as open, look inert,
-		// and then shut the row the moment the filter cleared. Opened FIRST, so the
-		// state the write would change is not the state it started in — the check is
-		// otherwise vacuous, since both answers leave a shut row shut.
-		const { containerEl, view } = roadmapView(nestedVault(), { ...DATES });
-		click(chevronOf(containerEl, 'Epic')!);
-		view.setFilter('Epic');
-
-		// Said on the control as well as honoured in the handler: it is a real button now,
-		// so `disabled` is what tells a reader it is inert — CSS could only stop a mouse.
-		expect((chevronOf(containerEl, 'Epic') as HTMLButtonElement).disabled).toBe(true);
-		click(chevronOf(containerEl, 'Epic')!);
-
-		view.setFilter('');
-		expect(timelineTitles(containerEl)).toEqual(['Epic', 'Feature']);
 	});
 
 	it('offers the same disclosure in the row menu, which is its keyboard path', () => {
@@ -233,14 +214,6 @@ describe('collapsing a bar’s subtree', () => {
 		click(chevronOf(containerEl, 'Epic')!);
 		click(chevronOf(containerEl, 'Feature')!);
 		rowFor(containerEl, 'PBI')!.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
-
-		expect(menuTitles().some((t) => t === 'Show children' || t === 'Hide children')).toBe(false);
-	});
-
-	it('withholds the menu toggle while the quick filter runs, as the chevron is withheld', () => {
-		const { containerEl, view } = roadmapView(nestedVault(), { ...DATES });
-		view.setFilter('Epic');
-		rowFor(containerEl, 'Epic')!.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 
 		expect(menuTitles().some((t) => t === 'Show children' || t === 'Hide children')).toBe(false);
 	});

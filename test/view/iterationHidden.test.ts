@@ -258,33 +258,9 @@ describe('an Iteration note draws only where a grid axis does', () => {
 	});
 });
 
-describe('the quick filter, once it admits an iteration', () => {
-	it('keeps it exactly when the needle matches it, never as a side effect of some other match', () => {
-		// `member` alone is not enough to reach it: `filterState`'s focused index is built
-		// by walking `model.roots`, which `projectionForest`'s `inPlan` never puts the
-		// iteration in — and a marker has no parent to be found through either, so a needle
-		// matching an ANCESTOR can never carry it either. The three cases below are the
-		// three ways that walk can go wrong: never admitting it, admitting it unconditionally
-		// once a filter runs at all, or admitting it as a side effect of an unrelated match.
-		const vault = everythingVault();
-		const harness = makeView(vault, OPTIONS, { base: 'Plan.base' });
-		harness.view.setProjection('roadmap');
-		harness.view.setAxisPick('dates');
-
-		const drawsSprint = (): boolean => shown(harness.containerEl).some((title) => title.includes('Sprint 12'));
-
-		// (a) A needle matching the sprint's own title keeps it drawn, in the marker row.
-		harness.view.setFilter('Sprint 12');
-		expect(drawsSprint(), 'a matching needle').toBe(true);
-
-		// (b) A needle matching nothing on this screen hides it, same as everything else.
-		harness.view.setFilter('nothing on this screen matches this needle');
-		expect(drawsSprint(), 'a needle matching nothing').toBe(false);
-
-		// (c) A needle matching only some OTHER note ("A milestone") must not keep the
-		// sprint drawn as a side effect — an `Iteration` has no parent and no children, so
-		// nothing about another note's match can propagate onto it.
-		harness.view.setFilter('milestone');
-		expect(drawsSprint(), "a needle matching only 'A milestone'").toBe(false);
-	});
-});
+// The quick filter's own half of iteration admission was asserted here until the filter was
+// withdrawn (2026-08-17, [[Remove the quick filter, now that Bases has its own search]]).
+// What it covered — a needle reaching an `Iteration` that `model.roots` never contains, and
+// not reaching it as a side effect of another note's match — has no subject now. The
+// admission itself is untouched and still asserted above: `projectionMember` widens for the
+// grid axes, which is what draws the sprint in the marker row at all.

@@ -168,8 +168,7 @@ harness's — see the `chrome.ts` bullet below for the four rules that leaves ab
   the render costs ~0.6 ms per row against the build's ~0.012 ms.
 - **`test/harness/knobs.ts` — the URL knobs that drive the view**, for states a screenshot
   cannot click its way to: `?dialog=manual|colors|new` opens one dialog through the same
-  door its control uses, `?filter=text` runs the quick filter (`?filter=zzz` is the only
-  way to reach its empty state), `?shelf` opens the roadmap's shelf — its groups, counts,
+  door its control uses, `?shelf` opens the roadmap's shelf — its groups, counts,
   shelving reasons, sort and type filter draw only while it is open — and `?focus=PBI` sets
   the focus level, which re-roots the model and is the one way a context CARD is drawn.
   `?view=` and `?axis=` in `page.ts` are the same idea and stay there; these are here

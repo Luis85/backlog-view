@@ -153,7 +153,7 @@ export interface TimelineRow {
  *
  * The bit is reached through the predicate rather than read here, which is what keeps
  * this pure — and what lets the view answer from the dated axis's OWN fold state rather
- * than the tree's, with the quick filter's override already folded into the same answer.
+ * than the tree's.
  */
 export function timelineRows(bars: TimelineBar[], collapsed: (path: string) => boolean): TimelineRow[] {
 	const drawn = new Set(bars.map((bar) => bar.item.file.path));

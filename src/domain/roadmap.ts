@@ -389,15 +389,15 @@ export function resourcePlacementLabel(roadmap: RoadmapModel, source: ResourceSo
 /**
  * The row set, the board's own rule: focused, the rendered roots — results as
  * live rows and a focus-level item outside the filter as inert context — else
- * every result. `visible` is the view's one row-visibility predicate (quick
- * filter, hidden completed subtrees), passed in whole so the roadmap, the board
- * and the tree cannot disagree about what is hidden. Both sources are already in
+ * every result. `visible` is the view's one row-visibility predicate (membership in
+ * this projection, hidden completed subtrees), passed in whole so the roadmap, the
+ * board and the tree cannot disagree about what is hidden. Both sources are already in
  * tree order, which is what the shelf's sibling order rests on.
  *
  * A GRID axis appends `model.iterations` — the parallel population `projectionForest`'s
  * plan forest still excludes (see `BacklogModel.iterations`) — through the SAME `visible`
- * predicate, so the quick filter and the completed toggle narrow an admitted iteration
- * exactly as they narrow everything else this axis draws. The horizons axis asks for
+ * predicate, so whatever narrows the rest of this axis narrows an admitted iteration
+ * exactly as well. The horizons axis asks for
  * none of it, placed or shelved, since `drawsGrid('horizons')` is false — the one place
  * this function's own axis argument decides the answer rather than only picking a source.
  */

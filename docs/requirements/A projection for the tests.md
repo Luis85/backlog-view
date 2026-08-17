@@ -226,7 +226,7 @@ base settings are saved on the view, working position on the device.
   outlives it, which is why it is stated here rather than at a call site: it is what any
   future root-level action has to be built against. **Three** lists, then, and conflating
   any two of them breaks something: the **rendered** roots, genuine and promoted, which the
-  renderer, the keyboard, the filter index and the collapse seed walk; the **positionable**
+  renderer, the keyboard and the collapse seed walk; the **positionable**
   roots, this projection's genuine roots, which say what a drop at the top level MEANS —
   `dropTargetFor` asks its no-op question of the drawn order for exactly this reason; and
   the **ranking**
@@ -401,16 +401,28 @@ base settings are saved on the view, working position on the device.
 ## Where it lives
 
 **`src/view/projection.ts`** is the new module, and it is what this PBI's shape turned out
-to be: *what a projection IS*, asked rather than compared. `treeShaped` answers the six
-gates that spelled `projection === 'tree'`, `hidesCompleted` the seventh that spelled
-`!== 'deliverables'`, `filterScopeFor` the one the view held as a private getter, and
-`projectionPopulation` / `projectionMember` the two halves of membership. Nothing enforces
-that mechanically — there is no lint rule forbidding a bare `projection === 'tree'` outside
-it, and it already appears directly in ten other files (see
+to be: *what a projection IS*, asked rather than compared. **Every question of that form
+belongs in it, and the module is the list** — is this projection tree-shaped, does it hide
+finished work, does it carry a rollup, which toolbar position is it under, what is its
+population and its membership rule, which types may it offer or re-type to, whose card
+menus list children. The rule is written here rather than the names, because a list here
+would go stale the next time one is added and this section is the one `docs-check.mjs`
+rule 7 holds that module to. Two shapes it started with are worth knowing as history:
+`treeShaped` answers the six gates that spelled `projection === 'tree'`, and
+`projectionPopulation` / `projectionMember` are the two halves of membership. A seventh —
+`filterScopeFor`, the one the view held as a private getter — was deleted with the quick
+filter on 2026-08-17, which is the shape of how this list changes.
+
+Nothing enforces that mechanically — there is no lint rule forbidding a bare
+`projection === 'tree'` outside it, and it already appears directly in a dozen files, a
+grep for `projection === '` being what says how many today (see
 [[The projection predicate has no lint rule behind it]]) — so the seventh gate somebody
 writes tomorrow is correct only if they ask the module rather than compare the value
 themselves. `offerableTypes` moved here too, with its own lint exemption — see
-[[Test suite and test case as a ladder of their own]].
+[[Test suite and test case as a ladder of their own]]. `menusListChildren` arrived the
+other way on 2026-08-17: a comparison that had been written in `src/view/childrenList.ts`,
+moved here once it was the menu's question alone — the one such comparison this list has
+ever recovered, and by a move rather than by a rule.
 
 **The forest is computed, not filtered** — `projectionForest` in `src/domain/model.ts`,
 beside `collectFocusRoots`, asked twice with opposite predicates. `renderForest` drops a
@@ -429,7 +441,8 @@ narrowing. The plan's forest replaces `model.roots`, so every existing consumer 
 rendered forest inherits the exclusion for nothing.
 
 **`rowHidden` is where membership is asked** (`src/view/rowVisibility.ts`), beside the
-quick filter and the completed toggle, and that placement is what made the rest small: the
+completed toggle — and beside the quick filter until that went on 2026-08-17, leaving two
+questions where there were three — and that placement is what made the rest small: the
 renderer, the keyboard's move targets, the board's cards, the roadmap's rows and every
 count measured over the same walk consult that one predicate already. A membership test
 added per surface is the shape that leaves the sixth one behind.
@@ -494,10 +507,12 @@ obvious one:
    on screen as an unmatched root, and on the Deliverables board kept a `Deliverable`
    nested under a test as a card, for an ancestry that board draws nowhere.
 
-None is a special case of another, and each is one predicate on its own line in
-`src/view/filterState.ts`. That separateness is the finding, not an accident of the fixes:
+None is a special case of another, and each was one predicate on its own line in the quick
+filter's match walk — deleted with the filter itself on 2026-08-17
+([[Remove the quick filter, now that Bases has its own search]]), which is why this section
+no longer names the module. That separateness was the finding, not an accident of the fixes:
 every round that tried to state two of the four as one rule is what produced the next
-round. The lesson for the next consumer:
+round, and it is still the lesson for the next consumer:
 `projectionPopulation(...).roots` alone is not the forest, and neither is roots plus one use
 of the membership rule.
 
@@ -515,8 +530,12 @@ to answer it in question 2 above and stop counting that `PBI` as a match; that i
 this note already records as breaking the nested `Deliverable`, since being a member is
 exactly what promotes such a row to a root of its own projection. So the guard is on the
 WALK — descend only through rows this projection draws, `!host.isRowHidden` supplied by
-`undisclosedMatches` (`src/view/childrenList.ts`), which is the single function both the
-card face and the row menu reach it through. The rule the six findings share, stated once
+`undisclosedMatches`, the single function both the card face and the row menu reached it
+through. That function went with the quick filter on 2026-08-17 and the finding did not:
+`src/view/childrenList.ts` still holds the two child lists that outlived it —
+`listedChildren` for the face and `menuChildren`, built on it, for the row menu — both
+filtering on that same `isRowHidden`, and neither recursing at all, so the crossing this
+finding is about cannot arise in either. The rule the six findings share, stated once
 more: **membership decides where a walk may GO, and a projection's disagreement about
 "beneath" is never repaired by changing what counts as a match.**
 
@@ -569,5 +588,8 @@ gains `renderCatalogEmptyState`, which offers creation and never configuration;
 `src/view/render/toolbarStatus.ts` where the toolbar split put it; `src/view/render/toolbarControls.ts`'s
 `collapsiblePopulation` takes the catalog's items by name, deliberately not behind
 `treeShaped`, since it decides what a bulk collapse TOUCHES rather than whether a button is
-enabled; and `ViewStateController.setProjection` (`src/view/viewStateController.ts`) recomputes the
-filter index through a hook of its own, which no gate anywhere would have caught.
+enabled; and `ViewStateController.setProjection` (`src/view/viewStateController.ts`)
+re-renders through a hook of its own — it rebuilt the quick filter's match index there
+too, until that index went on 2026-08-17, and no gate anywhere would have caught its
+omission, which is the reason anything cached against the population still has to be
+added to that method by hand.

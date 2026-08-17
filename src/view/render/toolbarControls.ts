@@ -606,7 +606,7 @@ export function collapseAll(host: BacklogViewHost): void {
 }
 
 /**
- * When the bulk collapse controls are refused: while a quick filter overrides collapse
+ * When the bulk collapse controls are refused:
  * state, and when nothing currently drawn is a genuine ROW disclosure — a card's own
  * disclosure is never reachable by these buttons at all (see `collapsiblePopulation`), so
  * a screen where every disclosure belongs to a card (an ordinary board, the Deliverables
@@ -620,7 +620,6 @@ export function collapseAll(host: BacklogViewHost): void {
  * the same rule.
  */
 export function collapseCtlsDisabled(host: BacklogViewHost): boolean {
-	if (host.isFiltering()) return true;
 	if (treeShaped(host.projection)) return false;
 	const barPaths = new Set((host.roadmap?.roadmap.bars ?? []).map((bar) => bar.item.file.path));
 	for (const path of host.cardChildrenShown) {
@@ -630,10 +629,11 @@ export function collapseCtlsDisabled(host: BacklogViewHost): boolean {
 }
 
 /**
- * Expand/collapse toolbar buttons. Collapse state is overridden while a filter is
- * active, so they are genuinely `disabled` then rather than only dimmed: a control
+ * Expand/collapse toolbar buttons. On a card projection that drew no disclosure there is
+ * nothing to collapse, so they are genuinely `disabled` rather than only dimmed: a control
  * a keyboard user can reach has to refuse the press, not just look like it would.
- * The view re-syncs the flag after every content render (`syncCollapseCtls`).
+ * The view re-syncs the flag after every content render (`syncCollapseCtls`), which is
+ * what makes the flag answer for the frame on screen rather than the one before it.
  */
 export function collapseButton(
 	host: BacklogViewHost,
@@ -679,7 +679,8 @@ interface OverflowEntry {
  * would put a second opinion beside `syncCollapseCtls` and `syncBusy`, which own that
  * flag — and the one that matters is expand/collapse, which has no structural backstop:
  * the write gate refuses a second batch on its own, so a mis-enabled ✨ is refused, while
- * a mis-enabled Expand all would really write collapse state a filter is overriding.
+ * a mis-enabled Expand all would really write collapse state onto a projection with no
+ * disclosure to show it.
  *
  * Read at click time, so what it sees is the frame on screen.
  */

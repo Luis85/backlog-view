@@ -2,11 +2,11 @@
 type: Test case
 order: 20
 parent: "[[Smoke test the board]]"
-status: Open
+status: Dropped
 priority: P3
 area: verification
-cadence: release
 created: 2026-08-02
+closed: 2026-08-17
 source: Feature Test epic
 started: ""
 finished: ""
@@ -19,24 +19,31 @@ assignee: ""
 
 # Board card carrying hidden matches
 
-A verification to run.
+Dropped: the thing it checked no longer exists.
 
-## Why this exists
+## Why this existed
 
-Under a quick filter, a card can be the only visible ancestor of a match that the board
-does not draw its own row for — a card, unlike a tree row, has no nested rows to show the
-match in place. The badge that says so is asserted by class in jsdom, never read.
+Under the plugin's own quick filter, a card could be the only visible ancestor of a match
+the board drew no row for — a card, unlike a tree row, has no nested rows to show the
+match in place. The card carried a marker saying so, asserted by class in jsdom and never
+read by a human, which is what this case was for: whether the marker was visible,
+distinguishable from the card's own state chip, and legible at the card's default size.
 
-**Preconditions** — `npm run test-build` has installed the plugin into this repository, and
-the repository is open as a vault with `docs/Product Backlog.base` showing the tree.
+## Why it is dropped rather than kept open
 
-## How to check
+The quick filter was withdrawn on 2026-08-17
+([[Remove the quick filter, now that Bases has its own search]]), and the marker, the
+match links on a card's face and the `Open match` menu entries went with it. There is no
+narrowing left that a card can be the only visible ancestor under: a Base's own search
+narrows the RESULTS, and the ancestors those results need are loaded around them, so the
+tree re-forms rather than leaving a match with nowhere to be named.
 
-Filter the board to a term that matches a descendant of a collapsed or off-column card,
-not the card itself. The card should carry a visible marker that a hidden match sits
-beneath it, distinguishable from the card's own state chip and legible at the card's
-default size.
+It is kept rather than deleted because the appearance question it asks is the one that
+would come back with the affordance. The task note above records what a replacement would
+have to be built against — the Base's own search rather than a box of ours — so this case
+is the check that would be reopened, not rewritten from nothing.
 
 ## Acceptance criteria
 
-- The hidden-match marker confirmed present and legible under a real narrowing filter.
+None; there is nothing on screen to check. It reopens if a hidden-match affordance ever
+returns.

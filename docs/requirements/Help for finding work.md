@@ -99,12 +99,18 @@ why a row you expected is not on screen.
 ## Where it lives
 
 `src/view/manual/sections.ts` — the finding section's own entries. The controls it
-describes are in `src/view/render/toolbarFilter.ts` (the filter box),
-`src/view/render/toolbar.ts` (the focus picker, the
-completed toggle and the ignored-notes advisory), their state in `src/view/filterState.ts`
-(the match path, kept separate from the matches themselves), their model rules in
-`src/domain/model.ts` (`collectFocusRoots`, `pruneOutsideHierarchy`), and the screens it
-must agree with in `src/view/render/emptyStates.ts`.
+describes are in `src/view/render/toolbar.ts` (the focus picker, the completed toggle and
+the ignored-notes advisory), their model rules in `src/domain/model.ts`
+(`collectFocusRoots`, `pruneOutsideHierarchy`), and the screens it must agree with in
+`src/view/render/emptyStates.ts`.
+
+The quick filter was the fourth control this section described, and its entry went with it
+on 2026-08-17 ([[Remove the quick filter, now that Bases has its own search]]) — replaced by
+a `Searching` entry pointing at the Base's own search and at the shelf's, since a manual
+that explains a box the toolbar no longer has is worse than one that omits it. Two
+neighbouring entries lost a clause each for the same reason: the drag rules no longer name a
+filter as a reason a row will not lift, and the "nothing showing at all" entry lists four
+causes rather than five.
 
 ## Review note (2026-08-10) — not moved to Done
 

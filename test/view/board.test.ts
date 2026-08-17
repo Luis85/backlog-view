@@ -219,15 +219,6 @@ describe('the board projection', () => {
 		);
 	});
 
-	it('keeps the signal reading the full population under a filter', async () => {
-		// Extension 4a. The pair count narrows; the limit clause does not.
-		const { containerEl, view } = boardView(activeVault(3), LIMITED);
-		view.setFilter('E1');
-		await flush();
-		const col = columnByName(containerEl, 'Active');
-		expect(col.getAttribute('aria-label')).toBe('Active, 1 of 3 cards match, limit 2, over by 1');
-		expect(col.querySelector('.pbl-board-col-header')?.classList.contains('pbl-board-col-over')).toBe(true);
-	});
 });
 
 describe('the requirements board excludes Deliverables', () => {
@@ -255,18 +246,11 @@ describe('the requirements board excludes Deliverables', () => {
 		expect(columnNames(containerEl)).toEqual(['No state', 'New', 'Active', 'Done']);
 	});
 
-	it('keeps the column count and its fullCount in agreement with the cards on screen', async () => {
-		const vault = vaultWithDeliverable();
-		const { containerEl, view } = boardView(vault);
+	it('keeps the column count in agreement with the cards on screen', () => {
+		const { containerEl } = boardView(vaultWithDeliverable());
 
 		// Without the Deliverable inflating it, "New" holds exactly the one visible card.
 		expect(countOf(columnByName(containerEl, 'New'))).toBe('1');
-
-		view.setFilter('Epic A');
-		await flush();
-		// The filtered pair count is "of" the same population the unfiltered count
-		// already excluded the Deliverable from — never "1 of 2".
-		expect(countOf(columnByName(containerEl, 'New'))).toBe('1 of 1');
 	});
 
 	it('keeps a Deliverable’s Task children on the board as their own cards', () => {
@@ -347,10 +331,9 @@ describe('the projection toggle', () => {
 		// The board has nothing to disclose that is not a card's own children, and a
 		// card's own toggle is the only thing that may open or close it.
 		expect(ctls.every((b) => b.disabled)).toBe(true);
-		// The rest of the toolbar survives the projection: creation, undo, the filter.
+		// The rest of the toolbar survives the projection: creation and undo.
 		expect(containerEl.querySelector('.pbl-new-btn')).not.toBeNull();
 		expect(containerEl.querySelector('.pbl-undo-btn')).not.toBeNull();
-		expect(containerEl.querySelector('.pbl-filter-input')).not.toBeNull();
 	});
 
 	it('marks the content pane as a listbox in board mode, a tree otherwise', () => {

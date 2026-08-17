@@ -68,22 +68,6 @@ describe('what a click on an item does', () => {
 	});
 
 	/**
-	 * The chevron's own guard, restated on the row: `isCollapsed` reports false while a
-	 * filter runs, so a flip here would look inert and then take effect once the filter
-	 * cleared. Not opening either — the click still means fold, it just cannot.
-	 */
-	it('folds nothing while the quick filter is narrowing the tree', () => {
-		const vault = fixture();
-		const { view, containerEl } = makeView(vault, {}, { folds: true });
-		view.setFilter('Feature');
-
-		click(rowByTitle(containerEl, 'Epic B'));
-
-		expect(titlesOf(containerEl)).toContain('Feature B1');
-		expect(vault.opened).toEqual([]);
-	});
-
-	/**
 	 * The option is the TREE's, and the option says so in its own name. A card is not a
 	 * row with a fold — its disclosure lists children on the card's own face, and a card
 	 * with nothing under it draws none at all — so folding on card activation would mean

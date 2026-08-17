@@ -25,9 +25,27 @@
 	display: none;
 }
 
+/* Revealed while a card is in flight — and revealed at the FOOT of the frame, wherever it
+   was rendered. Since 2026-08-17 the shelf LEADS the horizon frame, so a reveal in place
+   inserted a band ABOVE the buckets and dropped the whole board under the pointer at
+   dragstart: measured in the browser harness at 1200x800 with everything placed, the
+   buckets' top went 53px to 94px the instant `.pbl-dragging` landed — this strip's own
+   29px plus the frame's gap. `order` moves the reveal alone. The frame is `height: 100%`,
+   so the buckets band gives the room up from its own foot, and nothing already on screen
+   moves.
+   The shelf leads because it is what a card is dragged FROM; with nothing on it there is
+   nothing to drag, so leading buys the reader nothing and costs them the board's position.
+   On the dated axis this only moves the strip below the context strip, which is the same
+   foot it already sat at. And nothing focusable is reordered out of its reading order,
+   which is a fact about the ELEMENT rather than about drag timing: `renderShelfControls`
+   (`src/view/render/shelfControls.ts`) returns after an icon and a label when
+   `shelf.length === 0`, so an empty shelf has no disclosure, no sort or type picker and no
+   search box — there is nothing on this element for `order` to separate from its place in
+   the document. Give the empty shelf a control and this sentence is what contradicts you. */
 .pbl-dragging .pbl-shelf-empty {
 	display: flex;
 	border-style: dashed;
+	order: 1;
 }
 
 /* Collapsed keeps its footprint minimal: the header carries the name, the count and
@@ -63,6 +81,18 @@
 	min-width: 0;
 	height: var(--size-4-5);
 	font-size: var(--font-ui-smaller);
+}
+
+/* The field wears exactly ONE clear affordance, and it is the plugin's own
+   (`renderSearchClear`). The type was picked believing the platform drew this button
+   whenever the field had a value; a vault reported no way back out of the search, and
+   what a headless Chromium draws for a bare `input[type='search']` here is nothing at
+   all — so the premise is unverifiable from this repository and the drawn button cannot
+   depend on it. Suppressed rather than left to chance: where the platform DOES draw one,
+   two x's sit side by side and only one of them tells the view anything. `-webkit-`
+   because Obsidian is Chromium on every platform it ships for. */
+.pbl-shelf-search-input::-webkit-search-cancel-button {
+	display: none;
 }
 
 /* What this drop would LEAVE, said before the release — only the dated axis draws one. */
@@ -188,14 +218,19 @@
 	height: 14px;
 }
 
-/* The two pickers sit together, left of the outcome line's `margin-inline-start: auto`. */
+/* The two pickers sit together, left of the outcome line's `margin-inline-start: auto`.
+   The search's clear button joins them rather than taking a size of its own: it is a
+   header control like the others, and an x drawn at a different weight beside them reads
+   as belonging to something else. */
 .pbl-shelf-sort,
-.pbl-shelf-filter {
+.pbl-shelf-filter,
+.pbl-shelf-search-clear {
 	color: var(--text-muted);
 }
 
 .pbl-shelf-sort .svg-icon,
-.pbl-shelf-filter .svg-icon {
+.pbl-shelf-filter .svg-icon,
+.pbl-shelf-search-clear .svg-icon {
 	width: 14px;
 	height: 14px;
 }

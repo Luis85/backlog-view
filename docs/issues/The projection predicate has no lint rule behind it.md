@@ -76,9 +76,20 @@ what actually holds: the module exists so "tree-shaped" is one question asked in
 place, nothing enforces that mechanically, and the ten call sites above are the
 evidence the gap is real rather than theoretical.
 
+## The count is a record of 2026-08-10, and it has moved
+
+Kept as measured rather than rewritten, with one thing to know before quoting it: the same
+grep finds more files now, and the set is not a superset. `src/view/childrenList.ts` was
+created after this note and carried a comparison this list never counted; that one went
+again on 2026-08-17 when `horizonBoardShowing` became `menusListChildren` in
+`src/view/projection.ts` — the only one of these ever paid off, and by a move rather than
+by a rule. `filterScopeFor` in `## The claim` above went with the quick filter the same
+day, and three predicates have joined the module since. Re-run the grep before acting on
+the number; what does not change is the open question below.
+
 ## The open question
 
-Which of the ten comparisons are legitimate dispatch and which are the drift the
+Which of those comparisons are legitimate dispatch and which are the drift the
 predicate module was built to stop. At least one is clearly the former —
 `renderProjectionContent`'s if-chain in `render/projections.ts` is a dispatch on the
 projection by design, not a stand-in for one of the named predicates. Sorting the rest,
@@ -89,5 +100,5 @@ answered here.
 ## Acceptance criteria
 
 None as a gate — this is a recorded gap, not work in flight. It closes when someone
-either classifies the ten call sites and adds the lint rule the surviving ones permit,
-or decides deliberately that the predicate module's guarantee stays comment-only.
+either classifies the call sites the grep finds and adds the lint rule the surviving ones
+permit, or decides deliberately that the predicate module's guarantee stays comment-only.

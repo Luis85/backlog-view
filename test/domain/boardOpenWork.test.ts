@@ -1,16 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import { boardColumns, deliverablesWorkflow, requirementsWorkflow } from '../../src/domain/board';
 import { isDeliverableType } from '../../src/domain/itemTypes';
-import { BacklogItem, buildModel } from '../../src/domain/model';
+import { buildModel } from '../../src/domain/model';
 import { BacklogSettings } from '../../src/domain/settings';
 import { resolveSettings } from '../../src/domain/settingsResolve';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
 
 /**
  * `BoardColumn.openWork` — the one question the done column's fold default is decided on,
- * and the two ways it has been got wrong: measuring it over the drawn cards rather than
- * the population, and reading finished off the requirements workflow on a board that is
- * not the requirements board.
+ * and the two ways it has been got wrong: asking it of the drawn cards, which skips the
+ * context card whose rollup is the only thing speaking for the results below it, and
+ * reading finished off the requirements workflow on a board that is not the requirements
+ * board.
+ *
+ * It is asked of the CANDIDATES and, for everything but a context card, through the same
+ * `visible` that builds `cards` — no wider. It claimed a population reading until the
+ * quick filter went (2026-08-17) and took the field behind that claim with it; the
+ * narrower one gives the same answer here, for the reason `BoardColumn.openWork` states.
  *
  * Its own file rather than a third block in `board.test.ts`, which is at its line budget:
  * "is this column still holding work" is a subject, and the fold that reads it lives two
@@ -63,22 +69,6 @@ describe('a column reports whether it still holds open work', () => {
 		const board = boardColumns(requirementsWorkflow(model, settings), model.results, everything);
 
 		expect(board.columns.find((c) => c.label === 'Done')?.openWork).toBe(true);
-	});
-
-	it('reads the POPULATION, so a filter that hid the open card cannot say the column is finished', () => {
-		// The failure this pins: measured over `cards`, a search matching only the tidy
-		// item would report Done as finished, and the board would fold a column holding a
-		// retained card — the user searching their board into a different shape. The
-		// second predicate is the filter; the third is the population it is measured
-		// against, which is exactly what `fullCount` already borrows.
-		const vault = doneVault();
-		const model = buildModel(vault.app, vault.entries(), settings);
-		const matched = (item: BacklogItem) => item.title === 'Shipped';
-		const board = boardColumns(requirementsWorkflow(model, settings), model.results, matched, everything);
-
-		const done = board.columns.find((c) => c.label === 'Done');
-		expect(done?.cards.map((c) => c.title)).toEqual(['Shipped']);
-		expect(done?.openWork).toBe(true);
 	});
 
 	it('ignores a context card, which is placement rather than work', () => {
@@ -160,9 +150,7 @@ describe('a context card speaks for the results below it and for nothing else', 
 		const model = buildModel(vault.app, only(vault, 'PBI.md'), settings);
 		const board = boardColumns(requirementsWorkflow(model, settings), model.roots, everything);
 
-		const done = board.columns.find((c) => c.label === 'Done');
-		expect(done?.count).toBe(0);
-		expect(done?.fullCount).toBe(0);
+		expect(board.columns.find((c) => c.label === 'Done')?.count).toBe(0);
 	});
 });
 

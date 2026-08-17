@@ -2,7 +2,8 @@
 type: PBI
 parent: "[[Finding work]]"
 order: 10
-status: Done
+status: Dropped
+closed: 2026-08-17
 started: ""
 finished: ""
 horizon: ""
@@ -13,6 +14,18 @@ assignee: ""
 ---
 
 # Quick filter
+
+**Withdrawn on 2026-08-17, at the user's request: Obsidian Bases carries its own search now,
+so this was a second search box over the same rows.** Everything below is what it WAS, kept
+because a dropped note is a record — the shape is unchanged so the register can still read
+it, and only this paragraph and `## Where it lives` are new.
+
+What replaces it is the Base's own filtering, which this view already handles: a narrowed
+result set arrives as fewer results, and [[Filtered bases keep their tree]] loads the
+ancestors those results need, so a Bases search still reads as a tree rather than a flat
+list. The shelf's own search stays ([[Searching the shelf]]) — scoped to the untriaged work
+rather than to the whole view, which is the trade a reader digging through the shelf wants
+and the one this box could not make.
 
 **As** someone with a backlog too big to scan, **I want** to type a word and see the
 matches *with their place in the tree*, **so that** I find the item and can still tell
@@ -61,19 +74,25 @@ what it belongs to — which a flat list of matches cannot say.
 
 ## Where it lives
 
-`src/view/backlogView.ts` (`filterText`, `setFilter`, `isFiltering`) ·
-`src/view/filterState.ts` (the needle, the match-path walk, and the two sets it
-keeps — see [[The quick filter on the board]] for why one set cannot answer both
-questions) ·
-`src/view/render/toolbarFilter.ts` (the input, `syncFilterUi`, and `revealFilter` — the
-ONE way the input is opened, because the reveal button, the clear path and
-`focusFilter()` all have to reach it) ·
-`src/view/render/toolbarFilter.ts` (`revealFilter` — specified against the ladder because
-the filter is
-the one control the ladder can hide out from under a keyboard user: `focus()` on a
-`display: none` element does nothing and reports nothing, which is why `revealFilter`
-refits before it focuses. The ladder itself, and everything else it sheds, is
-[[A toolbar that fits one row]]) ·
-`src/view/render/rows.ts` (`renderTitleText` highlighting) ·
-`src/view/render/emptyStates.ts` (the no-match state).
-Tests: `test/view/filter.test.ts`, `test/view/toolbar.test.ts`.
+**Nowhere: every module this section used to name is deleted, so it can no longer name
+them** — a living note may only cite source that exists, which is the register rule doing
+its job on a withdrawal. The removal is recorded, path by path, in
+[[Remove the quick filter, now that Bases has its own search]].
+
+What it took with it, in concepts rather than paths: the toolbar box and its `/` chord, the
+match-path walk and the two indexes it kept, the scope that told those indexes apart, the
+second row-visibility reading every count was measured "of", a column's paired count, the
+walk that found matches with no card of their own, the two fields on the placed-mount
+register that said how a surface could name them, the no-match empty state, the title
+highlight, and the catalog keys that spoke a pair count.
+
+Three simplifications fell out of the removal rather than being sought, and they are why it
+was cheap. Row visibility is one question again — membership plus the completed toggle —
+rather than one asked twice with the filter lifted. A column's count is one number rather
+than a pair. And three controls that had to pause mid-filter (the tree's chevron, a card's
+disclosure, the bulk collapse buttons) no longer have a state to pause for, so the
+`disabled` machinery each carried went with the condition that set it.
+
+Nothing about the DATA is affected: the filter never wrote anything — not to a note, not to
+the `.base`, not to the view-state store — which is why this leaves no migration and no
+stored value behind.
