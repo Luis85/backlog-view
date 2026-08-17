@@ -29,7 +29,7 @@ import {
 	requirementsWorkflow,
 } from '../../domain/board';
 import { childTypeChoices, focusTarget, isDeliverableType } from '../../domain/itemTypes';
-import { BacklogItem } from '../../domain/model';
+import { BacklogItem, inPlan } from '../../domain/model';
 
 /** What differs between the two board-shaped projections' render passes. */
 interface BoardRenderOptions {
@@ -187,11 +187,20 @@ export function renderRequirementsBoard(ctx: RowContext, boardEl: HTMLElement, d
 		requirementsWorkflow(model, host.settings),
 		model.focused ? requirementsFocusRoots(model.roots) : model.results,
 		(item) => !host.isRowHidden(item) && (item.outsideFilter || !isDeliverableType(item.typeName)),
-		// What this board OWNS, and nothing about what is hidden inside it: the type alone.
-		// The predicate above carries the completed-items toggle, which is exactly what
+		// What this board OWNS, and nothing about what is hidden inside it. The predicate
+		// above carries the completed-items toggle, which is exactly what
 		// `BoardColumn.held` may not be measured through — see the fold default in
 		// `renderBoard`.
-		(item) => !isDeliverableType(item.typeName),
+		//
+		// MEMBERSHIP and the type, never the type alone: under a focus the candidates are
+		// `requirementsFocusRoots(model.roots)`, which descends a non-context `Deliverable`
+		// into its raw `children` — and those are not membership-filtered, so a `Test suite`
+		// or an `Iteration` arrives among them. `visible` drops such a row by membership, so
+		// it is no card; asking only the type still HELD it, and both readers of `held` then
+		// spoke for a row this board never draws — a WIP badge one over on a column drawing
+		// two cards under a limit of two, and a done column settling permanently folded on
+		// evidence nobody could see.
+		(item) => inPlan(item) && !isDeliverableType(item.typeName),
 	);
 	return renderBoard(ctx, boardEl, dnd, board, {
 		scope: 'board',

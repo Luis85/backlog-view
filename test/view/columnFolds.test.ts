@@ -239,6 +239,24 @@ describe('the done column’s own default', () => {
 		expect(folded(columnByName(containerEl, 'Done'))).toBe(false);
 	});
 
+	it('takes no default from a row this board never draws', () => {
+		// The same "no evidence" rule, asked of `held`'s other half. Under a focus the
+		// candidates come from `requirementsFocusRoots`, which descends a non-context
+		// `Deliverable` into its raw `children` — so a done `Test suite` arrives among them.
+		// `visible` drops it by MEMBERSHIP, so it is no card; an `owned` asking the type
+		// alone held it anyway, and this column settled shut — permanently — on a row
+		// nobody can see. Fixed at `owned` in `renderRequirementsBoard`, which is the one
+		// answer both readers of `held` take.
+		const vault = new FakeVault();
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10 } });
+		vault.addFile('Suite.md', { frontmatter: { type: 'Test suite', order: 10, status: 'Done' }, parentLink: 'D' });
+		vault.addFile('P1.md', { frontmatter: { type: 'PBI', order: 20, status: 'Active' } });
+		const { containerEl } = makeBoard(vault, {}, { focus: 'PBI', foldedColumns: true });
+
+		expect(cardTitles(columnByName(containerEl, 'Done'))).toEqual([]);
+		expect(folded(columnByName(containerEl, 'Done'))).toBe(false);
+	});
+
 	it('never folds again once the reader has opened it', () => {
 		// The tree's own rule: a default applies to what nobody has ruled on. Without the
 		// second list the next data update would shut the column in front of the user who

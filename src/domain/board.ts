@@ -103,7 +103,9 @@ export interface BoardColumn {
 	 * which carries the completed-items toggle, so with finished work hidden a done column
 	 * full of finished work reports zero — and reads as a column with nothing in it rather
 	 * than the one the fold is for. This is counted through `owned` instead, which asks
-	 * only whether the card is this board's at all.
+	 * only whether the card is this board's at all — a MEMBERSHIP question, and the whole
+	 * of what this field means rests on the caller asking it as one. See
+	 * {@link boardColumns} for what both readers report when it is asked as anything else.
 	 */
 	held: number;
 }
@@ -567,13 +569,20 @@ function tallyColumns(
  * results as live cards, and a focus-level item outside the filter as an inert
  * context card that still places its results ({@link BoardColumn.cards}).
  *
- * `owned` defaults to "everything counts" and never to `visible`, which is the one value
- * it exists to be measured apart from: falling into `owned = visible` makes
- * {@link BoardColumn.held} a second name for {@link BoardColumn.count}, so a done column
- * whose finished work the completed toggle has hidden reports nothing held and the fold
- * default stops firing in exactly the configuration it was written for. A projection that
- * omits it over-counts instead, which loses no card. Every caller in `view/` passes its
- * own, and each differs from that projection's `visible`.
+ * **`owned` is a MEMBERSHIP question — is this card this board's at all — and never a
+ * type test or a second reading of `visible`.** Both wrong answers have shipped. Defaulted
+ * to `visible` it makes {@link BoardColumn.held} a second name for {@link BoardColumn.count},
+ * so a done column whose finished work the completed toggle has hidden reports nothing held
+ * and the fold default stops firing in exactly the configuration it was written for. Asked
+ * as a type alone it over-counts, and over-counting is not free either: both readers of
+ * `held` then speak for a row the board never draws — {@link overBy} invents an over-limit
+ * warning, and the fold default settles a column permanently shut on evidence nobody can
+ * see (2026-08-17, `renderRequirementsBoard`, whose focused candidates come from
+ * `requirementsFocusRoots` and are not membership-filtered).
+ *
+ * So the default is a FALLBACK for a caller whose candidates are already its own population
+ * — every one of them is this board's — and not a shape to fall into where they are not.
+ * All three callers in `view/` pass their own.
  */
 export function boardColumns(
 	workflow: Workflow,
@@ -712,14 +721,19 @@ export function emptyNoState(col: BoardColumn): boolean {
 	// Both terms are now covered by the bucket refusal; neither is removed, because each
 	// states a rule about a different half of `state === null`.
 	if (col.bucket !== undefined) return false;
-	// ONE reading of empty, and there is no second one to ask. `count` was `fullCount`
-	// here — a population genuinely independent of the drawn cards — and `fullCount` went
-	// with the quick filter (2026-08-17), leaving a term `cards.length === 0` already
-	// forces: `count` is a reduce over `cards`. `held` is not the replacement either: the
-	// no-state column's cards carry no state, so none can be `item.done`, so none is ever
-	// `subtreeDone` and the completed toggle — the one thing `held` is measured apart from
-	// — can never hide one. A `held` term here would be a conjunct no fixture could make
-	// fail, which is the defect this removes rather than a fix for it.
+	// ONE reading of empty. `count` was `fullCount` here — a population genuinely
+	// independent of the drawn cards — and `fullCount` went with the quick filter
+	// (2026-08-17), leaving a term `cards.length === 0` already forces: `count` is a reduce
+	// over `cards`.
+	//
+	// `held` is not the replacement, and only one thing here can be said about it
+	// STRUCTURALLY: a card in this column carries no state, so it cannot be `item.done`, so
+	// it is never `subtreeDone` and the completed toggle can never be what hid it. That is a
+	// claim about the toggle and nothing else — `held` is measured apart from `visible`
+	// WHOLE, and membership is the other half of it, so which of the two is larger here is a
+	// question about the caller's predicate rather than about this column. The strip does not
+	// turn on that question: it is what a stage with no name of its own and nothing to SHOW
+	// shrinks to, and the cards are what it shows.
 	return col.state === null && col.takesDrop && col.cards.length === 0;
 }
 
@@ -727,22 +741,22 @@ export function emptyNoState(col: BoardColumn): boolean {
  * How many cards this column holds beyond what was agreed — 0 at the limit, under it,
  * or with no limit at all.
  *
- * Read off {@link BoardColumn.held} rather than `count`, which is the WIP limit's own
- * rule: the signal describes the work, never what happens to be on screen, because a
- * column made to look under its limit by something the reader is hiding is a lie about
- * the work (`docs/requirements/WIP limits.md`, extension 4a). It read `fullCount` for
- * that reason until the quick filter took that field with it (2026-08-17) and left this
- * on `count`.
+ * Read off {@link BoardColumn.held}: the signal is about what the stage HOLDS, so nothing
+ * the reader is hiding inside it may make an over-limit column look under its limit
+ * (`docs/requirements/WIP limits.md` — the purpose the whole note is written to, its
+ * extension 4a being about the quick filter, which no longer exists). It read `fullCount`
+ * for that reason until the filter took that field with it (2026-08-17) and left this on
+ * `count`.
  *
- * **Nothing can currently tell the two readings apart, and this says so rather than
- * promising a fix it cannot show.** `held` and `count` differ only for a non-context card
- * that `owned` keeps and `visible` drops, and on the one board with limits that is only
- * ever a subtree the completed toggle hides — which is `item.done`, so it is always in a
- * DONE column, and a done column never carries a limit (`limitedStates` in
- * `settingsResolve.ts` drops one, and `settingsInconsistency` refuses a fixture that says
- * otherwise). So this is the reading the requirement states, held against a change in
- * either of those two facts; it is not a defect anybody can reproduce today, and a test
- * claiming to distinguish them would be asserting a configuration no view can produce.
+ * **`held` is only that population while `owned` asks MEMBERSHIP**, which is the rule
+ * stated at {@link boardColumns} and the one this depended on before it was true: with a
+ * type-only `owned`, a focused board held rows it never draws and this reported a column
+ * drawing two cards under a limit of two as one over.
+ * `test/view/columnAgreements.test.ts` is the check, and it checks THAT rather than this
+ * reading — with `owned` asking membership, both new tests pass with `count` here too. So
+ * the reading is the requirement's rule, not a difference the suite can currently show; the
+ * honest form of that is "no test here reaches it", which is a statement about this suite
+ * and not about a vault.
  *
  * Nothing that PLANS a write imports this. A limit never refuses a move, and a planner
  * that cannot see a limit cannot consult one.

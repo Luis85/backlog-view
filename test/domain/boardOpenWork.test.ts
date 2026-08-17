@@ -8,9 +8,15 @@ import { FakeVault, FakeViewConfig } from '../helpers/vault';
 
 /**
  * `BoardColumn.openWork` — the one question the done column's fold default is decided on,
- * and the two ways it has been got wrong: measuring it over the drawn cards rather than
- * the population, and reading finished off the requirements workflow on a board that is
- * not the requirements board.
+ * and the two ways it has been got wrong: asking it of the drawn cards, which skips the
+ * context card whose rollup is the only thing speaking for the results below it, and
+ * reading finished off the requirements workflow on a board that is not the requirements
+ * board.
+ *
+ * It is asked of the CANDIDATES and, for everything but a context card, through the same
+ * `visible` that builds `cards` — no wider. It claimed a population reading until the
+ * quick filter went (2026-08-17) and took the field behind that claim with it; the
+ * narrower one gives the same answer here, for the reason `BoardColumn.openWork` states.
  *
  * Its own file rather than a third block in `board.test.ts`, which is at its line budget:
  * "is this column still holding work" is a subject, and the fold that reads it lives two
