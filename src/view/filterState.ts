@@ -1,5 +1,5 @@
 import { BacklogItem, BacklogModel } from '../domain/model';
-import { RoadmapAxis } from '../domain/roadmap';
+import { drawsGrid, RoadmapAxis } from '../domain/roadmap';
 import { Projection } from './host';
 import { FilterScope, projectionMember, projectionPopulation } from './projection';
 
@@ -145,12 +145,23 @@ export class FilterState {
 		const roots = projectionPopulation(projection, model).roots;
 		// Scoped like every other reader of this predicate: without it, a needle matching a
 		// child that is in NO iteration kept its carrier on screen, so a search on a sprint
-		// board answered about work the board is not showing. `axis` is threaded the same
-		// way, for the grid axes' own admission: without it a needle matching an admitted
-		// `Iteration` found nothing, because the index was built from the plan's narrower
-		// membership while the screen it searches draws the wider one.
+		// board answered about work the board is not showing.
 		const member = projectionMember(projection, scope, axis);
-		this.focused = indexMatches(roots, needle, member);
+		// `member` alone does not reach an admitted `Iteration`: `roots` is `model.roots`,
+		// which `projectionForest` builds with the UNWIDENED `inPlan`, so a marker — no
+		// parent, no children — is never one of `roots` and never found by walking from
+		// one either. Widening `member` only decides what the walk does once it MEETS an
+		// item; it cannot make the walk meet one `roots` never contained. So the grid axes
+		// get the same append `roadmapRows` (`domain/roadmap.ts`) makes for rendering —
+		// `model.iterations`, the same parallel population, run through this SAME `member`
+		// so the needle is asked of the iteration's own title exactly as it is asked of
+		// everything else, and a match elsewhere cannot carry it (no parent to inherit
+		// through, no children to inherit from). Without this, a filter didn't merely fail
+		// to widen — it hid an admitted iteration unconditionally, whether or not the
+		// needle matched it, because `keeps()` read an index that had never heard of it.
+		const focusedRoots =
+			projection === 'roadmap' && axis !== null && drawsGrid(axis) ? [...roots, ...model.iterations] : roots;
+		this.focused = indexMatches(focusedRoots, needle, member);
 		// The `whole` index takes the SAME membership rule and differs only in where it
 		// starts: the whole tree rather than this projection's forest, because the
 		// Deliverables board's population is deliberately focus-immune. Membership still
