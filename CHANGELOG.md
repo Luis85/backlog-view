@@ -13,6 +13,11 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Changed
 
+- **The board toggle is now called Boards.** Since the scope picker moved every board —
+  Product, Deliverables, and each iteration — behind one toggle position, the switcher
+  says so: the button reads **Boards** and its accessible name is
+  **Show as kanban boards**. Nothing else about the position changed.
+
 - **Column resize follows the pointer now.** A property column's grip moved from its
   trailing edge to its leading one — the edge that actually moves when a column anchored
   to the row's end resizes — so the boundary under the pointer tracks the drag instead of

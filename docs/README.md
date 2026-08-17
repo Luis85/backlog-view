@@ -123,7 +123,7 @@ and **iterations** — is still design; lanes were tried and refused
 ([[Swimlanes by parent]]). That last one multiplies the board a second time and does
 it differently on purpose, for a reason that is arithmetic rather than scope: there is
 exactly one Deliverables board, and sprints only ever accumulate, so a toggle position
-per sprint is not a toggle. `Board` gains a **scope** picker beside the projection
+per sprint is not a toggle. `Boards` gains a **scope** picker beside the projection
 toggle — `Product`, or one iteration — the control the roadmap already uses to offer
 its two axes, over a workflow of its own that falls back to the product board's field
 by field. It is also the one board where both kinds of work sit together: a sprint

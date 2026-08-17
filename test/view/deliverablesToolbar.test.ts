@@ -15,7 +15,7 @@ describe('the Deliverables board entry', () => {
 		const { containerEl, view } = makeView(fixture());
 		expect(() => projectionButton(containerEl, 'Show as Deliverables board')).toThrow();
 
-		projectionButton(containerEl, 'Show as kanban board').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		projectionButton(containerEl, 'Show as kanban boards').dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		containerEl.querySelector<HTMLElement>('.pbl-scope-btn')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		const entry = Menu.lastShown?.item('Deliverables');
 		// Directly under Product, and both entries wear an icon — the request that moved it.
@@ -30,7 +30,7 @@ describe('the Deliverables board entry', () => {
 		expect(view.projection).toBe('deliverables');
 		// The Board position stays pressed, the picker names the chosen board, and its
 		// entry is the checked one.
-		const board = projectionButton(containerEl, 'Show as kanban board');
+		const board = projectionButton(containerEl, 'Show as kanban boards');
 		expect(board.getAttribute('aria-pressed')).toBe('true');
 		expect(containerEl.querySelector('.pbl-scope-btn')?.getAttribute('aria-label')).toBe(
 			'Board scope: Deliverables',
@@ -47,14 +47,14 @@ describe('the Deliverables board entry', () => {
 		const { containerEl, view } = makeView(fixture());
 		view.setProjection('deliverables');
 		view.setProjection('tree');
-		projectionButton(containerEl, 'Show as kanban board').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		projectionButton(containerEl, 'Show as kanban boards').dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		expect(view.projection).toBe('deliverables');
 
 		containerEl.querySelector<HTMLElement>('.pbl-scope-btn')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		Menu.lastShown?.item('Product')?.click();
 		expect(view.projection).toBe('board');
 		view.setProjection('tree');
-		projectionButton(containerEl, 'Show as kanban board').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		projectionButton(containerEl, 'Show as kanban boards').dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		expect(view.projection).toBe('board');
 	});
 
