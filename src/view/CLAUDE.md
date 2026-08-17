@@ -128,8 +128,8 @@ free of runtime code so imports stay cycle-free.
   `applying`, `onDataUpdated` only records the update (`gate.deferUpdate()`); the gate
   flushes it through `refreshFromData` in `runExclusively`'s `finally`, so a failed batch
   refreshes too — the writes before the failure are on disk and the tree has to show
-  them. Nothing about interaction pauses: each write awaits, so scrolling, filtering and
-  selection keep working against the (briefly stale) model.
+  them. Nothing about interaction pauses: each write awaits, so scrolling and selection
+  keep working against the (briefly stale) model.
 - `applyWrites` reports progress per file and the view publishes it with `syncBusy`,
   which touches text and flags only — never structure. Re-rendering the toolbar per
   tick would reintroduce exactly the jank the deferral removes. The indicator is
@@ -159,25 +159,20 @@ free of runtime code so imports stay cycle-free.
 
 ## What is rendered, and what is merely hidden
 
-- The quick filter is ephemeral view state, owned by `filterState.ts` (the shape
-  `viewState.ts` already has): while active, `isCollapsed` reports false
-  (everything on a match path renders expanded), rows are not draggable (visual
-  neighbors are not real siblings), and `setFilter` re-renders the tree only so the
-  toolbar input keeps focus. It keeps TWO sets — `visible` (a match plus its ancestors
-  and its whole subtree) decides what renders, `matches` (the matches themselves)
-  answers which of the things under a card the search actually found. One set cannot
-  do both: everything in a match's subtree is visible and almost none of it matched.
-- `isRowHidden` and `isRowHiddenUnfiltered` are one `hidden` method with a flag, so the
-  narrowed board and the population its counts are measured against cannot disagree
-  about what is in a column. **Lifting the filter is not the same as having no filter**:
-  a running filter suspends the completed-items toggle, and the population has to keep
-  that suspension, or a matched-but-otherwise-hidden card reads as "1 of 0" — each
-  number defensible on its own, the pair nonsense. What "of" means is what this filter
-  is choosing among.
+- **This view runs no search of its own.** It had one — a toolbar quick filter — until
+  2026-08-17, and Bases carrying its own search is what retired it
+  ([[Remove the quick filter, now that Bases has its own search]]). What that leaves is
+  worth knowing before adding anything back: `isRowHidden` is the ONE visibility question
+  (membership plus the completed toggle), so there is no second population a count is
+  measured "of" and no lifted reading to keep in step; a column's count is one number
+  rather than a pair; and nothing overrides collapse state, so no control has a state to
+  pause in. A search added here again brings all four back with it, and the note above
+  records what each cost.
+- `isRowHidden` is one method for every projection, so the screen and the population its
+  counts are measured against cannot disagree about what is in a column.
 - "Show completed items" hides only fully-done subtrees (`subtreeDone`) and only at
   render level (`isRowHidden`): the model, rollups and ALL order math keep using full
-  sibling lists — hidden siblings still get renumber writes. The quick filter
-  suspends hiding. Structure ops and the move menu target the nearest *visible*
+  sibling lists — hidden siblings still get renumber writes. Structure ops and the move menu target the nearest *visible*
   neighbor (`visibleNeighbor`) so no command is visually inert; a parent whose
   children all hide renders as a leaf (chevron and aria-expanded follow visible
   children, not `children.length`).
@@ -351,8 +346,8 @@ free of runtime code so imports stay cycle-free.
   are a per-digit CEILING rather than a measurement, and the `ch` on the label is what
   keeps the layout exact where the two differ (a phone's text size lifting
   `--font-ui-smaller` past 12px); the fit is a few pixels optimistic there and nothing
-  clips. **What it measures is `isRowHidden`, not what the pass drew**: a filter or the
-  completed toggle hiding a deep subtree must narrow the lane, while COLLAPSE must not —
+  clips. **What it measures is `isRowHidden`, not what the pass drew**: the completed
+  toggle hiding a deep subtree must narrow the lane, while COLLAPSE must not —
   sizing from the rows literally rendered would shift every bar on screen sideways as a
   side effect of expanding one row. The terms that are Obsidian's (`--size-4-1` gaps, the tree
   padding) cannot be owned that way and stay as constants; a theme that redefines them
@@ -423,11 +418,16 @@ free of runtime code so imports stay cycle-free.
   silently, which no test named the surface for.
 - Two tab-stop zones, and a control's element type follows from which one it is in.
   The **toolbar** is ordinary UI: every activatable control is a real `<button>`
-  (`iconButton`, both clear buttons), so Tab reaches all of them. The **tree** is one
+  (`iconButton`, and the focus picker's own `.pbl-focus-clear`), so Tab reaches all of
+  them. The **tree** is one
   stop — arrows move the selection — so its per-row controls (`.pbl-add`, the state
   chip) are buttons with `tabindex="-1"`: activatable by assistive tech, invisible to
   Tab, with the context menu as the documented keyboard path. A `div` with an
-  `aria-label` and a click handler is the thing to avoid in either zone.
+  `aria-label` and a click handler is the thing to avoid in either zone. **A control's
+  zone is where it is DRAWN, not what it does**: the shelf search's own clear button is
+  the same affordance as the toolbar's, and because it is drawn inside the pane it takes
+  the pane's answer — `tabindex="-1"`, with the card menu as its keyboard path and
+  `syncShelfTabStops` as the one exception, for which see the roadmap section below.
 - **A resize grip is a real tab stop wherever it appears, and it is chrome rather
   than content**: the dated axis's lead-resize grip (`renderLeadResize` in
   `interactions/timelineLeadResize.ts`) and one per property column in the tree's header
@@ -499,9 +499,8 @@ free of runtime code so imports stay cycle-free.
   once, so it is now a lint rule: `showAtMouseEvent` is banned everywhere except
   `interactions/menu.ts`, where the anchoring decision is made.
 - Once a control is focusable, disabling it in CSS is a lie — `pointer-events: none`
-  stops a mouse and nothing else. The collapse controls pause while the quick filter
-  overrides collapse state, and go disabled on a card projection that drew no
-  disclosure to collapse — both carry a real `disabled` flag, and `syncCollapseCtls`
+  stops a mouse and nothing else. The collapse controls go disabled on a card projection
+  that drew no disclosure to collapse — a real `disabled` flag, and `syncCollapseCtls`
   (`render/toolbar.ts`) is their only writer today, called after the content render
   beside `syncCountLabel` so it reads the frame that just drew rather than the one
   before it. Nothing enforces "only" mechanically — a lint rule for it was considered
@@ -537,22 +536,18 @@ free of runtime code so imports stay cycle-free.
 - **Two questions to ask of anything added to the toolbar.** *Does it change the row's
   width without a render behind it?* Then it calls `syncToolbarFit` itself —
   `renderTreeContent`'s own call at its end covers a full render and a content-only one
-  alike, and four paths call it separately because nothing routes through that render at
-  all: revealing or collapsing the filter, the busy indicator appearing or going, a pane
-  resize, and a theme or font change (`css-change`, because the ladder measures rendered
-  text and nothing else notices one changing). *Must it survive `barEl.empty()`?* Then it
-  lives on the toolbar element, not inside it — `data-pbl-fit` and `pbl-filter-open` both
-  do, while `pbl-filter-active` may stay on the box because `renderFilterBox` re-derives
-  it from the input's value. The two interact, which is the failure worth remembering:
-  state lost on a rebuild hid a control, and the focus mechanism then restored focus to
-  something invisible, silently.
+  alike, and three paths call it separately because nothing routes through that render at
+  all: the busy indicator appearing or going, a pane resize, and a theme or font change
+  (`css-change`, because the ladder measures rendered text and nothing else notices one
+  changing). *Must it survive `barEl.empty()`?* Then it lives on the toolbar element, not
+  inside it — `data-pbl-fit` does. The failure worth remembering, from the quick filter's
+  own two flags before it was withdrawn (2026-08-17): state lost on a rebuild hid a
+  control, and the focus mechanism then restored focus to something invisible, silently.
 - **The row never wraps, and what it sheds it does not withhold.** `syncToolbarFit`
   (`render/toolbarFit.ts`) measures the rendered row and writes a step as `data-pbl-fit`;
   `styles/toolbarFit.css` says what each step drops. It MEASURES where `columnFit` sums,
   because a control's width is its translated label and nothing owns that. Anything that
-  changes a control's own width re-runs it, not only a resize — revealing the collapsed
-  filter is a ~130px change with no render behind it, which is why the `:focus` width
-  growth the input used to have was deleted rather than accommodated. Every control a
+  changes a control's own width re-runs it, not only a resize. Every control a
   step drops is in the `⋯`, and each entry is disabled exactly when the button it
   duplicates is, read off that button's `disabled` property: `syncCollapseCtls` and
   `syncBusy` own that flag, and a condition re-derived in the menu would be a second
@@ -567,21 +562,23 @@ free of runtime code so imports stay cycle-free.
 - The mode is `host.projection` — six of them now, two reached through the board scope picker rather than a toggle position of their own — backed by the
   view-state store (UI state, per saved view, per device) — never `settings` and never
   the `.base`: base settings are saved on the view, working position in localStorage.
-  **What a projection IS is meant to be asked, never compared**: `view/projection.ts`
-  holds `treeShaped`, `hidesCompleted`, `filterScopeFor`, `projectionPopulation`,
-  `projectionMember`, `rowVocabulary` and `offerableTypes`, so that "tree-shaped" is one
-  question asked in one place rather than six equality checks scattered beside it.
+  **What a projection IS is meant to be asked, never compared**: every question of the
+  form "what does this projection do" belongs in `view/projection.ts` — is it tree-shaped,
+  does it hide finished work, does it carry a rollup, which toolbar position is it under,
+  what is its population and its membership rule, which types may it offer, whose menus
+  list children — so each is one question asked in one place rather than a handful of
+  equality checks scattered beside it. The module is the list and cannot go stale; what
+  belongs in it is the rule above.
   **Nothing enforces that mechanically** — unlike the SVG-`cls` and `showAtMouseEvent`
   bans above, there is no `no-restricted-syntax` rule forbidding a bare
-  `projection === 'tree'` outside this module, and the gap is not hypothetical: it is
-  already compared directly in `render/emptyStates.ts`, `render/projections.ts`,
-  `render/toolbarStatus.ts`, `render/toolbarControls.ts`, `render/toolbar.ts`,
-  `render/legend.ts`, `interactions/keyboard.ts`, `interactions/plan.ts`,
-  `interactions/menu.ts` and `backlogView.ts`. Some of those are legitimate dispatch —
+  `projection === 'tree'` outside this module, and the gap is not hypothetical — a grep
+  for `projection === '` under `src/view/` is what says how wide it currently is, and no
+  count is written here because one written here goes stale on the next file that compares.
+  Some of those hits are legitimate dispatch —
   `renderProjectionContent`'s if-chain in `render/projections.ts` is a dispatch on the
   projection by design — and some are the drift this module exists to stop; nothing here
-  tells them apart yet (see
-  [[The projection predicate has no lint rule behind it]]). Not routing through the
+  tells them apart yet, and [[The projection predicate has no lint rule behind it]] is
+  where sorting them is owed. Not routing through the
   module has a real cost, which is what makes it worth using rather than only naming: a
   projection added beside `'tree'` rather than as one, wherever a comparison bypasses the
   module, fails silently and differently — no column fitting, no refit on resize, the fit
@@ -594,9 +591,12 @@ free of runtime code so imports stay cycle-free.
   than by a predicate — `PROJECTION_MODE` is a `Record<Projection, ProjectionMode | null>`,
   so a projection mapped to a constant `readEntry` would refuse cannot compile.
   `setProjection` re-renders itself, because no config was set and no Bases refresh is
-  coming, and it recomputes the filter index on the way — no gate anywhere would have
-  caught THAT omission, because an index is correct when built and wrong when the thing it
-  was built FOR changes underneath it. The roadmap-axis pick (`setAxisPick`) follows the
+  coming; `setBoardScope` beside it does the same, and the two carry the rule that
+  outlived what taught it. They used to rebuild the quick filter's match index on the way,
+  and no gate anywhere would have caught its omission — an index is correct when built and
+  wrong when the thing it was built FOR changes underneath it. Nothing derived hangs off
+  either method today, so **anything cached against the population has to join them by
+  hand**. The roadmap-axis pick (`setAxisPick`) follows the
   same re-render rule. **The focus level is that rule with one extra consequence**: it is
   stored the same way
   (`setFocusLevel`), but it re-roots the MODEL rather than only the render, so it
@@ -623,8 +623,7 @@ free of runtime code so imports stay cycle-free.
   being a view option when it moved, since a value that is working position on the device
   cannot also be configuration on the view without a stored override beside a shared
   default. ADR 0011 records what that costs.
-- **Membership is asked once, in `rowHidden`**, beside the quick filter and the completed
-  toggle. That placement is what keeps a second projection small: the renderer, the
+- **Membership is asked once, in `rowHidden`**, beside the completed toggle. That placement is what keeps a second projection small: the renderer, the
   keyboard's move targets, the board's cards, the roadmap's rows and every count measured
   over the same walk consult that one predicate already, so they inherit the exclusion
   rather than each remembering it. It is NOT how a projection finds its ROOTS — hiding a
@@ -666,17 +665,18 @@ free of runtime code so imports stay cycle-free.
   once. The two terms beside `done` ask different questions and are deliberately measured
   DIFFERENTLY (`domain/board.ts`) — every review finding against this default was one of
   them measured the other's way.
-  `openWork` asks whether anything here is unfinished, over the POPULATION with the quick
-  filter lifted, so a search that hid every open card cannot make a stage look finished and
-  fold work the reader was holding.
+  `openWork` asks whether anything here is unfinished, of the candidates through the same
+  `visible` that builds `cards` — nothing wider. It read a LIFTED population until the
+  quick filter went (2026-08-17) and took the field behind that reading with it, and
+  nothing was lost by the narrowing: a card `visible` drops for the completed toggle is
+  `subtreeDone`, so every descendant is done and it could never have set this term anyway.
   `held` asks whether the stage holds anything at all, and is NOT population-based: it is
-  counted through `owned`, which carries neither the filter nor the completed-items toggle.
+  counted through `owned`, which carries no hiding at all.
   A count cannot serve — the toggle lives in the population predicate, so with finished work
   hidden a done column FULL of finished work reports zero and reads as empty, refusing the
   fold in the one configuration the feature exists for. The term is needed all the same,
   because settling is permanent: a default taken while the column holds NOTHING — a board
-  drawn before its results arrive, a filter narrowed to nothing — shut Done for good and
-  handed the work back folded. `collapseNewParents` states that hazard for an unloaded
+  drawn before its results arrive — shut Done for good and handed the work back folded. `collapseNewParents` states that hazard for an unloaded
   model; a default settled lazily at the render meets it a second time.
   `openWork` is the
   one derived quantity a CONTEXT card contributes to, and only through its rollup: under a
@@ -688,8 +688,7 @@ free of runtime code so imports stay cycle-free.
   `collapseNewParents`' rule reached lazily — a column does not exist in the model, so the
   render is the first moment there is anything to settle.
   The disclosure itself is `renderChevron` on both surfaces (`renderColumnFold`, exported
-  from `render/board.ts`), so the filter override, the real `disabled` flag and the focus
-  report come with it. **Its `aria-expanded` is not what SAYS the fold, though**, and the
+  from `render/board.ts`), so the real `disabled` flag and the focus report come with it. **Its `aria-expanded` is not what SAYS the fold, though**, and the
   reason is the same one that makes the disclosure a `tabindex="-1"` button: an accessible
   name overrides the children it is set on, so a reader arriving at the column stop by
   `aria-activedescendant` hears `columnLabel` and no button at all. The word is therefore
@@ -703,10 +702,10 @@ free of runtime code so imports stay cycle-free.
   **Two surfaces over one action have to be AVAILABLE at the same times, and that is a
   second question from agreeing about the state.** These two shared a builder and still
   came apart on it TWICE, which is why it is written as a rule rather than as two fixes.
-  Once on the quick filter: `renderChevron` disables itself while one runs, the menu entry
-  did not, and since the filter override makes `columnCollapsed` answer false, a folded
-  column offered an enabled Collapse that wrote a fold nothing on screen could show. Once
-  on the empty no-state strip: the header draws it no disclosure, and the menu went on
+  Once on the quick filter, since withdrawn: `renderChevron` disabled itself while one ran
+  and the menu entry did not, and because the filter override made `columnCollapsed` answer
+  false, a folded column offered an enabled Collapse that wrote a fold nothing on screen
+  could show. Once on the empty no-state strip: the header draws it no disclosure, and the menu went on
   offering one, so a reader could fold a 44px box that was already a 44px box and shut out
   the first stateless card to arrive. Both found by review (Codex, PR #140).
   What the second fix does that the first did not is remove the chance of a third: the
@@ -747,62 +746,39 @@ free of runtime code so imports stay cycle-free.
   the refusal has to hold where the drag could not reach. The roadmap block beside it
   asks the same three questions. Column counts are result cards only; a context card is
   placement, not population.
-- A filtered column header says "3 of 12" (`BoardColumn.fullCount`), and a card kept
-  hiding a match below it names those matches on its face — whether or not the card
-  itself matched, since a match under a matching card is a second result and one card
-  cannot stand for two — `hiddenMatches` walks its
-  subtree, stopping at two things: anything already rendered, so one match is never
-  announced by two cards, and any row this projection does not DRAW, so a card claims
-  only what the screen puts a line to. The second is a predicate the CALLER supplies —
-  `undisclosedMatches` in `childrenList.ts` passes `!host.isRowHidden`, since
-  `domain/board.ts` is pure and can never ask a host — and because both consumers (the
-  face's links, `addMatchSection`'s menu entries) route through that one function, one
-  guard answers for both. **It is deliberately not enforced in the match SET**, and that
-  asymmetry is the finding rather than an accident: a `PBI` under a `Test case` is a plan
-  member and a real match — that is what promotes it to a root of the tree, and the same
-  property keeps a `Deliverable` nested under a test on its own board — so "a member
-  below a non-member is not a match" deletes a card that is on screen
-  (`test/view/testCatalog.test.ts` pins that direction). Only the claim that such a row
-  is *beneath this card* was wrong. What the check reaches is one board and one walk:
-  `test/view/boardFilter.test.ts` drives the face and the menu over a Deliverable whose
-  only deep match hangs behind a `Test case`, against the control with a `Feature` in the
-  same place; nothing compares this walk to the rollup's and the disclosure's. Those two
-  are not one rule either — the disclosure's LIST asks `isRowHidden`, the very predicate
-  passed here, while the rollup asks `inCatalog` on both ends, which is narrower. All three
-  stop at the LADDER edge and that is the whole of what they agree on.
-  **The disclosure's own tooltip is a FOURTH quantity on that card and takes a fourth
-  predicate**: `omitted` (`render/cardChildren.ts`) is the children this projection would
-  draw minus the ones it is drawing, so its denominator is `projectionMember` and never
-  `isRowHidden` — which conflates membership with the completed toggle and the quick
-  filter, correct for the list and wrong for what it is measured against. Subtracting the
-  list from raw `item.children` said "1 more is hidden by the current view" about a
-  `Test case`, a row the plan does not have rather than one it is holding back. What the
-  note is FOR survives that: with completed work hidden the same card still reports its
-  done child, which `test/view/cardChildren.test.ts` asserts in the one fixture as the
-  control beside the defect.
-  It matters most under focus, where the only cards are the focus level's: a
-  match three levels down would otherwise be found, counted in the rollup, and
-  impossible to get to. The links are `tabindex="-1"` buttons like every other per-row
-  control, so the card MENU carries the same matches — that is their keyboard path, the
-  same answer the tree gives for the add button and the state chip, and without it the
-  links would be pointer-only and the feature would fail at its own purpose.
-  **A focus is what makes the card's own CHILD list the same question**, and it takes the
-  same `carded` subtraction: `unreachableChildren` (`childrenList.ts`) is the listed
-  children with no card of their own, and it is what `addChildrenSection`'s
-  `Open child "…"` entries are built from. Unfocused it is empty on both card
-  projections, because every result is a card — which is why deleting those entries
-  outright looked free and was not (2026-08-14, corrected the next day). `cardedPaths` in
-  `interactions/menu.ts` is the one place a projection is asked which cards it drew: the
-  board from its columns, the roadmap from the snapshot its own keyboard walk is built
-  from. Note that only the BOARD draws matches at all — see
-  [[The roadmap names no matches under a card]].
-  **The two lists must not both claim one note**, and the check is a COUNT rather than a
-  name: exactly one menu entry ends in a matched child's title. A `matchesUnderCard` — the
-  match walk without its `listedChildren` subtraction — existed for one day, for the day
-  the menu named no children, and offered every matched uncarded child as both
-  `Open match` and `Open child`. Which section owns such a child has moved three times
-  now, so assert the count and let the owner move. They need
-  no guard of their own against the card beneath — see the row-activation filter below.
+- **A column header says one number**, and that is the whole of it since 2026-08-17: the
+  paired "3 of 12" reading went with the quick filter
+  ([[Remove the quick filter, now that Bases has its own search]]), along with the match
+  walk that named a match a card was hiding, its links on the card's face and the
+  `Open match "…"` entries that were their keyboard path. Three rules those left behind are
+  still live and still worth asking of anything that measures a card's subtree, because each
+  was a separate finding:
+  **The three subtree quantities on a card are not one question.** The disclosure's LIST asks
+  `isRowHidden`; the ROLLUP asks `inCatalog` on both ends, which is narrower; and the
+  disclosure's own TOOLTIP takes a third predicate — `omitted` (`render/cardChildren.ts`) is
+  the children this projection would draw minus the ones it is drawing, so its denominator is
+  `projectionMember` and never `isRowHidden`, which conflates membership with the completed
+  toggle. Subtracting the list from raw `item.children` said "1 more is hidden by the current
+  view" about a `Test case` — a row the plan does not have rather than one it is holding
+  back. What the note is FOR survives that: with completed work hidden the same card still
+  reports its done child, which `test/view/cardChildren.test.ts` asserts in the one fixture
+  as the control beside the defect. All three stop at the LADDER edge and that is the whole
+  of what they agree on.
+  **A member below a non-member is still a member.** A `PBI` under a `Test case` is a plan
+  member — that is what promotes it to a root of the tree, and the same property keeps a
+  `Deliverable` nested under a test on its own board — so a rule of the form "a member below
+  a non-member does not count" deletes a card that is on screen
+  (`test/view/testCatalog.test.ts` pins that direction). Fix a disagreement about *beneath*
+  in the walk, never in the membership test.
+  **A focus is what makes the card's own CHILD list a real question**, and it takes a
+  `carded` subtraction: `unreachableChildren` (`childrenList.ts`) is the listed children with
+  no card of their own, and it is what `addChildrenSection`'s `Open child "…"` entries are
+  built from. Unfocused it is empty on both card projections, because every result is a card
+  — which is why deleting those entries outright looked free and was not (2026-08-14,
+  corrected the next day). `cardedPaths` is the one place a projection is asked which cards
+  it drew: the board from its columns, the roadmap from the register its render filled. The
+  horizon board offers no such entries at all
+  ([[Drop the children section from the horizon board's card menu]]).
 - The board is one tab stop and its shortcuts are invisible, so it carries hidden
   instructions (`.pbl-sr-only`, attached with `aria-describedby`). The id is minted by
   `uniqueElementId` because that attribute resolves across the whole document and two
@@ -926,7 +902,8 @@ free of runtime code so imports stay cycle-free.
   typed into: it keeps the half of that rule that is about Tab and pays the same ARIA
   deviation, with a prompt in the card menu as its keyboard path. Its state is session
   state — `shelfSearch` is a plain field on `ViewStateController`, the one shelf pick the
-  view-state store never sees, for `FilterState`'s reason — and it narrows through
+  view-state store never sees, because persisting it would open a saved view onto a shelf
+  silently narrowed by a search nobody remembers typing — and it narrows through
   `searchShelf` BEFORE `organizeShelf`, so the type picker's list is never narrowed by a
   search. **The type picker reopens itself after a pick** (`showTypeMenu`), which is
   what "stays open" can mean against an Obsidian `Menu`: the pick rebuilt the pane
@@ -964,41 +941,31 @@ free of runtime code so imports stay cycle-free.
   cannot look different per projection. Timeline rows reuse the card SHELL (selection,
   context styling) with a row layout — `.pbl-card.pbl-timeline-row` overrides the
   card's column geometry in CSS.
-- **The roadmap names its hidden matches from a REGISTER it reads, never a model it
-  predicts.** Every surface that puts an item on screen fills `RowContext.placed` as it
-  draws — the item, the element its match links belong on, and whether that surface lists
-  its children — and `nameMatches` (`render/roadmap.ts`) runs `renderCardMatches` over it
-  once they all have. The board can afford the inline call the roadmap cannot, and the
-  difference is a fact about the models rather than a preference: a `BoardModel` is
-  already narrowed to what draws, so `cardPaths` answers "already on screen", while
-  `RoadmapModel.shelf` holds every shelved item whether `host.shelfCollapsed` shows them
-  or not and `organizeShelf` drops whole groups from an expanded shelf through
-  `host.shelfHiddenTypes`. Neither of those is overridden by an active filter; a lane
-  fold IS (`isLaneCollapsed` is `!filter.active && …`), so two states that look alike
-  answer the same question oppositely and only the render knows which happened.
-  `listsChildren` travels with the mount for the same reason it cannot be read off
-  `cardKids`: a timeline row joins that set for its FOLD chevron, which lists nothing, so
-  a matching direct child IS named there while a bucket card's disclosure already shows
-  it. That is why `undisclosedMatches` takes the already-listed set from its caller —
-  only the surface knows what it shows.
-  **`face` is the mount's second answer and a separate question from `listsChildren`.** A
-  CARD names each match as a link; a ROW — the timeline's and the lane context's — takes
-  over the lead's own count slot, `.pbl-bar-count`, showing the match count while the
-  filter runs and the rollup when it does not. **Never both, and that is the rule rather
-  than the arrangement: a sticky lead is a fixed-width column whose only shrinkable item is
-  the row's title, so anything ADDED to it is taken from the row's name.** Two additions
-  were built and measured before that was understood — match titles in the lead left one
-  character of the row's own name at the default width (`O… 4/17 ⌕O…`), and a `flex: 0 0
-  auto` chip beside the rollup still cost 34px there and, unable to yield, hung 28.95px
-  over the day track at the 160px floor. The substitution costs nothing: the same row's
-  title measures identically filtered and unfiltered. `renderMatchCount` swaps the element
-  in the slot's own PLACE (`replaceWith`), because `margin-inline-start: auto` on that slot
-  anchors the end of the lead and `renderRowFacts` may draw a dependency flag after it; the
-  rollup stays ANNOUNCED throughout on the row's `.pbl-sr-only` span, which costs no width.
-  Every number here came from `npm run harness` in Chromium and from nothing the suite can
-  see; what the suite holds is the substitution itself (`test/view/roadmapMatches.test.ts`,
-  which jsdom CAN see) and the declarations that let the chip yield
-  (`test/view/timelineBoxing.test.ts`).
+- **Every surface that puts an item on screen fills `RowContext.placed` as it draws** —
+  its PATH, and nothing else — and the register is what `cardedPaths` reads to
+  answer "does this child already have a card of its own", which is what keeps the card
+  menu's `Open child "…"` from naming something the reader is already looking at. The board
+  can ask its own model instead (`cardPaths`): a `BoardModel` is already narrowed to what
+  draws, while `RoadmapModel.shelf` holds every shelved item whether `host.shelfCollapsed`
+  shows them or not, and `organizeShelf` drops whole groups from an expanded shelf through
+  `host.shelfHiddenTypes` — so only the render knows what the roadmap actually drew.
+  It was a MAP from that path to the item and the element it was drawn on until 2026-08-17,
+  when the last reader of either went: a snapshot outlives its frame on the host, so it was
+  retaining a detached subtree per drawn row for a value only `.keys()` was asked for. Two
+  of the fields on it had gone the same week — `listsChildren` and `face`, which said
+  whether a surface listed its children and how it could name a quick-filter match found
+  beneath it (a card as links, a row as a count in `.pbl-bar-count`, a marker's diamond not
+  at all). All of that went with the filter
+  ([[Remove the quick filter, now that Bases has its own search]]), and one measured fact
+  from it is worth keeping because it constrains anything ever added to a lead cell again:
+  **a sticky lead is a fixed-width column whose only shrinkable item is the row's title, so
+  anything ADDED to it is taken from the row's name.** Match titles there left one character
+  of a row's own name at the default width, and a `flex: 0 0 auto` chip beside the rollup
+  cost 34px and, unable to yield, hung 28.95px over the day track at the 160px floor. Both
+  measured in Chromium through `npm run harness`. **Nothing pins the yielding**: the chip
+  went with the filter, and `test/view/timelineBoxing.test.ts` names the lead only for its
+  border-box sizing, its tint and the context row's dimming — so the measurements above are
+  the whole of what a chip added here has to answer to.
   **A marker has no row here at all since 2026-08-16**, so none of this reaches one.
   `renderRowFacts` used to give a marker's row an explicit `aria-label` that REPLACED the
   content-derived name and took the progress span with it, folding `progressNote` in
@@ -1011,16 +978,15 @@ free of runtime code so imports stay cycle-free.
   name, so a label there may be announced by nobody. A mark with no row has nowhere else for
   the words to be, which is what made breaking that rule a LOSS rather than a lesser
   announcement.
-  **The diamond still REGISTERS in `ctx.placed`, with `face: 'none'`**, and the two are
-  different questions: registering says the item is ON SCREEN, which is what `carded` is
-  read from, while `face` says what can be WRITTEN on the mount. Drawn and unregistered, a
-  marker made the bar above it count a match the reader was looking at, and offered an
-  `Open match` for it in that bar's menu. So a surface that draws an item registers it,
-  whatever it can afford to show — see [[Milestones in one row on the dated axis]] 3d.
-  `PlacedMount` itself is declared in `host.ts` beside `DrawnColors` and for that type's
-  reason: a `render/` type imported back into `host.ts` turns the
-  `columns.ts` ↔ `menu.ts` ↔ `host.ts` web into sixteen cycles `npm run analyze` refuses
-  — measured, after writing it the other way first.
+  **The diamond still REGISTERS in `ctx.placed`**, and being ON SCREEN is a different
+  question from being reachable or showable: the mark draws no card body, carries no
+  `option` role and is deliberately absent from `drawnCards`, and it registers all the
+  same. Drawn and unregistered, it is a child with no card of its own as far as
+  `menuChildren` can tell, so the bar it hangs under offers `Open child "…"` for the
+  diamond in the row over its head — see [[Milestones in one row on the dated axis]] 3d,
+  and `test/view/milestonesRow.test.ts` for the check, which needs a second, non-marker
+  child to open the section at all (`datedEntries` and each band both split the markers
+  out before `timelineRows`, so no chevron is ever decided by one).
 - **A timeline row's chevron folds ROWS, and a card's disclosure lists children on its
   face; they are two bits, two host method pairs, and one register (2026-08-09).** A row
   goes through `isCollapsed`/`setCollapsed`, and `collapseKey` is the ONE place that
@@ -1036,7 +1002,13 @@ free of runtime code so imports stay cycle-free.
   in `interactions/menu.ts`, which serves a card's Show/Hide children and a bar row's from
   one function and tells them apart by asking `host.roadmap`'s own `bars` whether the path
   it is menuing is a drawn bar — every other caller is wired to one pair and never asks.
-  The quick filter still overrides whichever is being asked. The register is
+  **The HORIZON board's menus carry none of it** (asked for directly, 2026-08-17):
+  `menusListChildren` (`view/projection.ts`) returns the whole section unbuilt, and that
+  return is the ONLY gate — `menuChildren` carries no copy of it. It carried one until the
+  same day, for a reason the quick filter's removal had already deleted, and the copy was
+  unreachable behind this line for as long as it outlived it. What the exemption costs is
+  in [[Drop the children section from the horizon board's card menu]].
+  The register is
   `RowContext.cardKids` — "what drew a disclosure this pass", never "which projection is
   this" — which is what makes the toolbar's bulk controls and the row menu's section serve
   both without either asking what it is looking at.
@@ -1088,9 +1060,11 @@ free of runtime code so imports stay cycle-free.
 - Roles are earned, not assumed: the pane is a `listbox` only while cards render
   (snapshot decided after the render pass), a labelled `region` otherwise — the
   board's no-workflow reasoning, applied to an empty frame. Keyboard is a linear walk
-  of `roadmap.cards` (axis order, then shelf, then context) with both arrow pairs,
-  Home/End, Enter to open, and the shared chrome keys; the 2D treegrid semantics come
-  with the scheduling feature.
+  of `roadmap.cards` in the order the frame renders — the shelf LEADS on the horizon
+  axis (2026-08-17, so the untriaged source sits above the columns it feeds; the grid
+  axes stay axis-then-shelf), then context — with both arrow pairs, Home/End, Enter to
+  open, and the shared chrome keys; the 2D treegrid semantics come with the scheduling
+  feature.
 - `todayCivil()` is computed in the view and INJECTED into the domain: nothing under
   `domain/` reads a clock, which is what keeps every window and geometry test able to
   say which day today is. The timeline centres on today only when the drawn content

@@ -68,7 +68,7 @@ export function getViewOptions(config: BasesViewConfig): BasesAllOptions[] {
 		hierarchyGroup(),
 		progressGroup(settings),
 		deliverablesGroup(),
-		iterationsGroup(),
+		iterationsGroup(settings),
 		testManagementGroup(),
 		roadmapGroup(),
 		riskGroup(),
@@ -270,8 +270,17 @@ function deliverablesGroup(): BasesAllOptions {
  * Everything unnamed is In Progress, so an unconfigured pair is a board that says nothing
  * rather than one that refuses to draw — which is why neither list ships a default: a
  * guessed Open column would sort a vault's cards by a vocabulary nobody chose.
+ *
+ * **It reads the config for one reason**, the same one `progressGroup` does: an option
+ * whose whole subject is off screen is not offered. `iterationBars` chooses between two
+ * readings of an iteration on the grid, so with `iterationsOnTimeline` off there is no
+ * reading to choose — the group withholds it rather than showing a toggle nothing obeys.
+ * Withheld, not reset: a `.base` that already carries the key keeps it, and
+ * `resolveSettings` reads it back untouched, so turning the timeline on restores the bar
+ * reading the reader last picked. Absent from the MENU and still a value, which is the
+ * `.base`'s own rule — nothing here writes.
  */
-function iterationsGroup(): BasesAllOptions {
+function iterationsGroup(settings: BacklogSettings): BasesAllOptions {
 	return {
 		type: 'group',
 		displayName: 'Iterations',
@@ -301,6 +310,22 @@ function iterationsGroup(): BasesAllOptions {
 				default: String(DEFAULT_ITERATION_DAYS),
 				placeholder: String(DEFAULT_ITERATION_DAYS),
 			},
+			{
+				type: 'toggle',
+				key: 'iterationsOnTimeline',
+				displayName: 'Show iterations on the roadmap timeline',
+				default: true,
+			},
+			...(settings.iterationsOnTimeline
+				? [
+						{
+							type: 'toggle' as const,
+							key: 'iterationBars',
+							displayName: 'Draw iterations as bars',
+							default: false,
+						},
+					]
+				: []),
 		],
 	};
 }

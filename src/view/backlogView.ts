@@ -1,6 +1,5 @@
 import { QueryController } from 'obsidian';
 import { CARD_SCOPE, TIMELINE_SCOPE, ViewState } from './viewState';
-import { FilterState } from './filterState';
 import {
 	BacklogViewHost,
 	BoardSnapshot,
@@ -28,12 +27,11 @@ import { ItemWrite, ScheduleGesture, SchedulePlan } from '../domain/writePlan';
 import { forgetBacklogView, rememberBacklogView } from './registry';
 import { renderPass } from './renderPass';
 import { ResizePolicy } from './resize';
-import { filterScopeFor } from './projection';
 import { rowHidden, visibilityRule } from './rowVisibility';
 import { SelectionController } from './selection';
 import { ViewStateController } from './viewStateController';
 import { ViewStateSurface } from './viewStateSurface';
-import { detectIgnoredGrouping, renderToolbar, revealFilter, syncBusy, syncFilterUi } from './render/toolbar';
+import { detectIgnoredGrouping, renderToolbar, syncBusy } from './render/toolbar';
 import { resolveColumns, rowContext, RowContext } from './render/columns';
 import { renderLoadingState } from './render/emptyStates';
 import { syncToolbarFit } from './render/toolbarFit';
@@ -92,7 +90,6 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 
 	settings: BacklogSettings = defaultSettings();
 	model: BacklogModel | null = null;
-	private readonly filter = new FilterState();
 	groupingIgnored = false;
 	private readonly state: ViewState;
 	/** The write path: validation, serialization, progress and the undo slot. */
@@ -167,7 +164,6 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 			render: () => this.render(),
 			renderTreeContent: () => this.renderTreeContent(),
 			refreshFromData: () => this.refreshFromData(),
-			recomputeFilter: () => this.filter.recompute(this.model, this.projection, this.effectiveScope),
 		});
 		this.dnd = new DragDropController(this, {
 			viewEl: this.viewEl,
@@ -246,7 +242,6 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 		// against the collapsed-by-default rule every other projection keeps. The same
 		// split `collapsiblePopulation` states for the buttons, at the other end of it.
 		this.state.collapseNewParents([...this.model.items, ...this.model.deliverableResults, ...this.model.catalog.items]);
-		this.filter.recompute(this.model, this.projection, this.effectiveScope);
 		this.render();
 	}
 
@@ -294,36 +289,14 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 		return adopting;
 	}
 
-	// ------------------------------------------------------------- quick filter
-
-	get filterText(): string {
-		return this.filter.text;
-	}
-
-	setFilter(text: string): void {
-		this.filter.text = text;
-		this.filter.recompute(this.model, this.projection, this.effectiveScope);
-		this.renderTreeContent();
-	}
-
-	focusFilter(): void {
-		revealFilter(this.toolbarEl);
-	}
-
+	/**
+	 * The axis is part of what "this projection draws" MEANS on the roadmap — main's
+	 * iteration-admission feature (2026-08-17) is what threads it through, since an
+	 * `Iteration` is a row of the grid axes and of nothing else.
+	 */
 	isRowHidden(item: BacklogItem): boolean {
-		return rowHidden(item, visibilityRule(this.filter, this.settings, this.projection, true, this.effectiveScope));
-	}
-
-	isRowHiddenUnfiltered(item: BacklogItem): boolean {
-		return rowHidden(item, visibilityRule(this.filter, this.settings, this.projection, false, this.effectiveScope));
-	}
-
-	isFilterMatch(item: BacklogItem): boolean {
-		return this.filter.matched(item.file.path, filterScopeFor(this.projection));
-	}
-
-	isFiltering(): boolean {
-		return this.filter.active;
+		const axis = this.projection === 'roadmap' ? activeAxis(this.settings, this.axisPick) : null;
+		return rowHidden(item, visibilityRule(this.settings, this.projection, { scope: this.effectiveScope, axis }));
 	}
 
 	/**
@@ -360,9 +333,9 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 	 * Resolved here rather than at each gate, because the renderer alone falling back is
 	 * exactly the split this feature's own plan warned about: with the content drawing the
 	 * product board and every other gate still answering `'iteration'`, the count included
-	 * Deliverables, the focus control stayed inert, the filter used the whole-tree index,
-	 * and `offerableTypes` offered a `Deliverable` that vanished from the board that
-	 * created it. One resolution, upstream of all of them. Found by review (Codex, PR #154).
+	 * Deliverables, the focus control stayed inert, and `offerableTypes` offered a
+	 * `Deliverable` that vanished from the board that created it. One resolution, upstream
+	 * of all of them. Found by review (Codex, PR #154).
 	 */
 	override get projection(): Projection {
 		return super.projection === 'iteration' && this.effectiveScope === null ? 'board' : super.projection;
@@ -371,8 +344,7 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 	// ----------------------------------------------------------- collapse state
 
 	isCollapsed(path: string): boolean {
-		// While filtering, everything on a path to a match renders expanded.
-		return !this.filter.active && this.state.isCollapsed(this.collapseKey(path));
+		return this.state.isCollapsed(this.collapseKey(path));
 	}
 
 	setCollapsed(path: string, collapsed: boolean): boolean {
@@ -402,9 +374,7 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 	}
 
 	isCardCollapsed(path: string): boolean {
-		// While filtering, everything on a path to a match renders expanded — the same
-		// override `isCollapsed` gives a row, asked of the card's own scope.
-		return !this.filter.active && this.state.isCollapsed(CARD_SCOPE + path);
+		return this.state.isCollapsed(CARD_SCOPE + path);
 	}
 
 	setCardCollapsed(path: string, collapsed: boolean): boolean {
@@ -481,9 +451,8 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 		this.renderTreeContent();
 	}
 
-	/** Re-render only the content pane — used by the filter so the toolbar input keeps focus. */
+	/** Re-render only the content pane, leaving the toolbar row standing. */
 	private renderTreeContent(): void {
-		syncFilterUi(this, this.toolbarEl);
 		if (!this.model) return;
 		const result = renderPass(
 			this,

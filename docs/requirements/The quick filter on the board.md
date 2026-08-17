@@ -2,17 +2,10 @@
 type: PBI
 parent: "[[Moving cards]]"
 order: 30
-status: Done
+status: Dropped
 priority: P3
 created: 2026-08-01
-closed: 2026-08-02
-files:
-  - src/view/filterState.ts
-  - src/view/interactions/menu.ts
-  - src/view/backlogView.ts
-  - src/domain/board.ts
-  - src/view/render/board.ts
-  - test/view/boardFilter.test.ts
+closed: 2026-08-17
 started: ""
 finished: ""
 horizon: ""
@@ -23,6 +16,10 @@ assignee: ""
 ---
 
 # The quick filter on the board
+
+**Withdrawn on 2026-08-17 with the filter itself — see [[Quick filter]] for why.**
+Everything below is what it WAS; only this paragraph and `## Where it lives` are new, and
+the shape is unchanged so the register can still read it.
 
 **As** someone looking for one item on a full board, **I want** typing to narrow the
 cards without rearranging the workflow, **so that** what I find is where it actually is.
@@ -92,34 +89,13 @@ are its contents.
 
 ## Where it lives
 
-**Built.** The filter's session state and match-path contract moved out of
-`src/view/backlogView.ts` into `src/view/filterState.ts` when the view hit its
-400-line cap — the same shape `viewState.ts` already has, and the extraction the
-cap exists to force. It keeps TWO sets: `visible` (a match plus its ancestors and its
-whole subtree) decides what renders, and `matches` (the matches themselves) answers
-which of the things under a card the search actually found. One set cannot do both —
-everything in a match's subtree is visible and almost none of it matched.
+**Nowhere — the board's half went with the filter**, and a living note may only cite source
+that exists, so it no longer names the modules it used to. The removal is recorded path by
+path in [[Remove the quick filter, now that Bases has its own search]].
 
-Counts: `BoardColumn.fullCount` in `src/domain/board.ts` is filled from a second
-predicate the view passes in, and `isRowHiddenUnfiltered` in `backlogView.ts` supplies
-it by lifting the filter alone. Lifting the filter is NOT the same as having no
-filter — a running filter suspends the completed-items toggle, and the population has
-to keep that suspension, or a matched-but-otherwise-hidden card reads as "1 of 0":
-each number defensible on its own, the pair nonsense. Both predicates are the one
-`hidden` method with a flag, so the narrowed board and the population it is measured
-against cannot disagree about what is in a column.
-
-Reachability: `hiddenMatches` in `src/domain/board.ts` walks a card's subtree for
-matches that have no card of their own, stopping at anything already rendered so one
-match is never named by two cards; `src/view/render/board.ts` renders them as
-`tabindex="-1"` buttons, the same rule the tree's per-row controls follow, and
-`addMatchSection` in `src/view/interactions/menu.ts` puts the same matches in the card
-menu — the keyboard path those controls always take here, since the board is one tab
-stop. Each link stops its click and its `auxclick` from reaching the card beneath: a
-middle click never fires `click`, so stopping the primary one alone still opened the
-parent in a new tab. It matters most under focus,
-where the only cards are the focus level's and a match three levels down would
-otherwise be found, counted in the rollup, and impossible to get to.
-
-Driven by `test/view/boardFilter.test.ts`, split out of `test/view/boardMoves.test.ts`
-once the filter became a subject of its own.
+The rule this PBI established is the part that OUTLIVES it, and it is worth keeping in view:
+**a column is a stage of the workflow, not a search result.** It is why the done column's
+fold default still measures its open work over the column's population rather than off the
+cards on screen, and why what a stage HOLDS is counted through a predicate that carries
+neither the completed toggle nor anything else that hides — see [[Done columns stay lean]],
+which owns those terms now.

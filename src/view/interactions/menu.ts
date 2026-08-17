@@ -28,8 +28,8 @@ import { addShelfSearchItems, addShelfSortItems, addShelfTypeItems } from './she
 import { addHorizonItems, canSchedule, carriesDates, promptSchedule, unschedule } from './plan';
 import { addTagItems, tagsColumnVisible } from './tags';
 import { addDependencyItems, dependenciesAvailable } from './dependencies';
-import { matchesFor, menuChildren, cardedPaths } from '../childrenList';
-import { offerableTypes, retypeChoices, rowVocabulary, treeShaped } from '../projection';
+import { menuChildren, cardedPaths } from '../childrenList';
+import { menusListChildren, offerableTypes, retypeChoices, rowVocabulary, treeShaped } from '../projection';
 
 /**
  * Whichever board-shaped projection is active, or null off both — `host.board` is the
@@ -47,16 +47,18 @@ function isCurrentType(item: BacklogItem, type: string): boolean {
 
 /**
  * The row menu for a click on the row — a `contextmenu` from a pointer, or a plain click
- * on the one BUTTON that opens it this way (the match count chip; the state chip's own
- * menu is `showStateMenu`/`chipMenu`, a separate path this function never sees).
+ * on a BUTTON that opens it this way (the state chip's own menu is
+ * `showStateMenu`/`chipMenu`, a separate path this function never sees).
  *
- * Through `showMenuForClick` for that second kind, and it is the rule rather than this
- * caller's precaution: a button's Enter or Space synthesizes a click at (0, 0), which
- * `showAtMouseEvent` reads as a position and honours, dropping the menu in the viewport
- * corner. A real pointer never reports that, so the pointer path is unchanged. It shipped
- * that way on the match count chip, whose menu is the ONLY route to the matches it counts
- * (`renderMatchCount`, `render/board.ts`) — so the corner was the whole of that
- * affordance's keyboard path.
+ * Through `showMenuForClick` rather than `showAtMouseEvent`, and it is the rule rather
+ * than this caller's precaution: a button's Enter or Space synthesizes a click at (0, 0),
+ * which `showAtMouseEvent` reads as a position and honours, dropping the menu in the
+ * viewport corner. A real pointer never reports that, so the pointer path is unchanged and
+ * the failure is a keyboard user's alone. It shipped that way once, on the board's match
+ * count chip — withdrawn with the quick filter on 2026-08-17 — whose menu was the ONLY
+ * route to the matches it counted, so the corner was the whole of that affordance's
+ * keyboard path. The lint ban on `showAtMouseEvent` outside this module is what makes the
+ * rule hold for the next such button rather than for the one that taught it.
  */
 export function showItemMenu(host: BacklogViewHost, evt: MouseEvent, item: BacklogItem, childTypes: string[]): void {
 	evt.preventDefault();
@@ -96,7 +98,6 @@ function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childTypes: str
 	// there is no rank to move within and no sibling to indent under.
 	if (treeShaped(host.projection)) addMoveSection(host, menu, item);
 	if (editable) addParentLinkSection(host, menu, item);
-	addMatchSection(host, menu, item);
 	addChildrenSection(host, menu, item);
 	addShelfSection(host, menu);
 	menu.addSeparator();
@@ -362,40 +363,6 @@ export const showAssigneeMenu = (host: BacklogViewHost, evt: MouseEvent, item: B
 export const showTagMenu = (host: BacklogViewHost, evt: MouseEvent, item: BacklogItem): void =>
 	chipMenu(host, evt, item, addTagItems);
 
-/**
- * The matches hiding under this card, as menu entries.
- *
- * The board is one tab stop by design, so the match links on a card face carry
- * `tabindex="-1"` — and the menu is their keyboard path, exactly as it is for the
- * tree's add button and state chip. Without it those links would be pointer-only, and
- * a match that only a mouse can reach is the very failure the card face exists to
- * prevent: found, counted in the rollup, and impossible to get to. Offered whether or
- * not the card itself matched, for the same reason the face names them: a match below
- * a matching card is a second result, and it has no card of its own to be reached by.
- *
- * `matchesFor` — the same walk the faces use, asked of whichever projection drew this
- * item and subtracting what THIS menu will itself list. That subtraction is
- * `menuChildren`, not `listedChildren`: the two came apart when the per-child entries
- * were narrowed to the unreachable ones, so a child the menu is not naming can still be
- * named as a match here, and one it is naming is named once. Both directions have been
- * broken here within two days — a walk without the subtraction offered a note twice, and
- * a subtraction of the wider set would drop a match silently. What each surface DRAWS
- * differs; what counts as saying a thing twice does not.
- */
-function addMatchSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
-	if (!host.isFiltering()) return;
-	const matches = matchesFor(host, item);
-	if (matches.length === 0) return;
-	menu.addSeparator();
-	for (const match of matches) {
-		menu.addItem((mi) =>
-			mi
-				.setTitle(`Open match "${match.title}"`)
-				.setIcon('search')
-				.onClick((evt) => host.openItem(match, evt)),
-		);
-	}
-}
 
 /**
  * Folding the children this card is showing, offered where a pointer is not available.
@@ -411,10 +378,12 @@ function addMatchSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): 
  * FOCUS. Unfocused, every result has a card of its own on both card projections and this
  * list is empty — which is the state the clutter was reported in. Focused, the cards are
  * the focus level's alone, and a child appears only as a `tabindex="-1"` entry on its
- * parent's face, so these entries are the whole keyboard path to it. `menuChildren` is
- * that narrowing plus this section's own gate, stated once in `childrenList.ts` so
- * `matchesFor` can subtract exactly what this loop adds; `cardedPaths` is what each
- * projection answers it with. (Codex, PR #137, pointing at the roadmap half of it.)
+ * parent's face, so these entries are the whole keyboard path to it. `menuChildren`
+ * (`childrenList.ts`) is that narrowing and nothing else — **the horizon board's gate is
+ * this function's own**, stated at the top of the body and nowhere else, so a second
+ * caller of `menuChildren` inherits the narrowing and must ask `menusListChildren` for
+ * itself. `cardedPaths` is what each projection answers the narrowing with. (Codex,
+ * PR #137, pointing at the roadmap half of it.)
  *
  * The gate is `cardChildrenShown`, filled by the render, and not the projection: a card
  * whose children have all hidden draws no disclosure and a dated-axis timeline row draws
@@ -432,28 +401,34 @@ function addMatchSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): 
  * A second opinion here would be exactly what let a card's toggle and this entry disagree.
  *
  * The toggle leads, because on the timeline it is the whole feature: that chevron hides
- * ROWS, and the entries below open notes rather than standing in for it. It is withheld
- * while the quick filter runs, exactly as the disclosure itself goes `disabled` there and
- * for the same reason — both `isCollapsed` and `isCardCollapsed` report false while it
- * runs, so the write would look inert and then take effect once the filter cleared.
+ * ROWS, and the entries below open notes rather than standing in for it.
+ *
+ * The HORIZON BOARD carries none of this (asked for directly, 2026-08-17): its menus
+ * name no children, so the whole section returns before the separator. **This return is
+ * the only gate.** `menuChildren` carried a second copy of it until 2026-08-17, for a
+ * reason 88e03e8 had already deleted — `matchesFor` subtracted that list from the match
+ * walk — and the copy was unreachable behind this line for as long as it outlived it.
+ * The two costs are recorded in the task note rather than smoothed over: on this board
+ * the face disclosure has no keyboard path, and under a focus an unmatched, uncarded
+ * child is reachable only from the other projections.
  */
 function addChildrenSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
+	// The axis comes off the last roadmap render, which is the only place it is written.
+	if (!menusListChildren(host.projection, host.roadmap?.roadmap.axis ?? null)) return;
 	if (!host.cardChildrenShown.has(item.file.path)) return;
 	const isBar = (host.roadmap?.roadmap.bars ?? []).some((bar) => bar.item.file.path === item.file.path);
 	menu.addSeparator();
 	const collapsed = isBar ? host.isCollapsed(item.file.path) : host.isCardCollapsed(item.file.path);
-	if (!host.isFiltering()) {
-		menu.addItem((mi) =>
-			mi
-				.setTitle(collapsed ? 'Show children' : 'Hide children')
-				.setIcon(collapsed ? 'chevron-right' : 'chevron-down')
-				.onClick(() => {
-					if (isBar) host.setCollapsed(item.file.path, !collapsed);
-					else host.setCardCollapsed(item.file.path, !collapsed);
-					host.render();
-				}),
-		);
-	}
+	menu.addItem((mi) =>
+		mi
+			.setTitle(collapsed ? 'Show children' : 'Hide children')
+			.setIcon(collapsed ? 'chevron-right' : 'chevron-down')
+			.onClick(() => {
+				if (isBar) host.setCollapsed(item.file.path, !collapsed);
+				else host.setCardCollapsed(item.file.path, !collapsed);
+				host.render();
+			}),
+	);
 	for (const child of menuChildren(host, item, cardedPaths(host))) {
 		menu.addItem((mi) =>
 			mi
@@ -749,7 +724,7 @@ function addScheduleItems(host: BacklogViewHost, menu: Menu, item: BacklogItem):
 			.onClick(() => promptSchedule(host, item)),
 	);
 	// Like Clear horizon: offered only while there is something to remove.
-	if (!carriesDates(item)) return;
+	if (!carriesDates(item, host.settings)) return;
 	menu.addItem((mi) =>
 		mi
 			.setTitle('Unschedule')

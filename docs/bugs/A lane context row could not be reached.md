@@ -47,6 +47,9 @@ Two call sites, each missing one half, and each one plausible on its own.
 `wireCardActivation` — the one function that gives a card its click, its middle click and
 its context menu. Every other card surface calls it directly after `renderCardBody`; this
 row draws no card body, so the line it would have followed was not there to be noticed.
+The row menu was the keyboard path behind every `tabindex="-1"` control this row carried,
+which at the time included the quick filter's match links; those went on 2026-08-17 and
+the menu is still the path for everything else.
 
 `renderTimeline` in `src/view/render/timeline.ts` published its result as
 `cards: bars.map((bar) => bar.item)`. That was written when a grid held nothing but bars.
@@ -54,7 +57,7 @@ row draws no card body, so the line it would have followed was not there to be n
 not join it — and `lane.context` is exactly that kind.
 
 Found by reading the plan for the roadmap's match links rather than by a report. It is
-pre-existing and it is what that increment would have made bite: match links are
+pre-existing and it is what that increment would have made bite: match links were
 `tabindex="-1"` and the row menu is their only keyboard route, so putting them on a row
 nobody can select would have been the exact failure the feature exists to prevent.
 
@@ -68,9 +71,15 @@ a note on screen is answered by editing one function next to the type, rather th
 remembering a second walk in the renderer. It flattens the entries in DRAW order, so a
 kind lands where the reader's eye finds it instead of being appended at the end.
 
-The check is `test/view/roadmapMatches.test.ts`: one case drives the arrow walk onto the
-row and presses Enter, one clicks it. Both name the note the row stands for, so a
-regression in either half fails.
+Two cases hold it, one per half: the arrow walk onto the row with Enter pressed, and a
+click. Both name the note the row stands for, so a regression in either half fails. They
+were written in `test/view/roadmapMatches.test.ts` — deleted with the quick filter on
+2026-08-17, which is why the `files:` entry above names a path that is gone: that entry is
+a record of the moment and this is not.
+
+**Checked by** `test/view/resourceLanes.test.ts` — "stops where it DRAWS, above the next band’s bar, and Enter opens its note"
+
+**Checked by** `test/view/resourceLanes.test.ts` — "opens its note on a click, like every other card on this grid"
 
 ## Lesson
 

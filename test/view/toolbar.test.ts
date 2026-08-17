@@ -292,7 +292,6 @@ describe('toolbar controls are reachable without a mouse', () => {
 			'Collapse all',
 			'Hide completed items',
 			'Clicking a row folds it',
-			'Filter items',
 			'Show all types',
 		]) {
 			const el = controls.get(label);
@@ -309,20 +308,6 @@ describe('toolbar controls are reachable without a mouse', () => {
 		// What Enter or Space on a focused <button> does: a plain click, no pointer.
 		collapse?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B']);
-	});
-
-	it('keeps the clear buttons out of the tab order until they apply', () => {
-		const vault = fixture();
-		const { view, containerEl } = makeView(vault);
-		const clear = () => containerEl.querySelector<HTMLElement>('.pbl-filter-clear');
-
-		// Hidden by `display: none` until the filter is active — which removes it
-		// from the tab order too, so Tab does not stop on a control that does nothing.
-		expect(clear()?.tagName).toBe('BUTTON');
-		expect(containerEl.querySelector('.pbl-filter')?.classList.contains('pbl-filter-active')).toBe(false);
-
-		view.setFilter('Feature');
-		expect(containerEl.querySelector('.pbl-filter')?.classList.contains('pbl-filter-active')).toBe(true);
 	});
 
 	it('gives each row an add button assistive tech can activate, off the tab order', () => {
@@ -529,20 +514,29 @@ describe('long operations stay legible and non-blocking', () => {
 
 	it('keeps the tree interactive while a batch is in flight', async () => {
 		const vault = backfillFixture();
-		const { containerEl, view } = makeView(vault);
+		const { containerEl } = makeView(vault);
+		// Four rows before the batch starts, so the collapsed list below cannot be the DOM
+		// the batch began with. That is the whole instrument: this drove `host.setCollapsed`
+		// from 88e03e8 until 2026-08-17 — a bit in the view-state store and no render — so
+		// it reported the PRE-batch tree and would have passed with the pane frozen solid,
+		// which is the one thing it exists to refuse.
+		expect(titlesOf(containerEl)).toEqual(['Epic', 'F1', 'F2', 'F3']);
 		let collapsedMidBatch: string[] | null = null;
 		onEachWrite(vault, () => {
 			if (collapsedMidBatch) return;
-			// Reading and navigating the tree must keep working during the writes.
-			view.setFilter('F');
+			// Through the real control, mid-batch: navigating the tree must keep working
+			// during the writes, and a bulk collapse is a full render — toolbar included —
+			// rather than a state write something else would have to redraw.
+			containerEl
+				.querySelector<HTMLElement>('.pbl-collapse-ctl[aria-label="Collapse all"]')
+				?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 			collapsedMidBatch = titlesOf(containerEl);
-			view.setFilter('');
 		});
 
 		runBackfill(containerEl);
 		await flush();
 
-		expect(collapsedMidBatch).toEqual(['Epic', 'F1', 'F2', 'F3']);
+		expect(collapsedMidBatch).toEqual(['Epic']);
 		expect(treeOf(containerEl).getAttribute('aria-busy')).toBeNull();
 	});
 });
@@ -591,8 +585,8 @@ describe('toolbar count breakdown', () => {
 	 * That `aria-live` is exactly why this test exists. A live region announces on
 	 * MUTATION, not on a changed value — and `setText` assigns `textContent`, which
 	 * destroys the text node and builds a new one even when the string is identical.
-	 * `syncCountLabel` runs on every content render, so filtering to something every item
-	 * matches queued an announcement of "4 items" per keystroke.
+	 * `syncCountLabel` runs on every content render, so a render that changed nothing
+	 * about the number queued an announcement of "4 items" anyway.
 	 *
 	 * Node identity is the whole claim, and comparing `textContent` cannot reach it: that
 	 * assertion is true of the broken code. The tooltip is checked the same way through a
@@ -610,9 +604,9 @@ describe('toolbar count breakdown', () => {
 		label.dataset.tooltip = 'untouched';
 
 		// A content-only render — the toolbar itself is not rebuilt, which is what makes
-		// the element identity below meaningful — leaving the number exactly as it was:
-		// every item in the fixture matches `e`.
-		view.setFilter('e');
+		// the element identity below meaningful — leaving the number exactly as it was.
+		// The shelf's collapse is one: it redraws the pane and nothing above it.
+		view.setShelfCollapsed(!view.shelfCollapsed);
 
 		expect(count()).toBe(label);
 		expect(label.textContent).toBe('4 items');

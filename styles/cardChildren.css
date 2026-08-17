@@ -51,7 +51,7 @@ button.pbl-card-kids-toggle {
    restate background/box-shadow explicitly rather than rely on the base rule above:
    a browser applies the winning declaration PER PROPERTY, and the base rule's win at
    rest says nothing about which rule wins for the hover-only fill. */
-button.pbl-card-kids-toggle:hover:not(:disabled) {
+button.pbl-card-kids-toggle:hover {
 	color: var(--text-normal);
 	background-color: transparent;
 	box-shadow: none;
@@ -60,11 +60,6 @@ button.pbl-card-kids-toggle:hover:not(:disabled) {
 .pbl-card-kids-toggle:focus-visible {
 	outline: 1px solid var(--interactive-accent);
 	outline-offset: 1px;
-}
-
-.pbl-card-kids-toggle:disabled {
-	opacity: 0.5;
-	cursor: default;
 }
 
 .pbl-card-kids-chevron {

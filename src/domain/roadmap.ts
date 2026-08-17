@@ -1,7 +1,7 @@
 import { Absence } from './absences';
 import { firstPlacedIndex } from './board';
 import { deriveBars, placeItem, ShelfCard, statedEnds, TimelineBar } from './bars';
-import { isMarkerType } from './itemTypes';
+import { isIterationType, isMarkerType } from './itemTypes';
 import { BacklogItem, BacklogModel } from './model';
 import { FieldReading, sameValue } from './noteFields';
 import { BacklogSettings } from './settings';
@@ -142,6 +142,20 @@ const MILESTONE_LANE = 'Milestones';
  */
 export function markerLane(bars: TimelineBar[]): ResourceLane {
 	return { name: MILESTONE_LANE, declared: true, markers: true, bars, absences: [], context: [] };
+}
+
+/**
+ * What the marker row's header SAYS — presentation derived from what the row holds,
+ * never the lane's identity: `name` stays the constant the fold key and the roster
+ * refusal read, and a caption that named a type the row is not drawing would be the
+ * legend's own lie one element over. Decided by the user 2026-08-16 (content-aware over
+ * a fixed word), spec `2026-08-16-finish-iterations-board-design.md`.
+ */
+export function markerLaneCaption(bars: TimelineBar[]): string {
+	const iterations = bars.some((bar) => isIterationType(bar.item.typeName));
+	const milestones = bars.some((bar) => !isIterationType(bar.item.typeName));
+	if (milestones && iterations) return 'Milestones · Iterations';
+	return iterations ? 'Iterations' : 'Milestones';
 }
 
 export interface ResourceLane {
@@ -375,13 +389,21 @@ export function resourcePlacementLabel(roadmap: RoadmapModel, source: ResourceSo
 /**
  * The row set, the board's own rule: focused, the rendered roots — results as
  * live rows and a focus-level item outside the filter as inert context — else
- * every result. `visible` is the view's one row-visibility predicate (quick
- * filter, hidden completed subtrees), passed in whole so the roadmap, the board
- * and the tree cannot disagree about what is hidden. Both sources are already in
+ * every result. `visible` is the view's one row-visibility predicate (membership in
+ * this projection, hidden completed subtrees), passed in whole so the roadmap, the
+ * board and the tree cannot disagree about what is hidden. Both sources are already in
  * tree order, which is what the shelf's sibling order rests on.
+ *
+ * A GRID axis appends `model.iterations` — the parallel population `projectionForest`'s
+ * plan forest still excludes (see `BacklogModel.iterations`) — through the SAME `visible`
+ * predicate, so whatever narrows the rest of this axis narrows an admitted iteration
+ * exactly as well. The horizons axis asks for
+ * none of it, placed or shelved, since `drawsGrid('horizons')` is false — the one place
+ * this function's own axis argument decides the answer rather than only picking a source.
  */
-function roadmapRows(model: BacklogModel, visible: (item: BacklogItem) => boolean): BacklogItem[] {
-	return (model.focused ? model.roots : model.results).filter(visible);
+function roadmapRows(model: BacklogModel, visible: (item: BacklogItem) => boolean, axis: RoadmapAxis): BacklogItem[] {
+	const rows = (model.focused ? model.roots : model.results).filter(visible);
+	return drawsGrid(axis) ? [...rows, ...model.iterations.filter(visible)] : rows;
 }
 
 /** Project the model onto the given axis. */
@@ -391,12 +413,12 @@ export function buildRoadmap(
 	visible: (item: BacklogItem) => boolean,
 	axis: RoadmapAxis,
 ): RoadmapModel {
-	const rows = roadmapRows(model, visible);
+	const rows = roadmapRows(model, visible, axis);
 	const roadmap: RoadmapModel = { axis, buckets: [], bars: [], lanes: [], shelf: [], context: [], placedCount: 0 };
 	if (axis === 'horizons') deriveBuckets(rows, settings, roadmap, visible);
 	else if (axis === 'resources') deriveLanes(rows, settings, roadmap, model.absences);
 	else {
-		const dated = deriveBars(rows);
+		const dated = deriveBars(rows, settings.iterationBars);
 		roadmap.bars = dated.bars;
 		roadmap.shelf = dated.shelf;
 		roadmap.context = dated.context;
@@ -511,8 +533,8 @@ function deriveLanes(
 	const byName = new Map<string, ResourceLane>(lanes.map((lane) => [lane.name.toLowerCase(), lane]));
 	for (const item of rows) {
 		if (item.outsideFilter) continue;
-		if (isMarkerType(item.typeName)) placeBar(item, () => markers, roadmap);
-		else placeAssigned(item, lanes, byName, roadmap);
+		if (isMarkerType(item.typeName)) placeBar(item, () => markers, roadmap, settings);
+		else placeAssigned(item, lanes, byName, roadmap, settings);
 	}
 	// Second, so a resource a result already named keeps the casing that result gave its
 	// row — and third-source minting: unlike a context row, an absence MAY create one,
@@ -538,13 +560,14 @@ function placeAssigned(
 	lanes: ResourceLane[],
 	byName: Map<string, ResourceLane>,
 	roadmap: RoadmapModel,
+	settings: BacklogSettings,
 ): void {
 	const name = item.assigneeValue;
 	if (name === null) {
 		roadmap.shelf.push({ item, reason: null });
 		return;
 	}
-	placeBar(item, () => laneNamed(name, lanes, byName), roadmap);
+	placeBar(item, () => laneNamed(name, lanes, byName), roadmap, settings);
 }
 
 /**
@@ -553,8 +576,8 @@ function placeAssigned(
  * has always kept for an undeclared assignee, and the same reason the milestones' row is
  * absent from a base whose only marker has no readable date.
  */
-function placeBar(item: BacklogItem, lane: () => ResourceLane, roadmap: RoadmapModel): void {
-	const placement = placeItem(item, statedEnds(item));
+function placeBar(item: BacklogItem, lane: () => ResourceLane, roadmap: RoadmapModel, settings: BacklogSettings): void {
+	const placement = placeItem(item, statedEnds(item), settings.iterationBars);
 	if (placement.kind === 'shelf') {
 		roadmap.shelf.push({ item, reason: placement.reason });
 		return;

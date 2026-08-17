@@ -170,10 +170,13 @@ describe('the Deliverables board', () => {
 	});
 
 	it('lists a requirements-done child on a Deliverable card whatever the completed toggle says', () => {
-		// Found by review. The CARDS use the filter-only rule, but the disclosure they draw
-		// went through `listedChildren` -> `isRowHidden`, which honours the completed-items
-		// toggle. So a setting flipped on another projection quietly emptied a Deliverable's
-		// child list here — and this board has no toggle of its own to put it back.
+		// Found by review, when the exception was a per-caller choice: the CARDS asked a
+		// predicate that skipped the completed-items toggle, while the disclosure they draw
+		// went through `listedChildren` -> `isRowHidden`, which honoured it. So a setting
+		// flipped on another projection quietly emptied a Deliverable's child list here —
+		// and this board has no toggle of its own to put it back. The fix put the exception
+		// inside `isRowHidden` itself (`hidesCompleted`), so this case is now the check that
+		// the ONE predicate still answers per projection rather than that two agree.
 		const vault = boardVault();
 		vault.addFile('D.md', {
 			frontmatter: { type: 'Deliverable', order: 10, status: 'New', deliverableStatus: 'Draft' },

@@ -123,11 +123,10 @@ already keeps for every other menu had never been asked of it. A substitution ra
 addition, because a sticky lead column's only shrinkable item is the row's title, so
 anything added to it is taken from the row's own name. Measured in the browser harness,
 twice, not preferred.
-A MARKER row announces the rollup and not the count: `renderRowFacts` gives that row an
-explicit `aria-label` which REPLACES its content, and that label folds in the progress
-report but not the chip's own words — accepted, because the matches stay reachable
-through the row menu and `src/view/render/timeline.ts` is at its line budget.
-Driven in `test/view/roadmapMatches.test.ts`.
+A MARKER row announced the rollup and not the count while the quick filter existed; that
+whole affordance — a match count in a row's lead slot — went with the filter on 2026-08-17
+([[Remove the quick filter, now that Bases has its own search]]), and the row's own
+`aria-label` no longer competes with it.
 
 The inferred span case is covered too: `item.descendantStart`/`descendantTarget` are
 assigned once, over the WHOLE unfocused tree ([[The model build states its cost as a

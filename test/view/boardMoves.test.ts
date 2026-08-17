@@ -294,13 +294,6 @@ describe('the board keyboard', () => {
 		expect(vault.writeLog).toHaveLength(1);
 	});
 
-	it('slash reaches the quick filter', () => {
-		const { containerEl } = board(boardVault());
-
-		key(treeOf(containerEl), '/');
-		expect(document.activeElement?.classList.contains('pbl-filter-input')).toBe(true);
-	});
-
 	it('a held column stop survives a rerender, for assistive tech too', () => {
 		const vault = new FakeVault();
 		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10, status: 'New' } });
@@ -374,10 +367,4 @@ describe('hiding finished work on the board', () => {
 		expect(cardTitles(done)).toEqual([]);
 	});
 
-	it('the quick filter overrides hiding, as it does in the tree', () => {
-		const { containerEl, view } = board(boardVault(), { showCompleted: false });
-
-		view.setFilter('B1');
-		expect(cardTitles(columnByName(containerEl, 'Done'))).toEqual(['Feature B1']);
-	});
 });

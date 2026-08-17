@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BasesViewConfig } from 'obsidian';
 import { getViewOptions } from '../../src/domain/viewOptions';
+import { resolveSettings } from '../../src/domain/settingsResolve';
 import { defaultTypeFolder } from '../../src/domain/typeVocabulary';
 import { FakeViewConfig } from '../helpers/vault';
 
@@ -136,12 +137,15 @@ describe('getViewOptions', () => {
 		expect(keys).toEqual(['deliverableStateProperty', 'deliverableStateValues', 'deliverableDoneValues']);
 	});
 
-	it('exposes an Iterations group with the two properties and the three board options', () => {
+	it('exposes an Iterations group with the two properties and the four board options', () => {
 		// No state PROPERTY here — the iteration board reads the product state key and
-		// narrows it, so there is no second one to configure. The three that ARE here say
-		// how it narrows: which product states fall in the two outer columns, and how long
-		// a derived iteration runs. The goal is a property of a different kind again: what
-		// the iteration is FOR, not how it moves.
+		// narrows it, so there is no second one to configure. Three of the four that ARE
+		// here say how it narrows: which product states fall in the two outer columns, and
+		// how long a derived iteration runs. The fourth, `iterationBars`, is the roadmap's
+		// own reading rather than the board's — whether an iteration draws as a point or a
+		// span — and it sits in this group anyway because the property it narrows
+		// (`iteration`) is declared here. The goal is a property of a different kind again:
+		// what the iteration is FOR, not how it moves.
 		const groups = getViewOptions(fakeConfig());
 		const group = groups.find((g) => 'displayName' in g && g.displayName === 'Iterations');
 		if (!group || !('items' in group)) throw new Error('Iterations group missing');
@@ -152,7 +156,22 @@ describe('getViewOptions', () => {
 			'iterationOpenStates',
 			'iterationResolvedStates',
 			'iterationLengthDays',
+			'iterationsOnTimeline',
+			'iterationBars',
 		]);
+	});
+
+	it('withholds the bar reading while iterations are off the timeline, and keeps the stored value', () => {
+		// `iterationBars` chooses between two readings of an iteration on the grid, so with
+		// nothing drawn there is no reading to choose — the toggle would be a control that
+		// obeys nothing. The stored value survives being unoffered: `resolveSettings` reads
+		// the key from the `.base` either way, so turning the timeline back on restores the
+		// reading rather than resetting it to lines.
+		const off = fakeConfig({ iterationsOnTimeline: false, iterationBars: true });
+		const group = getViewOptions(off).find((g) => 'displayName' in g && g.displayName === 'Iterations');
+		if (!group || !('items' in group)) throw new Error('Iterations group missing');
+		expect(group.items.map((item) => item.key)).not.toContain('iterationBars');
+		expect(resolveSettings(off).iterationBars).toBe(true);
 	});
 
 	it('exposes a Test management group with its own state property, states and done values', () => {

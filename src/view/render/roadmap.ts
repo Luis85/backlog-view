@@ -1,14 +1,14 @@
 import { setTooltip } from 'obsidian';
 import { t } from '../../i18n/t';
 import { drawIcon } from './icons';
-import { createCard, renderCardBody, renderCardMatches, renderColumnFold, wireCardActivation } from './board';
+import { createCard, renderCardBody, renderColumnFold, wireCardActivation } from './board';
 import { RowContext } from './columns';
-import { renderAllDoneState, renderEmptyState, renderFilterEmptyState } from './emptyStates';
+import { renderAllDoneState, renderEmptyState } from './emptyStates';
 import { renderContextStrip, renderShelf, shelfRemoval } from './shelf';
 import { syncShelfTabStops } from './shelfControls';
 import { datedEntries, laneEntries } from './lanes';
 import { renderTimeline, TimelineRender } from './timeline';
-import { BacklogViewHost, DrawnColors, PlacedMount, RoadmapSnapshot, ScrollBox } from '../host';
+import { BacklogViewHost, DrawnColors, RoadmapSnapshot, ScrollBox } from '../host';
 import { CardDragController } from '../interactions/cardDrag';
 import { newItemType, promptCreateItem } from '../interactions/create';
 import { gestureAt, previewer, submitGesture, TimelineParts, wireTimelineDrag } from '../interactions/timelineDrag';
@@ -57,7 +57,7 @@ export function renderRoadmap(
 			window: null,
 			scale: null,
 			leadWidth: null,
-			drawn: { done: false, milestone: false, accent: false, absence: false, daysLost: false },
+			drawn: { done: false, milestone: false, iteration: false, accent: false, absence: false, daysLost: false },
 			palettes: [],
 		};
 	}
@@ -70,7 +70,7 @@ export function renderRoadmap(
 	let window: TimelineWindow | null = null;
 	let scale: TimelineScale | null = null;
 	let leadWidth: number | null = null;
-	let drawn: DrawnColors = { done: false, milestone: false, accent: false, absence: false, daysLost: false };
+	let drawn: DrawnColors = { done: false, milestone: false, iteration: false, accent: false, absence: false, daysLost: false };
 	// The dated axis's own dependency conflicts (see `TimelineRender.dependencyConflicts`)
 	// — empty on the horizon axis, where a shelved dependent's stated START has no
 	// meaning at all.
@@ -78,7 +78,18 @@ export function renderRoadmap(
 	// Built once, drawn from by the bars and then carried out on the snapshot for the
 	// legend — see `RoadmapSnapshot.palettes`. Empty on the horizon axis, which draws no bar.
 	let palettes: StatePalette[] = [];
+	const removal = shelfRemoval(host, axis);
+	let shelf: { cards: BacklogItem[]; el: HTMLElement };
 	if (axis === 'horizons') {
+		// The shelf LEADS this board — first in the frame and first in the keyboard walk
+		// (asked for directly, 2026-08-17): a drag from the untriaged rest into a bucket is
+		// the board's whole job, so its source sits above the columns rather than after the
+		// tallest of them. The board's own no-state strip leads its columns for the same
+		// reason, and the Alt+arrow ladder has led with the shelf all along — the frame now
+		// says what the ladder already did. `dependencyConflicts` is still its initial
+		// empty map here, which is this axis's value of it.
+		shelf = renderShelf(ctx, frameEl, { cards: roadmap.shelf, conflicts: dependencyConflicts, axis }, dnd, removal);
+		cards.push(...shelf.cards);
 		// The layout pick rides the ROW rather than each bucket: one class where the buckets
 		// are created, read by `.pbl-bucket-cards` in `styles/roadmap.css`, so a bucket that
 		// renders knows nothing about it.
@@ -103,6 +114,11 @@ export function renderRoadmap(
 		leadWidth = timeline.leadWidth;
 		drawn = timeline.drawn;
 		dependencyConflicts = timeline.dependencyConflicts;
+		// After the grid, which is where this axis's conflicts come from — the order the
+		// shelf has always rendered in here, and the reason it cannot be hoisted above the
+		// branch the way the horizon axis's was.
+		shelf = renderShelf(ctx, frameEl, { cards: roadmap.shelf, conflicts: dependencyConflicts, axis }, dnd, removal);
+		cards.push(...shelf.cards);
 	}
 	// What the axis HOLDS, which is no longer what it drew on any of the three:
 	// `axisPopulation` (`domain/roadmap.ts`) counts the model rather than the cards pushed
@@ -113,12 +129,8 @@ export function renderRoadmap(
 	// until 2026-08-15, with `cards.length` for the grid axes and a sentence beside it saying
 	// they fold nothing — true when it was written and untrue since bands learnt to.
 	const population = axisPopulation(roadmap);
-	const removal = shelfRemoval(host, axis);
-	const shelf = renderShelf(ctx, frameEl, { cards: roadmap.shelf, conflicts: dependencyConflicts, axis }, dnd, removal);
-	cards.push(...shelf.cards);
 	const context = renderContextStrip(ctx, frameEl, roadmap.context);
 	cards.push(...context.cards);
-	nameMatches(ctx);
 	// `cards` is final here, and it is what the pane's `listbox`/`region` role is decided
 	// from downstream — so it is also what decides whether the shelf's own controls may
 	// leave the tab order. See `syncShelfTabStops`.
@@ -155,22 +167,6 @@ export function renderRoadmap(
 	};
 }
 
-/**
- * Name the matches the filter found under each drawn item, now that every surface has
- * registered. A second pass rather than inline calls, because "which items are already
- * on screen" is only true once the last one is: the board can ask its model
- * (`cardPaths`) because a `BoardModel` is already narrowed to what draws, and the
- * roadmap's is not — `RoadmapModel.shelf` holds items a collapsed or type-filtered shelf
- * never puts on screen.
- */
-function nameMatches(ctx: RowContext): void {
-	if (!ctx.host.isFiltering()) return;
-	const carded = new Set(ctx.placed.keys());
-	// Annotated so fallow can see the members this file reads — see the root CLAUDE.md on
-	// interface members resolved through a property access.
-	const mounts: PlacedMount[] = [...ctx.placed.values()];
-	for (const placed of mounts) renderCardMatches(ctx, carded, placed);
-}
 
 /** What a grid axis needs to draw — grouped so `renderGridAxis` stays inside max-params. */
 interface GridDrawing {
@@ -385,7 +381,7 @@ function renderBucket(
 		const card = createCard(ctx, cardsEl, item);
 		renderCardBody(ctx, card, item);
 		wireCardActivation(ctx, card, item);
-		ctx.placed.set(item.file.path, { item, mount: card, listsChildren: true, face: 'links' });
+		ctx.placed.add(item.file.path);
 		dnd.wireCard(card, item);
 	}
 	// The whole bucket is the target, the board's rule: within a bucket the order is
@@ -455,7 +451,6 @@ function renderRoadmapAdvisory(
 	if (!model || renderedCards > 0) return null;
 	const aside = frameEl.createDiv({ cls: 'pbl-board-advisory' });
 	if (model.results.length === 0) renderEmptyState(host, aside, root);
-	else if (host.isFiltering()) renderFilterEmptyState(host, aside, root);
 	else renderAllDoneState(host, aside, model.results.length, root);
 	return aside;
 }

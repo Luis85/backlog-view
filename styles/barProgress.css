@@ -5,10 +5,7 @@
 
    Position in `index.css` is NOT load-bearing: both selectors below are new, declared by
    no other partial, and neither overrides a rule `timeline.css` makes.
-
-   `.pbl-row-matches` in `cards.css` is the third element of the same feature and stays
-   there, because it is a card-face affordance that a ROW substitutes into this slot —
-   see `renderMatchCount`. */
+ */
 
 /* How far along, INSIDE the bar and inset — see `renderBarProgress`. Not full-height:
    `.pbl-bar-inferred` is an outline and the open-end rules are gradients. The tree's

@@ -269,13 +269,6 @@ describe('one move, three inputs, all through the bucket', () => {
 		expect(claimed.vault.writeLog).toEqual([]);
 	});
 
-	it('says nothing matched rather than that the iteration is empty, while filtering', async () => {
-		const { view, containerEl } = moving();
-		view.setFilter('zzz nothing');
-		await flush();
-		expect(containerEl.textContent).not.toContain('No items in this iteration yet');
-	});
-
 	it('checks the bucket the card is in, not the column whose state it matches', async () => {
 		const { view } = moving();
 		const card = view.model?.byPath.get('Ready one.md');

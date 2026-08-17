@@ -11,6 +11,47 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-08-17
+
+### Removed
+
+- **The toolbar's quick filter is gone — use the Base's own search.** Obsidian Bases carries
+  a search of its own now, so the plugin's box was a second search over the same rows. A
+  Base search narrows the results this view is given, and the ancestors those results need
+  are still loaded around them, so a search reads as a tree rather than a flat list of hits.
+  The roadmap's unplaced shelf keeps its own search, which is scoped to the untriaged work
+  beside it. Going with the box: the `/` shortcut, the highlighted match in a title, the
+  "3 of 12" column headers, the match links on a card and the `Open match` menu entries, and
+  the no-match empty state. Nothing was ever written for a filter, so there is nothing to
+  migrate and no stored setting left behind.
+
+### Added
+
+- **Set iteration is one undoable step, wherever it happens.** Picking a sprint from
+  `Set iteration` writes the link and both of its dates as a single batch behind a single
+  undo, and a card created straight onto an iteration board carries that same link and
+  both dates in its first write — never a create followed by a second write of its own.
+
+- **Keep iterations off the roadmap timeline.** A new "Show iterations on the roadmap
+  timeline" view option, on by default, decides whether the grid axes draw iterations at
+  all. Turned off, a sprint draws nowhere — no bar, no line, and nothing on the unplaced
+  shelf either — for a plan that is read by milestone alone. Turned off, it also takes
+  "Draw iterations as bars" out of the menu, since there is no reading left to choose;
+  your pick is kept and comes back with the timeline. It writes nothing to any note:
+  turning it back on redraws the same sprints.
+
+- **Draw a sprint as a bar, not only a line.** A new "Draw iterations as bars" view
+  option turns an `Iteration` from a point at its target date into a start→target bar on
+  the roadmap's grid axes, with a grip on each configured end. Either way, the marker
+  row's caption, the legend swatch and the announced sentence now name what is actually
+  drawn — Milestone, Iteration, or both — instead of calling every marker a milestone.
+
+- **A clear button on the shelf's search.** An x appears beside the box while there is
+  something to clear and empties the search when pressed, leaving the caret where it was.
+  The box is `type="search"` and was built expecting the platform's own clear button;
+  where that never appeared there was no way out of a search but Escape or selecting the
+  text by hand. The native button is now suppressed outright, so the field never shows two.
+
 ### Changed
 
 - **Fold controls read as whole sentences.** Expanding or collapsing a board column, the
@@ -34,6 +75,40 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   untouched. Hovering a column header now also lights the whole column band in the theme's
   hover colour — the full height of the header strip, square — so the header reads as
   something to interact with before the mark is found.
+
+- **The unplaced shelf now leads the horizon board.** It renders above the buckets — and
+  first in the keyboard's reading order — so the untriaged rest sits where a drag into a
+  column starts, instead of below the tallest column. One exception: an EMPTY shelf, which
+  is hidden until a drag makes it a target, still appears at the foot of the board — with
+  nothing on it there is nothing to drag from, and putting it back at the top would shove
+  the whole board down under the pointer the moment a drag began. Alt+arrow moves are
+  unchanged: the shelf was already their first stop.
+- **The horizon board's right-click menus no longer carry a children section.** No
+  `Show/Hide children` toggle and no `Open child` entries there — the card's own
+  disclosure still lists children on its face. The kanban board and the dated axis keep
+  their menus as they were.
+
+### Fixed
+
+- **The horizon board no longer sizes itself from its cards.** Buckets share the pane's
+  width equally again, down to their 280px floor — in the grid layout and one-card-per-row
+  alike — instead of growing to the widest card and resizing as cards render, which is
+  what made the pane jump near its right edge and the end unreachable. The buckets band
+  now takes the pane's height the way the kanban board's columns do: each bucket scrolls
+  its own cards, and the unplaced shelf stays on screen — at the top, where it now leads —
+  instead of being pushed off the foot of a frame as tall as its tallest bucket.
+
+- **Dragging to the bottom of the unplaced shelf scrolls it.** The shelf scrolls inside
+  its own band, and a card held at its edge now scrolls it the way a board column, a
+  horizon bucket and the timeline already did. It had no auto-scroll at all, so on a shelf
+  holding more cards than its band could show, everything past the first few was out of
+  reach for the whole drag.
+
+- **The roadmap's empty state is no longer cut off.** The message that explains an empty
+  roadmap — with its ✨ configure action and its link to the manual — was capped at a
+  third of the pane and scrolled inside a box most readers would not know scrolls, so on a
+  short pane half of it was below the fold. It draws only when there is nothing else on
+  screen, so it now takes the room.
 
 ## [0.9.0] - 2026-08-16
 

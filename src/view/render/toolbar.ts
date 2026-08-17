@@ -24,7 +24,6 @@ import {
 import { focusInBar } from './toolbarFit';
 import { renderBusyIndicator } from './toolbarBusy';
 import { countedPopulation, levelBreakdown, renderIgnoredNote } from './toolbarStatus';
-import { renderFilterBox } from './toolbarFilter';
 import { hidesCompleted, offerableTypes, toolbarPosition } from '../projection';
 import { BacklogModel } from '../../domain/model';
 import { focusTarget } from '../../domain/itemTypes';
@@ -36,13 +35,12 @@ import { manualSections } from '../manual/sections';
 /**
  * Re-exported so `backlogView.ts` and the test suite keep one import path into the
  * toolbar rather than one per subject file — this module was the toolbar's address
- * before the split into `toolbarBusy.ts` / `toolbarStatus.ts` / `toolbarFilter.ts`, and
+ * before the split into `toolbarBusy.ts` / `toolbarStatus.ts`, and
  * still is for anything outside `render/`. Nothing here reads these; they pass straight
  * through.
  */
 export { syncBusy } from './toolbarBusy';
 export { detectIgnoredGrouping, syncCountLabel } from './toolbarStatus';
-export { revealFilter, syncFilterUi } from './toolbarFilter';
 
 /** Toolbar: creation buttons, backfill, expand/collapse, config warning, item count. */
 export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
@@ -113,7 +111,6 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	});
 	renderCompletedToggle(host, barEl, model);
 	renderClickActionToggle(host, barEl);
-	renderFilterBox(host, barEl);
 
 	// The general door to the manual. Zone 4 because it is the same in every projection,
 	// and last in it because the fit ladder sheds it at step 2 — of everything on this row
@@ -200,8 +197,8 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 		// (everything after it already shed by step 5), and so the first thing the last
 		// rung's clip reaches: clipped alone while the DOM still claimed it was there. It
 		// carries `[data-pbl-key='config-help']` for exactly that reason — `toolbarFit.css`'s
-		// step 2 sheds it in the same rule as the help button, the filter and the density
-		// toggle, so it is gone (hidden, not clipped) four rungs before the warning's own
+		// step 2 sheds it in the same rule as the help button and the projection's own
+		// singles, so it is gone (hidden, not clipped) four rungs before the warning's own
 		// clip ever runs. Nothing is withheld by this: `⋯ → Open the manual` survives every
 		// rung and the dialog's own sidebar is one click from `setup`; only the deep link
 		// itself is lost. `root: barEl` and an explicit `onClosed` through `focusInBar`,
@@ -322,10 +319,9 @@ function renderNewButton(host: BacklogViewHost, barEl: HTMLElement, model: Backl
  * verdict taken during the toolbar pass would read the previous frame's set —
  * `syncCountLabel` above is the same shape for the same reason. It is the only writer of
  * `btn.disabled` on `.pbl-collapse-ctl` today — nothing enforces that, a lint rule for it
- * was considered and declined — but `syncFilterUi` used to also write it, which made two
- * functions own one property agreeing only by call order; `collapseButton`'s own click
- * handler below READS `btn.disabled` to guard its mutation, which does not reopen that
- * split — a read cannot disagree with the writer about what the value is.
+ * was considered and declined. `collapseButton`'s own click handler below READS
+ * `btn.disabled` to guard its mutation, which is not a second writer — a read cannot
+ * disagree with the writer about what the value is.
  *
  * A card projection with no disclosure gets them disabled rather than removed. They
  * would otherwise write collapse state that changes nothing on screen and then surprises

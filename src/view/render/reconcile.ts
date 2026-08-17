@@ -4,7 +4,6 @@ import { rowSignature } from '../rowSignature';
 import {
 	renderAllDoneState,
 	renderEmptyState,
-	renderFilterEmptyState,
 } from './emptyStates';
 import { buildRow } from './rows';
 import { columnWidth, columnWidthVar } from '../interactions/columnResize';
@@ -99,8 +98,7 @@ export function renderTree(ctx: RowContext, treeEl: HTMLElement): void {
 	// not a row — from having to be built and then thrown away again.
 	if (!population.roots.some((root) => !ctx.host.isRowHidden(root))) {
 		emptyTree(ctx, treeEl);
-		if (ctx.host.isFiltering()) renderFilterEmptyState(ctx.host, treeEl);
-		else renderAllDoneState(ctx.host, treeEl, population.results.length);
+		renderAllDoneState(ctx.host, treeEl, population.results.length);
 		return;
 	}
 	// Left alone when it is already there. Everything this header draws from — the columns,

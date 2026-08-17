@@ -83,7 +83,10 @@ card — and a count is the half of it that cannot be acted on.
   removed on request and came back the next day narrowed to the children with **no card
   of their own**, which is empty on an unfocused projection and is the whole keyboard path
   under a focus. See [[Drop the per-child entries from the card menu]], which also records
-  the match-list consequence and the fix it needed.
+  the match-list consequence and the fix it needed. **The HORIZON board is exempt from the
+  whole section since 2026-08-17** — no toggle and no entries there, asked for directly —
+  and [[Drop the children section from the horizon board's card menu]] records what that
+  withholds on that one board.
 - **5a — the item is a context row.** It gets the disclosure like any other card. Nothing
   here writes, so the rule that governs it is not in question.
 
@@ -111,7 +114,9 @@ card — and a count is the half of it that cannot be acted on.
   about the note and not one per screen that happens to draw it as a card.
   While the quick filter runs the toggle is disabled.
 - The card menu offers the toggle, on a right-click and on the menu key, and offers it on
-  no surface that drew no disclosure.
+  no surface that drew no disclosure — and not on the horizon board, whose card menus
+  carry no children section at all
+  ([[Drop the children section from the horizon board's card menu]]).
 - Nothing in the feature writes to a note.
 
 ## Where it lives

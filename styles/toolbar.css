@@ -34,7 +34,6 @@
 .pbl-menu-btn,
 .pbl-new-btn,
 .pbl-focus-btn,
-.pbl-filter-clear,
 .pbl-focus-clear,
 .pbl-add {
 	flex: 0 0 auto;
@@ -65,11 +64,6 @@
 	background-color: transparent;
 }
 
-/* Dragging is disabled while filtering; a grab handle would be a lie */
-.pbl-view.pbl-filtering .pbl-grip {
-	display: none;
-}
-
 .pbl-toolbar-spacer {
 	flex: 1 1 auto;
 }
@@ -79,52 +73,6 @@
 	height: 16px;
 	background-color: var(--background-modifier-border);
 	flex: 0 0 auto;
-}
-
-/* A bare row: the input keeps its own border, background and focus ring, so the
-   wrapper only has to line the icon and the clear button up beside it. */
-.pbl-filter {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--size-2-1);
-	margin-left: var(--size-4-1);
-}
-
-.pbl-filter-icon {
-	display: inline-flex;
-	align-items: center;
-	color: var(--text-faint);
-	/* Clear of the input's own box rather than tucked against it */
-	margin-inline-end: var(--size-2-3);
-}
-
-.pbl-filter-icon .svg-icon {
-	width: 12px;
-	height: 12px;
-}
-
-.pbl-filter-input {
-	width: 130px;
-	height: 24px;
-	font-size: var(--font-ui-small);
-}
-
-.pbl-filter-input::placeholder {
-	color: var(--text-faint);
-}
-
-.pbl-filter-clear {
-	display: none;
-	padding: 0;
-}
-
-.pbl-filter.pbl-filter-active .pbl-filter-clear {
-	display: flex;
-}
-
-.pbl-filter-clear .svg-icon {
-	width: 12px;
-	height: 12px;
 }
 
 /* Focus level picker: the level dropdown lives here, not in the view options, and
@@ -334,9 +282,8 @@
 	height: 12px;
 }
 
-/* The `⋯` and the filter's reveal both exist in every frame and appear only where the
-   ladder has taken something off the row — `styles/toolbarFit.css` decides that. */
-.pbl-overflow-btn,
-.pbl-filter-reveal {
+/* The `⋯` exists in every frame and appears only where the ladder has taken something
+   off the row — `styles/toolbarFit.css` decides that. */
+.pbl-overflow-btn {
 	display: none;
 }

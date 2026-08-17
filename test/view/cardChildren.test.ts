@@ -331,44 +331,6 @@ describe('children on the card', () => {
 		expect(kidTitles(cardByTitle(containerEl, 'Epic B'))).toEqual(['Feature B1', 'Feature B2']);
 	});
 
-	it('disables the toggle while the quick filter runs, and lists anyway', () => {
-		const { containerEl, view } = makeBoard(boardVault());
-		view.setFilter('Feature B');
-		const card = cardByTitle(containerEl, 'Epic B');
-		// Asserted on the property, not a class: a control disabled only in CSS still
-		// answers a keyboard.
-		expect(disclosure(card)?.disabled).toBe(true);
-		expect(kidTitles(card)).toEqual(['Feature B1', 'Feature B2']);
-	});
-
-	// `disabled` on a <button> stops a click dispatched at the button itself, but not one
-	// that lands on a CHILD element and bubbles — the chevron and count spans are both
-	// inside the toggle. Without the guard this write is invisible on screen
-	// (`isCardCollapsed` reads false under the filter regardless, whatever the write set),
-	// and only shows up once the filter clears — reproducing exactly that: expand for real
-	// first (a card opens collapsed by default, so an unguarded write from THAT state could
-	// land on the same value it started at and prove nothing), then let a filtered click
-	// try to flip it.
-	it('writes nothing when a click lands on the chevron inside a disabled toggle', () => {
-		const { containerEl, view } = makeBoard(boardVault());
-		disclosure(cardByTitle(containerEl, 'Epic B'))?.click();
-		expect(view.isCardCollapsed('Epic B.md')).toBe(false);
-
-		// Re-fetched: `setFilter` re-renders the board, so the card handle above is
-		// now detached.
-		view.setFilter('Feature B');
-		const toggle = disclosure(cardByTitle(containerEl, 'Epic B'));
-		expect(toggle?.disabled).toBe(true);
-		const chevron = toggle?.querySelector<HTMLElement>('.pbl-card-kids-chevron');
-
-		chevron?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-
-		expect(view.isCardCollapsed('Epic B.md')).toBe(false);
-		// Clearing the filter is what would surface a stray write — confirm none landed.
-		view.setFilter('');
-		expect(view.isCardCollapsed('Epic B.md')).toBe(false);
-	});
-
 	// The card menu's toggle has to write the same bit the card's own disclosure reads —
 	// `isCardCollapsed`, never `isCollapsed` — or the two would disagree about whether
 	// the card is open. `addChildrenSection` serves both a card's toggle and a dated-axis
@@ -408,58 +370,6 @@ describe('children on the card', () => {
 		expect(titles).not.toContain('Hide children');
 	});
 
-	// FOCUSED on Epic, and that is load-bearing rather than incidental. On an unfocused
-	// board `Feature B1` has a card of its own, and `hiddenMatches` already skips every
-	// path in `cardPaths` — so the match list would omit it before this change, and the
-	// test would pass green against the unfixed code while appearing to prove the
-	// dedup. Focus removes the child's card, which is the only state where the
-	// disclosure and the match list can both reach for the same item.
-	it('does not name a matched child twice on one card', () => {
-		const { containerEl, view } = makeBoard(boardVault(), {}, { focus: 'Epic' });
-		view.setFilter('Feature B1');
-		const card = cardByTitle(containerEl, 'Epic B');
-
-		// The disclosure lists it (the filter forces every card open) …
-		expect(kidTitles(card)).toContain('Feature B1');
-		// … so the match list must not name it as well.
-		const matches = Array.from(card.querySelectorAll<HTMLElement>('.pbl-card-match')).map(
-			(el) => el.textContent,
-		);
-		expect(matches).not.toContain('Feature B1');
-	});
-
-	it('still names a match the disclosure cannot reach', () => {
-		const { containerEl, view } = makeBoard(nestedVault(), {}, { focus: 'Epic' });
-		view.setFilter('Task B1a');
-		const card = cardByTitle(containerEl, 'Epic B');
-
-		// A grandchild: one level down is not what the disclosure shows, and with the
-		// board focused on Epics it has no card of its own either. The match list is the
-		// only thing that can reach it, so the dedup must not have taken it.
-		const matches = Array.from(card.querySelectorAll<HTMLElement>('.pbl-card-match')).map(
-			(el) => el.textContent,
-		);
-		expect(matches).toContain('Task B1a');
-	});
-
-	// The menu's side of the same question. It must name the child ONCE — the disclosure's
-	// own entries are `tabindex="-1"`, so a matched child the face lists needs a menu
-	// entry — and never twice. Both sections can reach for it here: it matches, and it has
-	// no card under this focus. The match walk subtracts what the disclosure lists, so the
-	// child section is the one that owns it, and there is only one walk to disagree with.
-	it('names a matched child in the card menu exactly once', () => {
-		const { containerEl, view } = makeBoard(boardVault(), {}, { focus: 'Epic' });
-		view.setFilter('Feature B1');
-		const card = cardByTitle(containerEl, 'Epic B');
-		card.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
-
-		// The face lists it …
-		expect(kidTitles(card)).toContain('Feature B1');
-		// … and the menu names it, once, under whichever section owns it.
-		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
-		expect(titles.filter((t) => t.endsWith('"Feature B1"'))).toEqual(['Open child "Feature B1"']);
-	});
-
 	// The per-child entries, back where nothing else can reach the child and gone where
 	// something can. Focus is what separates the two: unfocused, every result has a card
 	// of its own, which is the state the clutter these were removed for was reported in.
@@ -474,10 +384,11 @@ describe('children on the card', () => {
 		// because `renderBoard` publishes the DRAWN board as the snapshot, folded columns
 		// emptied, and `cardedPaths` reads that rather than the model.
 		['board with the child’s column folded', (v: FakeVault) => makeBoard(v, {}, { foldedColumns: true }), [BOTH[0]]],
-		// The roadmap draws no match links on a card face at all, so its menu has no
-		// second route the board's `Open match` could stand in as — the projection Codex
-		// pointed at on PR #137.
-		['roadmap under a focus', (v: FakeVault) => makeRoadmap(v, {}, { focus: 'Epic' }), BOTH],
+		// The HORIZON board is exempt from the whole section since 2026-08-17 (asked for
+		// directly): its card menu names no children, focused or not — the boundary
+		// `test/view/horizonMenu.test.ts` owns, so a focused uncarded child here expects
+		// nothing where the board rows above expect BOTH.
+		['roadmap under a focus', (v: FakeVault) => makeRoadmap(v, {}, { focus: 'Epic' }), []],
 		['roadmap unfocused', (v: FakeVault) => makeRoadmap(v), []],
 	] as const)('offers Open child only where the child has no card of its own — %s', (_name, mount, offered) => {
 		const vault = boardVault();

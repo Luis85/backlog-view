@@ -203,7 +203,10 @@ describe('moving between horizons without a drag', () => {
 		const { containerEl } = makeRoadmap(vault);
 		const tree = treeOf(containerEl);
 
-		key(tree, 'ArrowDown'); // the first card in reading order
+		// Two steps: the shelf leads the reading order now, so the first bucket card —
+		// the one an Alt+arrow can advance — is the second stop.
+		key(tree, 'ArrowDown');
+		key(tree, 'ArrowDown');
 		expect(cardByTitle(containerEl, 'Now item').hasClass('pbl-selected')).toBe(true);
 		key(tree, 'ArrowRight', { altKey: true });
 		await flush();

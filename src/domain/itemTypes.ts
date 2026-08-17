@@ -209,6 +209,19 @@ export function isIterationType(typeName: string | null): boolean {
 }
 
 /**
+ * True when this type is DRAWN at one date rather than across two, and holdable at
+ * neither end. A milestone is a point because a milestone IS a point; an iteration has
+ * two ends and the reader decides which reading they want (`iterationBars`). Its own
+ * predicate rather than a widened `isMarkerType`, for the reason recorded at
+ * `isExtraType`: widening a predicate makes it mean two things at every call site.
+ * `isMarkerType` keeps the structural question — no rung, no children, no prerequisites.
+ */
+export function drawsAsPoint(typeName: string | null, iterationBars: boolean): boolean {
+	if (!isMarkerType(typeName)) return false;
+	return isIterationType(typeName) ? !iterationBars : true;
+}
+
+/**
  * A note this backlog recognizes in order to refuse it — see `ABSENCE_TYPE`. Its own
  * predicate rather than a widened `isMarkerType`, for that predicate's own reason: the
  * two answer opposite questions, and the one call site here decides whether a note
@@ -323,7 +336,11 @@ const BOTH_ENDS: PlacementEnd[] = ['start', 'target'];
  * — the WRITER, which has to decide against what the note currently says. It lives
  * here rather than in `view/` for exactly that last reason: `storage/` may not reach
  * upward, and a second copy is the one that would drift.
+ *
+ * `iterationBars` is REQUIRED, with no default: a defaulted flag would silently keep
+ * every caller on the old meaning the day the option ships, which is the exact defect
+ * this parameter exists to make impossible to ignore.
  */
-export function placementEnds(typeName: string | null): PlacementEnd[] {
-	return isMarkerType(typeName) ? ['target'] : [...BOTH_ENDS];
+export function placementEnds(typeName: string | null, iterationBars: boolean): PlacementEnd[] {
+	return drawsAsPoint(typeName, iterationBars) ? ['target'] : [...BOTH_ENDS];
 }

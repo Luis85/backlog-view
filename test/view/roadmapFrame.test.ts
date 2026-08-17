@@ -10,7 +10,6 @@ import {
 	bucketByName,
 	bucketCountOf,
 	bucketNames,
-	bucketsOf,
 	cellLabels,
 	roadmapView,
 	rowFor,
@@ -236,7 +235,10 @@ describe('the dated frame', () => {
 		const epic = barOf(timelineRows(containerEl)[0]);
 		expect(epic.hasClass('pbl-bar-milestone')).toBe(true);
 		expect(epic.hasClass('pbl-bar-inferred')).toBe(true);
-		expect(epic.getAttribute('aria-label')).toBe('Milestone 2026-08-10 — inferred from children');
+		// The epic is an Epic, not a Milestone — an inferred equal pair still draws the
+		// diamond, but the sentence now names the item's own type rather than the fixed
+		// word every coincident point used to announce.
+		expect(epic.getAttribute('aria-label')).toBe('Epic 2026-08-10 — inferred from children');
 	});
 });
 
@@ -299,16 +301,6 @@ describe('the advisory beside the frame', () => {
 		expect(advisory?.querySelector('.pbl-empty-title')?.textContent).toBe('No backlog items');
 	});
 
-	it('says nothing matches while the quick filter empties the roadmap', () => {
-		const vault = new FakeVault();
-		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10, horizon: 'Now' } });
-		const harness = roadmapView(vault, { ...HORIZONS });
-		harness.view.setFilter('zzz');
-
-		expect(harness.containerEl.querySelector('.pbl-board-advisory')?.textContent).toContain('No items match');
-		// The frame stays: an empty roadmap is an empty frame.
-		expect(bucketsOf(harness.containerEl).length).toBeGreaterThan(0);
-	});
 });
 
 describe('context rows on the roadmap', () => {

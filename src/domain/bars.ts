@@ -1,4 +1,4 @@
-import { isMarkerType, PlacementEnd, placementEnds } from './itemTypes';
+import { drawsAsPoint, PlacementEnd, placementEnds } from './itemTypes';
 import { BacklogItem } from './model';
 import { absentReading, CivilDate, FieldReading, readDate } from './noteFields';
 import { BacklogSettings } from './settings';
@@ -94,12 +94,12 @@ export type Placement = { kind: 'bar'; bar: TimelineBar } | { kind: 'shelf'; rea
  * the rollup inference — because they do not compose into a single condition anyone
  * could restate correctly beside them.
  */
-export function placeItem(item: BacklogItem, stated: StatedEnds): Placement {
-	// A MARKER is reduced to its point before any span rule is asked about it. A stale
-	// start later than the target would otherwise read as a reversed pair and shelve.
-	// The start is ignored, never rewritten — ignoring a value and deleting it are
-	// different acts, and only the first was specified.
-	if (isMarkerType(item.typeName)) return placeMarker(item, stated.target);
+export function placeItem(item: BacklogItem, stated: StatedEnds, iterationBars: boolean): Placement {
+	// A type that DRAWS AS A POINT is reduced to it before any span rule is asked about
+	// it. A stale start later than the target would otherwise read as a reversed pair
+	// and shelve. The start is ignored, never rewritten — ignoring a value and deleting
+	// it are different acts, and only the first was specified.
+	if (drawsAsPoint(item.typeName, iterationBars)) return placeMarker(item, stated.target);
 	if (stated.start.invalid) return { kind: 'shelf', reason: 'Unreadable start date' };
 	if (stated.target.invalid) return { kind: 'shelf', reason: 'Unreadable target date' };
 	if (reversedSpan(stated.start.value, stated.target.value)) {
@@ -116,7 +116,7 @@ export interface DatedAxis {
 	context: BacklogItem[];
 }
 
-export function deriveBars(rows: BacklogItem[]): DatedAxis {
+export function deriveBars(rows: BacklogItem[], iterationBars: boolean): DatedAxis {
 	const axis: DatedAxis = { bars: [], shelf: [], context: [] };
 	for (const item of rows) {
 		// A context row is never placed by its own dates and gets no inferred span
@@ -125,7 +125,7 @@ export function deriveBars(rows: BacklogItem[]): DatedAxis {
 			axis.context.push(item);
 			continue;
 		}
-		const placement = placeItem(item, statedEnds(item));
+		const placement = placeItem(item, statedEnds(item), iterationBars);
 		if (placement.kind === 'bar') axis.bars.push(placement.bar);
 		else axis.shelf.push({ item, reason: placement.reason });
 	}
@@ -153,7 +153,7 @@ export interface TimelineRow {
  *
  * The bit is reached through the predicate rather than read here, which is what keeps
  * this pure — and what lets the view answer from the dated axis's OWN fold state rather
- * than the tree's, with the quick filter's override already folded into the same answer.
+ * than the tree's.
  */
 export function timelineRows(bars: TimelineBar[], collapsed: (path: string) => boolean): TimelineRow[] {
 	const drawn = new Set(bars.map((bar) => bar.item.file.path));
@@ -269,9 +269,9 @@ export type BarHold = 'body' | 'start' | 'end';
  * the note's own, which is the baseline the open end's grip borrows (`heldDate`).
  */
 export function barHolds(item: BacklogItem, settings: BacklogSettings, bar: TimelineBar): BarHold[] {
-	const ends = placementEnds(item.typeName);
+	const ends = placementEnds(item.typeName, settings.iterationBars);
 	const writable = (end: PlacementEnd): boolean => ends.includes(end) && optionalKeyFor(settings, end) !== '';
-	if (isMarkerType(item.typeName)) return writable('target') ? ['body'] : [];
+	if (drawsAsPoint(item.typeName, settings.iterationBars)) return writable('target') ? ['body'] : [];
 	const stated = statedEnds(item);
 	if (stated.start.value === null && stated.target.value === null) return [];
 	const holds: BarHold[] = [];

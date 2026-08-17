@@ -151,6 +151,21 @@ export interface BacklogModel {
 	 */
 	deliverableResults: BacklogItem[];
 	/**
+	 * Every `Iteration` result in the base — the roadmap's grid axes' own population,
+	 * parallel to `results` rather than a wider version of it. `inPlan` still refuses an
+	 * `Iteration` everywhere `projectionForest` builds `roots`/`items`/`results` from —
+	 * "the forest and the hiding must agree" (see `inPlan`'s own comment) stays true for
+	 * the plan's forest, which is exactly what keeps the tree, both boards, the catalog and
+	 * the toolbar's counts untouched by this admission. `roadmapRows` (`domain/roadmap.ts`)
+	 * is the one reader, and only for a GRID axis (`drawsGrid`) — the horizons axis and
+	 * everything off the roadmap never consult it. Read off `items` — `assignAll`'s whole,
+	 * unfocused tree — for `deliverableResults`' own reason: which iterations exist is a
+	 * fact about the whole base, not about whichever subtree a focus level set on another
+	 * projection happens to be narrowing. Excludes `outsideFilter` items, same as `results`
+	 * and `deliverableResults` — an iteration the Base excluded is not this base's to place.
+	 */
+	iterations: BacklogItem[];
+	/**
 	 * The test catalog's own forest — its rendered roots, every row beneath them, and the
 	 * results among those. Computed by the same rule `roots`/`items`/`results` are, with
 	 * the opposite membership predicate, and off the whole UNFOCUSED tree so a focus level
@@ -218,6 +233,8 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 		// Read off `items` — the whole tree `assignAll` just built, before either branch
 		// below narrows anything to a focus subtree. See `BacklogModel.deliverableResults`.
 		deliverableResults: items.filter((item) => !item.outsideFilter && isDeliverableType(item.typeName)),
+		// Same source, same guard, the same reason — see `BacklogModel.iterations`.
+		iterations: items.filter((item) => !item.outsideFilter && isIterationType(item.typeName)),
 		// Read off the WHOLE, unfocused tree for the reason `deliverableResults` already
 		// is, and the precedent matters more than the line: `buildModel`'s focus branch
 		// replaces roots, items and results together, so a catalog computed after it would

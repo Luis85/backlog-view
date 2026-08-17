@@ -84,6 +84,16 @@ describe('resolveSettings', () => {
 		expect(resolveSettings(fakeConfig({ hierarchyOnly: false })).hierarchyOnly).toBe(false);
 	});
 
+	it('iterationsOnTimeline defaults on and resolves the toggle', () => {
+		expect(resolveSettings(new FakeViewConfig({})).iterationsOnTimeline).toBe(true);
+		expect(resolveSettings(new FakeViewConfig({ iterationsOnTimeline: false })).iterationsOnTimeline).toBe(false);
+	});
+
+	it('iterationBars defaults off and resolves the toggle', () => {
+		expect(resolveSettings(new FakeViewConfig({})).iterationBars).toBe(false);
+		expect(resolveSettings(new FakeViewConfig({ iterationBars: true })).iterationBars).toBe(true);
+	});
+
 	it('reads a WIP limit and a policy for each configured state', () => {
 		const settings = resolveSettings(
 			fakeConfig({

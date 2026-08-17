@@ -12,6 +12,7 @@ import { canSchedule, unschedulePlan } from '../interactions/plan';
 import { BacklogItem } from '../../domain/model';
 import { placeItem, ShelfCard, statedEnds, UNSCHEDULED_LABEL, withoutEnds } from '../../domain/bars';
 import { placementEnds } from '../../domain/itemTypes';
+import { BacklogSettings } from '../../domain/settings';
 import { drawsGrid, RoadmapAxis, SHELF_LABEL } from '../../domain/roadmap';
 import { organizeShelf, searchShelf, ShelfGroup } from '../../domain/shelf';
 
@@ -102,14 +103,15 @@ export function shelfRemoval(host: BacklogViewHost, axis: RoadmapAxis): ShelfRem
 		// PBI that became a Milestone mid-drag gets refused whole by the writer's own
 		// shape check rather than quietly narrowed to a target-only removal. See
 		// `performScheduleMove`'s own comment on why neither may be recomputed here.
-		plan: (source) => void host.performScheduleMove(source.item, unschedulePlan(source.item, source.ends), undefined, source.ends),
+		plan: (source) =>
+			void host.performScheduleMove(source.item, unschedulePlan(source.item, host.settings, source.ends), undefined, source.ends),
 		tooltip: 'Results this axis cannot place — dropping a bar here removes its dates',
 		// The bar BODY alone: a grip released here is a resize, not an unschedule, and
 		// a shelf card's own hold is null — both refused by the same test. Refused
 		// rather than ignored, so the strip never highlights for a drag it would not
 		// honour.
 		accepts: (source) => source.hold === 'body',
-		outcome: removalOutcome,
+		outcome: (item) => removalOutcome(item, host.settings),
 		canDrag: (item) => canSchedule(host.settings, item),
 	};
 }
@@ -128,8 +130,9 @@ export function shelfRemoval(host: BacklogViewHost, axis: RoadmapAxis): ShelfRem
  * outcome differ. That is true of every preview here and needs no machinery — the
  * announcement names the placement from the REBUILT model instead.
  */
-function removalOutcome(item: BacklogItem): string {
-	const left = placeItem(item, withoutEnds(statedEnds(item), placementEnds(item.typeName)));
+function removalOutcome(item: BacklogItem, settings: BacklogSettings): string {
+	const ends = placementEnds(item.typeName, settings.iterationBars);
+	const left = placeItem(item, withoutEnds(statedEnds(item), ends), settings.iterationBars);
 	return left.kind === 'shelf' ? UNSCHEDULED_LABEL : `Keeps ${spanText(left.bar)}`;
 }
 
@@ -192,6 +195,16 @@ export function renderShelf(
 		onEnter: (source) => outcomeEl?.setText(removal.outcome?.(source.item) ?? ''),
 		onLeave: () => outcomeEl?.setText(''),
 	});
+	// The shelf is a scrollport of its own — the band rule's cap plus `overflow-y: auto`
+	// (`styles/roadmap.css`) — so a card held at its bottom edge has to scroll it, exactly
+	// as `.pbl-bucket-cards`, `.pbl-board-col-cards` and the timeline's own scroller do.
+	// It had no auto-scroll at all until 2026-08-17: nineteen unplaced cards measured 1301px
+	// of content in a 143px box in the browser harness, so eighteen of them were out of
+	// reach for the whole drag — on the horizon axis, where the shelf is what a card is
+	// dragged FROM. Wired here beside the drop target rather than after the return below:
+	// collapsed there is nothing to scroll, but the scroller and the target are one piece of
+	// drag machinery and splitting them across an early return is how one gets forgotten.
+	dnd.wireScroller(shelfEl);
 	if (empty || collapsed) return { cards: [], el: shelfEl };
 
 	// `dnd` and `removal` travel together to every card below, and now so does which
@@ -265,7 +278,7 @@ function renderShelfGroup(ctx: RowContext, shelfEl: HTMLElement, group: ShelfGro
 function renderShelfCard(ctx: RowContext, cardsEl: HTMLElement, entry: ShelfCard, wiring: ShelfWiring): void {
 	const card = createCard(ctx, cardsEl, entry.item);
 	renderCardBody(ctx, card, entry.item);
-	ctx.placed.set(entry.item.file.path, { item: entry.item, mount: card, listsChildren: true, face: 'links' });
+	ctx.placed.add(entry.item.file.path);
 	// Unreadable is unplaced, and the card says why rather than rendering
 	// somewhere a guess put it.
 	if (entry.reason !== null) {
@@ -324,7 +337,7 @@ export function renderContextStrip(
 	for (const item of context) {
 		const card = createCard(ctx, cardsEl, item);
 		renderCardBody(ctx, card, item);
-		ctx.placed.set(item.file.path, { item, mount: card, listsChildren: true, face: 'links' });
+		ctx.placed.add(item.file.path);
 		wireCardActivation(ctx, card, item);
 	}
 	return { cards: context, el: stripEl };
