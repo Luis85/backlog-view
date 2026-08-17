@@ -108,6 +108,14 @@ export class EstimationView extends BasesView {
 	 */
 	render(): void {
 		this.viewEl.empty();
+		// Defaults every frame to the single-column grid; `renderPanel` is the only place
+		// that ever clears it, and only that call ever draws a second column's worth of
+		// content. Both early returns below leave a viewEl a `renderPanel` call never
+		// reaches — the guided empty state and the config-warning block — and until this
+		// line neither ever cleared the class either: found in Chromium, where the grid's
+		// `minmax(280px, 360px)` track sat reserved and empty on the right of both, a defect
+		// no jsdom assertion could see because nothing there lays out a track.
+		this.viewEl.toggleClass('pbl-est-no-panel', true);
 		const model = this.settings.model;
 		if (estimationUnconfigured(model)) {
 			this.model = null;

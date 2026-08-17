@@ -60,3 +60,35 @@ describe('the estimation view renders its own states', () => {
 		expect(containerEl.querySelector('.pbl-est-view')).toBeNull();
 	});
 });
+
+/**
+ * `.pbl-est-no-panel` collapses `.pbl-est-view`'s grid to one column — otherwise the
+ * second `minmax(280px, 360px)` track sits reserved and empty, which jsdom cannot see
+ * (nothing here lays out a grid track) and which the browser harness did: the guided
+ * empty state and the config-warning block used to leave it reserved on the right,
+ * because only `renderPanel` ever cleared the class and neither state reaches it. Fixed
+ * by defaulting the class on at the top of every `render()` pass; what is checkable here
+ * is the class itself, never the dead space it used to leave.
+ */
+describe('the no-panel class the grid layout reads', () => {
+	it('is set on the guided empty state', () => {
+		const { containerEl } = makeEstimationView(new FakeVault(), {});
+		expect(containerEl.querySelector('.pbl-est-view')?.classList.contains('pbl-est-no-panel')).toBe(true);
+	});
+
+	it('is set on the config-warning block', () => {
+		const { containerEl } = makeEstimationView(new FakeVault(), { valueProperty: 'note.business-value' });
+		expect(containerEl.querySelector('.pbl-est-view')?.classList.contains('pbl-est-no-panel')).toBe(true);
+	});
+
+	it('is set on the configured table with nothing selected, and cleared once a row is', () => {
+		const vault = new FakeVault();
+		vault.addFile('Item.md', { frontmatter: { 'strategic-alignment': 5 } });
+		const { containerEl } = makeEstimationView(vault, configuredValues());
+		expect(containerEl.querySelector('.pbl-est-view')?.classList.contains('pbl-est-no-panel')).toBe(true);
+
+		containerEl.querySelector<HTMLElement>('.pbl-est-row')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		expect(containerEl.querySelector('.pbl-est-view')?.classList.contains('pbl-est-no-panel')).toBe(false);
+	});
+});

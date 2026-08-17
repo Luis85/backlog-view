@@ -58,6 +58,13 @@
 	color: rgb(var(--color-orange-rgb));
 	background-color: rgba(var(--color-orange-rgb), 0.12);
 	border-radius: var(--radius-m);
+	/* `.pbl-est-view`'s `align-items: stretch` is for the table and the panel, which need
+	   the full track height for their own `overflow-y: auto` — this is the one grid item
+	   that draws alone, with no sibling to share the row with, so stretching it the same
+	   way filled the whole pane with background colour below eight lines of text. Seen
+	   only in Chromium: jsdom lays out nothing, so a `.pbl-est-problems` mount there is a
+	   box of whatever height its content demands regardless of this rule either way. */
+	align-self: start;
 }
 
 .pbl-est-problems ul {
@@ -163,7 +170,15 @@
 
 .pbl-est-title {
 	flex: 1 1 auto;
-	min-width: 0;
+	/* Not 0. At a pane narrow enough to need it, `flex-shrink` has nowhere else to take
+	   the deficit from — every sibling here is a fixed-width numeric column — so a bare
+	   `min-width: 0` shrank the ONE column naming which row this is to nothing rather
+	   than to a truncated sliver: at 700px the title occupied zero pixels and the row
+	   opened directly on "Value", unreadable rather than merely narrow. Seen only in
+	   Chromium, where flex actually distributes a deficit; jsdom never lays the row out
+	   to shrink it at all. This floor is `.pbl-est-currency`'s own `min-width` below,
+	   already the narrowest a column here gets away with. */
+	min-width: 96px;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;

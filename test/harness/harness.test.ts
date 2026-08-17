@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { mountHarness } from './mount';
 import { mountEstimationHarness, EstimationConfigVariant } from './mountEstimation';
@@ -255,6 +256,41 @@ describe('the estimation harness mounts', () => {
 		collect(containerEl);
 
 		expect([...missing]).toEqual([]);
+	});
+});
+
+/**
+ * One rule's own declarations, matched by an EXACT selector — anchored on the rule
+ * boundary (`}` or the start of the file) rather than a bare substring search, because
+ * `.pbl-est-title` is also the tail of `.pbl-est-panel > .pbl-est-title`'s selector, and
+ * an unanchored search would read that rule's declarations instead of the one asked for.
+ * Comments are stripped first (`test/helpers/cssVars.ts`'s own `eachBlock` does the same)
+ * so a rule documented right above its selector cannot break the anchor.
+ */
+function ruleBody(css: string, selector: string): string {
+	const stripped = css.replace(/\/\*[\s\S]*?\*\//g, '');
+	const escaped = selector.replace(/[.#]/g, '\\$&');
+	const match = new RegExp(`(?:^|\\})\\s*${escaped}\\s*\\{([^}]*)\\}`).exec(stripped);
+	if (!match) throw new Error(`no rule for ${selector}`);
+	return match[1];
+}
+
+/**
+ * Two layout defects Chromium showed and jsdom cannot: it lays out nothing, so neither a
+ * grid item stretching to fill a row it has no sibling in nor a flex row's title column
+ * shrinking to zero width is a state any DOM query here can see. What is checkable is
+ * pinned instead — the declaration each fix added — narrower than the visual claim, and
+ * said so rather than left implying more than a `toMatch` on a stylesheet can back up.
+ */
+describe('two layout fixes found in the browser, pinned as declarations jsdom can read', () => {
+	const estimationCss = readFileSync('styles/estimation.css', 'utf8');
+
+	it('does not stretch the config-warning block to the grid row’s full height', () => {
+		expect(ruleBody(estimationCss, '.pbl-est-problems')).toMatch(/align-self:\s*start/);
+	});
+
+	it('keeps a floor under the title column so it cannot shrink to nothing', () => {
+		expect(ruleBody(estimationCss, '.pbl-est-title')).toMatch(/min-width:\s*96px/);
 	});
 });
 
