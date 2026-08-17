@@ -33,3 +33,19 @@ Nothing under this epic is buildable before this exists: a selector without a ru
 arbitrary number the whole epic was opened against.
 
 **Outcome** — A score is chosen against a definition rather than against a feeling.
+
+## Where it lives
+
+`src/view/estimation/panel.ts` (`renderPanel`) draws one row per dimension and per bound
+scale: the range as buttons, and the held point's own rubric sentence shown beside it —
+every OTHER point's sentence reachable the same way, on hover and on focus, through each
+button's own `aria-label`/`title`. The sentences themselves are never here: they reach
+the DOM straight from the saved `ScoringModel` (`domain/scoringModel.ts`'s
+`ScoringDimension.rubric` / `ScaleConfig.rubric`), never through the i18n catalog — this
+note's own "the default sentences ship with the model and are editable" is a fact about
+DATA, and a translated catalog entry could not be edited from the view options the way a
+rubric sentence is. A stored answer outside its own range shows the clamp instead of a
+sentence, never silently — `estimation.clamped` in `src/i18n/en.ts`.
+
+Tests: `test/view/estimation/scoring.test.ts` ("scoring a dimension" and "the confidence,
+effort and complexity rows").

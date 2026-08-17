@@ -1,4 +1,5 @@
 import type { EstimationView } from './estimationView';
+import { renderPanel } from './panel';
 import { t } from '../../i18n/t';
 import { EstimationItem, EstimationModel } from '../../domain/estimationItems';
 import { Currency } from '../../domain/weightedScore';
@@ -31,14 +32,14 @@ function wireEvents(view: EstimationView, tableEl: HTMLElement, model: Estimatio
 	tableEl.addEventListener('click', (evt) => {
 		const rowEl = evt.target instanceof Element ? evt.target.closest('.pbl-est-row') : null;
 		const path = rowEl instanceof HTMLElement ? rowEl.dataset.path : undefined;
-		if (path && model.byPath.has(path)) selectRow(view, tableEl, rows, path);
+		if (path && model.byPath.has(path)) selectRow(view, tableEl, rows, model, path);
 	});
 	tableEl.addEventListener('keydown', (evt) => {
 		if (evt.key === 'ArrowDown' || evt.key === 'ArrowUp') {
 			const path = step(model, view.selectedPath, evt.key === 'ArrowDown' ? 1 : -1);
 			if (path) {
 				evt.preventDefault();
-				selectRow(view, tableEl, rows, path);
+				selectRow(view, tableEl, rows, model, path);
 			}
 			return;
 		}
@@ -58,13 +59,20 @@ function step(model: EstimationModel, selectedPath: string | null, delta: 1 | -1
 }
 
 /**
- * Move `pbl-selected`/`aria-selected` off the old row and onto the new one, and publish
- * `view.selectedPath`. Both callers already guarantee `path` is a key of `rows` — the
- * click handler checks `model.byPath.has(path)` first, and `step` only ever returns a
- * path drawn from `model.items` — and `rows` is built from that same item list, so there
- * is no state in which the lookup below can miss.
+ * Move `pbl-selected`/`aria-selected` off the old row and onto the new one, publish
+ * `view.selectedPath`, and rebuild the panel beside it — the fast path a click or an
+ * arrow key takes, never a full `view.render()`. Both callers already guarantee `path`
+ * is a key of `rows` — the click handler checks `model.byPath.has(path)` first, and
+ * `step` only ever returns a path drawn from `model.items` — and `rows` is built from
+ * that same item list, so there is no state in which the lookup below can miss.
  */
-function selectRow(view: EstimationView, tableEl: HTMLElement, rows: Map<string, HTMLElement>, path: string): void {
+function selectRow(
+	view: EstimationView,
+	tableEl: HTMLElement,
+	rows: Map<string, HTMLElement>,
+	model: EstimationModel,
+	path: string,
+): void {
 	const row = rows.get(path)!;
 	const previous = view.selectedPath ? rows.get(view.selectedPath) : undefined;
 	previous?.removeClass('pbl-selected');
@@ -74,6 +82,7 @@ function selectRow(view: EstimationView, tableEl: HTMLElement, rows: Map<string,
 	row.setAttribute('aria-selected', 'true');
 	if (!row.id) row.id = uniqueElementId('pbl-est-row');
 	tableEl.setAttribute('aria-activedescendant', row.id);
+	renderPanel(view, model);
 }
 
 function renderHead(tableEl: HTMLElement): void {

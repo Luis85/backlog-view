@@ -608,7 +608,7 @@ function restoreInto(
 	return { file: restore.file, keys: changed, tags, dependsOn };
 }
 
-function rawValueOf(fm: Record<string, unknown>, key: string): RawValue {
+export function rawValueOf(fm: Record<string, unknown>, key: string): RawValue {
 	// Own properties only: 'toString' is a legal frontmatter name on a note that
 	// lacks it, and `in` would report the inherited function as a prior value.
 	return Object.prototype.hasOwnProperty.call(fm, key)
@@ -617,7 +617,7 @@ function rawValueOf(fm: Record<string, unknown>, key: string): RawValue {
 }
 
 /** Equality on raw frontmatter values — plain YAML data, so structural compare is sound. */
-function sameRaw(a: RawValue, b: RawValue): boolean {
+export function sameRaw(a: RawValue, b: RawValue): boolean {
 	if (!a.present || !b.present) return a.present === b.present;
 	return a.value === b.value || JSON.stringify(a.value) === JSON.stringify(b.value);
 }

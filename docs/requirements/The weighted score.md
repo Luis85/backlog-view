@@ -52,4 +52,16 @@ a stored total can be judged current, stale, foreign, hand-written or orphaned a
 Confidence, effort and complexity never reach this module — they play no part in the total,
 so they play no part in the fingerprint either.
 
-Tests: **`test/domain/weightedScore.test.ts`**.
+`src/view/estimation/scoring.ts` is where a change to any of it is PLANNED —
+`planScoreWrite`, `planScaleWrite`, `planOrphanCleanup` — pure functions over an
+`EstimationItem` and its `ScoringModel`, each returning the batch a pick would write or
+`null` when it would write nothing (the checkmark question). A score change plans the
+score, the recomputed total and its stamp as one batch, or their removal together once
+nothing is left answered — never the total alone, never the stamp alone, since a total
+with no stamp is an unattributed number and a stamp with no total describes a model that
+wrote nothing. `src/storage/propertyWrite.ts` (`applyPropertyWrites`) is what actually
+writes such a batch: plain key/value sets, `null` removing a key, applied inside one
+`processFrontMatter` call per note so the three keys land — or fail to land — together.
+
+Tests: **`test/domain/weightedScore.test.ts`**, **`test/storage/propertyWrite.test.ts`**,
+**`test/view/estimation/scoring.test.ts`**.

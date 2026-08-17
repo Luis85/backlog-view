@@ -137,8 +137,10 @@ sections named under **Definition of done** above. Read from the behaviour you a
 changing rather than from an index of the tree.
 
 Rules: never write frontmatter outside `storage/frontmatter.ts` (`applyWrites`, which
-EDITS a note) and `storage/createNote.ts` (`createBacklogItem`, which MAKES one), and
-every write path — including creation — goes through the `configProblems` gate. That rule is also enforced mechanically: `no-restricted-syntax`
+EDITS a note), `storage/createNote.ts` (`createBacklogItem`, which MAKES one) and
+`storage/propertyWrite.ts` (`applyPropertyWrites`, the estimation view's own plain
+key/value batches — a score, its recomputed total and its stamp), and every write path —
+including creation — goes through the `configProblems` gate. That rule is also enforced mechanically: `no-restricted-syntax`
 bans `processFrontMatter`, `vault.create` and `load/saveLocalStorage` everywhere outside
 `storage/`, so a new write path cannot appear by accident. Modules reach view state only
 through `BacklogViewHost`; keep `host.ts` free of runtime code so imports stay cycle-free.

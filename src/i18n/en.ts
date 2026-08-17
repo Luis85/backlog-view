@@ -116,4 +116,23 @@ export const en = {
 	'estimation.currency.handwritten': 'Hand-written',
 	'estimation.currency.orphan': 'Inputs gone',
 	'estimation.currency.none': '—',
+
+	/** The per-item panel: one row per dimension and per bound scale, the two grouped
+	 * scales' own heading, the clamp note, and the two labelled derived lines. Rubric
+	 * sentences and dimension labels are never here — they are the MODEL's own data
+	 * (`docs/requirements/A rubric for every point.md`), reaching the DOM straight from
+	 * the saved model rather than through this catalog. */
+	'estimation.panel.confidence': 'Confidence',
+	'estimation.panel.effort': 'Effort',
+	'estimation.panel.complexity': 'Complexity',
+	'estimation.panel.effortComplexity': 'Effort and complexity',
+	/** A dimension or scale's stored answer fell outside its own declared range. */
+	'estimation.clamped': 'Out of range — read as {value}',
+	/** The per-row clear control's accessible name — {label} is the dimension's or
+	 * scale's own (data) label, threaded through rather than joined by this string. */
+	'estimation.panel.clear': 'Clear {label}',
+	'estimation.panel.term': '{label} {score} × {weight}%',
+	'estimation.panel.adjustedLabel': 'Confidence-adjusted value:',
+	'estimation.panel.valueToEffortLabel': 'Value to effort:',
+	'estimation.panel.removeOrphan': 'Remove the orphaned total',
 } as const;

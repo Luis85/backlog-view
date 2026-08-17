@@ -58,6 +58,18 @@ keeps for the backlog. `src/view/estimation/renderTable.ts` is the free function
 `renderPass.ts`'s own shape, imported by `estimationView.ts` rather than the other way
 round, so the two files cannot cycle.
 
+The panel and its write-back are the same split a third time. `src/storage/propertyWrite.ts`
+(`applyPropertyWrites`) is the write boundary's third file: plain key/value frontmatter
+batches, over the same `RestoreWrite` inverses `applyWrites` captures, so one `applyRestores`
+replays either writer's batches without knowing which produced them. `src/view/estimation/scoring.ts`
+is the pure planner beside it — `planScoreWrite`, `planScaleWrite`, `planOrphanCleanup` —
+touching no DOM and no vault, the same `domain/`-shaped purity as every other planner
+in this codebase even though it sits in `view/` for now, one dependency short of the split
+this ADR already defers. `src/view/estimation/panel.ts` is the free function over
+`EstimationView` that draws the per-item panel and wires its picks to the view's own
+`performScore`/`performScale`/`performOrphanCleanup`, `renderTable.ts`'s shape a second
+time: imported by `estimationView.ts`, never the reverse.
+
 ## Consequences
 
 The SDD's directory tree is not adopted. Modules this refactor adds are named
