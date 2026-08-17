@@ -34,14 +34,32 @@ interface RowSpec {
 	present: boolean;
 }
 
-/** Rebuilds the panel for whatever `view.selectedPath` names, or clears it. Safe to call
- *  from a full view render or from the table's own fast-path row selection. */
+/**
+ * Rebuilds the panel for whatever `view.selectedPath` names, or clears it. Safe to call
+ * from a full view render or from the table's own fast-path row selection.
+ *
+ * ponytail: torn down and rebuilt WHOLE on every pick, never patched in place — a
+ * targeted update (just the picked button's class, the rubric note, the decomposition
+ * and the two derived numbers) would cost less per pick. Accepted because the panel's
+ * row count is bounded by the model's own dimensions plus three fixed scales — the
+ * shipped default is eight rows, and a saved model configured with dozens would still
+ * be a few hundred DOM nodes to rebuild, nowhere near the tree's hundred-row render-cost
+ * concern (`src/view/CLAUDE.md`'s "Cost" section). Upgrade path if a model ever grows
+ * past that: patch each `RowSpec`'s button state and note in place instead of clearing
+ * `view.panelEl` and calling this whole function again.
+ */
 export function renderPanel(view: EstimationView, model: EstimationModel): void {
-	view.viewEl.querySelector('.pbl-est-panel')?.remove();
+	view.panelEl?.remove();
+	view.panelEl = null;
 	const item = view.selectedPath ? model.byPath.get(view.selectedPath) : undefined;
+	// The grid's second track is reserved whether or not a panel occupies it
+	// (`styles/estimation.css`); this is the one place that knows whether one is about
+	// to render, so it is the one place that can say so.
+	view.viewEl.toggleClass('pbl-est-no-panel', !item);
 	if (!item) return;
 	const scoringModel = view.settings.model;
 	const panelEl = view.viewEl.createDiv({ cls: 'pbl-est-panel' });
+	view.panelEl = panelEl;
 	panelEl.createDiv({ cls: 'pbl-est-title', text: item.title });
 
 	for (const dimension of scoringModel.dimensions) renderScoreRow(panelEl, dimSpec(item, dimension));
@@ -175,20 +193,18 @@ function renderDerived(panelEl: HTMLElement, item: EstimationItem): void {
 	if (!item.result || item.confidence === null) return;
 	const adjusted = round2((item.result.total * item.confidence) / 5);
 	const derived = panelEl.createDiv({ cls: 'pbl-est-derived' });
-	derivedLine(derived, t('estimation.panel.adjustedLabel'), adjusted);
+	// One catalog key per line, {value} substituted rather than glued on beside a
+	// separately-translated label — the i18n rule this file's rubric notes already
+	// follow (`estimation.clamped`, `estimation.betweenPoints`): the sentence is the
+	// unit, so nothing here builds one out of two pieces at the call site.
+	derived.createSpan({ text: t('estimation.panel.adjustedValue', { value: adjusted }) });
 	// A POSITIVE effort, asked explicitly: the ratio divides by it, so a stored 0 gives
 	// `Infinity` and a negative gives a negative ratio beside a table showing the number
 	// the user typed. Neither is a value to show, so the line is omitted — the row for
 	// effort itself says the value is out of its range, which is where that belongs.
 	if (item.effort !== null && item.effort > 0) {
-		derivedLine(derived, t('estimation.panel.valueToEffortLabel'), round2(adjusted / item.effort));
+		derived.createSpan({ text: t('estimation.panel.valueToEffort', { value: round2(adjusted / item.effort) }) });
 	}
-}
-
-function derivedLine(container: HTMLElement, label: string, value: number): void {
-	const line = container.createSpan();
-	line.appendText(`${label} `);
-	line.createEl('strong', { text: String(value) });
 }
 
 function renderCleanupButton(panelEl: HTMLElement): void {

@@ -46,7 +46,9 @@ describe('write robustness', () => {
 		key(tree, 'ArrowDown', { altKey: true });
 		await flush();
 
-		expect(Notice.messages.some((m) => m.startsWith('Failed to update backlog items'))).toBe(true);
+		// A neutral sentence, not "backlog items": the same gate runs the estimation
+		// view's batches, which are not backlog items either.
+		expect(Notice.messages.some((m) => m.startsWith('Failed to apply the change'))).toBe(true);
 	});
 });
 

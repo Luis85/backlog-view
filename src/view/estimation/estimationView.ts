@@ -3,14 +3,15 @@ import { t } from '../../i18n/t';
 import { EstimationSettings, ScaleName, resolveEstimationSettings } from '../../domain/estimationSettings';
 import { estimationUnconfigured, modelProblems } from '../../domain/scoringModel';
 import { buildEstimationModel, EstimationItem, EstimationModel } from '../../domain/estimationItems';
+import { planOrphanCleanup, planScaleWrite, planScoreWrite, PropertyWrite } from '../../domain/estimationWritePlan';
 import { WriteOutcome } from '../../storage/frontmatter';
-import { applyPropertyWrites, PropertyWrite } from '../../storage/propertyWrite';
+import { applyPropertyWrites } from '../../storage/propertyWrite';
 import { WriteGate } from '../writeGate';
 import { WriteLock } from '../writeLock';
+import { guidanceShell } from '../render/emptyStates';
 import { renderTable } from './renderTable';
 import { renderPanel } from './panel';
 import { runEstimationInit } from './init';
-import { planOrphanCleanup, planScaleWrite, planScoreWrite } from './scoring';
 
 export const ESTIMATION_VIEW_TYPE = 'product-estimation';
 
@@ -33,6 +34,9 @@ export class EstimationView extends BasesView {
 	readonly gate: WriteGate<PropertyWrite>;
 	/** The row whose panel is on screen — set by the table's click and its arrow keys. */
 	selectedPath: string | null = null;
+	/** The mounted `.pbl-est-panel`, or null while nothing is selected — `panel.ts`'s own
+	 *  field so `renderPanel` removes it by reference rather than by `querySelector`. */
+	panelEl: HTMLElement | null = null;
 	/**
 	 * The table's active sort, as `${column}:${direction}` — null for Base order,
 	 * unsorted. Read and written by `renderTable.ts` alone (`restoreSort`/`setSort`),
@@ -45,7 +49,11 @@ export class EstimationView extends BasesView {
 	 *  successful render (loading, unconfigured, or a broken model scores nothing). */
 	model: EstimationModel | null = null;
 
-	constructor(controller: QueryController, containerEl: HTMLElement, lock: WriteLock = new WriteLock()) {
+	// No default: `registerEstimationView` always threads the plugin-wide lock through,
+	// and a silent per-view fallback here is exactly the bug that call exists to avoid —
+	// a view sharing undo and serialization with nobody. `makeEstimationView` is where a
+	// test that does not care gets a fresh one instead (`view/CLAUDE.md`'s own note).
+	constructor(controller: QueryController, containerEl: HTMLElement, lock: WriteLock) {
 		super(controller);
 		this.lock = lock;
 		this.viewEl = containerEl.createDiv({ cls: 'pbl-view pbl-est-view' });
@@ -124,36 +132,29 @@ export class EstimationView extends BasesView {
 
 	/**
 	 * The view's write path, delegated straight to the gate — `writeGate.ts`'s own
-	 * shape. `applySafely` now has its production caller (`init.ts`'s
-	 * `runEstimationInit`, the guided empty state's setup action), so it needs no
-	 * suppression any more. `canUndo` and `undoLast` still have none outside a test —
-	 * the panel's own picks go through `performScore`/`performScale`/
-	 * `performOrphanCleanup` below, none of which reads the undo slot — so fallow still
-	 * reads them as unused class members; suppressed rather than hidden behind
-	 * `usedClassMembers`, which is for members a FRAMEWORK invokes, not ones a later
-	 * consumer (the toolbar) will.
+	 * shape. `applySafely` has its production caller (`init.ts`'s `runEstimationInit`,
+	 * the guided empty state's setup action). This view has no toolbar and no undo
+	 * button, and the panel's own picks go through `performScore`/`performScale`/
+	 * `performOrphanCleanup` below, none of which reads the undo slot — so unlike the
+	 * backlog view there is no production caller for `canUndo`/`undoLast` to delegate,
+	 * and no suppression to carry for delegates that do not exist. A test wanting either
+	 * reaches `view.gate.canUndo()`/`view.gate.undoLast()` directly, which is public for
+	 * exactly this (`writeGate.ts`'s own shape, read straight rather than through a
+	 * forward this class would only be adding for a test to call).
 	 */
 	applySafely(writes: PropertyWrite[]): Promise<WriteOutcome | null> {
 		return this.gate.applySafely(writes);
 	}
 
-	// fallow-ignore-next-line unused-class-member
-	canUndo(): boolean {
-		return this.gate.canUndo();
-	}
-
-	// fallow-ignore-next-line unused-class-member
-	undoLast(): Promise<boolean> {
-		return this.gate.undoLast();
-	}
-
 	/** A dimension pick: plan, write, redraw. `panel.ts` refocuses the rebuilt point
-	 *  button once this settles — `null` from the planner means nothing to do at all. */
+	 *  button once this settles — `null` from the planner means nothing to do at all.
+	 *  The refresh is skipped when the write's own deferred-update flush already drew
+	 *  this state (`WriteGate.flushedLastBatch`) — otherwise every pick redrew twice. */
 	async performScore(item: EstimationItem, dimensionId: string, value: number | null): Promise<void> {
 		const plan = planScoreWrite(this.settings.model, item, dimensionId, value);
 		if (!plan) return;
 		await this.gate.applySafely([plan]);
-		this.refresh();
+		if (!this.gate.flushedLastBatch) this.refresh();
 	}
 
 	/** A confidence/effort/complexity pick — the same shape as a score pick, over the
@@ -162,7 +163,7 @@ export class EstimationView extends BasesView {
 		const plan = planScaleWrite(this.settings.model, item, scale, value);
 		if (!plan) return;
 		await this.gate.applySafely([plan]);
-		this.refresh();
+		if (!this.gate.flushedLastBatch) this.refresh();
 	}
 
 	/** Removes an orphaned total and stamp — offered only while `item.currency` reads
@@ -171,19 +172,21 @@ export class EstimationView extends BasesView {
 		const plan = planOrphanCleanup(this.settings.model, item);
 		if (!plan) return;
 		await this.gate.applySafely([plan]);
-		this.refresh();
+		if (!this.gate.flushedLastBatch) this.refresh();
 	}
 
 	private renderUnconfigured(): void {
-		const box = this.viewEl.createDiv({ cls: 'pbl-empty pbl-est-empty' });
-		box.createDiv({ text: t('estimation.empty.unconfigured') });
-		box.createDiv({ cls: 'pbl-empty-hint', text: t('estimation.empty.hint') });
-		const btn = box.createEl('button', { cls: 'mod-cta', text: t('estimation.empty.useDefaults') });
+		const empty = guidanceShell(this.viewEl, 'calculator', t('estimation.empty.unconfigured'), t('estimation.empty.hint'));
+		empty.addClass('pbl-est-empty');
+		const btn = empty.createEl('button', { cls: 'mod-cta', text: t('estimation.empty.useDefaults') });
 		btn.addEventListener('click', () => void runEstimationInit(this));
 	}
 
+	/** A block, not `.pbl-config-warning`: that class is an inline-flex pill sized for
+	 *  one line beside the toolbar's other controls, and this reads as prose plus a
+	 *  list — `styles/estimation.css`'s own `.pbl-est-problems` states why. */
 	private renderProblems(problems: string[]): void {
-		const box = this.viewEl.createDiv({ cls: 'pbl-config-warning' });
+		const box = this.viewEl.createDiv({ cls: 'pbl-est-problems' });
 		box.createDiv({ text: t('estimation.problems.lead') });
 		const list = box.createEl('ul');
 		for (const p of problems) list.createEl('li', { text: p });

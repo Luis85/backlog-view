@@ -91,6 +91,10 @@ export const en = {
 
 	'settings.sharedKey': 'The {properties} properties share the key "{key}".',
 
+	/** The write gate's own failure notice — every view's batch runs through it, so the
+	 * message names neither "backlog items" nor any other one view's own vocabulary. */
+	'writeGate.applyFailed': 'Failed to apply the change. See the developer console for details.',
+
 	/** The estimation view's own states — loading, unconfigured, misconfigured, and its
 	 * own empty result set. */
 	'estimation.loading': 'Loading estimation view…',
@@ -139,7 +143,7 @@ export const en = {
 	 * scale's own (data) label, threaded through rather than joined by this string. */
 	'estimation.panel.clear': 'Clear {label}',
 	'estimation.panel.term': '{label} {score} × {weight}%',
-	'estimation.panel.adjustedLabel': 'Confidence-adjusted value:',
-	'estimation.panel.valueToEffortLabel': 'Value to effort:',
+	'estimation.panel.adjustedValue': 'Confidence-adjusted value: {value}',
+	'estimation.panel.valueToEffort': 'Value to effort: {value}',
 	'estimation.panel.removeOrphan': 'Remove the orphaned total',
 } as const;

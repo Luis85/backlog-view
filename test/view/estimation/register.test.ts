@@ -4,18 +4,16 @@ import { BasesViewRegistration } from 'obsidian';
 import { registerEstimationView } from '../../../src/view/estimation/register';
 import { WriteLock } from '../../../src/view/writeLock';
 import { ESTIMATION_VIEW_TYPE, EstimationView } from '../../../src/view/estimation/estimationView';
-import { useViewHarness } from '../../helpers/view';
+import { useViewHarness, captureRegistrations } from '../../helpers/view';
+import { makeEstimationView } from '../../helpers/estimation';
+import { configuredValues } from '../../helpers/estimationModel';
+import { FakeVault, FakeViewConfig } from '../../helpers/vault';
 
 useViewHarness();
 
 describe('registerEstimationView', () => {
 	it('registers the estimation view with the correct config', () => {
-		const specs = new Map<string, BasesViewRegistration>();
-		const fakePlugin = {
-			registerBasesView: (type: string, spec: BasesViewRegistration) => {
-				specs.set(type, spec);
-			},
-		};
+		const { plugin: fakePlugin, specs } = captureRegistrations<BasesViewRegistration>();
 
 		const lock = new WriteLock();
 		registerEstimationView(fakePlugin as never, lock);
@@ -27,17 +25,8 @@ describe('registerEstimationView', () => {
 		expect(spec.options).toBeDefined();
 	});
 
-	// registerBacklogView.test.ts proves its factory view SHARES the lock observably —
-	// view B undoing a write view A made. That proof needs a write gate, and this view's
-	// own gate does not arrive until a later task, so this only proves the factory builds
-	// an EstimationView holding the exact lock instance it was given.
 	it('factory-built view is an EstimationView constructed with the given lock', () => {
-		const specs = new Map<string, BasesViewRegistration>();
-		const fakePlugin = {
-			registerBasesView: (type: string, spec: BasesViewRegistration) => {
-				specs.set(type, spec);
-			},
-		};
+		const { plugin: fakePlugin, specs } = captureRegistrations<BasesViewRegistration>();
 		const lock = new WriteLock();
 		registerEstimationView(fakePlugin as never, lock);
 		const spec = specs.get(ESTIMATION_VIEW_TYPE)!;
@@ -47,5 +36,36 @@ describe('registerEstimationView', () => {
 
 		expect(view).toBeInstanceOf(EstimationView);
 		expect((view as EstimationView).lock).toBe(lock);
+	});
+
+	it('factory-built view shares the lock observably: view B undoes a write view A made', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Item.md', { frontmatter: { 'strategic-alignment': 5 } });
+		const lockA = new WriteLock();
+
+		const { plugin: fakePlugin, specs } = captureRegistrations<BasesViewRegistration>();
+		registerEstimationView(fakePlugin as never, lockA);
+		const spec = specs.get(ESTIMATION_VIEW_TYPE)!;
+
+		const containerA = document.body.createDiv();
+		const viewA = spec.factory({} as never, containerA) as unknown as Record<string, unknown>;
+		viewA.app = vault.app;
+		viewA.config = new FakeViewConfig(configuredValues());
+		viewA.data = { data: vault.entries() };
+		(viewA as unknown as EstimationView).onDataUpdated();
+
+		// A second view with the SAME lock, built the ordinary test-helper way.
+		const { view: viewB } = makeEstimationView(vault, configuredValues(), { lock: lockA });
+
+		const fileOf = (path: string) => vault.entries().find((e) => e.file.path === path)!.file;
+		await (viewA as unknown as EstimationView).applySafely([
+			{ file: fileOf('Item.md'), sets: [{ key: 'strategic-alignment', value: 3 }] },
+		]);
+
+		// Observable proof: view B (never the one writing) can undo the batch view A made
+		// through the factory — the same shape `registerBacklogView.test.ts` proves for
+		// the backlog view, and evidence this view's own gate is built from the shared
+		// lock rather than a private one.
+		expect(viewB.gate.canUndo()).toBe(true);
 	});
 });

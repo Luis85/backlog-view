@@ -87,7 +87,13 @@
    property, resolved by value regardless of which partial's rule set it) and defines no
    selector any other partial also targets, so it can sit anywhere in this list. */
 @import "./legend.css";
-/* Position NOT load-bearing for anything above: `.pbl-est-*` is new vocabulary this
-   list defines nowhere else. Last because it is the newest partial — a future view,
-   previewed in `test/harness/mock.ts` (uncommitted) before its render modules exist. */
+/* Position IS load-bearing: `.pbl-est-view` and `.pbl-view` are equal-specificity single
+   classes on the SAME element (`estimationView.ts`'s `cls: 'pbl-view pbl-est-view'`), and
+   `view.css`'s `display: flex` only loses to this partial's `display: grid` because this
+   import comes after it — moved earlier and the estimation view's two-column layout
+   collapses back to the tree's flex column. */
 @import "./estimation.css";
+/* Position NOT load-bearing: `estimationPanel.css` is the same partial split at the
+   400-line cap (2026-08-17) — `.pbl-est-panel-*`/`.pbl-est-dim`/`.pbl-est-point` are not
+   vocabulary any earlier partial also declares. */
+@import "./estimationPanel.css";

@@ -1,0 +1,158 @@
+/* ==========================================================================
+   The estimation view's per-item panel — split out of `estimation.css` at its
+   400-line cap (2026-08-17); the boundary is `estimation.css`'s own view grid and
+   table above it versus the panel `.pbl-est-panel` holds below it, one concern
+   each. Position after `estimation.css` in `styles/index.css`'s import list is NOT
+   load-bearing: every selector here (`.pbl-est-dim`, `.pbl-est-points`,
+   `button.pbl-est-point`, `.pbl-est-rubric`, `.pbl-est-decomp`, `.pbl-est-derived`)
+   is vocabulary the earlier partial does not also declare, so nothing here is
+   decided by order — see that file's own header.
+   ========================================================================== */
+
+/* ==========================================================================
+   The panel: one selector row per enabled dimension (plus confidence, effort
+   and complexity, which are scales of the same shape), then the decomposition.
+   ========================================================================== */
+
+.pbl-est-dim {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-2);
+	padding-block: var(--size-4-2);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.pbl-est-dim:last-of-type {
+	border-bottom: none;
+	padding-bottom: 0;
+}
+
+.pbl-est-dim-label {
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-medium);
+	color: var(--text-normal);
+}
+
+/* A dimension's own range decides how many buttons this holds, and a wide one (a 0-20
+   scale is legal configuration) must not squeeze into one line: `wrap` moves the
+   overflow onto a second row instead, and each button's own `flex-shrink: 0`
+   (below) is what keeps that a clean wrap rather than every button quietly narrower
+   than its declared 28px. */
+.pbl-est-points {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-2-2);
+}
+
+/*
+ * Real `<button>`s, minus the button chrome — the same recipe
+ * `button.pbl-card-kids-toggle` (cardChildren.css) states in full: `appearance:
+ * none` plus a zeroed border/margin/background is not enough on its own,
+ * because Obsidian's `button:not(.clickable-icon)` sets background-color and
+ * box-shadow at (0,1,1), and a bare class selector is (0,1,0) — losing
+ * regardless of source order. Qualifying with the element ties the
+ * specificity and this partial's later load order wins it (the 2026-08-08
+ * bug this recipe exists to not repeat: a disclosure button that looked right
+ * here and wrong in a vault because nothing had beaten the real default).
+ */
+button.pbl-est-point {
+	appearance: none;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	flex-shrink: 0;
+	padding: 0;
+	margin: 0;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	background-color: var(--background-primary);
+	box-shadow: none;
+	color: var(--text-muted);
+	font-family: inherit;
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-medium);
+	font-variant-numeric: tabular-nums;
+	line-height: 1;
+	cursor: pointer;
+}
+
+/* Restated on hover and not left to the rule above: a browser resolves the
+   winning declaration per property, so that rule's win at rest says nothing
+   about Obsidian's own `button:hover` fill, which is also (0,1,1). */
+button.pbl-est-point:hover {
+	color: var(--text-normal);
+	border-color: var(--text-muted);
+	box-shadow: none;
+}
+
+.pbl-est-point:focus-visible {
+	outline: 1px solid var(--interactive-accent);
+	outline-offset: 1px;
+}
+
+/* The point this note's answer names — checked against the write PLAN once a
+   plan exists, never against a comparison written beside it (`CLAUDE.md`, "A
+   Set menu's checkmark is asked of the PLAN"). `.is-active` rather than
+   `.pbl-selected`: this is the chosen VALUE of a control, the same fact
+   `.pbl-mode-btn.is-active` (toolbar.css) marks for a projection toggle, not
+   the keyboard/detail selection `.pbl-selected` marks on a row or a card. */
+button.pbl-est-point.is-active {
+	background-color: var(--interactive-accent);
+	border-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.pbl-est-rubric {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+/* ==========================================================================
+   The decomposition: the total, its coverage, and the two derived numbers
+   beside it — one wrapping row, so a narrow panel stacks them without a
+   second breakpoint to maintain.
+   ========================================================================== */
+
+.pbl-est-decomp {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: var(--size-4-2) var(--size-4-4);
+	padding-top: var(--size-4-3);
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+/* The total and its coverage read large here — a glanceable answer, not a
+   table cell — so both drop the 72px column width the table gave them. */
+.pbl-est-decomp .pbl-est-total {
+	flex: 0 0 auto;
+	width: auto;
+	text-align: start;
+	font-size: var(--font-ui-large);
+	font-weight: var(--font-semibold);
+}
+
+.pbl-est-decomp .pbl-est-coverage {
+	flex: 0 0 auto;
+	width: auto;
+	text-align: start;
+	font-size: var(--font-ui-small);
+}
+
+/* Confidence-adjusted value and value-to-effort — derived on read, never
+   written (`CLAUDE.md`'s write-back rule), which is why both are labelled
+   rather than left to stand as bare numbers beside the total they are not.
+   Each line is one `t()` sentence (`estimation.panel.adjustedValue` /
+   `…valueToEffort`) with no markup inside it — the rubric notes' own idiom
+   (`.pbl-est-rubric`), so nothing here splits a translated sentence to bold
+   half of it. */
+.pbl-est-derived {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-4-1) var(--size-4-3);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	font-variant-numeric: tabular-nums;
+}

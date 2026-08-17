@@ -36,6 +36,35 @@
 	min-height: 0;
 }
 
+/* No row selected: `renderPanel` (`panel.ts`) draws nothing and toggles this class,
+   because the grid above reserves its second track's 280-360px whether or not anything
+   occupies it — left alone, an unselected table sits in a narrower left column for no
+   reason, with a blank quarter to a third of the pane doing nothing beside it. */
+.pbl-est-view.pbl-est-no-panel {
+	grid-template-columns: minmax(0, 1fr);
+}
+
+/* A configured-but-broken scoring model: a warning BLOCK, not the toolbar's
+   `.pbl-config-warning` pill — that class is `inline-flex` and sized for one line
+   beside other toolbar controls, which is the wrong shape for a lead sentence plus a
+   `<ul>` of problems (`estimationView.ts`'s `renderProblems`). Same warning colour,
+   read as prose instead of squeezed into a chip. */
+.pbl-est-problems {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-2);
+	margin: var(--size-4-3);
+	padding: var(--size-4-3);
+	color: rgb(var(--color-orange-rgb));
+	background-color: rgba(var(--color-orange-rgb), 0.12);
+	border-radius: var(--radius-m);
+}
+
+.pbl-est-problems ul {
+	margin: 0;
+	padding-inline-start: var(--size-4-5);
+}
+
 .pbl-est-table {
 	display: flex;
 	flex-direction: column;
@@ -167,10 +196,13 @@
    applies here too — nothing computed reads as a stated absence, not as a blank
    cell that could be mistaken for a render that has not finished yet. The mock
    spells the dash in markup; a real row would test the same case against
-   `result === null`. */
+   `result === null`. The currency chip joined this list rather than spelling its
+   own em dash in `en.ts`: two different glyphs for one absence, one row apart, is
+   what a hand-written dash beside this rule cost before. */
 .pbl-est-cell:empty::before,
 .pbl-est-total:empty::before,
-.pbl-est-coverage:empty::before {
+.pbl-est-coverage:empty::before,
+.pbl-est-currency:empty::before {
 	content: '\2013';
 }
 
@@ -220,8 +252,9 @@
 }
 
 /* Six real buttons since Task 9 — sortable headers. `button.pbl-est-point`
-   below states the recipe in full: qualifying the reset with the element
-   ties the specificity against Obsidian's `button:not(.clickable-icon)`. */
+   (`estimationPanel.css`) states the recipe in full: qualifying the reset
+   with the element ties the specificity against Obsidian's
+   `button:not(.clickable-icon)`. */
 button.pbl-est-sort {
 	appearance: none;
 	padding: 0;
@@ -249,146 +282,4 @@ button.pbl-est-sort:focus-visible {
    on regardless of specificity, but a button centers its text absent one. */
 button.pbl-est-title {
 	text-align: start;
-}
-
-/* ==========================================================================
-   The panel: one selector row per enabled dimension (plus confidence, effort
-   and complexity, which are scales of the same shape), then the decomposition.
-   ========================================================================== */
-
-.pbl-est-dim {
-	display: flex;
-	flex-direction: column;
-	gap: var(--size-2-2);
-	padding-block: var(--size-4-2);
-	border-bottom: 1px solid var(--background-modifier-border);
-}
-
-.pbl-est-dim:last-of-type {
-	border-bottom: none;
-	padding-bottom: 0;
-}
-
-.pbl-est-dim-label {
-	font-size: var(--font-ui-small);
-	font-weight: var(--font-medium);
-	color: var(--text-normal);
-}
-
-.pbl-est-points {
-	display: flex;
-	gap: var(--size-2-2);
-}
-
-/*
- * Real `<button>`s, minus the button chrome — the same recipe
- * `button.pbl-card-kids-toggle` (cardChildren.css) states in full: `appearance:
- * none` plus a zeroed border/margin/background is not enough on its own,
- * because Obsidian's `button:not(.clickable-icon)` sets background-color and
- * box-shadow at (0,1,1), and a bare class selector is (0,1,0) — losing
- * regardless of source order. Qualifying with the element ties the
- * specificity and this partial's later load order wins it (the 2026-08-08
- * bug this recipe exists to not repeat: a disclosure button that looked right
- * here and wrong in a vault because nothing had beaten the real default).
- */
-button.pbl-est-point {
-	appearance: none;
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: 28px;
-	height: 28px;
-	padding: 0;
-	margin: 0;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--radius-s);
-	background-color: var(--background-primary);
-	box-shadow: none;
-	color: var(--text-muted);
-	font-family: inherit;
-	font-size: var(--font-ui-small);
-	font-weight: var(--font-medium);
-	font-variant-numeric: tabular-nums;
-	line-height: 1;
-	cursor: pointer;
-}
-
-/* Restated on hover and not left to the rule above: a browser resolves the
-   winning declaration per property, so that rule's win at rest says nothing
-   about Obsidian's own `button:hover` fill, which is also (0,1,1). */
-button.pbl-est-point:hover {
-	color: var(--text-normal);
-	border-color: var(--text-muted);
-	box-shadow: none;
-}
-
-.pbl-est-point:focus-visible {
-	outline: 1px solid var(--interactive-accent);
-	outline-offset: 1px;
-}
-
-/* The point this note's answer names — checked against the write PLAN once a
-   plan exists, never against a comparison written beside it (`CLAUDE.md`, "A
-   Set menu's checkmark is asked of the PLAN"). `.is-active` rather than
-   `.pbl-selected`: this is the chosen VALUE of a control, the same fact
-   `.pbl-mode-btn.is-active` (toolbar.css) marks for a projection toggle, not
-   the keyboard/detail selection `.pbl-selected` marks on a row or a card. */
-button.pbl-est-point.is-active {
-	background-color: var(--interactive-accent);
-	border-color: var(--interactive-accent);
-	color: var(--text-on-accent);
-}
-
-.pbl-est-rubric {
-	font-size: var(--font-ui-smaller);
-	color: var(--text-muted);
-}
-
-/* ==========================================================================
-   The decomposition: the total, its coverage, and the two derived numbers
-   beside it — one wrapping row, so a narrow panel stacks them without a
-   second breakpoint to maintain.
-   ========================================================================== */
-
-.pbl-est-decomp {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: baseline;
-	gap: var(--size-4-2) var(--size-4-4);
-	padding-top: var(--size-4-3);
-	border-top: 1px solid var(--background-modifier-border);
-}
-
-/* The total and its coverage read large here — a glanceable answer, not a
-   table cell — so both drop the 72px column width the table gave them. */
-.pbl-est-decomp .pbl-est-total {
-	flex: 0 0 auto;
-	width: auto;
-	text-align: start;
-	font-size: var(--font-ui-large);
-	font-weight: var(--font-semibold);
-}
-
-.pbl-est-decomp .pbl-est-coverage {
-	flex: 0 0 auto;
-	width: auto;
-	text-align: start;
-	font-size: var(--font-ui-small);
-}
-
-/* Confidence-adjusted value and value-to-effort — derived on read, never
-   written (`CLAUDE.md`'s write-back rule), which is why both are labelled
-   rather than left to stand as bare numbers beside the total they are not. */
-.pbl-est-derived {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--size-4-1) var(--size-4-3);
-	font-size: var(--font-ui-smaller);
-	color: var(--text-muted);
-}
-
-.pbl-est-derived strong {
-	color: var(--text-normal);
-	font-weight: var(--font-medium);
-	font-variant-numeric: tabular-nums;
 }

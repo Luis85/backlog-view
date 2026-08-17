@@ -106,7 +106,7 @@ describe('the two derived lines', () => {
 		selectItem(containerEl, 'ConfidenceOnly.md');
 		const derived = containerEl.querySelector('.pbl-est-derived') as HTMLElement;
 		expect(derived).not.toBeNull();
-		expect(derived.querySelectorAll('strong')).toHaveLength(1); // value-to-effort needs effort too
+		expect(derived.children).toHaveLength(1); // value-to-effort needs effort too
 		const model = configured({ confidenceProperty: 'note.confidence' });
 		const result = computeTotal(model, new Map([['strategic-alignment', 5]]))!;
 		expect(derived.textContent).toContain(String(round2((result.total * 4) / 5)));
@@ -120,7 +120,7 @@ describe('the two derived lines', () => {
 		selectItem(containerEl, 'Item.md');
 
 		const derived = containerEl.querySelector('.pbl-est-derived') as HTMLElement;
-		expect(derived.querySelectorAll('strong')).toHaveLength(2);
+		expect(derived.children).toHaveLength(2);
 		const model = configured({ confidenceProperty: 'note.confidence', effortProperty: 'note.effort' });
 		const result = computeTotal(model, new Map([['strategic-alignment', 5]]))!;
 		const adjusted = round2((result.total * 4) / 5);
@@ -141,10 +141,27 @@ describe('the two derived lines', () => {
 			// The confidence-adjusted value still stands; the ratio has no meaning to show —
 			// zero divides to Infinity and a negative effort prints a negative ratio beside
 			// a table showing the number the user actually typed.
-			expect(derived.querySelectorAll('strong')).toHaveLength(1);
+			expect(derived.children).toHaveLength(1);
 			expect(derived.textContent).not.toContain('Infinity');
 			expect(derived.textContent).not.toMatch(/-\d/);
 		}
+	});
+});
+
+describe('the reserved panel column when nothing is selected', () => {
+	it('collapses to one track while unselected, and restores the second once a row is picked', () => {
+		const vault = new FakeVault();
+		vault.addFile('Item.md', { frontmatter: { 'customer-value': 3 } });
+		const { containerEl } = makeEstimationView(vault, configuredValues());
+		const viewEl = containerEl.querySelector('.pbl-est-view') as HTMLElement;
+
+		expect(viewEl.classList.contains('pbl-est-no-panel')).toBe(true);
+		expect(containerEl.querySelector('.pbl-est-panel')).toBeNull();
+
+		selectItem(containerEl, 'Item.md');
+
+		expect(viewEl.classList.contains('pbl-est-no-panel')).toBe(false);
+		expect(containerEl.querySelector('.pbl-est-panel')).not.toBeNull();
 	});
 });
 

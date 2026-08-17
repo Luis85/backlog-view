@@ -1,5 +1,6 @@
 import { App, Notice, TFile } from 'obsidian';
 import { BusyState } from './host';
+import { t } from '../i18n/t';
 import { RestoreWrite, WriteOutcome } from '../storage/frontmatter';
 import { ReplayTracker, replayRun } from './interactions/undo';
 import { WriteLock } from './writeLock';
@@ -49,6 +50,9 @@ export class WriteGate<W extends { file: TFile }> {
 	private pendingDataUpdate = false;
 	/** Progress of the batch in flight; null when idle. Drives the toolbar indicator. */
 	busy: BusyState | null = null;
+	/** Whether the batch `applySafely` most recently ran already rebuilt this view through
+	 *  its own deferred-update flush — see `flushedLastBatch`. */
+	private flushedOnLastBatch = false;
 	private readonly unsubscribe: () => void;
 
 	constructor(
@@ -76,7 +80,19 @@ export class WriteGate<W extends { file: TFile }> {
 		this.hooks.syncBusy();
 		if (this.lock.applying || !this.pendingDataUpdate) return;
 		this.pendingDataUpdate = false;
+		this.flushedOnLastBatch = true;
 		this.hooks.flushDataUpdate();
+	}
+
+	/**
+	 * True once, right after `applySafely` resolves, when that very batch's own deferred
+	 * update already rebuilt this view (`followLock`'s flush). A caller that always
+	 * refreshes after a write — the estimation view's `performScore`/`performScale`/
+	 * `performOrphanCleanup`, which have no toolbar to wait on a Bases refresh instead —
+	 * reads this to skip a second full rebuild of the state the flush already drew.
+	 */
+	get flushedLastBatch(): boolean {
+		return this.flushedOnLastBatch;
 	}
 
 	/**
@@ -110,6 +126,10 @@ export class WriteGate<W extends { file: TFile }> {
 
 	async applySafely(writes: W[]): Promise<WriteOutcome | null> {
 		if (writes.length === 0) return null;
+		// Reset before either branch below: `flushedLastBatch` answers for THIS call, and a
+		// refusal here (outside-filter, or `runExclusively`'s own config/lock checks) flushed
+		// nothing, whatever the previous call left behind.
+		this.flushedOnLastBatch = false;
 		// Notes the Base excluded are context, and nothing may write to them: the
 		// controls that could are withheld and the auto-type cascade stops at them.
 		// If one still arrives, the batch is refused whole — dropping just that write
@@ -193,6 +213,8 @@ export class WriteGate<W extends { file: TFile }> {
 			return null;
 		}
 		this.lock.applying = true;
+		// The batch STARTING is a vault-wide fact — every sibling gate's disabled state
+		// follows `lock.applying`, so this one tick has to reach every subscriber.
 		this.setBusy({ done: 0, total });
 		const inverses: RestoreWrite[] = [];
 		let installed = false;
@@ -205,12 +227,17 @@ export class WriteGate<W extends { file: TFile }> {
 			inverses.push(inverse);
 		};
 		try {
-			const result = await run((done, tot) => this.setBusy({ done, total: tot }), onInverse);
+			// Per-file progress is this view's own text, not a vault-wide fact: no sibling
+			// gate's disabled state depends on it (that follows `lock.applying`, unchanged
+			// between the batch's start and its end), so a tick publishes straight through
+			// this gate's own hooks rather than fanning `lock.notify()` out to every
+			// subscribed view for every file of a batch that can run into the hundreds.
+			const result = await run((done, tot) => this.setOwnBusy({ done, total: tot }), onInverse);
 			completed = true;
 			return result;
 		} catch (e) {
 			console.error('Product Backlog: failed to update items', e);
-			new Notice('Failed to update backlog items. See the developer console for details.');
+			new Notice(t('writeGate.applyFailed'));
 			return null;
 		} finally {
 			// A replay that completed but restored nothing is SPENT, not retryable:
@@ -229,9 +256,18 @@ export class WriteGate<W extends { file: TFile }> {
 		}
 	}
 
-	/** Publish batch progress through the lock; the gate itself renders nothing. */
+	/** Publish a vault-wide fact — batch start or end — through the lock, so every
+	 *  subscribed gate's disabled state and deferred-update flush follow it. */
 	private setBusy(state: BusyState | null): void {
 		this.busy = state;
 		this.lock.notify();
+	}
+
+	/** Publish this batch's own progress tick: text only, and only to this view's own
+	 *  chrome. `lock.applying` does not change between a batch's start and its end, so a
+	 *  sibling gate has nothing new to read here. */
+	private setOwnBusy(state: BusyState): void {
+		this.busy = state;
+		this.hooks.syncBusy();
 	}
 }

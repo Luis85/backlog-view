@@ -1,22 +1,17 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { BasesViewSpec } from 'obsidian';
+import { BasesViewRegistration } from 'obsidian';
 import { registerBacklogView } from '../../src/view/registerBacklogView';
 import { WriteLock } from '../../src/view/writeLock';
 import { PRODUCT_BACKLOG_VIEW_TYPE } from '../../src/view/backlogView';
-import { useViewHarness, fixture, makeView } from '../helpers/view';
+import { useViewHarness, fixture, makeView, captureRegistrations } from '../helpers/view';
 import { FakeViewConfig } from '../helpers/vault';
 
 useViewHarness();
 
 describe('registerBacklogView', () => {
 	it('registers the backlog view with the correct config', () => {
-		const specs = new Map<string, BasesViewSpec>();
-		const fakePlugin = {
-			registerBasesView: (type: string, spec: BasesViewSpec) => {
-				specs.set(type, spec);
-			},
-		};
+		const { plugin: fakePlugin, specs } = captureRegistrations<BasesViewRegistration>();
 
 		const lock = new WriteLock();
 		registerBacklogView(fakePlugin as never, lock);
@@ -32,12 +27,7 @@ describe('registerBacklogView', () => {
 		const lockA = new WriteLock();
 
 		// Register and capture the spec
-		const specs = new Map<string, BasesViewSpec>();
-		const fakePlugin = {
-			registerBasesView: (type: string, spec: BasesViewSpec) => {
-				specs.set(type, spec);
-			},
-		};
+		const { plugin: fakePlugin, specs } = captureRegistrations<BasesViewRegistration>();
 		registerBacklogView(fakePlugin as never, lockA);
 		const spec = specs.get(PRODUCT_BACKLOG_VIEW_TYPE)!;
 
