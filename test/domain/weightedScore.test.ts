@@ -99,6 +99,12 @@ describe('modelFingerprint: stable for the same model, and moved by every arithm
 				m.dimensions[0].lessIsBetter = true;
 			},
 			(m) => {
+				m.dimensions[0].max = 6;
+			},
+			(m) => {
+				m.dimensions[0].min = 0;
+			},
+			(m) => {
 				m.dimensions = m.dimensions.slice(1);
 			},
 		];
@@ -190,6 +196,34 @@ describe('currencyOf: what a stored total says about itself', () => {
 
 		// none: nothing stored, nothing computed
 		expect(currencyOf(model, { storedTotal: null, storedStamp: null, result: null })).toBe('none');
+	});
+
+	// Every fixture above is already a clean two-decimal number, so the `round2(storedTotal)`
+	// comparison in `currencyOf` is never actually exercised by them — dropping that wrap would
+	// leave every one of those assertions passing unchanged. These two pin the comparison
+	// itself, against the SAME rule `docs/requirements/The scoring model is configuration.md`
+	// states for the write side: round once, compare against the rounded number.
+	it('a stored total that ROUNDS to the computed total reads current, even though the raw numbers differ', () => {
+		const storedTotal = result.total + 0.004; // 3.554 → round2 → 3.55, same as result.total
+		expect(round2(storedTotal)).toBe(result.total); // the fixture actually rounds back — not asserted on faith
+		expect(storedTotal).not.toBe(result.total); // and the raw numbers really do differ
+		expect(
+			currencyOf(model, { storedTotal, storedStamp: stampValue(model, result.coverage), result }),
+		).toBe('current');
+	});
+
+	it('a stored total whose difference SURVIVES rounding reads stale', () => {
+		const storedTotal = result.total + 0.006; // 3.556 → round2 → 3.56, not result.total
+		expect(round2(storedTotal)).not.toBe(result.total); // the fixture's difference is not a rounding artifact
+		expect(
+			currencyOf(model, { storedTotal, storedStamp: stampValue(model, result.coverage), result }),
+		).toBe('stale');
+	});
+
+	it('an unparseable stamp reads foreign through currencyOf itself, not only through parseStamp', () => {
+		expect(
+			currencyOf(model, { storedTotal: result.total, storedStamp: 'hand-written', result }),
+		).toBe('foreign');
 	});
 });
 
