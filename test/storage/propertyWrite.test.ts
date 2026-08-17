@@ -81,4 +81,25 @@ describe('applyPropertyWrites', () => {
 
 		expect(inverses).toEqual([]);
 	});
+
+	it('never writes an UNCONFIGURED key: an empty key is dropped, and its own file is left unopened', async () => {
+		const vault = new FakeVault();
+		const item = vault.addFile('Item.md', { frontmatter: { score: 4 } });
+		const onlyEmpty = vault.addFile('Untouched.md', { frontmatter: { score: 4 } });
+
+		const inverses = await writeCapturing(vault, [
+			{ file: item, sets: [{ key: '', value: 3.55 }, { key: 'score', value: 5 }] },
+			{ file: onlyEmpty, sets: [{ key: '', value: null }] },
+		]);
+
+		// Absence is a value and an unconfigured key is never written to — the rule
+		// `axisEntries` keeps for the roadmap's keys, asked here at the write itself so it
+		// holds for a planner not yet written rather than for the ones that remember.
+		expect(vault.fm('Item.md')).toEqual({ score: 5 });
+		expect(Object.prototype.hasOwnProperty.call(vault.fm('Item.md'), '')).toBe(false);
+		expect(inverses.flatMap((i) => i.keys.map((k) => k.key))).toEqual(['score']);
+		// A write with nothing left to say is not a save: processFrontMatter rewrites the
+		// note whether or not the callback changed anything.
+		expect(vault.writeLog.map((w) => w.path)).toEqual(['Item.md']);
+	});
 });

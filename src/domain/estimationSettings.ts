@@ -56,7 +56,7 @@ type Readers = ReturnType<typeof configReaders>;
 function resolveDimRubric(read: Readers, id: string, min: number, max: number, shipped: { rubric: string[] } | null): string[] {
 	const rubric: string[] = [];
 	for (let point = min; point <= max; point++) {
-		const override = read.str(dimRubricOption(id, point));
+		const override = read.text(dimRubricOption(id, point));
 		if (override !== '') {
 			rubric.push(override);
 			continue;
@@ -69,12 +69,12 @@ function resolveDimRubric(read: Readers, id: string, min: number, max: number, s
 
 function resolveDimension(read: Readers, id: string): ScoringDimension {
 	const shipped = defaultDimension(id);
-	const [min, max] = parseRange(read.str(dimOption(id, 'range')), DEFAULT_POINT_RANGE);
-	const weightText = read.str(dimOption(id, 'weight'));
+	const [min, max] = parseRange(read.text(dimOption(id, 'range')), DEFAULT_POINT_RANGE);
+	const weightText = read.text(dimOption(id, 'weight'));
 	// Set: the typed number, whatever it is. Unset: the shipped weight, or 0 for an id
 	// with no shipped row at all — `modelProblems` refuses either non-positive result.
 	const weight = weightText !== '' ? Number(weightText) : (shipped?.weight ?? 0);
-	const label = read.str(dimOption(id, 'label')) || shipped?.label || id;
+	const label = read.text(dimOption(id, 'label')) || shipped?.label || id;
 	return {
 		id,
 		label,
@@ -91,7 +91,7 @@ function resolveDimension(read: Readers, id: string): ScoringDimension {
 function resolveScale(read: Readers, scale: ScaleName, optionKey: string): ScaleConfig {
 	const [min, max] = DEFAULT_POINT_RANGE;
 	const rubric = DEFAULT_SCALE_RUBRICS[scale].map((shippedSentence, i) => {
-		const override = read.str(scaleRubricOption(scale, i + 1));
+		const override = read.text(scaleRubricOption(scale, i + 1));
 		return override !== '' ? override : shippedSentence;
 	});
 	return { key: read.propKey(optionKey, ''), min, max, rubric };
@@ -100,7 +100,7 @@ function resolveScale(read: Readers, scale: ScaleName, optionKey: string): Scale
 export function resolveEstimationSettings(config: BasesViewConfig): EstimationSettings {
 	const read = configReaders(config);
 	const ids = read.dedupe(read.clearable('dimensions', DEFAULT_DIMENSIONS.map((d) => d.id), () => read.list('dimensions')));
-	const [outputMin, outputMax] = parseRange(read.str('outputRange'), DEFAULT_POINT_RANGE);
+	const [outputMin, outputMax] = parseRange(read.text('outputRange'), DEFAULT_POINT_RANGE);
 	return {
 		model: {
 			dimensions: ids.map((id) => resolveDimension(read, id)),

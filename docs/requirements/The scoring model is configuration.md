@@ -61,6 +61,19 @@ A finer scale is a wider range, not a fractional step: a team wanting halves bet
 declares 2–10. Steps of their own are refused for the reason the whole register refuses
 options — nothing needs one that a range cannot already express.
 
+**Two refusals are about the property NAMES rather than the arithmetic, and they are made
+in the same place.** A model whose total and stamp are BOTH unnamed is refused, not only
+one whose pair is half named: [[Business value estimation]] offers scoring only where both
+are bound, and a model with a dimension bound and neither of the pair would compute a total
+and write it under no key at all. And one property bound to two slots is refused, naming
+both — the two writes land in one batch, so the second value silently overwrites the first
+and one key carries two inverses. That is the backlog's own shared-key report, over this
+model's slots.
+
+**A hand-edited option is read as the `.base` spells it.** A weight, a range, a label or a
+rubric sentence typed as an unquoted number is a YAML number, and it resolves to what the
+options box shows rather than falling back to the shipped value behind the user's back.
+
 **Outcome** — A team scores what it actually cares about, under the property names its
 vault already uses, and any two implementations of the model agree on the number.
 

@@ -47,6 +47,26 @@ describe('the scoring model configuration', () => {
 		const s = resolveEstimationSettings(new FakeViewConfig({ stampProperty: 'note.business-value-model' }));
 		expect(modelProblems(s.model).join(' ')).toMatch(/business value property/i);
 	});
+	it('refuses a model with dimensions bound and NEITHER of the pair, naming both', () => {
+		// The epic's own sentence: scoring is offered only where both are bound, and the
+		// view refuses until both are named. Neither bound is not "no opinion" — with
+		// something else bound this is a model that would score and write its total
+		// nowhere, and the keys it would write under are ''.
+		const { valueProperty: _v, stampProperty: _s, ...dimensionsOnly } = configuredValues();
+		const problems = modelProblems(resolveEstimationSettings(new FakeViewConfig(dimensionsOnly)).model);
+		expect(problems.join(' ')).toMatch(/business value property/i);
+		expect(problems.join(' ')).toMatch(/stamp/i);
+	});
+	it('refuses one property bound to two slots, naming both', () => {
+		// One key, two writes in one batch: the total silently overwrites the score, and
+		// the undo slot holds two inverses for the same key. `configProblems` refuses the
+		// backlog's own collisions for the same reason.
+		const s = resolveEstimationSettings(new FakeViewConfig(configuredValues({ 'dimProperty.reach': 'note.business-value' })));
+		const problems = modelProblems(s.model).join(' ');
+		expect(problems).toMatch(/reach/i);
+		expect(problems).toMatch(/business value/i);
+		expect(problems).toMatch(/business-value/);
+	});
 	it('an emptied dimensions list is declared, not defaulted — no dimensions at all', () => {
 		const s = resolveEstimationSettings(new FakeViewConfig({ dimensions: '' }));
 		expect(modelProblems(s.model)).toContain('no dimensions are declared');
@@ -67,6 +87,33 @@ describe('boundKeys', () => {
 	});
 	it('an unbound model binds nothing', () => {
 		expect(boundKeys(resolveEstimationSettings(new FakeViewConfig({})).model)).toEqual([]);
+	});
+});
+
+describe('unconfigured is "this model binds nothing", one definition', () => {
+	it('a scale-only binding is a CONFIGURED model with problems, not an untouched one', () => {
+		// A confidence property and nothing else: the guided empty state would say no model
+		// is configured, which is false, and would hide every problem the model does have.
+		const model = resolveEstimationSettings(new FakeViewConfig({ confidenceProperty: 'note.confidence' })).model;
+		expect(boundKeys(model)).toEqual(['confidence']);
+		expect(estimationUnconfigured(model)).toBe(false);
+		expect(modelProblems(model).length).toBeGreaterThan(0);
+	});
+});
+
+describe('a hand-edited option is read as the .base spells it', () => {
+	it('a numeric weight is the weight, not a silent fall back to the shipped one', () => {
+		// `dimWeight.reach: 30` unquoted is YAML for the NUMBER 30. Read as a string it is
+		// nothing, and the shipped 10 applied behind the user's back — a model scoring by
+		// weights the view options are not showing.
+		const s = resolveEstimationSettings(new FakeViewConfig(configuredValues({ 'dimWeight.reach': 30 })));
+		expect(s.model.dimensions.find((d) => d.id === 'reach')?.weight).toBe(30);
+	});
+	it('a numeric label and rubric sentence read as their own digits', () => {
+		const s = resolveEstimationSettings(new FakeViewConfig({ 'dimLabel.reach': 2026, 'dimRubric.reach.3': 42 }));
+		const reach = s.model.dimensions.find((d) => d.id === 'reach');
+		expect(reach?.label).toBe('2026');
+		expect(reach?.rubric[2]).toBe('42');
 	});
 });
 

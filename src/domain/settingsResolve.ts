@@ -201,6 +201,17 @@ export function configReaders(config: BasesViewConfig) {
 		const v = config.get(key);
 		return typeof v === 'string' ? v : '';
 	};
+	/**
+	 * An option the user types TEXT into, read tolerantly enough to survive a hand edit of
+	 * the `.base`: `dimWeight.reach: 30` unquoted is YAML for the number 30, and `str`
+	 * answers '' for it — so the box showed 30 and the model silently scored by the
+	 * shipped weight instead. A finite number is spelled back as its own digits; anything
+	 * else follows `str`.
+	 */
+	const text = (key: string): string => {
+		const v = config.get(key);
+		return typeof v === 'number' && Number.isFinite(v) ? String(v) : str(key);
+	};
 	const bool = (key: string, def: boolean): boolean => {
 		const v = config.get(key);
 		return typeof v === 'boolean' ? v : def;
@@ -220,7 +231,7 @@ export function configReaders(config: BasesViewConfig) {
 			return true;
 		});
 	};
-	return { propKey, clearablePropKey, clearable, str, bool, list, dedupe };
+	return { propKey, clearablePropKey, clearable, str, text, bool, list, dedupe };
 }
 
 /** Read the persisted view config into a BacklogSettings, applying defaults for anything unset. */

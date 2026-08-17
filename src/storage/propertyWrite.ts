@@ -41,22 +41,32 @@ export async function applyPropertyWrites(
 	const outcome: WriteOutcome = { changed: false, dates: null };
 	let done = 0;
 	for (const write of writes) {
+		// An UNCONFIGURED key is never written to — the rule `axisEntries` keeps for the
+		// roadmap's own keys, asked here rather than of each planner: '' is what
+		// `resolveEstimationSettings` resolves an unnamed property to, and `setOwn(fm, '')`
+		// would put a nameless key in a note somebody reads. At the write, so it holds for
+		// a planner not yet written.
+		const sets = write.sets.filter((s) => s.key !== '');
 		let inverse: RestoreWrite | null = null;
-		await app.fileManager.processFrontMatter(write.file, (fm: Record<string, unknown>) => {
-			const prior = write.sets.map((s) => rawValueOf(fm, s.key));
-			for (const s of write.sets) {
-				if (s.ifMissing) {
-					if (!rawValueOf(fm, s.key).present) setOwn(fm, s.key, s.value);
-				} else if (s.value === null) delete fm[s.key];
-				else setOwn(fm, s.key, s.value);
-			}
-			const changed: KeyRestore[] = [];
-			write.sets.forEach((s, i) => {
-				const written = rawValueOf(fm, s.key);
-				if (!sameRaw(prior[i], written)) changed.push({ key: s.key, prior: prior[i], written });
+		// Nothing left to say is not a save: `processFrontMatter` rewrites the note whether
+		// or not the callback changed anything.
+		if (sets.length > 0) {
+			await app.fileManager.processFrontMatter(write.file, (fm: Record<string, unknown>) => {
+				const prior = sets.map((s) => rawValueOf(fm, s.key));
+				for (const s of sets) {
+					if (s.ifMissing) {
+						if (!rawValueOf(fm, s.key).present) setOwn(fm, s.key, s.value);
+					} else if (s.value === null) delete fm[s.key];
+					else setOwn(fm, s.key, s.value);
+				}
+				const changed: KeyRestore[] = [];
+				sets.forEach((s, i) => {
+					const written = rawValueOf(fm, s.key);
+					if (!sameRaw(prior[i], written)) changed.push({ key: s.key, prior: prior[i], written });
+				});
+				if (changed.length > 0) inverse = { file: write.file, keys: changed };
 			});
-			if (changed.length > 0) inverse = { file: write.file, keys: changed };
-		});
+		}
 		if (inverse) {
 			outcome.changed = true;
 			onInverse?.(inverse);
