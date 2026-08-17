@@ -15,7 +15,7 @@ node_modules/
 # misc
 .DS_Store
 data.json
-coverage/
+coverage*/
 
 # release artifacts
 dist/
